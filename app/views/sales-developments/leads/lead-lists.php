@@ -176,6 +176,24 @@ $activeCard = $_GET['filter_card'] ?? '';
             </div>
         </a>
     </div>
+    <div class="col-6 col-md-6 col-lg-4 col-xl-2">
+        <a href="<?= getStatCardLink('irrelevant_leads') ?>" class="card__wrapper stat-card text-decoration-none d-block h-100 <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>" style="cursor: pointer; <?= $activeCard === 'irrelevant_leads' ? 'border: 2px solid #10b981 !important; background-color: #f0fdf4;' : '' ?>">
+            <div class="stat-label">Irrelevant Leads <?= !empty($filteredExecName) ? '<i class="fa-solid fa-filter ms-1 text-primary" style="font-size:9px;" title="Filtered"></i>' : '' ?></div>
+            <div class="stat-value text-secondary"><?= $totalIrrelevantLeads ?? 0 ?></div>
+            <div class="stat-change negative d-none">
+                <i class="bi bi-arrow-down"></i>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-6 col-lg-4 col-xl-2">
+        <a href="<?= getStatCardLink('delete_requests') ?>" class="card__wrapper stat-card text-decoration-none d-block h-100 <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>" style="cursor: pointer; <?= $activeCard === 'delete_requests' ? 'border: 2px solid #ef4444 !important; background-color: #fef2f2;' : '' ?>">
+            <div class="stat-label text-danger fw-semibold"><i class="fa-solid fa-trash-can me-1"></i>Delete Requests <?= !empty($filteredExecName) ? '<i class="fa-solid fa-filter ms-1 text-primary" style="font-size:9px;" title="Filtered"></i>' : '' ?></div>
+            <div class="stat-value text-danger"><?= $totalDeleteRequests ?? 0 ?></div>
+            <div class="stat-change negative d-none">
+                <i class="bi bi-arrow-down"></i>
+            </div>
+        </a>
+    </div>
 
 
     <!-- Duplicate Leads Alert Card -->
@@ -360,6 +378,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                             <option value="follow up" <?= ($selectedAction ?? '') == 'follow up' ? 'selected' : '' ?>>Follow Up</option>
                             <option value="visited" <?= ($selectedAction ?? '') == 'visited' ? 'selected' : '' ?>>Visited</option>
                             <option value="cancel" <?= ($selectedAction ?? '') == 'cancel' ? 'selected' : '' ?>>Cancel</option>
+                            <option value="irrelevant" <?= ($selectedAction ?? '') == 'irrelevant' ? 'selected' : '' ?>>Irrelevant</option>
                         </select>
                     </div>
 
@@ -496,6 +515,9 @@ $activeCard = $_GET['filter_card'] ?? '';
 
                         <button id="assignUserBtn" class="btn btn-primary btn-sm px-3">
                             <i class="fa-solid fa-user-plus me-1"></i> Assign Leads
+                        </button>
+                        <button type="button" id="bulkDeleteLeadsBtn" class="btn btn-danger btn-sm px-3 ms-auto" style="display:none;">
+                            <i class="fa-solid fa-trash-can me-1"></i> Bulk Delete (<span id="bulkDeleteCount">0</span>)
                         </button>
                         <span id="assignFeedback"
                             class="text-success fw-bold"
@@ -663,6 +685,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                         <option value="follow up" <?= ($_GET['last_action'] ?? '') == 'follow up' ? 'selected' : '' ?>>Follow Up</option>
                         <option value="visited" <?= ($_GET['last_action'] ?? '') == 'visited' ? 'selected' : '' ?>>Visited</option>
                         <option value="cancel" <?= ($_GET['last_action'] ?? '') == 'cancel' ? 'selected' : '' ?>>Cancel</option>
+                        <option value="irrelevant" <?= ($_GET['last_action'] ?? '') == 'irrelevant' ? 'selected' : '' ?>>Irrelevant</option>
                     </select>
 
                     <!-- Assigned / Unassigned -->
@@ -744,6 +767,11 @@ $activeCard = $_GET['filter_card'] ?? '';
                 <button id="assignUserBtnMobile"
                     class="btn btn-primary btn-sm w-100">
                     <i class="fa-solid fa-user-plus me-1"></i> Assign Leads
+                </button>
+
+                <button type="button" id="bulkDeleteLeadsBtnMobile"
+                    class="btn btn-danger btn-sm w-100" style="display:none;">
+                    <i class="fa-solid fa-trash-can me-1"></i> Bulk Delete (<span id="bulkDeleteCountMobile">0</span>)
                 </button>
 
                 <span id="assignFeedbackMobile"
@@ -1069,6 +1097,566 @@ $activeCard = $_GET['filter_card'] ?? '';
     </div>
 </div>
 
+<!-- Create / Edit Follow Up Modal -->
+<div class="modal custom-modal fade" id="createFollowUpModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createFollowUpModalTitle"><i class="bi bi-calendar-plus me-2"></i> Create Follow Up</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Edit mode notification banner -->
+                <div id="followUpEditModeAlert" class="alert alert-warning py-2 px-3 mb-3 align-items-center justify-content-between" style="display: none;">
+                    <div>
+                        <i class="fa-solid fa-pen-to-square me-2 text-warning-emphasis"></i>
+                        <strong>Editing Follow Up #<span id="followUpEditIdDisplay"></span></strong>
+                        <span class="text-muted ms-2 fs-12">(Created by: <span id="followUpEditCreatorDisplay"></span>)</span>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-dark py-0 px-2" id="cancelFollowUpEditBtn">
+                        <i class="fa-solid fa-xmark me-1"></i> Cancel Edit
+                    </button>
+                </div>
+
+                <form id="createFollowUpForm" action="<?= $GLOBALS['base_url'] ?>/store-follow-up" method="POST">
+                    <input type="hidden" name="lead_id" id="createFollowUpLeadId" value="">
+                    <input type="hidden" name="id" id="createFollowUpEditId" value="">
+                    <input type="hidden" name="is_ajax" value="1">
+                    <input type="hidden" name="assigned_with" value="<?= $_SESSION['user']['id'] ?? 1 ?>">
+                    <input type="hidden" name="created_by" value="<?= $_SESSION['user_id'] ?? 1 ?>">
+
+                    <div class="row gy-3">
+                        <!-- Project -->
+                        <div class="col-lg-6">
+                            <label class="form__input-title">Project</label>
+                            <select name="project_id" id="createFollowUpProjectSelect" class="form-select select2-no-scroll" data-placeholder="Select Project">
+                                <option value="">Select Project</option>
+                                <?php foreach (($projects ?? []) as $project): ?>
+                                    <?php 
+                                        $isRestricted = in_array($project['project_sale_status'], ['Sold Out', 'Upcoming']);
+                                        $statusSuffix = !empty($project['project_sale_status']) ? " ({$project['project_sale_status']})" : '';
+                                    ?>
+                                    <option value="<?= $project['id'] ?>" <?= $isRestricted ? 'disabled style="color: red;"' : '' ?>>
+                                        <?= htmlspecialchars($project['name']) ?><?= $statusSuffix ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <!-- Flat / Unit -->
+                        <div class="col-lg-6">
+                            <label class="form__input-title">Flat / Unit</label>
+                            <select id="createFollowUpFlatSelect" name="flat_id" class="form-select select2-no-scroll" data-placeholder="Select Flat">
+                                <option value="">Select Flat</option>
+                            </select>
+                        </div>
+
+                        <!-- Follow Up Date -->
+                        <div class="col-lg-6">
+                            <label class="form__input-title">Follow Up Date*</label>
+                            <input type="date" name="follow_up_date" class="form-control" required>
+                        </div>
+
+                        <!-- Follow Up Time -->
+                        <div class="col-lg-6">
+                            <label class="form__input-title">Follow Up Time</label>
+                            <input type="time" name="follow_up_time" class="form-control">
+                        </div>
+
+                        <!-- Follow Up Type -->
+                        <div class="col-lg-6">
+                            <label class="form__input-title">Follow Up Type</label>
+                            <select name="follow_up_type" class="form-select">
+                                <option value="">Select Type</option>
+                                <option value="Inbound Call">Inbound Call</option>
+                                <option value="Phone Call">Phone Call</option>
+                                <option value="WA Call">WA Call</option>
+                                <option value="Imo Call">Imo Call</option>
+                                <option value="Messenger Call">Messenger Call</option>
+                                <option value="Messenger Conversesion">Messenger Conversesion</option>
+                                <option value="WA Conversesion">WA Conversesion</option>
+                                <option value="WhatsApp Message">WhatsApp Message</option>
+                                <option value="Imo Message">Imo Message</option>
+                                <option value="Phone Massaging">Phone Massaging</option>
+                                <option value="Email">Email</option>
+                                <option value="Number Off">Number Off</option>
+                                <option value="Wrong Number">Wrong Number</option>
+                                <option value="Invalid Number">Invalid Number</option>
+                                <option value="Face To Face">Face To Face</option>
+                                <option value="call">Call (Legacy)</option>
+                                <option value="visit">Visit (Legacy)</option>
+                                <option value="meeting">Meeting (Legacy)</option>
+                                <option value="whatsapp">WhatsApp (Legacy)</option>
+                                <option value="Email">Email (Legacy)</option>
+                            </select>
+                        </div>
+
+                        <!-- Lead Status -->
+                        <div class="col-lg-6">
+                            <label class="form__input-title">Lead Status</label>
+                            <select name="lead_status" id="createModalLeadStatus" class="form-select">
+                                <option value="">Select Status</option>
+                                <?php
+                                $statuses = [
+                                    'No Response', 'Pending', 'Prospect', 'High Prospect', 
+                                    'Will Visit', 'Visited', 'Sold', 'Lead Transferred', 
+                                    'Project Transferred', 'Not Interested', 'Don\'t Call Again', 
+                                    'Refund', 'Future', 'Cold', 'Hot', 'Warm', 'Irrelevant'
+                                ];
+                                foreach($statuses as $st) {
+                                    echo "<option value=\"$st\">$st</option>";
+                                }
+                                ?>
+                            </select>
+                        </div>
+                        
+                        <!-- Team Re-assign (Hidden by default) -->
+                        <div class="col-lg-6" id="createModalReassignTeamDiv" style="display: none;">
+                            <label class="form__input-title">Re-assigned to (Team)</label>
+                            <select name="team_id" id="createModalReassignTeamId" class="form-select">
+                                <option value="">Select Team</option>
+                                <?php foreach (($teams ?? []) as $team): ?>
+                                    <option value="<?= $team['id'] ?>"><?= htmlspecialchars($team['name'] ?? '') ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <!-- Transfer To User (Hidden by default, shown when Lead Transferred) -->
+                        <div class="col-lg-6" id="createModalTransferUserDiv" style="display: none;">
+                            <label class="form__input-title">Transfer To (User)</label>
+                            <select name="transfer_to_user_id" id="createModalTransferUserId" class="form-select select2">
+                                <option value="">Search user...</option>
+                                <?php foreach (($transferableUsers ?? []) as $u): ?>
+                                    <option value="<?= (int)$u['id'] ?>">
+                                        <?= htmlspecialchars($u['full_name']) ?>
+                                        <?php if (!empty($u['employee_id'])): ?>#EMP-<?= (int)$u['employee_id'] ?><?php endif; ?>
+                                        (<?= htmlspecialchars($u['role_name'] ?? '') ?>)
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <!-- Follow Up Status -->
+                        <div class="col-lg-6">
+                            <label class="form__input-title">Follow Up Status</label>
+                            <select name="status" class="form-select">
+                                <option value="">Select Status</option>
+                                <option value="pending" selected>Pending</option>
+                                <option value="completed">Completed</option>
+                                <option value="missed">Missed</option>
+                                <option value="canceled">Canceled</option>
+                            </select>
+                        </div>
+
+                        <!-- Follow Up Agent (Optional) -->
+                        <div class="col-lg-6">
+                            <label class="form__input-title">Follow-up Agent (Optional)</label>
+                            <select name="follow_up_agent_id" class="form-select">
+                                <option value="">Myself (Default)</option>
+                                <?php foreach (($teamMembers ?? []) as $member): ?>
+                                    <option value="<?= $member['id'] ?>"><?= htmlspecialchars($member['full_name'] ?? '') ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <!-- Discussion Note -->
+                        <div class="col-lg-6">
+                            <label class="form__input-title">Discussion Note*</label>
+                            <textarea name="discussion_note" class="form-control" rows="3" required></textarea>
+                        </div>
+
+                        <!-- Next Follow Up Date -->
+                        <div class="col-lg-6">
+                            <label class="form__input-title">Next Follow Up Date</label>
+                            <input type="date" name="next_follow_up_date" class="form-control">
+                        </div>
+
+                        <!-- Next Action -->
+                        <div class="col-lg-6">
+                            <label class="form__input-title">Next Action</label>
+                            <select name="next_action" class="form-select">
+                                <option value="">Select Action</option>
+                                <option value="site visit">Site Visit</option>
+                                <option value="booking">Booking</option>
+                                <option value="call_back">Call Back</option>
+                                <option value="take_time">Take Time</option>
+                            </select>
+                        </div>
+
+                        <!-- Next Follow Up Plan Notes -->
+                        <div class="col-lg-6 mt-2">
+                            <label class="form__input-title">Next Follow Up Plan Notes</label>
+                            <textarea name="next_follow_up_plan_notes" class="form-control" rows="2"></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 text-end">
+                        <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="saveFollowUpBtn">Save Follow Up</button>
+                    </div>
+                </form>
+
+                <hr class="my-4">
+                
+                <h6 class="mb-3"><i class="bi bi-clock-history me-2"></i>Recent Follow Ups</h6>
+                <div class="table-responsive border" style="max-height: 250px; overflow-y: auto;">
+                    <table class="table table-bordered table-striped table-sm mb-0" style="font-size: 0.85rem; white-space: nowrap;">
+                        <thead class="bg-light sticky-top" style="z-index: 1; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                            <tr>
+                                <th>#</th>
+                                <th>Lead</th>
+                                <th>Project</th>
+                                <th>Flat</th>
+                                <th>Follow Up Date</th>
+                                <th>Follow Up Time</th>
+                                <th>Type</th>
+                                <th>Lead Status</th>
+                                <th>Follow Up Status</th>
+                                <th>Discussion Note</th>
+                                <th>Next Follow Up</th>
+                                <th>Next Action</th>
+                                <th>Follow Up With</th>
+                                <th class="text-center" style="min-width: 80px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="createModalHistoryBody">
+                            <tr>
+                                <td colspan="14" class="text-center text-muted">Loading history...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const currentUserId = <?= (int)($_SESSION['user']['id'] ?? $_SESSION['user_id'] ?? 0) ?>;
+    const currentUserRole = <?= (int)($_SESSION['user']['role_id'] ?? 0) ?>;
+    let modalHistoryData = [];
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        return text.toString()
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function loadFlatsForProject(projectId, selectedFlatId = null) {
+        let flatSel = $('#createFollowUpFlatSelect');
+        if (projectId) {
+            flatSel.html('<option value="">Loading...</option>');
+            fetch(`<?= $GLOBALS['base_url'] ?>/get-flats/${projectId}`)
+                .then(res => res.json())
+                .then(data => {
+                    flatSel.html('<option value="">Select Flat</option>');
+                    data.forEach(flat => {
+                        const flatId = flat.flat_id ?? flat.id;
+                        if (!flatId) return;
+                        
+                        let option = document.createElement('option');
+                        option.value = flatId;
+                        if (flat.is_booked == 1 && (!selectedFlatId || flatId != selectedFlatId)) {
+                            option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft [Booked]`;
+                            option.classList.add('booked-option');
+                            option.disabled = true;
+                        } else {
+                            option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft`;
+                        }
+                        if (selectedFlatId && Number(flatId) === Number(selectedFlatId)) {
+                            option.selected = true;
+                        }
+                        flatSel.append(option);
+                    });
+                    if (selectedFlatId) {
+                        flatSel.val(selectedFlatId);
+                    }
+                    if (flatSel.hasClass('select2-hidden-accessible')) {
+                        flatSel.trigger('change.select2');
+                    }
+                })
+                .catch(err => {
+                    console.error('Failed to load flats', err);
+                    flatSel.html('<option value="">Error loading flats</option>');
+                });
+        } else {
+            flatSel.html('<option value="">Select Flat</option>');
+        }
+    }
+
+    function resetFormToCreateMode() {
+        $('#createFollowUpForm').attr('action', '<?= $GLOBALS['base_url'] ?>/store-follow-up');
+        $('#createFollowUpEditId').val('');
+        $('#followUpEditModeAlert').hide().removeClass('d-flex').addClass('d-none');
+        $('#createFollowUpModalTitle').html('<i class="bi bi-calendar-plus me-2"></i> Create Follow Up');
+        $('#saveFollowUpBtn').removeClass('btn-warning').addClass('btn-primary').html('Save Follow Up');
+        
+        let leadId = $('#createFollowUpLeadId').val();
+        $('#createFollowUpForm')[0].reset();
+        $('#createFollowUpLeadId').val(leadId);
+        $('#createModalReassignTeamDiv').hide();
+        $('#createFollowUpFlatSelect').html('<option value="">Select Flat</option>');
+        $('#createFollowUpProjectSelect').val('');
+        if ($('#createFollowUpProjectSelect').hasClass('select2-hidden-accessible')) {
+            $('#createFollowUpProjectSelect').trigger('change.select2');
+        }
+    }
+
+    function loadModalHistory(leadId) {
+        let tbody = $('#createModalHistoryBody');
+        tbody.html('<tr><td colspan="14" class="text-center text-muted">Loading history...</td></tr>');
+        modalHistoryData = [];
+        
+        fetch(`<?= $GLOBALS['base_url'] ?>/get-follow-up-history/${leadId}`)
+            .then(res => res.json())
+            .then(data => {
+                let html = '';
+                if (Array.isArray(data) && data.length > 0) {
+                    modalHistoryData = data;
+                    data.forEach(item => {
+                        const canEdit = (currentUserId && Number(item.created_by) === Number(currentUserId)) || (currentUserRole === 1);
+                        let actionHtml = '';
+                        if (canEdit) {
+                            actionHtml = `<button type="button" class="btn btn-xs btn-outline-primary py-0 px-2 edit-modal-followup-btn" data-fuid="${item.id}" title="Edit this follow up">
+                                <i class="fa-solid fa-pen-to-square me-1"></i> Edit
+                            </button>`;
+                        } else {
+                            actionHtml = `<span class="badge bg-light text-muted border py-1 px-2" title="Only the creator can edit this follow up"><i class="fa-solid fa-lock me-1"></i> No Access</span>`;
+                        }
+
+                        let lsBadge = '<span class="text-muted">—</span>';
+                        if (item.lead_status) {
+                            let lsCls = 'bg-secondary text-white';
+                            if (item.lead_status === 'Prospect' || item.lead_status === 'High Prospect') lsCls = 'bg-success text-white';
+                            else if (item.lead_status === 'Hot') lsCls = 'bg-danger text-white';
+                            else if (item.lead_status === 'Warm') lsCls = 'bg-warning text-dark';
+                            else if (item.lead_status === 'Irrelevant') lsCls = 'bg-dark text-white';
+                            else if (item.lead_status === 'Cold' || item.lead_status === 'Not Interested' || item.lead_status === "Don't Call Again") lsCls = 'bg-secondary text-white';
+                            lsBadge = `<span class="badge ${lsCls} px-2 py-1">${escapeHtml(item.lead_status)}</span>`;
+                        }
+
+                        let fuStatusBadge = '<span class="badge bg-warning text-dark">Pending</span>';
+                        if (item.status === 'completed') fuStatusBadge = '<span class="badge bg-success text-white">Completed</span>';
+                        else if (item.status === 'missed') fuStatusBadge = '<span class="badge bg-danger text-white">Missed</span>';
+                        else if (item.status === 'canceled') fuStatusBadge = '<span class="badge bg-secondary text-white">Canceled</span>';
+
+                        html += `<tr>
+                            <td>${item.id || ''}</td>
+                            <td>${escapeHtml(item.lead_name || '')}</td>
+                            <td>${escapeHtml(item.project_name || '')}</td>
+                            <td>${escapeHtml(item.flat_name || '')}</td>
+                            <td>${item.follow_up_date || ''}</td>
+                            <td>${item.follow_up_time || ''}</td>
+                            <td>${escapeHtml(item.follow_up_type || '')}</td>
+                            <td>${lsBadge}</td>
+                            <td>${fuStatusBadge}</td>
+                            <td title="${escapeHtml(item.discussion_note || '')}">${escapeHtml(item.discussion_note || '')}</td>
+                            <td>${item.next_follow_up_date || ''}</td>
+                            <td>${escapeHtml(item.next_action || '')}</td>
+                            <td>${escapeHtml(item.agent_name || '')}</td>
+                            <td class="text-center">${actionHtml}</td>
+                        </tr>`;
+                    });
+                    
+                    // Update badge count
+                    let badge = $(`.create-followup-btn[data-lead-id="${leadId}"] .action-badge`);
+                    if(badge.length > 0) {
+                        badge.text(data.length);
+                    } else {
+                        $(`.create-followup-btn[data-lead-id="${leadId}"]`).append(`<span class="action-badge">${data.length}</span>`);
+                    }
+                } else {
+                    html = '<tr><td colspan="14" class="text-center text-muted">No history found.</td></tr>';
+                }
+                tbody.html(html);
+            })
+            .catch(err => {
+                console.error("Failed to load history", err);
+                tbody.html('<tr><td colspan="14" class="text-center text-danger">Failed to load history</td></tr>');
+            });
+    }
+
+    // Inject lead ID when opening the Create Follow Up Modal
+    $(document).on('click', '.create-followup-btn', function () {
+        let leadId = $(this).attr('data-lead-id');
+        if (leadId) {
+            $('#createFollowUpLeadId').val(leadId);
+        }
+    });
+
+    $('#createFollowUpModal').on('show.bs.modal', function (event) {
+        let button = $(event.relatedTarget);
+        let leadId = button.attr('data-lead-id') || $('#createFollowUpLeadId').val();
+        $('#createFollowUpLeadId').val(leadId);
+        
+        resetFormToCreateMode();
+        loadModalHistory(leadId);
+    });
+
+    $('#createFollowUpProjectSelect').on('change', function() {
+        let projectId = $(this).val();
+        loadFlatsForProject(projectId, null);
+    });
+
+    $('#createModalLeadStatus').on('change', function() {
+        if (this.value === 'Lead Transferred') {
+            $('#createModalReassignTeamDiv').show();
+            $('#createModalReassignTeamId').prop('required', false);
+            $('#createModalTransferUserDiv').show();
+        } else {
+            $('#createModalReassignTeamDiv').hide();
+            $('#createModalReassignTeamId').prop('required', false);
+            $('#createModalTransferUserDiv').hide();
+            $('#createModalTransferUserId').val('');
+        }
+    });
+
+    $(document).on('click', '.edit-modal-followup-btn', function() {
+        const fuid = $(this).data('fuid');
+        const item = modalHistoryData.find(x => Number(x.id) === Number(fuid));
+        if (!item) return;
+
+        $('#createFollowUpForm').attr('action', '<?= $GLOBALS['base_url'] ?>/update-follow-up');
+        $('#createFollowUpEditId').val(item.id);
+        $('#followUpEditIdDisplay').text(item.id);
+        $('#followUpEditCreatorDisplay').text(item.agent_name || 'You');
+        $('#followUpEditModeAlert').removeClass('d-none').addClass('d-flex').show();
+        $('#createFollowUpModalTitle').html('<i class="fa-solid fa-pen-to-square me-2 text-warning"></i> Edit Follow Up #' + item.id);
+        $('#saveFollowUpBtn').removeClass('btn-primary').addClass('btn-warning').html('<i class="fa-solid fa-check me-1"></i> Update Follow Up');
+
+        $('#createFollowUpProjectSelect').val(item.project_id || '');
+        if ($('#createFollowUpProjectSelect').hasClass('select2-hidden-accessible')) {
+            $('#createFollowUpProjectSelect').trigger('change.select2');
+        }
+        loadFlatsForProject(item.project_id, item.flat_id);
+
+        let fDate = item.follow_up_date ? item.follow_up_date.split(' ')[0] : '';
+        let fTime = item.follow_up_time ? item.follow_up_time.substring(0, 5) : '';
+        let nextDate = (item.next_follow_up_date && item.next_follow_up_date !== '0000-00-00') ? item.next_follow_up_date.split(' ')[0] : '';
+
+        $('#createFollowUpForm input[name="follow_up_date"]').val(fDate);
+        $('#createFollowUpForm input[name="follow_up_time"]').val(fTime);
+        $('#createFollowUpForm select[name="follow_up_type"]').val(item.follow_up_type || '');
+        $('#createModalLeadStatus').val(item.lead_status || '');
+        $('#createModalTransferUserId').val('');
+        $('#createModalTransferUserDiv').hide();
+        if (item.lead_status === 'Lead Transferred') {
+            $('#createModalReassignTeamDiv').show();
+            $('#createModalReassignTeamId').prop('required', false).val(item.team_id || '');
+            $('#createModalTransferUserDiv').show();
+        } else {
+            $('#createModalReassignTeamDiv').hide();
+            $('#createModalReassignTeamId').prop('required', false).val('');
+        }
+
+        $('#createFollowUpForm select[name="status"]').val(item.status || 'pending');
+        $('#createFollowUpForm select[name="follow_up_agent_id"]').val(item.follow_up_agent_id || '');
+        $('#createFollowUpForm textarea[name="discussion_note"]').val(item.discussion_note || '');
+        $('#createFollowUpForm input[name="next_follow_up_date"]').val(nextDate);
+        $('#createFollowUpForm select[name="next_action"]').val(item.next_action || '');
+        $('#createFollowUpForm textarea[name="next_follow_up_plan_notes"]').val(item.next_follow_up_plan_notes || '');
+
+        $('#createFollowUpModal .modal-body').animate({ scrollTop: 0 }, 300);
+    });
+
+    $(document).on('click', '#cancelFollowUpEditBtn', function() {
+        resetFormToCreateMode();
+    });
+
+    $('#createFollowUpForm').on('submit', function(e) {
+        e.preventDefault();
+        let form = $(this);
+        let submitBtn = $('#saveFollowUpBtn');
+        let isEditMode = Boolean($('#createFollowUpEditId').val());
+        let originalHtml = submitBtn.html();
+        let leadId = $('#createFollowUpLeadId').val();
+        
+        submitBtn.prop('disabled', true).html(isEditMode ? '<i class="fa-solid fa-spinner fa-spin me-1"></i> Updating...' : '<i class="fa-solid fa-spinner fa-spin me-1"></i> Saving...');
+        
+        $.ajax({
+            url: form.attr('action'),
+            method: form.attr('method'),
+            data: form.serialize(),
+            dataType: 'json',
+            success: function(response) {
+                submitBtn.prop('disabled', false).html(originalHtml);
+                if (response.status === 'success') {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success',
+                            text: response.message,
+                            toast: true,
+                            position: 'top-end',
+                            timer: 3000,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        alert(response.message);
+                    }
+                    
+                    let savedLeadStatus = $('#createModalLeadStatus').val();
+                    if (savedLeadStatus) {
+                        let badgeWrap = $(`.lead-status-badge-wrap[data-lead-id="${leadId}"]`);
+                        if (badgeWrap.length > 0) {
+                            let bCls = 'bg-secondary text-white';
+                            if (savedLeadStatus === 'Prospect' || savedLeadStatus === 'High Prospect') bCls = 'bg-success text-white';
+                            else if (savedLeadStatus === 'Hot') bCls = 'bg-danger text-white';
+                            else if (savedLeadStatus === 'Warm') bCls = 'bg-warning text-dark';
+                            else if (savedLeadStatus === 'Irrelevant') bCls = 'bg-dark text-white';
+                            else if (savedLeadStatus === 'Not Interested' || savedLeadStatus === "Don't Call Again" || savedLeadStatus === 'Cold' || savedLeadStatus === 'Refund') bCls = 'bg-secondary text-white';
+                            badgeWrap.html(`<span class="badge ${bCls} px-2 py-1" style="font-size: 10px;">${escapeHtml(savedLeadStatus)}</span>`);
+                        }
+                    }
+
+                    if ($.fn.DataTable && $.fn.DataTable.isDataTable('#serverSideLeadTable')) {
+                        $('#serverSideLeadTable').DataTable().ajax.reload(null, false);
+                    }
+
+                    resetFormToCreateMode();
+                    loadModalHistory(leadId);
+                } else {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: response.message || 'Something went wrong.'
+                        });
+                    } else {
+                        alert(response.message || 'Error occurred.');
+                    }
+                }
+            },
+            error: function(xhr) {
+                submitBtn.prop('disabled', false).html(originalHtml);
+                let msg = 'Failed to submit form.';
+                try {
+                    let res = JSON.parse(xhr.responseText);
+                    if (res && res.message) msg = res.message;
+                } catch(e) {}
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: msg
+                    });
+                } else {
+                    alert(msg);
+                }
+            }
+        });
+    });
+});
+</script>
+
 
 <script>
     var base_url = "<?= $GLOBALS['base_url'] ?>"; // var allows redeclaration safely
@@ -1140,6 +1728,16 @@ document.addEventListener('DOMContentLoaded', function () {
         const countMobileEl = document.getElementById('selectedCountMobile');
         if (countEl)       countEl.innerText       = count;
         if (countMobileEl) countMobileEl.innerText = count;
+
+        const bulkDelBtn = document.getElementById('bulkDeleteLeadsBtn');
+        const bulkDelCount = document.getElementById('bulkDeleteCount');
+        if (bulkDelBtn) bulkDelBtn.style.display = any ? 'inline-block' : 'none';
+        if (bulkDelCount) bulkDelCount.innerText = count;
+
+        const bulkDelBtnMobile = document.getElementById('bulkDeleteLeadsBtnMobile');
+        const bulkDelCountMobile = document.getElementById('bulkDeleteCountMobile');
+        if (bulkDelBtnMobile) bulkDelBtnMobile.style.display = any ? 'block' : 'none';
+        if (bulkDelCountMobile) bulkDelCountMobile.innerText = count;
     };
 
     // ── Sync checkboxes with Set (called after DataTables page change) ─
@@ -1533,6 +2131,76 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
+        // ── Bulk Delete Handler ───────────────────────────────────────────
+        function handleBulkDeleteClick() {
+            const leads = Array.from(selectedLeadsSet);
+            if (leads.length === 0) {
+                Swal.fire({ icon: 'warning', title: 'No Leads Selected', text: 'Please select at least one lead to delete.' });
+                return;
+            }
+
+            Swal.fire({
+                title: 'Delete Selected Leads?',
+                text: `Are you sure you want to delete ${leads.length} selected lead(s)? This will also approve any pending delete requests for them.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: `<i class="fa-solid fa-trash-can me-1"></i> Yes, Delete ${leads.length} Leads`,
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'Deleting...',
+                        text: 'Please wait while leads are being deleted.',
+                        allowOutsideClick: false,
+                        didOpen: () => { Swal.showLoading(); }
+                    });
+
+                    $.ajax({
+                        url: base_url + '/bulk-delete-leads',
+                        type: 'POST',
+                        data: { ids: leads },
+                        dataType: 'json',
+                        success: function (res) {
+                            if (res.success) {
+                                selectedLeadsSet.clear();
+                                updateAssignUIData();
+                                if (selectAll) selectAll.checked = false;
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Deleted!',
+                                    text: res.message || 'Leads deleted successfully.',
+                                    timer: 2000,
+                                    showConfirmButton: false
+                                });
+                                // Reload DataTables
+                                if ($.fn.DataTable.isDataTable('#serverSideLeadTable')) {
+                                    $('#serverSideLeadTable').DataTable().ajax.reload(null, false);
+                                } else {
+                                    window.location.reload();
+                                }
+                            } else {
+                                Swal.fire({ icon: 'error', title: 'Error', text: res.message || 'Failed to delete leads.' });
+                            }
+                        },
+                        error: function () {
+                            Swal.fire({ icon: 'error', title: 'Error', text: 'An unexpected server error occurred.' });
+                        }
+                    });
+                }
+            });
+        }
+
+        const bulkDelBtn = document.getElementById('bulkDeleteLeadsBtn');
+        if (bulkDelBtn) {
+            bulkDelBtn.addEventListener('click', handleBulkDeleteClick);
+        }
+        const bulkDelBtnMobile = document.getElementById('bulkDeleteLeadsBtnMobile');
+        if (bulkDelBtnMobile) {
+            bulkDelBtnMobile.addEventListener('click', handleBulkDeleteClick);
+        }
+
         dtTable.on('page.dt', function () {
             const info = dtTable.page.info();
             const page = info.page + 1;
@@ -1652,6 +2320,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 ${bestTimeStr}
                 <div class="lead-phone text-truncate small">${lead.phone || ''}</div>
                 ${lead.address ? `<div class="mt-1"><i class="bi bi-geo-alt-fill text-muted me-1" style="font-size:11px"></i><span class="fs-11 text-muted">${lead.address.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span></div>` : ''}
+                ${lead.delete_request_reason ? `
+                <div class="mt-1">
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-0.5 d-inline-flex align-items-center gap-1 rounded-pill" 
+                          style="font-size: 10px; font-weight: 500; max-width: 100%; cursor: help;" 
+                          title="Delete Reason: ${(lead.delete_request_reason || '').replace(/"/g, '&quot;')}&#10;By: ${(lead.delete_requested_by_name || 'User').replace(/"/g, '&quot;')}">
+                        <i class="fa-solid fa-trash-can" style="font-size: 9px;"></i>
+                        <span>Del:</span>
+                        <span class="text-truncate">${(lead.delete_request_reason || '').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>
+                    </span>
+                </div>` : ''}
               </div>
               <div class="dropdown">
                 <button class="action-dot-btn" type="button" data-bs-toggle="dropdown">
@@ -1660,7 +2338,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
                   <li><a class="dropdown__item" href="${base_url}/edit-lead/${lead.id}"><i class="bi bi-pencil-square me-2 text-primary"></i>Edit</a></li>
                   <li><a class="dropdown__item" href="${base_url}/view-lead/${lead.id}"><i class="bi bi-eye me-2 text-success"></i>View</a></li>
-                  ${isManagementUser ? `
+                  ${(isManagementUser || <?= in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 5, 9, 32, 33, 34]) ? 'true' : 'false' ?>) ? `
                   <li><a class="dropdown__item removeBtnCust" href="javascript:void(0);" data-id="${lead.id}" data-name="${(name || 'Lead').replace(/"/g, '&quot;')}" data-action="lead-delete" style="cursor:pointer;"><i class="bi bi-trash3 me-2 text-danger"></i>Delete</a></li>
                   ` : ''}
                 </ul>
@@ -1668,11 +2346,12 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>
             <div class="mt-2">
               <span class="badge ${ac} rounded-pill px-2 py-1 mb-2" style="font-size:.78rem;">${label}</span>
+              ${lead.lead_type ? `<span class="badge ${lead.lead_type.toLowerCase() === 'irrelevant' ? 'bg-dark text-white' : 'bg-info-subtle text-info border border-info'} rounded-pill px-2 py-1 mb-2 ms-1" style="font-size:.78rem;">${lead.lead_type}</span>` : ''}
               <div class="d-flex flex-column gap-2">
-                <a href="${base_url}/follow-up-leads/${lead.id}" class="btn btn-primary btn-sm w-100 d-flex align-items-center gap-2 px-2">
+                <button type="button" class="btn btn-primary btn-sm w-100 d-flex align-items-center justify-content-center gap-2 px-2 create-followup-btn" data-bs-toggle="modal" data-bs-target="#createFollowUpModal" data-lead-id="${lead.id}">
                   <span>Follow Up</span>${fuBadge}
-                </a>
-                <a href="${base_url}/booking-leads/${lead.id}" class="btn btn-secondary btn-sm w-100 d-flex align-items-center gap-2 px-2">
+                </button>
+                <a href="${base_url}/booking-leads/${lead.id}" class="btn btn-secondary btn-sm w-100 d-flex align-items-center justify-content-center gap-2 px-2">
                   <span>Booking</span>${bkBadge}
                 </a>
               </div>

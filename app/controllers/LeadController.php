@@ -68,8 +68,8 @@ class LeadController extends Controller
         $to_date   = $_GET['to_date']   ?? null;
         $filter_card = $_GET['filter_card'] ?? null;
         
-        // For Roles 33 and 35, if no team filter is applied (initial load) and they have a team_id, default to their team
-        if (in_array((int)$userRoleId, [33, 35]) && !isset($_GET['team_id']) && !empty($userTeamId)) {
+        // For Role 35 (SEAL CEO), if no team filter is applied (initial load) and they have a team_id, default to their team
+        if (in_array((int)$userRoleId, [35]) && !isset($_GET['team_id']) && !empty($userTeamId)) {
             $_GET['team_id'] = $userTeamId;
         }
 
@@ -154,6 +154,8 @@ class LeadController extends Controller
         $totalNotContactedLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'not_contacted_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
         $totalAssignedLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'assigned_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
         $totalNotAssignedLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'not_assigned_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
+        $totalIrrelevantLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'irrelevant_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
+        $totalDeleteRequests = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'delete_requests', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
         // ── Duplicate Leads Detection ─────────────────────────────────────────
         // My team leads assigned to me whose phone/email also appears in OTHER assigned_ids
         $dupGroups  = [];
@@ -289,6 +291,8 @@ class LeadController extends Controller
             "totalNotContactedLeads" => $totalNotContactedLeads,
             "totalAssignedLeads" => $totalAssignedLeads,
             "totalNotAssignedLeads" => $totalNotAssignedLeads,
+            "totalIrrelevantLeads" => $totalIrrelevantLeads,
+            "totalDeleteRequests" => $totalDeleteRequests,
             "selectedAction" => $lastAction,
             "selectedAssigned" => $assigned,
             "selectedAssignedUser" => $assigned_user,
@@ -305,6 +309,8 @@ class LeadController extends Controller
             "selectedProject" => $filterProjectId,
             "selectedCategory" => $filterCategoryId,
             "selectedCountry" => $filterCountry,
+            "teamMembers" => $assignedUsers,
+            "transferableUsers" => $this->userModel->getSalesTransferableUsers(),
         ]);
     }
 
@@ -499,6 +505,10 @@ class LeadController extends Controller
                     'when_is_the_best_time_to_contact_you' => $lead['when_is_the_best_time_to_contact_you'] ?? '',
                     'team_name'        => !empty($lead['team_id']) && isset($teamsData[$lead['team_id']]) ? $teamsData[$lead['team_id']]['team_name'] : '',
                     'manager_name'     => !empty($lead['team_id']) && isset($teamsData[$lead['team_id']]) ? $teamsData[$lead['team_id']]['manager_name'] : '',
+                    'lead_type'        => $lead['lead_type'] ?? 'Pending',
+                    'delete_request_reason' => $lead['delete_request_reason'] ?? '',
+                    'delete_requested_by_name' => $lead['delete_requested_by_name'] ?? '',
+                    'delete_requested_at' => $lead['delete_requested_at'] ?? '',
                 ];
             }
             echo json_encode([
@@ -537,7 +547,25 @@ class LeadController extends Controller
                 $jobCompanyStr .= '</div>';
             }
 
-            $row[] = '<strong>' . htmlspecialchars($lead['full_name'] ?? '') . '</strong>' . $jobCompanyStr;
+            $deleteReqHtml = '';
+            if (!empty($lead['delete_request_reason'])) {
+                $reqByStr = !empty($lead['delete_requested_by_name']) ? htmlspecialchars($lead['delete_requested_by_name']) : 'User';
+                $reqDateStr = !empty($lead['delete_requested_at']) ? date('d M, h:i A', strtotime($lead['delete_requested_at'])) : '';
+                $reasonText = htmlspecialchars($lead['delete_request_reason']);
+                $tooltip = "Delete Reason: {$reasonText}\nBy: {$reqByStr}" . ($reqDateStr ? " ({$reqDateStr})" : "");
+                $deleteReqHtml = '
+                <div class="mt-1">
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-0.5 d-inline-flex align-items-center gap-1 rounded-pill" 
+                          style="font-size: 10px; font-weight: 500; max-width: 210px; cursor: help;" 
+                          title="' . htmlspecialchars($tooltip, ENT_QUOTES, 'UTF-8') . '">
+                        <i class="fa-solid fa-trash-can" style="font-size: 9px;"></i>
+                        <span>Del:</span>
+                        <span class="text-truncate" style="max-width: 150px;">' . $reasonText . '</span>
+                    </span>
+                </div>';
+            }
+
+            $row[] = '<strong>' . htmlspecialchars($lead['full_name'] ?? '') . '</strong>' . $jobCompanyStr . $deleteReqHtml;
 
             // Address & City column
             $addr = trim(($lead['address'] ?? '') . (!empty($lead['address']) && !empty($lead['city']) ? ', ' : '') . ($lead['city'] ?? ''));
@@ -579,9 +607,23 @@ class LeadController extends Controller
 
             $last_action = $lead['last_lead_action'] ?? 'not_called';
             $base_url = $GLOBALS['base_url'];
+            $statusVal = $lead['lead_type'] ?? 'Pending';
+            $badgeClass = 'bg-secondary text-white';
+            if ($statusVal == 'Prospect' || $statusVal == 'High Prospect') {
+                $badgeClass = 'bg-received';
+            } elseif ($statusVal == 'Not Interested' || $statusVal == "Don't Call Again" || $statusVal == 'Cold' || $statusVal == 'Refund') {
+                $badgeClass = 'bg-not-received';
+            } elseif ($statusVal == 'Warm') {
+                $badgeClass = 'bg-warning text-dark';
+            } elseif ($statusVal == 'Hot') {
+                $badgeClass = 'bg-danger text-white';
+            } elseif ($statusVal == 'Irrelevant') {
+                $badgeClass = 'bg-dark text-white';
+            }
+
             $statusHtml = '
             <form method="POST" action="' . $base_url . '/update-last_leadAction/' . $lead['id'] . '" class="m-0 p-0">
-                <select name="last_lead_action" class="form-select form-select-sm last-action-select action-' . $last_action . '" onchange="this.form.submit()">
+                <select name="last_lead_action" class="form-select form-select-sm last-action-select action-' . $last_action . ' mb-1" onchange="this.form.submit()">
                     <option value=""> Update action </option>
                     <option value="contacted" ' . ($last_action == 'contacted' ? 'selected' : '') . '>Contacted</option>
                     <option value="new" ' . ($last_action == 'new' ? 'selected' : '') . '>New</option>
@@ -590,7 +632,10 @@ class LeadController extends Controller
                     <option value="visited" ' . ($last_action == 'visited' ? 'selected' : '') . '>Visited</option>
                     <option value="cancel" ' . ($last_action == 'cancel' ? 'selected' : '') . '>Cancel</option>
                 </select>
-            </form>';
+            </form>
+            <div class="text-center lead-status-badge-wrap" data-lead-id="' . $lead['id'] . '">
+                <span class="badge ' . $badgeClass . ' px-2 py-1" style="font-size: 10px;">' . htmlspecialchars($statusVal) . '</span>
+            </div>';
             $row[] = $statusHtml;
 
             $next_date = (!empty($lead['next_follow_up_date']) && $lead['next_follow_up_date'] !== '0000-00-00') ? date('d-M-Y', strtotime($lead['next_follow_up_date'])) : 'No Schedule';
@@ -656,7 +701,8 @@ class LeadController extends Controller
                 $bk_text = !empty($bookingCount[$lead['id']]) ? 'Booked' : 'Booking';
 
                 $deleteOptionHtml = '';
-                if ($isManagement && $userRoleId != 35) {
+                $canDeleteRow = ($isManagement || in_array((int)$userRoleId, [1, 3, 5, 9, 32, 33, 34])) && $userRoleId != 35;
+                if ($canDeleteRow) {
                     $leadNameEscaped = htmlspecialchars($lead['full_name'] ?? 'Lead', ENT_QUOTES, 'UTF-8');
                     $deleteOptionHtml = '
                             <li>
@@ -672,7 +718,14 @@ class LeadController extends Controller
 
                 $actionHtml = '
                 <div class="d-flex align-items-center gap-1">
-                    <a href="' . $base_url . '/follow-up-leads/' . $lead['id'] . '" class="btn btn-primary btn-sm position-relative" style="white-space:nowrap;">Follow Up ' . $fu_count . '</a>
+                    <button type="button" 
+                            class="btn btn-primary btn-sm position-relative create-followup-btn" 
+                            data-bs-toggle="modal" 
+                            data-bs-target="#createFollowUpModal" 
+                            data-lead-id="' . $lead['id'] . '" 
+                            style="white-space:nowrap;">
+                        Follow Up ' . $fu_count . '
+                    </button>
                     <a href="' . $base_url . '/booking-leads/' . $lead['id'] . '" class="btn btn-secondary btn-sm position-relative" style="white-space:nowrap;">' . $bk_text . ' ' . $bk_count . '</a>
                     <div class="dropdown">
                         <button class="action-dot-btn btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical"></i></button>
@@ -2242,11 +2295,15 @@ class LeadController extends Controller
             session_start();
         }
         $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $canDelete = in_array($userRoleId, [1, 3, 5, 9, 32, 33, 34], true) 
+            || in_array($userRoleName, ['super admin', 'admin', 'management', 'chief officer', 'sales manager', 'sales team head'], true) 
+            || isSalesCoLeader();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Content-Type: application/json');
             
-            if ($userRoleId === 35) {
+            if (!$canDelete || $userRoleId === 35) {
                 echo json_encode(['success' => false, 'message' => 'You do not have permission to delete leads.']);
                 exit;
             }
@@ -2257,6 +2314,11 @@ class LeadController extends Controller
                 try {
                     $deleted = $this->leadModel->softDelete($id);
                     if ($deleted) {
+                        $upStmt = $this->db->prepare("UPDATE lead_delete_requests SET status = 'approved', action_by = ?, action_at = NOW() WHERE lead_id = ? AND status = 'pending'");
+                        if ($upStmt) {
+                            $upStmt->bind_param("ii", $_SESSION['user']['id'], $id);
+                            $upStmt->execute();
+                        }
                         echo json_encode(['success' => true]);
                         exit;
                     }
@@ -2342,11 +2404,13 @@ class LeadController extends Controller
 
         $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
-        $isManagement = in_array($userRoleId, [1, 3, 33], true) || in_array($userRoleName, ['super admin', 'admin', 'management', 'chief officer'], true);
+        $canDelete = in_array($userRoleId, [1, 3, 5, 9, 32, 33, 34], true) 
+            || in_array($userRoleName, ['super admin', 'admin', 'management', 'chief officer', 'sales manager', 'sales team head'], true) 
+            || isSalesCoLeader();
 
         $redirectUrl = !empty($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : ($GLOBALS['base_url'] . "/lead-lists");
 
-        if (!$isManagement || $userRoleId === 35) {
+        if (!$canDelete || $userRoleId === 35) {
             setError("You do not have permission to delete leads.");
             header("Location: " . $redirectUrl);
             exit;
@@ -2370,6 +2434,11 @@ class LeadController extends Controller
             $leadDelete = $this->leadModel->softDelete($id);
 
             if ($leadDelete) {
+                $upStmt = $this->db->prepare("UPDATE lead_delete_requests SET status = 'approved', action_by = ?, action_at = NOW() WHERE lead_id = ? AND status = 'pending'");
+                if ($upStmt) {
+                    $upStmt->bind_param("ii", $_SESSION['user']['id'], $id);
+                    $upStmt->execute();
+                }
                 setSuccess("Lead deleted Successfully");
             } else {
                 setError("Something Went Wrong");
@@ -2379,6 +2448,146 @@ class LeadController extends Controller
         }
 
         header("Location: " . $redirectUrl);
+        exit;
+    }
+
+    public function submitDeleteRequest()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        header('Content-Type: application/json');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+            exit;
+        }
+
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $userTeamId = (int)($_SESSION['user']['team_id'] ?? 0);
+        if ($userId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'You must be logged in.']);
+            exit;
+        }
+
+        $leadId = isset($_POST['lead_id']) ? (int)$_POST['lead_id'] : 0;
+        $reason = trim($_POST['reason'] ?? '');
+
+        if ($leadId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid lead ID']);
+            exit;
+        }
+
+        if (empty($reason)) {
+            echo json_encode(['success' => false, 'message' => 'Please provide a reason for delete request.']);
+            exit;
+        }
+
+        // Check if lead exists
+        $leadStmt = $this->db->prepare("SELECT id, team_id, assigned_id, full_name FROM leads WHERE id = ? AND deleted_at IS NULL LIMIT 1");
+        $leadStmt->bind_param("i", $leadId);
+        $leadStmt->execute();
+        $lead = $leadStmt->get_result()->fetch_assoc();
+        if (!$lead) {
+            echo json_encode(['success' => false, 'message' => 'Lead not found or already deleted.']);
+            exit;
+        }
+
+        $teamId = !empty($lead['team_id']) ? (int)$lead['team_id'] : $userTeamId;
+
+        // Check if pending request already exists
+        $checkStmt = $this->db->prepare("SELECT id FROM lead_delete_requests WHERE lead_id = ? AND status = 'pending' LIMIT 1");
+        $checkStmt->bind_param("i", $leadId);
+        $checkStmt->execute();
+        if ($checkStmt->get_result()->num_rows > 0) {
+            echo json_encode(['success' => false, 'message' => 'A delete request is already pending for this lead.']);
+            exit;
+        }
+
+        // Insert delete request
+        $insertStmt = $this->db->prepare("INSERT INTO lead_delete_requests (lead_id, requested_by, team_id, reason, status, created_at) VALUES (?, ?, ?, ?, 'pending', NOW())");
+        $insertStmt->bind_param("iiis", $leadId, $userId, $teamId, $reason);
+
+        if ($insertStmt->execute()) {
+            echo json_encode(['success' => true, 'message' => 'Delete request submitted successfully!']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to submit delete request.']);
+        }
+        exit;
+    }
+
+    public function bulkDelete()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        header('Content-Type: application/json');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+            exit;
+        }
+
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $userTeamId = (int)($_SESSION['user']['team_id'] ?? 0);
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $isCoLeader = isSalesCoLeader();
+
+        $canBulkDelete = in_array($userRoleId, [1, 3, 5, 9, 32, 33, 34], true) 
+            || in_array($userRoleName, ['super admin', 'admin', 'management', 'chief officer', 'sales manager', 'sales team head'], true)
+            || $isCoLeader;
+
+        if (!$canBulkDelete || $userRoleId === 35) {
+            echo json_encode(['success' => false, 'message' => 'You do not have permission to bulk delete leads.']);
+            exit;
+        }
+
+        $ids = $_POST['ids'] ?? [];
+        if (is_string($ids)) {
+            $ids = explode(',', $ids);
+        }
+        $ids = array_values(array_filter(array_map('intval', (array)$ids), fn($id) => $id > 0));
+
+        if (empty($ids)) {
+            echo json_encode(['success' => false, 'message' => 'No valid leads selected for deletion.']);
+            exit;
+        }
+
+        $deletedCount = 0;
+        foreach ($ids as $leadId) {
+            // If Sales Manager with a team, check if lead belongs to their team / assigned to their team / assigned to them
+            if ($userRoleId === 5 && !empty($userTeamId)) {
+                $checkStmt = $this->db->prepare("
+                    SELECT l.id FROM leads l 
+                    WHERE l.id = ? 
+                      AND (l.team_id = ? OR l.assigned_id = ? OR l.created_by = ? OR l.assigned_id IN (SELECT u.id FROM users u WHERE u.team_id = ?))
+                    LIMIT 1
+                ");
+                $checkStmt->bind_param("iiiii", $leadId, $userTeamId, $userId, $userId, $userTeamId);
+                $checkStmt->execute();
+                if ($checkStmt->get_result()->num_rows === 0) {
+                    continue; // Skip lead if not belonging to sales manager's team
+                }
+            }
+
+            try {
+                $res = $this->leadModel->softDelete($leadId);
+                if ($res) {
+                    $deletedCount++;
+                    // Mark pending delete request as approved
+                    $upStmt = $this->db->prepare("UPDATE lead_delete_requests SET status = 'approved', action_by = ?, action_at = NOW() WHERE lead_id = ? AND status = 'pending'");
+                    if ($upStmt) {
+                        $upStmt->bind_param("ii", $userId, $leadId);
+                        $upStmt->execute();
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Continue with next
+            }
+        }
+
+        if ($deletedCount > 0) {
+            echo json_encode(['success' => true, 'count' => $deletedCount, 'message' => "Successfully deleted {$deletedCount} lead(s)."]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'No leads could be deleted. Please check permissions or selection.']);
+        }
         exit;
     }
 

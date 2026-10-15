@@ -1392,7 +1392,6 @@
                         </li>
                     <?php endif; ?>
 
-                    <?php if (($_SESSION['user']['role_id'] ?? 0) != 9): ?>
                         <!-- Lead & Booking -->
                         <li
                             class="slide has-sub <?= isActive(['create-lead', 'lead-lists', 'onboarding-clients'], $current_route) ? 'active' : '' ?>">
@@ -1414,7 +1413,6 @@
                                 </li>
                             </ul>
                         </li>
-                    <?php endif; ?>
                     <!-- Inventroy -->
                     <li class="slide ">
                         <a href="<?= $base_url ?>/inventory-lists"

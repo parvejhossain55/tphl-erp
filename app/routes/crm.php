@@ -36,6 +36,8 @@ return [
     'assign-multiple-leads' => ['controller' => 'LeadController', 'method' => 'assignMultipleLeads'],
     'check-leads-duplicates' => ['controller' => 'LeadController', 'method' => 'checkLeadsDuplicates'],
     'reassign-duplicate-group' => ['controller' => 'LeadController', 'method' => 'reassignDuplicateGroup'],
+    'submit-lead-delete-request' => ['controller' => 'LeadController', 'method' => 'submitDeleteRequest'],
+    'bulk-delete-leads' => ['controller' => 'LeadController', 'method' => 'bulkDelete'],
 
     // =========================================================================
     // Controller: DigitalMarketingController

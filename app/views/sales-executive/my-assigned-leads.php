@@ -336,6 +336,24 @@ if (!function_exists('getMyAssignedStatCardLink')) {
             </div>
         </a>
     </div>
+
+    <!-- Irrelevant Leads Card -->
+    <div class="col-6 col-md-4 col-xl mb-2">
+        <a href="<?= getMyAssignedStatCardLink('irrelevant_leads') ?>" class="stat-card-link">
+            <div class="card__wrapper stat-card shadow-sm <?= (($filterCard ?? '') === 'irrelevant_leads' || ($selectedLeadStatus ?? '') === 'Irrelevant') ? 'border-secondary' : '' ?>" 
+                 style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border: 1.5px solid #cbd5e1 !important; min-height: 85px;">
+                <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right text-secondary"></i></span>
+                <div class="card-body d-flex justify-content-between align-items-center p-2 px-3">
+                    <div>
+                        <p class="stat-label mb-1 text-secondary"><i class="fa-solid fa-ban me-1"></i> Irrelevant Leads</p>
+                        <h2 class="stat-value text-secondary mb-1" style="font-size: 1.6rem; font-weight: 800;"><?= $irrelevantLeadsCount ?? 0 ?></h2>
+                        <span class="card-hint text-secondary" style="font-size: 10px; margin-top: 0;">Click to view irrelevant &rarr;</span>
+                    </div>
+                    <div class="card__icon text-secondary" style="opacity: 0.2; font-size: 1.8rem;"><i class="fa-solid fa-ban"></i></div>
+                </div>
+            </div>
+        </a>
+    </div>
 </div>
 
 <!-- Duplicate Assigned Leads Card (Team-based) -->
@@ -519,7 +537,7 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                             'No Response', 'Pending', 'Prospect', 'High Prospect', 
                             'Will Visit', 'Visited', 'Sold', 'Lead Transferred', 
                             'Project Transferred', 'Not Interested', 'Don\'t Call Again', 
-                            'Refund', 'Future', 'Cold', 'Hot', 'Warm'
+                            'Refund', 'Future', 'Cold', 'Hot', 'Warm', 'Irrelevant'
                         ];
                         foreach($statuses as $st) {
                             $selected = ($selectedLeadStatus ?? '') == $st ? 'selected' : '';
@@ -893,6 +911,10 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                             $badgeClass = 'bg-not-received';
                                         } elseif ($statusVal == 'Warm') {
                                             $badgeClass = 'bg-warning text-dark';
+                                        } elseif ($statusVal == 'Hot') {
+                                            $badgeClass = 'bg-danger text-white';
+                                        } elseif ($statusVal == 'Irrelevant') {
+                                            $badgeClass = 'bg-dark text-white';
                                         }
                                         ?>
                                         <select name="last_lead_action" 
@@ -907,7 +929,7 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                             <option value="visited" <?= $last_action == 'visited' ? 'selected' : '' ?>>Visited</option>
                                             <option value="cancel" <?= $last_action == 'cancel' ? 'selected' : '' ?>>Cancel</option>
                                         </select>
-                                        <div class="text-center">
+                                        <div class="text-center lead-status-badge-wrap" data-lead-id="<?= $lead['id'] ?>">
                                             <span class="badge <?= $badgeClass ?> px-2 py-1" style="font-size: 10px;"><?= htmlspecialchars($statusVal) ?></span>
                                         </div>
                                     </td>
@@ -973,6 +995,26 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                                     <?= $bookingCount[$lead['id']] ?? 0 ?>
                                                 </span>
                                             </a>
+
+                                            <!-- Delete Request -->
+                                            <?php if (!empty($deleteRequests[$lead['id']])): ?>
+                                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1 px-2 py-1.5 d-inline-flex align-items-center" 
+                                                      title="Delete Reason: <?= htmlspecialchars($deleteRequests[$lead['id']]['reason'] ?? '', ENT_QUOTES, 'UTF-8') ?>" 
+                                                      style="font-size: 11px; white-space: nowrap;">
+                                                    <i class="fa-solid fa-clock-rotate-left me-1"></i> Requested
+                                                </span>
+                                            <?php else: ?>
+                                                <button type="button" 
+                                                    class="btn btn-outline-danger btn-sm ms-1 request-delete-btn"
+                                                    style="white-space:nowrap;"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#deleteRequestModal"
+                                                    data-lead-id="<?= $lead['id'] ?>"
+                                                    data-lead-name="<?= htmlspecialchars($lead['full_name'] ?? 'Lead', ENT_QUOTES, 'UTF-8') ?>"
+                                                    title="Request Lead Deletion">
+                                                    <i class="fa-solid fa-trash-can me-1"></i> Delete Request
+                                                </button>
+                                            <?php endif; ?>
                                         </div>
                                     </td>
                                 </tr>
@@ -1257,6 +1299,23 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                 <span class="badge bg-white text-dark rounded-circle" style="font-size: 10px; width: 18px; height: 18px;  align-items: center; justify-content: center;"><?= $bookingCount[$lead['id']] ?></span>
                             <?php endif; ?>
                         </a>
+
+                        <?php if (!empty($deleteRequests[$lead['id']])): ?>
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle w-100 py-2 d-flex justify-content-center align-items-center"
+                                  title="Delete Reason: <?= htmlspecialchars($deleteRequests[$lead['id']]['reason'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                                  style="font-size: 11px;">
+                                <i class="fa-solid fa-clock-rotate-left me-1"></i> Delete Requested
+                            </span>
+                        <?php else: ?>
+                            <button type="button" 
+                                class="btn btn-outline-danger btn-sm w-100 d-flex justify-content-center align-items-center px-2 request-delete-btn"
+                                data-bs-toggle="modal"
+                                data-bs-target="#deleteRequestModal"
+                                data-lead-id="<?= $lead['id'] ?>"
+                                data-lead-name="<?= htmlspecialchars($lead['full_name'] ?? 'Lead', ENT_QUOTES, 'UTF-8') ?>">
+                                <i class="fa-solid fa-trash-can me-1"></i> Delete Request
+                            </button>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <!-- Project & Last Follow-up -->
@@ -1302,6 +1361,8 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                         $statusClass = 'bg-received';
                     } elseif (in_array($statusVal, ['Not Interested', "Don't Call Again", 'Cold', 'Refund'])) {
                         $statusClass = 'bg-not-received';
+                    } elseif ($statusVal === 'Irrelevant') {
+                        $statusClass = 'bg-dark text-white';
                     }
                     ?>
                     <input type="text"
@@ -2113,6 +2174,43 @@ document.addEventListener('DOMContentLoaded', function () {
     </div>
 </div>
 
+<!-- Delete Request Modal -->
+<div class="modal custom-modal fade" id="deleteRequestModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title text-white"><i class="fa-solid fa-trash-can me-2"></i> Request Lead Deletion</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="deleteRequestForm">
+                <div class="modal-body p-4">
+                    <input type="hidden" name="lead_id" id="delete_request_lead_id">
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">Lead Name</label>
+                        <div class="fw-bold text-dark fs-6" id="delete_request_lead_name">—</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="delete_request_reason" class="form-label fw-semibold text-dark">
+                            Reason for Deletion <span class="text-danger">*</span>
+                        </label>
+                        <textarea class="form-control" name="reason" id="delete_request_reason" rows="4" 
+                                  placeholder="Please explain in detail why this lead should be deleted (e.g. invalid number, fake lead, duplicate, testing, etc.)..." required></textarea>
+                    </div>
+                    <div class="alert alert-info py-2 px-3 small mb-0">
+                        <i class="fa-solid fa-circle-info me-1"></i> Your deletion request will be reviewed by your Team Sales Manager / Head / Management.
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger btn-sm px-4" id="submitDeleteRequestBtn">
+                        <i class="fa-solid fa-paper-plane me-1"></i> Submit Delete Request
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Create Follow Up Modal -->
 <div class="modal custom-modal fade" id="createFollowUpModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -2219,7 +2317,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                     'No Response', 'Pending', 'Prospect', 'High Prospect', 
                                     'Will Visit', 'Visited', 'Sold', 'Lead Transferred', 
                                     'Project Transferred', 'Not Interested', 'Don\'t Call Again', 
-                                    'Refund', 'Future', 'Cold', 'Hot', 'Warm'
+                                    'Refund', 'Future', 'Cold', 'Hot', 'Warm', 'Irrelevant'
                                 ];
                                 foreach($statuses as $st) {
                                     echo "<option value=\"$st\">$st</option>";
@@ -2328,6 +2426,8 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <th>Follow Up Date</th>
                                 <th>Follow Up Time</th>
                                 <th>Type</th>
+                                <th>Lead Status</th>
+                                <th>Follow Up Status</th>
                                 <th>Discussion Note</th>
                                 <th>Next Follow Up</th>
                                 <th>Next Action</th>
@@ -2337,7 +2437,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         </thead>
                         <tbody id="createModalHistoryBody">
                             <tr>
-                                <td colspan="12" class="text-center text-muted">Loading history...</td>
+                                <td colspan="14" class="text-center text-muted">Loading history...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -2446,6 +2546,22 @@ document.addEventListener('DOMContentLoaded', function() {
                             actionHtml = `<span class="badge bg-light text-muted border py-1 px-2" title="Only the creator can edit this follow up"><i class="fa-solid fa-lock me-1"></i> No Access</span>`;
                         }
 
+                        let lsBadge = '<span class="text-muted">—</span>';
+                        if (item.lead_status) {
+                            let lsCls = 'bg-secondary text-white';
+                            if (item.lead_status === 'Prospect' || item.lead_status === 'High Prospect') lsCls = 'bg-success text-white';
+                            else if (item.lead_status === 'Hot') lsCls = 'bg-danger text-white';
+                            else if (item.lead_status === 'Warm') lsCls = 'bg-warning text-dark';
+                            else if (item.lead_status === 'Irrelevant') lsCls = 'bg-dark text-white';
+                            else if (item.lead_status === 'Cold' || item.lead_status === 'Not Interested' || item.lead_status === "Don't Call Again") lsCls = 'bg-secondary text-white';
+                            lsBadge = `<span class="badge ${lsCls} px-2 py-1">${escapeHtml(item.lead_status)}</span>`;
+                        }
+
+                        let fuStatusBadge = '<span class="badge bg-warning text-dark">Pending</span>';
+                        if (item.status === 'completed') fuStatusBadge = '<span class="badge bg-success text-white">Completed</span>';
+                        else if (item.status === 'missed') fuStatusBadge = '<span class="badge bg-danger text-white">Missed</span>';
+                        else if (item.status === 'canceled') fuStatusBadge = '<span class="badge bg-secondary text-white">Canceled</span>';
+
                         html += `<tr>
                             <td>${item.id || ''}</td>
                             <td>${escapeHtml(item.lead_name || '')}</td>
@@ -2454,6 +2570,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             <td>${item.follow_up_date || ''}</td>
                             <td>${item.follow_up_time || ''}</td>
                             <td>${escapeHtml(item.follow_up_type || '')}</td>
+                            <td>${lsBadge}</td>
+                            <td>${fuStatusBadge}</td>
                             <td title="${escapeHtml(item.discussion_note || '')}">${escapeHtml(item.discussion_note || '')}</td>
                             <td>${item.next_follow_up_date || ''}</td>
                             <td>${escapeHtml(item.next_action || '')}</td>
@@ -2470,7 +2588,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         $(`.create-followup-btn[data-lead-id="${leadId}"]`).append(`<span class="action-badge">${data.length}</span>`);
                     }
                 } else {
-                    html = '<tr><td colspan="12" class="text-center text-muted">No history found.</td></tr>';
+                    html = '<tr><td colspan="14" class="text-center text-muted">No history found.</td></tr>';
                 }
                 tbody.html(html);
             })
@@ -2600,6 +2718,20 @@ document.addEventListener('DOMContentLoaded', function() {
                         alert(response.message);
                     }
                     
+                    let savedLeadStatus = $('#createModalLeadStatus').val();
+                    if (savedLeadStatus) {
+                        let badgeWrap = $(`.lead-status-badge-wrap[data-lead-id="${leadId}"]`);
+                        if (badgeWrap.length > 0) {
+                            let bCls = 'bg-secondary text-white';
+                            if (savedLeadStatus === 'Prospect' || savedLeadStatus === 'High Prospect') bCls = 'bg-received';
+                            else if (savedLeadStatus === 'Hot') bCls = 'bg-danger text-white';
+                            else if (savedLeadStatus === 'Warm') bCls = 'bg-warning text-dark';
+                            else if (savedLeadStatus === 'Irrelevant') bCls = 'bg-dark text-white';
+                            else if (savedLeadStatus === 'Not Interested' || savedLeadStatus === "Don't Call Again" || savedLeadStatus === 'Cold' || savedLeadStatus === 'Refund') bCls = 'bg-not-received';
+                            badgeWrap.html(`<span class="badge ${bCls} px-2 py-1" style="font-size: 10px;">${escapeHtml(savedLeadStatus)}</span>`);
+                        }
+                    }
+
                     resetFormToCreateMode();
                     loadModalHistory(leadId);
                 } else {
@@ -2994,14 +3126,107 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     });
 
-    // Browser back/forward navigation support
-    window.addEventListener('popstate', function() {
-        const currentUrl = new URL(window.location.href);
-        const searchVal = currentUrl.searchParams.get('search') || '';
-        if (searchInput) {
-            searchInput.value = searchVal;
+    // ── Delete Request Modal Handler (Bootstrap 5 native + jQuery safe) ──
+    let activeDeleteBtn = null;
+
+    const delModalEl = document.getElementById('deleteRequestModal');
+    if (delModalEl) {
+        delModalEl.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            if (button) {
+                activeDeleteBtn = $(button);
+                const leadId = button.getAttribute('data-lead-id') || $(button).data('lead-id');
+                const leadName = button.getAttribute('data-lead-name') || $(button).data('lead-name');
+                $('#delete_request_lead_id').val(leadId);
+                $('#delete_request_lead_name').text(leadName || ('Lead #' + leadId));
+                $('#delete_request_reason').val('');
+            }
+        });
+    }
+
+    $(document).on('click', '.request-delete-btn', function(e) {
+        activeDeleteBtn = $(this);
+        const leadId = $(this).attr('data-lead-id') || $(this).data('lead-id');
+        const leadName = $(this).attr('data-lead-name') || $(this).data('lead-name');
+        $('#delete_request_lead_id').val(leadId);
+        $('#delete_request_lead_name').text(leadName || ('Lead #' + leadId));
+        $('#delete_request_reason').val('');
+
+        const modalEl = document.getElementById('deleteRequestModal');
+        if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        } else if (typeof $ !== 'undefined' && typeof $.fn.modal !== 'undefined') {
+            $('#deleteRequestModal').modal('show');
         }
-        doLiveSearch(searchVal, false);
+    });
+
+    $('#deleteRequestForm').on('submit', function(e) {
+        e.preventDefault();
+        const submitBtn = $('#submitDeleteRequestBtn');
+        const leadId = $('#delete_request_lead_id').val();
+        const reason = $('#delete_request_reason').val().trim();
+        if (!reason) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ icon: 'warning', title: 'Required', text: 'Please enter a reason for deletion.' });
+            } else {
+                alert('Please enter a reason for deletion.');
+            }
+            return;
+        }
+
+        submitBtn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin me-1"></i> Submitting...');
+
+        $.ajax({
+            url: '<?= $GLOBALS["base_url"] ?>/submit-lead-delete-request',
+            type: 'POST',
+            data: { lead_id: leadId, reason: reason },
+            dataType: 'json',
+            success: function(res) {
+                submitBtn.prop('disabled', false).html('<i class="fa-solid fa-paper-plane me-1"></i> Submit Delete Request');
+                if (res.success) {
+                    const modalEl = document.getElementById('deleteRequestModal');
+                    if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                        bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+                    } else if (typeof $ !== 'undefined' && typeof $.fn.modal !== 'undefined') {
+                        $('#deleteRequestModal').modal('hide');
+                    }
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success!',
+                            text: res.message || 'Delete request submitted successfully.',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        alert(res.message || 'Delete request submitted successfully.');
+                    }
+                    if (activeDeleteBtn && activeDeleteBtn.length) {
+                        activeDeleteBtn.replaceWith(`
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1 px-2 py-1.5 d-inline-flex align-items-center" 
+                                  title="Delete Reason: ${reason}" 
+                                  style="font-size: 11px; white-space: nowrap;">
+                                <i class="fa-solid fa-clock-rotate-left me-1"></i> Requested
+                            </span>
+                        `);
+                    }
+                } else {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({ icon: 'error', title: 'Oops...', text: res.message || 'Failed to submit delete request.' });
+                    } else {
+                        alert(res.message || 'Failed to submit delete request.');
+                    }
+                }
+            },
+            error: function() {
+                submitBtn.prop('disabled', false).html('<i class="fa-solid fa-paper-plane me-1"></i> Submit Delete Request');
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'An unexpected error occurred. Please try again.' });
+                } else {
+                    alert('An unexpected error occurred. Please try again.');
+                }
+            }
+        });
     });
 });
 </script>

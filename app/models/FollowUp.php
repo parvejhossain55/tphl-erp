@@ -204,6 +204,7 @@ class FollowUp extends Model
         }
         $norm_follow_up_date = !empty($data['follow_up_date']) ? normalizeDateYear($data['follow_up_date']) : null;
         $norm_next_follow_up_date = !empty($data['next_follow_up_date']) ? normalizeDateYear($data['next_follow_up_date']) : null;
+        $follow_up_time = !empty($data['follow_up_time']) ? $data['follow_up_time'] : null;
 
         $stmt->bind_param(
             "iiisssssssissi",
