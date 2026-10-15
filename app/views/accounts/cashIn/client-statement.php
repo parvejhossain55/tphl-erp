@@ -555,6 +555,9 @@ foreach ($validTransactions as $t) {
                             } elseif ($paymentType === 'shop_service_charge') {
                                 $term = 'Shop Svc Charge';
                                 $colServiceFee = $amount;
+                            } elseif ($paymentType === 'others') {
+                                $otherPurpose = !empty($txn['other_purpose']) ? $txn['other_purpose'] : 'Extra Charges';
+                                $term = 'Others (' . $otherPurpose . ')';
                             }
 
                             // Payment type display
@@ -587,8 +590,10 @@ foreach ($validTransactions as $t) {
                             // Money Receipt No
                             $receiptNo = 'REC-' . str_pad($txn['id'] ?? '0', 6, '0', STR_PAD_LEFT);
 
-                            // Running balance
-                            $runningBalance -= ($amount + $discount);
+                            // Running balance (Others payments are extra incidental costs and do not deduct from flat price)
+                            if ($paymentType !== 'others') {
+                                $runningBalance -= ($amount + $discount);
+                            }
                             if ($runningBalance < 0) $runningBalance = 0;
                         ?>
                         <tr>

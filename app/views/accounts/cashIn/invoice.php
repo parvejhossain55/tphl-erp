@@ -168,6 +168,9 @@ if (!empty($payment['is_emi_discount']) && $payment['is_emi_discount'] == 1) {
     $paymentTypeLabel = 'REGISTRATION MONEY';
 } elseif ($paymentTypeRaw === 'development_charge') {
     $paymentTypeLabel = 'DEVELOPMENT CHARGE';
+} elseif ($paymentTypeRaw === 'others') {
+    $otherPurpose = !empty($payment['other_purpose']) ? strtoupper($payment['other_purpose']) : 'EXTRA CHARGES';
+    $paymentTypeLabel = 'OTHERS (' . $otherPurpose . ')';
 } else {
     $paymentTypeLabel = strtoupper(str_replace('_', ' ', $payment['payment_type'] ?? 'PAYMENT'));
 }
@@ -264,11 +267,12 @@ if (empty($qrImageSrc)) {
 }
 
 // Banking Information Resolution (Sender Bank vs Receiver Bank & Ref Number)
-$senderBankName = 'N/A';
-$receiverBankName = 'Dutch-Bangla Bank PLC';
-$receiverHolderName = 'The Premium Homes Ltd.';
-$receiverAccountNo = 'N/A';
-$clientAccountNo = !empty($payment['bank_account_no']) && !in_array(strtolower(trim($payment['bank_account_no'])), ['n/a', '0', '00', 'none', 'null']) ? trim($payment['bank_account_no']) : 'N/A';
+$senderBankName = '';
+$receiverBankName = '';
+$receiverHolderName = '';
+$receiverAccountNo = '';
+$clientAccountNo = !empty($payment['bank_account_no']) && !in_array(strtolower(trim($payment['bank_account_no'])), ['n/a', '0', '00', 'none', 'null']) ? trim($payment['bank_account_no']) : '';
+$onlineType = !empty($payment['online_type']) ? trim($payment['online_type']) : '';
 
 $rawBankName = trim($payment['bank_name'] ?? '');
 $companyBankName = trim($payment['company_bank_name'] ?? '');
@@ -277,10 +281,15 @@ $companyAccountNo = trim($payment['company_account_number'] ?? '');
 $bankId = !empty($payment['bank_id']) ? (int)$payment['bank_id'] : null;
 
 // Determine Reference Number & Label
-$refLabel = ($paymentMethod === 'CHEQUE') ? 'Cheque No:' : 'Ref Number:';
-$refNumber = !empty($payment['transaction_ref']) ? trim($payment['transaction_ref']) : (!empty($payment['cheque_no']) ? trim($payment['cheque_no']) : 'N/A');
+$refLabel = ($paymentMethod === 'CHEQUE') ? 'Cheque No:' : (($paymentMethod === 'ONLINE') ? 'Trx ID / Ref:' : 'Ref / Receipt No:');
+$refNumber = !empty($payment['transaction_ref']) ? trim($payment['transaction_ref']) : (!empty($payment['cheque_no']) ? trim($payment['cheque_no']) : '');
 if (!empty($payment['transaction_ref']) && !empty($payment['cheque_no']) && $payment['transaction_ref'] !== $payment['cheque_no']) {
     $refNumber = $payment['transaction_ref'] . ' (Chq: ' . $payment['cheque_no'] . ')';
+}
+if (empty($refNumber) && $isCashPayment) {
+    $refNumber = 'REC-' . str_pad($payment['id'] ?? '0', 6, '0', STR_PAD_LEFT);
+} elseif (empty($refNumber)) {
+    $refNumber = 'N/A';
 }
 
 if (!$isCashPayment) {
@@ -455,6 +464,16 @@ if (!$isCashPayment) {
     }
 
     $displayBank = $receiverBankName;
+} else {
+    $senderBankName = '';
+    $receiverBankName = '';
+    $receiverHolderName = '';
+    $receiverAccountNo = '';
+    $displayBank = 'Cash in Hand / Office';
+}
+
+if ($isOnlinePayment) {
+    $senderBankName = '';
 }
 
 require __DIR__ . '/invoice-receipt-template.php';

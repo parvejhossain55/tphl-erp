@@ -278,6 +278,59 @@ public function indexTwo($bookingId = null)
 }
 
     /**
+     * Dedicated Full Page: EMI Tracking & Statement Breakdown
+     * Route: /client-emi-tracking/{bookingId}
+     */
+    public function clientEmiTracking($bookingId = null)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (!$bookingId) {
+            $bookingId = $_GET['booking_id'] ?? null;
+        }
+
+        if (!$bookingId) {
+            setError("No booking ID provided");
+            header("Location: {$GLOBALS['base_url']}/clients-cash-in");
+            exit;
+        }
+
+        $bookingId = (int)$bookingId;
+        $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
+
+        if (!$clientDetails) {
+            setError("Client booking not found");
+            header("Location: {$GLOBALS['base_url']}/clients-cash-in");
+            exit;
+        }
+
+        if (!empty($clientDetails['is_shop']) && $clientDetails['is_shop'] == 1) {
+            require_once dirname(__DIR__) . '/models/AccountShopClient.php';
+            $this->clientModel = new AccountShopClient($this->db);
+            $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
+        }
+
+        $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
+        $virtualEmiSchedule = $this->clientModel->getVirtualEmiSchedule($bookingId);
+        $outstandingDues = method_exists($this->clientModel, 'getOutstandingEmiDues')
+            ? $this->clientModel->getOutstandingEmiDues($bookingId)
+            : [];
+
+        $this->view("accounts/cashIn/client-emi-tracking", [
+            "current_route"      => "client-emi-tracking",
+            "page_title"         => "EMI Tracking & Statement - " . htmlspecialchars($clientDetails['client_name'] ?? 'Client'),
+            "clientDetails"      => $clientDetails,
+            "paymentSummary"     => $paymentSummary,
+            "virtualEmiSchedule" => $virtualEmiSchedule,
+            "outstandingDues"    => $outstandingDues,
+            "accountModel"       => $this->clientModel,
+            "bookingId"          => $bookingId
+        ]);
+    }
+
+    /**
      * Update booking info (booking_date, sales_by_id) from clients-cash-in-history
      * Cascades:
      * - lead_bookings: updates booking_date and sales_by_id
@@ -1022,7 +1075,7 @@ public function indexTwo($bookingId = null)
     public function renderCashInRowsHtml($clients, $conflictedUnits = [])
     {
         if (empty($clients)) {
-            return '<tr><td colspan="11" class="text-center py-4 text-muted"><i class="fa-solid fa-inbox me-2"></i>No clients found matching your search or filters.</td></tr>';
+            return '<tr><td colspan="9" class="text-center py-4 text-muted"><i class="fa-solid fa-inbox me-2"></i>No clients found matching your search or filters.</td></tr>';
         }
         $html = '';
         foreach ($clients as $client) {
@@ -1051,14 +1104,27 @@ public function indexTwo($bookingId = null)
             }
 
             $html .= '<tr class="' . $rowClass . ' ' . ($clientHasConflict ? 'row-conflicted-unit' : '') . '" data-has-conflict="' . ($clientHasConflict ? '1' : '0') . '" ' . ($clientHasConflict ? 'style="background-color: #fff9f9;"' : '') . '>';
-            $html .= '<td>' . htmlspecialchars($client['client_name']);
+            $html .= '<td class="col-sticky-name">' . htmlspecialchars($client['client_name']);
             if ($clientHasConflict) {
                 $html .= '<span class="badge bg-danger text-white ms-1" style="font-size: 10px;" title="This client has a double-booked unit"><i class="fa-solid fa-triangle-exclamation"></i> Conflict</span>';
             }
             $html .= '</td>';
-            $html .= '<td>' . htmlspecialchars($client['company'] ?? 'N/A') . '</td>';
-            $html .= '<td>' . htmlspecialchars($client['phone'] ?? 'N/A') . '</td>';
-            $html .= '<td>' . htmlspecialchars($client['email'] ?? 'N/A') . '</td>';
+
+            // Merged Phone & Email (Sticky)
+            $phoneVal = !empty($client['phone']) && $client['phone'] !== 'N/A' ? htmlspecialchars($client['phone']) : '';
+            $emailVal = !empty($client['email']) && $client['email'] !== 'N/A' ? htmlspecialchars($client['email']) : '';
+            $html .= '<td class="col-sticky-contact">';
+            $html .= '<div class="client-contact-cell">';
+            if ($phoneVal) {
+                $html .= '<div class="contact-phone text-nowrap fw-semibold"><a href="tel:' . $phoneVal . '" class="text-dark text-decoration-none"><i class="fa-solid fa-phone text-primary me-1" style="font-size: 11px;"></i>' . $phoneVal . '</a></div>';
+            } else {
+                $html .= '<div class="contact-phone text-muted small text-nowrap"><i class="fa-solid fa-phone text-muted me-1" style="font-size: 11px;"></i>N/A</div>';
+            }
+            if ($emailVal) {
+                $html .= '<div class="contact-email text-muted small text-truncate" style="max-width: 175px;" title="' . $emailVal . '"><a href="mailto:' . $emailVal . '" class="text-muted text-decoration-none"><i class="fa-solid fa-envelope me-1" style="font-size: 10px;"></i>' . $emailVal . '</a></div>';
+            }
+            $html .= '</div>';
+            $html .= '</td>';
             
             // Project & Flats chips
             $html .= '<td><div class="d-flex flex-wrap gap-2">';
@@ -1138,15 +1204,29 @@ public function indexTwo($bookingId = null)
     public function renderCedRowsHtml($clients)
     {
         if (empty($clients)) {
-            return '<tr><td colspan="12" class="text-center py-4 text-muted"><i class="fa-solid fa-inbox me-2"></i>No clients found matching your search or filters.</td></tr>';
+            return '<tr><td colspan="10" class="text-center py-4 text-muted"><i class="fa-solid fa-inbox me-2"></i>No clients found matching your search or filters.</td></tr>';
         }
         $html = '';
         foreach ($clients as $client) {
             $html .= '<tr>';
-            $html .= '<td>' . htmlspecialchars($client['client_name']) . '</td>';
-            $html .= '<td>' . htmlspecialchars($client['company'] ?? 'N/A') . '</td>';
-            $html .= '<td>' . htmlspecialchars($client['phone'] ?? 'N/A') . '</td>';
-            $html .= '<td>' . htmlspecialchars($client['email'] ?? 'N/A') . '</td>';
+            $html .= '<td class="col-sticky-name">' . htmlspecialchars($client['client_name']) . '</td>';
+
+            // Merged Phone & Email (Sticky)
+            $phoneVal = !empty($client['phone']) && $client['phone'] !== 'N/A' ? htmlspecialchars($client['phone']) : '';
+            $emailVal = !empty($client['email']) && $client['email'] !== 'N/A' ? htmlspecialchars($client['email']) : '';
+            $html .= '<td class="col-sticky-contact">';
+            $html .= '<div class="client-contact-cell">';
+            if ($phoneVal) {
+                $html .= '<div class="contact-phone text-nowrap fw-semibold"><a href="tel:' . $phoneVal . '" class="text-dark text-decoration-none"><i class="fa-solid fa-phone text-primary me-1" style="font-size: 11px;"></i>' . $phoneVal . '</a></div>';
+            } else {
+                $html .= '<div class="contact-phone text-muted small text-nowrap"><i class="fa-solid fa-phone text-muted me-1" style="font-size: 11px;"></i>N/A</div>';
+            }
+            if ($emailVal) {
+                $html .= '<div class="contact-email text-muted small text-truncate" style="max-width: 175px;" title="' . $emailVal . '"><a href="mailto:' . $emailVal . '" class="text-muted text-decoration-none"><i class="fa-solid fa-envelope me-1" style="font-size: 10px;"></i>' . $emailVal . '</a></div>';
+            }
+            $html .= '</div>';
+            $html .= '</td>';
+
             $html .= '<td>' . $this->renderAgentAndBookingDatesHtml($client) . '</td>';
 
             // Project & flats chips
@@ -1868,6 +1948,7 @@ public function addCedTransaction()
         $transactionData = [
             'booking_id'        => $bookingId,
             'payment_type'      => $paymentType,
+            'other_purpose'     => ($paymentType === 'others') ? trim($_POST['other_purpose'] ?? '') : null,
             'amount'            => $_POST['amount'] ?? 0,
             'payment_method'    => $_POST['payment_method'] ?? 'cash',
             'payment_status'    => 'pending', // Always pending until verified
@@ -1928,8 +2009,8 @@ public function addCedTransaction()
     }
 
     // Route to correct model method
-    if ($transactionData['payment_type'] === 'emi_due_settlement') {
-        // Use addTransaction (not WithEMI) so settlement_type & parent_payment_id are handled
+    if ($transactionData['payment_type'] === 'emi_due_settlement' || $transactionData['payment_type'] === 'others') {
+        // Use addTransaction (not WithEMI) so settlement_type & parent_payment_id or others are handled
         $result = $this->clientModel->addTransaction($transactionData, null);
     } else {
         $result = $this->clientModel->addTransactionWithEMI($transactionData, $emiScheduleData);
@@ -1940,7 +2021,11 @@ public function addCedTransaction()
         if (!empty($result['payment_id'])) {
             if ($sendSms) {
                 $overrideAmount = $_POST['amount'] ?? null;
-                $overridePaymentType = !empty($_POST['payment_type']) ? ucfirst(str_replace('_', ' ', $_POST['payment_type'])) : null;
+                $overridePaymentType = !empty($_POST['payment_type']) 
+                    ? (($paymentType === 'others' && !empty($_POST['other_purpose'])) 
+                        ? 'Others (' . trim($_POST['other_purpose']) . ')' 
+                        : ucfirst(str_replace('_', ' ', $_POST['payment_type']))) 
+                    : null;
                 $smsResult = $smsService->sendPaymentReceivedSms($result['payment_id'], $isTestingMode, $overrideAmount, $overridePaymentType);
                 if ($isTestingMode) {
                     $smsMsg = " (Testing Mode: SMS Skipped)";
@@ -2225,6 +2310,7 @@ public function addTransaction()
         $transactionData = [
             'booking_id'       => $bookingId,
             'payment_type'     => $paymentType,
+            'other_purpose'    => ($paymentType === 'others') ? trim($_POST['other_purpose'] ?? '') : null,
             'amount'           => $_POST['amount'] ?? 0,
             'payment_method'   => $_POST['payment_method'] ?? 'cash',
             'payment_status'   => 'pending', // Always pending until verified
@@ -2272,8 +2358,8 @@ public function addTransaction()
         }
 
         // Route to correct model method
-        if ($transactionData['payment_type'] === 'emi_due_settlement') {
-            // Use addTransaction (not WithEMI) so settlement_type & parent_payment_id are handled
+        if ($transactionData['payment_type'] === 'emi_due_settlement' || $transactionData['payment_type'] === 'others') {
+            // Use addTransaction (not WithEMI) so settlement_type & parent_payment_id or others are handled
             $result = $this->clientModel->addTransaction($transactionData, null);
         } else {
             $result = $this->clientModel->addTransactionWithEMI($transactionData, $emiScheduleData);
@@ -2284,8 +2370,12 @@ public function addTransaction()
             if (!empty($result['payment_id'])) {
                 if ($sendSms) {
                     $overrideAmount = $_POST['amount'] ?? null;
-                $overridePaymentType = !empty($_POST['payment_type']) ? ucfirst(str_replace('_', ' ', $_POST['payment_type'])) : null;
-                $smsResult = $smsService->sendPaymentReceivedSms($result['payment_id'], $isTestingMode, $overrideAmount, $overridePaymentType);
+                    $overridePaymentType = !empty($_POST['payment_type']) 
+                        ? (($paymentType === 'others' && !empty($_POST['other_purpose'])) 
+                            ? 'Others (' . trim($_POST['other_purpose']) . ')' 
+                            : ucfirst(str_replace('_', ' ', $_POST['payment_type']))) 
+                        : null;
+                    $smsResult = $smsService->sendPaymentReceivedSms($result['payment_id'], $isTestingMode, $overrideAmount, $overridePaymentType);
                     if ($isTestingMode) {
                         $smsMsg = " (Testing Mode: SMS Skipped)";
                     } elseif (!empty($smsResult['success'])) {
@@ -3225,6 +3315,11 @@ public function downloadPublicReceiptPdf($paymentId = null)
         $paymentTypeLabel = 'REGISTRATION MONEY';
     } elseif ($paymentTypeRaw === 'development_charge') {
         $paymentTypeLabel = 'DEVELOPMENT CHARGE';
+    } elseif ($paymentTypeRaw === 'shop_service_charge') {
+        $paymentTypeLabel = 'SHOP SERVICE CHARGE';
+    } elseif ($paymentTypeRaw === 'others') {
+        $otherPurpose = !empty($payment['other_purpose']) ? trim($payment['other_purpose']) : '';
+        $paymentTypeLabel = !empty($otherPurpose) ? 'OTHERS (' . strtoupper($otherPurpose) . ')' : 'OTHERS';
     } else {
         $paymentTypeLabel = strtoupper(str_replace('_', ' ', $payment['payment_type'] ?? 'PAYMENT'));
     }
@@ -5131,4 +5226,466 @@ public function discountStatement($bookingId = null)
         header("Location: {$redirectUrl}");
         exit;
     }
+
+    /**
+     * Client-wise Due Tracking & Payment Management
+     */
+    public function dueTracking()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userSecRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $userPriRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+
+        $allowedRoles = [1, 3, 6, 7, 30, 33, 34, 35, 36];
+        $isAuthorized = in_array($userRoleId, $allowedRoles, true)
+            || in_array($userSecRoleId, $allowedRoles, true)
+            || in_array($userPriRoleId, $allowedRoles, true)
+            || $userId === 94
+            || strpos($roleName, 'account') !== false
+            || strpos($roleName, 'client experience') !== false
+            || strpos($roleName, 'clients experiment') !== false
+            || strpos($roleName, 'management') !== false
+            || strpos($roleName, 'admin') !== false
+            || hasPermission("CED Manage")
+            || hasPermission("Cash In Verify")
+            || (function_exists('isAccountsHead') && isAccountsHead())
+            || (function_exists('isAccountsExecutive') && isAccountsExecutive());
+
+        if (!$isAuthorized) {
+            setError("You do not have permission to access Client-wise Due Tracking.");
+            header("Location: {$GLOBALS['base_url']}/home");
+            exit;
+        }
+
+        // Handle AJAX quick detail modal for a specific booking
+        if (isset($_GET['ajax']) && $_GET['ajax'] === 'client_detail') {
+            $bookingId = (int)($_GET['booking_id'] ?? 0);
+            $details = $bookingId > 0 ? $this->clientModel->getClientByBookingId($bookingId) : null;
+            if (!empty($details['is_shop']) && (int)$details['is_shop'] === 1) {
+                require_once dirname(__DIR__) . '/models/AccountShopClient.php';
+                $shopModel = new AccountShopClient($this->db);
+                $details = $shopModel->getClientByBookingId($bookingId);
+                $summary = $shopModel->getPaymentSummaryByBookingId($bookingId);
+            } else {
+                $summary = $bookingId > 0 ? $this->clientModel->getPaymentSummaryByBookingId($bookingId) : null;
+            }
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => !empty($summary),
+                'summary' => $summary,
+                'details' => $details
+            ]);
+            exit;
+        }
+
+        $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') 
+                  || (isset($_GET['ajax']) && $_GET['ajax'] == '1');
+
+        $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
+        $dueType = trim($_GET['due_type'] ?? 'all');
+        if (!in_array($dueType, ['all', 'land_share_due', 'dev_charge_due', 'emi_due', 'overall_due', 'cleared'], true)) {
+            $dueType = 'all';
+        }
+
+        $search = trim($_GET['search'] ?? '');
+        $dateType = trim($_GET['date_type'] ?? '');
+        $startDate = trim($_GET['start_date'] ?? '');
+        $endDate = trim($_GET['end_date'] ?? '');
+        if (!in_array($dateType, ['booking_date', 'last_payment_date'])) {
+            $dateType = null;
+        }
+        if (empty($startDate)) $startDate = null;
+        if (empty($endDate)) $endDate = null;
+
+        $sortBy = trim($_GET['sort_by'] ?? 'booking_id');
+        $sortOrder = strtoupper(trim($_GET['sort_order'] ?? 'DESC')) === 'ASC' ? 'ASC' : 'DESC';
+
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $limit = min(100, max(5, (int)($_GET['limit'] ?? 20)));
+        $offset = ($page - 1) * $limit;
+
+        $filters = [
+            'project_id' => $selectedProjectId,
+            'due_type'   => $dueType,
+            'search'     => $search,
+            'date_type'  => $dateType,
+            'start_date' => $startDate,
+            'end_date'   => $endDate,
+            'sort_by'    => $sortBy,
+            'sort_order' => $sortOrder
+        ];
+
+        $totalClients = $this->clientModel->getClientWiseDueCount($filters);
+        $totalPages = $totalClients > 0 ? (int)ceil($totalClients / $limit) : 1;
+        if ($page > $totalPages && $totalPages > 0) {
+            $page = $totalPages;
+            $offset = ($page - 1) * $limit;
+        }
+
+        $clients = $this->clientModel->getClientWiseDueList($filters, $limit, $offset);
+        $stats = $this->clientModel->getClientDueTrackingStats($selectedProjectId);
+
+        if ($isAjax) {
+            $tableHtml = $this->renderDueTrackingRowsHtml($clients);
+            $paginationHtml = $this->generateAjaxPagination($page, $totalPages, $totalClients, $limit, 'loadDueTrackingPage');
+            $startEntry = $totalClients > 0 ? (($page - 1) * $limit) + 1 : 0;
+            $endEntry = min($totalClients, $page * $limit);
+            $infoText = "Showing {$startEntry} to {$endEntry} of {$totalClients} client bookings";
+
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'page' => $page,
+                'totalPages' => $totalPages,
+                'totalRecords' => $totalClients,
+                'limit' => $limit,
+                'table_html' => $tableHtml,
+                'pagination_html' => $paginationHtml,
+                'info_text' => $infoText,
+                'stats' => $stats
+            ]);
+            exit;
+        }
+
+        // Get projects list
+        $projectModel = new Project($this->db);
+        $projects = $projectModel->getAll();
+        if (empty($projects)) {
+            $projects = $this->clientModel->getProjectsForCED();
+        }
+
+        // Get Project-wise Due Breakdown
+        $projectBreakdown = $this->clientModel->getProjectWiseDueBreakdown();
+
+        $selectedProjectName = '';
+        if ($selectedProjectId) {
+            foreach ($projects as $prj) {
+                if ((int)$prj['id'] === $selectedProjectId) {
+                    $selectedProjectName = $prj['name'];
+                    break;
+                }
+            }
+        }
+
+        $this->view("accounts/cashIn/client-due-tracking", [
+            "current_route"       => "client-wise-due-tracking",
+            "page_title"          => "Client-wise Due Tracking & Payment Management",
+            "clients"             => $clients,
+            "totalClients"        => $totalClients,
+            "totalPages"          => $totalPages,
+            "currentPage"         => $page,
+            "limit"               => $limit,
+            "search"              => $search,
+            "dueType"             => $dueType,
+            "stats"               => $stats,
+            "projects"            => $projects,
+            "projectBreakdown"    => $projectBreakdown,
+            "selectedProjectId"   => $selectedProjectId,
+            "selectedProjectName" => $selectedProjectName,
+            "dateType"            => $dateType,
+            "startDate"           => $startDate,
+            "endDate"             => $endDate,
+            "sortBy"              => $sortBy,
+            "sortOrder"           => $sortOrder
+        ]);
+    }
+
+    /**
+     * Render Table Rows HTML for Client-wise Due Tracking Table
+     *
+     * @param array $clients
+     * @return string
+     */
+    public function renderDueTrackingRowsHtml(array $clients): string
+    {
+        if (empty($clients)) {
+            return '<tr><td colspan="10" class="text-center py-5 text-muted"><i class="fa-solid fa-folder-open fa-3x mb-3 text-secondary opacity-50 d-block"></i>No client due records found matching the criteria.</td></tr>';
+        }
+
+        $html = '';
+        foreach ($clients as $client) {
+            $bookingId = (int)$client['booking_id'];
+            $clientName = htmlspecialchars($client['client_name'] ?? 'N/A');
+            $phone = htmlspecialchars($client['phone'] ?? '');
+            $email = htmlspecialchars($client['email'] ?? '');
+            $salesAgent = htmlspecialchars($client['sales_agent_name'] ?? 'Not Assigned');
+            $projectName = htmlspecialchars($client['project_name'] ?? 'N/A');
+            $unitName = htmlspecialchars($client['unit_name'] ?? 'N/A');
+            $floorNo = htmlspecialchars($client['floor_no'] ?? '');
+            $isShop = !empty($client['is_shop']) && (int)$client['is_shop'] === 1;
+
+            $totalPrice = (float)($client['total_price'] ?? 0);
+            $discount = (float)($client['discount_amount'] ?? 0);
+            $totalPaid = (float)($client['total_paid'] ?? 0);
+            $overallDue = (float)($client['overall_due'] ?? 0);
+
+            $landTarget = (float)($client['total_land_share'] ?? 0);
+            $landPaid = (float)($client['land_share_paid'] ?? 0);
+            $landDue = (float)($client['land_share_due'] ?? 0);
+
+            $devTarget = (float)($client['development_charges'] ?? 0);
+            $devPaid = (float)($client['dev_charge_paid'] ?? 0);
+            $devDue = (float)($client['dev_charge_due'] ?? 0);
+
+            $consFee = (float)($client['construction_fee'] ?? 0);
+            $emiPaid = (float)($client['emi_paid'] ?? 0);
+            $remEmiDue = (float)($client['remaining_emi_due'] ?? 0);
+            $overdueEmi = (float)($client['overdue_emi_amount'] ?? 0);
+
+            $completedEmi = (int)($client['completed_emi_count'] ?? 0);
+            $totalEmi = (int)($client['total_emi_no'] ?? 0);
+            if ($totalEmi <= 0) $totalEmi = 36;
+            if ($completedEmi > $totalEmi) $totalEmi = $completedEmi;
+
+            $bookingDate = !empty($client['booking_date']) ? date('d M, Y', strtotime($client['booking_date'])) : 'N/A';
+            $lastPaymentDate = !empty($client['last_payment_date']) ? date('d M, Y', strtotime($client['last_payment_date'])) : null;
+
+            // Status badges
+            $landBadge = ($landDue <= 0)
+                ? '<span class="badge bg-success-subtle text-success fw-semibold"><i class="fa-solid fa-check me-1"></i>Cleared</span>'
+                : '<span class="badge bg-danger-subtle text-danger fw-bold fs-12">৳' . number_format($landDue) . '</span>';
+
+            $devBadge = ($devDue <= 0)
+                ? '<span class="badge bg-success-subtle text-success fw-semibold"><i class="fa-solid fa-check me-1"></i>Cleared</span>'
+                : '<span class="badge bg-danger-subtle text-danger fw-bold fs-12">৳' . number_format($devDue) . '</span>';
+
+            $overallBadge = ($overallDue <= 0)
+                ? '<span class="badge bg-success text-white fw-bold px-2 py-1"><i class="fa-solid fa-check-double me-1"></i>Fully Paid</span>'
+                : '<span class="fw-bold text-danger fs-14">৳' . number_format($overallDue) . '</span>';
+
+            $ledgerUrl = "{$GLOBALS['base_url']}/clients-cash-in-history-view/{$bookingId}";
+
+            $html .= '<tr class="align-middle">';
+            
+            // Col 1: ID & Date
+            $html .= '<td class="text-center">';
+            $html .= '<a href="' . $ledgerUrl . '" class="fw-bold text-primary text-decoration-none">#' . $bookingId . '</a>';
+            $html .= '<div class="extra-small text-muted">' . $bookingDate . '</div>';
+            $html .= '</td>';
+
+            // Col 2: Client
+            $html .= '<td>';
+            $html .= '<div class="d-flex align-items-center">';
+            $html .= '<div class="avatar avatar-sm bg-primary-subtle text-primary rounded-circle me-2 d-flex align-items-center justify-content-center fw-bold" style="width:34px; height:34px; font-size:12px;">' . mb_substr($clientName, 0, 1) . '</div>';
+            $html .= '<div>';
+            $html .= '<a href="' . $ledgerUrl . '" class="fw-bold text-dark text-decoration-none d-block">' . $clientName . '</a>';
+            if (!empty($phone)) {
+                $html .= '<a href="tel:' . $phone . '" class="extra-small text-muted text-decoration-none me-2"><i class="fa-solid fa-phone me-1 text-secondary"></i>' . $phone . '</a>';
+            }
+            if (!empty($salesAgent)) {
+                $html .= '<span class="extra-small text-muted d-block" title="Assigned Sales Agent"><i class="fa-solid fa-user-tie me-1 text-info"></i>' . $salesAgent . '</span>';
+            }
+            $html .= '</div>';
+            $html .= '</div>';
+            $html .= '</td>';
+
+            // Col 3: Project & Unit
+            $html .= '<td>';
+            $html .= '<span class="badge bg-light text-primary border border-primary-subtle mb-1 d-inline-block text-truncate" style="max-width: 170px;" title="' . $projectName . '">' . $projectName . '</span>';
+            $html .= '<div class="fw-semibold text-dark extra-small">';
+            $html .= '<i class="fa-solid fa-building me-1 text-muted"></i>' . $unitName . (!empty($floorNo) ? ' (Fl ' . $floorNo . ')' : '');
+            if ($isShop) {
+                $html .= ' <span class="badge bg-warning text-dark extra-small">Shop</span>';
+            }
+            $html .= '</div>';
+            $html .= '</td>';
+
+            // Col 4: Total Value & Paid
+            $html .= '<td class="text-end">';
+            $html .= '<div class="fw-bold text-dark">৳' . number_format($totalPrice) . '</div>';
+            if ($discount > 0) {
+                $html .= '<div class="extra-small text-success" title="Booking Discount"><i class="fa-solid fa-tag me-1"></i>Disc: ৳' . number_format($discount) . '</div>';
+            }
+            $html .= '<div class="extra-small text-muted">Paid: ৳' . number_format($totalPaid) . '</div>';
+            $html .= '</td>';
+
+            // Col 5: Land Share Due
+            $html .= '<td class="text-end">';
+            $html .= '<div class="mb-1">' . $landBadge . '</div>';
+            $html .= '<div class="extra-small text-muted" style="font-size:10px;" title="Booking + Registration Fee">';
+            $html .= 'Target: ৳' . number_format($landTarget) . '<br>Paid: ৳' . number_format($landPaid);
+            $html .= '</div>';
+            $html .= '</td>';
+
+            // Col 6: Development Charge Due
+            $html .= '<td class="text-end">';
+            $html .= '<div class="mb-1">' . $devBadge . '</div>';
+            $html .= '<div class="extra-small text-muted" style="font-size:10px;">';
+            $html .= 'Target: ৳' . number_format($devTarget) . '<br>Paid: ৳' . number_format($devPaid);
+            $html .= '</div>';
+            $html .= '</td>';
+
+            // Col 7: EMI / Construction Due
+            $emiPaidClass = ($completedEmi > 0 && $remEmiDue <= 0) ? 'text-success fw-semibold' : 'text-muted';
+            $html .= '<td class="text-end">';
+            $html .= '<div class="fw-bold ' . ($remEmiDue > 0 ? 'text-dark' : 'text-success') . '">৳' . number_format($remEmiDue) . '</div>';
+            $html .= '<div class="extra-small ' . $emiPaidClass . '" style="font-size:10px;"><i class="fa-solid fa-calendar-check me-1"></i>' . $completedEmi . '/' . $totalEmi . ' EMIs paid</div>';
+            $pendingEmiCount = (int)($client['pending_emi_payment_count'] ?? 0);
+            if ($pendingEmiCount > 0) {
+                $html .= '<div class="mt-1"><span class="badge bg-warning text-dark extra-small" style="font-size:9px;" title="' . $pendingEmiCount . ' EMI payment(s) awaiting verification"><i class="fa-solid fa-clock me-1"></i>+' . $pendingEmiCount . ' Pending</span></div>';
+            }
+            if ($overdueEmi > 0 && $remEmiDue > 0) {
+                $html .= '<div class="mt-1"><span class="badge bg-warning text-dark extra-small" title="Overdue installments pending payment"><i class="fa-solid fa-triangle-exclamation me-1"></i>Overdue: ৳' . number_format($overdueEmi) . '</span></div>';
+            }
+            $html .= '</td>';
+
+            // Col 8: Overall Due
+            $html .= '<td class="text-end">';
+            $html .= '<div class="mb-1">' . $overallBadge . '</div>';
+            if ($lastPaymentDate) {
+                $html .= '<div class="extra-small text-muted" style="font-size:10px;"><i class="fa-solid fa-clock-rotate-left me-1"></i>' . $lastPaymentDate . '</div>';
+            }
+            $html .= '</td>';
+
+            // Col 9: Action
+            $html .= '<td class="text-center">';
+            $html .= '<div class="btn-group btn-group-sm">';
+            $html .= '<a href="' . $ledgerUrl . '" class="btn btn-outline-primary btn-sm py-1 px-2" title="View Full Client Ledger & Cash In History"><i class="fa-solid fa-receipt me-1"></i>Ledger</a>';
+            $html .= '<button type="button" class="btn btn-outline-secondary btn-sm py-1 px-2" onclick="openClientDueBreakdownModal(' . $bookingId . ')" title="Quick Due Breakdown Preview"><i class="fa-solid fa-eye"></i></button>';
+            $html .= '</div>';
+            $html .= '</td>';
+
+            $html .= '</tr>';
+        }
+
+        return $html;
+    }
+
+    /**
+     * Export Filtered Client-wise Due Records to CSV
+     */
+    public function exportDueTracking()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
+        $dueType = trim($_GET['due_type'] ?? 'all');
+        $search = trim($_GET['search'] ?? '');
+        $dateType = trim($_GET['date_type'] ?? '');
+        $startDate = trim($_GET['start_date'] ?? '');
+        $endDate = trim($_GET['end_date'] ?? '');
+
+        $filters = [
+            'project_id' => $selectedProjectId,
+            'due_type'   => $dueType,
+            'search'     => $search,
+            'date_type'  => $dateType,
+            'start_date' => $startDate,
+            'end_date'   => $endDate,
+            'sort_by'    => 'overall_due',
+            'sort_order' => 'DESC'
+        ];
+
+        // Retrieve up to 5,000 records for CSV export
+        $clients = $this->clientModel->getClientWiseDueList($filters, 5000, 0);
+
+        $filename = "Client_Due_Tracking_" . date('Y_m_d_His') . ".csv";
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        $output = fopen('php://output', 'w');
+        // UTF-8 BOM for Microsoft Excel
+        fputs($output, "\xEF\xBB\xBF");
+
+        // Header row
+        fputcsv($output, [
+            'Booking ID',
+            'Booking Date',
+            'Client Name',
+            'Phone',
+            'Email',
+            'Sales Agent',
+            'Project Name',
+            'Unit / Flat',
+            'Floor',
+            'Total Flat Value (BDT)',
+            'Discount (BDT)',
+            'Total Paid (BDT)',
+            'Land Share Target (BDT)',
+            'Land Share Paid (BDT)',
+            'Land Share Due (BDT)',
+            'Dev Charges Target (BDT)',
+            'Dev Charges Paid (BDT)',
+            'Dev Charges Due (BDT)',
+            'Construction Target (BDT)',
+            'EMI Paid (BDT)',
+            'EMIs Paid / Total',
+            'Remaining EMI Due (BDT)',
+            'Overdue EMI (BDT)',
+            'Overall Due (BDT)',
+            'Payment Status',
+            'Last Payment Date'
+        ]);
+
+        foreach ($clients as $c) {
+            $totalVal = (float)$c['total_price'];
+            $discount = (float)$c['discount_amount'];
+            $totalPaid = (float)$c['total_paid'];
+            $overallDue = (float)$c['overall_due'];
+
+            $landTarget = (float)$c['total_land_share'];
+            $landPaid = (float)$c['land_share_paid'];
+            $landDue = (float)$c['land_share_due'];
+
+            $devTarget = (float)$c['development_charges'];
+            $devPaid = (float)$c['dev_charge_paid'];
+            $devDue = (float)$c['dev_charge_due'];
+
+            $consFee = (float)$c['construction_fee'];
+            $emiPaid = (float)$c['emi_paid'];
+            $remEmiDue = (float)$c['remaining_emi_due'];
+            $overdueEmi = (float)$c['overdue_emi_amount'];
+
+            $completedEmi = (int)($c['completed_emi_count'] ?? 0);
+            $totalEmi = (int)($c['total_emi_no'] ?? 0);
+            if ($totalEmi <= 0) $totalEmi = 36;
+            if ($completedEmi > $totalEmi) $totalEmi = $completedEmi;
+
+            $status = ($overallDue <= 0) ? 'Fully Paid' : 'Due Outstanding';
+
+            fputcsv($output, [
+                $c['booking_id'],
+                !empty($c['booking_date']) ? date('Y-m-d', strtotime($c['booking_date'])) : '',
+                $c['client_name'] ?? '',
+                $c['phone'] ?? '',
+                $c['email'] ?? '',
+                $c['sales_agent_name'] ?? '',
+                $c['project_name'] ?? '',
+                $c['unit_name'] ?? '',
+                $c['floor_no'] ?? '',
+                number_format($totalVal, 2, '.', ''),
+                number_format($discount, 2, '.', ''),
+                number_format($totalPaid, 2, '.', ''),
+                number_format($landTarget, 2, '.', ''),
+                number_format($landPaid, 2, '.', ''),
+                number_format($landDue, 2, '.', ''),
+                number_format($devTarget, 2, '.', ''),
+                number_format($devPaid, 2, '.', ''),
+                number_format($devDue, 2, '.', ''),
+                number_format($consFee, 2, '.', ''),
+                number_format($emiPaid, 2, '.', ''),
+                "{$completedEmi}/{$totalEmi}",
+                number_format($remEmiDue, 2, '.', ''),
+                number_format($overdueEmi, 2, '.', ''),
+                number_format($overallDue, 2, '.', ''),
+                $status,
+                !empty($c['last_payment_date']) ? date('Y-m-d', strtotime($c['last_payment_date'])) : ''
+            ]);
+        }
+
+        fclose($output);
+        exit;
+    }
 }
+

@@ -4,6 +4,139 @@ $page = 'Clients';
 $show_breadcrumb = true;
 ?>
 
+<style>
+    /* Fixed Height & Freeze Table Styling */
+    .freeze-table-wrapper {
+        max-height: calc(100vh - 280px);
+        min-height: 420px;
+        overflow: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background: #ffffff;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        position: relative;
+    }
+
+    /* Custom smooth scrollbar */
+    .freeze-table-wrapper::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+    .freeze-table-wrapper::-webkit-scrollbar-track {
+        background: #f8fafc;
+    }
+    .freeze-table-wrapper::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+    .freeze-table-wrapper::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
+    .freeze-table {
+        border-collapse: separate !important;
+        border-spacing: 0;
+        width: 100%;
+        margin-bottom: 0;
+    }
+
+    .freeze-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background-color: #f1f5f9;
+        color: #1e293b;
+        font-weight: 700;
+        font-size: 12.5px;
+        border-bottom: 2px solid #cbd5e1;
+        padding: 10px 14px;
+        white-space: nowrap;
+        box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    /* Column 1: Client Name (Sticky Left) */
+    .freeze-table th.col-sticky-name,
+    .freeze-table td.col-sticky-name {
+        position: sticky;
+        left: 0;
+        width: 210px;
+        min-width: 210px;
+        max-width: 210px;
+        background-color: #ffffff;
+        z-index: 10;
+        padding-left: 14px;
+    }
+    .freeze-table thead th.col-sticky-name {
+        z-index: 35;
+        background-color: #f1f5f9;
+    }
+
+    /* Column 2: Phone & Email (Sticky Left adjacent to Column 1) */
+    .freeze-table th.col-sticky-contact,
+    .freeze-table td.col-sticky-contact {
+        position: sticky;
+        left: 210px;
+        width: 200px;
+        min-width: 200px;
+        max-width: 200px;
+        background-color: #ffffff;
+        z-index: 10;
+        border-right: 2px solid #cbd5e1 !important;
+        box-shadow: 4px 0 6px -2px rgba(15, 23, 42, 0.12);
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+    .freeze-table thead th.col-sticky-contact {
+        z-index: 35;
+        background-color: #f1f5f9;
+    }
+
+    /* Row Hover Backgrounds for Sticky Cells */
+    .freeze-table tbody tr:hover td.col-sticky-name,
+    .freeze-table tbody tr:hover td.col-sticky-contact {
+        background-color: #f8fafc;
+    }
+
+    /* Clean Contact Info Styling */
+    .client-contact-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+    .client-contact-cell .contact-phone {
+        font-size: 12px;
+        line-height: 1.3;
+    }
+    .client-contact-cell .contact-email {
+        font-size: 11px;
+        line-height: 1.2;
+    }
+
+    /* Responsive Collection Summary Cards */
+    .summary-stat-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border-radius: 10px;
+        background: #ffffff;
+    }
+    .summary-stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08) !important;
+    }
+    .summary-stat-card .card__title-wrap {
+        min-width: 0;
+        flex: 1;
+        overflow: hidden;
+    }
+    .summary-stat-card .amount-display {
+        font-size: clamp(14px, 1.15vw, 17px);
+        font-weight: 800;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        line-height: 1.25;
+    }
+</style>
+
 <div class="row">
 
     <!-- ══ STAT CARDS (existing) ══ -->
@@ -70,96 +203,96 @@ $show_breadcrumb = true;
             <div class="card-body p-2 p-md-3">
                 <div class="row g-2 g-md-3">
                     <!-- Total Collected -->
-                    <div class="col-xxl-2 col-xl-4 col-md-4 col-sm-6">
-                        <div class="card__wrapper border-start border-4 border-primary h-100 p-2 px-3" style="cursor: pointer;" onclick="openProjectCollectionModal('total')" title="Click to view project breakdown (Verified + Unverified)">
+                    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-6 col-12">
+                        <div class="card__wrapper summary-stat-card border-start border-4 border-primary h-100 p-2 px-3" style="cursor: pointer;" onclick="openProjectCollectionModal('total')" title="Click to view project breakdown (Verified + Unverified)">
                             <div class="d-flex align-items-center gap-2">
-                                <div class="card__icon" style="background: rgba(13, 110, 253, 0.1); color: #0d6efd; padding: 8px; border-radius: 8px;">
+                                <div class="card__icon flex-shrink-0" style="background: rgba(13, 110, 253, 0.1); color: #0d6efd; padding: 8px; border-radius: 8px;">
                                     <span><i class="fa-solid fa-vault fs-5"></i></span>
                                 </div>
                                 <div class="card__title-wrap">
                                     <h6 class="card__sub-title mb-1 text-muted extra-small text-uppercase fw-bold" style="font-size: 10px;">Total Collected</h6>
-                                    <h6 class="fw-bold mb-0 text-primary fs-15">৳<?= number_format($collectionStats['total_collected'] ?? 0, 2) ?></h6>
-                                    <small class="text-muted extra-small d-block" style="font-size: 9.5px;"><i class="fa-solid fa-circle-info me-1 text-primary"></i>Verified + Unverified</small>
+                                    <div class="amount-display text-primary" title="৳<?= number_format($collectionStats['total_collected'] ?? 0, 2) ?>">৳<?= number_format($collectionStats['total_collected'] ?? 0, 2) ?></div>
+                                    <small class="text-muted extra-small d-block text-truncate" style="font-size: 9.5px;"><i class="fa-solid fa-circle-info me-1 text-primary"></i>Verified + Unverified</small>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Land Share Collected -->
-                    <div class="col-xxl-2 col-xl-4 col-md-4 col-sm-6">
-                        <div class="card__wrapper border-start border-4 border-info h-100 p-2 px-3" style="cursor: pointer;" onclick="openProjectCollectionModal('land_share')" title="Click to view land share breakdown (Booking Money + Registration Fee)">
+                    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-6 col-12">
+                        <div class="card__wrapper summary-stat-card border-start border-4 border-info h-100 p-2 px-3" style="cursor: pointer;" onclick="openProjectCollectionModal('land_share')" title="Click to view land share breakdown (Booking Money + Registration Fee)">
                             <div class="d-flex align-items-center gap-2">
-                                <div class="card__icon" style="background: rgba(13, 202, 240, 0.1); color: #0dcaf0; padding: 8px; border-radius: 8px;">
+                                <div class="card__icon flex-shrink-0" style="background: rgba(13, 202, 240, 0.1); color: #0dcaf0; padding: 8px; border-radius: 8px;">
                                     <span><i class="fa-solid fa-map-location-dot fs-5"></i></span>
                                 </div>
                                 <div class="card__title-wrap">
                                     <h6 class="card__sub-title mb-1 text-muted extra-small text-uppercase fw-bold" style="font-size: 10px;">Land Share Collected</h6>
-                                    <h6 class="fw-bold mb-0 text-info fs-15">৳<?= number_format($collectionStats['total_land_share_collected'] ?? 0, 2) ?></h6>
-                                    <small class="text-muted extra-small d-block" style="font-size: 9.5px;"><i class="fa-solid fa-circle-info me-1 text-info"></i>Booking + Reg Fee</small>
+                                    <div class="amount-display text-info" title="৳<?= number_format($collectionStats['total_land_share_collected'] ?? 0, 2) ?>">৳<?= number_format($collectionStats['total_land_share_collected'] ?? 0, 2) ?></div>
+                                    <small class="text-muted extra-small d-block text-truncate" style="font-size: 9.5px;"><i class="fa-solid fa-circle-info me-1 text-info"></i>Booking + Reg Fee</small>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Total EMI Collected -->
-                    <div class="col-xxl-2 col-xl-4 col-md-4 col-sm-6">
-                        <div class="card__wrapper border-start border-4 border-secondary h-100 p-2 px-3" style="cursor: pointer;" onclick="openProjectCollectionModal('emi')" title="Click to view total EMI breakdown (Verified + Unverified)">
+                    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-6 col-12">
+                        <div class="card__wrapper summary-stat-card border-start border-4 border-secondary h-100 p-2 px-3" style="cursor: pointer;" onclick="openProjectCollectionModal('emi')" title="Click to view total EMI breakdown (Verified + Unverified)">
                             <div class="d-flex align-items-center gap-2">
-                                <div class="card__icon" style="background: rgba(108, 117, 125, 0.1); color: #6c757d; padding: 8px; border-radius: 8px;">
+                                <div class="card__icon flex-shrink-0" style="background: rgba(108, 117, 125, 0.1); color: #6c757d; padding: 8px; border-radius: 8px;">
                                     <span><i class="fa-solid fa-receipt fs-5"></i></span>
                                 </div>
                                 <div class="card__title-wrap">
                                     <h6 class="card__sub-title mb-1 text-muted extra-small text-uppercase fw-bold" style="font-size: 10px;">Total EMI Collected</h6>
-                                    <h6 class="fw-bold mb-0 text-dark fs-15">৳<?= number_format($collectionStats['total_emi_collected'] ?? 0, 2) ?></h6>
-                                    <small class="text-muted extra-small d-block" style="font-size: 9.5px;"><i class="fa-solid fa-circle-info me-1 text-secondary"></i>Verified + Unverified</small>
+                                    <div class="amount-display text-dark" title="৳<?= number_format($collectionStats['total_emi_collected'] ?? 0, 2) ?>">৳<?= number_format($collectionStats['total_emi_collected'] ?? 0, 2) ?></div>
+                                    <small class="text-muted extra-small d-block text-truncate" style="font-size: 9.5px;"><i class="fa-solid fa-circle-info me-1 text-secondary"></i>Verified + Unverified</small>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Verified EMI Collected -->
-                    <div class="col-xxl-2 col-xl-4 col-md-4 col-sm-6">
-                        <div class="card__wrapper border-start border-4 border-success h-100 p-2 px-3" style="cursor: pointer;" onclick="openProjectCollectionModal('verified')" title="Click to view verified EMI breakdown">
+                    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-6 col-12">
+                        <div class="card__wrapper summary-stat-card border-start border-4 border-success h-100 p-2 px-3" style="cursor: pointer;" onclick="openProjectCollectionModal('verified')" title="Click to view verified EMI breakdown">
                             <div class="d-flex align-items-center gap-2">
-                                <div class="card__icon" style="background: rgba(25, 135, 84, 0.1); color: #198754; padding: 8px; border-radius: 8px;">
+                                <div class="card__icon flex-shrink-0" style="background: rgba(25, 135, 84, 0.1); color: #198754; padding: 8px; border-radius: 8px;">
                                     <span><i class="fa-solid fa-circle-check fs-5"></i></span>
                                 </div>
                                 <div class="card__title-wrap">
                                     <h6 class="card__sub-title mb-1 text-muted extra-small text-uppercase fw-bold" style="font-size: 10px;">Verified EMI</h6>
-                                    <h6 class="fw-bold mb-0 text-success fs-15">৳<?= number_format($collectionStats['total_verified_emi_collected'] ?? 0, 2) ?></h6>
-                                    <small class="text-muted extra-small" style="font-size: 9.5px;"><i class="fa-solid fa-hand-pointer me-1"></i>View Breakdown</small>
+                                    <div class="amount-display text-success" title="৳<?= number_format($collectionStats['total_verified_emi_collected'] ?? 0, 2) ?>">৳<?= number_format($collectionStats['total_verified_emi_collected'] ?? 0, 2) ?></div>
+                                    <small class="text-muted extra-small d-block text-truncate" style="font-size: 9.5px;"><i class="fa-solid fa-hand-pointer me-1"></i>View Breakdown</small>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Unverified EMI Collected -->
-                    <div class="col-xxl-2 col-xl-4 col-md-4 col-sm-6">
-                        <div class="card__wrapper border-start border-4 border-warning h-100 p-2 px-3" style="cursor: pointer;" onclick="openProjectCollectionModal('unverified')" title="Click to view unverified EMI breakdown">
+                    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-6 col-12">
+                        <div class="card__wrapper summary-stat-card border-start border-4 border-warning h-100 p-2 px-3" style="cursor: pointer;" onclick="openProjectCollectionModal('unverified')" title="Click to view unverified EMI breakdown">
                             <div class="d-flex align-items-center gap-2">
-                                <div class="card__icon" style="background: rgba(255, 193, 7, 0.1); color: #ffc107; padding: 8px; border-radius: 8px;">
+                                <div class="card__icon flex-shrink-0" style="background: rgba(255, 193, 7, 0.1); color: #ffc107; padding: 8px; border-radius: 8px;">
                                     <span><i class="fa-solid fa-clock-rotate-left fs-5"></i></span>
                                 </div>
                                 <div class="card__title-wrap">
                                     <h6 class="card__sub-title mb-1 text-muted extra-small text-uppercase fw-bold" style="font-size: 10px;">Unverified EMI</h6>
-                                    <h6 class="fw-bold mb-0 text-warning fs-15">৳<?= number_format($collectionStats['total_unverified_emi_collected'] ?? 0, 2) ?></h6>
-                                    <small class="text-muted extra-small" style="font-size: 9.5px;"><i class="fa-solid fa-hand-pointer me-1"></i>View Breakdown</small>
+                                    <div class="amount-display text-warning" title="৳<?= number_format($collectionStats['total_unverified_emi_collected'] ?? 0, 2) ?>">৳<?= number_format($collectionStats['total_unverified_emi_collected'] ?? 0, 2) ?></div>
+                                    <small class="text-muted extra-small d-block text-truncate" style="font-size: 9.5px;"><i class="fa-solid fa-hand-pointer me-1"></i>View Breakdown</small>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Total EMI Due -->
-                    <div class="col-xxl-2 col-xl-4 col-md-4 col-sm-6">
-                        <div class="card__wrapper border-start border-4 border-danger h-100 p-2 px-3" style="cursor: pointer;" onclick="openDueEmisModal()" title="Click to view all clients with due/overdue EMIs">
+                    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-6 col-12">
+                        <div class="card__wrapper summary-stat-card border-start border-4 border-danger h-100 p-2 px-3" style="cursor: pointer;" onclick="openDueEmisModal()" title="Click to view all clients with due/overdue EMIs">
                             <div class="d-flex align-items-center gap-2">
-                                <div class="card__icon" style="background: rgba(220, 53, 69, 0.1); color: #dc3545; padding: 8px; border-radius: 8px;">
+                                <div class="card__icon flex-shrink-0" style="background: rgba(220, 53, 69, 0.1); color: #dc3545; padding: 8px; border-radius: 8px;">
                                     <span><i class="fa-solid fa-triangle-exclamation fs-5"></i></span>
                                 </div>
                                 <div class="card__title-wrap">
                                     <h6 class="card__sub-title mb-1 text-muted extra-small text-uppercase fw-bold" style="font-size: 10px;">Total EMI Due</h6>
-                                    <h6 class="fw-bold mb-0 text-danger fs-15">৳<?= number_format($dueStats['total_due_amount'] ?? 0, 2) ?></h6>
-                                    <small class="text-danger extra-small d-block fw-semibold" style="font-size: 9.5px;">
+                                    <div class="amount-display text-danger" title="৳<?= number_format($dueStats['total_due_amount'] ?? 0, 2) ?>">৳<?= number_format($dueStats['total_due_amount'] ?? 0, 2) ?></div>
+                                    <small class="text-danger extra-small d-block fw-semibold text-truncate" style="font-size: 9.5px;">
                                         <i class="fa-solid fa-users me-1"></i><?= $dueStats['total_due_clients_count'] ?? 0 ?> Clients (<?= $dueStats['total_due_emis_count'] ?? 0 ?> EMIs)
                                     </small>
                                 </div>
@@ -350,24 +483,22 @@ $show_breadcrumb = true;
                 </a>
             </div>
 
-            <div class="table__wrapper table-responsive position-relative">
+            <div class="table__wrapper table-responsive position-relative freeze-table-wrapper">
                 <!-- Loading Overlay -->
-                <div id="cedTableLoadingOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-none justify-content-center align-items-center" style="background: rgba(255,255,255,0.75); z-index: 10; min-height: 150px; border-radius: 8px;">
+                <div id="cedTableLoadingOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-none justify-content-center align-items-center" style="background: rgba(255,255,255,0.75); z-index: 50; min-height: 150px; border-radius: 8px;">
                     <div class="text-center py-4">
                         <div class="spinner-border text-primary" role="status"></div>
                         <div class="small text-muted mt-2 fw-semibold">Loading clients data...</div>
                     </div>
                 </div>
 
-                <table class="table mb-0" id="clientsCedTable">
+                <table class="table mb-0 freeze-table" id="clientsCedTable">
                     <thead>
                         <tr class="table__title table__sort">
-                            <th>Client Name</th>
-                            <th>Company</th>
-                            <th>Phone</th>
-                            <th>Email</th>
-                            <th>Booking Agent(s) & Date</th>
-                            <th>Project & Flats</th>
+                            <th class="col-sticky-name">Client Name</th>
+                            <th class="col-sticky-contact">Phone &amp; Email</th>
+                            <th>Booking Agent(s) &amp; Date</th>
+                            <th>Project &amp; Flats</th>
                             <th>Total Agreement Value</th>
                             <th>Total Paid</th>
                             <th>Last Payment Date</th>

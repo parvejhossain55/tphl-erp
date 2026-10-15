@@ -174,6 +174,11 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                     </option>
                                 <?php endif; ?>
 
+                                <!-- Others (Extra / Incidental Charges) -->
+                                <option value="others" style="font-weight:600; color:#0d6efd;">
+                                    Others (Extra / Incidental Charges — Excluded from Shop Price)
+                                </option>
+
                             </select>
 
                             <!-- Help text -->
@@ -195,6 +200,16 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                     </span>
                                 <?php endif; ?>
                             </small>
+                        </div>
+
+                        <!-- Other Purpose (shown when Others is selected) -->
+                        <div class="col-md-6" id="otherPurposeContainer" style="display:none;">
+                            <div class="from__input-box">
+                                <label class="form__input-title">Payment Purpose / Description <span>*</span></label>
+                                <input type="text" name="other_purpose" id="otherPurpose" class="form-control"
+                                    placeholder="e.g. Utility Connection, Modification, Mutation, Extra Work">
+                                <small class="text-muted">Specify the purpose for this incidental payment (shows in ledger &amp; receipt, not deducted from shop price)</small>
+                            </div>
                         </div>
 
                         <!-- Amount -->
@@ -443,6 +458,19 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
             const paymentTypeValue = paymentType.value;
             let helpText = '';
 
+            // Show Other Purpose input when Others is selected
+            const otherPurposeContainer = document.getElementById('otherPurposeContainer');
+            const otherPurposeInput = document.getElementById('otherPurpose');
+            if (otherPurposeContainer) {
+                if (paymentTypeValue === 'others') {
+                    otherPurposeContainer.style.display = 'block';
+                    if (otherPurposeInput) otherPurposeInput.setAttribute('required', 'required');
+                } else {
+                    otherPurposeContainer.style.display = 'none';
+                    if (otherPurposeInput) otherPurposeInput.removeAttribute('required');
+                }
+            }
+
             switch (paymentTypeValue) {
                 case 'booking_money':
                     if (bookingBalance > 0) {
@@ -509,6 +537,13 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                 case 'emi_due_settlement':
                     helpText = 'Select an EMI above, then enter the amount to settle (≤ remaining due).';
                     amountField.removeAttribute('disabled');
+                    break;
+
+                case 'others':
+                    helpText = 'Others: Extra / incidental charges. This will show in ledger & total paid, but will NOT deduct from shop unit price.';
+                    amountField.removeAttribute('max');
+                    amountField.removeAttribute('disabled');
+                    amountField.setAttribute('placeholder', 'Enter others payment amount');
                     break;
 
                 default:
@@ -776,6 +811,17 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                     alert('Please enter a valid EMI amount.');
                     amountField.focus();
                     return false;
+                }
+
+                // Validation for others
+                if (paymentTypeValue === 'others') {
+                    const purposeInput = document.getElementById('otherPurpose');
+                    if (!purposeInput || !purposeInput.value.trim()) {
+                        e.preventDefault();
+                        alert('Please specify the payment purpose for "Others" (e.g. Utility Connection, Extra Work).');
+                        if (purposeInput) purposeInput.focus();
+                        return false;
+                    }
                 }
 
                 // General

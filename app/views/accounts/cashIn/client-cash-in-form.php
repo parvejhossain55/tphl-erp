@@ -168,6 +168,11 @@ $remainingCF          = max(0, $constructionFee - $emiPaidSoFar - $totalBulkDisc
                                     </option>
                                 <?php endif; ?>
 
+                                <!-- Others (Extra / Incidental Charges) -->
+                                <option value="others" style="font-weight:600; color:#0d6efd;">
+                                    Others (Extra / Incidental Charges — Excluded from Flat Price)
+                                </option>
+
                             </select>
 
                             <!-- Help text -->
@@ -193,6 +198,16 @@ $remainingCF          = max(0, $constructionFee - $emiPaidSoFar - $totalBulkDisc
                                 <input type="number" name="total_booking_money" id="totalBookingMoney" class="form-control" step="1"
                                     min="0" placeholder="Enter target amount" value="<?= $effectiveBookingTarget ?>" required>
                                 <small class="text-muted">Remaining amounts will auto-calculate based on this</small>
+                            </div>
+                        </div>
+
+                        <!-- Other Purpose (shown when Others is selected) -->
+                        <div class="col-md-6" id="otherPurposeContainer" style="display:none;">
+                            <div class="from__input-box">
+                                <label class="form__input-title">Payment Purpose / Description <span>*</span></label>
+                                <input type="text" name="other_purpose" id="otherPurpose" class="form-control"
+                                    placeholder="e.g. Utility Connection, Modification, Mutation, Extra Work">
+                                <small class="text-muted">Specify the purpose for this incidental payment (shows in ledger &amp; receipt, not deducted from flat price)</small>
                             </div>
                         </div>
 
@@ -562,6 +577,19 @@ $remainingCF          = max(0, $constructionFee - $emiPaidSoFar - $totalBulkDisc
                 totalBookingMoneyContainer.style.display = 'none';
             }
 
+            // Show Other Purpose input when Others is selected
+            const otherPurposeContainer = document.getElementById('otherPurposeContainer');
+            const otherPurposeInput = document.getElementById('otherPurpose');
+            if (otherPurposeContainer) {
+                if (paymentTypeValue === 'others') {
+                    otherPurposeContainer.style.display = 'block';
+                    if (otherPurposeInput) otherPurposeInput.setAttribute('required', 'required');
+                } else {
+                    otherPurposeContainer.style.display = 'none';
+                    if (otherPurposeInput) otherPurposeInput.removeAttribute('required');
+                }
+            }
+
             switch (paymentTypeValue) {
                 case 'booking_money':
                     if (remainingBooking > 0) {
@@ -621,6 +649,13 @@ $remainingCF          = max(0, $constructionFee - $emiPaidSoFar - $totalBulkDisc
                 case 'emi_due_settlement':
                     helpText = 'Select an EMI above, then enter the amount to settle (≤ remaining due).';
                     amountField.removeAttribute('disabled');
+                    break;
+
+                case 'others':
+                    helpText = 'Others: Extra / incidental charges. This will show in ledger & total paid, but will NOT deduct from flat price.';
+                    amountField.removeAttribute('max');
+                    amountField.removeAttribute('disabled');
+                    amountField.setAttribute('placeholder', 'Enter others payment amount');
                     break;
 
                 default:
@@ -977,6 +1012,17 @@ $remainingCF          = max(0, $constructionFee - $emiPaidSoFar - $totalBulkDisc
                         e.preventDefault();
                         alert('Registration amount cannot exceed remaining: TK.' + remainingReg.toFixed(2));
                         amountField.focus();
+                        return false;
+                    }
+                }
+
+                // Validation for others
+                if (paymentTypeValue === 'others') {
+                    const purposeInput = document.getElementById('otherPurpose');
+                    if (!purposeInput || !purposeInput.value.trim()) {
+                        e.preventDefault();
+                        alert('Please specify the payment purpose for "Others" (e.g. Utility Connection, Extra Work).');
+                        if (purposeInput) purposeInput.focus();
                         return false;
                     }
                 }

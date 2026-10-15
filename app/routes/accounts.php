@@ -39,10 +39,15 @@ return [
     // Controller: AccountClientController
     // =========================================================================
     'clients-cash-in' => ['controller' => 'AccountClientController', 'method' => 'index'],
+    'client-wise-due-tracking' => ['controller' => 'AccountClientController', 'method' => 'dueTracking'],
+    'client-due-tracking' => ['controller' => 'AccountClientController', 'method' => 'dueTracking'],
+    'client-wise-due-tracking-export' => ['controller' => 'AccountClientController', 'method' => 'exportDueTracking'],
     'get-client-lands' => ['controller' => 'AccountClientController', 'method' => 'getClientLands'],
     'get-client-profile' => ['controller' => 'AccountClientController', 'method' => 'getClientProfile'],
     'clients-cash-in-history' => ['controller' => 'AccountClientController', 'method' => 'indexTwo'],
     'clients-cash-in-history/(\d+)' => ['controller' => 'AccountClientController', 'method' => 'indexTwo'],
+    'client-emi-tracking' => ['controller' => 'AccountClientController', 'method' => 'clientEmiTracking'],
+    'client-emi-tracking/(\d+)' => ['controller' => 'AccountClientController', 'method' => 'clientEmiTracking'],
     'update-booking-info' => ['controller' => 'AccountClientController', 'method' => 'updateBookingInfo'],
     'update-shop-service-charge' => ['controller' => 'AccountClientController', 'method' => 'updateShopServiceCharge'],
     'add-transaction' => ['controller' => 'AccountClientController', 'method' => 'addTransaction'],
