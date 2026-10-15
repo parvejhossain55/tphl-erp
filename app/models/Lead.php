@@ -6,7 +6,34 @@ class Lead extends Model
 
     public function __construct($db = null)
     {
-        return parent::__construct($db);
+        parent::__construct($db);
+        $this->ensureDeleteRequestsTable();
+    }
+
+    public function ensureDeleteRequestsTable()
+    {
+        static $checked = false;
+        if ($checked) return;
+        $checked = true;
+
+        if ($this->db) {
+            $this->db->query("CREATE TABLE IF NOT EXISTS `lead_delete_requests` (
+              `id` INT AUTO_INCREMENT PRIMARY KEY,
+              `lead_id` INT NOT NULL,
+              `requested_by` INT NOT NULL,
+              `team_id` INT DEFAULT 0,
+              `reason` TEXT NOT NULL,
+              `status` ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+              `action_by` INT DEFAULT NULL,
+              `action_at` DATETIME DEFAULT NULL,
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              INDEX (`lead_id`),
+              INDEX (`requested_by`),
+              INDEX (`team_id`),
+              INDEX (`status`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+        }
     }
 
     public function findDuplicate($name, $phone)
@@ -633,6 +660,14 @@ class Lead extends Model
         }
 
         $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            $this->ensureDeleteRequestsTable();
+            $stmt = $this->db->prepare($sql);
+            if (!$stmt) {
+                error_log("LeadModel countAllWithFilter prepare failed: " . $this->db->error);
+                return 0;
+            }
+        }
         if (!empty($params)) {
             $stmt->bind_param($types, ...$params);
         }
@@ -995,6 +1030,14 @@ class Lead extends Model
         }
 
         $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            $this->ensureDeleteRequestsTable();
+            $stmt = $this->db->prepare($sql);
+            if (!$stmt) {
+                error_log("LeadModel getAllWithFilter prepare failed: " . $this->db->error);
+                return [];
+            }
+        }
 
         if (!empty($params)) {
             $stmt->bind_param($types, ...$params);
