@@ -353,9 +353,9 @@ class Lead extends Model
 
         // Hide leads that belong to Role 33 and 35's teams from other sales users (like Role 5 and 9)
         $loggedInRole = $_SESSION['user']['role_id'] ?? 0;
-        if (!in_array((int)$loggedInRole, [1, 3, 33, 35])) {
-            $sql .= " AND (l.team_id IS NULL OR l.team_id NOT IN (
-                SELECT e.team_id FROM employees e JOIN users u ON u.id = e.user_id WHERE u.role_id IN (33, 35) AND e.team_id IS NOT NULL
+        if (!in_array((int)$loggedInRole, [1, 3, 9, 32, 33, 34, 35])) {
+            $sql .= " AND (l.team_id IS NULL OR l.team_id = 0 OR l.team_id NOT IN (
+                SELECT e.team_id FROM employees e JOIN users u ON u.id = e.user_id WHERE u.role_id IN (33, 35) AND e.team_id IS NOT NULL AND e.team_id > 0
             ))";
         }
 
@@ -363,11 +363,12 @@ class Lead extends Model
         if (!empty($teamId)) {
             if (isset($_SESSION['user']['role_id']) && !in_array($_SESSION['user']['role_id'], [1, 3, 9, 32, 33, 34, 35])) {
                 $loggedInUserId = $_SESSION['user']['id'] ?? 0;
-                $sql .= " AND (l.team_id = ? OR l.assigned_id = ? OR l.created_by = ?)";
+                $sql .= " AND (l.team_id = ? OR l.assigned_id = ? OR l.created_by = ? OR l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?))";
                 $params[] = $teamId;
                 $params[] = $loggedInUserId;
                 $params[] = $loggedInUserId;
-                $types .= "iii";
+                $params[] = $teamId;
+                $types .= "iiii";
             } else {
                 $sql .= " AND l.team_id = ?";
                 $params[] = $teamId;
@@ -420,9 +421,13 @@ class Lead extends Model
 
         // Last action filter
         if (!empty($lastAction)) {
-            $sql .= " AND l.last_lead_action = ?";
-            $params[] = $lastAction;
-            $types .= "s";
+            if (strtolower($lastAction) === 'irrelevant') {
+                $sql .= " AND (l.lead_type = 'Irrelevant' OR EXISTS (SELECT 1 FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.lead_status = 'Irrelevant' AND lf_sub.deleted_at IS NULL))";
+            } else {
+                $sql .= " AND l.last_lead_action = ?";
+                $params[] = $lastAction;
+                $types .= "s";
+            }
         }
 
         // Assigned filter
@@ -554,6 +559,25 @@ class Lead extends Model
                 $sql .= " AND (l.assigned_id IS NULL OR l.assigned_id = 0)";
             } elseif ($filter_card === 'has_follow_up') {
                 $sql .= " AND EXISTS (SELECT 1 FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.deleted_at IS NULL)";
+            } elseif ($filter_card === 'irrelevant_leads' || $filter_card === 'irrelevant') {
+                $sql .= " AND (l.lead_type = 'Irrelevant' OR EXISTS (SELECT 1 FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.lead_status = 'Irrelevant' AND lf_sub.deleted_at IS NULL))";
+            } elseif ($filter_card === 'delete_requests' || $filter_card === 'delete_request') {
+                $loggedInRole = $_SESSION['user']['role_id'] ?? 0;
+                $loggedInUserId = $_SESSION['user']['id'] ?? 0;
+                if (in_array((int)$loggedInRole, [1, 3, 9, 32, 33, 34, 35])) {
+                    $sql .= " AND EXISTS (SELECT 1 FROM lead_delete_requests ldr WHERE ldr.lead_id = l.id AND ldr.status = 'pending')";
+                } elseif (!empty($teamId)) {
+                    $sql .= " AND EXISTS (SELECT 1 FROM lead_delete_requests ldr WHERE ldr.lead_id = l.id AND ldr.status = 'pending' AND (ldr.team_id = ? OR l.team_id = ? OR ldr.requested_by = ? OR l.assigned_id = ? OR l.created_by = ? OR l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?)))";
+                    $params[] = $teamId;
+                    $params[] = $teamId;
+                    $params[] = $loggedInUserId;
+                    $params[] = $loggedInUserId;
+                    $params[] = $loggedInUserId;
+                    $params[] = $teamId;
+                    $types .= "iiiiii";
+                } else {
+                    $sql .= " AND EXISTS (SELECT 1 FROM lead_delete_requests ldr WHERE ldr.lead_id = l.id AND ldr.status = 'pending')";
+                }
             }
         }
 
@@ -635,7 +659,10 @@ class Lead extends Model
         lf.next_action,
         lf.follow_up_type,
         lf.next_follow_up_date,
-        lf.discussion_note
+        lf.discussion_note,
+        ldr.delete_request_reason,
+        ldr.delete_requested_at,
+        ldr.delete_requested_by_name
     FROM leads AS l
     LEFT JOIN users AS u ON l.assigned_id = u.id
     LEFT JOIN users AS u_by ON l.created_by = u_by.id
@@ -656,6 +683,14 @@ class Lead extends Model
             WHERE lb2.lead_id = lb1.lead_id
         )
     ) lb ON lb.lead_id = l.id
+    LEFT JOIN (
+        SELECT ldr1.lead_id, ldr1.reason AS delete_request_reason, ldr1.created_at AS delete_requested_at, u_ldr.full_name AS delete_requested_by_name
+        FROM lead_delete_requests ldr1
+        LEFT JOIN users u_ldr ON u_ldr.id = ldr1.requested_by
+        WHERE ldr1.status = 'pending' AND ldr1.id = (
+            SELECT MAX(ldr2.id) FROM lead_delete_requests ldr2 WHERE ldr2.lead_id = ldr1.lead_id AND ldr2.status = 'pending'
+        )
+    ) ldr ON ldr.lead_id = l.id
     LEFT JOIN projects AS p ON lb.project_id = p.id
     LEFT JOIN projects AS lp ON l.project_id = lp.id
     LEFT JOIN project_categories AS lpc ON l.project_category_id = lpc.id
@@ -669,9 +704,9 @@ class Lead extends Model
 
         // Hide leads that belong to Role 33 and 35's teams from other sales users (like Role 5 and 9)
         $loggedInRole = $_SESSION['user']['role_id'] ?? 0;
-        if (!in_array((int)$loggedInRole, [1, 3, 33, 35])) {
-            $sql .= " AND (l.team_id IS NULL OR l.team_id NOT IN (
-                SELECT e.team_id FROM employees e JOIN users u ON u.id = e.user_id WHERE u.role_id IN (33, 35) AND e.team_id IS NOT NULL
+        if (!in_array((int)$loggedInRole, [1, 3, 9, 32, 33, 34, 35])) {
+            $sql .= " AND (l.team_id IS NULL OR l.team_id = 0 OR l.team_id NOT IN (
+                SELECT e.team_id FROM employees e JOIN users u ON u.id = e.user_id WHERE u.role_id IN (33, 35) AND e.team_id IS NOT NULL AND e.team_id > 0
             ))";
         }
 
@@ -679,11 +714,12 @@ class Lead extends Model
         if (!empty($teamId)) {
             if (isset($_SESSION['user']['role_id']) && !in_array($_SESSION['user']['role_id'], [1, 3, 9, 32, 33, 34, 35])) {
                 $loggedInUserId = $_SESSION['user']['id'] ?? 0;
-                $sql .= " AND (l.team_id = ? OR l.assigned_id = ? OR l.created_by = ?)";
+                $sql .= " AND (l.team_id = ? OR l.assigned_id = ? OR l.created_by = ? OR l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?))";
                 $params[] = $teamId;
                 $params[] = $loggedInUserId;
                 $params[] = $loggedInUserId;
-                $types .= "iii";
+                $params[] = $teamId;
+                $types .= "iiii";
             } else {
                 $sql .= " AND l.team_id = ?";
                 $params[] = $teamId;
@@ -736,9 +772,13 @@ class Lead extends Model
 
         //  Last action filter
         if (!empty($lastAction)) {
-            $sql .= " AND l.last_lead_action = ?";
-            $params[] = $lastAction;
-            $types .= "s";
+            if (strtolower($lastAction) === 'irrelevant') {
+                $sql .= " AND (l.lead_type = 'Irrelevant' OR EXISTS (SELECT 1 FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.lead_status = 'Irrelevant' AND lf_sub.deleted_at IS NULL))";
+            } else {
+                $sql .= " AND l.last_lead_action = ?";
+                $params[] = $lastAction;
+                $types .= "s";
+            }
         }
 
         // Assigned filter
@@ -869,6 +909,25 @@ class Lead extends Model
                 $sql .= " AND (l.assigned_id IS NULL OR l.assigned_id = 0)";
             } elseif ($filter_card === 'has_follow_up') {
                 $sql .= " AND EXISTS (SELECT 1 FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.deleted_at IS NULL)";
+            } elseif ($filter_card === 'irrelevant_leads' || $filter_card === 'irrelevant') {
+                $sql .= " AND (l.lead_type = 'Irrelevant' OR EXISTS (SELECT 1 FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.lead_status = 'Irrelevant' AND lf_sub.deleted_at IS NULL))";
+            } elseif ($filter_card === 'delete_requests' || $filter_card === 'delete_request') {
+                $loggedInRole = $_SESSION['user']['role_id'] ?? 0;
+                $loggedInUserId = $_SESSION['user']['id'] ?? 0;
+                if (in_array((int)$loggedInRole, [1, 3, 9, 32, 33, 34, 35])) {
+                    $sql .= " AND EXISTS (SELECT 1 FROM lead_delete_requests ldr WHERE ldr.lead_id = l.id AND ldr.status = 'pending')";
+                } elseif (!empty($teamId)) {
+                    $sql .= " AND EXISTS (SELECT 1 FROM lead_delete_requests ldr WHERE ldr.lead_id = l.id AND ldr.status = 'pending' AND (ldr.team_id = ? OR l.team_id = ? OR ldr.requested_by = ? OR l.assigned_id = ? OR l.created_by = ? OR l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?)))";
+                    $params[] = $teamId;
+                    $params[] = $teamId;
+                    $params[] = $loggedInUserId;
+                    $params[] = $loggedInUserId;
+                    $params[] = $loggedInUserId;
+                    $params[] = $teamId;
+                    $types .= "iiiiii";
+                } else {
+                    $sql .= " AND EXISTS (SELECT 1 FROM lead_delete_requests ldr WHERE ldr.lead_id = l.id AND ldr.status = 'pending')";
+                }
             }
         }
 
@@ -1331,9 +1390,10 @@ class Lead extends Model
             }
         }
         if (!empty($lead_status)) {
-            $sql .= " AND lf.lead_status = ?";
+            $sql .= " AND (lf.lead_status = ? OR leads.lead_type = ?)";
             $params[] = $lead_status;
-            $types .= "s";
+            $params[] = $lead_status;
+            $types .= "ss";
         }
 
         if ($only_missing_followup) {
@@ -1441,6 +1501,8 @@ class Lead extends Model
                 $sql .= " AND LOWER(leads.last_lead_action) = 'booked'";
             } elseif ($filter_card === 'upcoming_follow_ups') {
                 $sql .= " AND lf.next_follow_up_date IS NOT NULL AND DATE(lf.next_follow_up_date) >= CURDATE()";
+            } elseif ($filter_card === 'irrelevant_leads' || $filter_card === 'irrelevant') {
+                $sql .= " AND (leads.lead_type = 'Irrelevant' OR lf.lead_status = 'Irrelevant')";
             }
         }
 
@@ -1548,9 +1610,10 @@ class Lead extends Model
             }
         }
         if (!empty($lead_status)) {
-            $sql .= " AND lf.lead_status = ?";
+            $sql .= " AND (lf.lead_status = ? OR leads.lead_type = ?)";
             $params[] = $lead_status;
-            $types .= "s";
+            $params[] = $lead_status;
+            $types .= "ss";
         }
 
         if ($only_missing_followup) {
@@ -1655,6 +1718,8 @@ class Lead extends Model
                 $sql .= " AND LOWER(leads.last_lead_action) = 'booked'";
             } elseif ($filter_card === 'upcoming_follow_ups') {
                 $sql .= " AND lf.next_follow_up_date IS NOT NULL AND DATE(lf.next_follow_up_date) >= CURDATE()";
+            } elseif ($filter_card === 'irrelevant_leads' || $filter_card === 'irrelevant') {
+                $sql .= " AND (leads.lead_type = 'Irrelevant' OR lf.lead_status = 'Irrelevant')";
             }
         }
 
@@ -1681,7 +1746,8 @@ class Lead extends Model
             SUM(CASE WHEN NOT {$contactedCond} THEN 1 ELSE 0 END) as not_contacted_leads,
             SUM(CASE WHEN LOWER(leads.last_lead_action) = 'booked' THEN 1 ELSE 0 END) as booked_leads,
             SUM(CASE WHEN lf.next_follow_up_date IS NOT NULL AND DATE(lf.next_follow_up_date) >= CURDATE() THEN 1 ELSE 0 END) as upcoming_follow_ups,
-            SUM(CASE WHEN lf.next_follow_up_date IS NOT NULL AND lf.next_follow_up_date > '1000-01-01' AND DATE(lf.next_follow_up_date) <= CURDATE() AND lf.deleted_at IS NULL THEN 1 ELSE 0 END) as missing_follow_ups
+            SUM(CASE WHEN lf.next_follow_up_date IS NOT NULL AND lf.next_follow_up_date > '1000-01-01' AND DATE(lf.next_follow_up_date) <= CURDATE() AND lf.deleted_at IS NULL THEN 1 ELSE 0 END) as missing_follow_ups,
+            SUM(CASE WHEN (leads.lead_type = 'Irrelevant' OR lf.lead_status = 'Irrelevant') THEN 1 ELSE 0 END) as irrelevant_leads
         FROM leads
         LEFT JOIN (
             SELECT t1.*
@@ -1754,9 +1820,10 @@ class Lead extends Model
             }
         }
         if (!empty($lead_status)) {
-            $sql .= " AND lf.lead_status = ?";
+            $sql .= " AND (lf.lead_status = ? OR leads.lead_type = ?)";
             $params[] = $lead_status;
-            $types .= "s";
+            $params[] = $lead_status;
+            $types .= "ss";
         }
 
         if (!empty($projectId)) {
@@ -2411,7 +2478,7 @@ class Lead extends Model
 
         // Lead Type (Enum-safe)
         $lead_type            = $nn('lead_type');
-        $validLeadTypes = ['No Response', 'Pending', 'Prospect', 'High Prospect', 'Will Visit', 'Visited', 'Sold', 'Lead Transferred', 'Project Transferred', 'Not Interested', "Don't Call Again", 'Refund', 'Future', 'Cold', 'Hot', 'Warm'];
+        $validLeadTypes = ['No Response', 'Pending', 'Prospect', 'High Prospect', 'Will Visit', 'Visited', 'Sold', 'Lead Transferred', 'Project Transferred', 'Not Interested', "Don't Call Again", 'Refund', 'Future', 'Cold', 'Hot', 'Warm', 'Irrelevant'];
         if (!empty($lead_type) && !in_array($lead_type, $validLeadTypes)) {
             $lead_type = null;
         }
@@ -4038,6 +4105,23 @@ class Lead extends Model
         $stmt->execute();
         $res = $stmt->get_result();
         return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+    /**
+     * Get pending delete requests for a list of lead IDs
+     */
+    public function getPendingDeleteRequestsByLeadIds(array $leadIds): array
+    {
+        if (empty($leadIds)) return [];
+        $idsStr = implode(',', array_map('intval', $leadIds));
+        $res = $this->db->query("SELECT * FROM lead_delete_requests WHERE lead_id IN ($idsStr) AND status = 'pending'");
+        $data = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $data[$row['lead_id']] = $row;
+            }
+        }
+        return $data;
     }
 }
 

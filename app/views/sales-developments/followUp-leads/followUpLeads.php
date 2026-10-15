@@ -115,7 +115,7 @@ $show_breadcrumb = true;
                                 'No Response', 'Pending', 'Prospect', 'High Prospect', 
                                 'Will Visit', 'Visited', 'Sold', 'Lead Transferred', 
                                 'Project Transferred', 'Not Interested', 'Don\'t Call Again', 
-                                'Refund', 'Future', 'Cold', 'Hot', 'Warm'
+                                'Refund', 'Future', 'Cold', 'Hot', 'Warm', 'Irrelevant'
                             ];
                             foreach($statuses as $st) {
                                 echo "<option value=\"$st\">$st</option>";

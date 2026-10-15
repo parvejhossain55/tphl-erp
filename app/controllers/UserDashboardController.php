@@ -149,6 +149,7 @@ class UserDashboardController extends Controller
             }
         }
 
+        $deleteRequests = !empty($leadIds) ? $this->leadModel->getPendingDeleteRequestsByLeadIds($leadIds) : [];
         $transferableUsers = $this->userModel->getSalesTransferableUsers();
 
         $this->view("sales-executive/today-leads", [
@@ -157,6 +158,7 @@ class UserDashboardController extends Controller
             "todayLeads"    => $todayLeads,
             "followUpCounts" => $followUpCounts,
             "followUpHistories" => $followUpHistories,
+            "deleteRequests" => $deleteRequests,
             "bookingCount"    => $bookingCount,
             "todayFollowUp"    => $todayFollowUp,
             "phoneMap"        => $phoneMap,
@@ -644,6 +646,9 @@ class UserDashboardController extends Controller
             }
         }
 
+        // Fetch pending delete requests for user's leads
+        $deleteRequests = !empty($leadIds) ? $this->leadModel->getPendingDeleteRequestsByLeadIds($leadIds) : [];
+
         // Calculate card statistics efficiently
         $summaryCards = $this->leadModel->getMyAssignedLeadsSummaryCards($userId, $year, $month, $lastAction, $lead_status, $onlyMissingFollowup, $search, $followup_date, $filterCard, $filterProjectId, $filterCategoryId, $filterCountry, $assignedHours, $from_date, $to_date, $uncontacted);
         $totalLeadsCount        = (int)($summaryCards['total_leads'] ?? 0);
@@ -652,6 +657,7 @@ class UserDashboardController extends Controller
         $bookedLeadsCount       = (int)($summaryCards['booked_leads'] ?? 0);
         $upcomingFollowUpsCount = (int)($summaryCards['upcoming_follow_ups'] ?? 0);
         $missingFollowUpCount   = (int)($summaryCards['missing_follow_ups'] ?? 0);
+        $irrelevantLeadsCount   = (int)($summaryCards['irrelevant_leads'] ?? 0);
 
         // ── Duplicate Leads Detection (Optimized JOIN Query) ───────────────────
         $duplicateGroups = [];
@@ -843,6 +849,7 @@ class UserDashboardController extends Controller
             'followUpHistories'   => $followUpHistories,
             'selectedAction'      => $lastAction,
             'selectedLeadStatus'  => $lead_status,
+            'deleteRequests'      => $deleteRequests,
             'duplicateGroups'     => $duplicateGroups,
             'duplicateCount'      => $duplicateCount,
             'missingFollowUpCount'=> $missingFollowUpCount,
@@ -862,6 +869,7 @@ class UserDashboardController extends Controller
             'notCalledLeadsCount'    => $notContactedLeadsCount,
             'bookedLeadsCount'       => $bookedLeadsCount,
             'upcomingFollowUpsCount' => $upcomingFollowUpsCount,
+            'irrelevantLeadsCount'   => $irrelevantLeadsCount,
             'search'              => $search,
             'followup_date'       => $followup_date,
             'filterCard'          => $filterCard,

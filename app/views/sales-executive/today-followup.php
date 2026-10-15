@@ -313,7 +313,7 @@
                                     'No Response', 'Pending', 'Prospect', 'High Prospect', 
                                     'Will Visit', 'Visited', 'Sold', 'Lead Transferred', 
                                     'Project Transferred', 'Not Interested', 'Don\'t Call Again', 
-                                    'Refund', 'Future', 'Cold', 'Hot', 'Warm'
+                                    'Refund', 'Future', 'Cold', 'Hot', 'Warm', 'Irrelevant'
                                 ];
                                 foreach($statuses as $st) {
                                     echo "<option value=\"$st\">$st</option>";
@@ -407,6 +407,8 @@
                                 <th>Follow Up Date</th>
                                 <th>Follow Up Time</th>
                                 <th>Type</th>
+                                <th>Lead Status</th>
+                                <th>Follow Up Status</th>
                                 <th>Discussion Note</th>
                                 <th>Next Follow Up</th>
                                 <th>Next Action</th>
@@ -416,7 +418,7 @@
                         </thead>
                         <tbody id="createModalHistoryBody">
                             <tr>
-                                <td colspan="12" class="text-center text-muted">Loading history...</td>
+                                <td colspan="14" class="text-center text-muted">Loading history...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -525,6 +527,22 @@ document.addEventListener('DOMContentLoaded', function() {
                             actionHtml = `<span class="badge bg-light text-muted border py-1 px-2" title="Only the creator can edit this follow up"><i class="fa-solid fa-lock me-1"></i> No Access</span>`;
                         }
 
+                        let lsBadge = '<span class="text-muted">—</span>';
+                        if (item.lead_status) {
+                            let lsCls = 'bg-secondary text-white';
+                            if (item.lead_status === 'Prospect' || item.lead_status === 'High Prospect') lsCls = 'bg-success text-white';
+                            else if (item.lead_status === 'Hot') lsCls = 'bg-danger text-white';
+                            else if (item.lead_status === 'Warm') lsCls = 'bg-warning text-dark';
+                            else if (item.lead_status === 'Irrelevant') lsCls = 'bg-dark text-white';
+                            else if (item.lead_status === 'Cold' || item.lead_status === 'Not Interested' || item.lead_status === "Don't Call Again") lsCls = 'bg-secondary text-white';
+                            lsBadge = `<span class="badge ${lsCls} px-2 py-1">${escapeHtml(item.lead_status)}</span>`;
+                        }
+
+                        let fuStatusBadge = '<span class="badge bg-warning text-dark">Pending</span>';
+                        if (item.status === 'completed') fuStatusBadge = '<span class="badge bg-success text-white">Completed</span>';
+                        else if (item.status === 'missed') fuStatusBadge = '<span class="badge bg-danger text-white">Missed</span>';
+                        else if (item.status === 'canceled') fuStatusBadge = '<span class="badge bg-secondary text-white">Canceled</span>';
+
                         html += `<tr>
                             <td>${item.id || ''}</td>
                             <td>${escapeHtml(item.lead_name || '')}</td>
@@ -533,6 +551,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             <td>${item.follow_up_date || ''}</td>
                             <td>${item.follow_up_time || ''}</td>
                             <td>${escapeHtml(item.follow_up_type || '')}</td>
+                            <td>${lsBadge}</td>
+                            <td>${fuStatusBadge}</td>
                             <td title="${escapeHtml(item.discussion_note || '')}">${escapeHtml(item.discussion_note || '')}</td>
                             <td>${item.next_follow_up_date || ''}</td>
                             <td>${escapeHtml(item.next_action || '')}</td>
@@ -549,7 +569,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         $(`.create-followup-btn[data-lead-id="${leadId}"]`).append(`<span class="action-badge">${data.length}</span>`);
                     }
                 } else {
-                    html = '<tr><td colspan="12" class="text-center text-muted">No history found.</td></tr>';
+                    html = '<tr><td colspan="14" class="text-center text-muted">No history found.</td></tr>';
                 }
                 tbody.html(html);
             })
