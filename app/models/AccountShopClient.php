@@ -115,6 +115,23 @@ class AccountShopClient extends AccountClient
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
                      WHERE {$lpTrash}lp.booking_id = lb.id 
+                     AND lp.payment_type = 'others'
+                     AND lp.payment_status IN ('paid','partially_paid')
+                     AND lp.verification_status = 'verified'), 
+                    0
+                ) as others_paid,
+                COALESCE(
+                    (SELECT SUM(lp.amount) 
+                     FROM lead_payments lp 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
+                     AND lp.payment_type = 'others'
+                     AND lp.verification_status != 'rejected'), 
+                    0
+                ) as others_paid_total,
+                COALESCE(
+                    (SELECT SUM(lp.amount) 
+                     FROM lead_payments lp 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
                      AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.verification_status = 'verified'
                      AND lp.payment_type = 'registration'), 
@@ -305,7 +322,12 @@ class AccountShopClient extends AccountClient
 
             $isRegistrationPaid = ($registrationPaid > 0);
 
-            $totalDue     = max(0, round($totalPrice - $discountAmount - $totalPaid - $totalBulkEmiDiscount));
+            $othersPaid                 = (float) ($clientDetails['others_paid'] ?? 0);
+            $othersPaidTotal            = (float) ($clientDetails['others_paid_total'] ?? $othersPaid);
+
+            // Note: Payments under 'others' are outside shop unit price and DO NOT reduce flat/shop due
+            $unitPaid     = max(0, $totalPaid - $othersPaid);
+            $totalDue     = max(0, round($totalPrice - $discountAmount - $unitPaid - $totalBulkEmiDiscount));
             $netReceived  = round($totalPaid - $totalServiceFee);
             $totalEmiDue  = (float) ($clientDetails['total_emi_due'] ?? 0);
 
@@ -413,6 +435,8 @@ class AccountShopClient extends AccountClient
             $clientDetails['construction_fee_paid_after_service']  = $constructionFeePaid;
             $clientDetails['remaining_construction_fee']           = $remainingConstructionFee;
             $clientDetails['total_due']                            = $totalDue;
+            $clientDetails['others_paid']                          = $othersPaid;
+            $clientDetails['others_paid_total']                    = $othersPaidTotal;
             $clientDetails['net_received']                         = $netReceived;
             $clientDetails['total_emi_due']                        = $totalEmiDue;
             $clientDetails['total_bulk_emi_discount']              = $totalBulkEmiDiscount;
@@ -521,6 +545,8 @@ class AccountShopClient extends AccountClient
             'construction_fee_paid_after_service'  => $clientDetails['construction_fee_paid_after_service'],
             'remaining_construction_fee'           => $clientDetails['remaining_construction_fee'],
             'total_paid'                           => $clientDetails['total_paid'],
+            'others_paid'                          => $clientDetails['others_paid'] ?? 0,
+            'others_paid_total'                    => $clientDetails['others_paid_total'] ?? 0,
             'total_due'                            => $clientDetails['total_due'],
             'total_emi_due'                        => $clientDetails['total_emi_due'],
             'total_bulk_emi_discount'              => $clientDetails['total_bulk_emi_discount'],

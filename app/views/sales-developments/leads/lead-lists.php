@@ -1710,6 +1710,7 @@ document.addEventListener('DOMContentLoaded', function() {
 let selectedLeadsSet = new Set();
 let updateAssignUIData;
 const isManagementUser = <?= $isManagement ? 'true' : 'false' ?>;
+const activeCardFilter = '<?= htmlspecialchars($activeCard, ENT_QUOTES, 'UTF-8') ?>';
 
 document.addEventListener('DOMContentLoaded', function () {
 
@@ -1729,14 +1730,36 @@ document.addEventListener('DOMContentLoaded', function () {
         if (countEl)       countEl.innerText       = count;
         if (countMobileEl) countMobileEl.innerText = count;
 
+        // Bulk delete visibility:
+        // 1. Management can ALWAYS bulk delete any selected leads
+        // 2. Sales Manager and Sales Head can ONLY bulk delete if in delete_requests card OR if all selected leads have delete requests!
+        let canBulkDelete = false;
+        if (isManagementUser) {
+            canBulkDelete = any;
+        } else if (any) {
+            if (activeCardFilter === 'delete_requests') {
+                canBulkDelete = true;
+            } else {
+                let allHaveReq = true;
+                for (let id of selectedLeadsSet) {
+                    const cb = document.querySelector(`.selectedId[data-id="${id}"], .selectedIdMobile[data-id="${id}"]`);
+                    if (!cb || cb.getAttribute('data-has-delete-request') !== '1') {
+                        allHaveReq = false;
+                        break;
+                    }
+                }
+                canBulkDelete = allHaveReq;
+            }
+        }
+
         const bulkDelBtn = document.getElementById('bulkDeleteLeadsBtn');
         const bulkDelCount = document.getElementById('bulkDeleteCount');
-        if (bulkDelBtn) bulkDelBtn.style.display = any ? 'inline-block' : 'none';
+        if (bulkDelBtn) bulkDelBtn.style.display = canBulkDelete ? 'inline-block' : 'none';
         if (bulkDelCount) bulkDelCount.innerText = count;
 
         const bulkDelBtnMobile = document.getElementById('bulkDeleteLeadsBtnMobile');
         const bulkDelCountMobile = document.getElementById('bulkDeleteCountMobile');
-        if (bulkDelBtnMobile) bulkDelBtnMobile.style.display = any ? 'block' : 'none';
+        if (bulkDelBtnMobile) bulkDelBtnMobile.style.display = canBulkDelete ? 'block' : 'none';
         if (bulkDelCountMobile) bulkDelCountMobile.innerText = count;
     };
 
@@ -2313,7 +2336,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <div class="lead-card-header d-flex justify-content-between align-items-start gap-1">
               <div class="flex-grow-1 overflow-hidden">
                 <div class="d-flex align-items-center gap-1">
-                  <input type="checkbox" class="selectedIdMobile me-1" data-id="${lead.id}">
+                  <input type="checkbox" class="selectedIdMobile me-1" data-id="${lead.id}" data-has-delete-request="${lead.delete_request_reason ? '1' : '0'}">
                   <span class="lead-name text-truncate">${name}</span>
                 </div>
                 ${jobCompanyStr}

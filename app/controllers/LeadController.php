@@ -526,8 +526,9 @@ class LeadController extends Controller
             $row = [];
             $row['DT_RowId'] = 'lead-' . $lead['id'];
 
+            $hasDelReq = !empty($lead['delete_request_reason']) ? '1' : '0';
             $row[] = '
-                <input type="checkbox" class="me-2 selectedId" data-id="' . $lead['id'] . '">
+                <input type="checkbox" class="me-2 selectedId" data-id="' . $lead['id'] . '" data-has-delete-request="' . $hasDelReq . '">
                 ' . ($start + $key + 1) . '
             ';
 
@@ -2550,8 +2551,21 @@ class LeadController extends Controller
             exit;
         }
 
+        $isManagementUser = in_array($userRoleId, [1, 3, 33, 34], true) 
+            || in_array($userRoleName, ['super admin', 'admin', 'management', 'chief officer', 'seal ceo'], true);
+
         $deletedCount = 0;
         foreach ($ids as $leadId) {
+            // For non-management (Sales Manager, Sales Head), ONLY leads with pending delete requests can be deleted
+            if (!$isManagementUser) {
+                $reqStmt = $this->db->prepare("SELECT id FROM lead_delete_requests WHERE lead_id = ? AND status = 'pending' LIMIT 1");
+                $reqStmt->bind_param("i", $leadId);
+                $reqStmt->execute();
+                if ($reqStmt->get_result()->num_rows === 0) {
+                    continue; // Skip: cannot delete without pending delete request
+                }
+            }
+
             // If Sales Manager with a team, check if lead belongs to their team / assigned to their team / assigned to them
             if ($userRoleId === 5 && !empty($userTeamId)) {
                 $checkStmt = $this->db->prepare("

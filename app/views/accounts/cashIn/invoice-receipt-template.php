@@ -310,6 +310,76 @@ if (empty($logoSrc)) {
             margin-top: 1px;
         }
 
+        /* META STATUS & QR ROW */
+        .meta-status-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .header-qr-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3px 6px 4px 6px;
+            background: #ffffff;
+            border: 1px solid #bbf7d0;
+            border-radius: 6px;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+            flex-shrink: 0;
+        }
+
+        .header-qr-card:hover {
+            border-color: #10b981;
+            transform: translateY(-1px);
+            box-shadow: 0 3px 6px rgba(16, 185, 129, 0.15);
+        }
+
+        .hqr-img-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-qr-img {
+            width: 42px;
+            height: 42px;
+            object-fit: contain;
+            display: block;
+        }
+
+        .header-qr-img.qr-placeholder {
+            width: 42px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            color: #0b6638;
+            background: #f0fdf4;
+            border-radius: 3px;
+        }
+
+        .header-qr-label {
+            font-size: 7px;
+            font-weight: 800;
+            color: #15803d;
+            margin-top: 2px;
+            text-align: center;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .qr-authority-hide {
+            display: none;
+        }
+
         /* STATUS BOX */
         .status-box {
             display: flex;
@@ -317,7 +387,7 @@ if (empty($logoSrc)) {
             gap: 8px;
             border-radius: 6px;
             padding: 4px 10px;
-            margin-top: 5px;
+            margin-top: 0;
             text-align: left;
             width: fit-content;
         }
@@ -555,6 +625,14 @@ if (empty($logoSrc)) {
             margin-top: 3px;
         }
 
+        .proc-grid.proc-grid-cash {
+            grid-template-columns: 1.2fr 1fr 1fr;
+        }
+
+        .proc-grid.proc-grid-online {
+            grid-template-columns: 1.2fr 1fr 1.2fr 0.8fr;
+        }
+
         .proc-col {
             font-size: 9px;
             line-height: 1.25;
@@ -650,60 +728,26 @@ if (empty($logoSrc)) {
             color: #d97706 !important;
         }
 
-        /* VERIFICATION RIGHT (Customer Copy: QR + Seal) */
-        .v-right-customer {
-            display: flex;
-            align-items: center;
-            gap: 10px;
+        /* VERIFICATION RIGHT (Authorized Signature) */
+        .v-right-signature {
+            text-align: right;
+            min-width: 140px;
         }
 
-        .qr-scanner-card {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-decoration: none;
+        .sig-line {
+            border-bottom: 1.5px dashed #cbd5e1;
+            height: 32px;
+            width: 130px;
+            margin-left: auto;
         }
 
-        .qr-scanner-img {
-            width: 50px;
-            height: 50px;
-            display: block;
-            border: 1px solid #bbf7d0;
-            border-radius: 4px;
-            padding: 1px;
-            background: #ffffff;
-        }
-
-        .qr-scanner-label {
-            font-size: 7.5px;
-            font-weight: 800;
-            color: #475569;
-            margin-top: 2px;
-            text-align: center;
-            letter-spacing: 0.2px;
-        }
-
-        .official-seal-wrap {
-            position: relative;
-            width: 74px;
-            height: 74px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .seal-svg-el {
-            width: 74px;
-            height: 74px;
-        }
-
-        .signature-overlay-svg {
-            position: absolute;
-            top: 20px;
-            left: 2px;
-            width: 74px;
-            height: 38px;
-            pointer-events: none;
+        .sig-label {
+            font-size: 8px;
+            font-weight: 700;
+            color: #64748b;
+            margin-top: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         /* PERFORATED CUT LINE */
@@ -873,6 +917,14 @@ if (empty($logoSrc)) {
             gap: 8px !important;
         }
 
+        #pdf-render-container .proc-grid.proc-grid-cash {
+            grid-template-columns: 1.2fr 1fr 1fr !important;
+        }
+
+        #pdf-render-container .proc-grid.proc-grid-online {
+            grid-template-columns: 1.2fr 1fr 1.2fr 0.8fr !important;
+        }
+
         #pdf-render-container .verification-bar {
             display: flex !important;
             flex-direction: row !important;
@@ -880,11 +932,42 @@ if (empty($logoSrc)) {
             align-items: center !important;
             padding: 8px 14px !important;
             margin-top: 0 !important;
+        }[]
+
+        #pdf-render-container .meta-status-wrap {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: flex-end !important;
+            gap: 7px !important;
+            margin-top: 3px !important;
         }
 
-        #pdf-render-container .v-right-customer {
+        #pdf-render-container .header-qr-card {
+            padding: 2px 5px 3px 5px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            border: 1px solid #bbf7d0 !important;
+        }
+
+        #pdf-render-container .header-qr-img {
+            width: 38px !important;
+            height: 38px !important;
+        }
+
+        #pdf-render-container .header-qr-label {
+            font-size: 6.5px !important;
+        }
+
+        #pdf-render-container .v-right-signature {
             width: auto !important;
             justify-content: flex-end !important;
+        }
+
+        #pdf-render-container .sig-line {
+            height: 32px !important;
+            width: 130px !important;
+            border-bottom: 1.5px dashed #cbd5e1 !important;
         }
 
         #pdf-render-container .perforated-cut-divider {
@@ -946,6 +1029,26 @@ if (empty($logoSrc)) {
                 margin-bottom: 7px !important;
             }
 
+            .meta-status-wrap {
+                margin-top: 3px !important;
+                gap: 7px !important;
+            }
+
+            .header-qr-card {
+                padding: 2px 5px 3px 5px !important;
+                border: 1px solid #bbf7d0 !important;
+                box-shadow: none !important;
+            }
+
+            .header-qr-img {
+                width: 38px !important;
+                height: 38px !important;
+            }
+
+            .header-qr-label {
+                font-size: 6.5px !important;
+            }
+
             .info-grid {
                 margin-bottom: 7px !important;
                 gap: 10px !important;
@@ -987,6 +1090,12 @@ if (empty($logoSrc)) {
                 margin-top: 0 !important;
             }
 
+            .sig-line {
+                height: 32px !important;
+                width: 130px !important;
+                border-bottom: 1.5px dashed #cbd5e1 !important;
+            }
+
             .perforated-cut-divider {
                 padding: 4px 18px !important;
                 margin: 4px 0 !important;
@@ -1024,11 +1133,7 @@ if (empty($logoSrc)) {
                 display: inline !important;
             }
 
-            body.print-customer-only .copy-authority .v-right-authority {
-                display: none !important;
-            }
-
-            body.print-customer-only .copy-authority .v-right-customer-alt {
+            body.print-customer-only .copy-authority .qr-authority-hide {
                 display: flex !important;
             }
         }
@@ -1134,18 +1239,33 @@ if (empty($logoSrc)) {
                             </div>
                             <div class="receipt-no">#REC-<?= str_pad($payment['id'], 6, '0', STR_PAD_LEFT) ?></div>
                             <div class="receipt-date"><?= $paymentDateFormatted ?></div>
-                            <div class="status-box <?= $isVerified ? 'status-verified' : 'status-pending' ?>">
-                                <div class="sb-icon">
-                                    <?php if ($isVerified): ?>
-                                        <i class="fa-solid fa-circle-check"></i>
-                                    <?php else: ?>
-                                        <i class="fa-solid fa-hourglass-half"></i>
-                                    <?php endif; ?>
-                                </div>
-                                <div class="sb-text">
-                                    <div class="sb-tag">PAYMENT STATUS</div>
-                                    <div class="sb-title"><?= $isVerified ? 'Verified &amp; Confirmed' : 'Subject to Bank Verification' ?></div>
-                                    <div class="sb-sub"><?= $isVerified ? 'Payment verified and recorded officially.' : 'Confirmation will be issued after verification.' ?></div>
+                            <div class="meta-status-wrap">
+                                <!-- QR CODE SCANNER (Placed nicely next to Payment Status) -->
+                                <a href="<?= htmlspecialchars($verificationUrl) ?>" target="_blank" class="header-qr-card <?= !$isCustomer ? 'qr-authority-hide' : '' ?>" title="Click to verify online">
+                                    <div class="hqr-img-box">
+                                        <?php if (!empty($qrImageSrc)): ?>
+                                            <img src="<?= $qrImageSrc ?>" alt="Scan to Verify" class="header-qr-img">
+                                        <?php else: ?>
+                                            <div class="header-qr-img qr-placeholder"><i class="fa-solid fa-qrcode"></i></div>
+                                        <?php endif; ?>
+                                    </div>
+                                    <span class="header-qr-label">Scan to Verify</span>
+                                </a>
+
+                                <!-- PAYMENT STATUS BOX -->
+                                <div class="status-box <?= $isVerified ? 'status-verified' : 'status-pending' ?>">
+                                    <div class="sb-icon">
+                                        <?php if ($isVerified): ?>
+                                            <i class="fa-solid fa-circle-check"></i>
+                                        <?php else: ?>
+                                            <i class="fa-solid fa-hourglass-half"></i>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="sb-text">
+                                        <div class="sb-tag">PAYMENT STATUS</div>
+                                        <div class="sb-title"><?= $isVerified ? 'Verified &amp; Confirmed' : 'Subject to Bank Verification' ?></div>
+                                        <div class="sb-sub"><?= $isVerified ? 'Payment verified and recorded officially.' : 'Confirmation will be issued after verification.' ?></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1199,6 +1319,9 @@ if (empty($logoSrc)) {
                                 <span class="amt-icon-box"><i class="fa-solid fa-landmark"></i></span>
                                 <span class="amt-paid-label">TOTAL AMOUNT PAID BY</span>
                                 <span class="amt-method-pill"><?= htmlspecialchars($paymentMethod) ?></span>
+                                <?php if (!empty($paymentTypeLabel)): ?>
+                                    <span class="amt-method-pill" style="background:#0284c7;"><?= htmlspecialchars($paymentTypeLabel) ?></span>
+                                <?php endif; ?>
                             </div>
                             <div class="amt-words-row">
                                 <span class="words-pill">IN WORDS</span>
@@ -1211,35 +1334,97 @@ if (empty($logoSrc)) {
                         </div>
                     </div>
 
-                    <!-- BANK & PROCESSING INFORMATION -->
+                    <?php
+                        $isCash = (strtoupper($paymentMethod ?? ($payment['payment_method'] ?? '')) === 'CASH');
+                        $isOnline = (strtoupper($paymentMethod ?? ($payment['payment_method'] ?? '')) === 'ONLINE');
+                    ?>
+
+                    <!-- PAYMENT & PROCESSING INFORMATION -->
                     <div class="processing-box">
                         <div class="card-header-row">
-                            <span class="head-icon-box"><i class="fa-solid fa-file-invoice-dollar"></i></span>
-                            <span class="head-title">BANK &amp; PROCESSING INFORMATION</span>
+                            <span class="head-icon-box"><i class="fa-solid <?= $isCash ? 'fa-money-bill-wave' : ($isOnline ? 'fa-mobile-screen-button' : 'fa-building-columns') ?>"></i></span>
+                            <span class="head-title"><?= $isCash ? 'PAYMENT &amp; PROCESSING INFORMATION' : ($isOnline ? 'ONLINE PAYMENT &amp; PROCESSING INFORMATION' : 'BANK &amp; PROCESSING INFORMATION') ?></span>
                         </div>
-                        <div class="proc-grid">
-                            <div class="proc-col">
-                                <div class="proc-lbl">Created By:</div>
-                                <div class="proc-main"><?= htmlspecialchars($createdByName) ?></div>
-                                <?php if (!empty($createdByEmpId)): ?>
-                                    <div class="proc-sub">(<?= htmlspecialchars($createdByEmpId) ?>)</div>
-                                <?php endif; ?>
+
+                        <?php if ($isCash): ?>
+                            <!-- CASH PAYMENT: NO BANK INFO AT ALL -->
+                            <div class="proc-grid proc-grid-cash">
+                                <div class="proc-col">
+                                    <div class="proc-lbl">Created By:</div>
+                                    <div class="proc-main"><?= htmlspecialchars($createdByName) ?></div>
+                                    <?php if (!empty($createdByEmpId)): ?>
+                                        <div class="proc-sub">(<?= htmlspecialchars($createdByEmpId) ?>)</div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="proc-col">
+                                    <div class="proc-lbl">Payment Mode</div>
+                                    <div class="proc-main" style="color:#0b6638; font-weight:800;">
+                                        <i class="fa-solid fa-money-bill-1-wave me-1"></i> Cash in Hand / Office
+                                    </div>
+                                    <div class="proc-sub">Direct Cash Collection</div>
+                                </div>
+                                <div class="proc-col">
+                                    <div class="proc-lbl">Ref / Receipt Number</div>
+                                    <div class="proc-main"><?= htmlspecialchars(!empty($refNo) && $refNo !== 'N/A' ? $refNo : ('REC-' . str_pad($payment['id'] ?? '0', 6, '0', STR_PAD_LEFT))) ?></div>
+                                </div>
                             </div>
-                            <div class="proc-col">
-                                <div class="proc-lbl">Sender Bank</div>
-                                <div class="proc-main"><?= htmlspecialchars($senderBankName) ?></div>
+                        <?php elseif ($isOnline): ?>
+                            <!-- ONLINE PAYMENT: ONLINE TYPE & RECEIVER BANK NAME ONLY -->
+                            <div class="proc-grid proc-grid-online">
+                                <div class="proc-col">
+                                    <div class="proc-lbl">Created By:</div>
+                                    <div class="proc-main"><?= htmlspecialchars($createdByName) ?></div>
+                                    <?php if (!empty($createdByEmpId)): ?>
+                                        <div class="proc-sub">(<?= htmlspecialchars($createdByEmpId) ?>)</div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="proc-col">
+                                    <div class="proc-lbl">Online Type / Gateway</div>
+                                    <div class="proc-main" style="color:#0284c7; font-weight:800;">
+                                        <i class="fa-solid fa-mobile-screen me-1"></i>
+                                        <?= !empty($onlineType) ? htmlspecialchars(strtoupper($onlineType)) : (!empty($payment['online_type']) ? htmlspecialchars(strtoupper($payment['online_type'])) : 'ONLINE') ?>
+                                    </div>
+                                    <div class="proc-sub">Digital Channel</div>
+                                </div>
+                                <div class="proc-col">
+                                    <div class="proc-lbl">Receiver Bank</div>
+                                    <div class="proc-main"><?= htmlspecialchars(!empty($receiverBankName) && $receiverBankName !== 'N/A' ? $receiverBankName : 'Company Bank') ?></div>
+                                </div>
+                                <div class="proc-col">
+                                    <div class="proc-lbl">Trx ID / Ref Number</div>
+                                    <div class="proc-main"><?= htmlspecialchars(!empty($refNo) ? $refNo : 'N/A') ?></div>
+                                </div>
                             </div>
-                            <div class="proc-col">
-                                <div class="proc-lbl">Receiver Bank</div>
-                                <div class="proc-main"><?= htmlspecialchars($receiverBankName) ?></div>
-                                <div class="proc-sub"><?= htmlspecialchars($receiverHolderName) ?></div>
-                                <div class="proc-sub bold">• A/C: <?= htmlspecialchars($receiverAccountNo) ?></div>
+                        <?php else: ?>
+                            <!-- BANK / CHEQUE PAYMENT: FULL BANK DETAILS -->
+                            <div class="proc-grid">
+                                <div class="proc-col">
+                                    <div class="proc-lbl">Created By:</div>
+                                    <div class="proc-main"><?= htmlspecialchars($createdByName) ?></div>
+                                    <?php if (!empty($createdByEmpId)): ?>
+                                        <div class="proc-sub">(<?= htmlspecialchars($createdByEmpId) ?>)</div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="proc-col">
+                                    <div class="proc-lbl">Sender Bank</div>
+                                    <div class="proc-main"><?= htmlspecialchars($senderBankName ?: 'N/A') ?></div>
+                                </div>
+                                <div class="proc-col">
+                                    <div class="proc-lbl">Receiver Bank</div>
+                                    <div class="proc-main"><?= htmlspecialchars($receiverBankName ?: 'N/A') ?></div>
+                                    <?php if (!empty($receiverHolderName)): ?>
+                                        <div class="proc-sub"><?= htmlspecialchars($receiverHolderName) ?></div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($receiverAccountNo) && $receiverAccountNo !== 'N/A'): ?>
+                                        <div class="proc-sub bold">• A/C: <?= htmlspecialchars($receiverAccountNo) ?></div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="proc-col">
+                                    <div class="proc-lbl"><?= htmlspecialchars($refLabel ?? 'Ref Number') ?></div>
+                                    <div class="proc-main"><?= htmlspecialchars(!empty($refNo) ? $refNo : 'N/A') ?></div>
+                                </div>
                             </div>
-                            <div class="proc-col">
-                                <div class="proc-lbl">Ref Number</div>
-                                <div class="proc-main"><?= htmlspecialchars($refNo) ?></div>
-                            </div>
-                        </div>
+                        <?php endif; ?>
                     </div>
 
                     <!-- VERIFICATION ROW -->
@@ -1265,97 +1450,11 @@ if (empty($logoSrc)) {
                             </div>
                         </div>
 
-                        <?php if ($isCustomer): ?>
-                        <!-- CUSTOMER COPY: GREEN QR CODE & OFFICIAL SEAL -->
-                        <div class="v-right-customer">
-                            <!-- QR CODE SCANNER (Green color) -->
-                            <a href="<?= htmlspecialchars($verificationUrl) ?>" target="_blank" class="qr-scanner-card" title="Click to verify online">
-                                <?php if (!empty($qrImageSrc)): ?>
-                                    <img src="<?= $qrImageSrc ?>" alt="Scan to Verify" class="qr-scanner-img">
-                                <?php else: ?>
-                                    <div class="qr-scanner-img" style="display:flex;align-items:center;justify-content:center;color:#0b6638;font-size:24px;">
-                                        <i class="fa-solid fa-qrcode"></i>
-                                    </div>
-                                <?php endif; ?>
-                                <span class="qr-scanner-label">Scan to Verify</span>
-                            </a>
-
-                            <!-- OFFICIAL BLUE CIRCULAR STAMP SEAL & SIGNATURE -->
-                            <div class="official-seal-wrap">
-                                <svg class="seal-svg-el" viewBox="0 0 120 120">
-                                    <circle cx="60" cy="60" r="54" fill="none" stroke="#2563eb" stroke-width="2.2" />
-                                    <circle cx="60" cy="60" r="48" fill="none" stroke="#2563eb" stroke-width="1.2" stroke-dasharray="3,2" />
-                                    <path id="seal-txt-top-<?= $idx ?>" d="M 18,60 A 42,42 0 1,1 102,60" fill="none" />
-                                    <path id="seal-txt-bot-<?= $idx ?>" d="M 102,60 A 42,42 0 1,1 18,60" fill="none" />
-                                    <text font-size="8" font-weight="900" fill="#2563eb" letter-spacing="1">
-                                        <textPath href="#seal-txt-top-<?= $idx ?>" startOffset="50%" text-anchor="middle">
-                                            THE PREMIUM HOMES LTD
-                                        </textPath>
-                                    </text>
-                                    <text font-size="7.5" font-weight="800" fill="#2563eb" letter-spacing="1">
-                                        <textPath href="#seal-txt-bot-<?= $idx ?>" startOffset="50%" text-anchor="middle">
-                                            * YOUR DREAM HOME AWAITS *
-                                        </textPath>
-                                    </text>
-                                    <path d="M60 38 L75 51 V71 H45 V51 L60 38 Z" fill="none" stroke="#2563eb" stroke-width="1.8" />
-                                    <path d="M60 44 L70 52 V67 H50 V52 L60 44 Z" fill="none" stroke="#2563eb" stroke-width="1.2" />
-                                    <line x1="60" y1="44" x2="60" y2="67" stroke="#2563eb" stroke-width="1" />
-                                    <line x1="50" y1="56" x2="70" y2="56" stroke="#2563eb" stroke-width="1" />
-                                </svg>
-                                <svg class="signature-overlay-svg" viewBox="0 0 100 50">
-                                    <path d="M8,36 Q22,4 38,24 T62,18 Q76,8 90,28 Q72,36 52,32" fill="none" stroke="#1d4ed8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
-                                    <path d="M20,38 C32,32 48,40 75,34" fill="none" stroke="#1d4ed8" stroke-width="1.6" stroke-linecap="round" />
-                                </svg>
-                            </div>
+                        <!-- SIGNATURE SPACE (BOTH COPIES) -->
+                        <div class="v-right-signature">
+                            <div class="sig-line"></div>
+                            <div class="sig-label">Authorized Signature</div>
                         </div>
-                        <?php else: ?>
-                        <!-- AUTHORITY COPY: CLEAN VERIFICATION / SIGNATURE SPACE -->
-                        <div class="v-right-authority" style="text-align: right; min-width: 140px;">
-                            <div style="border-bottom: 1.5px dashed #cbd5e1; height: 38px; width: 130px; margin-left: auto;"></div>
-                            <div style="font-size: 8px; font-weight: 700; color: #64748b; margin-top: 3px; text-transform: uppercase;">Authorized Signature</div>
-                        </div>
-
-                        <!-- ALTERNATIVE CUSTOMER QR & SEAL (SHOWN WHEN PRINTING CUSTOMER COPIES ONLY) -->
-                        <div class="v-right-customer v-right-customer-alt" style="display:none;">
-                            <a href="<?= htmlspecialchars($verificationUrl) ?>" target="_blank" class="qr-scanner-card" title="Click to verify online">
-                                <?php if (!empty($qrImageSrc)): ?>
-                                    <img src="<?= $qrImageSrc ?>" alt="Scan to Verify" class="qr-scanner-img">
-                                <?php else: ?>
-                                    <div class="qr-scanner-img" style="display:flex;align-items:center;justify-content:center;color:#0b6638;font-size:24px;">
-                                        <i class="fa-solid fa-qrcode"></i>
-                                    </div>
-                                <?php endif; ?>
-                                <span class="qr-scanner-label">Scan to Verify</span>
-                            </a>
-
-                            <div class="official-seal-wrap">
-                                <svg class="seal-svg-el" viewBox="0 0 120 120">
-                                    <circle cx="60" cy="60" r="54" fill="none" stroke="#2563eb" stroke-width="2.2" />
-                                    <circle cx="60" cy="60" r="48" fill="none" stroke="#2563eb" stroke-width="1.2" stroke-dasharray="3,2" />
-                                    <path id="seal-txt-top-<?= $idx ?>" d="M 18,60 A 42,42 0 1,1 102,60" fill="none" />
-                                    <path id="seal-txt-bot-<?= $idx ?>" d="M 102,60 A 42,42 0 1,1 18,60" fill="none" />
-                                    <text font-size="8" font-weight="900" fill="#2563eb" letter-spacing="1">
-                                        <textPath href="#seal-txt-top-<?= $idx ?>" startOffset="50%" text-anchor="middle">
-                                            THE PREMIUM HOMES LTD
-                                        </textPath>
-                                    </text>
-                                    <text font-size="7.5" font-weight="800" fill="#2563eb" letter-spacing="1">
-                                        <textPath href="#seal-txt-bot-<?= $idx ?>" startOffset="50%" text-anchor="middle">
-                                            * YOUR DREAM HOME AWAITS *
-                                        </textPath>
-                                    </text>
-                                    <path d="M60 38 L75 51 V71 H45 V51 L60 38 Z" fill="none" stroke="#2563eb" stroke-width="1.8" />
-                                    <path d="M60 44 L70 52 V67 H50 V52 L60 44 Z" fill="none" stroke="#2563eb" stroke-width="1.2" />
-                                    <line x1="60" y1="44" x2="60" y2="67" stroke="#2563eb" stroke-width="1" />
-                                    <line x1="50" y1="56" x2="70" y2="56" stroke="#2563eb" stroke-width="1" />
-                                </svg>
-                                <svg class="signature-overlay-svg" viewBox="0 0 100 50">
-                                    <path d="M8,36 Q22,4 38,24 T62,18 Q76,8 90,28 Q72,36 52,32" fill="none" stroke="#1d4ed8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
-                                    <path d="M20,38 C32,32 48,40 75,34" fill="none" stroke="#1d4ed8" stroke-width="1.6" stroke-linecap="round" />
-                                </svg>
-                            </div>
-                        </div>
-                        <?php endif; ?>
 
                     </div>
                 </div>

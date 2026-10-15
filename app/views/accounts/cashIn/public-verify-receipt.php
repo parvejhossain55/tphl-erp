@@ -41,6 +41,9 @@ if (!empty($payment['is_emi_discount']) && $payment['is_emi_discount'] == 1) {
     $paymentTypeLabel = 'Registration Money';
 } elseif ($paymentTypeRaw === 'development_charge') {
     $paymentTypeLabel = 'Development Charge';
+} elseif ($paymentTypeRaw === 'others') {
+    $otherPurpose = !empty($payment['other_purpose']) ? ucwords($payment['other_purpose']) : 'Extra Charges';
+    $paymentTypeLabel = 'Others (' . $otherPurpose . ')';
 } else {
     $paymentTypeLabel = ucwords(str_replace('_', ' ', $payment['payment_type'] ?? 'Payment'));
 }
@@ -136,7 +139,16 @@ if ($isVerified) {
 // Payment Method & Reference
 $paymentMethod = strtoupper($payment['payment_method'] ?? 'CASH');
 $refNumber = !empty($payment['transaction_ref']) ? trim($payment['transaction_ref']) : (!empty($payment['cheque_no']) ? trim($payment['cheque_no']) : 'N/A');
-$bankDisplay = !empty($payment['company_bank_name']) ? $payment['company_bank_name'] : (!empty($payment['bank_name']) ? $payment['bank_name'] : ($paymentMethod === 'CASH' ? 'Cash in Hand / Office' : 'Official Accounts'));
+
+if ($paymentMethod === 'CASH') {
+    $bankDisplay = '';
+} elseif ($paymentMethod === 'ONLINE') {
+    $onlineType = !empty($payment['online_type']) ? strtoupper(trim($payment['online_type'])) : 'ONLINE GATEWAY';
+    $companyBank = !empty($payment['company_bank_name']) ? trim($payment['company_bank_name']) : '';
+    $bankDisplay = $companyBank ? ($onlineType . ' &bull; Receiver: ' . $companyBank) : $onlineType;
+} else {
+    $bankDisplay = !empty($payment['company_bank_name']) ? $payment['company_bank_name'] : (!empty($payment['bank_name']) ? $payment['bank_name'] : 'Official Accounts');
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">

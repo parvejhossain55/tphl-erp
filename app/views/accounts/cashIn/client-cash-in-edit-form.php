@@ -93,8 +93,20 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
                                         <option value="development_charge" <?= ($transaction['payment_type'] ?? '') === 'development_charge' ? 'selected' : '' ?>>Development Charge</option>
                                         <option value="emi" <?= ($transaction['payment_type'] ?? '') === 'emi' ? 'selected' : '' ?>>EMI</option>
                                         <option value="down_payment" <?= ($transaction['payment_type'] ?? '') === 'down_payment' ? 'selected' : '' ?>>Down Payment</option>
+                                        <option value="others" <?= ($transaction['payment_type'] ?? '') === 'others' ? 'selected' : '' ?>>Others (Extra / Incidental Charges)</option>
                                     </select>
                                 <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <!-- Other Purpose (shown when Others is selected) -->
+                        <div class="col-md-6" id="otherPurposeContainer" style="display: <?= (($transaction['payment_type'] ?? '') === 'others') ? 'block' : 'none' ?>;">
+                            <div class="from__input-box">
+                                <label class="form__input-title">Payment Purpose / Description <span>*</span></label>
+                                <input type="text" name="other_purpose" id="otherPurpose" class="form-control"
+                                    value="<?= htmlspecialchars($transaction['other_purpose'] ?? '') ?>"
+                                    placeholder="e.g. Utility Connection, Modification, Mutation, Extra Work">
+                                <small class="text-muted">Specify the purpose for this incidental payment (shows in ledger &amp; receipt, not deducted from flat price)</small>
                             </div>
                         </div>
 
@@ -474,6 +486,18 @@ document.addEventListener('DOMContentLoaded', function() {
             
             emiFields.forEach(field => field.style.display = isEMI ? 'block' : 'none');
             
+            const otherPurposeContainer = document.getElementById('otherPurposeContainer');
+            const otherPurposeInput = document.getElementById('otherPurpose');
+            if (otherPurposeContainer) {
+                if (this.value === 'others') {
+                    otherPurposeContainer.style.display = 'block';
+                    if (otherPurposeInput) otherPurposeInput.setAttribute('required', 'required');
+                } else {
+                    otherPurposeContainer.style.display = 'none';
+                    if (otherPurposeInput) otherPurposeInput.removeAttribute('required');
+                }
+            }
+            
             if (dueEmiAmountField) {
                 if (isEMI) {
                     dueEmiAmountField.setAttribute('required', 'required');
@@ -616,6 +640,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // For paid status, due amount can be 0 or null
                 // No validation needed
+            }
+
+            // Validation for others
+            if (paymentTypeValue === 'others') {
+                const purposeInput = document.getElementById('otherPurpose');
+                if (!purposeInput || !purposeInput.value.trim()) {
+                    e.preventDefault();
+                    alert('Please specify the payment purpose for "Others" (e.g. Utility Connection, Extra Work).');
+                    if (purposeInput) purposeInput.focus();
+                    return false;
+                }
             }
             
             return true;

@@ -95,6 +95,7 @@ class AccountShopClientController extends AccountClientController
             $transactionData = [
                 'booking_id'       => $bookingId,
                 'payment_type'     => $paymentType,
+                'other_purpose'    => ($paymentType === 'others') ? trim($_POST['other_purpose'] ?? '') : null,
                 'amount'           => $_POST['amount'] ?? 0,
                 'payment_method'   => $_POST['payment_method'] ?? 'cash',
                 'payment_status'   => $_POST['payment_status'] ?? 'paid',
@@ -119,7 +120,7 @@ class AccountShopClientController extends AccountClientController
                 ];
             }
 
-            if ($transactionData['payment_type'] === 'emi_due_settlement') {
+            if ($transactionData['payment_type'] === 'emi_due_settlement' || $transactionData['payment_type'] === 'others') {
                 $result = $this->clientModel->addTransaction($transactionData, null);
             } else {
                 $result = $this->clientModel->addTransactionWithEMI($transactionData, $emiScheduleData);

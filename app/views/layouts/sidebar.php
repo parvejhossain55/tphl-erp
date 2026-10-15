@@ -2190,18 +2190,23 @@
 
                     <!-- Cash In Manage -->
                     <li
-                        class="slide has-sub <?= isActive(['clients-cashin-view', 'clients-cash-in-history-view', 'client-refunds'], $current_route) ? 'open active' : '' ?>">
+                        class="slide has-sub <?= isActive(['clients-cashin-view', 'clients-cash-in-history-view', 'client-refunds', 'client-wise-due-tracking', 'client-due-tracking'], $current_route) ? 'open active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['clients-cashin-view', 'clients-cash-in-history-view', 'client-refunds'], $current_route) ? 'active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['clients-cashin-view', 'clients-cash-in-history-view', 'client-refunds', 'client-wise-due-tracking', 'client-due-tracking'], $current_route) ? 'active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-money-bill-trend-up"></i></div>
                             <span class="sidebar__menu-label">Cash In View</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                         </a>
                         <ul class="sidebar-menu child2"
-                            style="<?= isMenuOpen(['clients-cashin-view', 'clients-cash-in-history-view', 'client-refunds'], $current_route) ? 'display:block;' : 'display:none;' ?>">
+                            style="<?= isMenuOpen(['clients-cashin-view', 'clients-cash-in-history-view', 'client-refunds', 'client-wise-due-tracking', 'client-due-tracking'], $current_route) ? 'display:block;' : 'display:none;' ?>">
                             <li class="slide <?= isActive('clients-cashin-view', $current_route) ?>">
                                 <a href="<?= $base_url ?>/clients-cashin-view"
                                     class="sidebar__menu-item <?= isActive('clients-cashin-view', $current_route) ?>">Clients</a>
+                            </li>
+                            <li class="slide <?= isActive(['client-wise-due-tracking', 'client-due-tracking'], $current_route) ?>">
+                                <a href="<?= $base_url ?>/client-wise-due-tracking"
+                                    class="sidebar__menu-item <?= isActive(['client-wise-due-tracking', 'client-due-tracking'], $current_route) ?>"
+                                    title="Client-wise Due Tracking & Payment Management">Due Tracking & Mgt</a>
                             </li>
                             <li class="slide <?= isActive('client-refunds', $current_route) ?>">
                                 <a href="<?= $base_url ?>/client-refunds"
@@ -2402,9 +2407,9 @@
                     <!-- Manage Cash In -->
                     <!-- ===================== -->
                     <li
-                        class="slide has-sub <?= isActive(['clients-cash-in', 'management-cash-in'], $current_route) ? 'active' : '' ?>">
+                        class="slide has-sub <?= isActive(['clients-cash-in', 'management-cash-in', 'client-wise-due-tracking', 'client-due-tracking'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['clients-cash-in', 'management-cash-in'], $current_route) ? 'menu-open active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['clients-cash-in', 'management-cash-in', 'client-wise-due-tracking', 'client-due-tracking'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-money-bill-trend-up"></i></div>
                             <span class="sidebar__menu-label">Manage Cash In</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -2424,6 +2429,14 @@
                                             <?= $pendingVerificationsCount ?> Pending
                                         </span>
                                     <?php endif; ?>
+                                </a>
+                            </li>
+                            <li class="slide <?= isActive(['client-wise-due-tracking', 'client-due-tracking'], $current_route) ?>">
+                                <a href="<?= $base_url ?>/client-wise-due-tracking"
+                                    class="sidebar__menu-item <?= isActive(['client-wise-due-tracking', 'client-due-tracking'], $current_route) ?>"
+                                    style="display:flex; align-items:center;"
+                                    title="Client-wise Due Tracking & Payment Management">
+                                    <span class="text-truncate">Due Tracking & Mgt</span>
                                 </a>
                             </li>
                             <?php if (!$isSbAccExec): ?>

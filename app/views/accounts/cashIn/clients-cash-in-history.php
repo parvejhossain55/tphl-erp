@@ -97,7 +97,12 @@ window.openEditPaymentDateModal = function(target) {
                     </span>
                 </div>
                 
-                <div class="mt-3 d-flex align-items-center gap-2">
+                <div class="mt-3 d-flex align-items-center gap-2 flex-wrap">
+                    <a href="<?= $GLOBALS['base_url'] ?>/client-emi-tracking/<?= $bookingId ?>" class="btn btn-sm text-white fw-bold shadow-sm" style="background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%); border: none; padding: 6px 14px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(59, 130, 246, 0.35);" title="Open Full EMI Statement & Tracking Page">
+                        <i class="fa-solid fa-chart-pie"></i>
+                        <span>EMI Tracking</span>
+                    </a>
+
                     <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#transferNoteModal">
                         <i class="fa-light fa-exchange-alt me-1"></i> Transfer Note
                     </button>
@@ -469,6 +474,12 @@ window.openEditPaymentDateModal = function(target) {
                         <div class="d-flex flex-column align-items-start">
                             <div class="d-flex align-items-center gap-2">
                                 <h4 class="card__title mb-0"><?= $paymentSummary['completed_emi'] ?? 0 ?> / <?= $paymentSummary['total_emi'] ?? 0 ?></h4>
+                                <a href="<?= $GLOBALS['base_url'] ?>/client-emi-tracking/<?= $bookingId ?>" 
+                                   class="btn btn-sm btn-primary py-0 px-2 fw-semibold" 
+                                   title="View Full EMI Tracking & Statement" 
+                                   style="font-size: 11px; height: 23px; display: inline-flex; align-items: center; border-radius: 4px; background: #2563eb; border-color: #2563eb;">
+                                    <i class="fa-solid fa-chart-line me-1"></i>Track EMIs
+                                </a>
                                 <?php if ($canEditBookingInfo): ?>
                                     <button type="button" 
                                             class="btn btn-sm btn-outline-primary py-0 px-2 edit-emi-btn" 
@@ -690,6 +701,7 @@ window.openEditPaymentDateModal = function(target) {
                             <button type="button" class="btn btn-sm btn-outline-warning payment-filter" data-filter="development_charge">Dev. Charge</button>
                         <button type="button" class="btn btn-sm btn-outline-danger payment-filter" data-filter="emi">EMI</button>
                         <button type="button" class="btn btn-sm btn-outline-dark payment-filter" data-filter="emi_due_settlement">EMI Settlement</button>
+                        <button type="button" class="btn btn-sm btn-outline-info payment-filter" data-filter="others">Others</button>
                     </div>
                     
                     <div class="d-flex flex-wrap align-items-center gap-3">
@@ -783,7 +795,7 @@ window.openEditPaymentDateModal = function(target) {
                                         <?php endif; ?>
                                     </td>
                                     <td>
-                                        <span class="badge bg-primary">
+                                        <span class="badge <?= ($transaction['payment_type'] ?? '') === 'others' ? 'bg-info text-dark' : 'bg-primary' ?>">
                                             <?php echo $transaction['installment_label']; ?>
                                         </span>
                                         <?php if (!empty($transaction['bulk_emi_discount']) && $transaction['bulk_emi_discount'] > 0): ?>
@@ -1068,7 +1080,7 @@ window.openEditPaymentDateModal = function(target) {
                                                     $isAccountsHead = function_exists('isAccountsHead') ? isAccountsHead() : (($_SESSION['user']['role_id'] ?? 0) == 30);
                                                     $isAccExec = function_exists('isAccountsExecutive') ? isAccountsExecutive() : ((int)($_SESSION['user']['role_id'] ?? 0) === 36);
                                                     $isManagementRole = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33, 34, 35]) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'management') !== false || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'admin') !== false;
-                                                    $isEditableByManagement = $isManagementRole && in_array($transaction['payment_type'] ?? '', ['development_charge', 'land_share', 'shop_service_charge', 'emi']);
+                                                    $isEditableByManagement = $isManagementRole && in_array($transaction['payment_type'] ?? '', ['development_charge', 'land_share', 'shop_service_charge', 'emi', 'others']);
                                                     $canEdit = ((!$isVerified && $transaction['payment_type'] !== 'booking_money') || $isAccountsHead || $isEditableByManagement) && !$isAccExec;
                                                     $canDelete = !$isVerified && !$isAccExec; // Keep delete logic standard
                                                     $canTrash = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 30]) && !$isAccExec;
@@ -1720,6 +1732,9 @@ window.openEditPaymentDateModal = function(target) {
     </div>
 </div>
 
+<!-- EMI Tracking Modal Component -->
+<?php include __DIR__ . '/emi-tracking-modal.php'; ?>
+
     <script>
         const BASE_URL = '<?= $GLOBALS['base_url'] ?>';
 
@@ -2112,6 +2127,7 @@ window.openEditPaymentDateModal = function(target) {
         .payment-filter[data-filter="development_charge"].active { background:#ffc107; color:#000; border-color:#ffc107; }
         .payment-filter[data-filter="emi"].active { background:#dc3545; color:#fff; border-color:#dc3545; }
         .payment-filter[data-filter="emi_due_settlement"].active { background:#212529; color:#fff; border-color:#212529; }
+        .payment-filter[data-filter="others"].active { background:#0dcaf0; color:#000; border-color:#0dcaf0; }
         
         /* Fix SweetAlert z-index behind bootstrap modals */
         .swal2-container { z-index: 99999 !important; }
