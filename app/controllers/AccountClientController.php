@@ -3854,11 +3854,11 @@ public function discountStatement($bookingId = null)
     $discStmt = $this->db->prepare("
         SELECT lp.id, lp.payment_type, lp.amount, lp.bulk_emi_discount, lp.bulk_pay_amount, 
                lp.payment_date, COALESCE(lp.emi_no, es.emi_no) as emi_no,
-               u.full_name as added_by_name
+               u.full_name as added_by_name, lp.is_emi_discount
         FROM lead_payments lp
         LEFT JOIN users u ON lp.created_by = u.id
         LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
-        WHERE lp.booking_id = ? AND lp.bulk_emi_discount > 0
+        WHERE lp.booking_id = ? AND (lp.bulk_emi_discount > 0 OR COALESCE(lp.is_emi_discount, 0) = 1)
         ORDER BY lp.payment_date DESC, lp.id DESC
     ");
     $discStmt->bind_param('i', $bookingId);

@@ -3,8 +3,17 @@
 $disable_layout = true;
 
 // Gather discount data
-$bookingDiscount   = (float)($paymentSummary['discount_amount'] ?? 0);
-$totalBulkDiscount = (float)($paymentSummary['total_bulk_emi_discount'] ?? 0);
+$bookingDiscount   = (float)(!empty($paymentSummary['discount_amount']) ? $paymentSummary['discount_amount'] : ($clientDetails['discount_amount'] ?? 0));
+
+$totalTxnEmiDiscount = 0;
+if (!empty($bulkDiscountTxns)) {
+    foreach ($bulkDiscountTxns as $dtxn) {
+        $isEd = !empty($dtxn['is_emi_discount']) && $dtxn['is_emi_discount'] == 1;
+        $dAmt = $isEd ? (float)$dtxn['amount'] : (float)($dtxn['bulk_emi_discount'] ?? 0);
+        $totalTxnEmiDiscount += $dAmt;
+    }
+}
+$totalBulkDiscount  = max($totalTxnEmiDiscount, (float)($paymentSummary['total_bulk_emi_discount'] ?? 0));
 $grandTotalDiscount = $bookingDiscount + $totalBulkDiscount;
 $agreementValue     = (float)($paymentSummary['agreement_value'] ?? $paymentSummary['total_price'] ?? 0);
 $effectivePrice     = max(0, $agreementValue - $bookingDiscount);
@@ -445,7 +454,11 @@ $effectivePrice     = max(0, $agreementValue - $bookingDiscount);
                                     —
                                 <?php endif; ?>
                             </td>
-                            <td class="amount">৳<?= number_format($dtxn['bulk_emi_discount'], 2) ?></td>
+                            <?php
+                            $isEd = !empty($dtxn['is_emi_discount']) && $dtxn['is_emi_discount'] == 1;
+                            $discGiven = $isEd ? (float)$dtxn['amount'] : (float)($dtxn['bulk_emi_discount'] ?? 0);
+                            ?>
+                            <td class="amount">৳<?= number_format($discGiven, 2) ?></td>
                             <td class="center"><?= htmlspecialchars($dtxn['added_by_name'] ?? 'System') ?></td>
                         </tr>
                         <?php endforeach; ?>

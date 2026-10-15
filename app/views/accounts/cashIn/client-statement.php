@@ -66,20 +66,48 @@ if (class_exists('AccountClient')) {
 
 // Compute totals
 $totalPrice       = (float)($paymentSummary['total_price'] ?? 0);
-$bookingDiscount  = (float)($paymentSummary['discount_amount'] ?? 0);
-$bulkEmiDiscount  = (float)($paymentSummary['total_bulk_emi_discount'] ?? 0);
-$totalDiscounts   = $bookingDiscount + $bulkEmiDiscount;
+$bookingDiscount  = (float)(!empty($paymentSummary['discount_amount']) ? $paymentSummary['discount_amount'] : ($clientDetails['discount_amount'] ?? 0));
 $agreementValue   = (float)($paymentSummary['agreement_value'] ?? $totalPrice);
-$remainingBalance = (float)($paymentSummary['total_due'] ?? 0);
 
-// Calculate actual paid from verified/valid transactions
-$actualPaid = 0;
+// Pre-calculate verified/valid transactions totals (Paid amount, EMI discounts, etc.)
+$actualPaid       = 0;
+$totalEmiDiscount = 0;
+$othersPaid       = 0;
+
 foreach ($validTransactions as $t) {
-    if (!empty($t['is_emi_discount']) && $t['is_emi_discount'] == 1) {
-        continue; // Exclude EMI discount from actual paid
+    $isEmiDiscount = (!empty($t['is_emi_discount']) && $t['is_emi_discount'] == 1);
+    $bulkDisc      = (float)($t['bulk_emi_discount'] ?? 0);
+    $amt           = (float)($t['amount'] ?? 0);
+    $pType         = strtolower($t['payment_type'] ?? '');
+
+    if ($isEmiDiscount) {
+        $totalEmiDiscount += $amt;
+        continue; // Exclude EMI discount from actual cash paid
     }
-    $amt = (float)($t['amount'] ?? 0);
+
+    if ($bulkDisc > 0) {
+        $totalEmiDiscount += $bulkDisc;
+    }
+
+    if ($pType === 'others') {
+        $othersPaid += $amt;
+    }
+
     $actualPaid += $amt;
+}
+
+// Bulk/EMI discount: prioritize sum from validTransactions, fallback to paymentSummary
+$bulkEmiDiscount = max($totalEmiDiscount, (float)($paymentSummary['total_bulk_emi_discount'] ?? 0));
+
+// Total discounts = Booking-time discount + EMI discount(s)
+$totalDiscounts  = $bookingDiscount + $bulkEmiDiscount;
+
+// Calculate remaining balance (deducts flat price payments, booking discount, and EMI discounts)
+$unitPaid = max(0, $actualPaid - $othersPaid);
+if ($totalPrice > 0) {
+    $remainingBalance = max(0, round($totalPrice - $bookingDiscount - $unitPaid - $bulkEmiDiscount));
+} else {
+    $remainingBalance = (float)($paymentSummary['total_due'] ?? 0);
 }
 ?>
 <!DOCTYPE html>
@@ -455,6 +483,19 @@ foreach ($validTransactions as $t) {
             <div class="summary-cell">
                 <div class="s-label">Total Discount</div>
                 <div class="s-value">৳<?= number_format($totalDiscounts, 2) ?></div>
+                <?php if ($bookingDiscount > 0 && $bulkEmiDiscount > 0): ?>
+                    <div style="font-size:7.5px; color:#6b7280; margin-top:2px; font-weight:normal;">
+                        Booking: ৳<?= number_format($bookingDiscount, 0) ?> | EMI: ৳<?= number_format($bulkEmiDiscount, 0) ?>
+                    </div>
+                <?php elseif ($bookingDiscount > 0): ?>
+                    <div style="font-size:7.5px; color:#6b7280; margin-top:2px; font-weight:normal;">
+                        Booking: ৳<?= number_format($bookingDiscount, 0) ?>
+                    </div>
+                <?php elseif ($bulkEmiDiscount > 0): ?>
+                    <div style="font-size:7.5px; color:#6b7280; margin-top:2px; font-weight:normal;">
+                        EMI Discount: ৳<?= number_format($bulkEmiDiscount, 0) ?>
+                    </div>
+                <?php endif; ?>
             </div>
             <div class="summary-cell">
                 <div class="s-label">Transactions</div>
@@ -501,6 +542,7 @@ foreach ($validTransactions as $t) {
                         $totalColTotal  = 0;
                         $totalDiscount  = 0;
                         $totalPaidCol   = 0;
+                        $bookingDiscountApplied = false;
 
                         foreach ($validTransactions as $txn):
                             $sl++;
@@ -510,8 +552,8 @@ foreach ($validTransactions as $t) {
                             $discount      = (float)($txn['bulk_emi_discount'] ?? 0);
                             
                             // Apply booking discount to the booking money row
-                            if ($paymentType === 'booking_money' && $bookingDiscount > 0) {
-                                $discount = $bookingDiscount;
+                            if ($paymentType === 'booking_money' && $bookingDiscount > 0 && empty($bookingDiscountApplied)) {
+                                $discount += $bookingDiscount;
                                 $bookingDiscountApplied = true;
                             }
                             
@@ -616,10 +658,11 @@ foreach ($validTransactions as $t) {
                             <td class="center">—</td>
                             <td><strong>Booking Discount</strong></td>
                             <td class="center">—</td>
-                            <td class="center">—</td>
-                            <td></td><td></td>
+                            <td class="center"><span style="background:#10b981; color:#fff; padding:3px 6px; border-radius:4px; font-size:9px; white-space:nowrap;">Booking Discount</span></td>
+                            <td class="center">-</td>
+                            <td class="center">-</td>
                             <td class="amount"><strong><?= number_format($bookingDiscount, 0) ?></strong></td>
-                            <td></td>
+                            <td class="amount">0</td>
                             <td class="amount"><?php $runningBalance -= $bookingDiscount; if ($runningBalance < 0) $runningBalance = 0; echo number_format($runningBalance, 0); ?></td>
                         </tr>
                         <?php $totalDiscount += $bookingDiscount; ?>
@@ -645,13 +688,12 @@ foreach ($validTransactions as $t) {
             </table>
         </div>
 
-        <!-- 
-        Footer Note -->
+        <!-- Footer Note -->
         <div class="statement-footer">
             <strong>Note:</strong> This statement includes only verified transactions. Rejected and pending payments are excluded from this report.
             <?php if ($totalDiscounts > 0): ?>
             <?php if ($bookingDiscount > 0): ?> Booking discount of ৳<?= number_format($bookingDiscount, 2) ?> has been applied.<?php endif; ?>
-            <?php if ($bulkEmiDiscount > 0): ?> Bulk EMI discount of ৳<?= number_format($bulkEmiDiscount, 2) ?> has been applied for advance multi-installment payments.<?php endif; ?>
+            <?php if ($bulkEmiDiscount > 0): ?> EMI discount of ৳<?= number_format($bulkEmiDiscount, 2) ?> has been applied.<?php endif; ?>
             <?php endif; ?>
             <br><em>Statement generated on <?= date('d M Y \a\t h:i A') ?> — The Premium Homes Ltd.</em>
         </div>
