@@ -75,6 +75,7 @@ class FollowUpController extends Controller
             "assignedUsers" => $assignedUsers,
             "teams" => $teams,
             "teamMembers" => $teamMembers,
+            "transferableUsers" => $this->userModel->getSalesTransferableUsers(),
         ]);
 
         // print_r($followUpLeads);

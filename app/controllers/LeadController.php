@@ -2571,10 +2571,10 @@ class LeadController extends Controller
                 $checkStmt = $this->db->prepare("
                     SELECT l.id FROM leads l 
                     WHERE l.id = ? 
-                      AND (l.team_id = ? OR l.assigned_id = ? OR l.created_by = ? OR l.assigned_id IN (SELECT u.id FROM users u WHERE u.team_id = ?))
+                      AND (l.team_id = ? OR l.assigned_id = ? OR l.assigned_id IN (SELECT u.id FROM users u WHERE u.team_id = ?))
                     LIMIT 1
                 ");
-                $checkStmt->bind_param("iiiii", $leadId, $userTeamId, $userId, $userId, $userTeamId);
+                $checkStmt->bind_param("iiii", $leadId, $userTeamId, $userId, $userTeamId);
                 $checkStmt->execute();
                 if ($checkStmt->get_result()->num_rows === 0) {
                     continue; // Skip lead if not belonging to sales manager's team
@@ -2641,6 +2641,12 @@ class LeadController extends Controller
         } else {
             // It's a phone number. We match by 10-digit suffix!
             $digits = preg_replace('/\D/', '', $phoneOrEmail);
+            if (strlen($digits) < 6) {
+                setError("Invalid phone number! Cannot reassign leads with empty or invalid phone numbers.");
+                $redirectUrl = $_SERVER['HTTP_REFERER'] ?? ($GLOBALS['base_url'] . "/lead-lists");
+                header("Location: " . $redirectUrl);
+                exit;
+            }
             $suffix = strlen($digits) >= 10 ? substr($digits, -10) : $digits;
             $likePattern = '%' . $suffix;
             

@@ -14,7 +14,7 @@ class User extends Model
     private function baseUserQuery()
     {
         return "FROM users u
-        LEFT JOIN employees e ON e.user_id = u.id
+        LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
         LEFT JOIN designations d ON d.id = u.designation_id
         LEFT JOIN departments dep ON d.department_id = dep.id
         LEFT JOIN teams t ON t.id = u.team_id
@@ -74,7 +74,9 @@ class User extends Model
                 t.name AS team_name,
                 (SELECT COUNT(*) FROM leads l WHERE l.assigned_id = u.id AND l.deleted_at IS NULL) AS total_assigned_leads
             " . $this->baseUserQuery() . "
-            WHERE (u.role_id IN (5, 8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))";
+            WHERE (u.role_id IN (5, 8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))
+              AND (e.employee_status IS NULL OR (e.deleted_at IS NULL AND LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
+              AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))";
 
         $params = [];
         $types = "";
@@ -120,7 +122,9 @@ public function getPaginatedWithSalesExecutive($limit, $offset, $search = '', $r
                 r.name AS role_name,
                 t.name AS team_name
             " . $this->baseUserQuery() . "
-            WHERE (u.role_id IN (5,8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))"; // important change
+            WHERE (u.role_id IN (5,8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))
+              AND (e.employee_status IS NULL OR (e.deleted_at IS NULL AND LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
+              AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))"; // important change
 
     $params = [];
     $types = "";
@@ -160,7 +164,11 @@ public function getPaginatedWithSalesExecutive($limit, $offset, $search = '', $r
 
     public function countAllForSales($search = '', $role = '', $teamId = null)
     {
-        $sql = "SELECT COUNT(*) as total FROM users u WHERE 1";
+        $sql = "SELECT COUNT(*) as total FROM users u
+                LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+                WHERE 1
+                  AND (e.employee_status IS NULL OR (e.deleted_at IS NULL AND LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
+                  AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))";
 
         $params = [];
         $types = "";
@@ -197,7 +205,11 @@ public function getPaginatedWithSalesExecutive($limit, $offset, $search = '', $r
     }
    public function countAllForSalesExecutive($search = '', $roleId = null, $teamId = null)
 {
-    $sql = "SELECT COUNT(*) as total FROM users u WHERE (u.role_id IN (5,8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))";
+    $sql = "SELECT COUNT(*) as total FROM users u
+            LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+            WHERE (u.role_id IN (5,8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))
+              AND (e.employee_status IS NULL OR (e.deleted_at IS NULL AND LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
+              AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))";
 
     $params = [];
     $types = "";
@@ -238,9 +250,11 @@ public function getPaginatedWithSalesExecutive($limit, $offset, $search = '', $r
             u.full_name,
             e.employee_id as employee_code
         FROM users AS u
-        LEFT JOIN employees e ON e.user_id = u.id
+        LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
         LEFT JOIN designations des ON u.designation_id = des.id
         LEFT JOIN roles r ON u.role_id = r.id
+        WHERE (e.employee_status IS NULL OR (e.deleted_at IS NULL AND LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
+          AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
     ");
         if (!$sql->execute()) {
             return []; // Error handle koro
@@ -251,9 +265,7 @@ public function getPaginatedWithSalesExecutive($limit, $offset, $search = '', $r
     }
     public function getAllRoleUser()
     {
-
-
-        $sql = $this->db->prepare("  SELECT
+        $sql = $this->db->prepare("SELECT
                 u.*,
                 e.id AS employee_id,
                 e.photo AS employee_photo,
@@ -262,14 +274,14 @@ public function getPaginatedWithSalesExecutive($limit, $offset, $search = '', $r
                 IF(r.id IN (5,8,9), r.name, sr.name) AS role_name,
                 t.name AS team_name
             FROM users u
-            LEFT JOIN employees e ON e.user_id = u.id
+            LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
             LEFT JOIN designations AS d ON d.id = u.designation_id
             LEFT JOIN teams AS t ON t.id = u.team_id
             LEFT JOIN roles AS r ON r.id = u.role_id
             LEFT JOIN roles AS sr ON sr.id = u.secondary_role_id
            WHERE (r.id IN (5,8,9) OR sr.id IN (5,8,9))
-        
-
+             AND (e.employee_status IS NULL OR (e.deleted_at IS NULL AND LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
+             AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
     "); // Sales Manager = 5, Sales Executive = 8,sales Team head = 9
         if (!$sql->execute()) {
             return []; // Error handle koro
@@ -295,7 +307,7 @@ public function getUsersByTeamAndRole($teamId)
                 IF(r.id IN (5,8,9), r.name, sr.name) AS role_name,
                 t.name AS team_name
             FROM users u
-            LEFT JOIN employees e ON e.user_id = u.id
+            LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
             LEFT JOIN designations d ON d.id = u.designation_id
             LEFT JOIN teams t ON t.id = u.team_id
             LEFT JOIN roles r ON r.id = u.role_id
@@ -305,7 +317,9 @@ public function getUsersByTeamAndRole($teamId)
                 (r.id IN (5, 8) OR (r.id = 9 AND u.team_id IS NOT NULL))
                 OR 
                 (sr.id IN (5, 8) OR (sr.id = 9 AND u.team_id IS NOT NULL))
-            )";
+            )
+            AND (e.employee_status IS NULL OR (e.deleted_at IS NULL AND LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
+            AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))";
 
     $stmt = $this->db->prepare($sql);
     $stmt->bind_param("i", $teamId);
@@ -699,9 +713,10 @@ public function countSalesTeams($roleId = null, $teamId = null)
 {
     $sql = "SELECT COUNT(u.id) as total 
             FROM users u
-            LEFT JOIN employees e ON e.user_id = u.id
+            LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
             WHERE (u.role_id IN (5, 8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))
-              AND (e.employee_status IS NULL OR e.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
+              AND (e.employee_status IS NULL OR (e.deleted_at IS NULL AND LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
+              AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))";
 
     $params = [];
     $types  = "";
@@ -745,7 +760,7 @@ public function getSalesTeams($roleId = null, $teamId = null, $userId = null)
                 IF(r.id IN (5,8,9), r.name, sr.name) AS role_name,
                 t.name AS team_name
             FROM users u
-            LEFT JOIN employees e ON e.user_id = u.id
+            LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
             LEFT JOIN designations d ON d.id = u.designation_id
             LEFT JOIN teams t ON t.id = u.team_id
             LEFT JOIN roles r ON r.id = u.role_id
@@ -755,7 +770,8 @@ public function getSalesTeams($roleId = null, $teamId = null, $userId = null)
                 OR
                 (u.secondary_role_id IN (5, 8) OR (u.secondary_role_id = 9 AND u.team_id IS NOT NULL))
             )
-              AND (e.employee_status IS NULL OR e.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
+              AND (e.employee_status IS NULL OR (e.deleted_at IS NULL AND LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
+              AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))";
 
     $params = [];
     $types  = "";
@@ -793,7 +809,7 @@ public function getSalesTeams($roleId = null, $teamId = null, $userId = null)
                     e.employee_id AS employee_id,
                     IF(r.id IN (5,8,9), r.name, sr.name) AS role_name
                 FROM users u
-                LEFT JOIN employees e ON e.user_id = u.id
+                LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
                 LEFT JOIN roles r ON r.id = u.role_id
                 LEFT JOIN roles sr ON sr.id = u.secondary_role_id
                 WHERE (
@@ -801,7 +817,8 @@ public function getSalesTeams($roleId = null, $teamId = null, $userId = null)
                     OR
                     (u.secondary_role_id IN (5, 8, 9))
                 )
-                AND (e.employee_status IS NULL OR e.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
+                AND (e.employee_status IS NULL OR (e.deleted_at IS NULL AND LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
+                AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
                 ORDER BY u.full_name ASC";
         
         $stmt = $this->db->prepare($sql);

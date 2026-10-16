@@ -168,6 +168,7 @@ class UserDashboardController extends Controller
             "countries"       => $countries,
             "selectedCountry" => $filterCountry,
             "assignedUsers"   => $assignedUsers,
+            "teamMembers"     => $assignedUsers,
             "transferableUsers" => $transferableUsers,
         ]);
     }

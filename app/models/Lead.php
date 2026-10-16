@@ -390,12 +390,11 @@ class Lead extends Model
         if (!empty($teamId)) {
             if (isset($_SESSION['user']['role_id']) && !in_array($_SESSION['user']['role_id'], [1, 3, 9, 32, 33, 34, 35])) {
                 $loggedInUserId = $_SESSION['user']['id'] ?? 0;
-                $sql .= " AND (l.team_id = ? OR l.assigned_id = ? OR l.created_by = ? OR l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?))";
+                $sql .= " AND (l.team_id = ? OR l.assigned_id = ? OR l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?))";
                 $params[] = $teamId;
                 $params[] = $loggedInUserId;
-                $params[] = $loggedInUserId;
                 $params[] = $teamId;
-                $types .= "iiii";
+                $types .= "iii";
             } else {
                 $sql .= " AND l.team_id = ?";
                 $params[] = $teamId;
@@ -749,12 +748,11 @@ class Lead extends Model
         if (!empty($teamId)) {
             if (isset($_SESSION['user']['role_id']) && !in_array($_SESSION['user']['role_id'], [1, 3, 9, 32, 33, 34, 35])) {
                 $loggedInUserId = $_SESSION['user']['id'] ?? 0;
-                $sql .= " AND (l.team_id = ? OR l.assigned_id = ? OR l.created_by = ? OR l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?))";
+                $sql .= " AND (l.team_id = ? OR l.assigned_id = ? OR l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?))";
                 $params[] = $teamId;
                 $params[] = $loggedInUserId;
-                $params[] = $loggedInUserId;
                 $params[] = $teamId;
-                $types .= "iiii";
+                $types .= "iii";
             } else {
                 $sql .= " AND l.team_id = ?";
                 $params[] = $teamId;
@@ -1964,8 +1962,10 @@ class Lead extends Model
             FROM users u
             JOIN leads l ON l.assigned_id = u.id
             LEFT JOIN roles r ON r.id = u.role_id
-            LEFT JOIN employees e ON e.user_id = u.id
-            WHERE l.deleted_at IS NULL";
+            LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+            WHERE l.deleted_at IS NULL
+              AND (e.employee_status IS NULL OR (e.deleted_at IS NULL AND LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
+              AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))";
 
         $params = [];
         $types = "";

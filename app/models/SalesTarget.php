@@ -437,7 +437,7 @@ public function getExecutiveBookingStats($type = 'monthly')
                 IFNULL(b.total_booking_money, 0) AS total_booking_money,
                 IFNULL(b.total_registration_money, 0) AS total_registration_money
             FROM users u
-            LEFT JOIN employees emp ON emp.user_id = u.id
+            LEFT JOIN employees emp ON (emp.user_id = u.id OR emp.id = u.employee_id)
             LEFT JOIN (
                 SELECT sales_user_id, SUM(booking_target) AS total_target
                 FROM sales_targets
@@ -474,7 +474,8 @@ public function getExecutiveBookingStats($type = 'monthly')
                 GROUP BY lb.sales_by_id
             ) b ON b.sales_by_id = u.id
             WHERE (u.role_id IN (5,8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))
-              AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
+              AND (emp.employee_status IS NULL OR (emp.deleted_at IS NULL AND LOWER(TRIM(emp.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
+              AND (emp.employee_type IS NULL OR LOWER(TRIM(emp.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
             ORDER BY u.full_name ASC
         ";
     }
@@ -490,7 +491,7 @@ public function getExecutiveBookingStats($type = 'monthly')
                 IFNULL(b.total_booking_money, 0) AS total_booking_money,
                 IFNULL(b.total_registration_money, 0) AS total_registration_money
             FROM users u
-            LEFT JOIN employees emp ON emp.user_id = u.id
+            LEFT JOIN employees emp ON (emp.user_id = u.id OR emp.id = u.employee_id)
             LEFT JOIN sales_targets st 
                 ON st.sales_user_id = u.id
                 AND $targetCondition
@@ -526,7 +527,8 @@ public function getExecutiveBookingStats($type = 'monthly')
                 GROUP BY lb.sales_by_id
             ) b ON b.sales_by_id = u.id
             WHERE (u.role_id IN (5,8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))
-              AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
+              AND (emp.employee_status IS NULL OR (emp.deleted_at IS NULL AND LOWER(TRIM(emp.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
+              AND (emp.employee_type IS NULL OR LOWER(TRIM(emp.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
             ORDER BY u.full_name ASC
         ";
     }
@@ -721,6 +723,7 @@ public function getExecutiveFullStats($executiveId = null, $startDate = null, $e
                 IFNULL(b.total_booking_money, 0) AS total_booking_money,
                 IFNULL(b.total_registration_money, 0) AS total_registration_money
             FROM users u
+            LEFT JOIN employees emp ON (emp.user_id = u.id OR emp.id = u.employee_id)
             LEFT JOIN (
                 SELECT sales_user_id, SUM(booking_target) AS total_target
                 FROM sales_targets
@@ -763,6 +766,8 @@ public function getExecutiveFullStats($executiveId = null, $startDate = null, $e
                 GROUP BY lb.sales_by_id
             ) b ON b.sales_by_id = u.id
             WHERE (u.role_id IN (5,8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))
+              AND (emp.employee_status IS NULL OR (emp.deleted_at IS NULL AND LOWER(TRIM(emp.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
+              AND (emp.employee_type IS NULL OR LOWER(TRIM(emp.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
             ORDER BY u.full_name ASC
         ";
         $stmt = $this->db->prepare($sql);
