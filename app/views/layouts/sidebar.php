@@ -703,6 +703,17 @@
                             </li>
                         <?php endif; ?>
 
+                        <?php if (class_exists('SalesPerformanceController') && SalesPerformanceController::canAccess()): ?>
+                            <!-- Sales Performance (Management / Chief Executive) -->
+                            <li class="slide <?= isActive('sales-performance', $current_route) ?>">
+                                <a href="<?= $base_url ?>/sales-performance"
+                                    class="sidebar__menu-item <?= isActive('sales-performance', $current_route) ?>">
+                                    <div class="side-menu__icon"><i class="fa-solid fa-ranking-star"></i></div>
+                                    <span class="sidebar__menu-label">Sales Performance</span>
+                                </a>
+                            </li>
+                        <?php endif; ?>
+
                         <?php if (hasPermission("Sales team Performance")): ?>
                             <!-- Sales Team Performance-->
                             <li class="slide d-none <?= isActive('sales-team-performance', $current_route) ?>">
