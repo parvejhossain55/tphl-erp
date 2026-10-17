@@ -2,7 +2,7 @@
 
 <?php
 // Controller থেকে পাঠানো variable
-$current_route = $data['current_route'] ?? ($current_page ?? '');
+$current_route = !empty($current_route) ? $current_route : ($data['current_route'] ?? ($current_page ?? ''));
 
 function isActive($pages, $current_route)
 {

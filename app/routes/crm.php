@@ -106,6 +106,12 @@ return [
     'sales-team-performance' => ['controller' => 'SalesTeamKpiController', 'method' => 'index'],
 
     // =========================================================================
+    // Controller: SalesPerformanceController (Management / Chief Executive)
+    // =========================================================================
+    'sales-performance' => ['controller' => 'SalesPerformanceController', 'method' => 'index'],
+    'sales-performance/gap-details' => ['controller' => 'SalesPerformanceController', 'method' => 'gapDetails'],
+
+    // =========================================================================
     // Controller: LeadSourceController
     // =========================================================================
     'leadSource-lists' => ['controller' => 'LeadSourceController', 'method' => 'index'],
