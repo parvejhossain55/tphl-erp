@@ -410,7 +410,7 @@ class Lead extends Model
 
         // Date range filter
         if ($applyCreatedDateFilter) {
-            $dateCol = (!empty($assigned_user) || (isset($assigned) && $assigned === 'assigned')) ? 'l.assigned_at' : 'l.created_at';
+            $dateCol = (!empty($assigned_user) || (isset($assigned) && $assigned === 'assigned')) ? 'COALESCE(NULLIF(l.assigned_at, \'0000-00-00 00:00:00\'), l.created_at)' : 'l.created_at';
             
             if (!empty($from_date) && !empty($to_date)) {
                 $sql .= " AND DATE($dateCol) BETWEEN ? AND ?";
@@ -770,7 +770,7 @@ class Lead extends Model
 
         // Date range filter
         if ($applyCreatedDateFilter) {
-            $dateCol = (!empty($assigned_user) || (isset($assigned) && $assigned === 'assigned')) ? 'l.assigned_at' : 'l.created_at';
+            $dateCol = (!empty($assigned_user) || (isset($assigned) && $assigned === 'assigned')) ? 'COALESCE(NULLIF(l.assigned_at, \'0000-00-00 00:00:00\'), l.created_at)' : 'l.created_at';
 
             if (!empty($from_date) && !empty($to_date)) {
                 $sql .= " AND DATE($dateCol) BETWEEN ? AND ?";
@@ -1454,16 +1454,16 @@ class Lead extends Model
             $sql .= " AND (SELECT COUNT(*) FROM lead_follow_ups WHERE lead_id = leads.id) = 0";
         }
         if (!empty($from_date) && !empty($to_date)) {
-            $sql .= " AND DATE(leads.assigned_at) BETWEEN ? AND ?";
+            $sql .= " AND DATE(COALESCE(NULLIF(leads.assigned_at, '0000-00-00 00:00:00'), leads.created_at)) BETWEEN ? AND ?";
             $params[] = $from_date;
             $params[] = $to_date;
             $types .= "ss";
         } elseif (!empty($from_date)) {
-            $sql .= " AND DATE(leads.assigned_at) >= ?";
+            $sql .= " AND DATE(COALESCE(NULLIF(leads.assigned_at, '0000-00-00 00:00:00'), leads.created_at)) >= ?";
             $params[] = $from_date;
             $types .= "s";
         } elseif (!empty($to_date)) {
-            $sql .= " AND DATE(leads.assigned_at) <= ?";
+            $sql .= " AND DATE(COALESCE(NULLIF(leads.assigned_at, '0000-00-00 00:00:00'), leads.created_at)) <= ?";
             $params[] = $to_date;
             $types .= "s";
         }
@@ -1674,16 +1674,16 @@ class Lead extends Model
             $sql .= " AND (SELECT COUNT(*) FROM lead_follow_ups WHERE lead_id = leads.id) = 0";
         }
         if (!empty($from_date) && !empty($to_date)) {
-            $sql .= " AND DATE(leads.assigned_at) BETWEEN ? AND ?";
+            $sql .= " AND DATE(COALESCE(NULLIF(leads.assigned_at, '0000-00-00 00:00:00'), leads.created_at)) BETWEEN ? AND ?";
             $params[] = $from_date;
             $params[] = $to_date;
             $types .= "ss";
         } elseif (!empty($from_date)) {
-            $sql .= " AND DATE(leads.assigned_at) >= ?";
+            $sql .= " AND DATE(COALESCE(NULLIF(leads.assigned_at, '0000-00-00 00:00:00'), leads.created_at)) >= ?";
             $params[] = $from_date;
             $types .= "s";
         } elseif (!empty($to_date)) {
-            $sql .= " AND DATE(leads.assigned_at) <= ?";
+            $sql .= " AND DATE(COALESCE(NULLIF(leads.assigned_at, '0000-00-00 00:00:00'), leads.created_at)) <= ?";
             $params[] = $to_date;
             $types .= "s";
         }
@@ -1841,16 +1841,16 @@ class Lead extends Model
         }
 
         if (!empty($from_date) && !empty($to_date)) {
-            $sql .= " AND DATE(leads.assigned_at) BETWEEN ? AND ?";
+            $sql .= " AND DATE(COALESCE(NULLIF(leads.assigned_at, '0000-00-00 00:00:00'), leads.created_at)) BETWEEN ? AND ?";
             $params[] = $from_date;
             $params[] = $to_date;
             $types .= "ss";
         } elseif (!empty($from_date)) {
-            $sql .= " AND DATE(leads.assigned_at) >= ?";
+            $sql .= " AND DATE(COALESCE(NULLIF(leads.assigned_at, '0000-00-00 00:00:00'), leads.created_at)) >= ?";
             $params[] = $from_date;
             $types .= "s";
         } elseif (!empty($to_date)) {
-            $sql .= " AND DATE(leads.assigned_at) <= ?";
+            $sql .= " AND DATE(COALESCE(NULLIF(leads.assigned_at, '0000-00-00 00:00:00'), leads.created_at)) <= ?";
             $params[] = $to_date;
             $types .= "s";
         }
