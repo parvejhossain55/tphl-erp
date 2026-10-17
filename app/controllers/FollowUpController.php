@@ -131,10 +131,21 @@ public function store()
         'next_follow_up_plan_notes' => $_POST['next_follow_up_plan_notes'] ?? null,
     ];
 
+    $currentUserId = $_SESSION['user']['id'] ?? 0;
+
     // Handle User-level Transfer (transfer_to_user_id takes priority)
     if ($followUpData['lead_status'] === 'Lead Transferred' && !empty($_POST['transfer_to_user_id'])) {
         $transfer_to_user_id = (int)$_POST['transfer_to_user_id'];
         $lead_id = $followUpData['lead_id'];
+
+        // Get previous lead assignment details
+        $prevLeadStmt = $this->db->prepare("SELECT assigned_id, team_id FROM leads WHERE id = ? LIMIT 1");
+        $prevLeadStmt->bind_param("i", $lead_id);
+        $prevLeadStmt->execute();
+        $prevLeadData = $prevLeadStmt->get_result()->fetch_assoc();
+        $prevLeadStmt->close();
+        $oldAssignedId = !empty($prevLeadData['assigned_id']) ? (int)$prevLeadData['assigned_id'] : null;
+        $oldTeamId     = !empty($prevLeadData['team_id']) ? (int)$prevLeadData['team_id'] : null;
 
         // Look up the target user's team_id
         $userStmt = $this->db->prepare("SELECT team_id FROM users WHERE id = ? LIMIT 1");
@@ -144,52 +155,109 @@ public function store()
             $userStmt->execute();
             $userResult = $userStmt->get_result()->fetch_assoc();
             $newTeamId = $userResult['team_id'] ?? null;
+            $userStmt->close();
         }
 
         if ($newTeamId) {
-            $updateLead = $this->db->prepare("UPDATE leads SET assigned_id = ?, assigned_at = CURRENT_TIMESTAMP, team_id = ? WHERE id = ?");
+            $updateLead = $this->db->prepare("UPDATE leads SET assigned_id = ?, assigned_by = ?, assigned_at = CURRENT_TIMESTAMP, team_id = ? WHERE id = ?");
             if ($updateLead) {
-                $updateLead->bind_param("iii", $transfer_to_user_id, $newTeamId, $lead_id);
+                $updateLead->bind_param("iiii", $transfer_to_user_id, $currentUserId, $newTeamId, $lead_id);
                 $updateLead->execute();
+                $updateLead->close();
             }
         } else {
-            $updateLead = $this->db->prepare("UPDATE leads SET assigned_id = ?, assigned_at = CURRENT_TIMESTAMP WHERE id = ?");
+            $updateLead = $this->db->prepare("UPDATE leads SET assigned_id = ?, assigned_by = ?, assigned_at = CURRENT_TIMESTAMP WHERE id = ?");
             if ($updateLead) {
-                $updateLead->bind_param("ii", $transfer_to_user_id, $lead_id);
+                $updateLead->bind_param("iii", $transfer_to_user_id, $currentUserId, $lead_id);
                 $updateLead->execute();
+                $updateLead->close();
             }
+        }
+
+        // Log transfer history
+        $histStmt = $this->db->prepare("
+            INSERT INTO lead_assignment_history 
+            (lead_id, from_user_id, to_user_id, from_team_id, to_team_id, assigned_by, assigned_at, action_type, notes)
+            VALUES (?, ?, ?, ?, ?, ?, NOW(), 'transferred', 'Transferred during follow-up')
+        ");
+        if ($histStmt) {
+            $tTeam = $newTeamId ? (int)$newTeamId : $oldTeamId;
+            $histStmt->bind_param("iiiiii", $lead_id, $oldAssignedId, $transfer_to_user_id, $oldTeamId, $tTeam, $currentUserId);
+            $histStmt->execute();
+            $histStmt->close();
         }
     }
     // Handle Team Re-assignment (team-level, when no specific user selected)
     elseif ($followUpData['lead_status'] === 'Lead Transferred' && !empty($_POST['team_id'])) {
         $team_id = (int)$_POST['team_id'];
         $lead_id = $followUpData['lead_id'];
+
+        $prevLeadStmt = $this->db->prepare("SELECT assigned_id, team_id FROM leads WHERE id = ? LIMIT 1");
+        $prevLeadStmt->bind_param("i", $lead_id);
+        $prevLeadStmt->execute();
+        $prevLeadData = $prevLeadStmt->get_result()->fetch_assoc();
+        $prevLeadStmt->close();
+        $oldAssignedId = !empty($prevLeadData['assigned_id']) ? (int)$prevLeadData['assigned_id'] : null;
+        $oldTeamId     = !empty($prevLeadData['team_id']) ? (int)$prevLeadData['team_id'] : null;
         
-        $updateTeam = $this->db->prepare("UPDATE leads SET team_id = ?, assigned_id = NULL WHERE id = ?");
+        $updateTeam = $this->db->prepare("UPDATE leads SET team_id = ?, assigned_id = NULL, assigned_by = ? WHERE id = ?");
         if ($updateTeam) {
-            $updateTeam->bind_param("ii", $team_id, $lead_id);
+            $updateTeam->bind_param("iii", $team_id, $currentUserId, $lead_id);
             $updateTeam->execute();
+            $updateTeam->close();
+        }
+
+        $histStmt = $this->db->prepare("
+            INSERT INTO lead_assignment_history 
+            (lead_id, from_user_id, to_user_id, from_team_id, to_team_id, assigned_by, assigned_at, action_type, notes)
+            VALUES (?, ?, 0, ?, ?, ?, NOW(), 'transferred', 'Transferred to team pool during follow-up')
+        ");
+        if ($histStmt) {
+            $histStmt->bind_param("iiiii", $lead_id, $oldAssignedId, $oldTeamId, $team_id, $currentUserId);
+            $histStmt->execute();
+            $histStmt->close();
         }
     }
 
-    // Update Lead Type
+    // Update Lead Type and optional drop reason
     if (!empty($followUpData['lead_status'])) {
         $lead_status = $followUpData['lead_status'];
         $lead_id = $followUpData['lead_id'];
-        $updateLeadType = $this->db->prepare("UPDATE leads SET lead_type = ? WHERE id = ?");
-        if ($updateLeadType) {
-            $updateLeadType->bind_param("si", $lead_status, $lead_id);
-            $updateLeadType->execute();
+        $dropReason = !empty($_POST['drop_reason']) ? trim($_POST['drop_reason']) : null;
+        $dropNote   = !empty($_POST['drop_note']) ? trim($_POST['drop_note']) : null;
+
+        if ($dropReason !== null || $dropNote !== null) {
+            $updateLeadType = $this->db->prepare("UPDATE leads SET lead_type = ?, drop_reason = ?, drop_note = ? WHERE id = ?");
+            if ($updateLeadType) {
+                $updateLeadType->bind_param("sssi", $lead_status, $dropReason, $dropNote, $lead_id);
+                $updateLeadType->execute();
+                $updateLeadType->close();
+            }
+        } else {
+            $updateLeadType = $this->db->prepare("UPDATE leads SET lead_type = ? WHERE id = ?");
+            if ($updateLeadType) {
+                $updateLeadType->bind_param("si", $lead_status, $lead_id);
+                $updateLeadType->execute();
+                $updateLeadType->close();
+            }
         }
     }
 
     // Create follow-up
     $created = $this->followUpModel->create($followUpData);
 
-    $leadId = $_POST['lead_id'];
+    $leadId = (int)$_POST['lead_id'];
     $isAjax = !empty($_POST['is_ajax']);
 
     if ($created) {
+        // Auto-set first_contacted_at on lead if not already set
+        $touchStmt = $this->db->prepare("UPDATE leads SET first_contacted_at = COALESCE(first_contacted_at, NOW()) WHERE id = ?");
+        if ($touchStmt) {
+            $touchStmt->bind_param("i", $leadId);
+            $touchStmt->execute();
+            $touchStmt->close();
+        }
+
         setSuccess("Follow-up created successfully!");
         if ($isAjax) {
             header('Content-Type: application/json');

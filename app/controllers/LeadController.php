@@ -1194,29 +1194,38 @@ class LeadController extends Controller
         }
         $assignedAt = $formattedDate . ' ' . date('H:i:s');
 
+        $historyStmt = $this->db->prepare("
+            INSERT INTO lead_assignment_history 
+            (lead_id, from_user_id, to_user_id, from_team_id, to_team_id, assigned_by, assigned_at, action_type, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+
         if ($routeMode === 'existing') {
             // Reassign duplicates to their existing owners, and others to the selected userId
             foreach ($ids as $leadId) {
-                // Fetch lead details (phone, email)
-                $leadDetailsStmt = $this->db->prepare("SELECT phone_number, phone, email, team_id FROM leads WHERE id = ?");
+                // Fetch lead details (phone, email, previous assignment)
+                $leadDetailsStmt = $this->db->prepare("SELECT id, assigned_id, phone_number, phone, email, team_id FROM leads WHERE id = ?");
                 $leadDetailsStmt->bind_param("i", $leadId);
                 $leadDetailsStmt->execute();
                 $leadObj = $leadDetailsStmt->get_result()->fetch_assoc();
                 
+                $prevAssignedId = !empty($leadObj['assigned_id']) ? (int)$leadObj['assigned_id'] : null;
+                $prevTeamId     = !empty($leadObj['team_id']) ? (int)$leadObj['team_id'] : null;
+
                 $leadPhone = $leadObj['phone_number'] ?? $leadObj['phone'] ?? '';
                 $leadEmail = $leadObj['email'] ?? '';
                 
                 $firstAssignee = $this->leadModel->findFirstAssignee($leadPhone, $leadEmail);
                 
                 if ($firstAssignee && !empty($firstAssignee['assigned_id'])) {
-                    $targetUid = $firstAssignee['assigned_id'];
+                    $targetUid = (int)$firstAssignee['assigned_id'];
                     
                     // Fetch current team_id of this assignee from users table
                     $userTeamStmt = $this->db->prepare("SELECT team_id FROM users WHERE id = ? LIMIT 1");
                     $userTeamStmt->bind_param("i", $targetUid);
                     $userTeamStmt->execute();
                     $userTeamRes = $userTeamStmt->get_result()->fetch_assoc();
-                    $targetTid = ($userTeamRes && $userTeamRes['team_id'] !== null) ? (int)$userTeamRes['team_id'] : $firstAssignee['team_id'];
+                    $targetTid = ($userTeamRes && $userTeamRes['team_id'] !== null) ? (int)$userTeamRes['team_id'] : (int)$firstAssignee['team_id'];
                 } else {
                     $targetUid = $userId;
                     // Get team_id of selected user
@@ -1224,16 +1233,25 @@ class LeadController extends Controller
                     $userTeamStmt->bind_param("i", $userId);
                     $userTeamStmt->execute();
                     $userTeamRes = $userTeamStmt->get_result()->fetch_assoc();
-                    $targetTid = $userTeamRes ? (int)$userTeamRes['team_id'] : $leadObj['team_id'];
+                    $targetTid = $userTeamRes && $userTeamRes['team_id'] !== null ? (int)$userTeamRes['team_id'] : $leadObj['team_id'];
                 }
                 
+                // Keep original created_by intact (only set if NULL); update assigned_by
                 $stmtUpdate = $this->db->prepare("
                     UPDATE leads 
-                    SET assigned_id = ?, team_id = ?, assigned_at = ?, created_by = ? 
+                    SET assigned_id = ?, team_id = ?, assigned_at = ?, assigned_by = ?, created_by = COALESCE(created_by, ?) 
                     WHERE id = ?
                 ");
-                $stmtUpdate->bind_param("iisii", $targetUid, $targetTid, $assignedAt, $assignedBy, $leadId);
+                $stmtUpdate->bind_param("iisiii", $targetUid, $targetTid, $assignedAt, $assignedBy, $assignedBy, $leadId);
                 $stmtUpdate->execute();
+
+                // Log into lead_assignment_history
+                if ($historyStmt) {
+                    $actionType = ($prevAssignedId && $prevAssignedId !== $targetUid) ? 'reassigned' : 'assigned';
+                    $note = 'Assigned via Lead List (Existing Owner Routing)';
+                    $historyStmt->bind_param("iiiiissss", $leadId, $prevAssignedId, $targetUid, $prevTeamId, $targetTid, $assignedBy, $assignedAt, $actionType, $note);
+                    $historyStmt->execute();
+                }
             }
         } else {
             // Get team_id of selected user
@@ -1241,25 +1259,51 @@ class LeadController extends Controller
             $userTeamStmt->bind_param("i", $userId);
             $userTeamStmt->execute();
             $userTeamRes = $userTeamStmt->get_result()->fetch_assoc();
-            $userTeamId = $userTeamRes ? (int)$userTeamRes['team_id'] : null;
+            $userTeamId = $userTeamRes && $userTeamRes['team_id'] !== null ? (int)$userTeamRes['team_id'] : null;
 
-            // Update leads
+            // Fetch previous state for history logging
+            $prevLeadsRes = $this->db->query("SELECT id, assigned_id, team_id FROM leads WHERE id IN ($idsStr)");
+            $prevMap = [];
+            if ($prevLeadsRes) {
+                while ($pRow = $prevLeadsRes->fetch_assoc()) {
+                    $prevMap[$pRow['id']] = $pRow;
+                }
+            }
+
+            // Update leads preserving created_by, setting assigned_by
             if ($userTeamId !== null) {
                 $stmtUpdate = $this->db->prepare("
                     UPDATE leads 
-                    SET assigned_id = ?, team_id = ?, assigned_at = ?, created_by = ? 
+                    SET assigned_id = ?, team_id = ?, assigned_at = ?, assigned_by = ?, created_by = COALESCE(created_by, ?) 
                     WHERE id IN ($idsStr)
                 ");
-                $stmtUpdate->bind_param("iisi", $userId, $userTeamId, $assignedAt, $assignedBy);
+                $stmtUpdate->bind_param("iisii", $userId, $userTeamId, $assignedAt, $assignedBy, $assignedBy);
             } else {
                 $stmtUpdate = $this->db->prepare("
                     UPDATE leads 
-                    SET assigned_id = ?, assigned_at = ?, created_by = ? 
+                    SET assigned_id = ?, assigned_at = ?, assigned_by = ?, created_by = COALESCE(created_by, ?) 
                     WHERE id IN ($idsStr)
                 ");
-                $stmtUpdate->bind_param("isi", $userId, $assignedAt, $assignedBy);
+                $stmtUpdate->bind_param("isii", $userId, $assignedAt, $assignedBy, $assignedBy);
             }
             $stmtUpdate->execute();
+
+            // Record history for all updated leads
+            if ($historyStmt) {
+                $note = 'Bulk assigned via Lead List';
+                foreach ($ids as $leadId) {
+                    $pInfo = $prevMap[$leadId] ?? null;
+                    $pUid = !empty($pInfo['assigned_id']) ? (int)$pInfo['assigned_id'] : null;
+                    $pTid = !empty($pInfo['team_id']) ? (int)$pInfo['team_id'] : null;
+                    $actionType = ($pUid && $pUid !== $userId) ? 'reassigned' : 'bulk_assigned';
+                    $targetTid = $userTeamId !== null ? $userTeamId : $pTid;
+                    $historyStmt->bind_param("iiiiissss", $leadId, $pUid, $userId, $pTid, $targetTid, $assignedBy, $assignedAt, $actionType, $note);
+                    $historyStmt->execute();
+                }
+            }
+        }
+        if ($historyStmt) {
+            $historyStmt->close();
         }
 
         // Get user name
@@ -2632,12 +2676,19 @@ class LeadController extends Controller
         $assignedBy = $_SESSION['user']['id'] ?? 0;
         
         if ($isEmail) {
+            // Find existing matching leads for history logging
+            $findStmt = $this->db->prepare("SELECT id, assigned_id, team_id FROM leads WHERE email = ? AND deleted_at IS NULL");
+            $findStmt->bind_param("s", $phoneOrEmail);
+            $findStmt->execute();
+            $matchedLeads = $findStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $findStmt->close();
+
             $stmt = $this->db->prepare("
                 UPDATE leads 
-                SET assigned_id = ?, team_id = ?, assigned_at = ?, created_by = ? 
+                SET assigned_id = ?, team_id = ?, assigned_at = ?, assigned_by = ?, created_by = COALESCE(created_by, ?) 
                 WHERE email = ? AND deleted_at IS NULL
             ");
-            $stmt->bind_param("iisis", $targetUserId, $teamId, $assignedAt, $assignedBy, $phoneOrEmail);
+            $stmt->bind_param("iisiis", $targetUserId, $teamId, $assignedAt, $assignedBy, $assignedBy, $phoneOrEmail);
         } else {
             // It's a phone number. We match by 10-digit suffix!
             $digits = preg_replace('/\D/', '', $phoneOrEmail);
@@ -2650,15 +2701,40 @@ class LeadController extends Controller
             $suffix = strlen($digits) >= 10 ? substr($digits, -10) : $digits;
             $likePattern = '%' . $suffix;
             
+            // Find existing matching leads for history logging
+            $findStmt = $this->db->prepare("SELECT id, assigned_id, team_id FROM leads WHERE (phone_number LIKE ? OR phone LIKE ?) AND deleted_at IS NULL");
+            $findStmt->bind_param("ss", $likePattern, $likePattern);
+            $findStmt->execute();
+            $matchedLeads = $findStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $findStmt->close();
+
             $stmt = $this->db->prepare("
                 UPDATE leads 
-                SET assigned_id = ?, team_id = ?, assigned_at = ?, created_by = ? 
+                SET assigned_id = ?, team_id = ?, assigned_at = ?, assigned_by = ?, created_by = COALESCE(created_by, ?) 
                 WHERE (phone_number LIKE ? OR phone LIKE ?) AND deleted_at IS NULL
             ");
-            $stmt->bind_param("iisiss", $targetUserId, $teamId, $assignedAt, $assignedBy, $likePattern, $likePattern);
+            $stmt->bind_param("iisiiss", $targetUserId, $teamId, $assignedAt, $assignedBy, $assignedBy, $likePattern, $likePattern);
         }
         
         if ($stmt && $stmt->execute()) {
+            // Record assignment history
+            if (!empty($matchedLeads)) {
+                $histStmt = $this->db->prepare("
+                    INSERT INTO lead_assignment_history 
+                    (lead_id, from_user_id, to_user_id, from_team_id, to_team_id, assigned_by, assigned_at, action_type, notes)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 'reassigned', 'Duplicate group reassignment')
+                ");
+                if ($histStmt) {
+                    foreach ($matchedLeads as $mLead) {
+                        $mLeadId = (int)$mLead['id'];
+                        $mFromUid = !empty($mLead['assigned_id']) ? (int)$mLead['assigned_id'] : null;
+                        $mFromTid = !empty($mLead['team_id']) ? (int)$mLead['team_id'] : null;
+                        $histStmt->bind_param("iiiiiss", $mLeadId, $mFromUid, $targetUserId, $mFromTid, $teamId, $assignedBy, $assignedAt);
+                        $histStmt->execute();
+                    }
+                    $histStmt->close();
+                }
+            }
             setSuccess("All duplicate leads reassigned successfully!");
         } else {
             setError("Failed to reassign duplicate leads.");
