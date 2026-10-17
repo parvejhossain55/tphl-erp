@@ -687,7 +687,8 @@ class Lead extends Model
         $sql = "SELECT 
         l.*,
         u.full_name AS agent_name,
-        u_by.full_name AS assigned_by_name,
+        COALESCE(u_assigned_by.full_name, u_by.full_name, 'System') AS assigned_by_name,
+        u_by.full_name AS creator_name,
         COALESCE(p.name, lp.name) AS project_name,
         lpc.name AS project_category_name,
         lf.next_action,
@@ -699,6 +700,7 @@ class Lead extends Model
         ldr.delete_requested_by_name
     FROM leads AS l
     LEFT JOIN users AS u ON l.assigned_id = u.id
+    LEFT JOIN users AS u_assigned_by ON l.assigned_by = u_assigned_by.id
     LEFT JOIN users AS u_by ON l.created_by = u_by.id
     LEFT JOIN employees AS emp ON emp.user_id = l.assigned_id
     LEFT JOIN (
@@ -1233,7 +1235,8 @@ class Lead extends Model
         $sql = "
         SELECT 
             l.*,
-            u_by.full_name AS assigned_by_name,
+            COALESCE(u_assigned_by.full_name, u_by.full_name, 'System') AS assigned_by_name,
+            u_by.full_name AS creator_name,
             p.name AS project_name,
             lpc.name AS project_category_name,
             lf.status AS last_follow_up_status,
@@ -1243,6 +1246,7 @@ class Lead extends Model
             lf.follow_up_type,
             u_transfer.full_name AS transfer_from_name
         FROM leads AS l
+        LEFT JOIN users AS u_assigned_by ON l.assigned_by = u_assigned_by.id
         LEFT JOIN users AS u_by ON l.created_by = u_by.id
         LEFT JOIN projects AS p ON l.project_id = p.id
         LEFT JOIN project_categories AS lpc ON l.project_category_id = lpc.id
@@ -1359,7 +1363,8 @@ class Lead extends Model
     public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAction = null, $lead_status = null, $only_missing_followup = false, $search = null, $followup_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null, $from_date = null, $to_date = null, $uncontacted = false, $limit = null, $offset = null)
     {
         $sql = "SELECT leads.*, 
-        u_by.full_name AS assigned_by_name,
+        COALESCE(u_assigned_by.full_name, u_by.full_name, 'System') AS assigned_by_name,
+        u_by.full_name AS creator_name,
         lf.next_action,
         lf.follow_up_type,
         lf.status AS last_follow_up_status,
@@ -1371,6 +1376,7 @@ class Lead extends Model
         lf.next_follow_up_date,
         u_transfer.full_name AS transfer_from_name
     FROM leads
+    LEFT JOIN users AS u_assigned_by ON leads.assigned_by = u_assigned_by.id
     LEFT JOIN users AS u_by ON leads.created_by = u_by.id
     LEFT JOIN (
         SELECT t1.*
@@ -1999,10 +2005,28 @@ class Lead extends Model
         foreach ($salesUsers as $user) {
             $userId = $user['id'];
 
-            // Total leads (overall all-time assigned leads)
+            // Total leads (filtered by selected year/month, or all-time if not specified)
             $leadWhere = ["assigned_id = ?", "deleted_at IS NULL"];
             $leadParams = [$userId];
             $leadTypes = "i";
+            if ($year && $month) {
+                $leadWhere[] = "((assigned_at IS NOT NULL AND YEAR(assigned_at) = ? AND MONTH(assigned_at) = ?) OR (assigned_at IS NULL AND YEAR(created_at) = ? AND MONTH(created_at) = ?))";
+                $leadParams[] = $year;
+                $leadParams[] = $month;
+                $leadParams[] = $year;
+                $leadParams[] = $month;
+                $leadTypes .= "iiii";
+            } elseif ($year) {
+                $leadWhere[] = "((assigned_at IS NOT NULL AND YEAR(assigned_at) = ?) OR (assigned_at IS NULL AND YEAR(created_at) = ?))";
+                $leadParams[] = $year;
+                $leadParams[] = $year;
+                $leadTypes .= "ii";
+            } elseif ($month) {
+                $leadWhere[] = "((assigned_at IS NOT NULL AND MONTH(assigned_at) = ?) OR (assigned_at IS NULL AND MONTH(created_at) = ?))";
+                $leadParams[] = $month;
+                $leadParams[] = $month;
+                $leadTypes .= "ii";
+            }
             $leadsSql = "SELECT COUNT(*) AS count FROM leads WHERE " . implode(" AND ", $leadWhere);
             $leadsStmt = $this->db->prepare($leadsSql);
             $leadsStmt->bind_param($leadTypes, ...$leadParams);
@@ -2110,6 +2134,31 @@ class Lead extends Model
             $projectStmt->execute();
             $projectBookings = $projectStmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
+            // Average First Response Time (hours from assigned_at to first_contacted_at)
+            $respWhere = ["assigned_id = ?", "assigned_at IS NOT NULL", "first_contacted_at IS NOT NULL", "deleted_at IS NULL"];
+            $respParams = [$userId];
+            $respTypes = "i";
+            if ($year) {
+                $respWhere[] = "YEAR(assigned_at) = ?";
+                $respParams[] = $year;
+                $respTypes .= "i";
+            }
+            if ($month) {
+                $respWhere[] = "MONTH(assigned_at) = ?";
+                $respParams[] = $month;
+                $respTypes .= "i";
+            }
+            $respSql = "SELECT AVG(TIMESTAMPDIFF(MINUTE, assigned_at, first_contacted_at)) AS avg_min FROM leads WHERE " . implode(" AND ", $respWhere);
+            $respStmt = $this->db->prepare($respSql);
+            $avgResponseHours = null;
+            if ($respStmt) {
+                $respStmt->bind_param($respTypes, ...$respParams);
+                $respStmt->execute();
+                $avgMin = $respStmt->get_result()->fetch_assoc()['avg_min'] ?? null;
+                $respStmt->close();
+                $avgResponseHours = ($avgMin !== null && $avgMin >= 0) ? round($avgMin / 60, 1) : null;
+            }
+
             $kpiData[] = [
                 'user' => $user,
                 'total_leads' => (int) $totalLeads,
@@ -2117,6 +2166,7 @@ class Lead extends Model
                 'total_bookings' => (int) $totalBookings,
                 'total_money' => (float) $totalMoney,
                 'conversion_rate' => $conversionRate,
+                'avg_response_hours' => $avgResponseHours,
                 'project_bookings' => $projectBookings
             ];
         }

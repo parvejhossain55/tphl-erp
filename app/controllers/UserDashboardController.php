@@ -324,6 +324,14 @@ class UserDashboardController extends Controller
 
             $followUpId = $this->db->insert_id;
             $createStmt->close();
+
+            // Auto-set first_contacted_at on lead if not set yet
+            $touchStmt = $this->db->prepare("UPDATE leads SET first_contacted_at = COALESCE(first_contacted_at, NOW()) WHERE id = ?");
+            if ($touchStmt) {
+                $touchStmt->bind_param("i", $leadId);
+                $touchStmt->execute();
+                $touchStmt->close();
+            }
         }
 
         //  Dynamic update
@@ -421,20 +429,48 @@ class UserDashboardController extends Controller
 
     public function updateCallStatus()
     {
-        $id = $_POST['lead_id'];
-        $status = $_POST['call_status'];
-        $stmt = $this->db->prepare("UPDATE leads SET call_status=? WHERE id=?");
-        $stmt->bind_param("si", $status, $id);
-        $stmt->execute();
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $id = (int)($_POST['lead_id'] ?? 0);
+        $status = $_POST['call_status'] ?? null;
+
+        if ($id && $status) {
+            $stmt = $this->db->prepare("UPDATE leads SET call_status = ?, first_contacted_at = COALESCE(first_contacted_at, NOW()) WHERE id = ?");
+            $stmt->bind_param("si", $status, $id);
+            $stmt->execute();
+            $stmt->close();
+
+            $logStmt = $this->db->prepare("INSERT INTO lead_call_logs (lead_id, user_id, call_status) VALUES (?, ?, ?)");
+            if ($logStmt) {
+                $logStmt->bind_param("iis", $id, $userId, $status);
+                $logStmt->execute();
+                $logStmt->close();
+            }
+        }
     }
+
     public function updateCommunicationStatus()
     {
-        $id = $_POST['lead_id'];
-        $status = $_POST['communication_type'];
-        $stmt = $this->db->prepare("UPDATE leads SET communication_type=? WHERE id=?");
-        $stmt->bind_param("si", $status, $id);
-        $stmt->execute();
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $id = (int)($_POST['lead_id'] ?? 0);
+        $status = $_POST['communication_type'] ?? null;
+
+        if ($id && $status) {
+            $stmt = $this->db->prepare("UPDATE leads SET communication_type = ?, first_contacted_at = COALESCE(first_contacted_at, NOW()) WHERE id = ?");
+            $stmt->bind_param("si", $status, $id);
+            $stmt->execute();
+            $stmt->close();
+
+            $logStmt = $this->db->prepare("INSERT INTO lead_call_logs (lead_id, user_id, communication_type) VALUES (?, ?, ?)");
+            if ($logStmt) {
+                $logStmt->bind_param("iis", $id, $userId, $status);
+                $logStmt->execute();
+                $logStmt->close();
+            }
+        }
     }
+
     public function updateLeadStatus()
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -451,11 +487,18 @@ class UserDashboardController extends Controller
 
         $id = (int) $_POST['lead_id'];
         $status = $_POST['lead_status'];
+        $dropReason = !empty($_POST['drop_reason']) ? trim($_POST['drop_reason']) : null;
+        $dropNote   = !empty($_POST['drop_note']) ? trim($_POST['drop_note']) : null;
 
-        $stmt = $this->db->prepare("UPDATE leads SET lead_type=? WHERE id=?");
-        $stmt->bind_param("si", $status, $id);
+        if ($dropReason !== null || $dropNote !== null) {
+            $stmt = $this->db->prepare("UPDATE leads SET lead_type = ?, drop_reason = ?, drop_note = ? WHERE id = ?");
+            $stmt->bind_param("sssi", $status, $dropReason, $dropNote, $id);
+        } else {
+            $stmt = $this->db->prepare("UPDATE leads SET lead_type = ? WHERE id = ?");
+            $stmt->bind_param("si", $status, $id);
+        }
 
-        if ($stmt->execute()) {
+        if ($stmt && $stmt->execute()) {
             echo json_encode([
                 'success' => true,
                 'message' => 'Lead status updated'
@@ -465,21 +508,38 @@ class UserDashboardController extends Controller
             echo json_encode(['error' => 'Update failed']);
         }
 
-        $stmt->close();
+        if ($stmt) $stmt->close();
     }
 
 
     public function updateCallNote()
     {
-        $id = (int)$_POST['lead_id'];
-        $note = $this->db->real_escape_string($_POST['call_note']);
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $id = (int)($_POST['lead_id'] ?? 0);
+        $note = trim($_POST['call_note'] ?? '');
 
-        $result = $this->db->query(
-            "UPDATE leads SET call_note='$note' WHERE id=$id"
-        );
-        
         header('Content-Type: application/json');
+        if (!$id) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Missing lead ID']);
+            exit;
+        }
+
+        $stmt = $this->db->prepare("UPDATE leads SET call_note = ?, first_contacted_at = COALESCE(first_contacted_at, NOW()) WHERE id = ?");
+        $stmt->bind_param("si", $note, $id);
+        $result = $stmt->execute();
+        $stmt->close();
+
         if ($result) {
+            if ($note !== '') {
+                $logStmt = $this->db->prepare("INSERT INTO lead_call_logs (lead_id, user_id, call_note) VALUES (?, ?, ?)");
+                if ($logStmt) {
+                    $logStmt->bind_param("iis", $id, $userId, $note);
+                    $logStmt->execute();
+                    $logStmt->close();
+                }
+            }
             echo json_encode(['success' => true]);
         } else {
             http_response_code(500);

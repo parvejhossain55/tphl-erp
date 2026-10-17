@@ -706,6 +706,11 @@ if (!empty($periodYear)) {
                             <div class="kc-bar-fill" style="width:<?= min($kpiItem['conversion_rate'], 100) ?>%;background:#F59E0B;"></div>
                         </div>
                     </div>
+                    <div class="kpi-cell">
+                        <div class="kc-label">Avg First Response</div>
+                        <div class="kc-val"><?= ($kpiItem['avg_response_hours'] !== null) ? $kpiItem['avg_response_hours'] . 'h' : '—' ?></div>
+                        <div class="kc-sub">Assigned → 1st touch</div>
+                    </div>
                 </div>
                 <?php if (!empty($kpiItem['project_bookings']) && $kpiItem['total_bookings'] > 0): ?>
                     <?php foreach ($kpiItem['project_bookings'] as $project): ?>
