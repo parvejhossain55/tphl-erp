@@ -386,6 +386,11 @@ class Lead extends Model
             ))";
         }
 
+        // Hide undistributed leads from sales users until approved (distribute = 1)
+        if (!in_array((int)$loggedInRole, [1, 10, 11])) {
+            $sql .= " AND (l.distribute = 1 OR l.distribute IS NULL)";
+        }
+
         // TEAM BASED FILTER
         if (!empty($teamId)) {
             if (isset($_SESSION['user']['role_id']) && !in_array($_SESSION['user']['role_id'], [1, 3, 9, 32, 33, 34, 35])) {
@@ -744,6 +749,11 @@ class Lead extends Model
             $sql .= " AND (l.team_id IS NULL OR l.team_id = 0 OR l.team_id NOT IN (
                 SELECT e.team_id FROM employees e JOIN users u ON u.id = e.user_id WHERE u.role_id IN (33, 35) AND e.team_id IS NOT NULL AND e.team_id > 0
             ))";
+        }
+
+        // Hide undistributed leads from sales users until approved (distribute = 1)
+        if (!in_array((int)$loggedInRole, [1, 10, 11])) {
+            $sql .= " AND (l.distribute = 1 OR l.distribute IS NULL)";
         }
 
         // TEAM BASED FILTER

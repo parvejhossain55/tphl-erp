@@ -61,6 +61,16 @@ return [
     'all-platform-leads-export' => ['controller' => 'DigitalMarketingController', 'method' => 'exportAllPlatformLeadsExcel'],
 
     // =========================================================================
+    // Controller: LeadAutomationController (Google Sheets & Gemini Automation)
+    // =========================================================================
+    'lead-automation-upload' => ['controller' => 'LeadAutomationController', 'method' => 'index'],
+    'lead-automation/scrape' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxScrape'],
+    'lead-automation/leads-ajax' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxListLeads'],
+    'lead-automation/approve' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxApprove'],
+    'lead-automation/unapprove' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxUnapprove'],
+    'lead-automation/cron' => ['controller' => 'LeadAutomationController', 'method' => 'syncCron'],
+
+    // =========================================================================
     // Controller: OnboardClientController
     // =========================================================================
     'onboard-access-client-lists' => ['controller' => 'OnboardClientController', 'method' => 'index'],

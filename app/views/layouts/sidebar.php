@@ -709,7 +709,7 @@
                                 <a href="<?= $base_url ?>/sales-performance"
                                     class="sidebar__menu-item <?= isActive('sales-performance', $current_route) ?>">
                                     <div class="side-menu__icon"><i class="fa-solid fa-ranking-star"></i></div>
-                                    <span class="sidebar__menu-label">Sales Inteliiangance</span>
+                                    <span class="sidebar__menu-label">Sales Intiligance</span>
                                 </a>
                             </li>
                         <?php endif; ?>
@@ -1272,6 +1272,14 @@
                             <span class="sidebar__menu-label">Campaign Leads</span>
                         </a>
                     </li>
+
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/lead-automation-upload"
+                            class="sidebar__menu-item <?= isActive('lead-automation-upload', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-wand-magic-sparkles text-primary"></i></div>
+                            <span class="sidebar__menu-label">Lead Automation Upload</span>
+                        </a>
+                    </li>
                 <?php endif; ?>
                 <!--End Marketing Head Dashboard  -->
                 <!--Start Marketing Executive Dashboard  -->
@@ -1309,6 +1317,14 @@
                             class="sidebar__menu-item <?= isActive(['team-lead-report', 'digital-marketing-upload-report'], $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-file-waveform"></i></div>
                             <span class="sidebar__menu-label">Team Lead Report</span>
+                        </a>
+                    </li>
+
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/lead-automation-upload"
+                            class="sidebar__menu-item <?= isActive('lead-automation-upload', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-wand-magic-sparkles text-primary"></i></div>
+                            <span class="sidebar__menu-label">Lead Automation Upload</span>
                         </a>
                     </li>
                     <li class="slide">
