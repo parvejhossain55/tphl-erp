@@ -34,16 +34,14 @@
     const funnelState = {};
     function renderFunnel(el, m, mode, selected) {
         if (!el || !m) return;
-        mode = mode || 'overall';
+        mode = 'overall';
         selected = selected || 5;
         funnelState[el.id] = { m, mode, selected };
         const base = m.stage_1 || 0;
         let rows = '';
         STAGE_KEYS.forEach((s) => {
             const v = m['stage_' + s] || 0;
-            const prev = s === 1 ? v : m['stage_' + (s - 1)] || 0;
-            const den = mode === 'step' ? prev : base;
-            const p = den ? (v / den) * 100 : 0;
+            const p = base ? (v / base) * 100 : 0;
             rows += `
                 <div class="sp-funnel-row ${s === selected ? 'sel' : ''}" data-stage="${s}">
                     <span class="no">${String(s).padStart(2, '0')}</span>
@@ -51,6 +49,20 @@
                     <span class="ct">${n(v)}</span>
                     <span class="pc">${p.toFixed(1)}%</span>
                 </div>`;
+            if (s === 2) {
+                const uncontacted = m.uncontacted !== undefined ? m.uncontacted : Math.max(0, base - (m.stage_2 || 0));
+                const uncontactedPct = base ? (uncontacted / base) * 100 : 0;
+                rows += `
+                    <div class="sp-funnel-row uncontacted-row" data-stage="uncontacted" style="margin:2px 0;">
+                        <span class="no" style="color:#ef4444;font-weight:700">--</span>
+                        <div>
+                            <div class="nm" style="color:#b91c1c;font-weight:600">Not Contacted <small style="color:#ef4444;font-size:11px;font-weight:400">(Awaiting 1st contact)</small></div>
+                            <div class="sp-bar red"><span style="width:${Math.max(uncontactedPct, uncontacted ? 0.6 : 0).toFixed(2)}%"></span></div>
+                        </div>
+                        <span class="ct" style="color:#b91c1c;font-weight:700">${n(uncontacted)}</span>
+                        <span class="pc" style="color:#b91c1c;font-weight:700">${uncontactedPct.toFixed(1)}%</span>
+                    </div>`;
+            }
         });
         const sel = m['stage_' + selected] || 0;
         rows += `
@@ -60,9 +72,11 @@
                 <div><div class="k">Visit to booking</div><div class="v">${pct(m.stage_5, m.stage_4)}</div><div class="s">${n(m.stage_5)} / ${n(m.stage_4)}</div></div>
             </div>`;
         el.innerHTML = rows;
-        $$('.sp-funnel-row', el).forEach((r) =>
-            r.addEventListener('click', () => renderFunnel(el, m, funnelState[el.id].mode, Number(r.dataset.stage)))
-        );
+        $$('.sp-funnel-row', el).forEach((r) => {
+            if (r.dataset.stage && r.dataset.stage !== 'uncontacted') {
+                r.addEventListener('click', () => renderFunnel(el, m, 'overall', Number(r.dataset.stage)));
+            }
+        });
     }
     $$('[data-funnel-toggle]').forEach((tg) => {
         $$('button', tg).forEach((b) =>
@@ -191,6 +205,15 @@
                 ${otherLeads ? 'Unattributed rows come from unassigned leads, missing owners or users without a team – fix them in Data Quality on the Overview tab.' : ''}`;
         }
 
+        let memberSortKey = 'bookings';
+        const memberSortSelect = $('#spMemberSort');
+        if (memberSortSelect) {
+            memberSortSelect.addEventListener('change', (e) => {
+                memberSortKey = e.target.value;
+                if (selectedKey) selectTeam(selectedKey);
+            });
+        }
+
         function selectTeam(key) {
             selectedKey = key;
             $$('tbody tr', teamTable).forEach((tr) => tr.classList.toggle('sel', tr.dataset.key === key));
@@ -198,25 +221,185 @@
             if (!t) return;
             $('#spTeamFunnelTitle').textContent = `${t.name} — Sales Funnel`;
             $('#spTeamFunnelSub').textContent = `${t.member_count} members · ${n(t.stage_1)} leads received`;
-            const toggle = $('[data-funnel-toggle="spFunnelTeam"] button.on');
-            renderFunnel($('#spFunnelTeam'), t, toggle ? toggle.dataset.mode : 'overall', 5);
+            renderFunnel($('#spFunnelTeam'), t, 'overall', 5);
 
-            const members = D.executives.filter((e) => e.team_key === key).sort((a, b) => b.confirmed_sales - a.confirmed_sales || b.bookings - a.bookings || b.stage_1 - a.stage_1);
-            $('#spTopExecSub').textContent = `${t.name} · showing ${Math.min(6, members.length)} of ${members.length}`;
-            $('#spTopExec tbody').innerHTML = members.length
-                ? members.slice(0, 6).map((e) => `<tr class="click" data-id="${e.id}"><td class="nm">${esc(e.name)}${e.is_leader ? '<span class="sp-tag lead">LEAD</span>' : ''}${!e.active ? '<span class="sp-tag inactive">INACTIVE</span>' : ''}</td>
-                    <td class="num">${n(e.stage_1)}</td><td class="num">${e.contact_rate}%</td><td class="num">${n(e.bookings)}</td><td class="num">${n(e.confirmed_sales)}</td></tr>`).join('')
-                : '<tr><td colspan="5" class="sp-empty">No members</td></tr>';
-            $$('#spTopExec tbody tr[data-id]').forEach((tr) => tr.addEventListener('click', () => showExec(Number(tr.dataset.id))));
+            // Unassigned leads waiting with Team Leader
+            const unassignedPeriod = t.unassigned_by_leader || 0;
+            const unassignedTotal = t.unassigned_by_leader_total || 0;
+            const unalert = $('#spTeamUnassignedAlert');
+            if (unalert) {
+                if (unassignedPeriod > 0 || unassignedTotal > 0) {
+                    unalert.style.display = 'block';
+                    unalert.innerHTML = `
+                        <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:9px;padding:9px 13px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+                            <div style="display:flex;align-items:center;gap:10px">
+                                <i class="fa-solid fa-user-clock" style="color:#d97706;font-size:16px"></i>
+                                <div>
+                                    <div style="font-weight:700;color:#92400e;font-size:12.5px">${n(unassignedPeriod)} Leads Not Yet Assigned by Team Leader</div>
+                                    <div style="font-size:11px;color:#b45309;margin-top:1px">Received in this period under this team, but Team Leader has not yet distributed to any executive (${n(unassignedTotal)} total unassigned).</div>
+                                </div>
+                            </div>
+                            <span class="sp-count-chip" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;font-weight:700;font-size:12.5px">${n(unassignedPeriod)}</span>
+                        </div>`;
+                } else {
+                    unalert.style.display = 'none';
+                    unalert.innerHTML = '';
+                }
+            }
+
+            // Member pool: combine all_executives and match by team_key OR t.members
+            const pool = (D.all_executives && D.all_executives.length)
+                ? D.all_executives
+                : [ ...(D.executives || []), ...(D.inactiveExecutives || []) ];
+            const memberIdSet = new Set((t.members || []).map(Number));
+            const rawMembers = pool.filter((e) => e.team_key === key || memberIdSet.has(Number(e.id)));
+
+            // Deduplicate by ID
+            const seen = new Set();
+            const members = [];
+            for (const m of rawMembers) {
+                const mid = Number(m.id);
+                if (!seen.has(mid)) {
+                    seen.add(mid);
+                    members.push(m);
+                }
+            }
+
+            // Sort members
+            const sortedMembers = [...members].sort((a, b) => {
+                if (memberSortKey === 'stage_2') {
+                    return (b.stage_2 - a.stage_2) || (b.contact_rate - a.contact_rate) || (b.bookings - a.bookings) || (b.stage_1 - a.stage_1);
+                }
+                if (memberSortKey === 'stage_1') {
+                    return (b.stage_1 - a.stage_1) || (b.stage_2 - a.stage_2) || (b.bookings - a.bookings);
+                }
+                if (memberSortKey === 'uncontacted') {
+                    const ua = a.uncontacted !== undefined ? a.uncontacted : Math.max(0, (a.stage_1 || 0) - (a.stage_2 || 0));
+                    const ub = b.uncontacted !== undefined ? b.uncontacted : Math.max(0, (b.stage_1 || 0) - (b.stage_2 || 0));
+                    return (ub - ua) || (b.stage_1 - a.stage_1);
+                }
+                if (memberSortKey === 'follow_ups') {
+                    return (b.follow_ups - a.follow_ups) || (b.bookings - a.bookings) || (b.stage_1 - a.stage_1);
+                }
+                if (memberSortKey === 'visits_done') {
+                    return (b.visits_done - a.visits_done) || (b.bookings - a.bookings) || (b.stage_1 - a.stage_1);
+                }
+                if (memberSortKey === 'confirmed_sales') {
+                    return (b.confirmed_sales - a.confirmed_sales) || (b.bookings - a.bookings) || (b.booking_value - a.booking_value);
+                }
+                if (memberSortKey === 'booking_value') {
+                    return (b.booking_value - a.booking_value) || (b.bookings - a.bookings);
+                }
+                return (b.bookings - a.bookings) || (b.confirmed_sales - a.confirmed_sales) || (b.stage_2 - a.stage_2) || (b.stage_1 - a.stage_1);
+            });
+
+            const mTitle = $('#spTeamMembersTitle');
+            if (mTitle) mTitle.textContent = `${t.name} — Members Performance`;
+            const mSub = $('#spTeamMembersSub');
+            if (mSub) mSub.textContent = `${members.length} members · ${n(t.stage_1)} leads · ${n(t.bookings)} bookings`;
+
+            const tbody = $('#spTeamMembersTable tbody');
+            const tfoot = $('#spTeamMembersTable tfoot');
+
+            if (tbody) {
+                let rowsHtml = '';
+                if (sortedMembers.length === 0 && unassignedPeriod === 0) {
+                    rowsHtml = '<tr><td colspan="10" class="sp-empty">No members or activity in this team.</td></tr>';
+                } else {
+                    sortedMembers.forEach((e, idx) => {
+                        const isInactive = !e.active;
+                        const uncontacted = e.uncontacted !== undefined ? e.uncontacted : Math.max(0, (e.stage_1 || 0) - (e.stage_2 || 0));
+                        rowsHtml += `
+                            <tr class="click" data-id="${e.id}" style="${isInactive ? 'opacity:0.75' : ''}">
+                                <td style="color:var(--sp-soft);font-size:11px">${idx + 1}</td>
+                                <td class="nm">
+                                    <span style="font-weight:600">${esc(e.name)}</span>
+                                    ${e.is_leader ? '<span class="sp-tag lead" style="margin-left:4px">LEAD</span>' : ''}
+                                    ${isInactive ? '<span class="sp-tag inactive" style="margin-left:4px">INACTIVE</span>' : ''}
+                                    ${e.role ? `<small style="display:block;font-size:10.5px;color:var(--sp-muted)">${esc(e.role)}</small>` : ''}
+                                </td>
+                                <td class="num" style="font-weight:600">${n(e.stage_1)}</td>
+                                <td class="num">
+                                    <span style="font-weight:600">${n(e.stage_2)}</span>
+                                    <small style="color:var(--sp-muted);margin-left:2px">(${e.contact_rate}%)</small>
+                                </td>
+                                <td class="num" style="${uncontacted > 0 ? 'color:#dc2626;font-weight:700' : 'color:var(--sp-soft)'}">
+                                    ${n(uncontacted)}
+                                </td>
+                                <td class="num" style="font-weight:600">${n(e.follow_ups)}</td>
+                                <td class="num" style="font-weight:600">${n(e.visits_done)}</td>
+                                <td class="num" style="font-weight:700;color:var(--sp-green);font-size:13.5px">
+                                    ${n(e.bookings)}
+                                </td>
+                                <td class="num" style="font-weight:600">${n(e.confirmed_sales)}</td>
+                                <td class="num">${tk(e.booking_value)}</td>
+                            </tr>`;
+                    });
+
+                    // Row for unassigned leads sitting with Team Leader
+                    if (unassignedPeriod > 0) {
+                        rowsHtml += `
+                            <tr style="background:#fffcf5;border-top:1px dashed #fde68a">
+                                <td style="color:#d97706"><i class="fa-solid fa-clock-rotate-left"></i></td>
+                                <td class="nm" style="color:#92400e">
+                                    <span style="font-weight:700">Unassigned by Team Leader</span>
+                                    <small style="color:#b45309;display:block">Pending distribution to executives</small>
+                                </td>
+                                <td class="num" style="color:#92400e;font-weight:700">${n(unassignedPeriod)}</td>
+                                <td class="num" style="color:var(--sp-soft)">0 (0%)</td>
+                                <td class="num" style="color:#dc2626;font-weight:700">${n(unassignedPeriod)}</td>
+                                <td class="num" style="color:var(--sp-soft)">0</td>
+                                <td class="num" style="color:var(--sp-soft)">0</td>
+                                <td class="num" style="color:var(--sp-soft)">0</td>
+                                <td class="num" style="color:var(--sp-soft)">0</td>
+                                <td class="num" style="color:var(--sp-soft)">৳0</td>
+                            </tr>`;
+                    }
+                }
+                tbody.innerHTML = rowsHtml;
+
+                $$('#spTeamMembersTable tbody tr[data-id]').forEach((tr) =>
+                    tr.addEventListener('click', () => showExec(Number(tr.dataset.id)))
+                );
+            }
+
+            if (tfoot) {
+                const sumLeads = members.reduce((s, m) => s + (m.stage_1 || 0), 0) + unassignedPeriod;
+                const sumContacted = members.reduce((s, m) => s + (m.stage_2 || 0), 0);
+                const sumUncontacted = members.reduce((s, m) => s + (m.uncontacted !== undefined ? m.uncontacted : Math.max(0, (m.stage_1 || 0) - (m.stage_2 || 0))), 0) + unassignedPeriod;
+                const sumFollowUps = members.reduce((s, m) => s + (m.follow_ups || 0), 0);
+                const sumVisits = members.reduce((s, m) => s + (m.visits_done || 0), 0);
+                const sumBookings = members.reduce((s, m) => s + (m.bookings || 0), 0);
+                const sumConfirmed = members.reduce((s, m) => s + (m.confirmed_sales || 0), 0);
+                const sumValue = members.reduce((s, m) => s + (m.booking_value || 0), 0);
+
+                tfoot.innerHTML = `
+                    <tr style="font-weight:700;border-top:2px solid var(--sp-border)">
+                        <td></td>
+                        <td>Total</td>
+                        <td class="num">${n(sumLeads)}</td>
+                        <td class="num">${n(sumContacted)} <small style="color:var(--sp-muted);font-weight:normal">(${t.contact_rate}%)</small></td>
+                        <td class="num" style="${sumUncontacted > 0 ? 'color:#dc2626' : ''}">${n(sumUncontacted)}</td>
+                        <td class="num">${n(sumFollowUps)}</td>
+                        <td class="num">${n(sumVisits)}</td>
+                        <td class="num" style="color:var(--sp-green);font-size:14px">${n(sumBookings)}</td>
+                        <td class="num">${n(sumConfirmed)}</td>
+                        <td class="num">${tk(sumValue)}</td>
+                    </tr>`;
+            }
+
             const allLink = $('#spTopExecAll');
-            const url = new URL(window.location.href);
-            url.searchParams.set('tab', 'executive');
-            if (t.team_id) url.searchParams.set('team_id', t.team_id);
-            url.searchParams.delete('focus_team');
-            allLink.href = url.toString();
-            allLink.textContent = `View all ${members.length} executives →`;
+            if (allLink) {
+                const url = new URL(window.location.href);
+                url.searchParams.set('tab', 'executive');
+                if (t.team_id) url.searchParams.set('team_id', t.team_id);
+                url.searchParams.delete('focus_team');
+                allLink.href = url.toString();
+                allLink.textContent = `View all ${members.length} members in Executive tab →`;
+            }
 
             const items = [];
+            if (unassignedPeriod > 0) items.push(['fa-user-clock', 'red', `${n(unassignedPeriod)} unassigned leads in team`, 'Team leader has not assigned these to any executive yet']);
             if (t.uncontacted) items.push(['fa-phone', '', `${n(t.uncontacted)} uncontacted leads`, `${pct(t.uncontacted, t.stage_1)} of this period's leads not contacted`]);
             if (t.overdue) items.push(['fa-clock-rotate-left', 'red', `${n(t.overdue)} overdue follow-ups`, 'Callbacks past their date']);
             if (t.backlog_uncontacted) items.push(['fa-hourglass-half', '', `${n(t.backlog_uncontacted)} untouched open leads`, 'Assigned > 24h ago, never contacted']);
@@ -491,7 +674,8 @@
     }
 
     function showExec(id) {
-        const e = (D.executives && D.executives.find((x) => x.id === id))
+        const e = (D.all_executives && D.all_executives.find((x) => x.id === id))
+               || (D.executives && D.executives.find((x) => x.id === id))
                || (D.inactiveExecutives && D.inactiveExecutives.find((x) => x.id === id));
         if (!e) return;
         const mini = (k, v, s) => `<div class="sp-mini"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s || ''}</div></div>`;
@@ -528,19 +712,89 @@
         );
     }
 
-    // ---------- filters: keep executive list in sync with team ----------
-    const teamSel = $('#spTeam'), execSel = $('#spExec');
-    if (teamSel && execSel) {
-        const syncExec = () => {
-            const t = teamSel.value;
-            $$('option', execSel).forEach((o) => {
-                if (!o.value) return;
-                o.hidden = !!t && o.dataset.team !== t;
-            });
-            if (execSel.selectedOptions[0] && execSel.selectedOptions[0].hidden) execSel.value = '';
+    // ---------- searchable select2 filters ----------
+    function initSelect2Filters() {
+        if (!window.jQuery || !window.jQuery.fn || !window.jQuery.fn.select2) {
+            setTimeout(initSelect2Filters, 50);
+            return;
+        }
+        const $jq = window.jQuery;
+
+        const select2BaseConfig = {
+            width: '100%',
+            dropdownCssClass: 'sp-select2-dropdown',
+            language: {
+                noResults: () => 'No matches found'
+            }
         };
-        teamSel.addEventListener('change', syncExec);
-        syncExec();
+
+        const $project = $jq('#spProject');
+        const $team = $jq('#spTeam');
+        const $exec = $jq('#spExec');
+
+        if ($project.length) {
+            $project.select2(Object.assign({}, select2BaseConfig, {
+                placeholder: 'All projects'
+            }));
+        }
+
+        if ($team.length) {
+            $team.select2(Object.assign({}, select2BaseConfig, {
+                placeholder: 'All teams'
+            }));
+        }
+
+        if ($exec.length) {
+            $exec.select2(Object.assign({}, select2BaseConfig, {
+                placeholder: 'All executives'
+            }));
+        }
+
+        // Sync Executive list with Team selection
+        if ($team.length && $exec.length) {
+            const syncExecOptions = () => {
+                const selectedTeam = $team.val();
+                const currentExec = $exec.val();
+                let isCurrentValid = false;
+
+                $exec.find('option').each(function () {
+                    const $opt = $jq(this);
+                    const optVal = $opt.val();
+                    const optTeam = $opt.attr('data-team');
+
+                    if (!optVal) {
+                        $opt.prop('disabled', false); // "All executives" option
+                        $opt.prop('hidden', false);
+                        return;
+                    }
+
+                    const isMatch = !selectedTeam || optTeam === selectedTeam;
+                    $opt.prop('disabled', !isMatch);
+                    $opt.prop('hidden', !isMatch);
+
+                    if (optVal === currentExec && isMatch) {
+                        isCurrentValid = true;
+                    }
+                });
+
+                if (currentExec && !isCurrentValid) {
+                    $exec.val('').trigger('change.select2');
+                } else {
+                    $exec.trigger('change.select2');
+                }
+            };
+
+            $team.on('change', syncExecOptions);
+            if ($team.val()) {
+                syncExecOptions();
+            }
+        }
+    }
+
+    if (document.readyState === 'complete') {
+        initSelect2Filters();
+    } else {
+        window.addEventListener('load', initSelect2Filters);
     }
     // Custom range: require both dates
     const form = $('#spFilterForm');

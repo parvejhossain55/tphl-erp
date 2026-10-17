@@ -423,7 +423,9 @@ class SalesPerformanceService
         $qual = $this->inList(self::QUALIFIED_STATUSES);
         $invalid = $this->inList(self::INVALID_CONTACT_TYPES);
         $projSqlL = $projectId ? " AND l.project_id = " . $projectId : "";
-        $dateSqlL = $isAllTime ? "" : " AND COALESCE(l.assigned_at, l.created_at) BETWEEN '$start' AND '$end'";
+        $isOverviewScope = empty($filters['executive_id']) && empty($filters['team_id']) && ($filters['tab'] ?? 'overview') === 'overview';
+        $dateColL = $isOverviewScope ? 'l.created_at' : "COALESCE(NULLIF(l.assigned_at, '0000-00-00 00:00:00'), l.created_at)";
+        $dateSqlL = $isAllTime ? "" : " AND $dateColL BETWEEN '$start' AND '$end'";
 
         $sql = "
             SELECT l.id, l.assigned_id, l.assigned_at, l.created_at, l.first_contacted_at, l.call_status,
@@ -753,7 +755,28 @@ class SalesPerformanceService
         }
 
         // -----------------------------------------------------------------
-        // 8. Make sure every in-scope sales user appears (even with zero)
+        // 8. Leads sitting under a team but not assigned to any executive
+        // -----------------------------------------------------------------
+        $teamUnassigned = [];
+        $sql = "
+            SELECT team_id,
+                   COUNT(*) AS total_unassigned,
+                   SUM(CASE WHEN 1=1 $dateSqlL THEN 1 ELSE 0 END) AS period_unassigned
+            FROM leads l
+            WHERE l.deleted_at IS NULL AND (l.assigned_id IS NULL OR l.assigned_id = 0) AND l.team_id > 0 $projSqlL
+            GROUP BY l.team_id
+        ";
+        $res = $this->db->query($sql);
+        while ($res && $r = $res->fetch_assoc()) {
+            $tid = (int) $r['team_id'];
+            $teamUnassigned[$tid] = [
+                'period' => (int) $r['period_unassigned'],
+                'total' => (int) $r['total_unassigned'],
+            ];
+        }
+
+        // -----------------------------------------------------------------
+        // 9. Make sure every in-scope sales user appears (even with zero)
         // -----------------------------------------------------------------
         foreach ($this->users as $u) {
             if (!$u['is_sales']) {
@@ -813,6 +836,8 @@ class SalesPerformanceService
             $row['name'] = $this->teamLabel($key);
             $row['is_real_team'] = str_starts_with($key, 't');
             $row['team_id'] = $row['is_real_team'] ? (int) substr($key, 1) : null;
+            $row['unassigned_by_leader'] = $row['team_id'] && isset($teamUnassigned[$row['team_id']]) ? $teamUnassigned[$row['team_id']]['period'] : 0;
+            $row['unassigned_by_leader_total'] = $row['team_id'] && isset($teamUnassigned[$row['team_id']]) ? $teamUnassigned[$row['team_id']]['total'] : 0;
             $members = array_values(array_filter($execRows, fn($e) => $e['team_key'] === $key));
             $row['member_count'] = count(array_filter($members, fn($e) => $e['active'] && $e['is_sales']));
             $row['leaders'] = array_values(array_map(fn($e) => $e['name'], array_filter($members, fn($e) => $e['is_leader'] && $e['active'])));

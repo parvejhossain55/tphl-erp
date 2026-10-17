@@ -90,6 +90,7 @@ $jsData = [
     'teams' => $data['teams'],
     'executives' => $data['executives'],
     'inactiveExecutives' => $data['inactive_executives'],
+    'all_executives' => $data['all_executives'] ?? array_merge($data['executives'], $data['inactive_executives']),
     'stages' => $data['stages'],
     'trend' => $data['trend'],
     'baseUrl' => $GLOBALS['base_url'],
@@ -151,6 +152,120 @@ $jsData = [
     .sp-period-note { font-size: 12px; color: var(--sp-muted); padding: 0 16px 12px; display: flex; gap: 14px; flex-wrap: wrap; }
     .sp-period-note b { color: var(--sp-text); font-weight: 600; }
 
+    /* Select2 integration for Sales Performance search filters */
+    .sp-filters .select2-container { font-family: inherit; font-size: 13px; }
+    .sp-filters #spProject + .select2-container { min-width: 175px; max-width: 220px; flex: 1 1 175px; }
+    .sp-filters #spTeam + .select2-container { min-width: 165px; max-width: 200px; flex: 1 1 165px; }
+    .sp-filters #spExec + .select2-container { min-width: 220px; max-width: 280px; flex: 1 1 220px; }
+
+    .sp-filters .select2-container--default .select2-selection--single {
+        height: 38px;
+        background: #fff;
+        border: 1px solid var(--sp-border);
+        border-radius: 9px;
+        display: flex;
+        align-items: center;
+        padding: 0 32px 0 12px;
+        position: relative;
+        outline: none;
+        transition: border-color .15s, box-shadow .15s;
+    }
+    .sp-filters .select2-container--default.select2-container--open .select2-selection--single,
+    .sp-filters .select2-container--default.select2-container--focus .select2-selection--single {
+        border-color: var(--sp-green);
+        box-shadow: 0 0 0 3px rgba(11,122,85,.12);
+    }
+    .sp-filters .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: var(--sp-text);
+        font-size: 13px;
+        font-weight: 500;
+        padding: 0;
+        line-height: normal;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .sp-filters .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 36px;
+        width: 26px;
+        right: 4px;
+        top: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .sp-filters .select2-container--default .select2-selection--single .select2-selection__arrow b {
+        border-color: var(--sp-muted) transparent transparent transparent;
+        border-width: 5px 4px 0 4px;
+    }
+    .sp-filters .select2-container--default.select2-container--open .select2-selection--single .select2-selection__arrow b {
+        border-color: transparent transparent var(--sp-green) transparent;
+        border-width: 0 4px 5px 4px;
+    }
+
+    /* Select2 Dropdown Popup */
+    .select2-dropdown.sp-select2-dropdown {
+        border: 1px solid var(--sp-border) !important;
+        border-radius: 10px !important;
+        background: #fff !important;
+        box-shadow: 0 14px 30px -4px rgba(16,24,20,.16), 0 4px 10px -2px rgba(16,24,20,.08) !important;
+        z-index: 10000 !important;
+        overflow: hidden !important;
+    }
+    .select2-dropdown.sp-select2-dropdown .select2-search--dropdown {
+        padding: 8px !important;
+        background: #f8faf9 !important;
+        border-bottom: 1px solid #edf1ef !important;
+    }
+    .select2-dropdown.sp-select2-dropdown .select2-search__field {
+        height: 34px !important;
+        border: 1px solid var(--sp-border) !important;
+        border-radius: 7px !important;
+        padding: 0 10px !important;
+        font-size: 12.5px !important;
+        color: var(--sp-text) !important;
+        background: #fff !important;
+        outline: none !important;
+        font-family: inherit !important;
+        transition: border-color .15s, box-shadow .15s !important;
+    }
+    .select2-dropdown.sp-select2-dropdown .select2-search__field:focus {
+        border-color: var(--sp-green) !important;
+        box-shadow: 0 0 0 2px rgba(11,122,85,.15) !important;
+    }
+    .select2-dropdown.sp-select2-dropdown .select2-results__options {
+        max-height: 240px !important;
+        padding: 4px !important;
+    }
+    .select2-dropdown.sp-select2-dropdown .select2-results__option {
+        padding: 7px 10px !important;
+        font-size: 12.5px !important;
+        line-height: 1.4 !important;
+        border-radius: 6px !important;
+        margin-bottom: 2px !important;
+        color: var(--sp-text) !important;
+        transition: background .12s, color .12s !important;
+    }
+    .select2-dropdown.sp-select2-dropdown .select2-results__option--highlighted[aria-selected] {
+        background: var(--sp-green-50) !important;
+        color: var(--sp-green) !important;
+        font-weight: 600 !important;
+    }
+    .select2-dropdown.sp-select2-dropdown .select2-results__option[aria-selected="true"] {
+        background: var(--sp-green) !important;
+        color: #fff !important;
+        font-weight: 600 !important;
+    }
+    .select2-dropdown.sp-select2-dropdown .select2-results__option[aria-disabled="true"] {
+        display: none !important;
+    }
+    .select2-dropdown.sp-select2-dropdown .select2-results__message {
+        padding: 12px !important;
+        font-size: 12px !important;
+        color: var(--sp-muted) !important;
+        text-align: center !important;
+    }
+
     .sp-tabs { display: flex; gap: 28px; border-bottom: 1px solid var(--sp-border); margin: 20px 0 18px; }
     .sp-tabs a { padding: 10px 2px; font-size: 13.5px; color: var(--sp-muted); font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color .15s; }
     .sp-tabs a:hover { color: var(--sp-text); }
@@ -165,10 +280,11 @@ $jsData = [
     .sp-kpi .hint { font-size: 11.5px; color: var(--sp-muted); margin-top: auto; }
     .sp-kpi.warn .lbl i, .sp-kpi.warn .hint { color: var(--sp-amber); }
 
-    .sp-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 18px; align-items: stretch; }
-    .sp-grid-2 { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 18px; align-items: stretch; }
-    .sp-stack { display: flex; flex-direction: column; gap: 18px; height: 100%; justify-content: space-between; }
-    .sp-stack > .sp-card { height: 100%; display: flex; flex-direction: column; justify-content: space-between; flex: 1; }
+    .sp-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+    .sp-grid-2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: stretch; }
+    @media (max-width: 1024px) { .sp-grid-2 { grid-template-columns: 1fr; } }
+    .sp-stack { display: flex; flex-direction: column; gap: 14px; }
+    .sp-stack > .sp-card { display: flex; flex-direction: column; }
 
     .sp-toggle { display: inline-flex; background: #f0f3f2; border-radius: 8px; padding: 3px; }
     .sp-toggle button { border: 0; background: transparent; padding: 5px 14px; font-size: 12px; font-weight: 600; border-radius: 6px; color: var(--sp-muted); cursor: pointer; transition: all .15s; }
@@ -184,6 +300,10 @@ $jsData = [
     .sp-bar > span { display: block; height: 100%; background: linear-gradient(90deg, var(--sp-green), #15a06f); border-radius: 99px; transition: width .6s cubic-bezier(.2,.8,.2,1); }
     .sp-bar.amber > span { background: linear-gradient(90deg, #d38a1c, #e9a641); }
     .sp-bar.blue > span { background: linear-gradient(90deg, #2463b5, #4b8be0); }
+    .sp-grid-team { display: grid; grid-template-columns: minmax(360px, 1fr) minmax(0, 1.65fr); gap: 18px; align-items: start; }
+    @media (max-width: 1100px) { .sp-grid-team { grid-template-columns: 1fr; } }
+    .sp-funnel-row.uncontacted-row { background: #fff8f8; border-left: 3px solid #ef4444; border-radius: 6px; }
+    .sp-funnel-row.uncontacted-row:hover { background: #fee2e2; }
     .sp-funnel-row .ct { text-align: right; font-weight: 700; font-size: 13.5px; font-variant-numeric: tabular-nums; }
     .sp-funnel-row .pc { text-align: right; font-size: 11.5px; color: var(--sp-muted); font-variant-numeric: tabular-nums; }
     .sp-funnel-foot { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; border-top: 1px solid var(--sp-border); margin-top: 12px; padding-top: 14px; }
@@ -409,19 +529,19 @@ $jsData = [
                 <span>to</span>
                 <input type="date" name="to" id="spTo" value="<?= sp_h($filters['to']) ?>" title="Custom end date">
             </div>
-            <select name="project_id" id="spProject">
+            <select name="project_id" id="spProject" class="sp-select2" data-placeholder="All projects">
                 <option value="">All projects</option>
                 <?php foreach ($projects as $p): ?>
                     <option value="<?= (int) $p['id'] ?>" <?= (int) $filters['project_id'] === (int) $p['id'] ? 'selected' : '' ?>><?= sp_h($p['name']) ?></option>
                 <?php endforeach; ?>
             </select>
-            <select name="team_id" id="spTeam">
+            <select name="team_id" id="spTeam" class="sp-select2" data-placeholder="All teams">
                 <option value="">All teams</option>
                 <?php foreach ($teams as $t): if (!$t['active']) continue; ?>
                     <option value="<?= $t['id'] ?>" <?= (int) $filters['team_id'] === $t['id'] ? 'selected' : '' ?>><?= sp_h($t['name']) ?></option>
                 <?php endforeach; ?>
             </select>
-            <select name="executive_id" id="spExec">
+            <select name="executive_id" id="spExec" class="sp-select2" data-placeholder="All executives">
                 <option value="">All executives</option>
                 <?php foreach ($salesUsers as $su): if (!$su['active'] && (int) $filters['executive_id'] !== $su['id']) continue; ?>
                     <option value="<?= $su['id'] ?>" data-team="<?= $su['team_id'] ?>" <?= (int) $filters['executive_id'] === $su['id'] ? 'selected' : '' ?>>
@@ -490,15 +610,10 @@ $jsData = [
                         <h3>Sales Funnel Performance</h3>
                         <div class="sp-sub">Leads received this period → furthest stage reached up to today</div>
                     </div>
-                    <div class="sp-toggle" data-funnel-toggle="spFunnelOverview">
-                        <button type="button" class="on" data-mode="overall">Overall</button>
-                        <button type="button" data-mode="step">Step-wise</button>
-                    </div>
                 </div>
                 <div id="spFunnelOverview" data-source="overall"></div>
                 <div class="sp-note">
-                    Overall: conversion from leads received. Step-wise: conversion from the previous stage.
-                    Each stage counts leads that reached it <em>or any later stage</em>.
+                    Conversion from leads received this period. Each stage counts leads that reached it <em>or any later stage</em>.
                     <?php if ($data['cohort_gaps']['booked_without_visit'] > 0): ?>
                         <br><span style="color:var(--sp-amber)"><i class="fa-regular fa-triangle-exclamation"></i>
                         <?= sp_n($data['cohort_gaps']['booked_without_visit']) ?> booked leads have no visit logged – visits are under-recorded.</span>
@@ -622,11 +737,75 @@ $jsData = [
             </div>
         </div>
 
-        <!-- Data quality checks -->
+        <div class="sp-grid-2" style="margin-top:18px">
+            <div class="sp-card">
+                <div class="sp-card-head"><div><h3>Project Performance</h3><div class="sp-sub">Leads received vs bookings this period</div></div></div>
+                <div class="sp-scroll">
+                    <table class="sp-table">
+                        <thead><tr><th>Project</th><th class="num">Leads</th><th class="num">Bookings</th><th class="num">Confirmed</th><th class="num">Value</th><th class="num">Conversion</th></tr></thead>
+                        <tbody>
+                            <?php if (!$data['projects']): ?><tr><td colspan="6" class="sp-empty">No project activity in this period.</td></tr><?php endif; ?>
+                            <?php foreach ($data['projects'] as $p): ?>
+                                <tr>
+                                    <td class="nm"><?= sp_h($p['name']) ?></td>
+                                    <td class="num"><?= sp_n($p['leads']) ?></td>
+                                    <td class="num"><?= sp_n($p['bookings']) ?></td>
+                                    <td class="num"><?= sp_n($p['confirmed']) ?></td>
+                                    <td class="num"><?= sp_tk($p['value']) ?></td>
+                                    <td class="num"><?= $p['leads'] ? sp_pct($p['bookings'], $p['leads'], 2) : '—' ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="sp-note">Bookings are counted by booking date; some bookings belong to leads received in earlier periods.</div>
+            </div>
+            <div class="sp-card">
+                <div class="sp-card-head">
+                    <div><h3>Team Performance</h3><div class="sp-sub">Bookings, confirmed sales and booking value this period</div></div>
+                    <a class="sp-link" href="<?= sp_h($tabUrl('team')) ?>">All teams →</a>
+                </div>
+                <div class="sp-scroll">
+                    <table class="sp-table">
+                        <thead>
+                            <tr>
+                                <th>Team</th>
+                                <th class="num">Leads</th>
+                                <th class="num">Bookings</th>
+                                <th class="num">Confirmed</th>
+                                <th class="num">Value</th>
+                                <th class="num">Conversion</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (!$realTeams): ?><tr><td colspan="6" class="sp-empty">No team activity in this period.</td></tr><?php endif; ?>
+                            <?php foreach (array_slice($realTeams, 0, 8) as $t): ?>
+                                <tr style="cursor:pointer" onclick="window.location='<?= sp_h($tabUrl('team') . '&focus_team=' . $t['key']) ?>'">
+                                    <td class="nm">
+                                        <span style="font-weight:600"><?= sp_h($t['name']) ?></span>
+                                        <?php if (!empty($t['leaders'])): ?>
+                                            <span class="sp-sub" style="display:block;font-size:11px;color:var(--sp-muted)">Lead: <?= sp_h(implode(', ', $t['leaders'])) ?></span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="num"><?= sp_n($t['stage_1']) ?></td>
+                                    <td class="num" style="font-weight:700;color:var(--sp-green)"><?= sp_n($t['bookings']) ?></td>
+                                    <td class="num"><?= sp_n($t['confirmed_sales']) ?></td>
+                                    <td class="num"><?= sp_tk($t['booking_value']) ?></td>
+                                    <td class="num"><?= $t['stage_1'] ? sp_pct($t['bookings'], $t['stage_1'], 2) : '—' ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="sp-note">Click any team to view member-wise breakdown, visits, and unassigned leads.</div>
+            </div>
+        </div>
+
+        <!-- AI Data Quality Checks -->
         <div class="sp-card" style="margin-top:18px">
             <div class="sp-card-head">
                 <div>
-                    <h3>Data Quality Checks</h3>
+                    <h3><i class="fa-solid fa-wand-magic-sparkles" style="color:var(--sp-green);margin-right:6px"></i> AI Data Quality Checks</h3>
                     <div class="sp-sub">Fix these to keep performance numbers exact. Click “Review” to see the affected records.</div>
                 </div>
             </div>
@@ -656,47 +835,6 @@ $jsData = [
                     </div>
                 </div>
             <?php endforeach; ?>
-        </div>
-
-        <div class="sp-grid-2" style="margin-top:18px">
-            <div class="sp-card">
-                <div class="sp-card-head"><div><h3>Project Performance</h3><div class="sp-sub">Leads received vs bookings this period</div></div></div>
-                <div class="sp-scroll">
-                    <table class="sp-table">
-                        <thead><tr><th>Project</th><th class="num">Leads</th><th class="num">Bookings</th><th class="num">Confirmed</th><th class="num">Value</th><th class="num">Conversion</th></tr></thead>
-                        <tbody>
-                            <?php if (!$data['projects']): ?><tr><td colspan="6" class="sp-empty">No project activity in this period.</td></tr><?php endif; ?>
-                            <?php foreach ($data['projects'] as $p): ?>
-                                <tr>
-                                    <td class="nm"><?= sp_h($p['name']) ?></td>
-                                    <td class="num"><?= sp_n($p['leads']) ?></td>
-                                    <td class="num"><?= sp_n($p['bookings']) ?></td>
-                                    <td class="num"><?= sp_n($p['confirmed']) ?></td>
-                                    <td class="num"><?= sp_tk($p['value']) ?></td>
-                                    <td class="num"><?= $p['leads'] ? sp_pct($p['bookings'], $p['leads'], 2) : '—' ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="sp-note">Bookings are counted by booking date; some bookings belong to leads received in earlier periods.</div>
-            </div>
-            <div class="sp-card">
-                <div class="sp-card-head">
-                    <div><h3>Team Performance</h3><div class="sp-sub">Confirmed sales and booking target achievement</div></div>
-                    <a class="sp-link" href="<?= sp_h($tabUrl('team')) ?>">All teams →</a>
-                </div>
-                <?php $maxConf = max(1, ...array_map(fn($t) => $t['confirmed_sales'], $realTeams ?: [['confirmed_sales' => 1]])); ?>
-                <?php foreach (array_slice($realTeams, 0, 8) as $t): ?>
-                    <a href="<?= sp_h($tabUrl('team') . '&focus_team=' . $t['key']) ?>" style="display:grid;grid-template-columns:150px 70px 1fr 54px;gap:10px;align-items:center;padding:8px 0;color:inherit;border-bottom:1px solid #f0f3f2">
-                        <span style="font-weight:600;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><?= sp_h($t['name']) ?></span>
-                        <span style="font-size:11.5px;color:var(--sp-muted)"><?= $t['confirmed_sales'] ?> sales</span>
-                        <div class="sp-bar <?= $t['target_achievement'] !== null && $t['target_achievement'] < 60 ? 'amber' : '' ?>"><span style="width:<?= $t['target_achievement'] !== null ? min(100, $t['target_achievement']) : round($t['confirmed_sales'] / $maxConf * 100) ?>%"></span></div>
-                        <b style="font-size:12px;text-align:right;color:var(--sp-green)"><?= $t['target_achievement'] !== null ? $t['target_achievement'] . '%' : '<span style="color:var(--sp-soft);font-weight:500" title="No booking target set">—</span>' ?></b>
-                    </a>
-                <?php endforeach; ?>
-                <div class="sp-note">“—” = no booking target set in Sales Targets for this cycle.</div>
-            </div>
         </div>
 
     <?php elseif ($tab === 'team'): ?>
@@ -749,30 +887,67 @@ $jsData = [
             <div class="sp-recon" id="spTeamRecon"></div>
         </div>
 
-        <div class="sp-grid" style="margin-top:18px">
-            <div class="sp-card">
-                <div class="sp-card-head">
-                    <div><h3 id="spTeamFunnelTitle">Sales Funnel</h3><div class="sp-sub" id="spTeamFunnelSub"></div></div>
-                    <div class="sp-toggle" data-funnel-toggle="spFunnelTeam">
-                        <button type="button" class="on" data-mode="overall">Overall</button>
-                        <button type="button" data-mode="step">Step-wise</button>
-                    </div>
-                </div>
-                <div id="spFunnelTeam"></div>
-                <div class="sp-note">Overall: conversion from assigned leads. Step-wise: conversion from the previous stage.</div>
-            </div>
+        <div class="sp-grid-team" style="margin-top:18px">
             <div class="sp-stack">
                 <div class="sp-card">
-                    <div class="sp-card-head" style="margin-bottom:6px"><div><h3>Top Executives</h3><div class="sp-sub" id="spTopExecSub"></div></div></div>
-                    <table class="sp-table" id="spTopExec">
-                        <thead><tr><th>Executive</th><th class="num">Leads</th><th class="num">Contact</th><th class="num">Bookings</th><th class="num">Sales</th></tr></thead>
-                        <tbody></tbody>
-                    </table>
-                    <div style="margin-top:10px"><a class="sp-link" id="spTopExecAll" href="#">View all executives →</a></div>
+                    <div class="sp-card-head">
+                        <div><h3 id="spTeamFunnelTitle">Sales Funnel</h3><div class="sp-sub" id="spTeamFunnelSub"></div></div>
+                    </div>
+                    <div id="spFunnelTeam"></div>
+                    <div class="sp-note">Conversion from assigned leads. Each stage counts leads that reached it <em>or any later stage</em>.</div>
                 </div>
                 <div class="sp-card">
                     <div class="sp-card-head" style="margin-bottom:4px"><h3 id="spTeamAttnTitle">Needs Attention</h3><span class="sp-count-chip" id="spTeamAttnCount">0</span></div>
                     <div id="spTeamAttn"></div>
+                </div>
+            </div>
+            <div>
+                <div class="sp-card" style="display:flex;flex-direction:column;justify-content:space-between;height:100%">
+                    <div>
+                        <div class="sp-card-head" style="margin-bottom:8px">
+                            <div>
+                                <h3 id="spTeamMembersTitle">Team Members Performance</h3>
+                                <div class="sp-sub" id="spTeamMembersSub">All members of this team ranked by performance</div>
+                            </div>
+                            <div class="sp-toolbar" style="margin:0">
+                                <select id="spMemberSort" style="height:32px;font-size:12px;padding:0 8px;border-radius:7px">
+                                    <option value="bookings">Sort: Bookings</option>
+                                    <option value="confirmed_sales">Sort: Confirmed Sales</option>
+                                    <option value="stage_2">Sort: Most Contacted</option>
+                                    <option value="stage_1">Sort: Leads Received</option>
+                                    <option value="uncontacted">Sort: Not Contacted</option>
+                                    <option value="follow_ups">Sort: Follow-ups Logged</option>
+                                    <option value="visits_done">Sort: Visits Completed</option>
+                                    <option value="booking_value">Sort: Booking Value</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="spTeamUnassignedAlert" style="display:none;margin-bottom:12px"></div>
+                        <div class="sp-scroll">
+                            <table class="sp-table" id="spTeamMembersTable">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Executive</th>
+                                        <th class="num">Leads</th>
+                                        <th class="num">Contacted</th>
+                                        <th class="num">Not Contacted</th>
+                                        <th class="num">Follow-ups</th>
+                                        <th class="num">Visits</th>
+                                        <th class="num">Bookings</th>
+                                        <th class="num">Confirmed</th>
+                                        <th class="num">Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                                <tfoot></tfoot>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="sp-table-foot" style="margin-top:10px">
+                        <a class="sp-link" id="spTopExecAll" href="#">View in Executive tab →</a>
+                        <span>Click any member to open their complete individual performance profile.</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1042,4 +1217,4 @@ $jsData = [
 <script>
     window.SP_DATA = <?= json_encode($jsData, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP) ?>;
 </script>
-<script src="<?= $GLOBALS['base_url'] ?>/assets/js/sales-performance.js?v=<?= @filemtime(BASE_PATH . '/public/assets/js/sales-performance.js') ?: time() ?>"></script>
+<script src="<?= $GLOBALS['base_url'] ?>/assets/js/sales-performance.js?v=<?= @filemtime(__DIR__ . '/../../../public/assets/js/sales-performance.js') ?: time() ?>"></script>
