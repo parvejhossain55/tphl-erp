@@ -21,6 +21,7 @@ if ($current_server == 1) {
 
         // Tipsoi API Configuration
         "tipsoi_base_url" => "https://hrm.tipsoi.pro/inovace-client/api/v1/",
+        
         "tipsoi_email" => "info@dpremiumhomes.com",
         "tipsoi_password" => "HRD@tphl@1274",
         // Automas Bulk SMS API Configuration

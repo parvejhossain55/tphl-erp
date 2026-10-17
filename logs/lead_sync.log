@@ -1,0 +1,28 @@
+[2026-10-17 14:32:42] =======================================================
+[2026-10-17 14:32:42] Starting Lead Synchronization at 2026-10-17 14:32:42
+[2026-10-17 14:32:42] Fetching data from: https://docs.google.com/spreadsheets/d/1btVkSlBIJmLfi54Sz2nQ1wlM3VSbCQUp3hu1c4nW-4w/export?format=csv
+[2026-10-17 14:32:43] Processing with Google Gemini AI [gemini-2.5-flash] for intelligent field understanding...
+[2026-10-17 14:32:54] Sync Completed in 12.74 sec. Total Rows: 1 | Inserted: 1 | Duplicates Skipped: 0 | Unmatched Project: 0 | Errors: 0
+[2026-10-17 14:32:54] =======================================================
+
+[2026-10-17 14:34:10] =======================================================
+[2026-10-17 14:34:10] Starting Lead Synchronization at 2026-10-17 14:34:10
+[2026-10-17 14:34:10] Fetching data from: https://docs.google.com/spreadsheets/d/1btVkSlBIJmLfi54Sz2nQ1wlM3VSbCQUp3hu1c4nW-4w/export?format=csv
+[2026-10-17 14:34:12] Processing with Google Gemini AI [gemini-2.5-flash] for intelligent field understanding...
+[2026-10-17 14:34:26] Sync Completed in 15.65 sec. Total Rows: 1 | Inserted: 0 | Duplicates Skipped: 1 | Unmatched Project: 0 | Errors: 0
+[2026-10-17 14:34:26] =======================================================
+
+[2026-10-17 14:43:17] =======================================================
+[2026-10-17 14:43:17] Starting Lead Synchronization at 2026-10-17 14:43:17
+[2026-10-17 14:43:17] Fetching data from: https://docs.google.com/spreadsheets/d/1btVkSlBIJmLfi54Sz2nQ1wlM3VSbCQUp3hu1c4nW-4w/export?format=csv
+[2026-10-17 14:43:18] Processing with Google Gemini AI [gemini-2.5-flash] for intelligent field understanding...
+[2026-10-17 14:43:28] Sync Completed in 11.48 sec. Total Rows: 1 | Inserted: 0 | Duplicates Skipped: 1 | Unmatched Project: 0 | Errors: 0
+[2026-10-17 14:43:28] =======================================================
+
+[2026-10-17 14:56:22] =======================================================
+[2026-10-17 14:56:22] Starting Lead Synchronization at 2026-10-17 14:56:22
+[2026-10-17 14:56:22] Fetching data from: https://docs.google.com/spreadsheets/d/1btVkSlBIJmLfi54Sz2nQ1wlM3VSbCQUp3hu1c4nW-4w/export?format=csv
+[2026-10-17 14:56:24] Processing with Google Gemini AI [gemini-2.5-flash] for intelligent field understanding...
+[2026-10-17 14:56:33] Sync Completed in 10.27 sec. Total Rows: 1 | Inserted: 1 | Duplicates Skipped: 0 | Unmatched Project: 0 | Errors: 0
+[2026-10-17 14:56:33] =======================================================
+

@@ -130,6 +130,8 @@ if ($route === 'run-migration-account-id') {
     exit;
 }
 
+
+
 // ── Resync journals with new COA mappings ────────────────────────────────────
 if ($route === 'run-resync-journals') {
     $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
