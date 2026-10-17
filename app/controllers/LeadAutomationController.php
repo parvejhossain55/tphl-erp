@@ -103,6 +103,7 @@ class LeadAutomationController extends Controller
     {
         $this->checkAccess();
         header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-cache, no-store, must-revalidate');
 
         try {
             $synchronizer = new LeadSynchronizer($this->automationConfig);

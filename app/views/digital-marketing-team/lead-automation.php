@@ -614,7 +614,7 @@
         spinner.classList.remove('d-none');
         icon.classList.add('d-none');
 
-        showToast('Connecting to Google Sheet & parsing with Gemini AI...', 'info');
+        showLeadToast('Connecting to Google Sheet & parsing with Gemini AI...', 'info');
 
         try {
             const formData = new FormData();
@@ -622,19 +622,23 @@
 
             const response = await fetch(`${baseUrl}/lead-automation/scrape`, {
                 method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
                 body: formData
             });
 
             const res = await response.json();
 
             if (res.status === 'success') {
-                showToast(res.message, 'success');
+                showLeadToast(res.message, 'success');
                 loadLeads();
             } else {
-                showToast('Sync Failed: ' + (res.message || 'Unknown error'), 'error');
+                showLeadToast('Sync Failed: ' + (res.message || 'Unknown error'), 'error');
             }
         } catch (err) {
-            showToast('Network error while syncing: ' + err.message, 'error');
+            showLeadToast('Network error while syncing: ' + err.message, 'error');
         } finally {
             btn.disabled = false;
             spinner.classList.add('d-none');
@@ -703,11 +707,17 @@
             team_id   : currentTeamId,
             search    : searchVal,
             limit     : limit,
-            offset    : offset
+            offset    : offset,
+            _t        : Date.now()
         });
 
         try {
-            const response = await fetch(`${baseUrl}/lead-automation/leads-ajax?${params.toString()}`);
+            const response = await fetch(`${baseUrl}/lead-automation/leads-ajax?${params.toString()}`, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            });
             const result = await response.json();
 
             if (result.status === 'success') {
@@ -718,11 +728,11 @@
                 renderTable(data.leads, totalCount);
                 updatePaginationControls();
             } else {
-                showToast(result.message || 'Error fetching leads', 'error');
+                showLeadToast(result.message || 'Error fetching leads', 'error');
             }
         } catch (err) {
             console.error('Fetch error:', err);
-            showToast('Failed to load leads from server', 'error');
+            showLeadToast('Failed to load leads from server', 'error');
         }
     }
 
@@ -902,19 +912,23 @@
         try {
             const response = await fetch(`${baseUrl}/lead-automation/approve`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
                 body: JSON.stringify({ lead_ids: [id] })
             });
             const res = await response.json();
             if (res.status === 'success') {
-                showToast(`Lead #${id} distributed & approved!`, 'success');
+                showLeadToast(`Lead #${id} distributed & approved!`, 'success');
                 selectedLeadIds.delete(id);
                 loadLeads();
             } else {
-                showToast(res.message || 'Approval failed', 'error');
+                showLeadToast(res.message || 'Approval failed', 'error');
             }
         } catch (err) {
-            showToast('Error: ' + err.message, 'error');
+            showLeadToast('Error: ' + err.message, 'error');
         }
     }
 
@@ -925,19 +939,23 @@
         try {
             const response = await fetch(`${baseUrl}/lead-automation/approve`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
                 body: JSON.stringify({ lead_ids: ids })
             });
             const res = await response.json();
             if (res.status === 'success') {
-                showToast(res.message, 'success');
+                showLeadToast(res.message, 'success');
                 selectedLeadIds.clear();
                 loadLeads();
             } else {
-                showToast(res.message || 'Approval failed', 'error');
+                showLeadToast(res.message || 'Approval failed', 'error');
             }
         } catch (err) {
-            showToast('Error: ' + err.message, 'error');
+            showLeadToast('Error: ' + err.message, 'error');
         }
     }
 
@@ -957,7 +975,11 @@
         try {
             const approveResp = await fetch(`${baseUrl}/lead-automation/approve`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
                 body: JSON.stringify({
                     all_pending: true,
                     team_id: currentTeamId || null
@@ -965,14 +987,14 @@
             });
             const approveRes = await approveResp.json();
             if (approveRes.status === 'success') {
-                showToast(approveRes.message || 'Leads approved successfully!', 'success');
+                showLeadToast(approveRes.message || 'Leads approved successfully!', 'success');
                 selectedLeadIds.clear();
                 loadLeads();
             } else {
-                showToast(approveRes.message || 'Approval failed', 'error');
+                showLeadToast(approveRes.message || 'Approval failed', 'error');
             }
         } catch (err) {
-            showToast('Error: ' + err.message, 'error');
+            showLeadToast('Error: ' + err.message, 'error');
         }
     }
 
@@ -980,16 +1002,22 @@
         try {
             const response = await fetch(`${baseUrl}/lead-automation/unapprove`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
                 body: JSON.stringify({ lead_ids: [id] })
             });
             const res = await response.json();
             if (res.status === 'success') {
-                showToast(`Lead #${id} reverted back to Pending.`, 'info');
+                showLeadToast(`Lead #${id} reverted back to Pending.`, 'info');
                 loadLeads();
+            } else {
+                showLeadToast(res.message || 'Action failed', 'error');
             }
         } catch (err) {
-            showToast('Error: ' + err.message, 'error');
+            showLeadToast('Error: ' + err.message, 'error');
         }
     }
 
@@ -1006,17 +1034,23 @@
         })[m]);
     }
 
-    function showToast(message, type = 'info') {
-        const container = document.getElementById('toastContainer');
+    function showLeadToast(message, type = 'info') {
+        let container = document.getElementById('leadToastContainer');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'leadToastContainer';
+            container.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:99999;display:flex;flex-direction:column;gap:10px;pointer-events:none;';
+            document.body.appendChild(container);
+        }
         const toast = document.createElement('div');
         toast.className = `custom-toast ${type === 'success' ? 'toast-success' : (type === 'error' ? 'toast-error' : '')}`;
-        toast.innerHTML = `
-            <span>${escapeHtml(message)}</span>
-        `;
+        toast.style.pointerEvents = 'auto';
+        toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
         container.appendChild(toast);
         setTimeout(() => {
-            toast.style.transition = 'opacity 0.3s ease';
+            toast.style.transition = 'all 0.3s ease';
             toast.style.opacity = '0';
+            toast.style.transform = 'translateY(10px)';
             setTimeout(() => toast.remove(), 300);
         }, 3500);
     }

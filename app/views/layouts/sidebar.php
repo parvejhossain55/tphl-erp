@@ -709,7 +709,7 @@
                                 <a href="<?= $base_url ?>/sales-performance"
                                     class="sidebar__menu-item <?= isActive('sales-performance', $current_route) ?>">
                                     <div class="side-menu__icon"><i class="fa-solid fa-ranking-star"></i></div>
-                                    <span class="sidebar__menu-label">Sales Inteliangance</span>
+                                    <span class="sidebar__menu-label">Sales Intiligance</span>
                                 </a>
                             </li>
                         <?php endif; ?>
