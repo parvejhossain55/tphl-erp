@@ -10,6 +10,30 @@ class Lead extends Model
         $this->ensureDeleteRequestsTable();
     }
 
+    private static ?bool $hasIsAutomatedCol = null;
+    private static ?bool $hasDistributeCol = null;
+
+    public function getLeadAutomationColumnStatus(): array
+    {
+        if (self::$hasIsAutomatedCol === null || self::$hasDistributeCol === null) {
+            self::$hasIsAutomatedCol = false;
+            self::$hasDistributeCol = false;
+            if ($this->db) {
+                try {
+                    $res = $this->db->query("SHOW COLUMNS FROM `leads` LIKE 'is_automated'");
+                    if ($res && $res->num_rows > 0) {
+                        self::$hasIsAutomatedCol = true;
+                    }
+                    $distRes = $this->db->query("SHOW COLUMNS FROM `leads` LIKE 'distribute'");
+                    if ($distRes && $distRes->num_rows > 0) {
+                        self::$hasDistributeCol = true;
+                    }
+                } catch (Throwable $t) {}
+            }
+        }
+        return [self::$hasIsAutomatedCol, self::$hasDistributeCol];
+    }
+
     public function ensureDeleteRequestsTable()
     {
         static $checked = false;
@@ -175,9 +199,10 @@ class Lead extends Model
         $actualTeamId = !empty($teamId) ? $teamId : (!empty($roleId) ? $roleId : null);
 
         if (!empty($actualTeamId)) {
-            $sqlQuery .= " AND l.team_id = ?";
+            $sqlQuery .= " AND (l.team_id = ? OR l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?))";
             $params[] = $actualTeamId;
-            $types .= "i";
+            $params[] = $actualTeamId;
+            $types .= "ii";
         }
         
         if ($period) {
@@ -386,9 +411,13 @@ class Lead extends Model
             ))";
         }
 
-        // Hide undistributed leads from sales users until approved (distribute = 1)
+        // Hide undistributed automated leads from sales users until approved (distribute = 1)
+        // Existing CRM leads, manual leads, etc. (is_automated = 0 or NULL) are ALWAYS visible to sales!
         if (!in_array((int)$loggedInRole, [1, 10, 11])) {
-            $sql .= " AND (l.distribute = 1 OR l.distribute IS NULL)";
+            [$hasAutomatedCol, $hasDistributeCol] = $this->getLeadAutomationColumnStatus();
+            if ($hasAutomatedCol && $hasDistributeCol) {
+                $sql .= " AND NOT (l.is_automated = 1 AND l.distribute = 0)";
+            }
         }
 
         // TEAM BASED FILTER
@@ -621,13 +650,9 @@ class Lead extends Model
             $types .= $projClause['types'];
         }
         if (!empty($projectCategoryId)) {
-            $sql .= " AND (l.project_category_id = ?" . (!empty($projectId) ? " OR l.project_id = ?" : "") . ")";
+            $sql .= " AND l.project_category_id = ?";
             $params[] = (int)$projectCategoryId;
             $types .= "i";
-            if (!empty($projectId)) {
-                $params[] = (int)$projectId;
-                $types .= "i";
-            }
         }
         if (!empty($country)) {
             $countryList = is_array($country) ? array_filter($country, fn($val) => trim($val) !== '') : [trim((string)$country)];
@@ -694,6 +719,7 @@ class Lead extends Model
         u.full_name AS agent_name,
         COALESCE(u_assigned_by.full_name, u_by.full_name, 'System') AS assigned_by_name,
         u_by.full_name AS creator_name,
+        u_appr.full_name AS approved_by_name,
         COALESCE(p.name, lp.name) AS project_name,
         lpc.name AS project_category_name,
         lf.next_action,
@@ -707,6 +733,7 @@ class Lead extends Model
     LEFT JOIN users AS u ON l.assigned_id = u.id
     LEFT JOIN users AS u_assigned_by ON l.assigned_by = u_assigned_by.id
     LEFT JOIN users AS u_by ON l.created_by = u_by.id
+    LEFT JOIN users AS u_appr ON l.approved_by = u_appr.id
     LEFT JOIN employees AS emp ON emp.user_id = l.assigned_id
     LEFT JOIN (
         SELECT lf1.lead_id, lf1.next_action, lf1.follow_up_type, lf1.next_follow_up_date, lf1.discussion_note
@@ -751,9 +778,13 @@ class Lead extends Model
             ))";
         }
 
-        // Hide undistributed leads from sales users until approved (distribute = 1)
+        // Hide undistributed automated leads from sales users until approved (distribute = 1)
+        // Existing CRM leads, manual leads, etc. (is_automated = 0 or NULL) are ALWAYS visible to sales!
         if (!in_array((int)$loggedInRole, [1, 10, 11])) {
-            $sql .= " AND (l.distribute = 1 OR l.distribute IS NULL)";
+            [$hasAutomatedCol, $hasDistributeCol] = $this->getLeadAutomationColumnStatus();
+            if ($hasAutomatedCol && $hasDistributeCol) {
+                $sql .= " AND NOT (l.is_automated = 1 AND l.distribute = 0)";
+            }
         }
 
         // TEAM BASED FILTER
@@ -987,13 +1018,9 @@ class Lead extends Model
             $types .= $projClause['types'];
         }
         if (!empty($projectCategoryId)) {
-            $sql .= " AND (l.project_category_id = ?" . (!empty($projectId) ? " OR l.project_id = ?" : "") . ")";
+            $sql .= " AND l.project_category_id = ?";
             $params[] = (int)$projectCategoryId;
             $types .= "i";
-            if (!empty($projectId)) {
-                $params[] = (int)$projectId;
-                $types .= "i";
-            }
         }
         if (!empty($country)) {
             $countryList = is_array($country) ? array_filter($country, fn($val) => trim($val) !== '') : [trim((string)$country)];
@@ -1247,6 +1274,7 @@ class Lead extends Model
             l.*,
             COALESCE(u_assigned_by.full_name, u_by.full_name, 'System') AS assigned_by_name,
             u_by.full_name AS creator_name,
+            u_appr.full_name AS approved_by_name,
             p.name AS project_name,
             lpc.name AS project_category_name,
             lf.status AS last_follow_up_status,
@@ -1258,6 +1286,7 @@ class Lead extends Model
         FROM leads AS l
         LEFT JOIN users AS u_assigned_by ON l.assigned_by = u_assigned_by.id
         LEFT JOIN users AS u_by ON l.created_by = u_by.id
+        LEFT JOIN users AS u_appr ON l.approved_by = u_appr.id
         LEFT JOIN projects AS p ON l.project_id = p.id
         LEFT JOIN project_categories AS lpc ON l.project_category_id = lpc.id
         LEFT JOIN (
@@ -1303,13 +1332,9 @@ class Lead extends Model
             $types .= $projClause['types'];
         }
         if (!empty($projectCategoryId)) {
-            $sql .= " AND (l.project_category_id = ?" . (!empty($projectId) ? " OR l.project_id = ?" : "") . ")";
+            $sql .= " AND l.project_category_id = ?";
             $params[] = (int)$projectCategoryId;
             $types .= "i";
-            if (!empty($projectId)) {
-                $params[] = (int)$projectId;
-                $types .= "i";
-            }
         }
         if (!empty($country)) {
             $countryList = is_array($country) ? array_filter($country, fn($val) => trim($val) !== '') : [trim((string)$country)];
@@ -1370,11 +1395,12 @@ class Lead extends Model
 
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
-    public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAction = null, $lead_status = null, $only_missing_followup = false, $search = null, $followup_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null, $from_date = null, $to_date = null, $uncontacted = false, $limit = null, $offset = null)
+    public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAction = null, $lead_status = null, $only_missing_followup = false, $search = null, $followup_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null, $from_date = null, $to_date = null, $uncontacted = false, $limit = null, $offset = null, $date_type = 'lead_date')
     {
         $sql = "SELECT leads.*, 
         COALESCE(u_assigned_by.full_name, u_by.full_name, 'System') AS assigned_by_name,
         u_by.full_name AS creator_name,
+        u_appr.full_name AS approved_by_name,
         lf.next_action,
         lf.follow_up_type,
         lf.status AS last_follow_up_status,
@@ -1388,6 +1414,7 @@ class Lead extends Model
     FROM leads
     LEFT JOIN users AS u_assigned_by ON leads.assigned_by = u_assigned_by.id
     LEFT JOIN users AS u_by ON leads.created_by = u_by.id
+    LEFT JOIN users AS u_appr ON leads.approved_by = u_appr.id
     LEFT JOIN (
         SELECT t1.*
         FROM lead_follow_ups t1
@@ -1409,14 +1436,33 @@ class Lead extends Model
         $params = [$userId];
         $types  = "i";
 
+        $dateCol = ($date_type === 'assigned_date') 
+            ? "COALESCE(NULLIF(NULLIF(leads.assigned_at, '0000-00-00 00:00:00'), ''), leads.created_at)" 
+            : "leads.created_at";
+
+        if (!empty($from_date) && !empty($to_date)) {
+            $sql .= " AND DATE({$dateCol}) BETWEEN ? AND ?";
+            $params[] = $from_date;
+            $params[] = $to_date;
+            $types .= "ss";
+        } elseif (!empty($from_date)) {
+            $sql .= " AND DATE({$dateCol}) >= ?";
+            $params[] = $from_date;
+            $types .= "s";
+        } elseif (!empty($to_date)) {
+            $sql .= " AND DATE({$dateCol}) <= ?";
+            $params[] = $to_date;
+            $types .= "s";
+        }
+
         if (!empty($year)) {
-            $sql .= " AND YEAR(leads.created_at) = ?";
+            $sql .= " AND YEAR({$dateCol}) = ?";
             $params[] = (int)$year;
             $types .= "i";
         }
 
         if (!empty($month)) {
-            $sql .= " AND MONTH(leads.created_at) = ?";
+            $sql .= " AND MONTH({$dateCol}) = ?";
             $params[] = (int)$month;
             $types .= "i";
         }
@@ -1424,9 +1470,9 @@ class Lead extends Model
         if (!empty($assignedHours)) {
             $hrs = (int)$assignedHours;
             $sql .= " AND (
-                (leads.assigned_at IS NOT NULL AND leads.assigned_at != '0000-00-00 00:00:00' AND leads.assigned_at >= DATE_SUB(NOW(), INTERVAL ? HOUR))
+                (leads.assigned_at IS NOT NULL AND leads.assigned_at != '0000-00-00 00:00:00' AND leads.assigned_at != '' AND leads.assigned_at >= DATE_SUB(NOW(), INTERVAL ? HOUR))
                 OR
-                ((leads.assigned_at IS NULL OR leads.assigned_at = '0000-00-00 00:00:00') AND leads.updated_at >= DATE_SUB(NOW(), INTERVAL ? HOUR))
+                ((leads.assigned_at IS NULL OR leads.assigned_at = '0000-00-00 00:00:00' OR leads.assigned_at = '') AND leads.updated_at >= DATE_SUB(NOW(), INTERVAL ? HOUR))
             )";
             $params[] = $hrs;
             $params[] = $hrs;
@@ -1441,7 +1487,7 @@ class Lead extends Model
             } elseif (strtolower($lastAction) === 'not_contacted') {
                 $sql .= " AND NOT " . $contactedCond;
             } else {
-                $sql .= " AND leads.last_lead_action = ?";
+                $sql .= " AND LOWER(leads.last_lead_action) = LOWER(?)";
                 $params[] = $lastAction;
                 $types .= "s";
             }
@@ -1461,21 +1507,7 @@ class Lead extends Model
         }
 
         if ($uncontacted) {
-            $sql .= " AND (SELECT COUNT(*) FROM lead_follow_ups WHERE lead_id = leads.id) = 0";
-        }
-        if (!empty($from_date) && !empty($to_date)) {
-            $sql .= " AND DATE(COALESCE(NULLIF(leads.assigned_at, '0000-00-00 00:00:00'), leads.created_at)) BETWEEN ? AND ?";
-            $params[] = $from_date;
-            $params[] = $to_date;
-            $types .= "ss";
-        } elseif (!empty($from_date)) {
-            $sql .= " AND DATE(COALESCE(NULLIF(leads.assigned_at, '0000-00-00 00:00:00'), leads.created_at)) >= ?";
-            $params[] = $from_date;
-            $types .= "s";
-        } elseif (!empty($to_date)) {
-            $sql .= " AND DATE(COALESCE(NULLIF(leads.assigned_at, '0000-00-00 00:00:00'), leads.created_at)) <= ?";
-            $params[] = $to_date;
-            $types .= "s";
+            $sql .= " AND NOT " . $contactedCond;
         }
 
         if (!empty($projectId)) {
@@ -1487,13 +1519,9 @@ class Lead extends Model
             $types .= $projClause['types'];
         }
         if (!empty($projectCategoryId)) {
-            $sql .= " AND (leads.project_category_id = ?" . (!empty($projectId) ? " OR leads.project_id = ?" : "") . ")";
+            $sql .= " AND leads.project_category_id = ?";
             $params[] = (int)$projectCategoryId;
             $types .= "i";
-            if (!empty($projectId)) {
-                $params[] = (int)$projectId;
-                $types .= "i";
-            }
         }
         if (!empty($country)) {
             $countryList = is_array($country) ? array_filter($country, fn($val) => trim($val) !== '') : [trim((string)$country)];
@@ -1608,7 +1636,7 @@ class Lead extends Model
         return $leads;
     }
 
-    public function getAllMyLeadsCount(int $userId, $year = null, $month = null, $lastAction = null, $lead_status = null, $only_missing_followup = false, $search = null, $followup_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null, $from_date = null, $to_date = null, $uncontacted = false)
+    public function getAllMyLeadsCount(int $userId, $year = null, $month = null, $lastAction = null, $lead_status = null, $only_missing_followup = false, $search = null, $followup_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null, $from_date = null, $to_date = null, $uncontacted = false, $date_type = 'lead_date')
     {
         $sql = "SELECT COUNT(DISTINCT leads.id) as total_count
     FROM leads
@@ -1629,14 +1657,33 @@ class Lead extends Model
         $params = [$userId];
         $types  = "i";
 
+        $dateCol = ($date_type === 'assigned_date') 
+            ? "COALESCE(NULLIF(NULLIF(leads.assigned_at, '0000-00-00 00:00:00'), ''), leads.created_at)" 
+            : "leads.created_at";
+
+        if (!empty($from_date) && !empty($to_date)) {
+            $sql .= " AND DATE({$dateCol}) BETWEEN ? AND ?";
+            $params[] = $from_date;
+            $params[] = $to_date;
+            $types .= "ss";
+        } elseif (!empty($from_date)) {
+            $sql .= " AND DATE({$dateCol}) >= ?";
+            $params[] = $from_date;
+            $types .= "s";
+        } elseif (!empty($to_date)) {
+            $sql .= " AND DATE({$dateCol}) <= ?";
+            $params[] = $to_date;
+            $types .= "s";
+        }
+
         if (!empty($year)) {
-            $sql .= " AND YEAR(leads.created_at) = ?";
+            $sql .= " AND YEAR({$dateCol}) = ?";
             $params[] = (int)$year;
             $types .= "i";
         }
 
         if (!empty($month)) {
-            $sql .= " AND MONTH(leads.created_at) = ?";
+            $sql .= " AND MONTH({$dateCol}) = ?";
             $params[] = (int)$month;
             $types .= "i";
         }
@@ -1644,9 +1691,9 @@ class Lead extends Model
         if (!empty($assignedHours)) {
             $hrs = (int)$assignedHours;
             $sql .= " AND (
-                (leads.assigned_at IS NOT NULL AND leads.assigned_at != '0000-00-00 00:00:00' AND leads.assigned_at >= DATE_SUB(NOW(), INTERVAL ? HOUR))
+                (leads.assigned_at IS NOT NULL AND leads.assigned_at != '0000-00-00 00:00:00' AND leads.assigned_at != '' AND leads.assigned_at >= DATE_SUB(NOW(), INTERVAL ? HOUR))
                 OR
-                ((leads.assigned_at IS NULL OR leads.assigned_at = '0000-00-00 00:00:00') AND leads.updated_at >= DATE_SUB(NOW(), INTERVAL ? HOUR))
+                ((leads.assigned_at IS NULL OR leads.assigned_at = '0000-00-00 00:00:00' OR leads.assigned_at = '') AND leads.updated_at >= DATE_SUB(NOW(), INTERVAL ? HOUR))
             )";
             $params[] = $hrs;
             $params[] = $hrs;
@@ -1661,7 +1708,7 @@ class Lead extends Model
             } elseif (strtolower($lastAction) === 'not_contacted') {
                 $sql .= " AND NOT " . $contactedCond;
             } else {
-                $sql .= " AND leads.last_lead_action = ?";
+                $sql .= " AND LOWER(leads.last_lead_action) = LOWER(?)";
                 $params[] = $lastAction;
                 $types .= "s";
             }
@@ -1681,21 +1728,7 @@ class Lead extends Model
         }
 
         if ($uncontacted) {
-            $sql .= " AND (SELECT COUNT(*) FROM lead_follow_ups WHERE lead_id = leads.id) = 0";
-        }
-        if (!empty($from_date) && !empty($to_date)) {
-            $sql .= " AND DATE(COALESCE(NULLIF(leads.assigned_at, '0000-00-00 00:00:00'), leads.created_at)) BETWEEN ? AND ?";
-            $params[] = $from_date;
-            $params[] = $to_date;
-            $types .= "ss";
-        } elseif (!empty($from_date)) {
-            $sql .= " AND DATE(COALESCE(NULLIF(leads.assigned_at, '0000-00-00 00:00:00'), leads.created_at)) >= ?";
-            $params[] = $from_date;
-            $types .= "s";
-        } elseif (!empty($to_date)) {
-            $sql .= " AND DATE(COALESCE(NULLIF(leads.assigned_at, '0000-00-00 00:00:00'), leads.created_at)) <= ?";
-            $params[] = $to_date;
-            $types .= "s";
+            $sql .= " AND NOT " . $contactedCond;
         }
 
         if (!empty($projectId)) {
@@ -1707,13 +1740,9 @@ class Lead extends Model
             $types .= $projClause['types'];
         }
         if (!empty($projectCategoryId)) {
-            $sql .= " AND (leads.project_category_id = ?" . (!empty($projectId) ? " OR leads.project_id = ?" : "") . ")";
+            $sql .= " AND leads.project_category_id = ?";
             $params[] = (int)$projectCategoryId;
             $types .= "i";
-            if (!empty($projectId)) {
-                $params[] = (int)$projectId;
-                $types .= "i";
-            }
         }
         if (!empty($country)) {
             $countryList = is_array($country) ? array_filter($country, fn($val) => trim($val) !== '') : [trim((string)$country)];
@@ -1793,7 +1822,7 @@ class Lead extends Model
         return (int)($row['total_count'] ?? 0);
     }
 
-    public function getMyAssignedLeadsSummaryCards(int $userId, $year = null, $month = null, $lastAction = null, $lead_status = null, $only_missing_followup = false, $search = null, $followup_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null, $from_date = null, $to_date = null, $uncontacted = false)
+    public function getMyAssignedLeadsSummaryCards(int $userId, $year = null, $month = null, $lastAction = null, $lead_status = null, $only_missing_followup = false, $search = null, $followup_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null, $from_date = null, $to_date = null, $uncontacted = false, $date_type = 'lead_date')
     {
         $contactedCond = "(LOWER(leads.last_lead_action) IN ('contacted', 'follow up', 'visited', 'booked') OR leads.call_status IN ('called', 'received') OR (leads.communication_type IS NOT NULL AND leads.communication_type != '' AND LOWER(leads.communication_type) != 'not select') OR lf.id IS NOT NULL OR EXISTS (SELECT 1 FROM lead_bookings lb_sub WHERE lb_sub.lead_id = leads.id AND lb_sub.deleted_at IS NULL))";
 
@@ -1822,14 +1851,33 @@ class Lead extends Model
         $params = [$userId];
         $types  = "i";
 
+        $dateCol = ($date_type === 'assigned_date') 
+            ? "COALESCE(NULLIF(NULLIF(leads.assigned_at, '0000-00-00 00:00:00'), ''), leads.created_at)" 
+            : "leads.created_at";
+
+        if (!empty($from_date) && !empty($to_date)) {
+            $sql .= " AND DATE({$dateCol}) BETWEEN ? AND ?";
+            $params[] = $from_date;
+            $params[] = $to_date;
+            $types .= "ss";
+        } elseif (!empty($from_date)) {
+            $sql .= " AND DATE({$dateCol}) >= ?";
+            $params[] = $from_date;
+            $types .= "s";
+        } elseif (!empty($to_date)) {
+            $sql .= " AND DATE({$dateCol}) <= ?";
+            $params[] = $to_date;
+            $types .= "s";
+        }
+
         if (!empty($year)) {
-            $sql .= " AND YEAR(leads.created_at) = ?";
+            $sql .= " AND YEAR({$dateCol}) = ?";
             $params[] = (int)$year;
             $types .= "i";
         }
 
         if (!empty($month)) {
-            $sql .= " AND MONTH(leads.created_at) = ?";
+            $sql .= " AND MONTH({$dateCol}) = ?";
             $params[] = (int)$month;
             $types .= "i";
         }
@@ -1837,9 +1885,9 @@ class Lead extends Model
         if (!empty($assignedHours)) {
             $hrs = (int)$assignedHours;
             $sql .= " AND (
-                (leads.assigned_at IS NOT NULL AND leads.assigned_at != '0000-00-00 00:00:00' AND leads.assigned_at >= DATE_SUB(NOW(), INTERVAL ? HOUR))
+                (leads.assigned_at IS NOT NULL AND leads.assigned_at != '0000-00-00 00:00:00' AND leads.assigned_at != '' AND leads.assigned_at >= DATE_SUB(NOW(), INTERVAL ? HOUR))
                 OR
-                ((leads.assigned_at IS NULL OR leads.assigned_at = '0000-00-00 00:00:00') AND leads.updated_at >= DATE_SUB(NOW(), INTERVAL ? HOUR))
+                ((leads.assigned_at IS NULL OR leads.assigned_at = '0000-00-00 00:00:00' OR leads.assigned_at = '') AND leads.updated_at >= DATE_SUB(NOW(), INTERVAL ? HOUR))
             )";
             $params[] = $hrs;
             $params[] = $hrs;
@@ -1847,22 +1895,7 @@ class Lead extends Model
         }
 
         if ($uncontacted) {
-            $sql .= " AND (SELECT COUNT(*) FROM lead_follow_ups WHERE lead_id = leads.id) = 0";
-        }
-
-        if (!empty($from_date) && !empty($to_date)) {
-            $sql .= " AND DATE(COALESCE(NULLIF(leads.assigned_at, '0000-00-00 00:00:00'), leads.created_at)) BETWEEN ? AND ?";
-            $params[] = $from_date;
-            $params[] = $to_date;
-            $types .= "ss";
-        } elseif (!empty($from_date)) {
-            $sql .= " AND DATE(COALESCE(NULLIF(leads.assigned_at, '0000-00-00 00:00:00'), leads.created_at)) >= ?";
-            $params[] = $from_date;
-            $types .= "s";
-        } elseif (!empty($to_date)) {
-            $sql .= " AND DATE(COALESCE(NULLIF(leads.assigned_at, '0000-00-00 00:00:00'), leads.created_at)) <= ?";
-            $params[] = $to_date;
-            $types .= "s";
+            $sql .= " AND NOT " . $contactedCond;
         }
 
         if (!empty($lastAction)) {
@@ -1871,7 +1904,7 @@ class Lead extends Model
             } elseif (strtolower($lastAction) === 'not_contacted') {
                 $sql .= " AND NOT " . $contactedCond;
             } else {
-                $sql .= " AND leads.last_lead_action = ?";
+                $sql .= " AND LOWER(leads.last_lead_action) = LOWER(?)";
                 $params[] = $lastAction;
                 $types .= "s";
             }
@@ -1892,13 +1925,9 @@ class Lead extends Model
             $types .= $projClause['types'];
         }
         if (!empty($projectCategoryId)) {
-            $sql .= " AND (leads.project_category_id = ?" . (!empty($projectId) ? " OR leads.project_id = ?" : "") . ")";
+            $sql .= " AND leads.project_category_id = ?";
             $params[] = (int)$projectCategoryId;
             $types .= "i";
-            if (!empty($projectId)) {
-                $params[] = (int)$projectId;
-                $types .= "i";
-            }
         }
         if (!empty($country)) {
             $countryList = is_array($country) ? array_filter($country, fn($val) => trim($val) !== '') : [trim((string)$country)];
@@ -2370,6 +2399,8 @@ class Lead extends Model
             p.name AS project_name,
             s.name AS source_name,
             u.full_name AS user_name,
+            u_appr.full_name AS approved_by_name,
+            u_assigner.full_name AS assigned_by_name,
             l.name AS location_name,
             COUNT(f.id) AS follow_up_count
 
@@ -2380,8 +2411,12 @@ class Lead extends Model
             ON leads.id = f.lead_id
         LEFT JOIN users u 
             ON leads.assigned_id = u.id
-                    LEFT JOIN projects AS p ON leads.project_id = p.id
-                    LEFT JOIN locations AS l ON leads.pref_location_id = l.id
+        LEFT JOIN users u_appr 
+            ON leads.approved_by = u_appr.id
+        LEFT JOIN users u_assigner 
+            ON leads.assigned_by = u_assigner.id
+        LEFT JOIN projects AS p ON leads.project_id = p.id
+        LEFT JOIN locations AS l ON leads.pref_location_id = l.id
         WHERE leads.id = ?
         GROUP BY leads.id"
         );

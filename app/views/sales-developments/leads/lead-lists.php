@@ -985,12 +985,30 @@ $activeCard = $_GET['filter_card'] ?? '';
                         </div>
 
                         <!-- Assigned By Name -->
-                        <div class="d-flex align-items-center gap-2 mt-2">
-                            <div class="info-label flex-shrink-0">Assigned By</div>
-                            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-1" style="font-size: 0.75rem;">
-                                <i class="bi bi-person-check me-1"></i>
-                                <?= htmlspecialchars($lead['assigned_by_name'] ?? 'System') ?>
-                            </span>
+                        <div class="d-flex align-items-start gap-2 mt-2">
+                            <div class="info-label flex-shrink-0 mt-1">Assigned By</div>
+                            <div>
+                                <?php if (!empty($lead['is_automated']) && (int)$lead['is_automated'] === 1): ?>
+                                    <div>
+                                        <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-0.5" style="font-size: 0.75rem;">
+                                            <i class="fa-solid fa-robot me-1"></i>Assigned by System
+                                        </span>
+                                    </div>
+                                    <div class="text-success small fw-medium mt-1" style="font-size: 11px;">
+                                        <i class="bi bi-patch-check-fill me-1"></i>Approved by: <strong><?= htmlspecialchars(!empty($lead['approved_by_name']) ? $lead['approved_by_name'] : 'System') ?></strong>
+                                    </div>
+                                    <?php if (!empty($lead['agent_name']) && !empty($lead['assigned_by_name']) && $lead['assigned_by_name'] !== 'System'): ?>
+                                        <div class="text-primary small pt-1 border-top mt-1" style="font-size: 11px;">
+                                            <i class="bi bi-person-check me-1"></i>Assigned by: <strong class="text-dark"><?= htmlspecialchars($lead['assigned_by_name']) ?></strong>
+                                        </div>
+                                    <?php endif; ?>
+                                <?php else: ?>
+                                    <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-1" style="font-size: 0.75rem;">
+                                        <i class="bi bi-person-check me-1"></i>
+                                        <?= htmlspecialchars($lead['assigned_by_name'] ?? 'System') ?>
+                                    </span>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1805,12 +1823,25 @@ document.addEventListener('DOMContentLoaded', function () {
         addHidden('assigned_date', assignedDate);
         addHidden('redirect_page', finalPage);
         addHidden('route_mode',    routeMode);
-        // Also preserve all current GET filters
-        const filterParams = ['year','month','assigned_user','last_action','assigned','assigned_hours','q','from_date','to_date','project_id','project_category_id'];
-        filterParams.forEach(p => {
-            const v = urlParams.get(p);
-            if (v) addHidden('redirect_' + p, v);
+
+        // Build return_url preserving ALL current query parameters (team_id, filters, etc.)
+        try {
+            const returnUrl = new URL(window.location.href);
+            if (finalPage > 1) {
+                returnUrl.searchParams.set('page', finalPage);
+            } else {
+                returnUrl.searchParams.delete('page');
+            }
+            addHidden('return_url', returnUrl.toString());
+        } catch(e) {}
+
+        // Also dynamically preserve all current GET filters as fallback
+        urlParams.forEach((val, key) => {
+            if (key !== 'page') {
+                addHidden('redirect_' + key, val);
+            }
         });
+
         document.body.appendChild(form);
         form.submit();
     }
@@ -2330,6 +2361,22 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>`;
         }
 
+        let assignedByHtml = '';
+        if (Number(lead.is_automated) === 1) {
+            const approver = lead.approved_by_name ? lead.approved_by_name.replace(/</g,'&lt;').replace(/>/g,'&gt;') : 'System';
+            assignedByHtml = `<div>
+                <div><span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-0.5" style="font-size:.72rem;"><i class="fa-solid fa-robot me-1"></i>Assigned by System</span></div>
+                <div class="text-success small fw-medium mt-1" style="font-size:11px;"><i class="bi bi-patch-check-fill me-1"></i>Approved by: <strong>${approver}</strong></div>`;
+            if (lead.agent_name && lead.assigned_by_name && lead.assigned_by_name !== 'System') {
+                const assigner = lead.assigned_by_name.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                assignedByHtml += `<div class="text-primary small pt-1 border-top mt-1" style="font-size:11px;"><i class="bi bi-person-check me-1"></i>Assigned by: <strong class="text-dark">${assigner}</strong></div>`;
+            }
+            assignedByHtml += `</div>`;
+        } else {
+            const assigner = lead.assigned_by_name ? lead.assigned_by_name.replace(/</g,'&lt;').replace(/>/g,'&gt;') : 'System';
+            assignedByHtml = `<span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-1" style="font-size:.75rem;"><i class="bi bi-person-check me-1"></i>${assigner}</span>`;
+        }
+
         return `
         <div class="col-12 col-sm-6">
           <div id="lead-${lead.id}" class="lead-card h-100" data-id="${lead.id}">
@@ -2392,6 +2439,10 @@ document.addEventListener('DOMContentLoaded', function () {
             <div class="d-flex align-items-center gap-2 mt-2">
               <div class="info-label flex-shrink-0">Executive</div>
               ${agentBadge}
+            </div>
+            <div class="d-flex align-items-start gap-2 mt-2">
+              <div class="info-label flex-shrink-0 mt-1">Assigned By</div>
+              ${assignedByHtml}
             </div>
           </div>
         </div>`;

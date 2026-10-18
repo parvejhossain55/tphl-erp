@@ -509,6 +509,9 @@ class LeadController extends Controller
                     'delete_request_reason' => $lead['delete_request_reason'] ?? '',
                     'delete_requested_by_name' => $lead['delete_requested_by_name'] ?? '',
                     'delete_requested_at' => $lead['delete_requested_at'] ?? '',
+                    'is_automated'     => (int)($lead['is_automated'] ?? 0),
+                    'approved_by_name' => $lead['approved_by_name'] ?? '',
+                    'approved_at'      => $lead['approved_at'] ?? '',
                 ];
             }
             echo json_encode([
@@ -693,7 +696,25 @@ class LeadController extends Controller
             $row[] = $noteHtml;
 
             $assignedByStr = !empty($lead['assigned_by_name']) ? htmlspecialchars($lead['assigned_by_name']) : 'System';
-            $row[] = '<span class="bd-badge bg-secondary text-truncate" style="max-width: 150px;"><i class="bi bi-person-check me-1"></i>' . $assignedByStr . '</span>';
+            $isAutoLead = !empty($lead['is_automated']) && (int)$lead['is_automated'] === 1;
+
+            if ($isAutoLead) {
+                $approverName = !empty($lead['approved_by_name']) ? htmlspecialchars($lead['approved_by_name']) : 'System';
+                $apprTimeStr = (!empty($lead['approved_at']) && $lead['approved_at'] !== '0000-00-00 00:00:00') ? date('d M, Y, h:i A', strtotime($lead['approved_at'])) : '';
+                
+                $assignedByHtml = '<div class="d-flex flex-column gap-1" style="min-width: 140px;">';
+                $assignedByHtml .= '<div><span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-0.5" style="font-size: 11px;"><i class="fa-solid fa-robot me-1"></i>Assigned by System</span></div>';
+                $assignedByHtml .= '<div class="text-success small fw-medium" style="font-size: 11px; line-height: 1.25;" title="' . ($apprTimeStr ? 'Approved at ' . htmlspecialchars($apprTimeStr) : 'Approved') . '"><i class="bi bi-patch-check-fill me-1"></i>Approved by: <strong>' . $approverName . '</strong></div>';
+                
+                // When Team Leader distributes/assigns to an executive, keep system/approver AND show team leader assigner!
+                if (!empty($lead['agent_name']) && !empty($lead['assigned_by_name']) && $lead['assigned_by_name'] !== 'System') {
+                    $assignedByHtml .= '<div class="text-primary small pt-1 border-top mt-1" style="font-size: 11px; line-height: 1.25;"><i class="bi bi-person-check me-1"></i>Assigned by: <strong class="text-dark">' . $assignedByStr . '</strong></div>';
+                }
+                $assignedByHtml .= '</div>';
+                $row[] = $assignedByHtml;
+            } else {
+                $row[] = '<span class="bd-badge bg-secondary text-truncate" style="max-width: 150px;"><i class="bi bi-person-check me-1"></i>' . $assignedByStr . '</span>';
+            }
 
             $actionHtml = '';
             if ((isset($_SESSION['user']['role_id']) && (in_array($_SESSION['user']['role_id'], [1, 3, 5, 9, 33]) || $isManagement)) || isSalesCoLeader()) {
@@ -906,6 +927,13 @@ class LeadController extends Controller
 
             $agent = !empty($lead['agent_name']) ? $lead['agent_name'] : 'Unassigned';
             $assignedBy = !empty($lead['assigned_by_name']) ? $lead['assigned_by_name'] : 'System';
+            if (!empty($lead['is_automated']) && (int)$lead['is_automated'] === 1) {
+                $approverName = !empty($lead['approved_by_name']) ? $lead['approved_by_name'] : 'System';
+                $assignedBy = "Assigned by System (Approved by: {$approverName})";
+                if (!empty($lead['agent_name']) && !empty($lead['assigned_by_name']) && $lead['assigned_by_name'] !== 'System') {
+                    $assignedBy .= " | Assigned by: " . $lead['assigned_by_name'];
+                }
+            }
 
             $assignedRaw = (!empty($lead['assigned_at']) && $lead['assigned_at'] !== '0000-00-00 00:00:00' && $lead['assigned_at'] !== '0000-00-00')
                 ? $lead['assigned_at']
@@ -1151,14 +1179,42 @@ class LeadController extends Controller
         $redirectPage = (int)($_POST['redirect_page'] ?? 1);
         if ($redirectPage < 1) $redirectPage = 1;
 
-        $filterKeys = ['year','month','date','assigned_user','last_action','assigned','q','from_date','to_date','project_id','project_category_id'];
+        $filterKeys = [
+            'year', 'month', 'date', 'assigned_user', 'last_action', 
+            'assigned', 'q', 'from_date', 'to_date', 'project_id', 
+            'project_category_id', 'team_id', 'assigned_hours', 
+            'filter_country', 'filter_card'
+        ];
         $queryParts = [];
         foreach ($filterKeys as $key) {
             $val = $_POST['redirect_' . $key] ?? '';
             if ($val !== '') {
-                $queryParts[] = urlencode($key) . '=' . urlencode($val);
+                if (is_array($val)) {
+                    foreach ($val as $v) {
+                        $queryParts[] = urlencode($key) . '[]=' . urlencode($v);
+                    }
+                } else {
+                    $queryParts[] = urlencode($key) . '=' . urlencode($val);
+                }
             }
         }
+
+        // Also dynamically capture any extra redirect_* keys passed
+        foreach ($_POST as $pKey => $pVal) {
+            if (strpos($pKey, 'redirect_') === 0 && $pKey !== 'redirect_page') {
+                $actualKey = substr($pKey, strlen('redirect_'));
+                if (!in_array($actualKey, $filterKeys, true) && $pVal !== '') {
+                    if (is_array($pVal)) {
+                        foreach ($pVal as $v) {
+                            $queryParts[] = urlencode($actualKey) . '[]=' . urlencode($v);
+                        }
+                    } else {
+                        $queryParts[] = urlencode($actualKey) . '=' . urlencode($pVal);
+                    }
+                }
+            }
+        }
+
         if ($redirectPage > 1) {
             $queryParts[] = 'page=' . $redirectPage;
         }
@@ -1166,7 +1222,7 @@ class LeadController extends Controller
         $redirectUrl  = $GLOBALS['base_url'] . '/lead-lists' . $queryString;
         if (!empty($_POST['return_url'])) {
             $redirectUrl = $_POST['return_url'];
-        } elseif (!empty($_SERVER['HTTP_REFERER']) && strpos($_SERVER['HTTP_REFERER'], 'my-all-assigned-leads') !== false) {
+        } elseif (!empty($_SERVER['HTTP_REFERER']) && (strpos($_SERVER['HTTP_REFERER'], 'my-all-assigned-leads') !== false || strpos($_SERVER['HTTP_REFERER'], 'lead-lists') !== false)) {
             $redirectUrl = $_SERVER['HTTP_REFERER'];
         }
 

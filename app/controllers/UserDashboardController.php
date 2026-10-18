@@ -648,6 +648,7 @@ class UserDashboardController extends Controller
         $assignedHours        = $_GET['assigned_hours'] ?? null;
         $from_date            = $_GET['from_date'] ?? null;
         $to_date              = $_GET['to_date'] ?? null;
+        $date_type            = $_GET['date_type'] ?? 'lead_date';
         $uncontacted          = isset($_GET['uncontacted']) ? true : false;
 
         $onlyMissingFollowup = isset($_GET['filter']) && $_GET['filter'] === 'missing_followup';
@@ -672,7 +673,7 @@ class UserDashboardController extends Controller
         if ($currentPage < 1) $currentPage = 1;
         $offset = ($currentPage - 1) * $sqlLimit;
 
-        $totalTableLeads = $this->leadModel->getAllMyLeadsCount($userId, $year, $month, $lastAction, $lead_status, $onlyMissingFollowup, $search, $followup_date, $filterCard, $filterProjectId, $filterCategoryId, $filterCountry, $assignedHours, $from_date, $to_date, $uncontacted);
+        $totalTableLeads = $this->leadModel->getAllMyLeadsCount($userId, $year, $month, $lastAction, $lead_status, $onlyMissingFollowup, $search, $followup_date, $filterCard, $filterProjectId, $filterCategoryId, $filterCountry, $assignedHours, $from_date, $to_date, $uncontacted, $date_type);
         $totalPages = ceil($totalTableLeads / $sqlLimit);
 
         // Build pagination route query string (excluding 'page' and routing 'url')
@@ -683,7 +684,7 @@ class UserDashboardController extends Controller
 
         // Fetch assigned leads for the user (PAGINATED)
         $myAssignedClients = $this->leadModel
-            ->getAllMyLeads($userId, $year, $month, $lastAction, $lead_status, $onlyMissingFollowup, $search, $followup_date, $filterCard, $filterProjectId, $filterCategoryId, $filterCountry, $assignedHours, $from_date, $to_date, $uncontacted, $sqlLimit, $offset);
+            ->getAllMyLeads($userId, $year, $month, $lastAction, $lead_status, $onlyMissingFollowup, $search, $followup_date, $filterCard, $filterProjectId, $filterCategoryId, $filterCountry, $assignedHours, $from_date, $to_date, $uncontacted, $sqlLimit, $offset, $date_type);
 
         // Fetch specific booking & follow-up counts ONLY for the user's leads (FAST!)
         $leadIds = !empty($myAssignedClients) ? array_column($myAssignedClients, 'id') : [];
@@ -711,7 +712,7 @@ class UserDashboardController extends Controller
         $deleteRequests = !empty($leadIds) ? $this->leadModel->getPendingDeleteRequestsByLeadIds($leadIds) : [];
 
         // Calculate card statistics efficiently
-        $summaryCards = $this->leadModel->getMyAssignedLeadsSummaryCards($userId, $year, $month, $lastAction, $lead_status, $onlyMissingFollowup, $search, $followup_date, $filterCard, $filterProjectId, $filterCategoryId, $filterCountry, $assignedHours, $from_date, $to_date, $uncontacted);
+        $summaryCards = $this->leadModel->getMyAssignedLeadsSummaryCards($userId, $year, $month, $lastAction, $lead_status, $onlyMissingFollowup, $search, $followup_date, $filterCard, $filterProjectId, $filterCategoryId, $filterCountry, $assignedHours, $from_date, $to_date, $uncontacted, $date_type);
         $totalLeadsCount        = (int)($summaryCards['total_leads'] ?? 0);
         $contactedLeadsCount    = (int)($summaryCards['contacted_leads'] ?? 0);
         $notContactedLeadsCount = (int)($summaryCards['not_contacted_leads'] ?? 0);
@@ -940,6 +941,13 @@ class UserDashboardController extends Controller
             'limit'               => $limit,
             'totalTableLeads'     => $totalTableLeads,
             'offset'              => $offset,
+            'date_type'           => $date_type,
+            'from_date'           => $from_date,
+            'to_date'             => $to_date,
+            'uncontacted'         => $uncontacted,
+            'selectedYear'        => $year,
+            'selectedMonth'       => $month,
+            'assignedHours'       => $assignedHours,
             'page_script'         => ''
         ]);
     }

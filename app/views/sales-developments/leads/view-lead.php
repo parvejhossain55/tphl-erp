@@ -395,9 +395,23 @@ $page = "View Lead";
                             <div class="info-label">Source & Upload Origin</div>
                             <div class="info-value"><?= htmlspecialchars($leadData['source_name'] ?: '-') ?> (<?= htmlspecialchars($leadData['uploaded_from'] ?: '-') ?>)</div>
                         </div>
+                        <?php if (!empty($leadData['is_automated']) && (int)$leadData['is_automated'] === 1): ?>
+                        <div class="info-row">
+                            <div class="info-label">Automated Origin & Approval</div>
+                            <div class="info-value">
+                                <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1"><i class="fa-solid fa-robot me-1"></i>Assigned by System</span>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 ms-1"><i class="bi bi-patch-check-fill me-1"></i>Approved by: <?= htmlspecialchars(!empty($leadData['approved_by_name']) ? $leadData['approved_by_name'] : 'System') ?></span>
+                            </div>
+                        </div>
+                        <?php endif; ?>
                         <div class="info-row">
                             <div class="info-label">Assigned Representative</div>
-                            <div class="info-value"><?= htmlspecialchars($leadData['user_name'] ?: 'Unassigned') ?></div>
+                            <div class="info-value">
+                                <?= htmlspecialchars($leadData['user_name'] ?: 'Unassigned') ?>
+                                <?php if (!empty($leadData['assigned_by_name'])): ?>
+                                    <small class="text-muted ms-2">(Assigned by: <?= htmlspecialchars($leadData['assigned_by_name']) ?>)</small>
+                                <?php endif; ?>
+                            </div>
                         </div>
                         <div class="info-row">
                             <div class="info-label">Lead Type & Quality</div>

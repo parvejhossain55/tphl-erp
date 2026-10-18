@@ -15,6 +15,54 @@ class LeadAutomationController extends Controller
         $this->leadModel = new Lead($this->db);
         $this->teamsModel = new Team($this->db);
         $this->automationConfig = require __DIR__ . '/../config/lead_automation.php';
+        $this->ensureSchema();
+    }
+
+    /**
+     * Self-healing schema auto-migration for any environment (Local, Staging, Live)
+     */
+    public function ensureSchema(): void
+    {
+        try {
+            $synchronizer = new LeadSynchronizer($this->automationConfig);
+            $pdo = $synchronizer->getDb();
+
+            // 1. Check & add distribute column if missing
+            $cols = $pdo->query("SHOW COLUMNS FROM `leads` LIKE 'distribute'")->fetchAll();
+            if (empty($cols)) {
+                $pdo->exec("ALTER TABLE `leads` ADD COLUMN `distribute` TINYINT(1) NOT NULL DEFAULT 1");
+                try {
+                    $pdo->exec("CREATE INDEX `idx_leads_distribute` ON `leads` (`distribute`)");
+                } catch (Throwable $t) {}
+            } else {
+                // Ensure default is 1 for manual and standard CRM uploads
+                $pdo->exec("ALTER TABLE `leads` MODIFY COLUMN `distribute` TINYINT(1) NOT NULL DEFAULT 1");
+            }
+
+            // 2. Check & add is_automated column if missing
+            $autoCols = $pdo->query("SHOW COLUMNS FROM `leads` LIKE 'is_automated'")->fetchAll();
+            if (empty($autoCols)) {
+                $pdo->exec("ALTER TABLE `leads` ADD COLUMN `is_automated` TINYINT(1) NOT NULL DEFAULT 0");
+                try {
+                    $pdo->exec("CREATE INDEX `idx_leads_is_automated` ON `leads` (`is_automated`)");
+                } catch (Throwable $t) {}
+            }
+
+            // 3. Check & add approved_by and approved_at columns if missing
+            $apprCols = $pdo->query("SHOW COLUMNS FROM `leads` LIKE 'approved_by'")->fetchAll();
+            if (empty($apprCols)) {
+                $pdo->exec("ALTER TABLE `leads` ADD COLUMN `approved_by` INT NULL");
+                try {
+                    $pdo->exec("CREATE INDEX `idx_leads_approved_by` ON `leads` (`approved_by`)");
+                } catch (Throwable $t) {}
+            }
+            $apprAtCols = $pdo->query("SHOW COLUMNS FROM `leads` LIKE 'approved_at'")->fetchAll();
+            if (empty($apprAtCols)) {
+                $pdo->exec("ALTER TABLE `leads` ADD COLUMN `approved_at` DATETIME NULL");
+            }
+        } catch (Throwable $e) {
+            error_log("LeadAutomation ensureSchema error: " . $e->getMessage());
+        }
     }
 
     /**
@@ -115,8 +163,24 @@ class LeadAutomationController extends Controller
             $limit = isset($_GET['limit']) ? min((int)$_GET['limit'], 500) : 100;
             $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
 
+            // Check if is_automated column exists on this database (self-healing)
+            $hasAutomatedCol = false;
+            try {
+                $checkCols = $pdo->query("SHOW COLUMNS FROM `leads` LIKE 'is_automated'")->fetchAll();
+                if (empty($checkCols)) {
+                    $this->ensureSchema();
+                    $checkCols = $pdo->query("SHOW COLUMNS FROM `leads` LIKE 'is_automated'")->fetchAll();
+                }
+                $hasAutomatedCol = !empty($checkCols);
+            } catch (Throwable $t) {
+                $hasAutomatedCol = false;
+            }
+
             // Only fetch automated leads synced via Google Sheets / Meta Automation
-            $where = ["l.deleted_at IS NULL", "l.is_automated = 1"];
+            $where = ["l.deleted_at IS NULL"];
+            if ($hasAutomatedCol) {
+                $where[] = "l.is_automated = 1";
+            }
             $params = [];
 
             if ($teamId !== null) {
@@ -180,21 +244,23 @@ class LeadAutomationController extends Controller
             $totalCount = (int)$countStmt->fetchColumn();
 
             // Overall Stats (Scoped to automated sync leads only)
+            $autoWhere = $hasAutomatedCol ? " AND is_automated = 1" : "";
             $statsSql = "SELECT 
                             COUNT(*) as total_leads,
                             SUM(CASE WHEN distribute = 0 THEN 1 ELSE 0 END) as pending_leads,
                             SUM(CASE WHEN distribute = 1 THEN 1 ELSE 0 END) as approved_leads
-                         FROM `leads` WHERE deleted_at IS NULL AND is_automated = 1";
+                         FROM `leads` WHERE deleted_at IS NULL{$autoWhere}";
             $stats = $pdo->query($statsSql)->fetch(PDO::FETCH_ASSOC);
 
             // Fetch Teams with count of automated leads
+            $autoJoin = $hasAutomatedCol ? " AND l.is_automated = 1" : "";
             $teamsSql = "SELECT 
                             t.id, 
                             t.name, 
                             COUNT(l.id) as total_leads,
                             SUM(CASE WHEN l.distribute = 0 THEN 1 ELSE 0 END) as pending_leads
                          FROM `teams` t
-                         LEFT JOIN `leads` l ON l.team_id = t.id AND l.deleted_at IS NULL AND l.is_automated = 1
+                         LEFT JOIN `leads` l ON l.team_id = t.id AND l.deleted_at IS NULL{$autoJoin}
                          GROUP BY t.id, t.name
                          ORDER BY t.id ASC";
             $teams = $pdo->query($teamsSql)->fetchAll(PDO::FETCH_ASSOC);
@@ -235,16 +301,18 @@ class LeadAutomationController extends Controller
             $synchronizer = new LeadSynchronizer($this->automationConfig);
             $pdo = $synchronizer->getDb();
 
+            $approverId = !empty($_SESSION['user']['id']) ? (int)$_SESSION['user']['id'] : null;
+
             // Direct All-Pending or Team-Wise All-Pending
             if ($approveAll) {
                 if ($teamId) {
-                    $updateSql = "UPDATE `leads` SET `distribute` = 1, `updated_at` = NOW() WHERE `distribute` = 0 AND `deleted_at` IS NULL AND `is_automated` = 1 AND `team_id` = ?";
+                    $updateSql = "UPDATE `leads` SET `distribute` = 1, `approved_by` = ?, `approved_at` = NOW(), `updated_at` = NOW() WHERE `distribute` = 0 AND `deleted_at` IS NULL AND `is_automated` = 1 AND `team_id` = ?";
                     $stmt = $pdo->prepare($updateSql);
-                    $stmt->execute([$teamId]);
+                    $stmt->execute([$approverId, $teamId]);
                 } else {
-                    $updateSql = "UPDATE `leads` SET `distribute` = 1, `updated_at` = NOW() WHERE `distribute` = 0 AND `deleted_at` IS NULL AND `is_automated` = 1";
+                    $updateSql = "UPDATE `leads` SET `distribute` = 1, `approved_by` = ?, `approved_at` = NOW(), `updated_at` = NOW() WHERE `distribute` = 0 AND `deleted_at` IS NULL AND `is_automated` = 1";
                     $stmt = $pdo->prepare($updateSql);
-                    $stmt->execute();
+                    $stmt->execute([$approverId]);
                 }
                 $affected = $stmt->rowCount();
                 echo json_encode([
@@ -266,9 +334,10 @@ class LeadAutomationController extends Controller
             $leadIds = array_map('intval', $leadIds);
             $placeholders = implode(',', array_fill(0, count($leadIds), '?'));
 
-            $updateSql = "UPDATE `leads` SET `distribute` = 1, `updated_at` = NOW() WHERE `id` IN ({$placeholders})";
+            $updateSql = "UPDATE `leads` SET `distribute` = 1, `approved_by` = ?, `approved_at` = NOW(), `updated_at` = NOW() WHERE `id` IN ({$placeholders})";
             $stmt = $pdo->prepare($updateSql);
-            $stmt->execute($leadIds);
+            $params = array_merge([$approverId], $leadIds);
+            $stmt->execute($params);
             $affected = $stmt->rowCount();
             $totalSelected = count($leadIds);
 
