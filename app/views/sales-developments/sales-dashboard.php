@@ -441,7 +441,7 @@
             </div>
         </div>
 
-        <!-- Will Visit Card -->
+        <!-- Visit Scheduled Card -->
         <div class="col-12 col-sm-6 col-xl-4 col-xxl-3 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-10">
@@ -449,7 +449,7 @@
                         <span><i class="fa-solid fa-calendar-check"></i></span>
                     </div>
                     <div class="card__title-wrap">
-                        <h6 class="card__title text-break text-primary mb-10">Will Visit</h6>
+                        <h6 class="card__title text-break text-primary mb-10">Visit Scheduled</h6>
                         <h4 class="card__title">
                             <?= number_format($willVisitCount) ?>
                         </h4>

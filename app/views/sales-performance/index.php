@@ -99,7 +99,7 @@ $jsData = [
 ];
 ?>
 <style>
-    .sp, .sp-drawer {
+    :root {
         --sp-green: #0b7a55;
         --sp-green-600: #096a4a;
         --sp-green-50: #eef7f2;
@@ -117,6 +117,8 @@ $jsData = [
         --sp-bg: #f5f7f6;
         --sp-card: #ffffff;
         --sp-radius: 12px;
+    }
+    .sp, .sp-drawer {
         font-family: 'Inter', 'DM Sans', system-ui, -apple-system, sans-serif;
         color: var(--sp-text);
         padding: 20px 24px 48px;
@@ -296,9 +298,9 @@ $jsData = [
 
     /* Select2 Dropdown Popup */
     .select2-dropdown.sp-select2-dropdown {
-        border: 1px solid var(--sp-border) !important;
+        border: 1px solid #dcefe5 !important;
         border-radius: 10px !important;
-        background: #fff !important;
+        background: #ffffff !important;
         box-shadow: 0 14px 30px -4px rgba(16,24,20,.16), 0 4px 10px -2px rgba(16,24,20,.08) !important;
         z-index: 10000 !important;
         overflow: hidden !important;
@@ -310,18 +312,18 @@ $jsData = [
     }
     .select2-dropdown.sp-select2-dropdown .select2-search__field {
         height: 34px !important;
-        border: 1px solid var(--sp-border) !important;
+        border: 1px solid #cfd8d4 !important;
         border-radius: 7px !important;
         padding: 0 10px !important;
         font-size: 12.5px !important;
-        color: var(--sp-text) !important;
-        background: #fff !important;
+        color: #14211c !important;
+        background: #ffffff !important;
         outline: none !important;
         font-family: inherit !important;
         transition: border-color .15s, box-shadow .15s !important;
     }
     .select2-dropdown.sp-select2-dropdown .select2-search__field:focus {
-        border-color: var(--sp-green) !important;
+        border-color: #0b7a55 !important;
         box-shadow: 0 0 0 2px rgba(11,122,85,.15) !important;
     }
     .select2-dropdown.sp-select2-dropdown .select2-results__options {
@@ -334,18 +336,31 @@ $jsData = [
         line-height: 1.4 !important;
         border-radius: 6px !important;
         margin-bottom: 2px !important;
-        color: var(--sp-text) !important;
+        color: #14211c !important;
+        background: transparent !important;
         transition: background .12s, color .12s !important;
     }
-    .select2-dropdown.sp-select2-dropdown .select2-results__option--highlighted[aria-selected] {
-        background: var(--sp-green-50) !important;
-        color: var(--sp-green) !important;
+    .select2-dropdown.sp-select2-dropdown .select2-results__option:hover,
+    .select2-dropdown.sp-select2-dropdown .select2-results__option--highlighted,
+    .select2-dropdown.sp-select2-dropdown .select2-results__option--highlighted[aria-selected],
+    .select2-container--default .select2-dropdown.sp-select2-dropdown .select2-results__option--highlighted.select2-results__option--selectable {
+        background: #eef7f2 !important;
+        background-color: #eef7f2 !important;
+        color: #0b7a55 !important;
         font-weight: 600 !important;
     }
-    .select2-dropdown.sp-select2-dropdown .select2-results__option[aria-selected="true"] {
-        background: var(--sp-green) !important;
-        color: #fff !important;
+    .select2-dropdown.sp-select2-dropdown .select2-results__option[aria-selected="true"],
+    .select2-container--default .select2-dropdown.sp-select2-dropdown .select2-results__option--selected {
+        background: #0b7a55 !important;
+        background-color: #0b7a55 !important;
+        color: #ffffff !important;
         font-weight: 600 !important;
+    }
+    .select2-dropdown.sp-select2-dropdown .select2-results__option[aria-selected="true"]:hover,
+    .select2-dropdown.sp-select2-dropdown .select2-results__option[aria-selected="true"].select2-results__option--highlighted {
+        background: #096a4a !important;
+        background-color: #096a4a !important;
+        color: #ffffff !important;
     }
     .select2-dropdown.sp-select2-dropdown .select2-results__option[aria-disabled="true"] {
         display: none !important;
@@ -353,9 +368,71 @@ $jsData = [
     .select2-dropdown.sp-select2-dropdown .select2-results__message {
         padding: 12px !important;
         font-size: 12px !important;
-        color: var(--sp-muted) !important;
+        color: #6b7a74 !important;
         text-align: center !important;
     }
+
+    /* Contact Status Breakdown (Below Funnel) */
+    .sp-funnel-subgroup {
+        margin: 10px 0 4px;
+        padding: 10px 12px;
+        background: #f8faf9;
+        border: 1px solid var(--sp-border);
+        border-radius: 8px;
+    }
+    .sp-funnel-subgroup-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 11.5px;
+        font-weight: 600;
+        color: var(--sp-muted);
+        margin-bottom: 7px;
+    }
+    .sp-funnel-subgroup-title small {
+        font-weight: 400;
+        color: var(--sp-soft);
+    }
+    .sp-funnel-subgroup-pills {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .sp-funnel-subpill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 9px;
+        background: #fff;
+        border: 1px solid var(--sp-border);
+        border-radius: 6px;
+        font-size: 11.5px;
+        cursor: pointer;
+        transition: all .15s ease;
+    }
+    .sp-funnel-subpill:hover {
+        border-color: var(--sp-green);
+        background: var(--sp-green-50);
+    }
+    .sp-funnel-subpill.amber:hover {
+        border-color: #f59e0b;
+        background: #fffbeb;
+    }
+    .sp-funnel-subpill.red:hover {
+        border-color: #ef4444;
+        background: #fef2f2;
+    }
+    .sp-funnel-subpill .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+    }
+    .sp-funnel-subpill .dot.green { background: #10b981; }
+    .sp-funnel-subpill .dot.amber { background: #f59e0b; }
+    .sp-funnel-subpill .dot.red { background: #ef4444; }
+    .sp-funnel-subpill .lbl { color: var(--sp-muted); font-weight: 500; }
+    .sp-funnel-subpill .val { font-weight: 700; color: var(--sp-text); }
+    .sp-funnel-subpill .pct { font-size: 10.5px; color: var(--sp-soft); }
 
     .sp-tabs { display: flex; gap: 28px; border-bottom: 1px solid var(--sp-border); margin: 20px 0 18px; }
     .sp-tabs a { padding: 10px 2px; font-size: 13.5px; color: var(--sp-muted); font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color .15s; }
@@ -790,11 +867,45 @@ $jsData = [
     body.dark-mode .select2-dropdown.sp-select2-dropdown .select2-results__option {
         color: #cbd5e1 !important;
     }
+    [bd-theme="bd-theme-dark"] .select2-dropdown.sp-select2-dropdown .select2-results__option:hover,
+    [data-bs-theme="dark"] .select2-dropdown.sp-select2-dropdown .select2-results__option:hover,
+    body.dark-mode .select2-dropdown.sp-select2-dropdown .select2-results__option:hover,
+    [bd-theme="bd-theme-dark"] .select2-dropdown.sp-select2-dropdown .select2-results__option--highlighted,
+    [data-bs-theme="dark"] .select2-dropdown.sp-select2-dropdown .select2-results__option--highlighted,
+    body.dark-mode .select2-dropdown.sp-select2-dropdown .select2-results__option--highlighted,
     [bd-theme="bd-theme-dark"] .select2-dropdown.sp-select2-dropdown .select2-results__option--highlighted[aria-selected],
     [data-bs-theme="dark"] .select2-dropdown.sp-select2-dropdown .select2-results__option--highlighted[aria-selected],
     body.dark-mode .select2-dropdown.sp-select2-dropdown .select2-results__option--highlighted[aria-selected] {
         background: rgba(16, 185, 129, 0.22) !important;
+        background-color: rgba(16, 185, 129, 0.22) !important;
         color: #34d399 !important;
+    }
+    [bd-theme="bd-theme-dark"] .select2-dropdown.sp-select2-dropdown .select2-results__option[aria-selected="true"],
+    [data-bs-theme="dark"] .select2-dropdown.sp-select2-dropdown .select2-results__option[aria-selected="true"],
+    body.dark-mode .select2-dropdown.sp-select2-dropdown .select2-results__option[aria-selected="true"] {
+        background: #0b7a55 !important;
+        background-color: #0b7a55 !important;
+        color: #ffffff !important;
+    }
+
+    /* Subgroup in Dark Mode */
+    [bd-theme="bd-theme-dark"] .sp-funnel-subgroup,
+    [data-bs-theme="dark"] .sp-funnel-subgroup,
+    body.dark-mode .sp-funnel-subgroup {
+        background: #17242d !important;
+        border-color: #243846 !important;
+    }
+    [bd-theme="bd-theme-dark"] .sp-funnel-subpill,
+    [data-bs-theme="dark"] .sp-funnel-subpill,
+    body.dark-mode .sp-funnel-subpill {
+        background: #131f27 !important;
+        border-color: #243846 !important;
+        color: #cbd5e1 !important;
+    }
+    [bd-theme="bd-theme-dark"] .sp-funnel-subpill .val,
+    [data-bs-theme="dark"] .sp-funnel-subpill .val,
+    body.dark-mode .sp-funnel-subpill .val {
+        color: #f1f5f9 !important;
     }
 
     /* Tabs in Dark Mode */
@@ -1310,7 +1421,7 @@ $jsData = [
                 <?php if ($tab === 'team'): ?>Compare teams, track targets, visits completed and bookings brought by each sales team.
                 <?php elseif ($tab === 'executive'): ?>Individual performance cards and activity breakdown for active sales personnel.
                 <?php elseif ($tab === 'inactive-executive'): ?>Historical performance of inactive or resigned sales personnel (leads, follow-ups, visits, and bookings).
-                <?php else: ?>Overall 5-stage sales funnel (Received ➔ Contacted ➔ Will Visit ➔ Visited ➔ Booked) and performance overview.<?php endif; ?>
+                <?php else: ?>Overall 5-stage sales funnel (Received ➔ Contacted ➔ Visit Scheduled ➔ Visited ➔ Booked) and performance overview.<?php endif; ?>
             </p>
         </div>
         <a class="sp-btn" href="<?= sp_h($exportUrl) ?>" id="spExportBtn"><i class="fa-regular fa-file-arrow-down"></i> Export report</a>
@@ -2042,7 +2153,7 @@ $jsData = [
             <dt>Team</dt><dd>The owner's team (<code>users.team_id</code>). Sales Manager / Head / Executive with the same team_id roll up into that team; all teams + unattributed rows add up exactly to the overall total.</dd>
             <dt>Contacted</dt><dd>Lead has a follow-up logged, a first-contact time, or a call status of Called / Received / Not received.</dd>
             <dt>Qualified</dt><dd>Lead status (current or in any follow-up) is Prospect, High Prospect, Hot, Warm, Will Visit, Visited or Sold.</dd>
-            <dt>Visit scheduled / completed</dt><dd>Follow-up next action “site visit” or status Will Visit → scheduled. Status Visited or follow-up type Visit / Face to Face → completed.</dd>
+            <dt>Visit scheduled / completed</dt><dd>Follow-up next action “site visit” or status Visit Scheduled (Will Visit) → scheduled. Status Visited or follow-up type Visit / Face to Face → completed.</dd>
             <dt>Negotiation</dt><dd>A follow-up has next action “booking”.</dd>
             <dt>Funnel stages</dt><dd>Each stage counts leads that reached it or any later stage, so the funnel never increases. Booking / confirmed in the funnel = leads from this period that are booked as of today.</dd>
             <dt>Bookings (period)</dt><dd>Active bookings (booked / completed) with booking date in the period. Credited to “Sales by”, or to the lead owner if empty.</dd>

@@ -118,13 +118,16 @@ class SalesDashboardController extends Controller
         $followUpsResult = $this->db->query($followUpsQuery);
         $followUpsDue = $followUpsResult->fetch_assoc()['due'] ?? 0;
 
+        // Booking team condition: checks lead team, assigned member team, or closing sales executive team
+        $bookingTeamCondition = !empty($teamId) ? " AND (l.team_id = " . (int)$teamId . " OR l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = " . (int)$teamId . ") OR lb.sales_by_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = " . (int)$teamId . "))" : "";
+
         //  Onboarded Clients (Filtered)
-        $onboardedQuery = "SELECT COUNT(*) AS onboarded FROM lead_bookings lb JOIN leads l ON lb.lead_id = l.id LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE lb.booking_status IN ('completed', 'booked') AND lb.deleted_at IS NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated')) $bookingDateCondition" . $teamSqlCondition;
+        $onboardedQuery = "SELECT COUNT(*) AS onboarded FROM lead_bookings lb JOIN leads l ON lb.lead_id = l.id WHERE lb.booking_status IN ('completed', 'booked') AND lb.deleted_at IS NULL $bookingDateCondition" . $bookingTeamCondition;
         $onboardedResult = $this->db->query($onboardedQuery);
         $onboardedClients = $onboardedResult->fetch_assoc()['onboarded'] ?? 0;
 
         //  Booking Money Collected (Filtered)
-        $bookingCollectedQuery = "SELECT SUM(lp.amount) AS total_collected FROM lead_payments lp JOIN lead_bookings lb ON lp.booking_id = lb.id JOIN leads l ON lb.lead_id = l.id LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE lp.payment_type='booking_money' AND lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated')) $paymentDateCondition" . $teamSqlCondition;
+        $bookingCollectedQuery = "SELECT SUM(lp.amount) AS total_collected FROM lead_payments lp JOIN lead_bookings lb ON lp.booking_id = lb.id JOIN leads l ON lb.lead_id = l.id WHERE lp.payment_type='booking_money' AND lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' AND COALESCE(lp.is_trashed, 0) = 0 $paymentDateCondition" . $bookingTeamCondition;
         $bookingCollectedResult = $this->db->query($bookingCollectedQuery);
         $bookingCollected = $bookingCollectedResult->fetch_assoc()['total_collected'] ?? 0;
 
@@ -188,11 +191,10 @@ class SalesDashboardController extends Controller
             JOIN leads l ON lb.lead_id = l.id
             WHERE lb.booking_status IN ('completed', 'booked') 
             AND lb.deleted_at IS NULL
-            AND p.project_sale_status = 'On Sale'
             AND lb.booking_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
         ";
         if (!empty($teamId)) {
-            $weeklySalesQuery .= " AND l.team_id = " . (int) $teamId;
+            $weeklySalesQuery .= $bookingTeamCondition;
         }
         $weeklySalesQuery .= " GROUP BY p.name ORDER BY total_sales DESC";
         $weeklySalesResult = $this->db->query($weeklySalesQuery);
@@ -215,7 +217,6 @@ class SalesDashboardController extends Controller
             JOIN leads l ON lb.lead_id = l.id
             WHERE lb.booking_status IN ('completed', 'booked') 
             AND lb.deleted_at IS NULL
-            AND p.project_sale_status = 'On Sale'
         ";
         
         if ($salesStartDate && $salesEndDate && preg_match('/^\d{4}-\d{2}-\d{2}$/', $salesStartDate) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $salesEndDate)) {
@@ -229,7 +230,7 @@ class SalesDashboardController extends Controller
             $monthlySalesQuery .= " AND DATE(lb.booking_date) >= '" . $start . "' AND DATE(lb.booking_date) <= '" . $end . "'";
         }
         if (!empty($teamId)) {
-            $monthlySalesQuery .= " AND l.team_id = " . (int) $teamId;
+            $monthlySalesQuery .= $bookingTeamCondition;
         }
         $monthlySalesQuery .= " GROUP BY p.name ORDER BY total_sales DESC";
         $monthlySalesResult = $this->db->query($monthlySalesQuery);
@@ -249,11 +250,10 @@ class SalesDashboardController extends Controller
             JOIN leads l ON lb.lead_id = l.id
             WHERE lb.booking_status IN ('completed', 'booked') 
             AND lb.deleted_at IS NULL
-            AND p.project_sale_status = 'On Sale'
             AND lb.booking_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
         ";
         if (!empty($teamId)) {
-            $yearlySalesQuery .= " AND l.team_id = " . (int) $teamId;
+            $yearlySalesQuery .= $bookingTeamCondition;
         }
         $yearlySalesQuery .= " GROUP BY p.name ORDER BY total_sales DESC";
         $yearlySalesResult = $this->db->query($yearlySalesQuery);

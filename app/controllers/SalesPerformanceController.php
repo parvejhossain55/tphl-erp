@@ -173,7 +173,7 @@ class SalesPerformanceController extends Controller
         $cols = [
             'Leads received' => 'stage_1', 'Contacted' => 'stage_2', 'Contact rate %' => 'contact_rate',
             'No response' => 'no_response', 'No response %' => 'no_response_rate',
-            'Will visit' => 'stage_3', 'Visited' => 'stage_4', 'Booked' => 'stage_5',
+            'Visit scheduled' => 'stage_3', 'Visited' => 'stage_4', 'Booked' => 'stage_5',
             'Conversion rate %' => 'conversion_rate',
             'Follow-ups logged' => 'follow_ups', 'Visits done (period)' => 'visits_done',
             'Bookings (period)' => 'bookings', 'Booking value' => 'booking_value',

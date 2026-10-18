@@ -448,9 +448,10 @@ class Lead extends Model
                 $params[] = $teamId;
                 $types .= "iii";
             } else {
-                $sql .= " AND l.team_id = ?";
+                $sql .= " AND (l.team_id = ? OR l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?))";
                 $params[] = $teamId;
-                $types .= "i";
+                $params[] = $teamId;
+                $types .= "ii";
             }
         }
 
@@ -550,12 +551,54 @@ class Lead extends Model
         // Quick Filter Card
         if (!empty($filter_card)) {
             if ($filter_card === 'total_booked') {
-                $sql .= " AND l.last_lead_action = 'booked'";
                 if (!empty($from_date) && !empty($to_date)) {
-                    $sql .= " AND EXISTS (SELECT 1 FROM lead_bookings lb_sub WHERE lb_sub.lead_id = l.id AND lb_sub.deleted_at IS NULL AND DATE(lb_sub.booking_date) BETWEEN ? AND ?)";
+                    $sql .= " AND EXISTS (
+                        SELECT 1 FROM lead_bookings lb_sub 
+                        WHERE lb_sub.lead_id = l.id 
+                          AND lb_sub.deleted_at IS NULL 
+                          AND lb_sub.booking_status IN ('completed', 'booked') 
+                          AND DATE(lb_sub.booking_date) BETWEEN ? AND ?
+                    )";
                     $params[] = $from_date;
                     $params[] = $to_date;
                     $types .= "ss";
+                } elseif (!empty($from_date)) {
+                    $sql .= " AND EXISTS (
+                        SELECT 1 FROM lead_bookings lb_sub 
+                        WHERE lb_sub.lead_id = l.id 
+                          AND lb_sub.deleted_at IS NULL 
+                          AND lb_sub.booking_status IN ('completed', 'booked') 
+                          AND DATE(lb_sub.booking_date) >= ?
+                    )";
+                    $params[] = $from_date;
+                    $types .= "s";
+                } elseif (!empty($to_date)) {
+                    $sql .= " AND EXISTS (
+                        SELECT 1 FROM lead_bookings lb_sub 
+                        WHERE lb_sub.lead_id = l.id 
+                          AND lb_sub.deleted_at IS NULL 
+                          AND lb_sub.booking_status IN ('completed', 'booked') 
+                          AND DATE(lb_sub.booking_date) <= ?
+                    )";
+                    $params[] = $to_date;
+                    $types .= "s";
+                } elseif (!empty($year) || !empty($month)) {
+                    $ySub = !empty($year) ? " AND YEAR(lb_sub.booking_date) = " . (int)$year : "";
+                    $mSub = !empty($month) ? " AND MONTH(lb_sub.booking_date) = " . (int)$month : "";
+                    $sql .= " AND EXISTS (
+                        SELECT 1 FROM lead_bookings lb_sub 
+                        WHERE lb_sub.lead_id = l.id 
+                          AND lb_sub.deleted_at IS NULL 
+                          AND lb_sub.booking_status IN ('completed', 'booked')
+                          $ySub $mSub
+                    )";
+                } else {
+                    $sql .= " AND (l.last_lead_action = 'booked' OR EXISTS (
+                        SELECT 1 FROM lead_bookings lb_sub 
+                        WHERE lb_sub.lead_id = l.id 
+                          AND lb_sub.deleted_at IS NULL 
+                          AND lb_sub.booking_status IN ('completed', 'booked')
+                    ))";
                 }
             } elseif ($filter_card === 'today_follow_up') {
                 if (!empty($from_date) && !empty($to_date)) {
@@ -815,9 +858,10 @@ class Lead extends Model
                 $params[] = $teamId;
                 $types .= "iii";
             } else {
-                $sql .= " AND l.team_id = ?";
+                $sql .= " AND (l.team_id = ? OR l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?))";
                 $params[] = $teamId;
-                $types .= "i";
+                $params[] = $teamId;
+                $types .= "ii";
             }
         }
 
@@ -916,12 +960,54 @@ class Lead extends Model
         // Quick Filter Card
         if (!empty($filter_card)) {
             if ($filter_card === 'total_booked') {
-                $sql .= " AND l.last_lead_action = 'booked'";
                 if (!empty($from_date) && !empty($to_date)) {
-                    $sql .= " AND EXISTS (SELECT 1 FROM lead_bookings lb_sub WHERE lb_sub.lead_id = l.id AND lb_sub.deleted_at IS NULL AND DATE(lb_sub.booking_date) BETWEEN ? AND ?)";
+                    $sql .= " AND EXISTS (
+                        SELECT 1 FROM lead_bookings lb_sub 
+                        WHERE lb_sub.lead_id = l.id 
+                          AND lb_sub.deleted_at IS NULL 
+                          AND lb_sub.booking_status IN ('completed', 'booked') 
+                          AND DATE(lb_sub.booking_date) BETWEEN ? AND ?
+                    )";
                     $params[] = $from_date;
                     $params[] = $to_date;
                     $types .= "ss";
+                } elseif (!empty($from_date)) {
+                    $sql .= " AND EXISTS (
+                        SELECT 1 FROM lead_bookings lb_sub 
+                        WHERE lb_sub.lead_id = l.id 
+                          AND lb_sub.deleted_at IS NULL 
+                          AND lb_sub.booking_status IN ('completed', 'booked') 
+                          AND DATE(lb_sub.booking_date) >= ?
+                    )";
+                    $params[] = $from_date;
+                    $types .= "s";
+                } elseif (!empty($to_date)) {
+                    $sql .= " AND EXISTS (
+                        SELECT 1 FROM lead_bookings lb_sub 
+                        WHERE lb_sub.lead_id = l.id 
+                          AND lb_sub.deleted_at IS NULL 
+                          AND lb_sub.booking_status IN ('completed', 'booked') 
+                          AND DATE(lb_sub.booking_date) <= ?
+                    )";
+                    $params[] = $to_date;
+                    $types .= "s";
+                } elseif (!empty($year) || !empty($month)) {
+                    $ySub = !empty($year) ? " AND YEAR(lb_sub.booking_date) = " . (int)$year : "";
+                    $mSub = !empty($month) ? " AND MONTH(lb_sub.booking_date) = " . (int)$month : "";
+                    $sql .= " AND EXISTS (
+                        SELECT 1 FROM lead_bookings lb_sub 
+                        WHERE lb_sub.lead_id = l.id 
+                          AND lb_sub.deleted_at IS NULL 
+                          AND lb_sub.booking_status IN ('completed', 'booked')
+                          $ySub $mSub
+                    )";
+                } else {
+                    $sql .= " AND (l.last_lead_action = 'booked' OR EXISTS (
+                        SELECT 1 FROM lead_bookings lb_sub 
+                        WHERE lb_sub.lead_id = l.id 
+                          AND lb_sub.deleted_at IS NULL 
+                          AND lb_sub.booking_status IN ('completed', 'booked')
+                    ))";
                 }
             } elseif ($filter_card === 'today_follow_up') {
                 if (!empty($from_date) && !empty($to_date)) {

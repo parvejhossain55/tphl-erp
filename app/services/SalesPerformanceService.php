@@ -36,7 +36,7 @@ class SalesPerformanceService
     public const STAGES = [
         1 => 'Received',
         2 => 'Contacted',
-        3 => 'Will Visit',
+        3 => 'Visit Scheduled',
         4 => 'Visited',
         5 => 'Booked',
     ];
@@ -632,7 +632,7 @@ class SalesPerformanceService
             $vdone = $isVisited;
             $booked = $isBooked;
 
-            // 5 Funnel stages: 1. Received -> 2. Contacted -> 3. Will Visit -> 4. Visited -> 5. Booked
+            // 5 Funnel stages: 1. Received -> 2. Contacted -> 3. Visit Scheduled -> 4. Visited -> 5. Booked
             $stage = 1;
             if ($isContacted) $stage = 2;
             if ($isWillVisit) $stage = 3;
@@ -871,11 +871,12 @@ class SalesPerformanceService
         }
 
         // Uncontacted backlog older than 24h (all time, open leads)
+        $firstContactNullCond = isset($lCols['first_contacted_at']) ? "AND l.first_contacted_at IS NULL" : "";
         $sql = "
             SELECT l.assigned_id AS uid, COUNT(*) AS c
             FROM leads l
             WHERE l.deleted_at IS NULL AND l.assigned_id > 0
-              AND l.first_contacted_at IS NULL
+              $firstContactNullCond
               AND COALESCE(l.call_status, 'not_called') = 'not_called'
               AND COALESCE(l.lead_type, '') NOT IN ($closed)
               AND COALESCE(l.assigned_at, l.created_at) < DATE_SUB(NOW(), INTERVAL 24 HOUR)
@@ -1125,10 +1126,12 @@ class SalesPerformanceService
         }
 
         // Lifetime coverage numbers
+        $lCols = $this->getTableColumns('leads');
+        $firstContactExpr = isset($lCols['first_contacted_at']) ? "first_contacted_at IS NOT NULL OR " : "";
         $cov = $this->db->query("
             SELECT COUNT(*) AS total,
                    SUM(assigned_id > 0) AS assigned,
-                   SUM(first_contacted_at IS NOT NULL OR COALESCE(call_status,'not_called') <> 'not_called') AS contacted
+                   SUM({$firstContactExpr}COALESCE(call_status,'not_called') <> 'not_called') AS contacted
             FROM leads WHERE deleted_at IS NULL
         ")->fetch_assoc();
 
@@ -1222,8 +1225,10 @@ class SalesPerformanceService
                 'label' => 'First contact earlier than assignment',
                 'description' => 'Lead was contacted before it was (re)assigned – usually a reassignment. Excluded from response-time.',
                 'impact' => 'Response time',
-                'sql' => "SELECT $leadCols, CONCAT('Contacted ', DATE_FORMAT(l.first_contacted_at,'%d %b %Y')) AS info, l.assigned_at AS event_date
-                          FROM leads l WHERE l.deleted_at IS NULL AND l.first_contacted_at < l.assigned_at",
+                'sql' => isset($lCols['first_contacted_at'])
+                    ? "SELECT $leadCols, CONCAT('Contacted ', DATE_FORMAT(l.first_contacted_at,'%d %b %Y')) AS info, l.assigned_at AS event_date
+                              FROM leads l WHERE l.deleted_at IS NULL AND l.first_contacted_at < l.assigned_at"
+                    : "SELECT $leadCols, 'N/A' AS info, l.assigned_at AS event_date FROM leads l WHERE 1=0",
             ],
             'no_response_leads' => [
                 'group' => 'Contact & follow-up', 'severity' => 'medium',
@@ -1454,6 +1459,11 @@ class SalesPerformanceService
         $dateSqlF = $isAllTime ? "" : " AND f.created_at BETWEEN '$start' AND '$end'";
         $dateSqlO = $isAllTime ? "" : " AND o.created_at BETWEEN '$start' AND '$end'";
 
+        $lCols = $this->getTableColumns('leads');
+        $firstContactExpr = isset($lCols['first_contacted_at']) ? "COALESCE(l.first_contacted_at, $dateColL)" : $dateColL;
+        $firstContactCheck1 = isset($lCols['first_contacted_at']) ? "l.first_contacted_at IS NOT NULL OR " : "";
+        $firstContactCheck2 = isset($lCols['first_contacted_at']) ? "l2.first_contacted_at IS NOT NULL OR " : "";
+
         // Standard DrillDown Query Definitions
         $queries = [
             'stage_1' => [
@@ -1472,12 +1482,11 @@ class SalesPerformanceService
                 'sql' => "SELECT l.id AS lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
                                  COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, l.assigned_id AS owner_id, l.team_id AS lead_team_id,
                                  CONCAT(COALESCE(p.name, 'No project'), ' · Action: ', COALESCE(l.last_lead_action, l.call_status, 'Contacted')) AS info,
-                                 COALESCE(l.first_contacted_at, $dateColL) AS event_date, 'Contacted' AS status_badge
+                                 $firstContactExpr AS event_date, 'Contacted' AS status_badge
                           FROM leads l LEFT JOIN projects p ON p.id = l.project_id
                           WHERE l.deleted_at IS NULL $dateSqlL $projSqlL $scopeL
                             AND (
-                                l.first_contacted_at IS NOT NULL
-                                OR l.call_status IN ('called','received')
+                                {$firstContactCheck1}l.call_status IN ('called','received')
                                 OR LOWER(COALESCE(l.last_lead_action,'')) IN ('contacted','follow up','visited','booked')
                                 OR (l.communication_type IS NOT NULL AND LOWER(l.communication_type) NOT IN ('','not select'))
                                 OR l.lead_type IN ('Will Visit','Visited','Sold')
@@ -1486,7 +1495,7 @@ class SalesPerformanceService
                             )"
             ],
             'no_response_leads' => [
-                'label' => 'No Response Leads (Stage 03 · Unreachable / Not Received)',
+                'label' => 'No Response Leads (Unreachable / Not Received)',
                 'description' => 'Leads with No Response status, not received call status, or unreachable follow-up attempts.',
                 'sql' => "SELECT l.id AS lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
                                  COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, l.assigned_id AS owner_id, l.team_id AS lead_team_id,
@@ -1505,7 +1514,7 @@ class SalesPerformanceService
                             )"
             ],
             'uncontacted' => [
-                'label' => 'Not Contacted Leads (Stage 04 · Awaiting 1st contact)',
+                'label' => 'Not Contacted Leads (Awaiting 1st contact)',
                 'description' => 'Leads received in this period that have not yet had any call, visit, or follow-up recorded.',
                 'sql' => "SELECT l.id AS lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
                                  COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, l.assigned_id AS owner_id, l.team_id AS lead_team_id,
@@ -1516,8 +1525,7 @@ class SalesPerformanceService
                             AND l.id NOT IN (
                                 SELECT l2.id FROM leads l2 WHERE l2.deleted_at IS NULL $dateSqlL2 $projSqlL2
                                 AND (
-                                    l2.first_contacted_at IS NOT NULL
-                                    OR l2.call_status IN ('called','received')
+                                    {$firstContactCheck2}l2.call_status IN ('called','received')
                                     OR LOWER(COALESCE(l2.last_lead_action,'')) IN ('contacted','follow up','visited','booked')
                                     OR (l2.communication_type IS NOT NULL AND LOWER(l2.communication_type) NOT IN ('','not select'))
                                     OR l2.lead_type IN ('Will Visit','Visited','Sold')
@@ -1527,12 +1535,12 @@ class SalesPerformanceService
                             )"
             ],
             'stage_3' => [
-                'label' => 'Will Visit Leads (Stage 05)',
+                'label' => 'Visit Scheduled Leads (Stage 03)',
                 'description' => 'Leads scheduled or committed to visit a project site.',
                 'sql' => "SELECT l.id AS lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
                                  COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, l.assigned_id AS owner_id, l.team_id AS lead_team_id,
-                                 CONCAT(COALESCE(p.name, 'No project'), ' · Status: ', COALESCE(l.lead_type, 'Will Visit')) AS info,
-                                 $dateColL AS event_date, 'Will Visit' AS status_badge
+                                 CONCAT(COALESCE(p.name, 'No project'), ' · Status: ', IF(l.lead_type = 'Will Visit', 'Visit Scheduled', COALESCE(l.lead_type, 'Visit Scheduled'))) AS info,
+                                 $dateColL AS event_date, 'Visit Scheduled' AS status_badge
                           FROM leads l LEFT JOIN projects p ON p.id = l.project_id
                           WHERE l.deleted_at IS NULL $dateSqlL $projSqlL $scopeL
                             AND (
@@ -1543,7 +1551,7 @@ class SalesPerformanceService
                             )"
             ],
             'stage_4' => [
-                'label' => 'Visited Leads (Stage 06)',
+                'label' => 'Visited Leads (Stage 04)',
                 'description' => 'Leads who completed a physical or face-to-face site visit.',
                 'sql' => "SELECT l.id AS lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
                                  COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, l.assigned_id AS owner_id, l.team_id AS lead_team_id,
@@ -1559,7 +1567,7 @@ class SalesPerformanceService
                             )"
             ],
             'stage_5' => [
-                'label' => 'Booked Leads (Funnel Cohort Stage 07)',
+                'label' => 'Booked Leads (Funnel Cohort Stage 05)',
                 'description' => 'Leads received in this period who progressed to booking.',
                 'sql' => "SELECT l.id AS lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
                                  COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, l.assigned_id AS owner_id, l.team_id AS lead_team_id,

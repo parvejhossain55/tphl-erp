@@ -43,10 +43,7 @@
         STAGE_KEYS.forEach((s) => {
             const v = m['stage_' + s] || 0;
             const p = base ? (v / base) * 100 : 0;
-            let serialNo = '0' + s;
-            if (s === 3) serialNo = '05';
-            else if (s === 4) serialNo = '06';
-            else if (s === 5) serialNo = '07';
+            const serialNo = '0' + s;
 
             rows += `
                 <div class="sp-funnel-row click ${s === selected ? 'sel' : ''}" data-stage="${s}" data-gap="stage_${s}" ${extraScope} style="cursor:pointer" title="Click to view Stage ${serialNo} (${esc(STAGES[s])}) leads">
@@ -55,34 +52,40 @@
                     <span class="ct">${n(v)}</span>
                     <span class="pc">${p.toFixed(1)}%</span>
                 </div>`;
-            if (s === 2) {
-                const noResponse = m.no_response || 0;
-                const noResponsePct = base ? (noResponse / base) * 100 : 0;
-                rows += `
-                    <div class="sp-funnel-row no-response-row click" data-gap="no_response_leads" ${extraScope} style="margin:2px 0;cursor:pointer;" title="Click to view Stage 03 (No Response) leads">
-                        <span class="no" style="font-weight:700">03</span>
-                        <div>
-                            <div class="nm" style="font-weight:600">No Response <small style="font-size:11px;font-weight:400">(Unreachable / Not Received)</small> <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
-                            <div class="sp-bar amber"><span style="width:${Math.max(noResponsePct, noResponse ? 0.6 : 0).toFixed(2)}%"></span></div>
-                        </div>
-                        <span class="ct" style="font-weight:700">${n(noResponse)}</span>
-                        <span class="pc" style="font-weight:700">${noResponsePct.toFixed(1)}%</span>
-                    </div>`;
-
-                const uncontacted = m.uncontacted !== undefined ? m.uncontacted : Math.max(0, base - (m.stage_2 || 0));
-                const uncontactedPct = base ? (uncontacted / base) * 100 : 0;
-                rows += `
-                    <div class="sp-funnel-row uncontacted-row click" data-gap="uncontacted" ${extraScope} style="margin:2px 0;cursor:pointer;" title="Click to view Stage 04 (Not Contacted) leads">
-                        <span class="no" style="font-weight:700">04</span>
-                        <div>
-                            <div class="nm" style="font-weight:600">Not Contacted <small style="font-size:11px;font-weight:400">(Awaiting 1st contact)</small> <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;opacity:0.6;margin-left:2px"></i></div>
-                            <div class="sp-bar red"><span style="width:${Math.max(uncontactedPct, uncontacted ? 0.6 : 0).toFixed(2)}%"></span></div>
-                        </div>
-                        <span class="ct" style="font-weight:700">${n(uncontacted)}</span>
-                        <span class="pc" style="font-weight:700">${uncontactedPct.toFixed(1)}%</span>
-                    </div>`;
-            }
         });
+
+        if (base > 0) {
+            const contacted = m.stage_2 || 0;
+            const noResponse = m.no_response || 0;
+            const uncontacted = m.uncontacted !== undefined ? m.uncontacted : Math.max(0, base - contacted);
+            rows += `
+                <div class="sp-funnel-subgroup">
+                    <div class="sp-funnel-subgroup-title">
+                        <span><i class="fa-regular fa-phone-volume" style="margin-right:4px"></i> First Contact Status Breakdown</span>
+                        <small>Of ${n(base)} received leads</small>
+                    </div>
+                    <div class="sp-funnel-subgroup-pills">
+                        <div class="sp-funnel-subpill click" data-gap="stage_2" ${extraScope} title="Click to view Contacted leads (${n(contacted)})">
+                            <span class="dot green"></span>
+                            <span class="lbl">Contacted:</span>
+                            <span class="val">${n(contacted)}</span>
+                            <span class="pct">(${pct(contacted, base)})</span>
+                        </div>
+                        <div class="sp-funnel-subpill click amber" data-gap="no_response_leads" ${extraScope} title="Click to view No Response leads (${n(noResponse)})">
+                            <span class="dot amber"></span>
+                            <span class="lbl">No Response:</span>
+                            <span class="val">${n(noResponse)}</span>
+                            <span class="pct">(${pct(noResponse, base)})</span>
+                        </div>
+                        <div class="sp-funnel-subpill click red" data-gap="uncontacted" ${extraScope} title="Click to view Not Contacted leads (${n(uncontacted)})">
+                            <span class="dot red"></span>
+                            <span class="lbl">Not Contacted:</span>
+                            <span class="val">${n(uncontacted)}</span>
+                            <span class="pct">(${pct(uncontacted, base)})</span>
+                        </div>
+                    </div>
+                </div>`;
+        }
         const sel = m['stage_' + selected] || 0;
         rows += `
             <div class="sp-funnel-foot">

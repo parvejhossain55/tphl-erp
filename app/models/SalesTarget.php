@@ -443,11 +443,11 @@ public function getExecutiveBookingStats($type = 'monthly')
                 FROM sales_targets
                 GROUP BY sales_user_id
             ) st ON st.sales_user_id = u.id
-            INNER JOIN (
+            LEFT JOIN (
                 SELECT 
                     lb.sales_by_id, 
                     COUNT(DISTINCT lb.id) AS completed,
-                    SUM(f.price_value) AS total_flat_value,
+                    SUM(COALESCE(NULLIF(lb.agreement_value, 0), f.price_value, 0)) AS total_flat_value,
                     SUM(IFNULL(pay_b.booking_amount, 0)) AS total_booking_money,
                     SUM(IFNULL(pay_r.registration_amount, 0)) AS total_registration_money
                 FROM lead_bookings lb
@@ -476,7 +476,7 @@ public function getExecutiveBookingStats($type = 'monthly')
             WHERE (u.role_id IN (5,8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))
               AND (emp.employee_status IS NULL OR (emp.deleted_at IS NULL AND LOWER(TRIM(emp.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
               AND (emp.employee_type IS NULL OR LOWER(TRIM(emp.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
-            ORDER BY u.full_name ASC
+            ORDER BY b.completed DESC, u.full_name ASC
         ";
     }
     else {
@@ -495,11 +495,11 @@ public function getExecutiveBookingStats($type = 'monthly')
             LEFT JOIN sales_targets st 
                 ON st.sales_user_id = u.id
                 AND $targetCondition
-            INNER JOIN (
+            LEFT JOIN (
                 SELECT 
                     lb.sales_by_id, 
                     COUNT(DISTINCT lb.id) AS completed,
-                    SUM(f.price_value) AS total_flat_value,
+                    SUM(COALESCE(NULLIF(lb.agreement_value, 0), f.price_value, 0)) AS total_flat_value,
                     SUM(IFNULL(pay_b.booking_amount, 0)) AS total_booking_money,
                     SUM(IFNULL(pay_r.registration_amount, 0)) AS total_registration_money
                 FROM lead_bookings lb
@@ -529,7 +529,7 @@ public function getExecutiveBookingStats($type = 'monthly')
             WHERE (u.role_id IN (5,8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))
               AND (emp.employee_status IS NULL OR (emp.deleted_at IS NULL AND LOWER(TRIM(emp.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
               AND (emp.employee_type IS NULL OR LOWER(TRIM(emp.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
-            ORDER BY u.full_name ASC
+            ORDER BY b.completed DESC, u.full_name ASC
         ";
     }
 
@@ -732,11 +732,11 @@ public function getExecutiveFullStats($executiveId = null, $startDate = null, $e
                   AND MONTH(month) <= ?
                 GROUP BY sales_user_id
             ) st ON st.sales_user_id = u.id
-            INNER JOIN (
+            LEFT JOIN (
                 SELECT 
                     lb.sales_by_id, 
                     COUNT(DISTINCT lb.id) AS completed,
-                    SUM(f.price_value) AS total_flat_value,
+                    SUM(COALESCE(NULLIF(lb.agreement_value, 0), f.price_value, 0)) AS total_flat_value,
                     SUM(IFNULL(pay_b.booking_amount, 0)) AS total_booking_money,
                     SUM(IFNULL(pay_r.registration_amount, 0)) AS total_registration_money
                 FROM lead_bookings lb
@@ -768,7 +768,7 @@ public function getExecutiveFullStats($executiveId = null, $startDate = null, $e
             WHERE (u.role_id IN (5,8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))
               AND (emp.employee_status IS NULL OR (emp.deleted_at IS NULL AND LOWER(TRIM(emp.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
               AND (emp.employee_type IS NULL OR LOWER(TRIM(emp.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
-            ORDER BY u.full_name ASC
+            ORDER BY b.completed DESC, u.full_name ASC
         ";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param("iiiiii", $year, $startMonth, $endMonth, $year, $startMonth, $endMonth);
