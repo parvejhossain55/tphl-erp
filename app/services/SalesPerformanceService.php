@@ -62,14 +62,107 @@ class SalesPerformanceService
      * - custom: Custom start and end dates from $from and $to
      * - YYYY-MM / default: Monthly sales cycle (26th of previous month to 25th of current month)
      */
-    public function resolvePeriod(?string $cycle = null, ?int $year = null, ?int $month = null, ?string $from = null, ?string $to = null): array
+    public function resolvePeriod(?string $cycle = null, ?int $year = null, ?int $month = null, ?string $from = null, ?string $to = null, ?string $preset = null): array
     {
         $tracker = new TrackerCalculationService($this->db);
 
+        // Normalize preset from cycle string if given as preset:xyz
+        if ($cycle && str_starts_with($cycle, 'preset:')) {
+            $preset = substr($cycle, 7);
+        }
+
+        // Quick Presets: today, yesterday, weekly
+        if ($preset === 'today' || $preset === 'daily' || $cycle === 'today') {
+            $today = date('Y-m-d');
+            return [
+                'type' => 'preset',
+                'preset' => 'today',
+                'is_all_time' => false,
+                'is_yearly' => false,
+                'is_custom' => true,
+                'year' => (int) date('Y'),
+                'month' => (int) date('n'),
+                'start' => $today . ' 00:00:00',
+                'end' => $today . ' 23:59:59',
+                'start_date' => $today,
+                'end_date' => $today,
+                'label' => 'Today (' . date('d M Y') . ')',
+                'cycle_label' => 'Daily (Today)',
+                'cycle_key' => 'preset:today',
+                'target_month' => date('Y-m-01'),
+            ];
+        }
+
+        if ($preset === 'yesterday' || $cycle === 'yesterday') {
+            $yest = date('Y-m-d', strtotime('-1 day'));
+            return [
+                'type' => 'preset',
+                'preset' => 'yesterday',
+                'is_all_time' => false,
+                'is_yearly' => false,
+                'is_custom' => true,
+                'year' => (int) date('Y', strtotime($yest)),
+                'month' => (int) date('n', strtotime($yest)),
+                'start' => $yest . ' 00:00:00',
+                'end' => $yest . ' 23:59:59',
+                'start_date' => $yest,
+                'end_date' => $yest,
+                'label' => 'Yesterday (' . date('d M Y', strtotime($yest)) . ')',
+                'cycle_label' => 'Yesterday',
+                'cycle_key' => 'preset:yesterday',
+                'target_month' => substr($yest, 0, 7) . '-01',
+            ];
+        }
+
+        if ($preset === 'weekly' || $preset === 'week' || $cycle === 'weekly') {
+            $startW = date('Y-m-d', strtotime('-6 days'));
+            $today = date('Y-m-d');
+            return [
+                'type' => 'preset',
+                'preset' => 'weekly',
+                'is_all_time' => false,
+                'is_yearly' => false,
+                'is_custom' => true,
+                'year' => (int) date('Y'),
+                'month' => (int) date('n'),
+                'start' => $startW . ' 00:00:00',
+                'end' => $today . ' 23:59:59',
+                'start_date' => $startW,
+                'end_date' => $today,
+                'label' => 'Last 7 Days (' . date('d M', strtotime($startW)) . ' – ' . date('d M Y') . ')',
+                'cycle_label' => 'Weekly (Last 7 Days)',
+                'cycle_key' => 'preset:weekly',
+                'target_month' => date('Y-m-01'),
+            ];
+        }
+
         // 1. Custom date range (from and to)
         if ($from && $to && strtotime($from) && strtotime($to) && strtotime($from) <= strtotime($to)) {
+            $todayStr = date('Y-m-d');
+            $yesterdayStr = date('Y-m-d', strtotime('-1 day'));
+            $weeklyStr = date('Y-m-d', strtotime('-6 days'));
+
+            $cycleLabel = 'Custom Range';
+            $detectedPreset = 'custom';
+            $label = date('d M Y', strtotime($from)) . ' – ' . date('d M Y', strtotime($to));
+
+            if ($from === $todayStr && $to === $todayStr) {
+                $cycleLabel = 'Daily (Today)';
+                $detectedPreset = 'today';
+                $label = 'Today (' . date('d M Y') . ')';
+            } elseif ($from === $yesterdayStr && $to === $yesterdayStr) {
+                $cycleLabel = 'Yesterday';
+                $detectedPreset = 'yesterday';
+                $label = 'Yesterday (' . date('d M Y', strtotime($yesterdayStr)) . ')';
+            } elseif ($from === $weeklyStr && $to === $todayStr) {
+                $cycleLabel = 'Weekly (Last 7 Days)';
+                $detectedPreset = 'weekly';
+                $label = 'Last 7 Days (' . date('d M', strtotime($weeklyStr)) . ' – ' . date('d M Y') . ')';
+            }
+
             return [
                 'type' => 'custom',
+                'preset' => $detectedPreset,
                 'is_all_time' => false,
                 'is_yearly' => false,
                 'is_custom' => true,
@@ -79,9 +172,9 @@ class SalesPerformanceService
                 'end' => $to . ' 23:59:59',
                 'start_date' => $from,
                 'end_date' => $to,
-                'label' => date('d M Y', strtotime($from)) . ' – ' . date('d M Y', strtotime($to)),
-                'cycle_label' => 'Custom Range',
-                'cycle_key' => 'custom',
+                'label' => $label,
+                'cycle_label' => $cycleLabel,
+                'cycle_key' => $detectedPreset !== 'custom' ? ('preset:' . $detectedPreset) : 'custom',
                 'target_month' => substr($from, 0, 7) . '-01',
             ];
         }
@@ -176,6 +269,23 @@ class SalesPerformanceService
     public function cycleOptions(int $count = 12): array
     {
         $opts = [];
+        // 0. Quick Presets
+        $opts[] = [
+            'value' => 'preset:today',
+            'label' => '⚡ Today (Daily)',
+            'type' => 'preset',
+        ];
+        $opts[] = [
+            'value' => 'preset:yesterday',
+            'label' => '⚡ Yesterday',
+            'type' => 'preset',
+        ];
+        $opts[] = [
+            'value' => 'preset:weekly',
+            'label' => '⚡ Last 7 Days (Weekly)',
+            'type' => 'preset',
+        ];
+
         // 1. All Time Option
         $opts[] = [
             'value' => 'all',
@@ -458,6 +568,7 @@ class SalesPerformanceService
                    COALESCE(fu.f_vsched, 0) AS f_vsched,
                    COALESCE(fu.f_vdone, 0) AS f_vdone,
                    COALESCE(fu.f_nego, 0) AS f_nego,
+                    COALESCE(fu.f_no_resp, 0) AS f_no_resp,
                    fu.first_fu_at,
                    COALESCE(bk.booked, 0) AS booked,
                    COALESCE(bk.confirmed, 0) AS confirmed
@@ -470,7 +581,8 @@ class SalesPerformanceService
                        MAX(lead_status IN ($qual)) AS f_qual,
                        MAX(next_action = 'site visit' OR lead_status IN ('Will Visit','Visited')) AS f_vsched,
                        MAX(lead_status = 'Visited' OR follow_up_type IN ('visit','Face To Face')) AS f_vdone,
-                       MAX(next_action = 'booking') AS f_nego
+                       MAX(next_action = 'booking') AS f_nego,
+                        MAX(lead_status = 'No Response' OR follow_up_type IN ('Number Off', 'Wrong Number', 'Invalid Number')) AS f_no_resp
                 FROM lead_follow_ups
                 $fuDeleted
                 GROUP BY lead_id
@@ -495,7 +607,7 @@ class SalesPerformanceService
             // Ultra safe fallback: guarantees lead numbers are never 0
             $fallbackSql = "SELECT l.id, l.assigned_id, l.created_at, l.assigned_at, 'not_called' AS call_status,
                                    NULL AS first_contacted_at, NULL AS communication_type, NULL AS lead_type, NULL AS last_lead_action,
-                                   0 AS fu_count, 0 AS f_valid, 0 AS f_qual, 0 AS f_vsched, 0 AS f_vdone, 0 AS f_nego,
+                                   0 AS fu_count, 0 AS f_valid, 0 AS f_qual, 0 AS f_vsched, 0 AS f_vdone, 0 AS f_nego, 0 AS f_no_resp,
                                    NULL AS first_fu_at, 0 AS booked, 0 AS confirmed
                             FROM leads l
                             WHERE $leadsDeleted $dateSqlL $projSqlL";
@@ -532,6 +644,12 @@ class SalesPerformanceService
             }
             if (!$isContacted) {
                 $add($uid, 'uncontacted');
+            }
+            $isNoResponse = ($leadType === 'No Response')
+                || ($r['call_status'] === 'not_received')
+                || ((int) $r['f_no_resp'] === 1);
+            if ($isNoResponse) {
+                $add($uid, 'no_response');
             }
             if ($uid) {
                 $add($uid, 'assigned_leads');
@@ -914,7 +1032,7 @@ class SalesPerformanceService
     protected function emptyMetrics(): array
     {
         $m = [
-            'assigned_leads' => 0, 'uncontacted' => 0, 'invalid_numbers' => 0,
+            'assigned_leads' => 0, 'uncontacted' => 0, 'no_response' => 0, 'invalid_numbers' => 0,
             'contacted_24h' => 0, 'response_samples' => 0,
             'follow_ups' => 0, 'leads_followed' => 0, 'visits_done' => 0, 'visits_planned' => 0,
             'bookings' => 0, 'booking_value' => 0.0, 'confirmed_sales' => 0, 'confirmed_value' => 0.0,
@@ -932,6 +1050,7 @@ class SalesPerformanceService
     {
         $recv = $m['stage_1'];
         $m['contact_rate'] = $recv ? round($m['stage_2'] / $recv * 100, 1) : 0;
+        $m['no_response_rate'] = $recv ? round(($m['no_response'] ?? 0) / $recv * 100, 1) : 0;
         $m['will_visit_rate'] = $recv ? round($m['stage_3'] / $recv * 100, 1) : 0;
         $m['visit_rate'] = $recv ? round($m['stage_4'] / $recv * 100, 1) : 0;
         $m['lead_to_booking'] = $recv ? round($m['stage_5'] / $recv * 100, 2) : 0;
@@ -1032,9 +1151,9 @@ class SalesPerformanceService
     {
         $salesRoles = implode(',', self::SALES_ROLE_IDS);
         $leadCols = "l.id AS ref_id, l.id AS lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
-                     COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, l.assigned_id AS owner_id";
+                     COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, l.assigned_id AS owner_id, l.team_id AS lead_team_id";
         $bkCols = "b.id AS ref_id, b.lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
-                   COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, COALESCE(NULLIF(b.sales_by_id,0), l.assigned_id) AS owner_id";
+                   COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, COALESCE(NULLIF(b.sales_by_id,0), l.assigned_id) AS owner_id, l.team_id AS lead_team_id";
         $activeBk = "b.deleted_at IS NULL AND b.booking_status IN ('booked','completed')";
         $closed = $this->inList(array_merge(self::DROPPED_STATUSES, self::TRANSFERRED_STATUSES, ['Sold']));
 
@@ -1105,6 +1224,22 @@ class SalesPerformanceService
                 'impact' => 'Response time',
                 'sql' => "SELECT $leadCols, CONCAT('Contacted ', DATE_FORMAT(l.first_contacted_at,'%d %b %Y')) AS info, l.assigned_at AS event_date
                           FROM leads l WHERE l.deleted_at IS NULL AND l.first_contacted_at < l.assigned_at",
+            ],
+            'no_response_leads' => [
+                'group' => 'Contact & follow-up', 'severity' => 'medium',
+                'label' => 'No Response Leads',
+                'description' => 'Leads where follow-up or call status is marked as No Response, Number Off, Wrong Number, or Invalid Number.',
+                'impact' => 'Contact quality',
+                'sql' => "SELECT $leadCols, COALESCE(NULLIF(l.call_status,''), l.lead_type, 'No Response') AS info, COALESCE(l.updated_at, l.created_at) AS event_date
+                          FROM leads l WHERE l.deleted_at IS NULL AND (
+                              l.lead_type = 'No Response' 
+                              OR l.call_status = 'not_received'
+                              OR EXISTS (
+                                  SELECT 1 FROM lead_follow_ups f 
+                                  WHERE f.lead_id = l.id AND f.deleted_at IS NULL 
+                                    AND (f.lead_status = 'No Response' OR f.follow_up_type IN ('Number Off', 'Wrong Number', 'Invalid Number'))
+                              )
+                          )",
             ],
             'call_status_no_log' => [
                 'group' => 'Contact & follow-up', 'severity' => 'medium',
@@ -1226,30 +1361,483 @@ class SalesPerformanceService
         ];
     }
 
-    /** Drill-down rows for one data-quality check. */
-    public function gapDetails(string $key, int $limit = 300): array
+    /**
+     * Drill-down detailed records for any KPI card, sales funnel stage, live work queue,
+     * attention item, or data-health check in the Sales Performance module.
+     * Respects active period and project/team/executive filters.
+     */
+    public function drillDown(string $key, array $period = [], array $filters = [], int $limit = 500): array
     {
         $this->loadReference();
-        $defs = $this->gapDefinitions();
-        if (!isset($defs[$key])) {
-            return ['label' => 'Unknown check', 'rows' => [], 'total' => 0];
+        if (empty($period['start'])) {
+            $period = $this->resolvePeriod();
         }
-        $sql = "SELECT * FROM (" . $defs[$key]['sql'] . ") x ORDER BY event_date DESC LIMIT " . (int) $limit;
-        $res = $this->db->query($sql);
-        $rows = [];
-        while ($res && $r = $res->fetch_assoc()) {
-            $oid = $r['owner_id'] ? (int) $r['owner_id'] : null;
-            [$tk] = $this->bucket($oid);
-            $r['owner_name'] = $oid ? ($this->users[$oid]['name'] ?? ('User #' . $oid)) : '—';
-            $r['team_name'] = $oid ? $this->teamLabel($tk) : '—';
-            $rows[] = $r;
+
+        $start = $period['start'];
+        $end = $period['end'];
+        $startD = $period['start_date'];
+        $endD = $period['end_date'];
+        $today = date('Y-m-d');
+        $isAllTime = !empty($period['is_all_time']);
+
+        $projectId = !empty($filters['project_id']) ? (int) $filters['project_id'] : null;
+        $projSqlL  = $projectId ? " AND l.project_id = " . $projectId : "";
+        $projSqlL2 = $projectId ? " AND l2.project_id = " . $projectId : "";
+        $projB     = $projectId ? " AND b.project_id = " . $projectId : "";
+        $projF     = $projectId ? " AND l.project_id = " . $projectId : "";
+        $projO     = $projectId ? " AND COALESCE(o.project_id, l.project_id) = " . $projectId : "";
+
+        // Resolve user scope (Executive / Team / Team Key)
+        $execFilter = !empty($filters['executive_id']) ? (int) $filters['executive_id'] : null;
+        $teamFilter = !empty($filters['team_id']) ? (int) $filters['team_id'] : null;
+        $teamKey    = !empty($filters['team_key']) ? (string) $filters['team_key'] : null;
+
+        $targetUids = null;
+        $isUnassignedOnly = false;
+
+        if ($execFilter) {
+            $targetUids = [$execFilter];
+        } elseif ($teamFilter) {
+            $uids = [];
+            foreach ($this->users as $uid => $u) {
+                if ($u['team_id'] === $teamFilter) {
+                    $uids[] = (int) $uid;
+                }
+            }
+            $targetUids = $uids ?: [-999];
+        } elseif ($teamKey) {
+            if ($teamKey === 'team_unassigned' || $teamKey === 'unattributed') {
+                $isUnassignedOnly = true;
+            } elseif ($teamKey === 'team_inactive') {
+                $uids = [];
+                foreach ($this->users as $uid => $u) {
+                    if (!$u['active']) {
+                        $uids[] = (int) $uid;
+                    }
+                }
+                $targetUids = $uids ?: [-999];
+            } elseif (preg_match('/^team_(\d+)$/', $teamKey, $tm)) {
+                $tid = (int) $tm[1];
+                $uids = [];
+                foreach ($this->users as $uid => $u) {
+                    if ($u['team_id'] === $tid) {
+                        $uids[] = (int) $uid;
+                    }
+                }
+                $targetUids = $uids ?: [-999];
+            }
         }
-        $cnt = $this->db->query("SELECT COUNT(*) c FROM (" . $defs[$key]['sql'] . ") x");
-        return [
-            'label' => $defs[$key]['label'],
-            'description' => $defs[$key]['description'],
-            'rows' => $rows,
-            'total' => $cnt ? (int) $cnt->fetch_assoc()['c'] : count($rows),
+
+        // Scope SQL conditions
+        $scopeL = "";
+        $scopeB = "";
+        $scopeF = "";
+        if ($isUnassignedOnly) {
+            $scopeL = " AND (l.assigned_id IS NULL OR l.assigned_id = 0)";
+            $scopeB = " AND (COALESCE(NULLIF(b.sales_by_id, 0), l.assigned_id) IS NULL OR COALESCE(NULLIF(b.sales_by_id, 0), l.assigned_id) = 0)";
+            $scopeF = " AND (f.created_by IS NULL OR f.created_by = 0)";
+        } elseif ($targetUids !== null) {
+            $uidCsv = implode(',', array_map('intval', $targetUids));
+            $scopeL = " AND l.assigned_id IN ($uidCsv)";
+            $scopeB = " AND COALESCE(NULLIF(b.sales_by_id, 0), l.assigned_id) IN ($uidCsv)";
+            $scopeF = " AND f.created_by IN ($uidCsv)";
+        }
+
+        $isOverviewScope = empty($filters['executive_id']) && empty($filters['team_id']) && empty($filters['team_key']) && ($filters['tab'] ?? 'overview') === 'overview';
+        $validAssignedAt = "CASE WHEN l.assigned_at IS NOT NULL AND l.assigned_at > '1970-01-01' THEN l.assigned_at ELSE l.created_at END";
+        $dateColL = $isOverviewScope ? 'l.created_at' : "COALESCE($validAssignedAt, l.created_at)";
+        $dateSqlL = $isAllTime ? "" : " AND $dateColL BETWEEN '$start' AND '$end'";
+        $dateSqlL2 = $isAllTime ? "" : " AND l2.created_at BETWEEN '$start' AND '$end'";
+
+        $dateSqlB = $isAllTime ? "" : " AND b.booking_date BETWEEN '$startD' AND '$endD'";
+        $dateSqlP = $isAllTime ? "" : " AND pay.payment_date BETWEEN '$startD' AND '$endD'";
+        $dateSqlF = $isAllTime ? "" : " AND f.created_at BETWEEN '$start' AND '$end'";
+        $dateSqlO = $isAllTime ? "" : " AND o.created_at BETWEEN '$start' AND '$end'";
+
+        // Standard DrillDown Query Definitions
+        $queries = [
+            'stage_1' => [
+                'label' => 'Leads Received (Stage 01)',
+                'description' => 'All leads received in the selected period and scope.',
+                'sql' => "SELECT l.id AS lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
+                                 COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, l.assigned_id AS owner_id, l.team_id AS lead_team_id,
+                                 CONCAT(COALESCE(p.name, 'No project'), ' · Stage: ', COALESCE(l.lead_type, 'New')) AS info,
+                                 $dateColL AS event_date, COALESCE(l.lead_type, 'Received') AS status_badge
+                          FROM leads l LEFT JOIN projects p ON p.id = l.project_id
+                          WHERE l.deleted_at IS NULL $dateSqlL $projSqlL $scopeL"
+            ],
+            'stage_2' => [
+                'label' => 'Contacted Leads (Stage 02)',
+                'description' => 'Leads with completed first contact, calls, visits, or follow-ups.',
+                'sql' => "SELECT l.id AS lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
+                                 COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, l.assigned_id AS owner_id, l.team_id AS lead_team_id,
+                                 CONCAT(COALESCE(p.name, 'No project'), ' · Action: ', COALESCE(l.last_lead_action, l.call_status, 'Contacted')) AS info,
+                                 COALESCE(l.first_contacted_at, $dateColL) AS event_date, 'Contacted' AS status_badge
+                          FROM leads l LEFT JOIN projects p ON p.id = l.project_id
+                          WHERE l.deleted_at IS NULL $dateSqlL $projSqlL $scopeL
+                            AND (
+                                l.first_contacted_at IS NOT NULL
+                                OR l.call_status IN ('called','received')
+                                OR LOWER(COALESCE(l.last_lead_action,'')) IN ('contacted','follow up','visited','booked')
+                                OR (l.communication_type IS NOT NULL AND LOWER(l.communication_type) NOT IN ('','not select'))
+                                OR l.lead_type IN ('Will Visit','Visited','Sold')
+                                OR EXISTS (SELECT 1 FROM lead_follow_ups f WHERE f.lead_id = l.id AND f.deleted_at IS NULL)
+                                OR EXISTS (SELECT 1 FROM lead_bookings b WHERE b.lead_id = l.id AND b.deleted_at IS NULL AND b.booking_status IN ('booked','completed'))
+                            )"
+            ],
+            'no_response_leads' => [
+                'label' => 'No Response Leads (Unreachable / Not Received)',
+                'description' => 'Leads with No Response status, not received call status, or unreachable follow-up attempts.',
+                'sql' => "SELECT l.id AS lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
+                                 COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, l.assigned_id AS owner_id, l.team_id AS lead_team_id,
+                                 CONCAT(COALESCE(p.name, 'No project'), ' · Type: ', COALESCE(l.lead_type, 'No Response'), ' (', COALESCE(l.call_status, 'not_received'), ')') AS info,
+                                 $dateColL AS event_date, 'No Response' AS status_badge
+                          FROM leads l LEFT JOIN projects p ON p.id = l.project_id
+                          WHERE l.deleted_at IS NULL $dateSqlL $projSqlL $scopeL
+                            AND (
+                                l.lead_type = 'No Response'
+                                OR l.call_status = 'not_received'
+                                OR EXISTS (
+                                    SELECT 1 FROM lead_follow_ups f
+                                    WHERE f.lead_id = l.id AND f.deleted_at IS NULL
+                                      AND (f.lead_status = 'No Response' OR f.follow_up_type IN ('Number Off', 'Wrong Number', 'Invalid Number'))
+                                )
+                            )"
+            ],
+            'uncontacted' => [
+                'label' => 'Not Contacted Leads (Awaiting 1st contact)',
+                'description' => 'Leads received in this period that have not yet had any call, visit, or follow-up recorded.',
+                'sql' => "SELECT l.id AS lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
+                                 COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, l.assigned_id AS owner_id, l.team_id AS lead_team_id,
+                                 CONCAT(COALESCE(p.name, 'No project'), ' · Awaiting first contact') AS info,
+                                 $dateColL AS event_date, 'Not Contacted' AS status_badge
+                          FROM leads l LEFT JOIN projects p ON p.id = l.project_id
+                          WHERE l.deleted_at IS NULL $dateSqlL $projSqlL $scopeL
+                            AND l.id NOT IN (
+                                SELECT l2.id FROM leads l2 WHERE l2.deleted_at IS NULL $dateSqlL2 $projSqlL2
+                                AND (
+                                    l2.first_contacted_at IS NOT NULL
+                                    OR l2.call_status IN ('called','received')
+                                    OR LOWER(COALESCE(l2.last_lead_action,'')) IN ('contacted','follow up','visited','booked')
+                                    OR (l2.communication_type IS NOT NULL AND LOWER(l2.communication_type) NOT IN ('','not select'))
+                                    OR l2.lead_type IN ('Will Visit','Visited','Sold')
+                                    OR EXISTS (SELECT 1 FROM lead_follow_ups f WHERE f.lead_id = l2.id AND f.deleted_at IS NULL)
+                                    OR EXISTS (SELECT 1 FROM lead_bookings b WHERE b.lead_id = l2.id AND b.deleted_at IS NULL AND b.booking_status IN ('booked','completed'))
+                                )
+                            )"
+            ],
+            'stage_3' => [
+                'label' => 'Will Visit Leads (Stage 03)',
+                'description' => 'Leads scheduled or committed to visit a project site.',
+                'sql' => "SELECT l.id AS lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
+                                 COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, l.assigned_id AS owner_id, l.team_id AS lead_team_id,
+                                 CONCAT(COALESCE(p.name, 'No project'), ' · Status: ', COALESCE(l.lead_type, 'Will Visit')) AS info,
+                                 $dateColL AS event_date, 'Will Visit' AS status_badge
+                          FROM leads l LEFT JOIN projects p ON p.id = l.project_id
+                          WHERE l.deleted_at IS NULL $dateSqlL $projSqlL $scopeL
+                            AND (
+                                l.lead_type IN ('Will Visit', 'Visited', 'Sold')
+                                OR LOWER(COALESCE(l.last_lead_action,'')) IN ('visited', 'booked')
+                                OR EXISTS (SELECT 1 FROM lead_follow_ups f WHERE f.lead_id = l.id AND f.deleted_at IS NULL AND (f.next_action = 'site visit' OR f.lead_status IN ('Will Visit','Visited')))
+                                OR EXISTS (SELECT 1 FROM lead_bookings b WHERE b.lead_id = l.id AND b.deleted_at IS NULL AND b.booking_status IN ('booked','completed'))
+                            )"
+            ],
+            'stage_4' => [
+                'label' => 'Visited Leads (Stage 04)',
+                'description' => 'Leads who completed a physical or face-to-face site visit.',
+                'sql' => "SELECT l.id AS lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
+                                 COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, l.assigned_id AS owner_id, l.team_id AS lead_team_id,
+                                 CONCAT(COALESCE(p.name, 'No project'), ' · Visit completed') AS info,
+                                 $dateColL AS event_date, 'Visited' AS status_badge
+                          FROM leads l LEFT JOIN projects p ON p.id = l.project_id
+                          WHERE l.deleted_at IS NULL $dateSqlL $projSqlL $scopeL
+                            AND (
+                                l.lead_type = 'Visited'
+                                OR LOWER(COALESCE(l.last_lead_action,'')) IN ('visited', 'booked')
+                                OR EXISTS (SELECT 1 FROM lead_follow_ups f WHERE f.lead_id = l.id AND f.deleted_at IS NULL AND (f.lead_status = 'Visited' OR f.follow_up_type IN ('visit','Face To Face')))
+                                OR EXISTS (SELECT 1 FROM lead_bookings b WHERE b.lead_id = l.id AND b.deleted_at IS NULL AND b.booking_status IN ('booked','completed'))
+                            )"
+            ],
+            'stage_5' => [
+                'label' => 'Booked Leads (Funnel Cohort Stage 05)',
+                'description' => 'Leads received in this period who progressed to booking.',
+                'sql' => "SELECT l.id AS lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
+                                 COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, l.assigned_id AS owner_id, l.team_id AS lead_team_id,
+                                 CONCAT(COALESCE(p.name, 'No project'), ' · Action: ', COALESCE(l.last_lead_action, 'Booked')) AS info,
+                                 $dateColL AS event_date, 'Booked' AS status_badge
+                          FROM leads l LEFT JOIN projects p ON p.id = l.project_id
+                          WHERE l.deleted_at IS NULL $dateSqlL $projSqlL $scopeL
+                            AND (
+                                LOWER(COALESCE(l.last_lead_action,'')) = 'booked'
+                                OR EXISTS (SELECT 1 FROM lead_bookings b WHERE b.lead_id = l.id AND b.deleted_at IS NULL AND b.booking_status IN ('booked','completed'))
+                            )"
+            ],
+            'bookings' => [
+                'label' => 'Bookings in Period',
+                'description' => 'All bookings created within the selected period (by booking_date).',
+                'sql' => "SELECT b.id AS ref_id, b.lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
+                                 COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, COALESCE(NULLIF(b.sales_by_id, 0), l.assigned_id) AS owner_id, l.team_id AS lead_team_id,
+                                 CONCAT('Agreement: ৳', FORMAT(b.agreement_value, 0), ' · ', COALESCE(p.name, 'No project')) AS info,
+                                 b.booking_date AS event_date,
+                                 CASE WHEN EXISTS (SELECT 1 FROM lead_payments pay WHERE pay.booking_id = b.id AND COALESCE(pay.is_trashed,0)=0 AND pay.verification_status='verified') THEN 'Confirmed' ELSE 'Awaiting Verification' END AS status_badge
+                          FROM lead_bookings b
+                          JOIN leads l ON l.id = b.lead_id
+                          LEFT JOIN projects p ON p.id = b.project_id
+                          WHERE b.deleted_at IS NULL AND b.booking_status IN ('booked','completed') $dateSqlB $projB $scopeB"
+            ],
+            'confirmed_sales' => [
+                'label' => 'Confirmed Sales in Period',
+                'description' => 'Bookings with at least one verified payment received in accounts.',
+                'sql' => "SELECT b.id AS ref_id, b.lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
+                                 COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, COALESCE(NULLIF(b.sales_by_id, 0), l.assigned_id) AS owner_id, l.team_id AS lead_team_id,
+                                 CONCAT('Confirmed · Agreement: ৳', FORMAT(b.agreement_value, 0), ' · ', COALESCE(p.name, 'No project')) AS info,
+                                 b.booking_date AS event_date, 'Confirmed' AS status_badge
+                          FROM lead_bookings b
+                          JOIN leads l ON l.id = b.lead_id
+                          LEFT JOIN projects p ON p.id = b.project_id
+                          WHERE b.deleted_at IS NULL AND b.booking_status IN ('booked','completed') $dateSqlB $projB $scopeB
+                            AND EXISTS (SELECT 1 FROM lead_payments pay WHERE pay.booking_id = b.id AND COALESCE(pay.is_trashed,0)=0 AND pay.verification_status='verified')"
+            ],
+            'collection' => [
+                'label' => 'Booking Collections in Period',
+                'description' => 'Verified payments collected by accounts within the selected period.',
+                'sql' => "SELECT pay.id AS ref_id, b.lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
+                                 COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, COALESCE(NULLIF(b.sales_by_id, 0), l.assigned_id) AS owner_id, l.team_id AS lead_team_id,
+                                 CONCAT('Collected: ৳', FORMAT(pay.amount, 0), ' (', COALESCE(pay.payment_method, 'Payment'), ') · Booking #', b.id) AS info,
+                                 pay.payment_date AS event_date, 'Verified' AS status_badge
+                          FROM lead_payments pay
+                          JOIN lead_bookings b ON b.id = pay.booking_id AND b.deleted_at IS NULL AND b.booking_status IN ('booked','completed')
+                          JOIN leads l ON l.id = b.lead_id
+                          LEFT JOIN projects p ON p.id = b.project_id
+                          WHERE COALESCE(pay.is_trashed, 0) = 0 AND pay.verification_status = 'verified' AND pay.payment_status IN ('paid','partially_paid')
+                            $dateSqlP $projB $scopeB"
+            ],
+            'overdue' => [
+                'label' => 'Overdue Follow-ups (Live Queue)',
+                'description' => 'Open active leads whose scheduled next follow-up date has passed.',
+                'sql' => "SELECT l.id AS lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
+                                 COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, l.assigned_id AS owner_id, l.team_id AS lead_team_id,
+                                 CONCAT('Scheduled: ', lf.next_follow_up_date, ' · Overdue · ', COALESCE(lf.next_action, 'Callback')) AS info,
+                                 lf.next_follow_up_date AS event_date, 'Overdue' AS status_badge
+                          FROM leads l
+                          JOIN (
+                              SELECT f.lead_id, f.next_follow_up_date, f.next_action
+                              FROM lead_follow_ups f
+                              JOIN (SELECT lead_id, MAX(id) AS mid FROM lead_follow_ups WHERE deleted_at IS NULL GROUP BY lead_id) m ON m.mid = f.id
+                          ) lf ON lf.lead_id = l.id
+                          WHERE l.deleted_at IS NULL AND l.assigned_id > 0
+                            AND COALESCE(l.lead_type, '') NOT IN ('Dropped','Closed','Lost','Reject','Rejected','Not Interested','Fake Lead','Invalid Lead','Transferred','Reassigned','Sold')
+                            AND NOT EXISTS (SELECT 1 FROM lead_bookings b WHERE b.lead_id = l.id AND b.deleted_at IS NULL AND b.booking_status IN ('booked','completed'))
+                            AND lf.next_follow_up_date < '$today' $projSqlL $scopeL"
+            ],
+            'due_today' => [
+                'label' => 'Follow-ups Due Today (Live Queue)',
+                'description' => 'Open active leads scheduled for callback or follow-up today.',
+                'sql' => "SELECT l.id AS lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
+                                 COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, l.assigned_id AS owner_id, l.team_id AS lead_team_id,
+                                 CONCAT('Scheduled: Today (', lf.next_follow_up_date, ') · ', COALESCE(lf.next_action, 'Callback')) AS info,
+                                 lf.next_follow_up_date AS event_date, 'Due Today' AS status_badge
+                          FROM leads l
+                          JOIN (
+                              SELECT f.lead_id, f.next_follow_up_date, f.next_action
+                              FROM lead_follow_ups f
+                              JOIN (SELECT lead_id, MAX(id) AS mid FROM lead_follow_ups WHERE deleted_at IS NULL GROUP BY lead_id) m ON m.mid = f.id
+                          ) lf ON lf.lead_id = l.id
+                          WHERE l.deleted_at IS NULL AND l.assigned_id > 0
+                            AND COALESCE(l.lead_type, '') NOT IN ('Dropped','Closed','Lost','Reject','Rejected','Not Interested','Fake Lead','Invalid Lead','Transferred','Reassigned','Sold')
+                            AND NOT EXISTS (SELECT 1 FROM lead_bookings b WHERE b.lead_id = l.id AND b.deleted_at IS NULL AND b.booking_status IN ('booked','completed'))
+                            AND lf.next_follow_up_date = '$today' $projSqlL $scopeL"
+            ],
+            'upcoming_visits' => [
+                'label' => 'Site Visits in Next 7 Days (Live Queue)',
+                'description' => 'Site visits planned and scheduled within the next 7 days.',
+                'sql' => "SELECT l.id AS lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
+                                 COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, l.assigned_id AS owner_id, l.team_id AS lead_team_id,
+                                 CONCAT('Site Visit: ', lf.next_follow_up_date) AS info,
+                                 lf.next_follow_up_date AS event_date, 'Upcoming Visit' AS status_badge
+                          FROM leads l
+                          JOIN (
+                              SELECT f.lead_id, f.next_follow_up_date, f.next_action
+                              FROM lead_follow_ups f
+                              JOIN (SELECT lead_id, MAX(id) AS mid FROM lead_follow_ups WHERE deleted_at IS NULL GROUP BY lead_id) m ON m.mid = f.id
+                          ) lf ON lf.lead_id = l.id
+                          WHERE l.deleted_at IS NULL AND l.assigned_id > 0
+                            AND COALESCE(l.lead_type, '') NOT IN ('Dropped','Closed','Lost','Reject','Rejected','Not Interested','Fake Lead','Invalid Lead','Transferred','Reassigned','Sold')
+                            AND NOT EXISTS (SELECT 1 FROM lead_bookings b WHERE b.lead_id = l.id AND b.deleted_at IS NULL AND b.booking_status IN ('booked','completed'))
+                            AND lf.next_action = 'site visit' AND lf.next_follow_up_date BETWEEN '$today' AND DATE_ADD('$today', INTERVAL 7 DAY)
+                            $projSqlL $scopeL"
+            ],
+            'unverified_bookings' => [
+                'label' => 'Bookings Awaiting Payment Verification',
+                'description' => 'Bookings created in period whose down payments are pending accounts verification.',
+                'sql' => "SELECT b.id AS ref_id, b.lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
+                                 COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, COALESCE(NULLIF(b.sales_by_id, 0), l.assigned_id) AS owner_id, l.team_id AS lead_team_id,
+                                 CONCAT('Agreement: ৳', FORMAT(b.agreement_value, 0), ' · Awaiting Accounts Verification') AS info,
+                                 b.booking_date AS event_date, 'Pending Verification' AS status_badge
+                          FROM lead_bookings b
+                          JOIN leads l ON l.id = b.lead_id
+                          LEFT JOIN projects p ON p.id = b.project_id
+                          WHERE b.deleted_at IS NULL AND b.booking_status IN ('booked','completed') $dateSqlB $projB $scopeB
+                            AND NOT EXISTS (SELECT 1 FROM lead_payments pay WHERE pay.booking_id = b.id AND COALESCE(pay.is_trashed,0)=0 AND pay.verification_status='verified')"
+            ],
+            'onboarded' => [
+                'label' => 'Clients Onboarded in Period',
+                'description' => 'New clients successfully onboarded into the system within this period.',
+                'sql' => "SELECT o.id AS ref_id, o.lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
+                                 COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone,
+                                 COALESCE(NULLIF((SELECT b.sales_by_id FROM lead_bookings b WHERE b.lead_id = o.lead_id AND b.deleted_at IS NULL ORDER BY b.id DESC LIMIT 1), 0), l.assigned_id) AS owner_id,
+                                 l.team_id AS lead_team_id,
+                                 CONCAT('Onboarded Client #', o.id, ' · ', COALESCE(NULLIF(o.email,''), 'Client Portal')) AS info,
+                                 o.created_at AS event_date, 'Onboarded' AS status_badge
+                          FROM onboard_clients o
+                          JOIN leads l ON l.id = o.lead_id
+                          WHERE 1=1 $dateSqlO $projO $scopeL"
+            ],
+            'follow_ups' => [
+                'label' => 'Follow-ups Logged in Period',
+                'description' => 'Activity logs and follow-ups made in the selected period.',
+                'sql' => "SELECT f.id AS ref_id, f.lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
+                                 COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, f.created_by AS owner_id, l.team_id AS lead_team_id,
+                                 CONCAT('Type: ', COALESCE(f.follow_up_type, 'Follow-up'), ' · Status: ', COALESCE(f.lead_status, '—'), ' · ', SUBSTRING(COALESCE(f.discussion_note, ''), 1, 40)) AS info,
+                                 f.created_at AS event_date, COALESCE(f.lead_status, 'Follow-up') AS status_badge
+                          FROM lead_follow_ups f
+                          JOIN leads l ON l.id = f.lead_id AND l.deleted_at IS NULL
+                          WHERE f.deleted_at IS NULL $dateSqlF $projF $scopeF"
+            ],
+            'visits_done' => [
+                'label' => 'Site Visits Completed in Period',
+                'description' => 'Site visits conducted and logged in the selected period.',
+                'sql' => "SELECT f.id AS ref_id, f.lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
+                                 COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, f.created_by AS owner_id, l.team_id AS lead_team_id,
+                                 CONCAT('Site Visit Completed · ', SUBSTRING(COALESCE(f.discussion_note, ''), 1, 40)) AS info,
+                                 f.created_at AS event_date, 'Visited' AS status_badge
+                          FROM lead_follow_ups f
+                          JOIN leads l ON l.id = f.lead_id AND l.deleted_at IS NULL
+                          WHERE f.deleted_at IS NULL AND (f.lead_status = 'Visited' OR f.follow_up_type IN ('visit','Face To Face'))
+                            $dateSqlF $projF $scopeF"
+            ],
         ];
+
+        // Synonyms mapping
+        $aliases = [
+            'leads_received'               => 'stage_1',
+            'received'                     => 'stage_1',
+            'contacted'                    => 'stage_2',
+            'no_response'                  => 'no_response_leads',
+            'uncontacted_leads'            => 'uncontacted',
+            'stage_uncontacted'            => 'uncontacted',
+            'will_visit'                   => 'stage_3',
+            'stage_3_will_visit'           => 'stage_3',
+            'visited'                      => 'stage_4',
+            'stage_4_visited'              => 'stage_4',
+            'booked'                       => 'stage_5',
+            'stage_5_booked'               => 'stage_5',
+            'stage_booked'                 => 'stage_5',
+            'confirmed'                    => 'confirmed_sales',
+            'booking_collection'           => 'collection',
+            'overdue_followups'            => 'overdue',
+            'followups_due_today'          => 'due_today',
+            'site_visits_next_7_days'      => 'upcoming_visits',
+            'payment_pending_verification' => 'unverified_bookings',
+            'clients_onboarded'            => 'onboarded',
+            'activity_followups'           => 'follow_ups',
+        ];
+
+        $targetKey = $aliases[$key] ?? $key;
+
+        if (isset($queries[$targetKey])) {
+            $def = $queries[$targetKey];
+            $sql = "SELECT * FROM (" . $def['sql'] . ") x ORDER BY event_date DESC LIMIT " . (int) $limit;
+            $res = $this->db->query($sql);
+            $rows = [];
+            while ($res && $r = $res->fetch_assoc()) {
+                $oid = $r['owner_id'] ? (int) $r['owner_id'] : null;
+                $leadTeamId = !empty($r['lead_team_id']) ? (int) $r['lead_team_id'] : null;
+
+                // Owner name: if assigned_id is empty or 0, show "Not Assigned"
+                if ($oid && isset($this->users[$oid])) {
+                    $r['owner_name'] = $this->users[$oid]['name'];
+                } elseif ($oid) {
+                    $r['owner_name'] = 'User #' . $oid;
+                } else {
+                    $r['owner_name'] = 'Not Assigned';
+                }
+
+                // Team name: lookup assigned team_id
+                $userTeamId = ($oid && isset($this->users[$oid]['team_id']) && $this->users[$oid]['team_id'] > 0) ? (int) $this->users[$oid]['team_id'] : null;
+                $effectiveTeamId = $leadTeamId ?: $userTeamId;
+
+                if ($effectiveTeamId && isset($this->teams[$effectiveTeamId])) {
+                    $r['team_name'] = $this->teams[$effectiveTeamId]['name'];
+                } elseif ($userTeamId && isset($this->teams[$userTeamId])) {
+                    $r['team_name'] = $this->teams[$userTeamId]['name'];
+                } elseif ($oid) {
+                    [$tk] = $this->bucket($oid);
+                    $r['team_name'] = $this->teamLabel($tk);
+                } else {
+                    $r['team_name'] = '—';
+                }
+                $rows[] = $r;
+            }
+            $cnt = $this->db->query("SELECT COUNT(*) c FROM (" . $def['sql'] . ") x");
+            return [
+                'label' => $def['label'],
+                'description' => $def['description'],
+                'rows' => $rows,
+                'total' => $cnt ? (int) $cnt->fetch_assoc()['c'] : count($rows),
+            ];
+        }
+
+        // Fallback to data quality gap definitions
+        $defs = $this->gapDefinitions();
+        if (isset($defs[$key])) {
+            $sql = "SELECT * FROM (" . $defs[$key]['sql'] . ") x ORDER BY event_date DESC LIMIT " . (int) $limit;
+            $res = $this->db->query($sql);
+            $rows = [];
+            while ($res && $r = $res->fetch_assoc()) {
+                $oid = $r['owner_id'] ? (int) $r['owner_id'] : null;
+                $leadTeamId = !empty($r['lead_team_id']) ? (int) $r['lead_team_id'] : null;
+
+                // Owner name: if assigned_id is empty or 0, show "Not Assigned"
+                if ($oid && isset($this->users[$oid])) {
+                    $r['owner_name'] = $this->users[$oid]['name'];
+                } elseif ($oid) {
+                    $r['owner_name'] = 'User #' . $oid;
+                } else {
+                    $r['owner_name'] = 'Not Assigned';
+                }
+
+                // Team name: lookup assigned team_id
+                $userTeamId = ($oid && isset($this->users[$oid]['team_id']) && $this->users[$oid]['team_id'] > 0) ? (int) $this->users[$oid]['team_id'] : null;
+                $effectiveTeamId = $leadTeamId ?: $userTeamId;
+
+                if ($effectiveTeamId && isset($this->teams[$effectiveTeamId])) {
+                    $r['team_name'] = $this->teams[$effectiveTeamId]['name'];
+                } elseif ($userTeamId && isset($this->teams[$userTeamId])) {
+                    $r['team_name'] = $this->teams[$userTeamId]['name'];
+                } elseif ($oid) {
+                    [$tk] = $this->bucket($oid);
+                    $r['team_name'] = $this->teamLabel($tk);
+                } else {
+                    $r['team_name'] = '—';
+                }
+                $rows[] = $r;
+            }
+            $cnt = $this->db->query("SELECT COUNT(*) c FROM (" . $defs[$key]['sql'] . ") x");
+            return [
+                'label' => $defs[$key]['label'],
+                'description' => $defs[$key]['description'],
+                'rows' => $rows,
+                'total' => $cnt ? (int) $cnt->fetch_assoc()['c'] : count($rows),
+            ];
+        }
+
+        return ['label' => 'Records', 'description' => '', 'rows' => [], 'total' => 0];
+    }
+
+    /** Backward compatibility alias for data health gap drilldown. */
+    public function gapDetails(string $key, int $limit = 300): array
+    {
+        return $this->drillDown($key, [], [], $limit);
     }
 }

@@ -52,7 +52,11 @@ class SalesPerformanceController extends Controller
         if (!in_array($tab, ['overview', 'team', 'executive', 'inactive-executive'], true)) {
             $tab = 'overview';
         }
+        $preset = trim((string) ($_GET['preset'] ?? ''));
         $cycle = $_GET['cycle'] ?? '';
+        if (str_starts_with($cycle, 'preset:')) {
+            $preset = substr($cycle, 7);
+        }
         $year = $month = null;
         if (preg_match('/^(\d{4})-(\d{1,2})$/', $cycle, $m)) {
             $year = (int) $m[1];
@@ -63,6 +67,7 @@ class SalesPerformanceController extends Controller
 
         return [
             'tab' => $tab,
+            'preset' => $preset,
             'cycle' => $cycle,
             'year' => $year,
             'month' => $month,
@@ -80,7 +85,12 @@ class SalesPerformanceController extends Controller
         $this->guard();
         $f = $this->readFilters();
 
-        $period = $this->service->resolvePeriod($f['cycle'] ?: null, $f['year'], $f['month'], $f['from'], $f['to']);
+        $period = $this->service->resolvePeriod($f['cycle'] ?: null, $f['year'], $f['month'], $f['from'], $f['to'], $f['preset']);
+        if (!empty($period['preset'])) {
+            $f['preset'] = $period['preset'];
+            $f['from'] = $period['start_date'];
+            $f['to'] = $period['end_date'];
+        }
         $data = $this->service->build($period, $f);
 
         if (($_GET['export'] ?? '') === 'csv') {
@@ -107,13 +117,46 @@ class SalesPerformanceController extends Controller
         ]);
     }
 
-    /** JSON drill-down for a data quality check. */
+    /** JSON drill-down for KPI cards, sales funnel stages, queues, and data health checks. */
     public function gapDetails()
     {
         $this->guard(true);
+        $key = preg_replace('/[^a-z0-9_]/', '', $_GET['key'] ?? '');
+        $f = $this->readFilters();
+        if (!empty($_GET['team_key'])) {
+            $f['team_key'] = $_GET['team_key'];
+        }
+        $period = $this->service->resolvePeriod($f['cycle'] ?: null, $f['year'], $f['month'], $f['from'], $f['to'], $f['preset']);
+        if (!empty($period['preset'])) {
+            $f['preset'] = $period['preset'];
+            $f['from'] = $period['start_date'];
+            $f['to'] = $period['end_date'];
+        }
+
+        if (($_GET['export'] ?? '') === 'csv') {
+            $drill = $this->service->drillDown($key, $period, $f, 5000);
+            header('Content-Type: text/csv; charset=utf-8');
+            header('Content-Disposition: attachment; filename="drilldown-' . $key . '-' . date('Ymd-His') . '.csv"');
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, ['Lead / Record', 'Phone', 'Executive', 'Team', 'Detail', 'Date', 'Status']);
+            foreach ($drill['rows'] as $r) {
+                fputcsv($out, [
+                    $r['lead_name'] ?? '',
+                    $r['phone'] ?? '',
+                    $r['owner_name'] ?? '',
+                    $r['team_name'] ?? '',
+                    $r['info'] ?? '',
+                    substr($r['event_date'] ?? '', 0, 10),
+                    $r['status_badge'] ?? ''
+                ]);
+            }
+            fclose($out);
+            exit;
+        }
+
         header('Content-Type: application/json; charset=utf-8');
-        $key = preg_replace('/[^a-z_]/', '', $_GET['key'] ?? '');
-        echo json_encode($this->service->gapDetails($key), JSON_UNESCAPED_UNICODE);
+        echo json_encode($this->service->drillDown($key, $period, $f), JSON_UNESCAPED_UNICODE);
         exit;
     }
 
@@ -129,6 +172,7 @@ class SalesPerformanceController extends Controller
 
         $cols = [
             'Leads received' => 'stage_1', 'Contacted' => 'stage_2', 'Contact rate %' => 'contact_rate',
+            'No response' => 'no_response', 'No response %' => 'no_response_rate',
             'Will visit' => 'stage_3', 'Visited' => 'stage_4', 'Booked' => 'stage_5',
             'Conversion rate %' => 'conversion_rate',
             'Follow-ups logged' => 'follow_ups', 'Visits done (period)' => 'visits_done',

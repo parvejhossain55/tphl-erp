@@ -6,7 +6,8 @@
 -- 1. Ensure all required columns exist in `leads` table
 ALTER TABLE `leads` ADD COLUMN IF NOT EXISTS `distribute` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '0=Pending, 1=Approved';
 ALTER TABLE `leads` ADD COLUMN IF NOT EXISTS `is_automated` TINYINT(1) NOT NULL DEFAULT 0;
-ALTER TABLE `leads` ADD COLUMN IF NOT EXISTS `assigned_by` INT(11) NULL AFTER `assigned_id`;
+ALTER TABLE `leads` ADD COLUMN IF NOT EXISTS `assigned_at` DATETIME NULL AFTER `assigned_id`;
+ALTER TABLE `leads` ADD COLUMN IF NOT EXISTS `assigned_by` INT(11) NULL AFTER `assigned_at`;
 ALTER TABLE `leads` ADD COLUMN IF NOT EXISTS `first_contacted_at` DATETIME NULL AFTER `assigned_by`;
 ALTER TABLE `leads` ADD COLUMN IF NOT EXISTS `approved_by` INT(11) NULL AFTER `is_automated`;
 ALTER TABLE `leads` ADD COLUMN IF NOT EXISTS `approved_at` DATETIME NULL AFTER `approved_by`;
@@ -31,3 +32,8 @@ INNER JOIN (
 ) fu ON l.id = fu.lead_id 
 SET l.`first_contacted_at` = fu.`first_time` 
 WHERE l.`first_contacted_at` IS NULL;
+
+-- 5. Backfill assigned_at from created_at if assigned_at is empty
+UPDATE `leads` 
+SET `assigned_at` = `created_at` 
+WHERE `assigned_id` IS NOT NULL AND (`assigned_at` IS NULL OR `assigned_at` <= '1970-01-01');
