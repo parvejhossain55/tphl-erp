@@ -32,24 +32,52 @@ if (class_exists('AccountClient')) {
             if ($type === 'booking_money') return 1;
             if (in_array($type, ['registration', 'land_share', 'mutation_cost'], true)) return 2;
             if (in_array($type, ['development_charge', 'construction_fee', 'shop_service_charge'], true)) return 3;
-            if ($type === 'emi' || $type === 'emi_due_settlement' || !empty($t['emi_no']) || !empty($t['parent_emi_no'])) return 4;
+            if ($type === 'emi' 
+                || $type === 'emi_due_settlement' 
+                || (!empty($t['settlement_type']) && $t['settlement_type'] === 'emi_due_settlement')
+                || !empty($t['emi_no']) 
+                || !empty($t['parent_emi_no'])
+                || stripos($t['installment_label'] ?? '', 'installment') !== false
+                || stripos($t['payment_details'] ?? '', 'installment') !== false
+                || stripos($t['installment_label'] ?? '', 'settlement') !== false
+                || stripos($t['payment_details'] ?? '', 'settlement') !== false
+                || stripos($t['installment_label'] ?? '', 'emi') !== false
+                || stripos($t['payment_details'] ?? '', 'emi') !== false
+            ) {
+                return 4;
+            }
             return 5;
         };
         $gA = $getGroup($a);
         $gB = $getGroup($b);
         if ($gA !== $gB) return $gA <=> $gB;
         if ($gA === 4) {
-            $getNo = function ($t) {
+            $isSettlement = function ($t) {
+                return (!empty($t['settlement_type']) && $t['settlement_type'] === 'emi_due_settlement') 
+                    || (($t['payment_type'] ?? '') === 'emi_due_settlement')
+                    || (stripos($t['installment_label'] ?? '', 'settlement') !== false)
+                    || (stripos($t['payment_details'] ?? '', 'settlement') !== false);
+            };
+
+            $getNo = function ($t) use ($isSettlement) {
+                if ($isSettlement($t)) {
+                    if (!empty($t['parent_emi_no'])) return (int)$t['parent_emi_no'];
+                    if (!empty($t['installment_label']) && preg_match('/(\d+)/', $t['installment_label'], $m)) return (int)$m[1];
+                    if (!empty($t['payment_details']) && preg_match('/(\d+)/', $t['payment_details'], $m)) return (int)$m[1];
+                    if (!empty($t['emi_no'])) return (int)$t['emi_no'];
+                    return 9999;
+                }
                 if (!empty($t['emi_no'])) return (int)$t['emi_no'];
                 if (!empty($t['parent_emi_no'])) return (int)$t['parent_emi_no'];
                 if (!empty($t['installment_label']) && preg_match('/(\d+)/', $t['installment_label'], $m)) return (int)$m[1];
+                if (!empty($t['payment_details']) && preg_match('/(\d+)/', $t['payment_details'], $m)) return (int)$m[1];
                 return 9999;
             };
             $noA = $getNo($a);
             $noB = $getNo($b);
             if ($noA !== $noB) return $noA <=> $noB;
-            $getSub = function ($t) {
-                if ((!empty($t['settlement_type']) && $t['settlement_type'] === 'emi_due_settlement') || (($t['payment_type'] ?? '') === 'emi_due_settlement')) return 3;
+            $getSub = function ($t) use ($isSettlement) {
+                if ($isSettlement($t)) return 3;
                 if (strtolower($t['payment_status'] ?? '') === 'partially_paid') return 1;
                 return 2;
             };
