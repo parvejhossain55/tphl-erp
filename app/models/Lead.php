@@ -771,6 +771,144 @@ class Lead extends Model
         return $row ? (int)$row['total_count'] : 0;
     }
 
+    /**
+     * Count total booking units/contracts from lead_bookings matching current filters.
+     * This aligns the "Total Booked" count on Lead Lists with Sales Performance and Sales Dashboard (e.g. 1,647 bookings).
+     */
+    public function countBookingsWithFilter($year = null, $month = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $from_date = null, $to_date = null, $projectId = null, $projectCategoryId = null, $country = null)
+    {
+        $sql = "SELECT COUNT(lb.id) AS total_count 
+                FROM lead_bookings AS lb
+                JOIN leads AS l ON l.id = lb.lead_id
+                WHERE lb.deleted_at IS NULL 
+                  AND lb.booking_status IN ('completed', 'booked')
+                  AND l.deleted_at IS NULL";
+
+        $params = [];
+        $types  = "";
+
+        // Team filter: check lead team, assigned executive's team, or closing sales executive's team
+        if (!empty($teamId)) {
+            $loggedInRole = $_SESSION['user']['role_id'] ?? 0;
+            if (!in_array((int)$loggedInRole, [1, 3, 9, 32, 33, 34, 35])) {
+                $loggedInUserId = $_SESSION['user']['id'] ?? 0;
+                $sql .= " AND (l.team_id = ? OR l.assigned_id = ? OR l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?) OR lb.sales_by_id = ?)";
+                $params[] = $teamId;
+                $params[] = $loggedInUserId;
+                $params[] = $teamId;
+                $params[] = $loggedInUserId;
+                $types .= "iiii";
+            } else {
+                $sql .= " AND (l.team_id = ? OR l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?) OR lb.sales_by_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?))";
+                $params[] = $teamId;
+                $params[] = $teamId;
+                $params[] = $teamId;
+                $types .= "iii";
+            }
+        }
+
+        // Assigned user filter
+        if (!empty($assigned_user)) {
+            $sql .= " AND (l.assigned_id = ? OR lb.sales_by_id = ?)";
+            $params[] = (int)$assigned_user;
+            $params[] = (int)$assigned_user;
+            $types .= "ii";
+        }
+
+        // Date filter on booking_date
+        if (!empty($from_date) && !empty($to_date)) {
+            $sql .= " AND DATE(lb.booking_date) BETWEEN ? AND ?";
+            $params[] = $from_date;
+            $params[] = $to_date;
+            $types .= "ss";
+        } elseif (!empty($from_date)) {
+            $sql .= " AND DATE(lb.booking_date) >= ?";
+            $params[] = $from_date;
+            $types .= "s";
+        } elseif (!empty($to_date)) {
+            $sql .= " AND DATE(lb.booking_date) <= ?";
+            $params[] = $to_date;
+            $types .= "s";
+        } elseif (!empty($year) || !empty($month)) {
+            if (!empty($year)) {
+                $sql .= " AND YEAR(lb.booking_date) = ?";
+                $params[] = (int)$year;
+                $types .= "i";
+            }
+            if (!empty($month)) {
+                $sql .= " AND MONTH(lb.booking_date) = ?";
+                $params[] = (int)$month;
+                $types .= "i";
+            }
+        }
+
+        // Project filter
+        if (!empty($projectId)) {
+            $sql .= " AND (lb.project_id = ? OR l.project_id = ?)";
+            $params[] = (int)$projectId;
+            $params[] = (int)$projectId;
+            $types .= "ii";
+        }
+
+        // Project category filter
+        if (!empty($projectCategoryId)) {
+            $sql .= " AND l.project_category_id = ?";
+            $params[] = (int)$projectCategoryId;
+            $types .= "i";
+        }
+
+        // Country filter
+        if (!empty($country)) {
+            $countryList = is_array($country) ? array_filter($country, fn($val) => trim($val) !== '') : [trim((string)$country)];
+            if (!empty($countryList)) {
+                $allConds = [];
+                foreach ($countryList as $cItem) {
+                    $synonyms = [$cItem];
+                    if (strcasecmp($cItem, 'UAE') === 0 || strcasecmp($cItem, 'United Arab Emirates') === 0) {
+                        $synonyms = ['UAE', 'United Arab Emirates'];
+                    } elseif (strcasecmp($cItem, 'USA') === 0 || strcasecmp($cItem, 'United States') === 0) {
+                        $synonyms = ['USA', 'United States'];
+                    } elseif (strcasecmp($cItem, 'UK') === 0 || strcasecmp($cItem, 'United Kingdom') === 0) {
+                        $synonyms = ['UK', 'United Kingdom'];
+                    }
+
+                    $subConds = [];
+                    foreach ($synonyms as $syn) {
+                        $subConds[] = "l.country = ?";
+                        $subConds[] = "l.city = ?";
+                        $subConds[] = "l.city LIKE ?";
+                        $subConds[] = "l.address LIKE ?";
+                        $params[] = $syn;
+                        $params[] = $syn;
+                        $params[] = "%" . $syn . "%";
+                        $params[] = "%" . $syn . "%";
+                        $types .= "ssss";
+                    }
+                    $allConds[] = "(" . implode(" OR ", $subConds) . ")";
+                }
+                if (!empty($allConds)) {
+                    $sql .= " AND (" . implode(" OR ", $allConds) . ")";
+                }
+            }
+        }
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            error_log("LeadModel countBookingsWithFilter prepare failed: " . $this->db->error);
+            return 0;
+        }
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+        if (!$stmt->execute()) {
+            return 0;
+        }
+
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        return $row ? (int)$row['total_count'] : 0;
+    }
+
     public function getAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null, $limit = null, $offset = null, $search = null, $from_date = null, $to_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null)
     {
         // Optimized query: server e large dataset (3000+) handle korte

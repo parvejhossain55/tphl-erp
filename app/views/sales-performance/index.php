@@ -1546,7 +1546,7 @@ $jsData = [
             <div class="sp-kpi click" data-gap="bookings" style="cursor:pointer" title="Click to view Bookings in this period">
                 <div class="lbl"><i class="fa-regular fa-calendar-check"></i> Bookings</div>
                 <div class="val"><?= sp_n($o['bookings']) ?></div>
-                <div class="hint"><?= sp_tk($o['booking_value']) ?> booked this period <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;margin-left:2px"></i></div>
+                <div class="hint"><?= sp_n($o['stage_5'] ?? 0) ?> unique clients · <?= sp_tk($o['booking_value']) ?> <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;margin-left:2px"></i></div>
             </div>
             <div class="sp-kpi click" data-gap="confirmed_sales" style="cursor:pointer" title="Click to view Confirmed Sales">
                 <div class="lbl"><i class="fa-regular fa-circle-check"></i> Confirmed Sales</div>

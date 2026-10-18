@@ -52,40 +52,35 @@
                     <span class="ct">${n(v)}</span>
                     <span class="pc">${p.toFixed(1)}%</span>
                 </div>`;
-        });
 
-        if (base > 0) {
-            const contacted = m.stage_2 || 0;
-            const noResponse = m.no_response || 0;
-            const uncontacted = m.uncontacted !== undefined ? m.uncontacted : Math.max(0, base - contacted);
-            rows += `
-                <div class="sp-funnel-subgroup">
-                    <div class="sp-funnel-subgroup-title">
-                        <span><i class="fa-regular fa-phone-volume" style="margin-right:4px"></i> First Contact Status Breakdown</span>
-                        <small>Of ${n(base)} received leads</small>
-                    </div>
-                    <div class="sp-funnel-subgroup-pills">
-                        <div class="sp-funnel-subpill click" data-gap="stage_2" ${extraScope} title="Click to view Contacted leads (${n(contacted)})">
-                            <span class="dot green"></span>
-                            <span class="lbl">Contacted:</span>
-                            <span class="val">${n(contacted)}</span>
-                            <span class="pct">(${pct(contacted, base)})</span>
+            if (s === 2) {
+                const noResponse = m.no_response || 0;
+                const noResponsePct = base ? (noResponse / base) * 100 : 0;
+                rows += `
+                    <div class="sp-funnel-row no-response-row click" data-gap="no_response_leads" ${extraScope} style="margin:2px 0;cursor:pointer;" title="Click to view No Response leads">
+                        <span class="no" style="font-weight:700"><i class="fa-regular fa-phone-slash" style="font-size:11px"></i></span>
+                        <div>
+                            <div class="nm" style="font-weight:600">No Response <small style="font-size:11px;font-weight:400">(Unreachable / Not Received)</small> <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
+                            <div class="sp-bar amber"><span style="width:${Math.max(noResponsePct, noResponse ? 0.6 : 0).toFixed(2)}%"></span></div>
                         </div>
-                        <div class="sp-funnel-subpill click amber" data-gap="no_response_leads" ${extraScope} title="Click to view No Response leads (${n(noResponse)})">
-                            <span class="dot amber"></span>
-                            <span class="lbl">No Response:</span>
-                            <span class="val">${n(noResponse)}</span>
-                            <span class="pct">(${pct(noResponse, base)})</span>
+                        <span class="ct" style="font-weight:700">${n(noResponse)}</span>
+                        <span class="pc" style="font-weight:700">${noResponsePct.toFixed(1)}%</span>
+                    </div>`;
+
+                const uncontacted = m.uncontacted !== undefined ? m.uncontacted : Math.max(0, base - (m.stage_2 || 0));
+                const uncontactedPct = base ? (uncontacted / base) * 100 : 0;
+                rows += `
+                    <div class="sp-funnel-row uncontacted-row click" data-gap="uncontacted" ${extraScope} style="margin:2px 0;cursor:pointer;" title="Click to view Not Contacted leads">
+                        <span class="no" style="font-weight:700"><span style="opacity:0.4">—</span></span>
+                        <div>
+                            <div class="nm" style="font-weight:600">Not Contacted <small style="font-size:11px;font-weight:400">(Awaiting 1st contact)</small> <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;opacity:0.6;margin-left:2px"></i></div>
+                            <div class="sp-bar red"><span style="width:${Math.max(uncontactedPct, uncontacted ? 0.6 : 0).toFixed(2)}%"></span></div>
                         </div>
-                        <div class="sp-funnel-subpill click red" data-gap="uncontacted" ${extraScope} title="Click to view Not Contacted leads (${n(uncontacted)})">
-                            <span class="dot red"></span>
-                            <span class="lbl">Not Contacted:</span>
-                            <span class="val">${n(uncontacted)}</span>
-                            <span class="pct">(${pct(uncontacted, base)})</span>
-                        </div>
-                    </div>
-                </div>`;
-        }
+                        <span class="ct" style="font-weight:700">${n(uncontacted)}</span>
+                        <span class="pc" style="font-weight:700">${uncontactedPct.toFixed(1)}%</span>
+                    </div>`;
+            }
+        });
         const sel = m['stage_' + selected] || 0;
         rows += `
             <div class="sp-funnel-foot">
@@ -183,6 +178,25 @@
         if (ev) {
             ev.preventDefault();
             ev.stopPropagation();
+        }
+        if (btn.dataset.stage) {
+            const st = Number(btn.dataset.stage);
+            const funnelEl = btn.closest('#spFunnelOverview, #spFunnelTeam, #spFunnelExec') || btn.parentElement;
+            if (!isNaN(st) && funnelEl) {
+                funnelState[funnelEl.id] = funnelState[funnelEl.id] || {};
+                funnelState[funnelEl.id].selected = st;
+                $$('.sp-funnel-row', funnelEl).forEach(row => row.classList.toggle('sel', row.dataset.stage == st));
+                const foot = funnelEl.querySelector('.sp-funnel-foot');
+                if (foot && funnelState[funnelEl.id] && funnelState[funnelEl.id].m) {
+                    const m = funnelState[funnelEl.id].m;
+                    const base = m.stage_1 || 0;
+                    const sv = m['stage_' + st] || 0;
+                    if (foot.children[0]) {
+                        foot.children[0].querySelector('.v').textContent = n(sv);
+                        foot.children[0].querySelector('.s').textContent = `${esc(STAGES[st] || '')} · ${pct(sv, base)}`;
+                    }
+                }
+            }
         }
         const key = btn.dataset.gap;
         if (!key) return;

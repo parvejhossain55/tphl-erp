@@ -96,9 +96,12 @@ $activeCard = $_GET['filter_card'] ?? '';
         </a>
     </div>
     <div class="col-6 col-md-6 col-lg-4 col-xl-2">
-        <a href="<?= getStatCardLink('total_booked') ?>" class="card__wrapper stat-card text-decoration-none d-block h-100 <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>" style="cursor: pointer; <?= $activeCard === 'total_booked' ? 'border: 2px solid #10b981 !important; background-color: #f0fdf4;' : '' ?>">
+        <a href="<?= getStatCardLink('total_booked') ?>" class="card__wrapper stat-card text-decoration-none d-block h-100 <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>" style="cursor: pointer; <?= $activeCard === 'total_booked' ? 'border: 2px solid #10b981 !important; background-color: #f0fdf4;' : '' ?>" title="Total Bookings: <?= number_format($totalBookingCount) ?> (across <?= number_format($totalBookedLeadsCount ?? $totalBookingCount) ?> unique clients)">
             <div class="stat-label">Total Booked <?= !empty($filteredExecName) ? '<i class="fa-solid fa-filter ms-1 text-primary" style="font-size:9px;" title="Filtered"></i>' : '' ?></div>
-            <div class="stat-value"><?= $totalBookingCount ?></div>
+            <div class="stat-value"><?= number_format($totalBookingCount) ?></div>
+            <?php if (!empty($totalBookedLeadsCount) && $totalBookedLeadsCount != $totalBookingCount): ?>
+                <div style="font-size: 11px; color: #64748b; margin-top: 2px; font-weight: 500;"><?= number_format($totalBookedLeadsCount) ?> Leads / Clients</div>
+            <?php endif; ?>
             <div class="stat-change positive d-none">
                 <i class="bi bi-arrow-up"></i> 3.1%
             </div>

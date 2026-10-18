@@ -142,12 +142,13 @@ class LeadController extends Controller
         }
 
 
-        $totalBookingCount = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'total_booked', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
+        $totalBookingCount = $this->leadModel->countBookingsWithFilter($year, $month, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $from_date, $to_date, $filterProjectId, $filterCategoryId, $filterCountry);
+        $totalBookedLeadsCount = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'total_booked', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
         $totalTodayFollowUps = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'today_follow_up', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
         $totalTodayPendingFollowUps = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'pending_follow_ups', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
         
         //  Conversion Rate
-        $conversionRate = $leadCounts > 0 ? ($totalBookingCount / $leadCounts) * 100 : 0;
+        $conversionRate = $leadCounts > 0 ? ($totalBookedLeadsCount / $leadCounts) * 100 : 0;
         
         $totalHotLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'hot_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
         $totalContactedLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'contacted_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
@@ -284,6 +285,7 @@ class LeadController extends Controller
             "assignedUsers" => $assignedUsers,
             "leadsPercentChange" => $leadsPercentChange,
             "totalBookingCount" => $totalBookingCount,
+            "totalBookedLeadsCount" => $totalBookedLeadsCount,
             "totalTodayPendingFollowUps" => $totalTodayPendingFollowUps,
             "conversionRate" => $conversionRate,
             "totalHotLeads" => $totalHotLeads,
