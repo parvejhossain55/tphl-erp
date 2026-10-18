@@ -2,82 +2,237 @@
     .dashboard-header {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
-        padding: 2rem 0;
-        margin-bottom: 2rem;
+        padding: 1.5rem 0;
+        margin-bottom: 1.5rem;
         border-radius: 0 0 15px 15px;
     }
 
+    /* ── Accent Color Variables ── */
+    .accent-blue      { --accent: #2563eb; --accent-light: #eff6ff; --accent-dark-bg: rgba(37, 99, 235, 0.16); }
+    .accent-green     { --accent: #16a34a; --accent-light: #f0fdf4; --accent-dark-bg: rgba(22, 163, 74, 0.16); }
+    .accent-amber     { --accent: #d97706; --accent-light: #fffbeb; --accent-dark-bg: rgba(217, 119, 6, 0.16); }
+    .accent-indigo    { --accent: #4f46e5; --accent-light: #eef2ff; --accent-dark-bg: rgba(79, 70, 229, 0.16); }
+    .accent-emerald   { --accent: #059669; --accent-light: #ecfdf5; --accent-dark-bg: rgba(5, 150, 105, 0.16); }
+    .accent-orange    { --accent: #ea580c; --accent-light: #fff7ed; --accent-dark-bg: rgba(234, 88, 12, 0.16); }
+    .accent-teal      { --accent: #0d9488; --accent-light: #f0fdfa; --accent-dark-bg: rgba(13, 148, 136, 0.16); }
+    .accent-red       { --accent: #dc2626; --accent-light: #fef2f2; --accent-dark-bg: rgba(220, 38, 38, 0.16); }
+    .accent-sky       { --accent: #0284c7; --accent-light: #f0f9ff; --accent-dark-bg: rgba(2, 132, 199, 0.16); }
+    .accent-cyan      { --accent: #0891b2; --accent-light: #ecfeff; --accent-dark-bg: rgba(8, 145, 178, 0.16); }
+    .accent-rose      { --accent: #e11d48; --accent-light: #fff1f2; --accent-dark-bg: rgba(225, 29, 72, 0.16); }
+    .accent-purple    { --accent: #7c3aed; --accent-light: #faf5ff; --accent-dark-bg: rgba(124, 58, 237, 0.16); }
+    .accent-fuchsia   { --accent: #c026d3; --accent-light: #fdf4ff; --accent-dark-bg: rgba(192, 38, 211, 0.16); }
+    .accent-violet    { --accent: #6366f1; --accent-light: #f5f3ff; --accent-dark-bg: rgba(99, 102, 241, 0.16); }
+    .accent-slate     { --accent: #475569; --accent-light: #f8fafc; --accent-dark-bg: rgba(71, 85, 105, 0.16); }
+    .accent-tangerine { --accent: #ea580c; --accent-light: #fff7ed; --accent-dark-bg: rgba(234, 88, 12, 0.16); }
+
+    /* ── Base Card (Light Mode default) ── */
     .stat-card {
-        border-radius: 15px;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-        border: none;
+        background: #ffffff;
+        border: 1px solid #e2e8f0 !important;
+        border-left: 3.5px solid var(--accent, #2563eb) !important;
+        border-radius: 8px;
+        padding: 0.5rem 0.65rem !important;
+        min-height: 64px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
     }
 
     .stat-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06) !important;
+        border-color: #cbd5e1 !important;
+        border-left-color: var(--accent, #2563eb) !important;
     }
 
-    .stat-card-icon {
-        width: 52px;
-        height: 53px;
-        border-radius: 12px;
+    .stat-card .stat-value {
+        color: #0f172a !important;
+        font-size: 1.25rem !important;
+        font-weight: 700 !important;
+        line-height: 1.15;
+        margin: 0 !important;
+        letter-spacing: -0.3px;
+    }
+
+    .stat-card .stat-label {
+        color: #64748b !important;
+        font-size: 9.5px !important;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.35px;
+        margin-bottom: 2px !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: flex;
+        align-items: center;
+    }
+
+    .stat-card .stat-label i {
+        color: var(--accent);
+        margin-right: 4px;
+    }
+
+    .stat-card .card-hint {
+        color: #94a3b8 !important;
+        font-size: 9px !important;
+        display: block;
+        margin-top: 1px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .stat-card .stat-unit {
+        font-size: 9.5px;
+        font-weight: 600;
+        color: #64748b;
+    }
+
+    .stat-card .stat-icon-badge {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1rem;
+        font-size: 0.95rem;
+        flex-shrink: 0;
+        background: var(--accent-light, #f1f5f9);
+        color: var(--accent, #2563eb);
+        transition: transform 0.18s ease;
     }
 
-    .stat-card-blue {
-        background: linear-gradient(135deg, #1abc9c 0%, #198754 100%);
+    .stat-card:hover .stat-icon-badge {
+        transform: scale(1.08);
     }
 
-    .stat-card-green {
-        background: linear-gradient(135deg, #19ab62 0%, #60bbc1 100%);
-    }
-
-    .stat-card-green {
-        background: linear-gradient(135deg, #19ab62 0%, #60bbc1 100%);
-    }
-
-    .stat-card-purple {
-        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-    }
-
-    .stat-value {
-        font-size: 1.5rem;
-        font-weight: bold;
-        margin: 0.5rem 0;
-    }
-
-    .stat-label {
-        font-size: 11px;
+    .stat-pill-badge {
+        font-size: 9px;
         font-weight: 600;
-        text-transform: uppercase;
-        color: #718096;
+        padding: 1.5px 5px;
+        border-radius: 9999px;
+        line-height: 1.2;
+        background: var(--accent-light, #f1f5f9);
+        color: var(--accent, #2563eb);
+        border: 1px solid rgba(0, 0, 0, 0.05);
     }
 
+    /* ── Clickable Link & Arrow ── */
+    a.stat-card-link {
+        display: block;
+        text-decoration: none;
+        color: inherit;
+        border-radius: 8px;
+    }
+    a.stat-card-link .card-nav-arrow {
+        position: absolute;
+        top: 5px; 
+        right: 7px;
+        font-size: 0.55rem;
+        color: var(--accent, #64748b);
+        opacity: 0;
+        transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+    a.stat-card-link:hover .card-nav-arrow {
+        opacity: 0.75;
+        transform: translateX(2px);
+    }
+
+    /* ── DARK THEME COMPATIBILITY ── */
+    [bd-theme="bd-theme-dark"] .stat-card,
+    [data-theme="dark"] .stat-card,
+    body.dark .stat-card,
+    .dark .stat-card {
+        background: #1e293b !important;
+        border-color: #334155 !important;
+        border-left-color: var(--accent) !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+    }
+
+    [bd-theme="bd-theme-dark"] .stat-card:hover,
+    [data-theme="dark"] .stat-card:hover,
+    body.dark .stat-card:hover,
+    .dark .stat-card:hover {
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45) !important;
+        border-color: #475569 !important;
+        border-left-color: var(--accent) !important;
+    }
+
+    [bd-theme="bd-theme-dark"] .stat-card .stat-value,
+    [data-theme="dark"] .stat-card .stat-value,
+    body.dark .stat-card .stat-value,
+    .dark .stat-card .stat-value {
+        color: #f8fafc !important;
+    }
+
+    [bd-theme="bd-theme-dark"] .stat-card .stat-label,
+    [data-theme="dark"] .stat-card .stat-label,
+    body.dark .stat-card .stat-label,
+    .dark .stat-card .stat-label {
+        color: #94a3b8 !important;
+    }
+
+    [bd-theme="bd-theme-dark"] .stat-card .card-hint,
+    [data-theme="dark"] .stat-card .card-hint,
+    body.dark .stat-card .card-hint,
+    .dark .stat-card .card-hint {
+        color: #64748b !important;
+    }
+
+    [bd-theme="bd-theme-dark"] .stat-card .stat-unit,
+    [data-theme="dark"] .stat-card .stat-unit,
+    body.dark .stat-card .stat-unit,
+    .dark .stat-card .stat-unit {
+        color: #94a3b8 !important;
+    }
+
+    [bd-theme="bd-theme-dark"] .stat-card .stat-icon-badge,
+    [data-theme="dark"] .stat-card .stat-icon-badge,
+    body.dark .stat-card .stat-icon-badge,
+    .dark .stat-card .stat-icon-badge {
+        background: var(--accent-dark-bg, rgba(255, 255, 255, 0.08)) !important;
+        color: var(--accent) !important;
+    }
+
+    [bd-theme="bd-theme-dark"] .stat-pill-badge,
+    [data-theme="dark"] .stat-pill-badge,
+    body.dark .stat-pill-badge,
+    .dark .stat-pill-badge {
+        background: var(--accent-dark-bg, rgba(255, 255, 255, 0.1)) !important;
+        color: #f8fafc !important;
+        border-color: rgba(255, 255, 255, 0.1) !important;
+    }
+
+    /* ── Responsive Behavior across Devices ── */
     @media (max-width: 576px) {
         .stat-card {
-            padding: 1rem;
-            margin-bottom: 1rem;
+            padding: 0.4rem 0.5rem !important;
+            min-height: 58px;
         }
-
-        .stat-value {
-            font-size: 1.25rem;
+        .stat-card .stat-value {
+            font-size: 1.1rem !important;
         }
-
-        .stat-card-icon {
-            width: 40px;
-            height: 40px;
-            font-size: 0.875rem;
+        .stat-card .stat-label {
+            font-size: 8.5px !important;
         }
+        .stat-card .card-hint {
+            font-size: 8px !important;
+        }
+        .stat-card .stat-icon-badge {
+            width: 26px;
+            height: 26px;
+            font-size: 0.75rem;
+        }
+    }
 
-        .card__icon {
+    @media (max-width: 400px) {
+        .stat-card .stat-icon-badge {
             display: none !important;
-            /* Hide large icon on very small screens to save space */
         }
     }
 
@@ -105,44 +260,6 @@
     .info-box strong {
         color: #667eea;
     }
-
-    /* ── Clickable card navigation ── */
-    a.stat-card-link {
-        display: block;
-        text-decoration: none;
-        color: inherit;
-        border-radius: 15px;
-    }
-    a.stat-card-link .stat-card {
-        position: relative;
-        border: 1.5px solid transparent !important;
-        transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
-    }
-    a.stat-card-link:hover .stat-card {
-        transform: translateY(-6px);
-        box-shadow: 0 14px 30px rgba(102,126,234,0.18) !important;
-        border-color: rgba(102,126,234,0.35) !important;
-    }
-    a.stat-card-link .card-nav-arrow {
-        position: absolute;
-        top: 10px; right: 12px;
-        font-size: 0.65rem;
-        color: #bbb;
-        opacity: 0;
-        transition: opacity 0.2s, transform 0.2s;
-    }
-    a.stat-card-link:hover .card-nav-arrow {
-        opacity: 1;
-        transform: translateX(3px);
-    }
-    .card-hint {
-        font-size: 10px;
-        color: #a0aec0;
-        display: block;
-        margin-top: 2px;
-        transition: color 0.2s;
-    }
-    a.stat-card-link:hover .card-hint { color: #667eea; }
 </style>
 
 <!-- Dashboard Header -->
@@ -150,214 +267,332 @@
 <div class="app__slide-wrapper">
 
     <!-- HEADER -->
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
-            <h3 class="mb-1">Executive Dashboard</h3>
-            <p class="mb-0 opacity-75 small text-muted">Today's Summary & Performance</p>
+            <h4 class="mb-0 fw-bold">Executive Dashboard</h4>
+            <p class="mb-0 opacity-75 small text-muted">Summary & Performance Metrics</p>
         </div>
     </div>
 
 
-    <div class="row g-20 mb-4 align-items-stretch">
-        <!-- Pending Tasks -->
-        <div class="col-12 col-sm-6 col-lg-3">
-            <a href="<?= $GLOBALS['base_url'] ?>/task-dashboard" class="stat-card-link">
-                <div class="card__wrapper stat-card shadow-sm">
-                    <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
-                    <div class="card-body d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="stat-label mb-2"><i class="fa-regular fa-clock me-1"></i> Pending Tasks</p>
-                            <h2 class="stat-value text-primary"><?= $pendingTasks ?></h2>
-                            <span class="card-hint">View all tasks →</span>
-                        </div>
-                        <div class="card__icon"><span><i class="fa-solid fa-clock"></i></span></div>
-                    </div>
-                </div>
-            </a>
-        </div>
+    <!-- 16 CORE SERIAL METRICS CARDS -->
+    <div class="row g-2 mb-3 align-items-stretch">
 
-        <!-- Today Leads Assigned -->
-        <div class="col-12 col-sm-6 col-lg-3">
-            <a href="<?= $GLOBALS['base_url'] ?>/today-leads" class="stat-card-link">
-                <div class="card__wrapper stat-card shadow-sm">
-                    <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
-                    <div class="card-body d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="stat-label mb-2"><i class="fa-solid fa-user-plus me-1"></i> Today Leads Assigned</p>
-                            <h2 class="stat-value text-success"><?= $todayLeadsCount ?? 0 ?></h2>
-                            <span class="card-hint">View today's leads →</span>
-                        </div>
-                        <div class="card__icon"><span><i class="fa-solid fa-user-plus"></i></span></div>
-                    </div>
-                </div>
-            </a>
-        </div>
-
-        <!-- Missing Follow-Ups -->
-        <div class="col-12 col-sm-6 col-lg-3">
-            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter=missing_followup" class="stat-card-link">
-                <div class="card__wrapper stat-card shadow-sm" style="border-left: 4px solid #dc3545;">
-                    <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
-                    <div class="card-body d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="stat-label mb-2" style="color: #b02a37; font-weight: 600;"><i class="fa-solid fa-calendar-times me-1"></i> Missing Follow-Ups</p>
-                            <h2 class="stat-value text-danger" style="font-weight: 700;"><?= $missingFollowUpCount ?? 0 ?></h2>
-                            <span class="card-hint" style="color: #dc3545;">View missing follow-ups →</span>
-                        </div>
-                        <div class="card__icon" style="color: #f8d7da;"><span><i class="fa-solid fa-calendar-times"></i></span></div>
-                    </div>
-                </div>
-            </a>
-        </div>
-
-        <!-- Today Follow Up Complete -->
-        <div class="col-12 col-sm-6 col-lg-3">
-            <a href="<?= $GLOBALS['base_url'] ?>/my-onboarding-projects" class="stat-card-link">
-                <div class="card__wrapper stat-card shadow-sm">
-                    <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
-                    <div class="card-body d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="stat-label mb-2"><i class="fa-solid fa-check-circle me-1"></i> Today Follow Up Complete</p>
-                            <h2 class="stat-value text-info"><?= $todayFollowUpComplete ?? 0 ?></h2>
-                            <span class="card-hint">View completed follow-ups →</span>
-                        </div>
-                        <div class="card__icon"><span><i class="fa-solid fa-check-circle"></i></span></div>
-                    </div>
-                </div>
-            </a>
-        </div>
-
-        <!-- My Total Sale -->
-        <div class="col-12 col-sm-6 col-lg-3">
-            <a href="<?= $GLOBALS['base_url'] ?>/my-onboarding-projects" class="stat-card-link">
-                <div class="card__wrapper stat-card shadow-sm">
-                    <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
-                    <div class="card-body d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="stat-label mb-2"><i class="fa-solid fa-bangladeshi-taka-sign me-1"></i> My Total Sale</p>
-                            <h2 class="stat-value text-info"><?= $myTotalShareSold['total_flats'] ?></h2>
-                            <span class="card-hint">View all bookings →</span>
-                        </div>
-                        <div class="card__icon"><span><i class="fa-solid fa-bangladeshi-taka-sign"></i></span></div>
-                    </div>
-                </div>
-            </a>
-        </div>
-
-        <!-- Total Leads Assigned -->
-        <div class="col-12 col-sm-6 col-lg-3">
+        <!-- 1. Total Leads Assigned -->
+        <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
             <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads" class="stat-card-link">
-                <div class="card__wrapper stat-card shadow-sm">
+                <div class="stat-card accent-blue shadow-xs h-100">
                     <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
-                    <div class="card-body d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="stat-label mb-2"><i class="fa-solid fa-users me-1"></i> Total Leads Assigned</p>
-                            <h2 class="stat-value text-info"><?= $getAllLeadsCount ?></h2>
-                            <span class="card-hint">View all assigned leads →</span>
+                    <div class="d-flex justify-content-between align-items-center w-100">
+                        <div class="overflow-hidden pe-1 flex-grow-1">
+                            <span class="stat-label"><i class="fa-solid fa-users"></i> Total Leads Assigned</span>
+                            <div class="d-flex align-items-baseline gap-1 mt-1">
+                                <span class="stat-value"><?= number_format($totalLeadsAssigned ?? $getAllLeadsCount ?? 0) ?></span>
+                            </div>
+                            <span class="card-hint">All assigned leads &rarr;</span>
                         </div>
-                        <div class="card__icon"><span><i class="fa-solid fa-users"></i></span></div>
+                        <div class="stat-icon-badge"><i class="fa-solid fa-users"></i></div>
                     </div>
                 </div>
             </a>
         </div>
 
-        <!-- Monthly Site Visit Target -->
-        <div class="col-12 col-sm-6 col-lg-3">
-            <div class="card__wrapper stat-card shadow-sm">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <p class="stat-label mb-2"><i class="fa-solid fa-map-location-dot me-1"></i> Monthly Site Visit
-                            Target</p>
-                        <h2 class="stat-value text-info"><?= $monthlySiteVisitTarget ?></h2>
-                    </div>
-                    <div class="card__icon"><span><i class="fa-solid fa-map-location-dot"></i></span></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- My Monthly Booking Target -->
-        <div class="col-12 col-sm-6 col-lg-3">
-            <div class="card__wrapper stat-card shadow-sm">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <p class="stat-label mb-2"><i class="fa-solid fa-file-invoice-dollar me-1"></i> My Monthly
-                            Booking Target</p>
-                        <h2 class="stat-value text-info"><?= $monthlyBookingTarget ?></h2>
-                    </div>
-                    <div class="card__icon"><span><i class="fa-solid fa-file-invoice-dollar"></i></span></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Monthly Visit Complete -->
-        <div class="col-12 col-sm-6 col-lg-3">
-            <div class="card__wrapper stat-card shadow-sm">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <p class="stat-label mb-2"><i class="fa-solid fa-calendar-check me-1"></i> Monthly Visit
-                            Complete
-                            <span class="stat-value text-info ms-2"><?= $monthlyVisitComplete ?></span>
-                        </p>
-                        <p class="stat-label mb-2"><i class="fa-solid fa-percent me-1"></i> Monthly Target Visit
-                            Achievement
-                            <span class="stat-value text-info ms-2"><?= $visitAchievement ?>%</span>
-                        </p>
-                    </div>
-                    <div class="card__icon"><span><i class="fa-solid fa-calendar-check"></i></span></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Monthly Booking Target Complete -->
-        <div class="col-12 col-sm-6 col-lg-3">
-            <a href="<?= $GLOBALS['base_url'] ?>/my-onboarding-projects" class="stat-card-link">
-                <div class="card__wrapper stat-card shadow-sm">
+        <!-- 2. Total Leads Contacted (with % Contacted) -->
+        <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
+            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter_card=contacted" class="stat-card-link">
+                <div class="stat-card accent-green shadow-xs h-100">
                     <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
-                    <div class="card-body d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="stat-label mb-2"><i class="fa-solid fa-check me-1"></i> Monthly Booking Target Complete</p>
-                            <h2 class="stat-value text-info"><?= $monthlyBookingComplete ?></h2>
-                            <span class="card-hint">View booking records →</span>
+                    <div class="d-flex justify-content-between align-items-center w-100">
+                        <div class="overflow-hidden pe-1 flex-grow-1">
+                            <span class="stat-label"><i class="fa-solid fa-phone-volume"></i> Total Leads Contacted</span>
+                            <div class="d-flex align-items-baseline gap-1 mt-1">
+                                <span class="stat-value"><?= number_format($totalLeadsContacted ?? 0) ?></span>
+                                <span class="stat-pill-badge">
+                                    <?= $totalContactedPct ?? 0 ?>%
+                                </span>
+                            </div>
+                            <span class="card-hint">Contacted leads &rarr;</span>
                         </div>
-                        <div class="card__icon"><span><i class="fa-solid fa-check"></i></span></div>
+                        <div class="stat-icon-badge"><i class="fa-solid fa-phone-volume"></i></div>
                     </div>
                 </div>
             </a>
         </div>
 
-        <!-- Deal Lost -->
-        <div class="col-12 col-sm-6 col-lg-3">
-            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?last_action=Deal+Lost" class="stat-card-link">
-                <div class="card__wrapper stat-card shadow-sm">
+        <!-- 3. Total Not Contacted -->
+        <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
+            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter_card=not_contacted" class="stat-card-link">
+                <div class="stat-card accent-amber shadow-xs h-100">
                     <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
-                    <div class="card-body d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="stat-label mb-2"><i class="fa-solid fa-xmark me-1"></i> Deal Lost</p>
-                            <h2 class="stat-value text-danger"><?= $dealsLostAll ?></h2>
-                            <span class="card-hint">View lost deals →</span>
+                    <div class="d-flex justify-content-between align-items-center w-100">
+                        <div class="overflow-hidden pe-1 flex-grow-1">
+                            <span class="stat-label"><i class="fa-solid fa-phone-slash"></i> Total Not Contacted</span>
+                            <div class="d-flex align-items-baseline gap-1 mt-1">
+                                <span class="stat-value"><?= number_format($totalNotContacted ?? 0) ?></span>
+                                <span class="stat-pill-badge">
+                                    <?= round(100 - ($totalContactedPct ?? 0), 1) ?>%
+                                </span>
+                            </div>
+                            <span class="card-hint">Pending initial contact &rarr;</span>
                         </div>
-                        <div class="card__icon"><span><i class="fa-solid fa-xmark"></i></span></div>
+                        <div class="stat-icon-badge"><i class="fa-solid fa-phone-slash"></i></div>
                     </div>
                 </div>
             </a>
         </div>
 
-        <!-- Deal Win -->
-        <div class="col-12 col-sm-6 col-lg-3">
+        <!-- 4. Today Leads Assigned -->
+        <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
+            <a href="<?= $GLOBALS['base_url'] ?>/today-leads" class="stat-card-link">
+                <div class="stat-card accent-indigo shadow-xs h-100">
+                    <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+                    <div class="d-flex justify-content-between align-items-center w-100">
+                        <div class="overflow-hidden pe-1 flex-grow-1">
+                            <span class="stat-label"><i class="fa-solid fa-user-plus"></i> Today Leads Assigned</span>
+                            <div class="d-flex align-items-baseline gap-1 mt-1">
+                                <span class="stat-value"><?= number_format($todayLeadsAssigned ?? $todayLeadsCount ?? 0) ?></span>
+                            </div>
+                            <span class="card-hint">Assigned today (<?= date('d M') ?>) &rarr;</span>
+                        </div>
+                        <div class="stat-icon-badge"><i class="fa-solid fa-user-plus"></i></div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 5. Today Leads Contacted -->
+        <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
+            <a href="<?= $GLOBALS['base_url'] ?>/today-leads?filter_card=contacted" class="stat-card-link">
+                <div class="stat-card accent-emerald shadow-xs h-100">
+                    <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+                    <div class="d-flex justify-content-between align-items-center w-100">
+                        <div class="overflow-hidden pe-1 flex-grow-1">
+                            <span class="stat-label"><i class="fa-solid fa-headset"></i> Today Leads Contacted</span>
+                            <div class="d-flex align-items-baseline gap-1 mt-1">
+                                <span class="stat-value"><?= number_format($todayLeadsContacted ?? 0) ?></span>
+                            </div>
+                            <span class="card-hint">Follow-up complete today &rarr;</span>
+                        </div>
+                        <div class="stat-icon-badge"><i class="fa-solid fa-headset"></i></div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 6. Today Not Contacted -->
+        <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
+            <a href="<?= $GLOBALS['base_url'] ?>/today-leads?filter_card=not_contacted" class="stat-card-link">
+                <div class="stat-card accent-orange shadow-xs h-100">
+                    <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+                    <div class="d-flex justify-content-between align-items-center w-100">
+                        <div class="overflow-hidden pe-1 flex-grow-1">
+                            <span class="stat-label"><i class="fa-solid fa-user-clock"></i> Today Not Contacted</span>
+                            <div class="d-flex align-items-baseline gap-1 mt-1">
+                                <span class="stat-value"><?= number_format($todayNotContacted ?? 0) ?></span>
+                            </div>
+                            <span class="card-hint">Remaining today leads &rarr;</span>
+                        </div>
+                        <div class="stat-icon-badge"><i class="fa-solid fa-user-clock"></i></div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 7. Total Follow-Up Complete -->
+        <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
+            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter_card=contacted" class="stat-card-link">
+                <div class="stat-card accent-teal shadow-xs h-100">
+                    <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+                    <div class="d-flex justify-content-between align-items-center w-100">
+                        <div class="overflow-hidden pe-1 flex-grow-1">
+                            <span class="stat-label"><i class="fa-solid fa-clipboard-check"></i> Total Follow-Up Complete</span>
+                            <div class="d-flex align-items-baseline gap-1 mt-1">
+                                <span class="stat-value"><?= number_format($totalFollowUpComplete ?? 0) ?></span>
+                            </div>
+                            <span class="card-hint">All completed follow-ups &rarr;</span>
+                        </div>
+                        <div class="stat-icon-badge"><i class="fa-solid fa-clipboard-check"></i></div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 8. Total Follow-Up Missing -->
+        <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
+            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter=missing_followup" class="stat-card-link">
+                <div class="stat-card accent-red shadow-xs h-100">
+                    <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+                    <div class="d-flex justify-content-between align-items-center w-100">
+                        <div class="overflow-hidden pe-1 flex-grow-1">
+                            <span class="stat-label"><i class="fa-solid fa-calendar-xmark"></i> Total Follow-Up Missing</span>
+                            <div class="d-flex align-items-baseline gap-1 mt-1">
+                                <span class="stat-value text-danger"><?= number_format($totalFollowUpMissing ?? $missingFollowUpCount ?? 0) ?></span>
+                            </div>
+                            <span class="card-hint">Overdue follow-ups &rarr;</span>
+                        </div>
+                        <div class="stat-icon-badge"><i class="fa-solid fa-calendar-xmark"></i></div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 9. Today Follow-Ups (Scheduled for Today) -->
+        <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
+            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?followup_date=<?= date('Y-m-d') ?>" class="stat-card-link">
+                <div class="stat-card accent-sky shadow-xs h-100">
+                    <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+                    <div class="d-flex justify-content-between align-items-center w-100">
+                        <div class="overflow-hidden pe-1 flex-grow-1">
+                            <span class="stat-label"><i class="fa-solid fa-calendar-day"></i> Today Follow-Ups</span>
+                            <div class="d-flex align-items-baseline gap-1 mt-1">
+                                <span class="stat-value"><?= number_format($todayFollowUps ?? 0) ?></span>
+                            </div>
+                            <span class="card-hint">Scheduled for today (<?= date('d M') ?>) &rarr;</span>
+                        </div>
+                        <div class="stat-icon-badge"><i class="fa-solid fa-calendar-day"></i></div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 10. Today Follow-Up Complete -->
+        <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
+            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?followup_date=<?= date('Y-m-d') ?>" class="stat-card-link">
+                <div class="stat-card accent-cyan shadow-xs h-100">
+                    <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+                    <div class="d-flex justify-content-between align-items-center w-100">
+                        <div class="overflow-hidden pe-1 flex-grow-1">
+                            <span class="stat-label"><i class="fa-solid fa-circle-check"></i> Today Follow-Up Complete</span>
+                            <div class="d-flex align-items-baseline gap-1 mt-1">
+                                <span class="stat-value"><?= number_format($todayFollowUpComplete ?? 0) ?></span>
+                            </div>
+                            <span class="card-hint">Completed of today &rarr;</span>
+                        </div>
+                        <div class="stat-icon-badge"><i class="fa-solid fa-circle-check"></i></div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 11. Remaining Today Follow-Up -->
+        <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
+            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?followup_date=<?= date('Y-m-d') ?>" class="stat-card-link">
+                <div class="stat-card accent-rose shadow-xs h-100">
+                    <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+                    <div class="d-flex justify-content-between align-items-center w-100">
+                        <div class="overflow-hidden pe-1 flex-grow-1">
+                            <span class="stat-label"><i class="fa-solid fa-hourglass-half"></i> Remaining Today Follow-Up</span>
+                            <div class="d-flex align-items-baseline gap-1 mt-1">
+                                <span class="stat-value"><?= number_format($remainingTodayFollowUp ?? 0) ?></span>
+                            </div>
+                            <span class="card-hint">Pending of today &rarr;</span>
+                        </div>
+                        <div class="stat-icon-badge"><i class="fa-solid fa-hourglass-half"></i></div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 12. Total Sales / Booked (Units) -->
+        <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
             <a href="<?= $GLOBALS['base_url'] ?>/lead-bookings" class="stat-card-link">
-                <div class="card__wrapper stat-card shadow-sm">
+                <div class="stat-card accent-purple shadow-xs h-100">
                     <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
-                    <div class="card-body d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="stat-label mb-2"><i class="fa-solid fa-check-double me-1"></i> Deal Win</p>
-                            <h2 class="stat-value text-success"><?= $dealsWinAll ?></h2>
-                            <span class="card-hint">View won deals →</span>
+                    <div class="d-flex justify-content-between align-items-center w-100">
+                        <div class="overflow-hidden pe-1 flex-grow-1">
+                            <span class="stat-label"><i class="fa-solid fa-bookmark"></i> Total Sales / Booked</span>
+                            <div class="d-flex align-items-baseline gap-1 mt-1">
+                                <span class="stat-value"><?= number_format($totalSalesBookedUnits ?? $myTotalShareSold['total_flats'] ?? 0) ?></span>
+                                <span class="stat-unit ms-1">Units</span>
+                            </div>
+                            <span class="card-hint">All booked units &rarr;</span>
                         </div>
-                        <div class="card__icon"><span><i class="fa-solid fa-check-double"></i></span></div>
+                        <div class="stat-icon-badge"><i class="fa-solid fa-bookmark"></i></div>
                     </div>
                 </div>
             </a>
         </div>
+
+        <!-- 13. Monthly Booking Target -->
+        <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
+            <div class="stat-card accent-fuchsia shadow-xs h-100">
+                <div class="d-flex justify-content-between align-items-center w-100">
+                    <div class="overflow-hidden pe-1 flex-grow-1">
+                        <span class="stat-label"><i class="fa-solid fa-bullseye"></i> Monthly Target</span>
+                        <div class="d-flex align-items-baseline gap-1 mt-1">
+                            <span class="stat-value"><?= number_format($monthlyBookingTarget ?? 0) ?></span>
+                            <span class="stat-unit ms-1">Units</span>
+                        </div>
+                        <span class="card-hint">From set-target (<?= date('M Y', mktime(0, 0, 0, $selectedStartMonth ?? (int)date('m'), 1, $selectedYear ?? (int)date('Y'))) ?>)</span>
+                    </div>
+                    <div class="stat-icon-badge"><i class="fa-solid fa-bullseye"></i></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 14. Current Month Booking -->
+        <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
+            <a href="<?= $GLOBALS['base_url'] ?>/lead-bookings" class="stat-card-link">
+                <div class="stat-card accent-violet shadow-xs h-100">
+                    <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+                    <div class="d-flex justify-content-between align-items-center w-100">
+                        <div class="overflow-hidden pe-1 flex-grow-1">
+                            <span class="stat-label"><i class="fa-solid fa-file-signature"></i> Current Month Booking</span>
+                            <div class="d-flex align-items-baseline gap-1 mt-1">
+                                <span class="stat-value"><?= number_format($currentMonthBooking ?? $monthlyBookingComplete ?? 0) ?></span>
+                                <span class="stat-unit ms-1">Units</span>
+                                <?php if (!empty($monthlyBookingTarget) && (int)$monthlyBookingTarget > 0): ?>
+                                    <span class="stat-pill-badge ms-auto">
+                                        <?= $bookingAchievement ?? 0 ?>%
+                                    </span>
+                                <?php endif; ?>
+                            </div>
+                            <span class="card-hint">Booked in <?= date('M Y') ?> &rarr;</span>
+                        </div>
+                        <div class="stat-icon-badge"><i class="fa-solid fa-file-signature"></i></div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 15. Total Visited Complete -->
+        <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
+            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?last_action=visited" class="stat-card-link">
+                <div class="stat-card accent-slate shadow-xs h-100">
+                    <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+                    <div class="d-flex justify-content-between align-items-center w-100">
+                        <div class="overflow-hidden pe-1 flex-grow-1">
+                            <span class="stat-label"><i class="fa-solid fa-location-dot"></i> Total Visited Complete</span>
+                            <div class="d-flex align-items-baseline gap-1 mt-1">
+                                <span class="stat-value"><?= number_format($totalVisitedComplete ?? 0) ?></span>
+                            </div>
+                            <span class="card-hint">All-time visited leads &rarr;</span>
+                        </div>
+                        <div class="stat-icon-badge"><i class="fa-solid fa-location-dot"></i></div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 16. This Month Visited -->
+        <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
+            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?last_action=visited" class="stat-card-link">
+                <div class="stat-card accent-tangerine shadow-xs h-100">
+                    <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+                    <div class="d-flex justify-content-between align-items-center w-100">
+                        <div class="overflow-hidden pe-1 flex-grow-1">
+                            <span class="stat-label"><i class="fa-solid fa-person-walking"></i> This Month Visited</span>
+                            <div class="d-flex align-items-baseline gap-1 mt-1">
+                                <span class="stat-value"><?= number_format($thisMonthVisited ?? $monthlyVisitComplete ?? 0) ?></span>
+                            </div>
+                            <span class="card-hint">Visits in <?= date('F Y') ?> &rarr;</span>
+                        </div>
+                        <div class="stat-icon-badge"><i class="fa-solid fa-person-walking"></i></div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
     </div>
 
 

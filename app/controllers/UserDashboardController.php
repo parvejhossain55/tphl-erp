@@ -134,6 +134,7 @@ class UserDashboardController extends Controller
 
         $leadIds = !empty($todayLeads) ? array_column($todayLeads, 'id') : [];
         $followUpHistories = [];
+        $leadBookings = [];
         if (!empty($leadIds)) {
             $idsStr = implode(',', array_map('intval', $leadIds));
             $fuQuery = $this->db->query("SELECT fu.*, l.full_name, p.name AS project_name, f.flat_name 
@@ -147,8 +148,16 @@ class UserDashboardController extends Controller
                     $followUpHistories[$row['lead_id']][] = $row;
                 }
             }
+
+            $bkQuery = $this->db->query("SELECT * FROM lead_bookings WHERE lead_id IN ($idsStr) AND deleted_at IS NULL");
+            if ($bkQuery) {
+                while($row = $bkQuery->fetch_assoc()) {
+                    $leadBookings[$row['lead_id']][] = $row;
+                }
+            }
         }
 
+        $filterCard = $_GET['filter_card'] ?? null;
         $deleteRequests = !empty($leadIds) ? $this->leadModel->getPendingDeleteRequestsByLeadIds($leadIds) : [];
         $transferableUsers = $this->userModel->getSalesTransferableUsers();
 
@@ -158,6 +167,8 @@ class UserDashboardController extends Controller
             "todayLeads"    => $todayLeads,
             "followUpCounts" => $followUpCounts,
             "followUpHistories" => $followUpHistories,
+            "leadBookings"  => $leadBookings,
+            "filterCard"    => $filterCard,
             "deleteRequests" => $deleteRequests,
             "bookingCount"    => $bookingCount,
             "todayFollowUp"    => $todayFollowUp,
@@ -237,9 +248,10 @@ class UserDashboardController extends Controller
         $dealsWinAll = $this->salesTargetModel->getDealsClosedAllTime($loggedUserId);
         $dealsLostAll = $this->salesTargetModel->getAllDealsLost($loggedUserId);
 
+        // Fetch Executive Serial Matrix Metrics
+        $matrixMetrics = $this->leadModel->getExecutiveDashboardMetrics($loggedUserId, $selectedYear, $startMonth, $endMonth);
 
-
-        $this->view("sales-executive/my-dashboard", [
+        $viewData = array_merge([
             "current_route"   => "my-dashboard",
             "page_title"      => "my-dashboard",
             "todayLeads"      => $todayLeads,
@@ -267,7 +279,10 @@ class UserDashboardController extends Controller
             "selectedStartMonth"      => $selectedStartMonth,
             "selectedEndMonth"        => $selectedEndMonth,
             "filterType"              => $filterType,
-        ]);
+            "matrixMetrics"           => $matrixMetrics,
+        ], $matrixMetrics);
+
+        $this->view("sales-executive/my-dashboard", $viewData);
     }
     // today follow up kpi
     public function updateFollowUpStatusNote()
