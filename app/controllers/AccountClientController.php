@@ -212,8 +212,12 @@ public function indexTwo($bookingId = null)
             ];
         }
         
-        // Add booking money transaction at the beginning and re-sort
+        // Add booking money transaction at the beginning
         array_unshift($transactions, $bookingMoneyTransaction);
+    }
+    
+    // Always ensure transactions are strictly sorted in chronological business order
+    if (is_array($transactions) && method_exists($this->clientModel, 'sortTransactions')) {
         $this->clientModel->sortTransactions($transactions);
     }
 
@@ -1694,8 +1698,12 @@ public function indexTwoView($bookingId = null)
             ];
         }
         
-        // Add booking money transaction at the beginning and re-sort
+        // Add booking money transaction at the beginning
         array_unshift($transactions, $bookingMoneyTransaction);
+    }
+    
+    // Always ensure transactions are strictly sorted in chronological business order
+    if (is_array($transactions) && method_exists($this->clientModel, 'sortTransactions')) {
         $this->clientModel->sortTransactions($transactions);
     }
     

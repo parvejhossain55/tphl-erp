@@ -34,6 +34,9 @@ if (isset($error_message) && !empty($error_message)):
 <?php
 // Check if land share is completed (enables Add Transaction for dev charges & EMI)
 $accountModel = new AccountClient();
+if (isset($transactions) && is_array($transactions) && method_exists($accountModel, 'sortTransactions')) {
+    $accountModel->sortTransactions($transactions);
+}
 $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
 
 $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
