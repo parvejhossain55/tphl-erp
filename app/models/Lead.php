@@ -34,6 +34,24 @@ class Lead extends Model
         return [self::$hasIsAutomatedCol, self::$hasDistributeCol];
     }
 
+    protected static array $tableColumnsCache = [];
+
+    public function hasTableColumn(string $table, string $column): bool
+    {
+        if (!isset(self::$tableColumnsCache[$table])) {
+            self::$tableColumnsCache[$table] = [];
+            if ($this->db) {
+                try {
+                    $res = $this->db->query("SHOW COLUMNS FROM `" . $this->db->real_escape_string($table) . "`");
+                    while ($res && $r = $res->fetch_assoc()) {
+                        self::$tableColumnsCache[$table][$r['Field']] = true;
+                    }
+                } catch (Throwable $e) {}
+            }
+        }
+        return isset(self::$tableColumnsCache[$table][$column]);
+    }
+
     public function ensureDeleteRequestsTable()
     {
         static $checked = false;
@@ -444,7 +462,7 @@ class Lead extends Model
 
         // Date range filter
         if ($applyCreatedDateFilter) {
-            $dateCol = (!empty($assigned_user) || (isset($assigned) && $assigned === 'assigned')) ? 'COALESCE(NULLIF(l.assigned_at, \'0000-00-00 00:00:00\'), l.created_at)' : 'l.created_at';
+            $dateCol = (!empty($assigned_user) || (isset($assigned) && $assigned === 'assigned')) ? "(CASE WHEN (l.assigned_at IS NOT NULL AND l.assigned_at > '1970-01-01 00:00:00') THEN l.assigned_at ELSE l.created_at END)" : 'l.created_at';
             
             if (!empty($from_date) && !empty($to_date)) {
                 $sql .= " AND DATE($dateCol) BETWEEN ? AND ?";
@@ -811,7 +829,7 @@ class Lead extends Model
 
         // Date range filter
         if ($applyCreatedDateFilter) {
-            $dateCol = (!empty($assigned_user) || (isset($assigned) && $assigned === 'assigned')) ? 'COALESCE(NULLIF(l.assigned_at, \'0000-00-00 00:00:00\'), l.created_at)' : 'l.created_at';
+            $dateCol = (!empty($assigned_user) || (isset($assigned) && $assigned === 'assigned')) ? "(CASE WHEN (l.assigned_at IS NOT NULL AND l.assigned_at > '1970-01-01 00:00:00') THEN l.assigned_at ELSE l.created_at END)" : 'l.created_at';
 
             if (!empty($from_date) && !empty($to_date)) {
                 $sql .= " AND DATE($dateCol) BETWEEN ? AND ?";
@@ -1437,7 +1455,7 @@ class Lead extends Model
         $types  = "i";
 
         $dateCol = ($date_type === 'assigned_date') 
-            ? "COALESCE(NULLIF(NULLIF(leads.assigned_at, '0000-00-00 00:00:00'), ''), leads.created_at)" 
+            ? "(CASE WHEN (leads.assigned_at IS NOT NULL AND leads.assigned_at > '1970-01-01 00:00:00') THEN leads.assigned_at ELSE leads.created_at END)" 
             : "leads.created_at";
 
         if (!empty($from_date) && !empty($to_date)) {
@@ -1658,7 +1676,7 @@ class Lead extends Model
         $types  = "i";
 
         $dateCol = ($date_type === 'assigned_date') 
-            ? "COALESCE(NULLIF(NULLIF(leads.assigned_at, '0000-00-00 00:00:00'), ''), leads.created_at)" 
+            ? "(CASE WHEN (leads.assigned_at IS NOT NULL AND leads.assigned_at > '1970-01-01 00:00:00') THEN leads.assigned_at ELSE leads.created_at END)" 
             : "leads.created_at";
 
         if (!empty($from_date) && !empty($to_date)) {
@@ -1852,7 +1870,7 @@ class Lead extends Model
         $types  = "i";
 
         $dateCol = ($date_type === 'assigned_date') 
-            ? "COALESCE(NULLIF(NULLIF(leads.assigned_at, '0000-00-00 00:00:00'), ''), leads.created_at)" 
+            ? "(CASE WHEN (leads.assigned_at IS NOT NULL AND leads.assigned_at > '1970-01-01 00:00:00') THEN leads.assigned_at ELSE leads.created_at END)" 
             : "leads.created_at";
 
         if (!empty($from_date) && !empty($to_date)) {
@@ -2006,29 +2024,70 @@ class Lead extends Model
         $startDate = sprintf('%04d-%02d-01', $year, $startMonth);
         $endDate = date('Y-m-t', strtotime(sprintf('%04d-%02d-01', $year, $endMonth)));
 
-        $contactedCond = "(
-            LOWER(leads.last_lead_action) IN ('contacted', 'follow up', 'visited', 'booked') 
-            OR leads.call_status IN ('called', 'received') 
-            OR (leads.communication_type IS NOT NULL AND leads.communication_type != '' AND LOWER(leads.communication_type) != 'not select') 
-            OR EXISTS (SELECT 1 FROM lead_follow_ups lf WHERE lf.lead_id = leads.id AND lf.deleted_at IS NULL) 
-            OR EXISTS (SELECT 1 FROM lead_bookings lb WHERE lb.lead_id = leads.id AND lb.deleted_at IS NULL)
-        )";
+        // Dynamic column support to prevent live server column mismatch / strict mode errors
+        $hasAssignedAt       = $this->hasTableColumn('leads', 'assigned_at');
+        $hasFirstContactedAt = $this->hasTableColumn('leads', 'first_contacted_at');
+        $hasLastLeadAction   = $this->hasTableColumn('leads', 'last_lead_action');
+        $hasCallStatus       = $this->hasTableColumn('leads', 'call_status');
+        $hasCommType         = $this->hasTableColumn('leads', 'communication_type');
+        $hasLeadType         = $this->hasTableColumn('leads', 'lead_type');
+        $hasDeletedAt        = $this->hasTableColumn('leads', 'deleted_at');
+        $fuHasDeletedAt      = $this->hasTableColumn('lead_follow_ups', 'deleted_at');
+        $bkHasDeletedAt      = $this->hasTableColumn('lead_bookings', 'deleted_at');
+
+        $assignedDateExpr = $hasAssignedAt 
+            ? "(CASE WHEN (leads.assigned_at IS NOT NULL AND leads.assigned_at > '1970-01-01 00:00:00') THEN leads.assigned_at ELSE leads.created_at END)"
+            : "leads.created_at";
+
+        $assignedDateExprUnprefixed = $hasAssignedAt 
+            ? "(CASE WHEN (assigned_at IS NOT NULL AND assigned_at > '1970-01-01 00:00:00') THEN assigned_at ELSE created_at END)"
+            : "created_at";
+
+        $leadsDelSql = $hasDeletedAt ? "AND leads.deleted_at IS NULL" : "";
+        $lDelSql     = $hasDeletedAt ? "AND l.deleted_at IS NULL" : "";
+        $fuDelCond   = $fuHasDeletedAt ? "AND lf.deleted_at IS NULL" : "";
+        $fuDelWhere  = $fuHasDeletedAt ? "WHERE deleted_at IS NULL" : "";
+        $bkDelCond   = $bkHasDeletedAt ? "AND lb.deleted_at IS NULL" : "";
+        $bkDelWhere  = $bkHasDeletedAt ? "AND deleted_at IS NULL" : "";
+
+        // Build contacted condition dynamically
+        $orConds = [];
+        if ($hasLastLeadAction) {
+            $orConds[] = "LOWER(leads.last_lead_action) IN ('contacted', 'follow up', 'visited', 'booked')";
+        }
+        if ($hasCallStatus) {
+            $orConds[] = "leads.call_status IN ('called', 'received')";
+        }
+        if ($hasCommType) {
+            $orConds[] = "(leads.communication_type IS NOT NULL AND leads.communication_type != '' AND LOWER(leads.communication_type) != 'not select')";
+        }
+        $orConds[] = "EXISTS (SELECT 1 FROM lead_follow_ups lf WHERE lf.lead_id = leads.id {$fuDelCond})";
+        $orConds[] = "EXISTS (SELECT 1 FROM lead_bookings lb WHERE lb.lead_id = leads.id {$bkDelCond})";
+        $contactedCond = "(" . implode(" OR ", $orConds) . ")";
 
         // 1. Total Leads Assigned
-        $sql1 = "SELECT COUNT(*) as c FROM leads WHERE assigned_id = ? AND deleted_at IS NULL";
-        $stmt1 = $this->db->prepare($sql1);
-        $stmt1->bind_param("i", $userId);
-        $stmt1->execute();
-        $totalLeadsAssigned = (int)($stmt1->get_result()->fetch_assoc()['c'] ?? 0);
-        $stmt1->close();
+        $sql1 = "SELECT COUNT(*) as c FROM leads WHERE assigned_id = ? {$leadsDelSql}";
+        $totalLeadsAssigned = 0;
+        if ($stmt1 = $this->db->prepare($sql1)) {
+            $stmt1->bind_param("i", $userId);
+            $stmt1->execute();
+            $totalLeadsAssigned = (int)($stmt1->get_result()->fetch_assoc()['c'] ?? 0);
+            $stmt1->close();
+        } else {
+            error_log("Lead::getExecutiveDashboardMetrics sql1 prepare error: " . $this->db->error);
+        }
 
         // 2. Total Leads Contacted
-        $sql2 = "SELECT COUNT(*) as c FROM leads WHERE assigned_id = ? AND deleted_at IS NULL AND {$contactedCond}";
-        $stmt2 = $this->db->prepare($sql2);
-        $stmt2->bind_param("i", $userId);
-        $stmt2->execute();
-        $totalLeadsContacted = (int)($stmt2->get_result()->fetch_assoc()['c'] ?? 0);
-        $stmt2->close();
+        $sql2 = "SELECT COUNT(*) as c FROM leads WHERE assigned_id = ? {$leadsDelSql} AND {$contactedCond}";
+        $totalLeadsContacted = 0;
+        if ($stmt2 = $this->db->prepare($sql2)) {
+            $stmt2->bind_param("i", $userId);
+            $stmt2->execute();
+            $totalLeadsContacted = (int)($stmt2->get_result()->fetch_assoc()['c'] ?? 0);
+            $stmt2->close();
+        } else {
+            error_log("Lead::getExecutiveDashboardMetrics sql2 prepare error: " . $this->db->error);
+        }
 
         // 3. Total Contacted %
         $totalContactedPct = ($totalLeadsAssigned > 0) ? round(($totalLeadsContacted / $totalLeadsAssigned) * 100, 1) : 0;
@@ -2037,54 +2096,83 @@ class Lead extends Model
         $totalNotContacted = max(0, $totalLeadsAssigned - $totalLeadsContacted);
 
         // 5. Today Leads Assigned
-        $sql5 = "SELECT COUNT(*) as c FROM leads WHERE assigned_id = ? AND deleted_at IS NULL AND DATE(COALESCE(NULLIF(NULLIF(assigned_at, '0000-00-00 00:00:00'), ''), created_at)) = CURDATE()";
-        $stmt5 = $this->db->prepare($sql5);
-        $stmt5->bind_param("i", $userId);
-        $stmt5->execute();
-        $todayLeadsAssigned = (int)($stmt5->get_result()->fetch_assoc()['c'] ?? 0);
-        $stmt5->close();
+        $sql5 = "SELECT COUNT(*) as c FROM leads WHERE assigned_id = ? {$leadsDelSql} AND DATE({$assignedDateExprUnprefixed}) = CURDATE()";
+        $todayLeadsAssigned = 0;
+        if ($stmt5 = $this->db->prepare($sql5)) {
+            $stmt5->bind_param("i", $userId);
+            $stmt5->execute();
+            $todayLeadsAssigned = (int)($stmt5->get_result()->fetch_assoc()['c'] ?? 0);
+            $stmt5->close();
+        } else {
+            error_log("Lead::getExecutiveDashboardMetrics sql5 prepare error: " . $this->db->error);
+            // Safe fallback to created_at
+            $sql5Fb = "SELECT COUNT(*) as c FROM leads WHERE assigned_id = ? AND DATE(created_at) = CURDATE()";
+            if ($stmt5Fb = $this->db->prepare($sql5Fb)) {
+                $stmt5Fb->bind_param("i", $userId);
+                $stmt5Fb->execute();
+                $todayLeadsAssigned = (int)($stmt5Fb->get_result()->fetch_assoc()['c'] ?? 0);
+                $stmt5Fb->close();
+            }
+        }
 
         // 6. Today Leads Contacted (today assigned leads that completed follow up or contacted)
+        $firstContactCond = "";
+        if ($hasCallStatus) {
+            if ($hasFirstContactedAt) {
+                $firstContactCond = "OR (
+                    leads.call_status IN ('called', 'received', 'contacted') 
+                    AND (
+                        (leads.first_contacted_at IS NOT NULL AND leads.first_contacted_at >= {$assignedDateExpr})
+                        OR (leads.first_contacted_at IS NOT NULL AND DATE(leads.first_contacted_at) = CURDATE())
+                    )
+                )";
+            } else {
+                $firstContactCond = "OR (leads.call_status IN ('called', 'received', 'contacted') AND DATE(leads.updated_at) = CURDATE())";
+            }
+        }
+
         $todayContactedCond = "(
             EXISTS (
                 SELECT 1 FROM lead_follow_ups lf 
-                WHERE lf.lead_id = leads.id AND lf.deleted_at IS NULL 
-                  AND (lf.created_by = ? OR lf.assigned_with = ? OR lf.created_at >= COALESCE(NULLIF(NULLIF(leads.assigned_at, '0000-00-00 00:00:00'), ''), leads.created_at))
+                WHERE lf.lead_id = leads.id {$fuDelCond} 
+                  AND (lf.created_by = ? OR lf.assigned_with = ? OR lf.created_at >= {$assignedDateExpr})
             )
             OR EXISTS (
                 SELECT 1 FROM lead_bookings lb 
-                WHERE lb.lead_id = leads.id AND lb.deleted_at IS NULL 
-                  AND (lb.sales_by_id = ? OR lb.created_by = ? OR lb.created_at >= COALESCE(NULLIF(NULLIF(leads.assigned_at, '0000-00-00 00:00:00'), ''), leads.created_at))
+                WHERE lb.lead_id = leads.id {$bkDelCond} 
+                  AND (lb.sales_by_id = ? OR lb.created_by = ? OR lb.created_at >= {$assignedDateExpr})
             )
-            OR (
-                leads.call_status IN ('called', 'received', 'contacted') 
-                AND (
-                    (leads.first_contacted_at IS NOT NULL AND leads.first_contacted_at >= COALESCE(NULLIF(NULLIF(leads.assigned_at, '0000-00-00 00:00:00'), ''), leads.created_at))
-                    OR (leads.first_contacted_at IS NOT NULL AND DATE(leads.first_contacted_at) = CURDATE())
-                )
-            )
+            {$firstContactCond}
         )";
         $sql6 = "SELECT COUNT(*) as c FROM leads 
                  WHERE assigned_id = ? 
-                   AND deleted_at IS NULL 
-                   AND DATE(COALESCE(NULLIF(NULLIF(assigned_at, '0000-00-00 00:00:00'), ''), created_at)) = CURDATE() 
+                   {$leadsDelSql} 
+                   AND DATE({$assignedDateExprUnprefixed}) = CURDATE() 
                    AND {$todayContactedCond}";
-        $stmt6 = $this->db->prepare($sql6);
-        $stmt6->bind_param("iiiii", $userId, $userId, $userId, $userId, $userId);
-        $stmt6->execute();
-        $todayLeadsContacted = (int)($stmt6->get_result()->fetch_assoc()['c'] ?? 0);
-        $stmt6->close();
+        $todayLeadsContacted = 0;
+        if ($stmt6 = $this->db->prepare($sql6)) {
+            $stmt6->bind_param("iiiii", $userId, $userId, $userId, $userId, $userId);
+            $stmt6->execute();
+            $todayLeadsContacted = (int)($stmt6->get_result()->fetch_assoc()['c'] ?? 0);
+            $stmt6->close();
+        } else {
+            error_log("Lead::getExecutiveDashboardMetrics sql6 prepare error: " . $this->db->error);
+        }
 
         // 7. Today Not Contacted
         $todayNotContacted = max(0, $todayLeadsAssigned - $todayLeadsContacted);
 
         // 8. Total Follow-Up Complete
-        $sql8 = "SELECT COUNT(*) as c FROM lead_follow_ups WHERE (created_by = ? OR assigned_with = ?) AND deleted_at IS NULL";
-        $stmt8 = $this->db->prepare($sql8);
-        $stmt8->bind_param("ii", $userId, $userId);
-        $stmt8->execute();
-        $totalFollowUpComplete = (int)($stmt8->get_result()->fetch_assoc()['c'] ?? 0);
-        $stmt8->close();
+        $sql8 = "SELECT COUNT(*) as c FROM lead_follow_ups lf WHERE (lf.created_by = ? OR lf.assigned_with = ?) {$fuDelCond}";
+        $totalFollowUpComplete = 0;
+        if ($stmt8 = $this->db->prepare($sql8)) {
+            $stmt8->bind_param("ii", $userId, $userId);
+            $stmt8->execute();
+            $totalFollowUpComplete = (int)($stmt8->get_result()->fetch_assoc()['c'] ?? 0);
+            $stmt8->close();
+        } else {
+            error_log("Lead::getExecutiveDashboardMetrics sql8 prepare error: " . $this->db->error);
+        }
 
         // 9. Total Follow Up Missing
         $sql9 = "
@@ -2096,22 +2184,26 @@ class Lead extends Model
                 INNER JOIN (
                     SELECT lead_id, MAX(id) AS max_id
                     FROM lead_follow_ups
-                    WHERE deleted_at IS NULL
+                    {$fuDelWhere}
                     GROUP BY lead_id
                 ) t2 ON t1.id = t2.max_id
-                WHERE t1.deleted_at IS NULL
+                {$fuDelWhere}
             ) lf ON lf.lead_id = l.id
             WHERE l.assigned_id = ? 
-              AND l.deleted_at IS NULL
+              {$lDelSql}
               AND lf.next_follow_up_date IS NOT NULL
               AND lf.next_follow_up_date > '1000-01-01'
               AND DATE(lf.next_follow_up_date) < CURDATE()
         ";
-        $stmt9 = $this->db->prepare($sql9);
-        $stmt9->bind_param("i", $userId);
-        $stmt9->execute();
-        $totalFollowUpMissing = (int)($stmt9->get_result()->fetch_assoc()['c'] ?? 0);
-        $stmt9->close();
+        $totalFollowUpMissing = 0;
+        if ($stmt9 = $this->db->prepare($sql9)) {
+            $stmt9->bind_param("i", $userId);
+            $stmt9->execute();
+            $totalFollowUpMissing = (int)($stmt9->get_result()->fetch_assoc()['c'] ?? 0);
+            $stmt9->close();
+        } else {
+            error_log("Lead::getExecutiveDashboardMetrics sql9 prepare error: " . $this->db->error);
+        }
 
         // 10. Today Follow Ups (Scheduled for today)
         $sql10 = "
@@ -2123,115 +2215,151 @@ class Lead extends Model
                 INNER JOIN (
                     SELECT lead_id, MAX(id) AS max_id
                     FROM lead_follow_ups
-                    WHERE deleted_at IS NULL
+                    {$fuDelWhere}
                     GROUP BY lead_id
                 ) t2 ON t1.id = t2.max_id
-                WHERE t1.deleted_at IS NULL
+                {$fuDelWhere}
             ) lf ON lf.lead_id = l.id
             WHERE l.assigned_id = ? 
-              AND l.deleted_at IS NULL
+              {$lDelSql}
               AND lf.next_follow_up_date IS NOT NULL
               AND DATE(lf.next_follow_up_date) = CURDATE()
         ";
-        $stmt10 = $this->db->prepare($sql10);
-        $stmt10->bind_param("i", $userId);
-        $stmt10->execute();
-        $todayFollowUps = (int)($stmt10->get_result()->fetch_assoc()['c'] ?? 0);
-        $stmt10->close();
+        $todayFollowUps = 0;
+        if ($stmt10 = $this->db->prepare($sql10)) {
+            $stmt10->bind_param("i", $userId);
+            $stmt10->execute();
+            $todayFollowUps = (int)($stmt10->get_result()->fetch_assoc()['c'] ?? 0);
+            $stmt10->close();
+        } else {
+            error_log("Lead::getExecutiveDashboardMetrics sql10 prepare error: " . $this->db->error);
+        }
 
         // 11. Today Follow Up Complete (of leads with next follow up today, how many had follow up created today)
         $sql11 = "
             SELECT COUNT(DISTINCT l.id) as c
             FROM leads l
             WHERE l.assigned_id = ? 
-              AND l.deleted_at IS NULL
+              {$lDelSql}
               AND EXISTS (
                   SELECT 1 FROM lead_follow_ups f_sched 
                   WHERE f_sched.lead_id = l.id 
                     AND DATE(f_sched.next_follow_up_date) = CURDATE() 
-                    AND f_sched.deleted_at IS NULL
+                    " . ($fuHasDeletedAt ? "AND f_sched.deleted_at IS NULL" : "") . "
               )
               AND EXISTS (
                   SELECT 1 FROM lead_follow_ups f_done 
                   WHERE f_done.lead_id = l.id 
                     AND (DATE(f_done.created_at) = CURDATE() OR DATE(f_done.follow_up_date) = CURDATE())
-                    AND f_done.deleted_at IS NULL
+                    " . ($fuHasDeletedAt ? "AND f_done.deleted_at IS NULL" : "") . "
               )
         ";
-        $stmt11 = $this->db->prepare($sql11);
-        $stmt11->bind_param("i", $userId);
-        $stmt11->execute();
-        $todayFollowUpComplete = (int)($stmt11->get_result()->fetch_assoc()['c'] ?? 0);
-        $stmt11->close();
+        $todayFollowUpComplete = 0;
+        if ($stmt11 = $this->db->prepare($sql11)) {
+            $stmt11->bind_param("i", $userId);
+            $stmt11->execute();
+            $todayFollowUpComplete = (int)($stmt11->get_result()->fetch_assoc()['c'] ?? 0);
+            $stmt11->close();
+        } else {
+            error_log("Lead::getExecutiveDashboardMetrics sql11 prepare error: " . $this->db->error);
+        }
 
         // 12. Remaining Today Follow Up
         $remainingTodayFollowUp = max(0, $todayFollowUps - $todayFollowUpComplete);
 
         // 13. Total Sales/Booked (units)
-        $sql13 = "SELECT COUNT(*) as c FROM lead_bookings WHERE (sales_by_id = ? OR created_by = ?) AND deleted_at IS NULL AND booking_status != 'cancelled'";
-        $stmt13 = $this->db->prepare($sql13);
-        $stmt13->bind_param("ii", $userId, $userId);
-        $stmt13->execute();
-        $totalSalesBookedUnits = (int)($stmt13->get_result()->fetch_assoc()['c'] ?? 0);
-        $stmt13->close();
+        $sql13 = "SELECT COUNT(*) as c FROM lead_bookings WHERE (sales_by_id = ? OR created_by = ?) {$bkDelWhere} AND booking_status != 'cancelled'";
+        $totalSalesBookedUnits = 0;
+        if ($stmt13 = $this->db->prepare($sql13)) {
+            $stmt13->bind_param("ii", $userId, $userId);
+            $stmt13->execute();
+            $totalSalesBookedUnits = (int)($stmt13->get_result()->fetch_assoc()['c'] ?? 0);
+            $stmt13->close();
+        } else {
+            error_log("Lead::getExecutiveDashboardMetrics sql13 prepare error: " . $this->db->error);
+        }
 
         // 14. Monthly Target (from sales_targets)
-        $sql14 = "SELECT SUM(booking_target) as booking_target, SUM(site_visit_target) as site_visit_target FROM sales_targets WHERE sales_user_id = ? AND month BETWEEN ? AND ?";
-        $stmt14 = $this->db->prepare($sql14);
-        $targetStartMonth = sprintf('%04d-%02d-01', $year, $startMonth);
-        $targetEndMonth = sprintf('%04d-%02d-01', $year, $endMonth);
-        $stmt14->bind_param("iss", $userId, $targetStartMonth, $targetEndMonth);
-        $stmt14->execute();
-        $targetRow = $stmt14->get_result()->fetch_assoc();
-        $monthlyBookingTarget = (int)($targetRow['booking_target'] ?? 0);
-        $monthlySiteVisitTarget = (int)($targetRow['site_visit_target'] ?? 0);
-        $stmt14->close();
+        $monthlyBookingTarget = 0;
+        $monthlySiteVisitTarget = 0;
+        try {
+            $sql14 = "SELECT SUM(booking_target) as booking_target, SUM(site_visit_target) as site_visit_target FROM sales_targets WHERE sales_user_id = ? AND month BETWEEN ? AND ?";
+            if ($stmt14 = $this->db->prepare($sql14)) {
+                $targetStartMonth = sprintf('%04d-%02d-01', $year, $startMonth);
+                $targetEndMonth = sprintf('%04d-%02d-01', $year, $endMonth);
+                $stmt14->bind_param("iss", $userId, $targetStartMonth, $targetEndMonth);
+                $stmt14->execute();
+                $targetRow = $stmt14->get_result()->fetch_assoc();
+                $monthlyBookingTarget = (int)($targetRow['booking_target'] ?? 0);
+                $monthlySiteVisitTarget = (int)($targetRow['site_visit_target'] ?? 0);
+                $stmt14->close();
+            }
+        } catch (Throwable $e) {
+            error_log("Lead::getExecutiveDashboardMetrics sales_targets error: " . $e->getMessage());
+        }
 
         // 15. Current Month Booking (from lead_bookings)
-        $sql15 = "SELECT COUNT(*) as c FROM lead_bookings WHERE (sales_by_id = ? OR created_by = ?) AND deleted_at IS NULL AND booking_status != 'cancelled' AND booking_date BETWEEN ? AND ?";
-        $stmt15 = $this->db->prepare($sql15);
-        $stmt15->bind_param("iiss", $userId, $userId, $startDate, $endDate);
-        $stmt15->execute();
-        $currentMonthBooking = (int)($stmt15->get_result()->fetch_assoc()['c'] ?? 0);
-        $stmt15->close();
+        $sql15 = "SELECT COUNT(*) as c FROM lead_bookings WHERE (sales_by_id = ? OR created_by = ?) {$bkDelWhere} AND booking_status != 'cancelled' AND booking_date BETWEEN ? AND ?";
+        $currentMonthBooking = 0;
+        if ($stmt15 = $this->db->prepare($sql15)) {
+            $stmt15->bind_param("iiss", $userId, $userId, $startDate, $endDate);
+            $stmt15->execute();
+            $currentMonthBooking = (int)($stmt15->get_result()->fetch_assoc()['c'] ?? 0);
+            $stmt15->close();
+        } else {
+            error_log("Lead::getExecutiveDashboardMetrics sql15 prepare error: " . $this->db->error);
+        }
 
         $bookingAchievement = $monthlyBookingTarget > 0 ? round(($currentMonthBooking / $monthlyBookingTarget) * 100, 1) : 0;
 
         // 16. Total Visited Complete
+        $leadTypeCond = $hasLeadType ? "l.lead_type = 'Visited'" : "0=1";
+        $lastActionCond = $hasLastLeadAction ? "l.last_lead_action = 'visited'" : "0=1";
+
         $sql16 = "
             SELECT COUNT(DISTINCT l.id) as c
             FROM leads l
-            LEFT JOIN lead_follow_ups lf ON lf.lead_id = l.id AND lf.deleted_at IS NULL
-            WHERE l.deleted_at IS NULL
+            LEFT JOIN lead_follow_ups lf ON lf.lead_id = l.id {$fuDelCond}
+            WHERE 1=1
+              {$lDelSql}
               AND (
-                  (l.assigned_id = ? AND (l.lead_type = 'Visited' OR l.last_lead_action = 'visited'))
+                  (l.assigned_id = ? AND ({$leadTypeCond} OR {$lastActionCond}))
                   OR ((l.assigned_id = ? OR lf.assigned_with = ? OR lf.created_by = ?) 
                       AND (lf.lead_status = 'Visited' OR lf.follow_up_type = 'visit') 
                       AND lf.status != 'canceled')
               )
         ";
-        $stmt16 = $this->db->prepare($sql16);
-        $stmt16->bind_param("iiii", $userId, $userId, $userId, $userId);
-        $stmt16->execute();
-        $totalVisitedComplete = (int)($stmt16->get_result()->fetch_assoc()['c'] ?? 0);
-        $stmt16->close();
+        $totalVisitedComplete = 0;
+        if ($stmt16 = $this->db->prepare($sql16)) {
+            $stmt16->bind_param("iiii", $userId, $userId, $userId, $userId);
+            $stmt16->execute();
+            $totalVisitedComplete = (int)($stmt16->get_result()->fetch_assoc()['c'] ?? 0);
+            $stmt16->close();
+        } else {
+            error_log("Lead::getExecutiveDashboardMetrics sql16 prepare error: " . $this->db->error);
+        }
 
         // 17. This Month Visited
         $sql17 = "
             SELECT COUNT(DISTINCT l.id) as c
             FROM leads l
-            INNER JOIN lead_follow_ups lf ON lf.lead_id = l.id AND lf.deleted_at IS NULL
-            WHERE l.deleted_at IS NULL
+            INNER JOIN lead_follow_ups lf ON lf.lead_id = l.id {$fuDelCond}
+            WHERE 1=1
+              {$lDelSql}
               AND (l.assigned_id = ? OR lf.assigned_with = ? OR lf.created_by = ?)
               AND (lf.lead_status = 'Visited' OR lf.follow_up_type = 'visit')
               AND lf.status != 'canceled'
               AND lf.follow_up_date BETWEEN ? AND ?
         ";
-        $stmt17 = $this->db->prepare($sql17);
-        $stmt17->bind_param("iiiss", $userId, $userId, $userId, $startDate, $endDate);
-        $stmt17->execute();
-        $thisMonthVisited = (int)($stmt17->get_result()->fetch_assoc()['c'] ?? 0);
-        $stmt17->close();
+        $thisMonthVisited = 0;
+        if ($stmt17 = $this->db->prepare($sql17)) {
+            $stmt17->bind_param("iiiss", $userId, $userId, $userId, $startDate, $endDate);
+            $stmt17->execute();
+            $thisMonthVisited = (int)($stmt17->get_result()->fetch_assoc()['c'] ?? 0);
+            $stmt17->close();
+        } else {
+            error_log("Lead::getExecutiveDashboardMetrics sql17 prepare error: " . $this->db->error);
+        }
 
         $visitAchievement = $monthlySiteVisitTarget > 0 ? round(($thisMonthVisited / $monthlySiteVisitTarget) * 100, 1) : 0;
 
@@ -2295,6 +2423,7 @@ class Lead extends Model
             $params[] = "%$search%";
             $types .= "ssss";
         }
+        
 
         $sql .= " ORDER BY u.full_name";
 

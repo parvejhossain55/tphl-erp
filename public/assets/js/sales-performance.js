@@ -38,29 +38,43 @@
         selected = selected || 5;
         funnelState[el.id] = { m, mode, selected };
         const base = m.stage_1 || 0;
+        const extraScope = m.id ? `data-exec-id="${m.id}"` : (m.key ? `data-team-key="${esc(m.key)}"` : '');
         let rows = '';
         STAGE_KEYS.forEach((s) => {
             const v = m['stage_' + s] || 0;
             const p = base ? (v / base) * 100 : 0;
             rows += `
-                <div class="sp-funnel-row ${s === selected ? 'sel' : ''}" data-stage="${s}">
+                <div class="sp-funnel-row click ${s === selected ? 'sel' : ''}" data-stage="${s}" data-gap="stage_${s}" ${extraScope} style="cursor:pointer" title="Click to view Stage ${s} (${esc(STAGES[s])}) leads">
                     <span class="no">${String(s).padStart(2, '0')}</span>
-                    <div><div class="nm">${esc(STAGES[s])}</div><div class="sp-bar"><span style="width:${Math.max(p, v ? 0.6 : 0).toFixed(2)}%"></span></div></div>
+                    <div><div class="nm">${esc(STAGES[s])} <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;opacity:0.6;margin-left:2px"></i></div><div class="sp-bar"><span style="width:${Math.max(p, v ? 0.6 : 0).toFixed(2)}%"></span></div></div>
                     <span class="ct">${n(v)}</span>
                     <span class="pc">${p.toFixed(1)}%</span>
                 </div>`;
             if (s === 2) {
+                const noResponse = m.no_response || 0;
+                const noResponsePct = base ? (noResponse / base) * 100 : 0;
+                rows += `
+                    <div class="sp-funnel-row no-response-row click" data-gap="no_response_leads" ${extraScope} style="margin:2px 0;cursor:pointer;" title="Click to view No Response leads history">
+                        <span class="no" style="font-weight:700"><i class="fa-regular fa-phone-slash" style="font-size:11px"></i></span>
+                        <div>
+                            <div class="nm" style="font-weight:600">No Response <small style="font-size:11px;font-weight:400">(Unreachable / Not Received)</small> <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
+                            <div class="sp-bar amber"><span style="width:${Math.max(noResponsePct, noResponse ? 0.6 : 0).toFixed(2)}%"></span></div>
+                        </div>
+                        <span class="ct" style="font-weight:700">${n(noResponse)}</span>
+                        <span class="pc" style="font-weight:700">${noResponsePct.toFixed(1)}%</span>
+                    </div>`;
+
                 const uncontacted = m.uncontacted !== undefined ? m.uncontacted : Math.max(0, base - (m.stage_2 || 0));
                 const uncontactedPct = base ? (uncontacted / base) * 100 : 0;
                 rows += `
-                    <div class="sp-funnel-row uncontacted-row" data-stage="uncontacted" style="margin:2px 0;">
-                        <span class="no" style="color:#ef4444;font-weight:700">--</span>
+                    <div class="sp-funnel-row uncontacted-row click" data-gap="uncontacted" ${extraScope} style="margin:2px 0;cursor:pointer;" title="Click to view Not Contacted leads">
+                        <span class="no" style="font-weight:700">--</span>
                         <div>
-                            <div class="nm" style="color:#b91c1c;font-weight:600">Not Contacted <small style="color:#ef4444;font-size:11px;font-weight:400">(Awaiting 1st contact)</small></div>
+                            <div class="nm" style="font-weight:600">Not Contacted <small style="font-size:11px;font-weight:400">(Awaiting 1st contact)</small> <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;opacity:0.6;margin-left:2px"></i></div>
                             <div class="sp-bar red"><span style="width:${Math.max(uncontactedPct, uncontacted ? 0.6 : 0).toFixed(2)}%"></span></div>
                         </div>
-                        <span class="ct" style="color:#b91c1c;font-weight:700">${n(uncontacted)}</span>
-                        <span class="pc" style="color:#b91c1c;font-weight:700">${uncontactedPct.toFixed(1)}%</span>
+                        <span class="ct" style="font-weight:700">${n(uncontacted)}</span>
+                        <span class="pc" style="font-weight:700">${uncontactedPct.toFixed(1)}%</span>
                     </div>`;
             }
         });
@@ -74,9 +88,23 @@
         el.innerHTML = rows;
         $$('.sp-funnel-row', el).forEach((r) => {
             if (r.dataset.stage && r.dataset.stage !== 'uncontacted') {
-                r.addEventListener('click', () => renderFunnel(el, m, 'overall', Number(r.dataset.stage)));
+                r.addEventListener('click', (ev) => {
+                    const st = Number(r.dataset.stage);
+                    if (!isNaN(st)) {
+                        funnelState[el.id] = funnelState[el.id] || {};
+                        funnelState[el.id].selected = st;
+                        const foot = el.querySelector('.sp-funnel-foot');
+                        if (foot) {
+                            const sv = m['stage_' + st] || 0;
+                            foot.children[0].querySelector('.v').textContent = n(sv);
+                            foot.children[0].querySelector('.s').textContent = `${esc(STAGES[st] || '')} · ${pct(sv, base)}`;
+                        }
+                        $$('.sp-funnel-row', el).forEach(row => row.classList.toggle('sel', row.dataset.stage == st));
+                    }
+                });
             }
         });
+        bindGapClicks(el);
     }
     $$('[data-funnel-toggle]').forEach((tg) => {
         $$('button', tg).forEach((b) =>
@@ -89,53 +117,238 @@
         );
     });
 
-    // ---------- drawer ----------
-    const drawer = $('#spDrawer'), bg = $('#spDrawerBg');
+    // ---------- drawer (attached to document.body to guarantee viewport-fixed display) ----------
+    function ensureDrawerInBody() {
+        let d = document.getElementById('spDrawer');
+        let b = document.getElementById('spDrawerBg');
+        if (d && d.parentElement !== document.body) {
+            document.body.appendChild(d);
+        }
+        if (b && b.parentElement !== document.body) {
+            document.body.appendChild(b);
+        }
+        return { drawer: d, bg: b };
+    }
+
     function openDrawer(title, sub, html) {
-        $('#spDrawerTitle').textContent = title;
-        $('#spDrawerSub').innerHTML = sub || '';
-        $('#spDrawerBody').innerHTML = html;
+        const { drawer, bg } = ensureDrawerInBody();
+        if (!drawer || !bg) return;
+        const titleEl = document.getElementById('spDrawerTitle');
+        const subEl = document.getElementById('spDrawerSub');
+        const bodyEl = document.getElementById('spDrawerBody');
+        if (titleEl) titleEl.textContent = title;
+        if (subEl) subEl.innerHTML = sub || '';
+        if (bodyEl) bodyEl.innerHTML = html;
+
+        bg.style.display = 'block';
+        drawer.style.display = 'flex';
+        void drawer.offsetWidth; // Force layout recalculation
         drawer.classList.add('open');
         bg.classList.add('open');
         drawer.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
     }
+
     function closeDrawer() {
-        drawer.classList.remove('open');
-        bg.classList.remove('open');
-        drawer.setAttribute('aria-hidden', 'true');
+        const { drawer, bg } = ensureDrawerInBody();
+        if (drawer) {
+            drawer.classList.remove('open');
+            drawer.setAttribute('aria-hidden', 'true');
+        }
+        if (bg) {
+            bg.classList.remove('open');
+            setTimeout(() => {
+                if (bg && !bg.classList.contains('open')) {
+                    bg.style.display = 'none';
+                }
+            }, 260);
+        }
+        document.body.style.overflow = '';
+        const searchWrap = document.getElementById('spDrawerSearchWrap');
+        if (searchWrap) searchWrap.style.display = 'none';
+        const expBtn = document.getElementById('spDrawerExportBtn');
+        if (expBtn) expBtn.style.display = 'none';
     }
-    bg && bg.addEventListener('click', closeDrawer);
-    $('#spDrawerClose') && $('#spDrawerClose').addEventListener('click', closeDrawer);
+
+    // ---------- data drill-down (cards, funnel stages, attention items, queues) ----------
+    async function handleDrillDownClick(btn, ev) {
+        if (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+        }
+        const key = btn.dataset.gap;
+        if (!key) return;
+
+        // Build active filter query parameters
+        const params = new URLSearchParams();
+        params.set('key', key);
+
+        const cycleInput = document.getElementById('spCycle');
+        const fromInput  = document.getElementById('spFrom');
+        const toInput    = document.getElementById('spTo');
+        const presetInput= document.getElementById('spPreset');
+        const projInput  = document.getElementById('spProject');
+        const teamInput  = document.getElementById('spTeam');
+        const execInput  = document.getElementById('spExec');
+
+        const cycleVal = (cycleInput && cycleInput.value !== undefined) ? cycleInput.value : (D.filters && D.filters.cycle || '');
+        const fromVal  = (fromInput && fromInput.value) ? fromInput.value : (D.filters && D.filters.from || '');
+        const toVal    = (toInput && toInput.value) ? toInput.value : (D.filters && D.filters.to || '');
+        const presetVal= (presetInput && presetInput.value) ? presetInput.value : (D.filters && D.filters.preset || '');
+        const projVal  = (projInput && projInput.value) ? projInput.value : (D.filters && D.filters.project_id || '');
+        const teamVal  = (teamInput && teamInput.value) ? teamInput.value : (D.filters && D.filters.team_id || '');
+        const execVal  = btn.dataset.execId || ((execInput && execInput.value) ? execInput.value : (D.filters && D.filters.executive_id || ''));
+        const teamKeyVal = btn.dataset.teamKey || '';
+
+        if (cycleVal) params.set('cycle', cycleVal);
+        if (fromVal) params.set('from', fromVal);
+        if (toVal) params.set('to', toVal);
+        if (presetVal) params.set('preset', presetVal);
+        if (projVal) params.set('project_id', projVal);
+        if (teamVal) params.set('team_id', teamVal);
+        if (execVal) params.set('executive_id', execVal);
+        if (teamKeyVal) params.set('team_key', teamKeyVal);
+
+        // Hide search/export while loading
+        const searchWrap = document.getElementById('spDrawerSearchWrap');
+        if (searchWrap) searchWrap.style.display = 'none';
+        const expBtn = document.getElementById('spDrawerExportBtn');
+        if (expBtn) expBtn.style.display = 'none';
+
+        openDrawer('Loading…', '', '<div class="sp-empty"><i class="fa-regular fa-spinner fa-spin" style="font-size:26px;color:var(--sp-green);margin-bottom:12px;display:block"></i> Loading records…</div>');
+
+        try {
+            const baseUrl = (window.base_url || (window.SP_DATA && window.SP_DATA.baseUrl) || '/TPHL-ERP').replace(/\/+$/, '');
+            const res = await fetch(`${baseUrl}/sales-performance/gap-details?${params.toString()}`, { credentials: 'same-origin' });
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
+            const j = await res.json();
+            const rows = j.rows || [];
+            let html = `<p style="font-size:12.5px;color:var(--sp-muted);margin:0 0 12px;line-height:1.5">${esc(j.description || '')}</p>`;
+            if (!rows.length) {
+                html += '<div class="sp-empty"><i class="fa-regular fa-inbox" style="font-size:28px;margin-bottom:10px;opacity:0.4;display:block"></i>No records found for this selection.</div>';
+            } else {
+                html += `
+                    <div style="font-size:11.5px;color:var(--sp-soft);margin-bottom:8px" id="spDrawerFilteredNote"></div>
+                    <div class="sp-scroll" style="max-height:calc(100vh - 215px);overflow-y:auto;border:1px solid var(--sp-border);border-radius:8px">
+                        <table class="sp-dtable" style="width:100%;margin:0">
+                            <thead>
+                                <tr>
+                                    <th style="min-width:180px">Lead / Record</th>
+                                    <th style="min-width:140px">Owner · Team</th>
+                                    <th style="min-width:130px">Detail</th>
+                                    <th style="min-width:90px;white-space:nowrap">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+                rows.forEach((r) => {
+                    const link = r.lead_id ? `<a href="${baseUrl}/view-lead/${r.lead_id}" target="_blank" style="color:var(--sp-green);font-weight:600;text-decoration:none" title="Open lead #${r.lead_id} in new tab">${esc(r.lead_name)} <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;margin-left:3px"></i></a>` : `<b style="color:var(--sp-text)">${esc(r.lead_name)}</b>`;
+                    const badge = r.status_badge ? `<span class="sp-tag" style="margin-left:5px;font-size:10px;vertical-align:middle">${esc(r.status_badge)}</span>` : '';
+                    html += `<tr>
+                        <td>
+                            <div style="font-size:12.5px">${link}</div>
+                            ${r.phone ? `<div style="color:var(--sp-soft);font-size:11px;margin-top:2px;font-family:monospace">${esc(r.phone)}</div>` : ''}
+                        </td>
+                        <td>
+                            ${(!r.owner_name || r.owner_name === '—' || r.owner_name === 'Not Assigned')
+                                ? '<span class="sp-tag" style="background:rgba(245,158,11,0.12);color:#d97706;border:1px solid rgba(245,158,11,0.3);font-size:11px;padding:2px 7px;border-radius:4px;font-weight:600;display:inline-block"><i class="fa-regular fa-user-slash" style="margin-right:3px"></i>Not Assigned</span>'
+                                : `<div style="font-weight:600;font-size:12px">${esc(r.owner_name)}</div>`}
+                            ${(r.team_name && r.team_name !== '—')
+                                ? `<div style="color:var(--sp-soft);font-size:11px;margin-top:2px"><i class="fa-regular fa-users" style="font-size:9.5px;margin-right:3px;opacity:0.7"></i>${esc(r.team_name)}</div>`
+                                : '<div style="color:var(--sp-muted);font-size:11px;margin-top:2px;opacity:0.6">—</div>'}
+                        </td>
+                        <td>
+                            <div style="font-size:11.5px">${esc(r.info || '')} ${badge}</div>
+                        </td>
+                        <td style="white-space:nowrap;font-size:11px;color:var(--sp-muted)">
+                            ${esc((r.event_date || '').substring(0, 10))}
+                        </td>
+                    </tr>`;
+                });
+                html += `</tbody></table></div>`;
+                if (j.total > rows.length) {
+                    html += `<div class="sp-note" style="margin-top:10px;font-size:11.5px"><i class="fa-regular fa-info-circle"></i> Showing latest ${rows.length} of ${n(j.total)} records. Click <b>Export CSV</b> to download all.</div>`;
+                }
+            }
+
+            openDrawer(j.label || 'Records', `${n(j.total || 0)} records`, html);
+
+            // Wire up real-time search box
+            if (searchWrap && rows.length > 2) {
+                searchWrap.style.display = 'block';
+                const searchInput = document.getElementById('spDrawerFilter');
+                if (searchInput) {
+                    searchInput.value = '';
+                    setTimeout(() => searchInput.focus(), 80);
+                    searchInput.oninput = () => {
+                        const q = searchInput.value.toLowerCase().trim();
+                        const trs = Array.from(document.querySelectorAll('#spDrawerBody table tbody tr'));
+                        let matched = 0;
+                        trs.forEach(tr => {
+                            const match = !q || tr.textContent.toLowerCase().includes(q);
+                            tr.style.display = match ? '' : 'none';
+                            if (match) matched++;
+                        });
+                        const note = document.getElementById('spDrawerFilteredNote');
+                        if (note) {
+                            note.textContent = q ? `Showing ${matched} matching rows (filtered from ${rows.length})` : '';
+                        }
+                    };
+                }
+            }
+
+            // Wire up Export CSV button
+            if (expBtn && rows.length > 0) {
+                expBtn.style.display = 'inline-flex';
+                expBtn.onclick = (e) => {
+                    e.preventDefault();
+                    const expParams = new URLSearchParams(params);
+                    expParams.set('export', 'csv');
+                    window.location.href = `${baseUrl}/sales-performance/gap-details?${expParams.toString()}`;
+                };
+            }
+        } catch (e) {
+            console.error('Drill-down load failed:', e);
+            openDrawer('Could not load', '', `<div class="sp-empty"><i class="fa-regular fa-triangle-exclamation" style="font-size:24px;color:var(--sp-amber);margin-bottom:8px;display:block"></i>Failed to load records (${esc(e.message || 'Please retry')}).</div>`);
+        }
+    }
+
+    function bindGapClicks(root = document) {
+        if (!root) return;
+        root.querySelectorAll('[data-gap]').forEach((el) => {
+            el.style.cursor = 'pointer';
+            if (!el._hasGapBound) {
+                el._hasGapBound = true;
+                el.addEventListener('click', (e) => {
+                    if (e.target.closest('#spDrawer a')) return;
+                    handleDrillDownClick(el, e);
+                });
+            }
+        });
+    }
+
+    // Ensure drawer is placed in document.body
+    ensureDrawerInBody();
+
+    // Capture-phase global click delegation
+    document.addEventListener('click', (ev) => {
+        if (ev.target.closest('#spDrawer a')) return;
+        if (ev.target.closest('#spDrawerClose') || ev.target.closest('#spDrawerBg')) {
+            ev.preventDefault();
+            closeDrawer();
+            return;
+        }
+        const btn = ev.target.closest('[data-gap]');
+        if (!btn) return;
+        if (btn.closest('#spDrawer') && !btn.classList.contains('sp-mini')) return;
+        handleDrillDownClick(btn, ev);
+    }, true);
+
     document.addEventListener('keydown', (e) => e.key === 'Escape' && closeDrawer());
 
-    // ---------- data-quality drill-down ----------
-    $$('[data-gap]').forEach((btn) =>
-        btn.addEventListener('click', async () => {
-            const key = btn.dataset.gap;
-            openDrawer('Loading…', '', '<div class="sp-empty"><i class="fa-regular fa-spinner fa-spin"></i> Loading records…</div>');
-            try {
-                const res = await fetch(`${D.baseUrl}/sales-performance/gap-details?key=${encodeURIComponent(key)}`, { credentials: 'same-origin' });
-                const j = await res.json();
-                const rows = j.rows || [];
-                let html = `<p style="font-size:12.5px;color:var(--sp-muted);margin:0 0 12px">${esc(j.description || '')}</p>`;
-                if (!rows.length) html += '<div class="sp-empty">No records.</div>';
-                else {
-                    html += `<table class="sp-dtable"><thead><tr><th>Lead / record</th><th>Owner · Team</th><th>Detail</th><th>Date</th></tr></thead><tbody>`;
-                    rows.forEach((r) => {
-                        const link = r.lead_id ? `<a href="${D.baseUrl}/view-lead/${r.lead_id}" target="_blank" style="color:var(--sp-green);font-weight:600">${esc(r.lead_name)}</a>` : `<b>${esc(r.lead_name)}</b>`;
-                        html += `<tr><td>${link}<div style="color:var(--sp-soft);font-size:11px">${esc(r.phone || '')}</div></td>
-                                 <td>${esc(r.owner_name)}<div style="color:var(--sp-soft);font-size:11px">${esc(r.team_name)}</div></td>
-                                 <td>${esc(r.info || '')}</td><td style="white-space:nowrap">${esc((r.event_date || '').substring(0, 10))}</td></tr>`;
-                    });
-                    html += '</tbody></table>';
-                    if (j.total > rows.length) html += `<div class="sp-note">Showing latest ${rows.length} of ${n(j.total)} records.</div>`;
-                }
-                openDrawer(j.label || 'Records', `${n(j.total || 0)} records`, html);
-            } catch (e) {
-                openDrawer('Could not load', '', '<div class="sp-empty">Failed to load records. Please retry.</div>');
-            }
-        })
-    );
+    // Bind current DOM elements
+    bindGapClicks(document);
 
     // ---------- overview ----------
     const fo = $('#spFunnelOverview');
@@ -174,16 +387,17 @@
             <tr class="click ${t.key === selectedKey ? 'sel' : ''} ${muted ? 'muted' : ''}" data-key="${esc(t.key)}">
                 <td>${muted ? '' : i + 1}</td>
                 <td class="nm">${esc(t.name)}<small>${muted ? 'Not attributable to a team' : `${t.member_count} members${t.leaders.length ? ' · Lead: ' + esc(t.leaders.join(', ')) : ''}`}</small></td>
-                <td class="num">${n(t.stage_1)}</td>
-                <td class="num">${t.contact_rate}%</td>
+                <td class="num"><span data-gap="stage_1" data-team-key="${esc(t.key)}" class="click" style="cursor:pointer" title="Click to view leads received for ${esc(t.name)}">${n(t.stage_1)}</span></td>
+                <td class="num"><span data-gap="stage_2" data-team-key="${esc(t.key)}" class="click" style="cursor:pointer" title="Click to view contacted leads for ${esc(t.name)}">${t.contact_rate}%</span></td>
+                <td class="num sp-col-no-response"><span data-gap="no_response_leads" data-team-key="${esc(t.key)}" class="click" style="cursor:pointer" title="Click to view No Response leads for ${esc(t.name)}">${n(t.no_response || 0)}</span> <small>(${t.no_response_rate || 0}%)</small></td>
                 <td class="num">${hrs(t.median_response_hours)}</td>
-                <td class="num">${n(t.follow_ups)}</td>
-                <td class="num">${n(t.visits_done)}</td>
-                <td class="num">${n(t.bookings)}</td>
-                <td class="num">${n(t.confirmed_sales)} / ${t.target_bookings ? n(t.target_bookings) : '—'}</td>
+                <td class="num"><span data-gap="follow_ups" data-team-key="${esc(t.key)}" class="click" style="cursor:pointer" title="Click to view follow-ups for ${esc(t.name)}">${n(t.follow_ups)}</span></td>
+                <td class="num"><span data-gap="visits_done" data-team-key="${esc(t.key)}" class="click" style="cursor:pointer" title="Click to view visits done for ${esc(t.name)}">${n(t.visits_done)}</span></td>
+                <td class="num"><span data-gap="bookings" data-team-key="${esc(t.key)}" class="click" style="cursor:pointer;font-weight:700;color:var(--sp-green)" title="Click to view bookings for ${esc(t.name)}">${n(t.bookings)}</span></td>
+                <td class="num"><span data-gap="confirmed_sales" data-team-key="${esc(t.key)}" class="click" style="cursor:pointer" title="Click to view confirmed sales for ${esc(t.name)}">${n(t.confirmed_sales)}</span> / ${t.target_bookings ? n(t.target_bookings) : '—'}</td>
                 <td>${achCell(t)}</td>
-                <td class="num">${tk(t.collection)}</td>
-                <td class="num" style="${t.overdue > 0 ? 'color:var(--sp-amber);font-weight:600' : ''}">${n(t.overdue)}</td>
+                <td class="num"><span data-gap="collection" data-team-key="${esc(t.key)}" class="click" style="cursor:pointer" title="Click to view collection for ${esc(t.name)}">${tk(t.collection)}</span></td>
+                <td class="num" style="${t.overdue > 0 ? 'color:var(--sp-amber);font-weight:600' : ''}"><span data-gap="overdue" data-team-key="${esc(t.key)}" class="click" style="cursor:pointer" title="Click to view overdue for ${esc(t.name)}">${n(t.overdue)}</span></td>
                 <td><i class="fa-regular fa-arrow-right" style="color:var(--sp-green)"></i></td>
             </tr>`;
 
@@ -191,10 +405,24 @@
             const sorted = [...real].sort((a, b) => (b[sortKey] || 0) - (a[sortKey] || 0));
             $('tbody', teamTable).innerHTML = sorted.map((t, i) => row(t, i, false)).join('') + other.map((t) => row(t, 0, true)).join('');
             const o = D.overall;
-            $('tfoot', teamTable).innerHTML = `<tr><td></td><td>Total</td><td class="num">${n(o.stage_1)}</td><td class="num">${o.contact_rate}%</td><td class="num">${hrs(o.median_response_hours)}</td>
-                <td class="num">${n(o.follow_ups)}</td><td class="num">${n(o.visits_done)}</td><td class="num">${n(o.bookings)}</td>
-                <td class="num">${n(o.confirmed_sales)} / ${o.target_bookings ? n(o.target_bookings) : '—'}</td><td></td><td class="num">${tk(o.collection)}</td><td class="num">${n(o.overdue)}</td><td></td></tr>`;
-            $$('tbody tr', teamTable).forEach((tr) => tr.addEventListener('click', () => selectTeam(tr.dataset.key)));
+            $('tfoot', teamTable).innerHTML = `<tr><td></td><td>Total</td>
+                <td class="num"><span data-gap="stage_1" class="click" style="cursor:pointer" title="Click to view all leads received">${n(o.stage_1)}</span></td>
+                <td class="num"><span data-gap="stage_2" class="click" style="cursor:pointer" title="Click to view all contacted leads">${o.contact_rate}%</span></td>
+                <td class="num sp-col-no-response" style="font-weight:700"><span data-gap="no_response_leads" class="click" style="cursor:pointer" title="Click to view all No Response leads">${n(o.no_response || 0)}</span> <small>(${o.no_response_rate || 0}%)</small></td>
+                <td class="num">${hrs(o.median_response_hours)}</td>
+                <td class="num"><span data-gap="follow_ups" class="click" style="cursor:pointer" title="Click to view all follow-ups">${n(o.follow_ups)}</span></td>
+                <td class="num"><span data-gap="visits_done" class="click" style="cursor:pointer" title="Click to view all visits done">${n(o.visits_done)}</span></td>
+                <td class="num"><span data-gap="bookings" class="click" style="cursor:pointer;color:var(--sp-green);font-weight:700" title="Click to view all bookings">${n(o.bookings)}</span></td>
+                <td class="num"><span data-gap="confirmed_sales" class="click" style="cursor:pointer" title="Click to view all confirmed sales">${n(o.confirmed_sales)}</span> / ${o.target_bookings ? n(o.target_bookings) : '—'}</td>
+                <td></td>
+                <td class="num"><span data-gap="collection" class="click" style="cursor:pointer" title="Click to view all collections">${tk(o.collection)}</span></td>
+                <td class="num"><span data-gap="overdue" class="click" style="cursor:pointer" title="Click to view all overdue follow-ups">${n(o.overdue)}</span></td>
+                <td></td></tr>`;
+            $$('tbody tr', teamTable).forEach((tr) => tr.addEventListener('click', (ev) => {
+                if (ev.target.closest('[data-gap]')) return;
+                selectTeam(tr.dataset.key);
+            }));
+            bindGapClicks(teamTable);
 
             const realLeads = real.reduce((s, t) => s + t.stage_1, 0);
             const otherLeads = other.reduce((s, t) => s + t.stage_1, 0);
@@ -231,15 +459,15 @@
                 if (unassignedPeriod > 0 || unassignedTotal > 0) {
                     unalert.style.display = 'block';
                     unalert.innerHTML = `
-                        <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:9px;padding:9px 13px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+                        <div class="sp-unassigned-box">
                             <div style="display:flex;align-items:center;gap:10px">
-                                <i class="fa-solid fa-user-clock" style="color:#d97706;font-size:16px"></i>
+                                <i class="fa-solid fa-user-clock icon"></i>
                                 <div>
-                                    <div style="font-weight:700;color:#92400e;font-size:12.5px">${n(unassignedPeriod)} Leads Not Yet Assigned by Team Leader</div>
-                                    <div style="font-size:11px;color:#b45309;margin-top:1px">Received in this period under this team, but Team Leader has not yet distributed to any executive (${n(unassignedTotal)} total unassigned).</div>
+                                    <div class="title">${n(unassignedPeriod)} Leads Not Yet Assigned by Team Leader</div>
+                                    <div class="desc">Received in this period under this team, but Team Leader has not yet distributed to any executive (${n(unassignedTotal)} total unassigned).</div>
                                 </div>
                             </div>
-                            <span class="sp-count-chip" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;font-weight:700;font-size:12.5px">${n(unassignedPeriod)}</span>
+                            <span class="sp-count-chip">${n(unassignedPeriod)}</span>
                         </div>`;
                 } else {
                     unalert.style.display = 'none';
@@ -269,6 +497,9 @@
             const sortedMembers = [...members].sort((a, b) => {
                 if (memberSortKey === 'stage_2') {
                     return (b.stage_2 - a.stage_2) || (b.contact_rate - a.contact_rate) || (b.bookings - a.bookings) || (b.stage_1 - a.stage_1);
+                }
+                if (memberSortKey === 'no_response') {
+                    return ((b.no_response || 0) - (a.no_response || 0)) || (b.stage_1 - a.stage_1);
                 }
                 if (memberSortKey === 'stage_1') {
                     return (b.stage_1 - a.stage_1) || (b.stage_2 - a.stage_2) || (b.bookings - a.bookings);
@@ -304,7 +535,7 @@
             if (tbody) {
                 let rowsHtml = '';
                 if (sortedMembers.length === 0 && unassignedPeriod === 0) {
-                    rowsHtml = '<tr><td colspan="10" class="sp-empty">No members or activity in this team.</td></tr>';
+                    rowsHtml = '<tr><td colspan="11" class="sp-empty">No members or activity in this team.</td></tr>';
                 } else {
                     sortedMembers.forEach((e, idx) => {
                         const isInactive = !e.active;
@@ -322,6 +553,10 @@
                                 <td class="num">
                                     <span style="font-weight:600">${n(e.stage_2)}</span>
                                     <small style="color:var(--sp-muted);margin-left:2px">(${e.contact_rate}%)</small>
+                                </td>
+                                <td class="num sp-col-no-response">
+                                    ${n(e.no_response || 0)}
+                                    <small style="font-size:10.5px">(${e.no_response_rate || 0}%)</small>
                                 </td>
                                 <td class="num" style="${uncontacted > 0 ? 'color:#dc2626;font-weight:700' : 'color:var(--sp-soft)'}">
                                     ${n(uncontacted)}
@@ -347,6 +582,7 @@
                                 </td>
                                 <td class="num" style="color:#92400e;font-weight:700">${n(unassignedPeriod)}</td>
                                 <td class="num" style="color:var(--sp-soft)">0 (0%)</td>
+                                <td class="num" style="color:var(--sp-soft)">0</td>
                                 <td class="num" style="color:#dc2626;font-weight:700">${n(unassignedPeriod)}</td>
                                 <td class="num" style="color:var(--sp-soft)">0</td>
                                 <td class="num" style="color:var(--sp-soft)">0</td>
@@ -366,6 +602,7 @@
             if (tfoot) {
                 const sumLeads = members.reduce((s, m) => s + (m.stage_1 || 0), 0) + unassignedPeriod;
                 const sumContacted = members.reduce((s, m) => s + (m.stage_2 || 0), 0);
+                const sumNoResponse = members.reduce((s, m) => s + (m.no_response || 0), 0);
                 const sumUncontacted = members.reduce((s, m) => s + (m.uncontacted !== undefined ? m.uncontacted : Math.max(0, (m.stage_1 || 0) - (m.stage_2 || 0))), 0) + unassignedPeriod;
                 const sumFollowUps = members.reduce((s, m) => s + (m.follow_ups || 0), 0);
                 const sumVisits = members.reduce((s, m) => s + (m.visits_done || 0), 0);
@@ -379,6 +616,7 @@
                         <td>Total</td>
                         <td class="num">${n(sumLeads)}</td>
                         <td class="num">${n(sumContacted)} <small style="color:var(--sp-muted);font-weight:normal">(${t.contact_rate}%)</small></td>
+                        <td class="num" style="color:#b45309;font-weight:700">${n(sumNoResponse)} <small style="color:var(--sp-soft);font-weight:normal">(${t.no_response_rate || 0}%)</small></td>
                         <td class="num" style="${sumUncontacted > 0 ? 'color:#dc2626' : ''}">${n(sumUncontacted)}</td>
                         <td class="num">${n(sumFollowUps)}</td>
                         <td class="num">${n(sumVisits)}</td>
@@ -457,7 +695,7 @@
                     <div class="sp-exec-stat-box">
                         <div class="k"><i class="fa-regular fa-user-group"></i> Leads Received</div>
                         <div class="v">${n(e.stage_1)}</div>
-                        <div class="s">${e.stage_1 ? e.contact_rate + '% contacted' : '0%'}</div>
+                        <div class="s">${e.stage_1 ? `${e.contact_rate}% contacted · <b class="sp-col-no-response">${n(e.no_response || 0)} no resp</b>` : '0%'}</div>
                     </div>
                     <div class="sp-exec-stat-box">
                         <div class="k"><i class="fa-regular fa-headset"></i> Follow-ups</div>
@@ -527,6 +765,7 @@
                     <td><div class="sp-who"><span class="sp-avatar">${esc(initials(e.name))}</span><div class="nm">${esc(e.name)}${e.is_leader ? '<span class="sp-tag lead">LEAD</span>' : ''}<small>${esc(e.role)} · ${esc(e.team_name)}</small></div></div></td>
                     <td class="num">${n(e.stage_1)}</td>
                     <td class="num">${e.stage_1 ? e.contact_rate + '%' : '—'}<div style="font-size:10.5px;color:var(--sp-soft)">${e.uncontacted ? n(e.uncontacted) + ' pending' : ''}</div></td>
+                    <td class="num sp-col-no-response">${n(e.no_response || 0)}<div style="font-size:10.5px;color:var(--sp-soft)">${e.no_response_rate || 0}%</div></td>
                     <td class="num" style="${e.median_response_hours > 24 ? 'color:var(--sp-amber)' : ''}">${hrs(e.median_response_hours)}</td>
                     <td class="num">${n(e.follow_ups)}</td>
                     <td class="num" style="${e.overdue > 0 ? 'color:var(--sp-amber);font-weight:600' : ''}">${n(e.overdue)}</td>
@@ -538,7 +777,7 @@
                     <td class="num">${tk(e.collection)}</td>
                     <td class="num">${e.target_achievement === null ? '<span style="color:var(--sp-soft)">—</span>' : e.target_achievement + '%'}</td>
                 </tr>`).join('')
-                : '<tr><td colspan="13" class="sp-empty">No active executives match the filters.</td></tr>';
+                : '<tr><td colspan="14" class="sp-empty">No active executives match the filters.</td></tr>';
             $$('tbody tr[data-id]', execTable).forEach((tr) => tr.addEventListener('click', () => showExec(Number(tr.dataset.id))));
         }
 
@@ -631,6 +870,7 @@
                         <td><span class="sp-status-badge ${statusClass}">${esc(statusLabel)}</span></td>
                         <td class="num">${n(e.stage_1)}</td>
                         <td class="num">${e.stage_1 ? e.contact_rate + '%' : '—'}</td>
+                        <td class="num sp-col-no-response">${n(e.no_response || 0)}</td>
                         <td class="num">${n(e.follow_ups)}</td>
                         <td class="num">${n(e.visits_done)}</td>
                         <td class="num">${n(e.bookings)}</td>
@@ -639,7 +879,7 @@
                         <td class="num">${tk(e.collection)}</td>
                     </tr>`;
                 }).join('')
-                : '<tr><td colspan="10" class="sp-empty">No inactive executives match the filters.</td></tr>';
+                : '<tr><td colspan="11" class="sp-empty">No inactive executives match the filters.</td></tr>';
             $$('tbody tr[data-id]', inactTable).forEach((tr) => tr.addEventListener('click', () => showExec(Number(tr.dataset.id))));
         }
 
@@ -678,20 +918,25 @@
                || (D.executives && D.executives.find((x) => x.id === id))
                || (D.inactiveExecutives && D.inactiveExecutives.find((x) => x.id === id));
         if (!e) return;
-        const mini = (k, v, s) => `<div class="sp-mini"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s || ''}</div></div>`;
+        const mini = (k, v, s, gapKey) => {
+            const clickAttr = gapKey ? `class="sp-mini click" data-gap="${gapKey}" data-exec-id="${e.id}" style="cursor:pointer" title="Click to view ${k}"` : 'class="sp-mini"';
+            const icon = gapKey ? ' <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;opacity:0.6;margin-left:2px"></i>' : '';
+            return `<div ${clickAttr}><div class="k">${k}${icon}</div><div class="v">${v}</div><div class="s">${s || ''}</div></div>`;
+        };
         const html = `
             <div class="sp-mini-grid" style="grid-template-columns:repeat(3,1fr)">
-                ${mini('Leads received', n(e.stage_1), `${n(e.uncontacted)} not contacted`)}
-                ${mini('Contact rate', e.contact_rate + '%', `${e.contacted_24h_rate ?? 0}% within 24h`)}
+                ${mini('Leads received', n(e.stage_1), `${n(e.uncontacted)} not contacted`, 'stage_1')}
+                ${mini('Contact rate', e.contact_rate + '%', `${n(e.stage_2)} contacted`, 'stage_2')}
+                ${mini('No Response', `${n(e.no_response || 0)} (${e.no_response_rate || 0}%)`, 'unreachable / not received', 'no_response_leads')}
                 ${mini('1st response', hrs(e.median_response_hours), 'median')}
-                ${mini('Follow-ups', n(e.follow_ups), `${n(e.leads_followed)} leads`)}
-                ${mini('Overdue', n(e.overdue), `${n(e.due_today)} due today`)}
-                ${mini('Untouched', n(e.backlog_uncontacted), 'open > 24h')}
-                ${mini('Visits done', n(e.visits_done), `${n(e.upcoming_visits)} upcoming`)}
-                ${mini('Bookings', n(e.bookings), tk(e.booking_value))}
-                ${mini('Confirmed', n(e.confirmed_sales), tk(e.confirmed_value))}
-                ${mini('Collection', tk(e.collection), 'verified')}
-                ${mini('Onboarded', n(e.onboarded), 'this period')}
+                ${mini('Follow-ups', n(e.follow_ups), `${n(e.leads_followed)} leads`, 'follow_ups')}
+                ${mini('Overdue', n(e.overdue), `${n(e.due_today)} due today`, 'overdue')}
+                ${mini('Untouched', n(e.backlog_uncontacted), 'open > 24h', 'uncontacted')}
+                ${mini('Visits done', n(e.visits_done), `${n(e.upcoming_visits)} upcoming`, 'visits_done')}
+                ${mini('Bookings', n(e.bookings), tk(e.booking_value), 'bookings')}
+                ${mini('Confirmed', n(e.confirmed_sales), tk(e.confirmed_value), 'confirmed_sales')}
+                ${mini('Collection', tk(e.collection), 'verified', 'collection')}
+                ${mini('Onboarded', n(e.onboarded), 'this period', 'onboarded')}
                 ${mini('Target', e.target_bookings ? `${n(e.bookings)}/${n(e.target_bookings)}` : '—', e.target_achievement !== null ? e.target_achievement + '% achieved' : 'not set')}
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin:22px 0 8px">
@@ -702,6 +947,7 @@
         const statusBadge = !e.active ? ` · <span class="sp-status-badge ${e.employee_status || 'inactive'}">${esc(e.employee_status || 'Inactive')}</span>` : '';
         openDrawer(e.name, `${esc(e.role)} · ${esc(e.team_name)}${statusBadge}`, html);
         renderFunnel($('#spFunnelExec'), e, 'overall', 5);
+        bindGapClicks(document.getElementById('spDrawerBody'));
         const tg = $('[data-funnel-toggle="spFunnelExec"]');
         $$('button', tg).forEach((b) =>
             b.addEventListener('click', () => {
@@ -796,6 +1042,102 @@
     } else {
         window.addEventListener('load', initSelect2Filters);
     }
+    // ---------- quick preset pills & date filtering ----------
+    const presetPills = $$('.sp-preset-pill');
+    const spFrom = $('#spFrom');
+    const spTo = $('#spTo');
+    const spPreset = $('#spPreset');
+    const spCycle = $('#spCycle');
+    const filterForm = $('#spFilterForm');
+
+    const fmtDate = (d) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    };
+
+    if (presetPills.length && filterForm) {
+        presetPills.forEach((btn) => {
+            btn.addEventListener('click', (ev) => {
+                ev.preventDefault();
+                const p = btn.dataset.preset;
+                const now = new Date();
+
+                presetPills.forEach(b => b.classList.toggle('active', b === btn));
+                if (spPreset) spPreset.value = p;
+
+                if (p === 'today') {
+                    const today = fmtDate(now);
+                    if (spFrom) spFrom.value = today;
+                    if (spTo) spTo.value = today;
+                    if (spCycle) spCycle.value = 'preset:today';
+                    filterForm.submit();
+                } else if (p === 'yesterday') {
+                    const yest = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+                    const yestStr = fmtDate(yest);
+                    if (spFrom) spFrom.value = yestStr;
+                    if (spTo) spTo.value = yestStr;
+                    if (spCycle) spCycle.value = 'preset:yesterday';
+                    filterForm.submit();
+                } else if (p === 'weekly') {
+                    const weekAgo = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
+                    if (spFrom) spFrom.value = fmtDate(weekAgo);
+                    if (spTo) spTo.value = fmtDate(now);
+                    if (spCycle) spCycle.value = 'preset:weekly';
+                    filterForm.submit();
+                } else if (p === 'cycle') {
+                    if (spFrom) spFrom.value = '';
+                    if (spTo) spTo.value = '';
+                    if (spCycle) {
+                        if (spCycle.value.startsWith('preset:')) {
+                            const opt = Array.from(spCycle.options).find(o => !o.value.startsWith('preset:') && o.value !== 'all' && !o.value.startsWith('year:'));
+                            if (opt) spCycle.value = opt.value;
+                        }
+                    }
+                    filterForm.submit();
+                } else if (p === 'custom') {
+                    if (spFrom) {
+                        spFrom.focus();
+                        spFrom.style.borderColor = 'var(--sp-green)';
+                        setTimeout(() => { if (spFrom) spFrom.style.borderColor = ''; }, 1200);
+                    }
+                }
+            });
+        });
+    }
+
+    if (spCycle) {
+        spCycle.addEventListener('change', () => {
+            if (spCycle.value === 'preset:today') {
+                const today = fmtDate(new Date());
+                if (spFrom) spFrom.value = today;
+                if (spTo) spTo.value = today;
+                if (spPreset) spPreset.value = 'today';
+                filterForm && filterForm.submit();
+            } else if (spCycle.value === 'preset:yesterday') {
+                const yest = fmtDate(new Date(Date.now() - 24 * 60 * 60 * 1000));
+                if (spFrom) spFrom.value = yest;
+                if (spTo) spTo.value = yest;
+                if (spPreset) spPreset.value = 'yesterday';
+                filterForm && filterForm.submit();
+            } else if (spCycle.value === 'preset:weekly') {
+                const now = new Date();
+                const weekAgo = fmtDate(new Date(Date.now() - 6 * 24 * 60 * 60 * 1000));
+                if (spFrom) spFrom.value = weekAgo;
+                if (spTo) spTo.value = fmtDate(now);
+                if (spPreset) spPreset.value = 'weekly';
+                filterForm && filterForm.submit();
+            } else if (!spCycle.value.startsWith('preset:')) {
+                if (spPreset && (spPreset.value === 'today' || spPreset.value === 'yesterday' || spPreset.value === 'weekly')) {
+                    spPreset.value = 'cycle';
+                    if (spFrom) spFrom.value = '';
+                    if (spTo) spTo.value = '';
+                }
+            }
+        });
+    }
+
     // Custom range: require both dates
     const form = $('#spFilterForm');
     form && form.addEventListener('submit', (ev) => {
