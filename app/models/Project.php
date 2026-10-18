@@ -130,7 +130,7 @@ class Project extends Model
         $nearby_locations     = !empty($data['nearby_locations']) ? $data['nearby_locations'] : null;
 
         $stmt->bind_param(
-            "ssiiidssssssssiisssssssssdssssissssssiiiiiiiisdiiiiiiiiiiii",
+            "ssiiidsssssssiisssssssssdssssissssssiiiiiiiisdiiiiiiiiiiii",
             $data['name'],                   // 1
             $data['slug'],                   // 2
             $location_id,                    // 3 (i)
@@ -411,7 +411,7 @@ class Project extends Model
         $nearby_locations   = isset($data['nearby_locations']) ? $data['nearby_locations'] : null;
 
         $stmt->bind_param(
-            "ssiiidsssssssssisssssdssissssiiiisssssssssssssdiiiiiiiiiiiii",
+            "ssiiidsssssssssisssssdssissssiiiissssssssssssdiiiiiiiiiiiii",
             $data['name'],
             $data['slug'],
             $data['location_id'],

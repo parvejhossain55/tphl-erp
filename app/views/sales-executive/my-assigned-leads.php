@@ -390,7 +390,36 @@ if (!function_exists('getMyAssignedStatCardLink')) {
 $selectedCountriesArr = is_array($selectedCountry ?? null) 
     ? $selectedCountry 
     : (!empty($selectedCountry) ? (array)$selectedCountry : []);
-$hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterCard) || !empty($selectedAction) || !empty($selectedCallStatus) || !empty($selectedCountriesArr) || ($isFilterMissing ?? false);
+
+$selectedProjectObj = null;
+if (!empty($_GET['project_id']) && !empty($projects)) {
+    foreach ($projects as $p) {
+        if ($p['id'] == $_GET['project_id']) { $selectedProjectObj = $p; break; }
+    }
+}
+$selectedCategoryObj = null;
+if (!empty($_GET['project_category_id']) && !empty($projectCategories)) {
+    foreach ($projectCategories as $cat) {
+        if ($cat['id'] == $_GET['project_category_id']) { $selectedCategoryObj = $cat; break; }
+    }
+}
+
+$hasActiveFilters = !empty($search) 
+    || !empty($followup_date) 
+    || !empty($filterCard) 
+    || !empty($selectedAction) 
+    || !empty($selectedLeadStatus) 
+    || !empty($selectedCallStatus) 
+    || !empty($selectedCountriesArr) 
+    || ($isFilterMissing ?? false)
+    || !empty($_GET['from_date'])
+    || !empty($_GET['to_date'])
+    || !empty($_GET['uncontacted'])
+    || !empty($_GET['project_id'])
+    || !empty($_GET['project_category_id'])
+    || !empty($_GET['year'])
+    || !empty($_GET['month'])
+    || !empty($_GET['assigned_hours']);
 ?>
 <div id="activeFiltersContainer">
 <?php if ($hasActiveFilters): ?>
@@ -403,20 +432,51 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
             <?php if (!empty($search)): ?>
                 <span class="badge bg-primary rounded-pill px-3 py-2"><i class="bi bi-search me-1"></i> Search: "<?= htmlspecialchars($search) ?>"</span>
             <?php endif; ?>
+            <?php if (!empty($_GET['from_date']) || !empty($_GET['to_date'])): ?>
+                <span class="badge bg-success rounded-pill px-3 py-2">
+                    <i class="bi bi-calendar-range me-1"></i> 
+                    <?= (($_GET['date_type'] ?? 'lead_date') === 'assigned_date' ? 'Assigned Date' : 'Lead Date') ?>: 
+                    <?= !empty($_GET['from_date']) ? date('d M, Y', strtotime($_GET['from_date'])) : 'Any' ?> 
+                    to 
+                    <?= !empty($_GET['to_date']) ? date('d M, Y', strtotime($_GET['to_date'])) : 'Any' ?>
+                </span>
+            <?php endif; ?>
+            <?php if (!empty($_GET['uncontacted'])): ?>
+                <span class="badge bg-warning text-dark rounded-pill px-3 py-2"><i class="bi bi-telephone-x me-1"></i> Uncontacted Only</span>
+            <?php endif; ?>
             <?php if (!empty($followup_date)): ?>
                 <span class="badge bg-success rounded-pill px-3 py-2"><i class="bi bi-calendar-event me-1"></i> Follow-Up Date: <?= date('d M, Y', strtotime($followup_date)) ?></span>
             <?php endif; ?>
-            <?php if (!empty($filterCard)): ?>
-                <span class="badge bg-dark rounded-pill px-3 py-2"><i class="bi bi-tag me-1"></i> Card Filter: <?= ucwords(str_replace('_', ' ', $filterCard)) ?></span>
+            <?php if ($selectedProjectObj): ?>
+                <span class="badge bg-primary rounded-pill px-3 py-2"><i class="bi bi-building me-1"></i> Project: <?= htmlspecialchars($selectedProjectObj['name']) ?></span>
+            <?php endif; ?>
+            <?php if ($selectedCategoryObj): ?>
+                <span class="badge bg-info text-dark rounded-pill px-3 py-2"><i class="bi bi-tags me-1"></i> Category: <?= htmlspecialchars($selectedCategoryObj['name']) ?></span>
+            <?php endif; ?>
+            <?php if (!empty($selectedCountriesArr)): ?>
+                <span class="badge bg-info text-dark rounded-pill px-3 py-2"><i class="bi bi-globe me-1"></i> Country: <?= htmlspecialchars(implode(', ', $selectedCountriesArr)) ?></span>
             <?php endif; ?>
             <?php if (!empty($selectedAction)): ?>
                 <span class="badge bg-secondary rounded-pill px-3 py-2"><i class="bi bi-lightning me-1"></i> Action: <?= htmlspecialchars($selectedAction) ?></span>
             <?php endif; ?>
+            <?php if (!empty($selectedLeadStatus)): ?>
+                <span class="badge bg-dark rounded-pill px-3 py-2"><i class="bi bi-flag me-1"></i> Status: <?= htmlspecialchars($selectedLeadStatus) ?></span>
+            <?php endif; ?>
+            <?php if (!empty($_GET['year']) || !empty($_GET['month'])): ?>
+                <span class="badge bg-light text-dark border rounded-pill px-3 py-2">
+                    <i class="bi bi-calendar-date me-1"></i> Period: 
+                    <?= !empty($_GET['month']) ? date('F', mktime(0, 0, 0, (int)$_GET['month'], 10)) : '' ?>
+                    <?= htmlspecialchars($_GET['year'] ?? '') ?>
+                </span>
+            <?php endif; ?>
+            <?php if (!empty($_GET['assigned_hours'])): ?>
+                <span class="badge bg-secondary rounded-pill px-3 py-2"><i class="bi bi-clock-history me-1"></i> Assigned: Last <?= htmlspecialchars($_GET['assigned_hours']) ?> Hours</span>
+            <?php endif; ?>
+            <?php if (!empty($filterCard)): ?>
+                <span class="badge bg-dark rounded-pill px-3 py-2"><i class="bi bi-tag me-1"></i> Card: <?= ucwords(str_replace('_', ' ', $filterCard)) ?></span>
+            <?php endif; ?>
             <?php if (!empty($selectedCallStatus)): ?>
                 <span class="badge bg-warning text-dark rounded-pill px-3 py-2"><i class="bi bi-telephone me-1"></i> Call Status: <?= htmlspecialchars($selectedCallStatus) ?></span>
-            <?php endif; ?>
-            <?php if (!empty($selectedCountriesArr)): ?>
-                <span class="badge bg-info text-dark rounded-pill px-3 py-2"><i class="bi bi-globe me-1"></i> Country: <?= htmlspecialchars(implode(', ', $selectedCountriesArr)) ?></span>
             <?php endif; ?>
             <?php if ($isFilterMissing ?? false): ?>
                 <span class="badge bg-danger rounded-pill px-3 py-2"><i class="bi bi-bell-slash me-1"></i> Missing Follow-Ups</span>
@@ -438,9 +498,17 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
 
             <div class="row g-2 align-items-center flex-wrap">
 
+                <!-- Date Type Select -->
+                <div class="col-auto col-sm-6 col-md-auto">
+                    <select class="form-select form-select-sm" name="date_type" title="Filter dates by Lead Date (Created) or Assigned Date">
+                        <option value="lead_date" <?= (($date_type ?? 'lead_date') === 'lead_date') ? 'selected' : '' ?>>Date: Lead Date</option>
+                        <option value="assigned_date" <?= (($date_type ?? '') === 'assigned_date') ? 'selected' : '' ?>>Date: Assigned Date</option>
+                    </select>
+                </div>
+
                 <!-- From Date Filter -->
                 <div class="col-12 col-sm-6 col-md-auto">
-                    <div class="input-group input-group-sm" title="Assigned From Date">
+                    <div class="input-group input-group-sm" title="From Date">
                         <span class="input-group-text " style="font-size: 11px;"><i class="bi bi-calendar me-1"></i> From</span>
                         <input type="date" name="from_date" class="form-control form-control-sm" value="<?= htmlspecialchars($_GET['from_date'] ?? '') ?>">
                     </div>
@@ -448,7 +516,7 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
 
                 <!-- To Date Filter -->
                 <div class="col-12 col-sm-6 col-md-auto">
-                    <div class="input-group input-group-sm" title="Assigned To Date">
+                    <div class="input-group input-group-sm" title="To Date">
                         <span class="input-group-text " style="font-size: 11px;"><i class="bi bi-calendar me-1"></i> To</span>
                         <input type="date" name="to_date" class="form-control form-control-sm" value="<?= htmlspecialchars($_GET['to_date'] ?? '') ?>">
                     </div>
@@ -597,6 +665,15 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
 
                 <?php if (!empty($filterCard)): ?>
                     <input type="hidden" name="filter_card" value="<?= htmlspecialchars($filterCard) ?>">
+                <?php endif; ?>
+                <?php if (!empty($_GET['filter'])): ?>
+                    <input type="hidden" name="filter" value="<?= htmlspecialchars($_GET['filter']) ?>">
+                <?php endif; ?>
+                <?php if (!empty($search)): ?>
+                    <input type="hidden" name="search" value="<?= htmlspecialchars($search) ?>">
+                <?php endif; ?>
+                <?php if (isset($_GET['limit'])): ?>
+                    <input type="hidden" name="limit" value="<?= htmlspecialchars($_GET['limit']) ?>">
                 <?php endif; ?>
 
                 <!-- Filter & Reset Buttons -->
@@ -903,7 +980,7 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                     <td>
                                         <?php
                                         $last_action = $lead['last_lead_action'] ?? 'not_called';
-                                        $statusVal = $lead['lead_type'] ?? 'Pending';
+                                        $statusVal = !empty($lead['last_follow_up_lead_status']) ? $lead['last_follow_up_lead_status'] : ($lead['lead_type'] ?? 'Pending');
                                         $badgeClass = 'bg-secondary';
                                         if ($statusVal == 'Prospect' || $statusVal == 'High Prospect') {
                                             $badgeClass = 'bg-received';
@@ -1057,6 +1134,12 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
 
                 <div class="d-flex flex-column gap-2">
 
+                    <!-- Date Type Select -->
+                    <select class="form-select form-select-sm" name="date_type">
+                        <option value="lead_date" <?= (($date_type ?? 'lead_date') === 'lead_date') ? 'selected' : '' ?>>Date: Lead Date</option>
+                        <option value="assigned_date" <?= (($date_type ?? '') === 'assigned_date') ? 'selected' : '' ?>>Date: Assigned Date</option>
+                    </select>
+
                     <!-- From Date Filter -->
                     <div class="input-group input-group-sm">
                         <span class="input-group-text"><i class="bi bi-calendar me-1"></i> From</span>
@@ -1073,7 +1156,7 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                     <div class="form-check mt-1">
                         <input class="form-check-input" type="checkbox" name="uncontacted" id="uncontactedFilterMobile" value="1" <?= isset($_GET['uncontacted']) ? 'checked' : '' ?>>
                         <label class="form-check-label" for="uncontactedFilterMobile" style="font-size: 12px; font-weight: bold;">
-                            Uncontacted
+                            Uncontacted Only
                         </label>
                     </div>
 
@@ -1083,16 +1166,42 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                         <input type="date" name="followup_date" class="form-control form-control-sm" value="<?= htmlspecialchars($followup_date ?? '') ?>">
                     </div>
 
+                    <!-- Project Filter -->
+                    <?php if (!empty($projects)): ?>
+                        <?php $selectedProjectMobile = $_GET['project_id'] ?? ''; ?>
+                        <select class="form-select form-select-sm" name="project_id">
+                            <option value="">Project: All</option>
+                            <?php foreach ($projects as $p): ?>
+                                <option value="<?= $p['id'] ?>" <?= $selectedProjectMobile == $p['id'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($p['name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    <?php endif; ?>
+
+                    <!-- Category Filter -->
+                    <?php if (!empty($projectCategories)): ?>
+                        <?php $selectedCategoryMobile = $_GET['project_category_id'] ?? ''; ?>
+                        <select class="form-select form-select-sm" name="project_category_id">
+                            <option value="">Category: All</option>
+                            <?php foreach ($projectCategories as $cat): ?>
+                                <option value="<?= $cat['id'] ?>" <?= $selectedCategoryMobile == $cat['id'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($cat['name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    <?php endif; ?>
+
                     <!-- Year Select -->
                     <?php
                     $currentYear = date('Y');
                     $startYear   = $currentYear - 10;
-                    $selectedYear = $slectedYear ?? '';
+                    $selectedYear = $_GET['year'] ?? '';
                     ?>
-                    <select class="form-control form-select-sm" name="year">
+                    <select class="form-select form-select-sm" name="year">
                         <option value="">Year Select</option>
-                        <?php for ($year = $currentYear; $year >= $startYear; $year--): ?>
-                            <option value="<?= $year ?>" <?= $selectedYear == $year ? 'selected' : '' ?>><?= $year ?></option>
+                        <?php for ($yearVal = $currentYear; $yearVal >= $startYear; $yearVal--): ?>
+                            <option value="<?= $yearVal ?>" <?= $selectedYear == $yearVal ? 'selected' : '' ?>><?= $yearVal ?></option>
                         <?php endfor; ?>
                     </select>
 
@@ -1114,21 +1223,39 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                     ];
                     $selectedMonth = $_GET['month'] ?? '';
                     ?>
-                    <select class="form-control form-select-sm" name="month">
+                    <select class="form-select form-select-sm" name="month">
                         <option value="">Month Select</option>
                         <?php foreach ($months as $id => $name): ?>
                             <option value="<?= $id ?>" <?= $selectedMonth == $id ? 'selected' : '' ?>><?= $name ?></option>
                         <?php endforeach; ?>
                     </select>
 
-                    <!-- Status Select -->
+                    <!-- Status / Action Select -->
                     <select class="form-select form-select-sm" name="last_action">
-                        <option value="">Status: All</option>
-                        <option value="new" <?= ($selectedAction ?? '') == 'new' ? 'selected' : '' ?>>New</option>
-                        <option value="booked" <?= ($selectedAction ?? '') == 'booked' ? 'selected' : '' ?>>Booked</option>
-                        <option value="follow up" <?= ($selectedAction ?? '') == 'follow up' ? 'selected' : '' ?>>Follow Up</option>
-                        <option value="visited" <?= ($selectedAction ?? '') == 'visited' ? 'selected' : '' ?>>Visited</option>
-                        <option value="cancel" <?= ($selectedAction ?? '') == 'cancel' ? 'selected' : '' ?>>Cancel</option>
+                        <option value="">Client Action: All</option>
+                        <option value="Contacted" <?= strcasecmp(($selectedAction ?? ''), 'contacted') === 0 ? 'selected' : '' ?>>Contacted</option>
+                        <option value="Follow Up" <?= strcasecmp(($selectedAction ?? ''), 'follow up') === 0 ? 'selected' : '' ?>>Follow Up</option>
+                        <option value="Visited" <?= strcasecmp(($selectedAction ?? ''), 'visited') === 0 ? 'selected' : '' ?>>Visited</option>
+                        <option value="Booked" <?= strcasecmp(($selectedAction ?? ''), 'booked') === 0 ? 'selected' : '' ?>>Booked</option>
+                        <option value="New" <?= strcasecmp(($selectedAction ?? ''), 'new') === 0 ? 'selected' : '' ?>>New</option>
+                        <option value="Cancel" <?= strcasecmp(($selectedAction ?? ''), 'cancel') === 0 ? 'selected' : '' ?>>Cancel</option>
+                    </select>
+
+                    <!-- Lead Status Select -->
+                    <select class="form-select form-select-sm" name="lead_status">
+                        <option value="">Lead Status: All</option>
+                        <?php
+                        $statuses = [
+                            'No Response', 'Pending', 'Prospect', 'High Prospect', 
+                            'Will Visit', 'Visited', 'Sold', 'Lead Transferred', 
+                            'Project Transferred', 'Not Interested', 'Don\'t Call Again', 
+                            'Refund', 'Future', 'Cold', 'Hot', 'Warm', 'Irrelevant'
+                        ];
+                        foreach($statuses as $st) {
+                            $selected = ($selectedLeadStatus ?? '') == $st ? 'selected' : '';
+                            echo "<option value=\"$st\" $selected>$st</option>";
+                        }
+                        ?>
                     </select>
 
                     <!-- Latest Assigned Hours Filter -->
@@ -1144,11 +1271,23 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                         <option value="24" <?= ($_GET['assigned_hours'] ?? '') == '24' ? 'selected' : '' ?>>Last 24 Hours</option>
                     </select>
 
+                    <?php if (!empty($filterCard)): ?>
+                        <input type="hidden" name="filter_card" value="<?= htmlspecialchars($filterCard) ?>">
+                    <?php endif; ?>
+                    <?php if (!empty($_GET['filter'])): ?>
+                        <input type="hidden" name="filter" value="<?= htmlspecialchars($_GET['filter']) ?>">
+                    <?php endif; ?>
+                    <?php if (!empty($search)): ?>
+                        <input type="hidden" name="search" value="<?= htmlspecialchars($search) ?>">
+                    <?php endif; ?>
+                    <?php if (isset($_GET['limit'])): ?>
+                        <input type="hidden" name="limit" value="<?= htmlspecialchars($_GET['limit']) ?>">
+                    <?php endif; ?>
+
                     <!-- Action Buttons -->
                     <div class="d-flex flex-wrap gap-2 mt-2">
-                        <button type="submit" class="btn btn-outline-secondary btn-sm flex-grow-1">Search</button>
-                        <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads" class="btn btn-primary btn-sm flex-grow-1">Reset</a>
-
+                        <button type="submit" class="btn btn-outline-secondary btn-sm flex-grow-1"><i class="bi bi-funnel me-1"></i> Filter</button>
+                        <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads" class="btn btn-primary btn-sm flex-grow-1"><i class="bi bi-arrow-counterclockwise me-1"></i> Reset</a>
                     </div>
 
                 </div>
@@ -1355,7 +1494,7 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                 <div class="mt-2">
                     <div class="info-label">Last Lead Status</div>
                     <?php
-                    $statusVal = $lead['lead_type'] ?? 'Pending';
+                    $statusVal = !empty($lead['last_follow_up_lead_status']) ? $lead['last_follow_up_lead_status'] : ($lead['lead_type'] ?? 'Pending');
                     $statusClass = '';
                     if (in_array($statusVal, ['Prospect', 'High Prospect'])) {
                         $statusClass = 'bg-received';

@@ -455,10 +455,11 @@ class SalesPerformanceService
             ) fu ON fu.lead_id = l.id
             LEFT JOIN (
                 SELECT b.lead_id, 1 AS booked,
-                       MAX(EXISTS (SELECT 1 FROM lead_payments p
-                                   WHERE p.booking_id = b.id AND COALESCE(p.is_trashed, 0) = 0
-                                     AND p.verification_status = 'verified')) AS confirmed
+                       MAX(CASE WHEN p.id IS NOT NULL THEN 1 ELSE 0 END) AS confirmed
                 FROM lead_bookings b
+                LEFT JOIN lead_payments p ON p.booking_id = b.id
+                     AND COALESCE(p.is_trashed, 0) = 0
+                     AND p.verification_status = 'verified'
                 WHERE b.deleted_at IS NULL AND b.booking_status IN ('booked','completed')
                 GROUP BY b.lead_id
             ) bk ON bk.lead_id = l.id
@@ -467,6 +468,9 @@ class SalesPerformanceService
               $projSqlL
         ";
         $res = $this->db->query($sql);
+        if (!$res && $this->db->error) {
+            error_log("SalesPerformanceService cohort query error: " . $this->db->error);
+        }
         $cohortGaps = ['booked_without_visit' => 0, 'contacted_no_timestamp' => 0, 'no_assigned_at' => 0];
         while ($res && $r = $res->fetch_assoc()) {
             $uid = $r['assigned_id'] ? (int) $r['assigned_id'] : null;

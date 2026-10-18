@@ -123,6 +123,10 @@ class LeadSynchronizer
             return ['total_rows' => 0, 'inserted' => 0, 'skipped_duplicate' => 0, 'unmatched_project' => 0, 'errors' => 0];
         }
 
+        if (!$dryRun) {
+            $this->ensureSchema();
+        }
+
         // Check if Gemini AI should be used
         $geminiConf = $this->config['gemini'] ?? [];
         if (!empty($geminiConf['enabled']) && !empty($geminiConf['api_key']) && strpos($geminiConf['api_key'], 'YOUR_GEMINI_API_KEY') === false) {
@@ -803,4 +807,52 @@ class LeadSynchronizer
         @file_put_contents($logFile, $content, FILE_APPEND);
         $this->logs = [];
     }
+
+    /**
+     * Self-healing schema auto-migration
+     */
+    public function ensureSchema(?PDO $pdo = null): void
+    {
+        if (!$pdo) {
+            $pdo = $this->getDb();
+        }
+
+        try {
+            // 1. Ensure distribute column exists and defaults to 1
+            $cols = $pdo->query("SHOW COLUMNS FROM `leads` LIKE 'distribute'")->fetchAll();
+            if (empty($cols)) {
+                $pdo->exec("ALTER TABLE `leads` ADD COLUMN `distribute` TINYINT(1) NOT NULL DEFAULT 1");
+                try {
+                    $pdo->exec("CREATE INDEX `idx_leads_distribute` ON `leads` (`distribute`)");
+                } catch (Throwable $t) {}
+            } else {
+                $pdo->exec("ALTER TABLE `leads` MODIFY COLUMN `distribute` TINYINT(1) NOT NULL DEFAULT 1");
+            }
+
+            // 2. Ensure is_automated column exists
+            $autoCols = $pdo->query("SHOW COLUMNS FROM `leads` LIKE 'is_automated'")->fetchAll();
+            if (empty($autoCols)) {
+                $pdo->exec("ALTER TABLE `leads` ADD COLUMN `is_automated` TINYINT(1) NOT NULL DEFAULT 0");
+                try {
+                    $pdo->exec("CREATE INDEX `idx_leads_is_automated` ON `leads` (`is_automated`)");
+                } catch (Throwable $t) {}
+            }
+
+            // 3. Ensure approved_by and approved_at columns exist
+            $apprCols = $pdo->query("SHOW COLUMNS FROM `leads` LIKE 'approved_by'")->fetchAll();
+            if (empty($apprCols)) {
+                $pdo->exec("ALTER TABLE `leads` ADD COLUMN `approved_by` INT NULL");
+                try {
+                    $pdo->exec("CREATE INDEX `idx_leads_approved_by` ON `leads` (`approved_by`)");
+                } catch (Throwable $t) {}
+            }
+            $apprAtCols = $pdo->query("SHOW COLUMNS FROM `leads` LIKE 'approved_at'")->fetchAll();
+            if (empty($apprAtCols)) {
+                $pdo->exec("ALTER TABLE `leads` ADD COLUMN `approved_at` DATETIME NULL");
+            }
+        } catch (Throwable $e) {
+            $this->log("ensureSchema warning: " . $e->getMessage());
+        }
+    }
 }
+
