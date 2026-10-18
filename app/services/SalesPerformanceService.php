@@ -1486,7 +1486,7 @@ class SalesPerformanceService
                             )"
             ],
             'no_response_leads' => [
-                'label' => 'No Response Leads (Unreachable / Not Received)',
+                'label' => 'No Response Leads (Stage 03 · Unreachable / Not Received)',
                 'description' => 'Leads with No Response status, not received call status, or unreachable follow-up attempts.',
                 'sql' => "SELECT l.id AS lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
                                  COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, l.assigned_id AS owner_id, l.team_id AS lead_team_id,
@@ -1505,7 +1505,7 @@ class SalesPerformanceService
                             )"
             ],
             'uncontacted' => [
-                'label' => 'Not Contacted Leads (Awaiting 1st contact)',
+                'label' => 'Not Contacted Leads (Stage 04 · Awaiting 1st contact)',
                 'description' => 'Leads received in this period that have not yet had any call, visit, or follow-up recorded.',
                 'sql' => "SELECT l.id AS lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
                                  COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, l.assigned_id AS owner_id, l.team_id AS lead_team_id,
@@ -1527,7 +1527,7 @@ class SalesPerformanceService
                             )"
             ],
             'stage_3' => [
-                'label' => 'Will Visit Leads (Stage 03)',
+                'label' => 'Will Visit Leads (Stage 05)',
                 'description' => 'Leads scheduled or committed to visit a project site.',
                 'sql' => "SELECT l.id AS lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
                                  COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, l.assigned_id AS owner_id, l.team_id AS lead_team_id,
@@ -1543,7 +1543,7 @@ class SalesPerformanceService
                             )"
             ],
             'stage_4' => [
-                'label' => 'Visited Leads (Stage 04)',
+                'label' => 'Visited Leads (Stage 06)',
                 'description' => 'Leads who completed a physical or face-to-face site visit.',
                 'sql' => "SELECT l.id AS lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
                                  COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, l.assigned_id AS owner_id, l.team_id AS lead_team_id,
@@ -1559,7 +1559,7 @@ class SalesPerformanceService
                             )"
             ],
             'stage_5' => [
-                'label' => 'Booked Leads (Funnel Cohort Stage 05)',
+                'label' => 'Booked Leads (Funnel Cohort Stage 07)',
                 'description' => 'Leads received in this period who progressed to booking.',
                 'sql' => "SELECT l.id AS lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
                                  COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, l.assigned_id AS owner_id, l.team_id AS lead_team_id,
