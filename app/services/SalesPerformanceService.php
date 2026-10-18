@@ -420,16 +420,38 @@ class SalesPerformanceService
         // -----------------------------------------------------------------
         // 1. Cohort funnel: leads received in period (or all active leads if all-time)
         // -----------------------------------------------------------------
+        $lCols = $this->getTableColumns('leads');
+        $fuCols = $this->getTableColumns('lead_follow_ups');
+        $bkCols = $this->getTableColumns('lead_bookings');
+        $payCols = $this->getTableColumns('lead_payments');
+
+        $firstContactCol = isset($lCols['first_contacted_at']) ? "l.first_contacted_at" : "NULL AS first_contacted_at";
+        $commTypeCol     = isset($lCols['communication_type']) ? "l.communication_type" : "NULL AS communication_type";
+        $lastActionCol   = isset($lCols['last_lead_action']) ? "l.last_lead_action" : "NULL AS last_lead_action";
+        $callStatusCol   = isset($lCols['call_status']) ? "l.call_status" : "'not_called' AS call_status";
+        $leadTypeCol     = isset($lCols['lead_type']) ? "l.lead_type" : "NULL AS lead_type";
+
+        $leadsDeleted    = isset($lCols['deleted_at']) ? "l.deleted_at IS NULL" : "1=1";
+        $fuDeleted       = isset($fuCols['deleted_at']) ? "WHERE deleted_at IS NULL" : "";
+        $bkDeleted       = isset($bkCols['deleted_at']) ? "WHERE b.deleted_at IS NULL AND b.booking_status IN ('booked','completed')" : "WHERE b.booking_status IN ('booked','completed')";
+        $payTrashed      = isset($payCols['is_trashed']) ? "AND COALESCE(p.is_trashed, 0) = 0" : "";
+        $payVerified     = isset($payCols['verification_status']) ? "AND p.verification_status = 'verified'" : "";
+
         $qual = $this->inList(self::QUALIFIED_STATUSES);
         $invalid = $this->inList(self::INVALID_CONTACT_TYPES);
         $projSqlL = $projectId ? " AND l.project_id = " . $projectId : "";
         $isOverviewScope = empty($filters['executive_id']) && empty($filters['team_id']) && ($filters['tab'] ?? 'overview') === 'overview';
-        $dateColL = $isOverviewScope ? 'l.created_at' : "COALESCE(NULLIF(l.assigned_at, '0000-00-00 00:00:00'), l.created_at)";
+        $validAssignedAt = "CASE WHEN l.assigned_at IS NOT NULL AND l.assigned_at > '1970-01-01' THEN l.assigned_at ELSE l.created_at END";
+        $dateColL = $isOverviewScope ? 'l.created_at' : "COALESCE($validAssignedAt, l.created_at)";
         $dateSqlL = $isAllTime ? "" : " AND $dateColL BETWEEN '$start' AND '$end'";
 
         $sql = "
-            SELECT l.id, l.assigned_id, l.assigned_at, l.created_at, l.first_contacted_at, l.call_status,
-                   l.communication_type, l.lead_type, l.last_lead_action,
+            SELECT l.id, l.assigned_id, l.assigned_at, l.created_at,
+                   $firstContactCol,
+                   $callStatusCol,
+                   $commTypeCol,
+                   $leadTypeCol,
+                   $lastActionCol,
                    COALESCE(fu.fu_count, 0) AS fu_count,
                    COALESCE(fu.f_valid, 0) AS f_valid,
                    COALESCE(fu.f_qual, 0) AS f_qual,
@@ -450,7 +472,7 @@ class SalesPerformanceService
                        MAX(lead_status = 'Visited' OR follow_up_type IN ('visit','Face To Face')) AS f_vdone,
                        MAX(next_action = 'booking') AS f_nego
                 FROM lead_follow_ups
-                WHERE deleted_at IS NULL
+                $fuDeleted
                 GROUP BY lead_id
             ) fu ON fu.lead_id = l.id
             LEFT JOIN (
@@ -458,18 +480,26 @@ class SalesPerformanceService
                        MAX(CASE WHEN p.id IS NOT NULL THEN 1 ELSE 0 END) AS confirmed
                 FROM lead_bookings b
                 LEFT JOIN lead_payments p ON p.booking_id = b.id
-                     AND COALESCE(p.is_trashed, 0) = 0
-                     AND p.verification_status = 'verified'
-                WHERE b.deleted_at IS NULL AND b.booking_status IN ('booked','completed')
+                     $payTrashed
+                     $payVerified
+                $bkDeleted
                 GROUP BY b.lead_id
             ) bk ON bk.lead_id = l.id
-            WHERE l.deleted_at IS NULL
+            WHERE $leadsDeleted
               $dateSqlL
               $projSqlL
         ";
         $res = $this->db->query($sql);
-        if (!$res && $this->db->error) {
-            error_log("SalesPerformanceService cohort query error: " . $this->db->error);
+        if (!$res) {
+            error_log("SalesPerformanceService cohort query error: " . $this->db->error . " | Falling back to safe query");
+            // Ultra safe fallback: guarantees lead numbers are never 0
+            $fallbackSql = "SELECT l.id, l.assigned_id, l.created_at, l.assigned_at, 'not_called' AS call_status,
+                                   NULL AS first_contacted_at, NULL AS communication_type, NULL AS lead_type, NULL AS last_lead_action,
+                                   0 AS fu_count, 0 AS f_valid, 0 AS f_qual, 0 AS f_vsched, 0 AS f_vdone, 0 AS f_nego,
+                                   NULL AS first_fu_at, 0 AS booked, 0 AS confirmed
+                            FROM leads l
+                            WHERE $leadsDeleted $dateSqlL $projSqlL";
+            $res = $this->db->query($fallbackSql);
         }
         $cohortGaps = ['booked_without_visit' => 0, 'contacted_no_timestamp' => 0, 'no_assigned_at' => 0];
         while ($res && $r = $res->fetch_assoc()) {
@@ -680,6 +710,7 @@ class SalesPerformanceService
             WHERE 1=1 $dateSqlO $projO
             GROUP BY uid
         ";
+        
         $res = $this->db->query($sql);
         while ($res && $r = $res->fetch_assoc()) {
             $uid = $r['uid'] ? (int) $r['uid'] : null;
@@ -929,6 +960,22 @@ class SalesPerformanceService
     protected function inList(array $values): string
     {
         return implode(',', array_map(fn($v) => "'" . $this->db->real_escape_string($v) . "'", $values));
+    }
+
+    protected array $tableColsCache = [];
+
+    protected function getTableColumns(string $table): array
+    {
+        if (isset($this->tableColsCache[$table])) {
+            return $this->tableColsCache[$table];
+        }
+        $res = $this->db->query("SHOW COLUMNS FROM `" . $this->db->real_escape_string($table) . "`");
+        $cols = [];
+        while ($res && $r = $res->fetch_assoc()) {
+            $cols[$r['Field']] = true;
+        }
+        $this->tableColsCache[$table] = $cols;
+        return $cols;
     }
 
     // =====================================================================

@@ -260,11 +260,91 @@ foreach ($todayLeads as $lead) {
 
 <!-- Stats Grid -->
 <?php
+if (!function_exists('getTodayLeadsStatCardLink')) {
+    function getTodayLeadsStatCardLink($cardType) {
+        $params = $_GET;
+        if ($cardType === 'total_leads') {
+            unset($params['filter_card']);
+        } else {
+            $params['filter_card'] = $cardType;
+        }
+        unset($params['page'], $params['url']);
+        return $GLOBALS['base_url'] . '/today-leads' . ($params ? '?' . http_build_query($params) : '');
+    }
+}
+
+$loggedUserId = (int)($_SESSION['user']['id'] ?? 0);
+$filterCard = $filterCard ?? ($_GET['filter_card'] ?? null);
+$leadBookings = $leadBookings ?? [];
+
+$isLeadContacted = function($lead) use ($followUpHistories, $leadBookings, $loggedUserId) {
+    $leadId = (int)$lead['id'];
+    $assignedAt = (!empty($lead['assigned_at']) && $lead['assigned_at'] !== '0000-00-00 00:00:00' && $lead['assigned_at'] !== '0000-00-00')
+        ? $lead['assigned_at']
+        : $lead['created_at'];
+    $assignedTs = $assignedAt ? strtotime($assignedAt) : 0;
+    $todayDate = date('Y-m-d');
+
+    // 1. Follow-up recorded on/after assignment, or by this executive, or today
+    if (!empty($followUpHistories[$leadId])) {
+        foreach ($followUpHistories[$leadId] as $fu) {
+            $fuBy = (int)($fu['created_by'] ?? 0);
+            $fuWith = (int)($fu['assigned_with'] ?? 0);
+            $fuCreatedTime = !empty($fu['created_at']) ? strtotime($fu['created_at']) : 0;
+            $fuDate = !empty($fu['follow_up_date']) ? $fu['follow_up_date'] : '';
+
+            if ($fuBy === $loggedUserId || $fuWith === $loggedUserId) {
+                return true;
+            }
+            if ($assignedTs > 0 && $fuCreatedTime >= $assignedTs) {
+                return true;
+            }
+            if ($fuDate === $todayDate || (!empty($fu['created_at']) && date('Y-m-d', $fuCreatedTime) === $todayDate)) {
+                return true;
+            }
+        }
+    }
+
+    // 2. Booking created by this executive, or on/after assignment, or today
+    if (!empty($leadBookings[$leadId])) {
+        foreach ($leadBookings[$leadId] as $bk) {
+            $bkSalesBy = (int)($bk['sales_by_id'] ?? 0);
+            $bkBy = (int)($bk['created_by'] ?? 0);
+            $bkCreatedTime = !empty($bk['created_at']) ? strtotime($bk['created_at']) : 0;
+            $bkDate = !empty($bk['booking_date']) ? $bk['booking_date'] : '';
+
+            if ($bkSalesBy === $loggedUserId || $bkBy === $loggedUserId) {
+                return true;
+            }
+            if ($assignedTs > 0 && $bkCreatedTime >= $assignedTs) {
+                return true;
+            }
+            if ($bkDate === $todayDate || (!empty($bk['created_at']) && date('Y-m-d', $bkCreatedTime) === $todayDate)) {
+                return true;
+            }
+        }
+    }
+
+    // 3. Call status marked as contacted/called/received today or on/after assignment
+    $callStatus = strtolower($lead['call_status'] ?? '');
+    if (in_array($callStatus, ['contacted', 'called', 'received'])) {
+        $firstContactTs = !empty($lead['first_contacted_at']) ? strtotime($lead['first_contacted_at']) : 0;
+        if ($firstContactTs > 0) {
+            if ($firstContactTs >= $assignedTs || date('Y-m-d', $firstContactTs) === $todayDate) {
+                return true;
+            }
+        } else {
+            return true;
+        }
+    }
+
+    return false;
+};
+
 $contactedCount = 0;
 $notContactedCount = 0;
 foreach ($todayLeads as $l) {
-    if ((isset($l['call_status']) && $l['call_status'] == 'contacted') || 
-        (isset($l['last_lead_action']) && in_array($l['last_lead_action'], ['contacted', 'Follow Up', 'booked', 'visited']))) {
+    if ($isLeadContacted($l)) {
         $contactedCount++;
     } else {
         $notContactedCount++;
@@ -274,7 +354,7 @@ foreach ($todayLeads as $l) {
 <div class="row mb-4 align-items-stretch">
     <!-- Total My Leads Card -->
     <div class="col-12 col-md-4 col-xl mb-2">
-        <a href="<?= $GLOBALS['base_url'] ?>/today-leads" class="stat-card-link">
+        <a href="<?= getTodayLeadsStatCardLink('total_leads') ?>" class="stat-card-link">
             <div class="card__wrapper stat-card shadow-sm <?= (empty($filterCard) && empty($selectedAction) && empty($selectedCallStatus) && empty($search) && empty($followup_date) && !($isFilterMissing ?? false)) ? 'border-primary' : '' ?>" 
                  style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 1.5px solid #bfdbfe !important; min-height: 85px;">
                 <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right text-primary"></i></span>
@@ -293,7 +373,7 @@ foreach ($todayLeads as $l) {
 
     <!-- Contacted Card (Includes Contacted & Follow Up) -->
     <div class="col-12 col-md-4 col-xl mb-2">
-        <a href="<?= $GLOBALS['base_url'] ?>/today-leads?filter_card=contacted" class="stat-card-link">
+        <a href="<?= getTodayLeadsStatCardLink('contacted') ?>" class="stat-card-link">
             <div class="card__wrapper stat-card shadow-sm <?= (($filterCard ?? '') === 'contacted' || ($selectedAction ?? '') === 'Contacted') ? 'border-success' : '' ?>" 
                  style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1.5px solid #bbf7d0 !important; min-height: 85px;">
                 <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right text-success"></i></span>
@@ -312,7 +392,7 @@ foreach ($todayLeads as $l) {
 
     <!-- Not Contacted Card -->
     <div class="col-12 col-md-4 col-xl mb-2">
-        <a href="<?= $GLOBALS['base_url'] ?>/today-leads?filter_card=not_contacted" class="stat-card-link">
+        <a href="<?= getTodayLeadsStatCardLink('not_contacted') ?>" class="stat-card-link">
             <div class="card__wrapper stat-card shadow-sm <?= (($filterCard ?? '') === 'not_contacted' || ($filterCard ?? '') === 'not_called' || ($selectedCallStatus ?? '') === 'not_called') ? 'border-warning' : '' ?>" 
                  style="background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); border: 1.5px solid #fed7aa !important; min-height: 85px;">
                 <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right text-warning"></i></span>
@@ -613,9 +693,18 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($todayLeads as $key => $lead): ?>
-                                <?php
-                                 $cleanPhone = preg_replace('/[^0-9]/', '', $lead['phone_number'] ?? $lead['phone'] ?? '');
+                            <?php 
+                            $displayedCount = 0;
+                            foreach ($todayLeads as $key => $lead): 
+                                $isContacted = $isLeadContacted($lead);
+                                if ($filterCard === 'contacted' && !$isContacted) {
+                                    continue;
+                                }
+                                if (($filterCard === 'not_contacted' || $filterCard === 'not_called') && $isContacted) {
+                                    continue;
+                                }
+                                $displayedCount++;
+                                $cleanPhone = preg_replace('/[^0-9]/', '', $lead['phone_number'] ?? $lead['phone'] ?? '');
                                  $cleanEmail = trim(strtolower($lead['email'] ?? ''));
                                  $leadDuplicates = [];
                                  $dupIds = [];
@@ -640,7 +729,7 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                 <tr id="lead-<?= $lead['id'] ?>" data-id="<?= $lead['id'] ?>" data-is-duplicate="<?= $isDup ? '1' : '0' ?>">
                                     <td>
                                         <input type="checkbox" class="me-2 selectedId" data-id="<?= $lead['id'] ?>">
-                                        <?= $key + 1 ?>
+                                        <?= $displayedCount ?>
                                     </td>
                                     <?php
                                     $assignedRaw = (!empty($lead['assigned_at']) && $lead['assigned_at'] !== '0000-00-00 00:00:00' && $lead['assigned_at'] !== '0000-00-00')
@@ -829,7 +918,14 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
-
+                            <?php if ($displayedCount === 0): ?>
+                                <tr>
+                                    <td colspan="8" class="text-center py-4 text-muted">
+                                        <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                                        No leads found matching the selected filter.
+                                    </td>
+                                </tr>
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
@@ -936,8 +1032,18 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                 </div>
             </form>
         </div>
-        <?php foreach ($todayLeads as $key => $lead): ?>
-            <?php
+        <?php 
+        $mobileDisplayedCount = 0;
+        foreach ($todayLeads as $key => $lead): 
+            $isContacted = $isLeadContacted($lead);
+            if ($filterCard === 'contacted' && !$isContacted) {
+                continue;
+            }
+            if (($filterCard === 'not_contacted' || $filterCard === 'not_called') && $isContacted) {
+                continue;
+            }
+            $mobileDisplayedCount++;
+
             $displayName = !empty($lead['campaign_name'])
                 ? $lead['campaign_name']
                 : (!empty($lead['project_name']) ? $lead['project_name'] : '-');
@@ -1138,6 +1244,12 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
 
             </div>
         <?php endforeach; ?>
+        <?php if ($mobileDisplayedCount === 0): ?>
+            <div class="text-center py-4 text-muted border rounded bg-white my-3">
+                <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                No leads found matching the selected filter.
+            </div>
+        <?php endif; ?>
 
         <?php if (isset($totalPages) && $totalPages > 1): ?>
         <div class="d-flex justify-content-center mt-3 mb-2">
