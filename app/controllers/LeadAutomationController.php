@@ -132,10 +132,14 @@ class LeadAutomationController extends Controller
             $synchronizer = new LeadSynchronizer($this->automationConfig);
             $result = $synchronizer->runSync($sheetUrl);
 
+            $tabCount = count($result['tabs_synced'] ?? []);
+            $tabSuffix = $tabCount > 1 ? sprintf(" across %d sheet tabs", $tabCount) : "";
+
             echo json_encode([
                 'status'  => 'success',
                 'message' => sprintf(
-                    "Sync finished! %d new leads added (Pending distribution), %d duplicates skipped.",
+                    "Sync finished%s! %d new leads added (Pending distribution), %d duplicates skipped.",
+                    $tabSuffix,
                     $result['inserted'] ?? 0,
                     $result['skipped_duplicate'] ?? 0
                 ),
@@ -168,8 +172,8 @@ class LeadAutomationController extends Controller
             $distribute = isset($_GET['distribute']) && $_GET['distribute'] !== '' ? (int)$_GET['distribute'] : null;
             $search = trim($_GET['search'] ?? '');
             
-            // Limit: support 'all' / -1 or numeric (default 50)
-            $limitParam = strtolower(trim((string)($_GET['limit'] ?? '50')));
+            // Limit: support 'all' / -1 or numeric (default 30)
+            $limitParam = strtolower(trim((string)($_GET['limit'] ?? '30')));
             if ($limitParam === 'all' || $limitParam === '-1' || (int)$limitParam >= 5000) {
                 $limit = 100000;
                 $offset = 0;

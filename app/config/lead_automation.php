@@ -194,15 +194,20 @@ return [
         ],
 
         // Gulshan Team Allocations
+        'the premium canvas of happiness' => [
+            'name'       => 'The Premium Canvas of Happiness',
+            'project_id' => 55,
+            'teams'      => [1, 10, 11, 14, 15, 20],
+        ],
         'canvas of happiness' => [
             'name'       => 'The Premium Canvas of Happiness',
             'project_id' => 55,
-            'teams'      => [1, 10, 11, 14, 15],
+            'teams'      => [1, 10, 11, 14, 15, 20],
         ],
         'canvas' => [
             'name'       => 'The Premium Canvas of Happiness',
             'project_id' => 55,
-            'teams'      => [1, 10, 11, 14, 15],
+            'teams'      => [1, 10, 11, 14, 15, 20],
         ],
         'symphony of life' => [
             'name'       => 'The Premium Symphony Of Life',
@@ -244,10 +249,15 @@ return [
             'project_id' => 72,
             'teams'      => [1],
         ],
+        'the premium lumina' => [
+            'name'       => 'The Premium Lumina',
+            'project_id' => 67,
+            'teams'      => [1, 20],
+        ],
         'lumina' => [
             'name'       => 'The Premium Lumina',
             'project_id' => 67,
-            'teams'      => [1],
+            'teams'      => [1, 20],
         ],
         'novus' => [
             'name'       => 'The Premium Novus',

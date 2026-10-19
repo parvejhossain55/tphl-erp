@@ -2,6 +2,20 @@
 $paymentDateFormatted = !empty($paymentDateFormatted) ? $paymentDateFormatted : (!empty($receiptDate) ? $receiptDate : date('d M, Y', strtotime($payment['payment_date'] ?? 'now')));
 $refNo = !empty($refNo) ? $refNo : (!empty($refNumber) ? $refNumber : (!empty($payment['transaction_ref']) ? $payment['transaction_ref'] : 'N/A'));
 $floorNo = !empty($floorNo) ? $floorNo : (!empty($flatNo) ? $flatNo : (!empty($payment['flat_no']) ? $payment['flat_no'] : 'N/A'));
+
+// Theme & Branding Tokens
+$themePrimary   = !empty($themePrimary) ? $themePrimary : "#0b6638";
+$themeDark      = !empty($themeDark) ? $themeDark : "#0b4022";
+$themeDeep      = !empty($themeDeep) ? $themeDeep : "#0f3b25";
+$themeLight     = !empty($themeLight) ? $themeLight : "#10b981";
+$themeBgLight   = !empty($themeBgLight) ? $themeBgLight : "#f0fdf4";
+$themeBadgeBg   = !empty($themeBadgeBg) ? $themeBadgeBg : "#ecfdf5";
+$themeBorder    = !empty($themeBorder) ? $themeBorder : "#bbf7d0";
+$brandDomain    = !empty($brandDomain) ? $brandDomain : "Real Estate & Property Management";
+$companyAddress = !empty($companyAddress) ? $companyAddress : "Land View Commercial Center, 9th Floor, 28 Gulshan North C/A, Gulshan Circle-2, Dhaka";
+$companyPhone   = !empty($companyPhone) ? $companyPhone : "+8801958253303";
+$companyEmail   = !empty($companyEmail) ? $companyEmail : "accounts@dpremiumhomes.com";
+
 if (empty($logoSrc)) {
     $whiteLogo = function_exists('getSetting') ? (getSetting('white_logo') ?: (getSetting('dark_logo') ?: getSetting('logo'))) : null;
     $logoFileName = !empty($whiteLogo) ? $whiteLogo : '6948f14a9fb8c_1766388042.png';
@@ -63,6 +77,16 @@ if (empty($logoSrc)) {
             gap: 12px;
         }
 
+        :root {
+            --theme-primary: <?= $themePrimary ?>;
+            --theme-dark: <?= $themeDark ?>;
+            --theme-deep: <?= $themeDeep ?>;
+            --theme-light: <?= $themeLight ?>;
+            --theme-bg-light: <?= $themeBgLight ?>;
+            --theme-badge-bg: <?= $themeBadgeBg ?>;
+            --theme-border: <?= $themeBorder ?>;
+        }
+
         .bar-title {
             font-size: 14.5px;
             font-weight: 800;
@@ -70,9 +94,9 @@ if (empty($logoSrc)) {
         }
 
         .bar-badge {
-            background: <?= $isVerified ? '#ecfdf5' : '#fffbeb' ?>;
-            color: <?= $isVerified ? '#0b6638' : '#d97706' ?>;
-            border: 1px solid <?= $isVerified ? '#a7f3d0' : '#fef3c7' ?>;
+            background: <?= $isVerified ? $themeBadgeBg : '#fffbeb' ?>;
+            color: <?= $isVerified ? $themePrimary : '#d97706' ?>;
+            border: 1px solid <?= $isVerified ? $themeBorder : '#fef3c7' ?>;
             padding: 2px 8px;
             border-radius: 9999px;
             font-size: 11px;
@@ -100,12 +124,12 @@ if (empty($logoSrc)) {
         }
 
         .btn-primary {
-            background: #0b6638;
+            background: var(--theme-primary);
             color: #ffffff;
-            border-color: #0b6638;
+            border-color: var(--theme-primary);
         }
         .btn-primary:hover {
-            background: #084c2a;
+            background: var(--theme-dark);
         }
 
         .btn-outline {
@@ -220,7 +244,7 @@ if (empty($logoSrc)) {
         .brand-name {
             font-size: 15px;
             font-weight: 900;
-            color: #0b4022;
+            color: var(--theme-dark);
             letter-spacing: 0.5px;
             line-height: 1.1;
         }
@@ -228,7 +252,7 @@ if (empty($logoSrc)) {
         .brand-slogan {
             font-size: 7.5px;
             font-weight: 700;
-            color: #15803d;
+            color: var(--theme-primary);
             letter-spacing: 1.8px;
             margin-top: 2px;
             text-transform: uppercase;
@@ -237,7 +261,7 @@ if (empty($logoSrc)) {
         .brand-domain {
             font-size: 10.5px;
             font-weight: 700;
-            color: #0b6638;
+            color: var(--theme-primary);
             margin-top: 4px;
         }
 
@@ -259,7 +283,7 @@ if (empty($logoSrc)) {
             font-weight: 600;
         }
         .brand-contact-row i {
-            color: #0b6638;
+            color: var(--theme-primary);
             font-size: 8px;
         }
 
@@ -286,7 +310,7 @@ if (empty($logoSrc)) {
         }
 
         .copy-pill {
-            background: #0f3b25;
+            background: var(--theme-deep);
             color: #ffffff;
             font-size: 9px;
             font-weight: 800;
@@ -326,7 +350,7 @@ if (empty($logoSrc)) {
             justify-content: center;
             padding: 3px 6px 4px 6px;
             background: #ffffff;
-            border: 1px solid #bbf7d0;
+            border: 1px solid var(--theme-border);
             border-radius: 6px;
             text-decoration: none;
             transition: all 0.2s ease;
@@ -335,9 +359,9 @@ if (empty($logoSrc)) {
         }
 
         .header-qr-card:hover {
-            border-color: #10b981;
+            border-color: var(--theme-light);
             transform: translateY(-1px);
-            box-shadow: 0 3px 6px rgba(16, 185, 129, 0.15);
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.12);
         }
 
         .hqr-img-box {
@@ -360,15 +384,15 @@ if (empty($logoSrc)) {
             align-items: center;
             justify-content: center;
             font-size: 22px;
-            color: #0b6638;
-            background: #f0fdf4;
+            color: var(--theme-primary);
+            background: var(--theme-bg-light);
             border-radius: 3px;
         }
 
         .header-qr-label {
             font-size: 7px;
             font-weight: 800;
-            color: #15803d;
+            color: var(--theme-primary);
             margin-top: 2px;
             text-align: center;
             letter-spacing: 0.3px;
@@ -411,21 +435,21 @@ if (empty($logoSrc)) {
         }
 
         .status-verified {
-            background: #f0fdf4;
-            border: 1px solid #bbf7d0;
+            background: var(--theme-bg-light);
+            border: 1px solid var(--theme-border);
         }
         .status-verified .sb-icon {
-            color: #15803d;
+            color: var(--theme-primary);
             font-size: 16px;
         }
         .status-verified .sb-tag {
-            color: #166534;
+            color: var(--theme-dark);
         }
         .status-verified .sb-title {
-            color: #15803d;
+            color: var(--theme-primary);
         }
         .status-verified .sb-sub {
-            color: #14532d;
+            color: var(--theme-deep);
         }
 
         .sb-tag {
@@ -470,7 +494,7 @@ if (empty($logoSrc)) {
         }
 
         .head-icon-box {
-            background: #0f3b25;
+            background: var(--theme-deep);
             color: #ffffff;
             width: 17px;
             height: 17px;
@@ -516,8 +540,8 @@ if (empty($logoSrc)) {
 
         /* TOTAL AMOUNT BANNER */
         .amount-card {
-            background: #f0fdf4;
-            border: 1px solid #a7f3d0;
+            background: var(--theme-bg-light);
+            border: 1px solid var(--theme-border);
             border-radius: 6px;
             padding: 6px 14px;
             margin-bottom: 8px;
@@ -539,7 +563,7 @@ if (empty($logoSrc)) {
         }
 
         .amt-icon-box {
-            background: #0f3b25;
+            background: var(--theme-deep);
             color: #ffffff;
             width: 17px;
             height: 17px;
@@ -558,7 +582,7 @@ if (empty($logoSrc)) {
         }
 
         .amt-method-pill {
-            background: #0f3b25;
+            background: var(--theme-deep);
             color: #ffffff;
             font-size: 8.5px;
             font-weight: 800;
@@ -574,8 +598,8 @@ if (empty($logoSrc)) {
         }
 
         .words-pill {
-            background: #dcfce7;
-            color: #15803d;
+            background: var(--theme-badge-bg);
+            color: var(--theme-primary);
             font-size: 7.5px;
             font-weight: 800;
             padding: 1px 5px;
@@ -678,7 +702,7 @@ if (empty($logoSrc)) {
         }
 
         .v-shield-box {
-            background: #0f3b25;
+            background: var(--theme-deep);
             color: #ffffff;
             width: 20px;
             height: 20px;
@@ -722,7 +746,7 @@ if (empty($logoSrc)) {
         }
 
         .text-green {
-            color: #15803d !important;
+            color: var(--theme-primary) !important;
         }
         .text-amber {
             color: #d97706 !important;
@@ -947,7 +971,7 @@ if (empty($logoSrc)) {
             display: flex !important;
             flex-direction: column !important;
             align-items: center !important;
-            border: 1px solid #bbf7d0 !important;
+            border: 1px solid var(--theme-border) !important;
         }
 
         #pdf-render-container .header-qr-img {
@@ -1036,7 +1060,7 @@ if (empty($logoSrc)) {
 
             .header-qr-card {
                 padding: 2px 5px 3px 5px !important;
-                border: 1px solid #bbf7d0 !important;
+                border: 1px solid var(--theme-border) !important;
                 box-shadow: none !important;
             }
 
@@ -1187,20 +1211,20 @@ if (empty($logoSrc)) {
                 
                 <!-- CORNER GEOMETRIC ACCENTS -->
                 <svg class="corner-accent-tl" viewBox="0 0 100 100" preserveAspectRatio="none">
-                    <polygon points="0,0 100,0 0,78" fill="#0b4022" />
-                    <polygon points="0,78 100,0 100,12 18,78" fill="#10b981" />
+                    <polygon points="0,0 100,0 0,78" fill="<?= $themeDark ?>" />
+                    <polygon points="0,78 100,0 100,12 18,78" fill="<?= $themeLight ?>" />
                 </svg>
                 <svg class="corner-accent-br" viewBox="0 0 100 100" preserveAspectRatio="none">
-                    <polygon points="100,100 0,100 100,22" fill="#0b4022" />
-                    <polygon points="100,22 0,100 0,88 82,22" fill="#10b981" />
+                    <polygon points="100,100 0,100 100,22" fill="<?= $themeDark ?>" />
+                    <polygon points="100,22 0,100 0,88 82,22" fill="<?= $themeLight ?>" />
                 </svg>
 
                 <!-- CENTER WATERMARK -->
                 <svg class="copy-watermark" viewBox="0 0 200 200" fill="none">
-                    <path d="M100 18 L175 80 V175 H25 V80 L100 18 Z" stroke="#0b6638" stroke-width="4"/>
-                    <path d="M100 36 L158 84 V158 H42 V84 L100 36 Z" stroke="#0b6638" stroke-width="2.5"/>
-                    <line x1="100" y1="36" x2="100" y2="158" stroke="#0b6638" stroke-width="2"/>
-                    <line x1="42" y1="98" x2="158" y2="98" stroke="#0b6638" stroke-width="2"/>
+                    <path d="M100 18 L175 80 V175 H25 V80 L100 18 Z" stroke="<?= $themePrimary ?>" stroke-width="4"/>
+                    <path d="M100 36 L158 84 V158 H42 V84 L100 36 Z" stroke="<?= $themePrimary ?>" stroke-width="2.5"/>
+                    <line x1="100" y1="36" x2="100" y2="158" stroke="<?= $themePrimary ?>" stroke-width="2"/>
+                    <line x1="42" y1="98" x2="158" y2="98" stroke="<?= $themePrimary ?>" stroke-width="2"/>
                 </svg>
 
                 <div class="copy-content-inner">
@@ -1209,19 +1233,19 @@ if (empty($logoSrc)) {
                         <div class="header-left">
                             <div class="company-brand-box">
                                 <?php if (!empty($logoSrc)): ?>
-                                    <img src="<?= $logoSrc ?>" alt="The Premium Homes Ltd" class="brand-logo-img" />
+                                    <img src="<?= $logoSrc ?>" alt="<?= htmlspecialchars($companyTitle ?? 'Company Logo') ?>" class="brand-logo-img" />
                                 <?php else: ?>
                                     <div class="brand-text-col">
-                                        <div class="brand-name">THE PREMIUM HOMES LTD</div>
+                                        <div class="brand-name"><?= htmlspecialchars(strtoupper($companyTitle ?? 'THE PREMIUM HOMES LTD')) ?></div>
                                         <div class="brand-slogan">YOUR DREAM HOME AWAITS</div>
                                     </div>
                                 <?php endif; ?>
                             </div>
-                            <div class="brand-domain">Real Estate &amp; Property Management</div>
+                            <div class="brand-domain"><?= htmlspecialchars($brandDomain ?? 'Real Estate & Property Management') ?></div>
                             <div class="brand-address"><?= htmlspecialchars($companyAddress) ?></div>
                             <div class="brand-contact-row">
-                                <span><i class="fa-solid fa-phone"></i> +8801958253303</span>
-                                <span><i class="fa-solid fa-envelope"></i> accounts@dpremiumhomes.com</span>
+                                <span><i class="fa-solid fa-phone"></i> <?= htmlspecialchars($companyPhone ?? '+8801958253303') ?></span>
+                                <span><i class="fa-solid fa-envelope"></i> <?= htmlspecialchars($companyEmail ?? 'accounts@dpremiumhomes.com') ?></span>
                             </div>
                         </div>
 

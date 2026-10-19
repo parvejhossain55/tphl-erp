@@ -2,25 +2,88 @@
 // Disable layout for standalone printable invoice
 $disable_layout = true;
 
-// Retrieve Site Settings for Logo, Phone, Email & Address
-$whiteLogo = function_exists('getSetting') ? (getSetting('white_logo') ?: (getSetting('dark_logo') ?: getSetting('logo'))) : null;
-$logoFileName = !empty($whiteLogo) ? $whiteLogo : '6948f14a9fb8c_1766388042.png';
-$logoUrl = ($whiteLogo && function_exists('getImage')) ? getImage('settings', $whiteLogo) : '';
-if (empty($logoUrl) || strpos($logoUrl, 'avatar.png') !== false) {
-    $logoUrl = $GLOBALS['base_url'] . '/public/uploads/settings/' . $logoFileName;
-}
-$logoFilePath = dirname(dirname(dirname(dirname(__DIR__)))) . '/public/uploads/settings/' . $logoFileName;
-$logoSrc = $logoUrl;
-if (file_exists($logoFilePath)) {
-    $ext = strtolower(pathinfo($logoFilePath, PATHINFO_EXTENSION));
-    $mime = ($ext === 'svg') ? 'image/svg+xml' : 'image/' . ($ext === 'jpg' ? 'jpeg' : $ext);
-    $logoSrc = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($logoFilePath));
+// -------------------------------------------------------------
+// Project Resolution & The Nature (ID: 74) Custom Branding
+// -------------------------------------------------------------
+$currentProjectId = !empty($clientDetails['project_id']) ? (int)$clientDetails['project_id'] : (!empty($payment['project_id']) ? (int)$payment['project_id'] : 0);
+$currentProjectName = !empty($clientDetails['project_name']) ? trim($clientDetails['project_name']) : (!empty($payment['project_name']) ? trim($payment['project_name']) : '');
+
+// Fallback check from booking if project_id not set
+if ($currentProjectId <= 0 && !empty($payment['booking_id']) && isset($this) && isset($this->db)) {
+    try {
+        $pStmt = $this->db->prepare("SELECT project_id FROM lead_bookings WHERE id = ? LIMIT 1");
+        if ($pStmt) {
+            $pStmt->bind_param("i", $payment['booking_id']);
+            $pStmt->execute();
+            $pRes = $pStmt->get_result();
+            if ($pRow = $pRes->fetch_assoc()) {
+                $currentProjectId = (int)$pRow['project_id'];
+            }
+            $pStmt->close();
+        }
+    } catch (Exception $e) {}
 }
 
-$companyTitle = function_exists('getSetting') ? getSetting('website_title', 'The Premium Homes Ltd.') : 'The Premium Homes Ltd.';
-$companyPhone = function_exists('getSetting') ? getSetting('phone', '+8801958253300') : '+8801958253300';
-$companyEmail = function_exists('getSetting') ? getSetting('email', 'info@thepremiumhomes.com') : 'info@thepremiumhomes.com';
-$companyAddress = "Land View Commercial Center, 9th Floor, 28 Gulshan North C/A, Gulshan Circle-2, Dhaka";
+$isNatureProject = ($currentProjectId === 74) || (stripos($currentProjectName, 'The Nature') !== false) || (stripos($currentProjectName, 'Nature') !== false);
+
+if ($isNatureProject) {
+    // Nature Logo: public/uploads/nature-logo.png
+    $natureLogoFile = dirname(dirname(dirname(dirname(__DIR__)))) . '/public/uploads/nature-logo.png';
+    if (file_exists($natureLogoFile)) {
+        $logoSrc = 'data:image/png;base64,' . base64_encode(file_get_contents($natureLogoFile));
+    } else {
+        $logoSrc = $GLOBALS['base_url'] . '/public/uploads/nature-logo.png';
+    }
+
+    $companyTitle   = "The Nature";
+    $brandDomain    = "The Nature";
+    $companyAddress = "Marine Drive, Cox's Bazar | Corporate Office: Land View Commercial Center, 9th Floor, 28 Gulshan North C/A, Gulshan Circle-2, Dhaka";
+    $companyPhone   = "+8801958253303";
+    $companyEmail   = "accounts@dpremiumhomes.com";
+
+    // Nature Sky/Ocean Blue Brand Palette (from nature-logo.png)
+    $themePrimary   = "#0284c7"; // Sky 600
+    $themeDark      = "#0369a1"; // Sky 700
+    $themeDeep      = "#075985"; // Sky 800
+    $themeLight     = "#38bdf8"; // Sky 400
+    $themeBgLight   = "#f0f9ff"; // Sky 50
+    $themeBadgeBg   = "#e0f2fe"; // Sky 100
+    $themeBorder    = "#bae6fd"; // Sky 200
+    $themeRgb       = [2, 132, 199];
+    $themeQrHex     = "2-132-199";
+} else {
+    // Retrieve Site Settings for Logo, Phone, Email & Address
+    $whiteLogo = function_exists('getSetting') ? (getSetting('white_logo') ?: (getSetting('dark_logo') ?: getSetting('logo'))) : null;
+    $logoFileName = !empty($whiteLogo) ? $whiteLogo : '6948f14a9fb8c_1766388042.png';
+    $logoUrl = ($whiteLogo && function_exists('getImage')) ? getImage('settings', $whiteLogo) : '';
+    if (empty($logoUrl) || strpos($logoUrl, 'avatar.png') !== false) {
+        $logoUrl = $GLOBALS['base_url'] . '/public/uploads/settings/' . $logoFileName;
+    }
+    $logoFilePath = dirname(dirname(dirname(dirname(__DIR__)))) . '/public/uploads/settings/' . $logoFileName;
+    $logoSrc = $logoUrl;
+    if (file_exists($logoFilePath)) {
+        $ext = strtolower(pathinfo($logoFilePath, PATHINFO_EXTENSION));
+        $mime = ($ext === 'svg') ? 'image/svg+xml' : 'image/' . ($ext === 'jpg' ? 'jpeg' : $ext);
+        $logoSrc = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($logoFilePath));
+    }
+
+    $companyTitle   = function_exists('getSetting') ? getSetting('website_title', 'The Premium Homes Ltd.') : 'The Premium Homes Ltd.';
+    $brandDomain    = "Real Estate & Property Management";
+    $companyPhone   = function_exists('getSetting') ? getSetting('phone', '+8801958253303') : '+8801958253303';
+    $companyEmail   = function_exists('getSetting') ? getSetting('email', 'accounts@dpremiumhomes.com') : 'accounts@dpremiumhomes.com';
+    $companyAddress = "Land View Commercial Center, 9th Floor, 28 Gulshan North C/A, Gulshan Circle-2, Dhaka";
+
+    // Default Premium Homes Emerald Green Palette
+    $themePrimary   = "#0b6638";
+    $themeDark      = "#0b4022";
+    $themeDeep      = "#0f3b25";
+    $themeLight     = "#10b981";
+    $themeBgLight   = "#f0fdf4";
+    $themeBadgeBg   = "#ecfdf5";
+    $themeBorder    = "#bbf7d0";
+    $themeRgb       = [11, 102, 56];
+    $themeQrHex     = "11-102-56";
+}
 
 // Payment & Verification Status
 $isVerified = isset($payment['verification_status']) && strtolower(trim($payment['verification_status'])) === 'verified';
@@ -240,14 +303,15 @@ $qrImageSrc = '';
 if (class_exists('TCPDF2DBarcode')) {
     try {
         $barcode = new TCPDF2DBarcode($verificationUrl, 'QRCODE,M');
-        $qrPng = $barcode->getBarcodePngData(4, 4, [11, 102, 56]); // Primary Green #0b6638
+        $qrPng = $barcode->getBarcodePngData(4, 4, $themeRgb ?? [11, 102, 56]);
         if ($qrPng && strlen($qrPng) > 50) {
             $qrImageSrc = 'data:image/png;base64,' . base64_encode($qrPng);
         }
     } catch (Exception $e) {}
 }
 if (empty($qrImageSrc)) {
-    $qrImageSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=140x140&color=11-102-56&data=' . urlencode($verificationUrl);
+    $qrColorParam = !empty($themeQrHex) ? $themeQrHex : '11-102-56';
+    $qrImageSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=140x140&color=' . $qrColorParam . '&data=' . urlencode($verificationUrl);
 }
 
 // Banking Information Resolution (Sender Bank vs Receiver Bank & Ref Number)
