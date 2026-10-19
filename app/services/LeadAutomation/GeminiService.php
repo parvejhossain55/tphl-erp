@@ -70,6 +70,7 @@ Return ONLY a valid JSON array of objects. Do not wrap in markdown quotes if pos
         $prompt = "Parse the following lead rows into structured ERP leads:\n" . json_encode($dataPayload, JSON_UNESCAPED_UNICODE);
 
         $endpoint = sprintf(
+        
             'https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s',
             $this->model,
             $this->apiKey

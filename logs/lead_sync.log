@@ -40,3 +40,36 @@
 [2026-10-18 10:44:36] Sync Completed in 10.15 sec. Total Rows: 1 | Inserted: 1 | Duplicates Skipped: 0 | Unmatched Project: 0 | Errors: 0
 [2026-10-18 10:44:36] =======================================================
 
+[2026-10-19 10:49:14] =======================================================
+[2026-10-19 10:49:14] Starting Lead Synchronization at 2026-10-19 10:49:14
+[2026-10-19 10:49:14] Fetching data from: https://docs.google.com/spreadsheets/d/1btVkSlBIJmLfi54Sz2nQ1wlM3VSbCQUp3hu1c4nW-4w/export?format=csv
+[2026-10-19 10:49:16] Processing with Google Gemini AI [gemini-2.5-flash] for intelligent field understanding...
+[2026-10-19 10:49:27] Sync Completed in 12.67 sec. Total Rows: 1 | Inserted: 0 | Duplicates Skipped: 1 | Unmatched Project: 0 | Errors: 0
+[2026-10-19 10:49:27] =======================================================
+
+[2026-10-19 10:51:02] =======================================================
+[2026-10-19 10:51:02] Starting Lead Synchronization at 2026-10-19 10:51:02
+[2026-10-19 10:51:02] Fetching data from: https://docs.google.com/spreadsheets/d/1btVkSlBIJmLfi54Sz2nQ1wlM3VSbCQUp3hu1c4nW-4w/export?format=csv
+[2026-10-19 10:51:03] Processing with Google Gemini AI [gemini-2.5-flash] for intelligent field understanding...
+[2026-10-19 10:51:21] Sync Completed in 18.9 sec. Total Rows: 1 | Inserted: 0 | Duplicates Skipped: 1 | Unmatched Project: 0 | Errors: 0
+[2026-10-19 10:51:21] =======================================================
+
+[2026-10-19 11:12:16] =======================================================
+[2026-10-19 11:12:16] Starting Lead Synchronization at 2026-10-19 11:12:16
+[2026-10-19 11:12:16] Fetching data from: https://docs.google.com/spreadsheets/d/18XRsEG6rqvcn8tzbikYkHuwadQqqWQJbAf-Ii_IusCQ/export?format=csv&gid=0
+[2026-10-19 11:12:18] Processing with Google Gemini AI [gemini-2.5-flash] for intelligent field understanding...
+[2026-10-19 11:13:18] Gemini AI Warning: cURL error connecting to Gemini API: Operation timed out after 60025 milliseconds with 0 bytes received
+[2026-10-19 11:13:18] Seamlessly falling back to local rule-based parser...
+[2026-10-19 11:13:19] Sync Completed in 62.18 sec. Total Rows: 361 | Inserted: 360 | Duplicates Skipped: 0 | Unmatched Project: 0 | Errors: 0
+[2026-10-19 11:13:19] =======================================================
+
+[2026-10-19 11:39:21] =======================================================
+[2026-10-19 11:39:21] Starting Lead Synchronization at 2026-10-19 11:39:21
+[2026-10-19 11:39:21] Fetching data from: https://docs.google.com/spreadsheets/d/18XRsEG6rqvcn8tzbikYkHuwadQqqWQJbAf-Ii_IusCQ/export?format=csv&gid=0
+[2026-10-19 11:39:23] Processing with Google Gemini AI [gemini-2.5-flash] for intelligent field understanding...
+[2026-10-19 11:40:23] Gemini AI Warning: cURL error connecting to Gemini API: Operation timed out after 60003 milliseconds with 0 bytes received
+[2026-10-19 11:40:23] Seamlessly falling back to local rule-based parser...
+[2026-10-19 11:40:23] Row 361: Duplicate lead skipped (Phone: +971564676683, Campaign: TPRC ll Commercial ll Oct 04, 2026 – Copy 3)
+[2026-10-19 11:40:23] Sync Completed in 61.88 sec. Total Rows: 361 | Inserted: 359 | Duplicates Skipped: 1 | Unmatched Project: 0 | Errors: 0
+[2026-10-19 11:40:23] =======================================================
+

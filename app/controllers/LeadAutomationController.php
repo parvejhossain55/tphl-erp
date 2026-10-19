@@ -403,6 +403,152 @@ class LeadAutomationController extends Controller
     }
 
     /**
+     * AJAX: Permanently Delete Leads (bulk or single, team-wise or list of IDs)
+     * Completely removes them from the database (leads and all related child records)
+     * so they will not appear anywhere in team lead lists or CRM views.
+     */
+    public function ajaxDelete()
+    {
+        $this->checkAccess();
+        header('Content-Type: application/json; charset=utf-8');
+
+        try {
+            $input = json_decode(file_get_contents('php://input'), true) ?? [];
+            $leadIds = $input['lead_ids'] ?? ($_POST['lead_ids'] ?? []);
+            $teamId = isset($input['team_id']) && $input['team_id'] !== '' ? (int)$input['team_id'] : (!empty($_POST['team_id']) ? (int)$_POST['team_id'] : null);
+            $allApproved = !empty($input['all_approved']) || !empty($_POST['all_approved']);
+            $allForTeam = !empty($input['all_for_team']) || !empty($_POST['all_for_team']);
+
+            $synchronizer = new LeadSynchronizer($this->automationConfig);
+            $pdo = $synchronizer->getDb();
+
+            // Handle bulk team-wise purge (approved leads or all automated leads for team)
+            if ($allApproved || $allForTeam) {
+                $where = ["is_automated = 1"];
+                $params = [];
+
+                if ($allApproved && !$allForTeam) {
+                    $where[] = "distribute = 1";
+                }
+
+                if ($teamId) {
+                    $where[] = "team_id = ?";
+                    $params[] = $teamId;
+                }
+
+                $whereSql = implode(" AND ", $where);
+                $fetchStmt = $pdo->prepare("SELECT id FROM `leads` WHERE {$whereSql}");
+                $fetchStmt->execute($params);
+                $leadIds = $fetchStmt->fetchAll(PDO::FETCH_COLUMN);
+
+                if (empty($leadIds)) {
+                    echo json_encode([
+                        'status'  => 'success',
+                        'message' => 'No matching leads found to delete.',
+                        'count'   => 0
+                    ]);
+                    exit;
+                }
+            }
+
+            if (empty($leadIds)) {
+                throw new InvalidArgumentException("No lead IDs provided for deletion.");
+            }
+
+            if (!is_array($leadIds)) {
+                $leadIds = [(int)$leadIds];
+            }
+
+            $leadIds = array_values(array_filter(array_map('intval', $leadIds), fn($id) => $id > 0));
+            if (empty($leadIds)) {
+                throw new InvalidArgumentException("No valid lead IDs provided.");
+            }
+
+            // Perform permanent deletion in transaction across all related tables
+            $pdo->beginTransaction();
+
+            $placeholders = implode(',', array_fill(0, count($leadIds), '?'));
+
+            // 1. lead_payments associated with bookings
+            try {
+                $stmt = $pdo->prepare("DELETE FROM `lead_payments` WHERE booking_id IN (SELECT id FROM `lead_bookings` WHERE lead_id IN ({$placeholders}))");
+                $stmt->execute($leadIds);
+            } catch (Throwable $t) {}
+
+            // 2. lead_bookings
+            try {
+                $stmt = $pdo->prepare("DELETE FROM `lead_bookings` WHERE lead_id IN ({$placeholders})");
+                $stmt->execute($leadIds);
+            } catch (Throwable $t) {}
+
+            // 3. lead_follow_ups
+            try {
+                $stmt = $pdo->prepare("DELETE FROM `lead_follow_ups` WHERE lead_id IN ({$placeholders})");
+                $stmt->execute($leadIds);
+            } catch (Throwable $t) {}
+
+            // 4. lead_delete_requests
+            try {
+                $stmt = $pdo->prepare("DELETE FROM `lead_delete_requests` WHERE lead_id IN ({$placeholders})");
+                $stmt->execute($leadIds);
+            } catch (Throwable $t) {}
+
+            // 5. lead_assignment_history
+            try {
+                $stmt = $pdo->prepare("DELETE FROM `lead_assignment_history` WHERE lead_id IN ({$placeholders})");
+                $stmt->execute($leadIds);
+            } catch (Throwable $t) {}
+
+            // 6. lead_call_logs
+            try {
+                $stmt = $pdo->prepare("DELETE FROM `lead_call_logs` WHERE lead_id IN ({$placeholders})");
+                $stmt->execute($leadIds);
+            } catch (Throwable $t) {}
+
+            // 7. client_refund_requests
+            try {
+                $stmt = $pdo->prepare("DELETE FROM `client_refund_requests` WHERE lead_id IN ({$placeholders})");
+                $stmt->execute($leadIds);
+            } catch (Throwable $t) {}
+
+            // 8. onboard_clients
+            try {
+                $stmt = $pdo->prepare("DELETE FROM `onboard_clients` WHERE lead_id IN ({$placeholders})");
+                $stmt->execute($leadIds);
+            } catch (Throwable $t) {}
+
+            // 9. whatsapp_messages
+            try {
+                $stmt = $pdo->prepare("DELETE FROM `whatsapp_messages` WHERE lead_id IN ({$placeholders})");
+                $stmt->execute($leadIds);
+            } catch (Throwable $t) {}
+
+            // 10. leads table
+            $delStmt = $pdo->prepare("DELETE FROM `leads` WHERE id IN ({$placeholders})");
+            $delStmt->execute($leadIds);
+            $deletedCount = $delStmt->rowCount();
+
+            $pdo->commit();
+
+            echo json_encode([
+                'status'  => 'success',
+                'message' => "Successfully permanently deleted {$deletedCount} lead(s) from database and team lists.",
+                'count'   => $deletedCount
+            ]);
+        } catch (Throwable $e) {
+            if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            http_response_code(500);
+            echo json_encode([
+                'status'  => 'error',
+                'message' => $e->getMessage()
+            ]);
+        }
+        exit;
+    }
+
+    /**
      * Webhook / Cron Sync Endpoint
      */
     public function syncCron()

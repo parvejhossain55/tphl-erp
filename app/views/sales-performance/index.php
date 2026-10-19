@@ -1539,7 +1539,7 @@ $jsData = [
                 <div class="hint"><?= sp_pct($o['no_response'] ?? 0, $o['stage_1']) ?> of received <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;margin-left:2px"></i></div>
             </div>
             <div class="sp-kpi warn click" data-gap="uncontacted" style="cursor:pointer" title="Click to view Not Contacted leads">
-                <div class="lbl"><i class="fa-regular fa-phone-xmark"></i> Uncontacted</div>
+                <div class="lbl"><i class="fa-regular fa-phone-xmark"></i> Not Contacted</div>
                 <div class="val"><?= sp_n($o['uncontacted']) ?></div>
                 <div class="hint"><?= sp_pct($o['uncontacted'], $o['stage_1']) ?> need first contact <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;margin-left:2px"></i></div>
             </div>

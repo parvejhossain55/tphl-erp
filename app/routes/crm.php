@@ -68,6 +68,7 @@ return [
     'lead-automation/leads-ajax' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxListLeads'],
     'lead-automation/approve' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxApprove'],
     'lead-automation/unapprove' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxUnapprove'],
+    'lead-automation/delete' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxDelete'],
     'lead-automation/cron' => ['controller' => 'LeadAutomationController', 'method' => 'syncCron'],
 
     // =========================================================================
