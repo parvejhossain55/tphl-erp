@@ -156,24 +156,8 @@ if ($isVerified) {
     }
 }
 
-// Payment Type Label
-$paymentTypeRaw = strtolower($payment['payment_type'] ?? '');
-if (!empty($payment['is_emi_discount']) && $payment['is_emi_discount'] == 1) {
-    $paymentTypeLabel = 'APPLY PREVIOUS DISCOUNT';
-} elseif ($paymentTypeRaw === 'emi') {
-    $paymentTypeLabel = !empty($payment['installment_label']) ? strtoupper($payment['installment_label']) : 'EMI INSTALLMENT';
-} elseif ($paymentTypeRaw === 'booking_money') {
-    $paymentTypeLabel = 'BOOKING MONEY';
-} elseif ($paymentTypeRaw === 'registration') {
-    $paymentTypeLabel = 'REGISTRATION MONEY';
-} elseif ($paymentTypeRaw === 'development_charge') {
-    $paymentTypeLabel = 'DEVELOPMENT CHARGE';
-} elseif ($paymentTypeRaw === 'others') {
-    $otherPurpose = !empty($payment['other_purpose']) ? strtoupper($payment['other_purpose']) : 'EXTRA CHARGES';
-    $paymentTypeLabel = 'OTHERS (' . $otherPurpose . ')';
-} else {
-    $paymentTypeLabel = strtoupper(str_replace('_', ' ', $payment['payment_type'] ?? 'PAYMENT'));
-}
+// Payment Type Label (Removed as requested: only amount is displayed, payment_type like EMI, Booking, Registration, Dev Charge is omitted)
+$paymentTypeLabel = '';
 
 // Total amount calculation
 $totalAmountPaid = !empty($isBulk) ? array_sum(array_map(fn($p) => (float)($p['amount'] ?? 0), $payments)) : (float)($payment['amount'] ?? 0);

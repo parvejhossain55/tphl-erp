@@ -74,6 +74,30 @@ $inactiveExecs = array_values($data['inactive_executives'] ?? []);
 $activeExecCount = count($activeExecs);
 $inactiveExecCount = count($inactiveExecs);
 
+// Gaps & Reconciliation Calculations
+$unassignedBucket = array_values(array_filter($otherBuckets, fn($b) => $b['key'] === 'unassigned'))[0] ?? null;
+$unassignedLeads = $unassignedBucket['stage_1'] ?? 0;
+
+$teamLeadsSum = array_sum(array_column($realTeams, 'stage_1'));
+$teamBookingsSum = array_sum(array_column($realTeams, 'bookings'));
+$teamConfirmedSum = array_sum(array_column($realTeams, 'confirmed_sales'));
+$teamCollectionSum = array_sum(array_column($realTeams, 'collection'));
+
+$nonTeamBookings = max(0, $o['bookings'] - $teamBookingsSum);
+$nonTeamConfirmed = max(0, $o['confirmed_sales'] - $teamConfirmedSum);
+$nonTeamCollection = max(0.0, $o['collection'] - $teamCollectionSum);
+$nonTeamLeads = max(0, $o['stage_1'] - $teamLeadsSum);
+
+$activeExecLeadsSum = array_sum(array_column($activeExecs, 'stage_1'));
+$inactiveExecLeadsSum = array_sum(array_column($inactiveExecs, 'stage_1'));
+$activeExecBookingsSum = array_sum(array_column($activeExecs, 'bookings'));
+$inactiveExecBookingsSum = array_sum(array_column($inactiveExecs, 'bookings'));
+$activeExecConfirmedSum = array_sum(array_column($activeExecs, 'confirmed_sales'));
+$activeExecCollectionSum = array_sum(array_column($activeExecs, 'collection'));
+
+$directExecBookings = max(0, $o['bookings'] - $activeExecBookingsSum - $inactiveExecBookingsSum);
+$directExecCollection = max(0.0, $o['collection'] - $activeExecCollectionSum - array_sum(array_column($inactiveExecs, 'collection')));
+
 $scopeLabel = 'All teams';
 if ($filters['executive_id']) {
     foreach ($salesUsers as $su) {
@@ -1797,20 +1821,60 @@ $jsData = [
     <?php elseif ($tab === 'team'): ?>
         <!-- ===================== TEAM ===================== -->
         <?php
-        $teamLeads = array_sum(array_column($realTeams, 'assigned_leads'));
         $teamTarget = array_sum(array_column($realTeams, 'target_bookings'));
-        $teamBookings = array_sum(array_column($realTeams, 'bookings'));
-        $teamConfirmed = array_sum(array_column($realTeams, 'confirmed_sales'));
         $teamMembers = array_sum(array_column($realTeams, 'member_count'));
         $activeTeams = count(array_filter($realTeams, fn($t) => $t['member_count'] > 0));
         ?>
         <div class="sp-kpis">
-            <div class="sp-kpi"><div class="lbl"><i class="fa-regular fa-users"></i> Active Teams</div><div class="val"><?= $activeTeams ?></div><div class="hint"><?= $teamMembers ?> sales members</div></div>
-            <div class="sp-kpi"><div class="lbl"><i class="fa-regular fa-phone"></i> Assigned Leads</div><div class="val"><?= sp_n($teamLeads) ?></div><div class="hint">Across all teams this period</div></div>
-            <div class="sp-kpi"><div class="lbl"><i class="fa-regular fa-circle-check"></i> Confirmed Sales</div><div class="val"><?= sp_n($teamConfirmed) ?></div><div class="hint"><?= sp_n($teamBookings) ?> bookings · <?= sp_pct($teamConfirmed, $teamBookings) ?> verified</div></div>
-            <div class="sp-kpi <?= $teamTarget ? '' : 'warn' ?>"><div class="lbl"><i class="fa-regular fa-bullseye-arrow"></i> Booking Target</div><div class="val"><?= $teamTarget ? sp_n($teamTarget) : '—' ?></div><div class="hint"><?= $teamTarget ? max(0, $teamTarget - $teamBookings) . ' units remaining' : 'No targets set for this cycle' ?></div></div>
-            <div class="sp-kpi"><div class="lbl"><i class="fa-regular fa-arrow-trend-up"></i> Target Achievement</div><div class="val"><?= $teamTarget ? sp_pct($teamBookings, $teamTarget) : '—' ?></div><div class="hint"><?= $teamTarget ? sp_n($teamBookings) . ' of ' . sp_n($teamTarget) . ' units' : 'Set targets in Sales Dashboard' ?></div></div>
-            <div class="sp-kpi"><div class="lbl"><i class="fa-regular fa-sack-dollar"></i> Booking Collection</div><div class="val"><?= sp_tk(array_sum(array_column($realTeams, 'collection'))) ?></div><div class="hint">Verified this period</div></div>
+            <div class="sp-kpi">
+                <div class="lbl"><i class="fa-regular fa-users"></i> Active Teams</div>
+                <div class="val"><?= $activeTeams ?></div>
+                <div class="hint"><?= $teamMembers ?> sales members in <?= count($realTeams) ?> teams</div>
+            </div>
+            <div class="sp-kpi click" data-gap="stage_1" style="cursor:pointer" title="Click to view all Leads Received">
+                <div class="lbl"><i class="fa-regular fa-user-group"></i> Leads Received</div>
+                <div class="val"><?= sp_n($o['stage_1']) ?></div>
+                <div class="hint"><?= sp_n($teamLeadsSum) ?> in teams · <?= sp_n($unassignedLeads) ?> unassigned gap <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
+            </div>
+            <div class="sp-kpi click" data-gap="confirmed_sales" style="cursor:pointer" title="Click to view all Confirmed Sales">
+                <div class="lbl"><i class="fa-regular fa-circle-check"></i> Confirmed Sales</div>
+                <div class="val"><?= sp_n($o['confirmed_sales']) ?></div>
+                <div class="hint"><?= sp_n($teamConfirmedSum) ?> team · <?= sp_n($nonTeamConfirmed) ?> direct / other <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
+            </div>
+            <div class="sp-kpi click" data-gap="bookings" style="cursor:pointer" title="Click to view all Bookings">
+                <div class="lbl"><i class="fa-regular fa-calendar-check"></i> Total Bookings</div>
+                <div class="val"><?= sp_n($o['bookings']) ?></div>
+                <div class="hint"><?= sp_n($teamBookingsSum) ?> team · <?= sp_n($nonTeamBookings) ?> direct / other <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
+            </div>
+            <div class="sp-kpi <?= $teamTarget ? '' : 'warn' ?>">
+                <div class="lbl"><i class="fa-regular fa-bullseye-arrow"></i> Booking Target</div>
+                <div class="val"><?= $teamTarget ? sp_n($teamTarget) : '—' ?></div>
+                <div class="hint"><?= $teamTarget ? max(0, $teamTarget - $teamBookingsSum) . ' units remaining' : 'No targets set for this cycle' ?></div>
+            </div>
+            <div class="sp-kpi click" data-gap="collection" style="cursor:pointer" title="Click to view all Collections">
+                <div class="lbl"><i class="fa-regular fa-sack-dollar"></i> Booking Collection</div>
+                <div class="val"><?= sp_tk($o['collection']) ?></div>
+                <div class="hint"><?= sp_tk($teamCollectionSum) ?> team · <?= sp_tk($nonTeamCollection) ?> direct / other <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
+            </div>
+        </div>
+
+        <!-- Team Gap & Reconciliation Banner -->
+        <div class="sp-card" style="margin-top:14px;padding:12px 18px;background:var(--sp-card);border:1px dashed var(--sp-border);border-radius:10px">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;font-size:12.5px">
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                    <span style="font-weight:700;color:var(--sp-text);display:inline-flex;align-items:center;gap:6px"><i class="fa-solid fa-scale-balanced" style="color:var(--sp-green)"></i> Team Gap Breakdown:</span>
+                    <span>Total Leads: <b><?= sp_n($o['stage_1']) ?></b> (Teams: <b><?= sp_n($teamLeadsSum) ?></b> + Unassigned/Other: <b style="color:var(--sp-amber)"><?= sp_n($nonTeamLeads) ?></b>)</span>
+                    <span style="color:var(--sp-soft)">|</span>
+                    <span>Total Bookings: <b><?= sp_n($o['bookings']) ?></b> (Teams: <b><?= sp_n($teamBookingsSum) ?></b> + Direct/Co: <b style="color:var(--sp-blue)"><?= sp_n($nonTeamBookings) ?></b>)</span>
+                    <span style="color:var(--sp-soft)">|</span>
+                    <span>Collection: <b><?= sp_tk($o['collection']) ?></b> (Teams: <b><?= sp_tk($teamCollectionSum) ?></b> + Direct: <b><?= sp_tk($nonTeamCollection) ?></b>)</span>
+                </div>
+                <?php if ($unassignedLeads > 0): ?>
+                    <button type="button" class="sp-btn sm click" data-gap="uncontacted" style="font-size:11.5px;padding:4px 10px;background:var(--sp-amber-50, #fff7ed);color:var(--sp-amber, #d97706);border:1px solid rgba(217,119,6,0.3);cursor:pointer" title="Click to view unassigned leads">
+                        <i class="fa-regular fa-user-clock"></i> View <?= sp_n($unassignedLeads) ?> Unassigned Leads
+                    </button>
+                <?php endif; ?>
+            </div>
         </div>
 
         <div class="sp-card">
@@ -1928,32 +1992,54 @@ $jsData = [
             <div class="sp-kpi">
                 <div class="lbl"><i class="fa-regular fa-id-badge"></i> Active Executives</div>
                 <div class="val"><?= count($ex) ?></div>
-                <div class="hint"><?= count(array_filter($ex, fn($e) => $e['follow_ups'] > 0)) ?> logged follow-ups</div>
+                <div class="hint"><?= count(array_filter($ex, fn($e) => $e['follow_ups'] > 0)) ?> logged follow-ups · <?= $inactiveExecCount ?> inactive</div>
             </div>
-            <div class="sp-kpi click" data-gap="stage_1" style="cursor:pointer" title="Click to view Leads Received">
+            <div class="sp-kpi click" data-gap="stage_1" style="cursor:pointer" title="Click to view all Leads Received">
                 <div class="lbl"><i class="fa-regular fa-user-group"></i> Leads Received</div>
-                <div class="val"><?= sp_n($totalExecLeads) ?></div>
-                <div class="hint"><?= count($ex) ? round($totalExecLeads / max(1, count($ex))) : 0 ?> avg per executive <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
+                <div class="val"><?= sp_n($o['stage_1']) ?></div>
+                <div class="hint"><?= sp_n($totalExecLeads) ?> active · <?= sp_n($inactiveExecLeadsSum) ?> inactive · <?= sp_n($unassignedLeads) ?> unassigned gap <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
             </div>
             <div class="sp-kpi click" data-gap="follow_ups" style="cursor:pointer" title="Click to view Follow-ups Logged">
                 <div class="lbl"><i class="fa-regular fa-headset"></i> Follow-ups Logged</div>
-                <div class="val"><?= sp_n($totalExecFu) ?></div>
-                <div class="hint"><?= count($ex) ? round($totalExecFu / max(1, count($ex))) : 0 ?> per executive <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
+                <div class="val"><?= sp_n($o['follow_ups']) ?></div>
+                <div class="hint"><?= sp_n($totalExecFu) ?> active execs (<?= count($ex) ? round($totalExecFu / max(1, count($ex))) : 0 ?> avg) <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
             </div>
             <div class="sp-kpi click" data-gap="visits_done" style="cursor:pointer" title="Click to view Site Visits Done">
                 <div class="lbl"><i class="fa-regular fa-location-dot"></i> Site Visits Done</div>
-                <div class="val"><?= sp_n($totalExecVisits) ?></div>
-                <div class="hint"><?= sp_n(array_sum(array_column($ex, 'upcoming_visits'))) ?> upcoming in 7d <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
+                <div class="val"><?= sp_n($o['visits_done']) ?></div>
+                <div class="hint"><?= sp_n($totalExecVisits) ?> active execs · <?= sp_n(array_sum(array_column($ex, 'upcoming_visits'))) ?> upcoming <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
             </div>
-            <div class="sp-kpi click" data-gap="bookings" style="cursor:pointer" title="Click to view Bookings">
-                <div class="lbl"><i class="fa-regular fa-calendar-check"></i> Bookings</div>
-                <div class="val"><?= sp_n($totalExecBookings) ?></div>
-                <div class="hint"><?= sp_tk($totalExecValue) ?> booked value <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
+            <div class="sp-kpi click" data-gap="bookings" style="cursor:pointer" title="Click to view all Bookings">
+                <div class="lbl"><i class="fa-regular fa-calendar-check"></i> Total Bookings</div>
+                <div class="val"><?= sp_n($o['bookings']) ?></div>
+                <div class="hint"><?= sp_n($totalExecBookings) ?> active · <?= sp_n($inactiveExecBookingsSum) ?> inactive · <?= sp_n($directExecBookings) ?> direct / co <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
             </div>
-            <div class="sp-kpi click" data-gap="collection" style="cursor:pointer" title="Click to view Collections">
-                <div class="lbl"><i class="fa-regular fa-sack-dollar"></i> Collection</div>
-                <div class="val"><?= sp_tk($totalExecCollection) ?></div>
-                <div class="hint"><?= sp_n($totalExecConfirmed) ?> confirmed sales <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
+            <div class="sp-kpi click" data-gap="collection" style="cursor:pointer" title="Click to view all Collections">
+                <div class="lbl"><i class="fa-regular fa-sack-dollar"></i> Booking Collection</div>
+                <div class="val"><?= sp_tk($o['collection']) ?></div>
+                <div class="hint"><?= sp_tk($totalExecCollection) ?> active · <?= sp_n($o['confirmed_sales']) ?> confirmed <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
+            </div>
+        </div>
+
+        <!-- Executive Gap & Reconciliation Banner -->
+        <div class="sp-card" style="margin-top:14px;padding:12px 18px;background:var(--sp-card);border:1px dashed var(--sp-border);border-radius:10px">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;font-size:12.5px">
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                    <span style="font-weight:700;color:var(--sp-text);display:inline-flex;align-items:center;gap:6px"><i class="fa-solid fa-scale-balanced" style="color:var(--sp-green)"></i> Executive Gap Breakdown:</span>
+                    <span>Total Leads: <b><?= sp_n($o['stage_1']) ?></b> (Active Execs: <b><?= sp_n($totalExecLeads) ?></b> + Inactive: <b><?= sp_n($inactiveExecLeadsSum) ?></b> + Unassigned Gap: <b style="color:var(--sp-amber)"><?= sp_n($unassignedLeads) ?></b>)</span>
+                    <span style="color:var(--sp-soft)">|</span>
+                    <span>Total Bookings: <b><?= sp_n($o['bookings']) ?></b> (Active: <b><?= sp_n($totalExecBookings) ?></b> + Inactive: <b><?= sp_n($inactiveExecBookingsSum) ?></b> + Direct/Co: <b style="color:var(--sp-blue)"><?= sp_n($directExecBookings) ?></b>)</span>
+                    <span style="color:var(--sp-soft)">|</span>
+                    <span>Collection: <b><?= sp_tk($o['collection']) ?></b> (Active: <b><?= sp_tk($totalExecCollection) ?></b> + Inactive/Direct: <b><?= sp_tk(max(0.0, $o['collection'] - $totalExecCollection)) ?></b>)</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                    <?php if ($unassignedLeads > 0): ?>
+                        <button type="button" class="sp-btn sm click" data-gap="uncontacted" style="font-size:11.5px;padding:4px 10px;background:var(--sp-amber-50, #fff7ed);color:var(--sp-amber, #d97706);border:1px solid rgba(217,119,6,0.3);cursor:pointer" title="Click to view unassigned leads">
+                            <i class="fa-regular fa-user-clock"></i> <?= sp_n($unassignedLeads) ?> Unassigned Leads
+                        </button>
+                    <?php endif; ?>
+                    <a href="<?= sp_h($tabUrl('inactive-executive')) ?>" class="sp-btn sm" style="font-size:11.5px;padding:4px 10px;text-decoration:none"><i class="fa-regular fa-user-slash"></i> Inactive Staff (<?= count($inactiveExecs) ?>) →</a>
+                </div>
             </div>
         </div>
 
@@ -2015,6 +2101,7 @@ $jsData = [
                         </tr>
                     </thead>
                     <tbody></tbody>
+                    <tfoot></tfoot>
                 </table>
             </div>
 
@@ -2022,6 +2109,7 @@ $jsData = [
                 <span id="spExecCount"></span>
                 <span>Click any card or table row for full activity details &amp; individual sales funnel.</span>
             </div>
+            <div class="sp-recon" id="spExecRecon"></div>
         </div>
 
     <?php elseif ($tab === 'inactive-executive'): ?>

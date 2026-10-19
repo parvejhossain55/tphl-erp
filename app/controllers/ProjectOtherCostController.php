@@ -102,14 +102,15 @@ class ProjectOtherCostController extends Controller
         }
 
         $this->view('project-other-costs/index', [
-            'myRequests' => $myRequests,
+            'myRequests'              => $myRequests,
             'pendingApprovalRequests' => $pendingApprovalRequests,
-            'allApprovalRequests' => $allApprovalRequests,
-            'roleId' => $roleId,
-            'userId' => $userId,
-            'isReportingBoss' => $isReportingBoss,
-            'projects' => $projects,
-            'coaList' => getCOAExpenseList($this->db)
+            'allApprovalRequests'     => $allApprovalRequests,
+            'roleId'                  => $roleId,
+            'userId'                  => $userId,
+            'isReportingBoss'         => $isReportingBoss,
+            'projects'                => $projects,
+            'coaList'                 => getCOAExpenseList($this->db),
+            'costTypes'               => ProjectOtherCost::getCostTypes(),
         ]);
     }
 
@@ -155,8 +156,9 @@ class ProjectOtherCostController extends Controller
         }
 
         $this->view('project-other-costs/create', [
-            'projects' => $projects,
-            'coaList'  => getCOAExpenseList($this->db)
+            'projects'  => $projects,
+            'coaList'   => getCOAExpenseList($this->db),
+            'costTypes' => ProjectOtherCost::getCostTypes(),
         ]);
     }
 

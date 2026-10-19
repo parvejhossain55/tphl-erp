@@ -55,12 +55,12 @@
                                     <label class="form-label fw-semibold">Cost Type <span class="text-danger">*</span></label>
                                     <select name="rcost_type" class="form-select" required>
                                         <option value="">Select Type</option>
-                                        <option value="electricity_bill">Electricity Bill</option>
-                                        <option value="entertainment_bill">Entertainment Bill</option>
-                                        <option value="internet_bill">Internet Bill</option>
-                                        <option value="conveyance_bill">Conveyance Bill</option>
-                                        <option value="labour_bill">Labour Bill</option>
-                                        <option value="others">Others</option>
+                                        <?php 
+                                        $types = $costTypes ?? (class_exists('ProjectOtherCost') ? ProjectOtherCost::getCostTypes() : []);
+                                        foreach ($types as $val => $label): 
+                                        ?>
+                                            <option value="<?= htmlspecialchars($val) ?>"><?= htmlspecialchars($label) ?></option>
+                                        <?php endforeach; ?>
                                     </select>
                                 </div>
                             </div>

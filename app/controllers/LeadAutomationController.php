@@ -99,10 +99,17 @@ class LeadAutomationController extends Controller
         $teams = $this->teamsModel->getAll();
         $sheetUrl = $this->automationConfig['google_sheet']['url'] ?? '';
 
+        $projects = [];
+        try {
+            $pStmt = $this->db->query("SELECT id, name FROM `projects` WHERE deleted_at IS NULL ORDER BY name ASC");
+            $projects = $pStmt ? $pStmt->fetchAll(PDO::FETCH_ASSOC) : [];
+        } catch (Throwable $t) {}
+
         return $this->view("digital-marketing-team/lead-automation", [
             "current_route" => "lead-automation-upload",
             "page_title"    => "Lead Automation Upload & Distribution",
             "teams"         => $teams,
+            "projects"      => $projects,
             "sheet_url"     => $sheetUrl,
             "gemini_active" => !empty($this->automationConfig['gemini']['enabled']) && !empty($this->automationConfig['gemini']['api_key']),
         ]);
@@ -157,11 +164,19 @@ class LeadAutomationController extends Controller
             $synchronizer = new LeadSynchronizer($this->automationConfig);
             $pdo = $synchronizer->getDb();
 
-            $teamId = isset($_GET['team_id']) && $_GET['team_id'] !== '' ? (int)$_GET['team_id'] : null;
+            $teamParam = trim((string)($_GET['team_id'] ?? ''));
             $distribute = isset($_GET['distribute']) && $_GET['distribute'] !== '' ? (int)$_GET['distribute'] : null;
             $search = trim($_GET['search'] ?? '');
-            $limit = isset($_GET['limit']) ? min((int)$_GET['limit'], 500) : 100;
-            $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
+            
+            // Limit: support 'all' / -1 or numeric (default 50)
+            $limitParam = strtolower(trim((string)($_GET['limit'] ?? '50')));
+            if ($limitParam === 'all' || $limitParam === '-1' || (int)$limitParam >= 5000) {
+                $limit = 100000;
+                $offset = 0;
+            } else {
+                $limit = max(1, min((int)$limitParam, 5000));
+                $offset = max(0, (int)($_GET['offset'] ?? 0));
+            }
 
             // Check if is_automated column exists on this database (self-healing)
             $hasAutomatedCol = false;
@@ -183,9 +198,14 @@ class LeadAutomationController extends Controller
             }
             $params = [];
 
-            if ($teamId !== null) {
+            // Team filter: specific team ID, 'unassigned' (no team), or 'assigned' (any team)
+            if ($teamParam === 'unassigned') {
+                $where[] = "(l.team_id IS NULL OR l.team_id = 0)";
+            } elseif ($teamParam === 'assigned') {
+                $where[] = "(l.team_id IS NOT NULL AND l.team_id > 0)";
+            } elseif (is_numeric($teamParam) && (int)$teamParam > 0) {
                 $where[] = "l.team_id = ?";
-                $params[] = $teamId;
+                $params[] = (int)$teamParam;
             }
 
             if ($distribute !== null) {
@@ -193,13 +213,29 @@ class LeadAutomationController extends Controller
                 $params[] = $distribute;
             }
 
+            // Search by Name, Phone, Campaign, Team Name, Project Name, ID, or "unassigned" keyword
             if (!empty($search)) {
-                $where[] = "(l.full_name LIKE ? OR l.phone_number LIKE ? OR l.campaign_name LIKE ? OR l.id = ?)";
+                $searchLower = strtolower($search);
                 $searchTerm = "%{$search}%";
-                $params[] = $searchTerm;
-                $params[] = $searchTerm;
-                $params[] = $searchTerm;
-                $params[] = is_numeric($search) ? (int)$search : 0;
+
+                $searchParts = [
+                    "l.full_name LIKE ?",
+                    "l.phone_number LIKE ?",
+                    "l.campaign_name LIKE ?",
+                    "t.name LIKE ?",
+                    "p.name LIKE ?",
+                    "l.id = ?"
+                ];
+                $searchParams = [$searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, is_numeric($search) ? (int)$search : 0];
+
+                if (strpos($searchLower, 'unassign') !== false) {
+                    $searchParts[] = "(l.team_id IS NULL OR l.team_id = 0)";
+                } elseif (strpos($searchLower, 'assign') !== false) {
+                    $searchParts[] = "(l.team_id IS NOT NULL AND l.team_id > 0)";
+                }
+
+                $where[] = "(" . implode(" OR ", $searchParts) . ")";
+                $params = array_merge($params, $searchParams);
             }
 
             $whereSql = implode(" AND ", $where);
@@ -238,7 +274,7 @@ class LeadAutomationController extends Controller
             $leads = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             // Total count for current filter
-            $countSql = "SELECT COUNT(*) FROM `leads` l WHERE {$whereSql}";
+            $countSql = "SELECT COUNT(*) FROM `leads` l LEFT JOIN `teams` t ON l.team_id = t.id LEFT JOIN `projects` p ON l.project_id = p.id WHERE {$whereSql}";
             $countStmt = $pdo->prepare($countSql);
             $countStmt->execute($params);
             $totalCount = (int)$countStmt->fetchColumn();
@@ -248,7 +284,9 @@ class LeadAutomationController extends Controller
             $statsSql = "SELECT 
                             COUNT(*) as total_leads,
                             SUM(CASE WHEN distribute = 0 THEN 1 ELSE 0 END) as pending_leads,
-                            SUM(CASE WHEN distribute = 1 THEN 1 ELSE 0 END) as approved_leads
+                            SUM(CASE WHEN distribute = 1 THEN 1 ELSE 0 END) as approved_leads,
+                            SUM(CASE WHEN (team_id IS NULL OR team_id = 0) THEN 1 ELSE 0 END) as unassigned_leads,
+                            SUM(CASE WHEN (team_id IS NOT NULL AND team_id > 0) THEN 1 ELSE 0 END) as assigned_leads
                          FROM `leads` WHERE deleted_at IS NULL{$autoWhere}";
             $stats = $pdo->query($statsSql)->fetch(PDO::FETCH_ASSOC);
 
@@ -265,13 +303,22 @@ class LeadAutomationController extends Controller
                          ORDER BY t.id ASC";
             $teams = $pdo->query($teamsSql)->fetchAll(PDO::FETCH_ASSOC);
 
+            // Check how many unassigned leads exist specifically (total and pending)
+            $unassignedStatsSql = "SELECT 
+                                     COUNT(*) as total_unassigned,
+                                     SUM(CASE WHEN distribute = 0 THEN 1 ELSE 0 END) as pending_unassigned
+                                   FROM `leads` 
+                                   WHERE deleted_at IS NULL AND (team_id IS NULL OR team_id = 0){$autoWhere}";
+            $unassignedStats = $pdo->query($unassignedStatsSql)->fetch(PDO::FETCH_ASSOC);
+
             echo json_encode([
                 'status' => 'success',
                 'data'   => [
-                    'leads'       => $leads,
-                    'total_count' => $totalCount,
-                    'stats'       => $stats,
-                    'teams'       => $teams,
+                    'leads'            => $leads,
+                    'total_count'      => $totalCount,
+                    'stats'            => $stats,
+                    'teams'            => $teams,
+                    'unassigned_stats' => $unassignedStats,
                 ]
             ]);
         } catch (Throwable $e) {
@@ -286,6 +333,10 @@ class LeadAutomationController extends Controller
 
     /**
      * AJAX: Approve Leads (set distribute = 1 so team leaders & agents receive them)
+     * Supports:
+     * - Optional target_team_id: Assigns selected leads to the chosen team and auto-approves (distribute = 1) in one step!
+     * - Optional target_project_id: Assigns selected leads to a specific project.
+     * - Bulk all-pending or specific lead_ids list.
      */
     public function ajaxApprove()
     {
@@ -293,9 +344,11 @@ class LeadAutomationController extends Controller
         header('Content-Type: application/json; charset=utf-8');
 
         try {
-            $input = json_decode(file_get_contents('php://input'), true);
+            $input = json_decode(file_get_contents('php://input'), true) ?? [];
             $leadIds = $input['lead_ids'] ?? ($_POST['lead_ids'] ?? []);
             $teamId = isset($input['team_id']) && $input['team_id'] !== '' ? (int)$input['team_id'] : (!empty($_POST['team_id']) ? (int)$_POST['team_id'] : null);
+            $targetTeamId = isset($input['target_team_id']) && $input['target_team_id'] !== '' ? (int)$input['target_team_id'] : (!empty($_POST['target_team_id']) ? (int)$_POST['target_team_id'] : null);
+            $targetProjectId = isset($input['target_project_id']) && $input['target_project_id'] !== '' ? (int)$input['target_project_id'] : (!empty($_POST['target_project_id']) ? (int)$_POST['target_project_id'] : null);
             $approveAll = !empty($input['all_pending']) || !empty($_POST['all_pending']);
 
             $synchronizer = new LeadSynchronizer($this->automationConfig);
@@ -331,21 +384,55 @@ class LeadAutomationController extends Controller
                 $leadIds = [(int)$leadIds];
             }
 
-            $leadIds = array_map('intval', $leadIds);
+            $leadIds = array_values(array_filter(array_map('intval', $leadIds), fn($id) => $id > 0));
+            if (empty($leadIds)) {
+                throw new InvalidArgumentException("No valid lead IDs provided.");
+            }
+
             $placeholders = implode(',', array_fill(0, count($leadIds), '?'));
 
-            $updateSql = "UPDATE `leads` SET `distribute` = 1, `approved_by` = ?, `approved_at` = NOW(), `updated_at` = NOW() WHERE `id` IN ({$placeholders})";
+            // Build dynamic SET clauses based on whether target_team_id / target_project_id are provided
+            $setClauses = ["`distribute` = 1", "`approved_by` = ?", "`approved_at` = NOW()", "`updated_at` = NOW()"];
+            $params = [$approverId];
+
+            if ($targetTeamId !== null && $targetTeamId > 0) {
+                $setClauses[] = "`team_id` = ?";
+                $params[] = $targetTeamId;
+            }
+
+            if ($targetProjectId !== null && $targetProjectId > 0) {
+                $setClauses[] = "`project_id` = ?";
+                $params[] = $targetProjectId;
+            }
+
+            $setSql = implode(", ", $setClauses);
+            $updateSql = "UPDATE `leads` SET {$setSql} WHERE `id` IN ({$placeholders})";
+            $params = array_merge($params, $leadIds);
+
             $stmt = $pdo->prepare($updateSql);
-            $params = array_merge([$approverId], $leadIds);
             $stmt->execute($params);
             $affected = $stmt->rowCount();
             $totalSelected = count($leadIds);
 
+            // Fetch team name for the message if assigned
+            $teamName = '';
+            if ($targetTeamId !== null && $targetTeamId > 0) {
+                try {
+                    $tStmt = $pdo->prepare("SELECT name FROM `teams` WHERE id = ?");
+                    $tStmt->execute([$targetTeamId]);
+                    $teamName = $tStmt->fetchColumn() ?: "Team #{$targetTeamId}";
+                } catch (Throwable $t) {}
+            }
+
+            $successMsg = $teamName
+                ? "Successfully assigned {$totalSelected} lead(s) to {$teamName} and auto-approved for distribution!"
+                : ($affected > 0
+                    ? "Successfully approved and distributed {$affected} lead(s) to sales teams!"
+                    : "Selected {$totalSelected} lead(s) are approved and distributed.");
+
             echo json_encode([
                 'status'  => 'success',
-                'message' => $affected > 0 
-                    ? "Successfully approved and distributed {$affected} lead(s) to sales teams!" 
-                    : "Selected {$totalSelected} lead(s) are already approved and visible to sales teams.",
+                'message' => $successMsg,
                 'count'   => $affected ?: $totalSelected
             ]);
         } catch (Throwable $e) {
@@ -356,6 +443,14 @@ class LeadAutomationController extends Controller
             ]);
         }
         exit;
+    }
+
+    /**
+     * AJAX: Assign & Approve Leads (Alias for ajaxApprove with target_team_id)
+     */
+    public function ajaxAssignApprove()
+    {
+        return $this->ajaxApprove();
     }
 
     /**
