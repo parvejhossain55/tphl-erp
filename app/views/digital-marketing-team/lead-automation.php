@@ -3,6 +3,28 @@
  * Lead Intake & Automation Distribution Dashboard
  * TPHL ERP - Digital Marketing Role 10 & 11
  */
+
+$userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+$secondaryRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+$primaryRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
+$userId = (int)($_SESSION['user']['id'] ?? 0);
+$userRoleName = strtolower(trim((string)($_SESSION['user']['role_name'] ?? '')));
+
+// Check if user belongs to Management (Admin, Super Admin, Director, Chief Officer, Management Viewer, SEAL CEO)
+$isManagementUser = in_array($userRoleId, [1, 3, 33, 34, 35], true)
+    || in_array($secondaryRoleId, [1, 3, 33, 34, 35], true)
+    || in_array($primaryRoleId, [1, 3, 33, 34, 35], true)
+    || $userId === 94
+    || strpos($userRoleName, 'admin') !== false
+    || strpos($userRoleName, 'management') !== false
+    || strpos($userRoleName, 'director') !== false
+    || strpos($userRoleName, 'chief') !== false;
+
+// Role 10: Head Of Digital Marketing Team
+$isHeadOfDM = ($userRoleId === 10 || $secondaryRoleId === 10 || $primaryRoleId === 10 || strpos($userRoleName, 'head of digital marketing') !== false);
+
+// Only Management and Head Of Digital Marketing Team (Role 10) can view live sheet
+$canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
 ?>
 <style>
     :root {
@@ -162,18 +184,18 @@
 
     .teams-horizontal-scroll {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-        gap: 8px;
-        max-height: 155px;
-        overflow-y: auto;
-        padding-right: 4px;
+        grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
+        gap: 6px;
+        max-height: none;
+        overflow: visible;
+        padding-right: 0;
     }
 
     .team-metric-card {
         background: #f8fafc;
         border: 1px solid #e2e8f0;
         border-radius: var(--radius-sm);
-        padding: 8px 10px;
+        padding: 6px 8px;
         cursor: pointer;
         transition: all 0.15s ease;
     }
@@ -185,7 +207,7 @@
     }
 
     .team-card-name {
-        font-size: 11.5px;
+        font-size: 11px;
         font-weight: 700;
         color: var(--text-heading);
         white-space: nowrap;
@@ -197,13 +219,15 @@
         font-size: 12px;
         font-weight: 700;
         color: #087d59;
-        margin: 2px 0 1px;
+        margin: 1px 0 1px;
+        line-height: 1.2;
     }
 
     .team-card-sub {
         font-size: 10px;
         color: #d97706;
         font-weight: 600;
+        line-height: 1.2;
     }
 
     .lead-action-box {
@@ -240,7 +264,7 @@
         border: 1px solid var(--border);
         border-radius: var(--radius-md);
         box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-        overflow: hidden;
+        overflow: visible;
     }
 
     .queue-header {
@@ -286,16 +310,73 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 8px 18px;
+        padding: 10px 16px;
         border-bottom: 1px solid #f1f5f9;
         background: #fafafa;
+        gap: 10px;
         flex-wrap: wrap;
-        gap: 8px;
+        overflow: visible;
+    }
+
+    .btn-toolbar-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        height: 32px;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 0 12px;
+        border-radius: var(--radius-sm);
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .team-picker-btn {
+        background: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: var(--radius-sm) !important;
+        color: #1e293b !important;
+        height: 32px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        cursor: pointer;
+        outline: none;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+
+    .team-picker-btn:hover {
+        background: #f8fafc !important;
+        border-color: #087d59 !important;
+        color: #087d59 !important;
+    }
+
+    .team-picker-btn:focus, .team-picker-btn.show, .team-picker-btn:active {
+        background: #ffffff !important;
+        border-color: #087d59 !important;
+        color: #0f172a !important;
+        box-shadow: 0 0 0 2px rgba(8, 125, 89, 0.18) !important;
+    }
+
+    .team-picker-item {
+        color: var(--text-body);
+        transition: background 0.12s ease;
+    }
+    .team-picker-item:hover, .team-picker-item:focus {
+        background-color: var(--brand-green-light);
+        color: var(--brand-green);
+        font-weight: 600;
     }
 
     .table-responsive {
         width: 100%;
         overflow-x: auto;
+        border-bottom-left-radius: var(--radius-md);
+        border-bottom-right-radius: var(--radius-md);
     }
 
     .leads-table {
@@ -442,6 +523,17 @@
         color: #ffffff;
     }
 
+    .btn-row-assign {
+        background: #ecfdf5;
+        border-color: #a7f3d0;
+        color: #065f46;
+    }
+    .btn-row-assign:hover {
+        background: #087d59;
+        border-color: #087d59;
+        color: #ffffff;
+    }
+
     .btn-row-delete {
         width: 34px;
         height: 32px;
@@ -497,9 +589,11 @@
                 <i class="fa-brands fa-google text-success"></i>
                 Google Sheets (Meta Form Leads)
             </span>
-            <a href="<?= htmlspecialchars($sheet_url) ?>" target="_blank" class="small fw-semibold text-decoration-none text-success d-inline-flex align-items-center gap-1 ms-1" title="Open Google Sheet">
-                View live sheet <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 10px;"></i>
-            </a>
+            <?php if ($canViewLiveSheet && !empty($sheet_url)): ?>
+                <a href="<?= htmlspecialchars($sheet_url) ?>" target="_blank" class="small fw-semibold text-decoration-none text-success d-inline-flex align-items-center gap-1 ms-1" title="Open Google Sheet">
+                    View live sheet <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 10px;"></i>
+                </a>
+            <?php endif; ?>
         </div>
 
         <div class="d-flex align-items-center gap-3 small text-muted">
@@ -543,7 +637,6 @@
         <div class="team-allocation-box">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h6 class="fw-bold mb-0 text-dark small">Sales Team Allocation</h6>
-                <a href="javascript:void(0)" class="small fw-semibold text-success text-decoration-none" onclick="filterByTeam('')">Show all teams &rarr;</a>
             </div>
             <div class="teams-horizontal-scroll" id="teamsContainer">
                 <div class="text-center py-3 text-muted small w-100">
@@ -592,32 +685,94 @@
 
         <!-- Filter Toolbar -->
         <div class="filter-toolbar">
+            <!-- Left: Search & Filter Controls (Pashapashi) -->
             <div class="d-flex align-items-center gap-2 flex-wrap">
-                <div style="width: 240px;">
-                    <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="Search name, phone or ID..." oninput="debounceSearch()">
+                <!-- Search Input -->
+                <div style="width: 175px;">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-white border-end-0 text-muted px-2"><i class="fa-solid fa-magnifying-glass" style="font-size: 11px;"></i></span>
+                        <input type="text" id="searchInput" class="form-control form-control-sm border-start-0 ps-1" placeholder="Search leads..." oninput="debounceSearch()">
+                    </div>
                 </div>
 
-                <select id="teamFilterDropdown" class="form-select form-select-sm" style="width: 180px;" onchange="onTeamDropdownChange(this.value)">
-                    <option value="">All Sales Teams</option>
-                    <?php foreach ($teams as $t): ?>
-                        <option value="<?= $t['id'] ?>"><?= htmlspecialchars($t['name']) ?></option>
-                    <?php endforeach; ?>
-                </select>
+                <!-- Team Filter Dropdown -->
+                <div style="width: 165px;">
+                    <select id="teamFilterDropdown" class="form-select form-select-sm" onchange="onTeamDropdownChange(this.value)">
+                        <option value="">All Leads (Any Team)</option>
+                        <option value="unassigned">⚠️ Unassigned Leads</option>
+                        <option value="assigned">✅ Assigned Leads</option>
+                        <optgroup label="Filter by Sales Team">
+                            <?php foreach ($teams as $t): ?>
+                                <option value="<?= $t['id'] ?>"><?= htmlspecialchars($t['name']) ?></option>
+                            <?php endforeach; ?>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <!-- Page Size Select -->
+                <div class="d-flex align-items-center gap-1">
+                    <span class="small text-muted" style="font-size: 11px; white-space: nowrap;">Show:</span>
+                    <select id="pageSizeSelect" class="form-select form-select-sm" style="width: 85px;" onchange="onPageSizeChange(this.value)" title="Rows per page">
+                        <option value="50">50 rows</option>
+                        <option value="100">100 rows</option>
+                        <option value="250">250 rows</option>
+                        <option value="all">All rows</option>
+                    </select>
+                </div>
             </div>
 
+            <!-- Right: Action & Assignment Controls -->
             <div class="d-flex align-items-center gap-2 flex-wrap">
-                <span id="selectionCountText" class="small fw-bold text-success" style="display:none;">0 selected</span>
-                <button id="btnBulkApprove" class="btn btn-success btn-sm fw-bold px-3 d-inline-flex align-items-center gap-1" style="height: 32px;" onclick="bulkApproveSelected()" disabled>
-                    <i class="fa-solid fa-check" style="font-size: 13px;"></i> <span>Assign & Approve Leads</span>
+                <!-- Selection Count Badge -->
+                <span id="selectionCountText" class="badge bg-success-subtle text-success border border-success-subtle py-1 px-2 small fw-bold" style="display:none; font-size: 11.5px;">0 selected</span>
+
+                <!-- Searchable Choose Team to Assign Dropdown -->
+                <div id="assignTeamWrapper" class="position-relative" style="display:none;">
+                    <input type="hidden" id="bulkAssignTeamSelect" value="">
+                    <div class="dropdown" id="bulkTeamDropdown">
+                        <button class="team-picker-btn text-start text-truncate" 
+                                type="button" 
+                                id="bulkTeamDropdownBtn" 
+                                data-bs-toggle="dropdown" 
+                                data-bs-auto-close="outside"
+                                aria-expanded="false" 
+                                style="width: 185px;"
+                                title="Choose sales team to assign selected leads">
+                            <span id="bulkTeamDropdownLabel" class="text-truncate">Choose Team to Assign...</span>
+                            <i class="fa-solid fa-chevron-down text-muted" style="font-size: 10px; flex-shrink: 0;"></i>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end p-2 shadow border" id="bulkTeamDropdownMenu" style="min-width: 230px; max-height: 320px; font-size: 12px; border-radius: 8px; z-index: 1060;" aria-labelledby="bulkTeamDropdownBtn">
+                            <div class="position-relative mb-2">
+                                <i class="fa-solid fa-magnifying-glass position-absolute text-muted" style="left: 3px;top: 9px;font-size: 11px;"></i>
+                                <input type="text" class="form-control form-control-sm ps-4" id="teamPickerSearchInput" placeholder="Search team..." oninput="filterTeamPickerOptions(this.value)" autocomplete="off">
+                            </div>
+                            <div id="teamPickerList" style="max-height: 220px; overflow-y: auto;">
+                                <a class="dropdown-item py-1 px-2 rounded small text-muted" href="javascript:void(0)" onclick="selectTeamForAssign('', 'Choose Team to Assign...')">
+                                    <em>-- Clear Selection --</em>
+                                </a>
+                                <?php foreach ($teams as $t): ?>
+                                    <a class="dropdown-item py-1 px-2 rounded small team-picker-item" href="javascript:void(0)" data-team-id="<?= $t['id'] ?>" data-team-name="<?= htmlspecialchars($t['name']) ?>" onclick="selectTeamForAssign('<?= $t['id'] ?>', '<?= htmlspecialchars(addslashes($t['name'])) ?>')">
+                                        <?= htmlspecialchars($t['name']) ?>
+                                    </a>
+                                <?php endforeach; ?>
+                                <div id="teamPickerNoMatch" class="text-muted text-center py-2 small" style="display:none;">No matching team</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons (Using btn-toolbar-action without d-inline-flex) -->
+                <button id="btnBulkApprove" class="btn btn-success btn-sm fw-bold px-3 btn-toolbar-action" style="display:none;" onclick="handleBulkAssignApprove()">
+                    <i class="fa-solid fa-check" style="font-size: 13px;"></i> <span id="btnBulkApproveText">Assign & Approve Leads</span>
                 </button>
-                <button id="btnBulkUndo" class="btn btn-outline-secondary btn-sm fw-bold px-3 d-inline-flex align-items-center gap-1" style="height: 32px; display:none;" onclick="bulkUndoSelected()">
+                <button id="btnBulkUndo" class="btn btn-outline-secondary btn-sm fw-bold px-3 btn-toolbar-action" style="display:none;" onclick="bulkUndoSelected()">
                     <i class="fa-solid fa-rotate-left" style="font-size: 12px;"></i> <span id="btnBulkUndoText">Revert to Pending</span>
                 </button>
-                <button id="btnBulkDelete" class="btn btn-danger btn-sm fw-bold px-3 d-inline-flex align-items-center gap-1" style="height: 32px; display:none;" onclick="bulkDeleteSelected()" disabled>
-                    <i class="fa-solid fa-trash-can" style="font-size: 14px;"></i> <span id="btnBulkDeleteText">Delete Selected Leads</span>
+                <button id="btnBulkDelete" class="btn btn-danger btn-sm fw-bold px-3 btn-toolbar-action" style="display:none;" onclick="bulkDeleteSelected()">
+                    <i class="fa-solid fa-trash-can" style="font-size: 13px;"></i> <span id="btnBulkDeleteText">Delete Selected Leads</span>
                 </button>
-                <button id="btnDeleteTeamApproved" class="btn btn-outline-danger btn-sm fw-bold px-3 d-inline-flex align-items-center gap-1" style="height: 32px; display:none;" onclick="bulkDeleteTeamApproved()">
-                    <i class="fa-solid fa-trash-can" style="font-size: 14px;"></i> <span id="btnDeleteTeamApprovedText">Delete Team Approved</span>
+                <button id="btnDeleteTeamApproved" class="btn btn-outline-danger btn-sm fw-bold px-3 btn-toolbar-action" style="display:none;" onclick="bulkDeleteTeamApproved()">
+                    <i class="fa-solid fa-trash-can" style="font-size: 13px;"></i> <span id="btnDeleteTeamApprovedText">Delete Team Approved</span>
                 </button>
             </div>
         </div>
@@ -636,7 +791,7 @@
                         <th style="min-width: 110px;">Platform</th>
                         <th style="min-width: 110px;">Sync Date</th>
                         <th style="min-width: 140px;">Assigned Team</th>
-                        <th style="min-width: 140px; text-align: right;">Action</th>
+                        <th style="min-width: 150px; text-align: right;">Action</th>
                     </tr>
                 </thead>
                 <tbody id="leadsTableBody">
@@ -661,6 +816,52 @@
     </div>
 </div>
 
+<!-- Assign Team & Auto-Approve Modal -->
+<div class="modal fade" id="assignTeamModal" tabindex="-1" aria-labelledby="assignTeamModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 460px;">
+        <div class="modal-content shadow border-0" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header bg-success text-white py-3">
+                <h6 class="modal-title fw-bold" id="assignTeamModalLabel">
+                    <i class="fa-solid fa-user-check me-2"></i>Assign Team & Auto-Approve Leads
+                </h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-info py-2 px-3 small mb-3 border-0" id="assignModalLeadSummary">
+                    Assigning <strong id="assignModalLeadCount">1 lead</strong> to a sales team.
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-dark">Select Sales Team <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm mb-1" id="modalTeamFilterInput" placeholder="Quick search team name..." oninput="filterModalTeamOptions(this.value)" autocomplete="off">
+                    <select id="modalTeamSelect" class="form-select form-select-sm" style="font-size: 13px;">
+                        <option value="">-- Choose Sales Team --</option>
+                        <?php foreach ($teams as $t): ?>
+                            <option value="<?= $t['id'] ?>" class="modal-team-opt"><?= htmlspecialchars($t['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="mb-2">
+                    <label class="form-label fw-bold small text-muted">Optional: Match / Assign Project</label>
+                    <select id="modalProjectSelect" class="form-select form-select-sm" style="font-size: 13px;">
+                        <option value="">Keep Existing / Common</option>
+                        <?php foreach ($projects ?? [] as $p): ?>
+                            <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2 px-4 border-top">
+                <button type="button" class="btn btn-outline-secondary btn-sm px-3" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success btn-sm fw-bold px-4" id="btnModalConfirmAssign" onclick="confirmModalAssign()">
+                    <i class="fa-solid fa-check me-1"></i> Assign & Auto-Approve
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Toast Container -->
 <div id="toastContainer"></div>
 
@@ -676,7 +877,83 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         loadLeads();
+
+        const ddBtn = document.getElementById('bulkTeamDropdownBtn');
+        if (ddBtn) {
+            ddBtn.addEventListener('shown.bs.dropdown', function () {
+                const searchInput = document.getElementById('teamPickerSearchInput');
+                if (searchInput) {
+                    searchInput.value = '';
+                    filterTeamPickerOptions('');
+                    setTimeout(() => {
+                        try {
+                            searchInput.focus({ preventScroll: true });
+                        } catch (e) {
+                            searchInput.focus();
+                        }
+                    }, 50);
+                }
+            });
+        }
+
+        const teamSearch = document.getElementById('teamPickerSearchInput');
+        if (teamSearch) {
+            teamSearch.addEventListener('click', function (e) {
+                e.stopPropagation();
+            });
+            teamSearch.addEventListener('keydown', function (e) {
+                e.stopPropagation();
+            });
+        }
     });
+
+    function filterTeamPickerOptions(query) {
+        const q = (query || '').toLowerCase().trim();
+        const items = document.querySelectorAll('#teamPickerList .team-picker-item');
+        let visibleCount = 0;
+        items.forEach(el => {
+            const name = (el.getAttribute('data-team-name') || '').toLowerCase();
+            if (!q || name.includes(q)) {
+                el.style.display = 'block';
+                visibleCount++;
+            } else {
+                el.style.display = 'none';
+            }
+        });
+        const noMatch = document.getElementById('teamPickerNoMatch');
+        if (noMatch) {
+            noMatch.style.display = (visibleCount === 0) ? 'block' : 'none';
+        }
+    }
+
+    function selectTeamForAssign(teamId, teamName) {
+        const hiddenInput = document.getElementById('bulkAssignTeamSelect');
+        if (hiddenInput) {
+            hiddenInput.value = teamId;
+        }
+        const label = document.getElementById('bulkTeamDropdownLabel');
+        if (label) {
+            label.innerText = teamName || 'Choose Team to Assign...';
+            label.title = teamName || 'Choose Team to Assign...';
+        }
+        const ddBtn = document.getElementById('bulkTeamDropdownBtn');
+        if (ddBtn && typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
+            const dd = bootstrap.Dropdown.getInstance(ddBtn);
+            if (dd) dd.hide();
+        }
+        const menu = document.getElementById('bulkTeamDropdownMenu');
+        if (menu) menu.classList.remove('show');
+        if (ddBtn) ddBtn.classList.remove('show');
+    }
+
+    function filterModalTeamOptions(query) {
+        const q = (query || '').toLowerCase().trim();
+        const opts = document.querySelectorAll('#modalTeamSelect .modal-team-opt');
+        opts.forEach(opt => {
+            const text = opt.textContent.toLowerCase();
+            opt.style.display = (!q || text.includes(q)) ? '' : 'none';
+        });
+    }
 
     // Trigger Scrape from Google Sheet
     async function triggerScrape() {
@@ -766,6 +1043,12 @@
         }
     }
 
+    function onPageSizeChange(val) {
+        limit = (val === 'all') ? 'all' : parseInt(val);
+        currentPage = 1;
+        loadLeads();
+    }
+
     function debounceSearch() {
         clearTimeout(searchTimeout);
         searchTimeout = setTimeout(() => {
@@ -775,6 +1058,7 @@
     }
 
     function changePage(direction) {
+        if (limit === 'all') return;
         currentPage += direction;
         if (currentPage < 1) currentPage = 1;
         loadLeads();
@@ -783,7 +1067,7 @@
     // Main AJAX Load Function
     async function loadLeads() {
         const searchVal = document.getElementById('searchInput').value.trim();
-        const offset = (currentPage - 1) * limit;
+        const offset = (limit === 'all') ? 0 : (currentPage - 1) * limit;
 
         const params = new URLSearchParams({
             distribute: currentTabStatus,
@@ -807,7 +1091,7 @@
                 const data = result.data;
                 totalCount = data.total_count || 0;
                 renderStats(data.stats, data.teams);
-                renderTeamCards(data.teams);
+                renderTeamCards(data.teams, data.unassigned_stats);
                 renderTable(data.leads, totalCount);
                 updatePaginationControls();
                 updateTeamActionButtons();
@@ -837,7 +1121,7 @@
         document.getElementById('actionReadyCount').innerText = `${pending} pending`;
     }
 
-    function renderTeamCards(teams) {
+    function renderTeamCards(teams, unassignedStats) {
         const container = document.getElementById('teamsContainer');
         if (!teams || teams.length === 0) {
             container.innerHTML = '<span class="text-muted small">No teams configured</span>';
@@ -845,6 +1129,19 @@
         }
 
         let cardsHtml = '';
+
+        // Prepend Unassigned Leads card if unassigned leads exist
+        if (unassignedStats && parseInt(unassignedStats.total_unassigned || 0) > 0) {
+            const isUnassignedSelected = (currentTeamId === 'unassigned');
+            cardsHtml += `
+                <div class="team-metric-card ${isUnassignedSelected ? 'active' : ''}" onclick="filterByTeam('unassigned')" style="border-left: 3px solid #f59e0b; background: ${isUnassignedSelected ? '#fef3c7' : '#fffbeb'};">
+                    <div class="team-card-name" style="color: #b45309;" title="Common Unassigned Leads"><i class="fa-solid fa-triangle-exclamation me-1"></i>Unassigned</div>
+                    <div class="team-card-assigned">${unassignedStats.total_unassigned} leads</div>
+                    <div class="team-card-sub text-danger fw-bold">${unassignedStats.pending_unassigned || 0} pending</div>
+                </div>
+            `;
+        }
+
         teams.forEach(team => {
             const isSelected = String(currentTeamId) === String(team.id);
             cardsHtml += `
@@ -860,7 +1157,8 @@
 
     function renderTable(leads, count) {
         const tbody = document.getElementById('leadsTableBody');
-        document.getElementById('paginationText').innerText = `Showing ${leads.length} of ${count} leads`;
+        const displayedText = (limit === 'all') ? `Showing all ${leads.length} of ${count} leads` : `Showing ${leads.length} of ${count} leads`;
+        document.getElementById('paginationText').innerText = displayedText;
 
         if (!leads || leads.length === 0) {
             tbody.innerHTML = `
@@ -878,8 +1176,10 @@
         leads.forEach(lead => {
             const isSelected = selectedLeadIds.has(parseInt(lead.id));
             const isApproved = String(lead.distribute) === '1';
-            const teamName = lead.team_name ? lead.team_name : (lead.team_id ? 'Team #' + lead.team_id : 'Unassigned');
-            const projectName = lead.project_name ? lead.project_name : (lead.project_id ? 'Project #' + lead.project_id : 'Unassigned');
+            const isUnassigned = (!lead.team_id || parseInt(lead.team_id) === 0);
+            const isProjectUnassigned = (!lead.project_id || parseInt(lead.project_id) === 0);
+            const teamName = isUnassigned ? 'Unassigned (No Team)' : (lead.team_name ? lead.team_name : 'Team #' + lead.team_id);
+            const projectName = isProjectUnassigned ? 'Common / Unassigned' : (lead.project_name ? lead.project_name : 'Project #' + lead.project_id);
 
             html += `
                 <tr id="row-${lead.id}" class="${isSelected ? 'selected' : ''}">
@@ -892,7 +1192,7 @@
                         <div class="text-muted small"><i class="fa-solid fa-phone me-1"></i>${escapeHtml(lead.phone_number || 'N/A')} &bull; #LD-${lead.id}</div>
                     </td>
                     <td>
-                        <div class="fw-semibold text-dark">${escapeHtml(projectName)}</div>
+                        <div class="fw-semibold ${isProjectUnassigned ? 'text-secondary' : 'text-dark'}">${escapeHtml(projectName)}</div>
                         <div class="text-muted small">${escapeHtml(lead.city || 'Dhaka')}</div>
                     </td>
                     <td>
@@ -910,11 +1210,13 @@
                         <span class="small text-muted">${formatDate(lead.created_at)}</span>
                     </td>
                     <td>
-                        <div class="fw-bold small text-dark">${escapeHtml(teamName)}</div>
+                        <div class="fw-bold small ${isUnassigned ? 'text-danger' : 'text-dark'}">
+                            ${isUnassigned ? '<i class="fa-solid fa-circle-exclamation me-1 text-warning"></i>' : ''}${escapeHtml(teamName)}
+                        </div>
                         ${isApproved ? `
                             <span class="tag-approved"><i class="fa-solid fa-check me-1"></i> Approved</span>
                         ` : `
-                            <span class="tag-pending"><i class="fa-regular fa-clock me-1"></i> Pending</span>
+                            <span class="tag-pending"><i class="fa-regular fa-clock me-1"></i> ${isUnassigned ? 'Pending Assign' : 'Pending'}</span>
                         `}
                     </td>
                     <td class="text-end">
@@ -923,11 +1225,15 @@
                                 <button type="button" class="btn-row-action btn-row-undo" onclick="unapproveLead(${lead.id})" title="Revert back to Pending">
                                     <i class="fa-solid fa-rotate-left me-1" style="font-size: 11px;"></i> Undo
                                 </button>
+                            ` : (isUnassigned ? `
+                                <button type="button" class="btn-row-action btn-row-assign" onclick="openAssignModal([${lead.id}])" title="Assign Sales Team & Auto-Approve">
+                                    <i class="fa-solid fa-user-plus me-1" style="font-size: 11px;"></i> Assign & Approve
+                                </button>
                             ` : `
-                                <button type="button" class="btn-row-action btn-row-approve" onclick="approveSingleLead(${lead.id})" title="Approve & Distribute to Team">
+                                <button type="button" class="btn-row-action btn-row-approve" onclick="approveSingleLead(${lead.id})" title="Approve & Distribute to ${escapeHtml(teamName)}">
                                     <i class="fa-solid fa-check me-1" style="font-size: 11px;"></i> Approve
                                 </button>
-                            `}
+                            `)}
                             <button type="button" class="btn-row-action btn-row-delete" onclick="deleteSingleLead(${lead.id}, '${escapeHtml(lead.full_name || 'Lead')}')" title="Permanently Delete Lead from Database">
                                 <i class="fa-solid fa-trash-can" style="font-size: 14px;"></i>
                             </button>
@@ -971,20 +1277,24 @@
         const btnUndo = document.getElementById('btnBulkUndo');
         const btnDelete = document.getElementById('btnBulkDelete');
         const label = document.getElementById('selectionCountText');
+        const assignWrapper = document.getElementById('assignTeamWrapper');
 
         if (count > 0) {
-            label.style.display = 'inline';
-            label.innerText = `${count} selected`;
+            if (label) {
+                label.style.display = 'inline-block';
+                label.innerText = `${count} selected`;
+            }
 
             if (btnDelete) {
                 btnDelete.style.display = 'inline-flex';
                 btnDelete.disabled = false;
-                btnDelete.innerHTML = `<i class="fa-solid fa-trash-can" style="font-size: 14px;"></i> <span>Delete Selected (${count})</span>`;
+                btnDelete.innerHTML = `<i class="fa-solid fa-trash-can" style="font-size: 13px;"></i> <span>Delete Selected (${count})</span>`;
             }
 
             if (currentTabStatus === '1') {
                 // Distributed & Approved tab: Hide bulk approve, show bulk undo & bulk delete
                 if (btnApprove) btnApprove.style.display = 'none';
+                if (assignWrapper) assignWrapper.style.display = 'none';
                 if (btnUndo) {
                     btnUndo.style.display = 'inline-flex';
                     btnUndo.disabled = false;
@@ -993,33 +1303,37 @@
             } else {
                 // Pending Approval or All Synced Leads
                 if (btnUndo) btnUndo.style.display = 'none';
+                if (assignWrapper) assignWrapper.style.display = 'inline-block';
                 if (btnApprove) {
                     btnApprove.style.display = 'inline-flex';
                     btnApprove.disabled = false;
-                    btnApprove.innerHTML = `<i class="fa-solid fa-check" style="font-size: 13px;"></i> <span>Assign & Approve ${count} Leads</span>`;
+                    btnApprove.innerHTML = `<i class="fa-solid fa-check" style="font-size: 13px;"></i> <span>Assign & Approve (${count})</span>`;
                 }
             }
         } else {
-            label.style.display = 'none';
+            if (label) label.style.display = 'none';
 
-            if (btnDelete) {
-                btnDelete.style.display = 'none';
-                btnDelete.disabled = true;
-            }
-
-            if (btnUndo) {
-                btnUndo.style.display = 'none';
-                btnUndo.disabled = true;
-            }
-
-            if (btnApprove) {
-                if (currentTabStatus === '1') {
-                    btnApprove.style.display = 'none';
-                } else {
+            if (currentTabStatus === '1') {
+                if (assignWrapper) assignWrapper.style.display = 'none';
+                if (btnApprove) btnApprove.style.display = 'none';
+                if (btnUndo) {
+                    btnUndo.style.display = 'inline-flex';
+                    btnUndo.disabled = true;
+                    btnUndo.innerHTML = `<i class="fa-solid fa-rotate-left" style="font-size: 12px;"></i> <span>Revert to Pending</span>`;
+                }
+            } else {
+                if (assignWrapper) assignWrapper.style.display = 'inline-block';
+                if (btnUndo) btnUndo.style.display = 'none';
+                if (btnApprove) {
                     btnApprove.style.display = 'inline-flex';
                     btnApprove.disabled = true;
                     btnApprove.innerHTML = `<i class="fa-solid fa-check" style="font-size: 13px;"></i> <span>Assign & Approve Leads</span>`;
                 }
+            }
+
+            if (btnDelete) {
+                btnDelete.style.display = 'none';
+                btnDelete.disabled = true;
             }
         }
 
@@ -1063,6 +1377,13 @@
     }
 
     function updatePaginationControls() {
+        if (limit === 'all') {
+            document.getElementById('pageNumberText').innerText = `All Rows (${totalCount})`;
+            document.getElementById('btnPrevPage').disabled = true;
+            document.getElementById('btnNextPage').disabled = true;
+            document.getElementById('paginationText').innerText = `Showing all ${totalCount} of ${totalCount} leads`;
+            return;
+        }
         const totalPages = Math.ceil(totalCount / limit) || 1;
         document.getElementById('pageNumberText').innerText = `Page ${currentPage} of ${totalPages}`;
         document.getElementById('btnPrevPage').disabled = (currentPage <= 1);
@@ -1093,31 +1414,117 @@
         }
     }
 
-    async function bulkApproveSelected() {
+    // Modal state for Assign & Approve
+    let modalAssignLeadIds = [];
+
+    function handleBulkAssignApprove() {
         if (selectedLeadIds.size === 0) return;
         const ids = Array.from(selectedLeadIds);
+        const toolbarTeam = document.getElementById('bulkAssignTeamSelect') ? document.getElementById('bulkAssignTeamSelect').value : '';
+
+        if (toolbarTeam) {
+            const labelEl = document.getElementById('bulkTeamDropdownLabel');
+            const teamName = labelEl ? labelEl.textContent.trim() : ('Team #' + toolbarTeam);
+            if (confirm(`Assign ${ids.length} selected lead(s) to "${teamName}" and auto-approve immediately?`)) {
+                executeAssignAndApprove(ids, toolbarTeam, null);
+            }
+            return;
+        }
+
+        // If no team chosen in toolbar, open modal
+        openAssignModal(ids);
+    }
+
+    function openAssignModal(ids) {
+        if (!ids || ids.length === 0) return;
+        modalAssignLeadIds = ids;
+        document.getElementById('assignModalLeadCount').innerText = `${ids.length} lead${ids.length > 1 ? 's' : ''}`;
+
+        const toolbarTeam = document.getElementById('bulkAssignTeamSelect') ? document.getElementById('bulkAssignTeamSelect').value : '';
+        const modalTeamSelect = document.getElementById('modalTeamSelect');
+        if (modalTeamSelect) {
+            modalTeamSelect.value = toolbarTeam || (isFinite(currentTeamId) && currentTeamId > 0 ? currentTeamId : '');
+        }
+
+        const modalEl = document.getElementById('assignTeamModal');
+        if (modalEl && typeof bootstrap !== 'undefined') {
+            const modalInstance = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            modalInstance.show();
+        } else if (modalEl && typeof $ !== 'undefined') {
+            $('#assignTeamModal').modal('show');
+        } else {
+            const chosenTeam = prompt(`Assign ${ids.length} lead(s) to Team ID:`);
+            if (chosenTeam) {
+                executeAssignAndApprove(ids, chosenTeam, null);
+            }
+        }
+    }
+
+    async function confirmModalAssign() {
+        const teamSelect = document.getElementById('modalTeamSelect');
+        const teamId = teamSelect ? teamSelect.value : '';
+        if (!teamId) {
+            alert('Please select a sales team to assign these leads to.');
+            return;
+        }
+
+        const projSelect = document.getElementById('modalProjectSelect');
+        const projectId = projSelect && projSelect.value ? projSelect.value : null;
+
+        const btn = document.getElementById('btnModalConfirmAssign');
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Assigning...`;
 
         try {
-            const response = await fetch(`${baseUrl}/lead-automation/approve`, {
+            await executeAssignAndApprove(modalAssignLeadIds, teamId, projectId);
+
+            const modalEl = document.getElementById('assignTeamModal');
+            if (modalEl && typeof bootstrap !== 'undefined') {
+                const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                if (modalInstance) modalInstance.hide();
+            } else if (modalEl && typeof $ !== 'undefined') {
+                $('#assignTeamModal').modal('hide');
+            }
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-check me-1"></i> Assign & Auto-Approve`;
+        }
+    }
+
+    async function executeAssignAndApprove(ids, targetTeamId, targetProjectId) {
+        try {
+            const payload = {
+                lead_ids: ids,
+                target_team_id: targetTeamId || null,
+                target_project_id: targetProjectId || null
+            };
+
+            const response = await fetch(`${baseUrl}/lead-automation/assign-approve`, {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest'
                 },
-                body: JSON.stringify({ lead_ids: ids })
+                body: JSON.stringify(payload)
             });
+
             const res = await response.json();
             if (res.status === 'success') {
                 showLeadToast(res.message, 'success');
                 selectedLeadIds.clear();
+                selectTeamForAssign('', 'Choose Team to Assign...');
                 loadLeads();
             } else {
-                showLeadToast(res.message || 'Approval failed', 'error');
+                showLeadToast(res.message || 'Assign & Approve failed', 'error');
             }
         } catch (err) {
             showLeadToast('Error: ' + err.message, 'error');
         }
+    }
+
+    async function bulkApproveSelected() {
+        handleBulkAssignApprove();
     }
 
     async function bulkApproveAllPending() {
@@ -1307,7 +1714,7 @@
         const btnTeamDeleteText = document.getElementById('btnDeleteTeamApprovedText');
         if (!btnTeamDelete) return;
 
-        if (currentTeamId && currentTabStatus === '1') {
+        if (currentTeamId && currentTeamId !== 'unassigned' && currentTeamId !== 'assigned' && currentTabStatus === '1') {
             const teamOpt = document.querySelector(`#teamFilterDropdown option[value="${currentTeamId}"]`);
             const name = teamOpt ? teamOpt.textContent.trim() : 'Team';
             if (btnTeamDeleteText) {

@@ -86,7 +86,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                 </tr>
                                 <tr>
                                     <th class="bg-light">Cost Type</th>
-                                    <td><?= htmlspecialchars(ucwords(str_replace('_', ' ', $request['rcost_type']))) ?></td>
+                                    <td><?= htmlspecialchars(ProjectOtherCost::getCostTypeLabel($request['rcost_type'])) ?></td>
                                 </tr>
                                 <tr>
                                     <th class="bg-light">Purpose</th>

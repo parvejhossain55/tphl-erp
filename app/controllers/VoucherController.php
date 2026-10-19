@@ -307,7 +307,9 @@ class VoucherController extends Controller
 
                 $voucherData['paid_to'] = $req['requester_name'] ?? 'Site Operator';
                 $voucherData['project'] = $req['project_name'] ?? 'Construction Site';
-                $costTypeLabel = !empty($req['rcost_type']) ? ucfirst(str_replace('_', ' ', $req['rcost_type'])) : 'Site Expense';
+                $costTypeLabel = !empty($req['rcost_type']) 
+                    ? (class_exists('ProjectOtherCost') ? ProjectOtherCost::getCostTypeLabel($req['rcost_type']) : ucwords(str_replace('_', ' ', $req['rcost_type']))) 
+                    : 'Site Expense';
                 $voucherData['purpose'] = 'Project Other Cost (' . $costTypeLabel . ') - ' . ($req['purpose'] ?? '');
 
                 $descParts = [];

@@ -294,6 +294,7 @@ return [
     ],
 
     'default_project' => [
+        'name'                      => 'Common Leads',
         'project_id'                => null,
         'team_id'                   => null,
         'allow_insert_if_unmatched' => true,

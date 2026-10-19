@@ -77,7 +77,7 @@
                                         <tr>
                                             <td><?= $index + 1 ?></td>
                                             <td><?= htmlspecialchars($row['project_name']) ?></td>
-                                            <td><?= htmlspecialchars(ucwords(str_replace('_', ' ', $row['rcost_type']))) ?></td>
+                                            <td><?= htmlspecialchars(ProjectOtherCost::getCostTypeLabel($row['rcost_type'])) ?></td>
                                             <td>
                                                 <div><?= number_format($row['request_amount'], 2) ?></div>
                                                 <?php if (!empty($row['approved_amount']) && $row['approved_amount'] != $row['request_amount']): ?>
@@ -174,7 +174,7 @@
                                         <tr>
                                             <td><?= $index + 1 ?></td>
                                             <td><?= htmlspecialchars($row['project_name']) ?></td>
-                                            <td><?= htmlspecialchars(ucwords(str_replace('_', ' ', $row['rcost_type']))) ?></td>
+                                            <td><?= htmlspecialchars(ProjectOtherCost::getCostTypeLabel($row['rcost_type'])) ?></td>
                                             <td><?= number_format($row['request_amount'], 2) ?></td>
                                             <td><?= !empty($row['approved_amount']) ? number_format($row['approved_amount'], 2) : '-' ?></td>
                                             <td>
@@ -270,7 +270,7 @@
                                         <tr>
                                             <td><?= $index + 1 ?></td>
                                             <td><?= htmlspecialchars($row['project_name']) ?></td>
-                                            <td><?= htmlspecialchars(ucwords(str_replace('_', ' ', $row['rcost_type']))) ?></td>
+                                            <td><?= htmlspecialchars(ProjectOtherCost::getCostTypeLabel($row['rcost_type'])) ?></td>
                                             <td><?= number_format($row['request_amount'], 2) ?></td>
                                             <td><?= !empty($row['approved_amount']) ? number_format($row['approved_amount'], 2) : '-' ?></td>
                                             <td>
@@ -400,12 +400,12 @@
                                 <label class="form-label fw-semibold">Cost Type <span class="text-danger">*</span></label>
                                 <select name="rcost_type" class="form-select" required>
                                     <option value="">Select Type</option>
-                                    <option value="electricity_bill">Electricity Bill</option>
-                                    <option value="entertainment_bill">Entertainment Bill</option>
-                                    <option value="internet_bill">Internet Bill</option>
-                                    <option value="conveyance_bill">Conveyance Bill</option>
-                                    <option value="labour_bill">Labour Bill</option>
-                                    <option value="others">Others</option>
+                                    <?php 
+                                    $types = $costTypes ?? (class_exists('ProjectOtherCost') ? ProjectOtherCost::getCostTypes() : []);
+                                    foreach ($types as $val => $label): 
+                                    ?>
+                                        <option value="<?= htmlspecialchars($val) ?>"><?= htmlspecialchars($label) ?></option>
+                                    <?php endforeach; ?>
                                 </select>
                             </div>
                         </div>

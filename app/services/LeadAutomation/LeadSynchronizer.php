@@ -177,7 +177,7 @@ class LeadSynchronizer
             $leadData['phone_number'] = $cleanPhone;
 
             // Match Project and determine Team ID via Round-Robin
-            $projectMatch = $this->matchProject($leadData['campaign_name'] ?? '');
+            $projectMatch = $this->matchProject($leadData['campaign_name'] ?? '', $leadData['form_name'] ?? '');
             if ($projectMatch['project_id'] === null && !($this->config['default_project']['allow_insert_if_unmatched'] ?? true)) {
                 $stats['unmatched_project']++;
                 $this->log("Row " . ($lineNum + 2) . ": Skipped because project could not be matched for campaign: " . $leadData['campaign_name']);
@@ -319,6 +319,8 @@ class LeadSynchronizer
         // Exact match aliases first (strictly prioritized)
         $exactFieldAliases = [
             'campaign_name' => ['campaign_name', 'campaign'],
+            'form_name'     => ['form_name', 'form'],
+            'adset_name'    => ['adset_name', 'adset'],
             'platform'      => ['platform', 'source'],
             'which_apartment_size_are_you_interested_in' => [
                 'which_apartment_size_are_you_interested_in',
@@ -441,13 +443,17 @@ class LeadSynchronizer
         $data['platform'] = !empty($data['platform']) ? $data['platform'] : 'fb';
         $data['country']  = !empty($data['country']) ? $data['country'] : ($defaults['default_country'] ?? 'Bangladesh');
 
+        if (empty($data['campaign_name'])) {
+            $data['campaign_name'] = !empty($data['form_name']) ? $data['form_name'] : (!empty($data['adset_name']) ? $data['adset_name'] : 'Common Lead Form');
+        }
+
         return $data;
     }
 
     /**
-     * Match project based on keywords in campaign_name
+     * Match project based on keywords in campaign_name (and optional secondary form/adset name)
      */
-    private function matchProject(string $campaignName): array
+    private function matchProject(string $campaignName, string $secondaryName = ''): array
     {
         $projects = $this->config['projects'] ?? [];
 
@@ -457,16 +463,27 @@ class LeadSynchronizer
             return strlen((string)$b) <=> strlen((string)$a);
         });
 
-        // 2. Normalize campaign name: convert " ll ", "||", "–", "-" and collapse multiple spaces
-        $campaignClean = preg_replace('/\s+ll\s+/i', ' ', $campaignName);
-        $campaignClean = preg_replace('/[|\-_–]+/', ' ', $campaignClean);
-        $campaignClean = preg_replace('/\s+/', ' ', $campaignClean);
-        $campaignLower = strtolower(trim($campaignClean));
+        // 2. Normalize text: convert " ll ", "||", "–", "-" and collapse multiple spaces
+        $normalize = function (string $text) {
+            $clean = preg_replace('/\s+ll\s+/i', ' ', $text);
+            $clean = preg_replace('/[|\-_–]+/', ' ', $clean);
+            $clean = preg_replace('/\s+/', ' ', $clean);
+            return strtolower(trim($clean));
+        };
+
+        $campaignLower = $normalize($campaignName);
         $rawLower      = strtolower(trim($campaignName));
+        $secLower      = $normalize($secondaryName);
+        $secRawLower   = strtolower(trim($secondaryName));
 
         foreach ($projects as $keyword => $info) {
             $keywordLower = strtolower(trim($keyword));
-            if (strpos($campaignLower, $keywordLower) !== false || strpos($rawLower, $keywordLower) !== false) {
+            if (
+                strpos($campaignLower, $keywordLower) !== false || 
+                strpos($rawLower, $keywordLower) !== false ||
+                (!empty($secLower) && strpos($secLower, $keywordLower) !== false) ||
+                (!empty($secRawLower) && strpos($secRawLower, $keywordLower) !== false)
+            ) {
                 return [
                     'matched_keyword' => $keyword,
                     'project_name'    => $info['name'] ?? $keyword,
@@ -476,11 +493,11 @@ class LeadSynchronizer
             }
         }
 
-        // Fallback default project
+        // Fallback default project / common leads
         $default = $this->config['default_project'] ?? [];
         return [
             'matched_keyword' => 'default',
-            'project_name'    => 'Default/Unmatched',
+            'project_name'    => $default['name'] ?? 'Common Leads',
             'project_id'      => $default['project_id'] ?? null,
             'teams'           => !empty($default['team_id']) ? [$default['team_id']] : []
         ];
@@ -554,8 +571,13 @@ class LeadSynchronizer
         $cleanPhone = preg_replace('/^p:/i', '', trim($phone));
         $prefixedPhone = 'p:' . $cleanPhone;
 
-        $stmt = $pdo->prepare("SELECT id FROM leads WHERE (phone_number = ? OR phone_number = ?) AND campaign_name = ? LIMIT 1");
-        $stmt->execute([$cleanPhone, $prefixedPhone, $campaign]);
+        if (empty($campaign)) {
+            $stmt = $pdo->prepare("SELECT id FROM leads WHERE (phone_number = ? OR phone_number = ?) AND (campaign_name = '' OR campaign_name IS NULL) LIMIT 1");
+            $stmt->execute([$cleanPhone, $prefixedPhone]);
+        } else {
+            $stmt = $pdo->prepare("SELECT id FROM leads WHERE (phone_number = ? OR phone_number = ?) AND campaign_name = ? LIMIT 1");
+            $stmt->execute([$cleanPhone, $prefixedPhone, $campaign]);
+        }
         return (bool)$stmt->fetchColumn();
     }
 
@@ -724,7 +746,7 @@ class LeadSynchronizer
                 $leadData['phone_number'] = $cleanPhone;
 
                 // Match Project: prioritize deterministic keyword matching with sorted length
-                $projectMatch = $this->matchProject($leadData['campaign_name'] ?? '');
+                $projectMatch = $this->matchProject($leadData['campaign_name'] ?? '', $leadData['form_name'] ?? '');
                 if ($projectMatch['project_id'] === null && !empty($leadData['matched_project_keyword']) && isset($this->config['projects'][$leadData['matched_project_keyword']])) {
                     $projectMatch = [
                         'project_id' => $this->config['projects'][$leadData['matched_project_keyword']]['project_id'],

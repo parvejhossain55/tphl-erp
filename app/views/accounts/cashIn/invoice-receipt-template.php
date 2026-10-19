@@ -1319,9 +1319,6 @@ if (empty($logoSrc)) {
                                 <span class="amt-icon-box"><i class="fa-solid fa-landmark"></i></span>
                                 <span class="amt-paid-label">TOTAL AMOUNT PAID BY</span>
                                 <span class="amt-method-pill"><?= htmlspecialchars($paymentMethod) ?></span>
-                                <?php if (!empty($paymentTypeLabel)): ?>
-                                    <span class="amt-method-pill" style="background:#0284c7;"><?= htmlspecialchars($paymentTypeLabel) ?></span>
-                                <?php endif; ?>
                             </div>
                             <div class="amt-words-row">
                                 <span class="words-pill">IN WORDS</span>

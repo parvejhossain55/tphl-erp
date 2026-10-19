@@ -801,10 +801,59 @@
                 </tr>`).join('')
                 : '<tr><td colspan="14" class="sp-empty">No active executives match the filters.</td></tr>';
             $$('tbody tr[data-id]', execTable).forEach((tr) => tr.addEventListener('click', () => showExec(Number(tr.dataset.id))));
+
+            const tfoot = $('tfoot', execTable);
+            if (tfoot) {
+                const sumL = list.reduce((s, e) => s + (e.stage_1 || 0), 0);
+                const sumFu = list.reduce((s, e) => s + (e.follow_ups || 0), 0);
+                const sumOvd = list.reduce((s, e) => s + (e.overdue || 0), 0);
+                const sumUntouch = list.reduce((s, e) => s + (e.backlog_uncontacted || 0), 0);
+                const sumVis = list.reduce((s, e) => s + (e.visits_done || 0), 0);
+                const sumBk = list.reduce((s, e) => s + (e.bookings || 0), 0);
+                const sumVal = list.reduce((s, e) => s + (e.booking_value || 0), 0);
+                const sumConf = list.reduce((s, e) => s + (e.confirmed_sales || 0), 0);
+                const sumColl = list.reduce((s, e) => s + (e.collection || 0), 0);
+
+                tfoot.innerHTML = `<tr>
+                    <td>Total (Active Execs)</td>
+                    <td class="num"><span data-gap="stage_1" class="click" style="cursor:pointer" title="Click to view all leads received">${n(sumL)}</span></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"><span data-gap="follow_ups" class="click" style="cursor:pointer" title="Click to view all follow-ups">${n(sumFu)}</span></td>
+                    <td class="num"><span data-gap="overdue" class="click" style="cursor:pointer" title="Click to view all overdue">${n(sumOvd)}</span></td>
+                    <td class="num"><span data-gap="uncontacted" class="click" style="cursor:pointer" title="Click to view all untouched">${n(sumUntouch)}</span></td>
+                    <td class="num"><span data-gap="visits_done" class="click" style="cursor:pointer" title="Click to view all visits">${n(sumVis)}</span></td>
+                    <td class="num"><span data-gap="bookings" class="click" style="cursor:pointer;color:var(--sp-green);font-weight:700" title="Click to view all bookings">${n(sumBk)}</span></td>
+                    <td class="num">${tk(sumVal)}</td>
+                    <td class="num"><b><span data-gap="confirmed_sales" class="click" style="cursor:pointer" title="Click to view all confirmed sales">${n(sumConf)}</span></b></td>
+                    <td class="num"><span data-gap="collection" class="click" style="cursor:pointer" title="Click to view all collection">${tk(sumColl)}</span></td>
+                    <td class="num"></td>
+                </tr>`;
+            }
+            bindGapClicks(execTable);
         }
 
         const countEl = $('#spExecCount');
         if (countEl) countEl.textContent = `${list.length} active executives`;
+
+        const execRecon = $('#spExecRecon');
+        if (execRecon) {
+            const o = D.overall;
+            const inactL = (D.inactiveExecutives || []).reduce((s, e) => s + (e.stage_1 || 0), 0);
+            const inactBk = (D.inactiveExecutives || []).reduce((s, e) => s + (e.bookings || 0), 0);
+            const inactColl = (D.inactiveExecutives || []).reduce((s, e) => s + (e.collection || 0), 0);
+            const allActiveL = (D.executives || []).reduce((s, e) => s + (e.stage_1 || 0), 0);
+            const allActiveBk = (D.executives || []).reduce((s, e) => s + (e.bookings || 0), 0);
+            const allActiveColl = (D.executives || []).reduce((s, e) => s + (e.collection || 0), 0);
+            const unassignedL = Math.max(0, o.stage_1 - allActiveL - inactL);
+            const directBk = Math.max(0, o.bookings - allActiveBk - inactBk);
+            const directColl = Math.max(0, o.collection - allActiveColl - inactColl);
+
+            execRecon.innerHTML = `<i class="fa-regular fa-scale-balanced"></i> Reconciliation – Leads: Active executives <b>${n(allActiveL)}</b> + Inactive staff <b>${n(inactL)}</b> + Unassigned gap <b>${n(unassignedL)}</b> = total <b>${n(o.stage_1)}</b>.
+                Bookings: Active executives <b>${n(allActiveBk)}</b> + Inactive staff <b>${n(inactBk)}</b> + Direct/Co <b>${n(directBk)}</b> = total <b>${n(o.bookings)}</b>.
+                Collection: Active executives <b>${tk(allActiveColl)}</b> + Inactive/Direct <b>${tk(directColl + inactColl)}</b> = total <b>${tk(o.collection)}</b>.`;
+        }
     }
 
     if (execTable || execCards) {
@@ -903,6 +952,32 @@
                 }).join('')
                 : '<tr><td colspan="11" class="sp-empty">No inactive executives match the filters.</td></tr>';
             $$('tbody tr[data-id]', inactTable).forEach((tr) => tr.addEventListener('click', () => showExec(Number(tr.dataset.id))));
+
+            const inactFoot = $('tfoot', inactTable);
+            if (inactFoot) {
+                const iSumL = list.reduce((s, e) => s + (e.stage_1 || 0), 0);
+                const iSumFu = list.reduce((s, e) => s + (e.follow_ups || 0), 0);
+                const iSumVis = list.reduce((s, e) => s + (e.visits_done || 0), 0);
+                const iSumBk = list.reduce((s, e) => s + (e.bookings || 0), 0);
+                const iSumVal = list.reduce((s, e) => s + (e.booking_value || 0), 0);
+                const iSumConf = list.reduce((s, e) => s + (e.confirmed_sales || 0), 0);
+                const iSumColl = list.reduce((s, e) => s + (e.collection || 0), 0);
+
+                inactFoot.innerHTML = `<tr>
+                    <td>Total (Inactive Staff)</td>
+                    <td></td>
+                    <td class="num"><span data-gap="stage_1" class="click" style="cursor:pointer" title="Click to view all leads">${n(iSumL)}</span></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"><span data-gap="follow_ups" class="click" style="cursor:pointer" title="Click to view all follow-ups">${n(iSumFu)}</span></td>
+                    <td class="num"><span data-gap="visits_done" class="click" style="cursor:pointer" title="Click to view all visits">${n(iSumVis)}</span></td>
+                    <td class="num"><span data-gap="bookings" class="click" style="cursor:pointer;color:var(--sp-green);font-weight:700" title="Click to view all bookings">${n(iSumBk)}</span></td>
+                    <td class="num">${tk(iSumVal)}</td>
+                    <td class="num"><b><span data-gap="confirmed_sales" class="click" style="cursor:pointer" title="Click to view all confirmed sales">${n(iSumConf)}</span></b></td>
+                    <td class="num"><span data-gap="collection" class="click" style="cursor:pointer" title="Click to view all collection">${tk(iSumColl)}</span></td>
+                </tr>`;
+            }
+            bindGapClicks(inactTable);
         }
 
         const countEl = $('#spInactiveExecCount');

@@ -283,4 +283,48 @@ class ProjectOtherCost extends Model
         $sql->bind_param("i", $id);
         return $sql->execute();
     }
+
+    /* =========================
+       Cost Types Definition & Helper
+    ========================== */
+    public static function getCostTypes(): array
+    {
+        return [
+            'electricity_bill'                         => 'Electricity Bill',
+            'entertainment_bill'                       => 'Entertainment Bill',
+            'internet_bill'                            => 'Internet Bill',
+            'conveyance_bill'                          => 'Conveyance Bill',
+            'labour_bill'                              => 'Labour Bill',
+            'rajuk_land_permit_cost'                   => 'Rajuk Land Permit Cost',
+            'rajuk_plan_approval_cost'                 => 'Rajuk Plan Approval Cost',
+            'rajuk_consultancy_fees_for_land_permit'   => 'Rajuk Consultancy Fees For Land Permit',
+            'rajuk_consultancy_fees_for_plan_approval' => 'Rajuk Consultancy Fees for Plan Approval',
+            'bashundhara_drainage_charge'              => 'Bashundhara Drainage Charge',
+            'bashundhara_boundary_wall_charge'         => 'Bashundhara Boundary wall Charge',
+            'bashundhara_file_transfer_fee'            => 'Bashundhara File Transfer Fee',
+            'bashundhara_consultancy_fee'              => 'Bashundhara Consultancy Fee',
+            'mutation_cost'                            => 'Mutation Cost',
+            'soil_test_cost'                           => 'Soil Test Cost',
+            'digital_survey'                           => 'Digital Survey',
+            'electric_meter_cost'                      => 'Electric Meter Cost',
+            'electric_meter_installation'              => 'Electric Meter Installation',
+            'fencing_wall_cost'                        => 'Fencing Wall Cost',
+            'leed_certification_consultation_fee'      => 'Leed Certification Consultation Fee',
+            'leed_certification_usgbc_cost'            => 'Leed Certification U.SGBC Cost',
+            'others'                                   => 'Others',
+        ];
+    }
+
+    public static function getCostTypeLabel(?string $type): string
+    {
+        if (empty($type)) {
+            return '';
+        }
+        $types = self::getCostTypes();
+        if (isset($types[$type])) {
+            return $types[$type];
+        }
+        return ucwords(str_replace('_', ' ', $type));
+    }
 }
+

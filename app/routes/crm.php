@@ -67,6 +67,7 @@ return [
     'lead-automation/scrape' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxScrape'],
     'lead-automation/leads-ajax' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxListLeads'],
     'lead-automation/approve' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxApprove'],
+    'lead-automation/assign-approve' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxAssignApprove'],
     'lead-automation/unapprove' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxUnapprove'],
     'lead-automation/delete' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxDelete'],
     'lead-automation/cron' => ['controller' => 'LeadAutomationController', 'method' => 'syncCron'],
