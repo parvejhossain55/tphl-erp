@@ -997,9 +997,6 @@ $activeCard = $_GET['filter_card'] ?? '';
                                             <i class="fa-solid fa-robot me-1"></i>Assigned by System
                                         </span>
                                     </div>
-                                    <div class="text-success small fw-medium mt-1" style="font-size: 11px;">
-                                        <i class="bi bi-patch-check-fill me-1"></i>Approved by: <strong><?= htmlspecialchars(!empty($lead['approved_by_name']) ? $lead['approved_by_name'] : 'System') ?></strong>
-                                    </div>
                                     <?php if (!empty($lead['agent_name']) && !empty($lead['assigned_by_name']) && $lead['assigned_by_name'] !== 'System'): ?>
                                         <div class="text-primary small pt-1 border-top mt-1" style="font-size: 11px;">
                                             <i class="bi bi-person-check me-1"></i>Assigned by: <strong class="text-dark"><?= htmlspecialchars($lead['assigned_by_name']) ?></strong>
@@ -2366,10 +2363,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         let assignedByHtml = '';
         if (Number(lead.is_automated) === 1) {
-            const approver = lead.approved_by_name ? lead.approved_by_name.replace(/</g,'&lt;').replace(/>/g,'&gt;') : 'System';
             assignedByHtml = `<div>
-                <div><span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-0.5" style="font-size:.72rem;"><i class="fa-solid fa-robot me-1"></i>Assigned by System</span></div>
-                <div class="text-success small fw-medium mt-1" style="font-size:11px;"><i class="bi bi-patch-check-fill me-1"></i>Approved by: <strong>${approver}</strong></div>`;
+                <div><span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-0.5" style="font-size:.72rem;"><i class="fa-solid fa-robot me-1"></i>Assigned by System</span></div>`;
             if (lead.agent_name && lead.assigned_by_name && lead.assigned_by_name !== 'System') {
                 const assigner = lead.assigned_by_name.replace(/</g,'&lt;').replace(/>/g,'&gt;');
                 assignedByHtml += `<div class="text-primary small pt-1 border-top mt-1" style="font-size:11px;"><i class="bi bi-person-check me-1"></i>Assigned by: <strong class="text-dark">${assigner}</strong></div>`;

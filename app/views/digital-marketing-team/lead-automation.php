@@ -163,71 +163,191 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
     .val-purple { color: #7c3aed; }
 
     /* Middle Row */
+    /* Middle Row */
     .allocation-section {
         display: grid;
-        grid-template-columns: 1fr 340px;
-        gap: 14px;
+        grid-template-columns: 1fr 240px;
+        gap: 12px;
         margin-bottom: 1rem;
     }
 
-    @media (max-width: 992px) {
-        .allocation-section { grid-template-columns: 1fr; }
+    @media (max-width: 1350px) {
+        .allocation-section { 
+            grid-template-columns: 1fr; 
+            gap: 12px;
+        }
+        .lead-action-box {
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            padding: 12px 18px !important;
+            gap: 16px !important;
+        }
+        .lead-action-box > div:first-child {
+            max-width: 60%;
+        }
+        .lead-action-box > div:last-child {
+            min-width: 240px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .lead-action-box {
+            flex-direction: column !important;
+            align-items: stretch !important;
+        }
+        .lead-action-box > div:first-child {
+            max-width: 100% !important;
+        }
+        .lead-action-box > div:last-child {
+            min-width: auto !important;
+        }
     }
 
     .team-allocation-box {
         background: #ffffff;
         border: 1px solid var(--border);
         border-radius: var(--radius-md);
-        padding: 14px 16px;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        padding: 12px 14px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.03);
     }
 
     .teams-horizontal-scroll {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
-        gap: 6px;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        row-gap: 10px;
+        column-gap: 8px;
         max-height: none;
         overflow: visible;
         padding-right: 0;
     }
 
-    .team-metric-card {
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: var(--radius-sm);
-        padding: 6px 8px;
-        cursor: pointer;
-        transition: all 0.15s ease;
+    @media (max-width: 992px) {
+        .teams-horizontal-scroll {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            row-gap: 9px;
+            column-gap: 8px;
+        }
+    }
+    @media (max-width: 768px) {
+        .teams-horizontal-scroll {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            row-gap: 8px;
+            column-gap: 7px;
+        }
+    }
+    @media (max-width: 576px) {
+        .teams-horizontal-scroll {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            row-gap: 8px;
+            column-gap: 6px;
+        }
     }
 
-    .team-metric-card:hover, .team-metric-card.active {
+    .team-metric-card {
         background: #ffffff;
-        border-color: #087d59;
-        box-shadow: 0 2px 6px rgba(8, 125, 89, 0.12);
+        border: 1px solid #e2e8f0;
+        border-radius: 9px;
+        padding: 8px 10px;
+        cursor: pointer;
+        transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 70px;
+        position: relative;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    }
+    .team-metric-card:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06);
+        transform: translateY(-1px);
+    }
+
+    /* Unassigned card: Soft warning amber background */
+    .team-metric-card.team-card-unassigned {
+        background: #fffdf5;
+        border: 1px solid #fde68a;
+        border-left: 4px solid #f59e0b;
+        box-shadow: 0 1px 3px rgba(245, 158, 11, 0.08);
+    }
+    .team-metric-card.team-card-unassigned:hover {
+        background: #fef9c3;
+        border-color: #f59e0b;
+        box-shadow: 0 3px 8px rgba(245, 158, 11, 0.16);
+        transform: translateY(-1px);
+    }
+    .team-metric-card.team-card-unassigned .team-card-name {
+        color: #b45309;
+    }
+
+    /* Active filter selected state */
+    .team-metric-card.active {
+        background: #ffffff !important;
+        border: 1.5px solid #059669 !important;
+        box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.18), 0 3px 8px rgba(5, 150, 105, 0.15) !important;
+        transform: translateY(-1px);
     }
 
     .team-card-name {
-        font-size: 11px;
+        font-size: 11.5px;
         font-weight: 700;
-        color: var(--text-heading);
+        color: #0f172a;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        line-height: 1.2;
+        margin-bottom: 3px;
+        letter-spacing: -0.01em;
     }
 
     .team-card-assigned {
-        font-size: 12px;
-        font-weight: 700;
-        color: #087d59;
-        margin: 1px 0 1px;
-        line-height: 1.2;
+        font-size: 15px;
+        font-weight: 800;
+        color: #059669;
+        line-height: 1.15;
+        letter-spacing: -0.01em;
     }
 
     .team-card-sub {
-        font-size: 10px;
-        color: #d97706;
+        font-size: 10.5px;
         font-weight: 600;
-        line-height: 1.2;
+        color: #ea580c;
+        line-height: 1.15;
+        margin-top: 2px;
+    }
+
+    @media (max-width: 768px) {
+        .team-metric-card {
+            padding: 7px 8px;
+            min-height: 64px;
+        }
+        .team-card-name {
+            font-size: 10.5px;
+        }
+        .team-card-assigned {
+            font-size: 14px;
+        }
+        .team-card-sub {
+            font-size: 10px;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .team-metric-card {
+            padding: 6px 7px;
+            min-height: 58px;
+        }
+        .team-card-name {
+            font-size: 10px;
+        }
+        .team-card-assigned {
+            font-size: 13px;
+        }
+        .team-card-sub {
+            font-size: 9px;
+        }
     }
 
     .lead-action-box {
@@ -713,9 +833,12 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
                 <div class="d-flex align-items-center gap-1">
                     <span class="small text-muted" style="font-size: 11px; white-space: nowrap;">Show:</span>
                     <select id="pageSizeSelect" class="form-select form-select-sm" style="width: 85px;" onchange="onPageSizeChange(this.value)" title="Rows per page">
+                        <option value="10">10 rows</option>
+                        <option value="20">20 rows</option>
+                        <option value="30" selected>30 rows</option>
+                        <option value="40">40 rows</option>
                         <option value="50">50 rows</option>
                         <option value="100">100 rows</option>
-                        <option value="250">250 rows</option>
                         <option value="all">All rows</option>
                     </select>
                 </div>
@@ -762,8 +885,11 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
                 </div>
 
                 <!-- Action Buttons (Using btn-toolbar-action without d-inline-flex) -->
-                <button id="btnBulkApprove" class="btn btn-success btn-sm fw-bold px-3 btn-toolbar-action" style="display:none;" onclick="handleBulkAssignApprove()">
-                    <i class="fa-solid fa-check" style="font-size: 13px;"></i> <span id="btnBulkApproveText">Assign & Approve Leads</span>
+                <button id="btnBulkApprove" class="btn btn-success btn-sm fw-bold px-3 btn-toolbar-action" style="display:none;" onclick="executeDirectBulkApprove()" title="Directly approve selected leads with their currently assigned teams">
+                    <i class="fa-solid fa-check" style="font-size: 13px;"></i> <span id="btnBulkApproveText">Approve Selected</span>
+                </button>
+                <button id="btnBulkAssignApprove" class="btn btn-primary btn-sm fw-bold px-3 btn-toolbar-action" style="display:none;" onclick="handleBulkAssignApprove()" title="Assign chosen team and auto-approve">
+                    <i class="fa-solid fa-user-check" style="font-size: 12px;"></i> <span id="btnBulkAssignApproveText">Assign & Approve</span>
                 </button>
                 <button id="btnBulkUndo" class="btn btn-outline-secondary btn-sm fw-bold px-3 btn-toolbar-action" style="display:none;" onclick="bulkUndoSelected()">
                     <i class="fa-solid fa-rotate-left" style="font-size: 12px;"></i> <span id="btnBulkUndoText">Revert to Pending</span>
@@ -832,10 +958,10 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label fw-bold small text-dark">Select Sales Team <span class="text-danger">*</span></label>
+                    <label class="form-label fw-bold small text-dark">Select Sales Team</label>
                     <input type="text" class="form-control form-control-sm mb-1" id="modalTeamFilterInput" placeholder="Quick search team name..." oninput="filterModalTeamOptions(this.value)" autocomplete="off">
                     <select id="modalTeamSelect" class="form-select form-select-sm" style="font-size: 13px;">
-                        <option value="">-- Choose Sales Team --</option>
+                        <option value="">-- Keep Current Assigned Team --</option>
                         <?php foreach ($teams as $t): ?>
                             <option value="<?= $t['id'] ?>" class="modal-team-opt"><?= htmlspecialchars($t['name']) ?></option>
                         <?php endforeach; ?>
@@ -870,7 +996,7 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
     let currentTabStatus = '0'; // Default: Pending Approval (distribute = 0)
     let currentTeamId = '';
     let currentPage = 1;
-    let limit = 50;
+    let limit = 30;
     let totalCount = 0;
     let searchTimeout = null;
     let selectedLeadIds = new Set();
@@ -944,6 +1070,8 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
         const menu = document.getElementById('bulkTeamDropdownMenu');
         if (menu) menu.classList.remove('show');
         if (ddBtn) ddBtn.classList.remove('show');
+
+        updateSelectionUi();
     }
 
     function filterModalTeamOptions(query) {
@@ -1133,22 +1261,27 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
         // Prepend Unassigned Leads card if unassigned leads exist
         if (unassignedStats && parseInt(unassignedStats.total_unassigned || 0) > 0) {
             const isUnassignedSelected = (currentTeamId === 'unassigned');
+            const unassignedPending = parseInt(unassignedStats.pending_unassigned || 0);
+            const unassignedTotal = parseInt(unassignedStats.total_unassigned || 0);
             cardsHtml += `
-                <div class="team-metric-card ${isUnassignedSelected ? 'active' : ''}" onclick="filterByTeam('unassigned')" style="border-left: 3px solid #f59e0b; background: ${isUnassignedSelected ? '#fef3c7' : '#fffbeb'};">
-                    <div class="team-card-name" style="color: #b45309;" title="Common Unassigned Leads"><i class="fa-solid fa-triangle-exclamation me-1"></i>Unassigned</div>
-                    <div class="team-card-assigned">${unassignedStats.total_unassigned} leads</div>
-                    <div class="team-card-sub text-danger fw-bold">${unassignedStats.pending_unassigned || 0} pending</div>
+                <div class="team-metric-card team-card-unassigned ${isUnassignedSelected ? 'active' : ''}" onclick="filterByTeam('unassigned')">
+                    <div class="team-card-name" title="Common Unassigned Leads"><i class="fa-solid fa-triangle-exclamation me-1"></i>Unassigned</div>
+                    <div class="team-card-assigned">${unassignedTotal} leads</div>
+                    <div class="team-card-sub">${unassignedPending} pending</div>
                 </div>
             `;
         }
 
         teams.forEach(team => {
             const isSelected = String(currentTeamId) === String(team.id);
+            const totalLeads = parseInt(team.total_leads || 0);
+            const pendingCount = parseInt(team.pending_leads || 0);
+
             cardsHtml += `
                 <div class="team-metric-card ${isSelected ? 'active' : ''}" onclick="filterByTeam('${team.id}')">
                     <div class="team-card-name" title="${escapeHtml(team.name)}">${escapeHtml(team.name)}</div>
-                    <div class="team-card-assigned">${team.total_leads || 0} leads</div>
-                    <div class="team-card-sub">${team.pending_leads || 0} pending</div>
+                    <div class="team-card-assigned">${totalLeads} leads</div>
+                    <div class="team-card-sub">${pendingCount} pending</div>
                 </div>
             `;
         });
@@ -1274,6 +1407,7 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
     function updateSelectionUi() {
         const count = selectedLeadIds.size;
         const btnApprove = document.getElementById('btnBulkApprove');
+        const btnAssignApprove = document.getElementById('btnBulkAssignApprove');
         const btnUndo = document.getElementById('btnBulkUndo');
         const btnDelete = document.getElementById('btnBulkDelete');
         const label = document.getElementById('selectionCountText');
@@ -1292,8 +1426,9 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
             }
 
             if (currentTabStatus === '1') {
-                // Distributed & Approved tab: Hide bulk approve, show bulk undo & bulk delete
+                // Distributed & Approved tab: Hide bulk approve & assign, show bulk undo & bulk delete
                 if (btnApprove) btnApprove.style.display = 'none';
+                if (btnAssignApprove) btnAssignApprove.style.display = 'none';
                 if (assignWrapper) assignWrapper.style.display = 'none';
                 if (btnUndo) {
                     btnUndo.style.display = 'inline-flex';
@@ -1307,11 +1442,27 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
                 if (btnApprove) {
                     btnApprove.style.display = 'inline-flex';
                     btnApprove.disabled = false;
-                    btnApprove.innerHTML = `<i class="fa-solid fa-check" style="font-size: 13px;"></i> <span>Assign & Approve (${count})</span>`;
+                    btnApprove.innerHTML = `<i class="fa-solid fa-check" style="font-size: 13px;"></i> <span>Approve (${count})</span>`;
+                    btnApprove.title = `Directly approve ${count} selected lead(s) with existing assigned team`;
+                }
+
+                if (btnAssignApprove) {
+                    const toolbarTeam = document.getElementById('bulkAssignTeamSelect') ? document.getElementById('bulkAssignTeamSelect').value : '';
+                    if (toolbarTeam) {
+                        const labelEl = document.getElementById('bulkTeamDropdownLabel');
+                        const teamName = labelEl ? labelEl.textContent.trim() : ('Team #' + toolbarTeam);
+                        btnAssignApprove.style.display = 'inline-flex';
+                        btnAssignApprove.disabled = false;
+                        btnAssignApprove.innerHTML = `<i class="fa-solid fa-user-check" style="font-size: 12px;"></i> <span>Assign & Approve (${count})</span>`;
+                        btnAssignApprove.title = `Assign ${count} lead(s) to ${teamName} and auto-approve`;
+                    } else {
+                        btnAssignApprove.style.display = 'none';
+                    }
                 }
             }
         } else {
             if (label) label.style.display = 'none';
+            if (btnAssignApprove) btnAssignApprove.style.display = 'none';
 
             if (currentTabStatus === '1') {
                 if (assignWrapper) assignWrapper.style.display = 'none';
@@ -1327,7 +1478,7 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
                 if (btnApprove) {
                     btnApprove.style.display = 'inline-flex';
                     btnApprove.disabled = true;
-                    btnApprove.innerHTML = `<i class="fa-solid fa-check" style="font-size: 13px;"></i> <span>Assign & Approve Leads</span>`;
+                    btnApprove.innerHTML = `<i class="fa-solid fa-check" style="font-size: 13px;"></i> <span>Approve Leads</span>`;
                 }
             }
 
@@ -1417,6 +1568,48 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
     // Modal state for Assign & Approve
     let modalAssignLeadIds = [];
 
+    async function executeDirectBulkApprove() {
+        if (selectedLeadIds.size === 0) return;
+        const ids = Array.from(selectedLeadIds);
+
+        const btn = document.getElementById('btnBulkApprove');
+        let origHtml = '';
+        if (btn) {
+            origHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status"></span> Approving...`;
+        }
+
+        try {
+            const response = await fetch(`${baseUrl}/lead-automation/approve`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({ lead_ids: ids })
+            });
+
+            const res = await response.json();
+            if (res.status === 'success') {
+                showLeadToast(res.message || `Successfully approved ${ids.length} lead(s) for sales distribution!`, 'success');
+                selectedLeadIds.clear();
+                selectTeamForAssign('', 'Choose Team to Assign...');
+                loadLeads();
+            } else {
+                showLeadToast(res.message || 'Approval failed', 'error');
+            }
+        } catch (err) {
+            showLeadToast('Error: ' + err.message, 'error');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = origHtml || `<i class="fa-solid fa-check" style="font-size: 13px;"></i> <span>Approve Leads</span>`;
+            }
+        }
+    }
+
     function handleBulkAssignApprove() {
         if (selectedLeadIds.size === 0) return;
         const ids = Array.from(selectedLeadIds);
@@ -1431,8 +1624,8 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
             return;
         }
 
-        // If no team chosen in toolbar, open modal
-        openAssignModal(ids);
+        // If no team chosen in toolbar, directly approve with existing assigned teams
+        executeDirectBulkApprove();
     }
 
     function openAssignModal(ids) {
@@ -1453,30 +1646,28 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
         } else if (modalEl && typeof $ !== 'undefined') {
             $('#assignTeamModal').modal('show');
         } else {
-            const chosenTeam = prompt(`Assign ${ids.length} lead(s) to Team ID:`);
-            if (chosenTeam) {
-                executeAssignAndApprove(ids, chosenTeam, null);
-            }
+            const chosenTeam = prompt(`Assign ${ids.length} lead(s) to Team ID (leave blank to keep existing):`);
+            executeAssignAndApprove(ids, chosenTeam || null, null);
         }
     }
 
     async function confirmModalAssign() {
         const teamSelect = document.getElementById('modalTeamSelect');
         const teamId = teamSelect ? teamSelect.value : '';
-        if (!teamId) {
-            alert('Please select a sales team to assign these leads to.');
-            return;
-        }
-
         const projSelect = document.getElementById('modalProjectSelect');
         const projectId = projSelect && projSelect.value ? projSelect.value : null;
 
         const btn = document.getElementById('btnModalConfirmAssign');
         btn.disabled = true;
-        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Assigning...`;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Processing...`;
 
         try {
-            await executeAssignAndApprove(modalAssignLeadIds, teamId, projectId);
+            if (!teamId || teamId === 'keep') {
+                // Keep existing assigned team, auto-approve directly
+                await executeAssignAndApprove(modalAssignLeadIds, null, projectId);
+            } else {
+                await executeAssignAndApprove(modalAssignLeadIds, teamId, projectId);
+            }
 
             const modalEl = document.getElementById('assignTeamModal');
             if (modalEl && typeof bootstrap !== 'undefined') {
@@ -1524,7 +1715,7 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
     }
 
     async function bulkApproveSelected() {
-        handleBulkAssignApprove();
+        executeDirectBulkApprove();
     }
 
     async function bulkApproveAllPending() {
@@ -1760,3 +1951,6 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
         }, 3500);
     }
 </script>
+
+
+<!-- accha jodi gemini api error dey or jodi limit sesh hoy or gemini api koro karone kaj  na kore tahole ki all tabs theke correct data chole asbe? -->

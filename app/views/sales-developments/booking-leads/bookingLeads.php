@@ -734,11 +734,14 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                         opt.value = flat.flat_id;
 
                         const isCurrentFlat = (targetFlatId && flat.flat_id == targetFlatId);
-                        const isBooked = (flat.is_booked == 1);
+                        const isBooked = (flat.is_booked == 1) || (flat.booking_status === 'booked') || (flat.booking_status === 'completed');
 
                         if (isBooked && !isCurrentFlat) {
                             opt.disabled = true;
-                            opt.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft [Booked]`;
+                            const clientLabel = flat.booked_client_name ? ` [Booked - ${flat.booked_client_name}]` : ' [Booked]';
+                            opt.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft${clientLabel}`;
+                            opt.className = 'booked-option text-danger';
+                            opt.style.color = '#dc3545';
                         } else {
                             opt.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft` + (isCurrentFlat ? ' (Current)' : '');
                         }
@@ -782,7 +785,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 if (document.getElementById('edit_booking_date')) {
                     document.getElementById('edit_booking_date').value = date;
                 }
-                
+            
                 const discountInput = document.getElementById('edit_discount');
                 const lockBadge = document.getElementById('edit_discount_lock_badge');
                 const lockHelp = document.getElementById('edit_discount_lock_help');

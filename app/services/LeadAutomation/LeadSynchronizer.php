@@ -44,7 +44,7 @@ class LeadSynchronizer
     }
 
     /**
-     * Run full synchronization from Google Sheets
+     * Run full synchronization from Google Sheets (Auto Multi-Tab Support)
      */
     public function runSync(?string $customSheetUrl = null): array
     {
@@ -57,17 +57,47 @@ class LeadSynchronizer
             throw new InvalidArgumentException("Please provide a valid Google Sheet URL in config.php");
         }
 
-        // 1. Convert Google Sheet URL to direct CSV export URL
+        // Check if multi-tab sync via XLSX is possible (standard Google Sheet URL without a specific non-zero gid override)
+        $isSpecificTabOnly = false;
+        if (preg_match('/[#&?]gid=([1-9][0-9]*)/', $sheetUrl)) {
+            // User explicitly requested a single specific non-zero gid
+            $isSpecificTabOnly = true;
+        }
+
+        if (!$isSpecificTabOnly && preg_match('/spreadsheets\/d\/([a-zA-Z0-9-_]+)/', $sheetUrl, $matches)) {
+            $sheetId = $matches[1];
+            try {
+                $results = $this->syncAllTabsFromGoogleSheet($sheetId);
+                $executionTime = round(microtime(true) - $startTime, 2);
+                $tabCount = count($results['tabs_synced'] ?? []);
+                $this->log(sprintf(
+                    "Multi-Tab Sync Completed in %s sec across %d tab(s). Total Rows: %d | Inserted: %d | Duplicates Skipped: %d | Unmatched Project: %d | Errors: %d",
+                    $executionTime,
+                    $tabCount,
+                    $results['total_rows'],
+                    $results['inserted'],
+                    $results['skipped_duplicate'],
+                    $results['unmatched_project'],
+                    $results['errors']
+                ));
+                $this->log("=======================================================\n");
+                $this->flushLogsToFile();
+
+                return array_merge($results, ['execution_time_seconds' => $executionTime]);
+            } catch (Throwable $e) {
+                $this->log("Multi-tab XLSX sync note: " . $e->getMessage() . ". Falling back to direct single-tab CSV export.");
+            }
+        }
+
+        // Direct CSV export fallback (single sheet/tab)
         $csvExportUrl = $this->convertToCsvExportUrl($sheetUrl);
         $this->log("Fetching data from: " . $csvExportUrl);
 
-        // 2. Download Sheet Content
         $rawContent = $this->fetchUrlContent($csvExportUrl);
         if (empty(trim($rawContent))) {
             throw new RuntimeException("Fetched Google Sheet content is empty.");
         }
 
-        // 3. Process CSV Data
         $results = $this->processCsvContent($rawContent);
 
         $executionTime = round(microtime(true) - $startTime, 2);
@@ -85,6 +115,111 @@ class LeadSynchronizer
         $this->flushLogsToFile();
 
         return array_merge($results, ['execution_time_seconds' => $executionTime]);
+    }
+
+    /**
+     * Download entire Google Sheet workbook and synchronize all worksheet tabs
+     */
+    private function syncAllTabsFromGoogleSheet(string $sheetId): array
+    {
+        if (!class_exists('\PhpOffice\PhpSpreadsheet\Reader\Xlsx') && file_exists(__DIR__ . '/../../../vendor/autoload.php')) {
+            require_once __DIR__ . '/../../../vendor/autoload.php';
+        }
+
+        if (!class_exists('\PhpOffice\PhpSpreadsheet\Reader\Xlsx')) {
+            throw new RuntimeException("PhpOffice\\PhpSpreadsheet library is not loaded.");
+        }
+
+        $xlsxUrl = sprintf('https://docs.google.com/spreadsheets/d/%s/export?format=xlsx', $sheetId);
+        $this->log("Downloading multi-tab workbook from: " . $xlsxUrl);
+
+        $xlsxContent = $this->fetchUrlContent($xlsxUrl);
+        if (empty($xlsxContent)) {
+            throw new RuntimeException("Downloaded XLSX content is empty.");
+        }
+
+        $tmpFile = tempnam(sys_get_temp_dir(), 'tphl_gsheet_') . '.xlsx';
+        file_put_contents($tmpFile, $xlsxContent);
+
+        try {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
+            $reader->setReadDataOnly(true);
+            $spreadsheet = $reader->load($tmpFile);
+
+            $sheetCount = $spreadsheet->getSheetCount();
+            $this->log(sprintf("Discovered %d tab(s) in Google Sheet workbook.", $sheetCount));
+
+            $aggregated = [
+                'total_rows'        => 0,
+                'inserted'          => 0,
+                'skipped_duplicate' => 0,
+                'unmatched_project' => 0,
+                'errors'            => 0,
+                'details'           => [],
+                'tabs_synced'       => []
+            ];
+
+            for ($i = 0; $i < $sheetCount; $i++) {
+                $sheet = $spreadsheet->getSheet($i);
+                $tabName = $sheet->getTitle();
+                $highestRow = $sheet->getHighestRow();
+
+                $this->log(sprintf("Processing Tab [%d/%d] '%s' (Highest Row: %d)...", $i + 1, $sheetCount, $tabName, $highestRow));
+
+                if ($highestRow < 2) {
+                    $this->log(" -> Tab '{$tabName}' has no lead rows. Skipping.");
+                    $aggregated['tabs_synced'][] = [
+                        'tab'      => $tabName,
+                        'rows'     => 0,
+                        'inserted' => 0
+                    ];
+                    continue;
+                }
+
+                // Export current sheet to CSV format
+                $csvWriter = new \PhpOffice\PhpSpreadsheet\Writer\Csv($spreadsheet);
+                $csvWriter->setSheetIndex($i);
+                $csvWriter->setUseBOM(true);
+                ob_start();
+                $csvWriter->save('php://output');
+                $tabCsv = ob_get_clean();
+
+                if (empty(trim($tabCsv))) {
+                    continue;
+                }
+
+                $tabResults = $this->processCsvContent($tabCsv);
+
+                $aggregated['total_rows'] += $tabResults['total_rows'];
+                $aggregated['inserted'] += $tabResults['inserted'];
+                $aggregated['skipped_duplicate'] += $tabResults['skipped_duplicate'];
+                $aggregated['unmatched_project'] += $tabResults['unmatched_project'];
+                $aggregated['errors'] += $tabResults['errors'];
+                if (!empty($tabResults['details'])) {
+                    $aggregated['details'] = array_merge($aggregated['details'], $tabResults['details']);
+                }
+
+                $aggregated['tabs_synced'][] = [
+                    'tab'      => $tabName,
+                    'rows'     => $tabResults['total_rows'],
+                    'inserted' => $tabResults['inserted']
+                ];
+
+                $this->log(sprintf(
+                    " -> Tab '%s' completed: %d rows processed, %d new leads inserted, %d duplicates skipped.",
+                    $tabName,
+                    $tabResults['total_rows'],
+                    $tabResults['inserted'],
+                    $tabResults['skipped_duplicate']
+                ));
+            }
+
+            return $aggregated;
+        } finally {
+            if (file_exists($tmpFile)) {
+                @unlink($tmpFile);
+            }
+        }
     }
 
     /**
