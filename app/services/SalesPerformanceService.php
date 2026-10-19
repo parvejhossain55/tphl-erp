@@ -550,7 +550,7 @@ class SalesPerformanceService
         $qual = $this->inList(self::QUALIFIED_STATUSES);
         $invalid = $this->inList(self::INVALID_CONTACT_TYPES);
         $projSqlL = $projectId ? " AND l.project_id = " . $projectId : "";
-        $isOverviewScope = empty($filters['executive_id']) && empty($filters['team_id']) && ($filters['tab'] ?? 'overview') === 'overview';
+        $isOverviewScope = empty($filters['executive_id']);
         $validAssignedAt = "CASE WHEN l.assigned_at IS NOT NULL AND l.assigned_at > '1970-01-01' THEN l.assigned_at ELSE l.created_at END";
         $dateColL = $isOverviewScope ? 'l.created_at' : "COALESCE($validAssignedAt, l.created_at)";
         $dateSqlL = $isAllTime ? "" : " AND $dateColL BETWEEN '$start' AND '$end'";
@@ -1448,7 +1448,7 @@ class SalesPerformanceService
             $scopeF = " AND f.created_by IN ($uidCsv)";
         }
 
-        $isOverviewScope = empty($filters['executive_id']) && empty($filters['team_id']) && empty($filters['team_key']) && ($filters['tab'] ?? 'overview') === 'overview';
+        $isOverviewScope = empty($filters['executive_id']);
         $validAssignedAt = "CASE WHEN l.assigned_at IS NOT NULL AND l.assigned_at > '1970-01-01' THEN l.assigned_at ELSE l.created_at END";
         $dateColL = $isOverviewScope ? 'l.created_at' : "COALESCE($validAssignedAt, l.created_at)";
         $dateSqlL = $isAllTime ? "" : " AND $dateColL BETWEEN '$start' AND '$end'";

@@ -393,6 +393,71 @@
         from { transform: translateX(100%); opacity: 0; }
         to { transform: translateX(0); opacity: 1; }
     }
+
+    /* Table Action Buttons */
+    .row-actions-group {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 6px;
+    }
+
+    .btn-row-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 32px;
+        padding: 0 12px;
+        font-size: 12px;
+        font-weight: 600;
+        border-radius: 6px;
+        border: 1px solid transparent;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.18s ease;
+        white-space: nowrap;
+        line-height: 1;
+        box-sizing: border-box;
+    }
+
+    .btn-row-undo {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        color: #475569;
+    }
+    .btn-row-undo:hover {
+        background: #f1f5f9;
+        border-color: #94a3b8;
+        color: #0f172a;
+    }
+
+    .btn-row-approve {
+        background: #087d59;
+        border-color: #087d59;
+        color: #ffffff;
+    }
+    .btn-row-approve:hover {
+        background: #066346;
+        border-color: #066346;
+        color: #ffffff;
+    }
+
+    .btn-row-delete {
+        width: 34px;
+        height: 32px;
+        padding: 0;
+        background: #fef2f2;
+        border-color: #fecaca;
+        color: #dc2626;
+        font-size: 15px;
+    }
+    .btn-row-delete:hover {
+        background: #dc2626;
+        border-color: #dc2626;
+        color: #ffffff;
+        transform: scale(1.06);
+        box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25);
+    }
 </style>
 
 <div class="lead-auto-container">
@@ -540,10 +605,19 @@
                 </select>
             </div>
 
-            <div class="d-flex align-items-center gap-2">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
                 <span id="selectionCountText" class="small fw-bold text-success" style="display:none;">0 selected</span>
-                <button id="btnBulkApprove" class="btn btn-success btn-sm fw-bold px-3" onclick="bulkApproveSelected()" disabled>
-                    <i class="fa-solid fa-check me-1"></i> Assign & Approve Leads
+                <button id="btnBulkApprove" class="btn btn-success btn-sm fw-bold px-3 d-inline-flex align-items-center gap-1" style="height: 32px;" onclick="bulkApproveSelected()" disabled>
+                    <i class="fa-solid fa-check" style="font-size: 13px;"></i> <span>Assign & Approve Leads</span>
+                </button>
+                <button id="btnBulkUndo" class="btn btn-outline-secondary btn-sm fw-bold px-3 d-inline-flex align-items-center gap-1" style="height: 32px; display:none;" onclick="bulkUndoSelected()">
+                    <i class="fa-solid fa-rotate-left" style="font-size: 12px;"></i> <span id="btnBulkUndoText">Revert to Pending</span>
+                </button>
+                <button id="btnBulkDelete" class="btn btn-danger btn-sm fw-bold px-3 d-inline-flex align-items-center gap-1" style="height: 32px; display:none;" onclick="bulkDeleteSelected()" disabled>
+                    <i class="fa-solid fa-trash-can" style="font-size: 14px;"></i> <span id="btnBulkDeleteText">Delete Selected Leads</span>
+                </button>
+                <button id="btnDeleteTeamApproved" class="btn btn-outline-danger btn-sm fw-bold px-3 d-inline-flex align-items-center gap-1" style="height: 32px; display:none;" onclick="bulkDeleteTeamApproved()">
+                    <i class="fa-solid fa-trash-can" style="font-size: 14px;"></i> <span id="btnDeleteTeamApprovedText">Delete Team Approved</span>
                 </button>
             </div>
         </div>
@@ -562,7 +636,7 @@
                         <th style="min-width: 110px;">Platform</th>
                         <th style="min-width: 110px;">Sync Date</th>
                         <th style="min-width: 140px;">Assigned Team</th>
-                        <th style="min-width: 110px; text-align: right;">Action</th>
+                        <th style="min-width: 140px; text-align: right;">Action</th>
                     </tr>
                 </thead>
                 <tbody id="leadsTableBody">
@@ -649,25 +723,34 @@
     function setTabFilter(status) {
         currentTabStatus = status;
         currentPage = 1;
+        selectedLeadIds.clear();
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         if (status === '') document.getElementById('tabAll').classList.add('active');
         else if (status === '0') document.getElementById('tabPending').classList.add('active');
         else if (status === '1') document.getElementById('tabApproved').classList.add('active');
+        updateTeamActionButtons();
+        updateSelectionUi();
         loadLeads();
     }
 
     function filterByTeam(teamId) {
         currentTeamId = teamId;
         currentPage = 1;
+        selectedLeadIds.clear();
         document.getElementById('teamFilterDropdown').value = teamId;
         updateApproveAllButtonLabel();
+        updateTeamActionButtons();
+        updateSelectionUi();
         loadLeads();
     }
 
     function onTeamDropdownChange(teamId) {
         currentTeamId = teamId;
         currentPage = 1;
+        selectedLeadIds.clear();
         updateApproveAllButtonLabel();
+        updateTeamActionButtons();
+        updateSelectionUi();
         loadLeads();
     }
 
@@ -727,6 +810,7 @@
                 renderTeamCards(data.teams);
                 renderTable(data.leads, totalCount);
                 updatePaginationControls();
+                updateTeamActionButtons();
             } else {
                 showLeadToast(result.message || 'Error fetching leads', 'error');
             }
@@ -834,15 +918,20 @@
                         `}
                     </td>
                     <td class="text-end">
-                        ${isApproved ? `
-                            <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size: 11px;" onclick="unapproveLead(${lead.id})">
-                                Undo
+                        <div class="row-actions-group">
+                            ${isApproved ? `
+                                <button type="button" class="btn-row-action btn-row-undo" onclick="unapproveLead(${lead.id})" title="Revert back to Pending">
+                                    <i class="fa-solid fa-rotate-left me-1" style="font-size: 11px;"></i> Undo
+                                </button>
+                            ` : `
+                                <button type="button" class="btn-row-action btn-row-approve" onclick="approveSingleLead(${lead.id})" title="Approve & Distribute to Team">
+                                    <i class="fa-solid fa-check me-1" style="font-size: 11px;"></i> Approve
+                                </button>
+                            `}
+                            <button type="button" class="btn-row-action btn-row-delete" onclick="deleteSingleLead(${lead.id}, '${escapeHtml(lead.full_name || 'Lead')}')" title="Permanently Delete Lead from Database">
+                                <i class="fa-solid fa-trash-can" style="font-size: 14px;"></i>
                             </button>
-                        ` : `
-                            <button type="button" class="btn btn-success btn-sm py-0 px-2 fw-semibold" style="font-size: 11px;" onclick="approveSingleLead(${lead.id})">
-                                Approve &rarr;
-                            </button>
-                        `}
+                        </div>
                     </td>
                 </tr>
             `;
@@ -878,18 +967,60 @@
 
     function updateSelectionUi() {
         const count = selectedLeadIds.size;
-        const btn = document.getElementById('btnBulkApprove');
+        const btnApprove = document.getElementById('btnBulkApprove');
+        const btnUndo = document.getElementById('btnBulkUndo');
+        const btnDelete = document.getElementById('btnBulkDelete');
         const label = document.getElementById('selectionCountText');
 
         if (count > 0) {
-            btn.disabled = false;
-            btn.innerHTML = `<i class="fa-solid fa-check me-1"></i> Assign & Approve ${count} Leads`;
             label.style.display = 'inline';
             label.innerText = `${count} selected`;
+
+            if (btnDelete) {
+                btnDelete.style.display = 'inline-flex';
+                btnDelete.disabled = false;
+                btnDelete.innerHTML = `<i class="fa-solid fa-trash-can" style="font-size: 14px;"></i> <span>Delete Selected (${count})</span>`;
+            }
+
+            if (currentTabStatus === '1') {
+                // Distributed & Approved tab: Hide bulk approve, show bulk undo & bulk delete
+                if (btnApprove) btnApprove.style.display = 'none';
+                if (btnUndo) {
+                    btnUndo.style.display = 'inline-flex';
+                    btnUndo.disabled = false;
+                    btnUndo.innerHTML = `<i class="fa-solid fa-rotate-left" style="font-size: 12px;"></i> <span>Revert to Pending (${count})</span>`;
+                }
+            } else {
+                // Pending Approval or All Synced Leads
+                if (btnUndo) btnUndo.style.display = 'none';
+                if (btnApprove) {
+                    btnApprove.style.display = 'inline-flex';
+                    btnApprove.disabled = false;
+                    btnApprove.innerHTML = `<i class="fa-solid fa-check" style="font-size: 13px;"></i> <span>Assign & Approve ${count} Leads</span>`;
+                }
+            }
         } else {
-            btn.disabled = true;
-            btn.innerHTML = `<i class="fa-solid fa-check me-1"></i> Assign & Approve Leads`;
             label.style.display = 'none';
+
+            if (btnDelete) {
+                btnDelete.style.display = 'none';
+                btnDelete.disabled = true;
+            }
+
+            if (btnUndo) {
+                btnUndo.style.display = 'none';
+                btnUndo.disabled = true;
+            }
+
+            if (btnApprove) {
+                if (currentTabStatus === '1') {
+                    btnApprove.style.display = 'none';
+                } else {
+                    btnApprove.style.display = 'inline-flex';
+                    btnApprove.disabled = true;
+                    btnApprove.innerHTML = `<i class="fa-solid fa-check" style="font-size: 13px;"></i> <span>Assign & Approve Leads</span>`;
+                }
+            }
         }
 
         const allCheckboxes = document.querySelectorAll('.lead-cb');
@@ -898,6 +1029,36 @@
             selectAll.checked = Array.from(allCheckboxes).every(cb => cb.checked);
         } else {
             selectAll.checked = false;
+        }
+
+        updateTeamActionButtons();
+    }
+
+    async function bulkUndoSelected() {
+        if (selectedLeadIds.size === 0) return;
+        const ids = Array.from(selectedLeadIds);
+        if (!confirm(`Are you sure you want to revert ${ids.length} selected lead(s) back to Pending status?`)) return;
+
+        try {
+            const response = await fetch(`${baseUrl}/lead-automation/unapprove`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({ lead_ids: ids })
+            });
+            const res = await response.json();
+            if (res.status === 'success') {
+                showLeadToast(res.message || 'Leads reverted to Pending.', 'info');
+                selectedLeadIds.clear();
+                loadLeads();
+            } else {
+                showLeadToast(res.message || 'Action failed', 'error');
+            }
+        } catch (err) {
+            showLeadToast('Error: ' + err.message, 'error');
         }
     }
 
@@ -1018,6 +1179,143 @@
             }
         } catch (err) {
             showLeadToast('Error: ' + err.message, 'error');
+        }
+    }
+
+    async function deleteSingleLead(id, name) {
+        const displayName = name ? `"${name}" (#LD-${id})` : `#LD-${id}`;
+        if (!confirm(`Are you sure you want to permanently delete lead ${displayName}?\n\nThis will completely delete it from the database and remove it from the team's leads list.`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`${baseUrl}/lead-automation/delete`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({ lead_ids: [id] })
+            });
+            const res = await response.json();
+            if (res.status === 'success') {
+                showLeadToast(res.message || `Lead #LD-${id} permanently deleted.`, 'success');
+                selectedLeadIds.delete(parseInt(id));
+                loadLeads();
+            } else {
+                showLeadToast(res.message || 'Delete failed', 'error');
+            }
+        } catch (err) {
+            showLeadToast('Error: ' + err.message, 'error');
+        }
+    }
+
+    async function bulkDeleteSelected() {
+        if (selectedLeadIds.size === 0) {
+            showLeadToast('Please select at least one lead to delete.', 'error');
+            return;
+        }
+
+        const ids = Array.from(selectedLeadIds);
+        const count = ids.length;
+
+        let teamPrompt = '';
+        if (currentTeamId) {
+            const teamOpt = document.querySelector(`#teamFilterDropdown option[value="${currentTeamId}"]`);
+            if (teamOpt) teamPrompt = ` belonging to "${teamOpt.textContent.trim()}"`;
+        }
+
+        const confirmMsg = `Are you sure you want to PERMANENTLY DELETE ${count} selected lead(s)${teamPrompt}?\n\nThis will delete them from the database and completely remove them from the team's leads list. This action cannot be undone.`;
+
+        if (!confirm(confirmMsg)) return;
+
+        const btn = document.getElementById('btnBulkDelete');
+        if (btn) btn.disabled = true;
+
+        try {
+            const response = await fetch(`${baseUrl}/lead-automation/delete`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({ lead_ids: ids })
+            });
+            const res = await response.json();
+            if (res.status === 'success') {
+                showLeadToast(res.message || `Successfully deleted ${count} lead(s)!`, 'success');
+                selectedLeadIds.clear();
+                loadLeads();
+            } else {
+                showLeadToast(res.message || 'Bulk delete failed', 'error');
+            }
+        } catch (err) {
+            showLeadToast('Error: ' + err.message, 'error');
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
+
+    async function bulkDeleteTeamApproved() {
+        if (!currentTeamId) {
+            showLeadToast('Please select a sales team first.', 'error');
+            return;
+        }
+
+        const teamOpt = document.querySelector(`#teamFilterDropdown option[value="${currentTeamId}"]`);
+        const teamName = teamOpt ? teamOpt.textContent.trim() : 'Selected Team';
+
+        const confirmMsg = `⚠️ DANGER ZONE:\n\nAre you sure you want to permanently delete ALL approved leads distributed to "${teamName}"?\n\nAll approved leads for this team will be permanently deleted from the database and the team's leads list.`;
+
+        if (!confirm(confirmMsg)) return;
+
+        const btn = document.getElementById('btnDeleteTeamApproved');
+        if (btn) btn.disabled = true;
+
+        try {
+            const response = await fetch(`${baseUrl}/lead-automation/delete`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({
+                    team_id: currentTeamId,
+                    all_approved: true
+                })
+            });
+            const res = await response.json();
+            if (res.status === 'success') {
+                showLeadToast(res.message || `Deleted all approved leads for ${teamName}!`, 'success');
+                selectedLeadIds.clear();
+                loadLeads();
+            } else {
+                showLeadToast(res.message || 'Team purge failed', 'error');
+            }
+        } catch (err) {
+            showLeadToast('Error: ' + err.message, 'error');
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
+
+    function updateTeamActionButtons() {
+        const btnTeamDelete = document.getElementById('btnDeleteTeamApproved');
+        const btnTeamDeleteText = document.getElementById('btnDeleteTeamApprovedText');
+        if (!btnTeamDelete) return;
+
+        if (currentTeamId && currentTabStatus === '1') {
+            const teamOpt = document.querySelector(`#teamFilterDropdown option[value="${currentTeamId}"]`);
+            const name = teamOpt ? teamOpt.textContent.trim() : 'Team';
+            if (btnTeamDeleteText) {
+                btnTeamDeleteText.innerText = `Delete All "${name}" Approved`;
+            }
+            btnTeamDelete.style.display = 'inline-flex';
+        } else {
+            btnTeamDelete.style.display = 'none';
         }
     }
 

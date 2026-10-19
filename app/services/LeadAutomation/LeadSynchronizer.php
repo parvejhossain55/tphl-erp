@@ -450,11 +450,23 @@ class LeadSynchronizer
     private function matchProject(string $campaignName): array
     {
         $projects = $this->config['projects'] ?? [];
-        $campaignLower = strtolower($campaignName);
+
+        // 1. Sort keywords by length descending so longer/more specific phrases match first
+        // (e.g. 'crown pavilion' matches before 'crown', 'tprc commercial' before 'commercial')
+        uksort($projects, function ($a, $b) {
+            return strlen((string)$b) <=> strlen((string)$a);
+        });
+
+        // 2. Normalize campaign name: convert " ll ", "||", "–", "-" and collapse multiple spaces
+        $campaignClean = preg_replace('/\s+ll\s+/i', ' ', $campaignName);
+        $campaignClean = preg_replace('/[|\-_–]+/', ' ', $campaignClean);
+        $campaignClean = preg_replace('/\s+/', ' ', $campaignClean);
+        $campaignLower = strtolower(trim($campaignClean));
+        $rawLower      = strtolower(trim($campaignName));
 
         foreach ($projects as $keyword => $info) {
             $keywordLower = strtolower(trim($keyword));
-            if (strpos($campaignLower, $keywordLower) !== false) {
+            if (strpos($campaignLower, $keywordLower) !== false || strpos($rawLower, $keywordLower) !== false) {
                 return [
                     'matched_keyword' => $keyword,
                     'project_name'    => $info['name'] ?? $keyword,
@@ -699,8 +711,8 @@ class LeadSynchronizer
 
         $pdo = $dryRun ? null : $this->getDb();
 
-        // Send to Gemini in batches of up to 50 rows for token efficiency
-        $batchSize = 50;
+        // Send to Gemini in batches of up to 25 rows for optimal speed and reliability
+        $batchSize = 25;
         $chunks = array_chunk($rawRows, $batchSize);
 
         foreach ($chunks as $chunkIndex => $chunkRows) {
@@ -711,17 +723,13 @@ class LeadSynchronizer
                 $cleanPhone = preg_replace('/^p:/i', '', trim($rawPhone));
                 $leadData['phone_number'] = $cleanPhone;
 
-                // Match Project
-                $projectId = $leadData['project_id'] ?? null;
-                $projectMatch = null;
-
-                if (!empty($leadData['matched_project_keyword']) && isset($this->config['projects'][$leadData['matched_project_keyword']])) {
+                // Match Project: prioritize deterministic keyword matching with sorted length
+                $projectMatch = $this->matchProject($leadData['campaign_name'] ?? '');
+                if ($projectMatch['project_id'] === null && !empty($leadData['matched_project_keyword']) && isset($this->config['projects'][$leadData['matched_project_keyword']])) {
                     $projectMatch = [
                         'project_id' => $this->config['projects'][$leadData['matched_project_keyword']]['project_id'],
                         'teams'      => $this->config['projects'][$leadData['matched_project_keyword']]['teams'] ?? []
                     ];
-                } else {
-                    $projectMatch = $this->matchProject($leadData['campaign_name'] ?? '');
                 }
 
                 $projectId = $projectMatch['project_id'];

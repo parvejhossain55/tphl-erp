@@ -40,15 +40,36 @@ return [
     // 3. Google Sheets Configuration
     // ------------------------------------------------------------------------
     'google_sheet' => [
-        'url'     => 'https://docs.google.com/spreadsheets/d/1btVkSlBIJmLfi54Sz2nQ1wlM3VSbCQUp3hu1c4nW-4w/edit?usp=sharing',
+        'url'     => 'https://docs.google.com/spreadsheets/d/18XRsEG6rqvcn8tzbikYkHuwadQqqWQJbAf-Ii_IusCQ/edit?gid=0#gid=0',
         'timeout' => 30,
     ],
+    
 
     // ------------------------------------------------------------------------
     // 4. Project to Team Mapping (Round-Robin Distribution)
     // ------------------------------------------------------------------------
     'projects' => [
         // TPRC Projects (Equally distributed to Team Cannibal [7], Vhagar [12], Meraxes [13])
+        'tprc commercial' => [
+            'name'       => 'TPRC Commercial',
+            'project_id' => 66,
+            'teams'      => [7, 12, 13],
+        ],
+        'tprc ll commercial' => [
+            'name'       => 'TPRC Commercial',
+            'project_id' => 66,
+            'teams'      => [7, 12, 13],
+        ],
+        'crown tower' => [
+            'name'       => 'TPRC Crown Tower',
+            'project_id' => 12,
+            'teams'      => [7, 12, 13],
+        ],
+        'tprc crown' => [
+            'name'       => 'TPRC Crown Tower',
+            'project_id' => 12,
+            'teams'      => [7, 12, 13],
+        ],
         'crown' => [
             'name'       => 'TPRC Crown Tower',
             'project_id' => 12,
@@ -64,13 +85,13 @@ return [
             'project_id' => 28,
             'teams'      => [7, 12, 13],
         ],
-        'tprc commercial' => [
-            'name'       => 'TPRC Commercial',
-            'project_id' => 66,
-            'teams'      => [7, 12, 13],
-        ],
 
         // Ashulia Projects
+        'crown pavilion' => [
+            'name'       => 'The Crown Pavilion',
+            'project_id' => 9,
+            'teams'      => [4, 8, 9, 17, 18, 19],
+        ],
         'velvet' => [
             'name'       => 'The Premium Velvet Heights',
             'project_id' => 51,
@@ -111,25 +132,25 @@ return [
             'project_id' => 63,
             'teams'      => [4, 8, 9, 17, 18, 19],
         ],
-        'crown pavilion' => [
-            'name'       => 'The Crown Pavilion',
-            'project_id' => 9,
-            'teams'      => [4, 8, 9, 17, 18, 19],
-        ],
-        'green paradise' => [
-            'name'       => 'The Premium Green Paradise',
-            'project_id' => 65,
-            'teams'      => [4, 9, 17], // Saleh Rafi (4), Feroz Ahmed (9), Munshi Aiman (17)
-        ],
         'legacy residence' => [
             'name'       => 'The Legacy Residence',
             'project_id' => 5,
-            'teams'      => [4, 8, 9, 19],
+            'teams'      => [4, 8, 9, 17, 18, 19],
         ],
         'legacy' => [
             'name'       => 'The Legacy Residence',
             'project_id' => 5,
-            'teams'      => [4, 8, 9, 19],
+            'teams'      => [4, 8, 9, 17, 18, 19],
+        ],
+        'skyline enclave' => [
+            'name'       => 'The Premium Skyline Enclave',
+            'project_id' => 75,
+            'teams'      => [4, 8, 9, 17, 18, 19],
+        ],
+        'skyline' => [
+            'name'       => 'The Premium Skyline Enclave',
+            'project_id' => 75,
+            'teams'      => [4, 8, 9, 17, 18, 19],
         ],
         'urban residence' => [
             'name'       => 'The Premium Urban Residence',
@@ -181,6 +202,16 @@ return [
         'canvas' => [
             'name'       => 'The Premium Canvas of Happiness',
             'project_id' => 55,
+            'teams'      => [1, 10, 11, 14, 15],
+        ],
+        'symphony of life' => [
+            'name'       => 'The Premium Symphony Of Life',
+            'project_id' => 76,
+            'teams'      => [1, 10, 11, 14, 15],
+        ],
+        'symphony' => [
+            'name'       => 'The Premium Symphony Of Life',
+            'project_id' => 76,
             'teams'      => [1, 10, 11, 14, 15],
         ],
         'serenity' => [
@@ -249,6 +280,16 @@ return [
             'name'       => 'Condominium (TPRC)',
             'project_id' => 12,
             'teams'      => [7, 12, 13],
+        ],
+        'the nature' => [
+            'name'       => 'The Nature',
+            'project_id' => 74,
+            'teams'      => [16],
+        ],
+        'nature' => [
+            'name'       => 'The Nature',
+            'project_id' => 74,
+            'teams'      => [16],
         ],
     ],
 
