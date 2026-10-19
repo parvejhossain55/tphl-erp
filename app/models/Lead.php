@@ -411,7 +411,7 @@ class Lead extends Model
         ];
     }
 
-    public function countAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null, $search = null, $from_date = null, $to_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null)
+    public function countAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null, $search = null, $from_date = null, $to_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null, $date_type = 'created_at')
     {
         $sql = "SELECT COUNT(l.id) AS total_count FROM leads AS l 
                 LEFT JOIN employees AS emp ON emp.user_id = l.assigned_id
@@ -461,9 +461,11 @@ class Lead extends Model
             $applyCreatedDateFilter = false;
         }
 
-        // Date range filter
+        // Date range filter: based on user-selected date_type ('created_at' by default, or 'assigned_at')
         if ($applyCreatedDateFilter) {
-            $dateCol = (!empty($assigned_user) || (isset($assigned) && $assigned === 'assigned')) ? "(CASE WHEN (l.assigned_at IS NOT NULL AND l.assigned_at > '1970-01-01 00:00:00') THEN l.assigned_at ELSE l.created_at END)" : 'l.created_at';
+            $dateCol = ($date_type === 'assigned_at') 
+                ? "(CASE WHEN (l.assigned_at IS NOT NULL AND l.assigned_at > '1970-01-01 00:00:00') THEN l.assigned_at ELSE l.created_at END)" 
+                : 'l.created_at';
             
             if (!empty($from_date) && !empty($to_date)) {
                 $sql .= " AND DATE($dateCol) BETWEEN ? AND ?";
@@ -775,7 +777,7 @@ class Lead extends Model
      * Count total booking units/contracts from lead_bookings matching current filters.
      * This aligns the "Total Booked" count on Lead Lists with Sales Performance and Sales Dashboard (e.g. 1,647 bookings).
      */
-    public function countBookingsWithFilter($year = null, $month = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $from_date = null, $to_date = null, $projectId = null, $projectCategoryId = null, $country = null)
+    public function countBookingsWithFilter($year = null, $month = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $from_date = null, $to_date = null, $projectId = null, $projectCategoryId = null, $country = null, $date_type = 'created_at')
     {
         $sql = "SELECT COUNT(lb.id) AS total_count 
                 FROM lead_bookings AS lb
@@ -909,7 +911,7 @@ class Lead extends Model
         return $row ? (int)$row['total_count'] : 0;
     }
 
-    public function getAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null, $limit = null, $offset = null, $search = null, $from_date = null, $to_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null)
+    public function getAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null, $limit = null, $offset = null, $search = null, $from_date = null, $to_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null, $date_type = 'created_at')
     {
         // Optimized query: server e large dataset (3000+) handle korte
         // Correlated subquery replace kora hoyeche simpler LEFT JOIN diye
@@ -1009,9 +1011,11 @@ class Lead extends Model
             $applyCreatedDateFilter = false;
         }
 
-        // Date range filter
+        // Date range filter: based on user-selected date_type ('created_at' by default, or 'assigned_at')
         if ($applyCreatedDateFilter) {
-            $dateCol = (!empty($assigned_user) || (isset($assigned) && $assigned === 'assigned')) ? "(CASE WHEN (l.assigned_at IS NOT NULL AND l.assigned_at > '1970-01-01 00:00:00') THEN l.assigned_at ELSE l.created_at END)" : 'l.created_at';
+            $dateCol = ($date_type === 'assigned_at') 
+                ? "(CASE WHEN (l.assigned_at IS NOT NULL AND l.assigned_at > '1970-01-01 00:00:00') THEN l.assigned_at ELSE l.created_at END)" 
+                : 'l.created_at';
 
             if (!empty($from_date) && !empty($to_date)) {
                 $sql .= " AND DATE($dateCol) BETWEEN ? AND ?";

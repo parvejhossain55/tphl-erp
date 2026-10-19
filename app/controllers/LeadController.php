@@ -67,6 +67,7 @@ class LeadController extends Controller
         $from_date = $_GET['from_date'] ?? null;
         $to_date   = $_GET['to_date']   ?? null;
         $filter_card = $_GET['filter_card'] ?? null;
+        $date_type = (!empty($_GET['date_type']) && in_array($_GET['date_type'], ['created_at', 'assigned_at'], true)) ? $_GET['date_type'] : 'created_at';
         
         // For Role 35 (SEAL CEO), if no team filter is applied (initial load) and they have a team_id, default to their team
         if (in_array((int)$userRoleId, [35]) && !isset($_GET['team_id']) && !empty($userTeamId)) {
@@ -108,10 +109,10 @@ class LeadController extends Controller
         // Get total count for pagination
         // Co-leader gets team-scoped data same as role_id=5 (Sales Manager)
         $effectiveRoleId = ($isCoLeader && !in_array((int)$userRoleId, [1, 3, 5, 9, 32, 33, 34, 35])) ? 5 : (int)$userRoleId;
-        $leadCounts = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
+        $leadCounts = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
 
         // Fetch paginated records
-        $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, $limit, $offset, null, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
+        $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, $limit, $offset, null, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
 
         $totalPages = ceil($leadCounts / $limit);
 
@@ -142,21 +143,21 @@ class LeadController extends Controller
         }
 
 
-        $totalBookingCount = $this->leadModel->countBookingsWithFilter($year, $month, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $from_date, $to_date, $filterProjectId, $filterCategoryId, $filterCountry);
-        $totalBookedLeadsCount = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'total_booked', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
-        $totalTodayFollowUps = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'today_follow_up', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
-        $totalTodayPendingFollowUps = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'pending_follow_ups', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
+        $totalBookingCount = $this->leadModel->countBookingsWithFilter($year, $month, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $from_date, $to_date, $filterProjectId, $filterCategoryId, $filterCountry, $date_type);
+        $totalBookedLeadsCount = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'total_booked', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
+        $totalTodayFollowUps = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'today_follow_up', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
+        $totalTodayPendingFollowUps = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'pending_follow_ups', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
         
         //  Conversion Rate
         $conversionRate = $leadCounts > 0 ? ($totalBookedLeadsCount / $leadCounts) * 100 : 0;
         
-        $totalHotLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'hot_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
-        $totalContactedLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'contacted_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
-        $totalNotContactedLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'not_contacted_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
-        $totalAssignedLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'assigned_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
-        $totalNotAssignedLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'not_assigned_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
-        $totalIrrelevantLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'irrelevant_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
-        $totalDeleteRequests = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'delete_requests', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
+        $totalHotLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'hot_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
+        $totalContactedLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'contacted_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
+        $totalNotContactedLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'not_contacted_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
+        $totalAssignedLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'assigned_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
+        $totalNotAssignedLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'not_assigned_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
+        $totalIrrelevantLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'irrelevant_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
+        $totalDeleteRequests = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'delete_requests', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
         // ── Duplicate Leads Detection ─────────────────────────────────────────
         // My team leads assigned to me whose phone/email also appears in OTHER assigned_ids
         $dupGroups  = [];
@@ -295,6 +296,7 @@ class LeadController extends Controller
             "totalNotAssignedLeads" => $totalNotAssignedLeads,
             "totalIrrelevantLeads" => $totalIrrelevantLeads,
             "totalDeleteRequests" => $totalDeleteRequests,
+            "date_type" => $date_type,
             "selectedAction" => $lastAction,
             "selectedAssigned" => $assigned,
             "selectedAssignedUser" => $assigned_user,
@@ -397,6 +399,7 @@ class LeadController extends Controller
         $from_date = $_GET['from_date'] ?? null;
         $to_date   = $_GET['to_date']   ?? null;
         $filter_card = $_GET['filter_card'] ?? null;
+        $date_type = (!empty($_GET['date_type']) && in_array($_GET['date_type'], ['created_at', 'assigned_at'], true)) ? $_GET['date_type'] : 'created_at';
 
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
@@ -441,15 +444,15 @@ class LeadController extends Controller
         // Co-leader gets same team-scoped access as Sales Manager (role_id=5)
         $effectiveRoleId = (isSalesCoLeader() && !in_array((int)$userRoleId, [1, 3, 5, 9, 32, 33, 34, 35])) ? 5 : (int)$userRoleId;
 
-        $totalRecords = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
+        $totalRecords = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
 
         if (!empty($search)) {
-            $filteredRecords = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, $search, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
+            $filteredRecords = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, $search, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
         } else {
             $filteredRecords = $totalRecords;
         }
 
-        $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, $length, $start, $search, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
+        $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, $length, $start, $search, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
 
         // FIXED: শুধু current page এর lead IDs দিয়ে count করা হচ্ছে
         $leadIds = array_column($leads, 'id');
@@ -821,6 +824,7 @@ class LeadController extends Controller
         $from_date      = $_GET['from_date']      ?? null;
         $to_date        = $_GET['to_date']        ?? null;
         $filter_card    = $_GET['filter_card']    ?? null;
+        $date_type      = (!empty($_GET['date_type']) && in_array($_GET['date_type'], ['created_at', 'assigned_at'], true)) ? $_GET['date_type'] : 'created_at';
         $search         = !empty($_GET['search']) ? trim($_GET['search']) : null;
         $selected_ids   = !empty($_GET['selected_ids']) ? array_filter(array_map('intval', explode(',', $_GET['selected_ids']))) : [];
 
@@ -864,7 +868,8 @@ class LeadController extends Controller
             $filterProjectId, 
             $filterCategoryId, 
             $filterCountry, 
-            $assigned_hours
+            $assigned_hours,
+            $date_type
         );
 
         // If specific selected_ids are requested, filter down to them

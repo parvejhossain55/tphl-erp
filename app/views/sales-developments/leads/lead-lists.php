@@ -74,12 +74,12 @@ if (!function_exists('getStatCardLink')) {
 $activeCard = $_GET['filter_card'] ?? '';
 ?>
 <?php if (!empty($filteredExecName)): ?>
-<div class="d-flex align-items-center gap-2 mb-2">
+<div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
     <span class="badge rounded-pill text-bg-primary" style="font-size:0.8rem; padding:6px 14px;">
         <i class="fa-solid fa-filter me-1"></i>
         Filtered for: <strong><?= htmlspecialchars($filteredExecName) ?></strong>
     </span>
-    <span class="text-muted small">Stats below are specific to this sales executive</span>
+    <span class="text-muted small">Stats below are specific to this sales executive (Date based on: <strong><?= ($date_type ?? 'created_at') === 'assigned_at' ? 'Assigned Date' : 'Created Date' ?></strong>)</span>
 </div>
 <?php endif; ?>
 <div class="row mb-4 align-items-stretch">
@@ -286,6 +286,16 @@ $activeCard = $_GET['filter_card'] ?? '';
                         <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">To Date</label>
                         <input type="date" name="to_date" class="form-control form-control-sm"
                             value="<?= $_GET['to_date'] ?? '' ?>">
+                    </div>
+
+                    <!-- Date Type / Filter By -->
+                    <div class="col-6 col-md-2">
+                        <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Date Type</label>
+                        <?php $selectedDateType = $date_type ?? ($_GET['date_type'] ?? 'created_at'); ?>
+                        <select class="form-select form-select-sm filter-select" name="date_type" title="Filter leads based on Creation Date or Assignment Date">
+                            <option value="created_at" <?= $selectedDateType === 'created_at' ? 'selected' : '' ?>>Created Date (Default)</option>
+                            <option value="assigned_at" <?= $selectedDateType === 'assigned_at' ? 'selected' : '' ?>>Assigned Date</option>
+                        </select>
                     </div>
 
                     <!-- Team Filter -->
