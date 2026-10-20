@@ -57,18 +57,13 @@ class LeadSynchronizer
             throw new InvalidArgumentException("Please provide a valid Google Sheet URL in config.php");
         }
 
-        // Check if URL targets a specific worksheet tab via gid parameter (e.g. gid=847993418)
-        $isSpecificTabOnly = false;
-        $targetGid = null;
-        if (preg_match('/[#&?]gid=([0-9]+)/', $sheetUrl, $gidMatch)) {
-            $targetGid = $gidMatch[1];
-            // If non-zero gid or explicitly specified in URL query
-            if ($targetGid !== '0' || strpos($sheetUrl, 'gid=') !== false) {
-                $isSpecificTabOnly = true;
-                $this->log(sprintf("Targeting specific worksheet tab [gid: %s] directly from URL.", $targetGid));
-            }
+        // Check if URL explicitly requests a single tab only (via ?single_tab=1)
+        $isSpecificTabOnly = (strpos($sheetUrl, 'single_tab=1') !== false || strpos($sheetUrl, 'only_tab=1') !== false);
+        if ($isSpecificTabOnly && preg_match('/[#&?]gid=([0-9]+)/', $sheetUrl, $gidMatch)) {
+            $this->log(sprintf("Targeting specific single worksheet tab [gid: %s] as explicitly requested.", $gidMatch[1]));
         }
 
+        // By default, synchronize ALL worksheet tabs from the Google Sheet workbook
         if (!$isSpecificTabOnly && preg_match('/spreadsheets\/d\/([a-zA-Z0-9-_]+)/', $sheetUrl, $matches)) {
             $sheetId = $matches[1];
             try {
@@ -322,6 +317,18 @@ class LeadSynchronizer
             $rawPhone = $leadData['phone_number'] ?? '';
             $cleanPhone = preg_replace('/^p:/i', '', trim($rawPhone));
             $leadData['phone_number'] = $cleanPhone;
+
+            // Skip Meta / Facebook automated test leads or dummy rows
+            $fullName = (string)($leadData['full_name'] ?? '');
+            $email = (string)($leadData['email'] ?? '');
+            if (
+                stripos($cleanPhone, '<test lead') !== false ||
+                stripos($fullName, '<test lead') !== false ||
+                stripos($email, 'test@meta.com') !== false
+            ) {
+                $this->log(sprintf("Row %d: Skipped Meta test lead / dummy data row.", $lineNum + 2));
+                continue;
+            }
 
             // Match Project and determine Team ID via Round-Robin
             $projectMatch = $this->matchProject($leadData['campaign_name'] ?? '', $leadData['form_name'] ?? '');
@@ -707,15 +714,28 @@ class LeadSynchronizer
     private function isDuplicateLead(array $leadData, PDO $pdo): bool
     {
         $phone = $leadData['phone_number'] ?? '';
-        if (empty($phone)) {
+        $cleanPhone = preg_replace('/^p:/i', '', trim($phone));
+        $campaign = trim($leadData['campaign_name'] ?? '');
+
+        if (empty($cleanPhone)) {
+            // Fallback: check by email if phone is not provided
+            $email = trim($leadData['email'] ?? '');
+            if (!empty($email)) {
+                if (empty($campaign)) {
+                    $stmt = $pdo->prepare("SELECT id FROM leads WHERE email = ? AND (campaign_name = '' OR campaign_name IS NULL) LIMIT 1");
+                    $stmt->execute([$email]);
+                } else {
+                    $stmt = $pdo->prepare("SELECT id FROM leads WHERE email = ? AND campaign_name = ? LIMIT 1");
+                    $stmt->execute([$email, $campaign]);
+                }
+                return (bool)$stmt->fetchColumn();
+            }
             return false;
         }
 
         // Mode: 'phone_campaign'
         // Checks if the same customer (phone) has already been inserted for THIS specific campaign.
         // If the customer fills a form for another project/campaign, it WILL be inserted as a fresh lead.
-        $campaign = $leadData['campaign_name'] ?? '';
-        $cleanPhone = preg_replace('/^p:/i', '', trim($phone));
         $prefixedPhone = 'p:' . $cleanPhone;
 
         if (empty($campaign)) {
@@ -891,6 +911,17 @@ class LeadSynchronizer
                 $rawPhone = $leadData['phone_number'] ?? '';
                 $cleanPhone = preg_replace('/^p:/i', '', trim($rawPhone));
                 $leadData['phone_number'] = $cleanPhone;
+
+                // Skip Meta / Facebook automated test leads or dummy rows
+                $fullName = (string)($leadData['full_name'] ?? '');
+                $email = (string)($leadData['email'] ?? '');
+                if (
+                    stripos($cleanPhone, '<test lead') !== false ||
+                    stripos($fullName, '<test lead') !== false ||
+                    stripos($email, 'test@meta.com') !== false
+                ) {
+                    continue;
+                }
 
                 // Match Project: prioritize deterministic keyword matching with sorted length
                 $projectMatch = $this->matchProject($leadData['campaign_name'] ?? '', $leadData['form_name'] ?? '');

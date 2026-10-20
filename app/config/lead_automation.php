@@ -40,8 +40,8 @@ return [
     // 3. Google Sheets Configuration
     // ------------------------------------------------------------------------
     'google_sheet' => [
-        'url'     => 'https://docs.google.com/spreadsheets/d/1Smg3B14dEanyrCf0qRc3wAdgLHi0x-9cDjNINvcMNlY/edit?gid=847993418#gid=847993418',
-        'timeout' => 30,
+        'url'     => 'https://docs.google.com/spreadsheets/d/1Smg3B14dEanyrCf0qRc3wAdgLHi0x-9cDjNINvcMNlY/edit',
+        'timeout' => 60,
     ],
     
 
