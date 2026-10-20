@@ -238,7 +238,7 @@ $buildStatUrl = function($targetFilter) use ($statusFilter) {
 
             <!-- Department Filter -->
             <div class="col-xxl-2 col-lg-2 col-md-6 col-12">
-                <select class="form-select" name="department_id">
+                <select class="form-select" name="department_id" id="departmentFilter">
                     <option value="">Employee Department</option>
                     <?php foreach ($departments as $department): ?>
                         <option value="<?= $department['id'] ?>"
@@ -251,7 +251,7 @@ $buildStatUrl = function($targetFilter) use ($statusFilter) {
 
             <!-- Team Filter -->
             <div class="col-xxl-2 col-lg-2 col-md-6 col-12">
-                <select class="form-select" name="team_id">
+                <select class="form-select" name="team_id" id="teamFilter">
                     <option value="">All Teams</option>
                     <?php foreach ($teams as $team): ?>
                         <option value="<?= $team['id'] ?>"
@@ -707,7 +707,71 @@ $listReturnUrl = $GLOBALS['base_url'] . '/employee-lists' . $currentQuery;
                 suggestionsBox.style.display = 'none';
             }
         });
+
+        // Dynamic Department-to-Team Dependent Filter
+        const deptSelect = document.getElementById('departmentFilter');
+        if (deptSelect) {
+            if (deptSelect.value) {
+                updateTeamsForDepartment(deptSelect.value, true);
+            }
+            deptSelect.addEventListener('change', function() {
+                updateTeamsForDepartment(this.value, false);
+            });
+        }
     });
+
+    const deptTeamsMap = <?= json_encode($deptTeamsMap ?? []) ?>;
+    const allTeams = <?= json_encode($teams ?? []) ?>;
+    const initialSelectedTeam = "<?= htmlspecialchars($selectedTeam ?? '') ?>";
+
+    function updateTeamsForDepartment(deptId, preserveSelected = false) {
+        const teamSelect = document.getElementById('teamFilter');
+        if (!teamSelect) return;
+
+        const currentVal = preserveSelected ? initialSelectedTeam : teamSelect.value;
+        teamSelect.innerHTML = '';
+
+        if (!deptId) {
+            // No department chosen: show all teams
+            const defaultOpt = document.createElement('option');
+            defaultOpt.value = '';
+            defaultOpt.textContent = 'All Teams';
+            teamSelect.appendChild(defaultOpt);
+
+            allTeams.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t.id;
+                opt.textContent = t.name;
+                if (String(t.id) === String(currentVal)) {
+                    opt.selected = true;
+                }
+                teamSelect.appendChild(opt);
+            });
+            return;
+        }
+
+        const availableTeams = deptTeamsMap[deptId] || [];
+        const defaultOpt = document.createElement('option');
+        defaultOpt.value = '';
+        defaultOpt.textContent = availableTeams.length > 0 ? 'All Teams in Dept' : 'No Teams in Dept';
+        teamSelect.appendChild(defaultOpt);
+
+        let matchFound = false;
+        availableTeams.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.id;
+            opt.textContent = t.name;
+            if (String(t.id) === String(currentVal)) {
+                opt.selected = true;
+                matchFound = true;
+            }
+            teamSelect.appendChild(opt);
+        });
+
+        if (!matchFound && !preserveSelected) {
+            teamSelect.value = '';
+        }
+    }
 
     function setEmployeeView(view) {
         const gridView = document.getElementById('employeeGridView');

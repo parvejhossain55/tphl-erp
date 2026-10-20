@@ -80,6 +80,9 @@ class EmployeeController extends Controller
         // Teams for filter dropdown
         $teams = $this->teamsModel->getAll();
 
+        // Department to Teams mapping for dynamic dependent filter
+        $deptTeamsMap = $this->employeeModel->getDepartmentTeamsMapping();
+
         // Workplaces for filter dropdown
         $workplaces = $this->employeeModel->getUniqueWorkplaces();
 
@@ -103,6 +106,7 @@ class EmployeeController extends Controller
             "employees" => $employees,
             "departments" => $departments,
             "teams" => $teams,
+            "deptTeamsMap" => $deptTeamsMap,
             "workplaces" => $workplaces,
             "searchTerm" => $searchTerm,
             "selectedDepartment" => $departmentFilter,
