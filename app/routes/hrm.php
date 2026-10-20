@@ -437,5 +437,6 @@ return [
     'ats-export-pdf' => ['controller' => 'AtsController', 'method' => 'exportPdf'],
     'ats-export-excel' => ['controller' => 'AtsController', 'method' => 'exportExcel'],
     'ats-export-csv' => ['controller' => 'AtsController', 'method' => 'exportCsv'],
+    'api/ats/upload-cv' => ['controller' => 'AtsController', 'method' => 'uploadCv'],
 ];
 

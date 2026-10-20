@@ -176,12 +176,10 @@
                                     <div class="info-value"><?= htmlspecialchars($employee['address']) ?></div>
                                 </div>
                             <?php endif; ?>
-                            <?php if (!empty($employee['nid'])): ?>
-                                <div class="info-item">
-                                    <div class="info-label">NID</div>
-                                    <div class="info-value"><?= htmlspecialchars($employee['nid']) ?></div>
-                                </div>
-                            <?php endif; ?>
+                            <div class="info-item">
+                                <div class="info-label">NID</div>
+                                <div class="info-value"><?= (!empty($employee['nid']) && $employee['nid'] !== 'N/A') ? htmlspecialchars($employee['nid']) : '<span class="text-warning fs-12">Not set</span>' ?></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -221,6 +219,14 @@
                                     <div class="info-value" style="color:var(--accent3)"><?= htmlspecialchars($yearsOfService) ?></div>
                                 </div>
                             <?php endif; ?>
+                            <div class="info-item">
+                                <div class="info-label">Experience</div>
+                                <div class="info-value"><?= (!empty($employee['experience']) && $employee['experience'] !== 'N/A') ? htmlspecialchars($employee['experience']) : '<span class="text-warning fs-12">Not set</span>' ?></div>
+                            </div>
+                            <div class="info-item" style="grid-column: 1 / -1;">
+                                <div class="info-label">Key Responsibilities</div>
+                                <div class="info-value" style="font-weight: 500; font-size: 0.85rem; white-space: pre-line; line-height: 1.5;"><?= (!empty($employee['responsibilities']) && $employee['responsibilities'] !== 'N/A') ? nl2br(htmlspecialchars($employee['responsibilities'])) : '<span class="text-warning fs-12">Not set</span>' ?></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -360,9 +366,21 @@
                                 <label class="form-label fw-semibold text-dark">Social Media Link (LinkedIn, Facebook)</label>
                                 <input type="text" class="form-control" name="social_media1" value="<?= htmlspecialchars($employee['social_media1'] ?? '') ?>" placeholder="https://linkedin.com/in/... or facebook.com/...">
                             </div>
-                            <div class="col-12">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-dark">NID Number</label>
+                                <input type="text" class="form-control" name="nid" value="<?= htmlspecialchars($employee['nid'] ?? '') ?>" placeholder="Enter NID number">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-dark">Experience</label>
+                                <input type="text" class="form-control" name="experience" value="<?= htmlspecialchars($employee['experience'] ?? '') ?>" placeholder="e.g. 3 Years in Management">
+                            </div>
+                            <div class="col-md-6">
                                 <label class="form-label fw-semibold text-dark">Present Address</label>
                                 <textarea class="form-control" name="address" rows="2" placeholder="Enter present residential address"><?= htmlspecialchars($employee['address'] ?? '') ?></textarea>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold text-dark">Key Job Responsibilities</label>
+                                <textarea class="form-control" name="responsibilities" rows="3" placeholder="Enter key job responsibilities..."><?= htmlspecialchars($employee['responsibilities'] ?? '') ?></textarea>
                             </div>
                         </div>
                     </div>

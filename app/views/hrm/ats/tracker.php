@@ -153,6 +153,7 @@ $baseUrl = $GLOBALS['base_url'];
         <div class="card-body p-3">
             <form method="GET" action="<?= $baseUrl ?>/ats-tracker" id="filterForm">
                 <input type="hidden" name="tab" value="<?= htmlspecialchars($filters['tab']) ?>">
+                <input type="hidden" name="per_page" value="<?= htmlspecialchars($rawPerPage ?? '20') ?>">
                 <div class="row align-items-end">
                     <!-- Search input -->
                     <div class="col-12 col-md-3">
@@ -209,18 +210,9 @@ $baseUrl = $GLOBALS['base_url'];
                         </select>
                     </div>
                     <!-- Filter Actions -->
-                    <div class="col-12 col-md-2 d-flex gap-1">
+                    <div class="col-12 col-md-2 d-flex gap-2">
                         <button type="submit" class="btn btn-primary btn-sm flex-fill" title="Apply Filter">
-                            <i class="fa-solid fa-filter"></i> Filter
-                        </button>
-                        <button type="button" class="btn btn-outline-success btn-sm px-2" onclick="exportAtsExcel()" title="Export to Excel (.xlsx)">
-                            <i class="fa-solid fa-file-excel"></i>
-                        </button>
-                        <button type="button" class="btn btn-outline-primary btn-sm px-2" onclick="exportAtsCsv()" title="Export to CSV (.csv)">
-                            <i class="fa-solid fa-file-csv"></i>
-                        </button>
-                        <button type="button" class="btn btn-outline-danger btn-sm px-2" onclick="exportAtsPdf()" title="Export to PDF (.pdf)">
-                            <i class="fa-solid fa-file-pdf"></i>
+                            <i class="fa-solid fa-filter me-1"></i> Filter
                         </button>
                         <a href="<?= $baseUrl ?>/ats-tracker?tab=<?= htmlspecialchars($filters['tab']) ?>" class="btn btn-light btn-sm text-secondary px-2" title="Clear Filters">
                             <i class="fa-solid fa-rotate-left"></i>
@@ -266,7 +258,7 @@ $baseUrl = $GLOBALS['base_url'];
                 <i class="fa-solid fa-user-check me-1"></i> Change Attendance
             </button>
             <button type="button" class="btn btn-outline-dark btn-sm py-1" onclick="openBulkUpdateModal('schedule')">
-                <i class="fa-solid fa-calendar me-1"></i> Set Interview Date
+                <i class="fa-solid fa-calendar-days me-1"></i> Set Interview Schedule
             </button>
             <button type="button" class="btn btn-outline-dark btn-sm py-1" onclick="openBulkUpdateModal('hired')">
                 <i class="fa-solid fa-briefcase me-1"></i> Change Hired Status
@@ -381,26 +373,36 @@ $baseUrl = $GLOBALS['base_url'];
 
                                 <!-- Interview Schedule -->
                                 <td>
-                                    <?php if (!empty($c['interview_date'])): ?>
-                                        <div class="fw-semibold <?= $isToday ? 'text-danger fw-bold' : 'text-dark' ?>">
-                                            <i class="fa-regular fa-calendar me-1"></i><?= date('d M Y', strtotime($c['interview_date'])) ?>
-                                            <?php if ($isToday): ?>
-                                                <span class="badge bg-danger rounded-pill" style="font-size: 0.65rem;">TODAY</span>
+                                    <div class="d-flex align-items-start justify-content-between">
+                                        <div>
+                                            <?php if (!empty($c['interview_date'])): ?>
+                                                <div class="fw-semibold <?= $isToday ? 'text-danger fw-bold' : 'text-dark' ?>">
+                                                    <i class="fa-regular fa-calendar me-1 text-danger"></i><?= date('d M Y', strtotime($c['interview_date'])) ?>
+                                                    <?php if ($isToday): ?>
+                                                        <span class="badge bg-danger rounded-pill" style="font-size: 0.65rem;">TODAY</span>
+                                                    <?php endif; ?>
+                                                </div>
+                                                <?php if (!empty($c['interview_time'])): ?>
+                                                    <div class="text-muted small" style="font-size: 0.74rem;">
+                                                        <i class="fa-regular fa-clock me-1"></i><?= date('h:i A', strtotime($c['interview_time'])) ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                                <?php if (!empty($c['interview_location'])): ?>
+                                                    <div class="small mt-1" style="font-size: 0.72rem; color: #0d9488;">
+                                                        <i class="fa-solid fa-location-dot me-1 text-danger opacity-75"></i><?= htmlspecialchars($c['interview_location']) ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                            <?php else: ?>
+                                                <span class="text-muted fst-italic small">Not scheduled</span>
                                             <?php endif; ?>
                                         </div>
-                                        <?php if (!empty($c['interview_time'])): ?>
-                                            <div class="text-muted small" style="font-size: 0.74rem;">
-                                                <i class="fa-regular fa-clock me-1"></i><?= date('h:i A', strtotime($c['interview_time'])) ?>
-                                            </div>
-                                        <?php endif; ?>
-                                        <?php if (!empty($c['interview_location'])): ?>
-                                            <div class="text-secondary small mt-1" style="font-size: 0.72rem;">
-                                                <i class="fa-solid fa-location-dot me-1 text-danger opacity-75"></i><?= htmlspecialchars($c['interview_location']) ?>
-                                            </div>
-                                        <?php endif; ?>
-                                    <?php else: ?>
-                                        <span class="text-muted fst-italic small">Not scheduled</span>
-                                    <?php endif; ?>
+                                        <button type="button" 
+                                                class="btn btn-sm btn-link text-secondary p-0 ms-2 text-decoration-none" 
+                                                title="Edit Interview Schedule"
+                                                onclick="openSingleScheduleModal(<?= $c['id'] ?>, '<?= htmlspecialchars(addslashes($c['name'])) ?>', '<?= $c['interview_date'] ?? '' ?>', '<?= !empty($c['interview_time']) ? date('H:i', strtotime($c['interview_time'])) : '' ?>', '<?= htmlspecialchars(addslashes($c['interview_location'] ?? '')) ?>')">
+                                            <i class="fa-solid fa-pen-to-square"></i>
+                                        </button>
+                                    </div>
                                 </td>
 
                                 <!-- Attendance Status (Quick Dropdown) -->
@@ -472,7 +474,16 @@ $baseUrl = $GLOBALS['base_url'];
                                             <i class="fa-brands fa-google-drive me-1 text-warning"></i> Drive Link
                                         </a>
                                     <?php else: ?>
-                                        <span class="text-muted small fst-italic">No CV</span>
+                                        <div class="d-flex align-items-center gap-1">
+                                            <span class="text-muted small fst-italic">No CV</span>
+                                            <button type="button" 
+                                                    class="btn btn-outline-primary btn-sm py-0 px-2 shadow-none" 
+                                                    style="font-size: 0.72rem; height: 23px;"
+                                                    onclick="openQuickCvModal(<?= $c['id'] ?>, '<?= htmlspecialchars(addslashes($c['name'])) ?>')"
+                                                    title="Upload CV for this candidate">
+                                                <i class="fa-solid fa-cloud-arrow-up me-1"></i> Upload
+                                            </button>
+                                        </div>
                                     <?php endif; ?>
                                 </td>
 
@@ -495,34 +506,83 @@ $baseUrl = $GLOBALS['base_url'];
         </div>
 
         <!-- Table Footer / Pagination -->
-        <?php if ($totalPages > 1): ?>
-            <div class="card-footer bg-white border-0 py-3 d-flex flex-wrap justify-content-between align-items-center">
+        <div class="card-footer bg-white border-top py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div class="d-flex flex-wrap align-items-center gap-3">
+                <!-- Showing X to Y of Total -->
                 <span class="small text-muted">
-                    Showing <?= min(($currentPage - 1) * $perPage + 1, $total) ?> to <?= min($currentPage * $perPage, $total) ?> of <?= $total ?> candidates
+                    <?php if ($total > 0): ?>
+                        Showing <span class="fw-semibold text-dark"><?= ($rawPerPage === 'all') ? 1 : min(($currentPage - 1) * $perPage + 1, $total) ?></span> to 
+                        <span class="fw-semibold text-dark"><?= ($rawPerPage === 'all') ? $total : min($currentPage * $perPage, $total) ?></span> of 
+                        <span class="fw-semibold text-dark"><?= $total ?></span> candidates
+                    <?php else: ?>
+                        Showing 0 candidates
+                    <?php endif; ?>
                 </span>
-                <nav>
+
+                <!-- View Count (Show: 10, 20, 50, All) -->
+                <div class="d-flex align-items-center gap-2">
+                    <label class="small text-muted mb-0">Show:</label>
+                    <select class="form-select form-select-sm py-1 ps-2 pe-4" style="width: 76px; height: 30px; font-size: 0.82rem;" onchange="changePerPage(this.value)">
+                        <option value="10" <?= ($rawPerPage === '10') ? 'selected' : '' ?>>10</option>
+                        <option value="20" <?= ($rawPerPage === '20') ? 'selected' : '' ?>>20</option>
+                        <option value="50" <?= ($rawPerPage === '50') ? 'selected' : '' ?>>50</option>
+                        <option value="all" <?= ($rawPerPage === 'all') ? 'selected' : '' ?>>All</option>
+                    </select>
+                    <span class="small text-muted">per page</span>
+                </div>
+            </div>
+
+            <!-- Pagination Navigation (Next / Previous) -->
+            <?php if ($totalPages > 1 && $rawPerPage !== 'all'): ?>
+                <nav aria-label="Candidates Pagination">
                     <ul class="pagination pagination-sm mb-0">
                         <?php 
                         $queryParams = $_GET;
                         ?>
+                        <!-- Previous Button -->
                         <li class="page-item <?= ($currentPage <= 1) ? 'disabled' : '' ?>">
                             <?php $queryParams['page'] = $currentPage - 1; ?>
-                            <a class="page-link" href="<?= $baseUrl ?>/ats-tracker?<?= http_build_query($queryParams) ?>">Previous</a>
+                            <a class="page-link" href="<?= $baseUrl ?>/ats-tracker?<?= http_build_query($queryParams) ?>" <?= ($currentPage <= 1) ? 'tabindex="-1" aria-disabled="true"' : '' ?>>
+                                <i class="fa-solid fa-chevron-left me-1"></i> Previous
+                            </a>
                         </li>
-                        <?php for ($p = max(1, $currentPage - 2); $p <= min($totalPages, $currentPage + 2); $p++): ?>
+
+                        <!-- Page Numbers -->
+                        <?php 
+                        $startPage = max(1, $currentPage - 2);
+                        $endPage = min($totalPages, $currentPage + 2);
+                        if ($startPage > 1): 
+                            $queryParams['page'] = 1;
+                        ?>
+                            <li class="page-item"><a class="page-link" href="<?= $baseUrl ?>/ats-tracker?<?= http_build_query($queryParams) ?>">1</a></li>
+                            <?php if ($startPage > 2): ?><li class="page-item disabled"><span class="page-link">...</span></li><?php endif; ?>
+                        <?php endif; ?>
+
+                        <?php for ($p = $startPage; $p <= $endPage; $p++): ?>
                             <?php $queryParams['page'] = $p; ?>
                             <li class="page-item <?= ($p === $currentPage) ? 'active' : '' ?>">
                                 <a class="page-link" href="<?= $baseUrl ?>/ats-tracker?<?= http_build_query($queryParams) ?>"><?= $p ?></a>
                             </li>
                         <?php endfor; ?>
+
+                        <?php if ($endPage < $totalPages): 
+                            $queryParams['page'] = $totalPages;
+                        ?>
+                            <?php if ($endPage < $totalPages - 1): ?><li class="page-item disabled"><span class="page-link">...</span></li><?php endif; ?>
+                            <li class="page-item"><a class="page-link" href="<?= $baseUrl ?>/ats-tracker?<?= http_build_query($queryParams) ?>"><?= $totalPages ?></a></li>
+                        <?php endif; ?>
+
+                        <!-- Next Button -->
                         <li class="page-item <?= ($currentPage >= $totalPages) ? 'disabled' : '' ?>">
                             <?php $queryParams['page'] = $currentPage + 1; ?>
-                            <a class="page-link" href="<?= $baseUrl ?>/ats-tracker?<?= http_build_query($queryParams) ?>">Next</a>
+                            <a class="page-link" href="<?= $baseUrl ?>/ats-tracker?<?= http_build_query($queryParams) ?>" <?= ($currentPage >= $totalPages) ? 'tabindex="-1" aria-disabled="true"' : '' ?>>
+                                Next <i class="fa-solid fa-chevron-right ms-1"></i>
+                            </a>
                         </li>
                     </ul>
                 </nav>
-            </div>
-        <?php endif; ?>
+            <?php endif; ?>
+        </div>
     </div>
 </div>
 
@@ -556,8 +616,8 @@ $baseUrl = $GLOBALS['base_url'];
                                 <input type="text" name="phone" id="cPhone" class="form-control form-control-sm" required placeholder="017XXXXXXXX">
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label small fw-bold">Email Address <span class="text-danger">*</span></label>
-                                <input type="email" name="email" id="cEmail" class="form-control form-control-sm" required placeholder="name@example.com">
+                                <label class="form-label small fw-bold">Email Address</label>
+                                <input type="email" name="email" id="cEmail" class="form-control form-control-sm" placeholder="name@example.com (Optional)">
                             </div>
                         </div>
                     </div>
@@ -764,8 +824,8 @@ $baseUrl = $GLOBALS['base_url'];
 
                     <div class="alert alert-light border text-start small mb-3">
                         <div class="fw-bold mb-1 text-dark"><i class="fa-solid fa-circle-info text-primary me-1"></i>Required Columns:</div>
-                        <code>Name, Phone, Email, Position, Department</code>
-                        <div class="text-muted mt-1" style="font-size: 0.75rem;">Other fields (Source, Interview Date, Location, Remarks) can be uploaded or filled later.</div>
+                        <code>Name, Phone</code>
+                        <div class="text-muted mt-1" style="font-size: 0.75rem;">Sample CSV contains only Name and Phone. Other fields (Email, Position, Department, Source, Interview Date, Location, Remarks) are optional.</div>
                     </div>
 
                     <div class="mb-3">
@@ -828,11 +888,17 @@ $baseUrl = $GLOBALS['base_url'];
                     <div class="mb-3">
                         <label class="form-label small fw-semibold">Interview Date</label>
                         <input type="date" id="bulkInterviewDate" class="form-control">
+                        <div class="form-text" style="font-size: 0.75rem;">Leave empty if you don't want to change date.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Interview Time</label>
+                        <input type="time" id="bulkInterviewTime" class="form-control">
+                        <div class="form-text" style="font-size: 0.75rem;">Leave empty if you don't want to change time.</div>
                     </div>
                     <div>
-                        <label class="form-label small fw-semibold">Location</label>
+                        <label class="form-label small fw-semibold">Interview Location</label>
                         <select id="bulkInterviewLocation" class="form-select">
-                            <option value="">Keep current location</option>
+                            <option value="">-- Keep Current Location --</option>
                             <?php foreach ($options['interview_location'] ?? [] as $loc): ?>
                                 <option value="<?= htmlspecialchars($loc['option_value']) ?>"><?= htmlspecialchars($loc['option_value']) ?></option>
                             <?php endforeach; ?>
@@ -875,6 +941,102 @@ $baseUrl = $GLOBALS['base_url'];
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary btn-sm px-4" onclick="executeBulkUpdate()">Apply to Selected</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- Modal: Single Candidate Quick Schedule Edit -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="singleScheduleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header py-2 px-3 bg-light border-bottom">
+                <h6 class="modal-title fw-bold text-dark" style="font-size: 0.9rem;">
+                    <i class="fa-regular fa-calendar-check me-1 text-primary"></i> Edit Schedule
+                </h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-3">
+                <div class="small fw-semibold text-truncate mb-2 text-dark" id="modalCandidateNameTitle"></div>
+                <input type="hidden" id="modalCandidateId">
+                <div class="mb-2">
+                    <label class="form-label small fw-semibold mb-1">Interview Date</label>
+                    <input type="date" id="modalInterviewDate" class="form-control form-control-sm">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small fw-semibold mb-1">Interview Time</label>
+                    <input type="time" id="modalInterviewTime" class="form-control form-control-sm">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small fw-semibold mb-1">Interview Location</label>
+                    <select id="modalInterviewLocation" class="form-select form-select-sm">
+                        <option value="">-- Select Location --</option>
+                        <?php foreach ($options['interview_location'] ?? [] as $loc): ?>
+                            <option value="<?= htmlspecialchars($loc['option_value']) ?>"><?= htmlspecialchars($loc['option_value']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer py-2 px-3 bg-light border-top d-flex justify-content-end gap-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary btn-sm" id="btnSaveSingleSchedule" onclick="saveSingleSchedule()">
+                    <i class="fa-solid fa-check me-1"></i> Save
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- Modal: Quick CV Upload for Candidate -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="quickCvUploadModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header py-2 px-3 bg-light border-bottom">
+                <h6 class="modal-title fw-bold text-dark" style="font-size: 0.9rem;">
+                    <i class="fa-solid fa-cloud-arrow-up me-1 text-primary"></i> Upload Candidate CV
+                </h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="quickCvUploadForm" onsubmit="submitQuickCvUpload(event)">
+                <div class="modal-body p-3">
+                    <div class="small fw-semibold text-truncate mb-2 text-dark" id="cvModalCandidateName"></div>
+                    <input type="hidden" id="cvModalCandidateId" name="candidate_id">
+
+                    <!-- CV Source Selection Tabs -->
+                    <div class="d-flex gap-3 mb-2">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="cv_source" id="cvSourceFile" value="file" checked onchange="toggleQuickCvSource('file')">
+                            <label class="form-check-label small" for="cvSourceFile">Upload File</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="cv_source" id="cvSourceDrive" value="drive_link" onchange="toggleQuickCvSource('drive')">
+                            <label class="form-check-label small" for="cvSourceDrive">Drive Link</label>
+                        </div>
+                    </div>
+
+                    <!-- File input -->
+                    <div id="quickCvFileSection" class="mb-2">
+                        <label class="form-label small fw-semibold mb-1">Select File (PDF, DOCX, Image)</label>
+                        <input type="file" name="cv_file" id="quickCvFileInput" class="form-control form-control-sm" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                        <div class="text-muted mt-1" style="font-size: 0.7rem;">Max 5MB. PDF or DOC preferred.</div>
+                    </div>
+
+                    <!-- Drive Link input -->
+                    <div id="quickCvDriveSection" class="mb-2 d-none">
+                        <label class="form-label small fw-semibold mb-1">Google Drive Link</label>
+                        <input type="url" name="cv_drive_link" id="quickCvDriveInput" class="form-control form-control-sm" placeholder="https://drive.google.com/...">
+                    </div>
+                </div>
+                <div class="modal-footer py-2 px-3 bg-light border-top d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm" id="btnSubmitQuickCv">
+                        <i class="fa-solid fa-cloud-arrow-up me-1"></i> Upload CV
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -1270,6 +1432,9 @@ function openBulkUpdateModal(actionType) {
         document.getElementById('bulkAttendanceSection').classList.remove('d-none');
     } else if (actionType === 'schedule') {
         document.getElementById('bulkActionTitle').textContent = `Set Interview Schedule (${ids.length} candidates)`;
+        document.getElementById('bulkInterviewDate').value = '';
+        document.getElementById('bulkInterviewTime').value = '';
+        document.getElementById('bulkInterviewLocation').value = '';
         document.getElementById('bulkScheduleSection').classList.remove('d-none');
     } else if (actionType === 'hired') {
         document.getElementById('bulkActionTitle').textContent = `Bulk Hired Decision (${ids.length} candidates)`;
@@ -1294,8 +1459,12 @@ function executeBulkUpdate() {
     } else if (actionType === 'interview_attendance') {
         formData.append('interview_attendance', document.getElementById('bulkAttendanceValue').value);
     } else if (actionType === 'schedule') {
-        formData.append('interview_date', document.getElementById('bulkInterviewDate').value);
-        formData.append('interview_location', document.getElementById('bulkInterviewLocation').value);
+        const dVal = document.getElementById('bulkInterviewDate').value;
+        const tVal = document.getElementById('bulkInterviewTime').value;
+        const lVal = document.getElementById('bulkInterviewLocation').value;
+        if (dVal !== '') formData.append('interview_date', dVal);
+        if (tVal !== '') formData.append('interview_time', tVal);
+        if (lVal !== '') formData.append('interview_location', lVal);
     } else if (actionType === 'hired') {
         formData.append('hired', document.getElementById('bulkHiredValue').value);
     } else if (actionType === 'communication') {
@@ -1390,5 +1559,153 @@ function exportAtsCsv() {
 
 function exportAtsPdf() {
     window.location.href = getAtsExportUrl('ats-export-pdf');
+}
+
+// Single Candidate Interview Schedule Modal Handlers
+function openSingleScheduleModal(id, name, date, time, location) {
+    document.getElementById('modalCandidateId').value = id;
+    document.getElementById('modalCandidateNameTitle').textContent = name;
+    document.getElementById('modalInterviewDate').value = date || '';
+    document.getElementById('modalInterviewTime').value = time || '';
+    
+    const locSelect = document.getElementById('modalInterviewLocation');
+    locSelect.value = location || '';
+    if (location && locSelect.value !== location) {
+        let opt = document.createElement('option');
+        opt.value = location;
+        opt.textContent = location;
+        opt.selected = true;
+        locSelect.appendChild(opt);
+    }
+    
+    new bootstrap.Modal(document.getElementById('singleScheduleModal')).show();
+}
+
+function saveSingleSchedule() {
+    const id = document.getElementById('modalCandidateId').value;
+    const date = document.getElementById('modalInterviewDate').value;
+    const time = document.getElementById('modalInterviewTime').value;
+    const location = document.getElementById('modalInterviewLocation').value;
+
+    const btn = document.getElementById('btnSaveSingleSchedule');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+
+    const formData = new FormData();
+    formData.append('action', 'schedule');
+    formData.append('ids', id);
+    formData.append('interview_date', date);
+    formData.append('interview_time', time);
+    formData.append('interview_location', location);
+
+    fetch('<?= $baseUrl ?>/api/ats/bulk-update', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+    })
+    .then(async res => {
+        const text = await res.text();
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            throw new Error('Invalid server response');
+        }
+    })
+    .then(res => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> Save';
+        if (res.success) {
+            const modalEl = document.getElementById('singleScheduleModal');
+            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) modalInstance.hide();
+            
+            atsShowToast('Schedule updated successfully!');
+            setTimeout(() => window.location.reload(), 600);
+        } else {
+            Swal.fire('Error', res.message || 'Failed to update schedule', 'error');
+        }
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> Save';
+        console.error(err);
+        Swal.fire('Error', err.message || 'Network connection issue', 'error');
+    });
+}
+
+function changePerPage(val) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('per_page', val);
+    url.searchParams.set('page', '1');
+    window.location.href = url.toString();
+}
+
+// Quick CV Upload Handlers
+function openQuickCvModal(id, name) {
+    document.getElementById('cvModalCandidateId').value = id;
+    document.getElementById('cvModalCandidateName').textContent = name;
+    document.getElementById('cvSourceFile').checked = true;
+    document.getElementById('quickCvFileSection').classList.remove('d-none');
+    document.getElementById('quickCvDriveSection').classList.add('d-none');
+    document.getElementById('quickCvFileInput').value = '';
+    document.getElementById('quickCvDriveInput').value = '';
+
+    new bootstrap.Modal(document.getElementById('quickCvUploadModal')).show();
+}
+
+function toggleQuickCvSource(type) {
+    const fileSec = document.getElementById('quickCvFileSection');
+    const driveSec = document.getElementById('quickCvDriveSection');
+    if (type === 'drive') {
+        fileSec.classList.add('d-none');
+        driveSec.classList.remove('d-none');
+    } else {
+        fileSec.classList.remove('d-none');
+        driveSec.classList.add('d-none');
+    }
+}
+
+function submitQuickCvUpload(e) {
+    e.preventDefault();
+    const form = document.getElementById('quickCvUploadForm');
+    const formData = new FormData(form);
+
+    const btn = document.getElementById('btnSubmitQuickCv');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Uploading...';
+
+    fetch('<?= $baseUrl ?>/api/ats/upload-cv', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+    })
+    .then(async res => {
+        const text = await res.text();
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            throw new Error('Invalid response from server');
+        }
+    })
+    .then(res => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up me-1"></i> Upload CV';
+        if (res.success) {
+            const modalEl = document.getElementById('quickCvUploadModal');
+            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) modalInstance.hide();
+
+            atsShowToast(res.message || 'CV uploaded successfully!');
+            setTimeout(() => location.reload(), 600);
+        } else {
+            Swal.fire('Error', res.message || 'Failed to upload CV', 'error');
+        }
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up me-1"></i> Upload CV';
+        console.error(err);
+        Swal.fire('Error', err.message || 'Network connection issue', 'error');
+    });
 }
 </script>

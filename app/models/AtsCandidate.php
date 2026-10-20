@@ -111,11 +111,16 @@ class AtsCandidate extends Model
     /**
      * Get paginated candidates with multi-field search and quick tabs
      */
-    public function getFiltered(array $filters = [], int $page = 1, int $perPage = 25): array
+    public function getFiltered(array $filters = [], int $page = 1, int $perPage = 20): array
     {
         $page = max(1, $page);
-        $perPage = max(5, min(100, $perPage));
-        $offset = ($page - 1) * $perPage;
+        if ($perPage >= 1000) {
+            $perPage = 10000;
+            $offset = 0;
+        } else {
+            $perPage = max(5, $perPage);
+            $offset = ($page - 1) * $perPage;
+        }
 
         [$whereClause, $params, $types] = $this->buildFilterConditions($filters);
 
@@ -237,8 +242,8 @@ class AtsCandidate extends Model
      */
     public function create(array $data): int|bool
     {
-        // Name, Phone, Email mandatory
-        if (empty($data['name']) || empty($data['phone']) || empty($data['email'])) {
+        // Name and Phone mandatory
+        if (empty($data['name']) || empty($data['phone'])) {
             return false;
         }
 
@@ -267,7 +272,7 @@ class AtsCandidate extends Model
 
         $name = trim($data['name']);
         $phone = trim($data['phone']);
-        $email = trim($data['email']);
+        $email = !empty($data['email']) ? trim($data['email']) : '';
         $position = trim($data['position'] ?? 'Not Specified');
         $department = trim($data['department'] ?? 'General');
         $source = !empty($data['source']) ? trim($data['source']) : null;
@@ -335,7 +340,7 @@ class AtsCandidate extends Model
 
         $name = trim($data['name']);
         $phone = trim($data['phone']);
-        $email = trim($data['email']);
+        $email = !empty($data['email']) ? trim($data['email']) : '';
         $position = trim($data['position'] ?? 'Not Specified');
         $department = trim($data['department'] ?? 'General');
         $source = !empty($data['source']) ? trim($data['source']) : null;
@@ -387,10 +392,24 @@ class AtsCandidate extends Model
             'invitation_status', 'interview_attendance', 'hired', 
             'interview_date', 'interview_time', 'interview_location',
             'interview_call_date', 'email_sent', 'sms_sent', 'remarks',
-            'joining_date', 'onboarding_salary'
+            'joining_date', 'onboarding_salary',
+            'cv_source', 'cv_file_path', 'cv_drive_link'
         ];
 
         if (!in_array($fieldName, $allowedFields)) return false;
+
+        // If date/time/salary/location field is empty string, convert to NULL for MySQL strict mode safety
+        $nullableFields = [
+            'interview_date', 'interview_time', 'interview_location',
+            'interview_call_date', 'joining_date', 'onboarding_salary',
+            'remarks'
+        ];
+        if (in_array($fieldName, $nullableFields) && ($fieldValue === '' || $fieldValue === null)) {
+            $stmt = $this->db->prepare("UPDATE {$this->table} SET `{$fieldName}` = NULL WHERE id = ?");
+            if (!$stmt) return false;
+            $stmt->bind_param("i", $id);
+            return $stmt->execute();
+        }
 
         $stmt = $this->db->prepare("UPDATE {$this->table} SET `{$fieldName}` = ? WHERE id = ?");
         if (!$stmt) return false;
@@ -425,16 +444,34 @@ class AtsCandidate extends Model
             $types .= "s";
         }
 
-        if (isset($updates['interview_date']) && $updates['interview_date'] !== '') {
-            $setClauses[] = "interview_date = ?";
-            $params[] = $updates['interview_date'];
-            $types .= "s";
+        if (isset($updates['interview_date'])) {
+            if ($updates['interview_date'] === '') {
+                $setClauses[] = "interview_date = NULL";
+            } else {
+                $setClauses[] = "interview_date = ?";
+                $params[] = $updates['interview_date'];
+                $types .= "s";
+            }
         }
 
-        if (isset($updates['interview_location']) && $updates['interview_location'] !== '') {
-            $setClauses[] = "interview_location = ?";
-            $params[] = $updates['interview_location'];
-            $types .= "s";
+        if (isset($updates['interview_time'])) {
+            if ($updates['interview_time'] === '') {
+                $setClauses[] = "interview_time = NULL";
+            } else {
+                $setClauses[] = "interview_time = ?";
+                $params[] = $updates['interview_time'];
+                $types .= "s";
+            }
+        }
+
+        if (isset($updates['interview_location'])) {
+            if ($updates['interview_location'] === '') {
+                $setClauses[] = "interview_location = NULL";
+            } else {
+                $setClauses[] = "interview_location = ?";
+                $params[] = $updates['interview_location'];
+                $types .= "s";
+            }
         }
 
         if (isset($updates['department']) && $updates['department'] !== '') {

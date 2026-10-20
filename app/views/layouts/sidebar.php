@@ -1463,7 +1463,7 @@
                         <span class="category-name">HR & Payroll </span>
                     </li>
 
-                    <!-- Sales Dashboard -->
+                    <!-- 1. HR Dashboard -->
                     <li class="slide ">
                         <a href="<?= $base_url ?>/hrm-dashboard"
                             class="sidebar__menu-item <?= isActive('hrm-dashboard', $current_route) ?>">
@@ -1480,6 +1480,15 @@
                                 <span class="badge bg-danger ms-auto me-2 rounded-pill"
                                     style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $pendingTasksCount ?></span>
                             <?php endif; ?>
+                        </a>
+                    </li>
+
+                    <!-- 2. Employee Manage -->
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/employee-lists"
+                            class="sidebar__menu-item <?= isActive('employee-lists', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-users"></i></div>
+                            <span class="sidebar__menu-label">Employee Manage</span>
                         </a>
                     </li>
 
@@ -1510,16 +1519,6 @@
                                 </a>
                             </li>
                         </ul>
-                    </li>
-
-                    <!-- Location -->
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/employee-lists"
-                            class="sidebar__menu-item <?= isActive('employee-lists', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-users"></i>
-                            </div>
-                            <span class="sidebar__menu-label">Employee Manage</span>
-                        </a>
                     </li>
 
                     <!-- Tipsoi Employee Data Group -->
