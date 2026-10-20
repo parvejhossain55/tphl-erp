@@ -97,6 +97,27 @@ $buildStatUrl = function($targetFilter) use ($statusFilter) {
 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
     <h5 class="mb-0 fw-bold text-dark"><i class="fa-solid fa-users text-primary me-2"></i>Employee Directory</h5>
     <div class="d-flex align-items-center gap-2 flex-wrap">
+        <!-- Per Page Dropdown Button -->
+        <div class="dropdown">
+            <button class="btn btn-sm btn-white bg-white border shadow-sm d-flex align-items-center justify-content-between px-3" 
+                    type="button" 
+                    data-bs-toggle="dropdown" 
+                    aria-expanded="false" 
+                    style="min-width: 100px; height: 32px; font-size: 12.5px; border-radius: 6px;"
+                    title="Select rows per page">
+                <span class="text-muted small me-1">Show:</span>
+                <span class="fw-bold text-dark"><?= ($selectedPerPage === 'all') ? 'All' : htmlspecialchars($selectedPerPage) ?></span>
+                <i class="fa-solid fa-chevron-down text-muted ms-2" style="font-size: 10px;"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 py-1" style="min-width: 100px; font-size: 12.5px;">
+                <li><a class="dropdown-item py-1.5 <?= ($selectedPerPage === '25') ? 'active fw-bold' : '' ?>" href="javascript:void(0)" onclick="changePerPage('25')">25</a></li>
+                <li><a class="dropdown-item py-1.5 <?= ($selectedPerPage === '50') ? 'active fw-bold' : '' ?>" href="javascript:void(0)" onclick="changePerPage('50')">50</a></li>
+                <li><a class="dropdown-item py-1.5 <?= ($selectedPerPage === '100') ? 'active fw-bold' : '' ?>" href="javascript:void(0)" onclick="changePerPage('100')">100</a></li>
+                <li><hr class="dropdown-divider my-1"></li>
+                <li><a class="dropdown-item py-1.5 <?= ($selectedPerPage === 'all') ? 'active fw-bold' : '' ?>" href="javascript:void(0)" onclick="changePerPage('all')">All</a></li>
+            </ul>
+        </div>
+
         <!-- View Toggle (Grid / Table) -->
         <div class="btn-group shadow-sm" role="group" aria-label="View toggle">
             <button type="button" class="btn btn-sm btn-outline-primary active" id="btnViewGrid" onclick="setEmployeeView('grid')" title="Card/Grid View">
@@ -194,6 +215,9 @@ $buildStatUrl = function($targetFilter) use ($statusFilter) {
 <form action="" method="get" class="mb-20">
     <?php if (!empty($statusFilter)): ?>
         <input type="hidden" name="status_filter" value="<?= htmlspecialchars($statusFilter) ?>">
+    <?php endif; ?>
+    <?php if (!empty($selectedPerPage)): ?>
+        <input type="hidden" name="per_page" value="<?= htmlspecialchars($selectedPerPage) ?>">
     <?php endif; ?>
 
     <!-- Filter Bar Card -->
@@ -563,8 +587,13 @@ $listReturnUrl = $GLOBALS['base_url'] . '/employee-lists' . $currentQuery;
 <!-- Count Info + Pagination -->
 <?php
     $currentPageCount = count($employees);
-    $startRecord = $totalEmployees > 0 ? (($currentPage - 1) * $perPage) + 1 : 0;
-    $endRecord   = min($startRecord + $currentPageCount - 1, $totalEmployees);
+    if ($selectedPerPage === 'all') {
+        $startRecord = $totalEmployees > 0 ? 1 : 0;
+        $endRecord   = $totalEmployees;
+    } else {
+        $startRecord = $totalEmployees > 0 ? (($currentPage - 1) * $perPage) + 1 : 0;
+        $endRecord   = min($startRecord + $currentPageCount - 1, $totalEmployees);
+    }
 ?>
 <div class="row mt-4 mb-2 align-items-center">
     <div class="col-12">
@@ -582,23 +611,49 @@ $listReturnUrl = $GLOBALS['base_url'] . '/employee-lists' . $currentQuery;
                         employees
                     </span>
                 </div>
-                <div class="d-flex align-items-center gap-2 text-muted" style="font-size: 13px;">
-                    <i class="bi bi-file-earmark-person"></i>
-                    Page <strong><?= $currentPage ?></strong> of <strong><?= $totalPages ?></strong>
-                    &nbsp;|&nbsp;
-                    <strong><?= $currentPageCount ?></strong> shown on this page
+                <div class="d-flex align-items-center gap-3 text-muted" style="font-size: 13px;">
+                    <!-- Per Page Selector Button (25, 50, 100, All) -->
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="text-dark fw-semibold small">Show:</span>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-white bg-white border shadow-sm d-flex align-items-center justify-content-between px-3" 
+                                    type="button" 
+                                    data-bs-toggle="dropdown" 
+                                    aria-expanded="false" 
+                                    style="min-width: 95px; height: 32px; font-size: 12.5px; border-radius: 6px;"
+                                    title="Select rows per page">
+                                <span class="fw-semibold text-dark"><?= ($selectedPerPage === 'all') ? 'All' : htmlspecialchars($selectedPerPage) ?></span>
+                                <i class="fa-solid fa-chevron-down text-muted ms-2" style="font-size: 10px;"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 py-1" style="min-width: 95px; font-size: 12.5px;">
+                                <li><a class="dropdown-item py-1.5 <?= ($selectedPerPage === '25') ? 'active fw-bold' : '' ?>" href="javascript:void(0)" onclick="changePerPage('25')">25</a></li>
+                                <li><a class="dropdown-item py-1.5 <?= ($selectedPerPage === '50') ? 'active fw-bold' : '' ?>" href="javascript:void(0)" onclick="changePerPage('50')">50</a></li>
+                                <li><a class="dropdown-item py-1.5 <?= ($selectedPerPage === '100') ? 'active fw-bold' : '' ?>" href="javascript:void(0)" onclick="changePerPage('100')">100</a></li>
+                                <li><hr class="dropdown-divider my-1"></li>
+                                <li><a class="dropdown-item py-1.5 <?= ($selectedPerPage === 'all') ? 'active fw-bold' : '' ?>" href="javascript:void(0)" onclick="changePerPage('all')">All</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div>
+                        <i class="bi bi-file-earmark-person"></i>
+                        Page <strong><?= $currentPage ?></strong> of <strong><?= $totalPages ?></strong>
+                        &nbsp;|&nbsp;
+                        <strong><?= $currentPageCount ?></strong> shown on this page
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Pagination -->
-<div class="row mb-4">
-    <div class="col-12 d-flex justify-content-center">
-        <?= paginateLinksSecondary($paginationRoute ?? ($base_url . "/employee-lists"), $currentPage, $totalPages); ?>
+<!-- Pagination Links -->
+<?php if ($selectedPerPage !== 'all' && $totalPages > 1): ?>
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-center">
+            <?= paginateLinksSecondary($paginationRoute ?? ($base_url . "/employee-lists"), $currentPage, $totalPages); ?>
+        </div>
     </div>
-</div>
+<?php endif; ?>
 
 <script>
     const base_url = "<?= $GLOBALS['base_url'] ?>";
@@ -684,4 +739,11 @@ $listReturnUrl = $GLOBALS['base_url'] . '/employee-lists' . $currentQuery;
             }
         } catch(e) {}
     })();
+
+    function changePerPage(perPage) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('per_page', perPage);
+        url.searchParams.set('page', '1');
+        window.location.href = url.toString();
+    }
 </script>

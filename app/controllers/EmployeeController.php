@@ -49,18 +49,27 @@ class EmployeeController extends Controller
         // Fetch dynamic stats for top cards based on search/dept/team/workplace/month filters
         $stats = $this->employeeModel->getStatsCounts($searchTerm, $departmentFilter, $teamFilter, $workplaceFilter, $monthFilter);
 
+        $perPageParam = strtolower(trim($_GET['per_page'] ?? '25'));
+        if ($perPageParam === 'all') {
+            $perPage = 10000;
+        } elseif (in_array((int)$perPageParam, [25, 50, 100], true)) {
+            $perPage = (int)$perPageParam;
+        } else {
+            $perPage = 25;
+            $perPageParam = '25';
+        }
+
         $currentPage = max(1, isset($_GET['page']) ? intval($_GET['page']) : 1);
-        $perPage = 10;
 
         // Total employee count with filters
         $totalEmployees = (int) $this->employeeModel->countAll($searchTerm, $departmentFilter, $teamFilter, $workplaceFilter, $statusFilter, $monthFilter);
-        $totalPages = ceil($totalEmployees / $perPage);
+        $totalPages = ($perPageParam === 'all') ? 1 : max(1, (int) ceil($totalEmployees / $perPage));
 
         // Reset to last available page if current page exceeds total pages after filtering
         if ($totalPages > 0 && $currentPage > $totalPages) {
             $currentPage = (int) $totalPages;
         }
-        $offset = ($currentPage - 1) * $perPage;
+        $offset = ($perPageParam === 'all') ? 0 : (($currentPage - 1) * $perPage);
 
         // Get paginated employees with search & department filter
         $employees = $this->employeeModel->getPaginated($perPage, $offset, $searchTerm, $departmentFilter, $teamFilter, $workplaceFilter, $statusFilter, $monthFilter);
@@ -90,6 +99,7 @@ class EmployeeController extends Controller
             "totalPages" => $totalPages,
             "totalEmployees" => $totalEmployees,
             "perPage" => $perPage,
+            "selectedPerPage" => $perPageParam,
             "employees" => $employees,
             "departments" => $departments,
             "teams" => $teams,
