@@ -335,7 +335,7 @@
                 </div>
                 <form id="editProfileForm">
                     <div class="modal-body p-4">
-                        <div class="row g-3">
+                        <div class="row">
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold text-dark">Father's Name</label>
                                 <input type="text" class="form-control" name="father_name" value="<?= htmlspecialchars($employee['father_name'] ?? '') ?>" placeholder="Enter father's name">
