@@ -1233,7 +1233,12 @@ public function indexTwo($bookingId = null)
                     $paidVal = (float)($client['construction_paid'] ?? 0);
                     $dueVal = (float)($client['construction_due'] ?? 0);
                 }
-                $html .= '<td class="fw-bold text-dark text-nowrap">TK.' . number_format($targetVal, 2) . '</td>';
+                $discVal = (float)($client['total_discount'] ?? 0);
+                $html .= '<td class="fw-bold text-dark text-nowrap">TK.' . number_format($targetVal, 2);
+                if ($discVal > 0) {
+                    $html .= '<div style="font-size: 10.5px; color: #d97706; font-weight: 500;">(Disc: ৳' . number_format($discVal, 2) . ')</div>';
+                }
+                $html .= '</td>';
                 $html .= '<td class="text-nowrap"><span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" style="font-size: 11.5px;">TK.' . number_format($paidVal, 2) . '</span></td>';
                 $html .= '<td class="text-nowrap"><span class="badge ' . ($dueVal > 0 ? 'bg-danger-subtle text-danger border border-danger-subtle' : 'bg-light text-muted border') . ' px-2 py-1" style="font-size: 11.5px;">TK.' . number_format($dueVal, 2) . '</span></td>';
             } else {
@@ -1338,7 +1343,9 @@ public function indexTwo($bookingId = null)
         $grandTarget = 0;
         $grandPaid = 0;
         $grandDue = 0;
+        $grandDiscount = 0;
         foreach ($clients as $c) {
+            $grandDiscount += (float)($c['total_discount'] ?? 0);
             if ($paymentType === 'full_payment' || empty($paymentType)) {
                 $grandTarget += (float)($c['total_price_target'] ?? $c['total_agreement_value'] ?? 0);
                 $grandPaid += (float)($c['total_paid'] ?? 0);
@@ -1373,7 +1380,8 @@ public function indexTwo($bookingId = null)
             'dateType' => $dateType,
             'grandTarget' => $grandTarget,
             'grandPaid' => $grandPaid,
-            'grandDue' => $grandDue
+            'grandDue' => $grandDue,
+            'grandDiscount' => $grandDiscount
         ];
 
         extract($viewData);

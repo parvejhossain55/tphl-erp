@@ -123,6 +123,8 @@ class AccountClient extends Model
         $whereClause = "WHERE " . implode(" AND ", $whereParts);
         $havingClause = !empty($havingParts) ? "HAVING " . implode(" AND ", $havingParts) : "";
 
+        $projectSubFilter = $projectId ? " AND lb_sub.project_id = " . (int)$projectId : "";
+
         $dataSql = "
         SELECT
             l.id AS lead_id,
@@ -161,6 +163,7 @@ class AccountClient extends Model
             COALESCE(SUM(COALESCE(f.development_charges, 0)), 0) AS total_dev_charge_target,
             COALESCE(SUM(CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END), 0) AS total_shop_service_charge_target,
             COALESCE(SUM(GREATEST(0, ROUND(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) - (COALESCE(f.land_share_value, 0) + COALESCE(f.development_charges, 0) + CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END)))), 0) AS total_construction_target,
+            COALESCE(SUM(lb.discount_amount), 0) AS total_discount,
 
             -- Financial Breakdown Paid
             COALESCE(p_stats.land_share_paid, 0) AS land_share_paid,
@@ -211,6 +214,7 @@ class AccountClient extends Model
                AND (lb_sub.landshare_status IS NULL OR lb_sub.landshare_status != 'cancelled')
                AND lb_sub.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
                AND lp.is_trashed = 0
+               {$projectSubFilter}
             GROUP BY lb_sub.lead_id
         ) AS p_stats ON p_stats.lead_id = l.id
         LEFT JOIN (
@@ -222,6 +226,7 @@ class AccountClient extends Model
                AND lb_sub.booking_status NOT IN ('refunded', 'cancelled')
                AND (lb_sub.landshare_status IS NULL OR lb_sub.landshare_status != 'cancelled')
                AND lb_sub.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+               {$projectSubFilter}
             GROUP BY lb_sub.lead_id
         ) AS agents ON agents.lead_id = l.id
         $whereClause
@@ -352,6 +357,8 @@ class AccountClient extends Model
         $whereClause = "WHERE " . implode(" AND ", $whereParts);
         $havingClause = !empty($havingParts) ? "HAVING " . implode(" AND ", $havingParts) : "";
 
+        $projectSubFilter = $projectId ? " AND lb_sub.project_id = " . (int)$projectId : "";
+
         $countSql = "
             SELECT COUNT(*) as total FROM (
                 SELECT 
@@ -403,6 +410,7 @@ class AccountClient extends Model
                        AND (lb_sub.landshare_status IS NULL OR lb_sub.landshare_status != 'cancelled')
                        AND lb_sub.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
                        AND lp.is_trashed = 0
+                       {$projectSubFilter}
                     GROUP BY lb_sub.lead_id
                 ) AS p_stats ON p_stats.lead_id = l.id
                 $whereClause

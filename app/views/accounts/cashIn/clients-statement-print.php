@@ -167,7 +167,7 @@ if ($paymentType === 'land_share') {
         /* Summary Stats Cards */
         .summary-cards {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
             gap: 12px;
             margin-bottom: 16px;
         }
@@ -190,6 +190,10 @@ if ($paymentType === 'land_share') {
 
         .summary-card.purple {
             border-left-color: #8b5cf6;
+        }
+
+        .summary-card.amber {
+            border-left-color: #f59e0b;
         }
 
         .summary-card-label {
@@ -412,6 +416,12 @@ if ($paymentType === 'land_share') {
                 <div class="summary-card-label"><?= htmlspecialchars($targetColumnLabel) ?></div>
                 <div class="summary-card-value">৳<?= number_format($grandTarget, 2) ?></div>
             </div>
+            <?php if (!empty($grandDiscount) && $grandDiscount > 0): ?>
+            <div class="summary-card amber">
+                <div class="summary-card-label">Total Discount</div>
+                <div class="summary-card-value" style="color: #d97706;">৳<?= number_format($grandDiscount, 2) ?></div>
+            </div>
+            <?php endif; ?>
             <div class="summary-card green">
                 <div class="summary-card-label">Total Paid</div>
                 <div class="summary-card-value">৳<?= number_format($grandPaid, 2) ?></div>
@@ -514,7 +524,12 @@ if ($paymentType === 'land_share') {
                                 <?php endif; ?>
                             </td>
                             <?php if (!empty($paymentType)): ?>
-                                <td class="text-end">৳<?= number_format($targetVal, 2) ?></td>
+                                <td class="text-end">
+                                    ৳<?= number_format($targetVal, 2) ?>
+                                    <?php if (!empty($c['total_discount']) && (float)$c['total_discount'] > 0): ?>
+                                        <div style="font-size: 8.5px; color: #d97706; font-weight: 600;">(Disc: ৳<?= number_format($c['total_discount'], 2) ?>)</div>
+                                    <?php endif; ?>
+                                </td>
                                 <td class="text-end" style="color: #15803d; font-weight: 600;">৳<?= number_format($paidVal, 2) ?></td>
                                 <td class="text-end" style="color: <?= $dueVal > 0 ? '#b91c1c' : '#64748b' ?>; font-weight: 600;">৳<?= number_format($dueVal, 2) ?></td>
                             <?php else: ?>
@@ -534,7 +549,12 @@ if ($paymentType === 'land_share') {
                 <tr>
                     <td colspan="5" class="text-end"><strong>GRAND TOTAL:</strong></td>
                     <?php if (!empty($paymentType)): ?>
-                        <td class="text-end"><strong>৳<?= number_format($grandTarget, 2) ?></strong></td>
+                        <td class="text-end">
+                            <strong>৳<?= number_format($grandTarget, 2) ?></strong>
+                            <?php if (!empty($grandDiscount) && $grandDiscount > 0): ?>
+                                <div style="font-size: 8.5px; color: #d97706; font-weight: 600;">(Total Disc: ৳<?= number_format($grandDiscount, 2) ?>)</div>
+                            <?php endif; ?>
+                        </td>
                         <td class="text-end" style="color: #15803d;"><strong>৳<?= number_format($grandPaid, 2) ?></strong></td>
                         <td class="text-end" style="color: #b91c1c;"><strong>৳<?= number_format($grandDue, 2) ?></strong></td>
                     <?php else: ?>
