@@ -97,6 +97,15 @@ $buildStatUrl = function($targetFilter) use ($statusFilter) {
 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
     <h5 class="mb-0 fw-bold text-dark"><i class="fa-solid fa-users text-primary me-2"></i>Employee Directory</h5>
     <div class="d-flex align-items-center gap-2 flex-wrap">
+        <!-- View Toggle (Grid / Table) -->
+        <div class="btn-group shadow-sm" role="group" aria-label="View toggle">
+            <button type="button" class="btn btn-sm btn-outline-primary active" id="btnViewGrid" onclick="setEmployeeView('grid')" title="Card/Grid View">
+                <i class="fa-solid fa-table-cells-large me-1"></i> Grid
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="btnViewTable" onclick="setEmployeeView('table')" title="List/Table View">
+                <i class="fa-solid fa-list-ul me-1"></i> Table
+            </button>
+        </div>
         <a href="<?= $GLOBALS['base_url'] ?>/employees-pdf-download?<?= $_SERVER['QUERY_STRING'] ?? '' ?>" class="btn btn-sm btn-outline-danger shadow-sm">
             <i class="fa-solid fa-file-pdf me-1"></i> PDF Download
         </a>
@@ -290,7 +299,7 @@ $buildStatUrl = function($targetFilter) use ($statusFilter) {
 $currentQuery = !empty($_SERVER['QUERY_STRING']) ? '?' . $_SERVER['QUERY_STRING'] : '';
 $listReturnUrl = $GLOBALS['base_url'] . '/employee-lists' . $currentQuery;
 ?>
-<div class="row align-items-stretch">
+<div class="row align-items-stretch" id="employeeGridView">
     <?php if (empty($employees)): ?>
         <div class="col-12 py-5 text-center">
             <div class="card__wrapper p-5 shadow-sm">
@@ -394,48 +403,203 @@ $listReturnUrl = $GLOBALS['base_url'] . '/employee-lists' . $currentQuery;
             </div>
         </div>
     <?php endforeach ?>
+</div>
 
+<!-- Table View Container -->
+<div id="employeeTableView" class="d-none">
+    <div class="card__wrapper p-0 overflow-hidden shadow-sm mb-3 border-0 rounded-3">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
+                <thead class="table-light" style="font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <tr class="text-secondary">
+                        <th class="ps-3" style="width: 55px;">Photo</th>
+                        <th style="min-width: 200px;">Employee</th>
+                        <th style="min-width: 170px;">Designation &amp; Dept</th>
+                        <th style="min-width: 170px;">Team &amp; Workplace</th>
+                        <th style="min-width: 160px;">Contact</th>
+                        <th style="min-width: 120px;">Status</th>
+                        <th class="text-center" style="width: 120px;">Social</th>
+                        <th class="text-end pe-3" style="width: 140px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (empty($employees)): ?>
+                        <tr>
+                            <td colspan="8" class="text-center py-5 text-muted">
+                                <i class="fa-solid fa-user-slash fs-2 d-block mb-2 text-secondary opacity-50"></i>
+                                No employee records match the selected filter criteria.
+                            </td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($employees as $employee): 
+                            $empStatus = strtolower($employee['employee_status'] ?? 'active');
+                            $jDate = $employee['joining_date'] ?? '';
+                            $jTime = (!empty($jDate) && $jDate !== '0000-00-00') ? strtotime($jDate) : false;
+                            $rDate = $employee['resign_date'] ?? '';
+                            $rTime = (!empty($rDate) && $rDate !== '0000-00-00') ? strtotime($rDate) : false;
+                        ?>
+                            <tr>
+                                <td class="ps-3">
+                                    <a href="<?= $GLOBALS['base_url'] ?>/employee-profile/<?= $employee['id'] ?>">
+                                        <img src="<?= getImage('employees', $employee['photo']) ?? '' ?>" 
+                                             alt="<?= htmlspecialchars($employee['full_name'] ?? '') ?>" 
+                                             class="rounded-circle object-fit-cover shadow-sm" 
+                                             style="width: 42px; height: 42px; border: 2px solid #e2e8f0;">
+                                    </a>
+                                </td>
+                                <td>
+                                    <div class="fw-bold text-dark">
+                                        <a href="<?= $GLOBALS['base_url'] ?>/employee-profile/<?= $employee['id'] ?>" class="text-dark text-decoration-none">
+                                            <?= htmlspecialchars($employee['full_name'] ?? '') ?>
+                                        </a>
+                                    </div>
+                                    <div class="text-muted small">
+                                        <span>ID: <strong><?= htmlspecialchars($employee['employee_id'] ?? '-') ?></strong></span>
+                                        <?php if (!empty($employee['username'])): ?>
+                                            &nbsp;|&nbsp;<span class="text-primary">@<?= htmlspecialchars($employee['username']) ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php if ($jTime && date('Y-m', $jTime) === $displayMonth): ?>
+                                        <span class="badge badge-soft-info px-2 py-0 fs-11 rounded-pill mt-1" title="Joined: <?= date('d M Y', $jTime) ?>">
+                                            <i class="fa-solid fa-user-plus me-1"></i>New Join (<?= date('M Y', $jTime) ?>)
+                                        </span>
+                                    <?php endif; ?>
+                                    <?php if ($rTime && date('Y-m', $rTime) === $displayMonth): ?>
+                                        <span class="badge badge-soft-danger px-2 py-0 fs-11 rounded-pill mt-1" title="Resigned: <?= date('d M Y', $rTime) ?>">
+                                            <i class="fa-solid fa-calendar-xmark me-1"></i>Resigned (<?= date('M Y', $rTime) ?>)
+                                        </span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold text-dark"><?= htmlspecialchars($employee['designation_name'] ?? '-') ?></div>
+                                    <div class="text-muted small"><?= htmlspecialchars($employee['department_name'] ?? '-') ?></div>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold text-dark">
+                                        <?= !empty($employee['team_name']) ? htmlspecialchars($employee['team_name']) : '<span class="text-muted">No Team</span>' ?>
+                                    </div>
+                                    <div class="text-primary small">
+                                        <i class="fa-solid fa-building me-1"></i><?= htmlspecialchars($employee['office_branch_name'] ?? 'Ashulia Site Office') ?>
+                                    </div>
+                                </td>
+                                <td>
+                                    <?php if (!empty($employee['phone'])): ?>
+                                        <div>
+                                            <a href="tel:<?= htmlspecialchars($employee['phone']) ?>" class="text-decoration-none text-dark fw-medium small">
+                                                <i class="fa-solid fa-phone text-success me-1"></i><?= htmlspecialchars($employee['phone']) ?>
+                                            </a>
+                                        </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($employee['email'])): ?>
+                                        <div class="text-muted small" style="font-size: 11.5px;">
+                                            <i class="fa-regular fa-envelope me-1"></i><?= htmlspecialchars($employee['email']) ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if ($empStatus === 'active'): ?>
+                                        <span class="badge badge-soft-success px-2 py-1 fs-11 rounded-pill">
+                                            <i class="fa-solid fa-circle-check me-1"></i>Active
+                                        </span>
+                                    <?php elseif (in_array($empStatus, ['inactive', 'terminated'])): ?>
+                                        <span class="badge badge-soft-danger px-2 py-1 fs-11 rounded-pill">
+                                            <i class="fa-solid fa-circle-xmark me-1"></i><?= ucfirst($empStatus) ?>
+                                        </span>
+                                    <?php elseif ($empStatus === 'resigned'): ?>
+                                        <span class="badge badge-soft-warning px-2 py-1 fs-11 rounded-pill">
+                                            <i class="fa-solid fa-arrow-right-from-bracket me-1"></i>Resigned
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="badge badge-soft-secondary px-2 py-1 fs-11 rounded-pill">
+                                            <?= htmlspecialchars(ucfirst($empStatus)) ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-center">
+                                    <div class="d-inline-flex gap-2">
+                                        <?php if (!empty($employee['social_media1'])): ?>
+                                            <a href="<?= formatUrl($employee['social_media1']) ?>" target="_blank" rel="noopener" class="btn btn-sm btn-light border py-1 px-2 text-primary" title="Facebook">
+                                                <i class="fa-brands fa-facebook-f"></i>
+                                            </a>
+                                        <?php endif; ?>
+                                        <?php if (!empty($employee['social_media2'])): ?>
+                                            <a href="<?= formatUrl($employee['social_media2']) ?>" target="_blank" rel="noopener" class="btn btn-sm btn-light border py-1 px-2 text-info" title="LinkedIn">
+                                                <i class="fa-brands fa-linkedin-in"></i>
+                                            </a>
+                                        <?php endif; ?>
+                                        <?php if (!empty($employee['phone'])): ?>
+                                            <a href="tel:<?= htmlspecialchars($employee['phone']) ?>" class="btn btn-sm btn-light border py-1 px-2 text-success" title="Call">
+                                                <i class="fa-solid fa-phone"></i>
+                                            </a>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                                <td class="text-end pe-3">
+                                    <div class="d-inline-flex align-items-center gap-1">
+                                        <a href="<?= $GLOBALS['base_url'] ?>/employee-profile/<?= $employee['id'] ?>" class="btn btn-sm btn-outline-theme-border py-1 px-2" title="View Profile">
+                                            View
+                                        </a>
+                                        <a href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>?return_url=<?= urlencode($listReturnUrl) ?>" class="btn btn-sm btn-outline-theme-border py-1 px-2" title="Edit Employee">
+                                            Edit
+                                        </a>
+                                        <button class="removeBtnCust btn btn-sm btn-outline-theme-border delete py-1 px-2"
+                                            data-id="<?= $employee['id'] ?>"
+                                            data-name="<?= htmlspecialchars($employee['full_name'] ?? '') ?>"
+                                            data-action="delete-employee"
+                                            title="Delete Employee">
+                                            Delete
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
-    <!-- Count Info + Pagination -->
-    <?php
-        $currentPageCount = count($employees);
-        $startRecord = $totalEmployees > 0 ? (($currentPage - 1) * $perPage) + 1 : 0;
-        $endRecord   = min($startRecord + $currentPageCount - 1, $totalEmployees);
-    ?>
-    <div class="row mt-4 mb-2 align-items-center">
-        <div class="col-12">
-            <div class="card__wrapper py-2 px-3">
-                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="bi bi-people-fill text-primary fs-5"></i>
-                        <span class="fw-semibold">
-                            Showing
-                            <span class="text-primary fw-bold"><?= $startRecord ?></span>
-                            –
-                            <span class="text-primary fw-bold"><?= $endRecord ?></span>
-                            of
-                            <span class="text-success fw-bold"><?= $totalEmployees ?></span>
-                            employees
-                        </span>
-                    </div>
-                    <div class="d-flex align-items-center gap-2 text-muted" style="font-size: 13px;">
-                        <i class="bi bi-file-earmark-person"></i>
-                        Page <strong><?= $currentPage ?></strong> of <strong><?= $totalPages ?></strong>
-                        &nbsp;|&nbsp;
-                        <strong><?= $currentPageCount ?></strong> shown on this page
-                    </div>
+<!-- Count Info + Pagination -->
+<?php
+    $currentPageCount = count($employees);
+    $startRecord = $totalEmployees > 0 ? (($currentPage - 1) * $perPage) + 1 : 0;
+    $endRecord   = min($startRecord + $currentPageCount - 1, $totalEmployees);
+?>
+<div class="row mt-4 mb-2 align-items-center">
+    <div class="col-12">
+        <div class="card__wrapper py-2 px-3">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-people-fill text-primary fs-5"></i>
+                    <span class="fw-semibold">
+                        Showing
+                        <span class="text-primary fw-bold"><?= $startRecord ?></span>
+                        –
+                        <span class="text-primary fw-bold"><?= $endRecord ?></span>
+                        of
+                        <span class="text-success fw-bold"><?= $totalEmployees ?></span>
+                        employees
+                    </span>
+                </div>
+                <div class="d-flex align-items-center gap-2 text-muted" style="font-size: 13px;">
+                    <i class="bi bi-file-earmark-person"></i>
+                    Page <strong><?= $currentPage ?></strong> of <strong><?= $totalPages ?></strong>
+                    &nbsp;|&nbsp;
+                    <strong><?= $currentPageCount ?></strong> shown on this page
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Pagination -->
-    <div class="row mb-4">
-        <div class="col-12 d-flex justify-content-center">
-            <?= paginateLinksSecondary($paginationRoute ?? ($base_url . "/employee-lists"), $currentPage, $totalPages); ?>
-        </div>
+<!-- Pagination -->
+<div class="row mb-4">
+    <div class="col-12 d-flex justify-content-center">
+        <?= paginateLinksSecondary($paginationRoute ?? ($base_url . "/employee-lists"), $currentPage, $totalPages); ?>
     </div>
 </div>
+
 <script>
     const base_url = "<?= $GLOBALS['base_url'] ?>";
 
@@ -489,4 +653,35 @@ $listReturnUrl = $GLOBALS['base_url'] . '/employee-lists' . $currentQuery;
             }
         });
     });
+
+    function setEmployeeView(view) {
+        const gridView = document.getElementById('employeeGridView');
+        const tableView = document.getElementById('employeeTableView');
+        const btnGrid = document.getElementById('btnViewGrid');
+        const btnTable = document.getElementById('btnViewTable');
+
+        if (view === 'table') {
+            if (gridView) gridView.classList.add('d-none');
+            if (tableView) tableView.classList.remove('d-none');
+            if (btnGrid) btnGrid.classList.remove('active');
+            if (btnTable) btnTable.classList.add('active');
+            try { localStorage.setItem('employee_view_preference', 'table'); } catch(e){}
+        } else {
+            if (tableView) tableView.classList.add('d-none');
+            if (gridView) gridView.classList.remove('d-none');
+            if (btnTable) btnTable.classList.remove('active');
+            if (btnGrid) btnGrid.classList.add('active');
+            try { localStorage.setItem('employee_view_preference', 'grid'); } catch(e){}
+        }
+    }
+
+    // Restore view preference immediately on DOM ready
+    (function() {
+        try {
+            const savedView = localStorage.getItem('employee_view_preference');
+            if (savedView === 'table') {
+                setEmployeeView('table');
+            }
+        } catch(e) {}
+    })();
 </script>
