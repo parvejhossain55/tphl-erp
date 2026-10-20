@@ -1625,6 +1625,7 @@
                                 </li>
                             </ul>
                         </li>
+                        <?php if (false): // Temporarily hidden Attendance Management (Test) ?>
                         <!-- Attendance Management (Test) -->
                         <li class="slide has-sub <?= isActive(['attendance-test', 'shift-lists', 'day-off', 'leave-management-test'], $current_route) ? 'active open' : '' ?>">
                             <a href="javascript:void(0);"
@@ -1662,6 +1663,7 @@
                                 </li>
                             </ul>
                         </li>
+                        <?php endif; ?>
                     <?php endif; ?>
 
                     <?php if (!$isManagement): ?>
@@ -2058,6 +2060,7 @@
                                 Profile
                             </a>
                         </li>
+                        <?php if (false): // Temporarily hidden test items under My Profile ?>
                         <li class="slide <?= isActive('my-attendance-test', $current_route) ?>">
                             <a href="<?= $base_url ?>/my-attendance-test"
                                 class="sidebar__menu-item <?= isActive('my-attendance-test', $current_route) ?>">
@@ -2079,6 +2082,7 @@
                                 <span class="badge bg-success-subtle text-success border border-success-subtle ms-auto fs-10 px-2 py-0 rounded-pill">Test</span>
                             </a>
                         </li>
+                        <?php endif; ?>
                     </ul>
                 </li>
 
