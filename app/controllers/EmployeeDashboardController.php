@@ -327,16 +327,218 @@ class EmployeeDashboardController extends Controller
                 : $diff->m . ' Month' . ($diff->m > 1 ? 's' : '');
         }
 
+        // Profile completion calculation (8 key fields requested)
+        $completionFields = [
+            'photo' => [
+                'label'  => 'Employee Photo',
+                'filled' => !empty($employee['photo']),
+            ],
+            'phone' => [
+                'label'  => 'Contact Number',
+                'filled' => !empty($employee['phone']) && $employee['phone'] !== 'N/A',
+            ],
+            'emergency_contact' => [
+                'label'  => 'Emergency Number',
+                'filled' => !empty($employee['emergency_contact']) && $employee['emergency_contact'] !== 'N/A',
+            ],
+            'father_name' => [
+                'label'  => "Father's Name",
+                'filled' => !empty($employee['father_name']) && $employee['father_name'] !== 'N/A',
+            ],
+            'dob' => [
+                'label'  => 'Date of Birth',
+                'filled' => !empty($employee['dob']) && $employee['dob'] !== '0000-00-00',
+            ],
+            'qualification' => [
+                'label'  => 'Qualification',
+                'filled' => !empty($employee['qualification']) && $employee['qualification'] !== 'N/A',
+            ],
+            'address' => [
+                'label'  => 'Address',
+                'filled' => !empty($employee['address']) && $employee['address'] !== 'N/A',
+            ],
+            'social_media1' => [
+                'label'  => 'Social Media Link',
+                'filled' => !empty($employee['social_media1']) && $employee['social_media1'] !== 'N/A',
+            ],
+        ];
+        $totalCompletionFields = count($completionFields);
+        $completedCount = 0;
+        foreach ($completionFields as $f) {
+            if ($f['filled']) {
+                $completedCount++;
+            }
+        }
+        $profileCompletionPct = $totalCompletionFields > 0 ? round(($completedCount / $totalCompletionFields) * 100) : 0;
+
         $this->view('employee-modules/my-profile', [
-            'current_route'  => 'my-profile',
-            'page_title'     => 'My Profile',
-            'employee'       => $employee,
-            'attendancePct'  => $attendancePct,
-            'taskPct'        => $taskPct,
-            'leavePct'       => $leavePct,
-            'recentActivity' => $recentActivity,
-            'yearsOfService' => $yearsOfService,
+            'current_route'         => 'my-profile',
+            'page_title'            => 'My Profile',
+            'employee'              => $employee,
+            'attendancePct'         => $attendancePct,
+            'taskPct'               => $taskPct,
+            'leavePct'              => $leavePct,
+            'recentActivity'        => $recentActivity,
+            'yearsOfService'        => $yearsOfService,
+            'completionFields'      => $completionFields,
+            'totalCompletionFields' => $totalCompletionFields,
+            'completedCount'        => $completedCount,
+            'profileCompletionPct'  => $profileCompletionPct,
         ]);
+    }
+
+    // ─── Update Profile Photo (AJAX) ─────────────────────────────────────────
+    public function updateProfilePhoto()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        header('Content-Type: application/json');
+
+        $data = $this->getSessionEmployee();
+        if (!$data || empty($data['employee_id'])) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Employee session not found or unauthorized.'
+            ]);
+            return;
+        }
+
+        $employeeId = (int) $data['employee_id'];
+
+        if (empty($_FILES['photo']['name']) || $_FILES['photo']['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Please select a valid image file.'
+            ]);
+            return;
+        }
+
+        // Validate extension
+        $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+        $ext = strtolower(pathinfo($_FILES['photo']['name'], PATHINFO_EXTENSION));
+        if (!in_array($ext, $allowedExtensions)) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Allowed image formats: JPG, PNG, WEBP, GIF.'
+            ]);
+            return;
+        }
+
+        // Validate max size: 5MB
+        if ($_FILES['photo']['size'] > 5 * 1024 * 1024) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Image size must be less than 5MB.'
+            ]);
+            return;
+        }
+
+        // Get old photo to unlink
+        $stmtOld = $this->db->prepare("SELECT photo FROM employees WHERE id = ? LIMIT 1");
+        $stmtOld->bind_param("i", $employeeId);
+        $stmtOld->execute();
+        $oldRow = $stmtOld->get_result()->fetch_assoc();
+        $oldPhoto = $oldRow['photo'] ?? '';
+        $stmtOld->close();
+
+        // Process and upload new photo (fixed 300x300 thumbnail)
+        $newPhoto = uploadImage('photo', 'employees', 'fixed', 300, 300);
+        if (!$newPhoto) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Failed to process and upload image.'
+            ]);
+            return;
+        }
+
+        // Delete old photo file if exists
+        if (!empty($oldPhoto)) {
+            $oldFilePath = dirname(__DIR__, 2) . "/public/uploads/employees/" . $oldPhoto;
+            if (file_exists($oldFilePath)) {
+                @unlink($oldFilePath);
+            }
+        }
+
+        // Update database
+        $stmtUpdate = $this->db->prepare("UPDATE employees SET photo = ? WHERE id = ?");
+        $stmtUpdate->bind_param("si", $newPhoto, $employeeId);
+        $saved = $stmtUpdate->execute();
+        $stmtUpdate->close();
+
+        if (!$saved) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Failed to update photo in database.'
+            ]);
+            return;
+        }
+
+        $newPhotoUrl = getImage('employees', $newPhoto);
+
+        echo json_encode([
+            'success'   => true,
+            'message'   => 'Profile photo updated successfully!',
+            'photo_url' => $newPhotoUrl
+        ]);
+        return;
+    }
+
+    // ─── Update Profile Info (AJAX) ──────────────────────────────────────────
+    public function updateProfileInfo()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        header('Content-Type: application/json');
+
+        $data = $this->getSessionEmployee();
+        if (!$data || empty($data['employee_id'])) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Unauthorized or employee session not found.'
+            ]);
+            return;
+        }
+
+        $employeeId = (int) $data['employee_id'];
+
+        $fatherName       = trim($_POST['father_name'] ?? '');
+        $phone            = trim($_POST['phone'] ?? '');
+        $emergencyContact = trim($_POST['emergency_contact'] ?? '');
+        $dob              = !empty($_POST['dob']) ? trim($_POST['dob']) : null;
+        $qualification    = trim($_POST['qualification'] ?? '');
+        $address          = trim($_POST['address'] ?? '');
+        $socialMedia1     = trim($_POST['social_media1'] ?? '');
+
+        if ($dob && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dob)) {
+            $ts = strtotime($dob);
+            $dob = $ts ? date('Y-m-d', $ts) : null;
+        }
+
+        $stmt = $this->db->prepare("
+            UPDATE employees
+            SET father_name = ?, phone = ?, emergency_contact = ?, dob = ?, qualification = ?, address = ?, social_media1 = ?
+            WHERE id = ?
+        ");
+        $stmt->bind_param("sssssssi", $fatherName, $phone, $emergencyContact, $dob, $qualification, $address, $socialMedia1, $employeeId);
+        $ok = $stmt->execute();
+        $stmt->close();
+
+        if ($ok) {
+            echo json_encode([
+                'success' => true,
+                'message' => 'Profile information updated successfully!'
+            ]);
+        } else {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Failed to update profile information.'
+            ]);
+        }
+        return;
     }
 
     // ─── My Leaves 

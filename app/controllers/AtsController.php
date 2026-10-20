@@ -969,4 +969,322 @@ class AtsController extends Controller
         $dompdf->stream($filename, ["Attachment" => true]);
         exit;
     }
+
+    /**
+     * Export Candidates to Excel (.xlsx) with active filters
+     */
+    public function exportExcel()
+    {
+        $this->checkAuth();
+
+        $filters = [
+            'search' => $_GET['q'] ?? '',
+            'tab' => $_GET['tab'] ?? 'all',
+            'department' => $_GET['department'] ?? '',
+            'position' => $_GET['position'] ?? '',
+            'source' => $_GET['source'] ?? '',
+            'invitation_status' => $_GET['invitation_status'] ?? '',
+            'interview_attendance' => $_GET['interview_attendance'] ?? '',
+            'hired' => $_GET['hired'] ?? '',
+            'date_type' => $_GET['date_type'] ?? 'interview_date',
+            'date_from' => $_GET['date_from'] ?? '',
+            'date_to' => $_GET['date_to'] ?? '',
+        ];
+
+        $candidates = $this->candidateModel->getAllFiltered($filters);
+
+        if (!class_exists('\\PhpOffice\\PhpSpreadsheet\\Spreadsheet')) {
+            if (defined('BASE_PATH') && file_exists(BASE_PATH . '/vendor/autoload.php')) {
+                require_once BASE_PATH . '/vendor/autoload.php';
+            } elseif (file_exists(__DIR__ . '/../../vendor/autoload.php')) {
+                require_once __DIR__ . '/../../vendor/autoload.php';
+            }
+        }
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('ATS Candidates');
+
+        $headers = [
+            'SL',
+            'Candidate Name',
+            'Phone',
+            'Email',
+            'Department',
+            'Position',
+            'Source',
+            'Call Status',
+            'Interview Call Date',
+            'Interview Date',
+            'Interview Time',
+            'Interview Location',
+            'Attendance',
+            'Hired Status',
+            'Salary (BDT)',
+            'Joining Date',
+            'Referred By',
+            'Email Sent',
+            'SMS Sent',
+            'Remarks / Notes',
+            'Created Date'
+        ];
+
+        // Column widths
+        $columnWidths = [
+            'A' => 6,   // SL
+            'B' => 24,  // Candidate Name
+            'C' => 18,  // Phone
+            'D' => 25,  // Email
+            'E' => 25,  // Department
+            'F' => 22,  // Position
+            'G' => 16,  // Source
+            'H' => 16,  // Call Status
+            'I' => 18,  // Call Date
+            'J' => 16,  // Interview Date
+            'K' => 15,  // Interview Time
+            'L' => 22,  // Interview Location
+            'M' => 14,  // Attendance
+            'N' => 14,  // Hired Status
+            'O' => 16,  // Salary
+            'P' => 16,  // Joining Date
+            'Q' => 18,  // Referred By
+            'R' => 12,  // Email Sent
+            'S' => 12,  // SMS Sent
+            'T' => 30,  // Remarks
+            'U' => 18,  // Created Date
+        ];
+
+        // Insert Header
+        $sheet->fromArray($headers, null, 'A1');
+
+        $rowsData = [];
+        foreach ($candidates as $idx => $c) {
+            $sl = $idx + 1;
+            $interviewDate = !empty($c['interview_date']) ? date('d-M-Y', strtotime($c['interview_date'])) : '';
+            $interviewCallDate = !empty($c['interview_call_date']) ? date('d-M-Y', strtotime($c['interview_call_date'])) : '';
+            $interviewTime = !empty($c['interview_time']) ? date('h:i A', strtotime($c['interview_time'])) : '';
+            $joiningDate = !empty($c['joining_date']) ? date('d-M-Y', strtotime($c['joining_date'])) : '';
+            $createdDate = !empty($c['created_at']) ? date('d-M-Y h:i A', strtotime($c['created_at'])) : '';
+
+            $att = ucfirst(strtolower($c['interview_attendance'] ?? 'pending'));
+            $hiredRaw = strtolower($c['hired'] ?? 'pending');
+            $hired = ($hiredRaw === 'yes') ? 'Hired' : (($hiredRaw === 'no') ? 'Rejected' : 'Pending');
+
+            $emailSent = !empty($c['email_sent']) ? 'Yes' : 'No';
+            $smsSent = !empty($c['sms_sent']) ? 'Yes' : 'No';
+
+            $salary = !empty($c['onboarding_salary']) ? (float)$c['onboarding_salary'] : '';
+
+            $rowsData[] = [
+                $sl,
+                $c['name'] ?? '',
+                $c['phone'] ?? '',
+                $c['email'] ?? '',
+                $c['department'] ?? '',
+                $c['position'] ?? '',
+                $c['source'] ?? '',
+                $c['invitation_status'] ?? '',
+                $interviewCallDate,
+                $interviewDate,
+                $interviewTime,
+                $c['interview_location'] ?? '',
+                $att,
+                $hired,
+                $salary,
+                $joiningDate,
+                $c['referred_by'] ?? '',
+                $emailSent,
+                $smsSent,
+                $c['remarks'] ?? '',
+                $createdDate
+            ];
+        }
+
+        // Insert Rows
+        if (!empty($rowsData)) {
+            $sheet->fromArray($rowsData, null, 'A2');
+        }
+
+        $lastRow = max(2, count($rowsData) + 1);
+
+        // Explicit Column Widths
+        foreach ($columnWidths as $col => $w) {
+            $sheet->getColumnDimension($col)->setWidth($w);
+        }
+
+        // Header Styling (Company Green #078134)
+        $headerStyle = [
+            'font' => [
+                'bold' => true,
+                'color' => ['rgb' => 'FFFFFF'],
+                'size' => 11
+            ],
+            'fill' => [
+                'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                'startColor' => ['rgb' => '078134']
+            ],
+            'alignment' => [
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+            ],
+        ];
+        $sheet->getStyle('A1:U1')->applyFromArray($headerStyle);
+        $sheet->getRowDimension(1)->setRowHeight(28);
+
+        // Thin Borders
+        $borderStyle = [
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => ['rgb' => 'CBD5E1'],
+                ],
+            ],
+        ];
+        $sheet->getStyle("A1:U{$lastRow}")->applyFromArray($borderStyle);
+
+        // Format column C (Phone) as text to preserve leading zero
+        $sheet->getStyle("C2:C{$lastRow}")->getNumberFormat()->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_TEXT);
+
+        // Center alignments for dates, statuses, and identifiers
+        $centerCols = ['A', 'C', 'G', 'H', 'I', 'J', 'K', 'M', 'N', 'P', 'R', 'S', 'U'];
+        foreach ($centerCols as $c) {
+            $sheet->getStyle("{$c}2:{$c}{$lastRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        }
+
+        // Salary alignment right & number format
+        $sheet->getStyle("O2:O{$lastRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+        $sheet->getStyle("O2:O{$lastRow}")->getNumberFormat()->setFormatCode('#,##0');
+
+        // Freeze Top Row & AutoFilter
+        $sheet->freezePane('A2');
+        $sheet->setAutoFilter('A1:U1');
+
+        // Clean any output buffer
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+
+        $fileName = 'ATS_Candidates_' . date('Y-m-d_His') . '.xlsx';
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="' . $fileName . '"');
+        header('Cache-Control: max-age=0');
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('php://output');
+        exit;
+    }
+
+    /**
+     * Export Candidates to CSV with active filters
+     */
+    public function exportCsv()
+    {
+        $this->checkAuth();
+
+        $filters = [
+            'search' => $_GET['q'] ?? '',
+            'tab' => $_GET['tab'] ?? 'all',
+            'department' => $_GET['department'] ?? '',
+            'position' => $_GET['position'] ?? '',
+            'source' => $_GET['source'] ?? '',
+            'invitation_status' => $_GET['invitation_status'] ?? '',
+            'interview_attendance' => $_GET['interview_attendance'] ?? '',
+            'hired' => $_GET['hired'] ?? '',
+            'date_type' => $_GET['date_type'] ?? 'interview_date',
+            'date_from' => $_GET['date_from'] ?? '',
+            'date_to' => $_GET['date_to'] ?? '',
+        ];
+
+        $candidates = $this->candidateModel->getAllFiltered($filters);
+
+        // Clean any output buffer
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+
+        $fileName = 'ATS_Candidates_' . date('Y-m-d_His') . '.csv';
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $fileName . '"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        $output = fopen('php://output', 'w');
+
+        // UTF-8 BOM so Excel opens characters properly
+        fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+        $headers = [
+            'SL',
+            'Candidate Name',
+            'Phone',
+            'Email',
+            'Department',
+            'Position',
+            'Source',
+            'Call Status',
+            'Interview Call Date',
+            'Interview Date',
+            'Interview Time',
+            'Interview Location',
+            'Attendance',
+            'Hired Status',
+            'Salary (BDT)',
+            'Joining Date',
+            'Referred By',
+            'Email Sent',
+            'SMS Sent',
+            'Remarks / Notes',
+            'Created Date'
+        ];
+        fputcsv($output, $headers);
+
+        foreach ($candidates as $idx => $c) {
+            $sl = $idx + 1;
+            $interviewDate = !empty($c['interview_date']) ? date('d-M-Y', strtotime($c['interview_date'])) : '';
+            $interviewCallDate = !empty($c['interview_call_date']) ? date('d-M-Y', strtotime($c['interview_call_date'])) : '';
+            $interviewTime = !empty($c['interview_time']) ? date('h:i A', strtotime($c['interview_time'])) : '';
+            $joiningDate = !empty($c['joining_date']) ? date('d-M-Y', strtotime($c['joining_date'])) : '';
+            $createdDate = !empty($c['created_at']) ? date('d-M-Y h:i A', strtotime($c['created_at'])) : '';
+
+            $att = ucfirst(strtolower($c['interview_attendance'] ?? 'pending'));
+            $hiredRaw = strtolower($c['hired'] ?? 'pending');
+            $hired = ($hiredRaw === 'yes') ? 'Hired' : (($hiredRaw === 'no') ? 'Rejected' : 'Pending');
+
+            $emailSent = !empty($c['email_sent']) ? 'Yes' : 'No';
+            $smsSent = !empty($c['sms_sent']) ? 'Yes' : 'No';
+
+            // Format phone to preserve leading zero when opened in Excel
+            $phone = $c['phone'] ?? '';
+            if (!empty($phone) && substr($phone, 0, 1) === '0') {
+                $phone = '="' . $phone . '"';
+            }
+
+            fputcsv($output, [
+                $sl,
+                $c['name'] ?? '',
+                $phone,
+                $c['email'] ?? '',
+                $c['department'] ?? '',
+                $c['position'] ?? '',
+                $c['source'] ?? '',
+                $c['invitation_status'] ?? '',
+                $interviewCallDate,
+                $interviewDate,
+                $interviewTime,
+                $c['interview_location'] ?? '',
+                $att,
+                $hired,
+                $c['onboarding_salary'] ?? '',
+                $joiningDate,
+                $c['referred_by'] ?? '',
+                $emailSent,
+                $smsSent,
+                $c['remarks'] ?? '',
+                $createdDate
+            ]);
+        }
+
+        fclose($output);
+        exit;
+    }
 }

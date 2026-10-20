@@ -54,6 +54,8 @@ return [
     'my-attendance' => ['controller' => 'EmployeeDashboardController', 'method' => 'myAttendance'],
     'my-leaves' => ['controller' => 'EmployeeDashboardController', 'method' => 'myLeaves'],
     'my-profile' => ['controller' => 'EmployeeDashboardController', 'method' => 'myProfile'],
+    'my-profile/update-photo' => ['controller' => 'EmployeeDashboardController', 'method' => 'updateProfilePhoto'],
+    'my-profile/update-info' => ['controller' => 'EmployeeDashboardController', 'method' => 'updateProfileInfo'],
     'my-tipsoi-info' => ['controller' => 'EmployeeDashboardController', 'method' => 'myTipsoiInfo'],
     'api/employee/tipsoi-data' => ['controller' => 'EmployeeDashboardController', 'method' => 'getTipsoiData'],
     'api/employee/tipsoi-history' => ['controller' => 'EmployeeDashboardController', 'method' => 'getTipsoiHistory'],
@@ -433,5 +435,7 @@ return [
     'api/ats/dropdown-delete' => ['controller' => 'AtsController', 'method' => 'deleteDropdownOption'],
     'ats-dashboard' => ['controller' => 'AtsController', 'method' => 'dashboard'],
     'ats-export-pdf' => ['controller' => 'AtsController', 'method' => 'exportPdf'],
+    'ats-export-excel' => ['controller' => 'AtsController', 'method' => 'exportExcel'],
+    'ats-export-csv' => ['controller' => 'AtsController', 'method' => 'exportCsv'],
 ];
 

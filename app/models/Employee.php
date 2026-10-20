@@ -984,6 +984,34 @@ WHERE e.id = ?
             'date' => $date
         ];
     }
+
+    /**
+     * Get dynamic mapping of department_id to assigned teams
+     */
+    public function getDepartmentTeamsMapping(): array
+    {
+        $sql = "
+            SELECT DISTINCT e.department_id, e.team_id, t.name AS team_name
+            FROM employees e
+            JOIN teams t ON e.team_id = t.id
+            WHERE e.department_id IS NOT NULL 
+              AND e.team_id IS NOT NULL 
+              AND e.team_id > 0
+            ORDER BY t.name ASC
+        ";
+        $res = $this->db->query($sql);
+        $mapping = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $deptId = (int)$row['department_id'];
+                $mapping[$deptId][] = [
+                    'id' => (int)$row['team_id'],
+                    'name' => $row['team_name']
+                ];
+            }
+        }
+        return $mapping;
+    }
 }
 
 
