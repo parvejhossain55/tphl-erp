@@ -433,5 +433,7 @@ return [
     'api/ats/dropdown-delete' => ['controller' => 'AtsController', 'method' => 'deleteDropdownOption'],
     'ats-dashboard' => ['controller' => 'AtsController', 'method' => 'dashboard'],
     'ats-export-pdf' => ['controller' => 'AtsController', 'method' => 'exportPdf'],
+    'ats-export-excel' => ['controller' => 'AtsController', 'method' => 'exportExcel'],
+    'ats-export-csv' => ['controller' => 'AtsController', 'method' => 'exportCsv'],
 ];
 

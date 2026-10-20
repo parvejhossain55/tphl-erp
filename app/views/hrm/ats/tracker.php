@@ -13,7 +13,14 @@ $baseUrl = $GLOBALS['base_url'];
             </h4>
             <p class="text-muted small mb-0">Track applicants, interview appointments, call outcomes, and hiring pipeline.</p>
         </div>
-            <button type="button" class="btn btn-outline-danger btn-sm px-3 shadow-sm" onclick="exportAtsPdf()">
+        <div class="d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-outline-success btn-sm px-3 shadow-sm" onclick="exportAtsExcel()" title="Export Excel (.xlsx)">
+                <i class="fa-solid fa-file-excel me-1"></i> Export Excel
+            </button>
+            <button type="button" class="btn btn-outline-primary btn-sm px-3 shadow-sm" onclick="exportAtsCsv()" title="Export CSV (.csv)">
+                <i class="fa-solid fa-file-csv me-1"></i> Export CSV
+            </button>
+            <button type="button" class="btn btn-outline-danger btn-sm px-3 shadow-sm" onclick="exportAtsPdf()" title="Export PDF (.pdf)">
                 <i class="fa-solid fa-file-pdf me-1"></i> Export PDF
             </button>
             <button type="button" class="btn btn-outline-primary btn-sm px-3" data-bs-toggle="modal" data-bs-target="#csvUploadModal">
@@ -202,14 +209,20 @@ $baseUrl = $GLOBALS['base_url'];
                         </select>
                     </div>
                     <!-- Filter Actions -->
-                    <div class="col-12 col-md-2 d-flex gap-2">
-                        <button type="submit" class="btn btn-primary btn-sm flex-fill">
-                            <i class="fa-solid fa-filter me-1"></i> Filter
+                    <div class="col-12 col-md-2 d-flex gap-1">
+                        <button type="submit" class="btn btn-primary btn-sm flex-fill" title="Apply Filter">
+                            <i class="fa-solid fa-filter"></i> Filter
                         </button>
-                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="exportAtsPdf()" title="Export PDF with active filters">
+                        <button type="button" class="btn btn-outline-success btn-sm px-2" onclick="exportAtsExcel()" title="Export to Excel (.xlsx)">
+                            <i class="fa-solid fa-file-excel"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-primary btn-sm px-2" onclick="exportAtsCsv()" title="Export to CSV (.csv)">
+                            <i class="fa-solid fa-file-csv"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-sm px-2" onclick="exportAtsPdf()" title="Export to PDF (.pdf)">
                             <i class="fa-solid fa-file-pdf"></i>
                         </button>
-                        <a href="<?= $baseUrl ?>/ats-tracker?tab=<?= htmlspecialchars($filters['tab']) ?>" class="btn btn-light btn-sm text-secondary" title="Clear Filters">
+                        <a href="<?= $baseUrl ?>/ats-tracker?tab=<?= htmlspecialchars($filters['tab']) ?>" class="btn btn-light btn-sm text-secondary px-2" title="Clear Filters">
                             <i class="fa-solid fa-rotate-left"></i>
                         </a>
                     </div>
@@ -1348,9 +1361,9 @@ function atsShowToast(msg) {
     }
 }
 
-function exportAtsPdf() {
+function getAtsExportUrl(endpoint) {
     const filterForm = document.getElementById('filterForm');
-    let url = '<?= $baseUrl ?>/ats-export-pdf';
+    let url = '<?= $baseUrl ?>/' + endpoint;
     if (filterForm) {
         const formData = new FormData(filterForm);
         const params = new URLSearchParams();
@@ -1364,6 +1377,18 @@ function exportAtsPdf() {
             url += '?' + queryString;
         }
     }
-    window.location.href = url;
+    return url;
+}
+
+function exportAtsExcel() {
+    window.location.href = getAtsExportUrl('ats-export-excel');
+}
+
+function exportAtsCsv() {
+    window.location.href = getAtsExportUrl('ats-export-csv');
+}
+
+function exportAtsPdf() {
+    window.location.href = getAtsExportUrl('ats-export-pdf');
 }
 </script>
