@@ -164,6 +164,7 @@ class AccountClient extends Model
             COALESCE(SUM(CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END), 0) AS total_shop_service_charge_target,
             COALESCE(SUM(GREATEST(0, ROUND(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) - (COALESCE(f.land_share_value, 0) + COALESCE(f.development_charges, 0) + CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END)))), 0) AS total_construction_target,
             COALESCE(SUM(lb.discount_amount), 0) AS total_discount,
+            COALESCE(p_stats.total_bulk_emi_discount, 0) AS total_bulk_emi_discount,
 
             -- Financial Breakdown Paid
             COALESCE(p_stats.land_share_paid, 0) AS land_share_paid,
@@ -188,7 +189,9 @@ class AccountClient extends Model
         LEFT JOIN (
             SELECT 
                 lb_sub.lead_id,
-                SUM(CASE WHEN (lp.payment_status IN ('paid','partially_paid','pending')) AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.amount ELSE 0 END) AS total_paid,
+                SUM(CASE WHEN (lp.payment_status IN ('paid','partially_paid','pending')) 
+                              AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') 
+                              AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END) AS total_paid,
                 SUM(CASE WHEN lp.payment_type IN ('booking_money', 'registration', 'land_share') 
                               AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
                               AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.amount ELSE 0 END) AS land_share_paid,
@@ -386,7 +389,9 @@ class AccountClient extends Model
                 LEFT JOIN (
                     SELECT 
                         lb_sub.lead_id,
-                        SUM(CASE WHEN (lp.payment_status IN ('paid','partially_paid','pending')) AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.amount ELSE 0 END) AS total_paid,
+                        SUM(CASE WHEN (lp.payment_status IN ('paid','partially_paid','pending')) 
+                                      AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') 
+                                      AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END) AS total_paid,
                         SUM(CASE WHEN lp.payment_type IN ('booking_money', 'registration', 'land_share') 
                                       AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
                                       AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.amount ELSE 0 END) AS land_share_paid,
@@ -929,7 +934,7 @@ class AccountClient extends Model
      */
     public function getCollectionStatsSummary($projectId = null)
     {
-        $whereClause = "WHERE lp.payment_status IN ('paid', 'partially_paid')";
+        $whereClause = "WHERE lp.payment_status IN ('paid', 'partially_paid') AND lp.is_trashed = 0 AND COALESCE(lp.is_emi_discount, 0) = 0";
         $params = [];
         $types = "";
 
@@ -990,12 +995,12 @@ class AccountClient extends Model
                 p.id AS project_id,
                 p.name AS project_name,
                 COUNT(DISTINCT lb.id) AS total_bookings,
-                COALESCE(SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') THEN lp.amount ELSE 0 END), 0) AS total_collected,
-                COALESCE(SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND (lp.payment_type IN ('land_share', 'booking_money') OR IFNULL(lp.land_share_amount, 0) > 0) THEN lp.amount ELSE 0 END), 0) AS land_share_collected,
-                COALESCE(SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.payment_type = 'development_charge' THEN lp.amount ELSE 0 END), 0) AS dev_charge_collected,
-                COALESCE(SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.payment_type IN ('emi', 'emi_due_settlement') THEN lp.amount ELSE 0 END), 0) AS total_emi_collected,
-                COALESCE(SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.payment_type IN ('emi', 'emi_due_settlement') AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END), 0) AS verified_emi_collected,
-                COALESCE(SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.payment_type IN ('emi', 'emi_due_settlement') AND lp.verification_status = 'pending' THEN lp.amount ELSE 0 END), 0) AS unverified_emi_collected
+                COALESCE(SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND COALESCE(lp.is_emi_discount, 0) = 0 AND lp.is_trashed = 0 THEN lp.amount ELSE 0 END), 0) AS total_collected,
+                COALESCE(SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND (lp.payment_type IN ('land_share', 'booking_money') OR IFNULL(lp.land_share_amount, 0) > 0) AND COALESCE(lp.is_emi_discount, 0) = 0 AND lp.is_trashed = 0 THEN lp.amount ELSE 0 END), 0) AS land_share_collected,
+                COALESCE(SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.payment_type = 'development_charge' AND COALESCE(lp.is_emi_discount, 0) = 0 AND lp.is_trashed = 0 THEN lp.amount ELSE 0 END), 0) AS dev_charge_collected,
+                COALESCE(SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.payment_type IN ('emi', 'emi_due_settlement') AND COALESCE(lp.is_emi_discount, 0) = 0 AND lp.is_trashed = 0 THEN lp.amount ELSE 0 END), 0) AS total_emi_collected,
+                COALESCE(SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.payment_type IN ('emi', 'emi_due_settlement') AND lp.verification_status = 'verified' AND COALESCE(lp.is_emi_discount, 0) = 0 AND lp.is_trashed = 0 THEN lp.amount ELSE 0 END), 0) AS verified_emi_collected,
+                COALESCE(SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.payment_type IN ('emi', 'emi_due_settlement') AND lp.verification_status = 'pending' AND COALESCE(lp.is_emi_discount, 0) = 0 AND lp.is_trashed = 0 THEN lp.amount ELSE 0 END), 0) AS unverified_emi_collected
             FROM projects p
             LEFT JOIN lead_bookings lb ON lb.project_id = p.id AND lb.deleted_at IS NULL
             LEFT JOIN lead_payments lp ON lp.booking_id = lb.id

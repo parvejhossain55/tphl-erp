@@ -1140,7 +1140,7 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
         spinner.classList.remove('d-none');
         icon.classList.add('d-none');
 
-        showLeadToast('Connecting to Google Sheet & parsing with Gemini AI...', 'info');
+        showLeadToast('Connecting to Google Sheet & syncing leads...', 'info');
 
         try {
             const formData = new FormData();

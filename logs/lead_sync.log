@@ -1,0 +1,122 @@
+[2026-10-20 18:44:40] =======================================================
+[2026-10-20 18:44:40] Starting Lead Synchronization at 2026-10-20 18:44:40
+[2026-10-20 18:44:40] Fetching data from: https://docs.google.com/spreadsheets/d/1Smg3B14dEanyrCf0qRc3wAdgLHi0x-9cDjNINvcMNlY/export?format=csv&gid=1153532944
+[2026-10-20 18:44:41] Processing with Google Gemini AI [gemini-2.5-flash] for intelligent field understanding...
+[2026-10-20 18:45:35] Sync Completed in 55.52 sec. Total Rows: 5 | Inserted: 5 | Duplicates Skipped: 0 | Unmatched Project: 0 | Errors: 0
+[2026-10-20 18:45:35] =======================================================
+
+[2026-10-20 18:48:02] =======================================================
+[2026-10-20 18:48:02] Starting Lead Synchronization at 2026-10-20 18:48:02
+[2026-10-20 18:48:02] Fetching data from: https://docs.google.com/spreadsheets/d/1Smg3B14dEanyrCf0qRc3wAdgLHi0x-9cDjNINvcMNlY/export?format=csv&gid=1153532944
+[2026-10-20 18:48:04] Processing with Google Gemini AI [gemini-2.5-flash] for intelligent field understanding...
+[2026-10-20 18:48:42] Sync Completed in 39.69 sec. Total Rows: 5 | Inserted: 1 | Duplicates Skipped: 4 | Unmatched Project: 0 | Errors: 0
+[2026-10-20 18:48:42] =======================================================
+
+[2026-10-20 18:51:43] =======================================================
+[2026-10-20 18:51:43] Starting Lead Synchronization at 2026-10-20 18:51:43
+[2026-10-20 18:51:43] Fetching data from: https://docs.google.com/spreadsheets/d/1Smg3B14dEanyrCf0qRc3wAdgLHi0x-9cDjNINvcMNlY/export?format=csv&gid=1153532944
+[2026-10-20 18:51:44] Processing with Google Gemini AI [gemini-2.5-flash] for intelligent field understanding...
+[2026-10-20 18:52:25] Sync Completed in 42.08 sec. Total Rows: 5 | Inserted: 5 | Duplicates Skipped: 0 | Unmatched Project: 0 | Errors: 0
+[2026-10-20 18:52:25] =======================================================
+
+[2026-10-20 15:01:16] =======================================================
+[2026-10-20 15:01:16] Starting Lead Synchronization at 2026-10-20 15:01:16
+[2026-10-20 15:01:16] Fetching data from: https://docs.google.com/spreadsheets/d/1Smg3B14dEanyrCf0qRc3wAdgLHi0x-9cDjNINvcMNlY/export?format=csv&gid=847993418
+[2026-10-20 15:01:18] Processing with Google Gemini AI [gemini-2.5-flash] for intelligent field understanding...
+[2026-10-20 15:01:22] Gemini AI Warning: Gemini API Error (HTTP 503): {
+  "error": {
+    "code": 503,
+    "message": "This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.",
+    "status": "UNAVAILABLE"
+  }
+}
+
+[2026-10-20 15:01:22] Seamlessly falling back to local rule-based parser...
+[2026-10-20 15:01:22] Sync Completed in 6.12 sec. Total Rows: 4 | Inserted: 4 | Duplicates Skipped: 0 | Unmatched Project: 0 | Errors: 0
+[2026-10-20 15:01:22] =======================================================
+
+[2026-10-20 19:06:47] =======================================================
+[2026-10-20 19:06:47] Starting Lead Synchronization at 2026-10-20 19:06:47
+[2026-10-20 19:06:47] Targeting specific worksheet tab [gid: 847993418] directly from URL.
+[2026-10-20 19:06:47] Fetching data from: https://docs.google.com/spreadsheets/d/1Smg3B14dEanyrCf0qRc3wAdgLHi0x-9cDjNINvcMNlY/export?format=csv&gid=847993418
+[2026-10-20 19:06:49] Fast local parser active: recognized key columns instantly in < 0.02s.
+[2026-10-20 19:06:49] Sync Completed in 1.49 sec. Total Rows: 4 | Inserted: 4 | Duplicates Skipped: 0 | Unmatched Project: 0 | Errors: 0
+[2026-10-20 19:06:49] =======================================================
+
+[2026-10-20 19:06:54] =======================================================
+[2026-10-20 19:06:54] Starting Lead Synchronization at 2026-10-20 19:06:54
+[2026-10-20 19:06:54] Targeting specific worksheet tab [gid: 847993418] directly from URL.
+[2026-10-20 19:06:54] Fetching data from: https://docs.google.com/spreadsheets/d/1Smg3B14dEanyrCf0qRc3wAdgLHi0x-9cDjNINvcMNlY/export?format=csv&gid=847993418
+[2026-10-20 19:06:56] Fast local parser active: recognized key columns instantly in < 0.02s.
+[2026-10-20 19:06:56] Row 3: Duplicate lead skipped (Phone: +8801805119485, Campaign: TPRC ll Commercial ll Oct 04, 2026 – Copy 2)
+[2026-10-20 19:06:56] Row 4: Duplicate lead skipped (Phone: +96550556647, Campaign: TPRC ll Commercial ll Oct 04, 2026 – Copy 2)
+[2026-10-20 19:06:56] Row 5: Duplicate lead skipped (Phone: +491793279050, Campaign: TPRC ll Commercial ll Oct 04, 2026 – Copy 2)
+[2026-10-20 19:06:56] Sync Completed in 1.27 sec. Total Rows: 4 | Inserted: 1 | Duplicates Skipped: 3 | Unmatched Project: 0 | Errors: 0
+[2026-10-20 19:06:56] =======================================================
+
+[2026-10-20 19:06:59] =======================================================
+[2026-10-20 19:06:59] Starting Lead Synchronization at 2026-10-20 19:06:59
+[2026-10-20 19:06:59] Targeting specific worksheet tab [gid: 847993418] directly from URL.
+[2026-10-20 19:06:59] Fetching data from: https://docs.google.com/spreadsheets/d/1Smg3B14dEanyrCf0qRc3wAdgLHi0x-9cDjNINvcMNlY/export?format=csv&gid=847993418
+[2026-10-20 19:07:00] Fast local parser active: recognized key columns instantly in < 0.02s.
+[2026-10-20 19:07:00] Row 3: Duplicate lead skipped (Phone: +8801805119485, Campaign: TPRC ll Commercial ll Oct 04, 2026 – Copy 2)
+[2026-10-20 19:07:00] Row 4: Duplicate lead skipped (Phone: +96550556647, Campaign: TPRC ll Commercial ll Oct 04, 2026 – Copy 2)
+[2026-10-20 19:07:00] Row 5: Duplicate lead skipped (Phone: +491793279050, Campaign: TPRC ll Commercial ll Oct 04, 2026 – Copy 2)
+[2026-10-20 19:07:00] Sync Completed in 1.22 sec. Total Rows: 4 | Inserted: 1 | Duplicates Skipped: 3 | Unmatched Project: 0 | Errors: 0
+[2026-10-20 19:07:00] =======================================================
+
+[2026-10-20 19:07:06] =======================================================
+[2026-10-20 19:07:06] Starting Lead Synchronization at 2026-10-20 19:07:06
+[2026-10-20 19:07:06] Targeting specific worksheet tab [gid: 847993418] directly from URL.
+[2026-10-20 19:07:06] Fetching data from: https://docs.google.com/spreadsheets/d/1Smg3B14dEanyrCf0qRc3wAdgLHi0x-9cDjNINvcMNlY/export?format=csv&gid=847993418
+[2026-10-20 19:07:07] Fast local parser active: recognized key columns instantly in < 0.02s.
+[2026-10-20 19:07:07] Row 3: Duplicate lead skipped (Phone: +8801805119485, Campaign: TPRC ll Commercial ll Oct 04, 2026 – Copy 2)
+[2026-10-20 19:07:07] Row 4: Duplicate lead skipped (Phone: +96550556647, Campaign: TPRC ll Commercial ll Oct 04, 2026 – Copy 2)
+[2026-10-20 19:07:07] Row 5: Duplicate lead skipped (Phone: +491793279050, Campaign: TPRC ll Commercial ll Oct 04, 2026 – Copy 2)
+[2026-10-20 19:07:07] Sync Completed in 1.35 sec. Total Rows: 4 | Inserted: 1 | Duplicates Skipped: 3 | Unmatched Project: 0 | Errors: 0
+[2026-10-20 19:07:07] =======================================================
+
+[2026-10-20 19:07:29] =======================================================
+[2026-10-20 19:07:29] Starting Lead Synchronization at 2026-10-20 19:07:29
+[2026-10-20 19:07:29] Targeting specific worksheet tab [gid: 847993418] directly from URL.
+[2026-10-20 19:07:29] Fetching data from: https://docs.google.com/spreadsheets/d/1Smg3B14dEanyrCf0qRc3wAdgLHi0x-9cDjNINvcMNlY/export?format=csv&gid=847993418
+[2026-10-20 19:07:30] Fast local parser active: recognized key columns instantly in < 0.02s.
+[2026-10-20 19:07:30] Row 3: Duplicate lead skipped (Phone: +8801805119485, Campaign: TPRC ll Commercial ll Oct 04, 2026 – Copy 2)
+[2026-10-20 19:07:30] Row 4: Duplicate lead skipped (Phone: +96550556647, Campaign: TPRC ll Commercial ll Oct 04, 2026 – Copy 2)
+[2026-10-20 19:07:30] Row 5: Duplicate lead skipped (Phone: +491793279050, Campaign: TPRC ll Commercial ll Oct 04, 2026 – Copy 2)
+[2026-10-20 19:07:30] Sync Completed in 1.51 sec. Total Rows: 4 | Inserted: 1 | Duplicates Skipped: 3 | Unmatched Project: 0 | Errors: 0
+[2026-10-20 19:07:30] =======================================================
+
+[2026-10-20 19:07:36] =======================================================
+[2026-10-20 19:07:36] Starting Lead Synchronization at 2026-10-20 19:07:36
+[2026-10-20 19:07:36] Targeting specific worksheet tab [gid: 847993418] directly from URL.
+[2026-10-20 19:07:36] Fetching data from: https://docs.google.com/spreadsheets/d/1Smg3B14dEanyrCf0qRc3wAdgLHi0x-9cDjNINvcMNlY/export?format=csv&gid=847993418
+[2026-10-20 19:07:38] Fast local parser active: recognized key columns instantly in < 0.02s.
+[2026-10-20 19:07:38] Row 3: Duplicate lead skipped (Phone: +8801805119485, Campaign: TPRC ll Commercial ll Oct 04, 2026 – Copy 2)
+[2026-10-20 19:07:38] Row 4: Duplicate lead skipped (Phone: +96550556647, Campaign: TPRC ll Commercial ll Oct 04, 2026 – Copy 2)
+[2026-10-20 19:07:38] Row 5: Duplicate lead skipped (Phone: +491793279050, Campaign: TPRC ll Commercial ll Oct 04, 2026 – Copy 2)
+[2026-10-20 19:07:38] Sync Completed in 1.68 sec. Total Rows: 4 | Inserted: 1 | Duplicates Skipped: 3 | Unmatched Project: 0 | Errors: 0
+[2026-10-20 19:07:38] =======================================================
+
+[2026-10-20 19:07:43] =======================================================
+[2026-10-20 19:07:43] Starting Lead Synchronization at 2026-10-20 19:07:43
+[2026-10-20 19:07:43] Targeting specific worksheet tab [gid: 847993418] directly from URL.
+[2026-10-20 19:07:43] Fetching data from: https://docs.google.com/spreadsheets/d/1Smg3B14dEanyrCf0qRc3wAdgLHi0x-9cDjNINvcMNlY/export?format=csv&gid=847993418
+[2026-10-20 19:07:45] Fast local parser active: recognized key columns instantly in < 0.02s.
+[2026-10-20 19:07:45] Row 3: Duplicate lead skipped (Phone: +8801805119485, Campaign: TPRC ll Commercial ll Oct 04, 2026 – Copy 2)
+[2026-10-20 19:07:45] Row 4: Duplicate lead skipped (Phone: +96550556647, Campaign: TPRC ll Commercial ll Oct 04, 2026 – Copy 2)
+[2026-10-20 19:07:45] Row 5: Duplicate lead skipped (Phone: +491793279050, Campaign: TPRC ll Commercial ll Oct 04, 2026 – Copy 2)
+[2026-10-20 19:07:45] Sync Completed in 2.08 sec. Total Rows: 4 | Inserted: 1 | Duplicates Skipped: 3 | Unmatched Project: 0 | Errors: 0
+[2026-10-20 19:07:45] =======================================================
+
+[2026-10-20 15:09:02] =======================================================
+[2026-10-20 15:09:02] Starting Lead Synchronization at 2026-10-20 15:09:02
+[2026-10-20 15:09:02] Targeting specific worksheet tab [gid: 847993418] directly from URL.
+[2026-10-20 15:09:02] Fetching data from: https://docs.google.com/spreadsheets/d/1Smg3B14dEanyrCf0qRc3wAdgLHi0x-9cDjNINvcMNlY/export?format=csv&gid=847993418
+[2026-10-20 15:09:03] Fast local parser active: recognized key columns instantly in < 0.02s.
+[2026-10-20 15:09:03] Row 3: Duplicate lead skipped (Phone: +8801805119485, Campaign: TPRC ll Commercial ll Oct 04, 2026 – Copy 2)
+[2026-10-20 15:09:03] Row 4: Duplicate lead skipped (Phone: +96550556647, Campaign: TPRC ll Commercial ll Oct 04, 2026 – Copy 2)
+[2026-10-20 15:09:03] Row 5: Duplicate lead skipped (Phone: +491793279050, Campaign: TPRC ll Commercial ll Oct 04, 2026 – Copy 2)
+[2026-10-20 15:09:03] Sync Completed in 1.56 sec. Total Rows: 4 | Inserted: 1 | Duplicates Skipped: 3 | Unmatched Project: 0 | Errors: 0
+[2026-10-20 15:09:03] =======================================================
+

@@ -381,6 +381,10 @@ return [
     'con-vendor/(\d+)' => ['controller' => 'Phase2\Con_VendorController', 'method' => 'show'],
     'con-vendor-delete' => ['controller' => 'Phase2\Con_VendorController', 'method' => 'delete'],
     'con-vendor-import' => ['controller' => 'Phase2\Con_VendorController', 'method' => 'importCsv'],
+    'con-vendor-ledger' => ['controller' => 'Phase2\Con_VendorController', 'method' => 'ledger'],
+    'con-vendor-ledger/(\d+)' => ['controller' => 'Phase2\Con_VendorController', 'method' => 'ledger'],
+    'con-vendor-ledger-print/(\d+)' => ['controller' => 'Phase2\Con_VendorController', 'method' => 'printLedger'],
+    'con-vendor-ledger-data' => ['controller' => 'Phase2\Con_VendorController', 'method' => 'ajaxLedgerData'],
 
     // =========================================================================
     // Controller: Phase2\Con_PurchaseRequestController

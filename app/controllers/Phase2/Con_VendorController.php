@@ -272,4 +272,243 @@ class Con_VendorController extends Controller
         header('Location: ' . $GLOBALS['base_url'] . '/con-vendors');
         exit;
     }
-}
+
+    // =========================================================================
+    // VENDOR LEDGER & FINANCIAL DASHBOARD
+    // =========================================================================
+
+    /**
+     * Vendor Ledger View: Supports master summary list and deep single vendor running balance ledger
+     */
+    public function ledger($vendorId = null)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
+        // Allowed: Management (1, 3, 33, 34, 35, 20, 32), Purchase (17, 22, 23, 31), Accounts (6, 30)
+        $allowedRoles = [1, 3, 6, 17, 20, 22, 23, 30, 31, 32, 33, 34, 35];
+        if (!in_array($userRole, $allowedRoles, true) && !hasPermission(['Vendor Manage', 'Construction Accounts', 'Financial Reports', 'Purchase Manage'])) {
+            setError('You do not have permission to access the Vendor Ledger.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
+        $selectedVendorId = $vendorId !== null ? (int)$vendorId : (!empty($_GET['vendor_id']) ? (int)$_GET['vendor_id'] : 0);
+        $selectedProjectId = !empty($_GET['project_id']) ? (int)$_GET['project_id'] : 0;
+        $period = trim($_GET['period'] ?? 'all_time');
+        $startDate = trim($_GET['start_date'] ?? '');
+        $endDate = trim($_GET['end_date'] ?? '');
+        $search = trim($_GET['search'] ?? '');
+
+        // Resolve quick periods
+        if ($period === 'this_month') {
+            $startDate = date('Y-m-01');
+            $endDate = date('Y-m-t');
+        } elseif ($period === 'last_month') {
+            $startDate = date('Y-m-01', strtotime('first day of last month'));
+            $endDate = date('Y-m-t', strtotime('last day of last month'));
+        } elseif ($period === 'this_year') {
+            $startDate = date('Y-01-01');
+            $endDate = date('Y-12-31');
+        } elseif ($period === 'last_30_days') {
+            $startDate = date('Y-m-d', strtotime('-30 days'));
+            $endDate = date('Y-m-d');
+        }
+
+        $filters = [
+            'vendor_id'  => $selectedVendorId > 0 ? $selectedVendorId : null,
+            'project_id' => $selectedProjectId > 0 ? $selectedProjectId : null,
+            'start_date' => !empty($startDate) ? $startDate : null,
+            'end_date'   => !empty($endDate) ? $endDate : null,
+            'search'     => !empty($search) ? $search : null,
+            'period'     => $period,
+        ];
+
+        // All active projects for filter dropdown
+        $projectsQ = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC");
+        $projects = $projectsQ ? $projectsQ->fetch_all(MYSQLI_ASSOC) : [];
+
+        // All active vendors for filter dropdown
+        $allVendorsQ = $this->db->query("SELECT id, name FROM vendors WHERE status = 'active' ORDER BY name ASC");
+        $allVendors = $allVendorsQ ? $allVendorsQ->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Dynamic KPI metrics matching current filter
+        $kpiMetrics = $this->vendorModel->getVendorLedgerKpis($filters);
+
+        $selectedVendor = null;
+        $projectBreakdown = [];
+        $ledgerEntries = [];
+        $vendorsSummary = [];
+        $currentPage = 1;
+        $totalPages = 1;
+        $totalRecords = 0;
+        $offset = 0;
+        $perPage = 20;
+
+        if ($selectedVendorId > 0) {
+            // Single Vendor Detailed Ledger Mode
+            $selectedVendor = $this->vendorModel->find($selectedVendorId);
+            if (!$selectedVendor) {
+                setError('Vendor not found.');
+                header("Location: " . $GLOBALS['base_url'] . "/con-vendor-ledger");
+                exit;
+            }
+
+            $projectBreakdown = $this->vendorModel->getVendorProjectBreakdown($selectedVendorId, $filters);
+            $ledgerEntries = $this->vendorModel->getDetailedVendorLedger($selectedVendorId, $filters);
+        } else {
+            // Master Vendors Financial Summary List Mode
+            $currentPage = max(1, (int)($_GET['page'] ?? 1));
+            $perPage = min(100, max(10, (int)($_GET['limit'] ?? 20)));
+            $offset = ($currentPage - 1) * $perPage;
+
+            $totalRecords = $this->vendorModel->getVendorLedgerCount($filters);
+            $totalPages = $totalRecords > 0 ? (int)ceil($totalRecords / $perPage) : 1;
+            if ($currentPage > $totalPages && $totalPages > 0) {
+                $currentPage = $totalPages;
+                $offset = ($currentPage - 1) * $perPage;
+            }
+
+            $vendorsSummary = $this->vendorModel->getVendorLedgerSummary($filters, $perPage, $offset);
+        }
+
+        $this->view('phase2/vendors/vendor-ledger', [
+            'current_route'      => 'con-vendor-ledger',
+            'page_title'         => $selectedVendor ? 'Vendor Ledger — ' . $selectedVendor['name'] : 'Vendor Financial Ledger & Dashboard',
+            'kpiMetrics'         => $kpiMetrics,
+            'selectedVendorId'   => $selectedVendorId,
+            'selectedVendor'     => $selectedVendor,
+            'selectedProjectId'  => $selectedProjectId,
+            'projectBreakdown'   => $projectBreakdown,
+            'ledgerEntries'      => $ledgerEntries,
+            'vendorsSummary'     => $vendorsSummary,
+            'projects'           => $projects,
+            'allVendors'         => $allVendors,
+            'filters'            => $filters,
+            'period'             => $period,
+            'startDate'          => $startDate,
+            'endDate'            => $endDate,
+            'search'             => $search,
+            'currentPage'        => $currentPage,
+            'totalPages'         => $totalPages,
+            'totalRecords'       => $totalRecords,
+            'perPage'            => $perPage,
+            'offset'             => $offset,
+        ]);
+    }
+
+    /**
+     * AJAX endpoint for live filter switching
+     */
+    public function ajaxLedgerData()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        header('Content-Type: application/json');
+
+        $vendorId = !empty($_GET['vendor_id']) ? (int)$_GET['vendor_id'] : null;
+        $projectId = !empty($_GET['project_id']) ? (int)$_GET['project_id'] : null;
+        $period = trim($_GET['period'] ?? 'all_time');
+        $startDate = trim($_GET['start_date'] ?? '');
+        $endDate = trim($_GET['end_date'] ?? '');
+        $search = trim($_GET['search'] ?? '');
+
+        if ($period === 'this_month') {
+            $startDate = date('Y-m-01');
+            $endDate = date('Y-m-t');
+        } elseif ($period === 'last_month') {
+            $startDate = date('Y-m-01', strtotime('first day of last month'));
+            $endDate = date('Y-m-t', strtotime('last day of last month'));
+        } elseif ($period === 'this_year') {
+            $startDate = date('Y-01-01');
+            $endDate = date('Y-12-31');
+        } elseif ($period === 'last_30_days') {
+            $startDate = date('Y-m-d', strtotime('-30 days'));
+            $endDate = date('Y-m-d');
+        }
+
+        $filters = [
+            'vendor_id'  => $vendorId,
+            'project_id' => $projectId,
+            'start_date' => $startDate ?: null,
+            'end_date'   => $endDate ?: null,
+            'search'     => $search ?: null,
+            'period'     => $period,
+        ];
+
+        $kpis = $this->vendorModel->getVendorLedgerKpis($filters);
+        echo json_encode([
+            'status' => 'success',
+            'kpis'   => $kpis,
+        ]);
+        exit;
+    }
+
+    /**
+     * Printable Vendor Ledger Statement
+     */
+    public function printLedger($vendorId = null)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
+        $allowedRoles = [1, 3, 6, 17, 20, 22, 23, 30, 31, 32, 33, 34, 35];
+        if (!in_array($userRole, $allowedRoles, true) && !hasPermission(['Vendor Manage', 'Construction Accounts', 'Financial Reports'])) {
+            die('Unauthorized access.');
+        }
+
+        $selectedVendorId = $vendorId !== null ? (int)$vendorId : (!empty($_GET['vendor_id']) ? (int)$_GET['vendor_id'] : 0);
+        $selectedProjectId = !empty($_GET['project_id']) ? (int)$_GET['project_id'] : 0;
+        $startDate = trim($_GET['start_date'] ?? '');
+        $endDate = trim($_GET['end_date'] ?? '');
+
+        $filters = [
+            'vendor_id'  => $selectedVendorId > 0 ? $selectedVendorId : null,
+            'project_id' => $selectedProjectId > 0 ? $selectedProjectId : null,
+            'start_date' => !empty($startDate) ? $startDate : null,
+            'end_date'   => !empty($endDate) ? $endDate : null,
+        ];
+
+        $vendor = null;
+        $projectBreakdown = [];
+        $ledgerEntries = [];
+        $vendorsSummary = [];
+        $kpiMetrics = $this->vendorModel->getVendorLedgerKpis($filters);
+
+        // Project Name
+        $projectName = 'All Projects';
+        if ($selectedProjectId > 0) {
+            $pQ = $this->db->query("SELECT name FROM projects WHERE id = {$selectedProjectId}");
+            if ($pRow = $pQ->fetch_assoc()) {
+                $projectName = $pRow['name'];
+            }
+        }
+
+        if ($selectedVendorId > 0) {
+            $vendor = $this->vendorModel->find($selectedVendorId);
+            if (!$vendor) {
+                die('Vendor not found.');
+            }
+            $projectBreakdown = $this->vendorModel->getVendorProjectBreakdown($selectedVendorId, $filters);
+            $ledgerEntries = $this->vendorModel->getDetailedVendorLedger($selectedVendorId, $filters);
+        } else {
+            $vendorsSummary = $this->vendorModel->getVendorLedgerSummary($filters, 1000, 0);
+        }
+
+        $viewData = [
+            'vendor'           => $vendor,
+            'selectedVendorId' => $selectedVendorId,
+            'selectedProjectId'=> $selectedProjectId,
+            'projectName'      => $projectName,
+            'startDate'        => $startDate,
+            'endDate'          => $endDate,
+            'kpiMetrics'       => $kpiMetrics,
+            'projectBreakdown' => $projectBreakdown,
+            'ledgerEntries'    => $ledgerEntries,
+            'vendorsSummary'   => $vendorsSummary,
+        ];
+
+        extract($viewData);
+        include __DIR__ . '/../../views/phase2/vendors/vendor-ledger-print.php';
+        exit;
+    }
+}

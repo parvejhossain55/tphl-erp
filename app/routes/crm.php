@@ -124,6 +124,12 @@ return [
     'sales-performance/gap-details' => ['controller' => 'SalesPerformanceController', 'method' => 'gapDetails'],
 
     // =========================================================================
+    // Controller: TeamFollowUpComparisonController (Management / Sales Manager / Sales Head / Chief Executive)
+    // =========================================================================
+    'team-followup-comparison' => ['controller' => 'TeamFollowUpComparisonController', 'method' => 'index'],
+    'team-followup-comparison/leads-ajax' => ['controller' => 'TeamFollowUpComparisonController', 'method' => 'ajaxLeads'],
+
+    // =========================================================================
     // Controller: LeadSourceController
     // =========================================================================
     'leadSource-lists' => ['controller' => 'LeadSourceController', 'method' => 'index'],

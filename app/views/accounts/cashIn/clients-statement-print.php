@@ -416,10 +416,28 @@ if ($paymentType === 'land_share') {
                 <div class="summary-card-label"><?= htmlspecialchars($targetColumnLabel) ?></div>
                 <div class="summary-card-value">৳<?= number_format($grandTarget, 2) ?></div>
             </div>
-            <?php if (!empty($grandDiscount) && $grandDiscount > 0): ?>
+            <?php 
+            $activeDiscount = 0;
+            $discountCardLabel = 'Total Discount';
+            if ($paymentType === 'construction_fee') {
+                $activeDiscount = $grandEmiDiscount ?? 0;
+                $discountCardLabel = 'Total EMI Discount';
+            } elseif ($paymentType === 'land_share') {
+                $activeDiscount = $grandDiscount ?? 0;
+                $discountCardLabel = 'Total Discount';
+            } else {
+                $activeDiscount = ($grandDiscount ?? 0) + ($grandEmiDiscount ?? 0);
+                $discountCardLabel = 'Total Discount';
+            }
+            if ($activeDiscount > 0): ?>
             <div class="summary-card amber">
-                <div class="summary-card-label">Total Discount</div>
-                <div class="summary-card-value" style="color: #d97706;">৳<?= number_format($grandDiscount, 2) ?></div>
+                <div class="summary-card-label"><?= $discountCardLabel ?></div>
+                <div class="summary-card-value" style="color: #d97706;">
+                    ৳<?= number_format($activeDiscount, 2) ?>
+                    <?php if (($paymentType === 'full_payment' || empty($paymentType)) && ($grandEmiDiscount ?? 0) > 0 && ($grandDiscount ?? 0) > 0): ?>
+                        <div style="font-size: 8.5px; font-weight: normal; color: #b45309;">(Land: ৳<?= number_format($grandDiscount, 2) ?> | EMI: ৳<?= number_format($grandEmiDiscount, 2) ?>)</div>
+                    <?php endif; ?>
+                </div>
             </div>
             <?php endif; ?>
             <div class="summary-card green">
@@ -523,11 +541,24 @@ if ($paymentType === 'land_share') {
                                     <div style="color: #64748b; font-size: 9px;"><?= htmlspecialchars($c['agent_name']) ?></div>
                                 <?php endif; ?>
                             </td>
-                            <?php if (!empty($paymentType)): ?>
+                            <?php if (!empty($paymentType)): 
+                                $rowDiscount = 0;
+                                $discLabel = 'Disc';
+                                if ($paymentType === 'full_payment') {
+                                    $rowDiscount = (float)($c['total_discount'] ?? 0) + (float)($c['total_bulk_emi_discount'] ?? 0);
+                                    $discLabel = 'Disc';
+                                } elseif ($paymentType === 'land_share') {
+                                    $rowDiscount = (float)($c['total_discount'] ?? 0);
+                                    $discLabel = 'Disc';
+                                } elseif ($paymentType === 'construction_fee') {
+                                    $rowDiscount = (float)($c['total_bulk_emi_discount'] ?? 0);
+                                    $discLabel = 'EMI Disc';
+                                }
+                            ?>
                                 <td class="text-end">
                                     ৳<?= number_format($targetVal, 2) ?>
-                                    <?php if (!empty($c['total_discount']) && (float)$c['total_discount'] > 0): ?>
-                                        <div style="font-size: 8.5px; color: #d97706; font-weight: 600;">(Disc: ৳<?= number_format($c['total_discount'], 2) ?>)</div>
+                                    <?php if ($rowDiscount > 0): ?>
+                                        <div style="font-size: 8.5px; color: #d97706; font-weight: 600;">(Less <?= $discLabel ?>: ৳<?= number_format($rowDiscount, 2) ?>)</div>
                                     <?php endif; ?>
                                 </td>
                                 <td class="text-end" style="color: #15803d; font-weight: 600;">৳<?= number_format($paidVal, 2) ?></td>
@@ -548,11 +579,24 @@ if ($paymentType === 'land_share') {
             <tfoot>
                 <tr>
                     <td colspan="5" class="text-end"><strong>GRAND TOTAL:</strong></td>
-                    <?php if (!empty($paymentType)): ?>
+                    <?php if (!empty($paymentType)): 
+                        $footDiscount = 0;
+                        $footLabel = 'Total Disc';
+                        if ($paymentType === 'construction_fee') {
+                            $footDiscount = $grandEmiDiscount ?? 0;
+                            $footLabel = 'Total EMI Disc';
+                        } elseif ($paymentType === 'land_share') {
+                            $footDiscount = $grandDiscount ?? 0;
+                            $footLabel = 'Total Disc';
+                        } else {
+                            $footDiscount = ($grandDiscount ?? 0) + ($grandEmiDiscount ?? 0);
+                            $footLabel = 'Total Disc';
+                        }
+                    ?>
                         <td class="text-end">
                             <strong>৳<?= number_format($grandTarget, 2) ?></strong>
-                            <?php if (!empty($grandDiscount) && $grandDiscount > 0): ?>
-                                <div style="font-size: 8.5px; color: #d97706; font-weight: 600;">(Total Disc: ৳<?= number_format($grandDiscount, 2) ?>)</div>
+                            <?php if ($footDiscount > 0): ?>
+                                <div style="font-size: 8.5px; color: #d97706; font-weight: 600;">(<?= $footLabel ?>: ৳<?= number_format($footDiscount, 2) ?>)</div>
                             <?php endif; ?>
                         </td>
                         <td class="text-end" style="color: #15803d;"><strong>৳<?= number_format($grandPaid, 2) ?></strong></td>
