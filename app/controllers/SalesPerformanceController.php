@@ -139,17 +139,34 @@ class SalesPerformanceController extends Controller
             header('Content-Disposition: attachment; filename="drilldown-' . $key . '-' . date('Ymd-His') . '.csv"');
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, ['Lead / Record', 'Phone', 'Executive', 'Team', 'Detail', 'Date', 'Status']);
-            foreach ($drill['rows'] as $r) {
-                fputcsv($out, [
-                    $r['lead_name'] ?? '',
-                    $r['phone'] ?? '',
-                    $r['owner_name'] ?? '',
-                    $r['team_name'] ?? '',
-                    $r['info'] ?? '',
-                    substr($r['event_date'] ?? '', 0, 10),
-                    $r['status_badge'] ?? ''
-                ]);
+            if ($key === 'collection') {
+                fputcsv($out, ['Lead / Client', 'Phone', 'Executive', 'Team', 'Collected Amount', 'Payment Date', 'Booking Source', 'Booking Date', 'Detail']);
+                foreach ($drill['rows'] as $r) {
+                    fputcsv($out, [
+                        $r['lead_name'] ?? '',
+                        $r['phone'] ?? '',
+                        $r['owner_name'] ?? '',
+                        $r['team_name'] ?? '',
+                        $r['amount'] ?? '',
+                        substr($r['event_date'] ?? '', 0, 10),
+                        $r['booking_type'] ?? $r['status_badge'] ?? '',
+                        $r['booking_date'] ?? '',
+                        $r['info'] ?? ''
+                    ]);
+                }
+            } else {
+                fputcsv($out, ['Lead / Record', 'Phone', 'Executive', 'Team', 'Detail', 'Date', 'Status']);
+                foreach ($drill['rows'] as $r) {
+                    fputcsv($out, [
+                        $r['lead_name'] ?? '',
+                        $r['phone'] ?? '',
+                        $r['owner_name'] ?? '',
+                        $r['team_name'] ?? '',
+                        $r['info'] ?? '',
+                        substr($r['event_date'] ?? '', 0, 10),
+                        $r['status_badge'] ?? ''
+                    ]);
+                }
             }
             fclose($out);
             exit;

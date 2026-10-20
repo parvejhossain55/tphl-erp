@@ -93,9 +93,11 @@ $inactiveExecLeadsSum = array_sum(array_column($inactiveExecs, 'stage_1'));
 $activeExecBookingsSum = array_sum(array_column($activeExecs, 'bookings'));
 $inactiveExecBookingsSum = array_sum(array_column($inactiveExecs, 'bookings'));
 $activeExecConfirmedSum = array_sum(array_column($activeExecs, 'confirmed_sales'));
+$inactiveExecConfirmedSum = array_sum(array_column($inactiveExecs, 'confirmed_sales'));
 $activeExecCollectionSum = array_sum(array_column($activeExecs, 'collection'));
 
 $directExecBookings = max(0, $o['bookings'] - $activeExecBookingsSum - $inactiveExecBookingsSum);
+$directExecConfirmed = max(0, $o['confirmed_sales'] - $activeExecConfirmedSum - $inactiveExecConfirmedSum);
 $directExecCollection = max(0.0, $o['collection'] - $activeExecCollectionSum - array_sum(array_column($inactiveExecs, 'collection')));
 
 $scopeLabel = 'All teams';
@@ -1580,7 +1582,7 @@ $jsData = [
             <div class="sp-kpi click" data-gap="collection" style="cursor:pointer" title="Click to view Verified Collections">
                 <div class="lbl"><i class="fa-regular fa-arrow-trend-up"></i> Booking Collection</div>
                 <div class="val"><?= sp_tk($o['collection']) ?></div>
-                <div class="hint">Verified, collected this period <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;margin-left:2px"></i></div>
+                <div class="hint">New: <?= sp_tk($o['collection_new'] ?? 0) ?> · Prev: <?= sp_tk($o['collection_prev'] ?? 0) ?> <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;margin-left:2px"></i></div>
             </div>
         </div>
 
@@ -1854,7 +1856,7 @@ $jsData = [
             <div class="sp-kpi click" data-gap="collection" style="cursor:pointer" title="Click to view all Collections">
                 <div class="lbl"><i class="fa-regular fa-sack-dollar"></i> Booking Collection</div>
                 <div class="val"><?= sp_tk($o['collection']) ?></div>
-                <div class="hint"><?= sp_tk($teamCollectionSum) ?> team · <?= sp_tk($nonTeamCollection) ?> direct / other <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
+                <div class="hint">New: <?= sp_tk($o['collection_new'] ?? 0) ?> · Prev: <?= sp_tk($o['collection_prev'] ?? 0) ?> <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
             </div>
         </div>
 
@@ -2014,10 +2016,15 @@ $jsData = [
                 <div class="val"><?= sp_n($o['bookings']) ?></div>
                 <div class="hint"><?= sp_n($totalExecBookings) ?> active · <?= sp_n($inactiveExecBookingsSum) ?> inactive · <?= sp_n($directExecBookings) ?> direct / co <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
             </div>
+            <div class="sp-kpi click" data-gap="confirmed_sales" style="cursor:pointer" title="Click to view all Confirmed Sales">
+                <div class="lbl"><i class="fa-regular fa-circle-check"></i> Confirmed Sales</div>
+                <div class="val"><?= sp_n($o['confirmed_sales']) ?></div>
+                <div class="hint"><?= sp_n($activeExecConfirmedSum) ?> active · <?= sp_n($inactiveExecConfirmedSum) ?> inactive · <?= sp_n($directExecConfirmed) ?> direct / co <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
+            </div>
             <div class="sp-kpi click" data-gap="collection" style="cursor:pointer" title="Click to view all Collections">
                 <div class="lbl"><i class="fa-regular fa-sack-dollar"></i> Booking Collection</div>
                 <div class="val"><?= sp_tk($o['collection']) ?></div>
-                <div class="hint"><?= sp_tk($totalExecCollection) ?> active · <?= sp_n($o['confirmed_sales']) ?> confirmed <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
+                <div class="hint">New: <?= sp_tk($o['collection_new'] ?? 0) ?> · Prev: <?= sp_tk($o['collection_prev'] ?? 0) ?> <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
             </div>
         </div>
 
@@ -2029,6 +2036,8 @@ $jsData = [
                     <span>Total Leads: <b><?= sp_n($o['stage_1']) ?></b> (Active Execs: <b><?= sp_n($totalExecLeads) ?></b> + Inactive: <b><?= sp_n($inactiveExecLeadsSum) ?></b> + Unassigned Gap: <b style="color:var(--sp-amber)"><?= sp_n($unassignedLeads) ?></b>)</span>
                     <span style="color:var(--sp-soft)">|</span>
                     <span>Total Bookings: <b><?= sp_n($o['bookings']) ?></b> (Active: <b><?= sp_n($totalExecBookings) ?></b> + Inactive: <b><?= sp_n($inactiveExecBookingsSum) ?></b> + Direct/Co: <b style="color:var(--sp-blue)"><?= sp_n($directExecBookings) ?></b>)</span>
+                    <span style="color:var(--sp-soft)">|</span>
+                    <span>Confirmed Sales: <b><?= sp_n($o['confirmed_sales']) ?></b> (Active: <b><?= sp_n($activeExecConfirmedSum) ?></b> + Inactive: <b><?= sp_n($inactiveExecConfirmedSum) ?></b> + Direct: <b><?= sp_n($directExecConfirmed) ?></b>)</span>
                     <span style="color:var(--sp-soft)">|</span>
                     <span>Collection: <b><?= sp_tk($o['collection']) ?></b> (Active: <b><?= sp_tk($totalExecCollection) ?></b> + Inactive/Direct: <b><?= sp_tk(max(0.0, $o['collection'] - $totalExecCollection)) ?></b>)</span>
                 </div>
@@ -2246,7 +2255,7 @@ $jsData = [
             <dt>Funnel stages</dt><dd>Each stage counts leads that reached it or any later stage, so the funnel never increases. Booking / confirmed in the funnel = leads from this period that are booked as of today.</dd>
             <dt>Bookings (period)</dt><dd>Active bookings (booked / completed) with booking date in the period. Credited to “Sales by”, or to the lead owner if empty.</dd>
             <dt>Confirmed sale</dt><dd>A booking with at least one payment verified by accounts.</dd>
-            <dt>Collection</dt><dd>Verified, paid / partially-paid payments with payment date in the period (trashed payments excluded).</dd>
+            <dt>Collection</dt><dd>Verified, paid / partially-paid payments with payment date in the period (trashed payments excluded). Clicking opens the drill-down showing the exact split between <b>New Bookings</b> (booked in period) and <b>Previous Bookings</b> (installments/past bookings).</dd>
             <dt>Follow-ups &amp; visits</dt><dd>Follow-ups logged in the period, credited to the person who logged them.</dd>
             <dt>First response</dt><dd>Median time between assignment and first contact, only where both timestamps exist and contact happened after assignment.</dd>
             <dt>Overdue / due today</dt><dd>Live as of today: open (not booked, not dropped) leads whose latest follow-up's next date is before / equal to today.</dd>

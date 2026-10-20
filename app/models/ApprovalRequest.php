@@ -2354,14 +2354,14 @@ class ApprovalRequest extends Model
                 if ($isOver1Lac) {
                     if ($rowOpStatus !== 'approved') {
                         $pendingStageLabel = 'Pending Op Head (>1L)';
-                        $pendingForText = 'Admin & Operation Head (Role 20)';
+                        $pendingForText = 'Admin & Operation Head';
                     } else {
                         $pendingStageLabel = 'Pending Management (>1L)';
-                        $pendingForText = 'Management (Role 3)';
+                        $pendingForText = 'Management';
                     }
                 } else {
                     $pendingStageLabel = 'Pending Review (≤1L)';
-                    $pendingForText = 'Op Head / Management (Role 20 / 3)';
+                    $pendingForText = 'Op Head / Management';
                 }
             }
 
@@ -2879,8 +2879,15 @@ class ApprovalRequest extends Model
                         } elseif ($cbStatus === 'qc_approved') {
                             $row['approve_role'] = 'management';
                             $row['status'] = 'pending';
-                            $pendingStageLabel = 'Pending Management';
-                            $pendingForText = 'Admin & Operation Head';
+                            $isOver1Lac = ((float)($row['request_amount'] ?? 0) > 100000.01);
+                            $rowOpStatus = strtolower($row['op_head_status'] ?? 'pending');
+                            if ($isOver1Lac && $rowOpStatus !== 'approved' && empty($row['op_head_by'])) {
+                                $pendingStageLabel = 'Pending Op Head (>1L)';
+                                $pendingForText = 'Admin & Operation Head';
+                            } else {
+                                $pendingStageLabel = 'Pending Management';
+                                $pendingForText = 'Management';
+                            }
                         } elseif ($cbStatus === 'approved') {
                             if (($row['accounts_head_status'] ?? '') === 'approved') {
                                 $row['approve_role'] = 'accounts';

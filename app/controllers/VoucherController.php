@@ -905,6 +905,32 @@ class VoucherController extends Controller
         if (!empty($row['mgmt_by'])) {
             $addApprover('Management Approval', $row['mgmt_by'], $row['mgmt_approved_at'] ?? null, $row['mgmt_note'] ?? null);
         }
+
+        // Admin & Operation Head Approval (Mandatory for requests > ৳1,00,000 or when assigned)
+        $voucherAmt = (float)($voucherData['amount'] ?? ($appReq['request_amount'] ?? ($row['bill_amount'] ?? ($row['amount'] ?? 0))));
+        $isOver1Lac = ($voucherAmt > 100000.01);
+        $opHeadBy = $appReq['op_head_by'] ?? ($row['op_head_by'] ?? null);
+        $opHeadAt = $appReq['op_head_at'] ?? ($row['op_head_at'] ?? null);
+        $opHeadStatus = strtolower($appReq['op_head_status'] ?? ($row['op_head_status'] ?? 'pending'));
+        $opHeadNote = $appReq['op_head_note'] ?? ($row['op_head_note'] ?? null);
+
+        if (!empty($opHeadBy) || $opHeadStatus === 'approved') {
+            $opApproverName = !empty($opHeadBy) ? $getUser($opHeadBy) : 'Admin & Operation Head';
+            $audit['approvers'][] = [
+                'stage' => 'Admin & Operation Head',
+                'name'  => $opApproverName,
+                'date'  => !empty($opHeadAt) ? date('d M, Y h:i A', strtotime($opHeadAt)) : 'Verified & Approved',
+                'note'  => $opHeadNote ?: 'Verified and approved by Admin & Operation Head'
+            ];
+        } elseif ($isOver1Lac && !in_array(strtolower($appReq['status'] ?? ($row['status'] ?? '')), ['rejected', 'cancelled'])) {
+            $audit['approvers'][] = [
+                'stage' => 'Admin & Operation Head',
+                'name'  => '⏳ Pending Verification',
+                'date'  => 'Awaiting Op Head decision',
+                'note'  => 'Mandatory step for requests > ৳1,00,000'
+            ];
+        }
+
         // General / Final Management Approval
         $isRowOrReqApproved = in_array(strtolower($row['status'] ?? $appReq['status'] ?? ''), ['approved', 'paid', 'fully_paid', 'partially_paid', 'settled', 'completed']);
         $mgmtId = $row['management_apporved_by_id'] ?? $row['management_approved_by'] ?? null;

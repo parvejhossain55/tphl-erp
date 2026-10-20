@@ -247,7 +247,44 @@
             }
             const j = await res.json();
             const rows = j.rows || [];
-            let html = `<p style="font-size:12.5px;color:var(--sp-muted);margin:0 0 12px;line-height:1.5">${esc(j.description || '')}</p>`;
+            let html = '';
+
+            // Dedicated visual breakdown for Booking Collections
+            if (key === 'collection' && j.collection_summary) {
+                const cs = j.collection_summary;
+                html += `
+                    <div class="sp-col-breakdown-card" style="background:var(--sp-card);border:1px solid var(--sp-border);border-radius:10px;padding:12px 14px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,0.03)">
+                        <div style="font-size:12px;font-weight:700;color:var(--sp-text);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
+                            <span style="display:inline-flex;align-items:center;gap:6px"><i class="fa-solid fa-sack-dollar" style="color:var(--sp-green)"></i> Collection Source Breakdown:</span>
+                            <span style="font-size:11px;color:var(--sp-muted)">Total: <b style="color:var(--sp-text)">${tk(cs.total_amt)}</b></span>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                            <div class="sp-col-type-btn" data-type="new" style="background:#ecfdf5;border:1.5px solid #10b981;border-radius:8px;padding:9px 12px;cursor:pointer;transition:all .15s" title="Click to view payments from New Bookings">
+                                <div style="display:flex;justify-content:space-between;align-items:center">
+                                    <span style="font-size:11.5px;font-weight:700;color:#065f46;display:inline-flex;align-items:center;gap:5px"><i class="fa-solid fa-sparkles"></i> New Bookings</span>
+                                    <span style="font-size:10px;font-weight:700;background:#d1fae5;color:#047857;padding:1px 6px;border-radius:99px">${pct(cs.new_booking_amt, cs.total_amt)}</span>
+                                </div>
+                                <div style="font-size:16px;font-weight:800;color:#047857;margin:3px 0 1px">${tk(cs.new_booking_amt)}</div>
+                                <div style="font-size:10.5px;color:#059669">${n(cs.new_booking_count)} payments booked in period</div>
+                            </div>
+                            <div class="sp-col-type-btn" data-type="prev" style="background:#eff6ff;border:1.5px solid #3b82f6;border-radius:8px;padding:9px 12px;cursor:pointer;transition:all .15s" title="Click to view payments from Previous Bookings">
+                                <div style="display:flex;justify-content:space-between;align-items:center">
+                                    <span style="font-size:11.5px;font-weight:700;color:#1e40af;display:inline-flex;align-items:center;gap:5px"><i class="fa-regular fa-clock-rotate-left"></i> Previous Bookings</span>
+                                    <span style="font-size:10px;font-weight:700;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:99px">${pct(cs.prev_booking_amt, cs.total_amt)}</span>
+                                </div>
+                                <div style="font-size:16px;font-weight:800;color:#1d4ed8;margin:3px 0 1px">${tk(cs.prev_booking_amt)}</div>
+                                <div style="font-size:10.5px;color:#2563eb">${n(cs.prev_booking_count)} installment / past payments</div>
+                            </div>
+                        </div>
+                        <div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--sp-border);display:flex;align-items:center;justify-content:space-between;font-size:11px">
+                            <span style="color:var(--sp-muted)">Click a box above to filter, or:</span>
+                            <button type="button" class="sp-btn sm" id="spColShowAllBtn" style="font-size:10.5px;padding:2px 8px;height:24px"><i class="fa-regular fa-list"></i> Show All (${n(rows.length)})</button>
+                        </div>
+                    </div>`;
+            } else {
+                html += `<p style="font-size:12.5px;color:var(--sp-muted);margin:0 0 12px;line-height:1.5">${esc(j.description || '')}</p>`;
+            }
+
             if (!rows.length) {
                 html += '<div class="sp-empty"><i class="fa-regular fa-inbox" style="font-size:28px;margin-bottom:10px;opacity:0.4;display:block"></i>No records found for this selection.</div>';
             } else {
@@ -266,8 +303,16 @@
                             <tbody>`;
                 rows.forEach((r) => {
                     const link = r.lead_id ? `<a href="${baseUrl}/view-lead/${r.lead_id}" target="_blank" style="color:var(--sp-green);font-weight:600;text-decoration:none" title="Open lead #${r.lead_id} in new tab">${esc(r.lead_name)} <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;margin-left:3px"></i></a>` : `<b style="color:var(--sp-text)">${esc(r.lead_name)}</b>`;
-                    const badge = r.status_badge ? `<span class="sp-tag" style="margin-left:5px;font-size:10px;vertical-align:middle">${esc(r.status_badge)}</span>` : '';
-                    html += `<tr>
+                    let badge = '';
+                    if (r.status_badge === 'New Booking') {
+                        badge = '<span class="sp-tag" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;font-weight:700;font-size:10px;padding:2px 6px;border-radius:4px"><i class="fa-solid fa-sparkles" style="font-size:9px;margin-right:2px"></i>New Booking</span>';
+                    } else if (r.status_badge === 'Previous Booking') {
+                        badge = '<span class="sp-tag" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-weight:600;font-size:10px;padding:2px 6px;border-radius:4px"><i class="fa-regular fa-clock-rotate-left" style="font-size:9px;margin-right:2px"></i>Previous Booking</span>';
+                    } else if (r.status_badge) {
+                        badge = `<span class="sp-tag" style="margin-left:5px;font-size:10px;vertical-align:middle">${esc(r.status_badge)}</span>`;
+                    }
+                    const btypeAttr = (r.is_new_booking !== undefined) ? `data-btype="${r.is_new_booking ? 'new' : 'prev'}"` : '';
+                    html += `<tr ${btypeAttr}>
                         <td>
                             <div style="font-size:12.5px">${link}</div>
                             ${r.phone ? `<div style="color:var(--sp-soft);font-size:11px;margin-top:2px;font-family:monospace">${esc(r.phone)}</div>` : ''}
@@ -295,6 +340,33 @@
             }
 
             openDrawer(j.label || 'Records', `${n(j.total || 0)} records`, html);
+
+            // Wire up interactive collection breakdown filters
+            if (key === 'collection' && j.collection_summary) {
+                const colBtns = document.querySelectorAll('.sp-col-type-btn');
+                const showAllBtn = document.getElementById('spColShowAllBtn');
+                const filterCollectionType = (type) => {
+                    colBtns.forEach(btn => {
+                        const isActive = (btn.dataset.type === type);
+                        btn.style.opacity = (type === 'all' || isActive) ? '1' : '0.45';
+                        btn.style.outline = isActive ? '2px solid var(--sp-green)' : 'none';
+                    });
+                    const trs = Array.from(document.querySelectorAll('#spDrawerBody table tbody tr'));
+                    let matched = 0;
+                    trs.forEach(tr => {
+                        const btype = tr.dataset.btype;
+                        const match = (type === 'all' || btype === type);
+                        tr.style.display = match ? '' : 'none';
+                        if (match) matched++;
+                    });
+                    const note = document.getElementById('spDrawerFilteredNote');
+                    if (note) {
+                        note.textContent = type === 'all' ? '' : `Showing ${matched} ${type === 'new' ? 'New Booking' : 'Previous Booking'} payments (filtered from ${rows.length})`;
+                    }
+                };
+                colBtns.forEach(btn => btn.addEventListener('click', () => filterCollectionType(btn.dataset.type)));
+                if (showAllBtn) showAllBtn.addEventListener('click', () => filterCollectionType('all'));
+            }
 
             // Wire up real-time search box
             if (searchWrap && rows.length > 2) {

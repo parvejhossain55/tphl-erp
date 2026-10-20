@@ -35,6 +35,9 @@ $isFullyPaid     = in_array($status, ['fully_paid', 'paid']);
 require_once __DIR__ . '/../../../models/ApprovalRequest.php';
 $ahInfo = ApprovalRequest::getAccountsHeadApprovalInfo($GLOBALS['db'] ?? null, 'contractor_bill_requests', (int)$bill['id']);
 $isAccountsHeadApproved = !empty($ahInfo['is_accounts_head_approved']);
+$isOpHeadApproved       = !empty($ahInfo['is_op_head_approved']);
+$billAmt                = (float)($bill['approved_amount'] ?? $bill['bill_amount'] ?? 0);
+$isOver1Lac             = ($billAmt > 100000);
 
 $showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0 && $isAccountsHeadApproved;
 
@@ -200,19 +203,46 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                             </div>
                         </div>
                         <?php endif; ?>
-                        <?php if (!empty($bill['approved_by_name'])): ?>
-                        <div class="col-md-6 text-muted mt-2">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Approved By</div>
-                            <div class="info-value"><strong><?= htmlspecialchars($bill['approved_by_name']) ?></strong></div>
-                        </div>
-                        <?php endif; ?>
-                        
                         <?php if (!empty($bill['qc_approved_by_id'])): ?>
                         <div class="col-md-6 text-muted mt-2">
                             <div class="info-label text-uppercase text-muted small fw-bold">QC Approved By</div>
-                            <div class="info-value"><strong>ID: <?= htmlspecialchars($bill['qc_approved_by_id']) ?></strong>
+                            <div class="info-value">
+                                <strong><?= htmlspecialchars($bill['qc_approved_by_name'] ?? ('User #' . $bill['qc_approved_by_id'])) ?></strong>
+                                <?php if (!empty($bill['qc_approved_by_role'])): ?>
+                                    <span class="badge bg-light text-secondary border extra-small"><?= htmlspecialchars($bill['qc_approved_by_role']) ?></span>
+                                <?php endif; ?>
                                 <?php if (!empty($bill['qc_approved_at'])): ?>
-                                    <small class="text-muted">(<?= date('d M Y h:i A', strtotime($bill['qc_approved_at'])) ?>)</small>
+                                    <small class="text-muted d-block"><?= date('d M Y h:i A', strtotime($bill['qc_approved_at'])) ?></small>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
+                        <?php if ($isOpHeadApproved): ?>
+                        <div class="col-md-6 text-muted mt-2">
+                            <div class="info-label text-uppercase text-muted small fw-bold">Operation Head Approved By</div>
+                            <div class="info-value">
+                                <strong><?= htmlspecialchars($ahInfo['op_head_name'] ?? 'Admin & Operation Head') ?></strong>
+                                <?php if (!empty($ahInfo['op_head_designation'])): ?>
+                                    <span class="badge bg-light text-secondary border extra-small"><?= htmlspecialchars($ahInfo['op_head_designation']) ?></span>
+                                <?php endif; ?>
+                                <?php if (!empty($ahInfo['op_head_at'])): ?>
+                                    <small class="text-muted d-block"><?= date('d M Y h:i A', strtotime($ahInfo['op_head_at'])) ?></small>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
+                        <?php if (!empty($bill['approved_by_name'])): ?>
+                        <div class="col-md-6 text-muted mt-2">
+                            <div class="info-label text-uppercase text-muted small fw-bold">Management Approved By</div>
+                            <div class="info-value">
+                                <strong><?= htmlspecialchars($bill['approved_by_name']) ?></strong>
+                                <?php if (!empty($bill['approved_by_role'])): ?>
+                                    <span class="badge bg-light text-secondary border extra-small"><?= htmlspecialchars($bill['approved_by_role']) ?></span>
+                                <?php endif; ?>
+                                <?php if (!empty($bill['updated_at'])): ?>
+                                    <small class="text-muted d-block"><?= date('d M Y h:i A', strtotime($bill['updated_at'])) ?></small>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -455,7 +485,11 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                     <?php elseif ($status === 'qc_approved'): ?>
                         <div class="mb-3">
                             <small class="text-muted d-block fw-bold text-success">Pending Approval From</small>
-                            <span class="d-block small"><i class="bi bi-shield-lock me-1 text-success"></i> Management (Role 20: Admin & Operation Head)</span>
+                            <?php if ($isOver1Lac && !$isOpHeadApproved): ?>
+                                <span class="d-block small text-warning"><i class="bi bi-shield-lock me-1 text-warning"></i> Admin & Operation Head (Role 20 / 32)</span>
+                            <?php else: ?>
+                                <span class="d-block small text-primary"><i class="bi bi-shield-check me-1 text-primary"></i> Management (Role 3 / 1: Super Admin / Admin)</span>
+                            <?php endif; ?>
                         </div>
                     <?php elseif ($status === 'approved' && !$isAccountsHeadApproved): ?>
                         <div class="mb-3">
@@ -488,6 +522,21 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                         <?php endif; ?>
                         <?php if (!empty($bill['qc_note'])): ?>
                             <small class="text-warning d-block fst-italic">"<?= htmlspecialchars($bill['qc_note']) ?>"</small>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
+                    <?php if ($isOpHeadApproved): ?>
+                    <div class="mb-3 text-muted">
+                        <small class="text-muted d-block">Operation Head Approved By</small>
+                        <strong><?= htmlspecialchars($ahInfo['op_head_name'] ?? 'Admin & Operation Head') ?></strong>
+                        <?php if (!empty($ahInfo['op_head_designation'])): ?>
+                            <span class="badge bg-light text-secondary border extra-small d-inline-block"><?= htmlspecialchars($ahInfo['op_head_designation']) ?></span>
+                        <?php endif; ?>
+                        <?php if (!empty($ahInfo['op_head_at'])): ?>
+                            <small class="text-muted d-block"><?= date('d M Y h:i A', strtotime($ahInfo['op_head_at'])) ?></small>
+                        <?php endif; ?>
+                        <?php if (!empty($ahInfo['op_head_note'])): ?>
+                            <small class="text-success d-block fst-italic">"<?= htmlspecialchars($ahInfo['op_head_note']) ?>"</small>
                         <?php endif; ?>
                     </div>
                     <?php endif; ?>

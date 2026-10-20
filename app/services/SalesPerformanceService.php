@@ -790,8 +790,12 @@ class SalesPerformanceService
         // 4. Collections in period (verified money, by payment_date)
         // -----------------------------------------------------------------
         $dateSqlP = $isAllTime ? "" : " AND p.payment_date BETWEEN '$startD' AND '$endD'";
+        $newBookingCond = $isAllTime ? "1=1" : "b.booking_date BETWEEN '$startD' AND '$endD'";
         $sql = "
-            SELECT COALESCE(NULLIF(b.sales_by_id, 0), l.assigned_id) AS uid, SUM(p.amount) AS amt
+            SELECT COALESCE(NULLIF(b.sales_by_id, 0), l.assigned_id) AS uid, 
+                   SUM(p.amount) AS amt,
+                   SUM(CASE WHEN $newBookingCond THEN p.amount ELSE 0 END) AS amt_new,
+                   SUM(CASE WHEN NOT ($newBookingCond) THEN p.amount ELSE 0 END) AS amt_prev
             FROM lead_payments p
             JOIN lead_bookings b ON b.id = p.booking_id AND b.deleted_at IS NULL AND b.booking_status IN ('booked','completed')
             JOIN leads l ON l.id = b.lead_id
@@ -808,6 +812,8 @@ class SalesPerformanceService
                 continue;
             }
             $add($uid, 'collection', (float) $r['amt']);
+            $add($uid, 'collection_new', (float) ($r['amt_new'] ?? 0));
+            $add($uid, 'collection_prev', (float) ($r['amt_prev'] ?? 0));
         }
 
         // -----------------------------------------------------------------
@@ -1037,7 +1043,7 @@ class SalesPerformanceService
             'contacted_24h' => 0, 'response_samples' => 0,
             'follow_ups' => 0, 'leads_followed' => 0, 'visits_done' => 0, 'visits_planned' => 0,
             'bookings' => 0, 'booking_value' => 0.0, 'confirmed_sales' => 0, 'confirmed_value' => 0.0,
-            'collection' => 0.0, 'onboarded' => 0,
+            'collection' => 0.0, 'collection_new' => 0.0, 'collection_prev' => 0.0, 'onboarded' => 0,
             'overdue' => 0, 'due_today' => 0, 'upcoming_visits' => 0, 'backlog_uncontacted' => 0,
             'target_bookings' => 0, 'target_visits' => 0, 'target_value' => 0.0,
         ];
@@ -1458,6 +1464,7 @@ class SalesPerformanceService
         $dateSqlP = $isAllTime ? "" : " AND pay.payment_date BETWEEN '$startD' AND '$endD'";
         $dateSqlF = $isAllTime ? "" : " AND f.created_at BETWEEN '$start' AND '$end'";
         $dateSqlO = $isAllTime ? "" : " AND o.created_at BETWEEN '$start' AND '$end'";
+        $newBookingCond = $isAllTime ? "1=1" : "b.booking_date BETWEEN '$startD' AND '$endD'";
 
         $lCols = $this->getTableColumns('leads');
         $firstContactExpr = isset($lCols['first_contacted_at']) ? "COALESCE(l.first_contacted_at, $dateColL)" : $dateColL;
@@ -1608,11 +1615,16 @@ class SalesPerformanceService
             ],
             'collection' => [
                 'label' => 'Booking Collections in Period',
-                'description' => 'Verified payments collected by accounts within the selected period.',
+                'description' => 'Verified payments collected by accounts within the selected period. Breakdown shows collections from new bookings versus previous bookings.',
                 'sql' => "SELECT pay.id AS ref_id, b.lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
                                  COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, COALESCE(NULLIF(b.sales_by_id, 0), l.assigned_id) AS owner_id, l.team_id AS lead_team_id,
-                                 CONCAT('Collected: ৳', FORMAT(pay.amount, 0), ' (', COALESCE(pay.payment_method, 'Payment'), ') · Booking #', b.id) AS info,
-                                 pay.payment_date AS event_date, 'Verified' AS status_badge
+                                 pay.amount, b.booking_date,
+                                 CASE WHEN $newBookingCond THEN 1 ELSE 0 END AS is_new_booking,
+                                 CASE WHEN $newBookingCond THEN 'New Booking' ELSE 'Previous Booking' END AS booking_type,
+                                 CONCAT('Collected: ৳', FORMAT(pay.amount, 0), ' (', COALESCE(pay.payment_method, 'Payment'), ') · Booking #', b.id,
+                                        CASE WHEN b.booking_date IS NOT NULL THEN CONCAT(' (Booked: ', DATE_FORMAT(b.booking_date, '%d %b %Y'), ')') ELSE '' END) AS info,
+                                 pay.payment_date AS event_date,
+                                 CASE WHEN $newBookingCond THEN 'New Booking' ELSE 'Previous Booking' END AS status_badge
                           FROM lead_payments pay
                           JOIN lead_bookings b ON b.id = pay.booking_id AND b.deleted_at IS NULL AND b.booking_status IN ('booked','completed')
                           JOIN leads l ON l.id = b.lead_id
@@ -1787,13 +1799,46 @@ class SalesPerformanceService
                 }
                 $rows[] = $r;
             }
+            $colSummary = null;
+            if ($targetKey === 'collection') {
+                $summarySql = "SELECT 
+                    COUNT(*) AS total_count,
+                    COALESCE(SUM(pay.amount), 0) AS total_amt,
+                    COUNT(CASE WHEN $newBookingCond THEN 1 END) AS new_count,
+                    COALESCE(SUM(CASE WHEN $newBookingCond THEN pay.amount ELSE 0 END), 0) AS new_amt,
+                    COUNT(CASE WHEN NOT ($newBookingCond) THEN 1 END) AS prev_count,
+                    COALESCE(SUM(CASE WHEN NOT ($newBookingCond) THEN pay.amount ELSE 0 END), 0) AS prev_amt
+                FROM lead_payments pay
+                JOIN lead_bookings b ON b.id = pay.booking_id AND b.deleted_at IS NULL AND b.booking_status IN ('booked','completed')
+                JOIN leads l ON l.id = b.lead_id
+                WHERE COALESCE(pay.is_trashed, 0) = 0 
+                  AND pay.verification_status = 'verified' 
+                  AND pay.payment_status IN ('paid','partially_paid')
+                  $dateSqlP $projB $scopeB";
+                $sRes = $this->db->query($summarySql);
+                if ($sRes && $sr = $sRes->fetch_assoc()) {
+                    $colSummary = [
+                        'total_amt' => (float) $sr['total_amt'],
+                        'total_count' => (int) $sr['total_count'],
+                        'new_booking_amt' => (float) $sr['new_amt'],
+                        'new_booking_count' => (int) $sr['new_count'],
+                        'prev_booking_amt' => (float) $sr['prev_amt'],
+                        'prev_booking_count' => (int) $sr['prev_count'],
+                    ];
+                }
+            }
+
             $cnt = $this->db->query("SELECT COUNT(*) c FROM (" . $def['sql'] . ") x");
-            return [
+            $out = [
                 'label' => $def['label'],
                 'description' => $def['description'],
                 'rows' => $rows,
                 'total' => $cnt ? (int) $cnt->fetch_assoc()['c'] : count($rows),
             ];
+            if ($colSummary) {
+                $out['collection_summary'] = $colSummary;
+            }
+            return $out;
         }
 
         // Fallback to data quality gap definitions

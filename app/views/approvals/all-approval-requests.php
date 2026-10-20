@@ -768,7 +768,7 @@
                                             <?php
                                             $stageLabel = str_replace(['\u0026', '&amp;'], ['&', '&'], $req['pending_stage_label'] ?? 'Pending Review');
                                             $pendingFor = str_replace(['\u0026', '&amp;'], ['&', '&'], $req['pending_for_text'] ?? 'Management');
-                                            $pendingFor = trim(preg_replace('/\s*\(Role\s*[0-9,\s]+\)/i', '', $pendingFor));
+                                            $pendingFor = trim(preg_replace('/\s*\(Role[^\)]*\)/i', '', $pendingFor));
 
                                             $badgeClass = 'bg-warning text-dark';
                                             if (stripos($stageLabel, 'QC') !== false || stripos($stageLabel, 'Audit') !== false) {
@@ -794,6 +794,24 @@
                                                 <i class="fa-solid fa-hourglass-half text-warning me-1"></i><strong>Pending at:</strong>
                                                 <span class="text-primary fw-semibold d-block"><?= htmlspecialchars($pendingFor) ?></span>
                                             </div>
+                                            <?php if (strtolower($req['op_head_status'] ?? '') === 'approved' || !empty($req['op_head_by'])): ?>
+                                                <div class="mt-2 pt-1 border-top border-success-subtle text-start">
+                                                    <span class="badge bg-success-subtle text-success border border-success-subtle extra-small fw-semibold d-inline-block mb-1" style="font-size: 9.5px; padding: 2px 6px;">
+                                                        <i class="fa-solid fa-circle-check me-1"></i>Last Approved: Operation Head
+                                                    </span>
+                                                    <div class="extra-small text-dark fw-bold" style="font-size: 11px;">
+                                                        <i class="fa-solid fa-user-check text-success me-1"></i><?= htmlspecialchars(!empty($req['op_head_name']) ? $req['op_head_name'] : 'Admin & Operation Head') ?>
+                                                        <?php if (!empty($req['op_head_code'])): ?>
+                                                            <span class="badge bg-light text-secondary border extra-small"><?= htmlspecialchars($req['op_head_code']) ?></span>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                    <?php if (!empty($req['op_head_at'])): ?>
+                                                        <span class="text-muted extra-small d-block" style="font-size: 10px;">
+                                                            <i class="fa-solid fa-calendar-check me-1"></i><?= date('d M, Y h:i A', strtotime($req['op_head_at'])) ?>
+                                                        </span>
+                                                    <?php endif; ?>
+                                                </div>
+                                            <?php endif; ?>
                                         <?php elseif (in_array($req['status'], ['approved', 'partially_approved', 'partially_paid'])): ?>
                                             <span
                                                 class="badge <?= $req['status'] === 'approved' ? 'bg-success' : 'bg-info' ?> text-white rounded-pill px-3 py-1 extra-small d-block mb-1">
