@@ -782,7 +782,7 @@
                             <div class="user__dropdown">
                                 <ul>
                                     <li>
-                                        <a href="<?= $GLOBALS['base_url'] ?>/user-profile/<?= $_SESSION['user']['id'] ?>"><svg width="16" height="16"
+                                        <a href="<?= $GLOBALS['base_url'] ?>/my-profile"><svg width="16" height="16"
                                                 viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                                                 <g clip-path="url(#clip0_643_344)">
                                                     <path

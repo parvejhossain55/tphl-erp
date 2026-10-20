@@ -59,8 +59,18 @@ class AtsController extends Controller
             'date_to' => $_GET['date_to'] ?? '',
         ];
 
+        $rawPerPage = strtolower(trim($_GET['per_page'] ?? '20'));
+        if ($rawPerPage === 'all') {
+            $perPage = 10000;
+        } else {
+            $perPage = (int)$rawPerPage;
+            if (!in_array($perPage, [10, 20, 50])) {
+                $perPage = 20;
+                $rawPerPage = '20';
+            }
+        }
+
         $page = max(1, (int)($_GET['page'] ?? 1));
-        $perPage = max(10, min(100, (int)($_GET['per_page'] ?? 25)));
 
         $result = $this->candidateModel->getFiltered($filters, $page, $perPage);
         $options = $this->dropdownModel->getAllActiveGrouped();
@@ -71,6 +81,7 @@ class AtsController extends Controller
             'total' => $result['total'],
             'currentPage' => $result['page'],
             'perPage' => $result['per_page'],
+            'rawPerPage' => $rawPerPage,
             'totalPages' => $result['total_pages'],
             'tabCounts' => $result['counts'],
             'filters' => $filters,
@@ -91,8 +102,8 @@ class AtsController extends Controller
         $phone = trim($_POST['phone'] ?? '');
         $email = trim($_POST['email'] ?? '');
 
-        if (empty($name) || empty($phone) || empty($email)) {
-            $_SESSION['error'] = 'Candidate Name, Phone, and Email are mandatory.';
+        if (empty($name) || empty($phone)) {
+            $_SESSION['error'] = 'Candidate Name and Phone are mandatory.';
             header("Location: " . $GLOBALS['base_url'] . "/ats-tracker");
             exit;
         }
@@ -206,8 +217,8 @@ class AtsController extends Controller
         $phone = trim($_POST['phone'] ?? '');
         $email = trim($_POST['email'] ?? '');
 
-        if (empty($name) || empty($phone) || empty($email)) {
-            $_SESSION['error'] = 'Candidate Name, Phone, and Email are mandatory.';
+        if (empty($name) || empty($phone)) {
+            $_SESSION['error'] = 'Candidate Name and Phone are mandatory.';
             header("Location: " . $GLOBALS['base_url'] . "/ats-tracker");
             exit;
         }
@@ -346,8 +357,9 @@ class AtsController extends Controller
         } elseif ($action === 'interview_attendance' && !empty($_POST['interview_attendance'])) {
             $updates['interview_attendance'] = $_POST['interview_attendance'];
         } elseif ($action === 'schedule') {
-            if (!empty($_POST['interview_date'])) $updates['interview_date'] = $_POST['interview_date'];
-            if (!empty($_POST['interview_location'])) $updates['interview_location'] = $_POST['interview_location'];
+            if (isset($_POST['interview_date'])) $updates['interview_date'] = trim($_POST['interview_date']);
+            if (isset($_POST['interview_time'])) $updates['interview_time'] = trim($_POST['interview_time']);
+            if (isset($_POST['interview_location'])) $updates['interview_location'] = trim($_POST['interview_location']);
         } elseif ($action === 'hired' && !empty($_POST['hired'])) {
             $updates['hired'] = $_POST['hired'];
         }
@@ -442,10 +454,10 @@ class AtsController extends Controller
             $headerMap[$clean] = $idx;
         }
 
-        $requiredCols = ['name', 'phone', 'email', 'position', 'department'];
+        $requiredCols = ['name', 'phone'];
         foreach ($requiredCols as $req) {
             if (!isset($headerMap[$req])) {
-                $_SESSION['error'] = "Missing required column in CSV: '{$req}'. Please download the sample CSV template.";
+                $_SESSION['error'] = "Missing required column in CSV: '{$req}'. Please ensure 'Name' and 'Phone' columns exist.";
                 fclose($handle);
                 header("Location: " . $GLOBALS['base_url'] . "/ats-tracker");
                 exit;
@@ -458,18 +470,18 @@ class AtsController extends Controller
         while (($row = fgetcsv($handle, 2000, ",")) !== false) {
             $name = trim($row[$headerMap['name']] ?? '');
             $phone = trim($row[$headerMap['phone']] ?? '');
-            $email = trim($row[$headerMap['email']] ?? '');
-            $position = trim($row[$headerMap['position']] ?? 'Not Specified');
-            $department = trim($row[$headerMap['department']] ?? 'General');
 
-            if (empty($name) || empty($phone) || empty($email)) {
+            if (empty($name) || empty($phone)) {
                 $skippedCount++;
                 continue;
             }
 
-            $source = isset($headerMap['source']) ? trim($row[$headerMap['source']] ?? '') : 'Walk-in';
-            $invitationStatus = isset($headerMap['invitation_status']) ? trim($row[$headerMap['invitation_status']] ?? '') : 'Pending';
-            $interviewDate = isset($headerMap['interview_date']) && !empty($row[$headerMap['interview_date']]) ? date('Y-m-d', strtotime($row[$headerMap['interview_date']])) : null;
+            $email = isset($headerMap['email']) ? trim($row[$headerMap['email']] ?? '') : '';
+            $position = (isset($headerMap['position']) && !empty(trim($row[$headerMap['position']] ?? ''))) ? trim($row[$headerMap['position']]) : 'Not Specified';
+            $department = (isset($headerMap['department']) && !empty(trim($row[$headerMap['department']] ?? ''))) ? trim($row[$headerMap['department']]) : 'General';
+            $source = (isset($headerMap['source']) && !empty(trim($row[$headerMap['source']] ?? ''))) ? trim($row[$headerMap['source']]) : null;
+            $invitationStatus = (isset($headerMap['invitation_status']) && !empty(trim($row[$headerMap['invitation_status']] ?? ''))) ? trim($row[$headerMap['invitation_status']]) : 'Pending';
+            $interviewDate = (isset($headerMap['interview_date']) && !empty($row[$headerMap['interview_date']])) ? date('Y-m-d', strtotime($row[$headerMap['interview_date']])) : null;
             $interviewLocation = isset($headerMap['interview_location']) ? trim($row[$headerMap['interview_location']] ?? '') : null;
             $remarks = isset($headerMap['remarks']) ? trim($row[$headerMap['remarks']] ?? '') : null;
 
@@ -513,11 +525,11 @@ class AtsController extends Controller
         header('Content-Disposition: attachment; filename="tphl_ats_candidates_sample.csv"');
 
         $output = fopen('php://output', 'w');
-        fputcsv($output, ['Name', 'Phone', 'Email', 'Position', 'Department', 'Source', 'Invitation_Status', 'Interview_Date', 'Interview_Location', 'Remarks']);
+        fputcsv($output, ['Name', 'Phone']);
 
         // Sample Rows
-        fputcsv($output, ['Md. Rakib Hasan', '01712345678', 'rakib@example.com', 'Site Engineer', 'Engineering, Construction & Design', 'Walk-in', 'Yes', date('Y-m-d', strtotime('+3 days')), 'Ashulia Site', 'Walk-in applicant']);
-        fputcsv($output, ['Sabbir Ahmed', '01812345678', 'sabbir@example.com', 'Accountant', 'Finance & Accounts', 'Bdjobs', 'Didn\'t Pick', '', '', 'Follow up tomorrow']);
+        fputcsv($output, ['Md. Rakib Hasan', '01712345678']);
+        fputcsv($output, ['Sabbir Ahmed', '01812345678']);
 
         fclose($output);
         exit;
@@ -681,6 +693,66 @@ class AtsController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Quick Upload CV for Candidate (AJAX)
+     */
+    public function uploadCv()
+    {
+        $this->checkAuth();
+        header('Content-Type: application/json');
+
+        $id = (int)($_POST['candidate_id'] ?? 0);
+        if (!$id) {
+            echo json_encode(['success' => false, 'message' => 'Invalid candidate ID']);
+            exit;
+        }
+
+        $candidate = $this->candidateModel->getById($id);
+        if (!$candidate) {
+            echo json_encode(['success' => false, 'message' => 'Candidate not found']);
+            exit;
+        }
+
+        $cvSource = $_POST['cv_source'] ?? 'file';
+
+        if ($cvSource === 'drive_link') {
+            $driveLink = trim($_POST['cv_drive_link'] ?? '');
+            if (empty($driveLink)) {
+                echo json_encode(['success' => false, 'message' => 'Please provide a valid Google Drive link']);
+                exit;
+            }
+            $this->candidateModel->updateField($id, 'cv_source', 'drive_link');
+            $this->candidateModel->updateField($id, 'cv_drive_link', $driveLink);
+            echo json_encode(['success' => true, 'message' => 'CV Drive link saved successfully!']);
+            exit;
+        }
+
+        if (!isset($_FILES['cv_file']) || $_FILES['cv_file']['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode(['success' => false, 'message' => 'Please select a valid CV file to upload.']);
+            exit;
+        }
+
+        $filePath = $this->handleCvUpload($_FILES['cv_file']);
+        if (!$filePath) {
+            echo json_encode(['success' => false, 'message' => 'Invalid file format. Allowed formats: PDF, DOC, DOCX, JPG, PNG.']);
+            exit;
+        }
+
+        // Clean up old file if exists
+        if (!empty($candidate['cv_file_path'])) {
+            $oldFile = BASE_PATH . '/public/' . $candidate['cv_file_path'];
+            if (file_exists($oldFile)) {
+                @unlink($oldFile);
+            }
+        }
+
+        $this->candidateModel->updateField($id, 'cv_source', 'file');
+        $this->candidateModel->updateField($id, 'cv_file_path', $filePath);
+
+        echo json_encode(['success' => true, 'message' => 'CV uploaded successfully!']);
+        exit;
     }
 
     /**

@@ -361,6 +361,18 @@ class EmployeeDashboardController extends Controller
                 'label'  => 'Social Media Link',
                 'filled' => !empty($employee['social_media1']) && $employee['social_media1'] !== 'N/A',
             ],
+            'nid' => [
+                'label'  => 'NID Number',
+                'filled' => !empty($employee['nid']) && $employee['nid'] !== 'N/A',
+            ],
+            'experience' => [
+                'label'  => 'Experience',
+                'filled' => !empty($employee['experience']) && $employee['experience'] !== 'N/A',
+            ],
+            'responsibilities' => [
+                'label'  => 'Responsibilities',
+                'filled' => !empty($employee['responsibilities']) && $employee['responsibilities'] !== 'N/A',
+            ],
         ];
         $totalCompletionFields = count($completionFields);
         $completedCount = 0;
@@ -512,6 +524,9 @@ class EmployeeDashboardController extends Controller
         $qualification    = trim($_POST['qualification'] ?? '');
         $address          = trim($_POST['address'] ?? '');
         $socialMedia1     = trim($_POST['social_media1'] ?? '');
+        $nid              = trim($_POST['nid'] ?? '');
+        $experience       = trim($_POST['experience'] ?? '');
+        $responsibilities = trim($_POST['responsibilities'] ?? '');
 
         if ($dob && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dob)) {
             $ts = strtotime($dob);
@@ -520,10 +535,10 @@ class EmployeeDashboardController extends Controller
 
         $stmt = $this->db->prepare("
             UPDATE employees
-            SET father_name = ?, phone = ?, emergency_contact = ?, dob = ?, qualification = ?, address = ?, social_media1 = ?
+            SET father_name = ?, phone = ?, emergency_contact = ?, dob = ?, qualification = ?, address = ?, social_media1 = ?, nid = ?, experience = ?, responsibilities = ?
             WHERE id = ?
         ");
-        $stmt->bind_param("sssssssi", $fatherName, $phone, $emergencyContact, $dob, $qualification, $address, $socialMedia1, $employeeId);
+        $stmt->bind_param("ssssssssssi", $fatherName, $phone, $emergencyContact, $dob, $qualification, $address, $socialMedia1, $nid, $experience, $responsibilities, $employeeId);
         $ok = $stmt->execute();
         $stmt->close();
 
