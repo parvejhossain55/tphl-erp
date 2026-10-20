@@ -23,8 +23,15 @@ $isManagementUser = in_array($userRoleId, [1, 3, 33, 34, 35], true)
 // Role 10: Head Of Digital Marketing Team
 $isHeadOfDM = ($userRoleId === 10 || $secondaryRoleId === 10 || $primaryRoleId === 10 || strpos($userRoleName, 'head of digital marketing') !== false);
 
+// Role 11: Executive Of Digital Marketing Team
+$isDMExecutive = ($userRoleId === 11 || $secondaryRoleId === 11 || $primaryRoleId === 11 || strpos($userRoleName, 'executive of digital marketing') !== false);
+
 // Only Management and Head Of Digital Marketing Team (Role 10) can view live sheet
 $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
+
+// Delete Permissions: Only Management and Head Of DM (Role 10) can delete leads.
+// Role 11 (Executive Of Digital Marketing Team) CANNOT delete leads.
+$canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
 ?>
 <style>
     :root {
@@ -679,7 +686,7 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
         <div>
             <h4 class="fw-bold mb-1 text-dark d-flex align-items-center gap-2">
                 <i class="fa-solid fa-wand-magic-sparkles text-primary"></i>
-                Lead Intake & Automation Distribution
+                Intake Lead & Automated Lead Distribution
             </h4>
             <p class="text-muted small mb-0">
                 Google Sheets / Facebook Meta Lead Ads auto-sync, intelligent Gemini parsing, and fair round-robin team distribution.
@@ -727,25 +734,37 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
     <!-- 4 Metric Cards -->
     <div class="metrics-grid">
         <div class="metric-card">
-            <div class="metric-title">Total Leads Received</div>
+            <div class="metric-title d-flex justify-content-between align-items-center">
+                <span>Total Leads Received</span>
+                <span id="dateBadgeTotal" class="badge bg-light text-muted border" style="font-size: 10px; font-weight: 600;">All Time</span>
+            </div>
             <div class="metric-value val-dark" id="statTotalLeads">--</div>
-            <div class="metric-caption">Automatically synced from Meta</div>
+            <div class="metric-caption" id="statTotalCaption">Automatically synced from Meta</div>
         </div>
 
         <div class="metric-card">
-            <div class="metric-title">Distributed & Approved</div>
+            <div class="metric-title d-flex justify-content-between align-items-center">
+                <span>Distributed & Approved</span>
+                <span id="dateBadgeApproved" class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 10px; font-weight: 600;">All Time</span>
+            </div>
             <div class="metric-value val-green" id="statApprovedLeads">--</div>
-            <div class="metric-caption">distribute = 1 (Visible to Sales Team)</div>
+            <div class="metric-caption" id="statApprovedCaption">distribute = 1 (Visible to Sales Team)</div>
         </div>
 
         <div class="metric-card">
-            <div class="metric-title">Awaiting Approval</div>
+            <div class="metric-title d-flex justify-content-between align-items-center">
+                <span>Awaiting Approval</span>
+                <span id="dateBadgePending" class="badge bg-warning-subtle text-warning border border-warning-subtle" style="font-size: 10px; font-weight: 600;">All Time</span>
+            </div>
             <div class="metric-value val-amber" id="statPendingLeads">--</div>
-            <div class="metric-caption">distribute = 0 (Pending Review)</div>
+            <div class="metric-caption" id="statPendingCaption">distribute = 0 (Pending Review)</div>
         </div>
 
         <div class="metric-card">
-            <div class="metric-title">Active Sales Teams</div>
+            <div class="metric-title d-flex justify-content-between align-items-center">
+                <span>Active Sales Teams</span>
+                <span class="badge bg-purple-subtle text-primary border border-primary-subtle" style="font-size: 10px; font-weight: 600;">Active</span>
+            </div>
             <div class="metric-value val-purple" id="statTotalTeams"><?= count($teams ?? []) ?></div>
             <div class="metric-caption">Fair round-robin rotation active</div>
         </div>
@@ -808,15 +827,37 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
             <!-- Left: Search & Filter Controls (Pashapashi) -->
             <div class="d-flex align-items-center gap-2 flex-wrap">
                 <!-- Search Input -->
-                <div style="width: 175px;">
+                <div style="width: 165px;">
                     <div class="input-group input-group-sm">
                         <span class="input-group-text bg-white border-end-0 text-muted px-2"><i class="fa-solid fa-magnifying-glass" style="font-size: 11px;"></i></span>
                         <input type="text" id="searchInput" class="form-control form-control-sm border-start-0 ps-1" placeholder="Search leads..." oninput="debounceSearch()">
                     </div>
                 </div>
 
+                <!-- Date Range Filter Dropdown (Today, Yesterday, Weekly, Custom Range) -->
+                <div style="width: 145px;">
+                    <select id="dateFilterSelect" class="form-select form-select-sm" onchange="onDateFilterChange(this.value)" title="Filter leads by date of arrival">
+                        <option value="all">All Dates</option>
+                        <option value="today">Today</option>
+                        <option value="yesterday">Yesterday</option>
+                        <option value="this_week">This Week (7 Days)</option>
+                        <option value="custom">Custom Range...</option>
+                    </select>
+                </div>
+
+                <!-- Custom Date Range Picker (shown when 'custom' is selected) -->
+                <div id="customDateRangeBox" class="d-none align-items-center gap-1 bg-white border rounded px-2 py-1 shadow-sm" style="height: 31px;">
+                    <span class="small text-muted" style="font-size: 11px;">From:</span>
+                    <input type="date" id="customStartDate" class="form-control form-control-sm py-0 px-1" style="width: 120px; font-size: 11px; height: 24px;" title="Start Date">
+                    <span class="small text-muted" style="font-size: 11px;">To:</span>
+                    <input type="date" id="customEndDate" class="form-control form-control-sm py-0 px-1" style="width: 120px; font-size: 11px; height: 24px;" title="End Date">
+                    <button type="button" class="btn btn-sm btn-success px-2 py-0 fw-bold" style="height: 24px; font-size: 11px;" onclick="applyCustomDateFilter()">
+                        Filter
+                    </button>
+                </div>
+
                 <!-- Team Filter Dropdown -->
-                <div style="width: 165px;">
+                <div style="width: 155px;">
                     <select id="teamFilterDropdown" class="form-select form-select-sm" onchange="onTeamDropdownChange(this.value)">
                         <option value="">All Leads (Any Team)</option>
                         <option value="unassigned">⚠️ Unassigned Leads</option>
@@ -894,12 +935,14 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
                 <button id="btnBulkUndo" class="btn btn-outline-secondary btn-sm fw-bold px-3 btn-toolbar-action" style="display:none;" onclick="bulkUndoSelected()">
                     <i class="fa-solid fa-rotate-left" style="font-size: 12px;"></i> <span id="btnBulkUndoText">Revert to Pending</span>
                 </button>
+                <?php if ($canDeleteLeads): ?>
                 <button id="btnBulkDelete" class="btn btn-danger btn-sm fw-bold px-3 btn-toolbar-action" style="display:none;" onclick="bulkDeleteSelected()">
                     <i class="fa-solid fa-trash-can" style="font-size: 13px;"></i> <span id="btnBulkDeleteText">Delete Selected Leads</span>
                 </button>
                 <button id="btnDeleteTeamApproved" class="btn btn-outline-danger btn-sm fw-bold px-3 btn-toolbar-action" style="display:none;" onclick="bulkDeleteTeamApproved()">
                     <i class="fa-solid fa-trash-can" style="font-size: 13px;"></i> <span id="btnDeleteTeamApprovedText">Delete Team Approved</span>
                 </button>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -993,8 +1036,12 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
 
 <script>
     const baseUrl = "<?= $GLOBALS['base_url'] ?>";
+    const canDeleteLeads = <?= $canDeleteLeads ? 'true' : 'false' ?>;
     let currentTabStatus = '0'; // Default: Pending Approval (distribute = 0)
     let currentTeamId = '';
+    let currentDateFilter = 'all'; // 'all', 'today', 'yesterday', 'this_week', 'custom'
+    let currentStartDate = '';
+    let currentEndDate = '';
     let currentPage = 1;
     let limit = 30;
     let totalCount = 0;
@@ -1192,18 +1239,74 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
         loadLeads();
     }
 
+    function onDateFilterChange(val) {
+        currentDateFilter = val;
+        const customBox = document.getElementById('customDateRangeBox');
+
+        if (val === 'custom') {
+            if (customBox) {
+                customBox.classList.remove('d-none');
+                customBox.classList.add('d-flex');
+            }
+            const s = document.getElementById('customStartDate').value;
+            const e = document.getElementById('customEndDate').value;
+            if (s || e) {
+                applyCustomDateFilter();
+            }
+            return;
+        }
+
+        if (customBox) {
+            customBox.classList.remove('d-flex');
+            customBox.classList.add('d-none');
+        }
+
+        currentStartDate = '';
+        currentEndDate = '';
+        currentPage = 1;
+        selectedLeadIds.clear();
+        updateSelectionUi();
+        loadLeads();
+    }
+
+    function applyCustomDateFilter() {
+        const s = document.getElementById('customStartDate').value;
+        const e = document.getElementById('customEndDate').value;
+
+        if (!s && !e) {
+            showLeadToast('Please select at least a Start Date or End Date.', 'error');
+            return;
+        }
+
+        if (s && e && s > e) {
+            showLeadToast('Start Date cannot be after End Date.', 'error');
+            return;
+        }
+
+        currentDateFilter = 'custom';
+        currentStartDate = s;
+        currentEndDate = e;
+        currentPage = 1;
+        selectedLeadIds.clear();
+        updateSelectionUi();
+        loadLeads();
+    }
+
     // Main AJAX Load Function
     async function loadLeads() {
         const searchVal = document.getElementById('searchInput').value.trim();
         const offset = (limit === 'all') ? 0 : (currentPage - 1) * limit;
 
         const params = new URLSearchParams({
-            distribute: currentTabStatus,
-            team_id   : currentTeamId,
-            search    : searchVal,
-            limit     : limit,
-            offset    : offset,
-            _t        : Date.now()
+            distribute : currentTabStatus,
+            team_id    : currentTeamId,
+            search     : searchVal,
+            date_filter: currentDateFilter,
+            start_date : currentStartDate,
+            end_date   : currentEndDate,
+            limit      : limit,
+            offset     : offset,
+            _t         : Date.now()
         });
 
         try {
@@ -1247,6 +1350,32 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
 
         document.getElementById('queueTotalPill').innerText = `${totalCount} leads`;
         document.getElementById('actionReadyCount').innerText = `${pending} pending`;
+
+        // Update Date Badges & Captions on Metric Cards
+        let dateLabel = 'All Time';
+        if (currentDateFilter === 'today') dateLabel = 'Today';
+        else if (currentDateFilter === 'yesterday') dateLabel = 'Yesterday';
+        else if (currentDateFilter === 'this_week') dateLabel = 'This Week';
+        else if (currentDateFilter === 'custom') {
+            if (currentStartDate && currentEndDate) dateLabel = `${currentStartDate} to ${currentEndDate}`;
+            else if (currentStartDate) dateLabel = `From ${currentStartDate}`;
+            else if (currentEndDate) dateLabel = `Until ${currentEndDate}`;
+            else dateLabel = 'Custom Range';
+        }
+
+        const bTotal = document.getElementById('dateBadgeTotal');
+        const bAppr = document.getElementById('dateBadgeApproved');
+        const bPend = document.getElementById('dateBadgePending');
+        if (bTotal) bTotal.innerText = dateLabel;
+        if (bAppr) bAppr.innerText = dateLabel;
+        if (bPend) bPend.innerText = dateLabel;
+
+        const cTotal = document.getElementById('statTotalCaption');
+        const cAppr = document.getElementById('statApprovedCaption');
+        const cPend = document.getElementById('statPendingCaption');
+        if (cTotal) cTotal.innerText = `Synced leads for ${dateLabel.toLowerCase()}`;
+        if (cAppr) cAppr.innerText = `Approved for ${dateLabel.toLowerCase()} (distribute = 1)`;
+        if (cPend) cPend.innerText = `Pending review for ${dateLabel.toLowerCase()} (distribute = 0)`;
     }
 
     function renderTeamCards(teams, unassignedStats) {
@@ -1367,9 +1496,11 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
                                     <i class="fa-solid fa-check me-1" style="font-size: 11px;"></i> Approve
                                 </button>
                             `)}
-                            <button type="button" class="btn-row-action btn-row-delete" onclick="deleteSingleLead(${lead.id}, '${escapeHtml(lead.full_name || 'Lead')}')" title="Permanently Delete Lead from Database">
-                                <i class="fa-solid fa-trash-can" style="font-size: 14px;"></i>
-                            </button>
+                            ${canDeleteLeads ? `
+                                <button type="button" class="btn-row-action btn-row-delete" onclick="deleteSingleLead(${lead.id}, '${escapeHtml(lead.full_name || 'Lead')}')" title="Permanently Delete Lead from Database">
+                                    <i class="fa-solid fa-trash-can" style="font-size: 14px;"></i>
+                                </button>
+                            ` : ''}
                         </div>
                     </td>
                 </tr>
@@ -1420,9 +1551,13 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
             }
 
             if (btnDelete) {
-                btnDelete.style.display = 'inline-flex';
-                btnDelete.disabled = false;
-                btnDelete.innerHTML = `<i class="fa-solid fa-trash-can" style="font-size: 13px;"></i> <span>Delete Selected (${count})</span>`;
+                if (canDeleteLeads) {
+                    btnDelete.style.display = 'inline-flex';
+                    btnDelete.disabled = false;
+                    btnDelete.innerHTML = `<i class="fa-solid fa-trash-can" style="font-size: 13px;"></i> <span>Delete Selected (${count})</span>`;
+                } else {
+                    btnDelete.style.display = 'none';
+                }
             }
 
             if (currentTabStatus === '1') {
@@ -1781,6 +1916,11 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
     }
 
     async function deleteSingleLead(id, name) {
+        if (!canDeleteLeads) {
+            showLeadToast('Permission denied. Executive of Digital Marketing Team (Role 11) cannot delete leads.', 'error');
+            return;
+        }
+
         const displayName = name ? `"${name}" (#LD-${id})` : `#LD-${id}`;
         if (!confirm(`Are you sure you want to permanently delete lead ${displayName}?\n\nThis will completely delete it from the database and remove it from the team's leads list.`)) {
             return;
@@ -1810,6 +1950,11 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
     }
 
     async function bulkDeleteSelected() {
+        if (!canDeleteLeads) {
+            showLeadToast('Permission denied. Executive of Digital Marketing Team (Role 11) cannot delete leads.', 'error');
+            return;
+        }
+
         if (selectedLeadIds.size === 0) {
             showLeadToast('Please select at least one lead to delete.', 'error');
             return;
@@ -1857,6 +2002,11 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
     }
 
     async function bulkDeleteTeamApproved() {
+        if (!canDeleteLeads) {
+            showLeadToast('Permission denied. Executive of Digital Marketing Team (Role 11) cannot delete leads.', 'error');
+            return;
+        }
+
         if (!currentTeamId) {
             showLeadToast('Please select a sales team first.', 'error');
             return;
@@ -1904,6 +2054,11 @@ $canViewLiveSheet = ($isManagementUser || $isHeadOfDM);
         const btnTeamDelete = document.getElementById('btnDeleteTeamApproved');
         const btnTeamDeleteText = document.getElementById('btnDeleteTeamApprovedText');
         if (!btnTeamDelete) return;
+
+        if (!canDeleteLeads) {
+            btnTeamDelete.style.display = 'none';
+            return;
+        }
 
         if (currentTeamId && currentTeamId !== 'unassigned' && currentTeamId !== 'assigned' && currentTabStatus === '1') {
             const teamOpt = document.querySelector(`#teamFilterDropdown option[value="${currentTeamId}"]`);

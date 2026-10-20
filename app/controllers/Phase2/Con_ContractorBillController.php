@@ -750,7 +750,7 @@ class Con_ContractorBillController extends Controller
                     require_once __DIR__ . '/../../services/JournalIntegrationService.php';
                     $journalService = new \Services\JournalIntegrationService($this->db);
                     $journalService->generateContractorAccrual($id, $this->userId);
-                } catch (\Exception $e) {
+                } catch (\Throwable $e) {
                     error_log("Failed to auto-generate contractor accrual journal: " . $e->getMessage());
                 }
 

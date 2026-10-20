@@ -1018,7 +1018,7 @@
                                             <?php if ($isChiefOfficer): ?>
                                                 <a href="<?= !empty($targetUrl) && $targetUrl !== 'javascript:void(0)' ? $targetUrl : 'javascript:void(0)' ?>"
                                                     class="btn btn-sm btn-light text-dark rounded-2 px-2 border"
-                                                    title="Pending for <?= htmlspecialchars($req['pending_for_text'] ?? 'Management') ?>">
+                                                    title="Pending for <?= htmlspecialchars(trim(preg_replace('/\s*\(Role[^\)]*\)/i', '', $req['pending_for_text'] ?? 'Management')) ?: 'Management') ?>">
                                                     <i class="fa-solid fa-eye me-1"></i>View Details
                                                 </a>
                                             <?php elseif ($canUserApprove): ?>
@@ -1054,7 +1054,7 @@
                                             <?php else: ?>
                                                 <a href="javascript:void(0)"
                                                     class="btn btn-sm btn-light text-muted rounded-2 px-2 border"
-                                                    title="<?= ($reqAmount > 100000.01 && ($req['op_head_status'] ?? '') !== 'approved' && $isManagementUser) ? 'Amount exceeds ৳1,00,000 - Admin & Operation Head (Role 20) approval required first' : 'Pending for ' . htmlspecialchars($req['pending_for_text'] ?? 'Other Role') ?>">
+                                                    title="<?= ($reqAmount > 100000.01 && ($req['op_head_status'] ?? '') !== 'approved' && $isManagementUser) ? 'Amount exceeds ৳1,00,000 - Admin & Operation Head approval required first' : 'Pending for ' . htmlspecialchars(trim(preg_replace('/\s*\(Role[^\)]*\)/i', '', $req['pending_for_text'] ?? 'Other Role')) ?: 'Other Role') ?>">
                                                     <i class="fa-solid fa-lock me-1 text-warning"></i><?= ($reqAmount > 100000.01 && ($req['op_head_status'] ?? '') !== 'approved' && $isManagementUser) ? 'Awaiting Op Head' : 'Pending Other Role' ?>
                                                 </a>
                                             <?php endif; ?>
@@ -1571,7 +1571,7 @@
             if (!isOpHeadApproved) {
                 if (isRole20 && !isManagement) {
                     noticeEl.className = 'alert alert-warning py-2 px-3 extra-small mb-3 border-warning-subtle';
-                    noticeEl.innerHTML = '<i class="fa-solid fa-shield-halved me-1 text-warning"></i> <strong>Tier 1 Verification:</strong> Discount exceeds ৳1,00,000. Approving will verify and forward this request to Management (Role 3).';
+                    noticeEl.innerHTML = '<i class="fa-solid fa-shield-halved me-1 text-warning"></i> <strong>Tier 1 Verification:</strong> Discount exceeds ৳1,00,000. Approving will verify and forward this request to Management.';
                     submitBtn.innerHTML = '<i class="fa-solid fa-shield-check me-1"></i> Verify & Forward to Management';
                     submitBtn.className = 'btn btn-success btn-sm px-4 fw-bold';
                     submitBtn.disabled = false;

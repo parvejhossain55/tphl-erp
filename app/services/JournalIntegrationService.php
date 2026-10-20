@@ -230,23 +230,27 @@ class JournalIntegrationService
 
         $details = [];
         $totalDebit = 0;
+        $items = [];
 
-        // 3. Trace back to work types & BOQ
-        // For now, mapping Contractor Bills directly to WIP - Civil (1220) or MEP (1230)
-        // Without complex BOQ-level tracing, we use work_types.gl_account_id or default to 1220
-        $stmtItems = $this->db->prepare("
-            SELECT 
-                wt.gl_account_id, 
-                wt.work_type_name as category_name,
-                SUM(cbi.qty * cbi.rate) as category_total
-            FROM contractor_bill_items cbi
-            JOIN work_types wt ON cbi.work_type_id = wt.id
-            WHERE cbi.bill_id = ?
-            GROUP BY wt.id
-        ");
-        $stmtItems->bind_param('i', $billId);
-        $stmtItems->execute();
-        $items = $stmtItems->get_result()->fetch_all(MYSQLI_ASSOC);
+        // 3. Trace back to work types & BOQ (via con_work_order_items if linked to Work Order)
+        if (!empty($bill['work_order_id'])) {
+            $stmtItems = $this->db->prepare("
+                SELECT 
+                    wt.gl_account_id, 
+                    wt.work_type_name as category_name,
+                    SUM(cwoi.amount) as category_total
+                FROM con_work_order_items cwoi
+                JOIN work_types wt ON cwoi.work_type_id = wt.id
+                WHERE cwoi.work_order_id = ?
+                GROUP BY wt.id
+            ");
+            if ($stmtItems) {
+                $stmtItems->bind_param('i', $bill['work_order_id']);
+                $stmtItems->execute();
+                $items = $stmtItems->get_result()->fetch_all(MYSQLI_ASSOC);
+                $stmtItems->close();
+            }
+        }
 
         if (!empty($items)) {
             $totalBillAmount = array_sum(array_column($items, 'category_total'));
