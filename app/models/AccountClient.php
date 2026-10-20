@@ -26,7 +26,7 @@ class AccountClient extends Model
     /**
      * Get all clients (booked leads) with full details, optionally filtered and paginated
      */
-    public function getAllClients($projectId = null, $verificationStatus = null, $search = null, $limit = null, $offset = 0, $hasConflict = false, $dateType = null, $startDate = null, $endDate = null)
+    public function getAllClients($projectId = null, $verificationStatus = null, $search = null, $limit = null, $offset = 0, $hasConflict = false, $dateType = null, $startDate = null, $endDate = null, $paymentType = null)
     {
         $whereParts = ["1=1"];
         $havingParts = [];
@@ -106,6 +106,20 @@ class AccountClient extends Model
             $havingParts[] = "latest_verification_status = 'rejected' AND total_pending_payments = 0";
         }
 
+        if (!empty($paymentType)) {
+            if ($paymentType === 'full_payment') {
+                $havingParts[] = "(total_price_target > 0 OR total_paid > 0)";
+            } elseif ($paymentType === 'land_share') {
+                $havingParts[] = "(total_land_share_target > 0 OR land_share_paid > 0)";
+            } elseif ($paymentType === 'development_charge') {
+                $havingParts[] = "(total_dev_charge_target > 0 OR dev_charge_paid > 0)";
+            } elseif ($paymentType === 'shop_service_charge') {
+                $havingParts[] = "(total_shop_service_charge_target > 0 OR shop_service_charge_paid > 0)";
+            } elseif ($paymentType === 'construction_fee') {
+                $havingParts[] = "(total_construction_target > 0 OR construction_paid > 0)";
+            }
+        }
+
         $whereClause = "WHERE " . implode(" AND ", $whereParts);
         $havingClause = !empty($havingParts) ? "HAVING " . implode(" AND ", $havingParts) : "";
 
@@ -139,7 +153,27 @@ class AccountClient extends Model
                 )
                 ORDER BY COALESCE(lb.booking_date, DATE(lb.created_at)) DESC
                 SEPARATOR ';;'
-            ) AS all_booking_dates
+            ) AS all_booking_dates,
+            
+            -- Financial Breakdown Targets
+            COALESCE(SUM(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0)), 0) AS total_price_target,
+            COALESCE(SUM(COALESCE(f.land_share_value, 0)), 0) AS total_land_share_target,
+            COALESCE(SUM(COALESCE(f.development_charges, 0)), 0) AS total_dev_charge_target,
+            COALESCE(SUM(CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END), 0) AS total_shop_service_charge_target,
+            COALESCE(SUM(GREATEST(0, ROUND(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) - (COALESCE(f.land_share_value, 0) + COALESCE(f.development_charges, 0) + CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END)))), 0) AS total_construction_target,
+
+            -- Financial Breakdown Paid
+            COALESCE(p_stats.land_share_paid, 0) AS land_share_paid,
+            COALESCE(p_stats.dev_charge_paid, 0) AS dev_charge_paid,
+            COALESCE(p_stats.shop_service_charge_paid, 0) AS shop_service_charge_paid,
+            COALESCE(p_stats.emi_paid, 0) AS construction_paid,
+
+            -- Financial Breakdown Dues
+            GREATEST(0, ROUND(COALESCE(SUM(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0)), 0) - COALESCE(SUM(lb.discount_amount), 0) - COALESCE(p_stats.total_paid, 0) - COALESCE(p_stats.total_bulk_emi_discount, 0))) AS overall_due,
+            GREATEST(0, ROUND(GREATEST(0, COALESCE(SUM(COALESCE(f.land_share_value, 0)), 0) - COALESCE(SUM(lb.discount_amount), 0)) - COALESCE(p_stats.land_share_paid, 0))) AS land_share_due,
+            GREATEST(0, ROUND(COALESCE(SUM(COALESCE(f.development_charges, 0)), 0) - COALESCE(p_stats.dev_charge_paid, 0))) AS dev_charge_due,
+            GREATEST(0, ROUND(COALESCE(SUM(CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END), 0) - COALESCE(p_stats.shop_service_charge_paid, 0))) AS shop_service_charge_due,
+            GREATEST(0, ROUND(GREATEST(0, COALESCE(SUM(GREATEST(0, ROUND(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) - (COALESCE(f.land_share_value, 0) + COALESCE(f.development_charges, 0) + CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END)))), 0)) - COALESCE(p_stats.emi_paid, 0) - COALESCE(p_stats.total_bulk_emi_discount, 0))) AS construction_due
         FROM leads l
         INNER JOIN lead_bookings lb ON lb.lead_id = l.id
             AND lb.deleted_at IS NULL
@@ -151,8 +185,23 @@ class AccountClient extends Model
         LEFT JOIN (
             SELECT 
                 lb_sub.lead_id,
-                SUM(CASE WHEN lp.payment_status IN ('paid','partially_paid') THEN lp.amount ELSE 0 END) AS total_paid,
-                MAX(CASE WHEN lp.payment_status IN ('paid','partially_paid') THEN lp.payment_date ELSE NULL END) AS last_payment_date,
+                SUM(CASE WHEN (lp.payment_status IN ('paid','partially_paid','pending')) AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.amount ELSE 0 END) AS total_paid,
+                SUM(CASE WHEN lp.payment_type IN ('booking_money', 'registration', 'land_share') 
+                              AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                              AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.amount ELSE 0 END) AS land_share_paid,
+                SUM(CASE WHEN lp.payment_type = 'development_charge' 
+                              AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                              AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.amount ELSE 0 END) AS dev_charge_paid,
+                SUM(CASE WHEN lp.payment_type = 'shop_service_charge' 
+                              AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                              AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.amount ELSE 0 END) AS shop_service_charge_paid,
+                SUM(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') 
+                              AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                              AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') 
+                              AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END) AS emi_paid,
+                SUM(CASE WHEN (lp.bulk_emi_discount > 0 OR COALESCE(lp.is_emi_discount, 0) = 1) AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') 
+                         THEN CASE WHEN COALESCE(lp.is_emi_discount, 0) = 1 THEN lp.amount ELSE lp.bulk_emi_discount END ELSE 0 END) AS total_bulk_emi_discount,
+                MAX(CASE WHEN (lp.payment_status IN ('paid','partially_paid','pending')) AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.payment_date ELSE NULL END) AS last_payment_date,
                 SUM(CASE WHEN lp.verification_status = 'pending' THEN 1 ELSE 0 END) AS total_pending_payments,
                 SUBSTRING_INDEX(GROUP_CONCAT(lp.verification_status ORDER BY lp.created_at DESC SEPARATOR ','), ',', 1) AS latest_verification_status
             FROM lead_bookings lb_sub
@@ -161,6 +210,7 @@ class AccountClient extends Model
                AND lb_sub.booking_status NOT IN ('refunded', 'cancelled')
                AND (lb_sub.landshare_status IS NULL OR lb_sub.landshare_status != 'cancelled')
                AND lb_sub.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+               AND lp.is_trashed = 0
             GROUP BY lb_sub.lead_id
         ) AS p_stats ON p_stats.lead_id = l.id
         LEFT JOIN (
@@ -205,7 +255,7 @@ class AccountClient extends Model
     /**
      * Get total count of clients with given filters
      */
-    public function getTotalClientsCount($projectId = null, $verificationStatus = null, $search = null, $hasConflict = false, $dateType = null, $startDate = null, $endDate = null)
+    public function getTotalClientsCount($projectId = null, $verificationStatus = null, $search = null, $hasConflict = false, $dateType = null, $startDate = null, $endDate = null, $paymentType = null)
     {
         $whereParts = ["1=1"];
         $havingParts = [];
@@ -285,6 +335,20 @@ class AccountClient extends Model
             $havingParts[] = "latest_verification_status = 'rejected' AND total_pending_payments = 0";
         }
 
+        if (!empty($paymentType)) {
+            if ($paymentType === 'full_payment') {
+                $havingParts[] = "(total_price_target > 0 OR total_paid > 0)";
+            } elseif ($paymentType === 'land_share') {
+                $havingParts[] = "(total_land_share_target > 0 OR land_share_paid > 0)";
+            } elseif ($paymentType === 'development_charge') {
+                $havingParts[] = "(total_dev_charge_target > 0 OR dev_charge_paid > 0)";
+            } elseif ($paymentType === 'shop_service_charge') {
+                $havingParts[] = "(total_shop_service_charge_target > 0 OR shop_service_charge_paid > 0)";
+            } elseif ($paymentType === 'construction_fee') {
+                $havingParts[] = "(total_construction_target > 0 OR construction_paid > 0)";
+            }
+        }
+
         $whereClause = "WHERE " . implode(" AND ", $whereParts);
         $havingClause = !empty($havingParts) ? "HAVING " . implode(" AND ", $havingParts) : "";
 
@@ -293,7 +357,17 @@ class AccountClient extends Model
                 SELECT 
                     l.id,
                     p_stats.latest_verification_status,
-                    COALESCE(p_stats.total_pending_payments, 0) AS total_pending_payments
+                    COALESCE(p_stats.total_pending_payments, 0) AS total_pending_payments,
+                    COALESCE(SUM(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0)), 0) AS total_price_target,
+                    COALESCE(SUM(COALESCE(f.land_share_value, 0)), 0) AS total_land_share_target,
+                    COALESCE(SUM(COALESCE(f.development_charges, 0)), 0) AS total_dev_charge_target,
+                    COALESCE(SUM(CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END), 0) AS total_shop_service_charge_target,
+                    COALESCE(SUM(GREATEST(0, ROUND(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) - (COALESCE(f.land_share_value, 0) + COALESCE(f.development_charges, 0) + CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END)))), 0) AS total_construction_target,
+                    COALESCE(p_stats.total_paid, 0) AS total_paid,
+                    COALESCE(p_stats.land_share_paid, 0) AS land_share_paid,
+                    COALESCE(p_stats.dev_charge_paid, 0) AS dev_charge_paid,
+                    COALESCE(p_stats.shop_service_charge_paid, 0) AS shop_service_charge_paid,
+                    COALESCE(p_stats.emi_paid, 0) AS construction_paid
                 FROM leads l
                 INNER JOIN lead_bookings lb ON lb.lead_id = l.id
                     AND lb.deleted_at IS NULL
@@ -305,8 +379,21 @@ class AccountClient extends Model
                 LEFT JOIN (
                     SELECT 
                         lb_sub.lead_id,
-                        SUM(CASE WHEN lp.payment_status IN ('paid','partially_paid') THEN lp.amount ELSE 0 END) AS total_paid,
-                        MAX(CASE WHEN lp.payment_status IN ('paid','partially_paid') THEN lp.payment_date ELSE NULL END) AS last_payment_date,
+                        SUM(CASE WHEN (lp.payment_status IN ('paid','partially_paid','pending')) AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.amount ELSE 0 END) AS total_paid,
+                        SUM(CASE WHEN lp.payment_type IN ('booking_money', 'registration', 'land_share') 
+                                      AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                                      AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.amount ELSE 0 END) AS land_share_paid,
+                        SUM(CASE WHEN lp.payment_type = 'development_charge' 
+                                      AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                                      AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.amount ELSE 0 END) AS dev_charge_paid,
+                        SUM(CASE WHEN lp.payment_type = 'shop_service_charge' 
+                                      AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                                      AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.amount ELSE 0 END) AS shop_service_charge_paid,
+                        SUM(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') 
+                                      AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                                      AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') 
+                                      AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END) AS emi_paid,
+                        MAX(CASE WHEN (lp.payment_status IN ('paid','partially_paid','pending')) AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.payment_date ELSE NULL END) AS last_payment_date,
                         SUM(CASE WHEN lp.verification_status = 'pending' THEN 1 ELSE 0 END) AS total_pending_payments,
                         SUBSTRING_INDEX(GROUP_CONCAT(lp.verification_status ORDER BY lp.created_at DESC SEPARATOR ','), ',', 1) AS latest_verification_status
                     FROM lead_bookings lb_sub
@@ -315,6 +402,7 @@ class AccountClient extends Model
                        AND lb_sub.booking_status NOT IN ('refunded', 'cancelled')
                        AND (lb_sub.landshare_status IS NULL OR lb_sub.landshare_status != 'cancelled')
                        AND lb_sub.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+                       AND lp.is_trashed = 0
                     GROUP BY lb_sub.lead_id
                 ) AS p_stats ON p_stats.lead_id = l.id
                 $whereClause
@@ -2237,6 +2325,62 @@ class AccountClient extends Model
     }
 
     /**
+     * Ensure all valid EMI payments (including EMI discounts) have an emi_schedules record.
+     * Auto-syncs any legacy/missing EMI payments to maintain sequential installment numbers.
+     */
+    public function syncMissingEmiSchedules($bookingId)
+    {
+        $bookingId = (int)$bookingId;
+        if ($bookingId <= 0) return;
+
+        $stmt = $this->db->prepare("
+            SELECT lp.id, lp.amount, lp.due_emi_amount, lp.service_fee, lp.payment_date, lp.payment_status
+            FROM lead_payments lp
+            LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
+            WHERE lp.booking_id = ?
+              AND lp.is_trashed = 0
+              AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected')
+              AND lp.payment_type = 'emi'
+              AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement')
+              AND es.id IS NULL
+            ORDER BY lp.payment_date ASC, lp.id ASC
+        ");
+        if (!$stmt) return;
+        $stmt->bind_param("i", $bookingId);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $missing = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+        $stmt->close();
+
+        if (empty($missing)) return;
+
+        foreach ($missing as $row) {
+            $nextEmiNo = $this->getNextAvailableEmiNo($bookingId);
+            $due = (float)($row['due_emi_amount'] ?? 0);
+            $amount = (float)($row['amount'] ?? 0);
+            $svcFee = (float)($row['service_fee'] ?? 0);
+            $payDate = $row['payment_date'] ?? date('Y-m-d');
+            $status = 'paid';
+
+            $ins = $this->db->prepare("
+                INSERT INTO emi_schedules (
+                    lead_booking_id, emi_no, emi_amount, service_fee,
+                    due_emi_amount, due_date, status, lead_payment_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+            if ($ins) {
+                $ins->bind_param(
+                    "iidddssi",
+                    $bookingId, $nextEmiNo, $amount, $svcFee,
+                    $due, $payDate, $status, $row['id']
+                );
+                $ins->execute();
+                $ins->close();
+            }
+        }
+    }
+
+    /**
      * Delete a transaction and its associated EMI schedule row.
      * Renumbers remaining EMI schedules to eliminate gaps.
      */
@@ -2424,6 +2568,8 @@ class AccountClient extends Model
      */
     public function getTransactionsByBookingId($bookingId)
     {
+        $this->syncMissingEmiSchedules($bookingId);
+
         $stmt = $this->db->prepare("
             SELECT 
                 lp.*,
@@ -2594,6 +2740,8 @@ class AccountClient extends Model
      */
     public function getFilteredTransactionsByBookingId($bookingId, $dateFilter = [])
     {
+        $this->syncMissingEmiSchedules($bookingId);
+
         $sql = "
             SELECT 
                 lp.*,
@@ -3478,6 +3626,9 @@ class AccountClient extends Model
             // ─── EMI PAYMENT: Smart FIFO Allocation ──────────────────────────
             // ═══════════════════════════════════════════════════════════════════
             
+            // Sync any missing EMI schedules before allocating new installments
+            $this->syncMissingEmiSchedules($bookingId);
+
             // Check dev charge status dynamically
             $devPaidInThisTx = 0;
             foreach ($paymentsToInsert as $p) {
@@ -3778,27 +3929,24 @@ class AccountClient extends Model
                     }
                 }
 
-                $isPreviousEmiDiscount = !empty($transactionData['is_previous_emi_discount']);
-                if (!$isDiscountItem || $isPreviousEmiDiscount) {
-                    // Insert emi_schedule row
-                    $schedStmt = $this->db->prepare("
-                        INSERT INTO emi_schedules (
-                            lead_booking_id, emi_no, emi_amount, service_fee,
-                            due_emi_amount, due_date, status, lead_payment_id
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    ");
-                    if (!$schedStmt) throw new Exception("EMI schedule prepare failed: " . $this->db->error);
+                // Insert emi_schedule row (applies to regular payments, discount items, and previous discounts)
+                $schedStmt = $this->db->prepare("
+                    INSERT INTO emi_schedules (
+                        lead_booking_id, emi_no, emi_amount, service_fee,
+                        due_emi_amount, due_date, status, lead_payment_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+                if (!$schedStmt) throw new Exception("EMI schedule prepare failed: " . $this->db->error);
 
-                    $schedStatus = ($thisDue > 0) ? 'paid' : 'paid'; // schedule row always 'paid' (payment was recorded)
+                $schedStatus = 'paid'; // schedule row always 'paid' (payment/discount was recorded)
 
-                    $schedStmt->bind_param(
-                        "iidddssi",
-                        $bookingId, $nextEmiNo, $thisEmi, $thisSvcFee,
-                        $thisDue, $paymentDate, $schedStatus, $paymentId
-                    );
+                $schedStmt->bind_param(
+                    "iidddssi",
+                    $bookingId, $nextEmiNo, $thisEmi, $thisSvcFee,
+                    $thisDue, $paymentDate, $schedStatus, $paymentId
+                );
 
-                    if (!$schedStmt->execute()) throw new Exception("EMI schedule insert failed: " . $schedStmt->error);
-                }
+                if (!$schedStmt->execute()) throw new Exception("EMI schedule insert failed: " . $schedStmt->error);
 
                 $pool -= $thisEmi;
                 $totalAllocated += $thisEmi;
@@ -6242,6 +6390,8 @@ class AccountClient extends Model
         $res = $stmt->get_result();
         return $res ? (int)($res->fetch_assoc()['total_count'] ?? 0) : 0;
     }
+
+    
 }
 
 

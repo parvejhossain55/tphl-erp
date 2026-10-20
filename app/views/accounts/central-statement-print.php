@@ -10,15 +10,56 @@ $show_breadcrumb = true;
 $statementData = $statement_data ?? [];
 $overallStats = $overall_stats ?? [];
 
-// FIXED: Use the correct summary values from the statement data
-// Make sure we have the summary array
-$summary = $statementData['summary'] ?? $overallStats;
+// FIXED: Compute summary totals from $statementData to match web view exactly
+$summary = $statementData['summary'] ?? $overallStats ?? [];
 
-// Use the actual summary values
-$printTotalCashIn = $summary['total_cashin'] ?? 0;
-$printTotalCashOut = $summary['total_cash_out'] ?? 0;
-$printTotalRevenue = $summary['total_revenue'] ?? 0;
-$printNetBalance = ($summary['total_cashin'] ?? 0) - ($summary['total_cash_out'] ?? 0);
+$calc_booking_money = (float)($summary['total_booking_money'] ?? 0);
+$calc_registration_fee = (float)($summary['total_registration_payments'] ?? $summary['total_registration'] ?? 0);
+$calc_landshare_money = (float)($summary['total_landshare_payments'] ?? $summary['total_landshare'] ?? 0);
+$calc_cashin = (float)($summary['total_cashin'] ?? 0);
+$calc_cashout = (float)($summary['total_cash_out'] ?? 0);
+
+// Fallback: Sum directly from displayed rows if summary totals are 0
+if (isset($statementData['daily_data']) && is_array($statementData['daily_data'])) {
+    $r_booking = 0; $r_reg = 0; $r_land = 0; $r_cashin = 0; $r_cashout = 0;
+    foreach ($statementData['daily_data'] as $r) {
+        $r_booking += (float)($r['booking_money'] ?? 0);
+        $r_reg += (float)($r['registration'] ?? $r['registration_payments'] ?? 0);
+        $r_land += (float)($r['landshare_payments'] ?? 0);
+        $r_cashin += (float)($r['total_cashin'] ?? 0);
+        $r_cashout += (float)($r['cash_out'] ?? 0);
+    }
+    if ($calc_booking_money == 0) $calc_booking_money = $r_booking;
+    if ($calc_registration_fee == 0) $calc_registration_fee = $r_reg;
+    if ($calc_landshare_money == 0) $calc_landshare_money = $r_land;
+    if ($calc_cashin == 0) $calc_cashin = $r_cashin;
+    if ($calc_cashout == 0) $calc_cashout = $r_cashout;
+} elseif (isset($statementData['monthly_data']) && is_array($statementData['monthly_data'])) {
+    $r_booking = 0; $r_reg = 0; $r_land = 0; $r_cashin = 0; $r_cashout = 0;
+    foreach ($statementData['monthly_data'] as $r) {
+        $r_booking += (float)($r['booking_money'] ?? 0);
+        $r_reg += (float)($r['registration_payments'] ?? $r['registration'] ?? 0);
+        $r_land += (float)($r['landshare_payments'] ?? 0);
+        $r_cashin += (float)($r['total_cashin'] ?? 0);
+        $r_cashout += (float)($r['cash_out'] ?? 0);
+    }
+    if ($calc_booking_money == 0) $calc_booking_money = $r_booking;
+    if ($calc_registration_fee == 0) $calc_registration_fee = $r_reg;
+    if ($calc_landshare_money == 0) $calc_landshare_money = $r_land;
+    if ($calc_cashin == 0) $calc_cashin = $r_cashin;
+    if ($calc_cashout == 0) $calc_cashout = $r_cashout;
+}
+
+// User Formula: Land Share Value = Booking Money + Registration Fee
+if ($calc_landshare_money == 0 && ($calc_booking_money > 0 || $calc_registration_fee > 0)) {
+    $calc_landshare_money = $calc_booking_money + $calc_registration_fee;
+}
+$calc_net_balance = $calc_cashin - $calc_cashout;
+
+$printTotalCashIn = $calc_cashin;
+$printTotalCashOut = $calc_cashout;
+$printTotalRevenue = $summary['total_revenue'] ?? $calc_cashin;
+$printNetBalance = $calc_net_balance;
 
 // FIXED: Get start and end dates from statement data if available
 $startDate = $statementData['start_date'] ?? ($start_date ?? '');
@@ -44,15 +85,15 @@ $statementModel = $statementModel ?? null;
     <title><?= $page_title ?> - Print</title>
     <style>
     @page {
-        size: A4;
-        margin: 15mm;
+        size: A4 landscape;
+        margin: 8mm;
     }
 
     @media print {
         body {
             margin: 0 !important;
             padding: 0 !important;
-            font-size: 10pt;
+            font-size: 8pt;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
@@ -63,7 +104,7 @@ $statementModel = $statementModel ?? null;
 
         .page-break {
             page-break-before: always;
-            margin-top: 20mm;
+            margin-top: 10mm;
         }
 
         .avoid-break {
@@ -78,49 +119,82 @@ $statementModel = $statementModel ?? null;
     }
 
     body {
-        font-family: 'Arial', sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         background: #fff;
-        color: #000;
+        color: #111;
         line-height: 1.3;
-        font-size: 10pt;
-        min-height: 297mm;
+        font-size: 8.5pt;
         margin: 0 auto;
-        padding: 15mm;
+        padding: 8mm 12mm;
+        max-width: 100%;
+    }
+
+    .no-print-toolbar {
+        position: sticky;
+        top: 0;
+        background: #1e293b;
+        color: #fff;
+        padding: 10px 18px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: -8mm -12mm 15px -12mm;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        z-index: 9999;
+    }
+
+    .no-print-btn {
+        padding: 6px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        border-radius: 4px;
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        text-decoration: none;
     }
 
     .statement-header {
         text-align: center;
-        margin-bottom: 12mm;
-        border-bottom: 1mm solid #000;
+        margin-bottom: 5mm;
+        border-bottom: 0.5mm solid #222;
+        padding-bottom: 3mm;
     }
 
     .company-name {
-        font-size: 18pt;
-        font-weight: bold;
-        text-transform: uppercase;
-        margin-bottom: 2mm;
-        letter-spacing: 1pt;
-    }
-
-    .company-address {
-        font-size: 9pt;
-        line-height: 1.2;
-        margin-bottom: 3mm;
-    }
-
-    .statement-title {
         font-size: 16pt;
         font-weight: bold;
         text-transform: uppercase;
-        margin: 6mm 0;
+        margin-bottom: 1.5mm;
+        letter-spacing: 0.5pt;
+    }
+
+    .company-address {
+        font-size: 8.5pt;
+        line-height: 1.25;
+        margin-bottom: 2mm;
+        color: #333;
+    }
+
+    .statement-title {
+        font-size: 14pt;
+        font-weight: bold;
+        text-transform: uppercase;
+        margin: 3mm 0 1mm 0;
         letter-spacing: 1pt;
     }
 
     .statement-meta {
-        font-size: 9pt;
+        font-size: 8.5pt;
         display: flex;
         justify-content: space-between;
-        margin-bottom: 8mm;
+        margin-bottom: 5mm;
+        padding: 2mm 3mm;
+        background: #f8f9fa;
+        border: 0.3mm solid #dee2e6;
+        border-radius: 1.5mm;
     }
 
     .meta-item {
@@ -129,69 +203,85 @@ $statementModel = $statementModel ?? null;
 
     .meta-label {
         font-weight: bold;
-        display: block;
-        margin-bottom: 1mm;
+        display: inline-block;
+        margin-right: 1mm;
     }
 
     .stats-container {
         display: flex;
-        margin-bottom: 12mm;
-        gap: 8mm;
+        margin-bottom: 6mm;
+        gap: 3mm;
+        width: 100%;
     }
 
     .stat-box {
         flex: 1;
-        padding: 4mm;
-        border: 0.5mm solid #000;
-        border-radius: 2mm;
+        padding: 2.5mm 2mm;
+        border: 0.4mm solid #333;
+        border-radius: 1.5mm;
         text-align: center;
+        background: #fafafa;
     }
 
     .stat-label {
-        font-size: 8pt;
+        font-size: 7.5pt;
         font-weight: bold;
         text-transform: uppercase;
-        margin-bottom: 2mm;
-        color: #666;
+        margin-bottom: 1.5mm;
+        color: #444;
+        white-space: nowrap;
     }
 
     .stat-value {
-        font-size: 14pt;
+        font-size: 11pt;
         font-weight: bold;
-        font-family: 'Courier New', monospace;
+        font-family: 'Courier New', Courier, monospace;
+        white-space: nowrap;
     }
 
     .period-title {
-        font-size: 12pt;
+        font-size: 11pt;
         font-weight: bold;
         text-transform: uppercase;
         text-align: center;
-        margin: 8mm 0 4mm 0;
-        padding-bottom: 2mm;
-        border-bottom: 0.3mm solid #000;
+        margin: 4mm 0 3mm 0;
+        padding-bottom: 1.5mm;
+        border-bottom: 0.4mm solid #000;
     }
 
     .statement-table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 8pt;
-        margin-bottom: 8mm;
+        font-size: 7.5pt;
+        margin-bottom: 5mm;
     }
 
     .statement-table th {
-        border: 0.3mm solid #000;
-        padding: 2mm 3mm;
-        text-align: left;
+        border: 0.3mm solid #333;
+        padding: 4px 5px;
+        text-align: right;
         font-weight: bold;
         text-transform: uppercase;
-        background: #f0f0f0;
+        background: #f0f2f5;
         vertical-align: middle;
+        white-space: nowrap;
+    }
+
+    .statement-table th:first-child,
+    .statement-table th:nth-child(2) {
+        text-align: left;
     }
 
     .statement-table td {
-        border: 0.3mm solid #000;
-        padding: 2mm 3mm;
+        border: 0.3mm solid #ccc;
+        padding: 3.5px 5px;
         vertical-align: middle;
+        white-space: nowrap;
+    }
+
+    .statement-table td:first-child,
+    .statement-table td:nth-child(2) {
+        text-align: left;
     }
 
     .text-right {
@@ -203,16 +293,16 @@ $statementModel = $statementModel ?? null;
     }
 
     .summary-section {
-        margin-top: 10mm;
-        padding-top: 4mm;
+        margin-top: 6mm;
+        padding-top: 3mm;
         border-top: 0.5mm solid #000;
     }
 
     .summary-title {
-        font-size: 11pt;
+        font-size: 10pt;
         font-weight: bold;
         text-transform: uppercase;
-        margin-bottom: 4mm;
+        margin-bottom: 3mm;
     }
 
     .summary-grid {
@@ -222,15 +312,16 @@ $statementModel = $statementModel ?? null;
     }
 
     .summary-box {
-        border: 0.5mm solid #000;
-        padding: 4mm;
-        border-radius: 2mm;
+        border: 0.4mm solid #333;
+        padding: 3mm 4mm;
+        border-radius: 1.5mm;
+        background: #fafafa;
     }
 
     .summary-row {
         display: flex;
         justify-content: space-between;
-        margin-bottom: 2mm;
+        margin-bottom: 1.5mm;
         padding-bottom: 1mm;
         border-bottom: 0.1mm dotted #ccc;
     }
@@ -243,27 +334,27 @@ $statementModel = $statementModel ?? null;
 
     .summary-label {
         font-weight: bold;
-        font-size: 9pt;
+        font-size: 8.5pt;
     }
 
     .summary-value {
         font-weight: bold;
-        font-family: 'Courier New', monospace;
-        font-size: 10pt;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 9.5pt;
     }
 
     .footer {
-        margin-top: 15mm;
+        margin-top: 8mm;
         padding-top: 3mm;
         border-top: 0.3mm solid #000;
-        font-size: 7pt;
+        font-size: 7.5pt;
         text-align: center;
         color: #666;
     }
 
     .footer-note {
         font-style: italic;
-        margin-bottom: 2mm;
+        margin-bottom: 1mm;
     }
 
     .print-date {
@@ -284,12 +375,11 @@ $statementModel = $statementModel ?? null;
     }
 
     .filter-info {
-        font-size: 9pt;
-        margin-bottom: 4mm;
+        font-size: 8.5pt;
+        margin-bottom: 3mm;
         text-align: center;
         font-style: italic;
-        padding: 2mm;
-
+        padding: 1.5mm;
     }
     
     /* Color classes */
@@ -304,6 +394,20 @@ $statementModel = $statementModel ?? null;
 </head>
 
 <body>
+    <!-- Top Print Toolbar (Hidden on actual print/PDF) -->
+    <div class="no-print no-print-toolbar">
+        <div style="font-weight: 600; font-size: 14px; letter-spacing: 0.3px;">
+            Central Financial Statement — Print &amp; PDF View
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button onclick="window.print()" class="no-print-btn" style="background: #2563eb; color: #fff;">
+                Print / Save as PDF
+            </button>
+            <button onclick="window.close()" class="no-print-btn" style="background: #64748b; color: #fff;">
+                Close
+            </button>
+        </div>
+    </div>
     <!-- Header -->
     <div class="statement-header">
         <div class="company-name"><?= htmlspecialchars($company_name) ?></div>
@@ -378,62 +482,72 @@ $statementModel = $statementModel ?? null;
 
     <!-- Statistics -->
     <div class="stats-container">
-        <div class="stat-box">
-            <div class="stat-label">
-                <?php 
-                $cashinLabel = "Total Cash IN";
-                if (isset($category)) {
+        <?php if (!isset($category) || $category === 'all'): ?>
+            <div class="stat-box">
+                <div class="stat-label">Total Cash IN</div>
+                <div class="stat-value revenue">TK.<?= number_format($calc_cashin, 2) ?></div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Total Land Share Money</div>
+                <div class="stat-value revenue">TK.<?= number_format($calc_landshare_money, 2) ?></div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Total Booking Money</div>
+                <div class="stat-value revenue">TK.<?= number_format($calc_booking_money, 2) ?></div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Total Registration Fee</div>
+                <div class="stat-value revenue">TK.<?= number_format($calc_registration_fee, 2) ?></div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Total Cash Out</div>
+                <div class="stat-value cash-out">TK.<?= number_format($calc_cashout, 2) ?></div>
+            </div>
+        <?php else: ?>
+            <div class="stat-box">
+                <div class="stat-label">
+                    <?php 
+                    $cashinLabel = "Total Cash IN";
                     if ($category === 'emi') $cashinLabel = "Total EMI";
                     elseif ($category === 'landshare') $cashinLabel = "Total Landshare";
                     elseif ($category === 'service_fee') $cashinLabel = "Total Service Fee";
                     elseif ($category === 'registration') $cashinLabel = "Total Registration";
-                    elseif ($category === 'agreement') $cashinLabel = "Total Booking";
+                    elseif ($category === 'booking_money') $cashinLabel = "Total Booking Money";
                     elseif ($category === 'management_cashin') $cashinLabel = "Total Management Cashin";
                     elseif ($category === 'bank_cashin') $cashinLabel = "Total Bank Cash In";
                     elseif ($category === 'bank_cashout') $cashinLabel = "Total Bank Cash Out";
                     elseif (in_array($category, ['cashout', 'utilities', 'other'])) $cashinLabel = "Total " . ucfirst($category);
                     elseif ($category === 'vendor_payment') $cashinLabel = "Total Vendor Payments";
                     elseif ($category === 'contractor_bill') $cashinLabel = "Total Contractor Bills";
-                }
-                ?>
-                <?= $cashinLabel ?>
-            </div>
-            <div class="stat-value <?= (isset($category) && in_array($category, ['cashout', 'utilities', 'other', 'bank_cashout', 'vendor_payment', 'contractor_bill'])) ? 'cash-out' : 'revenue' ?>">
-                <?php
-                // For bank categories calculate from bank_transactions
-                if (isset($category) && in_array($category, ['bank_cashin', 'bank_cashout'])) {
-                    $bankTotal = 0;
-                    foreach ($bank_transactions ?? [] as $bt) {
-                        $bankTotal += (float)($bt['amount'] ?? 0);
+                    echo $cashinLabel;
+                    ?>
+                </div>
+                <div class="stat-value <?= (in_array($category, ['cashout', 'utilities', 'other', 'bank_cashout', 'vendor_payment', 'contractor_bill'])) ? 'cash-out' : 'revenue' ?>">
+                    <?php
+                    if (in_array($category, ['bank_cashin', 'bank_cashout'])) {
+                        $bankTotal = 0;
+                        foreach ($bank_transactions ?? [] as $bt) {
+                            $bankTotal += (float)($bt['amount'] ?? 0);
+                        }
+                        $printStatVal = $bankTotal;
+                    } elseif (in_array($category, ['cashout', 'utilities', 'other', 'vendor_payment', 'contractor_bill'])) {
+                        $printStatVal = $printTotalCashOut;
+                    } else {
+                        $printStatVal = $printTotalCashIn;
                     }
-                    $printStatVal = $bankTotal;
-                } elseif (isset($category) && in_array($category, ['cashout', 'utilities', 'other', 'vendor_payment', 'contractor_bill'])) {
-                    $printStatVal = $printTotalCashOut;
-                } else {
-                    $printStatVal = $printTotalCashIn;
-                }
-                ?>
-                TK.<?= number_format($printStatVal, 2) ?>
+                    ?>
+                    TK.<?= number_format($printStatVal, 2) ?>
+                </div>
             </div>
-        </div>
-        <div class="stat-box">
-            <div class="stat-label">Total Revenue</div>
-            <div class="stat-value <?= $printTotalRevenue >= 0 ? 'revenue' : 'cash-out' ?>">
-                TK.<?= number_format($printTotalRevenue, 2) ?>
+            <div class="stat-box">
+                <div class="stat-label">Total Cash Out</div>
+                <div class="stat-value cash-out">TK.<?= number_format($printTotalCashOut, 2) ?></div>
             </div>
-        </div>
-        <div class="stat-box">
-            <div class="stat-label">Total Cash Out</div>
-            <div class="stat-value cash-out">
-             TK.<?= number_format($printTotalCashOut, 2) ?>
+            <div class="stat-box">
+                <div class="stat-label">Net Balance</div>
+                <div class="stat-value net-balance">TK.<?= number_format($printNetBalance, 2) ?></div>
             </div>
-        </div>
-        <div class="stat-box">
-            <div class="stat-label">Net Balance</div>
-            <div class="stat-value net-balance">
-                TK.<?= number_format($printNetBalance, 2) ?>
-            </div>
-        </div>
+        <?php endif; ?>
     </div>
 
     <!-- Statement Data -->
@@ -506,11 +620,10 @@ $statementModel = $statementModel ?? null;
                 <th>Day</th>
 
                 <?php if (!isset($category) || $category === 'all'): ?>
-                    <th class="text-right">Agreement Value (TK.)</th>
                     <th class="text-right">Booking Money (TK.)</th>
                     <th class="text-right">Service Fee (TK.)</th>
                     <th class="text-right">EMI Payments (TK.)</th>
-                    <th class="text-right">Landshare (TK.)</th>
+                    <th class="text-right">Landshare Payments (TK.)</th>
                     <th class="text-right">Registration (TK.)</th>
                     <th class="text-right">Management Cashin (TK.)</th>
                     <th class="text-right">Total Cash IN (TK.)</th>
@@ -525,7 +638,7 @@ $statementModel = $statementModel ?? null;
                         <th class="text-right">EMI Payments (TK.)</th>
                         <th class="text-right">Amount (TK.)</th>
                     <?php elseif ($category === 'landshare'): ?>
-                        <th class="text-right">Landshare (TK.)</th>
+                        <th class="text-right">Landshare Payments (TK.)</th>
                         <th class="text-right">Amount (TK.)</th>
                     <?php elseif ($category === 'service_fee'): ?>
                         <th class="text-right">Service Fee (TK.)</th>
@@ -569,12 +682,11 @@ $statementModel = $statementModel ?? null;
                     <td><?= htmlspecialchars($row['day_name'] ?? '') ?></td>
 
                     <?php if (!isset($category) || $category === 'all'): ?>
-                        <td class="text-right positive">TK.<?= number_format($row['agreement_value'] ?? 0, 2) ?></td>
                         <td class="text-right positive">TK.<?= number_format($row['booking_money'] ?? 0, 2) ?></td>
                         <td class="text-right positive">TK.<?= number_format($row['service_fee'] ?? 0, 2) ?></td>
                         <td class="text-right positive">TK.<?= number_format($row['emi_payments'] ?? 0, 2) ?></td>
                         <td class="text-right positive">TK.<?= number_format($row['landshare_payments'] ?? 0, 2) ?></td>
-                        <td class="text-right positive">TK.<?= number_format($row['registration'] ?? 0, 2) ?></td>
+                        <td class="text-right positive">TK.<?= number_format($row['registration'] ?? $row['registration_payments'] ?? 0, 2) ?></td>
                         <td class="text-right positive">TK.<?= number_format($row['management_cashin'] ?? 0, 2) ?></td>
                         <td class="text-right positive">TK.<?= number_format($row['total_cashin'] ?? 0, 2) ?></td>
                         <td class="text-right negative">TK.<?= number_format($row['cash_out'] ?? 0, 2) ?></td>
@@ -721,11 +833,10 @@ $statementModel = $statementModel ?? null;
                 <th>Month</th>
 
                 <?php if (!isset($category) || $category === 'all'): ?>
-                    <th class="text-right">Agreement Value (TK.)</th>
                     <th class="text-right">Booking Money (TK.)</th>
                     <th class="text-right">Service Fee (TK.)</th>
                     <th class="text-right">EMI Payments (TK.)</th>
-                    <th class="text-right">Landshare (TK.)</th>
+                    <th class="text-right">Landshare Payments (TK.)</th>
                     <th class="text-right">Registration (TK.)</th>
                     <th class="text-right">Management Cashin (TK.)</th>
                     <th class="text-right">Total Cash IN (TK.)</th>
@@ -740,7 +851,7 @@ $statementModel = $statementModel ?? null;
                         <th class="text-right">EMI Payments (TK.)</th>
                         <th class="text-right">Amount (TK.)</th>
                     <?php elseif ($category === 'landshare'): ?>
-                        <th class="text-right">Landshare (TK.)</th>
+                        <th class="text-right">Landshare Payments (TK.)</th>
                         <th class="text-right">Amount (TK.)</th>
                     <?php elseif ($category === 'service_fee'): ?>
                         <th class="text-right">Service Fee (TK.)</th>
@@ -781,12 +892,11 @@ $statementModel = $statementModel ?? null;
                     <td><?= htmlspecialchars($row['month'] ?? '') ?></td>
 
                     <?php if (!isset($category) || $category === 'all'): ?>
-                        <td class="text-right positive">TK.<?= number_format($row['agreement_value'] ?? 0, 2) ?></td>
                         <td class="text-right positive">TK.<?= number_format($row['booking_money'] ?? 0, 2) ?></td>
                         <td class="text-right positive">TK.<?= number_format($row['service_fee'] ?? 0, 2) ?></td>
                         <td class="text-right positive">TK.<?= number_format($row['emi_payments'] ?? 0, 2) ?></td>
                         <td class="text-right positive">TK.<?= number_format($row['landshare_payments'] ?? 0, 2) ?></td>
-                        <td class="text-right positive">TK.<?= number_format($row['registration_payments'] ?? 0, 2) ?></td>
+                        <td class="text-right positive">TK.<?= number_format($row['registration_payments'] ?? $row['registration'] ?? 0, 2) ?></td>
                         <td class="text-right positive">TK.<?= number_format($row['management_cashin'] ?? 0, 2) ?></td>
                         <td class="text-right positive">TK.<?= number_format($row['total_cashin'] ?? 0, 2) ?></td>
                         <td class="text-right negative">TK.<?= number_format($row['cash_out'] ?? 0, 2) ?></td>
@@ -879,59 +989,74 @@ $statementModel = $statementModel ?? null;
     <div class="summary-section">
         <div class="summary-title">PERIOD SUMMARY</div>
         <div class="summary-grid">
-            <div class="summary-box">
-                <?php if (!isset($category) || in_array($category, ['all', 'emi', 'landshare', 'service_fee', 'registration', 'booking_money', 'agreement', 'management_cashin', 'total_cashin', 'bank_cashin', 'bank_cashout', 'vendor_payment', 'contractor_bill'])): ?>
+            <?php if (!isset($category) || $category === 'all'): ?>
+                <div class="summary-box">
+                    <div class="summary-row">
+                        <span class="summary-label">Total Cash IN:</span>
+                        <span class="summary-value revenue">TK.<?= number_format($calc_cashin, 2) ?></span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">Total Land Share Money:</span>
+                        <span class="summary-value revenue">TK.<?= number_format($calc_landshare_money, 2) ?></span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">Total Booking Money:</span>
+                        <span class="summary-value revenue">TK.<?= number_format($calc_booking_money, 2) ?></span>
+                    </div>
+                </div>
+                <div class="summary-box">
+                    <div class="summary-row">
+                        <span class="summary-label">Total Registration Fee:</span>
+                        <span class="summary-value revenue">TK.<?= number_format($calc_registration_fee, 2) ?></span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">Total Cash Out:</span>
+                        <span class="summary-value cash-out">TK.<?= number_format($calc_cashout, 2) ?></span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">Net Balance:</span>
+                        <span class="summary-value net-balance">TK.<?= number_format($calc_net_balance, 2) ?></span>
+                    </div>
+                </div>
+            <?php else: ?>
+                <div class="summary-box">
                     <div class="summary-row">
                         <span class="summary-label">
                             <?php 
                             $summaryLabel = "Total Cash IN";
-                            if (isset($category)) {
-                                if ($category === 'emi') $summaryLabel = "Total EMI Payments";
-                                elseif ($category === 'landshare') $summaryLabel = "Total Landshare";
-                                elseif ($category === 'service_fee') $summaryLabel = "Total Service Fee";
-                                elseif ($category === 'registration') $summaryLabel = "Total Registration";
-                                elseif ($category === 'agreement') $summaryLabel = "Total Booking Money";
-                                elseif ($category === 'management_cashin') $summaryLabel = "Total Management Cashin";
-                                elseif ($category === 'bank_cashin') $summaryLabel = "Total Bank Cash In";
-                                elseif ($category === 'bank_cashout') $summaryLabel = "Total Bank Cash Out";
-                            }
-                            ?>
-                            <?= $summaryLabel ?>:
+                            if ($category === 'emi') $summaryLabel = "Total EMI Payments";
+                            elseif ($category === 'landshare') $summaryLabel = "Total Landshare";
+                            elseif ($category === 'service_fee') $summaryLabel = "Total Service Fee";
+                            elseif ($category === 'registration') $summaryLabel = "Total Registration";
+                            elseif ($category === 'booking_money') $summaryLabel = "Total Booking Money";
+                            elseif ($category === 'management_cashin') $summaryLabel = "Total Management Cashin";
+                            elseif ($category === 'bank_cashin') $summaryLabel = "Total Bank Cash In";
+                            elseif ($category === 'bank_cashout') $summaryLabel = "Total Bank Cash Out";
+                            echo $summaryLabel;
+                            ?>:
                         </span>
-                        <span class="summary-value <?= (isset($category) && $category === 'bank_cashout') ? 'cash-out' : 'revenue' ?>">TK.<?= number_format($printStatVal ?? $printTotalCashIn, 2) ?></span>
+                        <span class="summary-value <?= (in_array($category, ['cashout', 'utilities', 'other', 'bank_cashout', 'vendor_payment', 'contractor_bill'])) ? 'cash-out' : 'revenue' ?>">
+                            TK.<?= number_format($printStatVal ?? $printTotalCashIn, 2) ?>
+                        </span>
                     </div>
-                <?php endif; ?>
-                
-                <?php if (!isset($category) || in_array($category, ['all', 'cashout', 'utilities', 'other', 'vendor_payment', 'contractor_bill'])): ?>
+                    <?php if (in_array($category, ['cashout', 'utilities', 'other', 'vendor_payment', 'contractor_bill'])): ?>
+                        <div class="summary-row">
+                            <span class="summary-label">Total Cash Out:</span>
+                            <span class="summary-value cash-out">TK.<?= number_format($printTotalCashOut, 2) ?></span>
+                        </div>
+                    <?php endif; ?>
+                </div>
+                <div class="summary-box">
                     <div class="summary-row">
-                        <span class="summary-label">
-                            <?php 
-                            $cashoutLabel = "Total Cash Out";
-                            if (isset($category)) {
-                                if ($category === 'utilities') $cashoutLabel = "Total Utilities";
-                                elseif ($category === 'other') $cashoutLabel = "Total Other";
-                            }
-                            ?>
-                            <?= $cashoutLabel ?>:
-                        </span>
+                        <span class="summary-label">Total Cash Out:</span>
                         <span class="summary-value cash-out">TK.<?= number_format($printTotalCashOut, 2) ?></span>
                     </div>
-                <?php endif; ?>
-            </div>
-            
-            <div class="summary-box">
-                <div class="summary-row">
-                    <span class="summary-label">Total Revenue:</span>
-                    <span class="summary-value <?= $printTotalRevenue >= 0 ? 'revenue' : 'cash-out' ?>">
-                        TK.<?= number_format($printTotalRevenue, 2) ?>
-                    </span>
+                    <div class="summary-row">
+                        <span class="summary-label">Net Balance:</span>
+                        <span class="summary-value net-balance">TK.<?= number_format($printNetBalance, 2) ?></span>
+                    </div>
                 </div>
-                
-                <div class="summary-row">
-                    <span class="summary-label">Net Balance:</span>
-                    <span class="summary-value net-balance">TK.<?= number_format($printNetBalance, 2) ?></span>
-                </div>
-            </div>
+            <?php endif; ?>
         </div>
     </div>
 

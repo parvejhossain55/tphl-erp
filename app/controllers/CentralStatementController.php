@@ -41,7 +41,12 @@ public function index()
     $statementStartDate = '';
     $statementEndDate = '';
 
-    if ($periodType === 'custom') {
+    if ($periodType === 'all_time') {
+        $statementData = $this->statementModel->getAllTimeStatement($projectId, $category);
+        $periodText = 'All Time';
+        $statementStartDate = $statementData['start_date'] ?? date('Y-01-01');
+        $statementEndDate = $statementData['end_date'] ?? date('Y-12-31');
+    } elseif ($periodType === 'custom') {
         if ($startDate && $endDate) {
             $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate, $projectId, $category);
             $periodText = date('d M, Y', strtotime($startDate)) . ' to ' . date('d M, Y', strtotime($endDate));
@@ -197,7 +202,12 @@ public function printStatement()
     $statementStartDate = '';
     $statementEndDate = '';
 
-    if ($periodType === 'custom') {
+    if ($periodType === 'all_time') {
+        $statementData = $this->statementModel->getAllTimeStatement($projectId, $category);
+        $periodText = 'All Time';
+        $statementStartDate = $statementData['start_date'] ?? date('Y-01-01');
+        $statementEndDate = $statementData['end_date'] ?? date('Y-12-31');
+    } elseif ($periodType === 'custom') {
         if ($startDate && $endDate) {
             $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate, $projectId, $category);
             $periodText = date('d M, Y', strtotime($startDate)) . ' to ' . date('d M, Y', strtotime($endDate));
@@ -488,46 +498,68 @@ private function getBankTransactions($type, $startDate, $endDate, $projectId = n
     public function exportCSV()
     {
         $periodType = $_GET['period_type'] ?? 'monthly';
-        $year = $_GET['year'] ?? date('Y');
+        $year = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
         $month = $_GET['month'] ?? date('m');
-        $startDate = $_GET['start_date'] ?? null;
-        $endDate = $_GET['end_date'] ?? null;
-        $projectId = $_GET['project_id'] ?? null;
+        $startDate = !empty($_GET['start_date']) ? $_GET['start_date'] : null;
+        $endDate = !empty($_GET['end_date']) ? $_GET['end_date'] : null;
+        $projectId = !empty($_GET['project_id']) ? (int)$_GET['project_id'] : null;
         $category = $_GET['category'] ?? 'all';
+
+        // Get project name if filtered
+        $projectName = '';
+        if ($projectId) {
+            $stmt = $this->db->prepare("SELECT name FROM projects WHERE id = ?");
+            if ($stmt) {
+                $stmt->bind_param("i", $projectId);
+                $stmt->execute();
+                $res = $stmt->get_result();
+                if ($row = $res->fetch_assoc()) {
+                    $projectName = $row['name'];
+                }
+                $stmt->close();
+            }
+        }
+
+        // Get category name
+        $categoryName = '';
+        if ($category !== 'all') {
+            $categoryName = ucfirst(str_replace('_', ' ', $category));
+            if ($category === 'cashout') $categoryName = 'Cash Out';
+            elseif ($category === 'utilities') $categoryName = 'Utilities';
+            elseif ($category === 'bank_cashin') $categoryName = 'Bank Cash In';
+            elseif ($category === 'bank_cashout') $categoryName = 'Bank Cash Out';
+            elseif ($category === 'vendor_payment') $categoryName = 'Vendor Payments';
+            elseif ($category === 'contractor_bill') $categoryName = 'Contractor Bills';
+        }
 
         // Get statement data
         $statementData = null;
-        $filename = 'central_statement_' . date('Ymd_His');
+        $filename = 'central_statement_' . date('Ymd_His') . '.csv';
 
-        switch ($periodType) {
-            case 'monthly':
-                $statementData = $this->statementModel->getMonthlyStatement($year, $month, $projectId, $category);
-                $filename = "monthly_statement_{$year}_{$month}.csv";
-                break;
-            case '6months':
-                $statementData = $this->statementModel->getSixMonthStatement($year, $month, $projectId, $category);
-                $filename = "6months_statement_{$year}_{$month}.csv";
-                break;
-            case 'yearly':
-                $statementData = $this->statementModel->getYearlyStatement($year, $projectId, $category);
-                $filename = "yearly_statement_{$year}.csv";
-                break;
-            case 'custom':
-                if ($startDate && $endDate) {
-                    $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate, $projectId, $category);
-                    $cleanStartDate = str_replace('-', '', $startDate);
-                    $cleanEndDate = str_replace('-', '', $endDate);
-                    $filename = "custom_statement_{$cleanStartDate}_to_{$cleanEndDate}.csv";
-                } else {
-                    // Default to current month if dates not provided
-                    $statementData = $this->statementModel->getMonthlyStatement(date('Y'), date('m'), $projectId, $category);
-                    $filename = "monthly_statement_" . date('Y') . "_" . date('m') . ".csv";
-                    $periodType = 'monthly';
-                }
-                break;
-            default:
-                $statementData = $this->statementModel->getMonthlyStatement(date('Y'), date('m'), $projectId, $category);
-                $filename = "monthly_statement_" . date('Y') . "_" . date('m') . ".csv";
+        if ($periodType === 'all_time') {
+            $statementData = $this->statementModel->getAllTimeStatement($projectId, $category);
+            $filename = "all_time_statement_" . date('Ymd') . ".csv";
+        } elseif ($periodType === 'custom') {
+            if ($startDate && $endDate) {
+                $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate, $projectId, $category);
+                $cleanStartDate = str_replace('-', '', $startDate);
+                $cleanEndDate = str_replace('-', '', $endDate);
+                $filename = "custom_statement_{$cleanStartDate}_to_{$cleanEndDate}.csv";
+            } else {
+                $statementData = $this->statementModel->getMonthlyStatement(date('Y'), (int)date('m'), $projectId, $category);
+                $filename = "monthly_statement_" . date('Y_m') . ".csv";
+            }
+        } elseif ($periodType === '6months') {
+            $mInt = ($month === 'all' || empty($month) || (int)$month < 1 || (int)$month > 12) ? (int)date('m') : (int)$month;
+            $statementData = $this->statementModel->getSixMonthStatement($year, $mInt, $projectId, $category);
+            $filename = "6months_statement_{$year}_{$mInt}.csv";
+        } elseif ($periodType === 'yearly' || $month === 'all' || $month === '0' || $month === 0) {
+            $statementData = $this->statementModel->getYearlyStatement($year, $projectId, $category);
+            $filename = "yearly_statement_{$year}.csv";
+        } else {
+            $mInt = (int)$month;
+            $statementData = $this->statementModel->getMonthlyStatement($year, $mInt, $projectId, $category);
+            $filename = "monthly_statement_{$year}_" . sprintf('%02d', $mInt) . ".csv";
         }
 
         if (!$statementData) {
@@ -544,58 +576,216 @@ private function getBankTransactions($type, $startDate, $endDate, $projectId = n
 
         $output = fopen('php://output', 'w');
 
+        // Output UTF-8 BOM so Excel opens properly without character encoding issues
+        fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
         // Write header
-        fputcsv($output, ['Central Financial Statement']);
-        fputcsv($output, ['Period: ' . $statementData['period']]);
-        fputcsv($output, ['Start Date: ' . $statementData['start_date']]);
-        fputcsv($output, ['End Date: ' . $statementData['end_date']]);
-        fputcsv($output, ['Generated: ' . date('d M, Y h:i A')]);
+        fputcsv($output, ['CENTRAL FINANCIAL STATEMENT']);
+        fputcsv($output, ['Period', $statementData['period'] ?? '']);
+        fputcsv($output, ['Start Date', $statementData['start_date'] ?? '']);
+        fputcsv($output, ['End Date', $statementData['end_date'] ?? '']);
+        if ($projectName) {
+            fputcsv($output, ['Project', $projectName]);
+        }
+        if ($categoryName) {
+            fputcsv($output, ['Category', $categoryName]);
+        }
+        fputcsv($output, ['Generated', date('d M, Y h:i A')]);
         fputcsv($output, []); // Empty row
 
-        // Write data based on type
-        if (isset($statementData['daily_data'])) {
-            // Daily breakdown - Update headers to match your new structure
-            fputcsv($output, ['Date', 'Day', 'Agreement Value (৳)', 'Service Fee (৳)', 'Management Cashin (৳)', 'Total Cash IN (৳)', 'Cash Out (৳)', 'Net Amount (৳)', 'Running Balance (৳)']);
-            foreach ($statementData['daily_data'] as $row) {
+        // Bank transactions export
+        if (in_array($category, ['bank_cashin', 'bank_cashout'])) {
+            $bankTransactions = $this->getBankTransactions($category, $statementData['start_date'] ?? null, $statementData['end_date'] ?? null, $projectId);
+            fputcsv($output, [
+                '#',
+                'Date',
+                'Bank Name',
+                'Branch',
+                'Routing No',
+                'Account No',
+                $category === 'bank_cashin' ? 'Client / Payment Type' : 'Purpose / Paid To',
+                $category === 'bank_cashin' ? 'Cash In (TK.)' : 'Withdrawal (TK.)'
+            ]);
+            $bankTotal = 0;
+            foreach ($bankTransactions as $idx => $bt) {
+                $amt = (float)($bt['amount'] ?? 0);
+                $bankTotal += $amt;
                 fputcsv($output, [
-                    $row['formatted_date'],
-                    $row['day_name'],
-                    number_format($row['agreement_value'] ?? 0, 2),
-                    number_format($row['service_fee'] ?? 0, 2),
-                    number_format($row['management_cashin'] ?? 0, 2),
-                    number_format($row['total_cashin'] ?? 0, 2),
-                    number_format($row['cash_out'] ?? 0, 2),
-                    number_format($row['net_amount'] ?? 0, 2),
-                    number_format($row['running_balance'] ?? 0, 2)
+                    $idx + 1,
+                    $bt['payment_date'] ?? '',
+                    $bt['bank_name'] ?? '-',
+                    $bt['branch_name'] ?? '-',
+                    $bt['routing_number'] ?? '-',
+                    $bt['account_number'] ?? '-',
+                    $bt['description'] ?? '-',
+                    number_format($amt, 2, '.', '')
                 ]);
             }
-        } elseif (isset($statementData['monthly_data'])) {
-            // Monthly breakdown - Update headers
-            fputcsv($output, ['Month', 'Agreement Value (৳)', 'Service Fee (৳)', 'Management Cashin (৳)', 'Total Cash IN (৳)', 'Cash Out (৳)', 'Net Amount (৳)', 'Running Balance (৳)']);
-            foreach ($statementData['monthly_data'] as $row) {
+            fputcsv($output, []);
+            fputcsv($output, ['Grand Total', '', '', '', '', '', '', number_format($bankTotal, 2, '.', '')]);
+        }
+        // Daily breakdown
+        elseif (isset($statementData['daily_data']) && is_array($statementData['daily_data'])) {
+            if ($category === 'all') {
                 fputcsv($output, [
-                    $row['month'],
-                    number_format($row['agreement_value'] ?? $row['landshare'] ?? 0, 2),
-                    number_format($row['service_fee'] ?? 0, 2),
-                    number_format($row['management_cashin'] ?? 0, 2),
-                    number_format($row['total_cashin'] ?? $row['total_revenue'] ?? 0, 2),
-                    number_format($row['cash_out'] ?? 0, 2),
-                    number_format($row['net_amount'] ?? 0, 2),
-                    number_format($row['running_balance'] ?? 0, 2)
+                    'Date',
+                    'Day',
+                    'Booking Money (TK.)',
+                    'Service Fee (TK.)',
+                    'EMI Payments (TK.)',
+                    'Landshare Payments (TK.)',
+                    'Registration (TK.)',
+                    'Management Cashin (TK.)',
+                    'Total Cash IN (TK.)',
+                    'Cash Out (TK.)',
+                    'Net Amount (TK.)',
+                    'Running Balance (TK.)'
                 ]);
+                foreach ($statementData['daily_data'] as $row) {
+                    fputcsv($output, [
+                        $row['formatted_date'] ?? $row['date'] ?? '',
+                        $row['day_name'] ?? '',
+                        number_format((float)($row['booking_money'] ?? 0), 2, '.', ''),
+                        number_format((float)($row['service_fee'] ?? 0), 2, '.', ''),
+                        number_format((float)($row['emi_payments'] ?? 0), 2, '.', ''),
+                        number_format((float)($row['landshare_payments'] ?? 0), 2, '.', ''),
+                        number_format((float)($row['registration'] ?? $row['registration_payments'] ?? 0), 2, '.', ''),
+                        number_format((float)($row['management_cashin'] ?? 0), 2, '.', ''),
+                        number_format((float)($row['total_cashin'] ?? 0), 2, '.', ''),
+                        number_format((float)($row['cash_out'] ?? 0), 2, '.', ''),
+                        number_format((float)($row['net_amount'] ?? 0), 2, '.', ''),
+                        number_format((float)($row['running_balance'] ?? 0), 2, '.', '')
+                    ]);
+                }
+            } else {
+                $catCol = ucfirst(str_replace('_', ' ', $category)) . ' (TK.)';
+                fputcsv($output, ['Date', 'Day', $catCol, 'Amount (TK.)']);
+                foreach ($statementData['daily_data'] as $row) {
+                    $val = 0;
+                    if ($category === 'total_cashin') $val = (float)($row['total_cashin'] ?? 0);
+                    elseif ($category === 'emi') $val = (float)($row['emi_payments'] ?? 0);
+                    elseif ($category === 'landshare') $val = (float)($row['landshare_payments'] ?? 0);
+                    elseif ($category === 'service_fee') $val = (float)($row['service_fee'] ?? 0);
+                    elseif ($category === 'registration') $val = (float)($row['registration'] ?? $row['registration_payments'] ?? 0);
+                    elseif ($category === 'booking_money') $val = (float)($row['booking_money'] ?? 0);
+                    elseif ($category === 'management_cashin') $val = (float)($row['management_cashin'] ?? 0);
+                    elseif (in_array($category, ['cashout', 'utilities', 'other', 'vendor_payment', 'contractor_bill'])) $val = (float)($row['cash_out'] ?? 0);
+                    fputcsv($output, [
+                        $row['formatted_date'] ?? $row['date'] ?? '',
+                        $row['day_name'] ?? '',
+                        number_format($val, 2, '.', ''),
+                        number_format($val, 2, '.', '')
+                    ]);
+                }
+            }
+        }
+        // Monthly breakdown
+        elseif (isset($statementData['monthly_data']) && is_array($statementData['monthly_data'])) {
+            if ($category === 'all') {
+                fputcsv($output, [
+                    'Month',
+                    'Booking Money (TK.)',
+                    'Service Fee (TK.)',
+                    'EMI Payments (TK.)',
+                    'Landshare Payments (TK.)',
+                    'Registration (TK.)',
+                    'Management Cashin (TK.)',
+                    'Total Cash IN (TK.)',
+                    'Cash Out (TK.)',
+                    'Net Amount (TK.)',
+                    'Running Balance (TK.)'
+                ]);
+                foreach ($statementData['monthly_data'] as $row) {
+                    fputcsv($output, [
+                        $row['month'] ?? '',
+                        number_format((float)($row['booking_money'] ?? 0), 2, '.', ''),
+                        number_format((float)($row['service_fee'] ?? 0), 2, '.', ''),
+                        number_format((float)($row['emi_payments'] ?? 0), 2, '.', ''),
+                        number_format((float)($row['landshare_payments'] ?? 0), 2, '.', ''),
+                        number_format((float)($row['registration_payments'] ?? $row['registration'] ?? 0), 2, '.', ''),
+                        number_format((float)($row['management_cashin'] ?? 0), 2, '.', ''),
+                        number_format((float)($row['total_cashin'] ?? 0), 2, '.', ''),
+                        number_format((float)($row['cash_out'] ?? 0), 2, '.', ''),
+                        number_format((float)($row['net_amount'] ?? 0), 2, '.', ''),
+                        number_format((float)($row['running_balance'] ?? 0), 2, '.', '')
+                    ]);
+                }
+            } else {
+                $catCol = ucfirst(str_replace('_', ' ', $category)) . ' (TK.)';
+                fputcsv($output, ['Month', $catCol, 'Amount (TK.)']);
+                foreach ($statementData['monthly_data'] as $row) {
+                    $val = 0;
+                    if ($category === 'total_cashin') $val = (float)($row['total_cashin'] ?? 0);
+                    elseif ($category === 'emi') $val = (float)($row['emi_payments'] ?? 0);
+                    elseif ($category === 'landshare') $val = (float)($row['landshare_payments'] ?? 0);
+                    elseif ($category === 'service_fee') $val = (float)($row['service_fee'] ?? 0);
+                    elseif ($category === 'registration') $val = (float)($row['registration_payments'] ?? $row['registration'] ?? 0);
+                    elseif ($category === 'booking_money') $val = (float)($row['booking_money'] ?? 0);
+                    elseif ($category === 'management_cashin') $val = (float)($row['management_cashin'] ?? 0);
+                    elseif (in_array($category, ['cashout', 'utilities', 'other', 'vendor_payment', 'contractor_bill'])) $val = (float)($row['cash_out'] ?? 0);
+                    fputcsv($output, [
+                        $row['month'] ?? '',
+                        number_format($val, 2, '.', ''),
+                        number_format($val, 2, '.', '')
+                    ]);
+                }
             }
         }
 
-        // Write summary - Update to match new structure
+        // Compute summary totals matching the web view
+        $summary_stats = $statementData['summary'] ?? [];
+
+        $calc_booking_money = (float)($summary_stats['total_booking_money'] ?? 0);
+        $calc_registration_fee = (float)($summary_stats['total_registration_payments'] ?? $summary_stats['total_registration'] ?? 0);
+        $calc_landshare_money = (float)($summary_stats['total_landshare_payments'] ?? $summary_stats['total_landshare'] ?? 0);
+        $calc_cashin = (float)($summary_stats['total_cashin'] ?? 0);
+        $calc_cashout = (float)($summary_stats['total_cash_out'] ?? 0);
+
+        if (isset($statementData['daily_data']) && is_array($statementData['daily_data'])) {
+            $r_booking = 0; $r_reg = 0; $r_land = 0; $r_cashin = 0; $r_cashout = 0;
+            foreach ($statementData['daily_data'] as $r) {
+                $r_booking += (float)($r['booking_money'] ?? 0);
+                $r_reg += (float)($r['registration'] ?? $r['registration_payments'] ?? 0);
+                $r_land += (float)($r['landshare_payments'] ?? 0);
+                $r_cashin += (float)($r['total_cashin'] ?? 0);
+                $r_cashout += (float)($r['cash_out'] ?? 0);
+            }
+            if ($calc_booking_money == 0) $calc_booking_money = $r_booking;
+            if ($calc_registration_fee == 0) $calc_registration_fee = $r_reg;
+            if ($calc_landshare_money == 0) $calc_landshare_money = $r_land;
+            if ($calc_cashin == 0) $calc_cashin = $r_cashin;
+            if ($calc_cashout == 0) $calc_cashout = $r_cashout;
+        } elseif (isset($statementData['monthly_data']) && is_array($statementData['monthly_data'])) {
+            $r_booking = 0; $r_reg = 0; $r_land = 0; $r_cashin = 0; $r_cashout = 0;
+            foreach ($statementData['monthly_data'] as $r) {
+                $r_booking += (float)($r['booking_money'] ?? 0);
+                $r_reg += (float)($r['registration_payments'] ?? $r['registration'] ?? 0);
+                $r_land += (float)($r['landshare_payments'] ?? 0);
+                $r_cashin += (float)($r['total_cashin'] ?? 0);
+                $r_cashout += (float)($r['cash_out'] ?? 0);
+            }
+            if ($calc_booking_money == 0) $calc_booking_money = $r_booking;
+            if ($calc_registration_fee == 0) $calc_registration_fee = $r_reg;
+            if ($calc_landshare_money == 0) $calc_landshare_money = $r_land;
+            if ($calc_cashin == 0) $calc_cashin = $r_cashin;
+            if ($calc_cashout == 0) $calc_cashout = $r_cashout;
+        }
+
+        if ($calc_landshare_money == 0 && ($calc_booking_money > 0 || $calc_registration_fee > 0)) {
+            $calc_landshare_money = $calc_booking_money + $calc_registration_fee;
+        }
+
+        $calc_net_balance = $calc_cashin - $calc_cashout;
+
+        // Write summary
         fputcsv($output, []); // Empty row
-        fputcsv($output, ['SUMMARY']);
-        fputcsv($output, ['Total Agreement Value', number_format($statementData['summary']['total_agreement'] ?? 0, 2)]);
-        fputcsv($output, ['Total Service Fee', number_format($statementData['summary']['total_service_fee'] ?? 0, 2)]);
-        fputcsv($output, ['Total Management Cashin', number_format($statementData['summary']['total_management_cashin'] ?? 0, 2)]);
-        fputcsv($output, ['Total Cash IN', number_format($statementData['summary']['total_cashin'] ?? 0, 2)]);
-        fputcsv($output, ['Total Cash Out', number_format($statementData['summary']['total_cash_out'] ?? 0, 2)]);
-        fputcsv($output, ['Net Balance', number_format($statementData['summary']['net_balance'] ?? 0, 2)]);
-        fputcsv($output, ['Final Balance', number_format($statementData['summary']['final_balance'] ?? 0, 2)]);
+        fputcsv($output, ['PERIOD SUMMARY']);
+        fputcsv($output, ['Total Cash IN', number_format($calc_cashin, 2, '.', '')]);
+        fputcsv($output, ['Total Land Share Money', number_format($calc_landshare_money, 2, '.', '')]);
+        fputcsv($output, ['Total Booking Money', number_format($calc_booking_money, 2, '.', '')]);
+        fputcsv($output, ['Total Registration Fee', number_format($calc_registration_fee, 2, '.', '')]);
+        fputcsv($output, ['Total Cash Out', number_format($calc_cashout, 2, '.', '')]);
+        fputcsv($output, ['Net Balance', number_format($calc_net_balance, 2, '.', '')]);
 
         fclose($output);
         exit;

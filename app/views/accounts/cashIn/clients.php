@@ -369,6 +369,18 @@ $show_breadcrumb = true;
                     </select>
                 </div>
 
+                <!-- Payment Type Filter -->
+                <div style="width: 190px; min-width: 155px;">
+                    <select name="payment_type" id="cashInPaymentType" class="form-select form-select-sm" style="width: 100% !important; height: 36px; border-radius: 6px; font-weight: 500;">
+                        <option value="">All Payment Types</option>
+                        <option value="full_payment" <?= (($paymentType ?? '') === 'full_payment') ? 'selected' : '' ?>>Full Payment</option>
+                        <option value="land_share" <?= (($paymentType ?? '') === 'land_share') ? 'selected' : '' ?>>Land Share</option>
+                        <option value="development_charge" <?= (($paymentType ?? '') === 'development_charge') ? 'selected' : '' ?>>Development Charge</option>
+                        <option value="shop_service_charge" <?= (($paymentType ?? '') === 'shop_service_charge') ? 'selected' : '' ?>>Shop Service Charge</option>
+                        <option value="construction_fee" <?= (($paymentType ?? '') === 'construction_fee') ? 'selected' : '' ?>>Construction Fee</option>
+                    </select>
+                </div>
+
                 <!-- Verification Status Filter -->
                 <div style="width: 170px; min-width: 140px;">
                     <select name="verification_status" id="cashInStatusFilter" class="form-select form-select-sm" style="width: 100% !important; height: 36px; border-radius: 6px;">
@@ -414,6 +426,11 @@ $show_breadcrumb = true;
                 <button type="button" id="cashInResetFilters" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" style="height: 36px; border-radius: 6px; font-size: 12.5px;" title="Reset Search & Filters">
                     <i class="fa-solid fa-rotate-left"></i> Reset
                 </button>
+
+                <!-- Print Statement Button -->
+                <button type="button" id="cashInPrintStatement" onclick="printClientsCashInStatement()" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1" style="height: 36px; border-radius: 6px; font-size: 12.5px; font-weight: 600;" title="Print Filtered Statement">
+                    <i class="fa-solid fa-print"></i> Print Statement
+                </button>
             </div>
         </div>
 
@@ -458,23 +475,17 @@ $show_breadcrumb = true;
 
             <table class="table mb-0 freeze-table" id="clientsTable">
                 <thead>
-                    <tr class="table__title table__sort">
-                        <th class="col-sticky-name">Client Name</th>
-                        <th class="col-sticky-contact">Phone &amp; Email</th>
-                        <th>Project &amp; Flats</th>
-                        <th>Booking Agent(s) &amp; Date</th>
-                        <th>Total Paid</th>
-                        <th>Last Payment</th>
-                        <th>Verification</th>
-                        <th>Profile</th>
-                        <th>Action</th>
+                    <tr class="table__title table__sort" id="clientsTableHeadRow">
+                        <?php
+                        require_once __DIR__ . '/../../../controllers/AccountClientController.php';
+                        $controllerInstance = new AccountClientController($GLOBALS['db'] ?? null);
+                        echo $controllerInstance->renderCashInTableHeadHtml($paymentType ?? '');
+                        ?>
                     </tr>
                 </thead>
                 <tbody class="table__body" id="clientsTableBody">
                     <?php
-                    require_once __DIR__ . '/../../../controllers/AccountClientController.php';
-                    $controllerInstance = new AccountClientController($GLOBALS['db'] ?? null);
-                    echo $controllerInstance->renderCashInRowsHtml($clients, $conflictedUnits ?? []);
+                    echo $controllerInstance->renderCashInRowsHtml($clients, $conflictedUnits ?? [], $paymentType ?? '');
                     ?>
                 </tbody>
             </table>
@@ -1362,9 +1373,11 @@ function loadCashInPage(page) {
 
     const overlay = document.getElementById('cashInTableLoadingOverlay');
     const tbody = document.getElementById('clientsTableBody');
+    const theadRow = document.getElementById('clientsTableHeadRow');
     const pagContainer = document.getElementById('clientsPaginationContainer');
     const searchVal = document.getElementById('cashInSearchInput') ? document.getElementById('cashInSearchInput').value.trim() : '';
     const projectVal = document.getElementById('cashInProjectFilter') ? document.getElementById('cashInProjectFilter').value : '';
+    const paymentTypeVal = document.getElementById('cashInPaymentType') ? document.getElementById('cashInPaymentType').value : '';
     const statusVal = document.getElementById('cashInStatusFilter') ? document.getElementById('cashInStatusFilter').value : '';
     const limitVal = document.getElementById('cashInLimitSelect') ? document.getElementById('cashInLimitSelect').value : '20';
     const dateTypeVal = document.getElementById('cashInDateType') ? document.getElementById('cashInDateType').value : '';
@@ -1383,6 +1396,7 @@ function loadCashInPage(page) {
         limit: limitVal,
         search: searchVal,
         project_id: projectVal,
+        payment_type: paymentTypeVal,
         verification_status: statusVal,
         date_type: dateTypeVal,
         start_date: startDateVal,
@@ -1398,6 +1412,7 @@ function loadCashInPage(page) {
     if (limitVal && limitVal !== '20') urlParams.set('limit', limitVal);
     if (searchVal) urlParams.set('search', searchVal);
     if (projectVal) urlParams.set('project_id', projectVal);
+    if (paymentTypeVal) urlParams.set('payment_type', paymentTypeVal);
     if (statusVal) urlParams.set('verification_status', statusVal);
     if (dateTypeVal) urlParams.set('date_type', dateTypeVal);
     if (startDateVal) urlParams.set('start_date', startDateVal);
@@ -1415,6 +1430,9 @@ function loadCashInPage(page) {
     .then(res => res.json())
     .then(data => {
         if (data && data.success) {
+            if (theadRow && data.table_head_html) {
+                theadRow.innerHTML = data.table_head_html;
+            }
             if (tbody && data.table_html) {
                 tbody.innerHTML = data.table_html;
             }
@@ -1456,6 +1474,30 @@ function loadCashInPage(page) {
 window.loadCashInPage = loadCashInPage;
 window.loadCedClientsPage = loadCashInPage;
 
+function printClientsCashInStatement() {
+    const searchVal = document.getElementById('cashInSearchInput') ? document.getElementById('cashInSearchInput').value.trim() : '';
+    const projectVal = document.getElementById('cashInProjectFilter') ? document.getElementById('cashInProjectFilter').value : '';
+    const paymentTypeVal = document.getElementById('cashInPaymentType') ? document.getElementById('cashInPaymentType').value : '';
+    const statusVal = document.getElementById('cashInStatusFilter') ? document.getElementById('cashInStatusFilter').value : '';
+    const dateTypeVal = document.getElementById('cashInDateType') ? document.getElementById('cashInDateType').value : '';
+    const startDateVal = document.getElementById('cashInStartDate') ? document.getElementById('cashInStartDate').value : '';
+    const endDateVal = document.getElementById('cashInEndDate') ? document.getElementById('cashInEndDate').value : '';
+
+    const params = new URLSearchParams();
+    if (searchVal) params.set('search', searchVal);
+    if (projectVal) params.set('project_id', projectVal);
+    if (paymentTypeVal) params.set('payment_type', paymentTypeVal);
+    if (statusVal) params.set('verification_status', statusVal);
+    if (dateTypeVal) params.set('date_type', dateTypeVal);
+    if (startDateVal) params.set('start_date', startDateVal);
+    if (endDateVal) params.set('end_date', endDateVal);
+    if (cashInConflictOnly) params.set('has_conflict', '1');
+
+    const printUrl = '<?= $GLOBALS['base_url'] ?>/clients-cash-in-print?' + params.toString();
+    window.open(printUrl, '_blank');
+}
+window.printClientsCashInStatement = printClientsCashInStatement;
+
 // Event Listeners for AJAX Controls (Vanilla JS)
 function initCashInAjaxControls() {
     // 1. Search input with debounce
@@ -1493,8 +1535,8 @@ function initCashInAjaxControls() {
         });
     }
 
-    // 3. Status, Date & Limit dropdowns / inputs
-    ['cashInStatusFilter', 'cashInLimitSelect', 'cashInDateType', 'cashInStartDate', 'cashInEndDate'].forEach(id => {
+    // 3. Status, Payment Type, Date & Limit dropdowns / inputs
+    ['cashInPaymentType', 'cashInStatusFilter', 'cashInLimitSelect', 'cashInDateType', 'cashInStartDate', 'cashInEndDate'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
             el.addEventListener('change', function() {
@@ -1537,6 +1579,8 @@ function initCashInAjaxControls() {
             if (searchInput) searchInput.value = '';
             if (clearBtn) clearBtn.classList.add('d-none');
             $('#cashInProjectFilter').val('').trigger('change');
+            const paymentTypeEl = document.getElementById('cashInPaymentType');
+            if (paymentTypeEl) paymentTypeEl.value = '';
             const statusEl = document.getElementById('cashInStatusFilter');
             if (statusEl) statusEl.value = '';
             const dateTypeEl = document.getElementById('cashInDateType');

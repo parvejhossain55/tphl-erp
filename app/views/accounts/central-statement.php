@@ -286,6 +286,7 @@ $contractor_bill_details = $contractor_bill_details ?? [];
                         <div class="filter-item">
                             <label>Period Type</label>
                             <select name="period_type" id="periodType" class="form-select" onchange="handlePeriodChange()">
+                                <option value="all_time" <?= ($period_type ?? '') === 'all_time' ? 'selected' : '' ?>>All Time</option>
                                 <option value="monthly" <?= ($period_type ?? '') === 'monthly' ? 'selected' : '' ?>>Monthly (Daily Breakdown)</option>
                                 <option value="6months" <?= ($period_type ?? '') === '6months' ? 'selected' : '' ?>>Last 6 Months</option>
                                 <option value="yearly" <?= ($period_type ?? '') === 'yearly' ? 'selected' : '' ?>>Yearly (Monthly Breakdown)</option>
@@ -1064,12 +1065,16 @@ function handlePeriodChange() {
     startDateFilter.style.display = 'none';
     endDateFilter.style.display = 'none';
 
-    yearSelect.disabled = false;
+    yearSelect.disabled = true;
     monthSelect.disabled = true;
     startDate.disabled = true;
     endDate.disabled = true;
 
     switch (periodType) {
+        case 'all_time':
+            // No date filters needed for all time
+            break;
+
         case 'monthly':
             yearFilter.style.display = 'block';
             monthFilter.style.display = 'block';
@@ -1196,22 +1201,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const form = document.getElementById('filterForm');
         const formData = new FormData(form);
         const params = new URLSearchParams(formData);
-
-        // Show loading
-        const btn = event.target;
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fa-light fa-spinner fa-spin me-2"></i>Generating PDF...';
-        btn.disabled = true;
-
-        // Open print view in new tab for PDF generation
-        const printWindow = window.open('<?= $GLOBALS['base_url'] ?>/central-statement?print=true&' + params.toString(), '_blank');
-
-        // Wait a moment for the page to load, then trigger print which can save as PDF
-        setTimeout(function() {
-            printWindow.print();
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        }, 1000);
+        window.open('<?= $GLOBALS['base_url'] ?>/central-statement?print=true&' + params.toString(), '_blank');
     }
 
     // Initialize on page load
@@ -1288,7 +1278,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                         </span>
                                     </td>
                                     <td>
-                                        <span class="badge bg-light text-dark border fs-11 text-uppercase">
+              
+                                    <span class="badge bg-light text-dark border fs-11 text-uppercase">
                                             <?= htmlspecialchars($cp['payment_method'] ?? 'cash') ?>
                                         </span>
                                     </td>
