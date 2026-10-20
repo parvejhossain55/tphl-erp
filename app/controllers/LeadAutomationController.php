@@ -123,6 +123,9 @@ class LeadAutomationController extends Controller
         $this->checkAccess();
         header('Content-Type: application/json; charset=utf-8');
 
+        @set_time_limit(300);
+        @ini_set('max_execution_time', '300');
+
         try {
             $sheetUrl = trim($_POST['sheet_url'] ?? '');
             if (empty($sheetUrl)) {
@@ -172,6 +175,11 @@ class LeadAutomationController extends Controller
             $distribute = isset($_GET['distribute']) && $_GET['distribute'] !== '' ? (int)$_GET['distribute'] : null;
             $search = trim($_GET['search'] ?? '');
             
+            // Date Filter: all (default), today, yesterday, this_week / weekly, custom
+            $dateFilter = strtolower(trim((string)($_GET['date_filter'] ?? 'all')));
+            $startDate = trim((string)($_GET['start_date'] ?? ''));
+            $endDate = trim((string)($_GET['end_date'] ?? ''));
+
             // Limit: support 'all' / -1 or numeric (default 30)
             $limitParam = strtolower(trim((string)($_GET['limit'] ?? '30')));
             if ($limitParam === 'all' || $limitParam === '-1' || (int)$limitParam >= 5000) {
@@ -195,12 +203,41 @@ class LeadAutomationController extends Controller
                 $hasAutomatedCol = false;
             }
 
+            // Build Date Filter Condition
+            $dateConditionSql = "";
+            $dateParams = [];
+
+            if ($dateFilter === 'today') {
+                $dateConditionSql = "DATE(l.created_at) = CURDATE()";
+            } elseif ($dateFilter === 'yesterday') {
+                $dateConditionSql = "DATE(l.created_at) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)";
+            } elseif ($dateFilter === 'this_week' || $dateFilter === 'weekly') {
+                $dateConditionSql = "DATE(l.created_at) >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND DATE(l.created_at) <= CURDATE()";
+            } elseif ($dateFilter === 'custom') {
+                if (!empty($startDate) && !empty($endDate)) {
+                    $dateConditionSql = "DATE(l.created_at) >= ? AND DATE(l.created_at) <= ?";
+                    $dateParams = [$startDate, $endDate];
+                } elseif (!empty($startDate)) {
+                    $dateConditionSql = "DATE(l.created_at) >= ?";
+                    $dateParams = [$startDate];
+                } elseif (!empty($endDate)) {
+                    $dateConditionSql = "DATE(l.created_at) <= ?";
+                    $dateParams = [$endDate];
+                }
+            }
+
             // Only fetch automated leads synced via Google Sheets / Meta Automation
             $where = ["l.deleted_at IS NULL"];
             if ($hasAutomatedCol) {
                 $where[] = "l.is_automated = 1";
             }
             $params = [];
+
+            // Apply Date Filter to query
+            if (!empty($dateConditionSql)) {
+                $where[] = $dateConditionSql;
+                $params = array_merge($params, $dateParams);
+            }
 
             // Team filter: specific team ID, 'unassigned' (no team), or 'assigned' (any team)
             if ($teamParam === 'unassigned') {
@@ -283,37 +320,60 @@ class LeadAutomationController extends Controller
             $countStmt->execute($params);
             $totalCount = (int)$countStmt->fetchColumn();
 
-            // Overall Stats (Scoped to automated sync leads only)
+            // Date condition for stats queries (table name leads without alias `l.`)
             $autoWhere = $hasAutomatedCol ? " AND is_automated = 1" : "";
-            $statsSql = "SELECT 
-                            COUNT(*) as total_leads,
-                            SUM(CASE WHEN distribute = 0 THEN 1 ELSE 0 END) as pending_leads,
-                            SUM(CASE WHEN distribute = 1 THEN 1 ELSE 0 END) as approved_leads,
-                            SUM(CASE WHEN (team_id IS NULL OR team_id = 0) THEN 1 ELSE 0 END) as unassigned_leads,
-                            SUM(CASE WHEN (team_id IS NOT NULL AND team_id > 0) THEN 1 ELSE 0 END) as assigned_leads
-                         FROM `leads` WHERE deleted_at IS NULL{$autoWhere}";
-            $stats = $pdo->query($statsSql)->fetch(PDO::FETCH_ASSOC);
+            $statsDateSql = "";
+            if (!empty($dateConditionSql)) {
+                $statsDateSql = " AND " . str_replace('l.created_at', 'created_at', $dateConditionSql);
+            }
 
-            // Fetch Teams with count of automated leads
+            // Stats scoped to the chosen date filter (e.g. today, yesterday, weekly, custom)
+            $statsSql = "SELECT 
+                            COALESCE(COUNT(*), 0) as total_leads,
+                            COALESCE(SUM(CASE WHEN distribute = 0 THEN 1 ELSE 0 END), 0) as pending_leads,
+                            COALESCE(SUM(CASE WHEN distribute = 1 THEN 1 ELSE 0 END), 0) as approved_leads,
+                            COALESCE(SUM(CASE WHEN (team_id IS NULL OR team_id = 0) THEN 1 ELSE 0 END), 0) as unassigned_leads,
+                            COALESCE(SUM(CASE WHEN (team_id IS NOT NULL AND team_id > 0) THEN 1 ELSE 0 END), 0) as assigned_leads
+                         FROM `leads` 
+                         WHERE deleted_at IS NULL{$autoWhere}{$statsDateSql}";
+            $statsStmt = $pdo->prepare($statsSql);
+            $statsStmt->execute($dateParams);
+            $stats = $statsStmt->fetch(PDO::FETCH_ASSOC);
+
+            // All-time totals for reference
+            $allTimeSql = "SELECT 
+                                COALESCE(COUNT(*), 0) as total_leads,
+                                COALESCE(SUM(CASE WHEN distribute = 0 THEN 1 ELSE 0 END), 0) as pending_leads,
+                                COALESCE(SUM(CASE WHEN distribute = 1 THEN 1 ELSE 0 END), 0) as approved_leads
+                           FROM `leads` 
+                           WHERE deleted_at IS NULL{$autoWhere}";
+            $allTimeStats = $pdo->query($allTimeSql)->fetch(PDO::FETCH_ASSOC);
+
+            // Fetch Teams with count of automated leads for the chosen date filter
             $autoJoin = $hasAutomatedCol ? " AND l.is_automated = 1" : "";
+            $teamDateJoin = !empty($dateConditionSql) ? " AND {$dateConditionSql}" : "";
             $teamsSql = "SELECT 
                             t.id, 
                             t.name, 
-                            COUNT(l.id) as total_leads,
-                            SUM(CASE WHEN l.distribute = 0 THEN 1 ELSE 0 END) as pending_leads
+                            COALESCE(COUNT(l.id), 0) as total_leads,
+                            COALESCE(SUM(CASE WHEN l.distribute = 0 THEN 1 ELSE 0 END), 0) as pending_leads
                          FROM `teams` t
-                         LEFT JOIN `leads` l ON l.team_id = t.id AND l.deleted_at IS NULL{$autoJoin}
+                         LEFT JOIN `leads` l ON l.team_id = t.id AND l.deleted_at IS NULL{$autoJoin}{$teamDateJoin}
                          GROUP BY t.id, t.name
                          ORDER BY t.id ASC";
-            $teams = $pdo->query($teamsSql)->fetchAll(PDO::FETCH_ASSOC);
+            $teamsStmt = $pdo->prepare($teamsSql);
+            $teamsStmt->execute($dateParams);
+            $teams = $teamsStmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // Check how many unassigned leads exist specifically (total and pending)
+            // Check unassigned leads scoped to date filter
             $unassignedStatsSql = "SELECT 
-                                     COUNT(*) as total_unassigned,
-                                     SUM(CASE WHEN distribute = 0 THEN 1 ELSE 0 END) as pending_unassigned
+                                     COALESCE(COUNT(*), 0) as total_unassigned,
+                                     COALESCE(SUM(CASE WHEN distribute = 0 THEN 1 ELSE 0 END), 0) as pending_unassigned
                                    FROM `leads` 
-                                   WHERE deleted_at IS NULL AND (team_id IS NULL OR team_id = 0){$autoWhere}";
-            $unassignedStats = $pdo->query($unassignedStatsSql)->fetch(PDO::FETCH_ASSOC);
+                                   WHERE deleted_at IS NULL AND (team_id IS NULL OR team_id = 0){$autoWhere}{$statsDateSql}";
+            $unassignedStmt = $pdo->prepare($unassignedStatsSql);
+            $unassignedStmt->execute($dateParams);
+            $unassignedStats = $unassignedStmt->fetch(PDO::FETCH_ASSOC);
 
             echo json_encode([
                 'status' => 'success',
@@ -321,8 +381,12 @@ class LeadAutomationController extends Controller
                     'leads'            => $leads,
                     'total_count'      => $totalCount,
                     'stats'            => $stats,
+                    'all_time_stats'   => $allTimeStats,
                     'teams'            => $teams,
                     'unassigned_stats' => $unassignedStats,
+                    'date_filter'      => $dateFilter,
+                    'start_date'       => $startDate,
+                    'end_date'         => $endDate,
                 ]
             ]);
         } catch (Throwable $e) {
@@ -510,6 +574,32 @@ class LeadAutomationController extends Controller
     {
         $this->checkAccess();
         header('Content-Type: application/json; charset=utf-8');
+
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $secondaryRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $primaryRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
+        $userRoleName = strtolower(trim((string)($_SESSION['user']['role_name'] ?? '')));
+
+        // Role 11 (Executive of Digital Marketing Team) is strictly forbidden from deleting leads
+        $isDMExecutive = ($userRoleId === 11 || $secondaryRoleId === 11 || $primaryRoleId === 11 || strpos($userRoleName, 'executive of digital marketing') !== false);
+        $isManagementUser = in_array($userRoleId, [1, 3, 33, 34, 35], true)
+            || in_array($secondaryRoleId, [1, 3, 33, 34, 35], true)
+            || in_array($primaryRoleId, [1, 3, 33, 34, 35], true)
+            || ((int)($_SESSION['user']['id'] ?? 0) === 94)
+            || strpos($userRoleName, 'admin') !== false
+            || strpos($userRoleName, 'management') !== false
+            || strpos($userRoleName, 'director') !== false
+            || strpos($userRoleName, 'chief') !== false;
+        $isHeadOfDM = ($userRoleId === 10 || $secondaryRoleId === 10 || $primaryRoleId === 10 || strpos($userRoleName, 'head of digital marketing') !== false);
+
+        if ($isDMExecutive || (!$isManagementUser && !$isHeadOfDM)) {
+            http_response_code(403);
+            echo json_encode([
+                'status'  => 'error',
+                'message' => 'Permission denied: Executive of Digital Marketing Team (Role 11) is not allowed to delete leads.'
+            ]);
+            exit;
+        }
 
         try {
             $input = json_decode(file_get_contents('php://input'), true) ?? [];

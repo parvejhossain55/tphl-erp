@@ -486,15 +486,15 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                         <div class="mb-3">
                             <small class="text-muted d-block fw-bold text-success">Pending Approval From</small>
                             <?php if ($isOver1Lac && !$isOpHeadApproved): ?>
-                                <span class="d-block small text-warning"><i class="bi bi-shield-lock me-1 text-warning"></i> Admin & Operation Head (Role 20 / 32)</span>
+                                <span class="d-block small text-warning"><i class="bi bi-shield-lock me-1 text-warning"></i> Admin & Operation Head</span>
                             <?php else: ?>
-                                <span class="d-block small text-primary"><i class="bi bi-shield-check me-1 text-primary"></i> Management (Role 3 / 1: Super Admin / Admin)</span>
+                                <span class="d-block small text-primary"><i class="bi bi-shield-check me-1 text-primary"></i> Management</span>
                             <?php endif; ?>
                         </div>
                     <?php elseif ($status === 'approved' && !$isAccountsHeadApproved): ?>
                         <div class="mb-3">
                             <small class="text-muted d-block fw-bold text-primary">Pending Sign-off From</small>
-                            <span class="d-block small"><i class="bi bi-stamp me-1 text-primary"></i> Accounts Head (Role 30)</span>
+                            <span class="d-block small"><i class="bi bi-stamp me-1 text-primary"></i> Accounts Head (Md. Mamunoor Rashid)</span>
                         </div>
                     <?php endif; ?>
                     <div class="mb-3">
@@ -670,7 +670,7 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                 </div>
                 <div class="card-body">
                     <p class="mb-0 text-muted small">
-                        This contractor bill exceeds <strong>৳1,00,000</strong>. In accordance with policy, <strong>Admin & Operation Head (Role 20)</strong> must verify and approve this bill first before Management sign-off.
+                        This contractor bill exceeds <strong>৳1,00,000</strong>. In accordance with policy, <strong>Admin & Operation Head</strong> must verify and approve this bill first before Management sign-off.
                     </p>
                 </div>
             </div>

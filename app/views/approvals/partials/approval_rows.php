@@ -344,7 +344,7 @@
                                             <?php
                                             $stageLabel = str_replace(['\u0026', '&amp;'], ['&', '&'], $req['pending_stage_label'] ?? 'Pending Review');
                                             $pendingFor = str_replace(['\u0026', '&amp;'], ['&', '&'], $req['pending_for_text'] ?? 'Management');
-                                            $pendingFor = trim(preg_replace('/\s*\(Role\s*[0-9,\s]+\)/i', '', $pendingFor));
+                                            $pendingFor = trim(preg_replace('/\s*\(Role[^\)]*\)/i', '', $pendingFor));
 
                                             $badgeClass = 'bg-warning text-dark';
                                             if (stripos($stageLabel, 'QC') !== false || stripos($stageLabel, 'Audit') !== false) {
@@ -373,7 +373,7 @@
                                             <?php if (strtolower($req['op_head_status'] ?? '') === 'approved' || !empty($req['op_head_by'])): ?>
                                                 <div class="mt-2 pt-1 border-top border-success-subtle text-start">
                                                     <span class="badge bg-success-subtle text-success border border-success-subtle extra-small fw-semibold d-inline-block mb-1" style="font-size: 9.5px; padding: 2px 6px;">
-                                                        <i class="fa-solid fa-circle-check me-1"></i>Last Approved: Role 20 (Op Head)
+                                                        <i class="fa-solid fa-circle-check me-1"></i>Last Approved: Operation Head
                                                     </span>
                                                     <div class="extra-small text-dark fw-bold" style="font-size: 11px;">
                                                         <i class="fa-solid fa-user-check text-success me-1"></i><?= htmlspecialchars(!empty($req['op_head_name']) ? $req['op_head_name'] : 'Admin & Operation Head') ?>
@@ -570,7 +570,7 @@
                                             <?php if ($isChiefOfficer): ?>
                                                 <a href="<?= !empty($targetUrl) && $targetUrl !== 'javascript:void(0)' ? $targetUrl : 'javascript:void(0)' ?>"
                                                     class="btn btn-sm btn-light text-dark rounded-2 px-2 border"
-                                                    title="Pending for <?= htmlspecialchars($req['pending_for_text'] ?? 'Management') ?>">
+                                                    title="Pending for <?= htmlspecialchars(trim(preg_replace('/\s*\(Role[^\)]*\)/i', '', $req['pending_for_text'] ?? 'Management')) ?: 'Management') ?>">
                                                     <i class="fa-solid fa-eye me-1"></i>View Details
                                                 </a>
                                             <?php elseif ($canUserApprove): ?>
@@ -606,7 +606,7 @@
                                             <?php else: ?>
                                                 <a href="javascript:void(0)"
                                                     class="btn btn-sm btn-light text-muted rounded-2 px-2 border"
-                                                    title="<?= ($isSiteOperator && $reqAmount > 100000) ? 'Amount exceeds ৳1,00,000 threshold - Full Management approval required' : 'Pending for ' . htmlspecialchars($req['pending_for_text'] ?? 'Other Role') ?>">
+                                                    title="<?= ($isSiteOperator && $reqAmount > 100000) ? 'Amount exceeds ৳1,00,000 threshold - Full Management approval required' : 'Pending for ' . htmlspecialchars(trim(preg_replace('/\s*\(Role[^\)]*\)/i', '', $req['pending_for_text'] ?? 'Other Role')) ?: 'Other Role') ?>">
                                                     <i class="fa-solid fa-lock me-1 text-warning"></i><?= ($isSiteOperator && $reqAmount > 100000) ? 'Management Only' : 'Pending Other Role' ?>
                                                 </a>
                                             <?php endif; ?>
