@@ -222,8 +222,28 @@ if ($isVerified) {
 // Payment Type Label (Removed as requested: only amount is displayed, payment_type like EMI, Booking, Registration, Dev Charge is omitted)
 $paymentTypeLabel = '';
 
-// Total amount calculation
-$totalAmountPaid = !empty($isBulk) ? array_sum(array_map(fn($p) => (float)($p['amount'] ?? 0), $payments)) : (float)($payment['amount'] ?? 0);
+// Total amount calculation: Exclude EMI discount amounts so only actual paid money is displayed
+$actualPaidPayments = [];
+if (!empty($payments) && is_array($payments)) {
+    $actualPaidPayments = array_values(array_filter($payments, function($p) {
+        return empty($p['is_emi_discount']) || (int)$p['is_emi_discount'] === 0;
+    }));
+}
+
+if (!empty($isBulk)) {
+    $totalAmountPaid = !empty($actualPaidPayments)
+        ? array_sum(array_map(fn($p) => (float)($p['amount'] ?? 0), $actualPaidPayments))
+        : 0;
+} else {
+    $isDiscountItem = !empty($payment['is_emi_discount']) && (int)$payment['is_emi_discount'] === 1;
+    $totalAmountPaid = $isDiscountItem ? 0 : (float)($payment['amount'] ?? 0);
+}
+
+// If bulk has actual paid payments, align primary $payment with the first actual paid payment
+if (!empty($actualPaidPayments)) {
+    $payment = $actualPaidPayments[0];
+}
+
 $amountInWords = function_exists('amountInWords') ? amountInWords($totalAmountPaid) : (class_exists('FormatHelper') ? FormatHelper::amountInWords($totalAmountPaid) : '');
 
 // Bank & Payment Method Display

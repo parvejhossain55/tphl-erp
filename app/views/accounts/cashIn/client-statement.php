@@ -571,6 +571,7 @@ if ($totalPrice > 0) {
                         $totalDiscount  = 0;
                         $totalPaidCol   = 0;
                         $bookingDiscountApplied = false;
+                        $lastKnownEmiNo = 0;
 
                         foreach ($validTransactions as $txn):
                             $sl++;
@@ -586,6 +587,9 @@ if ($totalPrice > 0) {
                             }
                             
                             $emiNo         = $txn['emi_no'] ?? null;
+                            if (!empty($emiNo)) {
+                                $lastKnownEmiNo = max($lastKnownEmiNo, (int)$emiNo);
+                            }
                             $chequeNo      = $txn['cheque_no'] ?? '';
                             $transRef      = $txn['transaction_ref'] ?? '';
                             $bankName      = !empty($txn['bank_name']) ? $txn['bank_name'] : ($txn['bank_display_name'] ?? '');
@@ -616,7 +620,11 @@ if ($totalPrice > 0) {
                             } elseif ($paymentType === 'emi' || $paymentType === 'emi_due_settlement') {
                                 if (!empty($txn['settlement_type']) && $txn['settlement_type'] === 'emi_due_settlement') {
                                     $term = $txn['installment_label'] ?? $term;
-                                } elseif ($emiNo) {
+                                } else {
+                                    if (!$emiNo) {
+                                        $lastKnownEmiNo++;
+                                        $emiNo = $lastKnownEmiNo;
+                                    }
                                     $isPartial = (!empty($txn['payment_status']) && strtolower($txn['payment_status']) === 'partially_paid');
                                     $term = ($isPartial ? 'Advance ' : '') . 'Installment ' . $emiNo;
                                 }

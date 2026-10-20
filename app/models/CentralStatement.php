@@ -1864,6 +1864,138 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
     }
 
     /**
+     * Get all time statement across all recorded dates
+     */
+    public function getAllTimeStatement($projectId = null, $category = 'all')
+    {
+        if ($projectId === '') {
+            $projectId = null;
+        }
+
+        $startDate = $this->getEarliestTransactionDate($projectId);
+        $endDate = $this->getLatestTransactionDate($projectId);
+
+        if (!$startDate) {
+            $startDate = date('Y-01-01');
+        }
+        if (!$endDate) {
+            $endDate = date('Y-12-31');
+        }
+
+        // Ensure we cover at least through the current year end
+        $currentYearEnd = date('Y-12-31');
+        if (strtotime($endDate) < strtotime($currentYearEnd)) {
+            $endDate = $currentYearEnd;
+        }
+
+        $statement = $this->getCustomMonthlyStatement($startDate, $endDate, $projectId, $category);
+        $statement['period'] = 'All Time';
+        $statement['start_date'] = $startDate;
+        $statement['end_date'] = $endDate;
+        return $statement;
+    }
+
+    /**
+     * Get earliest transaction date across all cashin/cashout tables
+     */
+    public function getEarliestTransactionDate($projectId = null)
+    {
+        $dates = [];
+
+        // 1. Lead payments
+        $sql1 = "SELECT MIN(lp.payment_date) as min_date FROM lead_payments lp";
+        if ($projectId) {
+            $sql1 .= " INNER JOIN lead_bookings lb ON lp.booking_id = lb.id WHERE lb.project_id = " . (int)$projectId . " AND lp.payment_status IN ('paid', 'partially_paid')";
+        } else {
+            $sql1 .= " WHERE lp.payment_status IN ('paid', 'partially_paid')";
+        }
+        $res1 = $this->db->query($sql1);
+        if ($res1 && $row = $res1->fetch_assoc()) {
+            if (!empty($row['min_date'])) $dates[] = $row['min_date'];
+        }
+
+        // 2. Lead bookings
+        $sql2 = "SELECT MIN(booking_date) as min_date FROM lead_bookings";
+        if ($projectId) {
+            $sql2 .= " WHERE project_id = " . (int)$projectId;
+        }
+        $res2 = $this->db->query($sql2);
+        if ($res2 && $row = $res2->fetch_assoc()) {
+            if (!empty($row['min_date'])) $dates[] = $row['min_date'];
+        }
+
+        // 3. Cashout payments
+        $sql3 = "SELECT MIN(cp.payment_date) as min_date FROM cashout_payments cp LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id WHERE cr.status IN ('approved', 'partially_paid', 'fully_paid')";
+        if ($projectId) {
+            $sql3 .= " AND (cr.project_id = " . (int)$projectId . " OR cp.project_id = " . (int)$projectId . ")";
+        }
+        $res3 = $this->db->query($sql3);
+        if ($res3 && $row = $res3->fetch_assoc()) {
+            if (!empty($row['min_date'])) $dates[] = $row['min_date'];
+        }
+
+        // 4. Management cashin
+        if (!$projectId) {
+            $sql4 = "SELECT MIN(transaction_date) as min_date FROM management_cashin WHERE payment_status = 'paid'";
+            $res4 = $this->db->query($sql4);
+            if ($res4 && $row = $res4->fetch_assoc()) {
+                if (!empty($row['min_date'])) $dates[] = $row['min_date'];
+            }
+        }
+
+        if (empty($dates)) {
+            return date('Y-01-01');
+        }
+
+        sort($dates);
+        return date('Y-m-01', strtotime($dates[0]));
+    }
+
+    /**
+     * Get latest transaction date across all cashin/cashout tables
+     */
+    public function getLatestTransactionDate($projectId = null)
+    {
+        $dates = [];
+
+        // 1. Lead payments
+        $sql1 = "SELECT MAX(lp.payment_date) as max_date FROM lead_payments lp";
+        if ($projectId) {
+            $sql1 .= " INNER JOIN lead_bookings lb ON lp.booking_id = lb.id WHERE lb.project_id = " . (int)$projectId . " AND lp.payment_status IN ('paid', 'partially_paid')";
+        } else {
+            $sql1 .= " WHERE lp.payment_status IN ('paid', 'partially_paid')";
+        }
+        $res1 = $this->db->query($sql1);
+        if ($res1 && $row = $res1->fetch_assoc()) {
+            if (!empty($row['max_date'])) $dates[] = $row['max_date'];
+        }
+
+        // 2. Cashout payments
+        $sql3 = "SELECT MAX(cp.payment_date) as max_date FROM cashout_payments cp LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id WHERE cr.status IN ('approved', 'partially_paid', 'fully_paid')";
+        if ($projectId) {
+            $sql3 .= " AND (cr.project_id = " . (int)$projectId . " OR cp.project_id = " . (int)$projectId . ")";
+        }
+        $res3 = $this->db->query($sql3);
+        if ($res3 && $row = $res3->fetch_assoc()) {
+            if (!empty($row['max_date'])) $dates[] = $row['max_date'];
+        }
+
+        // 3. Management cashin
+        if (!$projectId) {
+            $sql4 = "SELECT MAX(transaction_date) as max_date FROM management_cashin WHERE payment_status = 'paid'";
+            $res4 = $this->db->query($sql4);
+            if ($res4 && $row = $res4->fetch_assoc()) {
+                if (!empty($row['max_date'])) $dates[] = $row['max_date'];
+            }
+        }
+
+        $dates[] = date('Y-m-d');
+
+        rsort($dates);
+        return date('Y-m-t', strtotime($dates[0]));
+    }
+
+    /**
      * Get custom range statement (daily if <= 31 days, monthly if > 31 days)
      */
     public function getCustomRangeStatement($startDate, $endDate, $projectId = null, $category = 'all')

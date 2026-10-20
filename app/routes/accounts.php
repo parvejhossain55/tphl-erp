@@ -39,6 +39,7 @@ return [
     // Controller: AccountClientController
     // =========================================================================
     'clients-cash-in' => ['controller' => 'AccountClientController', 'method' => 'index'],
+    'clients-cash-in-print' => ['controller' => 'AccountClientController', 'method' => 'printClientsStatement'],
     'client-wise-due-tracking' => ['controller' => 'AccountClientController', 'method' => 'dueTracking'],
     'client-due-tracking' => ['controller' => 'AccountClientController', 'method' => 'dueTracking'],
     'client-wise-due-tracking-export' => ['controller' => 'AccountClientController', 'method' => 'exportDueTracking'],

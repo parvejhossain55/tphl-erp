@@ -33,23 +33,35 @@ class AccountClientController extends Controller
         if (empty($startDate)) $startDate = null;
         if (empty($endDate)) $endDate = null;
 
+        $paymentType = trim($_GET['payment_type'] ?? '');
+        $allowedPaymentTypes = ['full_payment', 'land_share', 'development_charge', 'shop_service_charge', 'construction_fee'];
+        if (!in_array($paymentType, $allowedPaymentTypes, true)) {
+            $paymentType = '';
+        }
+
+        if (isset($_GET['print']) && $_GET['print'] == '1') {
+            $this->printClientsStatement();
+            return;
+        }
+
         $page = max(1, (int)($_GET['page'] ?? 1));
         $limit = min(100, max(5, (int)($_GET['limit'] ?? 20)));
         $offset = ($page - 1) * $limit;
 
         // Get total count & paginated clients
-        $totalClients = $this->clientModel->getTotalClientsCount($selectedProjectId, $verificationStatus, $search, $hasConflict, $dateType, $startDate, $endDate);
+        $totalClients = $this->clientModel->getTotalClientsCount($selectedProjectId, $verificationStatus, $search, $hasConflict, $dateType, $startDate, $endDate, $paymentType);
         $totalPages = $totalClients > 0 ? (int)ceil($totalClients / $limit) : 1;
         if ($page > $totalPages && $totalPages > 0) {
             $page = $totalPages;
             $offset = ($page - 1) * $limit;
         }
 
-        $clients = $this->clientModel->getAllClients($selectedProjectId, $verificationStatus, $search, $limit, $offset, $hasConflict, $dateType, $startDate, $endDate);
+        $clients = $this->clientModel->getAllClients($selectedProjectId, $verificationStatus, $search, $limit, $offset, $hasConflict, $dateType, $startDate, $endDate, $paymentType);
         $conflictedUnits = $this->clientModel->getConflictedUnits();
 
         if ($isAjax) {
-            $tableHtml = $this->renderCashInRowsHtml($clients, $conflictedUnits);
+            $tableHtml = $this->renderCashInRowsHtml($clients, $conflictedUnits, $paymentType);
+            $tableHeadHtml = $this->renderCashInTableHeadHtml($paymentType);
             $paginationHtml = $this->generateAjaxPagination($page, $totalPages, $totalClients, $limit, 'loadCashInPage');
             $startEntry = $totalClients > 0 ? (($page - 1) * $limit) + 1 : 0;
             $endEntry = min($totalClients, $page * $limit);
@@ -67,6 +79,8 @@ class AccountClientController extends Controller
                 'full_payment_completed' => (int)($paymentStats['full_payment_completed'] ?? 0),
                 'approved_bookings' => (int)($paymentStats['approved_bookings'] ?? 0),
                 'limit' => $limit,
+                'payment_type' => $paymentType,
+                'table_head_html' => $tableHeadHtml,
                 'table_html' => $tableHtml,
                 'pagination_html' => $paginationHtml,
                 'info_text' => $infoText
@@ -97,6 +111,7 @@ class AccountClientController extends Controller
             "currentPage" => $page,
             "limit" => $limit,
             "search" => $search,
+            "paymentType" => $paymentType,
             "paymentStats" => $paymentStats,
             "collectionStats" => $collectionStats,
             "projectCollectionBreakdown" => $projectCollectionBreakdown,
@@ -1076,10 +1091,11 @@ public function indexTwo($bookingId = null)
     /**
      * Render HTML rows for clients-cash-in table
      */
-    public function renderCashInRowsHtml($clients, $conflictedUnits = [])
+    public function renderCashInRowsHtml($clients, $conflictedUnits = [], $paymentType = '')
     {
+        $colspan = !empty($paymentType) ? 11 : 9;
         if (empty($clients)) {
-            return '<tr><td colspan="9" class="text-center py-4 text-muted"><i class="fa-solid fa-inbox me-2"></i>No clients found matching your search or filters.</td></tr>';
+            return '<tr><td colspan="' . $colspan . '" class="text-center py-4 text-muted"><i class="fa-solid fa-inbox me-2"></i>No clients found matching your search or filters.</td></tr>';
         }
         $html = '';
         foreach ($clients as $client) {
@@ -1191,15 +1207,178 @@ public function indexTwo($bookingId = null)
             $html .= '</div></td>';
 
             $html .= '<td>' . $this->renderAgentAndBookingDatesHtml($client) . '</td>';
-            $html .= '<td>TK.' . number_format($client['total_paid'] ?? 0, 2) . '</td>';
+
+            if (!empty($paymentType)) {
+                $targetVal = 0;
+                $paidVal = 0;
+                $dueVal = 0;
+                if ($paymentType === 'full_payment') {
+                    $targetVal = (float)($client['total_price_target'] ?? $client['total_agreement_value'] ?? 0);
+                    $paidVal = (float)($client['total_paid'] ?? 0);
+                    $dueVal = (float)($client['overall_due'] ?? 0);
+                } elseif ($paymentType === 'land_share') {
+                    $targetVal = (float)($client['total_land_share_target'] ?? 0);
+                    $paidVal = (float)($client['land_share_paid'] ?? 0);
+                    $dueVal = (float)($client['land_share_due'] ?? 0);
+                } elseif ($paymentType === 'development_charge') {
+                    $targetVal = (float)($client['total_dev_charge_target'] ?? 0);
+                    $paidVal = (float)($client['dev_charge_paid'] ?? 0);
+                    $dueVal = (float)($client['dev_charge_due'] ?? 0);
+                } elseif ($paymentType === 'shop_service_charge') {
+                    $targetVal = (float)($client['total_shop_service_charge_target'] ?? 0);
+                    $paidVal = (float)($client['shop_service_charge_paid'] ?? 0);
+                    $dueVal = (float)($client['shop_service_charge_due'] ?? 0);
+                } elseif ($paymentType === 'construction_fee') {
+                    $targetVal = (float)($client['total_construction_target'] ?? 0);
+                    $paidVal = (float)($client['construction_paid'] ?? 0);
+                    $dueVal = (float)($client['construction_due'] ?? 0);
+                }
+                $html .= '<td class="fw-bold text-dark text-nowrap">TK.' . number_format($targetVal, 2) . '</td>';
+                $html .= '<td class="text-nowrap"><span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" style="font-size: 11.5px;">TK.' . number_format($paidVal, 2) . '</span></td>';
+                $html .= '<td class="text-nowrap"><span class="badge ' . ($dueVal > 0 ? 'bg-danger-subtle text-danger border border-danger-subtle' : 'bg-light text-muted border') . ' px-2 py-1" style="font-size: 11.5px;">TK.' . number_format($dueVal, 2) . '</span></td>';
+            } else {
+                $html .= '<td>TK.' . number_format($client['total_paid'] ?? 0, 2) . '</td>';
+            }
+
             $html .= '<td>' . ($client['last_payment_date'] ? date('d M, Y', strtotime($client['last_payment_date'])) : 'No Payment') . '</td>';
             $html .= '<td><span class="badge ' . $badgeClass . '"><i class="fa-light ' . $badgeIcon . ' me-1"></i>' . ucfirst($verStatus) . '</span></td>';
             $html .= '<td><button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="openProfileModal(' . (int)$client['lead_id'] . ')" title="View Client Profile" style="font-size:12px;"><i class="fa-light fa-id-card me-1"></i>Profile</button></td>';
             $escapedName = htmlspecialchars(trim(preg_replace('/\s+/', ' ', $client['client_name'])), ENT_QUOTES);
-            $html .= '<td><div class="d-flex align-items-center justify-content-start gap-10"><button class="table__icon download" onclick="openProjectsModal(' . (int)$client['lead_id'] . ', \'' . $escapedName . '\')" title="View Projects"><i class="fa-regular fa-eye"></i></button></div></td>';
+            $stmtBtn = !empty($client['booking_id']) ? '<a href="' . $GLOBALS['base_url'] . '/client-statement/' . (int)$client['booking_id'] . '" target="_blank" class="table__icon" style="color: #4f46e5; border: 1px solid #c7d2fe; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px;" title="Print Client Statement"><i class="fa-solid fa-print"></i></a>' : '';
+            $html .= '<td><div class="d-flex align-items-center justify-content-start gap-1">' . $stmtBtn . '<button class="table__icon download" onclick="openProjectsModal(' . (int)$client['lead_id'] . ', \'' . $escapedName . '\')" title="View Projects"><i class="fa-regular fa-eye"></i></button></div></td>';
             $html .= '</tr>';
         }
         return $html;
+    }
+
+    /**
+     * Render table header row HTML based on payment type
+     */
+    public function renderCashInTableHeadHtml($paymentType = '')
+    {
+        $targetLabel = 'Total Value';
+        if ($paymentType === 'land_share') {
+            $targetLabel = 'Land Share Value';
+        } elseif ($paymentType === 'development_charge') {
+            $targetLabel = 'Dev Charge Total';
+        } elseif ($paymentType === 'shop_service_charge') {
+            $targetLabel = 'Shop Service Charge';
+        } elseif ($paymentType === 'construction_fee') {
+            $targetLabel = 'Construction Value';
+        }
+
+        $html = '<th class="col-sticky-name">Client Name</th>';
+        $html .= '<th class="col-sticky-contact">Phone &amp; Email</th>';
+        $html .= '<th>Project &amp; Flats</th>';
+        $html .= '<th>Booking Agent(s) &amp; Date</th>';
+
+        if (!empty($paymentType)) {
+            $html .= '<th class="text-nowrap">' . $targetLabel . ' (TK.)</th>';
+            $html .= '<th class="text-nowrap">Total Paid (TK.)</th>';
+            $html .= '<th class="text-nowrap">Total Due (TK.)</th>';
+        } else {
+            $html .= '<th>Total Paid</th>';
+        }
+
+        $html .= '<th>Last Payment</th>';
+        $html .= '<th>Verification</th>';
+        $html .= '<th>Profile</th>';
+        $html .= '<th>Action</th>';
+
+        return $html;
+    }
+
+    /**
+     * Print filtered statement of clients cash in
+     */
+    public function printClientsStatement()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int) $_GET['project_id'] : null;
+        $verificationStatus = isset($_GET['verification_status']) && $_GET['verification_status'] !== '' ? $_GET['verification_status'] : null;
+        $search = trim($_GET['search'] ?? '');
+        $hasConflict = !empty($_GET['has_conflict']);
+        $paymentType = trim($_GET['payment_type'] ?? '');
+        $allowedPaymentTypes = ['full_payment', 'land_share', 'development_charge', 'shop_service_charge', 'construction_fee'];
+        if (!in_array($paymentType, $allowedPaymentTypes, true)) {
+            $paymentType = '';
+        }
+
+        $dateType = trim($_GET['date_type'] ?? '');
+        $startDate = trim($_GET['start_date'] ?? '');
+        $endDate = trim($_GET['end_date'] ?? '');
+        if (!in_array($dateType, ['booking_date', 'last_payment_date'])) {
+            $dateType = null;
+        }
+        if (empty($startDate)) $startDate = null;
+        if (empty($endDate)) $endDate = null;
+
+        // Fetch matching clients (up to 1500 for printing)
+        $clients = $this->clientModel->getAllClients($selectedProjectId, $verificationStatus, $search, 1500, 0, $hasConflict, $dateType, $startDate, $endDate, $paymentType);
+
+        // Project Name
+        $projectName = 'All Projects';
+        if ($selectedProjectId) {
+            $pStmt = $this->db->prepare("SELECT name FROM projects WHERE id = ?");
+            if ($pStmt) {
+                $pStmt->bind_param("i", $selectedProjectId);
+                $pStmt->execute();
+                $pRes = $pStmt->get_result();
+                if ($pRow = $pRes->fetch_assoc()) {
+                    $projectName = $pRow['name'];
+                }
+                $pStmt->close();
+            }
+        }
+
+        // Totals
+        $grandTarget = 0;
+        $grandPaid = 0;
+        $grandDue = 0;
+        foreach ($clients as $c) {
+            if ($paymentType === 'full_payment' || empty($paymentType)) {
+                $grandTarget += (float)($c['total_price_target'] ?? $c['total_agreement_value'] ?? 0);
+                $grandPaid += (float)($c['total_paid'] ?? 0);
+                $grandDue += (float)($c['overall_due'] ?? 0);
+            } elseif ($paymentType === 'land_share') {
+                $grandTarget += (float)($c['total_land_share_target'] ?? 0);
+                $grandPaid += (float)($c['land_share_paid'] ?? 0);
+                $grandDue += (float)($c['land_share_due'] ?? 0);
+            } elseif ($paymentType === 'development_charge') {
+                $grandTarget += (float)($c['total_dev_charge_target'] ?? 0);
+                $grandPaid += (float)($c['dev_charge_paid'] ?? 0);
+                $grandDue += (float)($c['dev_charge_due'] ?? 0);
+            } elseif ($paymentType === 'shop_service_charge') {
+                $grandTarget += (float)($c['total_shop_service_charge_target'] ?? 0);
+                $grandPaid += (float)($c['shop_service_charge_paid'] ?? 0);
+                $grandDue += (float)($c['shop_service_charge_due'] ?? 0);
+            } elseif ($paymentType === 'construction_fee') {
+                $grandTarget += (float)($c['total_construction_target'] ?? 0);
+                $grandPaid += (float)($c['construction_paid'] ?? 0);
+                $grandDue += (float)($c['construction_due'] ?? 0);
+            }
+        }
+
+        $viewData = [
+            'clients' => $clients,
+            'paymentType' => $paymentType,
+            'projectName' => $projectName,
+            'selectedProjectId' => $selectedProjectId,
+            'verificationStatus' => $verificationStatus,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+            'dateType' => $dateType,
+            'grandTarget' => $grandTarget,
+            'grandPaid' => $grandPaid,
+            'grandDue' => $grandDue
+        ];
+
+        extract($viewData);
+        include __DIR__ . '/../views/accounts/cashIn/clients-statement-print.php';
+        exit;
     }
 
     /**
@@ -3297,7 +3476,8 @@ public function downloadPublicReceiptPdf($paymentId = null)
     // 4. Details
     $receiptNo = '#REC-' . str_pad($payment['id'], 6, '0', STR_PAD_LEFT);
     $paymentDateFormatted = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
-    $amountPaid = (float)($payment['amount'] ?? 0);
+    $isDiscountItem = !empty($payment['is_emi_discount']) && (int)$payment['is_emi_discount'] === 1;
+    $amountPaid = $isDiscountItem ? 0 : (float)($payment['amount'] ?? 0);
     $amountInWords = function_exists('amountInWords') ? amountInWords($amountPaid) : (class_exists('FormatHelper') ? FormatHelper::amountInWords($amountPaid) : '');
 
     $clientName = !empty($clientDetails['client_name']) ? $clientDetails['client_name'] : ($payment['client_name'] ?? 'N/A');
