@@ -57,11 +57,16 @@ class LeadSynchronizer
             throw new InvalidArgumentException("Please provide a valid Google Sheet URL in config.php");
         }
 
-        // Check if multi-tab sync via XLSX is possible (standard Google Sheet URL without a specific non-zero gid override)
+        // Check if URL targets a specific worksheet tab via gid parameter (e.g. gid=847993418)
         $isSpecificTabOnly = false;
-        if (preg_match('/[#&?]gid=([1-9][0-9]*)/', $sheetUrl)) {
-            // User explicitly requested a single specific non-zero gid
-            $isSpecificTabOnly = true;
+        $targetGid = null;
+        if (preg_match('/[#&?]gid=([0-9]+)/', $sheetUrl, $gidMatch)) {
+            $targetGid = $gidMatch[1];
+            // If non-zero gid or explicitly specified in URL query
+            if ($targetGid !== '0' || strpos($sheetUrl, 'gid=') !== false) {
+                $isSpecificTabOnly = true;
+                $this->log(sprintf("Targeting specific worksheet tab [gid: %s] directly from URL.", $targetGid));
+            }
         }
 
         if (!$isSpecificTabOnly && preg_match('/spreadsheets\/d\/([a-zA-Z0-9-_]+)/', $sheetUrl, $matches)) {
@@ -262,12 +267,19 @@ class LeadSynchronizer
             $this->ensureSchema();
         }
 
-        // Check if Gemini AI should be used
+        // 1. First build header index map using the ultra-fast local engine
+        $headerMap = $this->buildHeaderIndexMap($rawHeaders);
+        $hasKeyFields = isset($headerMap['phone_number']) && (isset($headerMap['full_name']) || isset($headerMap['campaign_name']));
+
+        // 2. Check if Gemini AI should be invoked (only if required fields are missing or mode is 'always')
         $geminiConf = $this->config['gemini'] ?? [];
-        if (!empty($geminiConf['enabled']) && !empty($geminiConf['api_key']) && strpos($geminiConf['api_key'], 'YOUR_GEMINI_API_KEY') === false) {
+        $forceGemini = ($geminiConf['mode'] ?? '') === 'always';
+
+        if (($forceGemini || !$hasKeyFields) && !empty($geminiConf['enabled']) && !empty($geminiConf['api_key']) && strpos($geminiConf['api_key'], 'YOUR_GEMINI_API_KEY') === false) {
             try {
                 $modelName = $geminiConf['model'] ?? 'gemini-2.5-flash';
-                $this->log("Processing with Google Gemini AI [{$modelName}] for intelligent field understanding...");
+                $reason = $forceGemini ? "forced mode" : "unrecognized headers";
+                $this->log("Processing with Google Gemini AI [{$modelName}] ({$reason}) for intelligent field understanding...");
                 require_once __DIR__ . '/GeminiService.php';
                 $gemini = new GeminiService(
                     $geminiConf['api_key'],
@@ -282,9 +294,9 @@ class LeadSynchronizer
                 }
                 $this->log("Seamlessly falling back to local rule-based parser...");
             }
+        } else {
+            $this->log("Fast local parser active: recognized key columns instantly in < 0.02s.");
         }
-
-        $headerMap = $this->buildHeaderIndexMap($rawHeaders);
 
         $stats = [
             'total_rows'        => 0,

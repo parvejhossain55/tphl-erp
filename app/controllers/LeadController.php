@@ -154,6 +154,7 @@ class LeadController extends Controller
         $totalHotLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'hot_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
         $totalContactedLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'contacted_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
         $totalNotContactedLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'not_contacted_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
+        $totalNoResponseLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'no_response', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
         $totalAssignedLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'assigned_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
         $totalNotAssignedLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'not_assigned_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
         $totalIrrelevantLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'irrelevant_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
@@ -292,6 +293,7 @@ class LeadController extends Controller
             "totalHotLeads" => $totalHotLeads,
             "totalContactedLeads" => $totalContactedLeads,
             "totalNotContactedLeads" => $totalNotContactedLeads,
+            "totalNoResponseLeads" => $totalNoResponseLeads,
             "totalAssignedLeads" => $totalAssignedLeads,
             "totalNotAssignedLeads" => $totalNotAssignedLeads,
             "totalIrrelevantLeads" => $totalIrrelevantLeads,
@@ -510,7 +512,9 @@ class LeadController extends Controller
                     'when_is_the_best_time_to_contact_you' => $lead['when_is_the_best_time_to_contact_you'] ?? '',
                     'team_name'        => !empty($lead['team_id']) && isset($teamsData[$lead['team_id']]) ? $teamsData[$lead['team_id']]['team_name'] : '',
                     'manager_name'     => !empty($lead['team_id']) && isset($teamsData[$lead['team_id']]) ? $teamsData[$lead['team_id']]['manager_name'] : '',
-                    'lead_type'        => $lead['lead_type'] ?? 'Pending',
+                    'lead_type'        => !empty($lead['lead_type']) ? $lead['lead_type'] : (!empty($lead['last_follow_up_lead_status']) ? $lead['last_follow_up_lead_status'] : 'Pending'),
+                    'call_status'      => $lead['call_status'] ?? '',
+                    'follow_up_type'   => $lead['follow_up_type'] ?? '',
                     'delete_request_reason' => $lead['delete_request_reason'] ?? '',
                     'delete_requested_by_name' => $lead['delete_requested_by_name'] ?? '',
                     'delete_requested_at' => $lead['delete_requested_at'] ?? '',
@@ -616,7 +620,7 @@ class LeadController extends Controller
 
             $last_action = $lead['last_lead_action'] ?? 'not_called';
             $base_url = $GLOBALS['base_url'];
-            $statusVal = $lead['lead_type'] ?? 'Pending';
+            $statusVal = !empty($lead['lead_type']) ? $lead['lead_type'] : (!empty($lead['last_follow_up_lead_status']) ? $lead['last_follow_up_lead_status'] : 'Pending');
             $badgeClass = 'bg-secondary text-white';
             if ($statusVal == 'Prospect' || $statusVal == 'High Prospect') {
                 $badgeClass = 'bg-received';
@@ -628,6 +632,16 @@ class LeadController extends Controller
                 $badgeClass = 'bg-danger text-white';
             } elseif ($statusVal == 'Irrelevant') {
                 $badgeClass = 'bg-dark text-white';
+            } elseif ($statusVal == 'No Response') {
+                $badgeClass = 'bg-warning text-dark';
+            }
+
+            $extraBadges = '';
+            if (!empty($lead['call_status']) && $lead['call_status'] === 'not_received') {
+                $extraBadges .= '<div class="mt-1"><span class="badge bg-danger-subtle text-danger border border-danger-subtle px-1.5 py-0.5" style="font-size:9px;" title="Call Status: Not Received"><i class="fa-solid fa-phone-slash me-1" style="font-size:8px;"></i>Not Received</span></div>';
+            }
+            if (!empty($lead['follow_up_type']) && in_array($lead['follow_up_type'], ['Wrong Number', 'Invalid Number', 'Number Off'])) {
+                $extraBadges .= '<div class="mt-1"><span class="badge bg-warning-subtle text-dark border border-warning-subtle px-1.5 py-0.5" style="font-size:9px;" title="Follow-up Type: ' . htmlspecialchars($lead['follow_up_type']) . '"><i class="fa-solid fa-triangle-exclamation me-1" style="font-size:8px;"></i>' . htmlspecialchars($lead['follow_up_type']) . '</span></div>';
             }
 
             $statusHtml = '
@@ -644,6 +658,7 @@ class LeadController extends Controller
             </form>
             <div class="text-center lead-status-badge-wrap" data-lead-id="' . $lead['id'] . '">
                 <span class="badge ' . $badgeClass . ' px-2 py-1" style="font-size: 10px;">' . htmlspecialchars($statusVal) . '</span>
+                ' . $extraBadges . '
             </div>';
             $row[] = $statusHtml;
 

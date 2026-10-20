@@ -73,13 +73,21 @@ if (!function_exists('getStatCardLink')) {
 }
 $activeCard = $_GET['filter_card'] ?? '';
 ?>
-<?php if (!empty($filteredExecName)): ?>
+<?php if (!empty($filteredExecName) || in_array($activeCard, ['no_response', 'no_response_leads'])): ?>
 <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+    <?php if (!empty($filteredExecName)): ?>
     <span class="badge rounded-pill text-bg-primary" style="font-size:0.8rem; padding:6px 14px;">
         <i class="fa-solid fa-filter me-1"></i>
         Filtered for: <strong><?= htmlspecialchars($filteredExecName) ?></strong>
     </span>
     <span class="text-muted small">Stats below are specific to this sales executive (Date based on: <strong><?= ($date_type ?? 'created_at') === 'assigned_at' ? 'Assigned Date' : 'Created Date' ?></strong>)</span>
+    <?php endif; ?>
+    <?php if (in_array($activeCard, ['no_response', 'no_response_leads'])): ?>
+    <span class="badge rounded-pill text-bg-warning d-inline-flex align-items-center gap-1" style="font-size:0.8rem; padding:6px 14px; background-color: #fef3c7 !important; color: #92400e !important; border: 1px solid #fde68a;">
+        <i class="fa-solid fa-phone-slash me-1"></i> Card Filter: <strong>No Response Leads</strong>
+        <a href="<?= getStatCardLink('total_leads') ?>" class="ms-2 text-decoration-none fw-bold" style="color: #92400e;" title="Clear card filter">&times;</a>
+    </span>
+    <?php endif; ?>
 </div>
 <?php endif; ?>
 <div class="row mb-4 align-items-stretch">
@@ -156,6 +164,15 @@ $activeCard = $_GET['filter_card'] ?? '';
         <a href="<?= getStatCardLink('not_contacted_leads') ?>" class="card__wrapper stat-card text-decoration-none d-block h-100 <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>" style="cursor: pointer; <?= $activeCard === 'not_contacted_leads' ? 'border: 2px solid #10b981 !important; background-color: #f0fdf4;' : '' ?>">
             <div class="stat-label">Not Contacted <?= !empty($filteredExecName) ? '<i class="fa-solid fa-filter ms-1 text-primary" style="font-size:9px;" title="Filtered"></i>' : '' ?></div>
             <div class="stat-value text-danger"><?= $totalNotContactedLeads ?></div>
+            <div class="stat-change negative d-none">
+                <i class="bi bi-arrow-down"></i>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-6 col-lg-4 col-xl-2">
+        <a href="<?= getStatCardLink('no_response') ?>" class="card__wrapper stat-card text-decoration-none d-block h-100 <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>" style="cursor: pointer; <?= in_array($activeCard, ['no_response', 'no_response_leads']) ? 'border: 2px solid #f59e0b !important; background-color: #fffbeb;' : '' ?>" title="Leads with No Response, Number Off, Wrong/Invalid Number, or Not Received">
+            <div class="stat-label text-warning-emphasis"><i class="fa-solid fa-phone-slash me-1"></i>No Response <?= !empty($filteredExecName) ? '<i class="fa-solid fa-filter ms-1 text-primary" style="font-size:9px;" title="Filtered"></i>' : '' ?></div>
+            <div class="stat-value" style="color: #d97706;"><?= number_format($totalNoResponseLeads ?? 0) ?></div>
             <div class="stat-change negative d-none">
                 <i class="bi bi-arrow-down"></i>
             </div>
@@ -391,6 +408,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                             <option value="follow up" <?= ($selectedAction ?? '') == 'follow up' ? 'selected' : '' ?>>Follow Up</option>
                             <option value="visited" <?= ($selectedAction ?? '') == 'visited' ? 'selected' : '' ?>>Visited</option>
                             <option value="cancel" <?= ($selectedAction ?? '') == 'cancel' ? 'selected' : '' ?>>Cancel</option>
+                            <option value="no_response" <?= ($selectedAction ?? '') == 'no_response' ? 'selected' : '' ?>>No Response</option>
                             <option value="irrelevant" <?= ($selectedAction ?? '') == 'irrelevant' ? 'selected' : '' ?>>Irrelevant</option>
                         </select>
                     </div>
@@ -698,6 +716,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                         <option value="follow up" <?= ($_GET['last_action'] ?? '') == 'follow up' ? 'selected' : '' ?>>Follow Up</option>
                         <option value="visited" <?= ($_GET['last_action'] ?? '') == 'visited' ? 'selected' : '' ?>>Visited</option>
                         <option value="cancel" <?= ($_GET['last_action'] ?? '') == 'cancel' ? 'selected' : '' ?>>Cancel</option>
+                        <option value="no_response" <?= ($_GET['last_action'] ?? '') == 'no_response' ? 'selected' : '' ?>>No Response</option>
                         <option value="irrelevant" <?= ($_GET['last_action'] ?? '') == 'irrelevant' ? 'selected' : '' ?>>Irrelevant</option>
                     </select>
 
@@ -1639,6 +1658,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             if (savedLeadStatus === 'Prospect' || savedLeadStatus === 'High Prospect') bCls = 'bg-success text-white';
                             else if (savedLeadStatus === 'Hot') bCls = 'bg-danger text-white';
                             else if (savedLeadStatus === 'Warm') bCls = 'bg-warning text-dark';
+                            else if (savedLeadStatus === 'No Response') bCls = 'bg-warning text-dark';
                             else if (savedLeadStatus === 'Irrelevant') bCls = 'bg-dark text-white';
                             else if (savedLeadStatus === 'Not Interested' || savedLeadStatus === "Don't Call Again" || savedLeadStatus === 'Cold' || savedLeadStatus === 'Refund') bCls = 'bg-secondary text-white';
                             badgeWrap.html(`<span class="badge ${bCls} px-2 py-1" style="font-size: 10px;">${escapeHtml(savedLeadStatus)}</span>`);

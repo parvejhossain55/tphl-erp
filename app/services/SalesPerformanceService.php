@@ -582,7 +582,7 @@ class SalesPerformanceService
                        MAX(next_action = 'site visit' OR lead_status IN ('Will Visit','Visited')) AS f_vsched,
                        MAX(lead_status = 'Visited' OR follow_up_type IN ('visit','Face To Face')) AS f_vdone,
                        MAX(next_action = 'booking') AS f_nego,
-                        MAX(lead_status = 'No Response' OR follow_up_type IN ('Number Off', 'Wrong Number', 'Invalid Number')) AS f_no_resp
+                        MAX(lead_status = 'No Response' OR follow_up_type IN ('Number Off', 'Wrong Number', 'Invalid Number') OR LOWER(follow_up_type) LIKE '%wrong%' OR LOWER(follow_up_type) LIKE '%invalid%' OR LOWER(follow_up_type) LIKE '%number off%' OR LOWER(lead_status) LIKE '%no response%') AS f_no_resp
                 FROM lead_follow_ups
                 $fuDeleted
                 GROUP BY lead_id
@@ -1248,7 +1248,7 @@ class SalesPerformanceService
                               OR EXISTS (
                                   SELECT 1 FROM lead_follow_ups f 
                                   WHERE f.lead_id = l.id AND f.deleted_at IS NULL 
-                                    AND (f.lead_status = 'No Response' OR f.follow_up_type IN ('Number Off', 'Wrong Number', 'Invalid Number'))
+                                    AND (f.lead_status = 'No Response' OR f.follow_up_type IN ('Number Off', 'Wrong Number', 'Invalid Number') OR LOWER(f.follow_up_type) LIKE '%wrong%' OR LOWER(f.follow_up_type) LIKE '%invalid%' OR LOWER(f.follow_up_type) LIKE '%number off%' OR LOWER(f.lead_status) LIKE '%no response%')
                               )
                           )",
             ],
@@ -1516,7 +1516,7 @@ class SalesPerformanceService
                                 OR EXISTS (
                                     SELECT 1 FROM lead_follow_ups f
                                     WHERE f.lead_id = l.id AND f.deleted_at IS NULL
-                                      AND (f.lead_status = 'No Response' OR f.follow_up_type IN ('Number Off', 'Wrong Number', 'Invalid Number'))
+                                      AND (f.lead_status = 'No Response' OR f.follow_up_type IN ('Number Off', 'Wrong Number', 'Invalid Number') OR LOWER(f.follow_up_type) LIKE '%wrong%' OR LOWER(f.follow_up_type) LIKE '%invalid%' OR LOWER(f.follow_up_type) LIKE '%number off%' OR LOWER(f.lead_status) LIKE '%no response%')
                                 )
                             )"
             ],

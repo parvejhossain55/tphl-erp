@@ -714,6 +714,17 @@
                             </li>
                         <?php endif; ?>
 
+                        <?php if (class_exists('TeamFollowUpComparisonController') && TeamFollowUpComparisonController::canAccess()): ?>
+                            <!-- Team Follow Up Comparison (Management / Sales Manager / Sales Head / Chief Executive) -->
+                            <li class="slide <?= isActive('team-followup-comparison', $current_route) ?>">
+                                <a href="<?= $base_url ?>/team-followup-comparison"
+                                    class="sidebar__menu-item <?= isActive('team-followup-comparison', $current_route) ?>">
+                                    <div class="side-menu__icon"><i class="fa-solid fa-code-compare"></i></div>
+                                    <span class="sidebar__menu-label">Team Follow Up Comparison</span>
+                                </a>
+                            </li>
+                        <?php endif; ?>
+
                         <?php if (hasPermission("Sales team Performance")): ?>
                             <!-- Sales Team Performance-->
                             <li class="slide d-none <?= isActive('sales-team-performance', $current_route) ?>">
@@ -2531,9 +2542,9 @@
                     <!-- Construction Finance -->
                     <!-- ===================== -->
                     <li
-                        class="slide has-sub <?= isActive(['con-vendor-payment-requests', 'con-contractor-bills', 'con-transactions', 'con-land-requisitions', 'fund-requisitions'], $current_route) ? 'active' : '' ?>">
+                        class="slide has-sub <?= isActive(['con-vendor-payment-requests', 'con-contractor-bills', 'con-transactions', 'con-land-requisitions', 'fund-requisitions', 'con-vendor-ledger'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['con-vendor-payment-requests', 'con-contractor-bills', 'con-transactions', 'con-land-requisitions', 'fund-requisitions'], $current_route) ? 'menu-open active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['con-vendor-payment-requests', 'con-contractor-bills', 'con-transactions', 'con-land-requisitions', 'fund-requisitions', 'con-vendor-ledger'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-helmet-safety"></i></div>
                             <span class="sidebar__menu-label">Construction Finance</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -2547,6 +2558,12 @@
                                         <span class="badge bg-danger rounded-pill ms-auto me-2"
                                             style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingVprCount ?></span>
                                     <?php endif; ?>
+                                </a>
+                            </li>
+                            <li class="slide <?= isActive('con-vendor-ledger', $current_route) ? 'active' : '' ?>">
+                                <a href="<?= $base_url ?>/con-vendor-ledger"
+                                    class="sidebar__menu-item <?= isActive('con-vendor-ledger', $current_route) ?>">
+                                    <i class="fa-solid fa-book-bookmark me-1 text-primary"></i> Vendor Ledger
                                 </a>
                             </li>
                             <li class="slide <?= isActive('con-contractor-bills', $current_route) ?>">
@@ -3361,13 +3378,13 @@
                         </li>
                     <?php endif; ?>
 
-                    <?php if (hasPermission('Vendor Manage') || in_array($_SESSION['user']['role_id'] ?? 0, [22, 23])): ?>
+                    <?php if (hasPermission('Vendor Manage') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 17, 20, 22, 23, 30, 31, 32, 33, 34, 35])): ?>
                         <!-- Module 6: Vendors -->
 
                         <li
-                            class="slide has-sub <?= isActive(['con-vendors', 'con-vendor-create', 'con-vendor-penalties', 'con-vendor-penalty-create', 'con-vendor-payment-requests', 'con-vendor-payment-create'], $current_route) ? 'active' : '' ?>">
+                            class="slide has-sub <?= isActive(['con-vendors', 'con-vendor-ledger', 'con-vendor-create', 'con-vendor-penalties', 'con-vendor-penalty-create', 'con-vendor-payment-requests', 'con-vendor-payment-create'], $current_route) ? 'active' : '' ?>">
                             <a href="javascript:void(0);"
-                                class="sidebar__menu-item <?= isActive(['con-vendors', 'con-vendor-create', 'con-vendor-penalties', 'con-vendor-penalty-create', 'con-vendor-payment-requests', 'con-vendor-payment-create'], $current_route) ? 'menu-open active' : '' ?>">
+                                class="sidebar__menu-item <?= isActive(['con-vendors', 'con-vendor-ledger', 'con-vendor-create', 'con-vendor-penalties', 'con-vendor-penalty-create', 'con-vendor-payment-requests', 'con-vendor-payment-create'], $current_route) ? 'menu-open active' : '' ?>">
                                 <div class="side-menu__icon"><i class="fa-solid fa-user-tie"></i></div>
                                 <span class="sidebar__menu-label">Vendors</span>
                                 <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -3379,6 +3396,12 @@
                                     <a href="<?= $base_url ?>/con-vendors"
                                         class="sidebar__menu-item <?= isActive('con-vendors', $current_route) ?>">Vendor
                                         List</a>
+                                </li>
+                                <li class="slide <?= isActive('con-vendor-ledger', $current_route) ? 'active' : '' ?>">
+                                    <a href="<?= $base_url ?>/con-vendor-ledger"
+                                        class="sidebar__menu-item <?= isActive('con-vendor-ledger', $current_route) ?>">
+                                        <i class="fa-solid fa-book-bookmark me-1 text-primary"></i> Vendor Ledger
+                                    </a>
                                 </li>
                                 <li class="slide <?= isActive('con-vendor-create', $current_route) ? 'active' : '' ?>">
                                     <a href="<?= $base_url ?>/con-vendor-create"

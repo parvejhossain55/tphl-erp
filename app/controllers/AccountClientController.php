@@ -1233,10 +1233,21 @@ public function indexTwo($bookingId = null)
                     $paidVal = (float)($client['construction_paid'] ?? 0);
                     $dueVal = (float)($client['construction_due'] ?? 0);
                 }
-                $discVal = (float)($client['total_discount'] ?? 0);
+                $rowDiscount = 0;
+                $discLabel = 'Disc';
+                if ($paymentType === 'full_payment') {
+                    $rowDiscount = (float)($client['total_discount'] ?? 0) + (float)($client['total_bulk_emi_discount'] ?? 0);
+                    $discLabel = 'Disc';
+                } elseif ($paymentType === 'land_share') {
+                    $rowDiscount = (float)($client['total_discount'] ?? 0);
+                    $discLabel = 'Disc';
+                } elseif ($paymentType === 'construction_fee') {
+                    $rowDiscount = (float)($client['total_bulk_emi_discount'] ?? 0);
+                    $discLabel = 'EMI Disc';
+                }
                 $html .= '<td class="fw-bold text-dark text-nowrap">TK.' . number_format($targetVal, 2);
-                if ($discVal > 0) {
-                    $html .= '<div style="font-size: 10.5px; color: #d97706; font-weight: 500;">(Disc: ৳' . number_format($discVal, 2) . ')</div>';
+                if ($rowDiscount > 0) {
+                    $html .= '<div style="font-size: 10.5px; color: #d97706; font-weight: 500;">(' . $discLabel . ': ৳' . number_format($rowDiscount, 2) . ')</div>';
                 }
                 $html .= '</td>';
                 $html .= '<td class="text-nowrap"><span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" style="font-size: 11.5px;">TK.' . number_format($paidVal, 2) . '</span></td>';
@@ -1344,8 +1355,10 @@ public function indexTwo($bookingId = null)
         $grandPaid = 0;
         $grandDue = 0;
         $grandDiscount = 0;
+        $grandEmiDiscount = 0;
         foreach ($clients as $c) {
             $grandDiscount += (float)($c['total_discount'] ?? 0);
+            $grandEmiDiscount += (float)($c['total_bulk_emi_discount'] ?? 0);
             if ($paymentType === 'full_payment' || empty($paymentType)) {
                 $grandTarget += (float)($c['total_price_target'] ?? $c['total_agreement_value'] ?? 0);
                 $grandPaid += (float)($c['total_paid'] ?? 0);
@@ -1381,7 +1394,8 @@ public function indexTwo($bookingId = null)
             'grandTarget' => $grandTarget,
             'grandPaid' => $grandPaid,
             'grandDue' => $grandDue,
-            'grandDiscount' => $grandDiscount
+            'grandDiscount' => $grandDiscount,
+            'grandEmiDiscount' => $grandEmiDiscount
         ];
 
         extract($viewData);
