@@ -128,6 +128,16 @@ class Project extends Model
         $incentive_percentage = !empty($data['incentive_percentage']) ? (float)$data['incentive_percentage'] : null;
         $gallery_images       = !empty($data['gallery_images']) ? $data['gallery_images'] : null;
         $nearby_locations     = !empty($data['nearby_locations']) ? $data['nearby_locations'] : null;
+        $pm_id                = !empty($data['pm_id']) ? (int)$data['pm_id'] : null;
+        $site_engineer_id     = !empty($data['site_engineer_id']) ? (int)$data['site_engineer_id'] : null;
+        $landman_id           = !empty($data['landman_id']) ? (int)$data['landman_id'] : null;
+        $struct_engineer_id   = !empty($data['struct_engineer_id']) ? (int)$data['struct_engineer_id'] : null;
+        $draftsman_id         = !empty($data['draftsman_id']) ? (int)$data['draftsman_id'] : null;
+        $architect_id         = !empty($data['architect_id']) ? (int)$data['architect_id'] : null;
+        $estimator_id         = !empty($data['estimator_id']) ? (int)$data['estimator_id'] : null;
+        $qc_id                = !empty($data['qc_id']) ? (int)$data['qc_id'] : null;
+        $operator_id          = !empty($data['operator_id']) ? (int)$data['operator_id'] : null;
+        $purchase_user_id     = !empty($data['purchase_user_id']) ? (int)$data['purchase_user_id'] : null;
 
         $stmt->bind_param(
             "ssiiidsssssssiisssssssssdssssissssssiiiiiiiisdiiiiiiiiiiii",
