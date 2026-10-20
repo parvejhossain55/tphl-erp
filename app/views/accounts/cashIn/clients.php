@@ -361,8 +361,8 @@ $show_breadcrumb = true;
 
                 <!-- Project Filter (Same as flat-lists) -->
                 <div style="min-width: 220px; max-width: 280px; flex: 1;">
-                    <select class="form-control form-control-sm select2" name="project_id" id="cashInProjectFilter">
-                        <option value="">All Projects</option>
+                    <select class="form-control form-control-sm select2" name="project_id" id="cashInProjectFilter" data-placeholder="Select Project">
+                        <option value="">Select Project</option>
                         <?php if(!empty($projects)): foreach($projects as $p): ?>
                             <option value="<?= $p['id'] ?>" <?= ($selectedProjectId == $p['id']) ? 'selected' : '' ?>><?= htmlspecialchars($p['name']) ?></option>
                         <?php endforeach; endif; ?>
@@ -1436,8 +1436,8 @@ function loadCashInPage(page) {
             if (tbody && data.table_html) {
                 tbody.innerHTML = data.table_html;
             }
-            if (pagContainer && data.pagination_html) {
-                pagContainer.innerHTML = data.pagination_html;
+            if (pagContainer) {
+                pagContainer.innerHTML = (data.pagination_html !== undefined) ? data.pagination_html : '';
             }
             const totalCount = (data.total_clients !== undefined) ? data.total_clients : data.totalRecords;
             if (totalCount !== undefined) {

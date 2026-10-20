@@ -2193,8 +2193,8 @@ function loadCedClientsPage(page) {
             if (tbody && data.table_html) {
                 tbody.innerHTML = data.table_html;
             }
-            if (pagContainer && data.pagination_html) {
-                pagContainer.innerHTML = data.pagination_html;
+            if (pagContainer) {
+                pagContainer.innerHTML = (data.pagination_html !== undefined) ? data.pagination_html : '';
             }
             const totalCount = (data.total_clients !== undefined) ? data.total_clients : data.totalRecords;
             if (totalCount !== undefined) {
