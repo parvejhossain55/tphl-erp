@@ -677,30 +677,515 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
         transform: scale(1.06);
         box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25);
     }
+
+    /* =========================================================================
+       All Leads Platform Dashboard Styles
+       ========================================================================= */
+    .top-status-pills-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #ffffff;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 8px 14px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .status-pill-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        padding: 4px 10px;
+        border-radius: 9999px;
+        font-size: 11.5px;
+        font-weight: 600;
+        color: #334155;
+    }
+    .status-pill-green {
+        background: #eaf6f0;
+        color: #087d59;
+        border-color: #d1eae0;
+    }
+    .status-pill-purple {
+        background: #f5f3ff;
+        color: #7c3aed;
+        border-color: #ddd6fe;
+    }
+
+    /* Reporting Period Bar */
+    .reporting-period-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .reporting-period-label {
+        font-size: 11px;
+        font-weight: 800;
+        color: #64748b;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        margin-right: 6px;
+    }
+    .period-pills-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+    .period-pill-btn {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 5px 14px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #475569;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .period-pill-btn:hover {
+        background: #f8fafc;
+        color: #0f172a;
+        border-color: #cbd5e1;
+    }
+    .period-pill-btn.active {
+        background: #eaf6f0;
+        color: #087d59;
+        border-color: #a7f3d0;
+        font-weight: 700;
+    }
+
+    /* Filter Toolbar */
+    .platform-filter-bar {
+        background: #ffffff;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 10px 14px;
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .platform-filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    .platform-filter-label {
+        font-size: 10.5px;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    .filter-ctrl-input {
+        background: #ffffff;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        padding: 5px 10px;
+        font-size: 12.5px;
+        color: #0f172a;
+        height: 34px;
+        outline: none;
+        transition: border-color 0.15s ease;
+    }
+    .filter-ctrl-input:focus {
+        border-color: #087d59;
+        box-shadow: 0 0 0 2px rgba(8, 125, 89, 0.12);
+    }
+    .btn-apply-filters {
+        background: #087d59;
+        color: #ffffff;
+        border: none;
+        border-radius: 6px;
+        padding: 0 18px;
+        height: 34px;
+        font-size: 12.5px;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: background 0.15s ease;
+    }
+    .btn-apply-filters:hover {
+        background: #066346;
+        color: #ffffff;
+    }
+    .btn-reset-filters {
+        background: #f8fafc;
+        color: #475569;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        padding: 0 14px;
+        height: 34px;
+        font-size: 12.5px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .btn-reset-filters:hover {
+        background: #f1f5f9;
+        color: #0f172a;
+    }
+
+    /* 4 KPI Cards */
+    .kpi-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+    @media (max-width: 992px) {
+        .kpi-cards-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 576px) {
+        .kpi-cards-grid { grid-template-columns: 1fr; }
+    }
+    .kpi-card {
+        background: #ffffff;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 14px 18px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    }
+    .kpi-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #475569;
+        margin-bottom: 6px;
+    }
+    .kpi-val {
+        font-size: 30px;
+        font-weight: 800;
+        line-height: 1.1;
+        color: #0f172a;
+        margin-bottom: 4px;
+    }
+    .kpi-sub {
+        font-size: 11.5px;
+        color: #64748b;
+        font-weight: 500;
+    }
+
+    /* 5 Platform Breakdown Cards */
+    .platform-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+    @media (max-width: 992px) {
+        .platform-cards-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 576px) {
+        .platform-cards-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .platform-card {
+        background: #ffffff;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 12px 14px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        transition: transform 0.15s ease, border-color 0.15s ease;
+        cursor: pointer;
+    }
+    .platform-card:hover {
+        border-color: #087d59;
+        transform: translateY(-1px);
+    }
+    .platform-card.active-filter {
+        border-color: #087d59;
+        background: #fbfdfc;
+        box-shadow: 0 0 0 2px rgba(8, 125, 89, 0.15);
+    }
+    .platform-badge-code {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        height: 20px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 800;
+        margin-right: 6px;
+        letter-spacing: 0.02em;
+    }
+    .code-fb { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+    .code-wa { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+    .code-mi { background: #faf5ff; color: #9333ea; border: 1px solid #e9d5ff; }
+    .code-gf { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
+    .code-br { background: #f0fdfa; color: #0d9488; border: 1px solid #99f6e4; }
+    .code-ot { background: #fff7ed; color: #ea580c; border: 1px solid #ffedd5; }
+    .platform-card-title {
+        font-size: 11.5px;
+        font-weight: 700;
+        color: #334155;
+        display: flex;
+        align-items: center;
+    }
+    .platform-card-val {
+        font-size: 26px;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 6px 0 2px;
+        line-height: 1.1;
+    }
+    .platform-card-sub {
+        font-size: 11px;
+        color: #64748b;
+        font-weight: 500;
+    }
+
+    /* 2-Column Section */
+    .dashboard-two-col {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+    @media (max-width: 992px) {
+        .dashboard-two-col { grid-template-columns: 1fr; }
+    }
+
+    /* Daily Platform Breakdown Card */
+    .breakdown-card {
+        background: #ffffff;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 16px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    }
+    .breakdown-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .breakdown-title {
+        font-size: 16px;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 2px;
+    }
+    .breakdown-sub {
+        font-size: 11.5px;
+        color: #64748b;
+    }
+    .btn-view-report {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        padding: 5px 12px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #334155;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .btn-view-report:hover {
+        background: #f8fafc;
+        border-color: #94a3b8;
+        color: #0f172a;
+    }
+
+    /* Breakdown Table */
+    .breakdown-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12.5px;
+    }
+    .breakdown-table th {
+        background: #f8fafc;
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        padding: 8px 10px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .breakdown-table td {
+        padding: 9px 10px;
+        border-bottom: 1px solid #f1f5f9;
+        color: #334155;
+        vertical-align: middle;
+    }
+    .breakdown-table tr:hover td {
+        background: #f8fafc;
+    }
+    .breakdown-table .td-project {
+        font-weight: 600;
+        color: #0f172a;
+        text-align: left;
+    }
+    .breakdown-table .td-num {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+    }
+    .breakdown-table .td-total {
+        font-weight: 700;
+        color: #087d59;
+        text-align: right;
+    }
+    .breakdown-total-row td {
+        background: #eaf6f0 !important;
+        color: #087d59 !important;
+        font-weight: 800 !important;
+        border-top: 1px solid #d1eae0;
+        border-bottom: none;
+        padding: 10px 10px;
+    }
+    .hover-green:hover {
+        color: #087d59 !important;
+        text-decoration: underline !important;
+    }
+
+    /* Top Allocated Teams Card */
+    .top-teams-card {
+        background: #ffffff;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 16px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .top-team-row {
+        display: flex;
+        flex-direction: column;
+        padding: 8px 0;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .top-team-row:last-child {
+        border-bottom: none;
+    }
+    .top-team-info {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 4px;
+    }
+    .top-team-rank-name {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 700;
+        color: #0f172a;
+    }
+    .team-rank-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        font-size: 10.5px;
+        font-weight: 800;
+        background: #f1f5f9;
+        color: #475569;
+    }
+    .team-rank-badge.rank-1 { background: #fef3c7; color: #b45309; }
+    .team-rank-badge.rank-2 { background: #f1f5f9; color: #334155; }
+    .team-rank-badge.rank-3 { background: #ffedd5; color: #c2410c; }
+    .team-allocated-pill {
+        font-size: 11px;
+        font-weight: 700;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        color: #0f172a;
+        padding: 2px 8px;
+        border-radius: 9999px;
+    }
+    .team-bar-track {
+        width: 100%;
+        height: 5px;
+        background: #f1f5f9;
+        border-radius: 9999px;
+        overflow: hidden;
+    }
+    .team-bar-fill {
+        height: 100%;
+        background: #087d59;
+        border-radius: 9999px;
+        transition: width 0.3s ease;
+    }
+    .btn-toggle-other-teams {
+        background: transparent;
+        border: 1px dashed #cbd5e1;
+        border-radius: 6px;
+        width: 100%;
+        padding: 6px;
+        font-size: 11.5px;
+        font-weight: 600;
+        color: #64748b;
+        cursor: pointer;
+        text-align: center;
+        margin-top: 8px;
+        transition: all 0.15s ease;
+    }
+    .btn-toggle-other-teams:hover {
+        background: #f8fafc;
+        color: #0f172a;
+        border-color: #94a3b8;
+    }
 </style>
 
 <div class="lead-auto-container">
     
-    <!-- Header Title Bar -->
-    <div class="lead-auto-header d-flex justify-content-between align-items-center flex-wrap gap-3">
-        <div>
-            <h4 class="fw-bold mb-1 text-dark d-flex align-items-center gap-2">
-                <i class="fa-solid fa-wand-magic-sparkles text-primary"></i>
-                Intake Lead & Automated Lead Distribution
-            </h4>
-            <p class="text-muted small mb-0">
-                Google Sheets / Facebook Meta Lead Ads auto-sync, intelligent Gemini parsing, and fair round-robin team distribution.
-            </p>
+    <!-- =========================================================================
+         TOP STATUS BAR: Live Badges, Cron, Sheet Link & Scrape Button
+         ========================================================================= -->
+    <div class="top-status-pills-bar">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="status-pill-item status-pill-green">
+                <span class="sync-pulse-dot"></span> Google Sheets · Connected
+            </span>
+            <span class="status-pill-item">
+                <i class="fa-solid fa-clone text-muted" style="font-size: 11px;"></i> Duplicate check on
+            </span>
+            <?php if ($gemini_active): ?>
+                <span class="status-pill-item status-pill-purple" title="Gemini AI Parsing active">
+                    <i class="fa-solid fa-brain" style="font-size: 11px;"></i> Gemini AI active
+                </span>
+            <?php endif; ?>
+            <span class="status-pill-item status-pill-green">
+                <i class="fa-solid fa-arrows-rotate" style="font-size: 11px;"></i> Round-robin on
+            </span>
+            <span class="status-pill-item">
+                <i class="fa-solid fa-users text-muted" style="font-size: 11px;"></i> <?= count($teams ?? []) ?> active teams
+            </span>
+            <span class="status-pill-item">
+                <i class="fa-regular fa-clock text-muted" style="font-size: 11px;"></i> Daily sync · 02:00 AM
+            </span>
         </div>
 
         <div class="d-flex align-items-center gap-2">
-            <?php if ($gemini_active): ?>
-                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 small fw-semibold" title="Gemini 2.5 Flash active">
-                    <i class="fa-solid fa-brain me-1"></i> Gemini AI Active
-                </span>
+            <?php if ($canViewLiveSheet && !empty($sheet_url)): ?>
+                <a href="<?= htmlspecialchars($sheet_url) ?>" target="_blank" class="btn btn-outline-success btn-sm py-1 px-2 d-inline-flex align-items-center gap-1" style="font-size: 12px; font-weight: 600;" title="Open Google Sheet in new tab">
+                    <span>Live Sheet</span> <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 10px;"></i>
+                </a>
             <?php endif; ?>
-
-            <button id="btnScrape" class="btn btn-success btn-sm px-3 fw-bold d-flex align-items-center gap-2" onclick="triggerScrape()">
+            <button id="btnScrape" class="btn btn-success btn-sm px-3 fw-bold d-inline-flex align-items-center gap-2" style="height: 32px;" onclick="triggerScrape()">
                 <span id="btnScrapeSpinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
                 <i id="btnScrapeIcon" class="fa-solid fa-cloud-arrow-down"></i>
                 <span>Sync Google Sheet</span>
@@ -708,66 +1193,375 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
         </div>
     </div>
 
-    <!-- Lead Source Bar -->
-    <div class="lead-source-bar">
-        <div class="d-flex align-items-center gap-2 flex-wrap">
-            <span class="small text-muted fw-bold text-uppercase" style="letter-spacing: 0.5px;">Source:</span>
-            <span class="lead-source-badge">
-                <i class="fa-brands fa-google text-success"></i>
-                Google Sheets (Meta Form Leads)
-            </span>
-            <?php if ($canViewLiveSheet && !empty($sheet_url)): ?>
-                <a href="<?= htmlspecialchars($sheet_url) ?>" target="_blank" class="small fw-semibold text-decoration-none text-success d-inline-flex align-items-center gap-1 ms-1" title="Open Google Sheet">
-                    View live sheet <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 10px;"></i>
-                </a>
-            <?php endif; ?>
+    <!-- =========================================================================
+         REPORTING PERIOD QUICK PILLS
+         ========================================================================= -->
+    <div class="reporting-period-bar">
+        <div class="d-flex align-items-center flex-wrap gap-2">
+            <span class="reporting-period-label">Reporting Period</span>
+            <div class="period-pills-group" id="periodPillsGroup">
+                <button type="button" class="period-pill-btn active" data-preset="today" onclick="selectPeriodPreset('today')">Today</button>
+                <button type="button" class="period-pill-btn" data-preset="yesterday" onclick="selectPeriodPreset('yesterday')">Yesterday</button>
+                <button type="button" class="period-pill-btn" data-preset="7days" onclick="selectPeriodPreset('7days')">Last 7 days</button>
+                <button type="button" class="period-pill-btn" data-preset="cycle" onclick="selectPeriodPreset('cycle')">Reporting cycle</button>
+                <button type="button" class="period-pill-btn" data-preset="all" onclick="selectPeriodPreset('all')">All time</button>
+            </div>
         </div>
 
-        <div class="d-flex align-items-center gap-3 small text-muted">
-            <span class="badge-sync-live">
-                <span class="sync-pulse-dot"></span> Auto-Sync Ready
-            </span>
-            <span class="small"><i class="fa-regular fa-clock me-1"></i> Daily Cron: 2:00 AM</span>
+        <div class="d-flex align-items-center gap-2 text-muted small">
+            <i class="fa-regular fa-calendar-check text-success"></i>
+            <span id="periodDateRangeDisplay" class="fw-semibold text-dark"><?= htmlspecialchars($platformReport['meta']['date_label'] ?? date('d M Y')) ?> · Google Sheets sync (is_automated = 1)</span>
         </div>
     </div>
 
-    <!-- 4 Metric Cards -->
-    <div class="metrics-grid">
-        <div class="metric-card">
-            <div class="metric-title d-flex justify-content-between align-items-center">
-                <span>Total Leads Received</span>
-                <span id="dateBadgeTotal" class="badge bg-light text-muted border" style="font-size: 10px; font-weight: 600;">All Time</span>
+    <!-- =========================================================================
+         FILTER TOOLBAR: Date Range, Project, Platform, Sales Team, Status
+         ========================================================================= -->
+    <div class="platform-filter-bar">
+        <!-- Date range picker dropdown -->
+        <div class="platform-filter-group" style="min-width: 190px;">
+            <label class="platform-filter-label">Date range</label>
+            <div class="position-relative">
+                <button type="button" class="filter-ctrl-input w-100 text-start d-flex align-items-center justify-content-between gap-2" id="btnDateRangeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span class="d-flex align-items-center gap-2 text-truncate">
+                        <i class="fa-regular fa-calendar text-muted" style="font-size: 12px;"></i>
+                        <span id="labelSelectedDateRange"><?= htmlspecialchars($platformReport['meta']['date_label'] ?? date('d M - d M Y')) ?></span>
+                    </span>
+                    <i class="fa-solid fa-chevron-down text-muted" style="font-size: 10px;"></i>
+                </button>
+                <div class="dropdown-menu p-3 shadow border" id="dateRangePickerMenu" style="min-width: 290px; border-radius: 8px; z-index: 1050;">
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold text-muted mb-1">From Date</label>
+                        <input type="date" id="filterInputStartDate" class="form-control form-control-sm" value="<?= htmlspecialchars($platformReport['meta']['start_date'] ?? date('Y-m-d')) ?>">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted mb-1">To Date</label>
+                        <input type="date" id="filterInputEndDate" class="form-control form-control-sm" value="<?= htmlspecialchars($platformReport['meta']['end_date'] ?? date('Y-m-d')) ?>">
+                    </div>
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="closeDateDropdown()">Cancel</button>
+                        <button type="button" class="btn btn-success btn-sm fw-bold px-3" onclick="applyCustomDateRange()">Apply Date</button>
+                    </div>
+                </div>
             </div>
-            <div class="metric-value val-dark" id="statTotalLeads">--</div>
-            <div class="metric-caption" id="statTotalCaption">Automatically synced from Meta</div>
         </div>
 
-        <div class="metric-card">
-            <div class="metric-title d-flex justify-content-between align-items-center">
-                <span>Distributed & Approved</span>
-                <span id="dateBadgeApproved" class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 10px; font-weight: 600;">All Time</span>
-            </div>
-            <div class="metric-value val-green" id="statApprovedLeads">--</div>
-            <div class="metric-caption" id="statApprovedCaption">distribute = 1 (Visible to Sales Team)</div>
+        <!-- Project / Category Select -->
+        <div class="platform-filter-group" style="min-width: 175px;">
+            <label class="platform-filter-label">Project / category</label>
+            <select id="filterProjectSelect" class="filter-ctrl-input form-select-sm" onchange="onFilterChange()">
+                <option value="">All projects</option>
+                <option value="common">Common (No Project)</option>
+                <?php foreach ($projects as $proj): ?>
+                    <option value="<?= $proj['id'] ?>"><?= htmlspecialchars($proj['name']) ?></option>
+                <?php endforeach; ?>
+            </select>
         </div>
 
-        <div class="metric-card">
-            <div class="metric-title d-flex justify-content-between align-items-center">
-                <span>Awaiting Approval</span>
-                <span id="dateBadgePending" class="badge bg-warning-subtle text-warning border border-warning-subtle" style="font-size: 10px; font-weight: 600;">All Time</span>
-            </div>
-            <div class="metric-value val-amber" id="statPendingLeads">--</div>
-            <div class="metric-caption" id="statPendingCaption">distribute = 0 (Pending Review)</div>
+        <!-- Platform Select -->
+        <div class="platform-filter-group" style="min-width: 155px;">
+            <label class="platform-filter-label">Platform</label>
+            <select id="filterPlatformSelect" class="filter-ctrl-input form-select-sm" onchange="onFilterChange()">
+                <option value="">All platforms</option>
+                <option value="facebook">Facebook form</option>
+                <option value="whatsapp">WhatsApp</option>
+                <option value="meta_inbox">Meta inbox</option>
+                <option value="google_form">Google form</option>
+                <option value="brochure">Brochure leads</option>
+                <option value="others">Others</option>
+            </select>
         </div>
 
-        <div class="metric-card">
-            <div class="metric-title d-flex justify-content-between align-items-center">
-                <span>Active Sales Teams</span>
-                <span class="badge bg-purple-subtle text-primary border border-primary-subtle" style="font-size: 10px; font-weight: 600;">Active</span>
-            </div>
-            <div class="metric-value val-purple" id="statTotalTeams"><?= count($teams ?? []) ?></div>
-            <div class="metric-caption">Fair round-robin rotation active</div>
+        <!-- Sales Team Select -->
+        <div class="platform-filter-group" style="min-width: 160px;">
+            <label class="platform-filter-label">Sales team</label>
+            <select id="filterTeamSelect" class="filter-ctrl-input form-select-sm" onchange="onFilterChange()">
+                <option value="">All teams</option>
+                <option value="unassigned">⚠️ Needs assignment (Unassigned)</option>
+                <option value="assigned">✅ Assigned to teams</option>
+                <optgroup label="Select Team">
+                    <?php foreach ($teams as $t): ?>
+                        <option value="<?= $t['id'] ?>"><?= htmlspecialchars($t['name']) ?></option>
+                    <?php endforeach; ?>
+                </optgroup>
+            </select>
         </div>
+
+        <!-- Assignment Status Select -->
+        <div class="platform-filter-group" style="min-width: 145px;">
+            <label class="platform-filter-label">Assignment</label>
+            <select id="filterStatusSelect" class="filter-ctrl-input form-select-sm" onchange="onFilterChange()">
+                <option value="">All statuses</option>
+                <option value="assigned">Assigned to teams</option>
+                <option value="needs_assignment">Needs assignment</option>
+                <option value="pending">Awaiting approval (distribute = 0)</option>
+                <option value="approved">Approved (distribute = 1)</option>
+            </select>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="d-flex align-items-end gap-2 ms-auto pt-3">
+            <button type="button" class="btn-apply-filters" onclick="applyPlatformFilters()">
+                <i class="fa-solid fa-filter"></i> Apply filters
+            </button>
+            <button type="button" class="btn-reset-filters" onclick="resetPlatformFilters()">
+                Reset
+            </button>
+        </div>
+    </div>
+
+    <!-- =========================================================================
+         4 TOP KPI METRIC CARDS
+         ========================================================================= -->
+    <div class="kpi-cards-grid">
+        <div class="kpi-card">
+            <div class="kpi-header">
+                <i class="fa-solid fa-users text-muted" style="font-size: 14px;"></i>
+                <span>Leads received</span>
+            </div>
+            <div class="kpi-val" id="statTotalLeads"><?= number_format($platformReport['kpi']['leads_received'] ?? 0) ?></div>
+            <div class="kpi-sub" id="statTotalCaption">All platforms · Selected date</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-header">
+                <i class="fa-solid fa-circle-check text-success" style="font-size: 14px;"></i>
+                <span>Assigned to teams</span>
+            </div>
+            <div class="kpi-val text-success" id="statApprovedLeads"><?= number_format($platformReport['kpi']['assigned_to_teams'] ?? 0) ?></div>
+            <div class="kpi-sub" id="statApprovedCaption"><?= number_format($platformReport['kpi']['assigned_pct'] ?? 0, 1) ?>% of received leads</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-header">
+                <i class="fa-solid fa-triangle-exclamation text-warning" style="font-size: 14px;"></i>
+                <span>Needs assignment</span>
+            </div>
+            <div class="kpi-val text-warning" id="statNeedsAssignment"><?= number_format($platformReport['kpi']['needs_assignment'] ?? 0) ?></div>
+            <div class="kpi-sub" id="statNeedsCaption">Approved, waiting for a sales team</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-header">
+                <i class="fa-regular fa-clock text-secondary" style="font-size: 14px;"></i>
+                <span>Awaiting approval</span>
+            </div>
+            <div class="kpi-val" id="statPendingLeads"><?= number_format($platformReport['kpi']['awaiting_approval'] ?? 0) ?></div>
+            <div class="kpi-sub" id="statPendingCaption"><?= ($platformReport['kpi']['awaiting_approval'] ?? 0) > 0 ? ($platformReport['kpi']['awaiting_approval'] . ' leads pending review') : 'No leads pending review' ?></div>
+        </div>
+    </div>
+
+    <!-- =========================================================================
+         5 PLATFORM BREAKDOWN CARDS ROW
+         ========================================================================= -->
+    <div class="platform-cards-grid">
+        <!-- Facebook Form -->
+        <div class="platform-card" id="cardPlatFb" onclick="filterByPlatformCard('facebook')">
+            <div class="platform-card-title">
+                <span class="platform-badge-code code-fb">FB</span> Facebook form
+            </div>
+            <div class="platform-card-val" id="platFbVal"><?= number_format($platformReport['platforms']['facebook_form']['count'] ?? 0) ?></div>
+            <div class="platform-card-sub" id="platFbPct"><?= ($platformReport['platforms']['facebook_form']['pct'] ?? 0) > 0 ? ($platformReport['platforms']['facebook_form']['pct'] . '% of total') : 'No leads in this period' ?></div>
+        </div>
+
+        <!-- WhatsApp -->
+        <div class="platform-card" id="cardPlatWa" onclick="filterByPlatformCard('whatsapp')">
+            <div class="platform-card-title">
+                <span class="platform-badge-code code-wa">WA</span> WhatsApp
+            </div>
+            <div class="platform-card-val" id="platWaVal"><?= number_format($platformReport['platforms']['whatsapp']['count'] ?? 0) ?></div>
+            <div class="platform-card-sub" id="platWaPct"><?= ($platformReport['platforms']['whatsapp']['pct'] ?? 0) > 0 ? ($platformReport['platforms']['whatsapp']['pct'] . '% of total') : 'No leads in this period' ?></div>
+        </div>
+
+        <!-- Meta Inbox -->
+        <div class="platform-card" id="cardPlatMi" onclick="filterByPlatformCard('meta_inbox')">
+            <div class="platform-card-title">
+                <span class="platform-badge-code code-mi">MI</span> Meta inbox
+            </div>
+            <div class="platform-card-val" id="platMiVal"><?= number_format($platformReport['platforms']['meta_inbox']['count'] ?? 0) ?></div>
+            <div class="platform-card-sub" id="platMiPct"><?= ($platformReport['platforms']['meta_inbox']['pct'] ?? 0) > 0 ? ($platformReport['platforms']['meta_inbox']['pct'] . '% of total') : 'No leads in this period' ?></div>
+        </div>
+
+        <!-- Google Form -->
+        <div class="platform-card" id="cardPlatGf" onclick="filterByPlatformCard('google_form')">
+            <div class="platform-card-title">
+                <span class="platform-badge-code code-gf">GF</span> Google form
+            </div>
+            <div class="platform-card-val" id="platGfVal"><?= number_format($platformReport['platforms']['google_form']['count'] ?? 0) ?></div>
+            <div class="platform-card-sub" id="platGfPct"><?= ($platformReport['platforms']['google_form']['pct'] ?? 0) > 0 ? ($platformReport['platforms']['google_form']['pct'] . '% of total') : 'No leads in this period' ?></div>
+        </div>
+
+        <!-- Brochure Leads -->
+        <div class="platform-card" id="cardPlatBr" onclick="filterByPlatformCard('brochure')">
+            <div class="platform-card-title">
+                <span class="platform-badge-code code-br">BR</span> Brochure leads
+            </div>
+            <div class="platform-card-val" id="platBrVal"><?= number_format($platformReport['platforms']['brochure']['count'] ?? 0) ?></div>
+            <div class="platform-card-sub" id="platBrPct"><?= ($platformReport['platforms']['brochure']['pct'] ?? 0) > 0 ? ($platformReport['platforms']['brochure']['pct'] . '% of total') : 'No leads in this period' ?></div>
+        </div>
+    </div>
+
+    <!-- =========================================================================
+         2-COLUMN SECTION: Daily platform breakdown (Left) & Top allocated teams (Right)
+         ========================================================================= -->
+    <div class="dashboard-two-col">
+        <!-- LEFT: Daily Platform Breakdown Table -->
+        <div class="breakdown-card">
+            <div class="breakdown-header">
+                <div>
+                    <h5 class="breakdown-title">Daily platform breakdown</h5>
+                    <div class="breakdown-sub" id="breakdownSubtitle">
+                        <?= htmlspecialchars($platformReport['meta']['date_label'] ?? date('d M Y')) ?> · <?= ($platformReport['meta']['days_count'] ?? 1) ?> day<?= ($platformReport['meta']['days_count'] ?? 1) > 1 ? 's' : '' ?> · <?= count($platformReport['projects'] ?? []) ?> project categories
+                    </div>
+                </div>
+                <button type="button" class="btn-view-report" onclick="quickJumpToQueue()" title="Jump to Lead Queue Table">
+                    <span>View report</span> <i class="fa-solid fa-arrow-right" style="font-size: 11px;"></i>
+                </button>
+            </div>
+
+            <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+                <table class="breakdown-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 28%;">Project category</th>
+                            <th class="text-end">Facebook form</th>
+                            <th class="text-end">WhatsApp</th>
+                            <th class="text-end">Meta inbox</th>
+                            <th class="text-end">Google form</th>
+                            <th class="text-end">Brochure</th>
+                            <th class="text-end">Others</th>
+                            <th class="text-end">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="projectBreakdownBody">
+                        <?php if (empty($platformReport['projects'])): ?>
+                            <tr>
+                                <td colspan="8" class="text-center text-muted py-4">
+                                    <em>No automated platform leads found for the selected period.</em>
+                                </td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($platformReport['projects'] as $p): ?>
+                                <tr>
+                                    <td class="td-project">
+                                        <a href="javascript:void(0)" onclick="filterByProjectRow('<?= $p['project_id'] ?>', '<?= htmlspecialchars(addslashes($p['project_name'])) ?>')" class="text-decoration-none text-dark hover-green">
+                                            <?= htmlspecialchars($p['project_name']) ?>
+                                        </a>
+                                    </td>
+                                    <td class="td-num"><?= number_format($p['fb_count']) ?></td>
+                                    <td class="td-num"><?= number_format($p['wa_count']) ?></td>
+                                    <td class="td-num"><?= number_format($p['mi_count']) ?></td>
+                                    <td class="td-num"><?= number_format($p['gf_count']) ?></td>
+                                    <td class="td-num"><?= number_format($p['br_count']) ?></td>
+                                    <td class="td-num"><?= number_format($p['others_count']) ?></td>
+                                    <td class="td-total"><?= number_format($p['total']) ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                    <tfoot id="projectBreakdownFoot">
+                        <tr class="breakdown-total-row">
+                            <td>Daily total</td>
+                            <td class="td-num" id="footTotFb"><?= number_format($platformReport['totals']['facebook_form'] ?? 0) ?></td>
+                            <td class="td-num" id="footTotWa"><?= number_format($platformReport['totals']['whatsapp'] ?? 0) ?></td>
+                            <td class="td-num" id="footTotMi"><?= number_format($platformReport['totals']['meta_inbox'] ?? 0) ?></td>
+                            <td class="td-num" id="footTotGf"><?= number_format($platformReport['totals']['google_form'] ?? 0) ?></td>
+                            <td class="td-num" id="footTotBr"><?= number_format($platformReport['totals']['brochure'] ?? 0) ?></td>
+                            <td class="td-num" id="footTotOthers"><?= number_format($platformReport['totals']['others'] ?? 0) ?></td>
+                            <td class="td-total text-end" id="footTotGrand"><?= number_format($platformReport['totals']['grand_total'] ?? 0) ?></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <div class="d-flex align-items-center gap-1 text-muted small mt-2" id="reconcileNote" style="font-size: 11.5px;">
+                <i class="fa-solid fa-circle-check text-success"></i>
+                <span>Platform totals and project totals both reconcile to <strong id="reconcileCount" class="text-dark"><?= number_format($platformReport['totals']['grand_total'] ?? 0) ?></strong> received leads.</span>
+            </div>
+        </div>
+
+        <!-- RIGHT: Top Allocated Teams (Ranked serial-wise highest to lowest) -->
+        <div class="top-teams-card">
+            <div>
+                <div class="mb-3">
+                    <h5 class="breakdown-title mb-1">Top allocated teams</h5>
+                    <div class="breakdown-sub" id="topTeamsSubtitle">
+                        Selected date · Live rotation allocation · Full team grid below
+                    </div>
+                </div>
+
+                <div id="topTeamsListContainer">
+                    <?php 
+                        $rankedList = $platformReport['teams'] ?? [];
+                        $topTeams = array_slice($rankedList, 0, 5);
+                        $otherTeams = array_slice($rankedList, 5);
+                    ?>
+                    <?php if (empty($rankedList)): ?>
+                        <div class="text-muted small py-3 text-center">No allocated teams in this period.</div>
+                    <?php else: ?>
+                        <?php foreach ($topTeams as $tm): ?>
+                            <div class="top-team-row">
+                                <div class="top-team-info">
+                                    <div class="top-team-rank-name">
+                                        <span class="team-rank-badge <?= $tm['rank'] <= 3 ? 'rank-' . $tm['rank'] : '' ?>">
+                                            #<?= $tm['rank'] ?>
+                                        </span>
+                                        <a href="javascript:void(0)" onclick="filterByTeamRank('<?= $tm['id'] ?>', '<?= htmlspecialchars(addslashes($tm['name'])) ?>')" class="text-dark text-decoration-none hover-green">
+                                            <?= htmlspecialchars($tm['name']) ?>
+                                        </a>
+                                    </div>
+                                    <span class="team-allocated-pill">
+                                        <?= number_format($tm['allocated_count']) ?> leads
+                                    </span>
+                                </div>
+                                <div class="team-bar-track">
+                                    <div class="team-bar-fill" style="width: <?= max(4, min(100, $tm['pct'])) ?>%;"></div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+
+                        <?php if (!empty($otherTeams)): ?>
+                            <div id="collapseOtherTeams" class="collapse">
+                                <?php foreach ($otherTeams as $tm): ?>
+                                    <div class="top-team-row">
+                                        <div class="top-team-info">
+                                            <div class="top-team-rank-name">
+                                                <span class="team-rank-badge">#<?= $tm['rank'] ?></span>
+                                                <a href="javascript:void(0)" onclick="filterByTeamRank('<?= $tm['id'] ?>', '<?= htmlspecialchars(addslashes($tm['name'])) ?>')" class="text-dark text-decoration-none hover-green">
+                                                    <?= htmlspecialchars($tm['name']) ?>
+                                                </a>
+                                            </div>
+                                            <span class="team-allocated-pill"><?= number_format($tm['allocated_count']) ?> leads</span>
+                                        </div>
+                                        <div class="team-bar-track">
+                                            <div class="team-bar-fill" style="width: <?= max(4, min(100, $tm['pct'])) ?>%;"></div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <button type="button" class="btn-toggle-other-teams" data-bs-toggle="collapse" data-bs-target="#collapseOtherTeams" aria-expanded="false" id="btnToggleOtherTeams">
+                                Other <?= count($otherTeams) ?> teams <i class="fa-solid fa-chevron-down ms-1" style="font-size: 10px;"></i>
+                            </button>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <div class="pt-2 mt-3 border-top text-muted small" style="font-size: 11px;">
+                <i class="fa-solid fa-rotate me-1 text-success"></i> Rotation runs within teams eligible for the matched project.
+            </div>
+        </div>
+    </div>
+
+    <!-- Section Title: Sales team allocation -->
+    <div class="d-flex justify-content-between align-items-center mb-2 mt-4 pt-1 flex-wrap gap-2">
+        <div>
+            <h5 class="fw-bold mb-0 text-dark">Sales team allocation</h5>
+            <p class="text-muted small mb-0">Every team in one view — assigned leads, approval status, and direct access to its lead list.</p>
+        </div>
+        <span class="badge bg-light text-muted border px-2 py-1 small fw-semibold" id="salesTeamDateBadge">
+            <?= htmlspecialchars($platformReport['meta']['date_label'] ?? date('d M Y')) ?>
+        </span>
     </div>
 
     <!-- Middle Allocation Section -->
@@ -1039,6 +1833,8 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
     const canDeleteLeads = <?= $canDeleteLeads ? 'true' : 'false' ?>;
     let currentTabStatus = '0'; // Default: Pending Approval (distribute = 0)
     let currentTeamId = '';
+    let currentProjectId = '';
+    let currentPlatform = '';
     let currentDateFilter = 'all'; // 'all', 'today', 'yesterday', 'this_week', 'custom'
     let currentStartDate = '';
     let currentEndDate = '';
@@ -1047,6 +1843,382 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
     let totalCount = 0;
     let searchTimeout = null;
     let selectedLeadIds = new Set();
+
+    // Platform Dashboard State
+    let platformFilters = {
+        date_preset: 'today',
+        start_date: '<?= htmlspecialchars($platformReport['meta']['start_date'] ?? date('Y-m-d')) ?>',
+        end_date: '<?= htmlspecialchars($platformReport['meta']['end_date'] ?? date('Y-m-d')) ?>',
+        project_id: '',
+        platform: '',
+        team_id: '',
+        status: ''
+    };
+
+    function selectPeriodPreset(preset) {
+        document.querySelectorAll('#periodPillsGroup .period-pill-btn').forEach(btn => {
+            if (btn.getAttribute('data-preset') === preset) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+
+        platformFilters.date_preset = preset;
+        platformFilters.start_date = '';
+        platformFilters.end_date = '';
+
+        // Sync with lower table date filter
+        if (preset === 'today') {
+            currentDateFilter = 'today';
+        } else if (preset === 'yesterday') {
+            currentDateFilter = 'yesterday';
+        } else if (preset === '7days') {
+            currentDateFilter = 'this_week';
+        } else {
+            currentDateFilter = 'all';
+        }
+        currentStartDate = '';
+        currentEndDate = '';
+        currentPage = 1;
+
+        const dateSelect = document.getElementById('dateFilterSelect');
+        if (dateSelect) dateSelect.value = currentDateFilter;
+
+        loadPlatformStats();
+        loadLeads();
+    }
+
+    function applyCustomDateRange() {
+        const s = document.getElementById('filterInputStartDate').value;
+        const e = document.getElementById('filterInputEndDate').value;
+
+        if (!s && !e) {
+            showLeadToast('Please select at least a Start Date or End Date.', 'error');
+            return;
+        }
+        if (s && e && s > e) {
+            showLeadToast('Start Date cannot be after End Date.', 'error');
+            return;
+        }
+
+        platformFilters.date_preset = 'custom';
+        platformFilters.start_date = s;
+        platformFilters.end_date = e;
+
+        document.querySelectorAll('#periodPillsGroup .period-pill-btn').forEach(btn => btn.classList.remove('active'));
+
+        closeDateDropdown();
+
+        currentDateFilter = 'custom';
+        currentStartDate = s;
+        currentEndDate = e;
+        currentPage = 1;
+
+        loadPlatformStats();
+        loadLeads();
+    }
+
+    function closeDateDropdown() {
+        const ddBtn = document.getElementById('btnDateRangeDropdown');
+        if (ddBtn && typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
+            const inst = bootstrap.Dropdown.getInstance(ddBtn) || new bootstrap.Dropdown(ddBtn);
+            if (inst) inst.hide();
+        }
+        const menu = document.getElementById('dateRangePickerMenu');
+        if (menu) menu.classList.remove('show');
+    }
+
+    function onFilterChange() {
+        // Can auto-apply or user can click Apply Filters
+    }
+
+    function applyPlatformFilters() {
+        const pSel = document.getElementById('filterProjectSelect');
+        const plSel = document.getElementById('filterPlatformSelect');
+        const tSel = document.getElementById('filterTeamSelect');
+        const stSel = document.getElementById('filterStatusSelect');
+
+        platformFilters.project_id = pSel ? pSel.value : '';
+        platformFilters.platform = plSel ? plSel.value : '';
+        platformFilters.team_id = tSel ? tSel.value : '';
+        platformFilters.status = stSel ? stSel.value : '';
+
+        currentProjectId = platformFilters.project_id;
+        currentPlatform = platformFilters.platform;
+        currentTeamId = platformFilters.team_id;
+
+        // Sync table dropdowns
+        const tableTeamDropdown = document.getElementById('teamFilterDropdown');
+        if (tableTeamDropdown) tableTeamDropdown.value = currentTeamId;
+
+        // Highlight selected platform card if single platform is picked
+        highlightActivePlatformCard(platformFilters.platform);
+
+        currentPage = 1;
+        loadPlatformStats();
+        loadLeads();
+    }
+
+    function resetPlatformFilters() {
+        if (document.getElementById('filterProjectSelect')) document.getElementById('filterProjectSelect').value = '';
+        if (document.getElementById('filterPlatformSelect')) document.getElementById('filterPlatformSelect').value = '';
+        if (document.getElementById('filterTeamSelect')) document.getElementById('filterTeamSelect').value = '';
+        if (document.getElementById('filterStatusSelect')) document.getElementById('filterStatusSelect').value = '';
+        if (document.getElementById('teamFilterDropdown')) document.getElementById('teamFilterDropdown').value = '';
+
+        platformFilters.project_id = '';
+        platformFilters.platform = '';
+        platformFilters.team_id = '';
+        platformFilters.status = '';
+
+        currentProjectId = '';
+        currentPlatform = '';
+        currentTeamId = '';
+
+        highlightActivePlatformCard('');
+        selectPeriodPreset('today');
+    }
+
+    function highlightActivePlatformCard(platformKey) {
+        document.querySelectorAll('.platform-cards-grid .platform-card').forEach(card => card.classList.remove('active-filter'));
+        if (platformKey === 'facebook') document.getElementById('cardPlatFb')?.classList.add('active-filter');
+        else if (platformKey === 'whatsapp') document.getElementById('cardPlatWa')?.classList.add('active-filter');
+        else if (platformKey === 'meta_inbox') document.getElementById('cardPlatMi')?.classList.add('active-filter');
+        else if (platformKey === 'google_form') document.getElementById('cardPlatGf')?.classList.add('active-filter');
+        else if (platformKey === 'brochure') document.getElementById('cardPlatBr')?.classList.add('active-filter');
+    }
+
+    function filterByPlatformCard(platformKey) {
+        const plSel = document.getElementById('filterPlatformSelect');
+        if (plSel) {
+            if (plSel.value === platformKey) {
+                plSel.value = '';
+            } else {
+                plSel.value = platformKey;
+            }
+        }
+        applyPlatformFilters();
+    }
+
+    function filterByProjectRow(projectId, projectName) {
+        const pSel = document.getElementById('filterProjectSelect');
+        if (pSel) pSel.value = (projectId == 0 ? 'common' : projectId);
+        applyPlatformFilters();
+        quickJumpToQueue();
+    }
+
+    function filterByTeamRank(teamId, teamName) {
+        const tSel = document.getElementById('filterTeamSelect');
+        if (tSel) tSel.value = teamId;
+        applyPlatformFilters();
+        quickJumpToQueue();
+    }
+
+    function quickJumpToQueue() {
+        const target = document.querySelector('.queue-container');
+        if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    async function loadPlatformStats() {
+        const params = new URLSearchParams({
+            date_preset : platformFilters.date_preset,
+            start_date  : platformFilters.start_date,
+            end_date    : platformFilters.end_date,
+            project_id  : platformFilters.project_id,
+            platform    : platformFilters.platform,
+            team_id     : platformFilters.team_id,
+            status      : platformFilters.status,
+            _t          : Date.now()
+        });
+
+        try {
+            const response = await fetch(`${baseUrl}/lead-automation/platform-stats?${params.toString()}`, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            });
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                renderPlatformDashboard(result.data);
+            }
+        } catch (err) {
+            console.error('Failed to load platform stats:', err);
+        }
+    }
+
+    function renderPlatformDashboard(data) {
+        if (!data) return;
+
+        const kpi = data.kpi || {};
+        const platforms = data.platforms || {};
+        const projects = data.projects || [];
+        const totals = data.totals || {};
+        const teams = data.teams || [];
+        const meta = data.meta || {};
+
+        // 1. KPI Cards
+        const totalReceived = parseInt(kpi.leads_received || 0);
+        const assignedTeams = parseInt(kpi.assigned_to_teams || 0);
+        const assignedPct = parseFloat(kpi.assigned_pct || 0);
+        const needsAssign = parseInt(kpi.needs_assignment || 0);
+        const awaitApprove = parseInt(kpi.awaiting_approval || 0);
+
+        document.getElementById('statTotalLeads').innerText = totalReceived.toLocaleString();
+        document.getElementById('statApprovedLeads').innerText = assignedTeams.toLocaleString();
+        document.getElementById('statApprovedCaption').innerText = `${assignedPct}% of received leads`;
+        document.getElementById('statNeedsAssignment').innerText = needsAssign.toLocaleString();
+        document.getElementById('statPendingLeads').innerText = awaitApprove.toLocaleString();
+        document.getElementById('statPendingCaption').innerText = awaitApprove > 0 ? `${awaitApprove} leads pending review` : 'No leads pending review';
+
+        // 2. Platform Cards
+        const fbCount = parseInt(platforms.facebook_form?.count || 0);
+        const fbPct = parseFloat(platforms.facebook_form?.pct || 0);
+        document.getElementById('platFbVal').innerText = fbCount.toLocaleString();
+        document.getElementById('platFbPct').innerText = fbPct > 0 ? `${fbPct}% of total` : 'No leads in this period';
+
+        const waCount = parseInt(platforms.whatsapp?.count || 0);
+        const waPct = parseFloat(platforms.whatsapp?.pct || 0);
+        document.getElementById('platWaVal').innerText = waCount.toLocaleString();
+        document.getElementById('platWaPct').innerText = waPct > 0 ? `${waPct}% of total` : 'No leads in this period';
+
+        const miCount = parseInt(platforms.meta_inbox?.count || 0);
+        const miPct = parseFloat(platforms.meta_inbox?.pct || 0);
+        document.getElementById('platMiVal').innerText = miCount.toLocaleString();
+        document.getElementById('platMiPct').innerText = miPct > 0 ? `${miPct}% of total` : 'No leads in this period';
+
+        const gfCount = parseInt(platforms.google_form?.count || 0);
+        const gfPct = parseFloat(platforms.google_form?.pct || 0);
+        document.getElementById('platGfVal').innerText = gfCount.toLocaleString();
+        document.getElementById('platGfPct').innerText = gfPct > 0 ? `${gfPct}% of total` : 'No leads in this period';
+
+        const brCount = parseInt(platforms.brochure?.count || 0);
+        const brPct = parseFloat(platforms.brochure?.pct || 0);
+        document.getElementById('platBrVal').innerText = brCount.toLocaleString();
+        document.getElementById('platBrPct').innerText = brPct > 0 ? `${brPct}% of total` : 'No leads in this period';
+
+        // 3. Subtitles & Dates
+        const dateLabel = meta.date_label || '';
+        const daysCount = parseInt(meta.days_count || 1);
+        const activeProjCount = parseInt(meta.active_projects_count || projects.length);
+
+        const subEl = document.getElementById('breakdownSubtitle');
+        if (subEl) subEl.innerText = `${dateLabel} · ${daysCount} day${daysCount > 1 ? 's' : ''} · ${activeProjCount} project categories`;
+
+        const periodLabel = document.getElementById('periodDateRangeDisplay');
+        if (periodLabel) periodLabel.innerText = `${dateLabel} · Google Sheets sync (is_automated = 1)`;
+
+        const dateRangeBtnLabel = document.getElementById('labelSelectedDateRange');
+        if (dateRangeBtnLabel) dateRangeBtnLabel.innerText = dateLabel;
+
+        const reconcileEl = document.getElementById('reconcileCount');
+        if (reconcileEl) reconcileEl.innerText = (totals.grand_total || totalReceived).toLocaleString();
+
+        const salesBadge = document.getElementById('salesTeamDateBadge');
+        if (salesBadge) salesBadge.innerText = dateLabel;
+
+        // 4. Project Breakdown Table Body
+        const tbody = document.getElementById('projectBreakdownBody');
+        if (tbody) {
+            if (projects.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4"><em>No automated platform leads found for the selected period.</em></td></tr>`;
+            } else {
+                tbody.innerHTML = projects.map(p => `
+                    <tr>
+                        <td class="td-project">
+                            <a href="javascript:void(0)" onclick="filterByProjectRow('${p.project_id}', '${escapeJs(p.project_name)}')" class="text-decoration-none text-dark hover-green">
+                                ${escapeHtml(p.project_name)}
+                            </a>
+                        </td>
+                        <td class="td-num">${parseInt(p.fb_count || 0).toLocaleString()}</td>
+                        <td class="td-num">${parseInt(p.wa_count || 0).toLocaleString()}</td>
+                        <td class="td-num">${parseInt(p.mi_count || 0).toLocaleString()}</td>
+                        <td class="td-num">${parseInt(p.gf_count || 0).toLocaleString()}</td>
+                        <td class="td-num">${parseInt(p.br_count || 0).toLocaleString()}</td>
+                        <td class="td-num">${parseInt(p.others_count || 0).toLocaleString()}</td>
+                        <td class="td-total">${parseInt(p.total || 0).toLocaleString()}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        // Project Breakdown Table Foot
+        if (document.getElementById('footTotFb')) document.getElementById('footTotFb').innerText = parseInt(totals.facebook_form || 0).toLocaleString();
+        if (document.getElementById('footTotWa')) document.getElementById('footTotWa').innerText = parseInt(totals.whatsapp || 0).toLocaleString();
+        if (document.getElementById('footTotMi')) document.getElementById('footTotMi').innerText = parseInt(totals.meta_inbox || 0).toLocaleString();
+        if (document.getElementById('footTotGf')) document.getElementById('footTotGf').innerText = parseInt(totals.google_form || 0).toLocaleString();
+        if (document.getElementById('footTotBr')) document.getElementById('footTotBr').innerText = parseInt(totals.brochure || 0).toLocaleString();
+        if (document.getElementById('footTotOthers')) document.getElementById('footTotOthers').innerText = parseInt(totals.others || 0).toLocaleString();
+        if (document.getElementById('footTotGrand')) document.getElementById('footTotGrand').innerText = parseInt(totals.grand_total || 0).toLocaleString();
+
+        // 5. Top Allocated Teams
+        const topTeamsContainer = document.getElementById('topTeamsListContainer');
+        if (topTeamsContainer) {
+            if (teams.length === 0) {
+                topTeamsContainer.innerHTML = `<div class="text-muted small py-3 text-center">No allocated teams in this period.</div>`;
+            } else {
+                const top5 = teams.slice(0, 5);
+                const others = teams.slice(5);
+
+                let html = top5.map(tm => `
+                    <div class="top-team-row">
+                        <div class="top-team-info">
+                            <div class="top-team-rank-name">
+                                <span class="team-rank-badge ${tm.rank <= 3 ? 'rank-' + tm.rank : ''}">
+                                    #${tm.rank}
+                                </span>
+                                <a href="javascript:void(0)" onclick="filterByTeamRank('${tm.id}', '${escapeJs(tm.name)}')" class="text-dark text-decoration-none hover-green">
+                                    ${escapeHtml(tm.name)}
+                                </a>
+                            </div>
+                            <span class="team-allocated-pill">
+                                ${parseInt(tm.allocated_count).toLocaleString()} leads
+                            </span>
+                        </div>
+                        <div class="team-bar-track">
+                            <div class="team-bar-fill" style="width: ${Math.max(4, Math.min(100, tm.pct))}%;"></div>
+                        </div>
+                    </div>
+                `).join('');
+
+                if (others.length > 0) {
+                    html += `
+                        <div id="collapseOtherTeams" class="collapse">
+                            ${others.map(tm => `
+                                <div class="top-team-row">
+                                    <div class="top-team-info">
+                                        <div class="top-team-rank-name">
+                                            <span class="team-rank-badge">#${tm.rank}</span>
+                                            <a href="javascript:void(0)" onclick="filterByTeamRank('${tm.id}', '${escapeJs(tm.name)}')" class="text-dark text-decoration-none hover-green">
+                                                ${escapeHtml(tm.name)}
+                                            </a>
+                                        </div>
+                                        <span class="team-allocated-pill">${parseInt(tm.allocated_count).toLocaleString()} leads</span>
+                                    </div>
+                                    <div class="team-bar-track">
+                                        <div class="team-bar-fill" style="width: ${Math.max(4, Math.min(100, tm.pct))}%;"></div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <button type="button" class="btn-toggle-other-teams" data-bs-toggle="collapse" data-bs-target="#collapseOtherTeams" aria-expanded="false" id="btnToggleOtherTeams">
+                            Other ${others.length} teams <i class="fa-solid fa-chevron-down ms-1" style="font-size: 10px;"></i>
+                        </button>
+                    `;
+                }
+
+                topTeamsContainer.innerHTML = html;
+            }
+        }
+    }
+
+    function escapeJs(str) {
+        return (str || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    }
 
     document.addEventListener('DOMContentLoaded', () => {
         loadLeads();
@@ -1300,6 +2472,8 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
         const params = new URLSearchParams({
             distribute : currentTabStatus,
             team_id    : currentTeamId,
+            project_id : currentProjectId,
+            platform   : currentPlatform,
             search     : searchVal,
             date_filter: currentDateFilter,
             start_date : currentStartDate,

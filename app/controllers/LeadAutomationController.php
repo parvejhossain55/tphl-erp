@@ -105,13 +105,16 @@ class LeadAutomationController extends Controller
             $projects = $pStmt ? $pStmt->fetchAll(PDO::FETCH_ASSOC) : [];
         } catch (Throwable $t) {}
 
+        $platformReport = $this->getAutomatedPlatformReport(['date_preset' => 'today']);
+
         return $this->view("digital-marketing-team/lead-automation", [
-            "current_route" => "lead-automation-upload",
-            "page_title"    => "Lead Automation Upload & Distribution",
-            "teams"         => $teams,
-            "projects"      => $projects,
-            "sheet_url"     => $sheetUrl,
-            "gemini_active" => !empty($this->automationConfig['gemini']['enabled']) && !empty($this->automationConfig['gemini']['api_key']),
+            "current_route"  => "lead-automation-upload",
+            "page_title"     => "Lead Automation Upload & Distribution",
+            "teams"          => $teams,
+            "projects"       => $projects,
+            "sheet_url"      => $sheetUrl,
+            "gemini_active"  => !empty($this->automationConfig['gemini']['enabled']) && !empty($this->automationConfig['gemini']['api_key']),
+            "platformReport" => $platformReport,
         ]);
     }
 
@@ -252,6 +255,46 @@ class LeadAutomationController extends Controller
             if ($distribute !== null) {
                 $where[] = "l.distribute = ?";
                 $params[] = $distribute;
+            }
+
+            // Project filter
+            $projectParam = trim((string)($_GET['project_id'] ?? ''));
+            if ($projectParam === 'common' || $projectParam === '0') {
+                $where[] = "(l.project_id IS NULL OR l.project_id = 0)";
+            } elseif (is_numeric($projectParam) && (int)$projectParam > 0) {
+                $where[] = "l.project_id = ?";
+                $params[] = (int)$projectParam;
+            }
+
+            // Platform filter
+            $platformParam = strtolower(trim((string)($_GET['platform'] ?? '')));
+            if ($platformParam === 'facebook' || $platformParam === 'facebook_form') {
+                $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('facebook', 'fb', 'fb(lead form)', 'lead form', 'leadform', 'leadfrom', 'meta form', 'meta inform') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%fb%' OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%facebook%' OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%lead form%' OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%leadform%')";
+            } elseif ($platformParam === 'whatsapp') {
+                $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('whatsapp', 'wa', 'whats app', 'whatsappp', 'whataapp', 'whatsapp lead', 'whstsapp') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%whatsapp%' OR LOWER(TRIM(COALESCE(l.platform, ''))) = 'wa')";
+            } elseif ($platformParam === 'meta_inbox') {
+                $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('meta inbox', 'meta') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%inbox%')";
+            } elseif ($platformParam === 'google_form') {
+                $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('google form', 'google', 'googleform') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%google%')";
+            } elseif ($platformParam === 'brochure' || $platformParam === 'brochure_leads') {
+                $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('brochure leads', 'brocure leads', 'brochure lead', 'brocure lead', 'brochure') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brochure%')";
+            } elseif ($platformParam === 'others') {
+                $where[] = "(NOT (
+                    LOWER(TRIM(COALESCE(l.platform, ''))) IN ('facebook', 'fb', 'fb(lead form)', 'lead form', 'leadform', 'leadfrom', 'meta form', 'meta inform')
+                    OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%fb%'
+                    OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%facebook%'
+                    OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%lead form%'
+                    OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%leadform%'
+                    OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('whatsapp', 'wa', 'whats app', 'whatsappp', 'whataapp', 'whatsapp lead', 'whstsapp')
+                    OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%whatsapp%'
+                    OR LOWER(TRIM(COALESCE(l.platform, ''))) = 'wa'
+                    OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('meta inbox', 'meta')
+                    OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%inbox%'
+                    OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('google form', 'google', 'googleform')
+                    OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%google%'
+                    OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('brochure leads', 'brocure leads', 'brochure lead', 'brocure lead', 'brochure')
+                    OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brochure%'
+                ))";
             }
 
             // Search by Name, Phone, Campaign, Team Name, Project Name, ID, or "unassigned" keyword
@@ -770,5 +813,384 @@ class LeadAutomationController extends Controller
             ]);
         }
         exit;
+    }
+
+    /**
+     * AJAX: Get Automated Platform Stats & Team Ranking
+     */
+    public function ajaxPlatformStats()
+    {
+        $this->checkAccess();
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-cache, no-store, must-revalidate');
+
+        try {
+            $filters = [
+                'date_preset' => $_GET['date_preset'] ?? $_POST['date_preset'] ?? 'today',
+                'start_date'  => $_GET['start_date'] ?? $_POST['start_date'] ?? '',
+                'end_date'    => $_GET['end_date'] ?? $_POST['end_date'] ?? '',
+                'project_id'  => $_GET['project_id'] ?? $_POST['project_id'] ?? '',
+                'platform'    => $_GET['platform'] ?? $_POST['platform'] ?? '',
+                'team_id'     => $_GET['team_id'] ?? $_POST['team_id'] ?? '',
+                'status'      => $_GET['status'] ?? $_POST['status'] ?? '',
+            ];
+
+            $report = $this->getAutomatedPlatformReport($filters);
+
+            echo json_encode([
+                'status' => 'success',
+                'data'   => $report
+            ]);
+        } catch (Throwable $e) {
+            http_response_code(500);
+            echo json_encode([
+                'status'  => 'error',
+                'message' => $e->getMessage()
+            ]);
+        }
+        exit;
+    }
+
+    /**
+     * Compute automated leads platform report & team ranking
+     */
+    public function getAutomatedPlatformReport(array $filters = []): array
+    {
+        try {
+            $synchronizer = new LeadSynchronizer($this->automationConfig);
+            $pdo = $synchronizer->getDb();
+        } catch (Throwable $e) {
+            $pdo = $this->db;
+        }
+
+        // Check if is_automated column exists (self-healing)
+        $hasAutomatedCol = false;
+        try {
+            $checkCols = $pdo->query("SHOW COLUMNS FROM `leads` LIKE 'is_automated'")->fetchAll();
+            $hasAutomatedCol = !empty($checkCols);
+        } catch (Throwable $t) {
+            $hasAutomatedCol = false;
+        }
+
+        $where = ["l.deleted_at IS NULL"];
+        if ($hasAutomatedCol) {
+            $where[] = "l.is_automated = 1";
+        }
+        $params = [];
+
+        // Date Preset Resolution
+        $datePreset = strtolower(trim((string)($filters['date_preset'] ?? 'today')));
+        $startDate = trim((string)($filters['start_date'] ?? ''));
+        $endDate = trim((string)($filters['end_date'] ?? ''));
+        $dateLabel = '';
+        $daysCount = 1;
+
+        if ($datePreset === 'today') {
+            $where[] = "DATE(l.created_at) = CURDATE()";
+            $dateLabel = date('d M Y');
+            $startDate = date('Y-m-d');
+            $endDate = date('Y-m-d');
+            $daysCount = 1;
+        } elseif ($datePreset === 'yesterday') {
+            $where[] = "DATE(l.created_at) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)";
+            $dateLabel = date('d M Y', strtotime('-1 day'));
+            $startDate = date('Y-m-d', strtotime('-1 day'));
+            $endDate = date('Y-m-d', strtotime('-1 day'));
+            $daysCount = 1;
+        } elseif ($datePreset === '7days' || $datePreset === 'last_7_days') {
+            $where[] = "DATE(l.created_at) >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND DATE(l.created_at) <= CURDATE()";
+            $dateLabel = date('d M', strtotime('-6 days')) . ' - ' . date('d M Y');
+            $startDate = date('Y-m-d', strtotime('-6 days'));
+            $endDate = date('Y-m-d');
+            $daysCount = 7;
+        } elseif ($datePreset === 'cycle' || $datePreset === 'reporting_cycle') {
+            $day = (int)date('j');
+            if ($day >= 26) {
+                $cycleStart = date('Y-m-26');
+                $cycleEnd = date('Y-m-25', strtotime('+1 month'));
+            } else {
+                $cycleStart = date('Y-m-26', strtotime('-1 month'));
+                $cycleEnd = date('Y-m-25');
+            }
+            $where[] = "DATE(l.created_at) >= ? AND DATE(l.created_at) <= ?";
+            $params[] = $cycleStart;
+            $params[] = $cycleEnd;
+            $dateLabel = date('d M', strtotime($cycleStart)) . ' - ' . date('d M Y', strtotime($cycleEnd));
+            $startDate = $cycleStart;
+            $endDate = $cycleEnd;
+            $daysCount = (int)round((strtotime($cycleEnd) - strtotime($cycleStart)) / 86400) + 1;
+        } elseif ($datePreset === 'custom') {
+            if (!empty($startDate) && !empty($endDate)) {
+                $where[] = "DATE(l.created_at) >= ? AND DATE(l.created_at) <= ?";
+                $params[] = $startDate;
+                $params[] = $endDate;
+                $dateLabel = date('d M Y', strtotime($startDate)) . ' - ' . date('d M Y', strtotime($endDate));
+                $daysCount = max(1, (int)round((strtotime($endDate) - strtotime($startDate)) / 86400) + 1);
+            } elseif (!empty($startDate)) {
+                $where[] = "DATE(l.created_at) >= ?";
+                $params[] = $startDate;
+                $dateLabel = 'From ' . date('d M Y', strtotime($startDate));
+            } elseif (!empty($endDate)) {
+                $where[] = "DATE(l.created_at) <= ?";
+                $params[] = $endDate;
+                $dateLabel = 'Until ' . date('d M Y', strtotime($endDate));
+            } else {
+                $dateLabel = 'All Time';
+            }
+        } else {
+            // all time
+            $datePreset = 'all';
+            $dateLabel = 'All Time';
+            $daysCount = 0;
+        }
+
+        // Project filter
+        $projectFilter = trim((string)($filters['project_id'] ?? ''));
+        if ($projectFilter === 'common' || $projectFilter === '0') {
+            $where[] = "(l.project_id IS NULL OR l.project_id = 0)";
+        } elseif (is_numeric($projectFilter) && (int)$projectFilter > 0) {
+            $where[] = "l.project_id = ?";
+            $params[] = (int)$projectFilter;
+        }
+
+        // Platform filter
+        $platformFilter = strtolower(trim((string)($filters['platform'] ?? '')));
+        if ($platformFilter === 'facebook' || $platformFilter === 'facebook_form') {
+            $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('facebook', 'fb', 'fb(lead form)', 'lead form', 'leadform', 'leadfrom', 'meta form', 'meta inform') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%fb%' OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%facebook%' OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%lead form%' OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%leadform%')";
+        } elseif ($platformFilter === 'whatsapp') {
+            $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('whatsapp', 'wa', 'whats app', 'whatsappp', 'whataapp', 'whatsapp lead', 'whstsapp') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%whatsapp%' OR LOWER(TRIM(COALESCE(l.platform, ''))) = 'wa')";
+        } elseif ($platformFilter === 'meta_inbox') {
+            $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('meta inbox', 'meta') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%inbox%')";
+        } elseif ($platformFilter === 'google_form') {
+            $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('google form', 'google', 'googleform') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%google%')";
+        } elseif ($platformFilter === 'brochure' || $platformFilter === 'brochure_leads') {
+            $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('brochure leads', 'brocure leads', 'brochure lead', 'brocure lead', 'brochure') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brochure%')";
+        } elseif ($platformFilter === 'others') {
+            $where[] = "(NOT (
+                LOWER(TRIM(COALESCE(l.platform, ''))) IN ('facebook', 'fb', 'fb(lead form)', 'lead form', 'leadform', 'leadfrom', 'meta form', 'meta inform')
+                OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%fb%'
+                OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%facebook%'
+                OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%lead form%'
+                OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%leadform%'
+                OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('whatsapp', 'wa', 'whats app', 'whatsappp', 'whataapp', 'whatsapp lead', 'whstsapp')
+                OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%whatsapp%'
+                OR LOWER(TRIM(COALESCE(l.platform, ''))) = 'wa'
+                OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('meta inbox', 'meta')
+                OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%inbox%'
+                OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('google form', 'google', 'googleform')
+                OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%google%'
+                OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('brochure leads', 'brocure leads', 'brochure lead', 'brocure lead', 'brochure')
+                OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brochure%'
+            ))";
+        }
+
+        // Team filter
+        $teamFilter = trim((string)($filters['team_id'] ?? ''));
+        if ($teamFilter === 'unassigned') {
+            $where[] = "(l.team_id IS NULL OR l.team_id = 0)";
+        } elseif ($teamFilter === 'assigned') {
+            $where[] = "(l.team_id IS NOT NULL AND l.team_id > 0)";
+        } elseif (is_numeric($teamFilter) && (int)$teamFilter > 0) {
+            $where[] = "l.team_id = ?";
+            $params[] = (int)$teamFilter;
+        }
+
+        // Status / Assignment filter
+        $statusFilter = strtolower(trim((string)($filters['status'] ?? '')));
+        if ($statusFilter === 'assigned') {
+            $where[] = "(l.team_id IS NOT NULL AND l.team_id > 0)";
+        } elseif ($statusFilter === 'needs_assignment' || $statusFilter === 'unassigned') {
+            $where[] = "(l.team_id IS NULL OR l.team_id = 0)";
+        } elseif ($statusFilter === 'pending' || $statusFilter === 'awaiting_approval') {
+            $where[] = "l.distribute = 0";
+        } elseif ($statusFilter === 'approved') {
+            $where[] = "l.distribute = 1";
+        }
+
+        $whereSql = implode(" AND ", $where);
+
+        // CASE expression for platform grouping
+        $casePlatform = "CASE
+            WHEN LOWER(TRIM(COALESCE(l.platform, ''))) IN ('meta inbox', 'meta') 
+                 OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%inbox%' 
+                 THEN 'meta_inbox'
+            WHEN LOWER(TRIM(COALESCE(l.platform, ''))) IN ('whatsapp', 'wa', 'whats app', 'whatsappp', 'whataapp', 'whatsapp lead', 'whstsapp') 
+                 OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%whatsapp%' 
+                 OR LOWER(TRIM(COALESCE(l.platform, ''))) = 'wa'
+                 THEN 'whatsapp'
+            WHEN LOWER(TRIM(COALESCE(l.platform, ''))) IN ('google form', 'google', 'googleform') 
+                 OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%google%' 
+                 THEN 'google_form'
+            WHEN LOWER(TRIM(COALESCE(l.platform, ''))) IN ('brochure leads', 'brocure leads', 'brochure lead', 'brocure lead', 'brochure') 
+                 OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brochure%' 
+                 THEN 'brochure'
+            WHEN LOWER(TRIM(COALESCE(l.platform, ''))) IN ('facebook', 'fb', 'fb(lead form)', 'lead form', 'leadform', 'leadfrom', 'meta form', 'meta inform') 
+                 OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%fb%' 
+                 OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%facebook%' 
+                 OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%lead form%' 
+                 OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%leadform%' 
+                 THEN 'facebook_form'
+            ELSE 'others'
+        END";
+
+        // 1. KPI & Platform summary query
+        $kpiSql = "SELECT 
+            COUNT(*) as total_received,
+            COALESCE(SUM(CASE WHEN l.team_id IS NOT NULL AND l.team_id > 0 THEN 1 ELSE 0 END), 0) as assigned_to_teams,
+            COALESCE(SUM(CASE WHEN l.team_id IS NULL OR l.team_id = 0 THEN 1 ELSE 0 END), 0) as needs_assignment,
+            COALESCE(SUM(CASE WHEN l.distribute = 0 THEN 1 ELSE 0 END), 0) as awaiting_approval,
+            COALESCE(SUM(CASE WHEN {$casePlatform} = 'facebook_form' THEN 1 ELSE 0 END), 0) as fb_count,
+            COALESCE(SUM(CASE WHEN {$casePlatform} = 'whatsapp' THEN 1 ELSE 0 END), 0) as wa_count,
+            COALESCE(SUM(CASE WHEN {$casePlatform} = 'meta_inbox' THEN 1 ELSE 0 END), 0) as mi_count,
+            COALESCE(SUM(CASE WHEN {$casePlatform} = 'google_form' THEN 1 ELSE 0 END), 0) as gf_count,
+            COALESCE(SUM(CASE WHEN {$casePlatform} = 'brochure' THEN 1 ELSE 0 END), 0) as br_count,
+            COALESCE(SUM(CASE WHEN {$casePlatform} = 'others' THEN 1 ELSE 0 END), 0) as others_count
+        FROM `leads` l
+        WHERE {$whereSql}";
+
+        $kpiStmt = $pdo->prepare($kpiSql);
+        $kpiStmt->execute($params);
+        $kpiRaw = $kpiStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        $totalReceived = (int)($kpiRaw['total_received'] ?? 0);
+        $assignedToTeams = (int)($kpiRaw['assigned_to_teams'] ?? 0);
+        $needsAssignment = (int)($kpiRaw['needs_assignment'] ?? 0);
+        $awaitingApproval = (int)($kpiRaw['awaiting_approval'] ?? 0);
+
+        $assignedPct = $totalReceived > 0 ? round(($assignedToTeams / $totalReceived) * 100, 1) : 0.0;
+
+        $fbCount = (int)($kpiRaw['fb_count'] ?? 0);
+        $waCount = (int)($kpiRaw['wa_count'] ?? 0);
+        $miCount = (int)($kpiRaw['mi_count'] ?? 0);
+        $gfCount = (int)($kpiRaw['gf_count'] ?? 0);
+        $brCount = (int)($kpiRaw['br_count'] ?? 0);
+        $othersCount = (int)($kpiRaw['others_count'] ?? 0);
+
+        $fbPct = $totalReceived > 0 ? round(($fbCount / $totalReceived) * 100, 1) : 0.0;
+        $waPct = $totalReceived > 0 ? round(($waCount / $totalReceived) * 100, 1) : 0.0;
+        $miPct = $totalReceived > 0 ? round(($miCount / $totalReceived) * 100, 1) : 0.0;
+        $gfPct = $totalReceived > 0 ? round(($gfCount / $totalReceived) * 100, 1) : 0.0;
+        $brPct = $totalReceived > 0 ? round(($brCount / $totalReceived) * 100, 1) : 0.0;
+        $othersPct = $totalReceived > 0 ? round(($othersCount / $totalReceived) * 100, 1) : 0.0;
+
+        // 2. Project-wise breakdown table
+        $projSql = "SELECT 
+            CASE WHEN l.project_id IS NULL OR l.project_id = 0 THEN 0 ELSE l.project_id END as project_id,
+            CASE WHEN l.project_id IS NULL OR l.project_id = 0 THEN 'Common' ELSE COALESCE(p.name, 'Common') END as project_name,
+            COUNT(l.id) as total,
+            COALESCE(SUM(CASE WHEN {$casePlatform} = 'facebook_form' THEN 1 ELSE 0 END), 0) as fb_count,
+            COALESCE(SUM(CASE WHEN {$casePlatform} = 'whatsapp' THEN 1 ELSE 0 END), 0) as wa_count,
+            COALESCE(SUM(CASE WHEN {$casePlatform} = 'meta_inbox' THEN 1 ELSE 0 END), 0) as mi_count,
+            COALESCE(SUM(CASE WHEN {$casePlatform} = 'google_form' THEN 1 ELSE 0 END), 0) as gf_count,
+            COALESCE(SUM(CASE WHEN {$casePlatform} = 'brochure' THEN 1 ELSE 0 END), 0) as br_count,
+            COALESCE(SUM(CASE WHEN {$casePlatform} = 'others' THEN 1 ELSE 0 END), 0) as others_count
+        FROM `leads` l
+        LEFT JOIN `projects` p ON l.project_id = p.id
+        WHERE {$whereSql}
+        GROUP BY 
+            CASE WHEN l.project_id IS NULL OR l.project_id = 0 THEN 0 ELSE l.project_id END,
+            CASE WHEN l.project_id IS NULL OR l.project_id = 0 THEN 'Common' ELSE COALESCE(p.name, 'Common') END
+        ORDER BY (CASE WHEN project_name = 'Common' THEN 0 ELSE 1 END), total DESC";
+
+        $projStmt = $pdo->prepare($projSql);
+        $projStmt->execute($params);
+        $projects = $projStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Sum column totals
+        $totFb = 0; $totWa = 0; $totMi = 0; $totGf = 0; $totBr = 0; $totOthers = 0; $grandTotal = 0;
+        foreach ($projects as &$pr) {
+            $pr['project_id'] = (int)$pr['project_id'];
+            $pr['total'] = (int)$pr['total'];
+            $pr['fb_count'] = (int)$pr['fb_count'];
+            $pr['wa_count'] = (int)$pr['wa_count'];
+            $pr['mi_count'] = (int)$pr['mi_count'];
+            $pr['gf_count'] = (int)$pr['gf_count'];
+            $pr['br_count'] = (int)$pr['br_count'];
+            $pr['others_count'] = (int)$pr['others_count'];
+
+            $totFb += $pr['fb_count'];
+            $totWa += $pr['wa_count'];
+            $totMi += $pr['mi_count'];
+            $totGf += $pr['gf_count'];
+            $totBr += $pr['br_count'];
+            $totOthers += $pr['others_count'];
+            $grandTotal += $pr['total'];
+        }
+        unset($pr);
+
+        // 3. Top allocated teams ranked serial-wise (highest to lowest)
+        $teamsSql = "SELECT 
+            t.id, 
+            t.name, 
+            COALESCE(COUNT(l.id), 0) as allocated_count,
+            COALESCE(SUM(CASE WHEN l.distribute = 1 THEN 1 ELSE 0 END), 0) as approved_count,
+            COALESCE(SUM(CASE WHEN l.distribute = 0 THEN 1 ELSE 0 END), 0) as pending_count
+        FROM `teams` t
+        LEFT JOIN `leads` l ON l.team_id = t.id AND {$whereSql}
+        GROUP BY t.id, t.name
+        ORDER BY allocated_count DESC, t.name ASC";
+
+        $teamsStmt = $pdo->prepare($teamsSql);
+        $teamsStmt->execute($params);
+        $rawTeams = $teamsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $rankedTeams = [];
+        $rank = 1;
+        $totalTeamAllocated = 0;
+        foreach ($rawTeams as $t) {
+            $totalTeamAllocated += (int)$t['allocated_count'];
+        }
+
+        foreach ($rawTeams as $t) {
+            $alloc = (int)$t['allocated_count'];
+            $pct = $totalTeamAllocated > 0 ? round(($alloc / $totalTeamAllocated) * 100, 1) : 0.0;
+            $rankedTeams[] = [
+                'rank'            => $rank++,
+                'id'              => (int)$t['id'],
+                'name'            => $t['name'],
+                'allocated_count' => $alloc,
+                'approved_count'  => (int)$t['approved_count'],
+                'pending_count'   => (int)$t['pending_count'],
+                'pct'             => $pct
+            ];
+        }
+
+        return [
+            'kpi' => [
+                'leads_received'    => $totalReceived,
+                'assigned_to_teams' => $assignedToTeams,
+                'assigned_pct'      => $assignedPct,
+                'needs_assignment'  => $needsAssignment,
+                'awaiting_approval' => $awaitingApproval,
+            ],
+            'platforms' => [
+                'facebook_form' => ['count' => $fbCount, 'pct' => $fbPct],
+                'whatsapp'      => ['count' => $waCount, 'pct' => $waPct],
+                'meta_inbox'    => ['count' => $miCount, 'pct' => $miPct],
+                'google_form'   => ['count' => $gfCount, 'pct' => $gfPct],
+                'brochure'      => ['count' => $brCount, 'pct' => $brPct],
+                'others'        => ['count' => $othersCount, 'pct' => $othersPct],
+            ],
+            'projects' => $projects,
+            'totals'   => [
+                'facebook_form' => $totFb,
+                'whatsapp'      => $totWa,
+                'meta_inbox'    => $totMi,
+                'google_form'   => $totGf,
+                'brochure'      => $totBr,
+                'others'        => $totOthers,
+                'grand_total'   => $grandTotal,
+            ],
+            'teams'    => $rankedTeams,
+            'meta'     => [
+                'date_preset'           => $datePreset,
+                'date_label'            => $dateLabel,
+                'start_date'            => $startDate,
+                'end_date'              => $endDate,
+                'days_count'            => $daysCount,
+                'active_projects_count' => count($projects),
+                'active_teams_count'    => count($rawTeams),
+            ]
+        ];
     }
 }

@@ -37,7 +37,21 @@ class LeadSynchronizer
                 PDO::ATTR_EMULATE_PREPARES   => false,
             ];
 
-            $this->pdo = new PDO($dsn, $dbConf['username'], $dbConf['password'], $options);
+            try {
+                $this->pdo = new PDO($dsn, $dbConf['username'], $dbConf['password'], $options);
+            } catch (PDOException $e) {
+                // If on local dev machine and configured credentials fail, attempt local root/tphl_db connection
+                if ($dbConf['username'] !== 'root' || $dbConf['database'] !== 'tphl_db') {
+                    try {
+                        $localDsn = 'mysql:host=127.0.0.1;port=3306;dbname=tphl_db;charset=utf8mb4';
+                        $this->pdo = new PDO($localDsn, 'root', '', $options);
+                    } catch (Throwable $t) {
+                        throw $e;
+                    }
+                } else {
+                    throw $e;
+                }
+            }
         }
 
         return $this->pdo;
