@@ -2647,14 +2647,10 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
                         <div class="fw-semibold text-dark text-truncate" style="max-width: 200px;" title="${escapeHtml(lead.campaign_name || '')}">
                             ${escapeHtml(lead.campaign_name || 'Direct Campaign')}
                         </div>
-                        <div class="text-muted small">${parseInt(lead.is_repibee) === 1 ? '<span class="text-success"><i class="fa-brands fa-whatsapp me-1"></i>Repibee WA</span>' : escapeHtml(lead.platform || 'Meta Instant Form')}</div>
+                        <div class="text-muted small">${(parseInt(lead.is_repibee) === 1 || String(lead.platform || '').toLowerCase().includes('whatsapp')) ? '<span class="text-success"><i class="fa-brands fa-whatsapp me-1"></i>WhatsApp</span>' : escapeHtml(lead.platform || 'Meta Instant Form')}</div>
                     </td>
                     <td>
-                        ${parseInt(lead.is_repibee) === 1 ? `
-                            <span class="badge bg-success-subtle text-success border border-success-subtle">
-                                <i class="fa-brands fa-whatsapp me-1"></i> Repibee WA
-                            </span>
-                        ` : (String(lead.platform || '').toLowerCase().includes('whatsapp') || String(lead.platform || '').toLowerCase() === 'wa') ? `
+                        ${(parseInt(lead.is_repibee) === 1 || String(lead.platform || '').toLowerCase().includes('whatsapp') || String(lead.platform || '').toLowerCase() === 'wa') ? `
                             <span class="badge bg-success-subtle text-success border border-success-subtle">
                                 <i class="fa-brands fa-whatsapp me-1"></i> WhatsApp
                             </span>

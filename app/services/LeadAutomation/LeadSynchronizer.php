@@ -784,6 +784,7 @@ class LeadSynchronizer
             `email`,
             `city`,
             `country`,
+            `address`,
             `project_id`,
             `team_id`,
             `distribute`,
@@ -814,6 +815,7 @@ class LeadSynchronizer
             :email,
             :city,
             :country,
+            :address,
             :project_id,
             :team_id,
             :distribute,
@@ -847,6 +849,7 @@ class LeadSynchronizer
             ':email'                                    => $lead['email'] ?? null,
             ':city'                                     => $lead['city'] ?? null,
             ':country'                                  => $lead['country'] ?? ($defaults['default_country'] ?? 'Bangladesh'),
+            ':address'                                  => $lead['address'] ?? null,
             ':project_id'                               => $lead['project_id'] ?? null,
             ':team_id'                                  => $lead['team_id'] ?? null,
             ':distribute'                               => 0, // Explicitly 0 = false (Pending approval)
