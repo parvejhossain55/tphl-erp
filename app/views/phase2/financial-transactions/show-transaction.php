@@ -70,10 +70,28 @@ if ($refType === 'vendor_payment' && $sourceDetail) {
                 <li class="breadcrumb-item active">TXN #<?= $txn['id'] ?></li>
             </ol>
         </div>
-        <div class="my-auto d-flex gap-2">
+        <div class="my-auto d-flex gap-2 flex-wrap">
+            <?php 
+                $voucherModule = match($refType) {
+                    'vendor_payment' => 'vendor_payment',
+                    'contractor_bill' => 'contractor_bill',
+                    'operational_fund' => 'operational_fund',
+                    default => $refType
+                };
+                $voucherRefId = $txn['ref_id'] ?? ($sourceDetail['id'] ?? 0);
+            ?>
+            <?php if (!empty($voucherRefId) && in_array($refType, ['vendor_payment', 'contractor_bill', 'operational_fund'])): ?>
+            <a href="<?= $base_url ?>/print-debit-voucher?module=<?= urlencode($voucherModule) ?>&id=<?= (int)$voucherRefId ?>" target="_blank" class="btn btn-primary btn-sm">
+                <i class="bi bi-printer me-1"></i> Print Debit Voucher
+            </a>
+            <?php endif; ?>
             <?php if ($refType === 'vendor_payment' && !empty($sourceDetail['id'])): ?>
             <a href="<?= $base_url ?>/con-vendor-payment-show/<?= $sourceDetail['id'] ?>" class="btn btn-outline-primary btn-sm">
                 <i class="bi bi-eye me-1"></i> View Request
+            </a>
+            <?php elseif ($refType === 'contractor_bill' && !empty($sourceDetail['id'])): ?>
+            <a href="<?= $base_url ?>/con-contractor-bill-show/<?= $sourceDetail['id'] ?>" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-eye me-1"></i> View Bill
             </a>
             <?php endif; ?>
             <a href="<?= $base_url ?>/con-pending-payments" class="btn btn-outline-secondary btn-sm">
@@ -111,6 +129,12 @@ if ($refType === 'vendor_payment' && $sourceDetail) {
                         <span class="fw-bold text-success" style="font-size:2.4rem;">
                             ৳ <?= number_format((float)($txn['amount_paid'] ?? 0), 2) ?>
                         </span>
+                        <div class="mt-2 pt-2 border-top border-success border-opacity-25" style="max-width: 600px; margin: 0 auto;">
+                            <span class="text-uppercase text-muted fw-bold" style="font-size: 11px; letter-spacing: 0.5px;">Amount in Words</span>
+                            <div class="fw-bold text-success fs-14 mt-1">
+                                <i class="bi bi-chat-quote me-1"></i><?= class_exists('FormatHelper') ? FormatHelper::amountInWords($txn['amount_paid'] ?? 0) : (function_exists('amountInWords') ? amountInWords($txn['amount_paid'] ?? 0) : '') ?>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="row ">

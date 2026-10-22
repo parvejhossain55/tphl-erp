@@ -451,6 +451,17 @@ $show_breadcrumb = true;
                                         <span class="fw-bold text-dark fs-6"><?= htmlspecialchars($u['unit_name'] ?? 'Unit') ?></span>
                                         <span class="badge bg-primary"><?= htmlspecialchars($u['sqft'] ?? 0) ?> Sqft</span>
                                     </div>
+                                    <div class="d-flex flex-wrap gap-1 mb-2">
+                                        <?php if (!empty($u['bedrooms'])): ?>
+                                            <span class="badge bg-light text-dark border"><i class="fa-solid fa-bed me-1 text-primary"></i><?= htmlspecialchars($u['bedrooms']) ?> Bed</span>
+                                        <?php endif; ?>
+                                        <?php if (!empty($u['bathrooms'])): ?>
+                                            <span class="badge bg-light text-dark border"><i class="fa-solid fa-bath me-1 text-info"></i><?= htmlspecialchars($u['bathrooms']) ?> Bath</span>
+                                        <?php endif; ?>
+                                        <?php if (!empty($u['balcony'])): ?>
+                                            <span class="badge bg-light text-dark border"><i class="fa-solid fa-door-open me-1 text-success"></i><?= htmlspecialchars($u['balcony']) ?> Balcony</span>
+                                        <?php endif; ?>
+                                    </div>
                                     <?php if (!empty($u['image'])): ?>
                                         <?php $uImg = getProjectImage($u['image']); ?>
                                         <a href="<?= $uImg['url'] ?>" target="_blank" class="mb-2 d-block">

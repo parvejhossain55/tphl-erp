@@ -151,10 +151,12 @@ $isImg = function($file) {
         </nav>
     </div>
     <div class="d-flex gap-2 align-items-center flex-wrap">
-        <?php if (!empty($payments) || $totalPaid > 0): ?>
+        <?php if (!empty($payments) || $totalPaid > 0 || in_array($request['status'] ?? '', ['Approved', 'QC Approved', 'Fully_Paid', 'Partially_Paid'])): ?>
+            <?php if (!empty($payments) || $totalPaid > 0): ?>
             <a href="<?= $base_url ?>/expense-adjustments/create?parent_type=vendor&cashout_request_id=<?= $request['id'] ?>&project_id=<?= $request['project_id'] ?>" class="btn btn-warning btn-sm">
                 <i class="bi bi-sliders me-1"></i> Settlement / Adjustment
             </a>
+            <?php endif; ?>
             <a href="<?= $base_url ?>/print-debit-voucher?module=vendor_payment&id=<?= $request['id'] ?>" target="_blank" class="btn btn-primary btn-sm">
                 <i class="bi bi-printer me-1"></i> Debit Voucher
             </a>
@@ -586,6 +588,12 @@ if (!empty($ahInfo['has_request'])) {
                                         <h5 class="text-success mb-0 fw-bold">৳ 0.00</h5>
                                     <?php endif; ?>
                                 </div>
+                            <?php endif; ?>
+                        </div>
+                        <div class="mt-2 py-2 px-3 bg-light rounded text-muted small d-flex align-items-center justify-content-between flex-wrap gap-2">
+                            <span><strong class="text-dark">Net Payable in Words:</strong> <?= class_exists('FormatHelper') ? FormatHelper::amountInWords($netPayable) : (function_exists('amountInWords') ? amountInWords($netPayable) : '') ?></span>
+                            <?php if ($totalPaid > 0): ?>
+                                <span><strong class="text-dark">Total Paid in Words:</strong> <span class="text-success fw-semibold"><?= class_exists('FormatHelper') ? FormatHelper::amountInWords($totalPaid) : (function_exists('amountInWords') ? amountInWords($totalPaid) : '') ?></span></span>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -1295,6 +1303,7 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                                         <th>Method</th>
                                         <th>Processed By</th>
                                         <th>Proof</th>
+                                        <th class="text-center">Receipt / Voucher</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -1324,6 +1333,14 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                                                 else: ?>
                                                     <span class="text-muted">—</span>
                                                 <?php endif; ?>
+                                            </td>
+                                            <td class="text-center text-nowrap">
+                                                <a href="<?= $base_url ?>/con-transaction/<?= $pay['id'] ?>" class="btn btn-xs btn-outline-success" target="_blank" title="View Transaction Receipt">
+                                                    <i class="bi bi-receipt me-1"></i>Receipt
+                                                </a>
+                                                <a href="<?= $base_url ?>/print-debit-voucher?module=vendor_payment&id=<?= $request['id'] ?>" class="btn btn-xs btn-outline-primary" target="_blank" title="Print Debit Voucher">
+                                                    <i class="bi bi-printer me-1"></i>Voucher
+                                                </a>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>

@@ -692,7 +692,12 @@ class VoucherController extends Controller
         $voucherData['audit_trail'] = $this->getAuditTrail($module, $id, $req ?? []);
 
         // Convert number to words helper
-        $voucherData['amount_words'] = $this->numberToWords($voucherData['amount']) . " Taka Only";
+        if (!class_exists('FormatHelper') && file_exists(__DIR__ . '/../helpers/FormatHelper.php')) {
+            require_once __DIR__ . '/../helpers/FormatHelper.php';
+        }
+        $voucherData['amount_words'] = class_exists('FormatHelper') 
+            ? FormatHelper::amountInWords($voucherData['amount']) 
+            : (function_exists('amountInWords') ? amountInWords($voucherData['amount']) : $this->numberToWords($voucherData['amount']) . " Taka Only");
         
         $voucherData['is_approval_voucher'] = isset($_GET['is_approval']) && $_GET['is_approval'] == 1;
 
@@ -839,9 +844,26 @@ class VoucherController extends Controller
             $name = !empty($uid) ? $getUser($uid) : 'Authorized Official';
             if (empty($name)) return;
 
-            foreach ($audit['approvers'] as $appr) {
+            $normalizedIncoming = trim(preg_replace('/\s*\[\d+\].*$/', '', $name));
+            $mgmtStages = ['Management Approval', 'Admin & Operation Head', 'Management / Authority', 'Approved & Authorized'];
+
+            foreach ($audit['approvers'] as $k => $appr) {
+                $normalizedExisting = trim(preg_replace('/\s*\[\d+\].*$/', '', $appr['name']));
+                
+                // If exact stage & name matches
                 if ($appr['stage'] === $stage && $appr['name'] === $name) {
                     return; // Avoid duplicate
+                }
+                
+                // If same person already approved an overlapping management/admin stage
+                if ($normalizedIncoming === $normalizedExisting && in_array($stage, $mgmtStages) && in_array($appr['stage'], $mgmtStages)) {
+                    if (!empty($note) && empty($audit['approvers'][$k]['note'])) {
+                        $audit['approvers'][$k]['note'] = $note;
+                    }
+                    if (!empty($dateTime) && empty($audit['approvers'][$k]['date'])) {
+                        $audit['approvers'][$k]['date'] = date('d M, Y h:i A', strtotime($dateTime));
+                    }
+                    return; // Avoid multiple cards for same person
                 }
             }
 
@@ -915,13 +937,7 @@ class VoucherController extends Controller
         $opHeadNote = $appReq['op_head_note'] ?? ($row['op_head_note'] ?? null);
 
         if (!empty($opHeadBy) || $opHeadStatus === 'approved') {
-            $opApproverName = !empty($opHeadBy) ? $getUser($opHeadBy) : 'Admin & Operation Head';
-            $audit['approvers'][] = [
-                'stage' => 'Admin & Operation Head',
-                'name'  => $opApproverName,
-                'date'  => !empty($opHeadAt) ? date('d M, Y h:i A', strtotime($opHeadAt)) : 'Verified & Approved',
-                'note'  => $opHeadNote ?: 'Verified and approved by Admin & Operation Head'
-            ];
+            $addApprover('Admin & Operation Head', $opHeadBy, $opHeadAt, $opHeadNote ?: 'Verified and approved by Admin & Operation Head');
         } elseif ($isOver1Lac && !in_array(strtolower($appReq['status'] ?? ($row['status'] ?? '')), ['rejected', 'cancelled'])) {
             $audit['approvers'][] = [
                 'stage' => 'Admin & Operation Head',
@@ -947,12 +963,23 @@ class VoucherController extends Controller
         if (!empty($mgmtId) || (!empty($appReq['app_name']) && $isRowOrReqApproved)) {
             if (!empty($appReq['app_name']) && empty($mgmtId)) {
                 $mgmtName = $appReq['app_name'] . (!empty($appReq['app_des']) ? ' (' . $appReq['app_des'] . ')' : '');
-                $audit['approvers'][] = [
-                    'stage' => $mgmtStage,
-                    'name'  => $mgmtName,
-                    'date'  => !empty($mgmtDate) ? date('d M, Y h:i A', strtotime($mgmtDate)) : null,
-                    'note'  => $mgmtNote
-                ];
+                $addApprover($mgmtStage, null, $mgmtDate, $mgmtNote);
+                // If still not added because uid is null, check name deduplication
+                $foundByName = false;
+                foreach ($audit['approvers'] as $appr) {
+                    if (strpos($appr['name'], $appReq['app_name']) !== false) {
+                        $foundByName = true;
+                        break;
+                    }
+                }
+                if (!$foundByName) {
+                    $audit['approvers'][] = [
+                        'stage' => $mgmtStage,
+                        'name'  => $mgmtName,
+                        'date'  => !empty($mgmtDate) ? date('d M, Y h:i A', strtotime($mgmtDate)) : null,
+                        'note'  => $mgmtNote
+                    ];
+                }
             } else {
                 $addApprover($mgmtStage, $mgmtId, $mgmtDate, $mgmtNote);
             }
@@ -971,6 +998,19 @@ class VoucherController extends Controller
                 $addApprover(ucwords(str_replace('_', ' ', $calr['step_name'])), $calr['actioned_by'], $calr['actioned_at']);
             }
         }
+        // Extra deduplication pass: collapse multiple entries from the same person across management stages
+        $deduped = [];
+        $seen = [];
+        foreach ($audit['approvers'] as $appr) {
+            $norm = trim(preg_replace('/\s*\[\d+\].*$/', '', $appr['name']));
+            if (!empty($seen[$norm])) {
+                continue;
+            }
+            $seen[$norm] = true;
+            $deduped[] = $appr;
+        }
+        $audit['approvers'] = $deduped;
+
         // If still empty but status is approved/paid
         if (empty($audit['approvers'])) {
             $audit['approvers'][] = [

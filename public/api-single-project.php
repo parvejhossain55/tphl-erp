@@ -242,27 +242,9 @@ function parseProjectUnits($p, $formatImg, $mainImage) {
             $disp = $rawName ?: ('Unit ' . chr(65 + count($units)));
 
             // Beds, baths, balconies
-            $beds = $u['bedrooms'] ?? null;
-            if (!$beds) {
-                if ($numSqft >= 2000) $beds = "4";
-                elseif ($numSqft >= 1200) $beds = "3";
-                elseif ($numSqft >= 800) $beds = "2";
-                else $beds = "1";
-            }
-
-            $baths = $u['bathrooms'] ?? null;
-            if (!$baths) {
-                if ($numSqft >= 2000) $baths = "4";
-                elseif ($numSqft >= 1200) $baths = "3";
-                else $baths = "2";
-            }
-
-            $balc = $u['balcony'] ?? null;
-            if (!$balc) {
-                if ($numSqft >= 2000) $balc = "3";
-                elseif ($numSqft >= 1200) $balc = "2";
-                else $balc = "1";
-            }
+            $beds = isset($u['bedrooms']) && $u['bedrooms'] !== '' && $u['bedrooms'] !== null ? (string)$u['bedrooms'] : '';
+            $baths = isset($u['bathrooms']) && $u['bathrooms'] !== '' && $u['bathrooms'] !== null ? (string)$u['bathrooms'] : '';
+            $balc = isset($u['balcony']) && $u['balcony'] !== '' && $u['balcony'] !== null ? (string)$u['balcony'] : '';
 
             $unitImg = !empty($u['image']) ? $formatImg($u['image']) : (!empty($u['floor_plan_image']) ? $formatImg($u['floor_plan_image']) : $mainImage);
             $unitDesc = $u['description'] ?? $u['short_description'] ?? '';

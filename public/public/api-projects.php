@@ -238,29 +238,9 @@ function buildAmenitiesList($p, $formatImg) {
  * Build single unit structure.
  */
 function buildSingleUnit($u, $id, $displayName, $numSqft, $formatImg, $mainImage) {
-    $beds = $u['bedrooms'] ?? null;
-    if (!$beds) {
-        if ($numSqft >= 2000) $beds = "4";
-        elseif ($numSqft >= 1200) $beds = "3";
-        elseif ($numSqft >= 800) $beds = "2";
-        else $beds = "1";
-    }
-
-    $baths = $u['bathrooms'] ?? null;
-    if (!$baths) {
-        if ($numSqft >= 2000) $baths = "4";
-        elseif ($numSqft >= 1200) $baths = "3";
-        else $baths = "2";
-    }
-
-    $balcony = $u['balcony'] ?? null;
-    if (!$balcony) {
-        if ($numSqft >= 2000) $balc = "3";
-        elseif ($numSqft >= 1200) $balc = "2";
-        else $balc = "1";
-    } else {
-        $balc = $balcony;
-    }
+    $beds = isset($u['bedrooms']) && $u['bedrooms'] !== '' && $u['bedrooms'] !== null ? (string)$u['bedrooms'] : '';
+    $baths = isset($u['bathrooms']) && $u['bathrooms'] !== '' && $u['bathrooms'] !== null ? (string)$u['bathrooms'] : '';
+    $balc = isset($u['balcony']) && $u['balcony'] !== '' && $u['balcony'] !== null ? (string)$u['balcony'] : '';
 
     $planImg = !empty($u['floor_plan_image']) ? $formatImg($u['floor_plan_image']) : $mainImage;
 

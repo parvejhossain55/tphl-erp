@@ -203,6 +203,23 @@
             border-bottom: none;
         }
 
+        .audit-approvers-container.is-multi {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px 6px;
+        }
+        .audit-note-box {
+            font-size: 8.5px;
+            color: #334155;
+            background: #f8fafc;
+            border-left: 2px solid #94a3b8;
+            padding: 2px 4px;
+            margin-top: 2px;
+            border-radius: 2px;
+            line-height: 1.25;
+            word-break: break-word;
+        }
+
         /* PRINT MEDIA QUERY: STRICT SINGLE-PAGE FIT WITH MINIMAL TOP/BOTTOM GAPS & FULL PAD PRESERVATION */
         @media print {
             @page {
@@ -210,9 +227,9 @@
                 margin: 0;
             }
             html, body {
-                height: auto !important;
-                min-height: 100% !important;
-                overflow: visible !important;
+                height: 100% !important;
+                max-height: 100vh !important;
+                overflow: hidden !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 background: transparent !important;
@@ -253,7 +270,7 @@
                 top: 0 !important;
                 left: 25px !important;
                 right: 0 !important;
-                height: 52px !important;
+                height: 46px !important;
                 padding: 2px 0 0 0 !important;
                 background: transparent !important;
                 border-bottom: none !important;
@@ -262,8 +279,8 @@
             }
             .upp-header img {
                 display: block !important;
-                max-height: 48px !important;
-                max-width: 320px !important;
+                max-height: 42px !important;
+                max-width: 280px !important;
                 object-fit: contain !important;
                 margin: 0 auto !important;
             }
@@ -275,10 +292,10 @@
                 bottom: 0 !important;
                 left: 25px !important;
                 right: 0 !important;
-                height: 100px !important;
+                height: 86px !important;
                 background-color: #11502e !important;
                 color: #ffffff !important;
-                padding: 14px 28px !important;
+                padding: 8px 20px !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
@@ -286,17 +303,18 @@
                 color: #ffffff !important;
             }
 
-            /* Content Wrapper: Start right below logo (58px) with minimal gap, and extend down above footer (105px) */
+            /* Content Wrapper: Start right below logo (48px) with minimal gap, and extend down above footer (90px) */
             body .app__slide-wrapper, 
             html body .app__slide-wrapper,
             body .main-content {
                 position: relative !important;
                 z-index: 1 !important;
-                margin-top: 58px !important;   /* sits immediately under the 52px logo header */
-                margin-bottom: 105px !important; /* sits directly above the 100px footer pad */
-                padding: 0 25px 0 42px !important; /* clears the 25px dark green left border stripe with clean breathing room */
+                margin-top: 48px !important;   /* sits immediately under the 46px logo header */
+                margin-bottom: 90px !important; /* sits directly above the 86px footer pad */
+                padding: 0 16px 0 34px !important; /* clears the 25px dark green left border stripe with clean breathing room */
                 height: auto !important;
                 min-height: auto !important;
+                max-height: calc(100vh - 140px) !important;
                 background: transparent !important;
                 box-sizing: border-box !important;
             }
@@ -304,51 +322,146 @@
             /* Voucher Container: Strictly avoids page-break and fits 1 page */
             .voucher-container {
                 margin: 0 auto !important;
-                border: 2px solid #222 !important;
-                padding: 8px 14px !important;
+                border: 1.5px solid #222 !important;
+                padding: 5px 10px !important;
                 width: 100% !important;
                 max-width: 100% !important;
                 background: #fff !important;
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
+                page-break-after: avoid !important;
+                break-after: avoid !important;
+                page-break-before: avoid !important;
+                break-before: avoid !important;
                 box-sizing: border-box !important;
                 box-shadow: none !important;
             }
 
+            .voucher-container .header {
+                border-bottom: 1.5px solid #222 !important;
+                padding-bottom: 2px !important;
+                margin-bottom: 3px !important;
+                text-align: center !important;
+            }
+            .voucher-container .header h2 {
+                font-size: 11px !important;
+                padding: 2px 14px !important;
+                letter-spacing: 1.5px !important;
+                margin: 0 !important;
+            }
+
+            .voucher-container .row {
+                margin-bottom: 2px !important;
+                line-height: 1.2 !important;
+            }
+            .voucher-container .label {
+                font-size: 10px !important;
+                width: 72px !important;
+            }
+            .voucher-container .value {
+                font-size: 10px !important;
+                width: calc(100% - 80px) !important;
+                padding-left: 4px !important;
+            }
+
             /* Tighten table and rows so long descriptions naturally stay within 1 page */
             .voucher-container table {
-                margin-top: 6px !important;
-                margin-bottom: 6px !important;
-                font-size: 11.5px !important;
+                margin-top: 3px !important;
+                margin-bottom: 3px !important;
+                font-size: 9.5px !important;
                 page-break-inside: avoid !important;
             }
             .voucher-container th, 
             .voucher-container td {
-                padding: 4px 7px !important;
-                line-height: 1.35 !important;
+                padding: 2.5px 5px !important;
+                line-height: 1.2 !important;
+            }
+            .voucher-container th {
+                font-size: 9.5px !important;
             }
             .voucher-details-text {
-                font-size: 11px !important;
-                line-height: 1.35 !important;
+                font-size: 9px !important;
+                line-height: 1.2 !important;
                 word-break: break-word !important;
             }
+            .voucher-container .amount-row {
+                font-size: 10px !important;
+            }
             .voucher-container .amount-in-words {
-                margin-top: 5px !important;
-                padding: 4px 8px !important;
-                font-size: 11.5px !important;
+                margin-top: 3px !important;
+                padding: 2px 6px !important;
+                font-size: 9.5px !important;
+                line-height: 1.2 !important;
             }
             .voucher-container .attachments-box {
-                margin-top: 5px !important;
-                padding: 4px 8px !important;
-                font-size: 11px !important;
+                margin-top: 3px !important;
+                padding: 2px 6px !important;
+                font-size: 9px !important;
+                line-height: 1.2 !important;
             }
+
+            /* Audit Trail Section */
             .voucher-container .audit-trail-section {
-                margin-top: 6px !important;
+                margin-top: 4px !important;
+                border: 1px solid #222 !important;
                 page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                page-break-after: avoid !important;
+                break-after: avoid !important;
+            }
+            .voucher-container .audit-trail-title {
+                padding: 2px 6px !important;
+                font-size: 8.5px !important;
+            }
+            .voucher-container .audit-status-badge {
+                font-size: 7.5px !important;
+                padding: 0.5px 3px !important;
             }
             .voucher-container .audit-card {
-                padding: 4px 6px !important;
-                font-size: 10px !important;
+                padding: 2.5px 4px !important;
+                font-size: 8.5px !important;
+            }
+            .voucher-container .audit-card-header {
+                font-size: 8px !important;
+                margin-bottom: 1.5px !important;
+                padding-bottom: 1px !important;
+            }
+            .voucher-container .step-num {
+                width: 11px !important;
+                height: 11px !important;
+                font-size: 7px !important;
+            }
+            .voucher-container .audit-stage-badge {
+                font-size: 6.5px !important;
+                padding: 0.5px 2.5px !important;
+                margin-bottom: 0.5px !important;
+                line-height: 1 !important;
+            }
+            .voucher-container .audit-user-name {
+                font-size: 8.5px !important;
+                line-height: 1.1 !important;
+            }
+            .voucher-container .audit-date {
+                font-size: 7.5px !important;
+                margin-top: 0px !important;
+            }
+            .voucher-container .audit-approver-item {
+                margin-bottom: 1.5px !important;
+                padding-bottom: 1px !important;
+            }
+            .voucher-container .audit-note-box {
+                font-size: 7px !important;
+                padding: 1px 2px !important;
+                margin-top: 1px !important;
+                line-height: 1.1 !important;
+                max-height: 24px !important;
+                overflow: hidden !important;
+            }
+
+            .voucher-container .audit-approvers-container.is-multi {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: 2px 4px !important;
             }
 
             .no-print {
@@ -462,8 +575,13 @@
             </tbody>
         </table>
 
+        <?php
+            $displayWords = !empty($voucher['amount_words']) && trim($voucher['amount_words']) !== 'Taka Only'
+                ? $voucher['amount_words']
+                : (function_exists('amountInWords') ? amountInWords($voucher['amount'] ?? 0) : (class_exists('FormatHelper') ? FormatHelper::amountInWords($voucher['amount'] ?? 0) : ''));
+        ?>
         <div class="amount-in-words">
-            Amount in Words: <span style="text-transform: capitalize; font-weight: normal;"><?= htmlspecialchars($voucher['amount_words']) ?></span>
+            <strong>Amount in Words:</strong> <span style="font-weight: 600; text-transform: capitalize; color: #111;"><?= htmlspecialchars($displayWords) ?></span>
         </div>
 
         <div class="attachments-box">
@@ -503,27 +621,29 @@
                 </div>
 
                 <!-- 2. Approved By -->
-                <div class="audit-card" style="flex: 1.15;">
+                <div class="audit-card" style="flex: 2;">
                     <div class="audit-card-header">
                         <span class="step-num">2</span>
                         <span>Approved By (Hierarchy)</span>
                     </div>
                     <div class="audit-card-body">
                         <?php if (!empty($voucher['audit_trail']['approvers'])): ?>
-                            <?php foreach ($voucher['audit_trail']['approvers'] as $appr): ?>
-                                <div class="audit-approver-item">
-                                    <span class="audit-stage-badge"><?= htmlspecialchars($appr['stage']) ?></span>
-                                    <div class="audit-user-name"><?= htmlspecialchars($appr['name']) ?></div>
-                                    <?php if (!empty($appr['date'])): ?>
-                                        <div class="audit-date"><i class="fa-regular fa-clock"></i> <?= htmlspecialchars($appr['date']) ?></div>
-                                    <?php endif; ?>
-                                    <?php if (!empty($appr['note']) && strpos(strtolower($appr['note']), 'auto-') === false): ?>
-                                        <div style="font-size: 9px; color: #334155; background: #f8fafc; border-left: 2px solid #94a3b8; padding: 2px 4px; margin-top: 2px; border-radius: 2px; line-height: 1.3; word-break: break-word;">
-                                            <strong>Note:</strong> <?= nl2br(htmlspecialchars($appr['note'])) ?>
-                                        </div>
-                                    <?php endif; ?>
-                                </div>
-                            <?php endforeach; ?>
+                            <div class="audit-approvers-container <?= count($voucher['audit_trail']['approvers']) > 1 ? 'is-multi' : '' ?>">
+                                <?php foreach ($voucher['audit_trail']['approvers'] as $appr): ?>
+                                    <div class="audit-approver-item">
+                                        <span class="audit-stage-badge"><?= htmlspecialchars($appr['stage']) ?></span>
+                                        <div class="audit-user-name"><?= htmlspecialchars($appr['name']) ?></div>
+                                        <?php if (!empty($appr['date'])): ?>
+                                            <div class="audit-date"><i class="fa-regular fa-clock"></i> <?= htmlspecialchars($appr['date']) ?></div>
+                                        <?php endif; ?>
+                                        <?php if (!empty($appr['note']) && strpos(strtolower($appr['note']), 'auto-') === false): ?>
+                                            <div class="audit-note-box">
+                                                <strong>Note:</strong> <?= nl2br(htmlspecialchars($appr['note'])) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
                         <?php else: ?>
                             <div class="audit-user-name">Management / Authority</div>
                             <div class="audit-date"><i class="fa-solid fa-check"></i> Approved & Verified</div>
@@ -532,7 +652,7 @@
                 </div>
 
                 <!-- 3. Accounts Head Approval (Md. Mamunoor Rashid) -->
-                <div class="audit-card" style="flex: 1.45;">
+                <div class="audit-card" style="flex: 1.25;">
                     <div class="audit-card-header">
                         <span class="step-num">3</span>
                         <span>Accounts Head Approval</span>
