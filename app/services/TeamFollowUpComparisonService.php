@@ -188,18 +188,25 @@ class TeamFollowUpComparisonService
         }
         $this->teams = $teams;
 
-        // Sales Users
+        // Sales Users - strictly require a valid employee record with non-empty employee_id
         $users = [];
         $sql = "SELECT u.id, u.full_name, u.role_id, u.secondary_role_id, u.photo, r.name AS role_name,
                        COALESCE(NULLIF(u.team_id, 0), NULLIF(e.team_id, 0), 0) AS team_id,
+                       e.employee_id,
                        e.employee_status
                 FROM users u
                 LEFT JOIN roles r ON r.id = u.role_id
-                LEFT JOIN (
+                INNER JOIN (
                     SELECT user_id, 
                            MAX(team_id) AS team_id, 
-                           MAX(employee_status) AS employee_status
-                    FROM employees WHERE user_id IS NOT NULL GROUP BY user_id
+                           MAX(employee_status) AS employee_status,
+                           MAX(employee_id) AS employee_id
+                    FROM employees 
+                    WHERE user_id IS NOT NULL 
+                      AND deleted_at IS NULL 
+                      AND employee_id IS NOT NULL 
+                      AND TRIM(employee_id) != ''
+                    GROUP BY user_id
                 ) e ON e.user_id = u.id";
         $res = $this->db->query($sql);
         while ($res && $r = $res->fetch_assoc()) {
@@ -214,6 +221,7 @@ class TeamFollowUpComparisonService
                 'role_name' => trim((string) $r['role_name']) ?: 'Sales Executive',
                 'team_id' => (int) $r['team_id'],
                 'is_sales' => $isSales,
+                'employee_id' => trim((string) $r['employee_id']),
                 'photo' => $r['photo'],
             ];
         }
@@ -294,6 +302,15 @@ class TeamFollowUpComparisonService
 
         $whereClause = "WHERE l.deleted_at IS NULL AND (COALESCE(l.assigned_at, l.created_at) BETWEEN '$start' AND '$end')";
 
+        // Strictly restrict to leads assigned to verified sales staff with valid employee_id
+        $validSalesUserIds = array_keys(array_filter($this->users, fn($u) => $u['is_sales']));
+        if (!empty($validSalesUserIds)) {
+            $validUserList = implode(',', $validSalesUserIds);
+            $whereClause .= " AND l.assigned_id IN ($validUserList)";
+        } else {
+            $whereClause .= " AND 1=0";
+        }
+
         if (!empty($filters['project_id'])) {
             $pid = (int) $filters['project_id'];
             $whereClause .= " AND l.project_id = $pid";
@@ -358,7 +375,8 @@ class TeamFollowUpComparisonService
                     fu.next_follow_up_date,
                     fu.status,
                     fu.follow_up_type,
-                    fu.discussion_note
+                    fu.discussion_note,
+                    fu.lead_status
                 FROM lead_follow_ups fu
                 JOIN leads l ON l.id = fu.lead_id
                 LEFT JOIN users u ON u.id = l.assigned_id
@@ -419,17 +437,6 @@ class TeamFollowUpComparisonService
 
             if ($uid > 0 && isset($execData[$uid])) {
                 $execData[$uid]['total_leads']++;
-            } elseif ($uid > 0 && !isset($execData[$uid])) {
-                $execData[$uid] = [
-                    'id' => $uid,
-                    'name' => $lead['exec_name'] ?: "Executive #$uid",
-                    'role_name' => $lead['role_name'] ?: 'Sales Executive',
-                    'team_id' => $tid,
-                    'team_name' => ($tid && isset($this->teams[$tid])) ? $this->teams[$tid]['name'] : 'No Team',
-                    'photo' => $lead['exec_photo'],
-                    'total_leads' => 1,
-                    'metrics' => $this->emptyMetrics(),
-                ];
             }
 
             if ($tid > 0 && isset($teamData[$tid])) {
@@ -495,7 +502,7 @@ class TeamFollowUpComparisonService
                     $teamData[$tid]['metrics']['overall']['due']++;
                 }
 
-                // Executive stats
+                // Executive stats (only for valid employees with employee_id)
                 if ($uid > 0 && isset($execData[$uid])) {
                     $execData[$uid]['metrics']['steps'][$s][$statusType]++;
                     $execData[$uid]['metrics']['steps'][$s]['due']++;
@@ -534,8 +541,36 @@ class TeamFollowUpComparisonService
             $topTeam = $sortedTeams[0];
         }
 
-        // Filter out completely empty teams unless explicitly requested
+        // 7. Find Top 3 Executives (1st, 2nd, 3rd place)
+        $volExecs = array_filter($execData, fn($e) => ($e['metrics']['overall']['due'] ?? 0) >= 5);
+        if (empty($volExecs)) {
+            $volExecs = array_filter($execData, fn($e) => ($e['metrics']['overall']['due'] ?? 0) > 0);
+        }
+        usort($volExecs, function($a, $b) {
+            $rA = $a['metrics']['overall']['rate'] ?? 0;
+            $rB = $b['metrics']['overall']['rate'] ?? 0;
+            if ($rA === $rB) {
+                if ($a['metrics']['overall']['ontime'] !== $b['metrics']['overall']['ontime']) {
+                    return $b['metrics']['overall']['ontime'] <=> $a['metrics']['overall']['ontime'];
+                }
+                return $b['metrics']['overall']['due'] <=> $a['metrics']['overall']['due'];
+            }
+            return $rB <=> $rA;
+        });
+        $topExecutives = array_slice(array_values($volExecs), 0, 3);
+
+        // Sort teams: Most executives first, 0/1 executive teams at the bottom
         $teamsList = array_values($teamData);
+        usort($teamsList, function($a, $b) {
+            if ($a['exec_count'] !== $b['exec_count']) {
+                return $b['exec_count'] <=> $a['exec_count'];
+            }
+            if ($a['total_leads'] !== $b['total_leads']) {
+                return $b['total_leads'] <=> $a['total_leads'];
+            }
+            return strcmp($a['name'], $b['name']);
+        });
+
         $execsList = array_values(array_filter($execData, fn($e) => $e['total_leads'] > 0 || $e['metrics']['overall']['due'] > 0));
 
         return [
@@ -543,6 +578,7 @@ class TeamFollowUpComparisonService
             'filters' => $filters,
             'grand' => $grandStats,
             'top_team' => $topTeam,
+            'top_executives' => $topExecutives,
             'teams' => $teamsList,
             'executives' => $execsList,
             'total_leads_analyzed' => count($leads),
@@ -551,8 +587,11 @@ class TeamFollowUpComparisonService
 
     /**
      * Get detailed leads list for drilldown modal / AJAX.
+     * Returns unique leads with follow-up counts, first follow-up date,
+     * next scheduled date, whether next follow-up was given or not,
+     * and full step-by-step history cards.
      */
-    public function getDrilldownLeads(array $period, array $filters = [], int $limit = 200): array
+    public function getDrilldownLeads(array $period, array $filters = [], int $limit = 300): array
     {
         $this->loadReference();
 
@@ -561,6 +600,15 @@ class TeamFollowUpComparisonService
         $now   = time();
 
         $whereClause = "WHERE l.deleted_at IS NULL AND (COALESCE(l.assigned_at, l.created_at) BETWEEN '$start' AND '$end')";
+
+        // Strictly restrict to leads assigned to verified sales staff with valid employee_id
+        $validSalesUserIds = array_keys(array_filter($this->users, fn($u) => $u['is_sales']));
+        if (!empty($validSalesUserIds)) {
+            $validUserList = implode(',', $validSalesUserIds);
+            $whereClause .= " AND l.assigned_id IN ($validUserList)";
+        } else {
+            $whereClause .= " AND 1=0";
+        }
 
         $filterTeamId = !empty($filters['team_id']) ? (int) $filters['team_id'] : 0;
         $filterExecId = !empty($filters['executive_id']) ? (int) $filters['executive_id'] : 0;
@@ -611,13 +659,13 @@ class TeamFollowUpComparisonService
         }
 
         if (empty($leadIds)) {
-            return ['total' => 0, 'rows' => []];
+            return ['total' => 0, 'returned' => 0, 'rows' => []];
         }
 
         // Fetch follow ups
         $idStr = implode(',', $leadIds);
         $fuSql = "
-            SELECT id, lead_id, follow_up_date, follow_up_time, created_at, next_follow_up_date, status, follow_up_type, discussion_note
+            SELECT id, lead_id, follow_up_date, follow_up_time, created_at, next_follow_up_date, status, follow_up_type, discussion_note, lead_status
             FROM lead_follow_ups
             WHERE lead_id IN ($idStr) AND deleted_at IS NULL
             ORDER BY lead_id ASC, COALESCE(follow_up_date, created_at) ASC, id ASC
@@ -632,38 +680,95 @@ class TeamFollowUpComparisonService
 
         foreach ($leads as $lid => $lead) {
             $fus = $leadFUs[$lid] ?? [];
+            $totalFollowups = count($fus);
+
+            $statusUpdates = [];
+            foreach ($fus as $fu) {
+                $st = trim((string)($fu['lead_status'] ?? ''));
+                if ($st !== '') {
+                    $statusUpdates[] = $st;
+                }
+            }
+            $latestLeadStatus = !empty($statusUpdates) ? end($statusUpdates) : null;
+
             $tAssigned = strtotime($lead['assigned_time']);
             $tid = (int) $lead['team_id'];
             $teamName = ($tid && isset($this->teams[$tid])) ? $this->teams[$tid]['name'] : 'No Team';
 
-            // Step 1
             $step1Due = $tAssigned + 86400;
-            $evaluatedSteps = [];
+            $steps = [];
+            $hasOverdue = false;
+            $hasLate = false;
+            $activeStep = 1;
 
+            // Step 1
             if (!empty($fus[0])) {
                 $fu1 = $fus[0];
                 $fu1Time = strtotime($fu1['follow_up_date'] ? ($fu1['follow_up_date'] . ' ' . ($fu1['follow_up_time'] ?: '23:59:59')) : $fu1['created_at']);
                 $isOnTime = ($fu1Time <= $step1Due || date('Y-m-d', $fu1Time) <= date('Y-m-d', $step1Due));
-                $evaluatedSteps[1] = [
+                if (!$isOnTime) $hasLate = true;
+
+                $nextDate = $fu1['next_follow_up_date'];
+                $nextFu = $fus[1] ?? null;
+                $nextStatus = 'none';
+                $nextLabel = 'None scheduled';
+                $nextActual = null;
+                $nextOverdueDays = 0;
+
+                if ($nextDate) {
+                    if ($nextFu) {
+                        $nextTime = strtotime($nextFu['follow_up_date'] ? ($nextFu['follow_up_date'] . ' 23:59:59') : $nextFu['created_at']);
+                        $dueNext = strtotime($nextDate . ' 23:59:59');
+                        $nextStatus = ($nextTime <= $dueNext) ? 'given_ontime' : 'given_late';
+                        $nextActual = $nextFu['follow_up_date'] ?: substr($nextFu['created_at'], 0, 10);
+                        $nextLabel = 'Given on ' . $nextActual . ($nextStatus === 'given_ontime' ? ' (On-Time)' : ' (Late)');
+                        if ($nextStatus === 'given_late') $hasLate = true;
+                    } else {
+                        if ($now > strtotime($nextDate . ' 23:59:59')) {
+                            $nextOverdueDays = max(1, (int) round(($now - strtotime($nextDate . ' 23:59:59')) / 86400));
+                            $nextStatus = 'overdue';
+                            $nextLabel = "Not given ({$nextOverdueDays}d overdue)";
+                            $hasOverdue = true;
+                        } else {
+                            $nextStatus = 'scheduled';
+                            $nextLabel = 'Scheduled for ' . $nextDate;
+                        }
+                    }
+                }
+
+                $steps[1] = [
                     'step' => 1,
-                    'status' => $isOnTime ? 'ontime' : 'late',
-                    'due_date' => date('Y-m-d H:i', $step1Due),
-                    'completed_date' => date('Y-m-d H:i', $fu1Time),
-                    'type' => $fu1['follow_up_type'] ?? 'Follow-up',
-                    'note' => $fu1['discussion_note'] ?? '',
+                    'done' => true,
+                    'logged_date' => $fu1['follow_up_date'] ?: substr($fu1['created_at'], 0, 10),
+                    'logged_time' => $fu1['follow_up_time'] ?: substr($fu1['created_at'], 11, 5),
+                    'type' => $fu1['follow_up_type'] ?: 'Follow-up',
+                    'lead_status' => trim((string)($fu1['lead_status'] ?? '')) ?: null,
+                    'note' => $fu1['discussion_note'] ?: '',
+                    'timing_status' => $isOnTime ? 'ontime' : 'late',
+                    'scheduled_next_date' => $nextDate,
+                    'next_given_status' => $nextStatus,
+                    'next_given_label' => $nextLabel,
+                    'next_actual_date' => $nextActual,
+                    'next_overdue_days' => $nextOverdueDays,
                 ];
             } else {
-                if ($now > $step1Due) {
-                    $evaluatedSteps[1] = [
-                        'step' => 1,
-                        'status' => 'overdue',
-                        'due_date' => date('Y-m-d H:i', $step1Due),
-                        'completed_date' => null,
-                        'overdue_days' => max(1, (int) round(($now - $step1Due) / 86400)),
-                        'type' => 'Not contacted yet',
-                        'note' => '',
-                    ];
-                }
+                $isOverdue = ($now > $step1Due);
+                if ($isOverdue) $hasOverdue = true;
+                $steps[1] = [
+                    'step' => 1,
+                    'done' => false,
+                    'logged_date' => null,
+                    'logged_time' => null,
+                    'type' => 'Not contacted yet',
+                    'note' => '',
+                    'timing_status' => $isOverdue ? 'overdue' : 'pending',
+                    'overdue_days' => $isOverdue ? max(1, (int) round(($now - $step1Due) / 86400)) : 0,
+                    'scheduled_next_date' => null,
+                    'next_given_status' => 'none',
+                    'next_given_label' => '1st follow-up pending',
+                    'next_actual_date' => null,
+                    'next_overdue_days' => 0,
+                ];
             }
 
             // Steps 2 to 5
@@ -671,65 +776,156 @@ class TeamFollowUpComparisonService
                 $prevFu = $fus[$s - 2] ?? null;
                 if (!$prevFu) break;
 
+                $activeStep = $s;
+                $prevNextDate = $prevFu['next_follow_up_date'];
                 $curFu = $fus[$s - 1] ?? null;
-                $nextDate = $prevFu['next_follow_up_date'];
 
                 if ($curFu) {
                     $curTime = strtotime($curFu['follow_up_date'] ? ($curFu['follow_up_date'] . ' 23:59:59') : $curFu['created_at']);
                     $isOnTime = true;
-                    if ($nextDate) {
-                        $dueTime = strtotime($nextDate . ' 23:59:59');
-                        $isOnTime = ($curTime <= $dueTime);
+                    if ($prevNextDate) {
+                        $isOnTime = ($curTime <= strtotime($prevNextDate . ' 23:59:59'));
                     }
-                    $evaluatedSteps[$s] = [
+                    if (!$isOnTime) $hasLate = true;
+
+                    $nextDate = $curFu['next_follow_up_date'];
+                    $nextFu = $fus[$s] ?? null;
+                    $nextStatus = 'none';
+                    $nextLabel = 'None scheduled';
+                    $nextActual = null;
+                    $nextOverdueDays = 0;
+
+                    if ($nextDate) {
+                        if ($nextFu) {
+                            $nextTime = strtotime($nextFu['follow_up_date'] ? ($nextFu['follow_up_date'] . ' 23:59:59') : $nextFu['created_at']);
+                            $dueNext = strtotime($nextDate . ' 23:59:59');
+                            $nextStatus = ($nextTime <= $dueNext) ? 'given_ontime' : 'given_late';
+                            $nextActual = $nextFu['follow_up_date'] ?: substr($nextFu['created_at'], 0, 10);
+                            $nextLabel = 'Given on ' . $nextActual . ($nextStatus === 'given_ontime' ? ' (On-Time)' : ' (Late)');
+                            if ($nextStatus === 'given_late') $hasLate = true;
+                        } else {
+                            if ($now > strtotime($nextDate . ' 23:59:59')) {
+                                $nextOverdueDays = max(1, (int) round(($now - strtotime($nextDate . ' 23:59:59')) / 86400));
+                                $nextStatus = 'overdue';
+                                $nextLabel = "Not given ({$nextOverdueDays}d overdue)";
+                                $hasOverdue = true;
+                            } else {
+                                $nextStatus = 'scheduled';
+                                $nextLabel = 'Scheduled for ' . $nextDate;
+                            }
+                        }
+                    }
+
+                    $steps[$s] = [
                         'step' => $s,
-                        'status' => $isOnTime ? 'ontime' : 'late',
-                        'due_date' => $nextDate ?: 'N/A',
-                        'completed_date' => date('Y-m-d H:i', $curTime),
-                        'type' => $curFu['follow_up_type'] ?? 'Follow-up',
-                        'note' => $curFu['discussion_note'] ?? '',
+                        'done' => true,
+                        'logged_date' => $curFu['follow_up_date'] ?: substr($curFu['created_at'], 0, 10),
+                        'logged_time' => $curFu['follow_up_time'] ?: substr($curFu['created_at'], 11, 5),
+                        'type' => $curFu['follow_up_type'] ?: 'Follow-up',
+                        'lead_status' => trim((string)($curFu['lead_status'] ?? '')) ?: null,
+                        'note' => $curFu['discussion_note'] ?: '',
+                        'timing_status' => $isOnTime ? 'ontime' : 'late',
+                        'scheduled_next_date' => $nextDate,
+                        'next_given_status' => $nextStatus,
+                        'next_given_label' => $nextLabel,
+                        'next_actual_date' => $nextActual,
+                        'next_overdue_days' => $nextOverdueDays,
                     ];
                 } else {
-                    if ($nextDate && strtotime($nextDate . ' 23:59:59') < $now) {
-                        $dueTime = strtotime($nextDate . ' 23:59:59');
-                        $evaluatedSteps[$s] = [
+                    if ($prevNextDate && $now > strtotime($prevNextDate . ' 23:59:59')) {
+                        $overdueDays = max(1, (int) round(($now - strtotime($prevNextDate . ' 23:59:59')) / 86400));
+                        $hasOverdue = true;
+                        $steps[$s] = [
                             'step' => $s,
-                            'status' => 'overdue',
-                            'due_date' => $nextDate,
-                            'completed_date' => null,
-                            'overdue_days' => max(1, (int) round(($now - $dueTime) / 86400)),
+                            'done' => false,
+                            'logged_date' => null,
+                            'logged_time' => null,
                             'type' => 'Pending schedule',
                             'note' => '',
+                            'timing_status' => 'overdue',
+                            'overdue_days' => $overdueDays,
+                            'scheduled_due_date' => $prevNextDate,
+                            'scheduled_next_date' => null,
+                            'next_given_status' => 'overdue',
+                            'next_given_label' => "Not given ({$overdueDays}d overdue)",
+                            'next_actual_date' => null,
+                            'next_overdue_days' => $overdueDays,
                         ];
                     }
                 }
             }
 
-            // Filter matching
-            foreach ($evaluatedSteps as $s => $info) {
-                if ($filterStep > 0 && $s !== $filterStep) {
-                    continue;
-                }
-                if ($filterStatus && $info['status'] !== $filterStatus) {
-                    continue;
-                }
+            $overallLeadStatus = $hasOverdue ? 'overdue' : ($hasLate ? 'late' : 'ontime');
 
-                $matchingRows[] = [
-                    'lead_id' => (int) $lead['lead_id'],
-                    'lead_name' => $lead['lead_name'],
-                    'phone' => $lead['phone'],
-                    'project_name' => $lead['project_name'] ?: 'Not Assigned',
-                    'exec_name' => $lead['exec_name'] ?: 'Unassigned',
-                    'team_name' => $teamName,
-                    'step' => $s,
-                    'status' => $info['status'],
-                    'due_date' => $info['due_date'],
-                    'completed_date' => $info['completed_date'],
-                    'overdue_days' => $info['overdue_days'] ?? 0,
-                    'type' => $info['type'],
-                    'note' => $info['note'],
-                ];
+            // Find most recent logged follow up to get scheduled next date
+            $lastLoggedFu = !empty($fus) ? end($fus) : null;
+            $scheduledNextDate = $lastLoggedFu ? $lastLoggedFu['next_follow_up_date'] : null;
+
+            // Get next given status from the step that has the scheduled next date
+            $latestStepWithNext = null;
+            foreach ($steps as $st) {
+                if (!empty($st['scheduled_next_date'])) {
+                    $latestStepWithNext = $st;
+                }
             }
+            $nextGivenStatus = $latestStepWithNext ? $latestStepWithNext['next_given_status'] : 'none';
+            $nextGivenLabel  = $latestStepWithNext ? $latestStepWithNext['next_given_label'] : 'None scheduled';
+            $nextOverdueDays = $latestStepWithNext ? ($latestStepWithNext['next_overdue_days'] ?? 0) : 0;
+
+            // Step filter check
+            if ($filterStep > 0 && !isset($steps[$filterStep])) {
+                continue;
+            }
+
+            // Status filter check
+            if ($filterStatus) {
+                if ($filterStep > 0) {
+                    if (($steps[$filterStep]['timing_status'] ?? '') !== $filterStatus) {
+                        continue;
+                    }
+                } else {
+                    $statusMatched = false;
+                    foreach ($steps as $st) {
+                        if (($st['timing_status'] ?? '') === $filterStatus) {
+                            $statusMatched = true;
+                            break;
+                        }
+                    }
+                    if (!$statusMatched) {
+                        continue;
+                    }
+                }
+            }
+
+            $matchingRows[] = [
+                'lead_id' => (int) $lead['lead_id'],
+                'lead_name' => $lead['lead_name'],
+                'phone' => $lead['phone'],
+                'project_name' => $lead['project_name'] ?: 'Not Assigned',
+                'exec_name' => $lead['exec_name'] ?: 'Unassigned',
+                'assigned_id' => (int) $lead['assigned_id'],
+                'team_name' => $teamName,
+                'total_followups' => $totalFollowups,
+                'status_updates' => $statusUpdates,
+                'status_update_count' => count($statusUpdates),
+                'latest_lead_status' => $latestLeadStatus,
+                'first_followup' => [
+                    'date' => $steps[1]['logged_date'] ?? null,
+                    'time' => $steps[1]['logged_time'] ?? null,
+                    'status' => $steps[1]['timing_status'] ?? 'pending',
+                    'type' => $steps[1]['type'] ?? '',
+                    'note' => $steps[1]['note'] ?? '',
+                ],
+                'next_followup' => [
+                    'scheduled_date' => $scheduledNextDate,
+                    'status' => $nextGivenStatus,
+                    'label' => $nextGivenLabel,
+                    'overdue_days' => $nextOverdueDays,
+                ],
+                'active_step' => $activeStep,
+                'overall_status' => $overallLeadStatus,
+                'steps' => $steps,
+            ];
         }
 
         $totalMatches = count($matchingRows);

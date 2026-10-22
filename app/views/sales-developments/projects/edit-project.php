@@ -171,17 +171,32 @@ if (!empty($project['nearby_locations'])) {
                             <?php foreach ($floorUnits as $index => $unit): ?>
                                 <div class="unit-row card p-3 mb-2 border bg-light">
                                     <div class="row g-2 align-items-center">
-                                        <div class="col-md-3 col-12">
+                                        <div class="col-md-2 col-12">
                                             <label class="small text-muted mb-1">Unit Name</label>
                                             <input type="text" name="units[<?= $index ?>][unit_name]" class="form-control"
-                                                placeholder="Unit Name (e.g. Unit A)" value="<?= htmlspecialchars($unit['unit_name'] ?? '') ?>">
+                                                placeholder="e.g. Unit A" value="<?= htmlspecialchars($unit['unit_name'] ?? '') ?>">
                                         </div>
                                         <div class="col-md-2 col-12">
                                             <label class="small text-muted mb-1">Sqft</label>
                                             <input type="number" step="any" name="units[<?= $index ?>][sqft]" class="form-control"
-                                                placeholder="Sqft (e.g. 1450)" value="<?= htmlspecialchars($unit['sqft'] ?? '') ?>">
+                                                placeholder="e.g. 1450" value="<?= htmlspecialchars($unit['sqft'] ?? '') ?>">
                                         </div>
-                                        <div class="col-md-3 col-12">
+                                        <div class="col-md-1 col-4">
+                                            <label class="small text-muted mb-1">Bed</label>
+                                            <input type="number" min="0" name="units[<?= $index ?>][bedrooms]" class="form-control"
+                                                placeholder="Bed" value="<?= htmlspecialchars($unit['bedrooms'] ?? '') ?>">
+                                        </div>
+                                        <div class="col-md-1 col-4">
+                                            <label class="small text-muted mb-1">Bath</label>
+                                            <input type="number" min="0" name="units[<?= $index ?>][bathrooms]" class="form-control"
+                                                placeholder="Bath" value="<?= htmlspecialchars($unit['bathrooms'] ?? '') ?>">
+                                        </div>
+                                        <div class="col-md-1 col-4">
+                                            <label class="small text-muted mb-1">Balcony</label>
+                                            <input type="number" min="0" name="units[<?= $index ?>][balcony]" class="form-control"
+                                                placeholder="Balcony" value="<?= htmlspecialchars($unit['balcony'] ?? '') ?>">
+                                        </div>
+                                        <div class="col-md-2 col-12">
                                             <label class="small text-muted mb-1">Unit Image</label>
                                             <?php if (!empty($unit['image'])): ?>
                                                 <div class="d-flex align-items-center gap-2 mb-1">
@@ -192,7 +207,7 @@ if (!empty($project['nearby_locations'])) {
                                             <input type="file" name="unit_image_<?= $index ?>" class="form-control form-control-sm" accept="image/*">
                                             <input type="hidden" name="units[<?= $index ?>][existing_image]" value="<?= htmlspecialchars($unit['image'] ?? '') ?>">
                                         </div>
-                                        <div class="col-md-3 col-12">
+                                        <div class="col-md-2 col-12">
                                             <label class="small text-muted mb-1">Description</label>
                                             <input type="text" name="units[<?= $index ?>][description]" class="form-control"
                                                 placeholder="Short description" value="<?= htmlspecialchars($unit['description'] ?? '') ?>">
@@ -207,19 +222,31 @@ if (!empty($project['nearby_locations'])) {
                         <?php else: ?>
                             <div class="unit-row card p-3 mb-2 border bg-light">
                                 <div class="row g-2 align-items-center">
-                                    <div class="col-md-3 col-12">
+                                    <div class="col-md-2 col-12">
                                         <label class="small text-muted mb-1">Unit Name</label>
-                                        <input type="text" name="units[0][unit_name]" class="form-control" placeholder="Unit Name (e.g. Unit A)">
+                                        <input type="text" name="units[0][unit_name]" class="form-control" placeholder="e.g. Unit A">
                                     </div>
                                     <div class="col-md-2 col-12">
                                         <label class="small text-muted mb-1">Sqft</label>
-                                        <input type="number" step="any" name="units[0][sqft]" class="form-control" placeholder="Sqft (e.g. 1450)">
+                                        <input type="number" step="any" name="units[0][sqft]" class="form-control" placeholder="e.g. 1450">
                                     </div>
-                                    <div class="col-md-3 col-12">
+                                    <div class="col-md-1 col-4">
+                                        <label class="small text-muted mb-1">Bed</label>
+                                        <input type="number" min="0" name="units[0][bedrooms]" class="form-control" placeholder="Bed">
+                                    </div>
+                                    <div class="col-md-1 col-4">
+                                        <label class="small text-muted mb-1">Bath</label>
+                                        <input type="number" min="0" name="units[0][bathrooms]" class="form-control" placeholder="Bath">
+                                    </div>
+                                    <div class="col-md-1 col-4">
+                                        <label class="small text-muted mb-1">Balcony</label>
+                                        <input type="number" min="0" name="units[0][balcony]" class="form-control" placeholder="Balcony">
+                                    </div>
+                                    <div class="col-md-2 col-12">
                                         <label class="small text-muted mb-1">Unit Image</label>
                                         <input type="file" name="unit_image_0" class="form-control form-control-sm" accept="image/*">
                                     </div>
-                                    <div class="col-md-3 col-12">
+                                    <div class="col-md-2 col-12">
                                         <label class="small text-muted mb-1">Description</label>
                                         <input type="text" name="units[0][description]" class="form-control" placeholder="Short description">
                                     </div>
@@ -805,19 +832,31 @@ if (!empty($project['nearby_locations'])) {
         const html = `
         <div class="unit-row card p-3 mb-2 border bg-light">
             <div class="row g-2 align-items-center">
-                <div class="col-md-3 col-12">
+                <div class="col-md-2 col-12">
                     <label class="small text-muted mb-1">Unit Name</label>
-                    <input type="text" name="units[${unitIndex}][unit_name]" class="form-control" placeholder="Unit Name (e.g. Unit A)">
+                    <input type="text" name="units[${unitIndex}][unit_name]" class="form-control" placeholder="e.g. Unit A">
                 </div>
                 <div class="col-md-2 col-12">
                     <label class="small text-muted mb-1">Sqft</label>
-                    <input type="number" step="any" name="units[${unitIndex}][sqft]" class="form-control" placeholder="Sqft (e.g. 1450)">
+                    <input type="number" step="any" name="units[${unitIndex}][sqft]" class="form-control" placeholder="e.g. 1450">
                 </div>
-                <div class="col-md-3 col-12">
+                <div class="col-md-1 col-4">
+                    <label class="small text-muted mb-1">Bed</label>
+                    <input type="number" min="0" name="units[${unitIndex}][bedrooms]" class="form-control" placeholder="Bed">
+                </div>
+                <div class="col-md-1 col-4">
+                    <label class="small text-muted mb-1">Bath</label>
+                    <input type="number" min="0" name="units[${unitIndex}][bathrooms]" class="form-control" placeholder="Bath">
+                </div>
+                <div class="col-md-1 col-4">
+                    <label class="small text-muted mb-1">Balcony</label>
+                    <input type="number" min="0" name="units[${unitIndex}][balcony]" class="form-control" placeholder="Balcony">
+                </div>
+                <div class="col-md-2 col-12">
                     <label class="small text-muted mb-1">Unit Image</label>
                     <input type="file" name="unit_image_${unitIndex}" class="form-control form-control-sm" accept="image/*">
                 </div>
-                <div class="col-md-3 col-12">
+                <div class="col-md-2 col-12">
                     <label class="small text-muted mb-1">Description</label>
                     <input type="text" name="units[${unitIndex}][description]" class="form-control" placeholder="Short description">
                 </div>

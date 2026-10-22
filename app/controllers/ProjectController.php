@@ -145,6 +145,9 @@ class ProjectController extends Controller
                     $cleanUnits[] = [
                         'unit_name'   => trim($unit['unit_name']),
                         'sqft'        => (float) $unit['sqft'],
+                        'bedrooms'    => isset($unit['bedrooms']) && $unit['bedrooms'] !== '' ? trim((string)$unit['bedrooms']) : '',
+                        'bathrooms'   => isset($unit['bathrooms']) && $unit['bathrooms'] !== '' ? trim((string)$unit['bathrooms']) : '',
+                        'balcony'     => isset($unit['balcony']) && $unit['balcony'] !== '' ? trim((string)$unit['balcony']) : '',
                         'image'       => $unitImg ?: '',
                         'description' => trim($unit['description'] ?? '')
                     ];
@@ -351,6 +354,9 @@ class ProjectController extends Controller
                     $cleanUnits[] = [
                         'unit_name'   => trim($unit['unit_name']),
                         'sqft'        => (float) $unit['sqft'],
+                        'bedrooms'    => isset($unit['bedrooms']) && $unit['bedrooms'] !== '' ? trim((string)$unit['bedrooms']) : '',
+                        'bathrooms'   => isset($unit['bathrooms']) && $unit['bathrooms'] !== '' ? trim((string)$unit['bathrooms']) : '',
+                        'balcony'     => isset($unit['balcony']) && $unit['balcony'] !== '' ? trim((string)$unit['balcony']) : '',
                         'image'       => $finalImg,
                         'description' => trim($unit['description'] ?? '')
                     ];

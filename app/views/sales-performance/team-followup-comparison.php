@@ -29,6 +29,7 @@ if (!function_exists('tfu_h')) {
 
 $grand = $data['grand'];
 $topTeam = $data['top_team'] ?? null;
+$topExecutives = $data['top_executives'] ?? [];
 $teamsList = $data['teams'] ?? [];
 $execsList = $data['executives'] ?? [];
 
@@ -204,25 +205,288 @@ $baseUrl = $GLOBALS['base_url'];
     line-height: 1.5;
 }
 
-/* Top Team Highlight Banner */
-.tfu-topteam-banner {
-    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-    border: 1px solid #86efac;
-    border-radius: 12px;
-    padding: 14px 20px;
+/* Select2 Compact Modern Styling in Filter Bar */
+.tfu-filter-bar .select2-container--default .select2-selection--single {
+    height: 33px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+}
+.tfu-filter-bar .select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: #334155;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 31px;
+    padding-left: 10px;
+    padding-right: 24px;
+}
+.tfu-filter-bar .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 31px;
+    right: 8px;
+}
+.tfu-filter-bar .select2-container--default .select2-selection--single:focus,
+.tfu-filter-bar .select2-container--default.select2-container--open .select2-selection--single {
+    border-color: var(--tfu-primary);
+    box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.15);
+}
+.select2-dropdown {
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05) !important;
+    font-size: 13px !important;
+    z-index: 10050 !important;
+    overflow: hidden;
+}
+.select2-search--dropdown {
+    padding: 6px 8px !important;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+}
+.select2-search--dropdown .select2-search__field {
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 6px !important;
+    padding: 5px 10px !important;
+    font-size: 12.5px !important;
+    background: #ffffff !important;
+    outline: none !important;
+}
+.select2-search--dropdown .select2-search__field:focus {
+    border-color: var(--tfu-primary) !important;
+    box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.15) !important;
+}
+.select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
+    background-color: var(--tfu-primary) !important;
+    color: #ffffff !important;
+}
+.select2-container--default .select2-results__option--selected {
+    background-color: #ecfdf5 !important;
+    color: #065f46 !important;
+    font-weight: 600;
+}
+.select2-results__option {
+    padding: 6px 12px !important;
+    font-size: 13px !important;
+    line-height: 1.4 !important;
+}
+
+/* Champions / Leaderboard Section */
+.tfu-leaderboard-section {
     margin-bottom: 22px;
+}
+.tfu-leaderboard-hd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+.tfu-leaderboard-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+}
+.tfu-leaderboard-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+@media (max-width: 1280px) {
+    .tfu-leaderboard-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+    .tfu-leaderboard-grid { grid-template-columns: 1fr; }
+}
+
+.tfu-champion-card {
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid var(--tfu-border);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.tfu-champion-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+}
+
+/* Team Champion Special Theme */
+.tfu-champion-card.tfu-team-champion {
+    background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 42%);
+    border-color: #86efac;
+}
+/* Gold 1st Place Executive */
+.tfu-champion-card.tfu-exec-gold {
+    background: linear-gradient(180deg, #fefce8 0%, #ffffff 42%);
+    border-color: #fde047;
+}
+/* Silver 2nd Place Executive */
+.tfu-champion-card.tfu-exec-silver {
+    background: linear-gradient(180deg, #f8fafc 0%, #ffffff 42%);
+    border-color: #cbd5e1;
+}
+/* Bronze 3rd Place Executive */
+.tfu-champion-card.tfu-exec-bronze {
+    background: linear-gradient(180deg, #fff7ed 0%, #ffffff 42%);
+    border-color: #fdba74;
+}
+
+.tfu-champion-badge {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.tfu-team-champion .tfu-champion-badge {
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid #86efac;
+}
+
+.tfu-champion-body {
+    padding: 16px 16px 10px 16px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+.tfu-champion-top-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+.tfu-champion-icon-wrap {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+.team-trophy-wrap {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #86efac;
+}
+.tfu-champion-avatar-wrap {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+}
+.tfu-champion-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #e2e8f0;
+}
+.tfu-champion-avatar-initials {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: #ffffff;
+    background: #64748b;
+}
+.tfu-exec-gold .tfu-champion-avatar-initials {
+    background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
+    box-shadow: 0 2px 6px rgba(202, 138, 4, 0.3);
+}
+.tfu-exec-silver .tfu-champion-avatar-initials {
+    background: linear-gradient(135deg, #94a3b8 0%, #475569 100%);
+    box-shadow: 0 2px 6px rgba(71, 85, 105, 0.3);
+}
+.tfu-exec-bronze .tfu-champion-avatar-initials {
+    background: linear-gradient(135deg, #f97316 0%, #c2410c 100%);
+    box-shadow: 0 2px 6px rgba(194, 65, 12, 0.3);
+}
+.tfu-avatar-rank-badge {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    font-size: 13px;
+    line-height: 1;
+}
+
+.tfu-champion-info {
+    min-width: 0;
+    flex: 1;
+}
+.tfu-champion-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 2px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.tfu-champion-meta {
+    font-size: 11.5px;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tfu-champion-score-box {
+    background: #f8fafc;
+    border: 1px solid #f1f5f9;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-top: auto;
     display: flex;
     align-items: center;
     justify-content: space-between;
 }
-.tfu-topteam-title {
-    font-size: 14.5px;
-    font-weight: 700;
-    color: #166534;
-    margin: 0;
+.tfu-champion-rate-col {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    flex-direction: column;
+}
+.tfu-champion-rate-num {
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+}
+.tfu-champion-rate-lbl {
+    font-size: 10px;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+.tfu-champion-stats-col {
+    text-align: right;
+    font-size: 11.5px;
+    color: #475569;
+    line-height: 1.4;
+}
+.tfu-champion-ft {
+    padding: 8px 16px 12px 16px;
+    background: transparent;
 }
 
 /* Main Section: Team Follow-up Comparison */
@@ -376,6 +640,13 @@ $baseUrl = $GLOBALS['base_url'];
     border-bottom: 1px solid var(--tfu-border);
     white-space: nowrap;
 }
+.tfu-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: #f8fafc !important;
+    box-shadow: inset 0 -1px 0 var(--tfu-border);
+}
 .tfu-table th.text-start {
     text-align: left;
 }
@@ -516,7 +787,7 @@ $baseUrl = $GLOBALS['base_url'];
     display: none;
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(15, 23, 42, 0.45);
+    background: rgba(15, 23, 42, 0.5);
     backdrop-filter: blur(2px);
     z-index: 9998;
 }
@@ -524,10 +795,10 @@ $baseUrl = $GLOBALS['base_url'];
     display: none;
     position: fixed;
     top: 0; right: 0; bottom: 0;
-    width: 920px;
-    max-width: 95vw;
+    width: 1120px;
+    max-width: 96vw;
     background: #ffffff;
-    box-shadow: -4px 0 24px rgba(0,0,0,0.15);
+    box-shadow: -6px 0 28px rgba(0,0,0,0.18);
     z-index: 9999;
     flex-direction: column;
     overflow: hidden;
@@ -536,7 +807,7 @@ $baseUrl = $GLOBALS['base_url'];
     display: flex;
 }
 .tfu-modal-hd {
-    padding: 16px 22px;
+    padding: 16px 24px;
     border-bottom: 1px solid var(--tfu-border);
     display: flex;
     align-items: center;
@@ -544,12 +815,50 @@ $baseUrl = $GLOBALS['base_url'];
     background: #f8fafc;
 }
 .tfu-modal-bd {
-    padding: 18px 22px;
-    overflow-y: auto;
+    padding: 16px 24px;
+    overflow: hidden;
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+.tfu-drill-table-container {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+.tfu-drill-table-container table {
+    width: 100%;
+    margin-bottom: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+.tfu-drill-table-container thead th {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background-color: #f8fafc !important;
+    color: #475569;
+    font-weight: 700;
+    font-size: 12px;
+    padding: 11px 12px;
+    border-bottom: 1px solid #cbd5e1;
+    box-shadow: inset 0 -1px 0 #cbd5e1, 0 2px 4px rgba(0,0,0,0.04);
+    white-space: nowrap;
+}
+.tfu-drill-journey-container {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 6px;
 }
 .tfu-modal-ft {
-    padding: 12px 22px;
+    padding: 12px 24px;
     border-top: 1px solid var(--tfu-border);
     background: #f8fafc;
     display: flex;
@@ -559,7 +868,7 @@ $baseUrl = $GLOBALS['base_url'];
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-bottom: 14px;
+    margin-bottom: 0;
 }
 .tfu-tab-pill {
     padding: 5px 12px;
@@ -571,11 +880,43 @@ $baseUrl = $GLOBALS['base_url'];
     color: #475569;
     cursor: pointer;
     text-decoration: none;
+    transition: all 0.15s ease;
 }
 .tfu-tab-pill.active {
     background: var(--tfu-primary);
     border-color: var(--tfu-primary);
     color: #ffffff;
+}
+
+/* Follow-up Journey Cards */
+.tfu-journey-card {
+    background: #ffffff;
+    border: 1px solid var(--tfu-border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin-bottom: 14px;
+    position: relative;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+.tfu-journey-card.ontime {
+    border-left: 4px solid #10b981;
+}
+.tfu-journey-card.late {
+    border-left: 4px solid #f59e0b;
+}
+.tfu-journey-card.overdue {
+    border-left: 4px solid #ef4444;
+    background: #fffafa;
+}
+.tfu-journey-note {
+    background: #f8fafc;
+    border-left: 3px solid #94a3b8;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12.5px;
+    color: #334155;
+    margin-top: 8px;
+    white-space: pre-wrap;
 }
 </style>
 
@@ -605,8 +946,8 @@ $baseUrl = $GLOBALS['base_url'];
 
         <!-- Filter Form -->
         <form method="GET" action="<?= $baseUrl ?>/team-followup-comparison" id="tfuFilterForm">
-            <input type="hidden" name="view" value="<?= tfu_h($filters['view']) ?>">
-            <input type="hidden" name="sort" value="<?= tfu_h($filters['sort']) ?>">
+            <input type="hidden" name="view" value="<?= tfu_h($filters['view'] ?? 'teams') ?>">
+            <input type="hidden" name="sort" value="<?= tfu_h($filters['sort'] ?? '') ?>">
 
             <div class="tfu-filter-bar">
                 <!-- Preset Quick Buttons -->
@@ -640,9 +981,9 @@ $baseUrl = $GLOBALS['base_url'];
                     <input type="date" name="to" value="<?= tfu_h($filters['to']) ?>" class="form-control form-control-sm" style="width:130px; border-radius:8px;" placeholder="To date">
                 </div>
 
-                <!-- Team Select -->
-                <div style="min-width: 170px;">
-                    <select name="team_id" class="form-select form-select-sm" style="border-radius:8px;">
+                <!-- Team Select (Searchable Select2) -->
+                <div style="min-width: 190px; max-width: 230px;">
+                    <select name="team_id" id="filterTeamSelect" class="form-select form-select-sm select2" data-placeholder="All Teams (<?= count($teams) ?>)">
                         <option value="">All Teams (<?= count($teams) ?>)</option>
                         <?php foreach ($teams as $t): ?>
                             <option value="<?= $t['id'] ?>" <?= ($filters['team_id'] == $t['id']) ? 'selected' : '' ?>>
@@ -652,9 +993,9 @@ $baseUrl = $GLOBALS['base_url'];
                     </select>
                 </div>
 
-                <!-- Project Select -->
-                <div style="min-width: 160px;">
-                    <select name="project_id" class="form-select form-select-sm" style="border-radius:8px;">
+                <!-- Project Select (Searchable Select2) -->
+                <div style="min-width: 200px; max-width: 260px;">
+                    <select name="project_id" id="filterProjectSelect" class="form-select form-select-sm select2" data-placeholder="All Projects (<?= count($projects) ?>)">
                         <option value="">All Projects (<?= count($projects) ?>)</option>
                         <?php foreach ($projects as $p): ?>
                             <option value="<?= $p['id'] ?>" <?= ($filters['project_id'] == $p['id']) ? 'selected' : '' ?>>
@@ -674,20 +1015,135 @@ $baseUrl = $GLOBALS['base_url'];
         </form>
     </div>
 
-    <!-- Top Team Highlight Banner -->
-    <?php if ($topTeam && ($topTeam['metrics']['overall']['rate'] ?? 0) > 0): ?>
-        <div class="tfu-topteam-banner">
-            <div class="tfu-topteam-title">
-                <i class="fa-solid fa-trophy" style="color:#eab308; font-size:18px;"></i>
-                <span>Top Team Follow-up: <strong><?= tfu_h($topTeam['name']) ?></strong></span>
-                <span class="badge bg-success" style="font-size:12px; margin-left:6px;">
-                    <?= tfu_pct($topTeam['metrics']['overall']['rate']) ?> Weighted Overall
-                </span>
+    <!-- Performance Champions (Best Team & Top 3 Executives) -->
+    <?php if (($topTeam && ($topTeam['metrics']['overall']['rate'] ?? 0) > 0) || !empty($topExecutives)): ?>
+        <div class="tfu-leaderboard-section">
+            <div class="tfu-leaderboard-hd">
+                <div class="tfu-leaderboard-title">
+                    <i class="fa-solid fa-trophy" style="color:#eab308; font-size:17px; margin-right:8px;"></i>
+                    <span>Follow-up Performance Champions</span>
+                    <span class="badge bg-light text-secondary ms-2" style="font-size:11.5px; font-weight:600; border:1px solid #e2e8f0;">
+                        <i class="fa-regular fa-calendar-check me-1"></i><?= tfu_h($period['label'] ?? 'Active Period') ?> (<?= tfu_h($period['start_date']) ?> &ndash; <?= tfu_h($period['end_date']) ?>)
+                    </span>
+                </div>
             </div>
-            <div style="font-size:13px; color:#15803d; font-weight:600;">
-                <?= tfu_n($topTeam['metrics']['overall']['ontime']) ?> / <?= tfu_n($topTeam['metrics']['overall']['due']) ?> on time
-                &middot; <?= tfu_n($topTeam['metrics']['overall']['overdue']) ?> open overdue
-                &middot; <?= tfu_n($topTeam['exec_count']) ?> executives
+
+            <div class="tfu-leaderboard-grid">
+                <!-- Best Sales Team Card -->
+                <?php if ($topTeam && ($topTeam['metrics']['overall']['rate'] ?? 0) > 0): ?>
+                    <div class="tfu-champion-card tfu-team-champion">
+                        <div class="tfu-champion-badge">
+                            <i class="fa-solid fa-crown" style="color:#ca8a04;"></i> Best Sales Team
+                        </div>
+                        <div class="tfu-champion-body">
+                            <div class="tfu-champion-top-row">
+                                <div class="tfu-champion-icon-wrap team-trophy-wrap">
+                                    <i class="fa-solid fa-people-group"></i>
+                                </div>
+                                <div class="tfu-champion-info">
+                                    <h4 class="tfu-champion-name" title="<?= tfu_h($topTeam['name']) ?>">
+                                        <?= tfu_h($topTeam['name']) ?>
+                                    </h4>
+                                    <div class="tfu-champion-meta">
+                                        <span><i class="fa-solid fa-user-tie me-1"></i><?= tfu_n($topTeam['exec_count']) ?> executives</span>
+                                        <span>&middot;</span>
+                                        <span><i class="fa-solid fa-address-book me-1"></i><?= tfu_n($topTeam['total_leads']) ?> leads</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tfu-champion-score-box">
+                                <div class="tfu-champion-rate-col">
+                                    <div class="tfu-champion-rate-num text-success">
+                                        <?= tfu_pct($topTeam['metrics']['overall']['rate']) ?>
+                                    </div>
+                                    <div class="tfu-champion-rate-lbl">Overall Rate</div>
+                                </div>
+                                <div class="tfu-champion-stats-col">
+                                    <div><strong><?= tfu_n($topTeam['metrics']['overall']['ontime']) ?></strong> / <?= tfu_n($topTeam['metrics']['overall']['due']) ?> on time</div>
+                                    <div class="text-danger fw-semibold" style="font-size:11px;"><?= tfu_n($topTeam['metrics']['overall']['overdue']) ?> open overdue</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tfu-champion-ft">
+                            <?php if (!empty($filters['team_id']) && (int)$filters['team_id'] === (int)$topTeam['id']): ?>
+                                <button type="button" class="btn btn-xs btn-success w-100" style="font-weight:600; font-size:11.5px; border-radius:6px;" onclick="filterByTeam('')" title="Click to show all teams">
+                                    <i class="fa-solid fa-check me-1"></i> Focused (Click to Show All Teams)
+                                </button>
+                            <?php else: ?>
+                                <button type="button" class="btn btn-xs btn-outline-success w-100" style="font-weight:600; font-size:11.5px; border-radius:6px;" onclick="filterByTeam(<?= $topTeam['id'] ?>)">
+                                    <i class="fa-solid fa-filter me-1"></i> Focus Team
+                                </button>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Top 3 Executives Cards -->
+                <?php 
+                $podiumRanks = [
+                    0 => ['rank' => '1st', 'icon' => '', 'title' => '1st Best Executive', 'class' => 'tfu-exec-gold', 'badge_bg' => '#fef08a', 'badge_color' => '#854d0e', 'border' => '#facc15'],
+                    1 => ['rank' => '2nd', 'icon' => '', 'title' => '2nd Best Executive', 'class' => 'tfu-exec-silver', 'badge_bg' => '#f1f5f9', 'badge_color' => '#334155', 'border' => '#cbd5e1'],
+                    2 => ['rank' => '3rd', 'icon' => '', 'title' => '3rd Best Executive', 'class' => 'tfu-exec-bronze', 'badge_bg' => '#ffedd5', 'badge_color' => '#9a3412', 'border' => '#fdba74'],
+                ];
+                foreach ($topExecutives as $idx => $exec): 
+                    $rankInfo = $podiumRanks[$idx] ?? ['rank' => ($idx+1).'th', 'icon' => '🏅', 'title' => ($idx+1).'th Executive', 'class' => '', 'badge_bg' => '#f1f5f9', 'badge_color' => '#334155', 'border' => '#e2e8f0'];
+                    $initials = '';
+                    $words = preg_split('/\s+/', trim($exec['name']));
+                    foreach (array_slice($words, 0, 2) as $w) {
+                        $initials .= mb_strtoupper(mb_substr($w, 0, 1));
+                    }
+                    if (!$initials) $initials = 'SE';
+                    $rate = $exec['metrics']['overall']['rate'] ?? 0;
+                    $rateColor = ($rate >= 80) ? '#059669' : (($rate >= 50) ? '#d97706' : '#dc2626');
+                ?>
+                    <div class="tfu-champion-card tfu-exec-champion <?= $rankInfo['class'] ?>">
+                        <div class="tfu-champion-badge" style="background: <?= $rankInfo['badge_bg'] ?>; color: <?= $rankInfo['badge_color'] ?>; border: 1px solid <?= $rankInfo['border'] ?>;">
+                            <span><?= $rankInfo['icon'] ?> <?= $rankInfo['title'] ?></span>
+                        </div>
+                        <div class="tfu-champion-body">
+                            <div class="tfu-champion-top-row">
+                                <div class="tfu-champion-avatar-wrap">
+                                    <?php if (!empty($exec['photo'])): ?>
+                                        <img src="<?= tfu_h($exec['photo']) ?>" alt="<?= tfu_h($exec['name']) ?>" class="tfu-champion-avatar" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                        <div class="tfu-champion-avatar-initials" style="display:none;"><?= tfu_h($initials) ?></div>
+                                    <?php else: ?>
+                                        <div class="tfu-champion-avatar-initials"><?= tfu_h($initials) ?></div>
+                                    <?php endif; ?>
+                                    <span class="tfu-avatar-rank-badge"><?= $rankInfo['icon'] ?></span>
+                                </div>
+                                <div class="tfu-champion-info">
+                                    <h4 class="tfu-champion-name" title="<?= tfu_h($exec['name']) ?>">
+                                        <?= tfu_h($exec['name']) ?>
+                                    </h4>
+                                    <div class="tfu-champion-meta">
+                                        <span class="badge bg-light text-dark text-truncate" style="max-width: 140px; font-size:11px;" title="<?= tfu_h($exec['team_name']) ?>">
+                                            <i class="fa-solid fa-users me-1 text-primary"></i><?= tfu_h($exec['team_name']) ?>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tfu-champion-score-box">
+                                <div class="tfu-champion-rate-col">
+                                    <div class="tfu-champion-rate-num" style="color: <?= $rateColor ?>;">
+                                        <?= tfu_pct($rate) ?>
+                                    </div>
+                                    <div class="tfu-champion-rate-lbl">Compliance</div>
+                                </div>
+                                <div class="tfu-champion-stats-col">
+                                    <div><strong><?= tfu_n($exec['metrics']['overall']['ontime']) ?></strong> / <?= tfu_n($exec['metrics']['overall']['due']) ?> on time</div>
+                                    <div class="text-danger fw-semibold" style="font-size:11px;"><?= tfu_n($exec['metrics']['overall']['overdue']) ?> overdue</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tfu-champion-ft">
+                            <button type="button" class="btn btn-xs btn-outline-primary w-100" style="font-weight:600; font-size:11.5px; border-radius:6px;" onclick="openDrilldownModal('<?= tfu_h(addslashes($exec['name'])) ?> &ndash; Leads', 0, <?= $exec['id'] ?>)">
+                                <i class="fa-solid fa-list-check me-1"></i> See Leads (<?= tfu_n($exec['total_leads']) ?>)
+                            </button>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
             </div>
         </div>
     <?php endif; ?>
@@ -769,8 +1225,10 @@ $baseUrl = $GLOBALS['base_url'];
                 </div>
 
                 <select id="tfuSortSelect" class="tfu-sort-select">
-                    <option value="lowest">Sort: Lowest overall</option>
-                    <option value="highest">Sort: Highest overall</option>
+                    <option value="execs" <?= ($filters['view'] === 'teams') ? 'selected' : '' ?>>Sort: Most executives</option>
+                    <option value="ontime">Sort: Most follow-ups done</option>
+                    <option value="highest">Sort: Highest overall rate (%)</option>
+                    <option value="lowest" <?= ($filters['view'] !== 'teams') ? 'selected' : '' ?>>Sort: Lowest overall rate (%)</option>
                     <option value="overdue">Sort: Most overdue</option>
                     <option value="leads">Sort: Most leads</option>
                     <option value="alpha">Sort: Name (A-Z)</option>
@@ -812,7 +1270,8 @@ $baseUrl = $GLOBALS['base_url'];
                                 data-name="<?= strtolower(tfu_h($e['name'] . ' ' . $e['team_name'])) ?>"
                                 data-overall="<?= ($ovRate !== null) ? $ovRate : -1 ?>"
                                 data-overdue="<?= (int)$m['overall']['overdue'] ?>"
-                                data-leads="<?= (int)$e['total_leads'] ?>">
+                                data-leads="<?= (int)$e['total_leads'] ?>"
+                                data-ontime="<?= (int)$m['overall']['ontime'] ?>">
                                 <td class="text-start">
                                     <div style="display:flex; align-items:center; gap:10px;">
                                         <div style="width:34px; height:34px; border-radius:50%; background:#e2e8f0; display:flex; align-items:center; justify-content:center; font-weight:700; color:#475569; font-size:12px; overflow:hidden;">
@@ -884,6 +1343,8 @@ $baseUrl = $GLOBALS['base_url'];
                                 data-overall="<?= ($ovRate !== null) ? $ovRate : -1 ?>"
                                 data-overdue="<?= (int)$m['overall']['overdue'] ?>"
                                 data-leads="<?= (int)$t['total_leads'] ?>"
+                                data-execs="<?= (int)$t['exec_count'] ?>"
+                                data-ontime="<?= (int)$m['overall']['ontime'] ?>"
                                 id="team-row-<?= $t['id'] ?>">
                                 <td class="text-start">
                                     <div style="display:flex; align-items:center;">
@@ -943,6 +1404,7 @@ $baseUrl = $GLOBALS['base_url'];
                             <!-- Expandable Sub-rows for this team's executives -->
                             <?php 
                             $teamExecs = array_filter($execsList, fn($e) => $e['team_id'] === $t['id']);
+                            usort($teamExecs, fn($a, $b) => $b['total_leads'] <=> $a['total_leads']);
                             foreach ($teamExecs as $te):
                                 $tem = $te['metrics'];
                                 $teOvRate = $tem['overall']['rate'];
@@ -1016,11 +1478,11 @@ $baseUrl = $GLOBALS['base_url'];
         <button type="button" class="btn-close" onclick="closeDrilldownModal()" aria-label="Close"></button>
     </div>
 
-    <!-- Quick Filter Tabs inside Modal -->
-    <div style="padding: 12px 22px; background:#ffffff; border-bottom:1px solid #f1f5f9;">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+    <!-- Quick Filter Tabs & Search inside Modal -->
+    <div style="padding: 12px 24px; background:#ffffff; border-bottom:1px solid #f1f5f9;" id="drillFilterToolbar">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
             <!-- Step Tabs -->
-            <div class="tfu-modal-tabs" id="drillStepTabs" style="margin-bottom:0;">
+            <div class="tfu-modal-tabs" id="drillStepTabs">
                 <button type="button" class="tfu-tab-pill active" onclick="setDrillFilter('step', 0)">All Steps</button>
                 <button type="button" class="tfu-tab-pill" onclick="setDrillFilter('step', 1)">1st Step</button>
                 <button type="button" class="tfu-tab-pill" onclick="setDrillFilter('step', 2)">2nd Step</button>
@@ -1030,15 +1492,23 @@ $baseUrl = $GLOBALS['base_url'];
             </div>
 
             <!-- Status Tabs -->
-            <div class="tfu-modal-tabs" id="drillStatusTabs" style="margin-bottom:0;">
+            <div class="tfu-modal-tabs" id="drillStatusTabs">
                 <button type="button" class="tfu-tab-pill active" onclick="setDrillFilter('status', '')">All Statuses</button>
                 <button type="button" class="tfu-tab-pill" onclick="setDrillFilter('status', 'overdue')" style="color:#b45309; border-color:#fde68a;">Overdue Only</button>
                 <button type="button" class="tfu-tab-pill" onclick="setDrillFilter('status', 'late')">Completed Late</button>
                 <button type="button" class="tfu-tab-pill" onclick="setDrillFilter('status', 'ontime')" style="color:#059669; border-color:#a7f3d0;">On-Time</button>
             </div>
+
+            <!-- Live Filter in modal -->
+            <div style="position:relative; width:220px;">
+                <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:12px;"></i>
+                <input type="text" id="drillSearchInput" class="form-control form-control-sm" 
+                       style="padding-left:32px; border-radius:20px; font-size:12px;" placeholder="Search leads...">
+            </div>
         </div>
     </div>
 
+    <!-- Modal Body: Leads List OR Single Lead Journey -->
     <div class="tfu-modal-bd" id="drillModalBody">
         <div style="text-align:center; padding:50px 20px; color:#64748b;">
             <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
@@ -1057,6 +1527,7 @@ let currentDrillTeamId = 0;
 let currentDrillExecId = 0;
 let currentDrillStep = 0;
 let currentDrillStatus = '';
+let currentDrillLeads = []; // Store loaded leads array
 
 // Toggle team members sub-rows
 function toggleTeamMembers(teamId) {
@@ -1084,7 +1555,6 @@ document.getElementById('tfuSearchInput').addEventListener('input', function(e) 
         const name = r.getAttribute('data-name') || '';
         const match = (!q || name.includes(q));
         r.style.display = match ? '' : 'none';
-        // Hide sub-rows if parent is hidden
         const rowId = r.id;
         if (rowId && rowId.startsWith('team-row-')) {
             const tid = rowId.replace('team-row-', '');
@@ -1103,8 +1573,19 @@ document.getElementById('tfuSortSelect').addEventListener('change', function(e) 
     const rows = Array.from(tbody.querySelectorAll('tr.tfu-row'));
 
     rows.sort((a, b) => {
-        if (sortMode === 'lowest') {
-            return parseFloat(a.dataset.overall) - parseFloat(b.dataset.overall);
+        if (sortMode === 'execs') {
+            const exA = parseInt(a.dataset.execs || 0);
+            const exB = parseInt(b.dataset.execs || 0);
+            if (exA !== exB) return exB - exA;
+            return parseInt(b.dataset.leads || 0) - parseInt(a.dataset.leads || 0);
+        } else if (sortMode === 'ontime') {
+            return parseInt(b.dataset.ontime || 0) - parseInt(a.dataset.ontime || 0);
+        } else if (sortMode === 'lowest') {
+            const valA = parseFloat(a.dataset.overall);
+            const valB = parseFloat(b.dataset.overall);
+            if (valA < 0 && valB >= 0) return 1;
+            if (valB < 0 && valA >= 0) return -1;
+            return valA - valB;
         } else if (sortMode === 'highest') {
             return parseFloat(b.dataset.overall) - parseFloat(a.dataset.overall);
         } else if (sortMode === 'overdue') {
@@ -1128,16 +1609,57 @@ document.getElementById('tfuSortSelect').addEventListener('change', function(e) 
     });
 });
 
+// Filter By Team helper (from Leaderboard card)
+function filterByTeam(teamId) {
+    if (!teamId) return;
+    const teamSelect = $('#filterTeamSelect');
+    if (teamSelect.length) {
+        teamSelect.val(teamId).trigger('change');
+    }
+    const form = document.getElementById('tfuFilterForm');
+    if (form) form.submit();
+}
+
+// Initialize Select2 for Team & Project Filter Dropdowns with Search
+$(function() {
+    function initFilterSelects() {
+        if (typeof $.fn.select2 === 'function') {
+            $('#filterTeamSelect').select2({
+                width: '100%',
+                placeholder: 'All Teams (<?= count($teams) ?>)',
+                allowClear: true
+            });
+            $('#filterProjectSelect').select2({
+                width: '100%',
+                placeholder: 'All Projects (<?= count($projects) ?>)',
+                allowClear: true
+            });
+        }
+    }
+    initFilterSelects();
+    window.addEventListener('load', initFilterSelects);
+});
+
 // Open Lead Drilldown Modal
-function openDrilldownModal(title, teamId, execId) {
+function openDrilldownModal(titleOrObj, teamId, execId) {
+    if (typeof titleOrObj === 'object' && titleOrObj !== null) {
+        teamId = titleOrObj.team_id || titleOrObj.teamId || 0;
+        execId = titleOrObj.executive_id || titleOrObj.execId || 0;
+        titleOrObj = titleOrObj.title || 'Leads';
+    }
+    const title = titleOrObj || 'Leads';
     currentDrillTeamId = teamId || 0;
     currentDrillExecId = execId || 0;
     currentDrillStep = 0;
     currentDrillStatus = '';
+    currentDrillLeads = [];
 
     document.getElementById('drillModalTitle').innerText = 'Leads: ' + title;
     document.getElementById('drillModalSubtitle').innerText = 'Viewing follow-up items for window: <?= tfu_h($period['label']) ?>';
     
+    // Show filter toolbar
+    document.getElementById('drillFilterToolbar').style.display = 'block';
+
     // Reset active tab pills
     document.querySelectorAll('#drillStepTabs .tfu-tab-pill').forEach((btn, idx) => {
         btn.classList.toggle('active', idx === 0);
@@ -1145,6 +1667,7 @@ function openDrilldownModal(title, teamId, execId) {
     document.querySelectorAll('#drillStatusTabs .tfu-tab-pill').forEach((btn, idx) => {
         btn.classList.toggle('active', idx === 0);
     });
+    document.getElementById('drillSearchInput').value = '';
 
     document.getElementById('tfuModalBackdrop').classList.add('active');
     document.getElementById('tfuModalDrawer').classList.add('active');
@@ -1176,10 +1699,15 @@ function setDrillFilter(type, val) {
     loadDrilldownData();
 }
 
+// Search input inside modal
+document.getElementById('drillSearchInput').addEventListener('input', function(e) {
+    renderDrilldownTable();
+});
+
 function loadDrilldownData() {
     const body = document.getElementById('drillModalBody');
     body.innerHTML = `
-        <div style="text-align:center; padding:50px 20px; color:#64748b;">
+        <div style="text-align:center; padding:50px 20px; color:#64748b; margin:auto;">
             <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
             <div style="margin-top:10px;">Loading leads data...</div>
         </div>
@@ -1200,89 +1728,8 @@ function loadDrilldownData() {
     fetch('<?= $baseUrl ?>/team-followup-comparison/leads-ajax?' + qs.toString())
         .then(res => res.json())
         .then(res => {
-            if (!res || !res.rows || res.rows.length === 0) {
-                body.innerHTML = `
-                    <div style="text-align:center; padding:60px 20px; color:#94a3b8;">
-                        <i class="fa-regular fa-folder-open fa-3x" style="margin-bottom:12px; opacity:0.6;"></i>
-                        <h4 style="font-size:15px; font-weight:600; color:#475569; margin:0 0 4px 0;">No matching leads found</h4>
-                        <p style="font-size:12.5px; margin:0;">Try switching step tabs or status filters above.</p>
-                    </div>
-                `;
-                return;
-            }
-
-            let html = `
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; font-size:12.5px; color:#64748b;">
-                    <span>Showing <strong>${res.returned}</strong> of <strong>${res.total}</strong> matching lead items</span>
-                </div>
-                <div class="table-responsive" style="border:1px solid #e2e8f0; border-radius:8px;">
-                    <table class="table table-hover table-sm align-middle mb-0" style="font-size:12.5px;">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Lead</th>
-                                <th>Phone</th>
-                                <th>Project</th>
-                                <th>Salesperson</th>
-                                <th>Step</th>
-                                <th>Due Date</th>
-                                <th>Completed</th>
-                                <th>Status</th>
-                                <th style="width:60px;">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-            `;
-
-            res.rows.forEach(r => {
-                let statusBadge = '';
-                if (r.status === 'ontime') {
-                    statusBadge = `<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-check me-1"></i>On-Time</span>`;
-                } else if (r.status === 'late') {
-                    statusBadge = `<span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1"><i class="fa-solid fa-clock me-1"></i>Completed Late</span>`;
-                } else if (r.status === 'overdue') {
-                    statusBadge = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>${r.overdue_days}d Overdue</span>`;
-                }
-
-                html += `
-                    <tr>
-                        <td>
-                            <strong style="color:#1e293b;">${escapeHtml(r.lead_name)}</strong>
-                            <div style="font-size:11px; color:#94a3b8;">#${r.lead_id}</div>
-                        </td>
-                        <td>
-                            <a href="tel:${escapeHtml(r.phone)}" style="text-decoration:none; color:#0f766e; font-weight:600;">
-                                ${escapeHtml(r.phone)}
-                            </a>
-                        </td>
-                        <td>${escapeHtml(r.project_name)}</td>
-                        <td>
-                            <div>${escapeHtml(r.exec_name)}</div>
-                            <div style="font-size:10.5px; color:#94a3b8;">${escapeHtml(r.team_name)}</div>
-                        </td>
-                        <td>
-                            <span class="badge bg-light text-dark border">Step ${r.step}</span>
-                        </td>
-                        <td>${escapeHtml(r.due_date)}</td>
-                        <td>
-                            ${r.completed_date ? escapeHtml(r.completed_date) : '<span style="color:#94a3b8;">—</span>'}
-                        </td>
-                        <td>${statusBadge}</td>
-                        <td>
-                            <a href="<?= $baseUrl ?>/view-lead/${r.lead_id}" target="_blank" class="btn btn-outline-primary btn-sm" style="font-size:11px; padding:2px 8px; border-radius:4px;">
-                                View
-                            </a>
-                        </td>
-                    </tr>
-                `;
-            });
-
-            html += `
-                        </tbody>
-                    </table>
-                </div>
-            `;
-
-            body.innerHTML = html;
+            currentDrillLeads = res.rows || [];
+            renderDrilldownTable();
         })
         .catch(err => {
             console.error(err);
@@ -1292,6 +1739,327 @@ function loadDrilldownData() {
                 </div>
             `;
         });
+}
+
+function renderDrilldownTable() {
+    const body = document.getElementById('drillModalBody');
+    document.getElementById('drillFilterToolbar').style.display = 'block';
+
+    const searchQ = (document.getElementById('drillSearchInput').value || '').toLowerCase().trim();
+
+    let filtered = currentDrillLeads.filter(r => {
+        if (!searchQ) return true;
+        const statuses = (r.status_updates || []).join(' ');
+        const text = (r.lead_name + ' ' + r.lead_id + ' ' + r.phone + ' ' + r.project_name + ' ' + r.exec_name + ' ' + statuses).toLowerCase();
+        return text.includes(searchQ);
+    });
+
+    if (!filtered || filtered.length === 0) {
+        body.innerHTML = `
+            <div style="text-align:center; padding:60px 20px; color:#94a3b8; margin:auto;">
+                <i class="fa-regular fa-folder-open fa-3x" style="margin-bottom:12px; opacity:0.6;"></i>
+                <h4 style="font-size:15px; font-weight:600; color:#475569; margin:0 0 4px 0;">No matching leads found</h4>
+                <p style="font-size:12.5px; margin:0;">Try switching step tabs or status filters above.</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; font-size:12.5px; color:#64748b; flex-shrink:0;">
+            <span>Showing <strong>${filtered.length}</strong> matching leads (Click any lead to inspect follow-up history)</span>
+        </div>
+        <div class="tfu-drill-table-container">
+            <table class="table table-hover table-sm align-middle mb-0" style="font-size:12.5px;">
+                <thead>
+                    <tr>
+                        <th style="width:200px;">Lead</th>
+                        <th>Phone</th>
+                        <th>Project</th>
+                        <th>Salesperson</th>
+                        <th class="text-center" style="width:145px;">Follow-up & Status</th>
+                        <th>1st Follow-up</th>
+                        <th>Next Follow-up</th>
+                        <th>Next Given?</th>
+                        <th style="width:130px; text-align:center;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    filtered.forEach((r, idx) => {
+        // 1st FU display
+        let fu1Str = '';
+        if (r.first_followup.date) {
+            let f1Badge = (r.first_followup.status === 'ontime') 
+                ? '<span class="badge bg-success-subtle text-success border border-success-subtle ms-1 fs-10">On-Time</span>' 
+                : '<span class="badge bg-warning-subtle text-warning border border-warning-subtle ms-1 fs-10">Late</span>';
+            fu1Str = `<div>${escapeHtml(r.first_followup.date)} ${f1Badge}</div><div style="font-size:11px; color:#94a3b8;">${escapeHtml(r.first_followup.type || '')}</div>`;
+        } else {
+            fu1Str = '<span class="text-danger small"><i class="fa-solid fa-clock me-1"></i>Not done</span>';
+        }
+
+        // Next Follow-up Date
+        let nextDateStr = r.next_followup.scheduled_date ? `<strong style="color:#1e293b;">${escapeHtml(r.next_followup.scheduled_date)}</strong>` : '<span class="text-muted">—</span>';
+
+        // Next Follow-up Given status
+        let nextGivenBadge = '';
+        if (r.next_followup.status === 'given_ontime') {
+            nextGivenBadge = `<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-check me-1"></i>${escapeHtml(r.next_followup.label)}</span>`;
+        } else if (r.next_followup.status === 'given_late') {
+            nextGivenBadge = `<span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1"><i class="fa-solid fa-clock-rotate-left me-1"></i>${escapeHtml(r.next_followup.label)}</span>`;
+        } else if (r.next_followup.status === 'overdue') {
+            nextGivenBadge = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>${escapeHtml(r.next_followup.label)}</span>`;
+        } else if (r.next_followup.status === 'scheduled') {
+            nextGivenBadge = `<span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1"><i class="fa-regular fa-clock me-1"></i>${escapeHtml(r.next_followup.label)}</span>`;
+        } else {
+            nextGivenBadge = `<span class="text-muted small">None scheduled</span>`;
+        }
+
+        // Follow-ups & Status updates display
+        let fuDoneBadge = '';
+        const totalFu = r.total_followups || 0;
+        if (totalFu > 0) {
+            let statusesHtml = '';
+            if (r.status_updates && r.status_updates.length > 0) {
+                const badges = r.status_updates.slice(0, 3).map(s => getLeadStatusBadgeHtml(s));
+                if (r.status_updates.length > 3) {
+                    badges.push(`<span class="badge bg-light text-muted border" style="font-size:9px; padding:2px 4px;">+${r.status_updates.length - 3}</span>`);
+                }
+                statusesHtml = `<div style="display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:3px; margin-top:3px;">${badges.join('<span style="color:#cbd5e1; font-size:9px;">→</span>')}</div>`;
+            } else {
+                statusesHtml = `<div style="font-size:10px; color:#94a3b8; margin-top:2px;">No status tag</div>`;
+            }
+
+            fuDoneBadge = `
+                <div style="display:flex; flex-direction:column; align-items:center;">
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" style="font-size:11px; font-weight:700;">
+                        <i class="fa-solid fa-arrows-rotate me-1"></i>${totalFu} ${totalFu === 1 ? 'Update' : 'Updates'}
+                    </span>
+                    ${statusesHtml}
+                </div>
+            `;
+        } else {
+            fuDoneBadge = `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1" style="font-size:11px;">0 Updates</span>`;
+        }
+
+        html += `
+            <tr style="cursor:pointer;" onclick="showLeadFollowupJourney(${idx})">
+                <td>
+                    <div style="font-weight:700; color:#0f766e;">${escapeHtml(r.lead_name)}</div>
+                    <div style="font-size:11px; color:#94a3b8;">#${r.lead_id}</div>
+                </td>
+                <td onclick="event.stopPropagation()">
+                    <a href="tel:${escapeHtml(r.phone)}" style="text-decoration:none; color:#0f766e; font-weight:600;">
+                        ${escapeHtml(r.phone)}
+                    </a>
+                </td>
+                <td>${escapeHtml(r.project_name)}</td>
+                <td>
+                    <div>${escapeHtml(r.exec_name)}</div>
+                    <div style="font-size:10.5px; color:#94a3b8;">${escapeHtml(r.team_name)}</div>
+                </td>
+                <td class="text-center">${fuDoneBadge}</td>
+                <td>${fu1Str}</td>
+                <td>${nextDateStr}</td>
+                <td>${nextGivenBadge}</td>
+                <td class="text-center" onclick="event.stopPropagation()">
+                    <div style="display:flex; align-items:center; justify-content:center; gap:6px;">
+                        <button type="button" class="btn btn-primary btn-sm" style="font-size:11.5px; padding:3px 10px; border-radius:6px; background:var(--tfu-primary); border-color:var(--tfu-primary);"
+                                onclick="showLeadFollowupJourney(${idx})">
+                            <i class="fa-solid fa-timeline me-1"></i>History
+                        </button>
+                        <a href="<?= $baseUrl ?>/view-lead/${r.lead_id}" target="_blank" class="text-muted ms-1" title="Open lead in CRM">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                        </a>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    body.innerHTML = html;
+}
+
+// Show Lead Follow-up Journey (Complete Details)
+function showLeadFollowupJourney(leadIndex) {
+    const lead = currentDrillLeads[leadIndex];
+    if (!lead) return;
+
+    // Hide top filter tabs while viewing individual journey
+    document.getElementById('drillFilterToolbar').style.display = 'none';
+
+    const body = document.getElementById('drillModalBody');
+
+    let stepsHtml = '';
+    const steps = lead.steps || {};
+
+    for (let s = 1; s <= 5; s++) {
+        const st = steps[s];
+        if (!st) continue;
+
+        let statusClass = st.timing_status || 'ontime';
+        let cardBadge = '';
+        if (st.timing_status === 'ontime') {
+            cardBadge = `<span class="badge bg-success-subtle text-success border border-success-subtle"><i class="fa-solid fa-check me-1"></i>Completed On-Time</span>`;
+        } else if (st.timing_status === 'late') {
+            cardBadge = `<span class="badge bg-warning-subtle text-warning border border-warning-subtle"><i class="fa-solid fa-clock-rotate-left me-1"></i>Completed Late</span>`;
+        } else if (st.timing_status === 'overdue') {
+            cardBadge = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle"><i class="fa-solid fa-triangle-exclamation me-1"></i>${st.overdue_days || 1}d Overdue</span>`;
+        } else {
+            cardBadge = `<span class="badge bg-light text-muted border">Pending</span>`;
+        }
+
+        let nextGivenText = '';
+        if (st.next_given_status === 'given_ontime') {
+            nextGivenText = `<div style="margin-top:6px; color:#065f46; font-size:12.5px; font-weight:600;"><i class="fa-solid fa-circle-check me-1"></i>${escapeHtml(st.next_given_label)}</div>`;
+        } else if (st.next_given_status === 'given_late') {
+            nextGivenText = `<div style="margin-top:6px; color:#b45309; font-size:12.5px; font-weight:600;"><i class="fa-solid fa-clock-rotate-left me-1"></i>${escapeHtml(st.next_given_label)}</div>`;
+        } else if (st.next_given_status === 'overdue') {
+            nextGivenText = `<div style="margin-top:6px; color:#dc2626; font-size:12.5px; font-weight:600;"><i class="fa-solid fa-triangle-exclamation me-1"></i>${escapeHtml(st.next_given_label)}</div>`;
+        } else if (st.next_given_status === 'scheduled') {
+            nextGivenText = `<div style="margin-top:6px; color:#0284c7; font-size:12.5px;"><i class="fa-regular fa-clock me-1"></i>${escapeHtml(st.next_given_label)}</div>`;
+        }
+
+        stepsHtml += `
+            <div class="tfu-journey-card ${statusClass}">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+                    <div>
+                        <strong style="font-size:14.5px; color:#1e293b;">
+                            Step ${s} &middot; ${s === 1 ? '1st Follow-up' : (s === 2 ? '2nd Follow-up' : (s === 3 ? '3rd Follow-up' : s + 'th Follow-up'))}
+                        </strong>
+                        <span style="font-size:12px; color:#64748b; margin-left:8px;">
+                            ${st.done ? (st.logged_date + ' ' + (st.logged_time || '')) : 'Not logged yet'}
+                        </span>
+                    </div>
+                    <div>${cardBadge}</div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; font-size:12.5px; margin-bottom:6px;">
+                    <div>
+                        <span style="color:#64748b;">Follow-up Type:</span> 
+                        <strong>${escapeHtml(st.type || 'N/A')}</strong>
+                    </div>
+                    <div>
+                        <span style="color:#64748b;">Lead Status:</span> 
+                        ${st.lead_status ? getLeadStatusBadgeHtml(st.lead_status) : '<strong class="text-muted">None</strong>'}
+                    </div>
+                    <div>
+                        <span style="color:#64748b;">Scheduled Next Date:</span> 
+                        <strong>${escapeHtml(st.scheduled_next_date || 'None')}</strong>
+                    </div>
+                </div>
+
+                ${st.note ? `<div class="tfu-journey-note"><strong>Discussion Note:</strong> ${escapeHtml(st.note)}</div>` : ''}
+
+                ${nextGivenText}
+            </div>
+        `;
+    }
+
+    if (!stepsHtml) {
+        stepsHtml = `
+            <div class="alert alert-warning" style="margin:20px 0;">
+                <i class="fa-solid fa-triangle-exclamation me-2"></i> No follow-up steps have been logged yet for this lead.
+            </div>
+        `;
+    }
+
+    body.innerHTML = `
+        <div class="tfu-drill-journey-container">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="renderDrilldownTable()">
+                    <i class="fa-solid fa-arrow-left me-1"></i> Back to Leads List
+                </button>
+                <a href="<?= $baseUrl ?>/view-lead/${lead.lead_id}" target="_blank" class="btn btn-sm btn-outline-primary">
+                    <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Open Full CRM Profile
+                </a>
+            </div>
+
+            <!-- Lead Overview Card -->
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:16px 20px; margin-bottom:20px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+                    <div>
+                        <h4 style="margin:0 0 4px 0; font-size:18px; font-weight:700; color:#1e293b;">
+                            ${escapeHtml(lead.lead_name)} <span style="font-size:13px; font-weight:500; color:#64748b;">(#${lead.lead_id})</span>
+                        </h4>
+                        <div style="font-size:13px; color:#475569;">
+                            <a href="tel:${escapeHtml(lead.phone)}" style="color:#0f766e; text-decoration:none; font-weight:600;">
+                                <i class="fa-solid fa-phone me-1"></i>${escapeHtml(lead.phone)}
+                            </a>
+                            &middot; Project: <strong>${escapeHtml(lead.project_name)}</strong>
+                        </div>
+                    </div>
+
+                    <div style="text-align:right;">
+                        <span class="badge bg-primary px-3 py-2" style="font-size:13px; font-weight:700;">
+                            <i class="fa-solid fa-arrows-rotate me-1"></i> Total ${lead.total_followups} Follow-ups &middot; ${lead.status_update_count || 0} Status Updates
+                        </span>
+                        <div style="font-size:12px; color:#64748b; margin-top:4px;">
+                            Assigned to: <strong>${escapeHtml(lead.exec_name)}</strong> (${escapeHtml(lead.team_name)})
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Summary Bar -->
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-top:14px; padding-top:14px; border-top:1px solid #e2e8f0; font-size:12.5px;">
+                    <div>
+                        <span style="color:#64748b;">1st Follow-up Date:</span><br>
+                        <strong>${lead.first_followup.date ? (lead.first_followup.date + ' ' + (lead.first_followup.time || '')) : 'Not done yet'}</strong>
+                    </div>
+                    <div>
+                        <span style="color:#64748b;">Next Follow-up Scheduled:</span><br>
+                        <strong>${lead.next_followup.scheduled_date || 'None scheduled'}</strong>
+                    </div>
+                    <div>
+                        <span style="color:#64748b;">Next Date Follow-up Given?:</span><br>
+                        <strong>${escapeHtml(lead.next_followup.label)}</strong>
+                    </div>
+                    <div>
+                        <span style="color:#64748b;">Status Updates History:</span><br>
+                        ${(lead.status_updates && lead.status_updates.length > 0) 
+                            ? lead.status_updates.map(s => getLeadStatusBadgeHtml(s)).join(' <span style="color:#cbd5e1; font-size:9px;">→</span> ') 
+                            : '<span class="text-muted small">No status update</span>'}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Steps Section -->
+            <h5 style="font-size:15px; font-weight:700; color:#1e293b; margin-bottom:12px;">
+                <i class="fa-solid fa-clock-rotate-left me-1" style="color:var(--tfu-primary);"></i>
+                Follow-up Journey & Timeline (1st to 5th Steps)
+            </h5>
+
+            ${stepsHtml}
+        </div>
+    `;
+}
+
+function getLeadStatusBadgeHtml(status) {
+    if (!status) return '';
+    const s = status.trim();
+    let badgeStyle = 'background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;';
+    
+    if (['Prospect', 'High Prospect', 'Sold'].includes(s)) {
+        badgeStyle = 'background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0;';
+    } else if (s === 'Hot') {
+        badgeStyle = 'background:#fef2f2; color:#b91c1c; border:1px solid #fecaca;';
+    } else if (['Warm', 'Will Visit', 'Visited'].includes(s)) {
+        badgeStyle = 'background:#fffbeb; color:#92400e; border:1px solid #fde68a;';
+    } else if (s === 'No Response') {
+        badgeStyle = 'background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe;';
+    } else if (['Cold', 'Not Interested', "Don't Call Again"].includes(s)) {
+        badgeStyle = 'background:#f8fafc; color:#64748b; border:1px solid #e2e8f0;';
+    } else if (['Lead Transferred', 'Project Transferred'].includes(s)) {
+        badgeStyle = 'background:#fdf4ff; color:#86198f; border:1px solid #f0abfc;';
+    }
+    return `<span class="badge" style="font-size:10px; font-weight:600; padding:2px 7px; border-radius:12px; ${badgeStyle}">${escapeHtml(s)}</span>`;
 }
 
 function escapeHtml(text) {

@@ -1320,7 +1320,7 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
                 <span>Leads received</span>
             </div>
             <div class="kpi-val" id="statTotalLeads"><?= number_format($platformReport['kpi']['leads_received'] ?? 0) ?></div>
-            <div class="kpi-sub" id="statTotalCaption">All platforms · Selected date</div>
+            <div class="kpi-sub" id="statTotalCaption">All platforms · <?= htmlspecialchars($platformReport['meta']['date_label'] ?? date('d M Y')) ?></div>
         </div>
 
         <div class="kpi-card">
@@ -1631,10 +1631,10 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
                 <!-- Date Range Filter Dropdown (Today, Yesterday, Weekly, Custom Range) -->
                 <div style="width: 145px;">
                     <select id="dateFilterSelect" class="form-select form-select-sm" onchange="onDateFilterChange(this.value)" title="Filter leads by date of arrival">
-                        <option value="all">All Dates</option>
-                        <option value="today">Today</option>
+                        <option value="today" selected>Today</option>
                         <option value="yesterday">Yesterday</option>
                         <option value="this_week">This Week (7 Days)</option>
+                        <option value="all">All Dates</option>
                         <option value="custom">Custom Range...</option>
                     </select>
                 </div>
@@ -1835,7 +1835,7 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
     let currentTeamId = '';
     let currentProjectId = '';
     let currentPlatform = '';
-    let currentDateFilter = 'all'; // 'all', 'today', 'yesterday', 'this_week', 'custom'
+    let currentDateFilter = 'today'; // Default: 'today' ('today', 'yesterday', 'this_week', 'all', 'custom')
     let currentStartDate = '';
     let currentEndDate = '';
     let currentPage = 1;
@@ -2069,6 +2069,8 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
         const awaitApprove = parseInt(kpi.awaiting_approval || 0);
 
         document.getElementById('statTotalLeads').innerText = totalReceived.toLocaleString();
+        const totalCap = document.getElementById('statTotalCaption');
+        if (totalCap) totalCap.innerText = `All platforms · ${meta.date_label || 'Selected date'}`;
         document.getElementById('statApprovedLeads').innerText = assignedTeams.toLocaleString();
         document.getElementById('statApprovedCaption').innerText = `${assignedPct}% of received leads`;
         document.getElementById('statNeedsAssignment').innerText = needsAssign.toLocaleString();
@@ -2438,6 +2440,29 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
         currentPage = 1;
         selectedLeadIds.clear();
         updateSelectionUi();
+
+        // Sync top platform filter
+        if (val === 'today') {
+            platformFilters.date_preset = 'today';
+        } else if (val === 'yesterday') {
+            platformFilters.date_preset = 'yesterday';
+        } else if (val === 'this_week') {
+            platformFilters.date_preset = '7days';
+        } else if (val === 'all') {
+            platformFilters.date_preset = 'all';
+        }
+        platformFilters.start_date = '';
+        platformFilters.end_date = '';
+
+        document.querySelectorAll('#periodPillsGroup .period-pill-btn').forEach(btn => {
+            if (btn.getAttribute('data-preset') === platformFilters.date_preset) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+
+        loadPlatformStats();
         loadLeads();
     }
 
@@ -2461,6 +2486,15 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
         currentPage = 1;
         selectedLeadIds.clear();
         updateSelectionUi();
+
+        // Sync top platform filters
+        platformFilters.date_preset = 'custom';
+        platformFilters.start_date = s;
+        platformFilters.end_date = e;
+
+        document.querySelectorAll('#periodPillsGroup .period-pill-btn').forEach(btn => btn.classList.remove('active'));
+
+        loadPlatformStats();
         loadLeads();
     }
 
@@ -2514,42 +2548,20 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
         const pending = parseInt(stats.pending_leads || 0);
         const approved = parseInt(stats.approved_leads || 0);
 
-        document.getElementById('statTotalLeads').innerText = total.toLocaleString();
-        document.getElementById('statPendingLeads').innerText = pending.toLocaleString();
-        document.getElementById('statApprovedLeads').innerText = approved.toLocaleString();
+        const tabAll = document.getElementById('countTabAll');
+        if (tabAll) tabAll.innerText = `(${total})`;
 
-        document.getElementById('countTabAll').innerText = `(${total})`;
-        document.getElementById('countTabPending').innerText = `(${pending})`;
-        document.getElementById('countTabApproved').innerText = `(${approved})`;
+        const tabPending = document.getElementById('countTabPending');
+        if (tabPending) tabPending.innerText = `(${pending})`;
 
-        document.getElementById('queueTotalPill').innerText = `${totalCount} leads`;
-        document.getElementById('actionReadyCount').innerText = `${pending} pending`;
+        const tabApproved = document.getElementById('countTabApproved');
+        if (tabApproved) tabApproved.innerText = `(${approved})`;
 
-        // Update Date Badges & Captions on Metric Cards
-        let dateLabel = 'All Time';
-        if (currentDateFilter === 'today') dateLabel = 'Today';
-        else if (currentDateFilter === 'yesterday') dateLabel = 'Yesterday';
-        else if (currentDateFilter === 'this_week') dateLabel = 'This Week';
-        else if (currentDateFilter === 'custom') {
-            if (currentStartDate && currentEndDate) dateLabel = `${currentStartDate} to ${currentEndDate}`;
-            else if (currentStartDate) dateLabel = `From ${currentStartDate}`;
-            else if (currentEndDate) dateLabel = `Until ${currentEndDate}`;
-            else dateLabel = 'Custom Range';
-        }
+        const qTotal = document.getElementById('queueTotalPill');
+        if (qTotal) qTotal.innerText = `${totalCount} leads`;
 
-        const bTotal = document.getElementById('dateBadgeTotal');
-        const bAppr = document.getElementById('dateBadgeApproved');
-        const bPend = document.getElementById('dateBadgePending');
-        if (bTotal) bTotal.innerText = dateLabel;
-        if (bAppr) bAppr.innerText = dateLabel;
-        if (bPend) bPend.innerText = dateLabel;
-
-        const cTotal = document.getElementById('statTotalCaption');
-        const cAppr = document.getElementById('statApprovedCaption');
-        const cPend = document.getElementById('statPendingCaption');
-        if (cTotal) cTotal.innerText = `Synced leads for ${dateLabel.toLowerCase()}`;
-        if (cAppr) cAppr.innerText = `Approved for ${dateLabel.toLowerCase()} (distribute = 1)`;
-        if (cPend) cPend.innerText = `Pending review for ${dateLabel.toLowerCase()} (distribute = 0)`;
+        const aReady = document.getElementById('actionReadyCount');
+        if (aReady) aReady.innerText = `${pending} pending`;
     }
 
     function renderTeamCards(teams, unassignedStats) {
@@ -3280,6 +3292,5 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
         }, 3500);
     }
 </script>
-
 
 <!-- accha jodi gemini api error dey or jodi limit sesh hoy or gemini api koro karone kaj  na kore tahole ki all tabs theke correct data chole asbe? -->
