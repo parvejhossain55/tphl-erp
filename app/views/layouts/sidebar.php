@@ -654,14 +654,14 @@
 
                 $upcomingCount = getFollowUpCount($userId, 'upcoming');
                 ?>
-                <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22, 9, 7, 33, 34, 35])): ?>
+                <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22, 9, 7, 33, 34, 35]) || in_array($_SESSION['user']['secondary_role_id'] ?? 0, [1, 3, 15, 22, 9, 7, 33, 34, 35])): ?>
 
                     <!--Sales CATEGORY -->
                     <li class="sidebar__menu-category">
                         <span class="category-name">Sales & Business</span>
                     </li>
 
-                    <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 9, 33, 34, 35])): ?>
+                    <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 9, 33, 34, 35]) || in_array($_SESSION['user']['secondary_role_id'] ?? 0, [1, 3, 9, 33, 34, 35])): ?>
                         <?php if (($_SESSION['user']['role_id'] ?? 0) != 9): ?>
                             <!-- sales Dashboard -->
                             <li class="slide ">
@@ -704,12 +704,12 @@
                         <?php endif; ?>
 
                         <?php if (class_exists('SalesPerformanceController') && SalesPerformanceController::canAccess()): ?>
-                            <!-- Sales Performance (Management / Chief Executive) -->
+                            <!-- Sales Performance (Management / Chief Executive / Sales Team Head) -->
                             <li class="slide <?= isActive('sales-performance', $current_route) ?>">
                                 <a href="<?= $base_url ?>/sales-performance"
                                     class="sidebar__menu-item <?= isActive('sales-performance', $current_route) ?>">
                                     <div class="side-menu__icon"><i class="fa-solid fa-ranking-star"></i></div>
-                                    <span class="sidebar__menu-label">Sales Intiligance</span>
+                                    <span class="sidebar__menu-label">Sales Intelligence</span>
                                 </a>
                             </li>
                         <?php endif; ?>

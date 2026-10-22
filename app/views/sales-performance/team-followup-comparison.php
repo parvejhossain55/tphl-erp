@@ -939,7 +939,7 @@ $baseUrl = $GLOBALS['base_url'];
                 </a>
                 <a href="<?= $baseUrl ?>/sales-performance" 
                    class="btn btn-outline-primary btn-sm" style="border-radius:8px; font-weight:600;">
-                    <i class="fa-solid fa-ranking-star me-1"></i> Sales Intiligance
+                    <i class="fa-solid fa-ranking-star me-1"></i> Sales Intelligence
                 </a>
             </div>
         </div>
