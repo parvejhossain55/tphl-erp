@@ -504,7 +504,17 @@ class FundRequisitionController extends Controller {
             $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
         }
 
+        // Management / Operation Head approval breakdown (who approved how much)
+        require_once __DIR__ . '/../../models/FundRequisitionApprovalLog.php';
+        $mgmtApprovals = [];
+        try {
+            $mgmtApprovals = \FundRequisitionApprovalLog::getManagementApprovals($this->db, $id, $req);
+        } catch (\Throwable $t) {
+            error_log("FR approval log read error: " . $t->getMessage());
+        }
+
         $this->view('phase2/fund_requisition/show', [
+            'mgmtApprovals'           => $mgmtApprovals,
             'current_route'           => 'fund-requisitions',
             'page_title'              => 'Requisition Details — REQ-' . $id,
             'req'                     => $req,
@@ -1101,6 +1111,14 @@ class FundRequisitionController extends Controller {
             // No change to approved_amount
         }
 
+        // Preserve any pre-existing (legacy) approval in the approval log before overwriting approved_by
+        require_once __DIR__ . '/../../models/FundRequisitionApprovalLog.php';
+        try {
+            \FundRequisitionApprovalLog::backfillIfMissing($this->db, $frData);
+        } catch (\Throwable $t) {
+            error_log("FR approval log backfill error: " . $t->getMessage());
+        }
+
         $stmt = $this->db->prepare("
             UPDATE fund_requisitions 
             SET status = ?, approved_by = ?, approval_note = ?, approved_at = CURRENT_TIMESTAMP, approved_amount = ?
@@ -1109,6 +1127,18 @@ class FundRequisitionController extends Controller {
         $stmt->bind_param("sisdi", $status, $approved_by, $approval_note, $cumulative_approved_amount, $id);
 
         if ($stmt->execute()) {
+            // Record who approved how much (supports multiple partial approvals)
+            try {
+                if ($status === 'rejected') {
+                    \FundRequisitionApprovalLog::log($this->db, $id, 'rejected', 0, (float)($frData['approved_amount'] ?? 0), $approved_by, $approval_note);
+                } elseif ($posted_amount > 0) {
+                    $logAction = ($cumulative_approved_amount + 0.01 >= $effectiveMax) ? 'approved' : 'partially_approved';
+                    \FundRequisitionApprovalLog::log($this->db, $id, $logAction, $posted_amount, $cumulative_approved_amount, $approved_by, $approval_note);
+                }
+            } catch (\Throwable $t) {
+                error_log("FR approval log error: " . $t->getMessage());
+            }
+
             $this->syncApprovalRequest($id);
 
             // ====== AUTO POSTING JOURNAL ENTRY (Batch 2/3) ======
