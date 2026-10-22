@@ -683,12 +683,12 @@ function getStatusBadge($status)
 
     <!-- Dynamic Statistics Cards -->
     <?php if ($viewType === 'cashin'): ?>
-        <!-- Cash In Statistics -->
+        <!-- Cash In Statistics: Row 1 - Overview & Inflow Sources -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
             <div class="card__wrapper h-100 dashboard-card">
                 <div class="d-flex align-items-center gap-2 h-100">
                     <div class="card__icon icon-primary">
-                        <span><i class="fa-light fa-money-bill-wave"></i></span>
+                        <span><i class="fa-light fa-users"></i></span>
                     </div>
                     <div class="card__title-wrap flex-grow-1 overflow-hidden">
                         <h6 class="card__sub-title mb-2 text-muted">Client Payments</h6>
@@ -702,16 +702,124 @@ function getStatusBadge($status)
             <div class="card__wrapper h-100 dashboard-card">
                 <div class="d-flex align-items-center gap-2 h-100">
                     <div class="card__icon icon-purple">
-                        <span><i class="fa-light fa-building"></i></span>
+                        <span><i class="fa-light fa-user-tie"></i></span>
                     </div>
                     <div class="card__title-wrap flex-grow-1 overflow-hidden">
-                        <h6 class="card__sub-title mb-2 text-muted">Total Cash In</h6>
-                        <h4 class="card__title mb-0 text-break">TK.<?= number_format($overviewStats['total_cashin'] ?? 0, 2) ?></h4>
+                        <h6 class="card__sub-title mb-2 text-muted">Management Cash In</h6>
+                        <h4 class="card__title mb-0 text-break">TK.<?= number_format($statistics['management_cashin'] ?? 0, 2) ?></h4>
                     </div>
                 </div>
             </div>
         </div>
 
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+            <div class="card__wrapper h-100 dashboard-card" style="border-left: 4px solid #10b981;">
+                <div class="d-flex align-items-center gap-2 h-100">
+                    <div class="card__icon icon-success">
+                        <span><i class="fa-light fa-building"></i></span>
+                    </div>
+                    <div class="card__title-wrap flex-grow-1 overflow-hidden">
+                        <h6 class="card__sub-title mb-2 text-muted">Total Cash In (All)</h6>
+                        <h4 class="card__title mb-0 text-break text-success">TK.<?= number_format(($statistics['lead_payments'] ?? 0) + ($statistics['management_cashin'] ?? 0), 2) ?></h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+            <div class="card__wrapper h-100 dashboard-card" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 1px solid #bfdbfe;">
+                <div class="d-flex flex-column justify-content-center h-100 p-1">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <span class="fw-bold text-primary" style="font-size: 12.5px;"><i class="fa-solid fa-chart-pie me-1"></i> Collection Statement</span>
+                        <span class="badge bg-primary text-white" style="font-size: 9px;">New</span>
+                    </div>
+                    <p class="mb-2 text-muted" style="font-size: 10.5px; line-height: 1.3;">Filter by month/date, bank, cash, payment method & type.</p>
+                    <a href="<?= $GLOBALS['base_url'] ?>/collection-statement" class="btn btn-xs btn-primary w-100 text-center py-1 fw-bold" style="font-size: 11px;">
+                        <i class="fa-solid fa-file-invoice-dollar me-1"></i> Open Statement
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cash In: Row 2 - Payment Methods (Bank, Cash, Cheque, Online) -->
+        <div class="col-12 mb-2">
+            <div class="d-flex align-items-center justify-content-between">
+                <span class="text-uppercase fw-bold text-muted" style="font-size: 11px; letter-spacing: 0.5px;">
+                    <i class="fa-solid fa-credit-card me-1"></i> Collection by Payment Method
+                </span>
+                <span class="small text-muted" style="font-size: 11px;">Click any card to filter statement</span>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+            <a href="<?= $GLOBALS['base_url'] ?>/collection-statement?payment_method=bank" class="text-decoration-none">
+                <div class="card__wrapper h-100 dashboard-card">
+                    <div class="d-flex align-items-center gap-2 h-100">
+                        <div class="card__icon icon-teal">
+                            <span><i class="fa-light fa-building-columns"></i></span>
+                        </div>
+                        <div class="card__title-wrap flex-grow-1 overflow-hidden">
+                            <h6 class="card__sub-title mb-2 text-muted">Bank Transfers</h6>
+                            <h4 class="card__title mb-0 text-break text-dark">TK.<?= number_format($statistics['by_payment_method']['bank'] ?? 0, 2) ?></h4>
+                            <span class="small text-primary" style="font-size: 10px;">View Bank Statement &rarr;</span>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+            <a href="<?= $GLOBALS['base_url'] ?>/collection-statement?payment_method=cash" class="text-decoration-none">
+                <div class="card__wrapper h-100 dashboard-card">
+                    <div class="d-flex align-items-center gap-2 h-100">
+                        <div class="card__icon icon-success">
+                            <span><i class="fa-light fa-money-bill"></i></span>
+                        </div>
+                        <div class="card__title-wrap flex-grow-1 overflow-hidden">
+                            <h6 class="card__sub-title mb-2 text-muted">Cash in Hand</h6>
+                            <h4 class="card__title mb-0 text-break text-dark">TK.<?= number_format($statistics['by_payment_method']['cash'] ?? 0, 2) ?></h4>
+                            <span class="small text-success" style="font-size: 10px;">View Cash Statement &rarr;</span>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+            <a href="<?= $GLOBALS['base_url'] ?>/collection-statement?payment_method=cheque" class="text-decoration-none">
+                <div class="card__wrapper h-100 dashboard-card">
+                    <div class="d-flex align-items-center gap-2 h-100">
+                        <div class="card__icon icon-orange">
+                            <span><i class="fa-light fa-money-check"></i></span>
+                        </div>
+                        <div class="card__title-wrap flex-grow-1 overflow-hidden">
+                            <h6 class="card__sub-title mb-2 text-muted">Cheque Payments</h6>
+                            <h4 class="card__title mb-0 text-break text-dark">TK.<?= number_format($statistics['by_payment_method']['cheque'] ?? 0, 2) ?></h4>
+                            <span class="small text-warning" style="font-size: 10px;">View Cheques &rarr;</span>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+            <a href="<?= $GLOBALS['base_url'] ?>/collection-statement?payment_method=online" class="text-decoration-none">
+                <div class="card__wrapper h-100 dashboard-card">
+                    <div class="d-flex align-items-center gap-2 h-100">
+                        <div class="card__icon icon-purple">
+                            <span><i class="fa-light fa-mobile"></i></span>
+                        </div>
+                        <div class="card__title-wrap flex-grow-1 overflow-hidden">
+                            <h6 class="card__sub-title mb-2 text-muted">Online / Transfer</h6>
+                            <h4 class="card__title mb-0 text-break text-dark">TK.<?= number_format($statistics['by_payment_method']['online'] ?? 0, 2) ?></h4>
+                            <span class="small text-purple" style="font-size: 10px;">View Online Statement &rarr;</span>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Cash In: Row 3 - Payment Types Breakdown -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
             <div class="card__wrapper h-100 dashboard-card">
                 <div class="d-flex align-items-center gap-2 h-100">
@@ -757,6 +865,21 @@ function getStatusBadge($status)
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
             <div class="card__wrapper h-100 dashboard-card">
                 <div class="d-flex align-items-center gap-2 h-100">
+                    <div class="card__icon icon-purple">
+                        <span><i class="fa-light fa-store"></i></span>
+                    </div>
+                    <div class="card__title-wrap flex-grow-1 overflow-hidden">
+                        <h6 class="card__sub-title mb-2 text-muted">Shop Service Charge</h6>
+                        <h4 class="card__title mb-0 text-break">TK.<?= number_format($statistics['shop_service_charges'] ?? 0, 2) ?></h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cash In: Row 4 - Summary Status -->
+        <div class="col-xl-4 col-lg-4 col-md-6 col-sm-6 mb-3">
+            <div class="card__wrapper h-100 dashboard-card">
+                <div class="d-flex align-items-center gap-2 h-100">
                     <div class="card__icon icon-success">
                         <span><i class="fa-light fa-chart-line"></i></span>
                     </div>
@@ -768,7 +891,7 @@ function getStatusBadge($status)
             </div>
         </div>
 
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+        <div class="col-xl-4 col-lg-4 col-md-6 col-sm-6 mb-3">
             <div class="card__wrapper h-100 dashboard-card">
                 <div class="d-flex align-items-center gap-2 h-100">
                     <div class="card__icon icon-warning">
@@ -782,7 +905,7 @@ function getStatusBadge($status)
             </div>
         </div>
 
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+        <div class="col-xl-4 col-lg-4 col-md-12 col-sm-12 mb-3">
             <div class="card__wrapper h-100 dashboard-card">
                 <div class="d-flex align-items-center gap-2 h-100">
                     <div class="card__icon icon-info">
@@ -882,62 +1005,6 @@ function getStatusBadge($status)
             </div>
         </div>
 
-        <!-- <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
-            <div class="card__wrapper h-100 dashboard-card">
-                <div class="d-flex align-items-center gap-2 h-100">
-                    <div class="card__icon icon-success">
-                        <span><i class="fa-light fa-money-bill"></i></span>
-                    </div>
-                    <div class="card__title-wrap flex-grow-1 overflow-hidden">
-                        <h6 class="card__sub-title mb-2 text-muted">Cash Payments</h6>
-                        <h4 class="card__title mb-0 text-break">TK.<?= number_format($statistics['by_payment_method']['cash'] ?? 0, 2) ?></h4>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
-            <div class="card__wrapper h-100 dashboard-card">
-                <div class="d-flex align-items-center gap-2 h-100">
-                    <div class="card__icon icon-purple">
-                        <span><i class="fa-light fa-building-columns"></i></span>
-                    </div>
-                    <div class="card__title-wrap flex-grow-1 overflow-hidden">
-                        <h6 class="card__sub-title mb-2 text-muted">Bank Transfers</h6>
-                        <h4 class="card__title mb-0 text-break">TK.<?= number_format($statistics['by_payment_method']['bank'] ?? 0, 2) ?></h4>
-                    </div>
-                </div>
-            </div>
-        </div> -->
-
-        <!-- <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
-            <div class="card__wrapper h-100 dashboard-card">
-                <div class="d-flex align-items-center gap-2 h-100">
-                    <div class="card__icon icon-teal">
-                        <span><i class="fa-light fa-money-check"></i></span>
-                    </div>
-                    <div class="card__title-wrap flex-grow-1 overflow-hidden">
-                        <h6 class="card__sub-title mb-2 text-muted">Cheque Payments</h6>
-                        <h4 class="card__title mb-0 text-break">TK.<?= number_format($statistics['by_payment_method']['cheque'] ?? 0, 2) ?></h4>
-                    </div>
-                </div>
-            </div>
-        </div> -->
-
-        <!-- <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
-            <div class="card__wrapper h-100 dashboard-card">
-                <div class="d-flex align-items-center gap-2 h-100">
-                    <div class="card__icon icon-indigo">
-                        <span><i class="fa-light fa-mobile"></i></span>
-                    </div>
-                    <div class="card__title-wrap flex-grow-1 overflow-hidden">
-                        <h6 class="card__sub-title mb-2 text-muted">Online Payments</h6>
-                        <h4 class="card__title mb-0 text-break">TK.<?= number_format($statistics['by_payment_method']['online'] ?? 0, 2) ?></h4>
-                    </div>
-                </div>
-            </div>
-        </div> -->
-
     <?php endif; ?>
 
     <!-- Recent Transactions / Cashout Requests -->
@@ -954,51 +1021,123 @@ function getStatusBadge($status)
                     </h5>
                     <small class="text-muted"><?= $periodText ?></small>
                 </div>
-                <a href="<?= $GLOBALS['base_url'] ?>/<?= $viewType === 'cashin' ? 'clients-cash-in' : 'cashout-requests' ?>"
-                    class="btn btn-sm btn-primary" id="viewAllLink">
-                    View All <i class="fa-light fa-arrow-right ms-2"></i>
-                </a>
+                <div class="d-flex align-items-center gap-2">
+                    <?php if ($viewType === 'cashin'): ?>
+                        <a href="<?= $GLOBALS['base_url'] ?>/collection-statement"
+                            class="btn btn-sm btn-outline-primary fw-semibold">
+                            <i class="fa-solid fa-file-invoice-dollar me-1"></i> Full Collection Statement
+                        </a>
+                    <?php endif; ?>
+                    <a href="<?= $GLOBALS['base_url'] ?>/<?= $viewType === 'cashin' ? 'clients-cash-in' : 'cashout-requests' ?>"
+                        class="btn btn-sm btn-primary" id="viewAllLink">
+                        View All <i class="fa-light fa-arrow-right ms-2"></i>
+                    </a>
+                </div>
             </div>
 
             <div class="table__wrapper table-responsive">
                 <?php if ($viewType === 'cashin'): ?>
                     <!-- Cash In Transactions Table -->
-                    <table class="table mb-20">
+                    <table class="table mb-20 align-middle">
                         <thead>
                             <tr class="table__title">
-                                <th>Date</th>
-                                <th>Description</th>
-                                <th>Amount</th>
-                                <th>Payment Method</th>
-                                <th>Transaction ID</th>
-                                <th>Status</th>
+                                <th style="width: 95px;">Date</th>
+                                <th>Client / Depositor</th>
+                                <th>Project & Unit</th>
+                                <th>Payment Type</th>
+                                <th>Method & Bank</th>
+                                <th>Receipt / Ref</th>
+                                <th class="text-center">Status</th>
+                                <th class="text-end">Amount</th>
                             </tr>
                         </thead>
                         <tbody id="transactionsTableBody">
                             <?php if ($hasTransactions): ?>
-                                <?php foreach ($recentTransactions as $transaction): ?>
+                                <?php foreach ($recentTransactions as $transaction): 
+                                    $isMgmt = ($transaction['source'] ?? '') === 'management';
+                                    $pType = $transaction['type'] ?? 'others';
+                                    
+                                    $typeBadgeClass = 'bg-secondary-subtle text-secondary-emphasis';
+                                    $typeTitle = ucwords(str_replace('_', ' ', $pType));
+                                    if ($pType === 'booking_money') {
+                                        $typeBadgeClass = 'bg-primary-subtle text-primary-emphasis';
+                                        $typeTitle = 'Booking Money';
+                                    } elseif ($pType === 'registration') {
+                                        $typeBadgeClass = 'bg-info-subtle text-info-emphasis';
+                                        $typeTitle = 'Registration';
+                                    } elseif ($pType === 'land_share') {
+                                        $typeBadgeClass = 'bg-success-subtle text-success-emphasis';
+                                        $typeTitle = 'Land Share';
+                                    } elseif ($pType === 'emi' || $pType === 'emi_due_settlement') {
+                                        $typeBadgeClass = 'bg-warning-subtle text-warning-emphasis';
+                                        $typeTitle = 'EMI Payment';
+                                    } elseif ($pType === 'development_charge') {
+                                        $typeBadgeClass = 'bg-warning-subtle text-danger-emphasis';
+                                        $typeTitle = 'Dev Charge';
+                                    } elseif ($pType === 'shop_service_charge') {
+                                        $typeBadgeClass = 'bg-purple-subtle text-purple-emphasis';
+                                        $typeTitle = 'Shop Service';
+                                    } elseif ($pType === 'management') {
+                                        $typeBadgeClass = 'bg-dark-subtle text-dark-emphasis';
+                                        $typeTitle = 'Management';
+                                    }
+                                ?>
                                     <tr>
-                                        <td><?= date('d M, Y', strtotime($transaction['date'])) ?></td>
-                                        <td><?= htmlspecialchars($transaction['description'] ?? 'N/A') ?></td>
-                                        <td><strong>TK.<?= number_format($transaction['amount'], 2) ?></strong></td>
                                         <td>
-                                            <span class="bd-badge bg-light text-dark">
-                                                <?= ucfirst($transaction['payment_method'] ?? 'N/A') ?>
+                                            <span class="fw-semibold"><?= date('d M, Y', strtotime($transaction['date'])) ?></span>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <strong class="text-dark"><?= htmlspecialchars($transaction['client_name'] ?? 'N/A') ?></strong>
+                                                <?php if ($isMgmt): ?>
+                                                    <span class="badge bg-purple text-white ms-1" style="font-size: 9px;">Mgmt</span>
+                                                <?php endif; ?>
+                                            </div>
+                                            <?php if (!empty($transaction['client_phone'])): ?>
+                                                <small class="text-muted"><i class="fa-light fa-phone"></i> <?= htmlspecialchars($transaction['client_phone']) ?></small>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <div class="fw-semibold text-secondary"><?= htmlspecialchars($transaction['project_name'] ?? 'N/A') ?></div>
+                                            <?php if (!empty($transaction['flat_name'])): ?>
+                                                <small class="text-muted">Unit: <?= htmlspecialchars($transaction['flat_name']) ?></small>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <span class="badge <?= $typeBadgeClass ?> rounded-pill px-2 py-1" style="font-size: 10.5px;">
+                                                <?= htmlspecialchars($typeTitle) ?>
                                             </span>
                                         </td>
                                         <td>
-                                            <code style="font-size: 11px; background: #f8f9fa; padding: 4px 8px; border-radius: 4px;">
+                                            <div class="fw-semibold text-dark text-uppercase" style="font-size: 11px;">
+                                                <i class="fa-regular <?= ($transaction['payment_method'] ?? '') === 'bank' ? 'fa-building-columns text-primary' : (($transaction['payment_method'] ?? '') === 'cash' ? 'fa-money-bill text-success' : 'fa-credit-card text-warning') ?> me-1"></i>
+                                                <?= ucfirst($transaction['payment_method'] ?? 'N/A') ?>
+                                            </div>
+                                            <?php if (!empty($transaction['bank_name']) && strtolower($transaction['bank_name']) !== 'cash'): ?>
+                                                <small class="text-muted d-block" style="font-size: 10px;">
+                                                    <?= htmlspecialchars($transaction['bank_name']) ?>
+                                                    <?= !empty($transaction['cheque_no']) ? ' | Chq: ' . htmlspecialchars($transaction['cheque_no']) : '' ?>
+                                                </small>
+                                            <?php elseif (!empty($transaction['cheque_no'])): ?>
+                                                <small class="text-muted d-block" style="font-size: 10px;">Chq #<?= htmlspecialchars($transaction['cheque_no']) ?></small>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <code style="font-size: 11px; background: #f1f5f9; color: #334155; padding: 3px 6px; border-radius: 4px;">
                                                 <?= htmlspecialchars($transaction['transaction_ref'] ?? 'N/A') ?>
                                             </code>
                                         </td>
-                                        <td>
-                                            <span class="bd-badge bg-success">Paid</span>
+                                        <td class="text-center">
+                                            <span class="badge bg-success-subtle text-success-emphasis rounded-pill px-2 py-1">Verified</span>
+                                        </td>
+                                        <td class="text-end">
+                                            <strong class="text-success" style="font-size: 13px;">TK.<?= number_format($transaction['amount'], 2) ?></strong>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="6" class="text-center py-4">
+                                    <td colspan="8" class="text-center py-4">
                                         <div class="text-muted">
                                             <i class="fa-light fa-inbox fa-2x mb-3"></i><br>
                                             No transactions found for <?= $periodText ?>

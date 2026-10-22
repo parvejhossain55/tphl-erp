@@ -621,7 +621,7 @@ class LeadSynchronizer
     /**
      * Match project based on keywords in campaign_name (and optional secondary form/adset name)
      */
-    private function matchProject(string $campaignName, string $secondaryName = ''): array
+    public function matchProject(string $campaignName, string $secondaryName = ''): array
     {
         $projects = $this->config['projects'] ?? [];
 
@@ -675,7 +675,7 @@ class LeadSynchronizer
      * Resolve next Team ID using Fair Round-Robin rotation.
      * Looks up the last assigned team in DB to continue the rotation seamlessly.
      */
-    private function resolveNextTeamId(?int $projectId, array $teams, ?PDO $pdo): ?int
+    public function resolveNextTeamId(?int $projectId, array $teams, ?PDO $pdo = null): ?int
     {
         if (empty($teams)) {
             return null;
@@ -765,7 +765,7 @@ class LeadSynchronizer
     /**
      * Insert lead record into database
      */
-    private function insertLeadIntoDatabase(array $lead, PDO $pdo): int
+    public function insertLeadIntoDatabase(array $lead, PDO $pdo): int
     {
         $defaults = $this->config['lead_defaults'] ?? [];
 
@@ -788,6 +788,7 @@ class LeadSynchronizer
             `team_id`,
             `distribute`,
             `is_automated`,
+            `is_repibee`,
             `uploaded_from`,
             `status`,
             `last_lead_action`,
@@ -817,6 +818,7 @@ class LeadSynchronizer
             :team_id,
             :distribute,
             :is_automated,
+            :is_repibee,
             :uploaded_from,
             :status,
             :last_lead_action,
@@ -849,6 +851,7 @@ class LeadSynchronizer
             ':team_id'                                  => $lead['team_id'] ?? null,
             ':distribute'                               => 0, // Explicitly 0 = false (Pending approval)
             ':is_automated'                             => 1, // Flagged as automated sync lead
+            ':is_repibee'                              => !empty($lead['is_repibee']) ? 1 : 0,
             ':uploaded_from'                            => $defaults['uploaded_from'] ?? 'From Campaign',
             ':status'                                   => $defaults['status'] ?? 'active',
             ':last_lead_action'                         => $defaults['last_lead_action'] ?? 'new',
@@ -1071,6 +1074,15 @@ class LeadSynchronizer
             $apprAtCols = $pdo->query("SHOW COLUMNS FROM `leads` LIKE 'approved_at'")->fetchAll();
             if (empty($apprAtCols)) {
                 $pdo->exec("ALTER TABLE `leads` ADD COLUMN `approved_at` DATETIME NULL");
+            }
+
+            // 4. Ensure is_repibee column exists
+            $repibeeCols = $pdo->query("SHOW COLUMNS FROM `leads` LIKE 'is_repibee'")->fetchAll();
+            if (empty($repibeeCols)) {
+                $pdo->exec("ALTER TABLE `leads` ADD COLUMN `is_repibee` TINYINT(1) NOT NULL DEFAULT 0 AFTER `is_automated`");
+                try {
+                    $pdo->exec("CREATE INDEX `idx_leads_is_repibee` ON `leads` (`is_repibee`)");
+                } catch (Throwable $t) {}
             }
         } catch (Throwable $e) {
             $this->log("ensureSchema warning: " . $e->getMessage());

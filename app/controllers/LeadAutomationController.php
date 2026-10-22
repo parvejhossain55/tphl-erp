@@ -60,6 +60,15 @@ class LeadAutomationController extends Controller
             if (empty($apprAtCols)) {
                 $pdo->exec("ALTER TABLE `leads` ADD COLUMN `approved_at` DATETIME NULL");
             }
+
+            // 4. Check & add is_repibee column if missing
+            $repibeeCols = $pdo->query("SHOW COLUMNS FROM `leads` LIKE 'is_repibee'")->fetchAll();
+            if (empty($repibeeCols)) {
+                $pdo->exec("ALTER TABLE `leads` ADD COLUMN `is_repibee` TINYINT(1) NOT NULL DEFAULT 0 AFTER `is_automated`");
+                try {
+                    $pdo->exec("CREATE INDEX `idx_leads_is_repibee` ON `leads` (`is_repibee`)");
+                } catch (Throwable $t) {}
+            }
         } catch (Throwable $e) {
             error_log("LeadAutomation ensureSchema error: " . $e->getMessage());
         }
@@ -343,6 +352,8 @@ class LeadAutomationController extends Controller
                         l.project_id, 
                         l.team_id, 
                         l.distribute, 
+                        l.is_automated,
+                        l.is_repibee,
                         l.created_at,
                         t.name as team_name,
                         p.name as project_name
@@ -1192,5 +1203,181 @@ class LeadAutomationController extends Controller
                 'active_teams_count'    => count($rawTeams),
             ]
         ];
+    }
+
+    /**
+     * API Endpoint: Repibee WhatsApp Lead Ingestion Webhook / Receiver
+     * Accepts POST requests from Repibee (single lead or batch array)
+     */
+    public function repibeeWebhook()
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        // 1. Verify HTTP Method
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode([
+                'status'  => 'error',
+                'message' => 'Method Not Allowed. Only POST requests are accepted.'
+            ]);
+            exit;
+        }
+
+        // 2. Authentication: Validate API Key
+        $repibeeConfig = $this->automationConfig['repibee'] ?? [];
+        $expectedKey = $repibeeConfig['api_key'] ?? 'tphl_repibee_secret_key_2026_x89f2a';
+        
+        $authHeader = $_SERVER['HTTP_X_API_KEY'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? $_REQUEST['api_key'] ?? '';
+        if (str_starts_with($authHeader, 'Bearer ')) {
+            $authHeader = substr($authHeader, 7);
+        }
+        $providedKey = trim($authHeader);
+
+        if (empty($providedKey) || !hash_equals($expectedKey, $providedKey)) {
+            http_response_code(401);
+            echo json_encode([
+                'status'  => 'error',
+                'message' => 'Unauthorized access. Invalid or missing X-API-KEY header.'
+            ]);
+            exit;
+        }
+
+        // 3. Parse JSON Body
+        $rawBody = file_get_contents('php://input');
+        $payload = json_decode($rawBody, true);
+        if (empty($payload) && !empty($_POST)) {
+            $payload = $_POST;
+        }
+
+        if (empty($payload) || !is_array($payload)) {
+            http_response_code(400);
+            echo json_encode([
+                'status'  => 'error',
+                'message' => 'Invalid or empty JSON payload.'
+            ]);
+            exit;
+        }
+
+        // 4. Normalize to array of leads (supports single lead object or { leads: [...] })
+        $leadsToProcess = [];
+        if (isset($payload['leads']) && is_array($payload['leads'])) {
+            $leadsToProcess = $payload['leads'];
+        } else {
+            $leadsToProcess = [$payload];
+        }
+
+        $synchronizer = new LeadSynchronizer($this->automationConfig, $this->db);
+        $pdo = $synchronizer->getDb();
+
+        $insertedCount = 0;
+        $skippedDuplicateCount = 0;
+        $errorsCount = 0;
+        $processedResults = [];
+
+        foreach ($leadsToProcess as $idx => $item) {
+            if (!is_array($item)) continue;
+
+            $fullName = trim((string)($item['full_name'] ?? $item['name'] ?? $item['client_name'] ?? ''));
+            $phone = trim((string)($item['phone_number'] ?? $item['phone'] ?? $item['mobile'] ?? ''));
+            $cleanPhone = preg_replace('/^p:/i', '', $phone);
+            $cleanPhone = preg_replace('/[\s\-\(\)]/', '', $cleanPhone);
+
+            if (empty($cleanPhone) && empty($fullName)) {
+                $errorsCount++;
+                $processedResults[] = [
+                    'index'   => $idx,
+                    'status'  => 'error',
+                    'message' => 'Missing phone_number and full_name.'
+                ];
+                continue;
+            }
+
+            $campaign = trim((string)($item['campaign_name'] ?? $item['campaign'] ?? 'WhatsApp Lead'));
+            $platform = trim((string)($item['platform'] ?? 'whatsapp'));
+
+            $leadData = [
+                'campaign_name'                            => $campaign,
+                'platform'                                 => $platform,
+                'which_apartment_size_are_you_interested_in' => $item['which_apartment_size_are_you_interested_in'] ?? null,
+                'which_floor_are_you_for_shop'             => $item['which_floor_are_you_for_shop'] ?? null,
+                'when_are_you_planning_to_buy'             => $item['when_are_you_planning_to_buy'] ?? null,
+                'would_you_like_to_schedule_a_site_visit' => $item['would_you_like_to_schedule_a_site_visit'] ?? null,
+                'when_is_the_best_time_to_contact_you'     => $item['when_is_the_best_time_to_contact_you'] ?? null,
+                'full_name'                                => $fullName,
+                'job_title'                                => $item['job_title'] ?? null,
+                'company_name'                             => $item['company_name'] ?? null,
+                'phone_number'                             => $cleanPhone,
+                'email'                                    => !empty($item['email']) ? trim($item['email']) : null,
+                'city'                                     => $item['city'] ?? null,
+                'country'                                  => $item['country'] ?? 'Bangladesh',
+                'is_repibee'                               => 1,
+            ];
+
+            // Duplicate Check
+            $prefixedPhone = 'p:' . $cleanPhone;
+            $dupCheckStmt = $pdo->prepare("
+                SELECT id FROM `leads` 
+                WHERE (phone_number = ? OR phone_number = ? OR phone = ?) 
+                  AND (campaign_name = ? OR campaign_name IS NULL OR campaign_name = '')
+                  AND deleted_at IS NULL 
+                LIMIT 1
+            ");
+            $dupCheckStmt->execute([$cleanPhone, $prefixedPhone, $cleanPhone, $campaign]);
+            $existingId = $dupCheckStmt->fetchColumn();
+
+            if ($existingId) {
+                $skippedDuplicateCount++;
+                $processedResults[] = [
+                    'index'        => $idx,
+                    'status'       => 'skipped',
+                    'message'      => 'Duplicate lead already exists in system.',
+                    'phone_number' => $cleanPhone,
+                    'lead_id'      => (int)$existingId
+                ];
+                continue;
+            }
+
+            // Project & Team assignment via project mapper
+            $projectMatch = $synchronizer->matchProject($campaign, '');
+            $projectId = $projectMatch['project_id'] ?? null;
+            $teamId = $synchronizer->resolveNextTeamId($projectId, $projectMatch['teams'] ?? [], $pdo);
+
+            $leadData['project_id'] = $projectId;
+            $leadData['team_id'] = $teamId;
+
+            try {
+                // Insert into DB using LeadSynchronizer
+                $insertId = $synchronizer->insertLeadIntoDatabase($leadData, $pdo);
+                $insertedCount++;
+                $processedResults[] = [
+                    'index'            => $idx,
+                    'status'           => 'success',
+                    'lead_id'          => $insertId,
+                    'full_name'        => $fullName,
+                    'phone_number'     => $cleanPhone,
+                    'assigned_team_id' => $leadData['team_id'],
+                    'project_id'       => $leadData['project_id'],
+                    'is_repibee'       => 1
+                ];
+            } catch (Throwable $e) {
+                $errorsCount++;
+                $processedResults[] = [
+                    'index'   => $idx,
+                    'status'  => 'error',
+                    'message' => 'DB Insert Error: ' . $e->getMessage()
+                ];
+            }
+        }
+
+        http_response_code($insertedCount > 0 ? 200 : ($errorsCount > 0 ? 400 : 200));
+        echo json_encode([
+            'status'            => $insertedCount > 0 ? 'success' : ($skippedDuplicateCount > 0 ? 'skipped' : 'error'),
+            'message'           => sprintf("Processed %d lead(s): %d inserted, %d duplicates skipped, %d errors.", count($leadsToProcess), $insertedCount, $skippedDuplicateCount, $errorsCount),
+            'inserted_count'    => $insertedCount,
+            'skipped_duplicate' => $skippedDuplicateCount,
+            'errors_count'      => $errorsCount,
+            'results'           => count($processedResults) === 1 ? $processedResults[0] : $processedResults
+        ]);
+        exit;
     }
 }

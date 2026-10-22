@@ -1,6 +1,13 @@
 <?php
 
-$current_server = 3;
+$isLocalhost = (
+    (isset($_SERVER['HTTP_HOST']) && (
+        strpos($_SERVER['HTTP_HOST'], 'localhost') !== false || 
+        strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false
+    ))
+);
+$current_server = $isLocalhost ? 1 : 3;
+
 // Local Development Server
 if ($current_server == 1) {
     return [
@@ -122,4 +129,5 @@ if ($current_server == 3) {
     ];
 
 }
+
 

@@ -2647,12 +2647,30 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
                         <div class="fw-semibold text-dark text-truncate" style="max-width: 200px;" title="${escapeHtml(lead.campaign_name || '')}">
                             ${escapeHtml(lead.campaign_name || 'Direct Campaign')}
                         </div>
-                        <div class="text-muted small">Meta Instant Form</div>
+                        <div class="text-muted small">${parseInt(lead.is_repibee) === 1 ? '<span class="text-success"><i class="fa-brands fa-whatsapp me-1"></i>Repibee WA</span>' : escapeHtml(lead.platform || 'Meta Instant Form')}</div>
                     </td>
                     <td>
-                        <span class="badge bg-light text-dark border">
-                            <i class="fa-brands fa-facebook text-primary me-1"></i> Facebook
-                        </span>
+                        ${parseInt(lead.is_repibee) === 1 ? `
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                <i class="fa-brands fa-whatsapp me-1"></i> Repibee WA
+                            </span>
+                        ` : (String(lead.platform || '').toLowerCase().includes('whatsapp') || String(lead.platform || '').toLowerCase() === 'wa') ? `
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                <i class="fa-brands fa-whatsapp me-1"></i> WhatsApp
+                            </span>
+                        ` : (String(lead.platform || '').toLowerCase().includes('inbox')) ? `
+                            <span class="badge bg-info-subtle text-info border border-info-subtle">
+                                <i class="fa-brands fa-facebook-messenger me-1"></i> Meta Inbox
+                            </span>
+                        ` : (String(lead.platform || '').toLowerCase().includes('google')) ? `
+                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle">
+                                <i class="fa-solid fa-file-lines me-1"></i> Google Form
+                            </span>
+                        ` : `
+                            <span class="badge bg-light text-dark border">
+                                <i class="fa-brands fa-facebook text-primary me-1"></i> Facebook
+                            </span>
+                        `}
                     </td>
                     <td>
                         <span class="small text-muted">${formatDate(lead.created_at)}</span>
