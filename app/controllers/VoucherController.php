@@ -110,6 +110,18 @@ class VoucherController extends Controller
                     'reference_number' => 'FR-' . str_pad($id, 4, '0', STR_PAD_LEFT),
                     'description' => $expenseDetails
                 ];
+
+                // Approval summary (shows partial approvals clearly on approval / payment voucher)
+                $frReqAmt = (float)($req['amount'] ?? 0);
+                $frAppAmt = (float)($req['approved_amount'] ?? 0);
+                $voucherData['approval_summary'] = [
+                    'requested'   => $frReqAmt,
+                    'qc_approved' => (float)($req['qc_approved_amount'] ?? 0),
+                    'approved'    => $frAppAmt,
+                    'remaining'   => max(0, $frReqAmt - $frAppAmt),
+                    'paid'        => (float)($req['paid_amount'] ?? 0),
+                    'is_partial'  => ($req['status'] === 'partially_approved') || ($frAppAmt > 0 && $frAppAmt + 0.01 < $frReqAmt),
+                ];
                 break;
 
             case 'contractor_bill':
@@ -941,10 +953,53 @@ class VoucherController extends Controller
         } elseif ($isOver1Lac && !in_array(strtolower($appReq['status'] ?? ($row['status'] ?? '')), ['rejected', 'cancelled'])) {
             $audit['approvers'][] = [
                 'stage' => 'Admin & Operation Head',
-                'name'  => '⏳ Pending Verification',
+                'name'  => 'Pending Verification',
                 'date'  => 'Awaiting Op Head decision',
                 'note'  => 'Mandatory step for requests > ৳1,00,000'
             ];
+        }
+
+        // Fund Requisition: per-approval Management / Op Head breakdown (supports multiple partial approvals)
+        $frMgmtHandled = false;
+        if ($sourceTable === 'fund_requisitions' && !empty($id)) {
+            require_once __DIR__ . '/../models/FundRequisitionApprovalLog.php';
+            $frApprovals = [];
+            try {
+                $frApprovals = \FundRequisitionApprovalLog::getManagementApprovals($this->db, (int)$id, !empty($row['id']) ? $row : null);
+            } catch (\Throwable $t) {
+                error_log('Voucher FR approval log error: ' . $t->getMessage());
+            }
+            if (!empty($frApprovals)) {
+                $frMgmtHandled = true;
+                foreach ($frApprovals as $fa) {
+                    $isPartialStep = (($fa['action'] ?? '') === 'partially_approved');
+                    $faName = ($fa['name'] ?? 'Management')
+                        . (!empty($fa['emp_code']) ? ' [' . $fa['emp_code'] . ']' : '')
+                        . (!empty($fa['designation']) ? ' (' . $fa['designation'] . ')' : '');
+                    $faStage = (($fa['stage_label'] ?? 'Management') === 'Management') ? 'Management / Authority' : $fa['stage_label'];
+                    $audit['approvers'][] = [
+                        'stage'        => $faStage . ($isPartialStep ? ' (Partial)' : ''),
+                        'name'         => $faName,
+                        'date'         => !empty($fa['created_at']) ? date('d M, Y h:i A', strtotime($fa['created_at'])) : null,
+                        'note'         => $fa['note'] ?? null,
+                        'amount'       => (float)($fa['amount'] ?? 0),
+                        'amount_label' => $isPartialStep ? 'Partially Approved' : 'Approved',
+                        'allow_multi'  => true,
+                    ];
+                }
+                $frRemaining = max(0, (float)($row['amount'] ?? 0) - (float)($row['approved_amount'] ?? 0));
+                if (strtolower($row['status'] ?? '') === 'partially_approved' && $frRemaining > 0) {
+                    $audit['approvers'][] = [
+                        'stage'        => 'Management / Authority',
+                        'name'         => '⏳ Pending (Remaining Balance)',
+                        'date'         => 'Awaiting decision',
+                        'note'         => null,
+                        'amount'       => $frRemaining,
+                        'amount_label' => 'Remaining',
+                        'allow_multi'  => true,
+                    ];
+                }
+            }
         }
 
         // General / Final Management Approval
@@ -960,7 +1015,9 @@ class VoucherController extends Controller
         $mgmtStage = 'Management / Authority';
         $mgmtNote = !empty($appReq['approval_note']) ? trim($appReq['approval_note']) : (!empty($row['mgmt_note']) ? trim($row['mgmt_note']) : null);
         
-        if (!empty($mgmtId) || (!empty($appReq['app_name']) && $isRowOrReqApproved)) {
+        if ($frMgmtHandled) {
+            // Already rendered per-approval entries above
+        } elseif (!empty($mgmtId) || (!empty($appReq['app_name']) && $isRowOrReqApproved)) {
             if (!empty($appReq['app_name']) && empty($mgmtId)) {
                 $mgmtName = $appReq['app_name'] . (!empty($appReq['app_des']) ? ' (' . $appReq['app_des'] . ')' : '');
                 $addApprover($mgmtStage, null, $mgmtDate, $mgmtNote);
@@ -1002,6 +1059,10 @@ class VoucherController extends Controller
         $deduped = [];
         $seen = [];
         foreach ($audit['approvers'] as $appr) {
+            if (!empty($appr['allow_multi'])) {
+                $deduped[] = $appr;
+                continue;
+            }
             $norm = trim(preg_replace('/\s*\[\d+\].*$/', '', $appr['name']));
             if (!empty($seen[$norm])) {
                 continue;

@@ -675,7 +675,19 @@ class ApprovalRequest extends Model
         if ($sourceTable === 'cashout_requests') {
             $this->db->query("UPDATE cashout_requests SET status = 'approved', approved_by = {$userId}, approved_at = NOW(), approval_note = '{$note}' WHERE id = {$sourceId}");
         } elseif ($sourceTable === 'fund_requisitions') {
+            require_once __DIR__ . '/FundRequisitionApprovalLog.php';
+            $frPrev = $this->db->query("SELECT * FROM fund_requisitions WHERE id = {$sourceId} LIMIT 1")->fetch_assoc();
+            if ($frPrev) {
+                try { \FundRequisitionApprovalLog::backfillIfMissing($this->db, $frPrev); } catch (\Throwable $t) {}
+            }
             $this->db->query("UPDATE fund_requisitions SET status = 'approved', approved_by = {$userId}, approved_at = NOW(), approved_amount = amount, approval_note = '{$note}' WHERE id = {$sourceId}");
+            if ($frPrev) {
+                $frAmt = (float)($frPrev['amount'] ?? 0);
+                $frPosted = max(0, $frAmt - (float)($frPrev['approved_amount'] ?? 0));
+                if ($frPosted > 0) {
+                    try { \FundRequisitionApprovalLog::log($this->db, $sourceId, 'approved', $frPosted, $frAmt, $userId, stripslashes($note)); } catch (\Throwable $t) {}
+                }
+            }
         } elseif ($sourceTable === 'land_fund_requisitions') {
             $this->db->query("UPDATE land_fund_requisitions SET mgmt_status = 'Approved', mgmt_by = {$userId}, mgmt_approved_at = NOW(), mgmt_note = '{$note}' WHERE id = {$sourceId}");
         } elseif ($sourceTable === 'project_extra_assets') {
@@ -1225,6 +1237,11 @@ class ApprovalRequest extends Model
                 $frStatus = 'paid';
             }
             
+            require_once __DIR__ . '/FundRequisitionApprovalLog.php';
+            if ($frData) {
+                try { \FundRequisitionApprovalLog::backfillIfMissing($this->db, $frData); } catch (\Throwable $t) {}
+            }
+
             $stmtFr = $this->db->prepare(
                 "UPDATE fund_requisitions 
                  SET status = ?, 
@@ -1239,6 +1256,22 @@ class ApprovalRequest extends Model
                 $stmtFr->bind_param('sidsi', $frStatus, $approvedBy, $frAppAmt, $approvalNote, $sourceId);
                 $stmtFr->execute();
                 $stmtFr->close();
+            }
+
+            // Record who approved how much
+            try {
+                if ($status === 'approved') {
+                    $frAfter = $this->db->query("SELECT approved_amount FROM fund_requisitions WHERE id = {$sourceId} LIMIT 1")->fetch_assoc();
+                    $frNewCum = (float)($frAfter['approved_amount'] ?? 0);
+                    $frPosted = max(0, $frNewCum - (float)($frData['approved_amount'] ?? 0));
+                    if ($frPosted > 0) {
+                        \FundRequisitionApprovalLog::log($this->db, $sourceId, 'approved', $frPosted, $frNewCum, (int)$approvedBy, $approvalNote);
+                    }
+                } else {
+                    \FundRequisitionApprovalLog::log($this->db, $sourceId, 'rejected', 0, (float)($frData['approved_amount'] ?? 0), (int)$approvedBy, $approvalNote);
+                }
+            } catch (\Throwable $t) {
+                error_log("FR approval log error (central): " . $t->getMessage());
             }
 
             if ($status === 'approved') {
@@ -2695,6 +2728,24 @@ class ApprovalRequest extends Model
                             $payoutStatus = 'Pending Accounts Payout';
                             $pendingStageLabel = 'Pending Accounts Payout';
                             $pendingForText = 'Accounts & Finance';
+                            if ($frRow['status'] === 'partially_approved') {
+                                $pendingStageLabel = 'Partially Approved (Mgmt)';
+                                $pendingForText = 'Accounts & Finance (Approved Part) / Management (Remaining)';
+                            }
+                        }
+
+                        // Management / Operation Head approval breakdown (who approved how much)
+                        if (in_array($frRow['status'], ['approved', 'partially_approved', 'paid', 'partially_paid'], true)) {
+                            require_once __DIR__ . '/FundRequisitionApprovalLog.php';
+                            try {
+                                $row['mgmt_approvals'] = \FundRequisitionApprovalLog::getManagementApprovals($this->db, (int)$sourceId);
+                            } catch (\Throwable $t) {
+                                $row['mgmt_approvals'] = [];
+                            }
+                            $row['fr_status'] = $frRow['status'];
+                            $row['fr_requested_amount'] = (float)$frRow['amount'];
+                            $row['fr_mgmt_approved_total'] = (float)($frRow['approved_amount'] ?? 0);
+                            $row['fr_mgmt_remaining'] = max(0, (float)$frRow['amount'] - (float)($frRow['approved_amount'] ?? 0));
                         }
                     }
                 }

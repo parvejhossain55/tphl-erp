@@ -584,6 +584,23 @@
             <strong>Amount in Words:</strong> <span style="font-weight: 600; text-transform: capitalize; color: #111;"><?= htmlspecialchars($displayWords) ?></span>
         </div>
 
+        <?php if (!empty($voucher['approval_summary']) && (float)($voucher['approval_summary']['approved'] ?? 0) > 0): $aps = $voucher['approval_summary']; ?>
+            <div class="amount-in-words" style="display:flex; flex-wrap:wrap; gap:14px; align-items:center; <?= !empty($aps['is_partial']) ? 'border-color:#0891b2; background:#ecfeff;' : '' ?>">
+                <strong><?= !empty($aps['is_partial']) ? 'Partial Approval Summary:' : 'Approval Summary:' ?></strong>
+                <span>Requested: <strong>&#2547; <?= number_format((float)$aps['requested'], 2) ?></strong></span>
+                <?php if ((float)($aps['qc_approved'] ?? 0) > 0): ?>
+                    <span>QC Approved: <strong>&#2547; <?= number_format((float)$aps['qc_approved'], 2) ?></strong></span>
+                <?php endif; ?>
+                <span style="color:#047857;">Management Approved: <strong>&#2547; <?= number_format((float)$aps['approved'], 2) ?></strong></span>
+                <?php if ((float)($aps['remaining'] ?? 0) > 0): ?>
+                    <span style="color:#b91c1c;">Remaining (Unapproved): <strong>&#2547; <?= number_format((float)$aps['remaining'], 2) ?></strong></span>
+                <?php endif; ?>
+                <?php if ((float)($aps['paid'] ?? 0) > 0): ?>
+                    <span>Paid: <strong>&#2547; <?= number_format((float)$aps['paid'], 2) ?></strong></span>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+
         <div class="attachments-box">
             <span style="font-weight: bold; color: #222;">Attachments Verified:</span>
             <span><input type="checkbox" checked onclick="return false;" style="vertical-align: middle; margin-right: 4px;"> Bill / Invoice Attached</span>
@@ -635,6 +652,12 @@
                                         <div class="audit-user-name"><?= htmlspecialchars($appr['name']) ?></div>
                                         <?php if (!empty($appr['date'])): ?>
                                             <div class="audit-date"><i class="fa-regular fa-clock"></i> <?= htmlspecialchars($appr['date']) ?></div>
+                                        <?php endif; ?>
+                                        <?php if (isset($appr['amount']) && $appr['amount'] !== null): ?>
+                                            <?php $amtColor = (($appr['amount_label'] ?? '') === 'Remaining') ? '#b91c1c' : ((($appr['amount_label'] ?? '') === 'Partially Approved') ? '#0e7490' : '#047857'); ?>
+                                            <div style="font-size: 10px; font-weight: 700; color: <?= $amtColor ?>; margin-top: 2px;">
+                                                <?= htmlspecialchars($appr['amount_label'] ?? 'Approved') ?>: &#2547; <?= number_format((float)$appr['amount'], 2) ?>
+                                            </div>
                                         <?php endif; ?>
                                         <?php if (!empty($appr['note']) && strpos(strtolower($appr['note']), 'auto-') === false): ?>
                                             <div class="audit-note-box">

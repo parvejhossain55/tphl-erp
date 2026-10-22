@@ -373,7 +373,7 @@
                                             <?php if (strtolower($req['op_head_status'] ?? '') === 'approved' || !empty($req['op_head_by'])): ?>
                                                 <div class="mt-2 pt-1 border-top border-success-subtle text-start">
                                                     <span class="badge bg-success-subtle text-success border border-success-subtle extra-small fw-semibold d-inline-block mb-1" style="font-size: 9.5px; padding: 2px 6px;">
-                                                        <i class="fa-solid fa-circle-check me-1"></i>Last Approved: Operation Head
+                                                        <i class="fa-solid fa-circle-check me-1"></i><?= !empty($req['mgmt_approvals']) ? 'Approved: Admin & Operation Head' : 'Last Approved: Operation Head' ?>
                                                     </span>
                                                     <div class="extra-small text-dark fw-bold" style="font-size: 11px;">
                                                         <i class="fa-solid fa-user-check text-success me-1"></i><?= htmlspecialchars(!empty($req['op_head_name']) ? $req['op_head_name'] : 'Admin & Operation Head') ?>
@@ -388,6 +388,7 @@
                                                     <?php endif; ?>
                                                 </div>
                                             <?php endif; ?>
+                                            <?php include __DIR__ . '/fr_mgmt_approvals_block.php'; ?>
                                         <?php elseif (in_array($req['status'], ['approved', 'partially_approved', 'partially_paid'])): ?>
                                             <span
                                                 class="badge <?= $req['status'] === 'approved' ? 'bg-success' : 'bg-info' ?> text-white rounded-pill px-3 py-1 extra-small d-block mb-1">
@@ -415,6 +416,14 @@
                                                     <?= date('d M, Y h:i A', strtotime($req['approved_at'])) ?>
                                                 </span>
                                             <?php endif; ?>
+
+                                            <?php if (strtolower($req['op_head_status'] ?? '') === 'approved' && !empty($req['op_head_by']) && (int)$req['op_head_by'] !== (int)($req['approved_by'] ?? 0)): ?>
+                                                <div class="extra-small text-muted text-start mt-1" style="font-size: 10px;">
+                                                    <i class="fa-solid fa-circle-check text-success me-1"></i>Op Head: <strong class="text-dark"><?= htmlspecialchars(!empty($req['op_head_name']) ? $req['op_head_name'] : 'Admin & Operation Head') ?></strong>
+                                                    <?php if (!empty($req['op_head_at'])): ?> · <?= date('d M, Y h:i A', strtotime($req['op_head_at'])) ?><?php endif; ?>
+                                                </div>
+                                            <?php endif; ?>
+                                            <?php if (count($req['mgmt_approvals'] ?? []) > 1) { include __DIR__ . '/fr_mgmt_approvals_block.php'; } ?>
 
                                             <?php if ($isPendingAccountsHead): ?>
                                                 <div class="mt-2 pt-2 border-top border-warning-subtle text-start">

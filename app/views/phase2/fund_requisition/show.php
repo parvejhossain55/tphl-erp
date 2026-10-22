@@ -33,7 +33,14 @@ $statusColors = [
     'rejected'     => 'bg-danger text-white'
 ];
 $statusClass = $statusColors[$req['status']] ?? 'bg-secondary text-white';
-$statusLabel = ($req['status'] === 'pending_dept') ? 'Pending Dept Head' : (($req['status'] === 'pending') ? 'Pending Management' : ucfirst($req['status']));
+$statusLabel = ($req['status'] === 'pending_dept') ? 'Pending Dept Head' : (($req['status'] === 'pending') ? 'Pending Management' : ucwords(str_replace('_', ' ', $req['status'])));
+
+// Management / Operation Head approval breakdown (who approved how much)
+$mgmtApprovals = (isset($mgmtApprovals) && is_array($mgmtApprovals)) ? $mgmtApprovals : [];
+$mgmtApprovedTotal = (float)($req['approved_amount'] ?? 0);
+$mgmtRemaining = max(0, (float)$req['amount'] - $mgmtApprovedTotal);
+$opHeadStatusLc = strtolower($ahInfo['op_head_status'] ?? 'pending');
+$showOpHeadStep = $isOver1Lac || $opHeadStatusLc === 'approved' || $opHeadStatusLc === 'rejected';
 
 $settleBadgeMap = [
     'pending'         => ['bg-warning-transparent text-warning border border-warning', 'Pending Settlement'],
@@ -552,6 +559,82 @@ $spentPercent = ($baseAmount > 0) ? min(100, round(((float)($totalSpent ?? 0) / 
                             <?php endif; ?>
                         </div>
 
+                        <?php if ($showOpHeadStep): ?>
+                        <!-- Step 2.75: Admin & Operation Head Approval (mandatory for > ৳1,00,000) -->
+                        <div class="d-flex gap-3 mb-4 position-relative align-items-start">
+                            <?php if ($opHeadStatusLc === 'approved'): ?>
+                                <div class="avatar avatar-sm bg-success text-white rounded-circle flex-shrink-0 z-1 fs-12">
+                                    <i class="fa-solid fa-check"></i>
+                                </div>
+                                <div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <h6 class="fw-bold fs-13 mb-0 text-dark">Admin &amp; Operation Head Approved</h6>
+                                        <span class="badge bg-success-transparent text-success fs-10">Approved</span>
+                                    </div>
+                                    <p class="fs-12 text-muted mb-0 mt-1">
+                                        Approved by <strong><?php echo htmlspecialchars($ahInfo['op_head_name'] ?? 'Admin & Operation Head'); ?></strong>
+                                        <?php if (!empty($ahInfo['op_head_code'])): ?>[<?php echo htmlspecialchars($ahInfo['op_head_code']); ?>]<?php endif; ?>
+                                        <?php if (!empty($ahInfo['op_head_designation'])): ?>
+                                            <em>(<?php echo htmlspecialchars($ahInfo['op_head_designation']); ?>)</em>
+                                        <?php endif; ?>
+                                        <?php echo !empty($ahInfo['op_head_at']) ? 'on ' . date('d M Y, h:i A', strtotime($ahInfo['op_head_at'])) : ''; ?>
+                                    </p>
+                                    <?php if ($isOver1Lac): ?>
+                                        <div class="mt-1"><span class="badge bg-info-transparent text-info fs-10">Forwarded to Management (Request &gt; &#2547;1,00,000)</span></div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($ahInfo['op_head_note'])): ?>
+                                        <div class="bg-light p-2 rounded fs-12 mt-2 text-dark border">
+                                            <i class="fa-solid fa-quote-left text-muted me-1 fs-11"></i><?php echo htmlspecialchars($ahInfo['op_head_note']); ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            <?php elseif ($opHeadStatusLc === 'rejected'): ?>
+                                <div class="avatar avatar-sm bg-danger text-white rounded-circle flex-shrink-0 z-1 fs-12">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold fs-13 mb-0 text-danger">Admin &amp; Operation Head Rejected</h6>
+                                    <p class="fs-12 text-muted mb-0 mt-1">
+                                        Rejected by <strong><?php echo htmlspecialchars($ahInfo['op_head_name'] ?? 'Admin & Operation Head'); ?></strong>
+                                        <?php echo !empty($ahInfo['op_head_at']) ? 'on ' . date('d M Y, h:i A', strtotime($ahInfo['op_head_at'])) : ''; ?>
+                                    </p>
+                                    <?php if (!empty($ahInfo['op_head_note'])): ?>
+                                        <p class="fs-12 text-muted mb-0 mt-1 bg-light p-2 rounded border"><?php echo htmlspecialchars($ahInfo['op_head_note']); ?></p>
+                                    <?php endif; ?>
+                                </div>
+                            <?php elseif (in_array($req['status'], ['pending_dept', 'pending_qc'])): ?>
+                                <div class="avatar avatar-sm bg-light text-muted rounded-circle flex-shrink-0 z-1 fs-12 border">
+                                    <i class="fa-solid fa-hourglass-start"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold fs-13 mb-0 text-muted">Pending Admin &amp; Operation Head Approval</h6>
+                                    <p class="fs-12 text-muted mb-0 mt-1">Will be enabled after QC &amp; Internal Audit Head approval. Mandatory for requests above &#2547;1,00,000.</p>
+                                </div>
+                            <?php elseif ($req['status'] === 'rejected'): ?>
+                                <div class="avatar avatar-sm bg-light text-muted rounded-circle flex-shrink-0 z-1 fs-12 border">
+                                    <i class="fa-solid fa-ban"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold fs-13 mb-0 text-muted">Admin &amp; Operation Head Approval</h6>
+                                    <p class="fs-12 text-muted mb-0 mt-1">Not reached (request rejected).</p>
+                                </div>
+                            <?php else: ?>
+                                <div class="avatar avatar-sm bg-warning text-dark rounded-circle flex-shrink-0 z-1 fs-12">
+                                    <i class="fa-solid fa-clock"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold fs-13 mb-0 text-dark">Pending Admin &amp; Operation Head Approval</h6>
+                                    <p class="fs-12 text-muted mb-0 mt-1">Awaiting approval from Admin &amp; Operation Head (Role 20) &mdash; mandatory before Management sign-off for requests above &#2547;1,00,000.</p>
+                                    <?php if ($canOpHeadApprove && $req['status'] === 'pending'): ?>
+                                        <button class="btn btn-sm btn-primary mt-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#approveModal">
+                                            <i class="fa-solid fa-stamp me-1"></i> Approve as Operation Head (Role 20)
+                                        </button>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                        <?php endif; ?>
+
                         <!-- Step 3: Management Approval -->
                         <div class="d-flex gap-3 mb-4 position-relative align-items-start">
                             <?php if (in_array($req['status'], ['approved', 'paid'])): ?>
@@ -573,6 +656,22 @@ $spentPercent = ($baseAmount > 0) ? min(100, round(((float)($totalSpent ?? 0) / 
                                     <?php if (!empty($req['approval_note'])): ?>
                                         <div class="bg-light p-2 rounded fs-12 mt-2 text-dark border">
                                             <i class="fa-solid fa-quote-left text-muted me-1 fs-11"></i><?php echo htmlspecialchars($req['approval_note']); ?>
+                                        </div>
+                                    <?php endif; ?>
+                                    <?php if (count($mgmtApprovals) > 1): ?>
+                                        <div class="mt-2 border rounded p-2 bg-white">
+                                            <div class="fs-11 text-uppercase fw-semibold text-muted mb-1"><i class="fa-solid fa-layer-group me-1"></i>Approval Breakdown</div>
+                                            <?php foreach ($mgmtApprovals as $ma): ?>
+                                                <div class="d-flex justify-content-between align-items-start gap-2 fs-12 py-1 border-bottom border-light">
+                                                    <div>
+                                                        <strong><?php echo htmlspecialchars($ma['name']); ?></strong>
+                                                        <?php if (!empty($ma['emp_code'])): ?><span class="text-muted">[<?php echo htmlspecialchars($ma['emp_code']); ?>]</span><?php endif; ?>
+                                                        <span class="badge bg-light text-secondary border fs-10"><?php echo htmlspecialchars($ma['stage_label']); ?></span>
+                                                        <?php if (!empty($ma['created_at'])): ?><div class="text-muted fs-11"><?php echo date('d M Y, h:i A', strtotime($ma['created_at'])); ?></div><?php endif; ?>
+                                                    </div>
+                                                    <span class="fw-bold text-success text-nowrap">&#2547; <?php echo number_format($ma['amount'], 2); ?></span>
+                                                </div>
+                                            <?php endforeach; ?>
                                         </div>
                                     <?php endif; ?>
                                     <?php 
@@ -615,31 +714,77 @@ $spentPercent = ($baseAmount > 0) ? min(100, round(((float)($totalSpent ?? 0) / 
                                     <?php endif; ?>
                                 </div>
                             <?php elseif (in_array($req['status'], ['pending', 'partially_approved', 'partially_paid'])): ?>
-                                <div class="avatar avatar-sm bg-warning text-dark rounded-circle flex-shrink-0 z-1 fs-12">
-                                    <i class="fa-solid fa-clock"></i>
+                                <?php $isMgmtPartial = ($req['status'] !== 'pending'); ?>
+                                <div class="avatar avatar-sm <?php echo $isMgmtPartial ? 'bg-info text-white' : 'bg-warning text-dark'; ?> rounded-circle flex-shrink-0 z-1 fs-12">
+                                    <i class="fa-solid <?php echo $isMgmtPartial ? 'fa-circle-half-stroke' : 'fa-clock'; ?>"></i>
                                 </div>
-                                <div>
-                                    <h6 class="fw-bold fs-13 mb-0 text-dark">
-                                        <?php echo $req['status'] === 'pending' ? 'Pending Management / Operation Head Approval' : 'Partially Approved'; ?>
-                                    </h6>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <h6 class="fw-bold fs-13 mb-0 text-dark">
+                                            <?php
+                                            if ($isMgmtPartial) {
+                                                echo 'Management Partially Approved';
+                                            } elseif ($isOver1Lac) {
+                                                echo 'Pending Management Approval';
+                                            } else {
+                                                echo 'Pending Management / Operation Head Approval';
+                                            }
+                                            ?>
+                                        </h6>
+                                        <?php if ($isMgmtPartial): ?><span class="badge bg-info-transparent text-info fs-10">Partial</span><?php endif; ?>
+                                    </div>
                                     <p class="fs-12 text-muted mb-0 mt-1">
-                                        <?php echo $req['status'] === 'pending' ? 'Awaiting approval from Management (Any Amount) or Operation Head (Up to ৳1,00,000)' : 'Awaiting approval for the remaining balance'; ?>
+                                        <?php
+                                        if ($isMgmtPartial) {
+                                            echo 'Awaiting Management approval for the remaining balance.';
+                                        } elseif ($isOver1Lac && !$isOpHeadApproved) {
+                                            echo 'Will be enabled after Admin & Operation Head approval (request above ৳1,00,000).';
+                                        } elseif ($isOver1Lac) {
+                                            echo 'Admin & Operation Head approved. Awaiting final Management sign-off.';
+                                        } else {
+                                            echo 'Awaiting approval from Management (Any Amount) or Operation Head (Up to ৳1,00,000)';
+                                        }
+                                        ?>
                                     </p>
-                                    
-                                    <?php if ($req['status'] !== 'pending'): ?>
-                                        <div class="bg-light p-2 rounded fs-12 mt-2 text-dark border">
-                                            <strong>Partially Approved So Far:</strong> &#2547; <?php echo number_format($req['approved_amount'] ?? 0, 2); ?>
+
+                                    <?php if ($isMgmtPartial): ?>
+                                        <?php if (!empty($mgmtApprovals)): ?>
+                                            <div class="mt-2 border rounded p-2 bg-white">
+                                                <div class="fs-11 text-uppercase fw-semibold text-muted mb-1"><i class="fa-solid fa-user-shield me-1"></i>Approved By</div>
+                                                <?php foreach ($mgmtApprovals as $ma): ?>
+                                                    <div class="d-flex justify-content-between align-items-start gap-2 fs-12 py-1 border-bottom border-light">
+                                                        <div>
+                                                            <strong class="text-dark"><?php echo htmlspecialchars($ma['name']); ?></strong>
+                                                            <?php if (!empty($ma['emp_code'])): ?><span class="text-muted">[<?php echo htmlspecialchars($ma['emp_code']); ?>]</span><?php endif; ?>
+                                                            <?php if (!empty($ma['designation'])): ?><em class="text-muted">(<?php echo htmlspecialchars($ma['designation']); ?>)</em><?php endif; ?>
+                                                            <span class="badge bg-light text-secondary border fs-10"><?php echo htmlspecialchars($ma['stage_label']); ?></span>
+                                                            <?php if (!empty($ma['created_at'])): ?><div class="text-muted fs-11"><i class="fa-regular fa-clock me-1"></i><?php echo date('d M Y, h:i A', strtotime($ma['created_at'])); ?></div><?php endif; ?>
+                                                            <?php if (!empty($ma['note'])): ?><div class="fs-11 fst-italic text-secondary">"<?php echo htmlspecialchars($ma['note']); ?>"</div><?php endif; ?>
+                                                        </div>
+                                                        <span class="fw-bold text-info text-nowrap">&#2547; <?php echo number_format($ma['amount'], 2); ?></span>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        <?php else: ?>
+                                            <p class="fs-12 text-muted mb-0 mt-1">
+                                                Partially approved by <strong><?php echo htmlspecialchars($req['approved_by_name'] ?? 'Management'); ?></strong>
+                                                <?php if (!empty($req['approved_by_designation_name'])): ?><em>(<?php echo htmlspecialchars($req['approved_by_designation_name']); ?>)</em><?php endif; ?>
+                                                <?php echo !empty($req['approved_at']) ? 'on ' . date('d M Y, h:i A', strtotime($req['approved_at'])) : ''; ?>
+                                            </p>
+                                        <?php endif; ?>
+                                        <div class="d-flex flex-wrap gap-2 mt-2 fs-12">
+                                            <span class="badge bg-success-transparent text-success border border-success-subtle fs-11">Approved So Far: &#2547; <?php echo number_format($mgmtApprovedTotal, 2); ?></span>
+                                            <span class="badge bg-danger-transparent text-danger border border-danger-subtle fs-11">Remaining: &#2547; <?php echo number_format($mgmtRemaining, 2); ?></span>
+                                            <span class="badge bg-light text-dark border fs-11">Requested: &#2547; <?php echo number_format((float)$req['amount'], 2); ?></span>
                                         </div>
                                     <?php endif; ?>
 
                                     <?php if ($canApprove && ($req['amount'] - ($req['approved_amount'] ?? 0)) > 0): ?>
                                         <?php if ($isOver1Lac && !$isOpHeadApproved && in_array($sessionRoleId, [20, 32])): ?>
-                                            <button class="btn btn-sm btn-primary mt-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#approveModal">
-                                                <i class="fa-solid fa-stamp me-1"></i> Approve as Operation Head (Role 20)
-                                            </button>
+                                            <?php /* Op Head action button is shown in the Admin & Operation Head step above */ ?>
                                         <?php else: ?>
                                             <button class="btn btn-sm btn-primary mt-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#approveModal">
-                                                <i class="fa-solid fa-stamp me-1"></i> Management Approve
+                                                <i class="fa-solid fa-stamp me-1"></i> <?php echo $isMgmtPartial ? 'Approve Remaining Balance' : 'Management Approve'; ?>
                                             </button>
                                         <?php endif; ?>
                                     <?php elseif ($isOver1Lac && !$isOpHeadApproved && in_array($sessionRoleId, [1, 3])): ?>
