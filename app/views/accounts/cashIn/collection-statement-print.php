@@ -492,13 +492,16 @@ $printMode   = $print_mode ?? ($_GET['print_mode'] ?? 'full');
             </span>
             <div style="display: inline-flex; gap: 4px; background: #1e293b; padding: 3px; border-radius: 6px;">
                 <a href="?<?= http_build_query(array_merge($filters, ['print_mode' => 'type_summary'])) ?>" class="btn <?= $printMode === 'type_summary' ? 'btn-primary' : 'btn-secondary' ?>" style="padding: 4px 10px; font-size: 11px;">
-                    <i class="fas fa-chart-pie"></i> Payment Type Summary (1 Page)
+                    <i class="fas fa-chart-pie"></i> Payment Types
+                </a>
+                <a href="?<?= http_build_query(array_merge($filters, ['print_mode' => 'bank_summary'])) ?>" class="btn <?= $printMode === 'bank_summary' ? 'btn-primary' : 'btn-secondary' ?>" style="padding: 4px 10px; font-size: 11px;">
+                    <i class="fas fa-university"></i> Bank Accounts
                 </a>
                 <a href="?<?= http_build_query(array_merge($filters, ['print_mode' => 'full'])) ?>" class="btn <?= $printMode === 'full' ? 'btn-primary' : 'btn-secondary' ?>" style="padding: 4px 10px; font-size: 11px;">
                     <i class="fas fa-file-invoice"></i> Combined Statement
                 </a>
                 <a href="?<?= http_build_query(array_merge($filters, ['print_mode' => 'transactions'])) ?>" class="btn <?= $printMode === 'transactions' ? 'btn-primary' : 'btn-secondary' ?>" style="padding: 4px 10px; font-size: 11px;">
-                    <i class="fas fa-list-ol"></i> Detailed Register Only
+                    <i class="fas fa-list-ol"></i> Detailed Register
                 </a>
             </div>
         </div>
@@ -527,7 +530,7 @@ $printMode   = $print_mode ?? ($_GET['print_mode'] ?? 'full');
             </div>
             <div class="statement-title-badge">
                 <div class="statement-title">Total Collection Statement</div>
-                <div class="statement-bengali">সর্বমোট কালেকশন ও পেমেন্ট বিবরণী</div>
+                <div class="statement-subtitle" style="font-size: 11px; font-weight: 600; color: #475569; margin-top: 2px;">Comprehensive Collection &amp; Inflow Summary Statement</div>
                 <div class="statement-meta">
                     <strong>Period:</strong> <?= htmlspecialchars($activePeriodLabel) ?> (<?= $startDateFormatted ?> to <?= $endDateFormatted ?>)<br>
                     <strong>Printed On:</strong> <?= date('d M Y, h:i A') ?>
@@ -581,10 +584,10 @@ $printMode   = $print_mode ?? ($_GET['print_mode'] ?? 'full');
             </div>
         </div>
 
-        <?php if ($printMode !== 'transactions'): ?>
+        <?php if ($printMode === 'type_summary' || $printMode === 'full'): ?>
         <!-- Payment Type Wise Collection Statement Matrix Table -->
         <div style="margin-top: 14px; margin-bottom: 6px; font-weight: 700; font-size: 11.5px; color: #0f172a; border-bottom: 2px solid #0f172a; padding-bottom: 4px; display: flex; justify-content: space-between; align-items: center;">
-            <span><i class="fas fa-chart-pie"></i> Payment Type Wise Collection Statement (পেমেন্ট হেড ভিত্তিক মোট কালেকশন বিবরণী)</span>
+            <span><i class="fas fa-chart-pie"></i> Payment Type Wise Collection Statement</span>
             <span style="font-size: 9.5px; color: #475569; font-weight: 600;">Booking, Registration, Land Share, EMI, Dev Charge, Shop Service &amp; Management</span>
         </div>
 
@@ -592,7 +595,7 @@ $printMode   = $print_mode ?? ($_GET['print_mode'] ?? 'full');
             <thead>
                 <tr>
                     <th class="text-center" style="width: 32px;">SL</th>
-                    <th>Payment Type / Purpose (কালেকশন খাত)</th>
+                    <th>Payment Type / Purpose</th>
                     <th class="text-center" style="width: 75px;">Trx Count</th>
                     <th class="text-end" style="width: 105px;">Bank Inflow (৳)</th>
                     <th class="text-end" style="width: 105px;">Cash Collection (৳)</th>
@@ -614,7 +617,6 @@ $printMode   = $print_mode ?? ($_GET['print_mode'] ?? 'full');
                     <td class="text-center"><?= $pSl++ ?></td>
                     <td>
                         <strong><?= htmlspecialchars($r['name']) ?></strong>
-                        <span style="font-size: 9px; color: #64748b; margin-left: 5px;">(<?= htmlspecialchars($r['name_bn']) ?>)</span>
                     </td>
                     <td class="text-center font-monospace">
                         <?= number_format($r['count']) ?>
@@ -643,7 +645,7 @@ $printMode   = $print_mode ?? ($_GET['print_mode'] ?? 'full');
             <tfoot>
                 <tr>
                     <td colspan="2" style="text-align: right; text-transform: uppercase;">
-                        GRAND TOTAL COLLECTION (সর্বমোট কালেকশন):
+                        GRAND TOTAL COLLECTION:
                     </td>
                     <td class="text-center font-monospace"><?= number_format($pGrand['count']) ?></td>
                     <td class="text-end font-monospace" style="color: #0369a1;">৳<?= number_format($pGrand['bank_amount'], 2) ?></td>
@@ -655,41 +657,80 @@ $printMode   = $print_mode ?? ($_GET['print_mode'] ?? 'full');
                 </tr>
             </tfoot>
         </table>
+        <?php endif; // End if printMode === 'type_summary' || 'full' ?>
 
-        <!-- Bank Account Wise Breakdown Pill Strip -->
-        <?php if (!empty($bankBreakdown)): 
-            arsort($bankBreakdown);
-            $topBanks = array_slice($bankBreakdown, 0, 8, true);
-            $otherBanksCount = count($bankBreakdown) - count($topBanks);
-            $otherBanksAmt = array_sum(array_slice($bankBreakdown, 8));
+        <?php if ($printMode === 'bank_summary' || $printMode === 'full'): 
+            $bankList = $summary['by_bank'] ?? [];
+            $totalBankInflow = (float)($summary['bank_amount'] ?? 0);
+            $totalBankTrx = 0;
+            if (!empty($bankList)) {
+                foreach ($bankList as $b) {
+                    $totalBankTrx += (int)($b['count'] ?? 0);
+                }
+            }
         ?>
-        <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 4px; padding: 6px 10px; margin-bottom: 14px; font-size: 9.5px;">
-            <div style="font-weight: 700; color: #0f172a; margin-bottom: 4px; display: flex; justify-content: space-between;">
-                <span><i class="fas fa-university"></i> Bank Account Wise Inflow Breakdown (ব্যাংক অ্যাকাউন্ট ভিত্তিক কালেকশন):</span>
-                <span>Total Bank Inflow: <strong>৳<?= number_format($pGrand['bank_amount'], 2) ?></strong></span>
-            </div>
-            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                <?php foreach ($topBanks as $bName => $bAmt): ?>
-                    <span style="background: #fff; border: 1px solid #e2e8f0; padding: 2px 7px; border-radius: 3px;">
-                        <strong style="color: #0369a1;"><?= htmlspecialchars($bName) ?>:</strong>
-                        <span class="font-monospace">৳<?= number_format($bAmt, 2) ?></span>
-                    </span>
-                <?php endforeach; ?>
-                <?php if ($otherBanksCount > 0): ?>
-                    <span style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 2px 7px; border-radius: 3px; color: #475569;">
-                        <em>+<?= $otherBanksCount ?> other banks:</em>
-                        <span class="font-monospace">৳<?= number_format($otherBanksAmt, 2) ?></span>
-                    </span>
-                <?php endif; ?>
-            </div>
+        <!-- Bank Account Wise Inflow Breakdown Table Sheet -->
+        <div style="margin-top: 14px; margin-bottom: 6px; font-weight: 700; font-size: 11.5px; color: #0f172a; border-bottom: 2px solid #0f172a; padding-bottom: 4px; display: flex; justify-content: space-between; align-items: center;">
+            <span><i class="fas fa-university"></i> Bank Account Wise Inflow Breakdown</span>
+            <span style="font-size: 9.5px; color: #475569; font-weight: 600;">Total Recorded Bank Inflow: ৳<?= number_format($totalBankInflow, 2) ?></span>
         </div>
-        <?php endif; ?>
-        <?php endif; // End if printMode !== 'transactions' ?>
 
-        <?php if ($printMode !== 'type_summary'): ?>
+        <table class="type-summary-table">
+            <thead>
+                <tr>
+                    <th class="text-center" style="width: 35px;">SL</th>
+                    <th>Bank Account / Deposited Account</th>
+                    <th class="text-center" style="width: 90px;">Deposit Count</th>
+                    <th class="text-end" style="width: 140px;">Total Inflow (৳)</th>
+                    <th class="text-end" style="width: 80px;">% Share</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php 
+                if (empty($bankList)): ?>
+                    <tr>
+                        <td colspan="5" class="text-center" style="padding: 15px; color: #94a3b8;">No bank deposits recorded for this period.</td>
+                    </tr>
+                <?php else:
+                    $bSl = 1;
+                    foreach ($bankList as $bName => $bData):
+                        $bAmt = (float)($bData['amount'] ?? 0);
+                        $bCount = (int)($bData['count'] ?? 0);
+                        $bPct = ($totalBankInflow > 0) ? round(($bAmt / $totalBankInflow) * 100, 2) : 0;
+                ?>
+                <tr>
+                    <td class="text-center"><?= $bSl++ ?></td>
+                    <td>
+                        <strong><?= htmlspecialchars($bName) ?></strong>
+                    </td>
+                    <td class="text-center font-monospace">
+                        <?= number_format($bCount) ?>
+                    </td>
+                    <td class="text-end font-monospace" style="font-weight: 700; color: #0369a1;">
+                        ৳<?= number_format($bAmt, 2) ?>
+                    </td>
+                    <td class="text-end font-monospace">
+                        <?= number_format($bPct, 1) ?>%
+                    </td>
+                </tr>
+                <?php endforeach; endif; ?>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td class="text-center font-monospace"><?= count($bankList) ?></td>
+                    <td style="text-align: right; text-transform: uppercase;">TOTAL BANK INFLOW:</td>
+                    <td class="text-center font-monospace"><?= number_format($totalBankTrx) ?></td>
+                    <td class="text-end font-monospace" style="color: #0369a1; font-size: 11.5px;">৳<?= number_format($totalBankInflow, 2) ?></td>
+                    <td class="text-end font-monospace">100.0%</td>
+                </tr>
+            </tfoot>
+        </table>
+        <?php endif; // End if printMode === 'bank_summary' || 'full' ?>
+
+        <?php if ($printMode === 'transactions' || $printMode === 'full'): ?>
         <!-- Section Header for Detailed Register -->
         <div style="margin-top: 14px; margin-bottom: 6px; font-weight: 700; font-size: 11.5px; color: #0f172a; border-bottom: 2px solid #0f172a; padding-bottom: 4px; display: flex; justify-content: space-between; align-items: center;">
-            <span><i class="fas fa-list-ol"></i> Detailed Collection Transactions Register (লেনদেন ভিত্তিক বিস্তারিত খাতা)</span>
+            <span><i class="fas fa-list-ol"></i> Detailed Collection Transactions Register</span>
             <span style="font-size: 9.5px; color: #475569; font-weight: 600;">Showing <?= number_format(count($transactions)) ?> Transactions</span>
         </div>
 

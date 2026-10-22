@@ -43,7 +43,7 @@ class CollectionStatementController extends Controller
         $bankNames = $this->fetchDistinctBankNames();
 
         $viewMode = $_GET['view_mode'] ?? 'type_summary';
-        if (!in_array($viewMode, ['type_summary', 'transactions', 'both'], true)) {
+        if (!in_array($viewMode, ['type_summary', 'bank_summary', 'transactions', 'both', 'all'], true)) {
             $viewMode = 'type_summary';
         }
 

@@ -35,6 +35,7 @@ $printUrl = $base_url . '/collection-statement-print?' . http_build_query($query
 $exportUrl = $base_url . '/collection-statement-export?' . http_build_query($queryParams);
 
 $printTypeUrl = $base_url . '/collection-statement-print?' . http_build_query(array_merge($queryParams, ['print_mode' => 'type_summary']));
+$printBankUrl = $base_url . '/collection-statement-print?' . http_build_query(array_merge($queryParams, ['print_mode' => 'bank_summary']));
 $printFullUrl = $base_url . '/collection-statement-print?' . http_build_query(array_merge($queryParams, ['print_mode' => 'full']));
 $printTrxUrl  = $base_url . '/collection-statement-print?' . http_build_query(array_merge($queryParams, ['print_mode' => 'transactions']));
 
@@ -44,24 +45,87 @@ $exportTrxUrl  = $base_url . '/collection-statement-export?' . http_build_query(
 ?>
 
 <style>
-    .header-action-btns {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
-    .header-action-btns .btn,
-    .header-action-btns .dropdown {
-        display: inline-block !important;
-        position: relative !important;
-        white-space: nowrap !important;
-    }
-    .header-action-btns .btn {
+    .cs-header-btns {
         display: inline-flex !important;
         align-items: center !important;
+        gap: 8px !important;
+        flex-wrap: nowrap !important;
+    }
+    .cs-header-btns .cs-dropdown-wrapper,
+    .cs-header-btns .dropdown {
+        display: inline-block !important;
+        position: relative !important;
+        width: auto !important;
+    }
+    /* Total override of main.css .dropdown button which forced 30px circular button */
+    .cs-header-btns .btn,
+    .cs-header-btns .dropdown > button,
+    .cs-header-btns .dropdown > button.btn,
+    .cs-header-btns .cs-dropdown-wrapper > button,
+    .cs-header-btns .cs-dropdown-wrapper > button.btn,
+    .cs-header-btns a.btn {
+        width: auto !important;
+        min-width: unset !important;
+        max-width: unset !important;
+        height: 35px !important;
+        padding: 6px 14px !important;
+        border-radius: 6px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
         gap: 6px !important;
-        height: 33px !important;
-        line-height: 1 !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        white-space: nowrap !important;
+        text-align: center !important;
+        line-height: normal !important;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
+    }
+    .cs-header-btns .btn-outline-primary {
+        background-color: #ffffff !important;
+        border: 1px solid #3b82f6 !important;
+        color: #2563eb !important;
+    }
+    .cs-header-btns .btn-outline-primary:hover,
+    .cs-header-btns .btn-outline-primary:focus,
+    .cs-header-btns .btn-outline-primary.show {
+        background-color: #2563eb !important;
+        color: #ffffff !important;
+        border-color: #2563eb !important;
+    }
+    .cs-header-btns .btn-outline-success {
+        background-color: #ffffff !important;
+        border: 1px solid #10b981 !important;
+        color: #059669 !important;
+    }
+    .cs-header-btns .btn-outline-success:hover,
+    .cs-header-btns .btn-outline-success:focus,
+    .cs-header-btns .btn-outline-success.show {
+        background-color: #059669 !important;
+        color: #ffffff !important;
+        border-color: #059669 !important;
+    }
+    .cs-header-btns .btn-outline-secondary {
+        background-color: #ffffff !important;
+        border: 1px solid #64748b !important;
+        color: #475569 !important;
+    }
+    .cs-header-btns .btn-outline-secondary:hover,
+    .cs-header-btns .btn-outline-secondary:focus {
+        background-color: #475569 !important;
+        color: #ffffff !important;
+        border-color: #475569 !important;
+    }
+    .cs-header-btns .btn i {
+        font-size: 13.5px !important;
+        color: inherit !important;
+        margin-inline-end: 0 !important;
+    }
+    .cs-header-btns .dropdown-toggle::after {
+        display: inline-block !important;
+        margin-left: 6px !important;
+        vertical-align: middle !important;
+        border-top-color: currentColor !important;
     }
 
     .collection-stat-card {
@@ -140,9 +204,9 @@ $exportTrxUrl  = $base_url . '/collection-statement-export?' . http_build_query(
                             Date &amp; month-wise detailed breakdown of collections by bank, cash, cheque, and payment types
                         </p>
                     </div>
-                    <div class="header-action-btns ms-md-auto">
+                    <div class="cs-header-btns ms-md-auto">
                         <!-- Print Dropdown -->
-                        <div class="dropdown">
+                        <div class="dropdown cs-dropdown-wrapper">
                             <button class="btn btn-sm btn-outline-primary dropdown-toggle shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="fa-solid fa-print"></i> <span>Print Statement</span>
                             </button>
@@ -153,6 +217,15 @@ $exportTrxUrl  = $base_url . '/collection-statement-export?' . http_build_query(
                                         <div>
                                             <div class="fw-bold fs-12 text-dark">Payment Type Statement (1 Page)</div>
                                             <small class="text-muted extra-small">Booking, Reg, EMI, Dev Charge Breakdown</small>
+                                        </div>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="<?= $printBankUrl ?>" target="_blank">
+                                        <i class="fa-solid fa-building-columns text-info fs-14"></i>
+                                        <div>
+                                            <div class="fw-bold fs-12 text-dark">Bank Account Sheet</div>
+                                            <small class="text-muted extra-small">Deposit Inflow breakdown by bank</small>
                                         </div>
                                     </a>
                                 </li>
@@ -179,7 +252,7 @@ $exportTrxUrl  = $base_url . '/collection-statement-export?' . http_build_query(
                         </div>
 
                         <!-- Export Dropdown -->
-                        <div class="dropdown">
+                        <div class="dropdown cs-dropdown-wrapper">
                             <button class="btn btn-sm btn-outline-success dropdown-toggle shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="fa-solid fa-file-excel"></i> <span>Export Excel/CSV</span>
                             </button>
@@ -488,36 +561,42 @@ $exportTrxUrl  = $base_url . '/collection-statement-export?' . http_build_query(
                 </span>
                 <div class="btn-group btn-group-sm p-1 bg-light rounded-2 border" role="group">
                     <button type="button" class="btn btn-sm rounded-1 px-3 fw-bold mode-btn <?= $curViewMode === 'type_summary' ? 'btn-primary shadow-sm active' : 'btn-light text-secondary' ?>" id="btn-mode-type" onclick="switchStatementView('type_summary')">
-                        <i class="fa-solid fa-chart-pie me-1"></i> Payment Type Statement (হেড-ভিত্তিক স্টেটমেন্ট)
+                        <i class="fa-solid fa-chart-pie me-1"></i> Payment Types
+                    </button>
+                    <button type="button" class="btn btn-sm rounded-1 px-3 fw-bold mode-btn <?= $curViewMode === 'bank_summary' ? 'btn-primary shadow-sm active' : 'btn-light text-secondary' ?>" id="btn-mode-bank" onclick="switchStatementView('bank_summary')">
+                        <i class="fa-solid fa-building-columns me-1"></i> Bank Accounts
                     </button>
                     <button type="button" class="btn btn-sm rounded-1 px-3 fw-bold mode-btn <?= $curViewMode === 'transactions' ? 'btn-primary shadow-sm active' : 'btn-light text-secondary' ?>" id="btn-mode-trx" onclick="switchStatementView('transactions')">
-                        <i class="fa-solid fa-list-check me-1"></i> Detailed Register (লেনদেন বিবরণী)
+                        <i class="fa-solid fa-list-check me-1"></i> Detailed Register
                     </button>
-                    <button type="button" class="btn btn-sm rounded-1 px-3 fw-bold mode-btn <?= $curViewMode === 'both' ? 'btn-primary shadow-sm active' : 'btn-light text-secondary' ?>" id="btn-mode-both" onclick="switchStatementView('both')">
-                        <i class="fa-solid fa-table-cells-large me-1"></i> Both Together (একত্রে উভয়টি)
+                    <button type="button" class="btn btn-sm rounded-1 px-3 fw-bold mode-btn <?= ($curViewMode === 'both' || $curViewMode === 'all') ? 'btn-primary shadow-sm active' : 'btn-light text-secondary' ?>" id="btn-mode-both" onclick="switchStatementView('both')">
+                        <i class="fa-solid fa-table-cells-large me-1"></i> Full Statement (All)
                     </button>
                 </div>
             </div>
 
             <div class="d-flex align-items-center gap-2">
                 <a href="<?= $printTypeUrl ?>" target="_blank" class="btn btn-sm btn-light border text-dark d-flex align-items-center gap-1 shadow-xs" title="Print 1-Page Summary">
-                    <i class="fa-solid fa-print text-primary"></i> <span class="d-none d-sm-inline">Quick Print (১ পৃষ্ঠা)</span>
+                    <i class="fa-solid fa-print text-primary"></i> <span class="d-none d-sm-inline">Quick Print</span>
                 </a>
                 <a href="<?= $exportTypeUrl ?>" class="btn btn-sm btn-light border text-dark d-flex align-items-center gap-1 shadow-xs" title="Export CSV Summary">
-                    <i class="fa-solid fa-file-csv text-success"></i> <span class="d-none d-sm-inline">Export Matrix</span>
+                    <i class="fa-solid fa-file-csv text-success"></i> <span class="d-none d-sm-inline">Export Types CSV</span>
+                </a>
+                <a href="<?= $exportBankUrl ?>" class="btn btn-sm btn-light border text-dark d-flex align-items-center gap-1 shadow-xs" title="Export Bank Sheet CSV">
+                    <i class="fa-solid fa-file-excel text-info"></i> <span class="d-none d-sm-inline">Export Bank CSV</span>
                 </a>
             </div>
         </div>
     </div>
 
     <!-- Payment Type Wise Collection Statement Matrix -->
-    <div class="col-12 mb-4" id="section-type-summary" style="<?= $curViewMode === 'transactions' ? 'display:none;' : '' ?>">
+    <div class="col-12 mb-4" id="section-type-summary" style="<?= in_array($curViewMode, ['transactions', 'bank_summary'], true) ? 'display:none;' : '' ?>">
         <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
             <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <div>
                     <h5 class="mb-1 fw-bold text-dark d-flex align-items-center gap-2">
                         <span class="badge bg-primary text-white p-2 rounded-2"><i class="fa-solid fa-chart-pie"></i></span>
-                        <span>Payment Type Wise Collection Statement (পেমেন্ট হেড ভিত্তিক মোট কালেকশন বিবরণী)</span>
+                        <span>Payment Type Wise Collection Statement</span>
                     </h5>
                     <div class="text-muted small">
                         Booking Money, Registration, Land Share, EMI Collection, Development Charge, Shop Service Charge &amp; Management Inflows
@@ -538,13 +617,13 @@ $exportTrxUrl  = $base_url . '/collection-statement-export?' . http_build_query(
                     <thead class="table-light">
                         <tr>
                             <th class="text-center" style="width: 45px;">#</th>
-                            <th style="min-width: 220px;">Payment Type / Purpose (কালেকশন খাত)</th>
+                            <th style="min-width: 220px;">Payment Type / Purpose</th>
                             <th class="text-center" style="width: 90px;">Trx Count</th>
-                            <th class="text-end" style="min-width: 130px;">Bank Inflow (ব্যাংক)</th>
-                            <th class="text-end" style="min-width: 130px;">Cash In Hand (ক্যাশ)</th>
-                            <th class="text-end" style="min-width: 120px;">Cheque (চেক)</th>
-                            <th class="text-end" style="min-width: 120px;">Online / MFS (অনলাইন)</th>
-                            <th class="text-end fw-bold" style="min-width: 150px;">Total Collection (মোট টাকা)</th>
+                            <th class="text-end" style="min-width: 130px;">Bank Inflow</th>
+                            <th class="text-end" style="min-width: 130px;">Cash In Hand</th>
+                            <th class="text-end" style="min-width: 120px;">Cheque</th>
+                            <th class="text-end" style="min-width: 120px;">Online / MFS</th>
+                            <th class="text-end fw-bold" style="min-width: 150px;">Total Collection</th>
                             <th style="min-width: 140px;">% Share</th>
                             <th class="text-center" style="width: 90px;">Action</th>
                         </tr>
@@ -580,7 +659,6 @@ $exportTrxUrl  = $base_url . '/collection-statement-export?' . http_build_query(
                                     </div>
                                     <div>
                                         <div class="fw-bold text-dark"><?= htmlspecialchars($r['name']) ?></div>
-                                        <small class="text-muted extra-small" style="font-size: 11px;"><?= htmlspecialchars($r['name_bn']) ?></small>
                                     </div>
                                 </div>
                             </td>
@@ -627,7 +705,7 @@ $exportTrxUrl  = $base_url . '/collection-statement-export?' . http_build_query(
                     <tfoot class="table-light">
                         <tr class="fw-bold bg-light" style="border-top: 2px solid #cbd5e1; font-size: 13.5px;">
                             <td colspan="2" class="text-uppercase text-dark">
-                                <i class="fa-solid fa-calculator text-primary me-1"></i> GRAND TOTAL COLLECTION (সর্বমোট কালেকশন):
+                                <i class="fa-solid fa-calculator text-primary me-1"></i> GRAND TOTAL COLLECTION:
                             </td>
                             <td class="text-center font-monospace">
                                 <span class="badge bg-dark text-white px-2 py-1"><?= number_format($grand['count']) ?></span>
@@ -651,34 +729,159 @@ $exportTrxUrl  = $base_url . '/collection-statement-export?' . http_build_query(
                     </tfoot>
                 </table>
             </div>
+        </div>
+    </div>
 
-            <!-- Bank Breakdown Footer inside Card -->
-            <?php if (!empty($summary['by_bank'])): ?>
-            <div class="card-footer bg-white border-top p-3">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="small fw-bold text-dark"><i class="fa-solid fa-building-columns text-primary me-1"></i> Bank Account Wise Inflow Breakdown:</span>
-                    <span class="small text-muted">Total Bank Inflow: <strong>৳<?= number_format($grand['bank_amount'], 2) ?></strong></span>
+    <!-- Bank Account Wise Inflow Breakdown Sheet -->
+    <div class="col-12 mb-4" id="section-bank-summary" style="<?= in_array($curViewMode, ['type_summary', 'transactions'], true) ? 'display:none;' : '' ?>">
+        <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+            <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div>
+                    <h5 class="mb-1 fw-bold text-dark d-flex align-items-center gap-2">
+                        <span class="badge bg-info text-white p-2 rounded-2"><i class="fa-solid fa-building-columns"></i></span>
+                        <span>Bank Account Wise Inflow Breakdown</span>
+                    </h5>
+                    <div class="text-muted small">
+                        Detailed deposit statement across company bank accounts &amp; financial institutions
+                    </div>
                 </div>
-                <div class="d-flex flex-wrap gap-2">
-                    <?php foreach ($summary['by_bank'] as $bName => $bData): ?>
-                        <span class="badge bg-light text-dark border p-2 px-3 rounded-2" style="font-size: 11px;">
-                            <strong class="text-primary"><?= htmlspecialchars($bName) ?>:</strong> 
-                            <span class="font-monospace ms-1">৳<?= number_format($bData['amount'], 2) ?></span>
-                            <span class="text-muted ms-1">(<?= $bData['count'] ?> txns)</span>
-                        </span>
-                    <?php endforeach; ?>
+                <div class="d-flex align-items-center flex-wrap gap-2">
+                    <div class="input-group input-group-sm" style="width: 220px;">
+                        <span class="input-group-text bg-light border-end-0 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
+                        <input type="text" id="bankTableSearch" onkeyup="filterBankSheetTable()" class="form-control border-start-0" placeholder="Filter bank accounts...">
+                    </div>
+                    <a href="<?= $printBankUrl ?>" target="_blank" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 shadow-sm">
+                        <i class="fa-solid fa-print"></i> <span>Print Bank Sheet</span>
+                    </a>
+                    <a href="<?= $exportBankUrl ?>" class="btn btn-sm btn-outline-success d-flex align-items-center gap-1 shadow-sm">
+                        <i class="fa-solid fa-file-excel"></i> <span>Export Bank CSV</span>
+                    </a>
                 </div>
             </div>
-            <?php endif; ?>
+
+            <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
+                <table class="table table-hover align-middle table-collection mb-0" id="bankSheetTable">
+                    <thead class="table-light sticky-top" style="z-index: 2;">
+                        <tr>
+                            <th class="text-center" style="width: 50px;">#</th>
+                            <th style="min-width: 280px;">Bank Account / Deposited Account</th>
+                            <th class="text-center" style="width: 130px;">Deposit Trx Count</th>
+                            <th class="text-end" style="min-width: 180px;">Total Inflow Amount (BDT)</th>
+                            <th style="min-width: 200px;">% Share of Bank Inflow</th>
+                            <th class="text-center" style="width: 100px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php 
+                        $bankList = $summary['by_bank'] ?? [];
+                        $totalBankAmt = (float)($summary['bank_amount'] ?? 0);
+                        $totalBankTrx = 0;
+                        if (!empty($bankList)) {
+                            foreach ($bankList as $b) {
+                                $totalBankTrx += (int)($b['count'] ?? 0);
+                            }
+                        }
+                        if (empty($bankList)): ?>
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    <i class="fa-solid fa-building-columns fa-2x mb-2 text-secondary opacity-50"></i>
+                                    <div>No bank deposit transactions found for the selected period.</div>
+                                </td>
+                            </tr>
+                        <?php else:
+                            $bSl = 1;
+                            foreach ($bankList as $bName => $bData):
+                                $bAmt = (float)($bData['amount'] ?? 0);
+                                $bCount = (int)($bData['count'] ?? 0);
+                                $bPct = ($totalBankAmt > 0) ? round(($bAmt / $totalBankAmt) * 100, 2) : 0;
+                                $filterBankUrl = '?' . http_build_query(array_merge($queryParams, [
+                                    'bank_name' => ($bName === 'Cash / Unassigned' ? '' : $bName),
+                                    'view_mode' => 'transactions'
+                                ]));
+                                $isUnassigned = ($bName === 'Cash / Unassigned' || $bName === 'N/A' || empty($bName));
+                        ?>
+                            <tr class="bank-row">
+                                <td class="text-center text-muted fw-bold"><?= $bSl++ ?></td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="rounded-2 p-1 px-2 border <?= $isUnassigned ? 'bg-light text-muted' : 'bg-primary-subtle text-primary' ?>">
+                                            <i class="fa-solid <?= $isUnassigned ? 'fa-wallet' : 'fa-building-columns' ?>"></i>
+                                        </div>
+                                        <div>
+                                            <span class="fw-bold bank-name-cell <?= $isUnassigned ? 'text-muted' : 'text-dark' ?>">
+                                                <?= htmlspecialchars($bName) ?>
+                                            </span>
+                                            <?php if ($isUnassigned): ?>
+                                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle extra-small ms-1">Unassigned</span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-light text-dark border px-2 py-1 font-monospace">
+                                        <?= number_format($bCount) ?>
+                                    </span>
+                                </td>
+                                <td class="text-end font-monospace fw-bold text-dark fs-13">
+                                    ৳<?= number_format($bAmt, 2) ?>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="progress flex-grow-1" style="height: 6px;">
+                                            <div class="progress-bar bg-info" role="progressbar" style="width: <?= min(100, $bPct) ?>%"></div>
+                                        </div>
+                                        <span class="small font-monospace text-muted" style="width: 48px; font-size: 11px;"><?= number_format($bPct, 1) ?>%</span>
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    <?php if ($bCount > 0): ?>
+                                        <a href="<?= $filterBankUrl ?>" class="btn btn-xs btn-outline-primary py-1 px-2 rounded-2" style="font-size: 11px;" title="Filter detailed register for this bank">
+                                            <i class="fa-solid fa-filter me-1"></i> Filter
+                                        </a>
+                                    <?php else: ?>
+                                        <span class="text-muted extra-small">-</span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; endif; ?>
+                    </tbody>
+                    <tfoot class="table-light sticky-bottom" style="z-index: 2;">
+                        <tr class="fw-bold bg-light" style="border-top: 2px solid #cbd5e1; font-size: 13.5px;">
+                            <td class="text-center text-muted"><?= count($bankList) ?></td>
+                            <td class="text-uppercase text-dark">
+                                <i class="fa-solid fa-calculator text-primary me-1"></i> TOTAL BANK INFLOW:
+                            </td>
+                            <td class="text-center font-monospace">
+                                <span class="badge bg-dark text-white px-2 py-1"><?= number_format($totalBankTrx) ?></span>
+                            </td>
+                            <td class="text-end font-monospace text-primary fs-14 bg-info-subtle">
+                                ৳<?= number_format($totalBankAmt, 2) ?>
+                            </td>
+                            <td>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle fw-bold">100.0%</span>
+                            </td>
+                            <td class="text-center">
+                                <a href="<?= $printBankUrl ?>" target="_blank" class="btn btn-xs btn-primary py-1 px-2" style="font-size: 11px;">
+                                    <i class="fa-solid fa-print"></i> Print
+                                </a>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            <div class="card-footer bg-white border-top py-2 px-3 d-flex justify-content-between align-items-center text-muted small">
+                <span>Showing <strong><?= count($bankList) ?></strong> bank accounts &amp; deposit channels</span>
+                <span>Total Recorded Inflow: <strong class="text-dark">৳<?= number_format($totalBankAmt, 2) ?></strong></span>
+            </div>
         </div>
     </div>
 
     <!-- Detailed Collection Records Register -->
-    <div class="col-12 mb-4" id="section-transactions" style="<?= $curViewMode === 'type_summary' ? 'display:none;' : '' ?>">
+    <div class="col-12 mb-4" id="section-transactions" style="<?= in_array($curViewMode, ['type_summary', 'bank_summary'], true) ? 'display:none;' : '' ?>">
         <div class="card border-0 shadow-sm rounded-3">
             <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <h5 class="mb-0 fw-bold text-dark">
-                    <i class="fa-solid fa-table-list text-primary me-2"></i>Collection Records (কালেকশন বিবরণী)
+                    <i class="fa-solid fa-table-list text-primary me-2"></i>Collection Records
                 </h5>
                 <div class="text-muted small">
                     Showing <?= count($transactions) ?> of <?= number_format($pagination['total_records']) ?> records
@@ -891,29 +1094,40 @@ $exportTrxUrl  = $base_url . '/collection-statement-export?' . http_build_query(
 <script>
 function switchStatementView(mode) {
     const secType = document.getElementById('section-type-summary');
-    const secTrx = document.getElementById('section-transactions');
+    const secBank = document.getElementById('section-bank-summary');
+    const secTrx  = document.getElementById('section-transactions');
     const btnType = document.getElementById('btn-mode-type');
-    const btnTrx = document.getElementById('btn-mode-trx');
+    const btnBank = document.getElementById('btn-mode-bank');
+    const btnTrx  = document.getElementById('btn-mode-trx');
     const btnBoth = document.getElementById('btn-mode-both');
 
     const inactiveClass = 'btn btn-sm rounded-1 px-3 fw-bold mode-btn btn-light text-secondary';
     const activeClass   = 'btn btn-sm rounded-1 px-3 fw-bold mode-btn btn-primary shadow-sm active';
 
     if (btnType) btnType.className = inactiveClass;
+    if (btnBank) btnBank.className = inactiveClass;
     if (btnTrx)  btnTrx.className  = inactiveClass;
     if (btnBoth) btnBoth.className = inactiveClass;
 
     if (mode === 'type_summary') {
         if (secType) secType.style.display = '';
-        if (secTrx) secTrx.style.display = 'none';
+        if (secBank) secBank.style.display = 'none';
+        if (secTrx)  secTrx.style.display  = 'none';
         if (btnType) btnType.className = activeClass;
+    } else if (mode === 'bank_summary') {
+        if (secType) secType.style.display = 'none';
+        if (secBank) secBank.style.display = '';
+        if (secTrx)  secTrx.style.display  = 'none';
+        if (btnBank) btnBank.className = activeClass;
     } else if (mode === 'transactions') {
         if (secType) secType.style.display = 'none';
-        if (secTrx) secTrx.style.display = '';
-        if (btnTrx) btnTrx.className = activeClass;
-    } else { // both
+        if (secBank) secBank.style.display = 'none';
+        if (secTrx)  secTrx.style.display  = '';
+        if (btnTrx)  btnTrx.className  = activeClass;
+    } else { // both / all
         if (secType) secType.style.display = '';
-        if (secTrx) secTrx.style.display = '';
+        if (secBank) secBank.style.display = '';
+        if (secTrx)  secTrx.style.display  = '';
         if (btnBoth) btnBoth.className = activeClass;
     }
 
@@ -925,6 +1139,16 @@ function switchStatementView(mode) {
     } catch (e) {
         console.error(e);
     }
+}
+
+function filterBankSheetTable() {
+    const q = (document.getElementById('bankTableSearch')?.value || '').toLowerCase().trim();
+    const rows = document.querySelectorAll('#bankSheetTable tbody tr.bank-row');
+    rows.forEach(r => {
+        const nameCell = r.querySelector('.bank-name-cell');
+        const txt = nameCell ? nameCell.textContent.toLowerCase() : '';
+        r.style.display = (q === '' || txt.includes(q)) ? '' : 'none';
+    });
 }
 
 function togglePeriodFields() {
