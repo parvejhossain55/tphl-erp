@@ -1337,6 +1337,12 @@ if (empty($logoSrc)) {
                     </div>
 
                     <!-- TOTAL AMOUNT PAID BANNER -->
+                    <?php
+                        if (empty($amountInWords)) {
+                            $calcAmount = $totalAmountPaid ?? ($payment['amount'] ?? 0);
+                            $amountInWords = class_exists('FormatHelper') ? FormatHelper::amountInWords($calcAmount) : (function_exists('amountInWords') ? amountInWords($calcAmount) : '');
+                        }
+                    ?>
                     <div class="amount-card">
                         <div class="amt-left">
                             <div class="amt-paid-row">

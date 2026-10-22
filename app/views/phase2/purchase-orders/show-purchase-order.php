@@ -393,6 +393,12 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
           </tfoot>
         </table>
       </div>
+      <div class="px-3 py-2 bg-light border-top d-flex align-items-center justify-content-between flex-wrap gap-2 text-muted small">
+        <div>
+          <strong class="text-dark text-uppercase"><i class="fal fa-file-invoice-dollar me-1 text-primary"></i>Amount in Words:</strong>
+          <span class="fw-semibold text-dark"><?= class_exists('FormatHelper') ? FormatHelper::amountInWords($grandTotal) : (function_exists('amountInWords') ? amountInWords($grandTotal) : '') ?></span>
+        </div>
+      </div>
     </div>
 
     <!-- Quantity Adjustment & Approver Audit Log Panel -->

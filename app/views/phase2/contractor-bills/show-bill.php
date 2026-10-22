@@ -62,11 +62,13 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
             </ol>
         </nav>
     </div>
-    <div class="d-flex gap-2 align-items-center">
-        <?php if (!empty($payments) || $totalPaid > 0): ?>
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+        <?php if (!empty($payments) || $totalPaid > 0 || in_array($status, ['approved', 'partially_paid', 'fully_paid', 'paid'])): ?>
+            <?php if (!empty($payments) || $totalPaid > 0): ?>
             <a href="<?= $base_url ?>/expense-adjustments/create?parent_type=contractor&cashout_request_id=<?= $bill['id'] ?>&project_id=<?= $bill['project_id'] ?>" class="btn btn-warning btn-sm">
                 <i class="bi bi-sliders me-1"></i> Settlement / Adjustment
             </a>
+            <?php endif; ?>
             <a href="<?= $base_url ?>/print-debit-voucher?module=contractor_bill&id=<?= $bill['id'] ?>" target="_blank" class="btn btn-primary btn-sm">
                 <i class="bi bi-printer me-1"></i> Debit Voucher
             </a>
@@ -180,6 +182,12 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                                         <?php endif; ?>
                                     </div>
                                 </div>
+                                <?php endif; ?>
+                            </div>
+                            <div class="mt-2 py-2 px-3 bg-light rounded text-muted small d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                <span><strong class="text-dark">Bill Amount in Words:</strong> <?= class_exists('FormatHelper') ? FormatHelper::amountInWords($bill['bill_amount'] ?? 0) : (function_exists('amountInWords') ? amountInWords($bill['bill_amount'] ?? 0) : '') ?></span>
+                                <?php if (!empty($bill['approved_amount'])): ?>
+                                    <span><strong class="text-dark">Approved in Words:</strong> <span class="text-success fw-semibold"><?= class_exists('FormatHelper') ? FormatHelper::amountInWords($bill['approved_amount']) : (function_exists('amountInWords') ? amountInWords($bill['approved_amount']) : '') ?></span></span>
                                 <?php endif; ?>
                             </div>
                         </div>

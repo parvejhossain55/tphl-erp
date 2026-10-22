@@ -77,7 +77,7 @@ function convertHelper($number, $ones, $teens, $tens)
 }
 
 // Convert amount to words
-$amountInWords = numberToWords($transaction['amount'] ?? 0);
+$amountInWords = class_exists('FormatHelper') ? FormatHelper::amountInWords($transaction['amount'] ?? 0) : (function_exists('amountInWords') ? amountInWords($transaction['amount'] ?? 0) : numberToWords($transaction['amount'] ?? 0));
 ?>
 <!DOCTYPE html>
 <html lang="en">

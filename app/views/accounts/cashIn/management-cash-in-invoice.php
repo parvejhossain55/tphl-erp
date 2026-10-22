@@ -570,6 +570,12 @@ $disable_layout = true;
                 <span>Amount:</span>
                 <span class="amount-highlight">TK.<?= number_format($transaction['amount'] ?? 0, 2) ?></span>
             </div>
+            <div class="payment-row" style="border-top: 1px dashed #cbd5e1; padding-top: 10px; margin-top: 6px; font-size: 13.5px; display: flex; justify-content: space-between; align-items: baseline;">
+                <span style="font-weight: 600; color: #475569;">Amount in Words:</span>
+                <span style="font-weight: 700; color: #16a34a; text-transform: capitalize; text-align: right; max-width: 65%;">
+                    <?= class_exists('FormatHelper') ? FormatHelper::amountInWords($transaction['amount'] ?? 0) : (function_exists('amountInWords') ? amountInWords($transaction['amount'] ?? 0) : '') ?>
+                </span>
+            </div>
         </div>
 
         <!-- Payment Method Details -->

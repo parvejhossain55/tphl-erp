@@ -134,9 +134,16 @@ $steps = [
                 <li class="breadcrumb-item active"><?php echo $req['requisition_no']; ?></li>
             </ol></nav>
         </div>
-        <a href="<?php echo $base; ?>/con-labor-requisitions" class="btn btn-light btn-sm border">
-            <i class="fa-solid fa-arrow-left me-1"></i> Back to List
-        </a>
+        <div class="d-flex gap-2 align-items-center">
+            <?php if (in_array($st, ['management_approved','partially_paid','paid','labor_disbursed'])): ?>
+            <a href="<?php echo $base; ?>/print-debit-voucher?module=labor_requisition&id=<?php echo $req['id']; ?>" target="_blank" class="btn btn-primary btn-sm">
+                <i class="fa-solid fa-print me-1"></i> Debit Voucher
+            </a>
+            <?php endif; ?>
+            <a href="<?php echo $base; ?>/con-labor-requisitions" class="btn btn-light btn-sm border">
+                <i class="fa-solid fa-arrow-left me-1"></i> Back to List
+            </a>
+        </div>
     </div>
 
     <?php if (isset($_SESSION['success'])): ?>
@@ -291,6 +298,13 @@ $steps = [
                             </div>
                         </div>
                         <?php endif; ?>
+
+                        <div class="col-12">
+                            <div class="p-2 rounded bg-light border text-muted fs-11">
+                                <strong class="text-dark">Amount in Words:</strong>
+                                <div><?= class_exists('FormatHelper') ? FormatHelper::amountInWords($req['approved_amount'] ?? $req['total_amount'] ?? 0) : (function_exists('amountInWords') ? amountInWords($req['approved_amount'] ?? $req['total_amount'] ?? 0) : '') ?></div>
+                            </div>
+                        </div>
 
                         <div class="col-12">
                             <div class="text-muted fs-11 fw-semibold text-uppercase">Purpose</div>
