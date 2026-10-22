@@ -1255,7 +1255,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         }
                         ?>
-                        <?php if (empty($allDetails)): ?>
+                        <?php if (!empty($allDetails)): ?>
           
                             <?php foreach ($allDetails as $cp): ?>
                                 <?php $totalClientAmount += (float)($cp['amount'] ?? 0); ?>

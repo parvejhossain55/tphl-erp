@@ -103,6 +103,7 @@ class Dashboard extends Model
             FROM lead_payments lp
             INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
             WHERE lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified'
+            AND COALESCE(lp.is_emi_discount, 0) = 0 AND lp.is_trashed = 0
             AND lp.payment_date BETWEEN ? AND ?
         ";
 
@@ -137,8 +138,33 @@ class Dashboard extends Model
                 }
             }
         }
-
         $stmt->close();
+
+        // Also add management cash in if no project filter is specified
+        if (!$projectId) {
+            $sqlMgmt = "
+                SELECT payment_method, SUM(amount) as total 
+                FROM management_cashin 
+                WHERE payment_status = 'paid' AND transaction_date BETWEEN ? AND ?
+                GROUP BY payment_method
+            ";
+            $stmtMgmt = $this->db->prepare($sqlMgmt);
+            if ($stmtMgmt) {
+                $stmtMgmt->bind_param("ss", $startDate, $endDate);
+                $stmtMgmt->execute();
+                $resMgmt = $stmtMgmt->get_result();
+                if ($resMgmt) {
+                    while ($mRow = $resMgmt->fetch_assoc()) {
+                        $mMethod = strtolower($mRow['payment_method']);
+                        if (isset($breakdown[$mMethod])) {
+                            $breakdown[$mMethod] += floatval($mRow['total']);
+                        }
+                    }
+                }
+                $stmtMgmt->close();
+            }
+        }
+
         return $breakdown;
     }
 
@@ -704,17 +730,19 @@ class Dashboard extends Model
         // Get all payment types from lead_payments with project filter
         $sqlClient = "
             SELECT 
-                COALESCE(SUM(CASE WHEN lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END), 0) as all_paid,
-                COALESCE(SUM(CASE WHEN lp.payment_type = 'land_share' AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' THEN lp.land_share_amount ELSE 0 END), 0) as land_share_paid,
-                COALESCE(SUM(CASE WHEN lp.payment_type = 'booking_money' AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END), 0) as booking_money,
-                COALESCE(SUM(CASE WHEN lp.payment_type = 'registration' AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END), 0) as registration_money,
-                COALESCE(SUM(CASE WHEN lp.payment_type = 'emi' AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END), 0) as emi_payments,
-                COALESCE(SUM(CASE WHEN lp.payment_type = 'development_charge' AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END), 0) as development_charges,
-                COALESCE(SUM(CASE WHEN lp.payment_status = 'pending' THEN lp.amount ELSE 0 END), 0) as pending,
+                COALESCE(SUM(CASE WHEN lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END), 0) as all_paid,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'land_share' AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END), 0) as land_share_paid,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'booking_money' AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END), 0) as booking_money,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'registration' AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END), 0) as registration_money,
+                COALESCE(SUM(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END), 0) as emi_payments,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'development_charge' AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END), 0) as development_charges,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'shop_service_charge' AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END), 0) as shop_service_charges,
+                COALESCE(SUM(CASE WHEN lp.payment_status = 'pending' AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END), 0) as pending,
                 COUNT(*) as total_count
             FROM lead_payments lp
             INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
             WHERE lp.payment_date BETWEEN ? AND ?
+            AND lp.is_trashed = 0
         ";
 
         if ($projectId) {
@@ -735,6 +763,7 @@ class Dashboard extends Model
             $stats['booking_money'] = floatval($row['booking_money']);
             $stats['registration_money'] = floatval($row['registration_money']);
             $stats['development_charges'] = floatval($row['development_charges']);
+            $stats['shop_service_charges'] = floatval($row['shop_service_charges']);
             $stats['emi_payments'] = floatval($row['emi_payments']);
             $stats['pending_amount'] = floatval($row['pending']);
             $stats['total_transactions'] = intval($row['total_count']);
@@ -1478,18 +1507,26 @@ SELECT
     lp.payment_date as date,
     lp.payment_type COLLATE utf8mb4_general_ci as type,
     lp.amount,
-    lp.payment_method COLLATE utf8mb4_general_ci,
-    lp.payment_status COLLATE utf8mb4_general_ci,
-    lp.transaction_ref COLLATE utf8mb4_general_ci,
-    CONCAT(l.full_name, ' - ', p.name) COLLATE utf8mb4_general_ci as description,
+    lp.payment_method COLLATE utf8mb4_general_ci as payment_method,
+    lp.bank_name COLLATE utf8mb4_general_ci as bank_name,
+    lp.cheque_no COLLATE utf8mb4_general_ci as cheque_no,
+    lp.payment_status COLLATE utf8mb4_general_ci as payment_status,
+    lp.verification_status COLLATE utf8mb4_general_ci as verification_status,
+    lp.transaction_ref COLLATE utf8mb4_general_ci as transaction_ref,
+    CONCAT(COALESCE(l.full_name, 'Client'), ' - ', COALESCE(p.name, 'N/A')) COLLATE utf8mb4_general_ci as description,
+    l.full_name COLLATE utf8mb4_general_ci as client_name,
+    l.phone COLLATE utf8mb4_general_ci as client_phone,
     p.id as project_id,
-    p.name COLLATE utf8mb4_general_ci as project_name
+    p.name COLLATE utf8mb4_general_ci as project_name,
+    f.flat_name COLLATE utf8mb4_general_ci as flat_name
 FROM lead_payments lp
 LEFT JOIN lead_bookings lb ON lp.booking_id = lb.id
 LEFT JOIN leads l ON lb.lead_id = l.id
 LEFT JOIN projects p ON lb.project_id = p.id
+LEFT JOIN flats f ON lb.flat_id = f.id
 WHERE lp.payment_date BETWEEN ? AND ?
 AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified'
+AND COALESCE(lp.is_emi_discount, 0) = 0 AND lp.is_trashed = 0
 ";
 
         if ($projectId) {
@@ -1505,14 +1542,21 @@ SELECT
     mci.transaction_date as date,
     'management' COLLATE utf8mb4_general_ci as type,
     mci.amount,
-    mci.payment_method COLLATE utf8mb4_general_ci,
-    mci.payment_status COLLATE utf8mb4_general_ci,
-    NULL as transaction_ref,
-    CONCAT(mci.role_name, ' - ', mci.source) COLLATE utf8mb4_general_ci as description,
+    mci.payment_method COLLATE utf8mb4_general_ci as payment_method,
+    mci.bank_name COLLATE utf8mb4_general_ci as bank_name,
+    mci.cheque_no COLLATE utf8mb4_general_ci as cheque_no,
+    mci.payment_status COLLATE utf8mb4_general_ci as payment_status,
+    'verified' COLLATE utf8mb4_general_ci as verification_status,
+    mci.transaction_ref COLLATE utf8mb4_general_ci as transaction_ref,
+    CONCAT(COALESCE(mci.person_name, 'Management'), ' (', COALESCE(mci.role_name, 'Admin'), ') - ', COALESCE(mci.source, 'Cash In')) COLLATE utf8mb4_general_ci as description,
+    mci.person_name COLLATE utf8mb4_general_ci as client_name,
+    NULL as client_phone,
     NULL as project_id,
-    NULL as project_name
+    'Management' COLLATE utf8mb4_general_ci as project_name,
+    mci.source COLLATE utf8mb4_general_ci as flat_name
 FROM management_cashin mci
 WHERE mci.transaction_date BETWEEN ? AND ?
+AND mci.payment_status = 'paid'
 
 ORDER BY date DESC
 LIMIT ?

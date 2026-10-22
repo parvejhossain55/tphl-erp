@@ -43,6 +43,14 @@ return [
         'url'     => 'https://docs.google.com/spreadsheets/d/1Smg3B14dEanyrCf0qRc3wAdgLHi0x-9cDjNINvcMNlY/edit',
         'timeout' => 60,
     ],
+
+    // ------------------------------------------------------------------------
+    // 3.1. Repibee WhatsApp Integration Configuration
+    // ------------------------------------------------------------------------
+    'repibee' => [
+        'enabled' => true,
+        'api_key' => $erpConfig['repibee_api_key'] ?? 'tphl_repibee_secret_key_2026_x89f2a',
+    ],
     
 
     // ------------------------------------------------------------------------

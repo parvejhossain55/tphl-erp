@@ -72,6 +72,8 @@ return [
     'lead-automation/unapprove' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxUnapprove'],
     'lead-automation/delete' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxDelete'],
     'lead-automation/cron' => ['controller' => 'LeadAutomationController', 'method' => 'syncCron'],
+    'api/v1/leads/repibee' => ['controller' => 'LeadAutomationController', 'method' => 'repibeeWebhook'],
+    'api/leads/repibee' => ['controller' => 'LeadAutomationController', 'method' => 'repibeeWebhook'],
 
     // =========================================================================
     // Controller: OnboardClientController

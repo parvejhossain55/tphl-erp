@@ -36,6 +36,13 @@ return [
     'dashboard/get-statistics' => ['controller' => 'DashboardController', 'method' => 'getStatistics'],
 
     // =========================================================================
+    // Controller: CollectionStatementController
+    // =========================================================================
+    'collection-statement' => ['controller' => 'CollectionStatementController', 'method' => 'index'],
+    'collection-statement-print' => ['controller' => 'CollectionStatementController', 'method' => 'printStatement'],
+    'collection-statement-export' => ['controller' => 'CollectionStatementController', 'method' => 'exportCSV'],
+
+    // =========================================================================
     // Controller: AccountClientController
     // =========================================================================
     'clients-cash-in' => ['controller' => 'AccountClientController', 'method' => 'index'],

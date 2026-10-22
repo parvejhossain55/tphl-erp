@@ -2448,9 +2448,9 @@
                     <!-- Manage Cash In -->
                     <!-- ===================== -->
                     <li
-                        class="slide has-sub <?= isActive(['clients-cash-in', 'management-cash-in', 'client-wise-due-tracking', 'client-due-tracking'], $current_route) ? 'active' : '' ?>">
+                        class="slide has-sub <?= isActive(['collection-statement', 'clients-cash-in', 'management-cash-in', 'client-wise-due-tracking', 'client-due-tracking'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['clients-cash-in', 'management-cash-in', 'client-wise-due-tracking', 'client-due-tracking'], $current_route) ? 'menu-open active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['collection-statement', 'clients-cash-in', 'management-cash-in', 'client-wise-due-tracking', 'client-due-tracking'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-money-bill-trend-up"></i></div>
                             <span class="sidebar__menu-label">Manage Cash In</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -2458,6 +2458,15 @@
 
                         <!-- ALWAYS visible like Flats -->
                         <ul class="sidebar-menu child2" style="display:block;">
+                            <li class="slide <?= isActive('collection-statement', $current_route) ?>">
+                                <a href="<?= $base_url ?>/collection-statement"
+                                    class="sidebar__menu-item <?= isActive('collection-statement', $current_route) ?>"
+                                    style="display:flex; align-items:center;">
+                                    <span class="text-truncate"><strong>Collection Statement</strong></span>
+                                    <span class="badge bg-primary text-white rounded-pill ms-auto me-2 flex-shrink-0"
+                                        style="font-size:9px; padding: 2px 5px;">New</span>
+                                </a>
+                            </li>
                             <li class="slide <?= isActive('clients-cash-in', $current_route) ?>">
                                 <a href="<?= $base_url ?>/clients-cash-in"
                                     class="sidebar__menu-item <?= isActive('clients-cash-in', $current_route) ?>"
