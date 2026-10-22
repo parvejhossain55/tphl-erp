@@ -386,7 +386,8 @@ class LeadAutomationController extends Controller
                             COALESCE(COUNT(*), 0) as total_leads,
                             COALESCE(SUM(CASE WHEN distribute = 0 THEN 1 ELSE 0 END), 0) as pending_leads,
                             COALESCE(SUM(CASE WHEN distribute = 1 THEN 1 ELSE 0 END), 0) as approved_leads,
-                            COALESCE(SUM(CASE WHEN (team_id IS NULL OR team_id = 0) THEN 1 ELSE 0 END), 0) as unassigned_leads,
+                            COALESCE(SUM(CASE WHEN (
+                             IS NULL OR team_id = 0) THEN 1 ELSE 0 END), 0) as unassigned_leads,
                             COALESCE(SUM(CASE WHEN (team_id IS NOT NULL AND team_id > 0) THEN 1 ELSE 0 END), 0) as assigned_leads
                          FROM `leads` 
                          WHERE deleted_at IS NULL{$autoWhere}{$statsDateSql}";
@@ -1213,8 +1214,16 @@ class LeadAutomationController extends Controller
     {
         header('Content-Type: application/json; charset=utf-8');
 
-        // 1. Verify HTTP Method
+        // 1. Verify HTTP Method (Allow POST for webhooks, and GET for endpoint health/handshake checks)
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            if ($_SERVER['REQUEST_METHOD'] === 'GET' || $_SERVER['REQUEST_METHOD'] === 'HEAD') {
+                http_response_code(200);
+                echo json_encode([
+                    'status'  => 'success',
+                    'message' => 'TPHL ERP Webhook endpoint is active and listening for POST events.'
+                ]);
+                exit;
+            }
             http_response_code(405);
             echo json_encode([
                 'status'  => 'error',
@@ -1223,30 +1232,72 @@ class LeadAutomationController extends Controller
             exit;
         }
 
-        // 2. Authentication: Validate API Key
+        // 2. Authentication: Validate API Key or Signature
         $repibeeConfig = $this->automationConfig['repibee'] ?? [];
         $expectedKey = $repibeeConfig['api_key'] ?? 'tphl_repibee_secret_key_2026_x89f2a';
+        $signingSecret = $repibeeConfig['signing_secret'] ?? '';
         
-        $authHeader = $_SERVER['HTTP_X_API_KEY'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? $_REQUEST['api_key'] ?? '';
-        if (str_starts_with($authHeader, 'Bearer ')) {
-            $authHeader = substr($authHeader, 7);
+        $providedKey = trim((string)(
+            $_GET['api_key'] ?? 
+            $_GET['token'] ?? 
+            $_SERVER['HTTP_X_API_KEY'] ?? 
+            $_SERVER['HTTP_AUTHORIZATION'] ?? 
+            $_POST['api_key'] ?? 
+            ''
+        ));
+        if (str_starts_with($providedKey, 'Bearer ')) {
+            $providedKey = substr($providedKey, 7);
         }
-        $providedKey = trim($authHeader);
 
-        if (empty($providedKey) || !hash_equals($expectedKey, $providedKey)) {
+        $rawBody = file_get_contents('php://input');
+
+        $isAuthorized = false;
+        if (!empty($providedKey) && hash_equals($expectedKey, $providedKey)) {
+            $isAuthorized = true;
+        }
+
+        // Verify HMAC-SHA256 signature if Replibee sent X-Webhook-Signature
+        $sigHeader = $_SERVER['HTTP_X_WEBHOOK_SIGNATURE'] ?? '';
+        if (!$isAuthorized && !empty($sigHeader) && !empty($signingSecret)) {
+            $computed = hash_hmac('sha256', $rawBody, $signingSecret);
+            if (hash_equals($computed, $sigHeader)) {
+                $isAuthorized = true;
+            }
+        }
+
+        if (!$isAuthorized) {
             http_response_code(401);
             echo json_encode([
                 'status'  => 'error',
-                'message' => 'Unauthorized access. Invalid or missing X-API-KEY header.'
+                'message' => 'Unauthorized access. Please provide valid API key in URL query parameter (?api_key=...) or X-API-KEY header.'
             ]);
             exit;
         }
 
         // 3. Parse JSON Body
-        $rawBody = file_get_contents('php://input');
         $payload = json_decode($rawBody, true);
         if (empty($payload) && !empty($_POST)) {
             $payload = $_POST;
+        }
+
+        // 4. Handle Replibee Webhook Ping / Handshake Verification
+        $eventName = strtolower(trim((string)($payload['event'] ?? $_SERVER['HTTP_X_WEBHOOK_EVENT'] ?? '')));
+        if (
+            $eventName === 'webhook.test' || 
+            $eventName === 'ping' || 
+            $eventName === 'endpoint.test' || 
+            $eventName === 'endpoint.created' ||
+            str_contains($eventName, 'test') || 
+            str_contains($eventName, 'ping') || 
+            str_contains($eventName, 'verify') || 
+            isset($payload['ping']) || 
+            isset($payload['test'])
+        ) {
+            echo json_encode([
+                'status'  => 'success',
+                'message' => 'TPHL ERP Webhook endpoint verified successfully.'
+            ]);
+            exit;
         }
 
         if (empty($payload) || !is_array($payload)) {
@@ -1258,10 +1309,12 @@ class LeadAutomationController extends Controller
             exit;
         }
 
-        // 4. Normalize to array of leads (supports single lead object or { leads: [...] })
+        // 5. Unpack Replibee Webhook Envelope (data object or direct payload or batch array)
         $leadsToProcess = [];
         if (isset($payload['leads']) && is_array($payload['leads'])) {
             $leadsToProcess = $payload['leads'];
+        } elseif (isset($payload['data']) && is_array($payload['data'])) {
+            $leadsToProcess = [$payload['data']];
         } else {
             $leadsToProcess = [$payload];
         }
@@ -1277,8 +1330,17 @@ class LeadAutomationController extends Controller
         foreach ($leadsToProcess as $idx => $item) {
             if (!is_array($item)) continue;
 
-            $fullName = trim((string)($item['full_name'] ?? $item['name'] ?? $item['client_name'] ?? ''));
-            $phone = trim((string)($item['phone_number'] ?? $item['phone'] ?? $item['mobile'] ?? ''));
+            // Unpack Replibee nested data shape
+            $contact        = is_array($item['contact'] ?? null) ? $item['contact'] : [];
+            $source         = is_array($item['source'] ?? null) ? $item['source'] : [];
+            $location       = is_array($item['location'] ?? null) ? $item['location'] : [];
+            $interest       = is_array($item['interest'] ?? null) ? $item['interest'] : [];
+            $automationData = is_array($item['automation_data'] ?? null) ? $item['automation_data'] : [];
+            $customFields   = is_array($item['custom_fields'] ?? null) ? $item['custom_fields'] : [];
+
+            // Contact extraction
+            $fullName = trim((string)($contact['name'] ?? $item['full_name'] ?? $item['name'] ?? $item['client_name'] ?? ''));
+            $phone = trim((string)($contact['phone'] ?? $item['phone_number'] ?? $item['phone'] ?? $item['mobile'] ?? ''));
             $cleanPhone = preg_replace('/^p:/i', '', $phone);
             $cleanPhone = preg_replace('/[\s\-\(\)]/', '', $cleanPhone);
 
@@ -1292,24 +1354,95 @@ class LeadAutomationController extends Controller
                 continue;
             }
 
-            $campaign = trim((string)($item['campaign_name'] ?? $item['campaign'] ?? 'WhatsApp Lead'));
-            $platform = trim((string)($item['platform'] ?? 'whatsapp'));
+            // Campaign name & interest products resolution
+            $interestProducts = '';
+            if (!empty($interest['products'])) {
+                $interestProducts = is_array($interest['products']) ? implode(', ', $interest['products']) : (string)$interest['products'];
+            }
+
+            $campaign = trim((string)(
+                $source['page'] ?? 
+                $source['source'] ?? 
+                $item['campaign_name'] ?? 
+                $interest['brand_name'] ?? 
+                (!empty($interestProducts) ? $interestProducts : '') ?:
+                $item['campaign'] ?? 
+                'WhatsApp Lead'
+            ));
+
+            // Platform is always whatsapp
+            $platform = 'whatsapp';
+
+            // Custom questions extraction
+            $whichApartmentSize = $item['which_apartment_size_are_you_interested_in'] ?? null;
+            $whichFloorForShop  = $item['which_floor_are_you_for_shop'] ?? null;
+            $whenPlanningToBuy  = $item['when_are_you_planning_to_buy'] ?? null;
+            $siteVisit          = $item['would_you_like_to_schedule_a_site_visit'] ?? null;
+            $bestTimeContact    = $item['when_is_the_best_time_to_contact_you'] ?? null;
+
+            // Map Replibee automation_data questions & answers
+            if (!empty($automationData)) {
+                foreach ($automationData as $step) {
+                    if (is_array($step)) {
+                        foreach ($step as $qa) {
+                            if (!is_array($qa)) continue;
+                            $q = strtolower(trim((string)($qa['question'] ?? '')));
+                            $a = trim((string)($qa['answer'] ?? ''));
+                            if (empty($a)) continue;
+
+                            if ((str_contains($q, 'সাইজ') || str_contains($q, 'size') || str_contains($q, 'apartment') || str_contains($q, 'shop')) && empty($whichApartmentSize)) {
+                                $whichApartmentSize = $a;
+                            } elseif ((str_contains($q, 'ফ্লোর') || str_contains($q, 'floor')) && empty($whichFloorForShop)) {
+                                $whichFloorForShop = $a;
+                            } elseif ((str_contains($q, 'কেনার') || str_contains($q, 'পরিকল্পনা') || str_contains($q, 'planning') || str_contains($q, 'buy')) && empty($whenPlanningToBuy)) {
+                                $whenPlanningToBuy = $a;
+                            } elseif ((str_contains($q, 'ভিজিট') || str_contains($q, 'visit')) && empty($siteVisit)) {
+                                $siteVisit = $a;
+                            } elseif ((str_contains($q, 'যোগাযোগ') || str_contains($q, 'সময়') || str_contains($q, 'contact') || str_contains($q, 'time')) && empty($bestTimeContact)) {
+                                $bestTimeContact = $a;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Map custom_fields if present
+            if (!empty($customFields)) {
+                foreach ($customFields as $k => $v) {
+                    $kLower = strtolower($k);
+                    $vVal = is_string($v) ? trim($v) : (is_scalar($v) ? (string)$v : json_encode($v));
+                    if (empty($vVal)) continue;
+
+                    if ((str_contains($kLower, 'size') || str_contains($kLower, 'apartment')) && empty($whichApartmentSize)) {
+                        $whichApartmentSize = $vVal;
+                    } elseif (str_contains($kLower, 'floor') && empty($whichFloorForShop)) {
+                        $whichFloorForShop = $vVal;
+                    } elseif (str_contains($kLower, 'planning') && empty($whenPlanningToBuy)) {
+                        $whenPlanningToBuy = $vVal;
+                    } elseif (str_contains($kLower, 'visit') && empty($siteVisit)) {
+                        $siteVisit = $vVal;
+                    } elseif (str_contains($kLower, 'contact') && empty($bestTimeContact)) {
+                        $bestTimeContact = $vVal;
+                    }
+                }
+            }
 
             $leadData = [
                 'campaign_name'                            => $campaign,
                 'platform'                                 => $platform,
-                'which_apartment_size_are_you_interested_in' => $item['which_apartment_size_are_you_interested_in'] ?? null,
-                'which_floor_are_you_for_shop'             => $item['which_floor_are_you_for_shop'] ?? null,
-                'when_are_you_planning_to_buy'             => $item['when_are_you_planning_to_buy'] ?? null,
-                'would_you_like_to_schedule_a_site_visit' => $item['would_you_like_to_schedule_a_site_visit'] ?? null,
-                'when_is_the_best_time_to_contact_you'     => $item['when_is_the_best_time_to_contact_you'] ?? null,
+                'which_apartment_size_are_you_interested_in' => $whichApartmentSize,
+                'which_floor_are_you_for_shop'             => $whichFloorForShop,
+                'when_are_you_planning_to_buy'             => $whenPlanningToBuy,
+                'would_you_like_to_schedule_a_site_visit' => $siteVisit,
+                'when_is_the_best_time_to_contact_you'     => $bestTimeContact,
                 'full_name'                                => $fullName,
-                'job_title'                                => $item['job_title'] ?? null,
-                'company_name'                             => $item['company_name'] ?? null,
+                'job_title'                                => $contact['job_title'] ?? $item['job_title'] ?? null,
+                'company_name'                             => $contact['company_name'] ?? $item['company_name'] ?? null,
                 'phone_number'                             => $cleanPhone,
-                'email'                                    => !empty($item['email']) ? trim($item['email']) : null,
-                'city'                                     => $item['city'] ?? null,
-                'country'                                  => $item['country'] ?? 'Bangladesh',
+                'email'                                    => !empty($contact['email']) ? trim($contact['email']) : (!empty($item['email']) ? trim($item['email']) : null),
+                'city'                                     => $location['city'] ?? $location['area'] ?? $item['city'] ?? null,
+                'country'                                  => $location['country'] ?? $item['country'] ?? 'Bangladesh',
+                'address'                                  => $location['address'] ?? $item['address'] ?? null,
                 'is_repibee'                               => 1,
             ];
 
@@ -1338,7 +1471,8 @@ class LeadAutomationController extends Controller
             }
 
             // Project & Team assignment via project mapper
-            $projectMatch = $synchronizer->matchProject($campaign, '');
+            $secondaryMatch = trim($interestProducts . ' ' . ($interest['brand_name'] ?? '') . ' ' . ($interest['model'] ?? '') . ' ' . ($source['source'] ?? '') . ' ' . ($source['page'] ?? ''));
+            $projectMatch = $synchronizer->matchProject($campaign, $secondaryMatch);
             $projectId = $projectMatch['project_id'] ?? null;
             $teamId = $synchronizer->resolveNextTeamId($projectId, $projectMatch['teams'] ?? [], $pdo);
 
