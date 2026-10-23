@@ -693,7 +693,19 @@ $jsData = [
     .sp-defs dt { font-weight: 600; }
     .sp-defs dd { margin: 0; color: var(--sp-muted); line-height: 1.5; }
 
-    /* Responsive Media Queries: PC 6 columns, Laptop 4 columns */
+    /* ==========================================================================
+       Responsive Media Queries: Mobile & Tablet Optimization
+       ========================================================================== */
+    .sp {
+        max-width: 100%;
+        overflow-x: clip;
+    }
+    .sp-filter-btn-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
     @media (min-width: 1440px) {
         .sp-dq-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
         .sp-kpis { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
@@ -709,18 +721,406 @@ $jsData = [
         .sp-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         .sp-cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .sp-grid, .sp-grid-2 { grid-template-columns: 1fr; }
+        .sp-grid-team { grid-template-columns: 1fr; }
     }
-    @media (max-width: 767px) {
-        .sp { padding: 14px; }
-        .sp-dq-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .sp-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .sp-cards-grid { grid-template-columns: 1fr; }
-        .sp-grid, .sp-grid-2 { grid-template-columns: 1fr; }
-        .sp-defs dl { grid-template-columns: 1fr; }
+
+    /* Tablet & Mobile (<= 768px) */
+    @media (max-width: 768px) {
+        .sp {
+            padding: 12px 10px 48px;
+        }
+        .sp-card {
+            padding: 14px 12px;
+        }
+
+        /* Top Header */
+        .sp-head {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
+            margin: 4px 0 14px;
+        }
+        .sp-head h1 {
+            font-size: 20px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .sp-head p {
+            font-size: 12.5px;
+        }
+        .sp-head .sp-btn,
+        #spExportBtn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        /* Quick Filter Preset Bar */
+        .sp-preset-bar {
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 10px 12px;
+            gap: 8px;
+        }
+        .sp-preset-pills {
+            width: 100%;
+            overflow-x: auto;
+            flex-wrap: nowrap;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            padding-bottom: 4px;
+        }
+        .sp-preset-pills::-webkit-scrollbar {
+            display: none;
+        }
+        .sp-preset-pill {
+            flex-shrink: 0;
+            white-space: nowrap;
+            padding: 6px 12px;
+            font-size: 11.5px;
+        }
+
+        /* Filter Form */
+        .sp-filters {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+            padding: 12px;
+        }
+        .sp-filters select,
+        .sp-filters input[type=date],
+        .sp-filters .select2-container,
+        .sp-filters #spProject + .select2-container,
+        .sp-filters #spTeam + .select2-container,
+        .sp-filters #spExec + .select2-container {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+            flex: 1 1 100% !important;
+        }
+        .sp-filters .sp-range {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 6px;
+            align-items: center;
+            width: 100%;
+        }
+        .sp-filters .sp-range input {
+            width: 100% !important;
+            min-width: 0 !important;
+        }
+        .sp-filters .sp-spacer {
+            display: none;
+        }
+        .sp-filter-btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            width: 100%;
+        }
+        .sp-filters #spApply,
+        .sp-filters #spReset {
+            width: 100%;
+            justify-content: center;
+            text-align: center;
+        }
+        .sp-period-note {
+            flex-direction: column;
+            gap: 3px;
+            padding: 0 12px 10px;
+            font-size: 11px;
+        }
+
+        /* Navigation Tabs */
+        .sp-tabs {
+            overflow-x: auto;
+            white-space: nowrap;
+            flex-wrap: nowrap;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            gap: 16px;
+            margin: 14px 0 14px;
+            padding-bottom: 2px;
+            border-bottom: 1px solid var(--sp-border);
+        }
+        .sp-tabs::-webkit-scrollbar {
+            display: none;
+        }
+        .sp-tabs a {
+            flex-shrink: 0;
+            padding: 8px 4px;
+            font-size: 13px;
+        }
+
+        /* KPI Cards Grid */
+        .sp-kpis {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .sp-kpi {
+            padding: 12px 12px;
+        }
+        .sp-kpi .val {
+            font-size: clamp(17px, 4vw, 22px);
+            margin: 6px 0 2px;
+        }
+        .sp-kpi .lbl {
+            font-size: 11px;
+            gap: 5px;
+        }
+        .sp-kpi .hint {
+            font-size: 10.5px;
+        }
+
+        /* Funnel & Grids */
+        .sp-grid, .sp-grid-2, .sp-grid-team {
+            grid-template-columns: 100% !important;
+            gap: 14px;
+        }
+        .sp-funnel-row {
+            grid-template-columns: 20px minmax(0, 1fr) auto auto;
+            gap: 6px;
+            padding: 6px 6px;
+        }
+        .sp-funnel-row .no {
+            font-size: 10px;
+        }
+        .sp-funnel-row .nm {
+            font-size: 12px;
+            margin-bottom: 3px;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        .sp-funnel-row .nm small {
+            font-size: 10px;
+            display: block;
+            width: 100%;
+        }
+        .sp-funnel-row .ct {
+            font-size: 12px;
+            min-width: 32px;
+        }
+        .sp-funnel-row .pc {
+            font-size: 11px;
+            min-width: 38px;
+        }
+        .sp-funnel-foot {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 6px;
+            padding-top: 10px;
+        }
+        .sp-funnel-foot .v {
+            font-size: 15px;
+        }
+        .sp-funnel-foot .k {
+            font-size: 10.5px;
+        }
+        .sp-funnel-foot .s {
+            font-size: 10px;
+        }
+
+        /* Reconciliation Banners */
+        .sp-recon-banner {
+            padding: 12px !important;
+        }
+        .sp-recon-items {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 6px !important;
+            width: 100% !important;
+            font-size: 11.5px !important;
+        }
+        .sp-recon-pipe {
+            display: none !important;
+        }
+        .sp-recon-banner button,
+        .sp-recon-banner a,
+        .sp-recon-btns {
+            width: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 6px !important;
+            margin-top: 6px !important;
+        }
+        .sp-recon-banner .sp-btn {
+            width: 100% !important;
+            justify-content: center !important;
+        }
+
+        /* Toolbars */
+        .sp-toolbar {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+        }
+        .sp-toolbar input[type=search],
+        .sp-toolbar select {
+            width: 100% !important;
+            min-width: 0 !important;
+            height: 36px;
+        }
+        .sp-toolbar label {
+            padding: 4px 0;
+        }
+        .sp-toolbar .sp-spacer {
+            display: none;
+        }
+        .sp-toolbar .sp-btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        /* Card Heads & Toggle */
+        .sp-card-head {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+        }
+        .sp-card-head .sp-toggle {
+            width: 100%;
+            display: flex;
+        }
+        .sp-toggle button {
+            flex: 1;
+            text-align: center;
+            justify-content: center;
+        }
+
+        /* Section Heads */
+        .sp-section-head {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+            margin: 20px 0 10px;
+        }
+
+        /* Tables & Horizontal Scroll */
+        .sp-scroll {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 0 -12px;
+            padding: 0 12px;
+        }
+        .sp-table {
+            min-width: 580px;
+        }
+        .sp-table th, .sp-table td {
+            padding: 8px 8px;
+            font-size: 11.5px;
+            white-space: nowrap;
+        }
+
+        /* Executive Cards */
+        .sp-cards-grid {
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+
+        /* Data Quality */
+        .sp-dq-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        /* Definitions */
+        .sp-defs dl {
+            grid-template-columns: 1fr;
+            gap: 4px 0;
+        }
+        .sp-defs dt {
+            margin-top: 10px;
+        }
+
+        /* Slide Drawer */
+        .sp-drawer {
+            width: 100vw !important;
+            max-width: 100vw !important;
+            border-left: none !important;
+        }
+        .sp-drawer .hd,
+        .sp-drawer .bd {
+            padding: 14px 16px !important;
+        }
+
+        /* Attention items */
+        .sp-attn {
+            padding: 10px 0;
+            gap: 10px;
+        }
+
+        /* Banners */
+        .sp-banner {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        .sp-banner .sp-btn {
+            margin-left: 0;
+            width: 100%;
+            justify-content: center;
+        }
     }
+
+    /* Small Mobile (<= 480px) */
     @media (max-width: 480px) {
-        .sp-dq-grid { grid-template-columns: 1fr; }
-        .sp-kpis { grid-template-columns: 1fr; }
+        .sp {
+            padding: 10px 8px 40px;
+        }
+        .sp-card {
+            padding: 12px 10px;
+        }
+        .sp-kpis {
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+        .sp-kpi:last-child:nth-child(odd) {
+            grid-column: span 2;
+        }
+        .sp-kpi {
+            padding: 10px 10px;
+        }
+        .sp-kpi .val {
+            font-size: 17px;
+        }
+        .sp-funnel-foot {
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+        .sp-dq-grid {
+            grid-template-columns: 1fr;
+        }
+        .sp-dq {
+            min-height: auto;
+        }
+        .sp-mini-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+        .sp-mini {
+            padding: 8px 9px;
+        }
+        .sp-mini .v {
+            font-size: 16px;
+        }
+        .sp-unassigned-box {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .sp-exec-card {
+            padding: 12px;
+        }
+        .sp-exec-card-stats {
+            gap: 6px;
+        }
+        .sp-exec-stat-box {
+            padding: 7px 8px;
+        }
+        .sp-exec-stat-box .v {
+            font-size: 15px;
+        }
     }
 
     /* ==========================================================================
@@ -1528,8 +1928,10 @@ $jsData = [
                 <?php endforeach; ?>
             </select>
             <div class="sp-spacer"></div>
-            <button type="submit" class="sp-btn primary" id="spApply">Apply filters</button>
-            <a href="<?= sp_h($base . '?tab=' . $tab) ?>" class="sp-btn" id="spReset">Reset</a>
+            <div class="sp-filter-btn-group">
+                <button type="submit" class="sp-btn primary" id="spApply">Apply filters</button>
+                <a href="<?= sp_h($base . '?tab=' . $tab) ?>" class="sp-btn" id="spReset">Reset</a>
+            </div>
         </div>
         <div class="sp-period-note">
             <span>Period: <b><?= sp_h($period['label']) ?></b><?= $period['is_custom'] ? ' (custom range)' : ($period['is_all_time'] ? ' (lifetime)' : ' · ' . sp_h($period['cycle_label'])) ?></span>
@@ -1861,14 +2263,14 @@ $jsData = [
         </div>
 
         <!-- Team Gap & Reconciliation Banner -->
-        <div class="sp-card" style="margin-top:14px;padding:12px 18px;background:var(--sp-card);border:1px dashed var(--sp-border);border-radius:10px">
+        <div class="sp-card sp-recon-banner" style="margin-top:14px;padding:12px 18px;background:var(--sp-card);border:1px dashed var(--sp-border);border-radius:10px">
             <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;font-size:12.5px">
-                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                <div class="sp-recon-items" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
                     <span style="font-weight:700;color:var(--sp-text);display:inline-flex;align-items:center;gap:6px"><i class="fa-solid fa-scale-balanced" style="color:var(--sp-green)"></i> Team Gap Breakdown:</span>
                     <span>Total Leads: <b><?= sp_n($o['stage_1']) ?></b> (Teams: <b><?= sp_n($teamLeadsSum) ?></b> + Unassigned/Other: <b style="color:var(--sp-amber)"><?= sp_n($nonTeamLeads) ?></b>)</span>
-                    <span style="color:var(--sp-soft)">|</span>
+                    <span class="sp-recon-pipe" style="color:var(--sp-soft)">|</span>
                     <span>Total Bookings: <b><?= sp_n($o['bookings']) ?></b> (Teams: <b><?= sp_n($teamBookingsSum) ?></b> + Direct/Co: <b style="color:var(--sp-blue)"><?= sp_n($nonTeamBookings) ?></b>)</span>
-                    <span style="color:var(--sp-soft)">|</span>
+                    <span class="sp-recon-pipe" style="color:var(--sp-soft)">|</span>
                     <span>Collection: <b><?= sp_tk($o['collection']) ?></b> (Teams: <b><?= sp_tk($teamCollectionSum) ?></b> + Direct: <b><?= sp_tk($nonTeamCollection) ?></b>)</span>
                 </div>
                 <?php if ($unassignedLeads > 0): ?>
@@ -2029,19 +2431,19 @@ $jsData = [
         </div>
 
         <!-- Executive Gap & Reconciliation Banner -->
-        <div class="sp-card" style="margin-top:14px;padding:12px 18px;background:var(--sp-card);border:1px dashed var(--sp-border);border-radius:10px">
+        <div class="sp-card sp-recon-banner" style="margin-top:14px;padding:12px 18px;background:var(--sp-card);border:1px dashed var(--sp-border);border-radius:10px">
             <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;font-size:12.5px">
-                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                <div class="sp-recon-items" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
                     <span style="font-weight:700;color:var(--sp-text);display:inline-flex;align-items:center;gap:6px"><i class="fa-solid fa-scale-balanced" style="color:var(--sp-green)"></i> Executive Gap Breakdown:</span>
                     <span>Total Leads: <b><?= sp_n($o['stage_1']) ?></b> (Active Execs: <b><?= sp_n($totalExecLeads) ?></b> + Inactive: <b><?= sp_n($inactiveExecLeadsSum) ?></b> + Unassigned Gap: <b style="color:var(--sp-amber)"><?= sp_n($unassignedLeads) ?></b>)</span>
-                    <span style="color:var(--sp-soft)">|</span>
+                    <span class="sp-recon-pipe" style="color:var(--sp-soft)">|</span>
                     <span>Total Bookings: <b><?= sp_n($o['bookings']) ?></b> (Active: <b><?= sp_n($totalExecBookings) ?></b> + Inactive: <b><?= sp_n($inactiveExecBookingsSum) ?></b> + Direct/Co: <b style="color:var(--sp-blue)"><?= sp_n($directExecBookings) ?></b>)</span>
-                    <span style="color:var(--sp-soft)">|</span>
+                    <span class="sp-recon-pipe" style="color:var(--sp-soft)">|</span>
                     <span>Confirmed Sales: <b><?= sp_n($o['confirmed_sales']) ?></b> (Active: <b><?= sp_n($activeExecConfirmedSum) ?></b> + Inactive: <b><?= sp_n($inactiveExecConfirmedSum) ?></b> + Direct: <b><?= sp_n($directExecConfirmed) ?></b>)</span>
-                    <span style="color:var(--sp-soft)">|</span>
+                    <span class="sp-recon-pipe" style="color:var(--sp-soft)">|</span>
                     <span>Collection: <b><?= sp_tk($o['collection']) ?></b> (Active: <b><?= sp_tk($totalExecCollection) ?></b> + Inactive/Direct: <b><?= sp_tk(max(0.0, $o['collection'] - $totalExecCollection)) ?></b>)</span>
                 </div>
-                <div style="display:flex;align-items:center;gap:8px">
+                <div class="sp-recon-btns" style="display:flex;align-items:center;gap:8px">
                     <?php if ($unassignedLeads > 0): ?>
                         <button type="button" class="sp-btn sm click" data-gap="uncontacted" style="font-size:11.5px;padding:4px 10px;background:var(--sp-amber-50, #fff7ed);color:var(--sp-amber, #d97706);border:1px solid rgba(217,119,6,0.3);cursor:pointer" title="Click to view unassigned leads">
                             <i class="fa-regular fa-user-clock"></i> <?= sp_n($unassignedLeads) ?> Unassigned Leads

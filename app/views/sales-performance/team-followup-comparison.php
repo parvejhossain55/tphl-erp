@@ -918,6 +918,56 @@ $baseUrl = $GLOBALS['base_url'];
     margin-top: 8px;
     white-space: pre-wrap;
 }
+
+/* Responsive Media Queries for Mobile & Tablet */
+@media (max-width: 768px) {
+    .tfu-page-wrap {
+        padding: 12px 10px !important;
+    }
+    .tfu-header-card, .tfu-main-card {
+        padding: 14px 12px !important;
+    }
+    .tfu-header-title {
+        font-size: 19px !important;
+    }
+    .tfu-header-subtitle {
+        font-size: 11.5px !important;
+    }
+    .tfu-filter-bar {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 8px !important;
+    }
+    .tfu-filter-bar > div,
+    .tfu-filter-bar .select2-container {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+    }
+    .tfu-filter-bar input[type="date"] {
+        flex: 1;
+        width: auto !important;
+    }
+    .tfu-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    .tfu-search-wrap {
+        width: 100% !important;
+    }
+    .tfu-sort-select {
+        width: 100% !important;
+    }
+    .tfu-modal-drawer {
+        width: 100vw !important;
+        max-width: 100vw !important;
+    }
+    .tfu-modal-hd, .tfu-modal-bd, .tfu-modal-ft {
+        padding: 12px 14px !important;
+    }
+}
 </style>
 
 <div class="tfu-page-wrap">

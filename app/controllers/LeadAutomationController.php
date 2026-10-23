@@ -386,8 +386,7 @@ class LeadAutomationController extends Controller
                             COALESCE(COUNT(*), 0) as total_leads,
                             COALESCE(SUM(CASE WHEN distribute = 0 THEN 1 ELSE 0 END), 0) as pending_leads,
                             COALESCE(SUM(CASE WHEN distribute = 1 THEN 1 ELSE 0 END), 0) as approved_leads,
-                            COALESCE(SUM(CASE WHEN (
-                             IS NULL OR team_id = 0) THEN 1 ELSE 0 END), 0) as unassigned_leads,
+                            COALESCE(SUM(CASE WHEN (team_id IS NULL OR team_id = 0) THEN 1 ELSE 0 END), 0) as unassigned_leads,
                             COALESCE(SUM(CASE WHEN (team_id IS NOT NULL AND team_id > 0) THEN 1 ELSE 0 END), 0) as assigned_leads
                          FROM `leads` 
                          WHERE deleted_at IS NULL{$autoWhere}{$statsDateSql}";

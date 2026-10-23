@@ -719,14 +719,10 @@ class LeadController extends Controller
             $isAutoLead = !empty($lead['is_automated']) && (int)$lead['is_automated'] === 1;
 
             if ($isAutoLead) {
-                $approverName = !empty($lead['approved_by_name']) ? htmlspecialchars($lead['approved_by_name']) : 'System';
-                $apprTimeStr = (!empty($lead['approved_at']) && $lead['approved_at'] !== '0000-00-00 00:00:00') ? date('d M, Y, h:i A', strtotime($lead['approved_at'])) : '';
-                
                 $assignedByHtml = '<div class="d-flex flex-column gap-1" style="min-width: 140px;">';
                 $assignedByHtml .= '<div><span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-0.5" style="font-size: 11px;"><i class="fa-solid fa-robot me-1"></i>Assigned by System</span></div>';
-                $assignedByHtml .= '<div class="text-success small fw-medium" style="font-size: 11px; line-height: 1.25;" title="' . ($apprTimeStr ? 'Approved at ' . htmlspecialchars($apprTimeStr) : 'Approved') . '"><i class="bi bi-patch-check-fill me-1"></i>Approved by: <strong>' . $approverName . '</strong></div>';
                 
-                // When Team Leader distributes/assigns to an executive, keep system/approver AND show team leader assigner!
+                // When Team Leader distributes/assigns to an executive, keep system and show team leader assigner!
                 if (!empty($lead['agent_name']) && !empty($lead['assigned_by_name']) && $lead['assigned_by_name'] !== 'System') {
                     $assignedByHtml .= '<div class="text-primary small pt-1 border-top mt-1" style="font-size: 11px; line-height: 1.25;"><i class="bi bi-person-check me-1"></i>Assigned by: <strong class="text-dark">' . $assignedByStr . '</strong></div>';
                 }
