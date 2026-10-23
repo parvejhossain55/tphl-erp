@@ -325,11 +325,17 @@ class Con_VendorController extends Controller
         ];
 
         // All active projects for filter dropdown
-        $projectsQ = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC");
+        $projectsQ = @$this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC");
+        if (!$projectsQ || $projectsQ->num_rows === 0) {
+            $projectsQ = $this->db->query("SELECT id, name FROM projects ORDER BY name ASC");
+        }
         $projects = $projectsQ ? $projectsQ->fetch_all(MYSQLI_ASSOC) : [];
 
         // All active vendors for filter dropdown
-        $allVendorsQ = $this->db->query("SELECT id, name FROM vendors WHERE status = 'active' ORDER BY name ASC");
+        $allVendorsQ = @$this->db->query("SELECT id, name FROM vendors WHERE LOWER(status) = 'active' ORDER BY name ASC");
+        if (!$allVendorsQ || $allVendorsQ->num_rows === 0) {
+            $allVendorsQ = $this->db->query("SELECT id, name FROM vendors ORDER BY name ASC");
+        }
         $allVendors = $allVendorsQ ? $allVendorsQ->fetch_all(MYSQLI_ASSOC) : [];
 
         // Dynamic KPI metrics matching current filter

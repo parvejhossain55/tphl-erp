@@ -165,12 +165,12 @@
         <div class="card-body p-3">
             <form method="GET" action="<?= $base_url ?>/con-vendor-ledger" id="vendorLedgerFilterForm" class="row g-2 align-items-end">
                 <!-- Vendor Select -->
-                <div class="col-l col-md-6">
+                <div class="col-lg-3 col-md-6">
                     <label class="form-label small fw-semibold text-muted mb-1">
                         <i class="fa-solid fa-user-tie text-primary me-1"></i>Select Vendor
                     </label>
-                    <select name="vendor_id" id="filterVendorId" class="form-select form-select-sm select2">
-                        <option value="">-- All Vendors (Summary View) --</option>
+                    <select name="vendor_id" id="filterVendorId" class="form-select form-select-sm select2" data-placeholder="All Vendors (<?= count($allVendors) ?>)">
+                        <option value="">All Vendors (<?= count($allVendors) ?>)</option>
                         <?php foreach ($allVendors as $v): ?>
                             <option value="<?= $v['id'] ?>" <?= ($selectedVendorId == $v['id']) ? 'selected' : '' ?>>
                                 <?= htmlspecialchars($v['name']) ?>
@@ -180,12 +180,12 @@
                 </div>
 
                 <!-- Project Select -->
-                <div class="col-l col-md-6">
+                <div class="col-lg-3 col-md-6">
                     <label class="form-label small fw-semibold text-muted mb-1">
                         <i class="fa-solid fa-building-columns text-primary me-1"></i>Filter by Project
                     </label>
-                    <select name="project_id" id="filterProjectId" class="form-select form-select-sm select2">
-                        <option value="">-- All Projects --</option>
+                    <select name="project_id" id="filterProjectId" class="form-select form-select-sm select2" data-placeholder="All Projects (<?= count($projects) ?>)">
+                        <option value="">All Projects (<?= count($projects) ?>)</option>
                         <?php foreach ($projects as $p): ?>
                             <option value="<?= $p['id'] ?>" <?= ($selectedProjectId == $p['id']) ? 'selected' : '' ?>>
                                 <?= htmlspecialchars($p['name']) ?>
@@ -677,6 +677,62 @@
     <?php endif; ?>
 </section>
 
+<style>
+/* Select2 Compact Modern Styling in Vendor Ledger Filter Bar */
+#vendorLedgerFilterForm .select2-container--default .select2-selection--single {
+    height: 33px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+}
+#vendorLedgerFilterForm .select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: #1e293b;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 31px;
+    padding-left: 10px;
+    padding-right: 24px;
+}
+#vendorLedgerFilterForm .select2-container--default .select2-selection--single .select2-selection__placeholder {
+    color: #64748b;
+}
+#vendorLedgerFilterForm .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 31px;
+    right: 8px;
+}
+#vendorLedgerFilterForm .select2-container--default .select2-selection--single:focus,
+#vendorLedgerFilterForm .select2-container--default.select2-container--open .select2-selection--single {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+.select2-dropdown {
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 6px !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05) !important;
+    font-size: 13px !important;
+    z-index: 10050 !important;
+}
+.select2-search--dropdown {
+    padding: 6px 8px !important;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+}
+.select2-search--dropdown .select2-search__field {
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 6px !important;
+    padding: 5px 10px !important;
+    font-size: 12.5px !important;
+    background: #ffffff !important;
+    outline: none !important;
+}
+.select2-search--dropdown .select2-search__field:focus {
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15) !important;
+}
+</style>
+
 <script>
 function handlePeriodChange() {
     const period = document.getElementById('filterPeriod').value;
@@ -687,12 +743,23 @@ function handlePeriodChange() {
         customBox.style.display = 'none';
     }
 }
+</script>
 
-document.addEventListener('DOMContentLoaded', function() {
-    if (typeof jQuery !== 'undefined' && jQuery.fn.select2) {
-        jQuery('.select2').select2({
-            width: '100%'
+<?php
+$page_script = '
+$(document).ready(function() {
+    if (typeof $.fn.select2 === "function") {
+        $("#filterVendorId").select2({
+            width: "100%",
+            placeholder: "All Vendors (' . count($allVendors) . ')",
+            allowClear: true
+        });
+        $("#filterProjectId").select2({
+            width: "100%",
+            placeholder: "All Projects (' . count($projects) . ')",
+            allowClear: true
         });
     }
 });
-</script>
+';
+?>

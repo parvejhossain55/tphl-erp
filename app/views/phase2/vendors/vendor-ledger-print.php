@@ -262,9 +262,9 @@
         <!-- Header -->
         <div class="header">
             <div class="company-info">
-                <h2>The Peninsula Holdings Ltd.</h2>
-                <p>Corporate Office: House # 12, Road # 16, Dhanmondi, Dhaka-1209, Bangladesh</p>
-                <p>Phone: +880 2 9112233 | Email: accounts@peninsulabd.com | Web: www.peninsulabd.com</p>
+                <h2>The Premium Homes Ltd.</h2>
+                <p>Corporate Office: Land View Commercial Center, 9th Floor, 28 Gulshan North C/A, Gulshan Circle-2, Dhaka</p>
+                <p>Phone: +8801958253300 | Email: info@thepremiumhomes.com | Web: www.thepremiumhomes.com</p>
             </div>
             <div class="statement-title-box">
                 <h3>Vendor Ledger Statement</h3>
