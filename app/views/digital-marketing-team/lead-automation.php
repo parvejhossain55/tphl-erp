@@ -1269,7 +1269,8 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
             <select id="filterPlatformSelect" class="filter-ctrl-input form-select-sm" onchange="onFilterChange()">
                 <option value="">All platforms</option>
                 <option value="facebook">Facebook form</option>
-                <option value="whatsapp">WhatsApp</option>
+                <option value="whatsapp">WhatsApp (All)</option>
+                <option value="replibee">WhatsApp (Replibee Bot)</option>
                 <option value="meta_inbox">Meta inbox</option>
                 <option value="google_form">Google form</option>
                 <option value="brochure">Brochure leads</option>
@@ -2689,7 +2690,9 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
                         </div>
                         <div class="text-muted small">${(parseInt(lead.is_brocure_leads) === 1 || String(lead.platform || '').toLowerCase().includes('brochure') || String(lead.platform || '').toLowerCase().includes('brocure')) 
                             ? '<span class="text-primary"><i class="fa-solid fa-file-arrow-down me-1"></i>Brochure Download</span>' 
-                            : (parseInt(lead.is_repibee) === 1 || String(lead.platform || '').toLowerCase().includes('whatsapp')) 
+                            : (parseInt(lead.is_repibee) === 1)
+                            ? '<span class="text-success"><i class="fa-brands fa-whatsapp me-1"></i>Replibee Bot</span>'
+                            : (String(lead.platform || '').toLowerCase().includes('whatsapp') || String(lead.platform || '').toLowerCase() === 'wa')
                             ? '<span class="text-success"><i class="fa-brands fa-whatsapp me-1"></i>WhatsApp</span>' 
                             : (String(lead.platform || '').toLowerCase().includes('google'))
                             ? '<span class="text-warning"><i class="fa-solid fa-file-lines me-1"></i>Google Form</span>'
@@ -2702,7 +2705,11 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
                             <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
                                 <i class="fa-solid fa-file-arrow-down me-1"></i> Brochure
                             </span>
-                        ` : (parseInt(lead.is_repibee) === 1 || String(lead.platform || '').toLowerCase().includes('whatsapp') || String(lead.platform || '').toLowerCase() === 'wa') ? `
+                        ` : (parseInt(lead.is_repibee) === 1) ? `
+                            <span class="badge bg-success-subtle text-success border border-success-subtle" title="Replibee WhatsApp Automation">
+                                <i class="fa-brands fa-whatsapp me-1"></i> Replibee
+                            </span>
+                        ` : (String(lead.platform || '').toLowerCase().includes('whatsapp') || String(lead.platform || '').toLowerCase() === 'wa') ? `
                             <span class="badge bg-success-subtle text-success border border-success-subtle">
                                 <i class="fa-brands fa-whatsapp me-1"></i> WhatsApp
                             </span>

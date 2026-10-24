@@ -289,7 +289,9 @@ class LeadAutomationController extends Controller
             if ($platformParam === 'facebook' || $platformParam === 'facebook_form') {
                 $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('facebook', 'fb', 'fb(lead form)', 'lead form', 'leadform', 'leadfrom', 'meta form', 'meta inform') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%fb%' OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%facebook%' OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%lead form%' OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%leadform%')";
             } elseif ($platformParam === 'whatsapp') {
-                $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('whatsapp', 'wa', 'whats app', 'whatsappp', 'whataapp', 'whatsapp lead', 'whstsapp') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%whatsapp%' OR LOWER(TRIM(COALESCE(l.platform, ''))) = 'wa')";
+                $where[] = "(l.is_repibee = 1 OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('whatsapp', 'wa', 'whats app', 'whatsappp', 'whataapp', 'whatsapp lead', 'whstsapp') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%whatsapp%' OR LOWER(TRIM(COALESCE(l.platform, ''))) = 'wa')";
+            } elseif ($platformParam === 'replibee') {
+                $where[] = "l.is_repibee = 1";
             } elseif ($platformParam === 'meta_inbox') {
                 $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('meta inbox', 'meta') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%inbox%')";
             } elseif ($platformParam === 'google_form') {
@@ -303,6 +305,7 @@ class LeadAutomationController extends Controller
                     OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%facebook%'
                     OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%lead form%'
                     OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%leadform%'
+                    OR l.is_repibee = 1
                     OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('whatsapp', 'wa', 'whats app', 'whatsappp', 'whataapp', 'whatsapp lead', 'whstsapp')
                     OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%whatsapp%'
                     OR LOWER(TRIM(COALESCE(l.platform, ''))) = 'wa'
@@ -336,6 +339,13 @@ class LeadAutomationController extends Controller
                     $searchParts[] = "(l.team_id IS NULL OR l.team_id = 0)";
                 } elseif (strpos($searchLower, 'assign') !== false) {
                     $searchParts[] = "(l.team_id IS NOT NULL AND l.team_id > 0)";
+                }
+
+                if (strpos($searchLower, 'replibee') !== false) {
+                    $searchParts[] = "l.is_repibee = 1";
+                }
+                if (strpos($searchLower, 'brochure') !== false || strpos($searchLower, 'brocure') !== false) {
+                    $searchParts[] = "l.is_brocure_leads = 1";
                 }
 
                 $where[] = "(" . implode(" OR ", $searchParts) . ")";
