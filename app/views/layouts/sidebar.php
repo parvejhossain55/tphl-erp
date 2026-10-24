@@ -20,7 +20,13 @@
 
 <div class="app-sidebar" id="sidebar">
     <div class="main-sidebar-header">
-        <a href="?home" class="header-logo">
+        <?php
+        $logoLink = $base_url . '/home';
+        if ((function_exists('isClientsCommunicated') && isClientsCommunicated()) || ((int)($_SESSION['user']['role_id'] ?? 0) === 7)) {
+            $logoLink = $base_url . '/ced-dashboard';
+        }
+        ?>
+        <a href="<?= $logoLink ?>" class="header-logo">
             <img class="main-logo" src="<?= getImage('settings', getSetting('white_logo')) ?>" alt="logo">
             <img class="dark-logo" src="<?= getImage('settings', getSetting('dark_logo')) ?>" alt="logo">
         </a>
@@ -2186,90 +2192,163 @@
 
 
                 <!--Start CED  -->
-                <?php if ((hasPermission("CED Manage") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 34, 35])) && ($_SESSION['user']['role_id'] ?? 0) != 9): ?>
+                <?php 
+                $isClientCommUser = (function_exists('isClientsCommunicated') && isClientsCommunicated()) 
+                    || ($sbUserRoleId === 37) 
+                    || (strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'credit recovery') !== false)
+                    || (strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'recovery') !== false)
+                    || (strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'communicat') !== false);
+                $canViewCedCategory = (hasPermission("CED Manage") || in_array($sbUserRoleId, [1, 3, 33, 34, 35]) || $isClientCommUser) && ($sbUserRoleId != 9);
+
+                $sbTodayFollowupCount = 0;
+                $sbUpcomingFollowupCount = 0;
+                if ($canViewCedCategory) {
+                    global $db;
+                    if ($db) {
+                        $sbR1 = $db->query("SELECT COUNT(*) as cnt FROM emi_followups f INNER JOIN lead_bookings lb ON f.booking_id = lb.id WHERE lb.deleted_at IS NULL AND f.next_follow_up_date = CURDATE()");
+                        if ($sbR1 && $sbRow = $sbR1->fetch_assoc()) $sbTodayFollowupCount = (int)$sbRow['cnt'];
+
+                        $sbR2 = $db->query("SELECT COUNT(*) as cnt FROM emi_followups f INNER JOIN lead_bookings lb ON f.booking_id = lb.id WHERE lb.deleted_at IS NULL AND f.next_follow_up_date > CURDATE() AND f.next_follow_up_date <= DATE_ADD(CURDATE(), INTERVAL 5 DAY)");
+                        if ($sbR2 && $sbRow = $sbR2->fetch_assoc()) $sbUpcomingFollowupCount = (int)$sbRow['cnt'];
+                    }
+                }
+                ?>
+                <?php if ($canViewCedCategory): ?>
                     <!--CED CATEGORY -->
                     <li class="sidebar__menu-category">
-
                         <span class="category-name">CED</span>
                     </li>
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/ced-dashboard"
-                            class="sidebar__menu-item <?= isActive('ced-dashboard', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
-                            <span class="sidebar__menu-label">CED Dashboard</span>
-                        </a>
-                    </li>
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/ced-report"
-                            class="sidebar__menu-item <?= isActive('ced-report', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-file-earmark-bar-graph"></i></div>
-                            <span class="sidebar__menu-label">CED Team Report</span>
-                        </a>
-                    </li>
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/ced-central-report"
-                            class="sidebar__menu-item <?= isActive('ced-central-report', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-table-list"></i></div>
-                            <span class="sidebar__menu-label">CED Central Report</span>
-                        </a>
-                    </li>
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/ced-project-notices"
-                            class="sidebar__menu-item <?= isActive('ced-project-notices', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-bullhorn"></i></div>
-                            <span class="sidebar__menu-label">Project Notices</span>
-                        </a>
-                    </li>
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/company-bank-accounts"
-                            class="sidebar__menu-item <?= isActive('company-bank-accounts', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-landmark"></i></div>
-                            <span class="sidebar__menu-label">Company Bank Manage</span>
-                        </a>
-                    </li>
+
+                    <?php if ($isClientCommUser): ?>
+                        <!-- For Clients Communicated: Client-wise Due Tracking, Today Follow Up, and Upcoming Follow Up -->
+                        <li class="slide <?= isActive(['client-wise-due-tracking', 'client-due-tracking'], $current_route) ?>">
+                            <a href="<?= $base_url ?>/client-wise-due-tracking"
+                                class="sidebar__menu-item <?= isActive(['client-wise-due-tracking', 'client-due-tracking'], $current_route) ?>"
+                                title="Client-wise Due Tracking & Payment Management">
+                                <div class="side-menu__icon"><i class="fa-solid fa-money-bill-trend-up"></i></div>
+                                <span class="sidebar__menu-label">Due Tracking & Mgt</span>
+                            </a>
+                        </li>
+                        <li class="slide <?= isActive(['today-follow-ups', 'today-followups'], $current_route) ?>">
+                            <a href="<?= $base_url ?>/today-follow-ups"
+                                class="sidebar__menu-item <?= isActive(['today-follow-ups', 'today-followups'], $current_route) ?>"
+                                title="Today's Scheduled Follow Ups">
+                                <div class="side-menu__icon"><i class="fa-solid fa-calendar-day"></i></div>
+                                <span class="sidebar__menu-label">Today Follow Up</span>
+                                <?php if ($sbTodayFollowupCount > 0): ?>
+                                    <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $sbTodayFollowupCount ?></span>
+                                <?php endif; ?>
+                            </a>
+                        </li>
+                        <li class="slide <?= isActive(['upcoming-follow-ups', 'upcoming-followups'], $current_route) ?>">
+                            <a href="<?= $base_url ?>/upcoming-follow-ups"
+                                class="sidebar__menu-item <?= isActive(['upcoming-follow-ups', 'upcoming-followups'], $current_route) ?>"
+                                title="Upcoming Follow Ups (Next 5 Days)">
+                                <div class="side-menu__icon"><i class="fa-solid fa-calendar-days"></i></div>
+                                <span class="sidebar__menu-label">Upcoming Follow Up</span>
+                                <?php if ($sbUpcomingFollowupCount > 0): ?>
+                                    <span class="badge bg-info rounded-pill ms-auto me-2"><?= $sbUpcomingFollowupCount ?></span>
+                                <?php endif; ?>
+                            </a>
+                        </li>
+                    <?php else: ?>
+                        <li class="slide ">
+                            <a href="<?= $base_url ?>/ced-dashboard"
+                                class="sidebar__menu-item <?= isActive('ced-dashboard', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
+                                <span class="sidebar__menu-label">CED Dashboard</span>
+                            </a>
+                        </li>
+                        <li class="slide ">
+                            <a href="<?= $base_url ?>/ced-report"
+                                class="sidebar__menu-item <?= isActive('ced-report', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-file-earmark-bar-graph"></i></div>
+                                <span class="sidebar__menu-label">CED Team Report</span>
+                            </a>
+                        </li>
+                        <li class="slide ">
+                            <a href="<?= $base_url ?>/ced-central-report"
+                                class="sidebar__menu-item <?= isActive('ced-central-report', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-table-list"></i></div>
+                                <span class="sidebar__menu-label">CED Central Report</span>
+                            </a>
+                        </li>
+                        <li class="slide ">
+                            <a href="<?= $base_url ?>/ced-project-notices"
+                                class="sidebar__menu-item <?= isActive('ced-project-notices', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-bullhorn"></i></div>
+                                <span class="sidebar__menu-label">Project Notices</span>
+                            </a>
+                        </li>
+                        <li class="slide ">
+                            <a href="<?= $base_url ?>/company-bank-accounts"
+                                class="sidebar__menu-item <?= isActive('company-bank-accounts', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-landmark"></i></div>
+                                <span class="sidebar__menu-label">Company Bank Manage</span>
+                            </a>
+                        </li>
 
 
-                    <!-- Cash In Manage -->
-                    <li
-                        class="slide has-sub <?= isActive(['clients-cashin-view', 'clients-cash-in-history-view', 'client-refunds', 'client-wise-due-tracking', 'client-due-tracking'], $current_route) ? 'open active' : '' ?>">
-                        <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['clients-cashin-view', 'clients-cash-in-history-view', 'client-refunds', 'client-wise-due-tracking', 'client-due-tracking'], $current_route) ? 'active' : '' ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-money-bill-trend-up"></i></div>
-                            <span class="sidebar__menu-label">Cash In View</span>
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                        </a>
-                        <ul class="sidebar-menu child2"
-                            style="<?= isMenuOpen(['clients-cashin-view', 'clients-cash-in-history-view', 'client-refunds', 'client-wise-due-tracking', 'client-due-tracking'], $current_route) ? 'display:block;' : 'display:none;' ?>">
-                            <li class="slide <?= isActive('clients-cashin-view', $current_route) ?>">
-                                <a href="<?= $base_url ?>/clients-cashin-view"
-                                    class="sidebar__menu-item <?= isActive('clients-cashin-view', $current_route) ?>">Clients</a>
-                            </li>
-                            <li class="slide <?= isActive(['client-wise-due-tracking', 'client-due-tracking'], $current_route) ?>">
-                                <a href="<?= $base_url ?>/client-wise-due-tracking"
-                                    class="sidebar__menu-item <?= isActive(['client-wise-due-tracking', 'client-due-tracking'], $current_route) ?>"
-                                    title="Client-wise Due Tracking & Payment Management">Due Tracking & Mgt</a>
-                            </li>
-                            <li class="slide <?= isActive('client-refunds', $current_route) ?>">
-                                <a href="<?= $base_url ?>/client-refunds"
-                                    class="sidebar__menu-item <?= isActive('client-refunds', $current_route) ?>">
-                                    Refunds
-                                    <?php if ($unpaidRefundsCount > 0): ?>
-                                        <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $unpaidRefundsCount ?></span>
-                                    <?php endif; ?>
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
-                    <!-- Clients For Login  -->
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/onboard-access-client-lists"
-                            class="sidebar__menu-item <?= isActive('onboard-access-client-lists', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
-                            <span class="sidebar__menu-label">Access Onboard Clients</span>
-                        </a>
-                    </li>
-
-
+                        <!-- Cash In Manage -->
+                        <li
+                            class="slide has-sub <?= isActive(['clients-cashin-view', 'clients-cash-in-history-view', 'client-refunds', 'client-wise-due-tracking', 'client-due-tracking', 'today-follow-ups', 'today-followups', 'upcoming-follow-ups', 'upcoming-followups'], $current_route) ? 'open active' : '' ?>">
+                            <a href="javascript:void(0);"
+                                class="sidebar__menu-item <?= isActive(['clients-cashin-view', 'clients-cash-in-history-view', 'client-refunds', 'client-wise-due-tracking', 'client-due-tracking', 'today-follow-ups', 'today-followups', 'upcoming-follow-ups', 'upcoming-followups'], $current_route) ? 'active' : '' ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-money-bill-trend-up"></i></div>
+                                <span class="sidebar__menu-label">Cash In View</span>
+                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                            </a>
+                            <ul class="sidebar-menu child2"
+                                style="<?= isMenuOpen(['clients-cashin-view', 'clients-cash-in-history-view', 'client-refunds', 'client-wise-due-tracking', 'client-due-tracking', 'today-follow-ups', 'today-followups', 'upcoming-follow-ups', 'upcoming-followups'], $current_route) ? 'display:block;' : 'display:none;' ?>">
+                                <li class="slide <?= isActive('clients-cashin-view', $current_route) ?>">
+                                    <a href="<?= $base_url ?>/clients-cashin-view"
+                                        class="sidebar__menu-item <?= isActive('clients-cashin-view', $current_route) ?>">Clients</a>
+                                </li>
+                                <li class="slide <?= isActive(['client-wise-due-tracking', 'client-due-tracking'], $current_route) ?>">
+                                    <a href="<?= $base_url ?>/client-wise-due-tracking"
+                                        class="sidebar__menu-item <?= isActive(['client-wise-due-tracking', 'client-due-tracking'], $current_route) ?>"
+                                        title="Client-wise Due Tracking & Payment Management">Due Tracking & Mgt</a>
+                                </li>
+                                <li class="slide <?= isActive(['today-follow-ups', 'today-followups'], $current_route) ?>">
+                                    <a href="<?= $base_url ?>/today-follow-ups"
+                                        class="sidebar__menu-item <?= isActive(['today-follow-ups', 'today-followups'], $current_route) ?>"
+                                        title="Today's Scheduled Follow Ups">
+                                        Today Follow Up
+                                        <?php if ($sbTodayFollowupCount > 0): ?>
+                                            <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $sbTodayFollowupCount ?></span>
+                                        <?php endif; ?>
+                                    </a>
+                                </li>
+                                <li class="slide <?= isActive(['upcoming-follow-ups', 'upcoming-followups'], $current_route) ?>">
+                                    <a href="<?= $base_url ?>/upcoming-follow-ups"
+                                        class="sidebar__menu-item <?= isActive(['upcoming-follow-ups', 'upcoming-followups'], $current_route) ?>"
+                                        title="Upcoming Follow Ups (Next 5 Days)">
+                                        Upcoming Follow Up
+                                        <?php if ($sbUpcomingFollowupCount > 0): ?>
+                                            <span class="badge bg-info rounded-pill ms-auto me-2"><?= $sbUpcomingFollowupCount ?></span>
+                                        <?php endif; ?>
+                                    </a>
+                                </li>
+                                <li class="slide <?= isActive('client-refunds', $current_route) ?>">
+                                    <a href="<?= $base_url ?>/client-refunds"
+                                        class="sidebar__menu-item <?= isActive('client-refunds', $current_route) ?>">
+                                        Refunds
+                                        <?php if ($unpaidRefundsCount > 0): ?>
+                                            <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $unpaidRefundsCount ?></span>
+                                        <?php endif; ?>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                        <!-- Clients For Login  -->
+                        <li class="slide ">
+                            <a href="<?= $base_url ?>/onboard-access-client-lists"
+                                class="sidebar__menu-item <?= isActive('onboard-access-client-lists', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
+                                <span class="sidebar__menu-label">Access Onboard Clients</span>
+                            </a>
+                        </li>
+                    <?php endif; ?>
 
                 <?php endif; ?>
                 <!--End CED CATEGORY -->

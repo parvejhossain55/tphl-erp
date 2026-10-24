@@ -37,6 +37,15 @@ class HomeController extends Controller
 
     public function index()
     {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        if ($roleId === 7 || (function_exists('isClientsCommunicated') && isClientsCommunicated())) {
+            header("Location: {$GLOBALS['base_url']}/ced-dashboard");
+            exit;
+        }
+
         //  $role = $_SESSION['user']['role_name'] ?? 'management';
         $totalProjects = $this->projectModel->countProject();
         $completedTasks  = $this->taskModel->getTaskCount("status = 'completed'");
@@ -359,6 +368,11 @@ class HomeController extends Controller
                 throw new Exception("Unauthorized action: Only Management users can approve this request.");
             }
 
+            // > 1,00,000: Admin & Operation Head (Role 20) must approve before Management
+            if ($isManagement && (float)($request['request_amount'] ?? 0) > 100000.01 && strtolower($request['op_head_status'] ?? 'pending') !== 'approved') {
+                throw new Exception("Requests exceeding 1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.");
+            }
+
             $approved_days = null;
             $approved_amount = $_POST['approved_amount'] ?? null;
 
@@ -410,6 +424,11 @@ class HomeController extends Controller
                 }
             } elseif (($request['approve_role'] ?? 'management') === 'management' && !$isManagement) {
                 throw new Exception("Unauthorized action: Only Management users can approve this request.");
+            }
+
+            // > 1,00,000: Admin & Operation Head (Role 20) must approve before Management
+            if ($isManagement && (float)($request['request_amount'] ?? 0) > 100000.01 && strtolower($request['op_head_status'] ?? 'pending') !== 'approved') {
+                throw new Exception("Requests exceeding 1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.");
             }
 
             $approved_amount = $_POST['approved_amount'] ?? null;

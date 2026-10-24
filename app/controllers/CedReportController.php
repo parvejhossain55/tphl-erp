@@ -19,6 +19,11 @@ class CedReportController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $isManagement = in_array($roleId, [1, 3, 33, 34, 35]); // Including Chief Officer, Management Viewer & SEAL CEO
         
+        if (function_exists('isClientsCommunicated') && isClientsCommunicated()) {
+            header("Location: " . $GLOBALS['base_url'] . "/error-403");
+            exit;
+        }
+
         if (!hasPermission("CED Manage") && !$isManagement && $roleId !== 7) {
             header("Location: " . $GLOBALS['base_url'] . "/error-403");
             exit;

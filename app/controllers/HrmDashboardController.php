@@ -233,6 +233,10 @@ class HrmDashboardController extends Controller
 
         try {
             $request = $this->approvalModel->find($id);
+            // > 1,00,000: Admin & Operation Head (Role 20) must approve before Management
+            if (($request['source_table'] ?? '') !== 'employee_leaves' && (float)($request['request_amount'] ?? 0) > 100000.01 && strtolower($request['op_head_status'] ?? 'pending') !== 'approved') {
+                throw new Exception("Requests exceeding 1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.");
+            }
             $approved_days = null;
             $approved_amount = $_POST['approved_amount'] ?? null;
 
@@ -270,6 +274,10 @@ class HrmDashboardController extends Controller
 
         try {
             $request = $this->approvalModel->find($id);
+            // > 1,00,000: Admin & Operation Head (Role 20) must approve before Management
+            if (($request['source_table'] ?? '') !== 'employee_leaves' && (float)($request['request_amount'] ?? 0) > 100000.01 && strtolower($request['op_head_status'] ?? 'pending') !== 'approved') {
+                throw new Exception("Requests exceeding 1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.");
+            }
 
             $approved_amount = $_POST['approved_amount'] ?? null;
             $approved_days   = $_POST['approved_days'] ?? null;

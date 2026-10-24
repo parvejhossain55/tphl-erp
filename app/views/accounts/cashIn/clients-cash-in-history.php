@@ -14,6 +14,11 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                     || strpos($userRoleName, 'admin') !== false;
 
 $bookingId = (int)($clientDetails['booking_id'] ?? ($_GET['booking_id'] ?? 0));
+
+$isClientsCommunicatedRole = (function_exists('isClientsCommunicated') && isClientsCommunicated())
+    || ($userRoleId === 37)
+    || ((int)($_SESSION['user']['secondary_role_id'] ?? 0) === 37)
+    || ((int)($_SESSION['user']['id'] ?? 0) === 359);
 ?>
 
 <script>
@@ -635,6 +640,10 @@ window.openEditPaymentDateModal = function(target) {
                 <div class="mt-3 d-flex flex-wrap gap-2 align-items-center mb-3">
                     <?php 
                         $rfStatus = $refundDetails['status'] ?? ((($clientDetails['booking_status'] ?? '') === 'refunded') ? 'approved' : '');
+                        $isClientsCommOrCed = (function_exists('isClientsCommunicated') && isClientsCommunicated()) 
+                            || in_array((int)($_SESSION['user']['role_id'] ?? 0), [7, 37], true)
+                            || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'communicat') !== false
+                            || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'client experience') !== false;
                     ?>
                     <?php if ($rfStatus === 'approved'): ?>
                         <a href="<?= $GLOBALS['base_url'] ?>/client-refund-create/<?= $clientDetails['booking_id'] ?>" class="btn btn-danger">
@@ -644,13 +653,25 @@ window.openEditPaymentDateModal = function(target) {
                         <button class="btn btn-secondary" disabled>
                             <i class="fa-light fa-check-circle me-2"></i> Refunded Paid
                         </button>
-                    <?php elseif (!function_exists('isAccountsExecutive') || !isAccountsExecutive()): ?>
-                        <a href="<?= $GLOBALS['base_url'] ?>/<?= $isShop ? 'shop-client-cash-in-form' : 'client-cash-in-form' ?>?booking_id=<?= $clientDetails['booking_id'] ?>" class="btn btn-primary">
-                            <i class="fa-light fa-plus me-2"></i> Add Transaction
-                        </a>
-                        <a href="<?= $GLOBALS['base_url'] ?>/client-refund-create/<?= $clientDetails['booking_id'] ?>" class="btn btn-danger">
-                            <i class="fa-light fa-undo me-2"></i> Refund
-                        </a>
+                    <?php else: ?>
+                        <?php if ($userRoleId === 7 || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'client experience') !== false): ?>
+                            <a href="<?= $GLOBALS['base_url'] ?>/ced-add-transaction-form?booking_id=<?= $clientDetails['booking_id'] ?>" class="btn btn-success">
+                                <i class="fa-light fa-plus me-2"></i> Add Transaction
+                            </a>
+                            <button type="button" class="btn btn-info text-white" data-bs-toggle="modal" data-bs-target="#applyPreviousDiscountModal">
+                                <i class="fa-solid fa-tags me-1"></i> Apply Previous Discount
+                            </button>
+                        <?php elseif (!$isClientsCommunicatedRole && (!function_exists('isAccountsExecutive') || !isAccountsExecutive())): ?>
+                            <a href="<?= $GLOBALS['base_url'] ?>/<?= $isShop ? 'shop-client-cash-in-form' : 'client-cash-in-form' ?>?booking_id=<?= $clientDetails['booking_id'] ?>" class="btn btn-primary">
+                                <i class="fa-light fa-plus me-2"></i> Add Transaction
+                            </a>
+                            <button type="button" class="btn btn-info text-white" data-bs-toggle="modal" data-bs-target="#applyPreviousDiscountModal">
+                                <i class="fa-solid fa-tags me-1"></i> Apply Previous Discount
+                            </button>
+                            <a href="<?= $GLOBALS['base_url'] ?>/client-refund-create/<?= $clientDetails['booking_id'] ?>" class="btn btn-danger">
+                                <i class="fa-light fa-undo me-2"></i> Refund
+                            </a>
+                        <?php endif; ?>
                     <?php endif; ?>
                     <?php if (!function_exists('isAccountsExecutive') || !isAccountsExecutive()): ?>
                     <a href="<?= $GLOBALS['base_url'] ?>/csv-import-form" class="btn btn-info text-white">
@@ -2736,3 +2757,56 @@ window.openEditPaymentDateModal = function(target) {
         });
     }
     </script>
+
+<!-- Apply Previous Discount Modal -->
+<div class="modal fade" id="applyPreviousDiscountModal" tabindex="-1" aria-labelledby="applyPreviousDiscountModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header" style="background: linear-gradient(135deg, #17a2b8, #117a8b);">
+                <h5 class="modal-title text-white" id="applyPreviousDiscountModalLabel">
+                    <i class="fa-solid fa-tags me-2"></i>Apply Previous EMI Discount
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="<?= $GLOBALS['base_url'] ?>/ced-add-transaction" method="POST">
+                <div class="modal-body p-4 bg-light">
+                    <input type="hidden" name="booking_id" value="<?= $clientDetails['booking_id'] ?>">
+                    <input type="hidden" name="payment_type" value="emi">
+                    <input type="hidden" name="apply_emi_discount" value="1">
+                    <input type="hidden" name="is_previous_emi_discount" value="1">
+                    <input type="hidden" name="amount" value="0">
+                    <input type="hidden" name="payment_method" value="cash">
+
+                    <div class="alert alert-info border-info" style="font-size:13px;">
+                        <i class="fa-solid fa-circle-info me-1"></i> This feature creates an EMI discount that <strong>will reduce</strong> the remaining number of EMIs based on the discount amount. It's meant for backdating discounts on previous EMIs.
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Discount Amount (TK) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white text-muted">TK</span>
+                            <input type="number" 
+                                   class="form-control fw-semibold" 
+                                   name="bulk_emi_discount" 
+                                   required 
+                                   min="1"
+                                   placeholder="Enter discount amount">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Reference Number (Optional)</label>
+                        <input type="text" class="form-control" name="transaction_ref" placeholder="Enter Ref Number or Previous Trx ID">
+                    </div>
+                </div>
+                
+                <div class="modal-footer bg-light border-top-0 pt-0 pb-4 pe-4">
+                    <button type="button" class="btn btn-outline-secondary px-4 fw-medium" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-info px-4 fw-bold text-white shadow-sm">
+                        <i class="fa-solid fa-check-circle me-1"></i> Apply Discount
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

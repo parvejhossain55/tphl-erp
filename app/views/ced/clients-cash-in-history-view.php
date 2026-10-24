@@ -48,6 +48,11 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                     || (function_exists('isAccountsExecutive') && isAccountsExecutive())
                     || strpos($userRoleName, 'account') !== false 
                     || strpos($userRoleName, 'admin') !== false;
+
+$isClientsCommunicatedRole = (function_exists('isClientsCommunicated') && isClientsCommunicated())
+    || ($userRoleId === 37)
+    || ((int)($_SESSION['user']['secondary_role_id'] ?? 0) === 37)
+    || ((int)($_SESSION['user']['id'] ?? 0) === 359);
 ?>
 
 <?php
@@ -1041,10 +1046,12 @@ if (!isset($discountApprovalReq)) {
                     <span class="badge bg-danger text-white px-3 py-2" style="font-size: 13px; font-weight: 600;">
                         <i class="fa-solid fa-sack-dollar me-1"></i> Total Due: TK. <?= number_format($totalDueEmiAmount, 2) ?>
                     </span>
+                    <?php if (!$isClientsCommunicatedRole): ?>
                     <a href="<?= $GLOBALS['base_url'] ?>/ced-add-transaction-form?booking_id=<?= $clientDetails['booking_id'] ?>"
                        class="btn btn-sm text-white" style="background:#ef4444; border-color:#ef4444; font-weight: 600;">
                         <i class="fa-light fa-plus me-1"></i> Add EMI Payment
                     </a>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -1108,6 +1115,7 @@ if (!isset($discountApprovalReq)) {
                                     </div>
                                 </div>
 
+                                <?php if (!$isClientsCommunicatedRole): ?>
                                 <!-- Action Button -->
                                 <div class="mt-3 pt-2 border-top">
                                     <a href="<?= $GLOBALS['base_url'] ?>/ced-add-transaction-form?booking_id=<?= $clientDetails['booking_id'] ?>"
@@ -1116,6 +1124,7 @@ if (!isset($discountApprovalReq)) {
                                         <i class="fa-light fa-plus-circle"></i> Pay EMI #<?= $item['emi_no'] ?>
                                     </a>
                                 </div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -1179,6 +1188,7 @@ if (!isset($discountApprovalReq)) {
                                             </div>
                                         </div>
 
+                                        <?php if (!$isClientsCommunicatedRole): ?>
                                         <!-- Action Button -->
                                         <div class="mt-3 pt-2 border-top">
                                             <a href="<?= $GLOBALS['base_url'] ?>/ced-add-transaction-form?booking_id=<?= $clientDetails['booking_id'] ?>"
@@ -1187,6 +1197,7 @@ if (!isset($discountApprovalReq)) {
                                                 <i class="fa-light fa-plus-circle"></i> Pay EMI #<?= $item['emi_no'] ?>
                                             </a>
                                         </div>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </div>
@@ -1245,15 +1256,15 @@ if (!isset($discountApprovalReq)) {
                         <button class="btn btn-secondary mb-3" disabled title="A refund has been requested for this booking">
                             <i class="fa-light fa-ban me-2"></i> Add Transaction (Disabled)
                         </button>
-                    <?php else: ?>
-                        <a href="<?= $GLOBALS['base_url'] ?>/ced-add-transaction-form?booking_id=<?= $clientDetails['booking_id'] ?>" class="btn btn-primary mb-3">
+                    <?php elseif (!$isClientsCommunicatedRole): ?>
+                        <a href="<?= $GLOBALS['base_url'] ?>/ced-add-transaction-form?booking_id=<?= $clientDetails['booking_id'] ?>" class="btn btn-success mb-3">
                             <i class="fa-light fa-plus me-2"></i> Add Transaction
                         </a>
                         <button type="button" class="btn btn-info text-white mb-3" data-bs-toggle="modal" data-bs-target="#applyPreviousDiscountModal">
                             <i class="fa-solid fa-tags me-1"></i> Apply Previous Discount
                         </button>
                     <?php endif; ?>
-                    <a href="<?= $GLOBALS['base_url'] ?>/client-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn btn-primary mb-3">
+                    <a href="<?= $GLOBALS['base_url'] ?>/client-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn btn-success mb-3">
                         <i class="fa-light fa-file-invoice me-2"></i> Get Statement
                     </a>
                     <a href="<?= $GLOBALS['base_url'] ?>/discount-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn mb-3" style="background: linear-gradient(135deg, #6c5ffc, #8b5cf6); color:#fff; border:none;">

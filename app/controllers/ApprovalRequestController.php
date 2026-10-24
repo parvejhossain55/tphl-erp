@@ -702,6 +702,14 @@ class ApprovalRequestController extends Controller
             exit;
         }
 
+        // For > ৳1,00,000: Admin & Operation Head (Role 20 / 32) must approve first (same rule as bulk approve & module pages)
+        $isOver1Lac = ((float)($req['request_amount'] ?? 0) > 100000.01);
+        if ($isOver1Lac && strtolower($req['op_head_status'] ?? 'pending') !== 'approved') {
+            ob_clean();
+            echo json_encode(['success' => false, 'message' => 'Requests exceeding ৳1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.']);
+            exit;
+        }
+
         $res = $this->approvalModel->updateStatus($reqId, 'approved', $approvedAmount, null, $note);
         ob_clean();
         if ($res) {

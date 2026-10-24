@@ -792,6 +792,11 @@ public function indexTwo($bookingId = null)
             session_start();
         }
 
+        if (function_exists('isClientsCommunicated') && isClientsCommunicated()) {
+            header("Location: {$GLOBALS['base_url']}/client-wise-due-tracking");
+            exit;
+        }
+
         // Handle AJAX request for Due EMIs modal
         if (isset($_GET['ajax']) && $_GET['ajax'] === 'due_modal') {
             $projectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
@@ -1779,6 +1784,11 @@ public function indexTwo($bookingId = null)
             session_start();
         }
 
+        if (function_exists('isClientsCommunicated') && isClientsCommunicated()) {
+            header("Location: {$GLOBALS['base_url']}/client-wise-due-tracking");
+            exit;
+        }
+
         $apiBaseUrl = $config['notices_api_base_url'] ?? 'https://api.dpremiumhomes.com/api';
 
         $this->view("ced/ced-project-notices", [
@@ -2001,6 +2011,15 @@ public function showCedTransactionForm($bookingId = null)
 {
     if (session_status() === PHP_SESSION_NONE) session_start();
 
+    if ((function_exists('isClientsCommunicated') && isClientsCommunicated()) 
+        || ((int)($_SESSION['user']['role_id'] ?? 0) === 37) 
+        || ((int)($_SESSION['user']['secondary_role_id'] ?? 0) === 37)
+        || ((int)($_SESSION['user']['id'] ?? 0) === 359)) {
+        setError("Access Denied: The Clients Communicated role is not permitted to add transactions.");
+        header("Location: {$GLOBALS['base_url']}/client-wise-due-tracking");
+        exit;
+    }
+
     if (!$bookingId) {
         $bookingId = $_GET['booking_id'] ?? null;
     }
@@ -2062,6 +2081,15 @@ public function addCedTransaction()
     }
 
     if (session_status() === PHP_SESSION_NONE) session_start();
+
+    if ((function_exists('isClientsCommunicated') && isClientsCommunicated()) 
+        || ((int)($_SESSION['user']['role_id'] ?? 0) === 37) 
+        || ((int)($_SESSION['user']['secondary_role_id'] ?? 0) === 37)
+        || ((int)($_SESSION['user']['id'] ?? 0) === 359)) {
+        setError("Access Denied: The Clients Communicated role is not permitted to add transactions.");
+        header("Location: {$GLOBALS['base_url']}/client-wise-due-tracking");
+        exit;
+    }
 
     $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
     if (!empty($clientDetails['is_shop']) && $clientDetails['is_shop'] == 1) {
@@ -5051,6 +5079,8 @@ public function discountStatement($bookingId = null)
         $activityMode = trim($_POST['activity_mode'] ?? '');
         $callStatus = trim($_POST['call_status'] ?? '');
         $activityReason = trim($_POST['activity_reason'] ?? '');
+        $nextFollowUpDate = !empty($_POST['next_follow_up_date']) ? trim($_POST['next_follow_up_date']) : null;
+        $nextFollowUpNote = !empty($_POST['next_follow_up_note']) ? trim($_POST['next_follow_up_note']) : null;
         $userId = $_SESSION['user']['id'] ?? 0;
 
         if (!$bookingId || empty($note) || empty($activityDate) || empty($activityMode) || empty($activityReason)) {
@@ -5058,13 +5088,13 @@ public function discountStatement($bookingId = null)
             exit;
         }
 
-        $stmt = $this->db->prepare("INSERT INTO emi_followups (booking_id, emi_no, note, activity_date, activity_mode, call_status, activity_reason, added_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("iisssssi", $bookingId, $emiNo, $note, $activityDate, $activityMode, $callStatus, $activityReason, $userId);
+        $stmt = $this->db->prepare("INSERT INTO emi_followups (booking_id, emi_no, note, activity_date, activity_mode, call_status, activity_reason, next_follow_up_date, next_follow_up_note, added_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("iisssssssi", $bookingId, $emiNo, $note, $activityDate, $activityMode, $callStatus, $activityReason, $nextFollowUpDate, $nextFollowUpNote, $userId);
         
         if ($stmt->execute()) {
             echo json_encode(['success' => true]);
         } else {
-            echo json_encode(['success' => false, 'message' => 'Database error']);
+            echo json_encode(['success' => false, 'message' => 'Database error: ' . $stmt->error]);
         }
         exit;
     }
@@ -5104,6 +5134,8 @@ public function discountStatement($bookingId = null)
             $data = $res->fetch_all(MYSQLI_ASSOC);
             foreach ($data as &$row) {
                 $row['created_at_formatted'] = date('M d, Y h:i A', strtotime($row['created_at']));
+                $row['activity_date_formatted'] = !empty($row['activity_date']) ? date('M d, Y', strtotime($row['activity_date'])) : '';
+                $row['next_follow_up_date_formatted'] = !empty($row['next_follow_up_date']) ? date('M d, Y', strtotime($row['next_follow_up_date'])) : '';
             }
         }
 
@@ -5452,7 +5484,7 @@ public function discountStatement($bookingId = null)
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
 
-        $allowedRoles = [1, 3, 6, 7, 30, 33, 34, 35, 36];
+        $allowedRoles = [1, 3, 6, 7, 30, 33, 34, 35, 36, 37];
         $isAuthorized = in_array($userRoleId, $allowedRoles, true)
             || in_array($userSecRoleId, $allowedRoles, true)
             || in_array($userPriRoleId, $allowedRoles, true)
@@ -5460,10 +5492,12 @@ public function discountStatement($bookingId = null)
             || strpos($roleName, 'account') !== false
             || strpos($roleName, 'client experience') !== false
             || strpos($roleName, 'clients experiment') !== false
+            || strpos($roleName, 'communicat') !== false
             || strpos($roleName, 'management') !== false
             || strpos($roleName, 'admin') !== false
             || hasPermission("CED Manage")
             || hasPermission("Cash In Verify")
+            || (function_exists('isClientsCommunicated') && isClientsCommunicated())
             || (function_exists('isAccountsHead') && isAccountsHead())
             || (function_exists('isAccountsExecutive') && isAccountsExecutive());
 
@@ -5618,6 +5652,19 @@ public function discountStatement($bookingId = null)
             return '<tr><td colspan="10" class="text-center py-5 text-muted"><i class="fa-solid fa-folder-open fa-3x mb-3 text-secondary opacity-50 d-block"></i>No client due records found matching the criteria.</td></tr>';
         }
 
+        // Batch query followup counts for these bookings
+        $bookingIds = array_filter(array_column($clients, 'booking_id'));
+        $followupCounts = [];
+        if (!empty($bookingIds)) {
+            $bIdsStr = implode(',', array_map('intval', $bookingIds));
+            $fcRes = $this->db->query("SELECT booking_id, COUNT(*) as cnt FROM emi_followups WHERE booking_id IN ($bIdsStr) GROUP BY booking_id");
+            if ($fcRes) {
+                while ($fcRow = $fcRes->fetch_assoc()) {
+                    $followupCounts[(int)$fcRow['booking_id']] = (int)$fcRow['cnt'];
+                }
+            }
+        }
+
         $html = '';
         foreach ($clients as $client) {
             $bookingId = (int)$client['booking_id'];
@@ -5755,9 +5802,18 @@ public function discountStatement($bookingId = null)
 
             // Col 9: Action
             $html .= '<td class="text-center">';
-            $html .= '<div class="btn-group btn-group-sm">';
-            $html .= '<a href="' . $ledgerUrl . '" class="btn btn-outline-primary btn-sm py-1 px-2" title="View Full Client Ledger & Cash In History"><i class="fa-solid fa-receipt me-1"></i>Ledger</a>';
-            $html .= '<button type="button" class="btn btn-outline-secondary btn-sm py-1 px-2" onclick="openClientDueBreakdownModal(' . $bookingId . ')" title="Quick Due Breakdown Preview"><i class="fa-solid fa-eye"></i></button>';
+            $html .= '<div class="d-flex align-items-center justify-content-center gap-1">';
+            $html .= '<a href="' . $ledgerUrl . '" class="btn btn-outline-primary btn-sm py-1 px-2" style="font-size:11px;" title="View Full Client Ledger & Cash In History"><i class="fa-solid fa-receipt me-1"></i>Ledger</a>';
+            $html .= '<button type="button" class="btn btn-outline-secondary btn-sm py-1 px-2" style="font-size:11px;" onclick="openClientDueBreakdownModal(' . $bookingId . ')" title="Quick Due Breakdown Preview"><i class="fa-solid fa-eye"></i></button>';
+
+            $fCount = $followupCounts[$bookingId] ?? 0;
+            $escapedName = htmlspecialchars(trim(preg_replace('/\s+/', ' ', $client['client_name'] ?? 'Client')), ENT_QUOTES);
+            $totalEmiVal = (int)($client['total_emi_no'] ?? 36);
+            $leadIdVal = (int)($client['lead_id'] ?? 0) ?: 'null';
+            $html .= '<button type="button" onclick="openClientEmiFollowupModal(' . $bookingId . ', \'' . $escapedName . '\', ' . $totalEmiVal . ', ' . $leadIdVal . ')" class="btn btn-sm btn-outline-primary py-1 px-2 text-nowrap" style="font-size:11px;" title="Add / View Follow Up Notes">';
+            $html .= '<i class="fa-light fa-comment-dots me-1"></i>Follow Up';
+            $html .= '<span class="badge ' . ($fCount > 0 ? 'bg-primary' : 'bg-secondary') . ' rounded-pill ms-1 followup-count-badge" data-booking-id="' . $bookingId . '" style="font-size:10px;">' . $fCount . '</span>';
+            $html .= '</button>';
             $html .= '</div>';
             $html .= '</td>';
 
@@ -5891,6 +5947,607 @@ public function discountStatement($bookingId = null)
                 number_format($overallDue, 2, '.', ''),
                 $status,
                 !empty($c['last_payment_date']) ? date('Y-m-d', strtotime($c['last_payment_date'])) : ''
+            ]);
+        }
+
+        fclose($output);
+        exit;
+    }
+
+    /**
+     * Check if user is authorized to manage or view CED Follow-ups
+     */
+    protected function isFollowupUserAuthorized(): bool
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+
+        return in_array($userRoleId, [1, 3, 7, 33, 34, 35, 36, 37])
+            || strpos($roleName, 'account') !== false
+            || strpos($roleName, 'client experience') !== false
+            || strpos($roleName, 'clients experiment') !== false
+            || strpos($roleName, 'communicat') !== false
+            || strpos($roleName, 'management') !== false
+            || strpos($roleName, 'admin') !== false
+            || hasPermission("CED Manage")
+            || hasPermission("Cash In Verify")
+            || (function_exists('isClientsCommunicated') && isClientsCommunicated())
+            || (function_exists('isAccountsHead') && isAccountsHead())
+            || (function_exists('isAccountsExecutive') && isAccountsExecutive());
+    }
+
+    /**
+     * Get aggregate stats for follow-up dashboard
+     */
+    public function getFollowupStats($projectId = null): array
+    {
+        $where = "lb.deleted_at IS NULL";
+        $params = [];
+        $types = "";
+
+        if (!empty($projectId)) {
+            $where .= " AND lb.project_id = ?";
+            $params[] = (int)$projectId;
+            $types .= "i";
+        }
+
+        $sql = "
+            SELECT 
+                COUNT(CASE WHEN f.next_follow_up_date = CURDATE() THEN 1 END) as today_count,
+                COUNT(CASE WHEN f.next_follow_up_date > CURDATE() AND f.next_follow_up_date <= DATE_ADD(CURDATE(), INTERVAL 5 DAY) THEN 1 END) as upcoming_5d_count,
+                COUNT(CASE WHEN f.next_follow_up_date < CURDATE() AND f.next_follow_up_date IS NOT NULL THEN 1 END) as overdue_count,
+                COUNT(CASE WHEN f.next_follow_up_date IS NOT NULL THEN 1 END) as total_scheduled_count
+            FROM emi_followups f
+            INNER JOIN lead_bookings lb ON f.booking_id = lb.id
+            WHERE {$where}
+        ";
+
+        if (!empty($params)) {
+            $stmt = $this->db->prepare($sql);
+            $stmt->bind_param($types, ...$params);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            return $res ? $res->fetch_assoc() : [
+                'today_count' => 0, 'upcoming_5d_count' => 0, 'overdue_count' => 0, 'total_scheduled_count' => 0
+            ];
+        }
+
+        $res = $this->db->query($sql);
+        return $res ? $res->fetch_assoc() : [
+            'today_count' => 0, 'upcoming_5d_count' => 0, 'overdue_count' => 0, 'total_scheduled_count' => 0
+        ];
+    }
+
+    /**
+     * Get Query Data for scheduled followups
+     */
+    public function getScheduledFollowupsData(string $mode, array $filters = [], int $limit = 20, int $offset = 0): array
+    {
+        $whereParts = ["lb.deleted_at IS NULL"];
+        $params = [];
+        $types = "";
+
+        if ($mode === 'today') {
+            $whereParts[] = "f.next_follow_up_date = CURDATE()";
+        } elseif ($mode === 'upcoming') {
+            $days = !empty($filters['days']) ? max(1, (int)$filters['days']) : 5;
+            $whereParts[] = "f.next_follow_up_date > CURDATE() AND f.next_follow_up_date <= DATE_ADD(CURDATE(), INTERVAL ? DAY)";
+            $params[] = $days;
+            $types .= "i";
+        } elseif ($mode === 'overdue') {
+            $whereParts[] = "f.next_follow_up_date < CURDATE() AND f.next_follow_up_date IS NOT NULL";
+        } elseif ($mode === 'all') {
+            $whereParts[] = "f.next_follow_up_date IS NOT NULL";
+        }
+
+        if (!empty($filters['project_id'])) {
+            $whereParts[] = "lb.project_id = ?";
+            $params[] = (int)$filters['project_id'];
+            $types .= "i";
+        }
+
+        if (!empty($filters['search'])) {
+            $search = '%' . trim($filters['search']) . '%';
+            $whereParts[] = "(l.full_name LIKE ? OR l.phone LIKE ? OR l.phone_number LIKE ? OR l.email LIKE ? OR p.name LIKE ? OR fl.flat_name LIKE ? OR CAST(lb.id AS CHAR) = ? OR f.note LIKE ? OR f.next_follow_up_note LIKE ?)";
+            for ($i = 0; $i < 9; $i++) {
+                $params[] = $search;
+                $types .= "s";
+            }
+        }
+
+        $whereSql = implode(" AND ", $whereParts);
+
+        // Count query
+        $countSql = "
+            SELECT COUNT(*) as total 
+            FROM emi_followups f
+            INNER JOIN lead_bookings lb ON f.booking_id = lb.id
+            INNER JOIN leads l ON lb.lead_id = l.id
+            LEFT JOIN projects p ON lb.project_id = p.id
+            LEFT JOIN flats fl ON lb.flat_id = fl.id
+            WHERE {$whereSql}
+        ";
+
+        $countParams = $params;
+        $countTypes = $types;
+
+        $totalRecords = 0;
+        if (!empty($countParams)) {
+            $cStmt = $this->db->prepare($countSql);
+            $cStmt->bind_param($countTypes, ...$countParams);
+            $cStmt->execute();
+            $cRes = $cStmt->get_result();
+            if ($cRes) {
+                $cRow = $cRes->fetch_assoc();
+                $totalRecords = (int)($cRow['total'] ?? 0);
+            }
+        } else {
+            $cRes = $this->db->query($countSql);
+            if ($cRes) {
+                $cRow = $cRes->fetch_assoc();
+                $totalRecords = (int)($cRow['total'] ?? 0);
+            }
+        }
+
+        // Data query
+        $orderSql = ($mode === 'upcoming') 
+            ? "ORDER BY f.next_follow_up_date ASC, f.id DESC" 
+            : (($mode === 'overdue') ? "ORDER BY f.next_follow_up_date DESC, f.id DESC" : "ORDER BY f.id DESC");
+
+        $dataSql = "
+            SELECT 
+                f.id as followup_id,
+                f.booking_id,
+                f.emi_no,
+                f.note,
+                f.activity_date,
+                f.activity_mode,
+                f.call_status,
+                f.activity_reason,
+                f.next_follow_up_date,
+                f.next_follow_up_note,
+                f.created_at,
+                f.added_by,
+                u.full_name as author_name,
+                lb.lead_id,
+                lb.project_id,
+                l.full_name as client_name,
+                COALESCE(NULLIF(TRIM(l.phone), ''), TRIM(l.phone_number)) as phone,
+                l.email,
+                p.name as project_name,
+                fl.flat_name as unit_name,
+                fl.floor_no,
+                GREATEST(
+                    COALESCE(NULLIF(CASE WHEN lb.total_emi_no > 0 AND lb.total_emi_no <= 120 THEN lb.total_emi_no ELSE NULL END, 0), 0),
+                    36
+                ) as total_emi_no,
+                ua.full_name as sales_agent_name,
+                COALESCE(f_agg.total_followup_count, 1) as total_followup_count
+            FROM emi_followups f
+            INNER JOIN lead_bookings lb ON f.booking_id = lb.id
+            INNER JOIN leads l ON lb.lead_id = l.id
+            LEFT JOIN projects p ON lb.project_id = p.id
+            LEFT JOIN flats fl ON lb.flat_id = fl.id
+            LEFT JOIN users u ON f.added_by = u.id
+            LEFT JOIN users ua ON COALESCE(NULLIF(lb.sales_by_id, 0), NULLIF(l.assigned_id, 0)) = ua.id
+            LEFT JOIN (
+                SELECT booking_id, COUNT(*) as total_followup_count
+                FROM emi_followups
+                GROUP BY booking_id
+            ) f_agg ON f_agg.booking_id = f.booking_id
+            WHERE {$whereSql}
+            {$orderSql}
+            LIMIT ? OFFSET ?
+        ";
+
+        $dataParams = $params;
+        $dataTypes = $types . "ii";
+        $dataParams[] = $limit;
+        $dataParams[] = $offset;
+
+        $rows = [];
+        $dStmt = $this->db->prepare($dataSql);
+        $dStmt->bind_param($dataTypes, ...$dataParams);
+        $dStmt->execute();
+        $dRes = $dStmt->get_result();
+        if ($dRes) {
+            $rows = $dRes->fetch_all(MYSQLI_ASSOC);
+        }
+
+        return [
+            'total' => $totalRecords,
+            'records' => $rows
+        ];
+    }
+
+    /**
+     * Render Follow-up Table Rows HTML
+     */
+    public function renderFollowupRowsHtml(array $followups, string $viewMode = 'today'): string
+    {
+        if (empty($followups)) {
+            $emptyMsg = ($viewMode === 'today') 
+                ? 'No follow-ups scheduled for today.' 
+                : (($viewMode === 'upcoming') ? 'No upcoming follow-ups scheduled in this period.' : 'No follow-up records found matching the criteria.');
+            return '<tr><td colspan="8" class="text-center py-5 text-muted"><i class="fa-solid fa-calendar-check fa-3x mb-3 text-secondary opacity-50 d-block"></i>' . $emptyMsg . '</td></tr>';
+        }
+
+        $todayStr = date('Y-m-d');
+        $html = '';
+
+        foreach ($followups as $idx => $f) {
+            $bookingId = (int)$f['booking_id'];
+            $clientName = htmlspecialchars($f['client_name'] ?? 'N/A');
+            $phone = htmlspecialchars($f['phone'] ?? '');
+            $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+            $email = htmlspecialchars($f['email'] ?? '');
+            $salesAgent = htmlspecialchars($f['sales_agent_name'] ?? 'Not Assigned');
+            $projectName = htmlspecialchars($f['project_name'] ?? 'N/A');
+            $unitName = htmlspecialchars($f['unit_name'] ?? 'N/A');
+            $floorNo = htmlspecialchars($f['floor_no'] ?? '');
+
+            $emiNo = (int)($f['emi_no'] ?? 0);
+            $purposeLabel = ($emiNo === 999) ? 'Development Charge' : (($emiNo === 0) ? 'General Follow Up' : 'EMI #' . $emiNo);
+            $purposeBadge = ($emiNo === 999) ? 'bg-warning-subtle text-dark border border-warning' : (($emiNo === 0) ? 'bg-secondary-subtle text-dark border border-secondary' : 'bg-primary-subtle text-primary border border-primary');
+
+            $activityDate = !empty($f['activity_date']) ? date('d M, Y', strtotime($f['activity_date'])) : 'N/A';
+            $activityMode = htmlspecialchars($f['activity_mode'] ?? 'N/A');
+            $callStatus = htmlspecialchars($f['call_status'] ?? '');
+            $reason = htmlspecialchars($f['activity_reason'] ?? 'N/A');
+            $note = nl2br(htmlspecialchars($f['note'] ?? ''));
+
+            $nextFollowUpDate = !empty($f['next_follow_up_date']) ? $f['next_follow_up_date'] : null;
+            $nextFollowUpNote = !empty($f['next_follow_up_note']) ? htmlspecialchars($f['next_follow_up_note']) : '';
+            $authorName = htmlspecialchars($f['author_name'] ?? 'System');
+            $totalFollowups = (int)($f['total_followup_count'] ?? 1);
+            $totalEmiNo = (int)($f['total_emi_no'] ?? 36);
+            $leadId = (int)($f['lead_id'] ?? 0);
+
+            // Compute Date Badge
+            $dateBadge = '';
+            if ($nextFollowUpDate) {
+                $nextFormatted = date('d M, Y', strtotime($nextFollowUpDate));
+                if ($nextFollowUpDate === $todayStr) {
+                    $dateBadge = '<span class="badge bg-danger text-white px-2 py-1 fs-11"><i class="fa-solid fa-bell me-1"></i>Today</span>';
+                } elseif ($nextFollowUpDate < $todayStr) {
+                    $diffDays = (int)round((strtotime($todayStr) - strtotime($nextFollowUpDate)) / 86400);
+                    $dateBadge = '<span class="badge bg-dark text-warning px-2 py-1 fs-11"><i class="fa-solid fa-triangle-exclamation me-1"></i>Overdue (' . $diffDays . 'd ago)</span>';
+                } else {
+                    $diffDays = (int)round((strtotime($nextFollowUpDate) - strtotime($todayStr)) / 86400);
+                    if ($diffDays === 1) {
+                        $dateBadge = '<span class="badge bg-warning text-dark px-2 py-1 fs-11"><i class="fa-solid fa-clock me-1"></i>Tomorrow</span>';
+                    } else {
+                        $dateBadge = '<span class="badge bg-info-subtle text-info-emphasis px-2 py-1 fs-11 border border-info-subtle"><i class="fa-solid fa-calendar-day me-1"></i>In ' . $diffDays . ' days</span>';
+                    }
+                }
+            } else {
+                $nextFormatted = 'N/A';
+            }
+
+            $ledgerUrl = "{$GLOBALS['base_url']}/clients-cash-in-history-view/{$bookingId}";
+            $escapedClientName = htmlspecialchars(trim(preg_replace('/\s+/', ' ', $f['client_name'] ?? 'Client')), ENT_QUOTES);
+
+            $html .= '<tr class="align-middle">';
+
+            // Col 1: Booking ID & Scheduled Date
+            $html .= '<td class="text-center">';
+            $html .= '<a href="' . $ledgerUrl . '" class="fw-bold text-primary text-decoration-none">#' . $bookingId . '</a>';
+            $html .= '<div class="mt-1">' . $dateBadge . '</div>';
+            $html .= '<div class="extra-small text-muted mt-1 fw-semibold">' . $nextFormatted . '</div>';
+            $html .= '</td>';
+
+            // Col 2: Client Info
+            $html .= '<td>';
+            $html .= '<div class="d-flex align-items-center">';
+            $html .= '<div class="avatar avatar-sm bg-primary-subtle text-primary rounded-circle me-2 d-flex align-items-center justify-content-center fw-bold" style="width:34px; height:34px; font-size:12px;">' . mb_substr($clientName, 0, 1) . '</div>';
+            $html .= '<div>';
+            $html .= '<a href="' . $ledgerUrl . '" class="fw-bold text-dark text-decoration-none d-block">' . $clientName . '</a>';
+            if (!empty($phone)) {
+                $html .= '<div class="d-flex align-items-center gap-2 mt-1">';
+                $html .= '<a href="tel:' . $phone . '" class="extra-small text-muted text-decoration-none"><i class="fa-solid fa-phone me-1 text-secondary"></i>' . $phone . '</a>';
+                if (!empty($cleanPhone)) {
+                    $html .= '<a href="https://wa.me/' . $cleanPhone . '" target="_blank" class="text-success extra-small" title="Chat on WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>';
+                }
+                $html .= '</div>';
+            }
+            if (!empty($salesAgent)) {
+                $html .= '<span class="extra-small text-muted d-block" title="Assigned Sales Agent"><i class="fa-solid fa-user-tie me-1 text-info"></i>' . $salesAgent . '</span>';
+            }
+            $html .= '</div>';
+            $html .= '</div>';
+            $html .= '</td>';
+
+            // Col 3: Project & Flat
+            $html .= '<td>';
+            $html .= '<span class="badge bg-light text-primary border border-primary-subtle mb-1 d-inline-block text-truncate" style="max-width: 170px;" title="' . $projectName . '">' . $projectName . '</span>';
+            $html .= '<div class="fw-semibold text-dark extra-small">';
+            $html .= '<i class="fa-solid fa-building me-1 text-muted"></i>' . $unitName . (!empty($floorNo) ? ' (Fl ' . $floorNo . ')' : '');
+            $html .= '</div>';
+            $html .= '</td>';
+
+            // Col 4: Target Purpose
+            $html .= '<td>';
+            $html .= '<span class="badge ' . $purposeBadge . ' fs-11 px-2 py-1"><i class="fa-solid fa-bullseye me-1"></i>' . $purposeLabel . '</span>';
+            $html .= '<div class="extra-small text-muted mt-1"><i class="fa-solid fa-tag me-1"></i>' . $reason . '</div>';
+            $html .= '</td>';
+
+            // Col 5: Next Follow Up Note
+            $html .= '<td>';
+            if (!empty($nextFollowUpNote)) {
+                $html .= '<div class="p-2 rounded bg-light border-start border-3 border-primary fs-12 text-dark fw-medium">';
+                $html .= '<i class="fa-solid fa-note-sticky text-primary me-1"></i>' . $nextFollowUpNote;
+                $html .= '</div>';
+            } else {
+                $html .= '<span class="text-muted extra-small">No specific note added</span>';
+            }
+            $html .= '</td>';
+
+            // Col 6: Last Activity Summary
+            $html .= '<td>';
+            $html .= '<div class="extra-small text-muted mb-1">';
+            $html .= '<i class="fa-solid fa-calendar me-1"></i>' . $activityDate;
+            if (!empty($activityMode)) {
+                $html .= ' &bull; <span class="fw-semibold text-dark">' . $activityMode . '</span>';
+            }
+            if (!empty($callStatus)) {
+                $html .= ' <span class="badge ' . (strtolower($callStatus) === 'incoming' ? 'bg-success' : 'bg-primary') . ' extra-small py-0 px-1">' . $callStatus . '</span>';
+            }
+            $html .= '</div>';
+            $html .= '<div class="fs-12 text-secondary text-truncate" style="max-width: 220px;" title="' . htmlspecialchars(strip_tags($note)) . '">';
+            $html .= htmlspecialchars(mb_strimwidth(strip_tags($note), 0, 80, '...'));
+            $html .= '</div>';
+            $html .= '<div class="extra-small text-muted mt-1"><i class="fa-solid fa-user me-1"></i>By: ' . $authorName . '</div>';
+            $html .= '</td>';
+
+            // Col 7: Actions
+            $html .= '<td class="text-center">';
+            $html .= '<div class="d-flex align-items-center justify-content-center gap-1">';
+            $html .= '<button type="button" onclick="openClientEmiFollowupModal(' . $bookingId . ', \'' . $escapedClientName . '\', ' . $totalEmiNo . ', ' . ($leadId ?: 'null') . ')" class="btn btn-sm btn-primary py-1 px-2 text-nowrap" style="font-size:11px;" title="Open Follow-up Dialog & Full History">';
+            $html .= '<i class="fa-light fa-comment-dots me-1"></i>Follow Up';
+            $html .= '<span class="badge bg-white text-primary rounded-pill ms-1 followup-count-badge" data-booking-id="' . $bookingId . '" style="font-size:10px;">' . $totalFollowups . '</span>';
+            $html .= '</button>';
+
+            $html .= '<a href="' . $ledgerUrl . '" target="_blank" class="btn btn-outline-secondary btn-sm py-1 px-2" style="font-size:11px;" title="View Client Ledger"><i class="fa-solid fa-receipt"></i></a>';
+            $html .= '</div>';
+            $html .= '</td>';
+
+            $html .= '</tr>';
+        }
+
+        return $html;
+    }
+
+    /**
+     * Today's Follow Ups View & AJAX Handler
+     */
+    public function todayFollowUps()
+    {
+        if (!$this->isFollowupUserAuthorized()) {
+            setError("You do not have permission to access CED Follow Ups.");
+            header("Location: {$GLOBALS['base_url']}/home");
+            exit;
+        }
+
+        $isAjax = isset($_GET['ajax']) && $_GET['ajax'] === '1';
+        $filterType = trim($_GET['filter'] ?? 'today');
+        $mode = ($filterType === 'overdue') ? 'overdue' : 'today';
+        $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
+        $search = trim($_GET['search'] ?? '');
+
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $limit = min(100, max(5, (int)($_GET['limit'] ?? 25)));
+        $offset = ($page - 1) * $limit;
+
+        $filters = [
+            'project_id' => $selectedProjectId,
+            'search'     => $search
+        ];
+
+        $data = $this->getScheduledFollowupsData($mode, $filters, $limit, $offset);
+        $totalRecords = $data['total'];
+        $records = $data['records'];
+        $totalPages = $totalRecords > 0 ? (int)ceil($totalRecords / $limit) : 1;
+        $stats = $this->getFollowupStats($selectedProjectId);
+
+        if ($isAjax) {
+            $tableHtml = $this->renderFollowupRowsHtml($records, $mode);
+            $paginationHtml = $this->generateAjaxPagination($page, $totalPages, $totalRecords, $limit, 'loadFollowupsPage');
+            $startEntry = $totalRecords > 0 ? (($page - 1) * $limit) + 1 : 0;
+            $endEntry = min($totalRecords, $page * $limit);
+            $infoText = "Showing {$startEntry} to {$endEntry} of {$totalRecords} follow-ups";
+
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'page' => $page,
+                'totalPages' => $totalPages,
+                'totalRecords' => $totalRecords,
+                'table_html' => $tableHtml,
+                'pagination_html' => $paginationHtml,
+                'info_text' => $infoText,
+                'stats' => $stats
+            ]);
+            exit;
+        }
+
+        // Projects list
+        $projectModel = new Project($this->db);
+        $projects = $projectModel->getAll();
+        if (empty($projects)) {
+            $projects = $this->clientModel->getProjectsForCED();
+        }
+
+        $this->view("ced/followups-list", [
+            "current_route"       => "today-follow-ups",
+            "page_title"          => "Today's Client Follow Ups",
+            "view_mode"           => "today",
+            "active_tab"          => $mode,
+            "records"             => $records,
+            "totalRecords"        => $totalRecords,
+            "totalPages"          => $totalPages,
+            "currentPage"         => $page,
+            "limit"               => $limit,
+            "search"              => $search,
+            "stats"               => $stats,
+            "projects"            => $projects,
+            "selectedProjectId"   => $selectedProjectId,
+            "days"                => 5
+        ]);
+    }
+
+    /**
+     * Upcoming Follow Ups (Next 5 Days) View & AJAX Handler
+     */
+    public function upcomingFollowUps()
+    {
+        if (!$this->isFollowupUserAuthorized()) {
+            setError("You do not have permission to access CED Follow Ups.");
+            header("Location: {$GLOBALS['base_url']}/home");
+            exit;
+        }
+
+        $isAjax = isset($_GET['ajax']) && $_GET['ajax'] === '1';
+        $days = isset($_GET['days']) ? max(1, min(60, (int)$_GET['days'])) : 5;
+        $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
+        $search = trim($_GET['search'] ?? '');
+
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $limit = min(100, max(5, (int)($_GET['limit'] ?? 25)));
+        $offset = ($page - 1) * $limit;
+
+        $filters = [
+            'days'       => $days,
+            'project_id' => $selectedProjectId,
+            'search'     => $search
+        ];
+
+        $data = $this->getScheduledFollowupsData('upcoming', $filters, $limit, $offset);
+        $totalRecords = $data['total'];
+        $records = $data['records'];
+        $totalPages = $totalRecords > 0 ? (int)ceil($totalRecords / $limit) : 1;
+        $stats = $this->getFollowupStats($selectedProjectId);
+
+        if ($isAjax) {
+            $tableHtml = $this->renderFollowupRowsHtml($records, 'upcoming');
+            $paginationHtml = $this->generateAjaxPagination($page, $totalPages, $totalRecords, $limit, 'loadFollowupsPage');
+            $startEntry = $totalRecords > 0 ? (($page - 1) * $limit) + 1 : 0;
+            $endEntry = min($totalRecords, $page * $limit);
+            $infoText = "Showing {$startEntry} to {$endEntry} of {$totalRecords} upcoming follow-ups";
+
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'page' => $page,
+                'totalPages' => $totalPages,
+                'totalRecords' => $totalRecords,
+                'table_html' => $tableHtml,
+                'pagination_html' => $paginationHtml,
+                'info_text' => $infoText,
+                'stats' => $stats
+            ]);
+            exit;
+        }
+
+        // Projects list
+        $projectModel = new Project($this->db);
+        $projects = $projectModel->getAll();
+        if (empty($projects)) {
+            $projects = $this->clientModel->getProjectsForCED();
+        }
+
+        $this->view("ced/followups-list", [
+            "current_route"       => "upcoming-follow-ups",
+            "page_title"          => "Upcoming Client Follow Ups (Next {$days} Days)",
+            "view_mode"           => "upcoming",
+            "active_tab"          => "upcoming",
+            "records"             => $records,
+            "totalRecords"        => $totalRecords,
+            "totalPages"          => $totalPages,
+            "currentPage"         => $page,
+            "limit"               => $limit,
+            "search"              => $search,
+            "stats"               => $stats,
+            "projects"            => $projects,
+            "selectedProjectId"   => $selectedProjectId,
+            "days"                => $days
+        ]);
+    }
+
+    /**
+     * Export Follow-ups to CSV
+     */
+    public function exportFollowUps()
+    {
+        if (!$this->isFollowupUserAuthorized()) {
+            exit("Unauthorized");
+        }
+
+        $mode = trim($_GET['mode'] ?? 'today');
+        $days = isset($_GET['days']) ? (int)$_GET['days'] : 5;
+        $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
+        $search = trim($_GET['search'] ?? '');
+
+        $filters = [
+            'days'       => $days,
+            'project_id' => $selectedProjectId,
+            'search'     => $search
+        ];
+
+        $data = $this->getScheduledFollowupsData($mode, $filters, 5000, 0);
+        $records = $data['records'];
+
+        $filename = "Follow_Ups_" . ucfirst($mode) . "_" . date('Y_m_d_His') . ".csv";
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename=' . $filename);
+
+        $output = fopen('php://output', 'w');
+        fputcsv($output, [
+            'Booking ID',
+            'Next Follow Up Date',
+            'Next Follow Up Note',
+            'Client Name',
+            'Phone',
+            'Email',
+            'Project Name',
+            'Unit Name',
+            'Floor No',
+            'Sales Agent',
+            'EMI / Purpose',
+            'Last Activity Date',
+            'Last Activity Mode',
+            'Call Status',
+            'Activity Reason',
+            'Last Discussion Note',
+            'Followed By',
+            'Created At'
+        ]);
+
+        foreach ($records as $r) {
+            $emiNo = (int)($r['emi_no'] ?? 0);
+            $purpose = ($emiNo === 999) ? 'Development Charge' : (($emiNo === 0) ? 'General Follow Up' : 'EMI #' . $emiNo);
+
+            fputcsv($output, [
+                $r['booking_id'],
+                $r['next_follow_up_date'] ?? '',
+                $r['next_follow_up_note'] ?? '',
+                $r['client_name'] ?? '',
+                $r['phone'] ?? '',
+                $r['email'] ?? '',
+                $r['project_name'] ?? '',
+                $r['unit_name'] ?? '',
+                $r['floor_no'] ?? '',
+                $r['sales_agent_name'] ?? '',
+                $purpose,
+                $r['activity_date'] ?? '',
+                $r['activity_mode'] ?? '',
+                $r['call_status'] ?? '',
+                $r['activity_reason'] ?? '',
+                $r['note'] ?? '',
+                $r['author_name'] ?? '',
+                $r['created_at'] ?? ''
             ]);
         }
 

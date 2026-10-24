@@ -182,6 +182,12 @@ function redirectByRole()
     $role = isset($_SESSION['user']['role_id']) ? (int) $_SESSION['user']['role_id'] : 0;
     $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
 
+    if (isClientsCommunicated()) {
+        $url = "{$GLOBALS['base_url']}/ced-dashboard";
+        header("Location: $url");
+        exit;
+    }
+
     switch ($role) {
         case 1: // Super Admin
         case 3: // Admin
@@ -210,6 +216,7 @@ function redirectByRole()
 
 
         case 7: // Clients Experiment
+        case 37: // Credit Recovery (Clients Communicated)
             $url = "{$GLOBALS['base_url']}/ced-dashboard";
             break;
         case 8: // sales executive
@@ -1237,6 +1244,34 @@ function checkTipsoiEmployeeMatch($db)
 function isAccountsHead(): bool
 {
     return isset($_SESSION['user']['role_id']) && (int) $_SESSION['user']['role_id'] === 30;
+}
+
+/**
+ * Check if the currently logged-in user is Credit Recovery / Clients Communicated (Role ID 37)
+ */
+function isCreditRecovery(): bool
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+    $secRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+    $priRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
+    $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+    return $roleId === 37 
+        || $secRoleId === 37 
+        || $priRoleId === 37 
+        || strpos($roleName, 'credit recovery') !== false
+        || strpos($roleName, 'recovery') !== false
+        || strpos($roleName, 'clients communicated') !== false 
+        || strpos($roleName, 'client communicated') !== false 
+        || strpos($roleName, 'client communication') !== false
+        || strpos($roleName, 'communicat') !== false;
+}
+
+function isClientsCommunicated(): bool
+{
+    return isCreditRecovery();
 }
 
 /**

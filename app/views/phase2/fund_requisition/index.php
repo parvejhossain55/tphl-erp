@@ -1716,6 +1716,13 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer, $serial = 1) {
             <?php if (isset($req['qc_approved_amount']) && (float)$req['qc_approved_amount'] > 0): ?>
                 <div class="fs-11 text-info fw-normal">QC: BDT <?= number_format((float)$req['qc_approved_amount'], 2) ?></div>
             <?php endif; ?>
+            <?php if (in_array($req['status'], ['approved', 'partially_approved', 'paid', 'partially_paid']) && (float)($req['approved_amount'] ?? 0) > 0): ?>
+                <div class="fs-11 text-success fw-semibold">Mgmt Approved: BDT <?= number_format((float)$req['approved_amount'], 2) ?></div>
+                <?php $frRemainingAmt = max(0, (float)$req['amount'] - (float)$req['approved_amount']); ?>
+                <?php if ($frRemainingAmt > 0.009): ?>
+                    <div class="fs-11 text-danger fw-normal">Remaining: BDT <?= number_format($frRemainingAmt, 2) ?></div>
+                <?php endif; ?>
+            <?php endif; ?>
         </td>
         <td class="text-wrap" style="min-width: 250px; max-width: 350px; word-break: break-word;">
             <?php 
@@ -1801,7 +1808,10 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer, $serial = 1) {
                 </div>
             <?php elseif (in_array($req['status'], ['partially_approved', 'partially_paid'])): ?>
                 <div class="fs-9 text-muted mt-1">
-                    Pending: for remaining amount
+                    <?php if (!empty($req['approved_by_name'])): ?>
+                        Partially approved by <?= htmlspecialchars($req['approved_by_name'] . (!empty($req['approved_by_designation_name']) ? ' (' . $req['approved_by_designation_name'] . ')' : '')) ?>: BDT <?= number_format((float)($req['approved_amount'] ?? 0), 2) ?><br>
+                    <?php endif; ?>
+                    Pending: Accounts Head (approved part) / Management (remaining)
                 </div>
             <?php elseif ($req['status'] === 'pending'): ?>
                 <div class="fs-9 text-muted mt-1">
