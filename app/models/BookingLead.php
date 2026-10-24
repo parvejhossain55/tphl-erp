@@ -701,6 +701,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         $stmt = $this->db->prepare("SELECT lb.*, 
                COALESCE(lb.past_approval_attachment, (SELECT ar.attachment FROM approval_requests ar WHERE ar.source_table = 'lead_bookings' AND ar.source_id = lb.id AND ar.attachment IS NOT NULL AND ar.attachment != '' ORDER BY ar.id DESC LIMIT 1)) AS past_approval_attachment,
                l.full_name, 
+               l.assigned_id,
                COALESCE(NULLIF(TRIM(l.phone), ''), TRIM(l.phone_number)) AS phone,
                l.phone_number,
                p.name AS project_name,

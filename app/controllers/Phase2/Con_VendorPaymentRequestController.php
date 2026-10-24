@@ -1367,7 +1367,9 @@ class Con_VendorPaymentRequestController extends Controller
     private function syncApprovalRequest($requestId, $newStatus, $approvedAmount = null)
     {
         $arStatus = ($newStatus === 'approved') ? 'approved' : 'rejected';
-        $approveRole = ($newStatus === 'approved') ? 'accounts' : 'rejected';
+        $arRow = $this->getApprovalRequest($requestId);
+        $isAhApproved = (!empty($arRow['accounts_head_status']) && strtolower($arRow['accounts_head_status']) === 'approved');
+        $approveRole = ($newStatus === 'approved') ? ($isAhApproved ? 'accounts' : 'accounts_head') : 'rejected';
 
         $stmt = $this->db->prepare(
             "UPDATE approval_requests

@@ -1396,7 +1396,7 @@ if (empty($logoSrc)) {
                                 </div>
                             </div>
                         <?php elseif ($isOnline): ?>
-                            <!-- ONLINE PAYMENT: ONLINE TYPE & RECEIVER BANK NAME ONLY -->
+                            <!-- ONLINE PAYMENT: ONLINE TYPE & RECEIVER BANK NAME & ACCOUNTS -->
                             <div class="proc-grid proc-grid-online">
                                 <div class="proc-col">
                                     <div class="proc-lbl">Created By:</div>
@@ -1411,11 +1411,21 @@ if (empty($logoSrc)) {
                                         <i class="fa-solid fa-mobile-screen me-1"></i>
                                         <?= !empty($onlineType) ? htmlspecialchars(strtoupper($onlineType)) : (!empty($payment['online_type']) ? htmlspecialchars(strtoupper($payment['online_type'])) : 'ONLINE') ?>
                                     </div>
-                                    <div class="proc-sub">Digital Channel</div>
+                                    <?php if (!empty($clientAccountNo) && !in_array(strtolower($clientAccountNo), ['n/a', 'none', '0', '00', 'null'])): ?>
+                                        <div class="proc-sub bold">• A/C: <?= htmlspecialchars($clientAccountNo) ?></div>
+                                    <?php else: ?>
+                                        <div class="proc-sub">Digital Channel</div>
+                                    <?php endif; ?>
                                 </div>
                                 <div class="proc-col">
                                     <div class="proc-lbl">Receiver Bank</div>
                                     <div class="proc-main"><?= htmlspecialchars(!empty($receiverBankName) && $receiverBankName !== 'N/A' ? $receiverBankName : 'Company Bank') ?></div>
+                                    <?php if (!empty($receiverHolderName)): ?>
+                                        <div class="proc-sub"><?= htmlspecialchars($receiverHolderName) ?></div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($receiverAccountNo) && $receiverAccountNo !== 'N/A'): ?>
+                                        <div class="proc-sub bold">• A/C: <?= htmlspecialchars($receiverAccountNo) ?></div>
+                                    <?php endif; ?>
                                 </div>
                                 <div class="proc-col">
                                     <div class="proc-lbl">Trx ID / Ref Number</div>
@@ -1435,6 +1445,9 @@ if (empty($logoSrc)) {
                                 <div class="proc-col">
                                     <div class="proc-lbl">Sender Bank</div>
                                     <div class="proc-main"><?= htmlspecialchars($senderBankName ?: 'N/A') ?></div>
+                                    <?php if (!empty($clientAccountNo) && !in_array(strtolower($clientAccountNo), ['n/a', 'none', '0', '00', 'null'])): ?>
+                                        <div class="proc-sub bold">• A/C: <?= htmlspecialchars($clientAccountNo) ?></div>
+                                    <?php endif; ?>
                                 </div>
                                 <div class="proc-col">
                                     <div class="proc-lbl">Receiver Bank</div>

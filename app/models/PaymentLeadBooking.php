@@ -167,7 +167,8 @@ class PaymentLeadBooking extends Model
                 LEFT JOIN users us ON us.id = p.verified_by
                 LEFT JOIN company_bank_accounts cb ON cb.id = p.bank_id
                 WHERE p.booking_id = ?
-                AND p.payment_type IN('booking_money','registration','land_share')
+                AND p.payment_type IN('booking_money','registration','land_share','emi','development_charge','others')
+                AND (p.is_trashed = 0 OR p.is_trashed IS NULL)
                 ORDER BY p.id ASC
         ");
         $stmt->bind_param("i", $booking_id);
@@ -335,45 +336,120 @@ class PaymentLeadBooking extends Model
         return $stmt->get_result()->fetch_assoc();
     }
 
-    // Update payment by ID (only allowed if not verified)
-    public function updatePayment($data)
+    // Update payment by ID (allowed for verified records only when explicitly authorized via $allowVerified)
+    public function updatePayment($data, $allowVerified = false)
     {
         $id = (int)($data['id'] ?? 0);
-        if ($this->isPaymentVerified($id)) {
+        if (!$allowVerified && $this->isPaymentVerified($id)) {
             return false;
         }
 
-        $sql = "UPDATE lead_payments SET
-                    amount = ?,
-                    payment_method = ?,
-                    payment_date = ?,
-                    transaction_ref = ?,
-                    bank_id = ?,
-                    bank_name = ?,
-                    bank_account_no = ?,
-                    cheque_no = ?,
-                    online_type = ?";
-        
-        $params = [
-            (float)($data['amount'] ?? 0),
-            $data['payment_method'] ?? 'cash',
-            $data['payment_date'] ?? date('Y-m-d'),
-            $data['transaction_ref'] ?? null,
-            !empty($data['bank_id']) ? (int)$data['bank_id'] : null,
-            $data['bank_name'] ?? null,
-            $data['bank_account_no'] ?? null,
-            $data['cheque_no'] ?? null,
-            $data['online_type'] ?? null
-        ];
-        $types = "dssssisss";
+        $fields = [];
+        $params = [];
+        $types = "";
+
+        if (isset($data['payment_type'])) {
+            $fields[] = "payment_type = ?";
+            $params[] = $data['payment_type'];
+            $types .= "s";
+        }
+
+        if (isset($data['amount'])) {
+            $fields[] = "amount = ?";
+            $params[] = (float)$data['amount'];
+            $types .= "d";
+        }
+
+        if (isset($data['payment_method'])) {
+            $fields[] = "payment_method = ?";
+            $params[] = $data['payment_method'];
+            $types .= "s";
+        }
+
+        if (isset($data['payment_status'])) {
+            $fields[] = "payment_status = ?";
+            $params[] = $data['payment_status'];
+            $types .= "s";
+        }
+
+        if (isset($data['payment_date'])) {
+            $fields[] = "payment_date = ?";
+            $params[] = $data['payment_date'];
+            $types .= "s";
+        }
+
+        if (array_key_exists('total_emi_no', $data)) {
+            $fields[] = "total_emi_no = ?";
+            $params[] = !empty($data['total_emi_no']) ? (int)$data['total_emi_no'] : null;
+            $types .= "i";
+        }
+
+        if (array_key_exists('transaction_ref', $data)) {
+            $fields[] = "transaction_ref = ?";
+            $params[] = $data['transaction_ref'];
+            $types .= "s";
+        }
+
+        if (array_key_exists('bank_id', $data)) {
+            $fields[] = "bank_id = ?";
+            $params[] = !empty($data['bank_id']) ? (int)$data['bank_id'] : null;
+            $types .= "i";
+        }
+
+        if (array_key_exists('bank_name', $data)) {
+            $fields[] = "bank_name = ?";
+            $params[] = $data['bank_name'];
+            $types .= "s";
+        }
+
+        if (array_key_exists('bank_account_no', $data)) {
+            $fields[] = "bank_account_no = ?";
+            $params[] = $data['bank_account_no'];
+            $types .= "s";
+        }
+
+        if (array_key_exists('cheque_no', $data)) {
+            $fields[] = "cheque_no = ?";
+            $params[] = $data['cheque_no'];
+            $types .= "s";
+        }
+
+        if (array_key_exists('online_type', $data)) {
+            $fields[] = "online_type = ?";
+            $params[] = $data['online_type'];
+            $types .= "s";
+        }
 
         if (!empty($data['attachment_image'])) {
-            $sql .= ", attachment_image = ?";
+            $fields[] = "attachment_image = ?";
             $params[] = $data['attachment_image'];
             $types .= "s";
         }
 
-        $sql .= " WHERE id = ? AND (verification_status != 'verified' OR verification_status IS NULL)";
+        if (!empty($data['attachment_image2'])) {
+            $fields[] = "attachment_image2 = ?";
+            $params[] = $data['attachment_image2'];
+            $types .= "s";
+        }
+
+        if (isset($data['updated_by'])) {
+            $fields[] = "updated_by = ?";
+            $params[] = (int)$data['updated_by'];
+            $types .= "i";
+        }
+        $fields[] = "updated_at = NOW()";
+
+        if (empty($fields)) {
+            return false;
+        }
+
+        $sql = "UPDATE lead_payments SET " . implode(", ", $fields);
+
+        if ($allowVerified) {
+            $sql .= " WHERE id = ?";
+        } else {
+            $sql .= " WHERE id = ? AND (verification_status != 'verified' OR verification_status IS NULL)";
+        }
         $params[] = $id;
         $types .= "i";
 

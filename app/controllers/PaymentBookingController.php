@@ -36,15 +36,13 @@ class PaymentBookingController extends Controller
         // All payments for this booking
         $payments = $this->paymentModel->getByBooking($booking_id);
 
-        // Check if booking payment already done
-        // $existingBookingPayment = $this->paymentModel->getByBookingType($booking_id, 'booking_money');
-
-        // // Form show/hide
-        // $showBookingForm = empty($existingBookingPayment); // true = show, false = hide
+        $companyBanksRes = $this->db->query("SELECT id, bank_name, account_name, account_number FROM company_bank_accounts ORDER BY bank_name ASC");
+        $companyBanks = $companyBanksRes ? $companyBanksRes->fetch_all(MYSQLI_ASSOC) : [];
 
         $this->view("sales-developments/payments/payment-bookings", [
             "booking" => $booking,
             "payments" => $payments,
+            "companyBanks" => $companyBanks,
             "current_route" => "payments-booking",
             "page_title" => "Booking Payment",
         ]);
@@ -1196,57 +1194,160 @@ class PaymentBookingController extends Controller
             exit;
         }
 
+        $currentUserId = (int)($_SESSION['user']['id'] ?? $_SESSION['user_id'] ?? 0);
+        $currentUserRoleId = (int)($_SESSION['user']['role_id'] ?? $_SESSION['user']['primary_role_id'] ?? 0);
+        $secondaryRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
         $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
-        $isSalesHead = ((strpos($userRoleName, 'sales') !== false && strpos($userRoleName, 'head') !== false) || strpos($userRoleName, 'admin') !== false || $_SESSION['user']['role_id'] == 1);
-        $isVerified = $this->paymentModel->isPaymentVerified($id);
+        $userName = strtolower(trim($_SESSION['user']['full_name'] ?? $_SESSION['user']['user_name'] ?? ''));
+
+        // Management roles: Admin (1), Super Admin (3), Admin & Operation Head (20), Admin Operation (32), Chief Officer (33), SEAL CEO (35) or matching names
+        $isManagement = in_array($currentUserRoleId, [1, 3, 20, 32, 33, 35]) ||
+                        in_array($secondaryRoleId, [1, 3, 20, 32, 33, 35]) ||
+                        (strpos($userRoleName, 'admin') !== false) ||
+                        (strpos($userRoleName, 'management') !== false) ||
+                        (strpos($userRoleName, 'ceo') !== false) ||
+                        (strpos($userRoleName, 'chief') !== false) ||
+                        (strpos($userName, 'management') !== false);
+
+        // Sales Head roles: Sales Team Head (9), Sales Manager (5) or matching names
+        $isSalesHead = in_array($currentUserRoleId, [5, 9]) ||
+                       in_array($secondaryRoleId, [5, 9]) ||
+                       (strpos($userRoleName, 'sales') !== false && (strpos($userRoleName, 'head') !== false || strpos($userRoleName, 'manager') !== false));
+
+        $booking = $this->bookingModel->getById($bookingId);
+        $existing = $this->paymentModel->find($id);
+
+        if (!$existing || !$booking) {
+            setError("Invalid payment or booking record!");
+            header("Location: {$GLOBALS['base_url']}/payments-booking/{$bookingId}");
+            exit;
+        }
+
+        $isAssignedSalesPerson = (
+            (!empty($booking['sales_by_id']) && (int)$booking['sales_by_id'] === $currentUserId) ||
+            (!empty($booking['assigned_id']) && (int)$booking['assigned_id'] === $currentUserId) ||
+            (!empty($existing['created_by']) && (int)$existing['created_by'] === $currentUserId)
+        );
+
+        $isVerified = ($existing['verification_status'] === 'verified');
+        $allowVerified = false;
 
         if ($isVerified) {
-            if (!$isSalesHead) {
-                setError("Cannot edit payment because it has already been verified by Accounts!");
+            // Once verified by Accounts: Sales Person CANNOT edit. Only Management or Sales Head can edit.
+            if (!$isManagement && !$isSalesHead) {
+                setError("Cannot edit payment because it has already been verified by Accounts! Only Management or Sales Head can edit verified payments.");
                 header("Location: {$GLOBALS['base_url']}/payments-booking/{$bookingId}");
                 exit;
             }
-            
-            // SECURITY: If verified, ONLY allow updating payment_date
-            // Fetch existing data so we don't overwrite with user input
-            $stmt = $this->db->prepare("SELECT * FROM lead_payments WHERE id = ?");
-            $stmt->bind_param('i', $id);
-            $stmt->execute();
-            $existing = $stmt->get_result()->fetch_assoc();
-            
-            $data = [
-                'id'              => $id,
-                'amount'          => floatval($existing['amount']),
-                'payment_method'  => $existing['payment_method'],
-                'payment_date'    => $_POST['payment_date'] ?? $existing['payment_date'], // The only field allowed to change
-                'transaction_ref' => $existing['transaction_ref'],
-                'bank_id'         => $existing['bank_id'],
-                'bank_name'       => $existing['bank_name'],
-                'bank_account_no' => $existing['bank_account_no'],
-                'cheque_no'       => $existing['cheque_no'],
-                'online_type'     => $existing['online_type'],
-            ];
-        } else {
+
             $bankName = !empty($_POST['bank_name']) ? trim($_POST['bank_name']) : null;
             if (in_array($bankName, ['Other Bank', 'Other Country / Foreign Bank', 'Foreign Bank', 'Other Country Bank']) && !empty($_POST['custom_bank_name'])) {
                 $bankName = trim($_POST['custom_bank_name']);
             }
 
+            $paymentMethod = $_POST['payment_method'] ?? ($existing['payment_method'] ?? 'cash');
+
+            // Sanitize bank/cheque/online fields based on payment method
+            $bankId = null;
+            $clientBankName = null;
+            $bankAccountNo = null;
+            $chequeNo = null;
+            $onlineType = null;
+
+            if ($paymentMethod === 'bank') {
+                $bankId = !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null;
+                $clientBankName = $bankName;
+                $bankAccountNo = !empty($_POST['bank_account_no']) ? trim($_POST['bank_account_no']) : null;
+            } elseif ($paymentMethod === 'cheque') {
+                $bankId = !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null;
+                $clientBankName = $bankName;
+                $chequeNo = !empty($_POST['cheque_no']) ? trim($_POST['cheque_no']) : null;
+            } elseif ($paymentMethod === 'online') {
+                $bankId = !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null;
+                $onlineType = !empty($_POST['online_type']) ? trim($_POST['online_type']) : null;
+            }
+
+            // Management can edit EVERYTHING (including amount, payment_type, payment_status, total_emi_no).
+            // Sales Head can edit Method, Date, Bank, Cheque No, Ref, Online Type, Attachments (Amount/Type/Status locked).
+            $amount = $isManagement ? floatval($_POST['amount'] ?? $existing['amount']) : floatval($existing['amount']);
+            $paymentType = ($isManagement && !empty($_POST['payment_type'])) ? trim($_POST['payment_type']) : $existing['payment_type'];
+            $paymentStatus = ($isManagement && !empty($_POST['payment_status'])) ? trim($_POST['payment_status']) : $existing['payment_status'];
+            $totalEmiNo = ($isManagement && isset($_POST['total_emi_no']) && $_POST['total_emi_no'] !== '') ? (int)$_POST['total_emi_no'] : ($existing['total_emi_no'] ?? null);
+
             $data = [
                 'id'              => $id,
-                'amount'          => floatval($_POST['amount'] ?? 0),
-                'payment_method'  => $_POST['payment_method'] ?? 'cash',
-                'payment_date'    => $_POST['payment_date'] ?? date('Y-m-d'),
+                'payment_type'    => $paymentType,
+                'amount'          => $amount,
+                'payment_method'  => $paymentMethod,
+                'payment_status'  => $paymentStatus,
+                'payment_date'    => $_POST['payment_date'] ?? $existing['payment_date'],
+                'total_emi_no'    => $totalEmiNo,
                 'transaction_ref' => $_POST['transaction_ref'] ?? null,
-                'bank_id'         => !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null,
-                'bank_name'       => $bankName,
-                'bank_account_no' => $_POST['bank_account_no'] ?? null,
-                'cheque_no'       => $_POST['cheque_no'] ?? null,
-                'online_type'     => $_POST['online_type'] ?? null,
+                'bank_id'         => $bankId,
+                'bank_name'       => $clientBankName,
+                'bank_account_no' => $bankAccountNo,
+                'cheque_no'       => $chequeNo,
+                'online_type'     => $onlineType,
+                'updated_by'      => $currentUserId,
             ];
+
+            $allowVerified = true;
+        } else {
+            // Unverified: User must be Management, Sales Head, OR the Assigned Sales Person
+            if (!$isManagement && !$isSalesHead && !$isAssignedSalesPerson) {
+                setError("You do not have permission to edit this payment record.");
+                header("Location: {$GLOBALS['base_url']}/payments-booking/{$bookingId}");
+                exit;
+            }
+
+            $bankName = !empty($_POST['bank_name']) ? trim($_POST['bank_name']) : null;
+            if (in_array($bankName, ['Other Bank', 'Other Country / Foreign Bank', 'Foreign Bank', 'Other Country Bank']) && !empty($_POST['custom_bank_name'])) {
+                $bankName = trim($_POST['custom_bank_name']);
+            }
+
+            $paymentMethod = $_POST['payment_method'] ?? 'cash';
+
+            // Sanitize bank/cheque/online fields based on payment method
+            $bankId = null;
+            $clientBankName = null;
+            $bankAccountNo = null;
+            $chequeNo = null;
+            $onlineType = null;
+
+            if ($paymentMethod === 'bank') {
+                $bankId = !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null;
+                $clientBankName = $bankName;
+                $bankAccountNo = !empty($_POST['bank_account_no']) ? trim($_POST['bank_account_no']) : null;
+            } elseif ($paymentMethod === 'cheque') {
+                $bankId = !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null;
+                $clientBankName = $bankName;
+                $chequeNo = !empty($_POST['cheque_no']) ? trim($_POST['cheque_no']) : null;
+            } elseif ($paymentMethod === 'online') {
+                $bankId = !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null;
+                $onlineType = !empty($_POST['online_type']) ? trim($_POST['online_type']) : null;
+            }
+
+            $data = [
+                'id'              => $id,
+                'payment_type'    => !empty($_POST['payment_type']) ? trim($_POST['payment_type']) : ($existing['payment_type'] ?? 'booking_money'),
+                'amount'          => floatval($_POST['amount'] ?? $existing['amount']),
+                'payment_method'  => $paymentMethod,
+                'payment_status'  => !empty($_POST['payment_status']) ? trim($_POST['payment_status']) : ($existing['payment_status'] ?? 'pending'),
+                'payment_date'    => $_POST['payment_date'] ?? date('Y-m-d'),
+                'total_emi_no'    => isset($_POST['total_emi_no']) && $_POST['total_emi_no'] !== '' ? (int)$_POST['total_emi_no'] : ($existing['total_emi_no'] ?? null),
+                'transaction_ref' => $_POST['transaction_ref'] ?? null,
+                'bank_id'         => $bankId,
+                'bank_name'       => $clientBankName,
+                'bank_account_no' => $bankAccountNo,
+                'cheque_no'       => $chequeNo,
+                'online_type'     => $onlineType,
+                'updated_by'      => $currentUserId,
+            ];
+
+            $allowVerified = false;
         }
 
-        // Handle attachment upload if new file provided
+        // Handle attachment upload 1
         if (isset($_FILES['attachment_image']) && $_FILES['attachment_image']['error'] === UPLOAD_ERR_OK) {
             $uploadedFileName = uploadImage('attachment_image', 'payments');
             if ($uploadedFileName) {
@@ -1254,7 +1355,25 @@ class PaymentBookingController extends Controller
             }
         }
 
-        if ($this->paymentModel->updatePayment($data)) {
+        // Handle attachment upload 2
+        if (isset($_FILES['attachment_image2']) && $_FILES['attachment_image2']['error'] === UPLOAD_ERR_OK) {
+            $uploadedFileName2 = uploadImage('attachment_image2', 'payments');
+            if ($uploadedFileName2) {
+                $data['attachment_image2'] = $uploadedFileName2;
+            }
+        }
+
+        if ($this->paymentModel->updatePayment($data, $allowVerified)) {
+            // Also sync total_emi_no to lead_bookings if updated
+            if (!empty($data['total_emi_no'])) {
+                $stmtEmi = $this->db->prepare("UPDATE lead_bookings SET total_emi_no = ?, emi_updated_by = ?, emi_updated_at = NOW() WHERE id = ?");
+                if ($stmtEmi) {
+                    $stmtEmi->bind_param("iii", $data['total_emi_no'], $currentUserId, $bookingId);
+                    $stmtEmi->execute();
+                    $stmtEmi->close();
+                }
+            }
+
             $this->updateBookingPaymentStatus($bookingId);
             setSuccess("Payment record updated successfully!");
         } else {
@@ -1287,6 +1406,37 @@ class PaymentBookingController extends Controller
 
         if ($this->paymentModel->isPaymentVerified($paymentId)) {
             setError("Cannot delete payment because it has already been verified by Accounts!");
+            header("Location: {$GLOBALS['base_url']}/payments-booking/{$bookingId}");
+            exit;
+        }
+
+        $currentUserId = (int)($_SESSION['user']['id'] ?? $_SESSION['user_id'] ?? 0);
+        $currentUserRoleId = (int)($_SESSION['user']['role_id'] ?? $_SESSION['user']['primary_role_id'] ?? 0);
+        $secondaryRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $userName = strtolower(trim($_SESSION['user']['full_name'] ?? $_SESSION['user']['user_name'] ?? ''));
+
+        $isManagement = in_array($currentUserRoleId, [1, 3, 20, 32, 33, 35]) ||
+                        in_array($secondaryRoleId, [1, 3, 20, 32, 33, 35]) ||
+                        (strpos($userRoleName, 'admin') !== false) ||
+                        (strpos($userRoleName, 'management') !== false) ||
+                        (strpos($userRoleName, 'ceo') !== false) ||
+                        (strpos($userRoleName, 'chief') !== false) ||
+                        (strpos($userName, 'management') !== false);
+
+        $isSalesHead = in_array($currentUserRoleId, [5, 9]) ||
+                       in_array($secondaryRoleId, [5, 9]) ||
+                       (strpos($userRoleName, 'sales') !== false && (strpos($userRoleName, 'head') !== false || strpos($userRoleName, 'manager') !== false));
+
+        $booking = $this->bookingModel->getById($bookingId);
+        $isAssignedSalesPerson = (
+            (!empty($booking['sales_by_id']) && (int)$booking['sales_by_id'] === $currentUserId) ||
+            (!empty($booking['assigned_id']) && (int)$booking['assigned_id'] === $currentUserId) ||
+            (!empty($payment['created_by']) && (int)$payment['created_by'] === $currentUserId)
+        );
+
+        if (!$isManagement && !$isSalesHead && !$isAssignedSalesPerson) {
+            setError("You do not have permission to delete this payment record.");
             header("Location: {$GLOBALS['base_url']}/payments-booking/{$bookingId}");
             exit;
         }

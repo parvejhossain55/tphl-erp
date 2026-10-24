@@ -1003,7 +1003,7 @@ class VoucherController extends Controller
         }
 
         // General / Final Management Approval
-        $isRowOrReqApproved = in_array(strtolower($row['status'] ?? $appReq['status'] ?? ''), ['approved', 'paid', 'fully_paid', 'partially_paid', 'settled', 'completed']);
+        $isRowOrReqApproved = in_array(strtolower($row['status'] ?? $appReq['status'] ?? ''), ['approved', 'paid', 'fully_paid', 'partially_paid', 'settled', 'completed']) || (!$isOver1Lac && ($opHeadStatus === 'approved' || !empty($opHeadBy)));
         $mgmtId = $row['management_apporved_by_id'] ?? $row['management_approved_by'] ?? null;
         if (empty($mgmtId) && $isRowOrReqApproved) {
             $mgmtId = $row['approved_by'] ?? ($appReq['approved_by'] ?? null);
@@ -1018,7 +1018,9 @@ class VoucherController extends Controller
         if ($frMgmtHandled) {
             // Already rendered per-approval entries above
         } elseif (!empty($mgmtId) || (!empty($appReq['app_name']) && $isRowOrReqApproved)) {
-            if (!empty($appReq['app_name']) && empty($mgmtId)) {
+            if (!$isOver1Lac && ($opHeadStatus === 'approved' || !empty($opHeadBy)) && !empty($opHeadBy) && $mgmtId == $opHeadBy) {
+                // Op Head sign-off already added under 'Admin & Operation Head'; no need for duplicate card
+            } elseif (!empty($appReq['app_name']) && empty($mgmtId)) {
                 $mgmtName = $appReq['app_name'] . (!empty($appReq['app_des']) ? ' (' . $appReq['app_des'] . ')' : '');
                 $addApprover($mgmtStage, null, $mgmtDate, $mgmtNote);
                 // If still not added because uid is null, check name deduplication
@@ -1041,12 +1043,16 @@ class VoucherController extends Controller
                 $addApprover($mgmtStage, $mgmtId, $mgmtDate, $mgmtNote);
             }
         } elseif (!$isRowOrReqApproved) {
-             $audit['approvers'][] = [
-                 'stage' => $mgmtStage,
-                 'name'  => '⏳ Pending Approval',
-                 'date'  => 'Awaiting decision',
-                 'note'  => null
-             ];
+            if (!$isOver1Lac && ($opHeadStatus === 'approved' || !empty($opHeadBy))) {
+                // Op Head approval is sufficient for <= 1 lac, no pending management authority needed
+            } else {
+                $audit['approvers'][] = [
+                    'stage' => $mgmtStage,
+                    'name'  => '⏳ Pending Approval',
+                    'date'  => 'Awaiting decision',
+                    'note'  => null
+                ];
+            }
         }
         // Check con_approval_logs if available
         $cal = $this->db->query("SELECT step_name, actioned_by, actioned_at FROM con_approval_logs WHERE ref_table = '{$sourceTable}' AND ref_id = {$id} AND status = 'approved' ORDER BY id ASC");

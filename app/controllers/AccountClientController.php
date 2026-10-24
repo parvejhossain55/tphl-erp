@@ -3607,9 +3607,10 @@ public function downloadPublicReceiptPdf($paymentId = null)
 
     $refNo = !empty($payment['reference_number']) ? $payment['reference_number'] : (!empty($payment['transaction_id']) ? $payment['transaction_id'] : 'N/A');
     $senderBankName = !empty($payment['bank_name']) && !in_array(strtolower($payment['bank_name']), ['0', 'n/a', 'none', 'cash']) ? $payment['bank_name'] : ($isCash ? 'Cash Payment' : 'N/A');
+    $senderAccountNo = !empty($payment['bank_account_no']) && !in_array(strtolower(trim($payment['bank_account_no'])), ['0', '00', 'n/a', 'none', 'null']) ? trim($payment['bank_account_no']) : '';
     $receiverBankName = !empty($payment['company_bank_name']) ? $payment['company_bank_name'] : 'BRAC Bank PLC';
-    $receiverHolderName = 'The Premium Homes Ltd.';
-    $receiverAccountNo = '2073570070001';
+    $receiverHolderName = !empty($payment['company_account_name']) ? $payment['company_account_name'] : 'The Premium Homes Ltd.';
+    $receiverAccountNo = !empty($payment['company_account_number']) ? $payment['company_account_number'] : '2073570070001';
 
     // Build PDF via mPDF (Single Customer Receipt for Client Download)
     $tmpDir = dirname(dirname(__DIR__)) . '/tmp/mpdf';
@@ -3756,6 +3757,7 @@ public function downloadPublicReceiptPdf($paymentId = null)
                 <td class="proc-col" style="width: 26%;">
                     <div class="proc-lbl">Sender Bank</div>
                     <div class="proc-val">' . htmlspecialchars($senderBankName) . '</div>
+                    ' . (!empty($senderAccountNo) ? '<div style="font-weight: bold; font-size: 8.5px;">&bull; A/C: ' . htmlspecialchars($senderAccountNo) . '</div>' : '') . '
                 </td>
                 <td class="proc-col" style="width: 32%;">
                     <div class="proc-lbl">Receiver Bank</div>

@@ -693,9 +693,11 @@ class ApprovalRequest extends Model
         } elseif ($sourceTable === 'project_extra_assets') {
             $this->db->query("UPDATE project_extra_assets SET mgmt_status = 'approved', mgmt_by = {$userId}, mgmt_at = NOW(), mgmt_note = '{$note}' WHERE id = {$sourceId}");
         } elseif ($sourceTable === 'vendor_payment_requests') {
-            $this->db->query("UPDATE vendor_payment_requests SET status = 'Approved', approved_by = {$userId}, approved_at = NOW(), management_note = '{$note}' WHERE id = {$sourceId}");
+            $amtSql = ($amount !== null && (float)$amount > 0) ? (float)$amount : "COALESCE(qc_approved_amount, net_payable, invoice_amount, 0.00)";
+            $this->db->query("UPDATE vendor_payment_requests SET status = 'Approved', approved_by = {$userId}, approved_amount = {$amtSql}, due_amount = {$amtSql}, updated_at = NOW(), management_note = '{$note}' WHERE id = {$sourceId}");
         } elseif ($sourceTable === 'contractor_bill_requests') {
-            $this->db->query("UPDATE contractor_bill_requests SET status = 'approved', approved_by = {$userId}, approved_at = NOW() WHERE id = {$sourceId}");
+            $amtSql = ($amount !== null && (float)$amount > 0) ? (float)$amount : "COALESCE(approved_amount, bill_amount, 0.00)";
+            $this->db->query("UPDATE contractor_bill_requests SET status = 'approved', approved_by = {$userId}, approved_amount = {$amtSql}, due_amount = {$amtSql}, updated_at = NOW(), management_note = '{$note}' WHERE id = {$sourceId}");
         } elseif ($sourceTable === 'project_other_costs') {
             $this->db->query("UPDATE project_other_costs SET status = 'management_approved', management_apporved_by_id = {$userId}, management_apporved_at = NOW(), management_apporved_note = '{$note}' WHERE id = {$sourceId}");
         } elseif ($sourceTable === 'con_labor_requisitions') {
@@ -2481,15 +2483,36 @@ class ApprovalRequest extends Model
                             $pendingStageLabel = 'Pending QC & Audit';
                             $pendingForText = 'QC & Internal Audit Head';
                         } elseif (in_array($lrStatus, ['qc_approved', 'pm_payment_approved'])) {
-                            $row['approve_role'] = 'management';
-                            $row['status'] = 'pending';
-                            $pendingStageLabel = 'Pending Management';
-                            $pendingForText = 'Management / Operation Head';
+                            $isOver100k = ((float)($row['request_amount'] ?? 0) > 100000.01);
+                            $isOpHeadApproved = (!empty($row['op_head_status']) && strtolower($row['op_head_status']) === 'approved');
+                            if (!$isOver100k && $isOpHeadApproved) {
+                                $row['status'] = 'approved';
+                                if (($row['accounts_head_status'] ?? 'pending') !== 'approved') {
+                                    $row['approve_role'] = 'accounts_head';
+                                    $pendingStageLabel = 'Pending Accounts Head';
+                                    $pendingForText = 'Md. Mamunoor Rashid [1309] (Accounts Head)';
+                                } else {
+                                    $row['approve_role'] = 'accounts';
+                                    $pendingStageLabel = 'Pending Accounts Payout';
+                                    $pendingForText = 'Accounts & Finance';
+                                }
+                            } else {
+                                $row['approve_role'] = 'management';
+                                $row['status'] = 'pending';
+                                $pendingStageLabel = $isOver100k ? ($isOpHeadApproved ? 'Pending Management (>1L)' : 'Pending Op Head (>1L)') : 'Pending Management';
+                                $pendingForText = $isOver100k ? ($isOpHeadApproved ? 'Management' : 'Admin & Operation Head') : 'Management / Operation Head';
+                            }
                         } elseif ($lrStatus === 'management_approved') {
-                            $row['approve_role'] = 'accounts';
                             $row['status'] = 'approved';
-                            $pendingStageLabel = 'Pending Accounts Payout';
-                            $pendingForText = 'Accounts & Finance';
+                            if (($row['accounts_head_status'] ?? 'pending') !== 'approved') {
+                                $row['approve_role'] = 'accounts_head';
+                                $pendingStageLabel = 'Pending Accounts Head';
+                                $pendingForText = 'Md. Mamunoor Rashid [1309] (Accounts Head)';
+                            } else {
+                                $row['approve_role'] = 'accounts';
+                                $pendingStageLabel = 'Pending Accounts Payout';
+                                $pendingForText = 'Accounts & Finance';
+                            }
                         } elseif (in_array($lrStatus, ['paid', 'labor_disbursed'])) {
                             $row['status'] = 'approved';
                             $row['approve_role'] = 'completed';
@@ -2562,15 +2585,36 @@ class ApprovalRequest extends Model
                             $pendingStageLabel = 'Pending QC & Audit';
                             $pendingForText = 'QC & Internal Audit Head';
                         } elseif (in_array($vStatus, ['qc approved', 'qc_approved'])) {
-                            $row['approve_role'] = 'management';
-                            $row['status'] = 'pending';
-                            $pendingStageLabel = 'Pending Management';
-                            $pendingForText = 'Management / Operation Head';
+                            $isOver100k = ((float)($row['request_amount'] ?? 0) > 100000.01);
+                            $isOpHeadApproved = (!empty($row['op_head_status']) && strtolower($row['op_head_status']) === 'approved');
+                            if (!$isOver100k && $isOpHeadApproved) {
+                                $row['status'] = 'approved';
+                                if (($row['accounts_head_status'] ?? 'pending') !== 'approved') {
+                                    $row['approve_role'] = 'accounts_head';
+                                    $pendingStageLabel = 'Pending Accounts Head';
+                                    $pendingForText = 'Md. Mamunoor Rashid [1309] (Accounts Head)';
+                                } else {
+                                    $row['approve_role'] = 'accounts';
+                                    $pendingStageLabel = 'Pending Accounts Payout';
+                                    $pendingForText = 'Accounts & Finance';
+                                }
+                            } else {
+                                $row['approve_role'] = 'management';
+                                $row['status'] = 'pending';
+                                $pendingStageLabel = $isOver100k ? ($isOpHeadApproved ? 'Pending Management (>1L)' : 'Pending Op Head (>1L)') : 'Pending Management';
+                                $pendingForText = $isOver100k ? ($isOpHeadApproved ? 'Management' : 'Admin & Operation Head') : 'Management / Operation Head';
+                            }
                         } elseif (in_array($vStatus, ['approved', 'management approved', 'management_approved'])) {
-                            $row['approve_role'] = 'accounts';
                             $row['status'] = 'approved';
-                            $pendingStageLabel = 'Pending Accounts Payout';
-                            $pendingForText = 'Accounts & Finance';
+                            if (($row['accounts_head_status'] ?? 'pending') !== 'approved') {
+                                $row['approve_role'] = 'accounts_head';
+                                $pendingStageLabel = 'Pending Accounts Head';
+                                $pendingForText = 'Md. Mamunoor Rashid [1309] (Accounts Head)';
+                            } else {
+                                $row['approve_role'] = 'accounts';
+                                $pendingStageLabel = 'Pending Accounts Payout';
+                                $pendingForText = 'Accounts & Finance';
+                            }
                         } elseif (in_array($vStatus, ['paid', 'completed', 'fully paid', 'fully_paid'])) {
                             $row['status'] = 'approved';
                             $pendingStageLabel = 'Paid & Settled';
@@ -2657,16 +2701,37 @@ class ApprovalRequest extends Model
                             $pendingStageLabel = 'Pending QC & Audit';
                             $pendingForText = 'QC & Internal Audit Head';
                         } elseif ($pocStatus === 'qc_approved') {
-                            $row['approve_role'] = 'management';
-                            $row['status'] = 'pending';
-                            $pendingStageLabel = 'Pending Management';
-                            $pendingForText = 'Management Approval';
+                            $isOver100k = ((float)($row['request_amount'] ?? 0) > 100000.01);
+                            $isOpHeadApproved = (!empty($row['op_head_status']) && strtolower($row['op_head_status']) === 'approved');
+                            if (!$isOver100k && $isOpHeadApproved) {
+                                $row['status'] = 'approved';
+                                if (($row['accounts_head_status'] ?? 'pending') !== 'approved') {
+                                    $row['approve_role'] = 'accounts_head';
+                                    $pendingStageLabel = 'Pending Accounts Head';
+                                    $pendingForText = 'Md. Mamunoor Rashid [1309] (Accounts Head)';
+                                } else {
+                                    $row['approve_role'] = 'accounts';
+                                    $pendingStageLabel = 'Pending Accounts Payout';
+                                    $pendingForText = 'Accounts & Finance';
+                                }
+                            } else {
+                                $row['approve_role'] = 'management';
+                                $row['status'] = 'pending';
+                                $pendingStageLabel = $isOver100k ? ($isOpHeadApproved ? 'Pending Management (>1L)' : 'Pending Op Head (>1L)') : 'Pending Management';
+                                $pendingForText = $isOver100k ? ($isOpHeadApproved ? 'Management' : 'Admin & Operation Head') : 'Management / Operation Head';
+                            }
                         } elseif ($pocStatus === 'management_approved' || $pocStatus === 'approved') {
-                            $row['approve_role'] = 'accounts';
                             $row['status'] = 'approved';
+                            if (($row['accounts_head_status'] ?? 'pending') !== 'approved') {
+                                $row['approve_role'] = 'accounts_head';
+                                $pendingStageLabel = 'Pending Accounts Head';
+                                $pendingForText = 'Md. Mamunoor Rashid [1309] (Accounts Head)';
+                            } else {
+                                $row['approve_role'] = 'accounts';
+                                $pendingStageLabel = 'Pending Accounts Payout';
+                                $pendingForText = 'Accounts & Finance';
+                            }
                             $payoutStatus = 'Pending Accounts Payout';
-                            $pendingStageLabel = 'Pending Accounts Payout';
-                            $pendingForText = 'Accounts & Finance';
                         } elseif ($pocStatus === 'paid') {
                             $row['status'] = 'approved';
                             $row['approve_role'] = 'completed';
@@ -2719,15 +2784,36 @@ class ApprovalRequest extends Model
                             $pendingStageLabel = 'Pending QC & Audit';
                             $pendingForText = 'QC & Internal Audit Head';
                         } elseif ($frStatus === 'pending') {
-                            $row['approve_role'] = 'management';
-                            $row['status'] = 'pending';
-                            $pendingStageLabel = 'Pending Management';
-                            $pendingForText = 'Management / Operation Head';
+                            $isOver100k = ((float)($row['request_amount'] ?? 0) > 100000.01);
+                            $isOpHeadApproved = (!empty($row['op_head_status']) && strtolower($row['op_head_status']) === 'approved');
+                            if (!$isOver100k && $isOpHeadApproved) {
+                                $row['status'] = 'approved';
+                                if (($row['accounts_head_status'] ?? 'pending') !== 'approved') {
+                                    $row['approve_role'] = 'accounts_head';
+                                    $pendingStageLabel = 'Pending Accounts Head';
+                                    $pendingForText = 'Md. Mamunoor Rashid [1309] (Accounts Head)';
+                                } else {
+                                    $row['approve_role'] = 'accounts';
+                                    $pendingStageLabel = 'Pending Accounts Payout';
+                                    $pendingForText = 'Accounts & Finance';
+                                }
+                            } else {
+                                $row['approve_role'] = 'management';
+                                $row['status'] = 'pending';
+                                $pendingStageLabel = $isOver100k ? ($isOpHeadApproved ? 'Pending Management (>1L)' : 'Pending Op Head (>1L)') : 'Pending Management';
+                                $pendingForText = $isOver100k ? ($isOpHeadApproved ? 'Management' : 'Admin & Operation Head') : 'Management / Operation Head';
+                            }
                         } elseif ($frStatus === 'approved') {
-                            $row['approve_role'] = 'accounts';
                             $row['status'] = 'approved';
-                            $pendingStageLabel = 'Pending Accounts Payout';
-                            $pendingForText = 'Accounts & Finance';
+                            if (($row['accounts_head_status'] ?? 'pending') !== 'approved') {
+                                $row['approve_role'] = 'accounts_head';
+                                $pendingStageLabel = 'Pending Accounts Head';
+                                $pendingForText = 'Md. Mamunoor Rashid [1309] (Accounts Head)';
+                            } else {
+                                $row['approve_role'] = 'accounts';
+                                $pendingStageLabel = 'Pending Accounts Payout';
+                                $pendingForText = 'Accounts & Finance';
+                            }
                         } elseif ($frStatus === 'partially_approved') {
                             $row['approve_role'] = 'management';
                             $row['status'] = 'partially_approved';
@@ -4009,6 +4095,23 @@ class ApprovalRequest extends Model
             }
         }
 
+        // 1.5. Auto-heal vendor_payment_requests approved by Operation Head (<= 100k)
+        $autoHealSql = "
+            UPDATE vendor_payment_requests vpr
+            INNER JOIN approval_requests ar ON (ar.source_table = 'vendor_payment_requests' AND ar.source_id = vpr.id)
+            SET 
+                vpr.status = 'Approved',
+                vpr.approved_by = COALESCE(ar.op_head_by, ar.approved_by, 200),
+                vpr.approved_amount = COALESCE(vpr.qc_approved_amount, vpr.net_payable, vpr.invoice_amount, ar.request_amount),
+                vpr.due_amount = COALESCE(vpr.qc_approved_amount, vpr.net_payable, vpr.invoice_amount, ar.request_amount),
+                vpr.management_note = COALESCE(NULLIF(ar.op_head_note, ''), NULLIF(ar.approval_note, ''), vpr.management_note, 'Approved by Admin & Operation Head'),
+                vpr.updated_at = NOW()
+            WHERE vpr.status = 'QC Approved'
+              AND ar.op_head_status = 'approved'
+              AND ar.request_amount <= 100000.01
+        ";
+        @$this->db->query($autoHealSql);
+
         // 2. Sync and self-heal existing vendor_payment_requests in approval_requests
         $syncSql = "
             UPDATE approval_requests ar
@@ -4017,6 +4120,8 @@ class ApprovalRequest extends Model
                 ar.approve_role = CASE
                     WHEN vpr.status = 'Rejected' THEN 'rejected'
                     WHEN vpr.status IN ('Submitted', 'Draft') THEN 'qc'
+                    WHEN vpr.status = 'QC Approved' AND ar.op_head_status = 'approved' AND ar.request_amount <= 100000.01 THEN 
+                        CASE WHEN ar.accounts_head_status = 'approved' THEN 'accounts' ELSE 'accounts_head' END
                     WHEN vpr.status = 'QC Approved' THEN 'management'
                     WHEN vpr.status = 'Approved' THEN CASE WHEN ar.accounts_head_status = 'approved' THEN 'accounts' ELSE 'accounts_head' END
                     WHEN vpr.status IN ('Paid', 'Partially_Paid', 'Fully_Paid') THEN 'completed'
@@ -4024,6 +4129,7 @@ class ApprovalRequest extends Model
                 END,
                 ar.status = CASE
                     WHEN vpr.status = 'Rejected' THEN 'rejected'
+                    WHEN vpr.status = 'QC Approved' AND ar.op_head_status = 'approved' AND ar.request_amount <= 100000.01 THEN 'approved'
                     WHEN vpr.status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid') THEN 'approved'
                     ELSE 'pending'
                 END,
@@ -4034,28 +4140,32 @@ class ApprovalRequest extends Model
                 END,
                 ar.approved_amount = CASE
                     WHEN vpr.status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid') THEN COALESCE(vpr.approved_amount, vpr.net_payable, ar.request_amount)
+                    WHEN vpr.status = 'QC Approved' AND ar.op_head_status = 'approved' AND ar.request_amount <= 100000.01 THEN COALESCE(vpr.approved_amount, vpr.qc_approved_amount, vpr.net_payable, ar.request_amount)
                     ELSE ar.approved_amount
                 END,
                 ar.approved_by = CASE
                     WHEN vpr.status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid') THEN COALESCE(vpr.approved_by, ar.approved_by)
+                    WHEN vpr.status = 'QC Approved' AND ar.op_head_status = 'approved' AND ar.request_amount <= 100000.01 THEN COALESCE(ar.op_head_by, ar.approved_by, 200)
                     WHEN vpr.status = 'QC Approved' THEN COALESCE(vpr.qc_approved_by_id, ar.approved_by)
                     ELSE ar.approved_by
                 END,
                 ar.approved_at = CASE
                     WHEN vpr.status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid') THEN COALESCE(vpr.updated_at, ar.approved_at)
+                    WHEN vpr.status = 'QC Approved' AND ar.op_head_status = 'approved' AND ar.request_amount <= 100000.01 THEN COALESCE(ar.op_head_at, vpr.updated_at, ar.approved_at)
                     WHEN vpr.status = 'QC Approved' THEN COALESCE(vpr.qc_approved_at, ar.approved_at)
                     ELSE ar.approved_at
                 END,
                 ar.approval_note = CASE
+                    WHEN vpr.status = 'QC Approved' AND ar.op_head_status = 'approved' AND ar.request_amount <= 100000.01 AND ar.op_head_note IS NOT NULL AND ar.op_head_note != '' THEN ar.op_head_note
                     WHEN vpr.status = 'QC Approved' AND vpr.qc_note IS NOT NULL AND vpr.qc_note != '' THEN vpr.qc_note
                     WHEN vpr.status = 'Approved' AND vpr.management_note IS NOT NULL AND vpr.management_note != '' THEN vpr.management_note
                     ELSE ar.approval_note
                 END
             WHERE 
                 -- Items where QC has approved, but approval_request is still in 'purchase team leader' or 'qc'
-                (vpr.status = 'QC Approved' AND ar.approve_role != 'management')
+                (vpr.status = 'QC Approved' AND ar.approve_role != 'management' AND NOT (ar.op_head_status = 'approved' AND ar.request_amount <= 100000.01))
                 -- Items where Management has approved, but approval_request is not in accounts / approved
-                OR (vpr.status = 'Approved' AND (ar.approve_role != 'accounts' OR ar.status != 'approved'))
+                OR (vpr.status = 'Approved' AND (ar.approve_role NOT IN ('accounts', 'accounts_head') OR ar.status != 'approved'))
                 -- Items paid
                 OR (vpr.status IN ('Paid', 'Partially_Paid', 'Fully_Paid') AND ar.approve_role != 'completed')
                 -- Items rejected
@@ -4159,6 +4269,23 @@ class ApprovalRequest extends Model
             }
         }
 
+        // 1.5. Auto-heal contractor_bill_requests approved by Operation Head (<= 100k)
+        $autoHealCbSql = "
+            UPDATE contractor_bill_requests cbr
+            INNER JOIN approval_requests ar ON (ar.source_table = 'contractor_bill_requests' AND ar.source_id = cbr.id)
+            SET 
+                cbr.status = 'approved',
+                cbr.approved_by = COALESCE(ar.op_head_by, ar.approved_by, 200),
+                cbr.approved_amount = COALESCE(cbr.approved_amount, cbr.bill_amount, ar.request_amount),
+                cbr.due_amount = COALESCE(cbr.approved_amount, cbr.bill_amount, ar.request_amount),
+                cbr.management_note = COALESCE(NULLIF(ar.op_head_note, ''), NULLIF(ar.approval_note, ''), cbr.management_note, 'Approved by Admin & Operation Head'),
+                cbr.updated_at = NOW()
+            WHERE cbr.status = 'qc_approved'
+              AND ar.op_head_status = 'approved'
+              AND ar.request_amount <= 100000.01
+        ";
+        @$this->db->query($autoHealCbSql);
+
         // 2. Synchronize existing approval_requests with contractor_bill_requests state
         $syncSql = "
             UPDATE approval_requests ar
@@ -4166,6 +4293,8 @@ class ApprovalRequest extends Model
             SET 
                 ar.approve_role = CASE
                     WHEN cbr.status IN ('submitted', 'verified', 'pending') AND cbr.qc_approved_at IS NULL THEN 'qc'
+                    WHEN cbr.status = 'qc_approved' AND ar.op_head_status = 'approved' AND ar.request_amount <= 100000.01 THEN 
+                        CASE WHEN ar.accounts_head_status = 'approved' THEN 'accounts' ELSE 'accounts_head' END
                     WHEN cbr.status = 'qc_approved' THEN 'management'
                     WHEN cbr.status = 'approved' THEN CASE WHEN ar.accounts_head_status = 'approved' THEN 'accounts' ELSE 'accounts_head' END
                     WHEN cbr.status IN ('paid', 'fully_paid', 'partially_paid') THEN 'completed'
@@ -4174,6 +4303,7 @@ class ApprovalRequest extends Model
                 END,
                 ar.status = CASE
                     WHEN cbr.status = 'rejected' THEN 'rejected'
+                    WHEN cbr.status = 'qc_approved' AND ar.op_head_status = 'approved' AND ar.request_amount <= 100000.01 THEN 'approved'
                     WHEN cbr.status IN ('approved', 'paid', 'fully_paid', 'partially_paid') THEN 'approved'
                     ELSE 'pending'
                 END,
@@ -4184,19 +4314,23 @@ class ApprovalRequest extends Model
                 END,
                 ar.approved_amount = CASE
                     WHEN cbr.status IN ('approved', 'paid', 'fully_paid', 'partially_paid') THEN COALESCE(cbr.approved_amount, cbr.bill_amount, ar.request_amount)
+                    WHEN cbr.status = 'qc_approved' AND ar.op_head_status = 'approved' AND ar.request_amount <= 100000.01 THEN COALESCE(cbr.approved_amount, cbr.bill_amount, ar.request_amount)
                     ELSE ar.approved_amount
                 END,
                 ar.approved_by = CASE
                     WHEN cbr.status IN ('approved', 'paid', 'fully_paid', 'partially_paid') THEN COALESCE(cbr.approved_by, ar.approved_by)
+                    WHEN cbr.status = 'qc_approved' AND ar.op_head_status = 'approved' AND ar.request_amount <= 100000.01 THEN COALESCE(ar.op_head_by, ar.approved_by, 200)
                     WHEN cbr.status = 'qc_approved' THEN COALESCE(cbr.qc_approved_by_id, ar.approved_by)
                     ELSE ar.approved_by
                 END,
                 ar.approved_at = CASE
                     WHEN cbr.status IN ('approved', 'paid', 'fully_paid', 'partially_paid') THEN COALESCE(cbr.updated_at, ar.approved_at)
+                    WHEN cbr.status = 'qc_approved' AND ar.op_head_status = 'approved' AND ar.request_amount <= 100000.01 THEN COALESCE(ar.op_head_at, cbr.updated_at, ar.approved_at)
                     WHEN cbr.status = 'qc_approved' THEN COALESCE(cbr.qc_approved_at, ar.approved_at)
                     ELSE ar.approved_at
                 END,
                 ar.approval_note = CASE
+                    WHEN cbr.status = 'qc_approved' AND ar.op_head_status = 'approved' AND ar.request_amount <= 100000.01 AND ar.op_head_note IS NOT NULL AND ar.op_head_note != '' THEN ar.op_head_note
                     WHEN cbr.status = 'qc_approved' AND cbr.qc_note IS NOT NULL AND cbr.qc_note != '' THEN cbr.qc_note
                     WHEN cbr.status = 'approved' AND cbr.management_note IS NOT NULL AND cbr.management_note != '' THEN cbr.management_note
                     ELSE ar.approval_note
@@ -4205,9 +4339,9 @@ class ApprovalRequest extends Model
                 -- Items where QC has not approved yet, but approval_request is set to 'management'
                 (cbr.status IN ('submitted', 'verified', 'pending') AND cbr.qc_approved_at IS NULL AND ar.approve_role != 'qc')
                 -- Items where QC has approved, but approval_request is not in management
-                OR (cbr.status = 'qc_approved' AND ar.approve_role != 'management')
+                OR (cbr.status = 'qc_approved' AND ar.approve_role != 'management' AND NOT (ar.op_head_status = 'approved' AND ar.request_amount <= 100000.01))
                 -- Items where Management has approved, but approval_request is not in accounts / approved
-                OR (cbr.status = 'approved' AND (ar.approve_role != 'accounts' OR ar.status != 'approved'))
+                OR (cbr.status = 'approved' AND (ar.approve_role NOT IN ('accounts', 'accounts_head') OR ar.status != 'approved'))
                 -- Items paid
                 OR (cbr.status IN ('paid', 'fully_paid', 'partially_paid') AND ar.approve_role != 'completed')
                 -- Items rejected
