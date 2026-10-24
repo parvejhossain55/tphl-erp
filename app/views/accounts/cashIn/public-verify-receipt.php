@@ -140,6 +140,12 @@ if ($isVerified) {
 $paymentMethod = strtoupper($payment['payment_method'] ?? 'CASH');
 $refNumber = !empty($payment['transaction_ref']) ? trim($payment['transaction_ref']) : (!empty($payment['cheque_no']) ? trim($payment['cheque_no']) : 'N/A');
 
+$senderBank = !empty($payment['bank_name']) && !in_array(strtolower(trim($payment['bank_name'])), ['0', 'n/a', 'none', 'cash']) ? trim($payment['bank_name']) : '';
+$senderAccountNo = !empty($payment['bank_account_no']) && !in_array(strtolower(trim($payment['bank_account_no'])), ['0', '00', 'n/a', 'none', 'null']) ? trim($payment['bank_account_no']) : '';
+$receiverBank = !empty($payment['company_bank_name']) ? trim($payment['company_bank_name']) : '';
+$receiverHolder = !empty($payment['company_account_name']) ? trim($payment['company_account_name']) : '';
+$receiverAccountNo = !empty($payment['company_account_number']) && !in_array(strtolower(trim($payment['company_account_number'])), ['0', '00', 'n/a', 'none', 'null']) ? trim($payment['company_account_number']) : '';
+
 if ($paymentMethod === 'CASH') {
     $bankDisplay = '';
 } elseif ($paymentMethod === 'ONLINE') {
@@ -642,7 +648,28 @@ if ($paymentMethod === 'CASH') {
                             <span class="cell-value"><?= htmlspecialchars($refNumber) ?></span>
                         </div>
                         <?php endif; ?>
-                        <?php if (!empty($bankDisplay) && $bankDisplay !== 'N/A'): ?>
+                        <?php if (!empty($senderBank)): ?>
+                        <div class="info-cell">
+                            <span class="cell-label">Sender Bank</span>
+                            <span class="cell-value">
+                                <?= htmlspecialchars($senderBank) ?>
+                                <?php if (!empty($senderAccountNo)): ?>
+                                    <small style="color:var(--slate-500); font-weight:600; display:block; font-size:11px;">• A/C: <?= htmlspecialchars($senderAccountNo) ?></small>
+                                <?php endif; ?>
+                            </span>
+                        </div>
+                        <?php endif; ?>
+                        <?php if (!empty($receiverBank)): ?>
+                        <div class="info-cell">
+                            <span class="cell-label">Receiver Bank</span>
+                            <span class="cell-value">
+                                <?= htmlspecialchars($receiverBank) ?>
+                                <?php if (!empty($receiverAccountNo)): ?>
+                                    <small style="color:var(--slate-500); font-weight:600; display:block; font-size:11px;">• A/C: <?= htmlspecialchars($receiverAccountNo) ?></small>
+                                <?php endif; ?>
+                            </span>
+                        </div>
+                        <?php elseif (!empty($bankDisplay) && $bankDisplay !== 'N/A'): ?>
                         <div class="info-cell cell-full">
                             <span class="cell-label">Deposit Bank / Channel</span>
                             <span class="cell-value"><?= htmlspecialchars($bankDisplay) ?></span>
@@ -698,9 +725,6 @@ if ($paymentMethod === 'CASH') {
                             <i class="fa-solid fa-print"></i> View &amp; Print Full Receipt
                         </a>
                         <a href="tel:<?= preg_replace('/[^0-9+]/', '', $companyPhone) ?>" class="btn-full btn-secondary-action">
-                            <i class="fa-solid fa-headset"></i> Contact TPHL Support (<?= htmlspecialchars($companyPhone) ?>)
-                        </a>
-                    </div>
                             <i class="fa-solid fa-headset"></i> Contact TPHL Support (<?= htmlspecialchars($companyPhone) ?>)
                         </a>
                     </div>

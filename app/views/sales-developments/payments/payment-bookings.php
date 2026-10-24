@@ -59,8 +59,28 @@ if (!$is_booking_fully_paid) {
     $form_mode = 'registration';
 }
 
+$currentUserId = (int)($_SESSION['user']['id'] ?? $_SESSION['user_id'] ?? 0);
+$currentUserRoleId = (int)($_SESSION['user']['role_id'] ?? $_SESSION['user']['primary_role_id'] ?? 0);
+$secondaryRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
 $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
-$isSalesHead = ((strpos($userRoleName, 'sales') !== false && strpos($userRoleName, 'head') !== false) || strpos($userRoleName, 'admin') !== false || $_SESSION['user']['role_id'] == 1);
+$userName = strtolower(trim($_SESSION['user']['full_name'] ?? $_SESSION['user']['user_name'] ?? ''));
+
+$isManagement = in_array($currentUserRoleId, [1, 3, 20, 32, 33, 35]) ||
+                in_array($secondaryRoleId, [1, 3, 20, 32, 33, 35]) ||
+                (strpos($userRoleName, 'admin') !== false) ||
+                (strpos($userRoleName, 'management') !== false) ||
+                (strpos($userRoleName, 'ceo') !== false) ||
+                (strpos($userRoleName, 'chief') !== false) ||
+                (strpos($userName, 'management') !== false);
+
+$isSalesHead = in_array($currentUserRoleId, [5, 9]) ||
+               in_array($secondaryRoleId, [5, 9]) ||
+               (strpos($userRoleName, 'sales') !== false && (strpos($userRoleName, 'head') !== false || strpos($userRoleName, 'manager') !== false));
+
+$isAssignedSalesPerson = (
+    (!empty($booking['sales_by_id']) && (int)$booking['sales_by_id'] === $currentUserId) ||
+    (!empty($booking['assigned_id']) && (int)$booking['assigned_id'] === $currentUserId)
+);
 ?>
 
 
@@ -601,30 +621,54 @@ function generateCombinedReceipt() {
                                             <?php endif; ?>
 
                                             <!-- Edit Payment -->
-                                            <?php if ($p['verification_status'] != 'verified' || $isSalesHead): ?>
+                                            <?php 
+                                                $pIsVerified = ($p['verification_status'] === 'verified');
+                                                $pCreatedBy = (int)($p['created_by'] ?? 0);
+
+                                                $canEditThisPayment = false;
+                                                if ($pIsVerified) {
+                                                    // Verified: ONLY Management or Sales Head can edit
+                                                    $canEditThisPayment = ($isManagement || $isSalesHead);
+                                                } else {
+                                                    // Unverified: Management, Sales Head, Assigned Sales Person, or payment creator can edit
+                                                    $canEditThisPayment = ($isManagement || $isSalesHead || $isAssignedSalesPerson || ($pCreatedBy === $currentUserId));
+                                                }
+
+                                                $canDeleteThisPayment = false;
+                                                if (!$pIsVerified) {
+                                                    $canDeleteThisPayment = ($isManagement || $isSalesHead || $isAssignedSalesPerson || ($pCreatedBy === $currentUserId));
+                                                }
+                                            ?>
+                                            <?php if ($canEditThisPayment): ?>
                                                 <button type="button" 
                                                     class="btn btn-outline-primary btn-sm editPaymentBtn"
                                                     data-bs-toggle="modal" 
                                                     data-bs-target="#editPaymentModal"
+                                                    onclick="openEditPaymentModal(this)"
                                                     data-id="<?= $p['id'] ?>"
                                                     data-booking-id="<?= $booking['id'] ?>"
+                                                    data-type="<?= htmlspecialchars($p['payment_type'] ?? 'booking_money') ?>"
                                                     data-amount="<?= $p['amount'] ?>"
-                                                    data-method="<?= $p['payment_method'] ?>"
+                                                    data-method="<?= htmlspecialchars($p['payment_method'] ?? 'cash') ?>"
+                                                    data-status="<?= htmlspecialchars($p['payment_status'] ?? 'pending') ?>"
                                                     data-date="<?= $p['payment_date'] ?>"
+                                                    data-emi-no="<?= htmlspecialchars($p['total_emi_no'] ?? $booking['total_emi_no'] ?? '') ?>"
                                                     data-ref="<?= htmlspecialchars($p['transaction_ref'] ?? '') ?>"
                                                     data-bank-id="<?= $p['bank_id'] ?? '' ?>"
                                                     data-bank-name="<?= htmlspecialchars($p['bank_name'] ?? '') ?>"
                                                     data-account-no="<?= htmlspecialchars($p['bank_account_no'] ?? '') ?>"
                                                     data-cheque="<?= htmlspecialchars($p['cheque_no'] ?? '') ?>"
                                                     data-online="<?= htmlspecialchars($p['online_type'] ?? '') ?>"
-                                                    data-verified="<?= $p['verification_status'] === 'verified' ? 'true' : 'false' ?>"
+                                                    data-image1="<?= htmlspecialchars($p['attachment_image'] ?? '') ?>"
+                                                    data-image2="<?= htmlspecialchars($p['attachment_image2'] ?? '') ?>"
+                                                    data-verified="<?= $pIsVerified ? 'true' : 'false' ?>"
                                                     title="Edit Payment Record">
                                                     <i class="fa-solid fa-pen-to-square"></i>
                                                 </button>
                                             <?php endif; ?>
 
                                             <!-- Delete only for unverified payments -->
-                                            <?php if ($p['verification_status'] != 'verified'): ?>
+                                            <?php if ($canDeleteThisPayment): ?>
                                                 <a href="<?= $GLOBALS['base_url'] ?>/payment-booking-delete/<?= $p['id'] ?>"
                                                     class="btn btn-outline-danger btn-sm"
                                                     onclick="return confirm('Are you sure you want to delete this payment record?');"
@@ -701,15 +745,15 @@ function generateCombinedReceipt() {
 
             // Initialize or re-init Select2 on clientBankSelect if jQuery and select2 available
             if (method === 'bank' || method === 'cheque') {
-                if (window.jQuery && $.fn.select2) {
-                    const $cBank = $('#clientBankSelect');
+                if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
+                    const $cBank = window.jQuery('#clientBankSelect');
                     if (!$cBank.hasClass('select2-hidden-accessible')) {
                         $cBank.select2({
                             width: '100%',
                             placeholder: '-- Select Client Bank --',
                             tags: true,
                             createTag: function (params) {
-                                var term = $.trim(params.term);
+                                var term = (params.term || '').trim();
                                 if (term === '') return null;
                                 return {
                                     id: term,
@@ -727,21 +771,21 @@ function generateCombinedReceipt() {
     // Handle "Other Country / Foreign Bank" & "Other Bank" selection in main form
     document.addEventListener('DOMContentLoaded', function() {
         if (window.jQuery) {
-            $(document).on('change', '#clientBankSelect', function() {
+            window.jQuery(document).on('change', '#clientBankSelect', function() {
                 const val = this.value;
                 if (val === 'Other Bank' || val === 'Other Country / Foreign Bank') {
                     if (val === 'Other Country / Foreign Bank') {
-                        $('#customBankLabel').text('Specify Foreign / Other Country Bank Name *');
-                        $('#customBankInput').attr('placeholder', 'e.g. Emirates NBD, Chase Bank, Al Rajhi, etc.');
+                        window.jQuery('#customBankLabel').text('Specify Foreign / Other Country Bank Name *');
+                        window.jQuery('#customBankInput').attr('placeholder', 'e.g. Emirates NBD, Chase Bank, Al Rajhi, etc.');
                     } else {
-                        $('#customBankLabel').text('Specify Client Bank Name *');
-                        $('#customBankInput').attr('placeholder', 'Enter bank name');
+                        window.jQuery('#customBankLabel').text('Specify Client Bank Name *');
+                        window.jQuery('#customBankInput').attr('placeholder', 'Enter bank name');
                     }
-                    $('#otherBankField').show();
-                    $('#customBankInput').attr('required', 'required');
+                    window.jQuery('#otherBankField').show();
+                    window.jQuery('#customBankInput').attr('required', 'required');
                 } else {
-                    $('#otherBankField').hide();
-                    $('#customBankInput').removeAttr('required').val('');
+                    window.jQuery('#otherBankField').hide();
+                    window.jQuery('#customBankInput').removeAttr('required').val('');
                 }
             });
         } else {
@@ -812,6 +856,152 @@ function generateCombinedReceipt() {
     </div>
 </div>
 
+<style>
+    #editBankFields .select2-container {
+        width: 100% !important;
+    }
+</style>
+
+<!-- Edit Payment Modal -->
+<div id="editPaymentModal" class="modal custom-modal fade" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Payment Record <span id="edit_payment_badge"></span></h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form action="<?= $GLOBALS['base_url'] ?>/payment-booking-update" method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="payment_id" id="edit_p_id">
+                    <input type="hidden" name="booking_id" value="<?= $booking['id'] ?>">
+
+                    <div class="row gy-3">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Payment Type *</label>
+                            <select name="payment_type" id="edit_p_type" class="form-select" required>
+                                <option value="booking_money">Booking Money</option>
+                                <option value="registration">Registration</option>
+                                <option value="emi">EMI / Installment</option>
+                                <option value="land_share">Land Share</option>
+                                <option value="development_charge">Development Charge</option>
+                                <option value="others">Others</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Total EMI Number</label>
+                            <input type="number" name="total_emi_no" id="edit_p_total_emi" class="form-control" placeholder="e.g. 42">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Payment Amount *</label>
+                            <input type="number" step="any" name="amount" id="edit_p_amount" class="form-control" required>
+                            <small id="edit_p_amount_note" class="text-danger mt-1" style="display:none; font-size:12px;"></small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Payment Method *</label>
+                            <select name="payment_method" id="edit_p_method" class="form-select" onchange="toggleEditMethodFields(this.value)" required>
+                                <option value="cash">Cash</option>
+                                <option value="bank">Bank</option>
+                                <option value="online">Online</option>
+                                <option value="cheque">Cheque</option>
+                            </select>
+                        </div>
+
+                        <!-- Transfer To / Company Bank (Bank, Cheque, Online) -->
+                        <div class="col-md-6 mb-3 edit-company-bank-fields" id="editCompanyBankFields" style="display:none;">
+                            <label class="form-label">Transfer To / Company Bank *</label>
+                            <div class="input-group">
+                                <select name="bank_id" id="edit_p_bank_id" class="form-select">
+                                    <option value="">-- Select Transfer To / Company Bank --</option>
+                                    <?php if (!empty($companyBanks)): ?>
+                                        <?php foreach ($companyBanks as $cb): ?>
+                                            <option value="<?= $cb['id'] ?>">
+                                                <?= htmlspecialchars($cb['bank_name']) ?> - <?= htmlspecialchars($cb['account_name'] ?? '') ?><?= !empty($cb['account_number']) ? ' (' . htmlspecialchars($cb['account_number']) . ')' : '' ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </select>
+                                <button type="button" class="btn btn-outline-primary" id="editAddCompanyBankBtn" title="Add Company Bank"><i class="fa-light fa-plus"></i></button>
+                            </div>
+                        </div>
+
+                        <!-- Transfer From / Client Bank (Bank, Cheque) -->
+                        <div class="col-md-6 mb-3 edit-bank-fields" id="editBankFields" style="display:none;">
+                            <label class="form-label">Transfer From / Client Bank *</label>
+                            <select name="bank_name" id="edit_p_bank_name" class="form-select" style="width: 100%;" onchange="handleEditClientBankChange(this.value)">
+                                <option value="">-- Select Client Bank --</option>
+                                <option value="Other Country / Foreign Bank">Other Country / Foreign Bank</option>
+                                <option value="Other Bank">Other Bank</option>
+                                <?php foreach ($allBangladeshBanks as $bName): ?>
+                                    <option value="<?= htmlspecialchars($bName) ?>"><?= htmlspecialchars($bName) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <!-- Foreign / Other Bank Custom Name -->
+                        <div class="col-md-6 mb-3 edit-custom-bank-field" id="editOtherBankField" style="display:none;">
+                            <label class="form-label" id="edit_customBankLabel">Specify Foreign / Other Country Bank Name *</label>
+                            <input type="text" name="custom_bank_name" id="edit_customBankInput" class="form-control" placeholder="e.g. Emirates NBD, Chase Bank, Al Rajhi, etc.">
+                        </div>
+
+                        <!-- Client Bank Account No (Bank only) -->
+                        <div class="col-md-6 mb-3 edit-bank-account-fields" id="editBankAccountFields" style="display:none;">
+                            <label class="form-label">Client Bank A/C No. (Optional)</label>
+                            <input type="text" name="bank_account_no" id="edit_p_account_no" class="form-control" placeholder="Account Number">
+                        </div>
+
+                        <!-- Cheque No (Cheque only) -->
+                        <div class="col-md-6 mb-3 edit-cheque-fields" id="editChequeFields" style="display:none;">
+                            <label class="form-label">Cheque No *</label>
+                            <input type="text" name="cheque_no" id="edit_p_cheque" class="form-control" placeholder="Enter Cheque Number">
+                        </div>
+
+                        <!-- Online Type (Online only) -->
+                        <div class="col-md-6 mb-3 edit-online-fields" id="editOnlineFields" style="display:none;">
+                            <label class="form-label">Online Type</label>
+                            <input type="text" name="online_type" id="edit_p_online" class="form-control" placeholder="remittance, bKash, Nagad, Rocket, etc.">
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Payment Date *</label>
+                            <input type="date" name="payment_date" id="edit_p_date" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Transaction Reference</label>
+                            <input type="text" name="transaction_ref" id="edit_p_ref" class="form-control" placeholder="Required reference number">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Payment Status</label>
+                            <select name="payment_status" id="edit_p_status" class="form-select">
+                                <option value="pending">Pending</option>
+                                <option value="partially_paid">Partially Paid</option>
+                                <option value="paid">Paid</option>
+                                <option value="failed">Failed</option>
+                            </select>
+                            <small id="edit_p_status_note" class="text-muted mt-1 d-block" style="font-size:11px;"></small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Update Attachment Image 1 (Optional)</label>
+                            <input type="file" name="attachment_image" class="form-control" accept="image/*,application/pdf">
+                            <div id="edit_p_image1_preview" class="mt-1 small"></div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Update Attachment Image 2 (Optional)</label>
+                            <input type="file" name="attachment_image2" class="form-control" accept="image/*,application/pdf">
+                            <div id="edit_p_image2_preview" class="mt-1 small"></div>
+                        </div>
+                    </div>
+                    <div class="text-end mt-3">
+                        <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success">Update Payment</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     // Load banks on page load
     fetch('<?= $GLOBALS['base_url'] ?>/get-company-banks')
@@ -821,6 +1011,7 @@ function generateCombinedReceipt() {
             const sel = document.getElementById('bankSelect');
             const editSel = document.getElementById('edit_p_bank_id');
             if (sel) {
+                const curSelVal = sel.value;
                 sel.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
                 window.companyBanksList.forEach(b => {
                     const opt = document.createElement('option');
@@ -828,8 +1019,10 @@ function generateCombinedReceipt() {
                     opt.textContent = b.bank_name + ' - ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
                     sel.appendChild(opt);
                 });
+                if (curSelVal) sel.value = curSelVal;
             }
             if (editSel) {
+                const curEditVal = editSel.value;
                 editSel.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
                 window.companyBanksList.forEach(b => {
                     const opt = document.createElement('option');
@@ -837,6 +1030,7 @@ function generateCombinedReceipt() {
                     opt.textContent = b.bank_name + ' - ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
                     editSel.appendChild(opt);
                 });
+                if (curEditVal) editSel.value = curEditVal;
             }
         })
         .catch(() => {
@@ -854,6 +1048,13 @@ function generateCombinedReceipt() {
     }
 
     document.getElementById('addCompanyBankBtn')?.addEventListener('click', function() {
+        document.getElementById('companyBankModalTitle').textContent = 'Add Company Bank';
+        document.getElementById('companyBankForm').reset();
+        document.getElementById('cb_id').value = '';
+        new bootstrap.Modal(document.getElementById('companyBankModal')).show();
+    });
+
+    document.getElementById('editAddCompanyBankBtn')?.addEventListener('click', function() {
         document.getElementById('companyBankModalTitle').textContent = 'Add Company Bank';
         document.getElementById('companyBankForm').reset();
         document.getElementById('cb_id').value = '';
@@ -914,9 +1115,15 @@ function generateCombinedReceipt() {
                             });
                         });
                         const savedId = isEdit ? formData.get('id') : (res.id || '');
-                        if (savedId && sel) {
-                            sel.value = savedId;
-                            sel.dispatchEvent(new Event('change'));
+                        if (savedId) {
+                            if (sel) {
+                                sel.value = savedId;
+                                sel.dispatchEvent(new Event('change'));
+                            }
+                            if (editSel) {
+                                editSel.value = savedId;
+                                editSel.dispatchEvent(new Event('change'));
+                            }
                         }
                     });
                 bootstrap.Modal.getInstance(document.getElementById('companyBankModal')).hide();
@@ -946,94 +1153,55 @@ function generateCombinedReceipt() {
         });
     });
 
-    // Edit Payment Modal logic
-    document.querySelectorAll('.editPaymentBtn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const pId = this.dataset.id;
-            const amount = this.dataset.amount;
-            const method = this.dataset.method;
-            const date = this.dataset.date;
-            const ref = this.dataset.ref;
-            const bankId = this.dataset.bankId;
-            const bankName = this.dataset.bankName;
-            const accountNo = this.dataset.accountNo;
-            const cheque = this.dataset.cheque;
-            const online = this.dataset.online;
-            const isVerified = this.dataset.verified === 'true';
+    const currentUserRoleType = '<?= $isManagement ? "management" : ($isSalesHead ? "sales_head" : "sales_person") ?>';
 
-            document.getElementById('edit_p_id').value = pId;
-            document.getElementById('edit_p_amount').value = amount;
-            document.getElementById('edit_p_date').value = date;
-            document.getElementById('edit_p_ref').value = ref || '';
-            document.getElementById('edit_p_method').value = method;
-
-            const formFields = [
-                'edit_p_amount', 'edit_p_method', 'edit_p_ref',
-                'edit_p_bank_id', 'edit_p_bank_name', 'edit_p_account_no',
-                'edit_p_cheque', 'edit_p_online'
-            ];
-            
-            if (isVerified) {
-                formFields.forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) {
-                        el.style.pointerEvents = 'none';
-                        el.style.backgroundColor = '#e9ecef';
-                        if (el.tagName === 'INPUT') el.readOnly = true;
-                    }
-                });
-            } else {
-                formFields.forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) {
-                        el.style.pointerEvents = 'auto';
-                        el.style.backgroundColor = '';
-                        if (el.tagName === 'INPUT') el.readOnly = false;
-                    }
-                });
-            }
-
-            const editCompanyBankSelect = document.getElementById('edit_p_bank_id');
-            if (editCompanyBankSelect) {
-                editCompanyBankSelect.value = bankId || '';
-            }
-
-            const editBankSelect = document.getElementById('edit_p_bank_name');
-            if (editBankSelect) {
-                if (bankName && !Array.from(editBankSelect.options).some(opt => opt.value === bankName)) {
-                    const customOpt = new Option(bankName, bankName, true, true);
-                    editBankSelect.add(customOpt);
-                }
-                editBankSelect.value = bankName || '';
-                if (window.jQuery && $(editBankSelect).hasClass('select2-hidden-accessible')) {
-                    $(editBankSelect).trigger('change');
-                }
-            }
-
-            document.getElementById('edit_p_account_no').value = accountNo || '';
-            document.getElementById('edit_p_cheque').value = cheque || '';
-            document.getElementById('edit_p_online').value = online || '';
-
-            toggleEditMethodFields(method);
-        });
-    });
-
+    // Global function to toggle edit modal method fields in pure vanilla JS
     function toggleEditMethodFields(method) {
-        document.querySelectorAll('.edit-company-bank-fields').forEach(el => el.style.display = (method === 'bank' || method === 'cheque' || method === 'online') ? 'block' : 'none');
-        document.querySelectorAll('.edit-bank-fields').forEach(el => el.style.display = (method === 'bank') ? 'block' : 'none');
-        document.querySelectorAll('.edit-cheque-fields').forEach(el => el.style.display = (method === 'cheque') ? 'block' : 'none');
-        document.querySelectorAll('.edit-online-fields').forEach(el => el.style.display = (method === 'online') ? 'block' : 'none');
+        const isBank = (method === 'bank');
+        const isCheque = (method === 'cheque');
+        const isOnline = (method === 'online');
 
-        if ((method === 'bank' || method === 'cheque') && window.jQuery && $.fn.select2) {
-            const $editBank = $('#edit_p_bank_name');
+        const compBankDiv = document.getElementById('editCompanyBankFields');
+        const clientBankDiv = document.getElementById('editBankFields');
+        const clientAccDiv = document.getElementById('editBankAccountFields');
+        const chequeDiv = document.getElementById('editChequeFields');
+        const onlineDiv = document.getElementById('editOnlineFields');
+        const otherBankDiv = document.getElementById('editOtherBankField');
+
+        if (compBankDiv) compBankDiv.style.display = (isBank || isCheque || isOnline) ? 'block' : 'none';
+        if (clientBankDiv) clientBankDiv.style.display = (isBank || isCheque) ? 'block' : 'none';
+        if (clientAccDiv) clientAccDiv.style.display = isBank ? 'block' : 'none';
+        if (chequeDiv) chequeDiv.style.display = isCheque ? 'block' : 'none';
+        if (onlineDiv) onlineDiv.style.display = isOnline ? 'block' : 'none';
+
+        if (otherBankDiv) {
+            if (!isBank && !isCheque) {
+                otherBankDiv.style.display = 'none';
+            } else {
+                const bVal = document.getElementById('edit_p_bank_name') ? document.getElementById('edit_p_bank_name').value : '';
+                const customLabel = document.getElementById('edit_customBankLabel');
+                if (bVal === 'Other Bank' || bVal === 'Other Country / Foreign Bank') {
+                    if (customLabel) {
+                        customLabel.textContent = (bVal === 'Other Country / Foreign Bank') ? 'Specify Foreign / Other Country Bank Name *' : 'Specify Client Bank Name *';
+                    }
+                    otherBankDiv.style.display = 'block';
+                } else {
+                    otherBankDiv.style.display = 'none';
+                }
+            }
+        }
+
+        // Initialize Select2 on Client Bank inside modal if available
+        if ((isBank || isCheque) && window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
+            const $editBank = window.jQuery('#edit_p_bank_name');
             if ($editBank.length && !$editBank.hasClass('select2-hidden-accessible')) {
                 $editBank.select2({
-                    dropdownParent: $('#editPaymentModal'),
+                    dropdownParent: window.jQuery('#editPaymentModal'),
                     width: '100%',
                     placeholder: '-- Select Client Bank --',
                     tags: true,
                     createTag: function (params) {
-                        var term = $.trim(params.term);
+                        var term = (params.term || '').trim();
                         if (term === '') return null;
                         return {
                             id: term,
@@ -1046,110 +1214,236 @@ function generateCombinedReceipt() {
         }
     }
 
-    document.getElementById('edit_p_method')?.addEventListener('change', function() {
-        toggleEditMethodFields(this.value);
+    window.toggleEditMethodFields = toggleEditMethodFields;
+
+    // Client Bank change handler
+    function handleEditClientBankChange(val) {
+        const otherDiv = document.getElementById('editOtherBankField');
+        const customInput = document.getElementById('edit_customBankInput');
+        const customLabel = document.getElementById('edit_customBankLabel');
+        if (val === 'Other Bank' || val === 'Other Country / Foreign Bank') {
+            if (customLabel) {
+                customLabel.textContent = (val === 'Other Country / Foreign Bank') ? 'Specify Foreign / Other Country Bank Name *' : 'Specify Client Bank Name *';
+            }
+            if (otherDiv) otherDiv.style.display = 'block';
+        } else {
+            if (otherDiv) otherDiv.style.display = 'none';
+            if (customInput) customInput.value = '';
+        }
+    }
+    window.handleEditClientBankChange = handleEditClientBankChange;
+
+    // Pure Vanilla JS Event Delegation: When Payment Method changes inside Edit Modal
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.id === 'edit_p_method') {
+            toggleEditMethodFields(e.target.value);
+        }
     });
 
-    if (window.jQuery) {
-        $('#editPaymentModal').on('shown.bs.modal', function () {
-            if ($('#edit_p_bank_name').is(':visible') && $.fn.select2) {
-                if (!$('#edit_p_bank_name').hasClass('select2-hidden-accessible')) {
-                    $('#edit_p_bank_name').select2({
-                        dropdownParent: $('#editPaymentModal'),
-                        width: '100%',
-                        placeholder: '-- Select Client Bank --',
-                        tags: true,
-                        createTag: function (params) {
-                            var term = $.trim(params.term);
-                            if (term === '') return null;
-                            return {
-                                id: term,
-                                text: term + ' (Foreign / Custom Bank)',
-                                newTag: true
-                            };
-                        }
-                    });
+    // Pure Vanilla JS Event Delegation: When Client Bank changes inside Edit Modal
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.id === 'edit_p_bank_name') {
+            handleEditClientBankChange(e.target.value);
+        }
+    });
+
+    // Main function to open and populate Edit Payment Modal
+    function openEditPaymentModal(btn) {
+        if (!btn) return;
+
+        const pId = btn.dataset.id || btn.getAttribute('data-id') || '';
+        const type = btn.dataset.type || btn.getAttribute('data-type') || 'booking_money';
+        const amount = btn.dataset.amount || btn.getAttribute('data-amount') || '0';
+        const method = btn.dataset.method || btn.getAttribute('data-method') || 'cash';
+        const status = btn.dataset.status || btn.getAttribute('data-status') || 'pending';
+        const date = btn.dataset.date || btn.getAttribute('data-date') || '';
+        const emiNo = btn.dataset.emiNo || btn.getAttribute('data-emi-no') || '';
+        const ref = btn.dataset.ref || btn.getAttribute('data-ref') || '';
+        const bankId = btn.dataset.bankId || btn.getAttribute('data-bank-id') || '';
+        const bankName = btn.dataset.bankName || btn.getAttribute('data-bank-name') || '';
+        const accountNo = btn.dataset.accountNo || btn.getAttribute('data-account-no') || '';
+        const cheque = btn.dataset.cheque || btn.getAttribute('data-cheque') || '';
+        const online = btn.dataset.online || btn.getAttribute('data-online') || '';
+        const img1 = btn.dataset.image1 || btn.getAttribute('data-image1') || '';
+        const img2 = btn.dataset.image2 || btn.getAttribute('data-image2') || '';
+        const isVerified = (btn.dataset.verified === 'true' || btn.getAttribute('data-verified') === 'true');
+
+        const elId = document.getElementById('edit_p_id');
+        const elType = document.getElementById('edit_p_type');
+        const elEmi = document.getElementById('edit_p_total_emi');
+        const elAmount = document.getElementById('edit_p_amount');
+        const elMethod = document.getElementById('edit_p_method');
+        const elStatus = document.getElementById('edit_p_status');
+        const elDate = document.getElementById('edit_p_date');
+        const elRef = document.getElementById('edit_p_ref');
+        const elBankId = document.getElementById('edit_p_bank_id');
+        const elAccountNo = document.getElementById('edit_p_account_no');
+        const elCheque = document.getElementById('edit_p_cheque');
+        const elOnline = document.getElementById('edit_p_online');
+
+        if (elId) elId.value = pId;
+        if (elType) elType.value = type;
+        if (elEmi) elEmi.value = emiNo;
+        if (elAmount) elAmount.value = amount;
+        if (elMethod) elMethod.value = method;
+        if (elStatus) elStatus.value = status;
+        if (elDate) elDate.value = date;
+        if (elRef) elRef.value = ref;
+        if (elBankId) elBankId.value = bankId;
+        if (elAccountNo) elAccountNo.value = accountNo;
+        if (elCheque) elCheque.value = cheque;
+        if (elOnline) elOnline.value = online;
+
+        // Attachment previews
+        const p1 = document.getElementById('edit_p_image1_preview');
+        if (p1) {
+            p1.innerHTML = img1 ? `<a href="<?= $GLOBALS['base_url'] ?>/public/uploads/payments/${img1}" target="_blank" class="text-primary"><i class="fa-solid fa-paperclip me-1"></i>View Current Attachment 1</a>` : '<span class="text-muted">No attachment 1 uploaded</span>';
+        }
+        const p2 = document.getElementById('edit_p_image2_preview');
+        if (p2) {
+            p2.innerHTML = img2 ? `<a href="<?= $GLOBALS['base_url'] ?>/public/uploads/payments/${img2}" target="_blank" class="text-primary"><i class="fa-solid fa-paperclip me-1"></i>View Current Attachment 2</a>` : '<span class="text-muted">No attachment 2 uploaded</span>';
+        }
+
+        // Client Bank setup
+        const editBankSelect = document.getElementById('edit_p_bank_name');
+        const otherBankDiv = document.getElementById('editOtherBankField');
+        const customBankInput = document.getElementById('edit_customBankInput');
+        if (editBankSelect) {
+            if (bankName) {
+                let found = false;
+                for (let i = 0; i < editBankSelect.options.length; i++) {
+                    if (editBankSelect.options[i].value === bankName) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (found) {
+                    editBankSelect.value = bankName;
+                    if (bankName === 'Other Bank' || bankName === 'Other Country / Foreign Bank') {
+                        if (otherBankDiv) otherBankDiv.style.display = 'block';
+                    } else {
+                        if (otherBankDiv) otherBankDiv.style.display = 'none';
+                        if (customBankInput) customBankInput.value = '';
+                    }
+                } else {
+                    const newOpt = new Option(bankName, bankName, true, true);
+                    editBankSelect.add(newOpt);
+                    editBankSelect.value = bankName;
+                    if (otherBankDiv) otherBankDiv.style.display = 'none';
+                }
+                if (window.jQuery && window.jQuery(editBankSelect).hasClass('select2-hidden-accessible')) {
+                    window.jQuery(editBankSelect).trigger('change');
+                }
+            } else {
+                editBankSelect.value = '';
+                if (otherBankDiv) otherBankDiv.style.display = 'none';
+                if (customBankInput) customBankInput.value = '';
+                if (window.jQuery && window.jQuery(editBankSelect).hasClass('select2-hidden-accessible')) {
+                    window.jQuery(editBankSelect).trigger('change');
                 }
             }
+        }
+
+        // Role permissions
+        const badgeEl = document.getElementById('edit_payment_badge');
+        const amountInput = document.getElementById('edit_p_amount');
+        const amountNote = document.getElementById('edit_p_amount_note');
+        if (amountNote) amountNote.style.display = 'none';
+
+        if (isVerified) {
+            if (currentUserRoleType === 'management') {
+                if (badgeEl) {
+                    badgeEl.className = 'badge bg-success ms-2';
+                    badgeEl.textContent = 'Verified (Management: Full Edit Access)';
+                }
+                if (amountInput) {
+                    amountInput.readOnly = false;
+                    amountInput.style.pointerEvents = 'auto';
+                    amountInput.style.backgroundColor = '';
+                    amountInput.removeAttribute('title');
+                }
+                [elType, elStatus].forEach(el => {
+                    if (el) {
+                        el.style.pointerEvents = 'auto';
+                        el.style.backgroundColor = '';
+                        el.disabled = false;
+                    }
+                });
+                if (elEmi) {
+                    elEmi.readOnly = false;
+                    elEmi.style.pointerEvents = 'auto';
+                    elEmi.style.backgroundColor = '';
+                }
+            } else if (currentUserRoleType === 'sales_head') {
+                if (badgeEl) {
+                    badgeEl.className = 'badge bg-warning text-dark ms-2';
+                    badgeEl.textContent = 'Verified (Sales Head: Method/Date/Bank/Cheque Edit Access)';
+                }
+                if (amountInput) {
+                    amountInput.readOnly = true;
+                    amountInput.style.pointerEvents = 'none';
+                    amountInput.style.backgroundColor = '#e9ecef';
+                    amountInput.setAttribute('title', 'Amount cannot be modified for verified payment by Sales Head.');
+                }
+                [elType, elStatus].forEach(el => {
+                    if (el) {
+                        el.style.pointerEvents = 'none';
+                        el.style.backgroundColor = '#e9ecef';
+                    }
+                });
+                if (elEmi) {
+                    elEmi.readOnly = true;
+                    elEmi.style.pointerEvents = 'none';
+                    elEmi.style.backgroundColor = '#e9ecef';
+                }
+                if (amountNote) {
+                    amountNote.style.display = 'block';
+                    amountNote.textContent = 'Amount and core billing types are locked by Accounts. Only Management can edit verified amounts.';
+                }
+            }
+        } else {
+            if (badgeEl) {
+                badgeEl.className = 'badge bg-secondary ms-2';
+                badgeEl.textContent = 'Unverified Payment';
+            }
+            if (amountInput) {
+                amountInput.readOnly = false;
+                amountInput.style.pointerEvents = 'auto';
+                amountInput.style.backgroundColor = '';
+                amountInput.removeAttribute('title');
+            }
+            [elType, elStatus].forEach(el => {
+                if (el) {
+                    el.style.pointerEvents = 'auto';
+                    el.style.backgroundColor = '';
+                    el.disabled = false;
+                }
+            });
+            if (elEmi) {
+                elEmi.readOnly = false;
+                elEmi.style.pointerEvents = 'auto';
+                elEmi.style.backgroundColor = '';
+            }
+        }
+
+        // Toggle relevant fields based on current method
+        toggleEditMethodFields(method);
+    }
+    window.openEditPaymentModal = openEditPaymentModal;
+
+    // Pure Vanilla JS Event Delegation: When Edit Payment button is clicked
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.editPaymentBtn');
+        if (btn) openEditPaymentModal(btn);
+    });
+
+    // Ensure Select2 and layout refresh when modal fully opens
+    const editModalEl = document.getElementById('editPaymentModal');
+    if (editModalEl) {
+        editModalEl.addEventListener('shown.bs.modal', function () {
+            const elMethod = document.getElementById('edit_p_method');
+            const curMethod = elMethod ? elMethod.value : 'cash';
+            toggleEditMethodFields(curMethod);
         });
     }
 </script>
-
-<!-- Edit Payment Modal -->
-<div id="editPaymentModal" class="modal custom-modal fade" role="dialog">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Edit Payment Record</h5>
-                <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
-                    <i class="fa-solid fa-xmark-large"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form action="<?= $GLOBALS['base_url'] ?>/payment-booking-update" method="POST" enctype="multipart/form-data">
-                    <input type="hidden" name="payment_id" id="edit_p_id">
-                    <input type="hidden" name="booking_id" value="<?= $booking['id'] ?>">
-
-                    <div class="row gy-3">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Payment Amount *</label>
-                            <input type="number" step="any" name="amount" id="edit_p_amount" class="form-control" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Payment Method *</label>
-                            <select name="payment_method" id="edit_p_method" class="form-select" required>
-                                <option value="cash">Cash</option>
-                                <option value="bank">Bank Transfer</option>
-                                <option value="cheque">Cheque</option>
-                                <option value="online">Online</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Payment Date *</label>
-                            <input type="date" name="payment_date" id="edit_p_date" class="form-control" <?= $isSalesHead ? '' : 'readonly style="pointer-events:none; background-color:#e9ecef;" title="Only Sales Head can edit the payment date"' ?> required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Transaction Reference</label>
-                            <input type="text" name="transaction_ref" id="edit_p_ref" class="form-control">
-                        </div>
-                        <div class="col-md-6 mb-3 edit-company-bank-fields" style="display:none;">
-                            <label class="form-label">Transfer To / Company Bank</label>
-                            <select name="bank_id" id="edit_p_bank_id" class="form-select">
-                                <option value="">-- Select Company Bank --</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6 mb-3 edit-bank-fields" style="display:none;">
-                            <label class="form-label">Transfer From / Client Bank</label>
-                            <select name="bank_name" id="edit_p_bank_name" class="form-select" style="width: 100%;">
-                                <option value="">-- Select Client Bank --</option>
-                                <?php foreach ($allBangladeshBanks as $bName): ?>
-                                    <option value="<?= htmlspecialchars($bName) ?>"><?= htmlspecialchars($bName) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-6 mb-3 edit-bank-fields" style="display:none;">
-                            <label class="form-label">Bank Account No</label>
-                            <input type="text" name="bank_account_no" id="edit_p_account_no" class="form-control">
-                        </div>
-                        <div class="col-md-6 mb-3 edit-cheque-fields" style="display:none;">
-                            <label class="form-label">Cheque No</label>
-                            <input type="text" name="cheque_no" id="edit_p_cheque" class="form-control">
-                        </div>
-                        <div class="col-md-6 mb-3 edit-online-fields" style="display:none;">
-                            <label class="form-label">Online Type</label>
-                            <input type="text" name="online_type" id="edit_p_online" class="form-control" placeholder="remittance/bKash / Nagad / Rocket / etc.">
-                        </div>
-                        <div class="col-md-12 mb-3">
-                            <label class="form-label">Update Attachment Image (Optional)</label>
-                            <input type="file" name="attachment_image" class="form-control" accept="image/*,application/pdf">
-                        </div>
-                    </div>
-                    <div class="text-end mt-3">
-                        <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-success">Update Payment</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>

@@ -868,7 +868,7 @@ if (!empty($invoice['2nd_owner_phone'])) {
                         <?php if (strtolower($invoice['payment_method']) !== 'online' && strtolower($invoice['payment_method']) !== 'cash'): ?>
                         <div class="field-group">
                             <label class="field-label">Sender Bank (Client)</label>
-                            <input type="text" class="field-input" value="<?= htmlspecialchars($invoice['bank_name'] ?? '') ?>" readonly>
+                            <input type="text" class="field-input" value="<?= htmlspecialchars(($invoice['bank_name'] ?? '') . (!empty($invoice['bank_account_no']) && !in_array(strtolower(trim($invoice['bank_account_no'])), ['n/a', '0', '00', 'none', 'null']) ? ' (A/C: ' . trim($invoice['bank_account_no']) . ')' : '')) ?>" readonly>
                         </div>
                         <?php endif; ?>
 
