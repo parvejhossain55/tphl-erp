@@ -831,7 +831,7 @@ class LeadSynchronizer
             :currency,
             :visibility,
             :residency_type,
-            NOW(),
+            :created_at,
             NOW()
         )";
 
@@ -866,6 +866,7 @@ class LeadSynchronizer
             ':currency'                                 => $defaults['currency'] ?? 'BDT',
             ':visibility'                               => $defaults['visibility'] ?? 'public',
             ':residency_type'                           => $defaults['residency_type'] ?? 'local',
+            ':created_at'                               => !empty($lead['created_at']) ? $lead['created_at'] : date('Y-m-d H:i:s'),
         ]);
 
         return (int)$pdo->lastInsertId();

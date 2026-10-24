@@ -1639,14 +1639,35 @@ class LeadAutomationController extends Controller
                 $allActiveTeamIds = $tStmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
             } catch (Throwable $t) {}
 
+            $syncPeriod = strtolower(trim((string)($_GET['period'] ?? $_POST['period'] ?? 'today')));
+            $todayDate = date('Y-m-d');
+            $yesterdayDate = date('Y-m-d', strtotime('-1 day'));
+
             $insertedCount = 0;
             $skippedDuplicates = 0;
+            $skippedOldDate = 0;
             $skippedInvalid = 0;
             $seenInBatch = [];
 
             // 4. Process each brochure lead
             foreach ($leads as $lead) {
                 if (!is_array($lead)) continue;
+
+                $leadCreatedAt = !empty($lead['created_at']) ? $lead['created_at'] : '';
+                $leadDate = substr($leadCreatedAt, 0, 10);
+
+                // Daily Filter: Default to 'today' only so old past-months leads are never pulled
+                if ($syncPeriod === 'today') {
+                    if ($leadDate !== $todayDate) {
+                        $skippedOldDate++;
+                        continue;
+                    }
+                } elseif ($syncPeriod === 'recent' || $syncPeriod === 'yesterday') {
+                    if ($leadDate < $yesterdayDate) {
+                        $skippedOldDate++;
+                        continue;
+                    }
+                }
 
                 $name = trim((string)($lead['name'] ?? ''));
                 $rawPhone = trim((string)($lead['phone'] ?? ''));
@@ -1697,6 +1718,10 @@ class LeadAutomationController extends Controller
                 $eligibleTeams = $projectTeamsMap[$projectId] ?? $allActiveTeamIds;
                 $assignedTeamId = $synchronizer->resolveNextTeamId($projectId, $eligibleTeams, $pdo);
 
+                $formattedCreatedAt = !empty($leadCreatedAt) 
+                    ? date('Y-m-d H:i:s', strtotime($leadCreatedAt)) 
+                    : date('Y-m-d H:i:s');
+
                 $leadData = [
                     'campaign_name'    => $campaignName,
                     'platform'         => 'brochure',
@@ -1709,6 +1734,7 @@ class LeadAutomationController extends Controller
                     'is_automated'     => 1,
                     'is_repibee'       => 0,
                     'is_brocure_leads' => 1,
+                    'created_at'       => $formattedCreatedAt,
                 ];
 
                 try {
@@ -1731,10 +1757,13 @@ class LeadAutomationController extends Controller
 
             echo json_encode([
                 'status'             => 'success',
-                'message'            => sprintf("Brochure Leads Sync Completed! Fetched %d lead(s): %d newly inserted, %d duplicates skipped.", $totalFetched, $insertedCount, $skippedDuplicates),
+                'message'            => sprintf("Brochure Leads Sync Completed! Processed today's leads (%s): %d newly inserted, %d duplicates skipped, %d old historical leads excluded.", $todayDate, $insertedCount, $skippedDuplicates, $skippedOldDate),
                 'inserted_count'     => $insertedCount,
                 'skipped_duplicates' => $skippedDuplicates,
-                'total_fetched'      => $totalFetched
+                'skipped_old_date'   => $skippedOldDate,
+                'total_fetched'      => $totalFetched,
+                'sync_period'        => $syncPeriod,
+                'target_date'        => $todayDate
             ]);
         } catch (Throwable $e) {
             http_response_code(500);
