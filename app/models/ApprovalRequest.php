@@ -503,7 +503,7 @@ class ApprovalRequest extends Model
                 accounts_head_by = ?,
                 accounts_head_at = NOW(),
                 accounts_head_note = ?,
-                approve_role = 'accounts'
+                approve_role = CASE WHEN status = 'partially_approved' AND source_table = 'fund_requisitions' THEN approve_role ELSE 'accounts' END
             WHERE id = ?
         ");
         if (!$stmt) {
@@ -735,6 +735,8 @@ class ApprovalRequest extends Model
             'op_head_status'            => 'pending',
             'is_op_head_approved'       => false,
             'is_pending_op_head'        => false,
+            'is_op_head_bypassed'       => false,
+            'is_mgmt_approved'          => false,
             'can_mgmt_approve'          => true,
             'op_head_name'              => null,
             'op_head_code'              => null,
@@ -798,13 +800,29 @@ class ApprovalRequest extends Model
         $isOver1Lac = ($reqAmount > 100000.01);
         $opStatus = strtolower($row['op_head_status'] ?? 'pending');
         $reqStatus = strtolower($row['status'] ?? '');
-        
+
+        // Fund Requisitions: source table is the source of truth for management decision.
+        // Self-heal legacy rows where approval_requests.status stayed 'pending' after a partial management approval.
+        if ($sourceTable === 'fund_requisitions') {
+            $frRes = $db->query("SELECT status FROM fund_requisitions WHERE id = " . (int)$sourceId . " LIMIT 1");
+            $frSt = ($frRes && ($frRow = $frRes->fetch_assoc())) ? strtolower((string)$frRow['status']) : '';
+            if ($frSt === 'partially_approved' && $reqStatus !== 'partially_approved' && !in_array($reqStatus, ['rejected', 'cancelled'])) {
+                $db->query("UPDATE approval_requests SET status = 'partially_approved' WHERE id = " . (int)$row['id']);
+                $reqStatus = 'partially_approved';
+                $row['status'] = 'partially_approved';
+            }
+        }
+
+        $mgmtDoneStatuses = ['approved', 'partially_paid', 'paid', 'partially_approved'];
+        $isMgmtApproved = in_array($reqStatus, $mgmtDoneStatuses);
+
         $isOpHeadApproved = ($opStatus === 'approved') || (!$isOver1Lac && in_array($reqStatus, ['approved', 'partially_paid', 'paid']));
-        $isPendingOpHead = $isOver1Lac && !$isOpHeadApproved && !in_array($reqStatus, ['rejected', 'cancelled']);
-        $canMgmtApprove = !$isOver1Lac || $isOpHeadApproved;
+        // Legacy: Management already approved a > 1L request without Op Head sign-off -> Op Head stage is bypassed (not pending anymore)
+        $isOpHeadBypassed = $isOver1Lac && !$isOpHeadApproved && $isMgmtApproved && $opStatus !== 'rejected';
+        $isPendingOpHead = $isOver1Lac && !$isOpHeadApproved && !$isOpHeadBypassed && !in_array($reqStatus, ['rejected', 'cancelled']);
+        $canMgmtApprove = !$isOver1Lac || $isOpHeadApproved || $isOpHeadBypassed;
 
         $ahStatus = $row['accounts_head_status'] ?? 'pending';
-        $isMgmtApproved = in_array($reqStatus, ['approved', 'partially_paid', 'paid']);
         $isPendingAh = $isMgmtApproved && ($ahStatus === 'pending' || empty($ahStatus));
         $isAhApproved = ($ahStatus === 'approved');
         $isAhRejected = ($ahStatus === 'rejected');
@@ -818,7 +836,9 @@ class ApprovalRequest extends Model
             'is_over_1lac'              => $isOver1Lac,
             'op_head_status'            => $opStatus,
             'is_op_head_approved'       => $isOpHeadApproved,
+            'is_op_head_bypassed'       => $isOpHeadBypassed,
             'is_pending_op_head'        => $isPendingOpHead,
+            'is_mgmt_approved'          => $isMgmtApproved,
             'can_mgmt_approve'          => $canMgmtApprove,
             'op_head_name'              => $row['op_head_name'] ?: 'Admin & Operation Head',
             'op_head_code'              => $row['op_head_code'] ?: null,
@@ -1650,6 +1670,7 @@ class ApprovalRequest extends Model
             return "(
                 LOWER({$prefix}approve_role) != 'completed' AND (
                     ({$prefix}status = 'approved' AND ({$prefix}accounts_head_status = 'pending' OR {$prefix}accounts_head_status IS NULL OR LOWER({$prefix}approve_role) = 'accounts_head'))
+                    OR ({$prefix}status = 'partially_approved' AND {$prefix}source_table = 'fund_requisitions' AND ({$prefix}accounts_head_status = 'pending' OR {$prefix}accounts_head_status IS NULL OR {$prefix}accounts_head_status = ''))
                     OR ({$prefix}accounts_head_status = 'approved' AND (LOWER({$prefix}approve_role) = 'accounts' OR {$prefix}source_table IN ('project_incentive_claims', 'vendor_payment_requests', 'contractor_bill_requests', 'con_labor_requisitions', 'fund_requisitions', 'project_other_costs', 'project_extra_assets', 'expense_adjustments', 'land_fund_requisitions', 'con_land_requisitions')))
                 )
             )";
@@ -1657,6 +1678,7 @@ class ApprovalRequest extends Model
             return "(
                 LOWER({$prefix}approve_role) != 'completed' AND {$prefix}accounts_head_status = 'approved' AND (
                     ({$prefix}status IN ('pending', 'partially_approved', '') AND LOWER({$prefix}approve_role) = 'accounts')
+                    OR ({$prefix}status = 'partially_approved' AND {$prefix}source_table = 'fund_requisitions')
                     OR ({$prefix}status = 'approved' AND (LOWER({$prefix}approve_role) = 'accounts' OR {$prefix}source_table IN ('project_incentive_claims', 'vendor_payment_requests', 'contractor_bill_requests', 'con_labor_requisitions', 'fund_requisitions', 'project_other_costs', 'project_extra_assets', 'expense_adjustments', 'land_fund_requisitions', 'con_land_requisitions')))
                 )
             )";
@@ -2706,6 +2728,9 @@ class ApprovalRequest extends Model
                             $row['status'] = 'approved';
                             $pendingStageLabel = 'Pending Accounts Payout';
                             $pendingForText = 'Accounts & Finance';
+                        } elseif ($frStatus === 'partially_approved') {
+                            $row['approve_role'] = 'management';
+                            $row['status'] = 'partially_approved';
                         } elseif ($frStatus === 'rejected') {
                             $row['status'] = 'rejected';
                             $pendingStageLabel = 'Rejected';
@@ -2730,7 +2755,10 @@ class ApprovalRequest extends Model
                             $pendingForText = 'Accounts & Finance';
                             if ($frRow['status'] === 'partially_approved') {
                                 $pendingStageLabel = 'Partially Approved (Mgmt)';
-                                $pendingForText = 'Accounts & Finance (Approved Part) / Management (Remaining)';
+                                $frAhSt = strtolower((string)($row['accounts_head_status'] ?? 'pending'));
+                                $pendingForText = ($frAhSt === 'approved')
+                                    ? 'Accounts & Finance (Approved Part) / Management (Remaining)'
+                                    : 'Accounts Head (Approved Part) / Management (Remaining)';
                             }
                         }
 
@@ -3476,6 +3504,10 @@ class ApprovalRequest extends Model
                 } elseif ($frStatus === 'approved') {
                     $approveRole = 'accounts';
                     $status = 'approved';
+                } elseif ($frStatus === 'partially_approved') {
+                    // Approved part -> Accounts Head / Accounts; remaining balance stays with Management
+                    $approveRole = 'management';
+                    $status = 'partially_approved';
                 } elseif (in_array($frStatus, ['paid', 'partially_paid'])) {
                     $approveRole = 'accounts';
                     $status = ($frStatus === 'paid') ? 'approved' : 'partially_paid';
@@ -3521,6 +3553,7 @@ class ApprovalRequest extends Model
                     WHEN fr.status = 'pending_qc' THEN 'qc'
                     WHEN fr.status = 'pending' THEN 'management'
                     WHEN fr.status = 'approved' THEN CASE WHEN ar.accounts_head_status = 'approved' THEN 'accounts' ELSE 'accounts_head' END
+                    WHEN fr.status = 'partially_approved' THEN 'management'
                     WHEN fr.status IN ('paid', 'partially_paid') THEN 'completed'
                     WHEN fr.status = 'rejected' THEN 'management'
                     ELSE ar.approve_role 
@@ -3528,6 +3561,7 @@ class ApprovalRequest extends Model
                 ar.status = CASE 
                     WHEN fr.status IN ('pending_dept', 'pending_qc', 'pending') THEN 'pending'
                     WHEN fr.status IN ('approved', 'paid') THEN 'approved'
+                    WHEN fr.status = 'partially_approved' THEN 'partially_approved'
                     WHEN fr.status = 'partially_paid' THEN 'partially_paid'
                     WHEN fr.status = 'rejected' THEN 'rejected'
                     ELSE 'pending'

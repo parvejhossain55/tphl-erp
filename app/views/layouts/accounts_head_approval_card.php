@@ -50,6 +50,8 @@ $opHeadStatus = strtolower($ahInfo['op_head_status'] ?? 'pending');
 $isOpHeadApproved = !empty($ahInfo['is_op_head_approved']);
 $isOpHeadPending = !empty($ahInfo['is_pending_op_head']);
 $isOpHeadRejected = ($opHeadStatus === 'rejected');
+// Legacy: Management approved a > 1L request directly (without Op Head) -> Op Head stage bypassed, does not block Accounts Head
+$isOpHeadBypassed = !empty($ahInfo['is_op_head_bypassed']);
 
 $opHeadName = !empty($ahInfo['op_head_name']) ? $ahInfo['op_head_name'] : 'Admin & Operation Head';
 $opHeadCode = !empty($ahInfo['op_head_code']) ? $ahInfo['op_head_code'] : '';
@@ -92,6 +94,11 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
                     <span class="badge bg-danger text-white rounded-pill px-3 py-1 extra-small fw-bold">
                         <i class="fa-solid fa-circle-xmark me-1"></i>Rejected by Operation Head
                     </span>
+                <?php elseif ($isOpHeadBypassed): ?>
+                    <span class="badge bg-secondary text-white rounded-pill px-3 py-1 extra-small fw-bold">
+                        <i class="fa-solid fa-forward me-1"></i>Op Head Step Bypassed
+                    </span>
+                    <span class="text-muted extra-small fw-semibold">Management approved directly (legacy)</span>
                 <?php else: ?>
                     <span class="badge bg-warning text-dark rounded-pill px-3 py-1 extra-small fw-bold">
                         <i class="fa-solid fa-clock me-1"></i>Pending Admin & Operation Head Approval
@@ -182,6 +189,15 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
                                 <i class="fa-solid fa-ban me-1"></i>Rejected by Operation Head
                             </span>
                         </div>
+                    <?php elseif ($isOpHeadBypassed): ?>
+                        <div class="text-md-end text-start">
+                            <span class="badge bg-secondary-subtle text-secondary border rounded-pill px-3 py-2 extra-small fw-bold">
+                                <i class="fa-solid fa-forward me-1"></i>Not Required Anymore
+                            </span>
+                            <div class="extra-small text-muted mt-1">
+                                Management already approved &mdash; forwarded to Accounts Head
+                            </div>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -261,7 +277,7 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
 
                 <!-- Action / Status Notice Column -->
                 <div class="col-md-5 col-12 text-md-end text-start">
-                    <?php if ($isOver1Lac && !$isOpHeadApproved): ?>
+                    <?php if ($isOver1Lac && !$isOpHeadApproved && !$isOpHeadBypassed): ?>
                         <div class="p-2 bg-light rounded border text-start d-inline-block">
                             <div class="extra-small text-muted fw-bold">
                                 <i class="fa-solid fa-lock text-warning me-1"></i>Awaiting Previous Approvals
