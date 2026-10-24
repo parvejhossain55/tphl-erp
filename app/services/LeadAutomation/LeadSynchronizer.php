@@ -790,6 +790,7 @@ class LeadSynchronizer
             `distribute`,
             `is_automated`,
             `is_repibee`,
+            `is_brocure_leads`,
             `uploaded_from`,
             `status`,
             `last_lead_action`,
@@ -821,6 +822,7 @@ class LeadSynchronizer
             :distribute,
             :is_automated,
             :is_repibee,
+            :is_brocure_leads,
             :uploaded_from,
             :status,
             :last_lead_action,
@@ -829,7 +831,7 @@ class LeadSynchronizer
             :currency,
             :visibility,
             :residency_type,
-            NOW(),
+            :created_at,
             NOW()
         )";
 
@@ -855,6 +857,7 @@ class LeadSynchronizer
             ':distribute'                               => 0, // Explicitly 0 = false (Pending approval)
             ':is_automated'                             => 1, // Flagged as automated sync lead
             ':is_repibee'                              => !empty($lead['is_repibee']) ? 1 : 0,
+            ':is_brocure_leads'                         => !empty($lead['is_brocure_leads']) ? 1 : 0,
             ':uploaded_from'                            => $defaults['uploaded_from'] ?? 'From Campaign',
             ':status'                                   => $defaults['status'] ?? 'active',
             ':last_lead_action'                         => $defaults['last_lead_action'] ?? 'new',
@@ -863,6 +866,7 @@ class LeadSynchronizer
             ':currency'                                 => $defaults['currency'] ?? 'BDT',
             ':visibility'                               => $defaults['visibility'] ?? 'public',
             ':residency_type'                           => $defaults['residency_type'] ?? 'local',
+            ':created_at'                               => !empty($lead['created_at']) ? $lead['created_at'] : date('Y-m-d H:i:s'),
         ]);
 
         return (int)$pdo->lastInsertId();
@@ -1085,6 +1089,15 @@ class LeadSynchronizer
                 $pdo->exec("ALTER TABLE `leads` ADD COLUMN `is_repibee` TINYINT(1) NOT NULL DEFAULT 0 AFTER `is_automated`");
                 try {
                     $pdo->exec("CREATE INDEX `idx_leads_is_repibee` ON `leads` (`is_repibee`)");
+                } catch (Throwable $t) {}
+            }
+
+            // 5. Ensure is_brocure_leads column exists
+            $brocureCols = $pdo->query("SHOW COLUMNS FROM `leads` LIKE 'is_brocure_leads'")->fetchAll();
+            if (empty($brocureCols)) {
+                $pdo->exec("ALTER TABLE `leads` ADD COLUMN `is_brocure_leads` TINYINT(1) NOT NULL DEFAULT 0 AFTER `is_repibee`");
+                try {
+                    $pdo->exec("CREATE INDEX `idx_leads_is_brocure` ON `leads` (`is_brocure_leads`)");
                 } catch (Throwable $t) {}
             }
         } catch (Throwable $e) {

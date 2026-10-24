@@ -69,6 +69,15 @@ class LeadAutomationController extends Controller
                     $pdo->exec("CREATE INDEX `idx_leads_is_repibee` ON `leads` (`is_repibee`)");
                 } catch (Throwable $t) {}
             }
+
+            // 5. Check & add is_brocure_leads column if missing
+            $brocureCols = $pdo->query("SHOW COLUMNS FROM `leads` LIKE 'is_brocure_leads'")->fetchAll();
+            if (empty($brocureCols)) {
+                $pdo->exec("ALTER TABLE `leads` ADD COLUMN `is_brocure_leads` TINYINT(1) NOT NULL DEFAULT 0 AFTER `is_repibee`");
+                try {
+                    $pdo->exec("CREATE INDEX `idx_leads_is_brocure` ON `leads` (`is_brocure_leads`)");
+                } catch (Throwable $t) {}
+            }
         } catch (Throwable $e) {
             error_log("LeadAutomation ensureSchema error: " . $e->getMessage());
         }
@@ -280,13 +289,15 @@ class LeadAutomationController extends Controller
             if ($platformParam === 'facebook' || $platformParam === 'facebook_form') {
                 $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('facebook', 'fb', 'fb(lead form)', 'lead form', 'leadform', 'leadfrom', 'meta form', 'meta inform') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%fb%' OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%facebook%' OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%lead form%' OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%leadform%')";
             } elseif ($platformParam === 'whatsapp') {
-                $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('whatsapp', 'wa', 'whats app', 'whatsappp', 'whataapp', 'whatsapp lead', 'whstsapp') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%whatsapp%' OR LOWER(TRIM(COALESCE(l.platform, ''))) = 'wa')";
+                $where[] = "(l.is_repibee = 1 OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('whatsapp', 'wa', 'whats app', 'whatsappp', 'whataapp', 'whatsapp lead', 'whstsapp') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%whatsapp%' OR LOWER(TRIM(COALESCE(l.platform, ''))) = 'wa')";
+            } elseif ($platformParam === 'replibee') {
+                $where[] = "l.is_repibee = 1";
             } elseif ($platformParam === 'meta_inbox') {
                 $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('meta inbox', 'meta') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%inbox%')";
             } elseif ($platformParam === 'google_form') {
                 $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('google form', 'google', 'googleform') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%google%')";
             } elseif ($platformParam === 'brochure' || $platformParam === 'brochure_leads') {
-                $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('brochure leads', 'brocure leads', 'brochure lead', 'brocure lead', 'brochure') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brochure%')";
+                $where[] = "(l.is_brocure_leads = 1 OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('brochure leads', 'brocure leads', 'brochure lead', 'brocure lead', 'brochure') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brochure%' OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brocure%')";
             } elseif ($platformParam === 'others') {
                 $where[] = "(NOT (
                     LOWER(TRIM(COALESCE(l.platform, ''))) IN ('facebook', 'fb', 'fb(lead form)', 'lead form', 'leadform', 'leadfrom', 'meta form', 'meta inform')
@@ -294,6 +305,7 @@ class LeadAutomationController extends Controller
                     OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%facebook%'
                     OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%lead form%'
                     OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%leadform%'
+                    OR l.is_repibee = 1
                     OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('whatsapp', 'wa', 'whats app', 'whatsappp', 'whataapp', 'whatsapp lead', 'whstsapp')
                     OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%whatsapp%'
                     OR LOWER(TRIM(COALESCE(l.platform, ''))) = 'wa'
@@ -301,8 +313,10 @@ class LeadAutomationController extends Controller
                     OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%inbox%'
                     OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('google form', 'google', 'googleform')
                     OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%google%'
+                    OR l.is_brocure_leads = 1
                     OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('brochure leads', 'brocure leads', 'brochure lead', 'brocure lead', 'brochure')
                     OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brochure%'
+                    OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brocure%'
                 ))";
             }
 
@@ -325,6 +339,13 @@ class LeadAutomationController extends Controller
                     $searchParts[] = "(l.team_id IS NULL OR l.team_id = 0)";
                 } elseif (strpos($searchLower, 'assign') !== false) {
                     $searchParts[] = "(l.team_id IS NOT NULL AND l.team_id > 0)";
+                }
+
+                if (strpos($searchLower, 'replibee') !== false) {
+                    $searchParts[] = "l.is_repibee = 1";
+                }
+                if (strpos($searchLower, 'brochure') !== false || strpos($searchLower, 'brocure') !== false) {
+                    $searchParts[] = "l.is_brocure_leads = 1";
                 }
 
                 $where[] = "(" . implode(" OR ", $searchParts) . ")";
@@ -354,6 +375,8 @@ class LeadAutomationController extends Controller
                         l.distribute, 
                         l.is_automated,
                         l.is_repibee,
+                        l.is_brocure_leads,
+                        l.platform,
                         l.created_at,
                         t.name as team_name,
                         p.name as project_name
@@ -1032,8 +1055,10 @@ class LeadAutomationController extends Controller
             WHEN LOWER(TRIM(COALESCE(l.platform, ''))) IN ('google form', 'google', 'googleform') 
                  OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%google%' 
                  THEN 'google_form'
-            WHEN LOWER(TRIM(COALESCE(l.platform, ''))) IN ('brochure leads', 'brocure leads', 'brochure lead', 'brocure lead', 'brochure') 
+            WHEN l.is_brocure_leads = 1
+                 OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('brochure leads', 'brocure leads', 'brochure lead', 'brocure lead', 'brochure') 
                  OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brochure%' 
+                 OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brocure%' 
                  THEN 'brochure'
             WHEN LOWER(TRIM(COALESCE(l.platform, ''))) IN ('facebook', 'fb', 'fb(lead form)', 'lead form', 'leadform', 'leadfrom', 'meta form', 'meta inform') 
                  OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%fb%' 
@@ -1511,6 +1536,258 @@ class LeadAutomationController extends Controller
             'errors_count'      => $errorsCount,
             'results'           => count($processedResults) === 1 ? $processedResults[0] : $processedResults
         ]);
+        exit;
+    }
+
+    /**
+     * AJAX/API: Sync Brochure Leads from external API (https://api.dpremiumhomes.com/api/get-brochure-leads)
+     * Maps: name -> full_name, phone -> phone_number, email -> email, property_id -> project_id
+     * Platform: 'brochure'
+     * Duplicate rule: Skip if same phone or email already exists for this same project.
+     */
+    public function ajaxSyncBrochureLeads()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $isCronOrApi = (!empty($_GET['api_key']) || !empty($_SERVER['HTTP_X_API_KEY']));
+        if (!$isCronOrApi && empty($_SESSION['user_id'])) {
+            $this->checkAccess();
+        }
+
+        header('Content-Type: application/json; charset=utf-8');
+        set_time_limit(180);
+
+        try {
+            $this->ensureSchema();
+            $synchronizer = new LeadSynchronizer($this->automationConfig, $this->db);
+            $pdo = $synchronizer->getDb();
+
+            $apiUrl = 'https://api.dpremiumhomes.com/api/get-brochure-leads';
+            
+            // 1. Fetch data from API
+            $rawJson = null;
+            if (function_exists('curl_init')) {
+                $ch = curl_init($apiUrl);
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_TIMEOUT        => 30,
+                    CURLOPT_FOLLOWLOCATION => true,
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_USERAGENT      => 'TPHL-ERP-BrochureSync/1.0',
+                ]);
+                $rawJson = curl_exec($ch);
+                curl_close($ch);
+            }
+
+            if (empty($rawJson)) {
+                $rawJson = @file_get_contents($apiUrl);
+            }
+
+            if (empty($rawJson)) {
+                throw new RuntimeException("Failed to fetch brochure leads from {$apiUrl}. Check network connection.");
+            }
+
+            $response = json_decode($rawJson, true);
+            $leads = $response['leads'] ?? ($response['data'] ?? (is_array($response) ? $response : []));
+
+            if (!is_array($leads)) {
+                throw new RuntimeException("Invalid JSON format received from brochure leads API.");
+            }
+
+            $totalFetched = count($leads);
+            if ($totalFetched === 0) {
+                echo json_encode([
+                    'status'             => 'success',
+                    'message'            => 'No brochure leads found to sync.',
+                    'inserted_count'     => 0,
+                    'skipped_duplicates' => 0,
+                    'total_fetched'      => 0
+                ]);
+                exit;
+            }
+
+            // 2. Pre-index existing leads by (normalized_phone + project_id) and (email + project_id)
+            $existingPhoneProject = [];
+            $existingEmailProject = [];
+            $dupIndexStmt = $pdo->query("SELECT project_id, phone_number, phone, email, alt_email FROM `leads` WHERE deleted_at IS NULL");
+            while ($row = $dupIndexStmt->fetch(PDO::FETCH_ASSOC)) {
+                $pId = (string)($row['project_id'] ?? '');
+
+                foreach (['phone_number', 'phone'] as $f) {
+                    $p = trim($row[$f] ?? '');
+                    if (!empty($p)) {
+                        $clean = preg_replace('/^p:/i', '', $p);
+                        $clean = preg_replace('/[\s\-\(\)]/', '', $clean);
+                        $clean = preg_replace('/^\+88/', '', $clean);
+                        $existingPhoneProject[$clean . '_' . $pId] = true;
+                    }
+                }
+
+                foreach (['email', 'alt_email'] as $f) {
+                    $em = strtolower(trim($row[$f] ?? ''));
+                    if (!empty($em) && !in_array($em, ['1@gmail.com', 'a@b.com', 't@t.com', 'test@test.com'])) {
+                        $existingEmailProject[$em . '_' . $pId] = true;
+                    }
+                }
+            }
+
+            // 3. Project Map & Eligible Teams
+            $projectsMap = [];
+            $pStmt = $pdo->query("SELECT id, name FROM `projects`");
+            while ($pRow = $pStmt->fetch(PDO::FETCH_ASSOC)) {
+                $projectsMap[(int)$pRow['id']] = $pRow['name'];
+            }
+
+            // Project eligible teams from automation config
+            $projectTeamsMap = [];
+            foreach (($this->automationConfig['projects'] ?? []) as $kw => $pInfo) {
+                if (!empty($pInfo['project_id']) && !empty($pInfo['teams'])) {
+                    $projectTeamsMap[(int)$pInfo['project_id']] = $pInfo['teams'];
+                }
+            }
+
+            // All active teams fallback
+            $allActiveTeamIds = [];
+            try {
+                $tStmt = $pdo->query("SELECT id FROM `teams` WHERE deleted_at IS NULL ORDER BY id ASC");
+                $allActiveTeamIds = $tStmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+            } catch (Throwable $t) {}
+
+            $syncPeriod = strtolower(trim((string)($_GET['period'] ?? $_POST['period'] ?? 'today')));
+            $todayDate = date('Y-m-d');
+            $yesterdayDate = date('Y-m-d', strtotime('-1 day'));
+
+            $insertedCount = 0;
+            $skippedDuplicates = 0;
+            $skippedOldDate = 0;
+            $skippedInvalid = 0;
+            $seenInBatch = [];
+
+            // 4. Process each brochure lead
+            foreach ($leads as $lead) {
+                if (!is_array($lead)) continue;
+
+                $leadCreatedAt = !empty($lead['created_at']) ? $lead['created_at'] : '';
+                $leadDate = substr($leadCreatedAt, 0, 10);
+
+                // Daily Filter: Default to 'today' only so old past-months leads are never pulled
+                if ($syncPeriod === 'today') {
+                    if ($leadDate !== $todayDate) {
+                        $skippedOldDate++;
+                        continue;
+                    }
+                } elseif ($syncPeriod === 'recent' || $syncPeriod === 'yesterday') {
+                    if ($leadDate < $yesterdayDate) {
+                        $skippedOldDate++;
+                        continue;
+                    }
+                }
+
+                $name = trim((string)($lead['name'] ?? ''));
+                $rawPhone = trim((string)($lead['phone'] ?? ''));
+                $cleanPhone = preg_replace('/^p:/i', '', $rawPhone);
+                $cleanPhone = preg_replace('/[\s\-\(\)]/', '', $cleanPhone);
+                $normPhone = preg_replace('/^\+88/', '', $cleanPhone);
+                $email = strtolower(trim((string)($lead['email'] ?? '')));
+                $projectId = !empty($lead['property_id']) ? (int)$lead['property_id'] : null;
+                $projectIdKey = (string)($projectId ?? '');
+
+                if (empty($cleanPhone) && empty($email) && empty($name)) {
+                    $skippedInvalid++;
+                    continue;
+                }
+
+                $isDuplicate = false;
+
+                // Check 1: Phone duplicate for this project
+                if (!empty($normPhone) && isset($existingPhoneProject[$normPhone . '_' . $projectIdKey])) {
+                    $isDuplicate = true;
+                }
+
+                // Check 2: Email duplicate for this project
+                if (!$isDuplicate && !empty($email) && !in_array($email, ['1@gmail.com', 'a@b.com', 't@t.com', 'test@test.com'])) {
+                    if (isset($existingEmailProject[$email . '_' . $projectIdKey])) {
+                        $isDuplicate = true;
+                    }
+                }
+
+                // Check 3: Duplicate within current incoming batch
+                if (!$isDuplicate) {
+                    if (!empty($normPhone) && isset($seenInBatch['p_' . $normPhone . '_' . $projectIdKey])) {
+                        $isDuplicate = true;
+                    }
+                    if (!$isDuplicate && !empty($email) && !in_array($email, ['1@gmail.com', 'a@b.com', 't@t.com', 'test@test.com']) && isset($seenInBatch['e_' . $email . '_' . $projectIdKey])) {
+                        $isDuplicate = true;
+                    }
+                }
+
+                if ($isDuplicate) {
+                    $skippedDuplicates++;
+                    continue;
+                }
+
+                // Resolve project name & eligible teams
+                $projectName = $projectId && isset($projectsMap[$projectId]) ? $projectsMap[$projectId] : ($projectId ? "Project #{$projectId}" : 'Brochure Lead');
+                $campaignName = $projectName . ' (Brochure)';
+                $eligibleTeams = $projectTeamsMap[$projectId] ?? $allActiveTeamIds;
+                $assignedTeamId = $synchronizer->resolveNextTeamId($projectId, $eligibleTeams, $pdo);
+
+                $formattedCreatedAt = !empty($leadCreatedAt) 
+                    ? date('Y-m-d H:i:s', strtotime($leadCreatedAt)) 
+                    : date('Y-m-d H:i:s');
+
+                $leadData = [
+                    'campaign_name'    => $campaignName,
+                    'platform'         => 'brochure',
+                    'full_name'        => !empty($name) ? $name : 'Brochure Lead',
+                    'phone_number'     => !empty($cleanPhone) ? $cleanPhone : null,
+                    'email'            => !empty($email) ? $email : null,
+                    'project_id'       => $projectId,
+                    'team_id'          => $assignedTeamId,
+                    'distribute'       => 0, // Pending Review for Digital Marketing team
+                    'is_automated'     => 1,
+                    'is_repibee'       => 0,
+                    'is_brocure_leads' => 1,
+                    'created_at'       => $formattedCreatedAt,
+                ];
+
+                try {
+                    $synchronizer->insertLeadIntoDatabase($leadData, $pdo);
+                    $insertedCount++;
+
+                    // Mark as seen so duplicates later in batch are caught
+                    if (!empty($normPhone)) {
+                        $seenInBatch['p_' . $normPhone . '_' . $projectIdKey] = true;
+                        $existingPhoneProject[$normPhone . '_' . $projectIdKey] = true;
+                    }
+                    if (!empty($email) && !in_array($email, ['1@gmail.com', 'a@b.com', 't@t.com', 'test@test.com'])) {
+                        $seenInBatch['e_' . $email . '_' . $projectIdKey] = true;
+                        $existingEmailProject[$email . '_' . $projectIdKey] = true;
+                    }
+                } catch (Throwable $ex) {
+                    error_log("Brochure Lead Insert Error: " . $ex->getMessage());
+                }
+            }
+
+            echo json_encode([
+                'status'             => 'success',
+                'message'            => sprintf("Brochure Leads Sync Completed! Processed today's leads (%s): %d newly inserted, %d duplicates skipped, %d old historical leads excluded.", $todayDate, $insertedCount, $skippedDuplicates, $skippedOldDate),
+                'inserted_count'     => $insertedCount,
+                'skipped_duplicates' => $skippedDuplicates,
+                'skipped_old_date'   => $skippedOldDate,
+                'total_fetched'      => $totalFetched,
+                'sync_period'        => $syncPeriod,
+                'target_date'        => $todayDate
+            ]);
+        } catch (Throwable $e) {
+            http_response_code(500);
+            echo json_encode([
+                'status'  => 'error',
+                'message' => 'Brochure Leads Sync Error: ' . $e->getMessage()
+            ]);
+        }
         exit;
     }
 }

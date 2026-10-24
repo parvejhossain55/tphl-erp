@@ -72,6 +72,8 @@ return [
     'lead-automation/unapprove' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxUnapprove'],
     'lead-automation/delete' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxDelete'],
     'lead-automation/cron' => ['controller' => 'LeadAutomationController', 'method' => 'syncCron'],
+    'lead-automation/sync-brochure' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxSyncBrochureLeads'],
+    'api/v1/leads/brochure' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxSyncBrochureLeads'],
     'api/v1/leads/repibee' => ['controller' => 'LeadAutomationController', 'method' => 'repibeeWebhook'],
     'api/leads/repibee' => ['controller' => 'LeadAutomationController', 'method' => 'repibeeWebhook'],
 

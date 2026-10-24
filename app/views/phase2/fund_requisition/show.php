@@ -10,6 +10,8 @@ $ahInfo = ApprovalRequest::getAccountsHeadApprovalInfo($GLOBALS['db'] ?? ($this-
 
 $isOver1Lac = ((float)$req['amount'] > 100000.01);
 $isOpHeadApproved = (!empty($ahInfo['is_op_head_approved']));
+// Legacy: Management approved (> 1L) before Op Head sign-off -> Op Head step is bypassed, not pending
+$isOpHeadBypassed = (!empty($ahInfo['is_op_head_bypassed']));
 
 $canOpHeadApprove = in_array($sessionRoleId, [20, 32]) && ($isOver1Lac ? !$isOpHeadApproved : true);
 $canMgmtApprove = in_array($sessionRoleId, [1, 3]) && ($isOver1Lac ? $isOpHeadApproved : true);
@@ -602,6 +604,17 @@ $spentPercent = ($baseAmount > 0) ? min(100, round(((float)($totalSpent ?? 0) / 
                                         <p class="fs-12 text-muted mb-0 mt-1 bg-light p-2 rounded border"><?php echo htmlspecialchars($ahInfo['op_head_note']); ?></p>
                                     <?php endif; ?>
                                 </div>
+                            <?php elseif ($isOpHeadBypassed): ?>
+                                <div class="avatar avatar-sm bg-secondary text-white rounded-circle flex-shrink-0 z-1 fs-12">
+                                    <i class="fa-solid fa-forward"></i>
+                                </div>
+                                <div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <h6 class="fw-bold fs-13 mb-0 text-muted">Admin &amp; Operation Head Step</h6>
+                                        <span class="badge bg-secondary-transparent text-secondary fs-10">Bypassed</span>
+                                    </div>
+                                    <p class="fs-12 text-muted mb-0 mt-1">Management approved this request directly before Admin &amp; Operation Head sign-off (legacy flow). This step is no longer required &mdash; forwarded to Accounts Head.</p>
+                                </div>
                             <?php elseif (in_array($req['status'], ['pending_dept', 'pending_qc'])): ?>
                                 <div class="avatar avatar-sm bg-light text-muted rounded-circle flex-shrink-0 z-1 fs-12 border">
                                     <i class="fa-solid fa-hourglass-start"></i>
@@ -858,6 +871,11 @@ $spentPercent = ($baseAmount > 0) ? min(100, round(((float)($totalSpent ?? 0) / 
                                                 <i class="fa-solid fa-lock text-warning me-1"></i> Payment Locked (Awaiting Accounts Head Approval)
                                             </button>
                                         <?php endif; ?>
+                                    <?php endif; ?>
+                                    <?php if (!empty($ahInfo['is_pending_accounts_head']) && in_array($sessionRoleId, [1, 3, 30])): ?>
+                                        <a href="#accountsHeadApprovalCard" class="btn btn-sm btn-primary mt-2 shadow-sm">
+                                            <i class="fa-solid fa-stamp me-1"></i> Approve as Accounts Head
+                                        </a>
                                     <?php endif; ?>
                                 </div>
                             <?php else: ?>

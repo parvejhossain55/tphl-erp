@@ -88,7 +88,8 @@
                                 $reqAmount = (float)($req['request_amount'] ?? 0);
                                 $payoutStatus = $req['payout_status'] ?? '';
                                 $ahStatus = strtolower($req['accounts_head_status'] ?? 'pending');
-                                $isPendingAccountsHead = ($statusLower === 'approved' || $req['status'] === 'approved') && ($ahStatus !== 'approved' || $reqApproveRole === 'accounts_head');
+                                $isFrPartialMgmt = ($sourceTable === 'fund_requisitions' && $statusLower === 'partially_approved');
+                                $isPendingAccountsHead = ($statusLower === 'approved' || $req['status'] === 'approved' || $isFrPartialMgmt) && ($ahStatus !== 'approved' || $reqApproveRole === 'accounts_head');
                                 $isAccountsHeadApproved = ($ahStatus === 'approved');
 
                                 // Determine whether this request is actionable by the logged-in user right now
@@ -423,7 +424,7 @@
                                                     <?php if (!empty($req['op_head_at'])): ?> · <?= date('d M, Y h:i A', strtotime($req['op_head_at'])) ?><?php endif; ?>
                                                 </div>
                                             <?php endif; ?>
-                                            <?php if (count($req['mgmt_approvals'] ?? []) > 1) { include __DIR__ . '/fr_mgmt_approvals_block.php'; } ?>
+                                            <?php if (count($req['mgmt_approvals'] ?? []) > 1 || (($req['fr_status'] ?? '') === 'partially_approved')) { include __DIR__ . '/fr_mgmt_approvals_block.php'; } ?>
 
                                             <?php if ($isPendingAccountsHead): ?>
                                                 <div class="mt-2 pt-2 border-top border-warning-subtle text-start">
@@ -554,6 +555,11 @@
                                                     title="Approve as Accounts Head (Md. Mamunoor Rashid [1309])">
                                                     <i class="fa-solid fa-stamp me-1"></i>Approve (Accounts Head)
                                                 </button>
+                                                <?php if ($isFrPartialMgmt && $isManagementUser): ?>
+                                                    <a href="<?= $targetUrl ?>" class="btn btn-sm btn-outline-primary rounded-2 px-2 shadow-sm fw-semibold me-1" title="Approve / Reject the remaining (unapproved) balance">
+                                                        <i class="fa-solid fa-up-right-from-square me-1"></i>Remaining
+                                                    </a>
+                                                <?php endif; ?>
                                                 <a href="<?= $targetUrl ?>" class="btn btn-sm btn-light text-dark rounded-2 px-2 border" title="View Module Page">
                                                     <i class="fa-solid fa-eye"></i>
                                                 </a>
@@ -613,10 +619,26 @@
                                                     </a>
                                                 <?php endif; ?>
                                             <?php else: ?>
+                                                <?php
+                                                $pfClean = trim(preg_replace('/\s*\(Role[^\)]*\)/i', '', str_replace(['\u0026', '&amp;'], ['&', '&'], $req['pending_for_text'] ?? '')));
+                                                $opHeadDone = (strtolower($req['op_head_status'] ?? '') === 'approved');
+                                                if ($isFrPartialMgmt) {
+                                                    $pfShort = $isAccountsHeadApproved ? 'Accounts / Mgmt (Remaining)' : 'Accounts Head';
+                                                } else {
+                                                    $pfShort = $pfClean !== '' ? $pfClean : 'Other Role';
+                                                }
+                                                if (mb_strlen($pfShort) > 30) {
+                                                    $pfShort = mb_substr($pfShort, 0, 28) . '…';
+                                                }
+                                                $lockLabel = ($isSiteOperator && $reqAmount > 100000 && !$opHeadDone) ? 'Management Only' : 'Pending: ' . $pfShort;
+                                                $lockTitle = ($isSiteOperator && $reqAmount > 100000 && !$opHeadDone)
+                                                    ? 'Amount exceeds ৳1,00,000 threshold - Full Management approval required'
+                                                    : (($isSiteOperator && $opHeadDone) ? 'You (Admin & Operation Head) already approved. ' : '') . 'Pending for ' . ($pfClean !== '' ? $pfClean : 'Other Role');
+                                                ?>
                                                 <a href="javascript:void(0)"
                                                     class="btn btn-sm btn-light text-muted rounded-2 px-2 border"
-                                                    title="<?= ($isSiteOperator && $reqAmount > 100000) ? 'Amount exceeds ৳1,00,000 threshold - Full Management approval required' : 'Pending for ' . htmlspecialchars(trim(preg_replace('/\s*\(Role[^\)]*\)/i', '', $req['pending_for_text'] ?? 'Other Role')) ?: 'Other Role') ?>">
-                                                    <i class="fa-solid fa-lock me-1 text-warning"></i><?= ($isSiteOperator && $reqAmount > 100000) ? 'Management Only' : 'Pending Other Role' ?>
+                                                    title="<?= htmlspecialchars($lockTitle) ?>">
+                                                    <i class="fa-solid <?= ($isSiteOperator && $opHeadDone) ? 'fa-circle-check text-success' : 'fa-lock text-warning' ?> me-1"></i><?= htmlspecialchars($lockLabel) ?>
                                                 </a>
                                             <?php endif; ?>
 

@@ -1141,6 +1141,11 @@ class FundRequisitionController extends Controller {
 
             $this->syncApprovalRequest($id);
 
+            // Additional tranche approved by Management (remaining balance) -> Accounts Head must verify the new amount again
+            if ($status !== 'rejected' && $posted_amount > 0 && (float)($frData['approved_amount'] ?? 0) > 0) {
+                $this->db->query("UPDATE approval_requests SET accounts_head_status = 'pending' WHERE source_table = 'fund_requisitions' AND source_id = {$id} AND accounts_head_status = 'approved'");
+            }
+
             // ====== AUTO POSTING JOURNAL ENTRY (Batch 2/3) ======
             if (in_array($status, ['approved', 'partially_approved']) && $posted_amount > 0) {
                 try {
@@ -1955,6 +1960,11 @@ class FundRequisitionController extends Controller {
         } elseif ($frStatus === 'approved') {
             $approveRole = 'accounts';
             $status = 'approved';
+        } elseif ($frStatus === 'partially_approved') {
+            // Management approved a part: approved part goes to Accounts Head / Accounts,
+            // remaining balance still stays in Management's queue.
+            $approveRole = 'management';
+            $status = 'partially_approved';
         } elseif (in_array($frStatus, ['paid', 'partially_paid'])) {
             $approveRole = 'accounts';
             $status = ($frStatus === 'paid') ? 'approved' : 'partially_paid';

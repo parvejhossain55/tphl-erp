@@ -1190,6 +1190,11 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
                 <i id="btnScrapeIcon" class="fa-solid fa-cloud-arrow-down"></i>
                 <span>Sync Google Sheet</span>
             </button>
+            <button id="btnSyncBrochure" class="btn btn-primary btn-sm px-3 fw-bold d-inline-flex align-items-center gap-2" style="height: 32px; background: #2563eb; border-color: #2563eb;" onclick="triggerBrochureSync()" title="Sync Brochure leads from live website API">
+                <span id="btnBrochureSpinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
+                <i id="btnBrochureIcon" class="fa-solid fa-file-arrow-down"></i>
+                <span>Sync Brochure Leads</span>
+            </button>
         </div>
     </div>
 
@@ -1264,7 +1269,8 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
             <select id="filterPlatformSelect" class="filter-ctrl-input form-select-sm" onchange="onFilterChange()">
                 <option value="">All platforms</option>
                 <option value="facebook">Facebook form</option>
-                <option value="whatsapp">WhatsApp</option>
+                <option value="whatsapp">WhatsApp (All)</option>
+                <option value="replibee">WhatsApp (Replibee Bot)</option>
                 <option value="meta_inbox">Meta inbox</option>
                 <option value="google_form">Google form</option>
                 <option value="brochure">Brochure leads</option>
@@ -2346,6 +2352,41 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
         }
     }
 
+    async function triggerBrochureSync() {
+        const btn = document.getElementById('btnSyncBrochure');
+        const spinner = document.getElementById('btnBrochureSpinner');
+        const icon = document.getElementById('btnBrochureIcon');
+
+        btn.disabled = true;
+        spinner.classList.remove('d-none');
+        icon.classList.add('d-none');
+
+        try {
+            const response = await fetch(`${baseUrl}/lead-automation/sync-brochure`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            });
+
+            const res = await response.json();
+
+            if (res.status === 'success') {
+                showLeadToast(res.message, 'success');
+                loadLeads();
+            } else {
+                showLeadToast('Brochure Sync Failed: ' + (res.message || 'Unknown error'), 'error');
+            }
+        } catch (err) {
+            showLeadToast('Network error while syncing brochure leads: ' + err.message, 'error');
+        } finally {
+            btn.disabled = false;
+            spinner.classList.add('d-none');
+            icon.classList.remove('d-none');
+        }
+    }
+
     function setTabFilter(status) {
         currentTabStatus = status;
         currentPage = 1;
@@ -2647,10 +2688,28 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
                         <div class="fw-semibold text-dark text-truncate" style="max-width: 200px;" title="${escapeHtml(lead.campaign_name || '')}">
                             ${escapeHtml(lead.campaign_name || 'Direct Campaign')}
                         </div>
-                        <div class="text-muted small">${(parseInt(lead.is_repibee) === 1 || String(lead.platform || '').toLowerCase().includes('whatsapp')) ? '<span class="text-success"><i class="fa-brands fa-whatsapp me-1"></i>WhatsApp</span>' : escapeHtml(lead.platform || 'Meta Instant Form')}</div>
+                        <div class="text-muted small">${(parseInt(lead.is_brocure_leads) === 1 || String(lead.platform || '').toLowerCase().includes('brochure') || String(lead.platform || '').toLowerCase().includes('brocure')) 
+                            ? '<span class="text-primary"><i class="fa-solid fa-file-arrow-down me-1"></i>Brochure Download</span>' 
+                            : (parseInt(lead.is_repibee) === 1)
+                            ? '<span class="text-success"><i class="fa-brands fa-whatsapp me-1"></i>Replibee Bot</span>'
+                            : (String(lead.platform || '').toLowerCase().includes('whatsapp') || String(lead.platform || '').toLowerCase() === 'wa')
+                            ? '<span class="text-success"><i class="fa-brands fa-whatsapp me-1"></i>WhatsApp</span>' 
+                            : (String(lead.platform || '').toLowerCase().includes('google'))
+                            ? '<span class="text-warning"><i class="fa-solid fa-file-lines me-1"></i>Google Form</span>'
+                            : (String(lead.platform || '').toLowerCase().includes('inbox'))
+                            ? '<span class="text-info"><i class="fa-brands fa-facebook-messenger me-1"></i>Meta Inbox</span>'
+                            : (lead.platform ? escapeHtml(lead.platform) : 'Meta Instant Form')}</div>
                     </td>
                     <td>
-                        ${(parseInt(lead.is_repibee) === 1 || String(lead.platform || '').toLowerCase().includes('whatsapp') || String(lead.platform || '').toLowerCase() === 'wa') ? `
+                        ${(parseInt(lead.is_brocure_leads) === 1 || String(lead.platform || '').toLowerCase().includes('brochure') || String(lead.platform || '').toLowerCase().includes('brocure')) ? `
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                                <i class="fa-solid fa-file-arrow-down me-1"></i> Brochure
+                            </span>
+                        ` : (parseInt(lead.is_repibee) === 1) ? `
+                            <span class="badge bg-success-subtle text-success border border-success-subtle" title="Replibee WhatsApp Automation">
+                                <i class="fa-brands fa-whatsapp me-1"></i> Replibee
+                            </span>
+                        ` : (String(lead.platform || '').toLowerCase().includes('whatsapp') || String(lead.platform || '').toLowerCase() === 'wa') ? `
                             <span class="badge bg-success-subtle text-success border border-success-subtle">
                                 <i class="fa-brands fa-whatsapp me-1"></i> WhatsApp
                             </span>
