@@ -814,6 +814,23 @@ $show_breadcrumb = true;
                             <label class="form-label fs-13 font-semibold text-muted">Discussion Note / Remarks <span class="text-danger">*</span></label>
                             <textarea id="modalFollowupNoteInput" class="form-control form-control-sm" rows="3" placeholder="Enter follow up discussion details, commitment date, or notes..."></textarea>
                         </div>
+
+                        <!-- Optional: Next Follow Up Planning -->
+                        <div class="p-3 mb-3 rounded-3" style="background:#f0f7ff; border:1px dashed #93c5fd;">
+                            <div class="d-flex align-items-center gap-1 mb-2 text-primary fw-semibold fs-12">
+                                <i class="fa-solid fa-calendar-clock"></i> Next Follow Up Planning (Optional)
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label fs-12 fw-medium text-dark mb-1">Next Follow Up Date</label>
+                                <input type="date" id="modalFollowupNextDate" class="form-control form-control-sm" min="<?= date('Y-m-d') ?>">
+                                <small class="text-muted extra-small">If scheduled, client appears in Today / Upcoming follow-up lists</small>
+                            </div>
+                            <div>
+                                <label class="form-label fs-12 fw-medium text-dark mb-1">Next Follow Up Note / Promise</label>
+                                <textarea id="modalFollowupNextNote" class="form-control form-control-sm" rows="2" placeholder="Next plan, commitment amount, or reminder note..."></textarea>
+                            </div>
+                        </div>
+
                         <button type="button" class="btn btn-primary w-100 shadow-sm" onclick="saveClientEmiFollowup()">
                             <i class="fa-light fa-paper-plane me-1"></i>Save Follow Up Note
                         </button>
@@ -1411,6 +1428,8 @@ $show_breadcrumb = true;
         document.getElementById('followup_modal_client_name').textContent = clientName || 'Client';
         document.getElementById('modalFollowupBookingId').value = bookingId;
         document.getElementById('modalFollowupNoteInput').value = '';
+        if (document.getElementById('modalFollowupNextDate')) document.getElementById('modalFollowupNextDate').value = '';
+        if (document.getElementById('modalFollowupNextNote')) document.getElementById('modalFollowupNextNote').value = '';
         
         const bookingSelect = document.getElementById('modalFollowupBookingSelect');
         if (bookingSelect) {
@@ -1524,7 +1543,12 @@ $show_breadcrumb = true;
                                         ${note.activity_reason ? `<span class="ms-3"><i class="fa-light fa-bullseye me-1"></i>${escapeHtml(note.activity_reason)}</span>` : ''}
                                     </div>
                                     <p class="mb-2 text-dark fs-13 fw-medium">${escapeHtml(note.note || '')}</p>
-                                    <div class="text-muted fs-11 text-end">
+                                    ${note.next_follow_up_date ? `
+                                    <div class="mt-2 p-2 rounded bg-info-subtle border-start border-3 border-info fs-12 text-dark">
+                                        <div class="fw-semibold text-primary"><i class="fa-solid fa-calendar-check me-1"></i>Next Scheduled Follow Up: <strong>${escapeHtml(note.next_follow_up_date_formatted || note.next_follow_up_date)}</strong></div>
+                                        ${note.next_follow_up_note ? `<div class="text-dark fst-italic mt-1">${escapeHtml(note.next_follow_up_note)}</div>` : ''}
+                                    </div>` : ''}
+                                    <div class="text-muted fs-11 text-end mt-2 pt-1 border-top">
                                         <span><i class="fa-light fa-user me-1"></i>By ${escapeHtml(note.author_name || 'System')}</span>
                                     </div>
                                 </div>
@@ -1550,6 +1574,8 @@ $show_breadcrumb = true;
         const activityMode = $('#modalFollowupActivityMode').val();
         const callStatus = $('#modalFollowupCallStatus').val() || '';
         const activityReason = $('#modalFollowupActivityReason').val();
+        const nextDate = $('#modalFollowupNextDate').length ? $('#modalFollowupNextDate').val() : '';
+        const nextNote = $('#modalFollowupNextNote').length ? $('#modalFollowupNextNote').val().trim() : '';
         
         if (!note || !activityDate || !activityMode || !activityReason) {
             Swal.fire({
@@ -1570,7 +1596,9 @@ $show_breadcrumb = true;
                 activity_date: activityDate,
                 activity_mode: activityMode,
                 call_status: callStatus,
-                activity_reason: activityReason
+                activity_reason: activityReason,
+                next_follow_up_date: nextDate,
+                next_follow_up_note: nextNote
             },
             dataType: 'json',
             success: function(response) {
@@ -1584,6 +1612,8 @@ $show_breadcrumb = true;
                     });
                     $('#modalFollowupNoteInput').val('');
                     $('#modalFollowupCallStatus').val('');
+                    if ($('#modalFollowupNextDate').length) $('#modalFollowupNextDate').val('');
+                    if ($('#modalFollowupNextNote').length) $('#modalFollowupNextNote').val('');
                     loadClientEmiFollowups(bookingId);
                     
                     // Update count badge in real-time

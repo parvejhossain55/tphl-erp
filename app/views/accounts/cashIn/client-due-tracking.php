@@ -85,6 +85,76 @@ $show_breadcrumb = true;
     .fs-13 { font-size: 13px !important; }
     .fs-14 { font-size: 14px !important; }
     .fs-15 { font-size: 15px !important; }
+
+    /* Select2 customization for due toolbar */
+    .due-toolbar .select2-container {
+        width: 100% !important;
+    }
+    .due-toolbar .select2-container--default .select2-selection--single {
+        height: 38px;
+        border: 1px solid #ced4da;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        background-color: #fff;
+        transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+    }
+    .due-toolbar .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 36px;
+        font-size: 13px;
+        color: #212529;
+        padding-left: 12px;
+        padding-right: 28px;
+        font-weight: 500;
+    }
+    .due-toolbar .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 36px;
+        right: 8px;
+        top: 0;
+    }
+    .due-toolbar .select2-container--default .select2-selection--single .select2-selection__clear {
+        margin-right: 18px;
+        font-size: 16px;
+        line-height: 36px;
+        color: #adb5bd;
+    }
+    .due-toolbar .select2-container--default .select2-selection--single .select2-selection__clear:hover {
+        color: #dc3545;
+    }
+    .due-toolbar .select2-container--default.select2-container--focus .select2-selection--single,
+    .due-toolbar .select2-container--default.select2-container--open .select2-selection--single {
+        border-color: #86b7fe;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+    .select2-dropdown {
+        border-radius: 8px;
+        border-color: #dee2e6;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+    .select2-container--default .select2-search--dropdown {
+        padding: 8px 10px;
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #e9ecef;
+    }
+    .select2-container--default .select2-search--dropdown .select2-search__field {
+        border-radius: 6px;
+        border: 1px solid #ced4da;
+        padding: 6px 12px;
+        font-size: 13px;
+        outline: none;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    .select2-container--default .select2-search--dropdown .select2-search__field:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.15);
+    }
+    .select2-container--default .select2-results__option {
+        font-size: 13px;
+        padding: 8px 14px;
+    }
+
     @media print {
         #sidebar, .main-header, .due-toolbar, .no-print {
             display: none !important;
@@ -363,13 +433,17 @@ $show_breadcrumb = true;
                         </div>
                     </div>
 
-                    <!-- Project Filter Dropdown -->
+                    <!-- Project Filter Dropdown (Searchable Select2) -->
                     <div class="col-xxl-3 col-xl-3 col-lg-4 col-md-6 col-sm-12">
-                        <select class="form-select form-select-sm" id="dueProjectFilter" onchange="loadDueTrackingPage(1);" style="height: 38px; border-radius: 8px;">
+                        <select class="form-control form-control-sm select2" id="dueProjectFilter" style="width: 100%;">
                             <option value="">All Projects (All Sites)</option>
-                            <?php if (!empty($projects)): foreach ($projects as $p): ?>
-                                <option value="<?= $p['id'] ?>" <?= ((int)($selectedProjectId ?? 0) === (int)$p['id']) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($p['name']) ?>
+                            <?php if (!empty($projects)): foreach ($projects as $p): 
+                                $prjId = $p['id'] ?? $p['project_id'] ?? '';
+                                $prjName = $p['name'] ?? $p['project_name'] ?? '';
+                                if ($prjId === '' || $prjName === '') continue;
+                            ?>
+                                <option value="<?= $prjId ?>" <?= ((int)($selectedProjectId ?? 0) === (int)$prjId) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($prjName) ?>
                                 </option>
                             <?php endforeach; endif; ?>
                         </select>
@@ -562,6 +636,133 @@ $show_breadcrumb = true;
     </div>
 </div>
 
+<!-- ===== CLIENT EMI FOLLOW UP MODAL ===== -->
+<div class="modal fade" id="clientEmiFollowupModal" tabindex="-1" aria-labelledby="clientEmiFollowupModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header" style="background: linear-gradient(135deg, #1e3a5f, #2563eb); color:#fff; border:0; padding:16px 24px;">
+                <h5 class="modal-title fw-bold" id="clientEmiFollowupModalLabel">
+                    <i class="fa-light fa-comment-dots me-2"></i>EMI Follow Up Notes & Schedule — <span id="followup_modal_client_name" class="badge bg-white text-primary fs-14">Client</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row g-4">
+                    <!-- Left Column: Add Follow Up Form -->
+                    <div class="col-lg-5 border-end pe-lg-4">
+                        <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                            <h6 class="text-primary mb-0 fw-bold"><i class="fa-light fa-plus-circle me-1"></i>Add New Follow Up Note</h6>
+                            <span class="badge bg-primary-subtle text-primary extra-small">Follow-up Log</span>
+                        </div>
+                        <input type="hidden" id="modalFollowupBookingId">
+                        
+                        <div class="mb-3" id="modalFollowupProjectContainer">
+                            <label class="form-label fs-12 fw-semibold text-muted mb-1">Project & Flat</label>
+                            <select id="modalFollowupBookingSelect" class="form-select form-select-sm" onchange="onFollowupBookingChange()">
+                                <!-- dynamically loaded -->
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fs-12 fw-semibold text-muted mb-1">Installment / EMI</label>
+                            <select id="modalFollowupEmiSelect" class="form-select form-select-sm" onchange="loadClientEmiFollowups($('#modalFollowupBookingId').val())">
+                                <option value="0">General / Overall Follow Up</option>
+                                <option value="999">Development Charge</option>
+                            </select>
+                        </div>
+                        
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fs-12 fw-semibold text-muted mb-1">Date of Activity <span class="text-danger">*</span></label>
+                                <input type="date" id="modalFollowupActivityDate" class="form-control form-control-sm" value="<?= date('Y-m-d') ?>">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fs-12 fw-semibold text-muted mb-1">Mode of Activity <span class="text-danger">*</span></label>
+                                <select id="modalFollowupActivityMode" class="form-select form-select-sm">
+                                    <option value="">Select Mode</option>
+                                    <option value="Phone Call" selected>Phone Call</option>
+                                    <option value="WhatsApp">WhatsApp</option>
+                                    <option value="SMS">SMS</option>
+                                    <option value="Email">Email</option>
+                                    <option value="Meeting">Meeting</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6" id="modalFollowupCallStatusGroup">
+                                <label class="form-label fs-12 fw-semibold text-muted mb-1">Call Status</label>
+                                <select id="modalFollowupCallStatus" class="form-select form-select-sm">
+                                    <option value="">Select Call Status</option>
+                                    <option value="Outgoing" selected>Outgoing</option>
+                                    <option value="Incoming">Incoming</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fs-12 fw-semibold text-muted mb-1">Reason for Activity <span class="text-danger">*</span></label>
+                                <select id="modalFollowupActivityReason" class="form-select form-select-sm">
+                                    <option value="">Select Reason</option>
+                                    <option value="EMI Payment Follow-up" selected>EMI Payment Follow-up</option>
+                                    <option value="Payment Reminder (General)">Payment Reminder (General)</option>
+                                    <option value="Development Charge Follow-up">Development Charge Follow-up</option>
+                                    <option value="Overdue Payment Follow-up">Overdue Payment Follow-up</option>
+                                    <option value="Commitment Date Extension">Commitment Date Extension</option>
+                                    <option value="Handover / Registration Discussion">Handover / Registration Discussion</option>
+                                    <option value="Document Collection">Document Collection</option>
+                                    <option value="Client Query / Issue Resolution">Client Query / Issue Resolution</option>
+                                    <option value="Others">Others</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fs-12 fw-semibold text-muted mb-1">Discussion Note / Remarks <span class="text-danger">*</span></label>
+                            <textarea id="modalFollowupNoteInput" class="form-control form-control-sm" rows="3" placeholder="Enter follow up discussion details, client feedback, or notes..."></textarea>
+                        </div>
+
+                        <!-- 2 New Optional Fields: Next Follow Up Date & Next Follow Up Note -->
+                        <div class="p-3 mb-3 rounded-3" style="background:#f0f7ff; border:1px dashed #93c5fd;">
+                            <div class="d-flex align-items-center gap-1 mb-2 text-primary fw-semibold fs-12">
+                                <i class="fa-solid fa-calendar-clock"></i> Next Follow Up Planning (Optional)
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label fs-12 fw-medium text-dark mb-1">Next Follow Up Date</label>
+                                <input type="date" id="modalFollowupNextDate" class="form-control form-control-sm" min="<?= date('Y-m-d') ?>">
+                                <small class="text-muted extra-small">If scheduled, client appears in Today / Upcoming follow-up lists</small>
+                            </div>
+                            <div>
+                                <label class="form-label fs-12 fw-medium text-dark mb-1">Next Follow Up Note / Promise</label>
+                                <textarea id="modalFollowupNextNote" class="form-control form-control-sm" rows="2" placeholder="Next plan, commitment amount, or reminder note..."></textarea>
+                            </div>
+                        </div>
+
+                        <button type="button" class="btn btn-primary w-100 shadow-sm py-2" id="saveFollowupBtn" onclick="saveClientEmiFollowup()">
+                            <i class="fa-light fa-paper-plane me-1"></i>Save Follow Up Note
+                        </button>
+                    </div>
+                    
+                    <!-- Right Column: Follow Up History -->
+                    <div class="col-lg-7 ps-lg-4">
+                        <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                            <h6 class="text-dark mb-0 fw-bold"><i class="fa-light fa-clock-rotate-left me-1"></i>Previous Follow Up History</h6>
+                            <span class="badge bg-secondary-subtle text-secondary" id="modalFollowupHistoryCountBadge">0 notes</span>
+                        </div>
+                        <div id="modalFollowupHistoryContainer" style="max-height: 480px; overflow-y: auto; padding-right: 4px;">
+                            <div class="text-center text-muted py-5">
+                                <div class="spinner-border spinner-border-sm text-primary me-2"></div>Loading history...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2 px-4 d-flex justify-content-between">
+                <span class="text-muted extra-small"><i class="fa-solid fa-circle-info me-1"></i>Follow-ups update client engagement metrics and automated queues.</span>
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- ══ CLIENT DUE TRACKING JAVASCRIPT ══ -->
 <script>
     let dueCurrentPage = <?= (int)($currentPage ?? 1) ?>;
@@ -631,16 +832,13 @@ $show_breadcrumb = true;
         }
     }
 
-    // Select Project filter from breakdown chips or dropdown
-    function selectProjectFilter(projectId) {
-        const select = document.getElementById('dueProjectFilter');
-        if (select) {
-            select.value = projectId || '';
-        }
+    // Handle project filter changes (from select2 dropdown or chip clicks)
+    function handleProjectFilterChange(projectId) {
+        const pid = projectId ? String(projectId) : '';
         // Update chip active states
         document.querySelectorAll('.project-chip').forEach(chip => chip.classList.remove('active'));
-        if (projectId) {
-            const activeChip = Array.from(document.querySelectorAll('.project-chip')).find(c => c.getAttribute('onclick') === `selectProjectFilter(${projectId})`);
+        if (pid) {
+            const activeChip = Array.from(document.querySelectorAll('.project-chip')).find(c => c.getAttribute('onclick') === `selectProjectFilter(${pid})`);
             if (activeChip) activeChip.classList.add('active');
             document.getElementById('clearProjectFilterBtn')?.style.removeProperty('display');
         } else {
@@ -648,6 +846,19 @@ $show_breadcrumb = true;
             if (clearBtn) clearBtn.style.display = 'none';
         }
         loadDueTrackingPage(1);
+    }
+
+    // Select Project filter from breakdown chips or dropdown
+    function selectProjectFilter(projectId) {
+        const val = projectId ? String(projectId) : '';
+        const select = document.getElementById('dueProjectFilter');
+        if (select) {
+            select.value = val;
+            if (window.jQuery && $(select).data('select2')) {
+                $(select).val(val).trigger('change.select2');
+            }
+        }
+        handleProjectFilterChange(val);
     }
 
     // Clear search box
@@ -661,7 +872,13 @@ $show_breadcrumb = true;
     // Reset all filters to default
     function resetAllDueFilters() {
         document.getElementById('dueSearchInput').value = '';
-        document.getElementById('dueProjectFilter').value = '';
+        const projSelect = document.getElementById('dueProjectFilter');
+        if (projSelect) {
+            projSelect.value = '';
+            if (window.jQuery && $(projSelect).data('select2')) {
+                $(projSelect).val('').trigger('change.select2');
+            }
+        }
         document.getElementById('dueDateType').value = 'booking_date';
         document.getElementById('dueStartDate').value = '';
         document.getElementById('dueEndDate').value = '';
@@ -680,6 +897,22 @@ $show_breadcrumb = true;
         }
         loadDueTrackingPage(1);
     }
+
+    // Listen on project select change (fires on Select2 or native select change)
+    document.addEventListener('DOMContentLoaded', function() {
+        if (window.jQuery) {
+            window.jQuery(document).on('change', '#dueProjectFilter', function() {
+                handleProjectFilterChange(this.value);
+            });
+        } else {
+            const pf = document.getElementById('dueProjectFilter');
+            if (pf) {
+                pf.addEventListener('change', function() {
+                    handleProjectFilterChange(this.value);
+                });
+            }
+        }
+    });
 
     // Live search debouncing
     document.getElementById('dueSearchInput')?.addEventListener('input', function() {
@@ -893,5 +1126,281 @@ $show_breadcrumb = true;
                 console.error(err);
                 body.innerHTML = '<div class="alert alert-danger mb-0">An error occurred while fetching details.</div>';
             });
+    }
+
+    // ── EMI Follow Up Modal Logic ──────────────────────────────────────────
+    let clientEmiFollowupModalInstance = null;
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
+    }
+
+    function openClientEmiFollowupModal(bookingId, clientName, totalEmi = 36, leadId = null) {
+        document.getElementById('followup_modal_client_name').textContent = clientName || 'Client';
+        document.getElementById('modalFollowupBookingId').value = bookingId;
+        document.getElementById('modalFollowupNoteInput').value = '';
+        if (document.getElementById('modalFollowupNextDate')) {
+            document.getElementById('modalFollowupNextDate').value = '';
+        }
+        if (document.getElementById('modalFollowupNextNote')) {
+            document.getElementById('modalFollowupNextNote').value = '';
+        }
+        
+        const bookingSelect = document.getElementById('modalFollowupBookingSelect');
+        if (bookingSelect) {
+            bookingSelect.innerHTML = '<option value="' + bookingId + '">Loading project details...</option>';
+            bookingSelect.disabled = true;
+        }
+
+        populateEmiSelect(totalEmi);
+
+        document.getElementById('modalFollowupHistoryContainer').innerHTML = '<div class="text-center text-muted py-5"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Loading history...</div>';
+        
+        const modalEl = document.getElementById('clientEmiFollowupModal');
+        if (modalEl) {
+            clientEmiFollowupModalInstance = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            clientEmiFollowupModalInstance.show();
+        }
+        
+        if (leadId) {
+            fetch('<?= $GLOBALS['base_url'] ?>/get-client-lands?lead_id=' + leadId)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success && data.lands && data.lands.length > 0) {
+                        let opts = '';
+                        data.lands.forEach(land => {
+                            const selected = (land.booking_id == bookingId) ? 'selected' : '';
+                            opts += `<option value="${land.booking_id}" data-emi="${land.total_emi_count || 36}" ${selected}>${escapeHtml(land.project_name)} - ${escapeHtml(land.unit_name)} (Floor ${escapeHtml(land.flat_no || '')})</option>`;
+                        });
+                        if (bookingSelect) {
+                            bookingSelect.innerHTML = opts;
+                            bookingSelect.disabled = false;
+                        }
+                    } else {
+                        if (bookingSelect) {
+                            bookingSelect.innerHTML = '<option value="' + bookingId + '">Current Booking #' + bookingId + '</option>';
+                            bookingSelect.disabled = false;
+                        }
+                    }
+                })
+                .catch(err => {
+                    if (bookingSelect) {
+                        bookingSelect.innerHTML = '<option value="' + bookingId + '">Current Booking #' + bookingId + '</option>';
+                        bookingSelect.disabled = false;
+                    }
+                });
+        } else {
+            if (bookingSelect) {
+                bookingSelect.innerHTML = '<option value="' + bookingId + '">Current Booking #' + bookingId + '</option>';
+                bookingSelect.disabled = false;
+            }
+        }
+
+        loadClientEmiFollowups(bookingId);
+    }
+
+    function onFollowupBookingChange() {
+        const bookingSelect = document.getElementById('modalFollowupBookingSelect');
+        if (!bookingSelect) return;
+        
+        const selectedOption = bookingSelect.options[bookingSelect.selectedIndex];
+        const bookingId = selectedOption.value;
+        const totalEmi = selectedOption.getAttribute('data-emi') || 36;
+        
+        document.getElementById('modalFollowupBookingId').value = bookingId;
+        populateEmiSelect(totalEmi);
+        loadClientEmiFollowups(bookingId);
+    }
+
+    function populateEmiSelect(totalEmi) {
+        const emiSelect = document.getElementById('modalFollowupEmiSelect');
+        if (emiSelect) {
+            let optionsHtml = '<option value="0">General / Overall Follow Up</option>';
+            optionsHtml += '<option value="999">Development Charge</option>';
+            const maxEmi = parseInt(totalEmi) || 36;
+            for (let i = 1; i <= maxEmi; i++) {
+                optionsHtml += `<option value="${i}">EMI #${i}</option>`;
+            }
+            emiSelect.innerHTML = optionsHtml;
+        }
+    }
+
+    function loadClientEmiFollowups(bookingId) {
+        if (!bookingId) return;
+        $.ajax({
+            url: '<?= $GLOBALS['base_url'] ?>/account-client/getEmiFollowups',
+            type: 'GET',
+            data: { booking_id: bookingId },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    let html = '';
+                    const countBadge = document.getElementById('modalFollowupHistoryCountBadge');
+                    if (countBadge) {
+                        countBadge.textContent = (response.data ? response.data.length : 0) + ' note(s)';
+                    }
+                    if (!response.data || response.data.length === 0) {
+                        html = '<div class="text-center text-muted py-5"><i class="fa-light fa-comment-slash d-block fs-2 mb-2 opacity-50"></i>No follow up notes added yet. Use the form on the left to add the first follow up note.</div>';
+                    } else {
+                        response.data.forEach(function(note) {
+                            const label = note.purpose_label || (note.emi_no == 999 ? 'Development Charge' : (note.emi_no == 0 ? 'General Follow Up' : 'EMI #' + note.emi_no));
+                            const badgeClass = note.purpose_badge_class || (note.emi_no == 999 ? 'bg-warning text-dark' : (note.emi_no == 0 ? 'bg-secondary text-white' : 'bg-primary text-white'));
+                            const borderClr = note.emi_no == 999 ? '#f59e0b' : (note.emi_no == 0 ? '#64748b' : '#2563eb');
+
+                            let nextFollowupBlock = '';
+                            if (note.next_follow_up_date) {
+                                const nextDateDisplay = note.next_follow_up_date_formatted || note.next_follow_up_date;
+                                const nextNoteDisplay = note.next_follow_up_note ? `<div class="text-dark fst-italic mt-1">${escapeHtml(note.next_follow_up_note)}</div>` : '';
+                                nextFollowupBlock = `
+                                    <div class="mt-2 p-2 rounded bg-info-subtle border-start border-3 border-info fs-12 text-dark">
+                                        <div class="fw-semibold text-primary"><i class="fa-solid fa-calendar-check me-1"></i>Next Scheduled Follow Up: <strong>${escapeHtml(nextDateDisplay)}</strong></div>
+                                        ${nextNoteDisplay}
+                                    </div>
+                                `;
+                            }
+
+                            html += `
+                            <div class="card mb-2 shadow-sm border-0" style="background:#f8fafc; border-left: 4px solid ${borderClr} !important;">
+                                <div class="card-body p-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="badge ${badgeClass} fs-11 px-2 py-1">
+                                            <i class="fa-light fa-tag me-1"></i>Follow Up for: <strong>${escapeHtml(label)}</strong>
+                                        </span>
+                                        <span class="text-muted fs-11"><i class="fa-light fa-clock me-1"></i>${note.created_at_formatted || note.created_at || ''}</span>
+                                    </div>
+                                    <div class="mb-2" style="font-size:12px; color:#475569;">
+                                        ${note.activity_date ? `<span><i class="fa-light fa-calendar me-1 text-primary"></i>${escapeHtml(note.activity_date)}</span>` : ''}
+                                        ${note.activity_mode ? `<span class="ms-3"><i class="fa-light fa-phone-volume me-1 text-info"></i>${escapeHtml(note.activity_mode)}</span>` : ''}
+                                        ${note.call_status ? `<span class="ms-2 badge ${note.call_status.toLowerCase() === 'incoming' ? 'bg-success text-white' : 'bg-primary text-white'}" style="font-size:10px;"><i class="fa-light ${note.call_status.toLowerCase() === 'incoming' ? 'fa-arrow-down-left' : 'fa-arrow-up-right'} me-1"></i>${escapeHtml(note.call_status)}</span>` : ''}
+                                        ${note.activity_reason ? `<span class="ms-3"><i class="fa-light fa-bullseye me-1 text-warning"></i>${escapeHtml(note.activity_reason)}</span>` : ''}
+                                    </div>
+                                    <p class="mb-2 text-dark fs-13 fw-medium" style="white-space:pre-line;">${escapeHtml(note.note || '')}</p>
+                                    ${nextFollowupBlock}
+                                    <div class="text-muted fs-11 text-end mt-2 pt-1 border-top">
+                                        <span><i class="fa-light fa-user me-1"></i>By ${escapeHtml(note.author_name || 'Staff')}</span>
+                                    </div>
+                                </div>
+                            </div>`;
+                        });
+                    }
+                    $('#modalFollowupHistoryContainer').html(html);
+                } else {
+                    $('#modalFollowupHistoryContainer').html('<div class="text-danger p-3 text-center">Failed to load history.</div>');
+                }
+            },
+            error: function() {
+                $('#modalFollowupHistoryContainer').html('<div class="text-danger p-3 text-center">Error connecting to server.</div>');
+            }
+        });
+    }
+
+    function saveClientEmiFollowup() {
+        const bookingId = $('#modalFollowupBookingId').val();
+        const emiNo = $('#modalFollowupEmiSelect').val() ?? 0;
+        const note = $('#modalFollowupNoteInput').val().trim();
+        const activityDate = $('#modalFollowupActivityDate').val();
+        const activityMode = $('#modalFollowupActivityMode').val();
+        const callStatus = $('#modalFollowupCallStatus').val() || '';
+        const activityReason = $('#modalFollowupActivityReason').val();
+        const nextDate = $('#modalFollowupNextDate').val() || '';
+        const nextNote = $('#modalFollowupNextNote').val().trim();
+        
+        if (!note || !activityDate || !activityMode || !activityReason) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Required Fields Missing',
+                    text: 'Please fill in Note, Activity Date, Mode, and Reason.',
+                });
+            } else {
+                alert('Please fill in Note, Activity Date, Mode, and Reason.');
+            }
+            return;
+        }
+
+        const saveBtn = document.getElementById('saveFollowupBtn');
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+        }
+        
+        $.ajax({
+            url: '<?= $GLOBALS['base_url'] ?>/account-client/saveEmiFollowup',
+            type: 'POST',
+            data: { 
+                booking_id: bookingId, 
+                emi_no: emiNo, 
+                note: note,
+                activity_date: activityDate,
+                activity_mode: activityMode,
+                call_status: callStatus,
+                activity_reason: activityReason,
+                next_follow_up_date: nextDate,
+                next_follow_up_note: nextNote
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = '<i class="fa-light fa-paper-plane me-1"></i>Save Follow Up Note';
+                }
+                if (response.success) {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Saved!',
+                            text: 'Follow up note recorded successfully.',
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+                    }
+                    $('#modalFollowupNoteInput').val('');
+                    $('#modalFollowupNextDate').val('');
+                    $('#modalFollowupNextNote').val('');
+                    loadClientEmiFollowups(bookingId);
+                    
+                    // Update count badge in real-time
+                    const badges = document.querySelectorAll(`.followup-count-badge[data-booking-id="${bookingId}"]`);
+                    badges.forEach(badge => {
+                        let currentCount = parseInt(badge.textContent) || 0;
+                        badge.textContent = currentCount + 1;
+                        badge.className = 'badge bg-primary rounded-pill ms-1 followup-count-badge';
+                    });
+                } else {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Failed',
+                            text: response.message || "Failed to save note."
+                        });
+                    } else {
+                        alert(response.message || "Failed to save note.");
+                    }
+                }
+            },
+            error: function() {
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = '<i class="fa-light fa-paper-plane me-1"></i>Save Follow Up Note';
+                }
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'An error occurred while saving the note.'
+                    });
+                } else {
+                    alert('An error occurred while saving the note.');
+                }
+            }
+        });
     }
 </script>
