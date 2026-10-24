@@ -1190,6 +1190,11 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
                 <i id="btnScrapeIcon" class="fa-solid fa-cloud-arrow-down"></i>
                 <span>Sync Google Sheet</span>
             </button>
+            <button id="btnSyncBrochure" class="btn btn-primary btn-sm px-3 fw-bold d-inline-flex align-items-center gap-2" style="height: 32px; background: #2563eb; border-color: #2563eb;" onclick="triggerBrochureSync()" title="Sync Brochure leads from live website API">
+                <span id="btnBrochureSpinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
+                <i id="btnBrochureIcon" class="fa-solid fa-file-arrow-down"></i>
+                <span>Sync Brochure Leads</span>
+            </button>
         </div>
     </div>
 
@@ -2339,6 +2344,41 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
             }
         } catch (err) {
             showLeadToast('Network error while syncing: ' + err.message, 'error');
+        } finally {
+            btn.disabled = false;
+            spinner.classList.add('d-none');
+            icon.classList.remove('d-none');
+        }
+    }
+
+    async function triggerBrochureSync() {
+        const btn = document.getElementById('btnSyncBrochure');
+        const spinner = document.getElementById('btnBrochureSpinner');
+        const icon = document.getElementById('btnBrochureIcon');
+
+        btn.disabled = true;
+        spinner.classList.remove('d-none');
+        icon.classList.add('d-none');
+
+        try {
+            const response = await fetch(`${baseUrl}/lead-automation/sync-brochure`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            });
+
+            const res = await response.json();
+
+            if (res.status === 'success') {
+                showLeadToast(res.message, 'success');
+                loadLeads();
+            } else {
+                showLeadToast('Brochure Sync Failed: ' + (res.message || 'Unknown error'), 'error');
+            }
+        } catch (err) {
+            showLeadToast('Network error while syncing brochure leads: ' + err.message, 'error');
         } finally {
             btn.disabled = false;
             spinner.classList.add('d-none');
