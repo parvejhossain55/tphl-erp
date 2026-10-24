@@ -295,7 +295,7 @@ class LeadAutomationController extends Controller
             } elseif ($platformParam === 'google_form') {
                 $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('google form', 'google', 'googleform') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%google%')";
             } elseif ($platformParam === 'brochure' || $platformParam === 'brochure_leads') {
-                $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('brochure leads', 'brocure leads', 'brochure lead', 'brocure lead', 'brochure') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brochure%')";
+                $where[] = "(l.is_brocure_leads = 1 OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('brochure leads', 'brocure leads', 'brochure lead', 'brocure lead', 'brochure') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brochure%' OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brocure%')";
             } elseif ($platformParam === 'others') {
                 $where[] = "(NOT (
                     LOWER(TRIM(COALESCE(l.platform, ''))) IN ('facebook', 'fb', 'fb(lead form)', 'lead form', 'leadform', 'leadfrom', 'meta form', 'meta inform')
@@ -310,8 +310,10 @@ class LeadAutomationController extends Controller
                     OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%inbox%'
                     OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('google form', 'google', 'googleform')
                     OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%google%'
+                    OR l.is_brocure_leads = 1
                     OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('brochure leads', 'brocure leads', 'brochure lead', 'brocure lead', 'brochure')
                     OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brochure%'
+                    OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brocure%'
                 ))";
             }
 
@@ -363,6 +365,8 @@ class LeadAutomationController extends Controller
                         l.distribute, 
                         l.is_automated,
                         l.is_repibee,
+                        l.is_brocure_leads,
+                        l.platform,
                         l.created_at,
                         t.name as team_name,
                         p.name as project_name
@@ -1041,8 +1045,10 @@ class LeadAutomationController extends Controller
             WHEN LOWER(TRIM(COALESCE(l.platform, ''))) IN ('google form', 'google', 'googleform') 
                  OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%google%' 
                  THEN 'google_form'
-            WHEN LOWER(TRIM(COALESCE(l.platform, ''))) IN ('brochure leads', 'brocure leads', 'brochure lead', 'brocure lead', 'brochure') 
+            WHEN l.is_brocure_leads = 1
+                 OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('brochure leads', 'brocure leads', 'brochure lead', 'brocure lead', 'brochure') 
                  OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brochure%' 
+                 OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brocure%' 
                  THEN 'brochure'
             WHEN LOWER(TRIM(COALESCE(l.platform, ''))) IN ('facebook', 'fb', 'fb(lead form)', 'lead form', 'leadform', 'leadfrom', 'meta form', 'meta inform') 
                  OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%fb%' 

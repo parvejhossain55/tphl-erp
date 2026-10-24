@@ -2687,10 +2687,22 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
                         <div class="fw-semibold text-dark text-truncate" style="max-width: 200px;" title="${escapeHtml(lead.campaign_name || '')}">
                             ${escapeHtml(lead.campaign_name || 'Direct Campaign')}
                         </div>
-                        <div class="text-muted small">${(parseInt(lead.is_repibee) === 1 || String(lead.platform || '').toLowerCase().includes('whatsapp')) ? '<span class="text-success"><i class="fa-brands fa-whatsapp me-1"></i>WhatsApp</span>' : escapeHtml(lead.platform || 'Meta Instant Form')}</div>
+                        <div class="text-muted small">${(parseInt(lead.is_brocure_leads) === 1 || String(lead.platform || '').toLowerCase().includes('brochure') || String(lead.platform || '').toLowerCase().includes('brocure')) 
+                            ? '<span class="text-primary"><i class="fa-solid fa-file-arrow-down me-1"></i>Brochure Download</span>' 
+                            : (parseInt(lead.is_repibee) === 1 || String(lead.platform || '').toLowerCase().includes('whatsapp')) 
+                            ? '<span class="text-success"><i class="fa-brands fa-whatsapp me-1"></i>WhatsApp</span>' 
+                            : (String(lead.platform || '').toLowerCase().includes('google'))
+                            ? '<span class="text-warning"><i class="fa-solid fa-file-lines me-1"></i>Google Form</span>'
+                            : (String(lead.platform || '').toLowerCase().includes('inbox'))
+                            ? '<span class="text-info"><i class="fa-brands fa-facebook-messenger me-1"></i>Meta Inbox</span>'
+                            : (lead.platform ? escapeHtml(lead.platform) : 'Meta Instant Form')}</div>
                     </td>
                     <td>
-                        ${(parseInt(lead.is_repibee) === 1 || String(lead.platform || '').toLowerCase().includes('whatsapp') || String(lead.platform || '').toLowerCase() === 'wa') ? `
+                        ${(parseInt(lead.is_brocure_leads) === 1 || String(lead.platform || '').toLowerCase().includes('brochure') || String(lead.platform || '').toLowerCase().includes('brocure')) ? `
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                                <i class="fa-solid fa-file-arrow-down me-1"></i> Brochure
+                            </span>
+                        ` : (parseInt(lead.is_repibee) === 1 || String(lead.platform || '').toLowerCase().includes('whatsapp') || String(lead.platform || '').toLowerCase() === 'wa') ? `
                             <span class="badge bg-success-subtle text-success border border-success-subtle">
                                 <i class="fa-brands fa-whatsapp me-1"></i> WhatsApp
                             </span>
