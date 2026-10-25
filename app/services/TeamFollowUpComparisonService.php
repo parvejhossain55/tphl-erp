@@ -300,7 +300,7 @@ class TeamFollowUpComparisonService
         $end   = $this->db->real_escape_string($period['end']);
         $now   = time();
 
-        $whereClause = "WHERE l.deleted_at IS NULL AND (COALESCE(l.assigned_at, l.created_at) BETWEEN '$start' AND '$end')";
+        $whereClause = "WHERE l.deleted_at IS NULL AND (l.created_at BETWEEN '$start' AND '$end')";
 
         // Strictly restrict to leads assigned to verified sales staff with valid employee_id
         $validSalesUserIds = array_keys(array_filter($this->users, fn($u) => $u['is_sales']));
@@ -599,7 +599,7 @@ class TeamFollowUpComparisonService
         $end   = $this->db->real_escape_string($period['end']);
         $now   = time();
 
-        $whereClause = "WHERE l.deleted_at IS NULL AND (COALESCE(l.assigned_at, l.created_at) BETWEEN '$start' AND '$end')";
+        $whereClause = "WHERE l.deleted_at IS NULL AND (l.created_at BETWEEN '$start' AND '$end')";
 
         // Strictly restrict to leads assigned to verified sales staff with valid employee_id
         $validSalesUserIds = array_keys(array_filter($this->users, fn($u) => $u['is_sales']));

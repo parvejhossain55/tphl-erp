@@ -551,9 +551,9 @@ class SalesPerformanceService
         $invalid = $this->inList(self::INVALID_CONTACT_TYPES);
         $projSqlL = $projectId ? " AND l.project_id = " . $projectId : "";
         $isOverviewScope = empty($filters['executive_id']);
-        $validAssignedAt = "CASE WHEN l.assigned_at IS NOT NULL AND l.assigned_at > '1970-01-01' THEN l.assigned_at ELSE l.created_at END";
-        $dateColL = $isOverviewScope ? 'l.created_at' : "COALESCE($validAssignedAt, l.created_at)";
-        $dateSqlL = $isAllTime ? "" : " AND $dateColL BETWEEN '$start' AND '$end'";
+        $dateColL = 'l.created_at';
+        $autoSqlL = (isset($lCols['is_automated']) && isset($lCols['distribute'])) ? " AND NOT (l.is_automated = 1 AND l.distribute = 0)" : "";
+        $dateSqlL = ($isAllTime ? "" : " AND $dateColL BETWEEN '$start' AND '$end'") . $autoSqlL;
 
         $sql = "
             SELECT l.id, l.assigned_id, l.assigned_at, l.created_at,
@@ -1150,7 +1150,7 @@ class SalesPerformanceService
             SELECT COUNT(*) AS total,
                    SUM(assigned_id > 0) AS assigned,
                    SUM({$firstContactExpr}COALESCE(call_status,'not_called') <> 'not_called') AS contacted
-            FROM leads WHERE deleted_at IS NULL
+            FROM leads WHERE deleted_at IS NULL " . ((isset($lCols['is_automated']) && isset($lCols['distribute'])) ? " AND NOT (is_automated = 1 AND distribute = 0)" : "") . "
         ")->fetch_assoc();
 
         return [
@@ -1459,6 +1459,11 @@ class SalesPerformanceService
             $scopeL = " AND (l.assigned_id IS NULL OR l.assigned_id = 0)";
             $scopeB = " AND (COALESCE(NULLIF(b.sales_by_id, 0), l.assigned_id) IS NULL OR COALESCE(NULLIF(b.sales_by_id, 0), l.assigned_id) = 0)";
             $scopeF = " AND (f.created_by IS NULL OR f.created_by = 0)";
+        } elseif ($teamFilter) {
+            $uidCsv = implode(',', array_map('intval', $targetUids));
+            $scopeL = " AND l.assigned_id IN ($uidCsv)";
+            $scopeB = " AND COALESCE(NULLIF(b.sales_by_id, 0), l.assigned_id) IN ($uidCsv)";
+            $scopeF = " AND f.created_by IN ($uidCsv)";
         } elseif ($targetUids !== null) {
             $uidCsv = implode(',', array_map('intval', $targetUids));
             $scopeL = " AND l.assigned_id IN ($uidCsv)";
@@ -1467,18 +1472,18 @@ class SalesPerformanceService
         }
 
         $isOverviewScope = empty($filters['executive_id']);
-        $validAssignedAt = "CASE WHEN l.assigned_at IS NOT NULL AND l.assigned_at > '1970-01-01' THEN l.assigned_at ELSE l.created_at END";
-        $dateColL = $isOverviewScope ? 'l.created_at' : "COALESCE($validAssignedAt, l.created_at)";
-        $dateSqlL = $isAllTime ? "" : " AND $dateColL BETWEEN '$start' AND '$end'";
-        $dateSqlL2 = $isAllTime ? "" : " AND l2.created_at BETWEEN '$start' AND '$end'";
+        $dateColL = 'l.created_at';
+        $lCols = $this->getTableColumns('leads');
+        $autoSqlL = (isset($lCols['is_automated']) && isset($lCols['distribute'])) ? " AND NOT (l.is_automated = 1 AND l.distribute = 0)" : "";
+        $autoSqlL2 = (isset($lCols['is_automated']) && isset($lCols['distribute'])) ? " AND NOT (l2.is_automated = 1 AND l2.distribute = 0)" : "";
+        $dateSqlL = ($isAllTime ? "" : " AND $dateColL BETWEEN '$start' AND '$end'") . $autoSqlL;
+        $dateSqlL2 = ($isAllTime ? "" : " AND l2.created_at BETWEEN '$start' AND '$end'") . $autoSqlL2;
 
         $dateSqlB = $isAllTime ? "" : " AND b.booking_date BETWEEN '$startD' AND '$endD'";
         $dateSqlP = $isAllTime ? "" : " AND pay.payment_date BETWEEN '$startD' AND '$endD'";
         $dateSqlF = $isAllTime ? "" : " AND f.created_at BETWEEN '$start' AND '$end'";
         $dateSqlO = $isAllTime ? "" : " AND o.created_at BETWEEN '$start' AND '$end'";
         $newBookingCond = $isAllTime ? "1=1" : "b.booking_date BETWEEN '$startD' AND '$endD'";
-
-        $lCols = $this->getTableColumns('leads');
         $firstContactExpr = isset($lCols['first_contacted_at']) ? "COALESCE(l.first_contacted_at, $dateColL)" : $dateColL;
         $firstContactCheck1 = isset($lCols['first_contacted_at']) ? "l.first_contacted_at IS NOT NULL OR " : "";
         $firstContactCheck2 = isset($lCols['first_contacted_at']) ? "l2.first_contacted_at IS NOT NULL OR " : "";
