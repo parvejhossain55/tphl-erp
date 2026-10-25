@@ -5701,6 +5701,15 @@ class AccountClient extends Model
             $stmt->execute();
 
             // 2. Synchronize approval_requests table
+            $lbRow = $this->db->query("SELECT sales_by_id, lead_id, past_approval_attachment FROM lead_bookings WHERE id = {$bookingId} LIMIT 1")->fetch_assoc();
+            $salesPersonId = (int)($lbRow['sales_by_id'] ?? 0);
+            if ($salesPersonId <= 0 && !empty($lbRow['lead_id'])) {
+                $lRow = $this->db->query("SELECT assigned_id FROM leads WHERE id = " . (int)$lbRow['lead_id'] . " LIMIT 1")->fetch_assoc();
+                $salesPersonId = (int)($lRow['assigned_id'] ?? 0);
+            }
+            $requestedBy = ($salesPersonId > 0) ? $salesPersonId : $approvedBy;
+            $bookingAtt = $lbRow['past_approval_attachment'] ?? null;
+
             $check = $this->db->query("SELECT id FROM approval_requests WHERE source_table = 'lead_bookings' AND source_id = {$bookingId} LIMIT 1")->fetch_assoc();
             if ($check) {
                 $appId = (int)$check['id'];
@@ -5711,23 +5720,21 @@ class AccountClient extends Model
                         status = 'approved',
                         op_head_status = 'approved',
                         approve_role = 'completed',
+                        requested_by = ?,
                         approved_by = ?,
                         approved_at = NOW(),
                         updated_at = NOW()
                     WHERE id = ?
                 ");
-                $stmtApp->bind_param("ddii", $approvedDiscount, $approvedDiscount, $approvedBy, $appId);
+                $stmtApp->bind_param("ddiii", $approvedDiscount, $approvedDiscount, $requestedBy, $approvedBy, $appId);
                 $stmtApp->execute();
             } else {
-                $attRow = $this->db->query("SELECT past_approval_attachment FROM lead_bookings WHERE id = {$bookingId} LIMIT 1")->fetch_assoc();
-                $bookingAtt = $attRow['past_approval_attachment'] ?? null;
-
                 $stmtApp = $this->db->prepare("
                     INSERT INTO approval_requests 
                     (department, request_type, title, source_table, source_id, request_amount, approved_amount, status, requested_by, approve_role, attachment, approved_by, approved_at, created_at)
                     VALUES ('Sales', 'discount', 'Lead Booking Discount Approval', 'lead_bookings', ?, ?, ?, 'approved', ?, 'Management', ?, ?, NOW(), NOW())
                 ");
-                $stmtApp->bind_param("iddsii", $bookingId, $approvedDiscount, $approvedDiscount, $approvedBy, $bookingAtt, $approvedBy);
+                $stmtApp->bind_param("iddsii", $bookingId, $approvedDiscount, $approvedDiscount, $requestedBy, $bookingAtt, $approvedBy);
                 $stmtApp->execute();
             }
 

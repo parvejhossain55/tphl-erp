@@ -771,16 +771,22 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                 // Sync approval_requests
                 $pastApprovalAttachment = $data['past_approval_attachment'] ?? $existing['past_approval_attachment'];
                 if ($discount > 0) {
+                    $salesPersonId = !empty($data['sales_by_id']) ? (int)$data['sales_by_id'] : (!empty($existing['sales_by_id']) ? (int)$existing['sales_by_id'] : 0);
+                    if ($salesPersonId <= 0 && !empty($existing['lead_id'])) {
+                        $lRow = $this->db->query("SELECT assigned_id FROM leads WHERE id = " . (int)$existing['lead_id'] . " LIMIT 1")->fetch_assoc();
+                        $salesPersonId = (int)($lRow['assigned_id'] ?? 0);
+                    }
+                    $requestedBy = ($salesPersonId > 0) ? $salesPersonId : (int)($_SESSION['user']['id'] ?? 1);
+
                     $checkApp = $this->db->query("SELECT id FROM approval_requests WHERE source_table = 'lead_bookings' AND source_id = {$id} LIMIT 1")->fetch_assoc();
                     if ($checkApp) {
-                        $appUpSql = "UPDATE approval_requests SET request_amount = {$discount}, status = 'pending', approved_amount = NULL, updated_at = NOW()";
+                        $appUpSql = "UPDATE approval_requests SET request_amount = {$discount}, requested_by = {$requestedBy}, status = 'pending', approved_amount = NULL, updated_at = NOW()";
                         if (!empty($pastApprovalAttachment)) {
                             $appUpSql .= ", attachment = '" . $this->db->real_escape_string($pastApprovalAttachment) . "'";
                         }
                         $appUpSql .= " WHERE id = " . (int)$checkApp['id'];
                         $this->db->query($appUpSql);
                     } else {
-                        $requestedBy = (int)($_SESSION['user']['id'] ?? 1);
                         $stmtIns = $this->db->prepare("INSERT INTO approval_requests (department, request_type, title, source_table, source_id, request_amount, status, requested_by, approve_role, attachment, created_at) VALUES ('Sales', 'discount', 'Lead Booking Discount Approval', 'lead_bookings', ?, ?, 'pending', ?, 'Management', ?, NOW())");
                         if ($stmtIns) {
                             $stmtIns->bind_param("idis", $id, $discount, $requestedBy, $pastApprovalAttachment);

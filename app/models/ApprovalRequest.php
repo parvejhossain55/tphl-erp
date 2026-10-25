@@ -2314,16 +2314,19 @@ class ApprovalRequest extends Model
             if ($sourceTable === 'lead_bookings') {
                 $lbStmt = $this->db->prepare("
                     SELECT lb.agreement_value, lb.discount_amount, lb.past_approval_attachment,
+                           COALESCE(NULLIF(lb.sales_by_id, 0), l.assigned_id) AS resolved_sales_id,
                            l.full_name AS client_name, l.phone AS client_phone,
                            p.name AS project_name,
                            f.flat_name, f.floor_no,
-                           u.full_name AS sales_agent_name, e.employee_id AS sales_agent_code
+                           u.full_name AS sales_agent_name, e.employee_id AS sales_agent_code,
+                           d.name AS sales_dept_name
                     FROM lead_bookings lb
                     LEFT JOIN leads l ON lb.lead_id = l.id
                     LEFT JOIN projects p ON lb.project_id = p.id
                     LEFT JOIN flats f ON lb.flat_id = f.id
-                    LEFT JOIN users u ON lb.sales_by_id = u.id
+                    LEFT JOIN users u ON u.id = COALESCE(NULLIF(lb.sales_by_id, 0), l.assigned_id)
                     LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+                    LEFT JOIN departments d ON e.department_id = d.id
                     WHERE lb.id = ? LIMIT 1
                 ");
                 if ($lbStmt) {
@@ -2343,6 +2346,21 @@ class ApprovalRequest extends Model
                         $row['booking_floor_no'] = $lbRow['floor_no'] ?? '';
                         $row['booking_sales_agent'] = $lbRow['sales_agent_name'] ?? '';
                         $row['booking_sales_code'] = $lbRow['sales_agent_code'] ?? '';
+
+                        // For lead_bookings discount, requester is always the sales agent (sales_by_id)
+                        if (!empty($lbRow['sales_agent_name'])) {
+                            $row['requester_name'] = $lbRow['sales_agent_name'];
+                            $row['requester_code'] = $lbRow['sales_agent_code'];
+                            if (!empty($lbRow['sales_dept_name'])) {
+                                $row['requester_dept'] = $lbRow['sales_dept_name'];
+                            }
+                            // Self-heal requested_by in approval_requests if mismatched
+                            $resolvedSalesId = (int)($lbRow['resolved_sales_id'] ?? 0);
+                            if ($resolvedSalesId > 0 && (int)($row['requested_by'] ?? 0) !== $resolvedSalesId) {
+                                $this->db->query("UPDATE approval_requests SET requested_by = {$resolvedSalesId} WHERE id = " . (int)$row['id']);
+                                $row['requested_by'] = $resolvedSalesId;
+                            }
+                        }
                     }
                 }
 

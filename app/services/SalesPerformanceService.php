@@ -272,17 +272,17 @@ class SalesPerformanceService
         // 0. Quick Presets
         $opts[] = [
             'value' => 'preset:today',
-            'label' => '⚡ Today (Daily)',
+            'label' => 'Today (Daily)',
             'type' => 'preset',
         ];
         $opts[] = [
             'value' => 'preset:yesterday',
-            'label' => '⚡ Yesterday',
+            'label' => ' Yesterday',
             'type' => 'preset',
         ];
         $opts[] = [
             'value' => 'preset:weekly',
-            'label' => '⚡ Last 7 Days (Weekly)',
+            'label' => 'Last 7 Days (Weekly)',
             'type' => 'preset',
         ];
 
@@ -852,6 +852,8 @@ class SalesPerformanceService
             SELECT l.assigned_id AS uid,
                    SUM(lf.next_follow_up_date < '$today') AS overdue,
                    SUM(lf.next_follow_up_date = '$today') AS due_today,
+                   SUM(CASE WHEN lf.next_follow_up_date = '$today' AND done.lead_id IS NOT NULL THEN 1 ELSE 0 END) AS today_completed,
+                   SUM(CASE WHEN lf.next_follow_up_date = '$today' AND done.lead_id IS NULL THEN 1 ELSE 0 END) AS today_incomplete,
                    SUM(lf.next_action = 'site visit' AND lf.next_follow_up_date BETWEEN '$today' AND DATE_ADD('$today', INTERVAL 7 DAY)) AS upcoming_visits
             FROM leads l
             JOIN (
@@ -859,6 +861,12 @@ class SalesPerformanceService
                 FROM lead_follow_ups f
                 JOIN (SELECT lead_id, MAX(id) AS mid FROM lead_follow_ups WHERE deleted_at IS NULL GROUP BY lead_id) m ON m.mid = f.id
             ) lf ON lf.lead_id = l.id
+            LEFT JOIN (
+                SELECT DISTINCT lead_id 
+                FROM lead_follow_ups 
+                WHERE (DATE(created_at) = '$today' OR follow_up_date = '$today')
+                  AND deleted_at IS NULL
+            ) done ON done.lead_id = l.id
             WHERE l.deleted_at IS NULL AND l.assigned_id > 0
               AND COALESCE(l.lead_type, '') NOT IN ($closed)
               AND NOT EXISTS (SELECT 1 FROM lead_bookings b WHERE b.lead_id = l.id AND b.deleted_at IS NULL AND b.booking_status IN ('booked','completed'))
@@ -873,6 +881,9 @@ class SalesPerformanceService
             }
             $add($uid, 'overdue', (int) $r['overdue']);
             $add($uid, 'due_today', (int) $r['due_today']);
+            $add($uid, 'today_followups_total', (int) $r['due_today']);
+            $add($uid, 'today_followups_completed', (int) $r['today_completed']);
+            $add($uid, 'today_followups_incomplete', (int) $r['today_incomplete']);
             $add($uid, 'upcoming_visits', (int) $r['upcoming_visits']);
         }
 
@@ -1044,7 +1055,8 @@ class SalesPerformanceService
             'follow_ups' => 0, 'leads_followed' => 0, 'visits_done' => 0, 'visits_planned' => 0,
             'bookings' => 0, 'booking_value' => 0.0, 'confirmed_sales' => 0, 'confirmed_value' => 0.0,
             'collection' => 0.0, 'collection_new' => 0.0, 'collection_prev' => 0.0, 'onboarded' => 0,
-            'overdue' => 0, 'due_today' => 0, 'upcoming_visits' => 0, 'backlog_uncontacted' => 0,
+            'overdue' => 0, 'due_today' => 0, 'today_followups_total' => 0, 'today_followups_completed' => 0, 'today_followups_incomplete' => 0,
+            'upcoming_visits' => 0, 'backlog_uncontacted' => 0,
             'target_bookings' => 0, 'target_visits' => 0, 'target_value' => 0.0,
         ];
         foreach (array_keys(self::STAGES) as $s) {
@@ -1377,7 +1389,7 @@ class SalesPerformanceService
      * attention item, or data-health check in the Sales Performance module.
      * Respects active period and project/team/executive filters.
      */
-    public function drillDown(string $key, array $period = [], array $filters = [], int $limit = 500): array
+    public function drillDown(string $key, array $period = [], array $filters = [], int $limit = 2000): array
     {
         $this->loadReference();
         if (empty($period['start'])) {
@@ -1650,19 +1662,69 @@ class SalesPerformanceService
                             AND NOT EXISTS (SELECT 1 FROM lead_bookings b WHERE b.lead_id = l.id AND b.deleted_at IS NULL AND b.booking_status IN ('booked','completed'))
                             AND lf.next_follow_up_date < '$today' $projSqlL $scopeL"
             ],
-            'due_today' => [
-                'label' => 'Follow-ups Due Today (Live Queue)',
-                'description' => 'Open active leads scheduled for callback or follow-up today.',
-                'sql' => "SELECT l.id AS lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
-                                 COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, l.assigned_id AS owner_id, l.team_id AS lead_team_id,
-                                 CONCAT('Scheduled: Today (', lf.next_follow_up_date, ') · ', COALESCE(lf.next_action, 'Callback')) AS info,
-                                 lf.next_follow_up_date AS event_date, 'Due Today' AS status_badge
+            'today_followups' => [
+                'label' => 'Today\'s Follow-ups Queue',
+                'description' => 'Scheduled callbacks and follow-ups for today with real-time completion status.',
+                'sql' => "SELECT l.id AS lead_id, 
+                                 COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
+                                 COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, 
+                                 l.assigned_id AS owner_id, 
+                                 l.team_id AS lead_team_id,
+                                 CASE 
+                                     WHEN done.lead_id IS NOT NULL THEN CONCAT('Completed: Today at ', DATE_FORMAT(done.done_at, '%h:%i %p'), ' · ', COALESCE(NULLIF(done.done_note, ''), 'Follow-up logged'))
+                                     ELSE CONCAT('Scheduled: Today · Action: ', COALESCE(lf.next_action, 'Callback'), ' · ', COALESCE(NULLIF(lf.discussion_note,''), 'Pending callback'))
+                                 END AS info,
+                                 COALESCE(done.done_at, lf.scheduled_at, lf.next_follow_up_date) AS event_date,
+                                 CASE WHEN done.lead_id IS NOT NULL THEN 'Completed' ELSE 'Incomplete' END AS status_badge,
+                                 CASE WHEN done.lead_id IS NOT NULL THEN 1 ELSE 0 END AS is_completed
                           FROM leads l
                           JOIN (
-                              SELECT f.lead_id, f.next_follow_up_date, f.next_action
+                              SELECT f.lead_id, f.next_follow_up_date, f.next_action, f.created_at AS scheduled_at, f.discussion_note
                               FROM lead_follow_ups f
                               JOIN (SELECT lead_id, MAX(id) AS mid FROM lead_follow_ups WHERE deleted_at IS NULL GROUP BY lead_id) m ON m.mid = f.id
                           ) lf ON lf.lead_id = l.id
+                          LEFT JOIN (
+                              SELECT f2.lead_id, MAX(f2.created_at) AS done_at, 
+                                     SUBSTRING_INDEX(GROUP_CONCAT(COALESCE(f2.discussion_note, '') ORDER BY f2.id DESC SEPARATOR ' | '), ' | ', 1) AS done_note
+                              FROM lead_follow_ups f2
+                              WHERE (DATE(f2.created_at) = '$today' OR f2.follow_up_date = '$today')
+                                AND f2.deleted_at IS NULL
+                              GROUP BY f2.lead_id
+                          ) done ON done.lead_id = l.id
+                          WHERE l.deleted_at IS NULL AND l.assigned_id > 0
+                            AND COALESCE(l.lead_type, '') NOT IN ('Dropped','Closed','Lost','Reject','Rejected','Not Interested','Fake Lead','Invalid Lead','Transferred','Reassigned','Sold')
+                            AND NOT EXISTS (SELECT 1 FROM lead_bookings b WHERE b.lead_id = l.id AND b.deleted_at IS NULL AND b.booking_status IN ('booked','completed'))
+                            AND lf.next_follow_up_date = '$today' $projSqlL $scopeL"
+            ],
+            'due_today' => [
+                'label' => 'Today\'s Follow-ups Queue',
+                'description' => 'Scheduled callbacks and follow-ups for today with real-time completion status.',
+                'sql' => "SELECT l.id AS lead_id, 
+                                 COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
+                                 COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, 
+                                 l.assigned_id AS owner_id, 
+                                 l.team_id AS lead_team_id,
+                                 CASE 
+                                     WHEN done.lead_id IS NOT NULL THEN CONCAT('Completed: Today at ', DATE_FORMAT(done.done_at, '%h:%i %p'), ' · ', COALESCE(NULLIF(done.done_note, ''), 'Follow-up logged'))
+                                     ELSE CONCAT('Scheduled: Today · Action: ', COALESCE(lf.next_action, 'Callback'), ' · ', COALESCE(NULLIF(lf.discussion_note,''), 'Pending callback'))
+                                 END AS info,
+                                 COALESCE(done.done_at, lf.scheduled_at, lf.next_follow_up_date) AS event_date,
+                                 CASE WHEN done.lead_id IS NOT NULL THEN 'Completed' ELSE 'Incomplete' END AS status_badge,
+                                 CASE WHEN done.lead_id IS NOT NULL THEN 1 ELSE 0 END AS is_completed
+                          FROM leads l
+                          JOIN (
+                              SELECT f.lead_id, f.next_follow_up_date, f.next_action, f.created_at AS scheduled_at, f.discussion_note
+                              FROM lead_follow_ups f
+                              JOIN (SELECT lead_id, MAX(id) AS mid FROM lead_follow_ups WHERE deleted_at IS NULL GROUP BY lead_id) m ON m.mid = f.id
+                          ) lf ON lf.lead_id = l.id
+                          LEFT JOIN (
+                              SELECT f2.lead_id, MAX(f2.created_at) AS done_at, 
+                                     SUBSTRING_INDEX(GROUP_CONCAT(COALESCE(f2.discussion_note, '') ORDER BY f2.id DESC SEPARATOR ' | '), ' | ', 1) AS done_note
+                              FROM lead_follow_ups f2
+                              WHERE (DATE(f2.created_at) = '$today' OR f2.follow_up_date = '$today')
+                                AND f2.deleted_at IS NULL
+                              GROUP BY f2.lead_id
+                          ) done ON done.lead_id = l.id
                           WHERE l.deleted_at IS NULL AND l.assigned_id > 0
                             AND COALESCE(l.lead_type, '') NOT IN ('Dropped','Closed','Lost','Reject','Rejected','Not Interested','Fake Lead','Invalid Lead','Transferred','Reassigned','Sold')
                             AND NOT EXISTS (SELECT 1 FROM lead_bookings b WHERE b.lead_id = l.id AND b.deleted_at IS NULL AND b.booking_status IN ('booked','completed'))
@@ -1756,7 +1818,11 @@ class SalesPerformanceService
             'confirmed'                    => 'confirmed_sales',
             'booking_collection'           => 'collection',
             'overdue_followups'            => 'overdue',
-            'followups_due_today'          => 'due_today',
+            'today_followup'               => 'today_followups',
+            'today_follow_up'              => 'today_followups',
+            'today_followups'              => 'today_followups',
+            'due_today'                    => 'today_followups',
+            'followups_due_today'          => 'today_followups',
             'site_visits_next_7_days'      => 'upcoming_visits',
             'payment_pending_verification' => 'unverified_bookings',
             'clients_onboarded'            => 'onboarded',
@@ -1764,6 +1830,11 @@ class SalesPerformanceService
         ];
 
         $targetKey = $aliases[$key] ?? $key;
+
+        // Ensure full coverage for today's followups & live queues without pagination cut-off
+        if ($targetKey === 'today_followups' || $targetKey === 'due_today') {
+            $limit = max($limit, 5000);
+        }
 
         if (isset($queries[$targetKey])) {
             $def = $queries[$targetKey];
@@ -1828,6 +1899,43 @@ class SalesPerformanceService
                 }
             }
 
+            $todaySummary = null;
+            if ($targetKey === 'today_followups' || $targetKey === 'due_today') {
+                $byExec = [];
+                $totComp = 0;
+                $totIncomp = 0;
+                foreach ($rows as $r) {
+                    $oid = (int) ($r['owner_id'] ?? 0);
+                    $oname = $r['owner_name'] ?? 'Not Assigned';
+                    $tname = $r['team_name'] ?? '—';
+                    if (!isset($byExec[$oid])) {
+                        $byExec[$oid] = [
+                            'owner_id' => $oid,
+                            'owner_name' => $oname,
+                            'team_name' => $tname,
+                            'total' => 0,
+                            'completed' => 0,
+                            'incomplete' => 0,
+                        ];
+                    }
+                    $byExec[$oid]['total']++;
+                    if (!empty($r['is_completed'])) {
+                        $byExec[$oid]['completed']++;
+                        $totComp++;
+                    } else {
+                        $byExec[$oid]['incomplete']++;
+                        $totIncomp++;
+                    }
+                }
+                uasort($byExec, fn($a, $b) => ($b['incomplete'] - $a['incomplete']) ?: ($b['total'] - $a['total']));
+                $todaySummary = [
+                    'total' => count($rows),
+                    'completed' => $totComp,
+                    'incomplete' => $totIncomp,
+                    'by_executive' => array_values($byExec),
+                ];
+            }
+
             $cnt = $this->db->query("SELECT COUNT(*) c FROM (" . $def['sql'] . ") x");
             $out = [
                 'label' => $def['label'],
@@ -1837,6 +1945,9 @@ class SalesPerformanceService
             ];
             if ($colSummary) {
                 $out['collection_summary'] = $colSummary;
+            }
+            if ($todaySummary) {
+                $out['today_summary'] = $todaySummary;
             }
             return $out;
         }

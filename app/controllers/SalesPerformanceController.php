@@ -177,7 +177,7 @@ class SalesPerformanceController extends Controller
         }
 
         header('Content-Type: application/json; charset=utf-8');
-        echo json_encode($this->service->drillDown($key, $period, $f), JSON_UNESCAPED_UNICODE);
+        echo json_encode($this->service->drillDown($key, $period, $f, 2000), JSON_UNESCAPED_UNICODE);
         exit;
     }
 

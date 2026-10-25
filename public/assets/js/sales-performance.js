@@ -41,15 +41,35 @@
         const extraScope = m.id ? `data-exec-id="${m.id}"` : (m.key ? `data-team-key="${esc(m.key)}"` : '');
         let rows = '';
         STAGE_KEYS.forEach((s) => {
-            const v = m['stage_' + s] || 0;
+            let v = m['stage_' + s] || 0;
             const p = base ? (v / base) * 100 : 0;
-            const serialNo = '0' + s;
+            let displayCount = n(v);
+            let stageLabel = esc(STAGES[s]);
+
+            // Serial numbering for 7 funnel rows:
+            // 1 -> 01 (Received)
+            // 2 -> 02 (Contacted)
+            // [no_response] -> 03 (No Response)
+            // [uncontacted] -> 04 (Not Contacted)
+            // 3 -> 05 (Visit Scheduled)
+            // 4 -> 06 (Visited)
+            // 5 -> 07 (Booked)
+            let serialNo = '0' + s;
+            if (s === 3) serialNo = '05';
+            else if (s === 4) serialNo = '06';
+            else if (s === 5) serialNo = '07';
+
+            if (s === 5) {
+                const totalUnits = (m.bookings !== undefined) ? m.bookings : v;
+                displayCount = n(totalUnits);
+                stageLabel = `${esc(STAGES[s])} <small style="font-size:11px;font-weight:500;color:var(--sp-muted);margin-left:4px">(${n(totalUnits)} units sold by ${n(v)} clients)</small>`;
+            }
 
             rows += `
-                <div class="sp-funnel-row click ${s === selected ? 'sel' : ''}" data-stage="${s}" data-gap="stage_${s}" ${extraScope} style="cursor:pointer" title="Click to view Stage ${serialNo} (${esc(STAGES[s])}) leads">
+                <div class="sp-funnel-row click ${String(s) === String(selected) ? 'sel' : ''}" data-stage="${s}" data-gap="stage_${s}" ${extraScope} style="cursor:pointer" title="Click to view Stage ${serialNo} (${esc(STAGES[s])}) leads">
                     <span class="no">${serialNo}</span>
-                    <div><div class="nm">${esc(STAGES[s])} <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;opacity:0.6;margin-left:2px"></i></div><div class="sp-bar"><span style="width:${Math.max(p, v ? 0.6 : 0).toFixed(2)}%"></span></div></div>
-                    <span class="ct">${n(v)}</span>
+                    <div><div class="nm">${stageLabel} <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;opacity:0.6;margin-left:2px"></i></div><div class="sp-bar"><span style="width:${Math.max(p, v ? 0.6 : 0).toFixed(2)}%"></span></div></div>
+                    <span class="ct">${displayCount}</span>
                     <span class="pc">${p.toFixed(1)}%</span>
                 </div>`;
 
@@ -57,10 +77,10 @@
                 const noResponse = m.no_response || 0;
                 const noResponsePct = base ? (noResponse / base) * 100 : 0;
                 rows += `
-                    <div class="sp-funnel-row no-response-row click" data-gap="no_response_leads" ${extraScope} style="margin:2px 0;cursor:pointer;" title="Click to view No Response leads">
-                        <span class="no" style="font-weight:700"><i class="fa-regular fa-phone-slash" style="font-size:11px"></i></span>
+                    <div class="sp-funnel-row no-response-row click ${selected === 'no_response' ? 'sel' : ''}" data-stage="no_response" data-gap="no_response_leads" ${extraScope} style="margin:2px 0;cursor:pointer;" title="Click to view Stage 03 (No Response) leads">
+                        <span class="no">03</span>
                         <div>
-                            <div class="nm" style="font-weight:600">No Response <small style="font-size:11px;font-weight:400">(Unreachable / Not Received)</small> <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
+                            <div class="nm" style="font-weight:600">No Response <small style="font-size:11px;font-weight:400">(Unreachable / Not Received)</small> <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;opacity:0.6;margin-left:2px"></i></div>
                             <div class="sp-bar amber"><span style="width:${Math.max(noResponsePct, noResponse ? 0.6 : 0).toFixed(2)}%"></span></div>
                         </div>
                         <span class="ct" style="font-weight:700">${n(noResponse)}</span>
@@ -70,8 +90,8 @@
                 const uncontacted = m.uncontacted !== undefined ? m.uncontacted : Math.max(0, base - (m.stage_2 || 0));
                 const uncontactedPct = base ? (uncontacted / base) * 100 : 0;
                 rows += `
-                    <div class="sp-funnel-row uncontacted-row click" data-gap="uncontacted" ${extraScope} style="margin:2px 0;cursor:pointer;" title="Click to view Not Contacted leads">
-                        <span class="no" style="font-weight:700"><span style="opacity:0.4">—</span></span>
+                    <div class="sp-funnel-row uncontacted-row click ${selected === 'uncontacted' ? 'sel' : ''}" data-stage="uncontacted" data-gap="uncontacted" ${extraScope} style="margin:2px 0;cursor:pointer;" title="Click to view Stage 04 (Not Contacted) leads">
+                        <span class="no">04</span>
                         <div>
                             <div class="nm" style="font-weight:600">Not Contacted <small style="font-size:11px;font-weight:400">(Awaiting 1st contact)</small> <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;opacity:0.6;margin-left:2px"></i></div>
                             <div class="sp-bar red"><span style="width:${Math.max(uncontactedPct, uncontacted ? 0.6 : 0).toFixed(2)}%"></span></div>
@@ -81,26 +101,57 @@
                     </div>`;
             }
         });
-        const sel = m['stage_' + selected] || 0;
+        let sel = 0;
+        let selSub = '';
+        if (selected === 'no_response') {
+            sel = m.no_response || 0;
+            selSub = `No Response · ${pct(sel, base)}`;
+        } else if (selected === 'uncontacted') {
+            sel = m.uncontacted !== undefined ? m.uncontacted : Math.max(0, base - (m.stage_2 || 0));
+            selSub = `Not Contacted · ${pct(sel, base)}`;
+        } else if (String(selected) === '5') {
+            sel = m.bookings || m.stage_5 || 0;
+            selSub = `Booked · ${n(sel)} units sold by ${n(m.stage_5 || 0)} clients`;
+        } else {
+            const numSt = Number(selected);
+            sel = m['stage_' + numSt] || 0;
+            selSub = `${esc(STAGES[numSt] || '')} · ${pct(sel, base)}`;
+        }
+
         rows += `
             <div class="sp-funnel-foot">
-                <div><div class="k">Selected stage</div><div class="v">${n(sel)}</div><div class="s">${esc(STAGES[selected] || '')} · ${pct(sel, base)}</div></div>
-                <div><div class="k">Lead to booking</div><div class="v">${pct(m.stage_5, base, 2)}</div><div class="s">${n(m.stage_5)} / ${n(base)}</div></div>
-                <div><div class="k">Visit to booking</div><div class="v">${pct(m.stage_5, m.stage_4)}</div><div class="s">${n(m.stage_5)} / ${n(m.stage_4)}</div></div>
+                <div><div class="k">Selected stage</div><div class="v">${n(sel)}</div><div class="s">${selSub}</div></div>
+                <div><div class="k">Lead to booking</div><div class="v">${pct(m.stage_5, base, 2)}</div><div class="s">${n(m.bookings || m.stage_5)} units / ${n(m.stage_5)} clients</div></div>
+                <div><div class="k">Visit to booking</div><div class="v">${pct(m.stage_5, m.stage_4)}</div><div class="s">${n(m.bookings || m.stage_5)} units / ${n(m.stage_4)} visits</div></div>
             </div>`;
         el.innerHTML = rows;
         $$('.sp-funnel-row', el).forEach((r) => {
-            if (r.dataset.stage && r.dataset.stage !== 'uncontacted') {
+            if (r.dataset.stage) {
                 r.addEventListener('click', (ev) => {
-                    const st = Number(r.dataset.stage);
-                    if (!isNaN(st)) {
+                    const st = r.dataset.stage;
+                    if (st) {
                         funnelState[el.id] = funnelState[el.id] || {};
                         funnelState[el.id].selected = st;
                         const foot = el.querySelector('.sp-funnel-foot');
                         if (foot) {
-                            const sv = m['stage_' + st] || 0;
+                            let sv = 0;
+                            let sub = '';
+                            if (st === 'no_response') {
+                                sv = m.no_response || 0;
+                                sub = `No Response · ${pct(sv, base)}`;
+                            } else if (st === 'uncontacted') {
+                                sv = m.uncontacted !== undefined ? m.uncontacted : Math.max(0, base - (m.stage_2 || 0));
+                                sub = `Not Contacted · ${pct(sv, base)}`;
+                            } else if (String(st) === '5') {
+                                sv = m.bookings || m.stage_5 || 0;
+                                sub = `Booked · ${n(sv)} units sold by ${n(m.stage_5 || 0)} clients`;
+                            } else {
+                                const numSt = Number(st);
+                                sv = m['stage_' + numSt] || 0;
+                                sub = `${esc(STAGES[numSt] || '')} · ${pct(sv, base)}`;
+                            }
                             foot.children[0].querySelector('.v').textContent = n(sv);
-                            foot.children[0].querySelector('.s').textContent = `${esc(STAGES[st] || '')} · ${pct(sv, base)}`;
+                            foot.children[0].querySelector('.s').textContent = sub;
                         }
                         $$('.sp-funnel-row', el).forEach(row => row.classList.toggle('sel', row.dataset.stage == st));
                     }
@@ -180,20 +231,35 @@
             ev.stopPropagation();
         }
         if (btn.dataset.stage) {
-            const st = Number(btn.dataset.stage);
+            const st = btn.dataset.stage;
             const funnelEl = btn.closest('#spFunnelOverview, #spFunnelTeam, #spFunnelExec') || btn.parentElement;
-            if (!isNaN(st) && funnelEl) {
+            if (funnelEl) {
                 funnelState[funnelEl.id] = funnelState[funnelEl.id] || {};
                 funnelState[funnelEl.id].selected = st;
-                $$('.sp-funnel-row', funnelEl).forEach(row => row.classList.toggle('sel', row.dataset.stage == st));
+                $$('.sp-funnel-row', funnelEl).forEach(row => row.classList.toggle('sel', String(row.dataset.stage) === String(st)));
                 const foot = funnelEl.querySelector('.sp-funnel-foot');
                 if (foot && funnelState[funnelEl.id] && funnelState[funnelEl.id].m) {
                     const m = funnelState[funnelEl.id].m;
                     const base = m.stage_1 || 0;
-                    const sv = m['stage_' + st] || 0;
-                    if (foot.children[0]) {
+                    let sv = 0;
+                    let sub = '';
+                    if (st === 'no_response') {
+                        sv = m.no_response || 0;
+                        sub = `No Response · ${pct(sv, base)}`;
+                    } else if (st === 'uncontacted') {
+                        sv = m.uncontacted !== undefined ? m.uncontacted : Math.max(0, base - (m.stage_2 || 0));
+                        sub = `Not Contacted · ${pct(sv, base)}`;
+                    } else if (String(st) === '5') {
+                        sv = m.bookings || m.stage_5 || 0;
+                        sub = `Booked · ${n(sv)} units sold by ${n(m.stage_5 || 0)} clients`;
+                    } else {
+                        const numSt = Number(st);
+                        sv = m['stage_' + numSt] || 0;
+                        sub = `${esc(STAGES[numSt] || '')} · ${pct(sv, base)}`;
+                    }
+                    if (foot && foot.children[0]) {
                         foot.children[0].querySelector('.v').textContent = n(sv);
-                        foot.children[0].querySelector('.s').textContent = `${esc(STAGES[st] || '')} · ${pct(sv, base)}`;
+                        foot.children[0].querySelector('.s').textContent = sub;
                     }
                 }
             }
@@ -249,146 +315,479 @@
             const rows = j.rows || [];
             let html = '';
 
-            // Dedicated visual breakdown for Booking Collections
-            if (key === 'collection' && j.collection_summary) {
-                const cs = j.collection_summary;
+            // Dedicated visual accordion breakdown for Today's Follow-ups
+            if ((key === 'today_followups' || key === 'due_today') && j.today_summary) {
+                const ts = j.today_summary;
+                const execs = ts.by_executive || [];
+
+                // Top Overview Card
                 html += `
-                    <div class="sp-col-breakdown-card" style="background:var(--sp-card);border:1px solid var(--sp-border);border-radius:10px;padding:12px 14px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,0.03)">
-                        <div style="font-size:12px;font-weight:700;color:var(--sp-text);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
-                            <span style="display:inline-flex;align-items:center;gap:6px"><i class="fa-solid fa-sack-dollar" style="color:var(--sp-green)"></i> Collection Source Breakdown:</span>
-                            <span style="font-size:11px;color:var(--sp-muted)">Total: <b style="color:var(--sp-text)">${tk(cs.total_amt)}</b></span>
+                    <div class="sp-today-overview-card" style="background:var(--sp-card);border:1px solid var(--sp-border);border-radius:10px;padding:14px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,0.03)">
+                        <div style="font-size:12.5px;font-weight:700;color:var(--sp-text);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
+                            <span style="display:inline-flex;align-items:center;gap:6px"><i class="fa-solid fa-calendar-check" style="color:var(--sp-green)"></i> Today's Follow-up Overview</span>
+                            <span style="font-size:11.5px;color:var(--sp-muted)">Total Scheduled: <b style="color:var(--sp-text)">${n(ts.total)}</b> across ${execs.length} Executives</span>
                         </div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-                            <div class="sp-col-type-btn" data-type="new" style="background:#ecfdf5;border:1.5px solid #10b981;border-radius:8px;padding:9px 12px;cursor:pointer;transition:all .15s" title="Click to view payments from New Bookings">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+                            <div class="sp-today-type-btn" data-status="completed" style="background:#ecfdf5;border:1.5px solid #10b981;border-radius:8px;padding:9px 12px;cursor:pointer;transition:all .15s" title="Click to filter Completed Follow-ups">
                                 <div style="display:flex;justify-content:space-between;align-items:center">
-                                    <span style="font-size:11.5px;font-weight:700;color:#065f46;display:inline-flex;align-items:center;gap:5px"><i class="fa-solid fa-sparkles"></i> New Bookings</span>
-                                    <span style="font-size:10px;font-weight:700;background:#d1fae5;color:#047857;padding:1px 6px;border-radius:99px">${pct(cs.new_booking_amt, cs.total_amt)}</span>
+                                    <span style="font-size:11.5px;font-weight:700;color:#065f46;display:inline-flex;align-items:center;gap:5px"><i class="fa-solid fa-circle-check"></i> Completed Today</span>
+                                    <span style="font-size:10px;font-weight:700;background:#d1fae5;color:#047857;padding:1px 6px;border-radius:99px">${pct(ts.completed, ts.total)}</span>
                                 </div>
-                                <div style="font-size:16px;font-weight:800;color:#047857;margin:3px 0 1px">${tk(cs.new_booking_amt)}</div>
-                                <div style="font-size:10.5px;color:#059669">${n(cs.new_booking_count)} payments booked in period</div>
+                                <div style="font-size:18px;font-weight:800;color:#047857;margin:3px 0 1px">${n(ts.completed)}</div>
+                                <div style="font-size:10.5px;color:#059669">Follow-ups logged today</div>
                             </div>
-                            <div class="sp-col-type-btn" data-type="prev" style="background:#eff6ff;border:1.5px solid #3b82f6;border-radius:8px;padding:9px 12px;cursor:pointer;transition:all .15s" title="Click to view payments from Previous Bookings">
+                            <div class="sp-today-type-btn" data-status="incomplete" style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:8px;padding:9px 12px;cursor:pointer;transition:all .15s" title="Click to filter Incomplete / Pending Follow-ups">
                                 <div style="display:flex;justify-content:space-between;align-items:center">
-                                    <span style="font-size:11.5px;font-weight:700;color:#1e40af;display:inline-flex;align-items:center;gap:5px"><i class="fa-regular fa-clock-rotate-left"></i> Previous Bookings</span>
-                                    <span style="font-size:10px;font-weight:700;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:99px">${pct(cs.prev_booking_amt, cs.total_amt)}</span>
+                                    <span style="font-size:11.5px;font-weight:700;color:#92400e;display:inline-flex;align-items:center;gap:5px"><i class="fa-solid fa-clock"></i> Incomplete / Pending</span>
+                                    <span style="font-size:10px;font-weight:700;background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:99px">${pct(ts.incomplete, ts.total)}</span>
                                 </div>
-                                <div style="font-size:16px;font-weight:800;color:#1d4ed8;margin:3px 0 1px">${tk(cs.prev_booking_amt)}</div>
-                                <div style="font-size:10.5px;color:#2563eb">${n(cs.prev_booking_count)} installment / past payments</div>
+                                <div style="font-size:18px;font-weight:800;color:#b45309;margin:3px 0 1px">${n(ts.incomplete)}</div>
+                                <div style="font-size:10.5px;color:#d97706">Awaiting callback today</div>
                             </div>
                         </div>
-                        <div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--sp-border);display:flex;align-items:center;justify-content:space-between;font-size:11px">
-                            <span style="color:var(--sp-muted)">Click a box above to filter, or:</span>
-                            <button type="button" class="sp-btn sm" id="spColShowAllBtn" style="font-size:10.5px;padding:2px 8px;height:24px"><i class="fa-regular fa-list"></i> Show All (${n(rows.length)})</button>
+
+                        <div style="border-top:1px dashed var(--sp-border);padding-top:10px;margin-top:6px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+                            <div style="display:flex;align-items:center;gap:6px">
+                                <span style="font-size:11px;color:var(--sp-muted);font-weight:600">Filter:</span>
+                                <button type="button" class="sp-acc-tab-btn active" data-status="all">All (${n(ts.total)})</button>
+                                <button type="button" class="sp-acc-tab-btn" data-status="incomplete" style="border-color:#fde68a;background:#fffbeb;color:#b45309">Incomplete (${n(ts.incomplete)})</button>
+                                <button type="button" class="sp-acc-tab-btn" data-status="completed" style="border-color:#a7f3d0;background:#ecfdf5;color:#047857">Completed (${n(ts.completed)})</button>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:6px">
+                                <button type="button" class="sp-btn sm" id="spAccExpandAllBtn" style="font-size:10.5px;padding:2px 8px;height:24px"><i class="fa-regular fa-arrows-maximize"></i> Expand All</button>
+                                <button type="button" class="sp-btn sm" id="spAccCollapseAllBtn" style="font-size:10.5px;padding:2px 8px;height:24px"><i class="fa-regular fa-arrows-minimize" style="transform:rotate(180deg)"></i> Collapse All</button>
+                            </div>
                         </div>
                     </div>`;
-            } else {
-                html += `<p style="font-size:12.5px;color:var(--sp-muted);margin:0 0 12px;line-height:1.5">${esc(j.description || '')}</p>`;
-            }
 
-            if (!rows.length) {
-                html += '<div class="sp-empty"><i class="fa-regular fa-inbox" style="font-size:28px;margin-bottom:10px;opacity:0.4;display:block"></i>No records found for this selection.</div>';
-            } else {
-                html += `
-                    <div style="font-size:11.5px;color:var(--sp-soft);margin-bottom:8px" id="spDrawerFilteredNote"></div>
-                    <div class="sp-scroll" style="max-height:calc(100vh - 215px);overflow-y:auto;border:1px solid var(--sp-border);border-radius:8px">
-                        <table class="sp-dtable" style="width:100%;margin:0">
-                            <thead>
-                                <tr>
-                                    <th style="min-width:180px">Lead / Record</th>
-                                    <th style="min-width:140px">Owner · Team</th>
-                                    <th style="min-width:130px">Detail</th>
-                                    <th style="min-width:90px;white-space:nowrap">Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>`;
-                rows.forEach((r) => {
-                    const link = r.lead_id ? `<a href="${baseUrl}/view-lead/${r.lead_id}" target="_blank" style="color:var(--sp-green);font-weight:600;text-decoration:none" title="Open lead #${r.lead_id} in new tab">${esc(r.lead_name)} <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;margin-left:3px"></i></a>` : `<b style="color:var(--sp-text)">${esc(r.lead_name)}</b>`;
-                    let badge = '';
-                    if (r.status_badge === 'New Booking') {
-                        badge = '<span class="sp-tag" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;font-weight:700;font-size:10px;padding:2px 6px;border-radius:4px"><i class="fa-solid fa-sparkles" style="font-size:9px;margin-right:2px"></i>New Booking</span>';
-                    } else if (r.status_badge === 'Previous Booking') {
-                        badge = '<span class="sp-tag" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-weight:600;font-size:10px;padding:2px 6px;border-radius:4px"><i class="fa-regular fa-clock-rotate-left" style="font-size:9px;margin-right:2px"></i>Previous Booking</span>';
-                    } else if (r.status_badge) {
-                        badge = `<span class="sp-tag" style="margin-left:5px;font-size:10px;vertical-align:middle">${esc(r.status_badge)}</span>`;
+                if (!rows.length) {
+                    html += '<div class="sp-empty"><i class="fa-regular fa-inbox" style="font-size:28px;margin-bottom:10px;opacity:0.4;display:block"></i>No follow-up records found for today.</div>';
+                } else {
+                    html += `<div style="font-size:11.5px;color:var(--sp-soft);margin-bottom:8px" id="spDrawerFilteredNote"></div>`;
+                    html += `<div class="sp-scroll" style="max-height:calc(100vh - 275px);overflow-y:auto;padding-right:4px">`;
+
+                    // Group rows by owner_id
+                    const leadsByOwner = {};
+                    rows.forEach(r => {
+                        const oid = r.owner_id || 0;
+                        if (!leadsByOwner[oid]) leadsByOwner[oid] = [];
+                        leadsByOwner[oid].push(r);
+                    });
+
+                    const getInitials = (nm) => {
+                        if (!nm || nm === '—' || nm === 'Not Assigned') return '?';
+                        const parts = nm.trim().split(/\s+/);
+                        if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+                        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+                    };
+
+                    execs.forEach((e, idx) => {
+                        const execLeads = leadsByOwner[e.owner_id] || [];
+                        const isExpanded = (idx === 0);
+                        html += `
+                            <div class="sp-exec-acc-card" data-owner-id="${e.owner_id}" data-total="${e.total}" data-completed="${e.completed}" data-incomplete="${e.incomplete}" style="margin-bottom:10px;flex-shrink:0">
+                                <div class="sp-exec-acc-header">
+                                    <div style="display:flex;align-items:center;gap:11px;min-width:0">
+                                        <div style="width:34px;height:34px;border-radius:50%;background:#e0e7ff;color:#3730a3;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0">
+                                            ${getInitials(e.owner_name)}
+                                        </div>
+                                        <div style="min-width:0">
+                                            <div style="font-weight:700;font-size:13px;color:var(--sp-text);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                                                ${esc(e.owner_name)}
+                                            </div>
+                                            <div style="font-size:11px;color:var(--sp-muted);line-height:1.2;margin-top:2px;display:flex;align-items:center;gap:4px">
+                                                <i class="fa-regular fa-users" style="font-size:9.5px;opacity:0.7"></i>
+                                                <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(e.team_name)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:12px">
+                                        <span class="sp-tag" style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px;background:#f1f5f9;color:#334155" title="Scheduled Today">${n(e.total)} Scheduled</span>
+                                        <span class="sp-tag" style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;background:#d1fae5;color:#047857" title="Done Today"><i class="fa-solid fa-circle-check" style="font-size:9.5px;margin-right:2px"></i>${n(e.completed)} Done</span>
+                                        <span class="sp-tag" style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;background:#fef3c7;color:#b45309" title="Incomplete Today"><i class="fa-regular fa-clock" style="font-size:9.5px;margin-right:2px"></i>${n(e.incomplete)} Incomplete</span>
+                                        <i class="fa-solid fa-chevron-down sp-acc-chevron" style="font-size:10.5px;color:var(--sp-muted);margin-left:4px;transition:transform .2s;${isExpanded ? 'transform:rotate(180deg)' : ''}"></i>
+                                    </div>
+                                </div>
+                                <div class="sp-exec-acc-body" style="display:${isExpanded ? 'block' : 'none'};border-top:1px solid var(--sp-border)">
+                                    <table class="sp-dtable" style="width:100%;margin:0;font-size:11.5px">
+                                        <thead>
+                                            <tr style="background:#fff">
+                                                <th style="min-width:170px">Lead / Record</th>
+                                                <th style="min-width:200px">Action & Details</th>
+                                                <th style="width:90px;text-align:right;white-space:nowrap">Date</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${execLeads.map(r => {
+                                                const link = r.lead_id ? `<a href="${baseUrl}/view-lead/${r.lead_id}" target="_blank" style="color:var(--sp-green);font-weight:600;text-decoration:none" title="Open lead #${r.lead_id} in new tab">${esc(r.lead_name)} <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;margin-left:3px"></i></a>` : `<b style="color:var(--sp-text)">${esc(r.lead_name)}</b>`;
+                                                const isCompleted = (r.status_badge === 'Completed' || r.is_completed == 1 || r.is_completed === '1' || r.is_completed === true);
+                                                let badge = '';
+                                                if (isCompleted) {
+                                                    badge = '<span class="sp-tag" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;font-weight:700;font-size:10px;padding:2px 6px;border-radius:4px"><i class="fa-solid fa-circle-check" style="font-size:9px;margin-right:2px"></i>Completed</span>';
+                                                } else {
+                                                    badge = '<span class="sp-tag" style="background:#fffbeb;color:#b45309;border:1px solid #fde68a;font-weight:700;font-size:10px;padding:2px 6px;border-radius:4px"><i class="fa-regular fa-clock" style="font-size:9px;margin-right:2px"></i>Incomplete</span>';
+                                                }
+                                                const statusAttr = isCompleted ? 'completed' : 'incomplete';
+                                                return `
+                                                    <tr data-status="${statusAttr}" data-lead-id="${r.lead_id || ''}">
+                                                        <td>
+                                                            <div style="font-size:12.5px">${link}</div>
+                                                            ${r.phone ? `<div style="color:var(--sp-soft);font-size:11px;margin-top:2px;font-family:monospace">${esc(r.phone)}</div>` : ''}
+                                                        </td>
+                                                        <td>
+                                                            <div style="font-size:11.5px;line-height:1.4">${esc(r.info || '')} ${badge}</div>
+                                                        </td>
+                                                        <td style="white-space:nowrap;font-size:11px;color:var(--sp-muted);text-align:right">
+                                                            ${esc((r.event_date || '').substring(0, 10))}
+                                                        </td>
+                                                    </tr>
+                                                `;
+                                            }).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    html += `</div>`;
+                    if (j.total > rows.length) {
+                        html += `<div class="sp-note" style="margin-top:10px;font-size:11.5px"><i class="fa-regular fa-info-circle"></i> Showing latest ${rows.length} of ${n(j.total)} records. Click <b>Export CSV</b> to download all.</div>`;
                     }
-                    const btypeAttr = (r.is_new_booking !== undefined) ? `data-btype="${r.is_new_booking ? 'new' : 'prev'}"` : '';
-                    html += `<tr ${btypeAttr}>
-                        <td>
-                            <div style="font-size:12.5px">${link}</div>
-                            ${r.phone ? `<div style="color:var(--sp-soft);font-size:11px;margin-top:2px;font-family:monospace">${esc(r.phone)}</div>` : ''}
-                        </td>
-                        <td>
-                            ${(!r.owner_name || r.owner_name === '—' || r.owner_name === 'Not Assigned')
-                                ? '<span class="sp-tag" style="background:rgba(245,158,11,0.12);color:#d97706;border:1px solid rgba(245,158,11,0.3);font-size:11px;padding:2px 7px;border-radius:4px;font-weight:600;display:inline-block"><i class="fa-regular fa-user-slash" style="margin-right:3px"></i>Not Assigned</span>'
-                                : `<div style="font-weight:600;font-size:12px">${esc(r.owner_name)}</div>`}
-                            ${(r.team_name && r.team_name !== '—')
-                                ? `<div style="color:var(--sp-soft);font-size:11px;margin-top:2px"><i class="fa-regular fa-users" style="font-size:9.5px;margin-right:3px;opacity:0.7"></i>${esc(r.team_name)}</div>`
-                                : '<div style="color:var(--sp-muted);font-size:11px;margin-top:2px;opacity:0.6">—</div>'}
-                        </td>
-                        <td>
-                            <div style="font-size:11.5px">${esc(r.info || '')} ${badge}</div>
-                        </td>
-                        <td style="white-space:nowrap;font-size:11px;color:var(--sp-muted)">
-                            ${esc((r.event_date || '').substring(0, 10))}
-                        </td>
-                    </tr>`;
-                });
-                html += `</tbody></table></div>`;
-                if (j.total > rows.length) {
-                    html += `<div class="sp-note" style="margin-top:10px;font-size:11.5px"><i class="fa-regular fa-info-circle"></i> Showing latest ${rows.length} of ${n(j.total)} records. Click <b>Export CSV</b> to download all.</div>`;
+                }
+            } else {
+                if (key === 'collection' && j.collection_summary) {
+                    const cs = j.collection_summary;
+                    html += `
+                        <div class="sp-col-breakdown-card" style="background:var(--sp-card);border:1px solid var(--sp-border);border-radius:10px;padding:12px 14px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,0.03)">
+                            <div style="font-size:12px;font-weight:700;color:var(--sp-text);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
+                                <span style="display:inline-flex;align-items:center;gap:6px"><i class="fa-solid fa-sack-dollar" style="color:var(--sp-green)"></i> Collection Source Breakdown:</span>
+                                <span style="font-size:11px;color:var(--sp-muted)">Total: <b style="color:var(--sp-text)">${tk(cs.total_amt)}</b></span>
+                            </div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                                <div class="sp-col-type-btn" data-type="new" style="background:#ecfdf5;border:1.5px solid #10b981;border-radius:8px;padding:9px 12px;cursor:pointer;transition:all .15s" title="Click to view payments from New Bookings">
+                                    <div style="display:flex;justify-content:space-between;align-items:center">
+                                        <span style="font-size:11.5px;font-weight:700;color:#065f46;display:inline-flex;align-items:center;gap:5px"><i class="fa-solid fa-sparkles"></i> New Bookings</span>
+                                        <span style="font-size:10px;font-weight:700;background:#d1fae5;color:#047857;padding:1px 6px;border-radius:99px">${pct(cs.new_booking_amt, cs.total_amt)}</span>
+                                    </div>
+                                    <div style="font-size:16px;font-weight:800;color:#047857;margin:3px 0 1px">${tk(cs.new_booking_amt)}</div>
+                                    <div style="font-size:10.5px;color:#059669">${n(cs.new_booking_count)} payments booked in period</div>
+                                </div>
+                                <div class="sp-col-type-btn" data-type="prev" style="background:#eff6ff;border:1.5px solid #3b82f6;border-radius:8px;padding:9px 12px;cursor:pointer;transition:all .15s" title="Click to view payments from Previous Bookings">
+                                    <div style="display:flex;justify-content:space-between;align-items:center">
+                                        <span style="font-size:11.5px;font-weight:700;color:#1e40af;display:inline-flex;align-items:center;gap:5px"><i class="fa-regular fa-clock-rotate-left"></i> Previous Bookings</span>
+                                        <span style="font-size:10px;font-weight:700;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:99px">${pct(cs.prev_booking_amt, cs.total_amt)}</span>
+                                    </div>
+                                    <div style="font-size:16px;font-weight:800;color:#1d4ed8;margin:3px 0 1px">${tk(cs.prev_booking_amt)}</div>
+                                    <div style="font-size:10.5px;color:#2563eb">${n(cs.prev_booking_count)} installment / past payments</div>
+                                </div>
+                            </div>
+                            <div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--sp-border);display:flex;align-items:center;justify-content:space-between;font-size:11px">
+                                <span style="color:var(--sp-muted)">Click a box above to filter, or:</span>
+                                <button type="button" class="sp-btn sm" id="spColShowAllBtn" style="font-size:10.5px;padding:2px 8px;height:24px"><i class="fa-regular fa-list"></i> Show All (${n(rows.length)})</button>
+                            </div>
+                        </div>`;
+                } else {
+                    html += `<p style="font-size:12.5px;color:var(--sp-muted);margin:0 0 12px;line-height:1.5">${esc(j.description || '')}</p>`;
+                }
+
+                if (!rows.length) {
+                    html += '<div class="sp-empty"><i class="fa-regular fa-inbox" style="font-size:28px;margin-bottom:10px;opacity:0.4;display:block"></i>No records found for this selection.</div>';
+                } else {
+                    html += `
+                        <div style="font-size:11.5px;color:var(--sp-soft);margin-bottom:8px" id="spDrawerFilteredNote"></div>
+                        <div class="sp-scroll" style="max-height:calc(100vh - 215px);overflow-y:auto;border:1px solid var(--sp-border);border-radius:8px">
+                            <table class="sp-dtable" style="width:100%;margin:0">
+                                <thead>
+                                    <tr>
+                                        <th style="min-width:180px">Lead / Record</th>
+                                        <th style="min-width:140px">Owner · Team</th>
+                                        <th style="min-width:130px">Detail</th>
+                                        <th style="min-width:90px;white-space:nowrap">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>`;
+                    rows.forEach((r) => {
+                        const link = r.lead_id ? `<a href="${baseUrl}/view-lead/${r.lead_id}" target="_blank" style="color:var(--sp-green);font-weight:600;text-decoration:none" title="Open lead #${r.lead_id} in new tab">${esc(r.lead_name)} <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;margin-left:3px"></i></a>` : `<b style="color:var(--sp-text)">${esc(r.lead_name)}</b>`;
+                        let badge = '';
+                        if (r.status_badge === 'Completed') {
+                            badge = '<span class="sp-tag" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;font-weight:700;font-size:10px;padding:2px 6px;border-radius:4px"><i class="fa-solid fa-circle-check" style="font-size:9px;margin-right:2px"></i>Completed</span>';
+                        } else if (r.status_badge === 'Incomplete') {
+                            badge = '<span class="sp-tag" style="background:#fffbeb;color:#b45309;border:1px solid #fde68a;font-weight:700;font-size:10px;padding:2px 6px;border-radius:4px"><i class="fa-regular fa-clock" style="font-size:9px;margin-right:2px"></i>Incomplete</span>';
+                        } else if (r.status_badge === 'New Booking') {
+                            badge = '<span class="sp-tag" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;font-weight:700;font-size:10px;padding:2px 6px;border-radius:4px"><i class="fa-solid fa-sparkles" style="font-size:9px;margin-right:2px"></i>New Booking</span>';
+                        } else if (r.status_badge === 'Previous Booking') {
+                            badge = '<span class="sp-tag" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-weight:600;font-size:10px;padding:2px 6px;border-radius:4px"><i class="fa-regular fa-clock-rotate-left" style="font-size:9px;margin-right:2px"></i>Previous Booking</span>';
+                        } else if (r.status_badge) {
+                            badge = `<span class="sp-tag" style="margin-left:5px;font-size:10px;vertical-align:middle">${esc(r.status_badge)}</span>`;
+                        }
+                        const btypeAttr = (r.is_new_booking !== undefined) ? `data-btype="${r.is_new_booking ? 'new' : 'prev'}"` : '';
+                        const statusAttr = r.status_badge ? `data-status="${esc(r.status_badge.toLowerCase())}"` : '';
+                        const ownerAttr = r.owner_id ? `data-owner-id="${esc(r.owner_id)}"` : '';
+                        html += `<tr ${btypeAttr} ${statusAttr} ${ownerAttr}>
+                            <td>
+                                <div style="font-size:12.5px">${link}</div>
+                                ${r.phone ? `<div style="color:var(--sp-soft);font-size:11px;margin-top:2px;font-family:monospace">${esc(r.phone)}</div>` : ''}
+                            </td>
+                            <td>
+                                ${(!r.owner_name || r.owner_name === '—' || r.owner_name === 'Not Assigned')
+                                    ? '<span class="sp-tag" style="background:rgba(245,158,11,0.12);color:#d97706;border:1px solid rgba(245,158,11,0.3);font-size:11px;padding:2px 7px;border-radius:4px;font-weight:600;display:inline-block"><i class="fa-regular fa-user-slash" style="margin-right:3px"></i>Not Assigned</span>'
+                                    : `<div style="font-weight:600;font-size:12px">${esc(r.owner_name)}</div>`}
+                                ${(r.team_name && r.team_name !== '—')
+                                    ? `<div style="color:var(--sp-soft);font-size:11px;margin-top:2px"><i class="fa-regular fa-users" style="font-size:9.5px;margin-right:3px;opacity:0.7"></i>${esc(r.team_name)}</div>`
+                                    : '<div style="color:var(--sp-muted);font-size:11px;margin-top:2px;opacity:0.6">—</div>'}
+                            </td>
+                            <td>
+                                <div style="font-size:11.5px">${esc(r.info || '')} ${badge}</div>
+                            </td>
+                            <td style="white-space:nowrap;font-size:11px;color:var(--sp-muted)">
+                                ${esc((r.event_date || '').substring(0, 10))}
+                            </td>
+                        </tr>`;
+                    });
+                    html += `</tbody></table></div>`;
+                    if (j.total > rows.length) {
+                        html += `<div class="sp-note" style="margin-top:10px;font-size:11.5px"><i class="fa-regular fa-info-circle"></i> Showing latest ${rows.length} of ${n(j.total)} records. Click <b>Export CSV</b> to download all.</div>`;
+                    }
                 }
             }
 
             openDrawer(j.label || 'Records', `${n(j.total || 0)} records`, html);
 
-            // Wire up interactive collection breakdown filters
-            if (key === 'collection' && j.collection_summary) {
-                const colBtns = document.querySelectorAll('.sp-col-type-btn');
-                const showAllBtn = document.getElementById('spColShowAllBtn');
-                const filterCollectionType = (type) => {
-                    colBtns.forEach(btn => {
-                        const isActive = (btn.dataset.type === type);
-                        btn.style.opacity = (type === 'all' || isActive) ? '1' : '0.45';
-                        btn.style.outline = isActive ? '2px solid var(--sp-green)' : 'none';
+            // Wire up interactive today's followups accordion interactions
+            if ((key === 'today_followups' || key === 'due_today') && j.today_summary) {
+                // Header click toggles accordion body
+                document.querySelectorAll('.sp-exec-acc-header').forEach(hdr => {
+                    hdr.addEventListener('click', () => {
+                        const card = hdr.closest('.sp-exec-acc-card');
+                        const body = card.querySelector('.sp-exec-acc-body');
+                        const ch = hdr.querySelector('.sp-acc-chevron');
+                        const isHidden = (body.style.display === 'none' || !body.style.display);
+                        body.style.display = isHidden ? 'block' : 'none';
+                        if (ch) ch.style.transform = isHidden ? 'rotate(180deg)' : '';
                     });
-                    const trs = Array.from(document.querySelectorAll('#spDrawerBody table tbody tr'));
-                    let matched = 0;
-                    trs.forEach(tr => {
-                        const btype = tr.dataset.btype;
-                        const match = (type === 'all' || btype === type);
-                        tr.style.display = match ? '' : 'none';
-                        if (match) matched++;
+                });
+
+                // Expand All / Collapse All
+                const expAllBtn = document.getElementById('spAccExpandAllBtn');
+                const colAllBtn = document.getElementById('spAccCollapseAllBtn');
+                if (expAllBtn) {
+                    expAllBtn.addEventListener('click', () => {
+                        document.querySelectorAll('.sp-exec-acc-card').forEach(c => {
+                            const b = c.querySelector('.sp-exec-acc-body');
+                            const ch = c.querySelector('.sp-acc-chevron');
+                            if (b) b.style.display = 'block';
+                            if (ch) ch.style.transform = 'rotate(180deg)';
+                        });
                     });
+                }
+                if (colAllBtn) {
+                    colAllBtn.addEventListener('click', () => {
+                        document.querySelectorAll('.sp-exec-acc-card').forEach(c => {
+                            const b = c.querySelector('.sp-exec-acc-body');
+                            const ch = c.querySelector('.sp-acc-chevron');
+                            if (b) b.style.display = 'none';
+                            if (ch) ch.style.transform = '';
+                        });
+                    });
+                }
+
+                // Filter by Status (tabs & cards)
+                let currentStatusFilter = 'all';
+                const applyStatusFilter = (st) => {
+                    currentStatusFilter = st;
+                    document.querySelectorAll('.sp-acc-tab-btn').forEach(btn => {
+                        const active = (btn.dataset.status === st);
+                        btn.classList.toggle('active', active);
+                    });
+                    document.querySelectorAll('.sp-today-type-btn').forEach(btn => {
+                        const active = (btn.dataset.status === st);
+                        btn.style.outline = active ? '2px solid var(--sp-green)' : 'none';
+                        btn.style.opacity = (st === 'all' || active) ? '1' : '0.55';
+                    });
+
+                    let totalVisibleLeads = 0;
+                    let visibleExecs = 0;
+                    document.querySelectorAll('.sp-exec-acc-card').forEach(card => {
+                        const trs = card.querySelectorAll('tbody tr');
+                        let cardMatches = 0;
+                        trs.forEach(tr => {
+                            const trSt = tr.dataset.status;
+                            const match = (st === 'all' || trSt === st);
+                            tr.style.display = match ? '' : 'none';
+                            if (match) cardMatches++;
+                        });
+
+                        if (cardMatches > 0) {
+                            card.style.display = '';
+                            totalVisibleLeads += cardMatches;
+                            visibleExecs++;
+                            if (st !== 'all') {
+                                const b = card.querySelector('.sp-exec-acc-body');
+                                const ch = card.querySelector('.sp-acc-chevron');
+                                if (b) b.style.display = 'block';
+                                if (ch) ch.style.transform = 'rotate(180deg)';
+                            }
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    });
+
                     const note = document.getElementById('spDrawerFilteredNote');
                     if (note) {
-                        note.textContent = type === 'all' ? '' : `Showing ${matched} ${type === 'new' ? 'New Booking' : 'Previous Booking'} payments (filtered from ${rows.length})`;
+                        if (st === 'all') {
+                            note.textContent = '';
+                        } else if (totalVisibleLeads > 0) {
+                            note.textContent = `Showing ${totalVisibleLeads} ${st} follow-ups across ${visibleExecs} executives`;
+                        } else {
+                            note.textContent = `No ${st} follow-ups found for today`;
+                        }
+                    }
+
+                    // Empty state element inside scroll container if 0 results
+                    let emptyEl = document.getElementById('spAccStatusEmpty');
+                    const scrollContainer = document.querySelector('#spDrawerBody .sp-scroll');
+                    if (totalVisibleLeads === 0) {
+                        if (!emptyEl && scrollContainer) {
+                            emptyEl = document.createElement('div');
+                            emptyEl.id = 'spAccStatusEmpty';
+                            emptyEl.className = 'sp-empty';
+                            emptyEl.style.padding = '36px 12px';
+                            scrollContainer.appendChild(emptyEl);
+                        }
+                        if (emptyEl) {
+                            const iconClass = (st === 'completed') ? 'circle-check' : 'clock';
+                            const iconColor = (st === 'completed') ? '#10b981' : '#f59e0b';
+                            emptyEl.innerHTML = `<i class="fa-regular fa-${iconClass}" style="font-size:32px;color:${iconColor};opacity:0.8;margin-bottom:10px;display:block"></i><b style="font-size:13px;color:var(--sp-text)">No ${st} follow-ups</b><p style="margin:4px 0 0;font-size:11.5px;color:var(--sp-muted)">There are no ${st} follow-ups logged for today yet.</p>`;
+                            emptyEl.style.display = 'block';
+                        }
+                    } else if (emptyEl) {
+                        emptyEl.style.display = 'none';
                     }
                 };
-                colBtns.forEach(btn => btn.addEventListener('click', () => filterCollectionType(btn.dataset.type)));
-                if (showAllBtn) showAllBtn.addEventListener('click', () => filterCollectionType('all'));
-            }
 
-            // Wire up real-time search box
-            if (searchWrap && rows.length > 2) {
-                searchWrap.style.display = 'block';
-                const searchInput = document.getElementById('spDrawerFilter');
-                if (searchInput) {
-                    searchInput.value = '';
-                    setTimeout(() => searchInput.focus(), 80);
-                    searchInput.oninput = () => {
-                        const q = searchInput.value.toLowerCase().trim();
+                document.querySelectorAll('.sp-acc-tab-btn').forEach(btn => {
+                    btn.addEventListener('click', () => applyStatusFilter(btn.dataset.status));
+                });
+                document.querySelectorAll('.sp-today-type-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const target = (currentStatusFilter === btn.dataset.status) ? 'all' : btn.dataset.status;
+                        applyStatusFilter(target);
+                    });
+                });
+
+                // Search input for accordion
+                if (searchWrap && rows.length > 2) {
+                    searchWrap.style.display = 'block';
+                    const searchInput = document.getElementById('spDrawerFilter');
+                    if (searchInput) {
+                        searchInput.value = '';
+                        setTimeout(() => searchInput.focus(), 80);
+                        searchInput.oninput = () => {
+                            const q = searchInput.value.toLowerCase().trim();
+                            let totalMatched = 0;
+                            document.querySelectorAll('.sp-exec-acc-card').forEach(card => {
+                                const headerText = card.querySelector('.sp-exec-acc-header').textContent.toLowerCase();
+                                const trs = Array.from(card.querySelectorAll('tbody tr'));
+                                let cardMatches = 0;
+
+                                trs.forEach(tr => {
+                                    const trSt = tr.dataset.status;
+                                    const statusMatch = (currentStatusFilter === 'all' || trSt === currentStatusFilter);
+                                    const textMatch = !q || headerText.includes(q) || tr.textContent.toLowerCase().includes(q);
+                                    const match = statusMatch && textMatch;
+                                    tr.style.display = match ? '' : 'none';
+                                    if (match) cardMatches++;
+                                });
+
+                                if (cardMatches > 0) {
+                                    card.style.display = '';
+                                    totalMatched += cardMatches;
+                                    if (q) {
+                                        const b = card.querySelector('.sp-exec-acc-body');
+                                        const ch = card.querySelector('.sp-acc-chevron');
+                                        if (b) b.style.display = 'block';
+                                        if (ch) ch.style.transform = 'rotate(180deg)';
+                                    }
+                                } else {
+                                    card.style.display = 'none';
+                                }
+                            });
+
+                            const note = document.getElementById('spDrawerFilteredNote');
+                            if (note) {
+                                note.textContent = q ? `Showing ${totalMatched} matching follow-ups (filtered from ${rows.length})` : '';
+                            }
+                            let emptyEl = document.getElementById('spAccStatusEmpty');
+                            if (q && totalMatched === 0) {
+                                const scrollContainer = document.querySelector('#spDrawerBody .sp-scroll');
+                                if (!emptyEl && scrollContainer) {
+                                    emptyEl = document.createElement('div');
+                                    emptyEl.id = 'spAccStatusEmpty';
+                                    emptyEl.className = 'sp-empty';
+                                    emptyEl.style.padding = '36px 12px';
+                                    scrollContainer.appendChild(emptyEl);
+                                }
+                                if (emptyEl) {
+                                    emptyEl.innerHTML = `<i class="fa-regular fa-magnifying-glass" style="font-size:28px;opacity:0.4;margin-bottom:8px;display:block"></i>No follow-ups match "${esc(q)}".`;
+                                    emptyEl.style.display = 'block';
+                                }
+                            } else if (emptyEl && !q && currentStatusFilter === 'all') {
+                                emptyEl.style.display = 'none';
+                            }
+                        };
+                    }
+                }
+            } else {
+                // Wire up interactive collection breakdown filters
+                if (key === 'collection' && j.collection_summary) {
+                    const colBtns = document.querySelectorAll('.sp-col-type-btn');
+                    const showAllBtn = document.getElementById('spColShowAllBtn');
+                    const filterCollectionType = (type) => {
+                        colBtns.forEach(btn => {
+                            const isActive = (btn.dataset.type === type);
+                            btn.style.opacity = (type === 'all' || isActive) ? '1' : '0.45';
+                            btn.style.outline = isActive ? '2px solid var(--sp-green)' : 'none';
+                        });
                         const trs = Array.from(document.querySelectorAll('#spDrawerBody table tbody tr'));
                         let matched = 0;
                         trs.forEach(tr => {
-                            const match = !q || tr.textContent.toLowerCase().includes(q);
+                            const btype = tr.dataset.btype;
+                            const match = (type === 'all' || btype === type);
                             tr.style.display = match ? '' : 'none';
                             if (match) matched++;
                         });
                         const note = document.getElementById('spDrawerFilteredNote');
                         if (note) {
-                            note.textContent = q ? `Showing ${matched} matching rows (filtered from ${rows.length})` : '';
+                            note.textContent = type === 'all' ? '' : `Showing ${matched} ${type === 'new' ? 'New Booking' : 'Previous Booking'} payments (filtered from ${rows.length})`;
                         }
                     };
+                    colBtns.forEach(btn => btn.addEventListener('click', () => filterCollectionType(btn.dataset.type)));
+                    if (showAllBtn) showAllBtn.addEventListener('click', () => filterCollectionType('all'));
+                }
+
+                // Wire up real-time search box
+                if (searchWrap && rows.length > 2) {
+                    searchWrap.style.display = 'block';
+                    const searchInput = document.getElementById('spDrawerFilter');
+                    if (searchInput) {
+                        searchInput.value = '';
+                        setTimeout(() => searchInput.focus(), 80);
+                        searchInput.oninput = () => {
+                            const q = searchInput.value.toLowerCase().trim();
+                            const trs = Array.from(document.querySelectorAll('#spDrawerBody table tbody tr'));
+                            let matched = 0;
+                            trs.forEach(tr => {
+                                const match = !q || tr.textContent.toLowerCase().includes(q);
+                                tr.style.display = match ? '' : 'none';
+                                if (match) matched++;
+                            });
+                            const note = document.getElementById('spDrawerFilteredNote');
+                            if (note) {
+                                note.textContent = q ? `Showing ${matched} matching rows (filtered from ${rows.length})` : '';
+                            }
+                        };
+                    }
                 }
             }
 

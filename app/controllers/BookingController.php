@@ -323,7 +323,7 @@ class BookingController extends Controller
                 'source_table'   => 'lead_bookings',
                 'source_id'      => $bookingId,
                 'request_amount' => $discount,
-                'requested_by'   => $_SESSION['user']['id'],
+                'requested_by'   => (!empty($salesById) ? (int)$salesById : (!empty($_SESSION['user']['id']) ? (int)$_SESSION['user']['id'] : 1)),
                 'approve_role'   => 'management',
                 'attachment'     => $approvalAttachmentPath,
                 'meta_data'      => json_encode([
