@@ -409,12 +409,12 @@ class IncentiveController extends Controller
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') exit;
         if (isset($_POST['settings']) && is_array($_POST['settings'])) {
             foreach ($_POST['settings'] as $key => $value) {
-                $stmt = $this->db->prepare("UPDATE incentive_settings SET setting_value=? WHERE setting_key=?");
-                $stmt->bind_param("ss", $value, $key);
+                $stmt = $this->db->prepare("INSERT INTO incentive_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+                $stmt->bind_param("sss", $key, $value, $value);
                 $stmt->execute();
             }
         }
-        $_SESSION['success'] = "General Settings updated successfully.";
+        $_SESSION['success'] = "Sales Incentive Modality Settings updated successfully.";
         header("Location: {$GLOBALS['base_url']}/incentive-config");
         exit;
     }

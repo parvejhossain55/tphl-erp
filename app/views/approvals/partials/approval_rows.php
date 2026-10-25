@@ -1,4 +1,4 @@
-<?php if (empty($approvalHistory)): ?>
+﻿<?php if (empty($approvalHistory)): ?>
     <tr>
         <td colspan="10" class="text-center py-4 text-muted">
             <i class="fa-solid fa-folder-open fs-3 d-block mb-2"></i>
@@ -288,7 +288,7 @@
                                         }
                                         ?>
                                         <?php if ($displayAmount > 0): ?>
-                                            <span class="fw-bold text-dark">৳
+                                            <span class="fw-bold text-dark">à§³
                                                 <?= number_format($displayAmount, 2) ?>
                                             </span>
                                         <?php else: ?>
@@ -326,13 +326,13 @@
                                         ?>
                                         <?php if ($appAmt > 0): ?>
                                             <span class="fw-bold <?= ($qcAmt > 0 && $appAmt == $qcAmt && $isPendingMgmt) ? 'text-primary' : 'text-success' ?>">
-                                                ৳ <?= number_format($appAmt, 2) ?>
+                                                à§³ <?= number_format($appAmt, 2) ?>
                                             </span>
                                             <?php if ($qcAmt > 0 && $appAmt == $qcAmt && $isPendingMgmt): ?>
                                                 <div class="mt-1"><span class="badge bg-info-subtle text-info border border-info-subtle extra-small" style="font-size: 9px; padding: 2px 6px;"><i class="bi bi-shield-check me-1"></i>QC Approved</span></div>
                                             <?php endif; ?>
                                         <?php elseif ($qcAmt > 0): ?>
-                                            <span class="fw-bold text-primary">৳ <?= number_format($qcAmt, 2) ?></span>
+                                            <span class="fw-bold text-primary">à§³ <?= number_format($qcAmt, 2) ?></span>
                                             <div class="mt-1"><span class="badge bg-info-subtle text-info border border-info-subtle extra-small" style="font-size: 9px; padding: 2px 6px;"><i class="bi bi-shield-check me-1"></i>QC Approved</span></div>
                                         <?php else: ?>
                                             <span class="text-muted extra-small">--</span>
@@ -376,7 +376,7 @@
                                                 </div>
                                                 <?php if (strtolower($req['op_head_status'] ?? '') === 'approved' || !empty($req['op_head_by'])): ?>
                                                     <div class="p-1 px-2 rounded-2 bg-success-subtle border border-success-subtle text-start d-flex align-items-center justify-content-between"
-                                                         title="<?= htmlspecialchars(($req['op_head_name'] ?? 'Admin & Operation Head') . (!empty($req['op_head_at']) ? ' • ' . date('d M, Y h:i A', strtotime($req['op_head_at'])) : '')) ?>">
+                                                         title="<?= htmlspecialchars(($req['op_head_name'] ?? 'Admin & Operation Head') . (!empty($req['op_head_at']) ? ' â€¢ ' . date('d M, Y h:i A', strtotime($req['op_head_at'])) : '')) ?>">
                                                         <div class="d-flex align-items-center gap-1 text-truncate me-1">
                                                             <i class="fa-solid fa-circle-check text-success flex-shrink-0" style="font-size: 10px;"></i>
                                                             <span class="fw-bold text-dark text-truncate" style="font-size: 10.5px; max-width: 110px;">
@@ -395,75 +395,75 @@
                                             </div>
 
                                         <?php elseif (in_array($req['status'], ['approved', 'partially_approved', 'partially_paid'])): ?>
-                                            <div class="d-flex flex-column gap-1 text-start" style="max-width: 220px; margin: 0 auto;">
-                                                <!-- Step 1: Management / Op Head Approval Card -->
+                                            <div class="d-flex flex-column gap-1 text-start" style="min-width: 180px; max-width: 220px; margin: 0 auto;">
+                                                <!-- Step 1: Management / Op Head Approval Row -->
                                                 <?php
                                                 $approverTooltip = trim(
                                                     (!empty($req['approver_designation']) ? $req['approver_designation'] : 'Management Executive') .
-                                                    (!empty($req['approver_email']) ? ' • ' . $req['approver_email'] : '') .
-                                                    ($req['approved_at'] ? ' • ' . date('d M, Y h:i A', strtotime($req['approved_at'])) : '')
+                                                    (!empty($req['approver_email']) ? ' â€¢ ' . $req['approver_email'] : '') .
+                                                    ($req['approved_at'] ? ' â€¢ ' . date('d M, Y h:i A', strtotime($req['approved_at'])) : '')
                                                 );
-                                                $mgmtTitle = $req['status'] === 'approved' ? 'Mgmt Approved' : 'Partially Approved';
-                                                $mgmtBadgeBg = $req['status'] === 'approved' ? 'bg-success-subtle text-success border-success-subtle' : 'bg-info-subtle text-info border-info-subtle';
+                                                $mgmtBadgeBg = $req['status'] === 'approved' ? 'bg-success-subtle border-success-subtle' : 'bg-info-subtle border-info-subtle';
                                                 ?>
-                                                <div class="p-1 px-2 rounded-2 <?= $mgmtBadgeBg ?> border" title="<?= htmlspecialchars($approverTooltip) ?>">
-                                                    <div class="d-flex align-items-center justify-content-between gap-1">
-                                                        <span class="fw-bold" style="font-size: 10px;">
-                                                            <i class="fa-solid fa-circle-check me-1"></i><?= $mgmtTitle ?>
+                                                <div class="px-1.5 py-1 rounded <?= $mgmtBadgeBg ?> border d-flex align-items-center justify-content-between gap-1" title="<?= htmlspecialchars($approverTooltip) ?>" style="font-size: 10px; line-height: 1.2;">
+                                                    <div class="d-flex align-items-center gap-1 text-truncate me-1">
+                                                        <i class="fa-solid fa-circle-check text-success flex-shrink-0" style="font-size: 9.5px;"></i>
+                                                        <span class="fw-bold text-dark text-truncate" style="max-width: 105px;" title="<?= htmlspecialchars($req['approver_name'] ?? 'Management') ?>">
+                                                            <?= htmlspecialchars($req['approver_name'] ?? 'Management') ?>
                                                         </span>
-                                                        <?php if ($req['approved_at']): ?>
-                                                            <span class="text-muted" style="font-size: 9.5px;"><?= date('d M, h:i A', strtotime($req['approved_at'])) ?></span>
-                                                        <?php endif; ?>
+                                                        <span class="badge bg-success text-white p-0 px-1 flex-shrink-0" style="font-size: 8px;">Mgmt</span>
                                                     </div>
-                                                    <div class="fw-semibold text-dark text-truncate" style="font-size: 11px;">
-                                                        <?= htmlspecialchars($req['approver_name'] ?? 'Management') ?>
-                                                    </div>
+                                                    <?php if ($req['approved_at']): ?>
+                                                        <span class="text-muted flex-shrink-0" style="font-size: 8.5px; white-space: nowrap;"><?= date('d M, h:i A', strtotime($req['approved_at'])) ?></span>
+                                                    <?php endif; ?>
                                                 </div>
 
-                                                <?php if (strtolower($req['op_head_status'] ?? '') === 'approved' && !empty($req['op_head_by']) && (int)$req['op_head_by'] !== (int)($req['approved_by'] ?? 0)): ?>
-                                                    <div class="extra-small text-muted text-start px-1" style="font-size: 9.5px;" title="<?= htmlspecialchars(!empty($req['op_head_name']) ? $req['op_head_name'] : 'Admin & Operation Head') ?>">
-                                                        <i class="fa-solid fa-check text-success me-1"></i>Op Head: <strong class="text-dark"><?= htmlspecialchars(!empty($req['op_head_name']) ? $req['op_head_name'] : 'Op Head') ?></strong>
-                                                        <?php if (!empty($req['op_head_at'])): ?> · <?= date('d M, h:i A', strtotime($req['op_head_at'])) ?><?php endif; ?>
+                                                <!-- Step 1.5: Op Head Row (Only if different person from Mgmt approver) -->
+                                                <?php if (strtolower($req['op_head_status'] ?? '') === 'approved' && !empty($req['op_head_by']) && (int)$req['op_head_by'] !== (int)($req['approved_by'] ?? 0) && strtolower(trim($req['op_head_name'] ?? '')) !== strtolower(trim($req['approver_name'] ?? ''))): ?>
+                                                    <div class="px-1.5 py-1 rounded bg-light border d-flex align-items-center justify-content-between gap-1 text-muted" 
+                                                         title="<?= htmlspecialchars(!empty($req['op_head_name']) ? $req['op_head_name'] : 'Admin & Operation Head') ?>" style="font-size: 10px; line-height: 1.2;">
+                                                        <div class="d-flex align-items-center gap-1 text-truncate me-1">
+                                                            <i class="fa-solid fa-check text-success flex-shrink-0" style="font-size: 9px;"></i>
+                                                            <span class="text-dark fw-semibold text-truncate" style="max-width: 105px;">
+                                                                <?= htmlspecialchars(!empty($req['op_head_name']) ? $req['op_head_name'] : 'Op Head') ?>
+                                                            </span>
+                                                            <span class="badge bg-secondary-subtle text-secondary p-0 px-1 flex-shrink-0" style="font-size: 8px;">Op</span>
+                                                        </div>
+                                                        <?php if (!empty($req['op_head_at'])): ?>
+                                                            <span class="text-muted flex-shrink-0" style="font-size: 8.5px; white-space: nowrap;"><?= date('d M, h:i A', strtotime($req['op_head_at'])) ?></span>
+                                                        <?php endif; ?>
                                                     </div>
                                                 <?php endif; ?>
 
                                                 <?php if (count($req['mgmt_approvals'] ?? []) > 1 || (($req['fr_status'] ?? '') === 'partially_approved')) { include __DIR__ . '/fr_mgmt_approvals_block.php'; } ?>
 
-                                                <!-- Step 2: Accounts Head Card (Pending or Approved) -->
+                                                <!-- Step 2: Accounts Head Row (Pending or Approved) -->
                                                 <?php if ($isPendingAccountsHead): ?>
-                                                    <div class="p-1 px-2 rounded-2 bg-warning-subtle text-dark border border-warning-subtle" title="Payment locked until Accounts Head (Md. Mamunoor Rashid [1309]) approves">
-                                                        <div class="d-flex align-items-center justify-content-between gap-1">
-                                                            <span class="fw-bold text-dark" style="font-size: 10px;">
-                                                                <i class="fa-solid fa-hourglass-half text-warning me-1"></i>Pending Accts Head
-                                                            </span>
-                                                            <span class="badge bg-warning text-dark p-0 px-1" style="font-size: 9px;">1309</span>
+                                                    <div class="px-1.5 py-1 rounded bg-warning-subtle border border-warning-subtle d-flex align-items-center justify-content-between gap-1" title="Payment locked until Accounts Head (Md. Mamunoor Rashid [1309]) approves" style="font-size: 10px; line-height: 1.2;">
+                                                        <div class="d-flex align-items-center gap-1 text-truncate me-1">
+                                                            <i class="fa-solid fa-hourglass-half text-warning flex-shrink-0" style="font-size: 9px;"></i>
+                                                            <span class="text-dark fw-semibold text-truncate">Pending Accts Head</span>
                                                         </div>
-                                                        <div class="text-dark fw-semibold text-truncate" style="font-size: 11px;">
-                                                            Md. Mamunoor Rashid
-                                                        </div>
+                                                        <span class="badge bg-warning text-dark p-0 px-1 flex-shrink-0" style="font-size: 8.5px;">1309</span>
                                                     </div>
                                                 <?php elseif ($isAccountsHeadApproved): ?>
                                                     <?php
                                                     $ahTooltip = trim(
                                                         (!empty($req['accounts_head_designation']) ? $req['accounts_head_designation'] : 'AGM - Finance & Accounts') .
-                                                        (!empty($req['accounts_head_at']) ? ' • Approved: ' . date('d M, Y h:i A', strtotime($req['accounts_head_at'])) : '')
+                                                        (!empty($req['accounts_head_at']) ? ' â€¢ Approved: ' . date('d M, Y h:i A', strtotime($req['accounts_head_at'])) : '')
                                                     );
                                                     ?>
-                                                    <div class="p-1 px-2 rounded-2 bg-primary-subtle text-primary border border-primary-subtle" title="<?= htmlspecialchars($ahTooltip) ?>">
-                                                        <div class="d-flex align-items-center justify-content-between gap-1">
-                                                            <span class="fw-bold text-primary" style="font-size: 10px;">
-                                                                <i class="fa-solid fa-check-double me-1"></i>Accts Head Approved
+                                                    <div class="px-1.5 py-1 rounded bg-primary-subtle border border-primary-subtle d-flex align-items-center justify-content-between gap-1" title="<?= htmlspecialchars($ahTooltip) ?>" style="font-size: 10px; line-height: 1.2;">
+                                                        <div class="d-flex align-items-center gap-1 text-truncate me-1">
+                                                            <i class="fa-solid fa-check-double text-primary flex-shrink-0" style="font-size: 9.5px;"></i>
+                                                            <span class="fw-bold text-dark text-truncate" style="max-width: 105px;" title="<?= htmlspecialchars(!empty($req['accounts_head_name']) ? $req['accounts_head_name'] : 'Md. Mamunoor Rashid') ?>">
+                                                                <?= htmlspecialchars(!empty($req['accounts_head_name']) ? $req['accounts_head_name'] : 'Md. Mamunoor Rashid') ?>
                                                             </span>
-                                                            <?php if (!empty($req['accounts_head_at'])): ?>
-                                                                <span class="text-muted" style="font-size: 9.5px;"><?= date('d M, h:i A', strtotime($req['accounts_head_at'])) ?></span>
-                                                            <?php endif; ?>
+                                                            <span class="badge bg-primary text-white p-0 px-1 flex-shrink-0" style="font-size: 8px;">Accts</span>
                                                         </div>
-                                                        <div class="fw-semibold text-dark text-truncate d-flex align-items-center gap-1" style="font-size: 11px;">
-                                                            <span class="text-truncate"><?= htmlspecialchars(!empty($req['accounts_head_name']) ? $req['accounts_head_name'] : 'Md. Mamunoor Rashid') ?></span>
-                                                            <?php if (!empty($req['accounts_head_employee_code'])): ?>
-                                                                <span class="badge bg-light text-secondary border p-0 px-1" style="font-size: 9px;"><?= htmlspecialchars($req['accounts_head_employee_code']) ?></span>
-                                                            <?php endif; ?>
-                                                        </div>
+                                                        <?php if (!empty($req['accounts_head_at'])): ?>
+                                                            <span class="text-muted flex-shrink-0" style="font-size: 8.5px; white-space: nowrap;"><?= date('d M, h:i A', strtotime($req['accounts_head_at'])) ?></span>
+                                                        <?php endif; ?>
                                                     </div>
                                                 <?php endif; ?>
                                             </div>
@@ -485,16 +485,16 @@
                                         <?php if ($req['payout_status'] === 'Paid & Settled'): ?>
                                             <?php
                                             $payoutTooltip = trim(
-                                                'Paid & Settled: ৳ ' . number_format($req['payout_amount'], 2) .
-                                                (!empty($req['disbursed_by_name']) ? ' • Disbursed by: ' . $req['disbursed_by_name'] : '') .
+                                                'Paid & Settled: à§³ ' . number_format($req['payout_amount'], 2) .
+                                                (!empty($req['disbursed_by_name']) ? ' â€¢ Disbursed by: ' . $req['disbursed_by_name'] : '') .
                                                 (!empty($req['disbursed_branch_name']) ? ' (' . $req['disbursed_branch_name'] . ')' : '') .
-                                                (!empty($req['payout_date']) ? ' • ' . date('d M, Y', strtotime($req['payout_date'])) : '')
+                                                (!empty($req['payout_date']) ? ' â€¢ ' . date('d M, Y', strtotime($req['payout_date'])) : '')
                                             );
                                             ?>
                                             <div class="d-flex flex-column gap-1 text-center" style="max-width: 190px; margin: 0 auto;" title="<?= htmlspecialchars($payoutTooltip) ?>">
                                                 <div>
                                                     <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 extra-small fw-bold">
-                                                        <i class="fa-solid fa-money-check-dollar me-1"></i>Paid: ৳ <?= number_format($req['payout_amount'], 2) ?>
+                                                        <i class="fa-solid fa-money-check-dollar me-1"></i>Paid: à§³ <?= number_format($req['payout_amount'], 2) ?>
                                                     </span>
                                                 </div>
                                                 <?php if (!empty($req['disbursed_by_name'])): ?>
@@ -517,10 +517,10 @@
                                         <?php elseif ($req['payout_status'] === 'Partially Paid'): ?>
                                             <?php
                                             $payoutTooltip = trim(
-                                                'Partially Paid: ৳ ' . number_format($req['payout_amount'], 2) .
-                                                (!empty($req['disbursed_by_name']) ? ' • By: ' . $req['disbursed_by_name'] : '') .
+                                                'Partially Paid: à§³ ' . number_format($req['payout_amount'], 2) .
+                                                (!empty($req['disbursed_by_name']) ? ' â€¢ By: ' . $req['disbursed_by_name'] : '') .
                                                 (!empty($req['disbursed_branch_name']) ? ' (' . $req['disbursed_branch_name'] . ')' : '') .
-                                                (!empty($req['payout_date']) ? ' • ' . date('d M, Y', strtotime($req['payout_date'])) : '')
+                                                (!empty($req['payout_date']) ? ' â€¢ ' . date('d M, Y', strtotime($req['payout_date'])) : '')
                                             );
                                             ?>
                                             <div class="d-flex flex-column gap-1 text-center" style="max-width: 190px; margin: 0 auto;" title="<?= htmlspecialchars($payoutTooltip) ?>">
@@ -529,7 +529,7 @@
                                                         <i class="fa-solid fa-money-check-dollar me-1"></i>Partially Paid
                                                     </span>
                                                 </div>
-                                                <span class="extra-small fw-bold text-success">৳ <?= number_format($req['payout_amount'], 2) ?></span>
+                                                <span class="extra-small fw-bold text-success">à§³ <?= number_format($req['payout_amount'], 2) ?></span>
                                                 <div class="d-flex align-items-center justify-content-center gap-1 extra-small text-muted" style="font-size: 10px;">
                                                     <?php if (!empty($req['disbursed_by_name'])): ?>
                                                         <span class="text-dark fw-semibold text-truncate"><?= htmlspecialchars($req['disbursed_by_name']) ?></span>
@@ -674,11 +674,11 @@
                                                     $pfShort = $pfClean !== '' ? $pfClean : 'Other Role';
                                                 }
                                                 if (mb_strlen($pfShort) > 30) {
-                                                    $pfShort = mb_substr($pfShort, 0, 28) . '…';
+                                                    $pfShort = mb_substr($pfShort, 0, 28) . 'â€¦';
                                                 }
                                                 $lockLabel = ($isSiteOperator && $reqAmount > 100000 && !$opHeadDone) ? 'Management Only' : 'Pending: ' . $pfShort;
                                                 $lockTitle = ($isSiteOperator && $reqAmount > 100000 && !$opHeadDone)
-                                                    ? 'Amount exceeds ৳1,00,000 threshold - Full Management approval required'
+                                                    ? 'Amount exceeds à§³1,00,000 threshold - Full Management approval required'
                                                     : (($isSiteOperator && $opHeadDone) ? 'You (Admin & Operation Head) already approved. ' : '') . 'Pending for ' . ($pfClean !== '' ? $pfClean : 'Other Role');
                                                 ?>
                                                 <a href="javascript:void(0)"

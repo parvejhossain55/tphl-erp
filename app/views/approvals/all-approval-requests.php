@@ -389,12 +389,11 @@
                 <label class="form-label mb-0 fs-13 fw-bold text-muted">Rows per page:</label>
                 <select id="approvalPageLengthSelect" class="form-select form-select-sm" style="width: 110px;"
                     onchange="changeApprovalTablePageLength(this.value)">
-                    <option value="25" selected>25 Rows</option>
-                    <option value="50">50 Rows</option>
-                    <option value="70">70 Rows</option>
-                    <option value="100">100 Rows</option>
-                    <option value="200">200 Rows</option>
-                    <option value="-1">All Rows</option>
+                    <option value="25" <?= ($pagination['perPage'] ?? 25) == 25 ? 'selected' : '' ?>>25 Rows</option>
+                    <option value="50" <?= ($pagination['perPage'] ?? 25) == 50 ? 'selected' : '' ?>>50 Rows</option>
+                    <option value="70" <?= ($pagination['perPage'] ?? 25) == 70 ? 'selected' : '' ?>>70 Rows</option>
+                    <option value="100" <?= ($pagination['perPage'] ?? 25) == 100 ? 'selected' : '' ?>>100 Rows</option>
+                    <option value="200" <?= ($pagination['perPage'] ?? 25) == 200 ? 'selected' : '' ?>>200 Rows</option>
                 </select>
             </div>
         </div>
@@ -819,52 +818,56 @@
                                             </div>
 
                                         <?php elseif (in_array($req['status'], ['approved', 'partially_approved', 'partially_paid'])): ?>
-                                            <div class="d-flex flex-column gap-1 text-start" style="max-width: 220px; margin: 0 auto;">
-                                                <!-- Step 1: Management / Op Head Approval Card -->
+                                            <div class="d-flex flex-column gap-1 text-start" style="min-width: 180px; max-width: 220px; margin: 0 auto;">
+                                                <!-- Step 1: Management / Op Head Approval Row -->
                                                 <?php
                                                 $approverTooltip = trim(
                                                     (!empty($req['approver_designation']) ? $req['approver_designation'] : 'Management Executive') .
                                                     (!empty($req['approver_email']) ? ' • ' . $req['approver_email'] : '') .
                                                     ($req['approved_at'] ? ' • ' . date('d M, Y h:i A', strtotime($req['approved_at'])) : '')
                                                 );
-                                                $mgmtTitle = $req['status'] === 'approved' ? 'Mgmt Approved' : 'Partially Approved';
-                                                $mgmtBadgeBg = $req['status'] === 'approved' ? 'bg-success-subtle text-success border-success-subtle' : 'bg-info-subtle text-info border-info-subtle';
+                                                $mgmtBadgeBg = $req['status'] === 'approved' ? 'bg-success-subtle border-success-subtle' : 'bg-info-subtle border-info-subtle';
                                                 ?>
-                                                <div class="p-1 px-2 rounded-2 <?= $mgmtBadgeBg ?> border" title="<?= htmlspecialchars($approverTooltip) ?>">
-                                                    <div class="d-flex align-items-center justify-content-between gap-1">
-                                                        <span class="fw-bold" style="font-size: 10px;">
-                                                            <i class="fa-solid fa-circle-check me-1"></i><?= $mgmtTitle ?>
+                                                <div class="px-1.5 py-1 rounded <?= $mgmtBadgeBg ?> border d-flex align-items-center justify-content-between gap-1" title="<?= htmlspecialchars($approverTooltip) ?>" style="font-size: 10px; line-height: 1.2;">
+                                                    <div class="d-flex align-items-center gap-1 text-truncate me-1">
+                                                        <i class="fa-solid fa-circle-check text-success flex-shrink-0" style="font-size: 9.5px;"></i>
+                                                        <span class="fw-bold text-dark text-truncate" style="max-width: 105px;" title="<?= htmlspecialchars($req['approver_name'] ?? 'Management') ?>">
+                                                            <?= htmlspecialchars($req['approver_name'] ?? 'Management') ?>
                                                         </span>
-                                                        <?php if ($req['approved_at']): ?>
-                                                            <span class="text-muted" style="font-size: 9.5px;"><?= date('d M, h:i A', strtotime($req['approved_at'])) ?></span>
-                                                        <?php endif; ?>
+                                                        <span class="badge bg-success text-white p-0 px-1 flex-shrink-0" style="font-size: 8px;">Mgmt</span>
                                                     </div>
-                                                    <div class="fw-semibold text-dark text-truncate" style="font-size: 11px;">
-                                                        <?= htmlspecialchars($req['approver_name'] ?? 'Management') ?>
-                                                    </div>
+                                                    <?php if ($req['approved_at']): ?>
+                                                        <span class="text-muted flex-shrink-0" style="font-size: 8.5px; white-space: nowrap;"><?= date('d M, h:i A', strtotime($req['approved_at'])) ?></span>
+                                                    <?php endif; ?>
                                                 </div>
 
-                                                <?php if (strtolower($req['op_head_status'] ?? '') === 'approved' && !empty($req['op_head_by']) && (int)$req['op_head_by'] !== (int)($req['approved_by'] ?? 0)): ?>
-                                                    <div class="extra-small text-muted text-start px-1" style="font-size: 9.5px;" title="<?= htmlspecialchars(!empty($req['op_head_name']) ? $req['op_head_name'] : 'Admin & Operation Head') ?>">
-                                                        <i class="fa-solid fa-check text-success me-1"></i>Op Head: <strong class="text-dark"><?= htmlspecialchars(!empty($req['op_head_name']) ? $req['op_head_name'] : 'Op Head') ?></strong>
-                                                        <?php if (!empty($req['op_head_at'])): ?> · <?= date('d M, h:i A', strtotime($req['op_head_at'])) ?><?php endif; ?>
+                                                <!-- Step 1.5: Op Head Row (Only if different person from Mgmt approver) -->
+                                                <?php if (strtolower($req['op_head_status'] ?? '') === 'approved' && !empty($req['op_head_by']) && (int)$req['op_head_by'] !== (int)($req['approved_by'] ?? 0) && strtolower(trim($req['op_head_name'] ?? '')) !== strtolower(trim($req['approver_name'] ?? ''))): ?>
+                                                    <div class="px-1.5 py-1 rounded bg-light border d-flex align-items-center justify-content-between gap-1 text-muted" 
+                                                         title="<?= htmlspecialchars(!empty($req['op_head_name']) ? $req['op_head_name'] : 'Admin & Operation Head') ?>" style="font-size: 10px; line-height: 1.2;">
+                                                        <div class="d-flex align-items-center gap-1 text-truncate me-1">
+                                                            <i class="fa-solid fa-check text-success flex-shrink-0" style="font-size: 9px;"></i>
+                                                            <span class="text-dark fw-semibold text-truncate" style="max-width: 105px;">
+                                                                <?= htmlspecialchars(!empty($req['op_head_name']) ? $req['op_head_name'] : 'Op Head') ?>
+                                                            </span>
+                                                            <span class="badge bg-secondary-subtle text-secondary p-0 px-1 flex-shrink-0" style="font-size: 8px;">Op</span>
+                                                        </div>
+                                                        <?php if (!empty($req['op_head_at'])): ?>
+                                                            <span class="text-muted flex-shrink-0" style="font-size: 8.5px; white-space: nowrap;"><?= date('d M, h:i A', strtotime($req['op_head_at'])) ?></span>
+                                                        <?php endif; ?>
                                                     </div>
                                                 <?php endif; ?>
 
                                                 <?php if (count($req['mgmt_approvals'] ?? []) > 1 || (($req['fr_status'] ?? '') === 'partially_approved')) { include __DIR__ . '/partials/fr_mgmt_approvals_block.php'; } ?>
 
-                                                <!-- Step 2: Accounts Head Card (Pending or Approved) -->
+                                                <!-- Step 2: Accounts Head Row (Pending or Approved) -->
                                                 <?php if ($isPendingAccountsHead): ?>
-                                                    <div class="p-1 px-2 rounded-2 bg-warning-subtle text-dark border border-warning-subtle" title="Payment locked until Accounts Head (Md. Mamunoor Rashid [1309]) approves">
-                                                        <div class="d-flex align-items-center justify-content-between gap-1">
-                                                            <span class="fw-bold text-dark" style="font-size: 10px;">
-                                                                <i class="fa-solid fa-hourglass-half text-warning me-1"></i>Pending Accts Head
-                                                            </span>
-                                                            <span class="badge bg-warning text-dark p-0 px-1" style="font-size: 9px;">1309</span>
+                                                    <div class="px-1.5 py-1 rounded bg-warning-subtle border border-warning-subtle d-flex align-items-center justify-content-between gap-1" title="Payment locked until Accounts Head (Md. Mamunoor Rashid [1309]) approves" style="font-size: 10px; line-height: 1.2;">
+                                                        <div class="d-flex align-items-center gap-1 text-truncate me-1">
+                                                            <i class="fa-solid fa-hourglass-half text-warning flex-shrink-0" style="font-size: 9px;"></i>
+                                                            <span class="text-dark fw-semibold text-truncate">Pending Accts Head</span>
                                                         </div>
-                                                        <div class="text-dark fw-semibold text-truncate" style="font-size: 11px;">
-                                                            Md. Mamunoor Rashid
-                                                        </div>
+                                                        <span class="badge bg-warning text-dark p-0 px-1 flex-shrink-0" style="font-size: 8.5px;">1309</span>
                                                     </div>
                                                 <?php elseif ($isAccountsHeadApproved): ?>
                                                     <?php
@@ -873,21 +876,17 @@
                                                         (!empty($req['accounts_head_at']) ? ' • Approved: ' . date('d M, Y h:i A', strtotime($req['accounts_head_at'])) : '')
                                                     );
                                                     ?>
-                                                    <div class="p-1 px-2 rounded-2 bg-primary-subtle text-primary border border-primary-subtle" title="<?= htmlspecialchars($ahTooltip) ?>">
-                                                        <div class="d-flex align-items-center justify-content-between gap-1">
-                                                            <span class="fw-bold text-primary" style="font-size: 10px;">
-                                                                <i class="fa-solid fa-check-double me-1"></i>Accts Head Approved
+                                                    <div class="px-1.5 py-1 rounded bg-primary-subtle border border-primary-subtle d-flex align-items-center justify-content-between gap-1" title="<?= htmlspecialchars($ahTooltip) ?>" style="font-size: 10px; line-height: 1.2;">
+                                                        <div class="d-flex align-items-center gap-1 text-truncate me-1">
+                                                            <i class="fa-solid fa-check-double text-primary flex-shrink-0" style="font-size: 9.5px;"></i>
+                                                            <span class="fw-bold text-dark text-truncate" style="max-width: 105px;" title="<?= htmlspecialchars(!empty($req['accounts_head_name']) ? $req['accounts_head_name'] : 'Md. Mamunoor Rashid') ?>">
+                                                                <?= htmlspecialchars(!empty($req['accounts_head_name']) ? $req['accounts_head_name'] : 'Md. Mamunoor Rashid') ?>
                                                             </span>
-                                                            <?php if (!empty($req['accounts_head_at'])): ?>
-                                                                <span class="text-muted" style="font-size: 9.5px;"><?= date('d M, h:i A', strtotime($req['accounts_head_at'])) ?></span>
-                                                            <?php endif; ?>
+                                                            <span class="badge bg-primary text-white p-0 px-1 flex-shrink-0" style="font-size: 8px;">Accts</span>
                                                         </div>
-                                                        <div class="fw-semibold text-dark text-truncate d-flex align-items-center gap-1" style="font-size: 11px;">
-                                                            <span class="text-truncate"><?= htmlspecialchars(!empty($req['accounts_head_name']) ? $req['accounts_head_name'] : 'Md. Mamunoor Rashid') ?></span>
-                                                            <?php if (!empty($req['accounts_head_employee_code'])): ?>
-                                                                <span class="badge bg-light text-secondary border p-0 px-1" style="font-size: 9px;"><?= htmlspecialchars($req['accounts_head_employee_code']) ?></span>
-                                                            <?php endif; ?>
-                                                        </div>
+                                                        <?php if (!empty($req['accounts_head_at'])): ?>
+                                                            <span class="text-muted flex-shrink-0" style="font-size: 8.5px; white-space: nowrap;"><?= date('d M, h:i A', strtotime($req['accounts_head_at'])) ?></span>
+                                                        <?php endif; ?>
                                                     </div>
                                                 <?php endif; ?>
                                             </div>
@@ -1127,6 +1126,67 @@
                 </table>
             </div>
         </div>
+
+        <!-- Pagination & Summary Card Footer -->
+        <?php if (!empty($pagination) && $pagination['totalRecords'] > 0): ?>
+            <div class="card-footer bg-white py-3 border-top d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div class="text-muted fs-13">
+                    Showing <strong class="text-dark"><?= number_format($pagination['startRecord']) ?></strong> to 
+                    <strong class="text-dark"><?= number_format($pagination['endRecord']) ?></strong> of 
+                    <strong class="text-primary"><?= number_format($pagination['totalRecords']) ?></strong> entries
+                </div>
+                
+                <?php if ($pagination['totalPages'] > 1): ?>
+                    <?php
+                    $pageUrl = function($p) use ($pagination, $base_url) {
+                        $q = array_merge($_GET, ['page' => $p, 'per_page' => $pagination['perPage']]);
+                        return $base_url . '/all-approval-requests?' . http_build_query($q) . '#approvalRequestsTable';
+                    };
+                    $cur = $pagination['currentPage'];
+                    $last = $pagination['totalPages'];
+                    ?>
+                    <nav aria-label="Approval Pagination">
+                        <ul class="pagination pagination-sm mb-0">
+                            <!-- Previous Page Link -->
+                            <li class="page-item <?= $cur <= 1 ? 'disabled' : '' ?>">
+                                <a class="page-link" href="<?= $cur > 1 ? $pageUrl($cur - 1) : 'javascript:void(0)' ?>" aria-label="Previous">
+                                    <i class="fa-solid fa-chevron-left me-1"></i> Prev
+                                </a>
+                            </li>
+                            
+                            <!-- Page Numbers (with smart sliding window) -->
+                            <?php
+                            $startPage = max(1, $cur - 2);
+                            $endPage = min($last, $cur + 2);
+                            if ($startPage > 1) {
+                                echo '<li class="page-item"><a class="page-link" href="' . $pageUrl(1) . '">1</a></li>';
+                                if ($startPage > 2) {
+                                    echo '<li class="page-item disabled"><span class="page-link">…</span></li>';
+                                }
+                            }
+                            for ($p = $startPage; $p <= $endPage; $p++) {
+                                $active = ($p === $cur) ? 'active' : '';
+                                echo '<li class="page-item ' . $active . '"><a class="page-link" href="' . $pageUrl($p) . '">' . $p . '</a></li>';
+                            }
+                            if ($endPage < $last) {
+                                if ($endPage < $last - 1) {
+                                    echo '<li class="page-item disabled"><span class="page-link">…</span></li>';
+                                }
+                                echo '<li class="page-item"><a class="page-link" href="' . $pageUrl($last) . '">' . $last . '</a></li>';
+                            }
+                            ?>
+                            
+                            <!-- Next Page Link -->
+                            <li class="page-item <?= $cur >= $last ? 'disabled' : '' ?>">
+                                <a class="page-link" href="<?= $cur < $last ? $pageUrl($cur + 1) : 'javascript:void(0)' ?>" aria-label="Next">
+                                    Next <i class="fa-solid fa-chevron-right ms-1"></i>
+                                </a>
+                            </li>
+                        </ul>
+                    </nav>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
     </div>
 
 <!-- Accounts Head Quick Approval Modal -->
@@ -1298,13 +1358,13 @@
                 $('#allApprovalRequestsTable').DataTable().destroy();
             }
             approvalTable = $('#allApprovalRequestsTable').DataTable({
-                pageLength: 25,
-                lengthMenu: [[25, 50, 70, 100, 200, -1], [25, 50, 70, 100, 200, "All"]],
+                paging: false,
+                info: false,
                 order: [],
-                dom: '<"d-flex justify-content-between align-items-center p-3"f>rt<"d-flex justify-content-between align-items-center p-3"ip>',
+                dom: '<"d-flex justify-content-between align-items-center p-3"f>rt',
                 language: {
                     search: "_INPUT_",
-                    searchPlaceholder: "Search approval requests..."
+                    searchPlaceholder: "Search loaded records..."
                 }
             });
 
@@ -1368,9 +1428,10 @@
     });
 
     function changeApprovalTablePageLength(val) {
-        if (approvalTable) {
-            approvalTable.page.len(parseInt(val)).draw();
-        }
+        const url = new URL(window.location.href);
+        url.searchParams.set('per_page', val);
+        url.searchParams.set('page', '1');
+        window.location.href = url.toString();
     }
 
     function toggleSelectAllApprovalRequests(master) {

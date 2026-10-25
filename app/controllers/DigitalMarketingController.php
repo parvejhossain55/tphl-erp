@@ -102,7 +102,15 @@ class DigitalMarketingController extends Controller
                         OR (l.call_note IS NOT NULL AND TRIM(l.call_note) != '')
                         OR (l.call_status IN ('called', 'received'))
                     ) THEN 1 ELSE 0
-                END) AS not_contacted
+                END) AS not_contacted,
+                SUM(CASE
+                    WHEN NOT (l.is_automated = 1 AND l.distribute = 0)
+                    THEN 1 ELSE 0
+                END) AS distributed,
+                SUM(CASE
+                    WHEN (l.is_automated = 1 AND l.distribute = 0)
+                    THEN 1 ELSE 0
+                END) AS in_queue
             FROM leads l
             WHERE l.deleted_at IS NULL
               AND l.uploaded_from = 'From Campaign'
@@ -176,6 +184,8 @@ class DigitalMarketingController extends Controller
         $cCounts           = $cStmt->get_result()->fetch_assoc();
         $totalContacted    = (int)($cCounts['contacted']    ?? 0);
         $totalNotContacted = (int)($cCounts['not_contacted'] ?? 0);
+        $totalDistributed  = (int)($cCounts['distributed']  ?? 0);
+        $totalInQueue      = (int)($cCounts['in_queue']     ?? 0);
         $categories        = (new ProjectCategory($this->db))->getAll();
         $projects          = (new Project($this->db))->getAll();
         $uploadedPlatforms = $this->leadModel->getDistinctMarketingPlatforms();
@@ -199,6 +209,8 @@ class DigitalMarketingController extends Controller
             "phoneFreq"           => [],
             "duplicateLeadsCount" => $duplicateLeadsCount,
             "totalLeads"          => $totalLeads,
+            "totalDistributed"    => $totalDistributed,
+            "totalInQueue"        => $totalInQueue,
             "totalContacted"      => $totalContacted,
             "totalNotContacted"   => $totalNotContacted,
             "date_age"            => $dateAge,
@@ -330,7 +342,15 @@ public function deleteBudget($id)
                         OR (l.call_note IS NOT NULL AND TRIM(l.call_note) != '')
                         OR (l.call_status IN ('called', 'received'))
                     ) THEN 1 ELSE 0
-                END) AS not_contacted
+                END) AS not_contacted,
+                SUM(CASE
+                    WHEN NOT (l.is_automated = 1 AND l.distribute = 0)
+                    THEN 1 ELSE 0
+                END) AS distributed,
+                SUM(CASE
+                    WHEN (l.is_automated = 1 AND l.distribute = 0)
+                    THEN 1 ELSE 0
+                END) AS in_queue
             FROM leads l
             WHERE l.deleted_at IS NULL
               AND l.uploaded_from = 'From Campaign'
@@ -410,6 +430,8 @@ public function deleteBudget($id)
         $counts = $stmt->get_result()->fetch_assoc();
         $contactedCount    = (int)($counts['contacted']     ?? 0);
         $notContactedCount = (int)($counts['not_contacted'] ?? 0);
+        $totalDistributed  = (int)($counts['distributed']   ?? 0);
+        $totalInQueue      = (int)($counts['in_queue']      ?? 0);
 
         // Duplicate count — same phone_number OR same email = duplicate
         // Duplicate count — same phone_number OR same email = duplicate
@@ -466,6 +488,8 @@ public function deleteBudget($id)
             "to_date"              => $toDate,
             "totalContacted"       => $contactedCount,
             "totalNotContacted"    => $notContactedCount,
+            "totalDistributed"     => $totalDistributed,
+            "totalInQueue"         => $totalInQueue,
             "totalLeads"           => $totalLeads,
             "uploadedPlatforms"   => $uploadedPlatforms,
             "selected_platform"   => $platformFilter,
@@ -592,7 +616,15 @@ public function deleteBudget($id)
                         OR (l.call_note IS NOT NULL AND TRIM(l.call_note) != '')
                         OR (l.call_status IN ('called', 'received'))
                     ) THEN 1 ELSE 0
-                END) AS not_contacted
+                END) AS not_contacted,
+                SUM(CASE
+                    WHEN NOT (l.is_automated = 1 AND l.distribute = 0)
+                    THEN 1 ELSE 0
+                END) AS distributed,
+                SUM(CASE
+                    WHEN (l.is_automated = 1 AND l.distribute = 0)
+                    THEN 1 ELSE 0
+                END) AS in_queue
             FROM leads l
             WHERE l.deleted_at IS NULL
               AND l.uploaded_from = 'From Campaign'
@@ -687,6 +719,8 @@ public function deleteBudget($id)
 
         $ajaxContacted = 0;
         $ajaxNotContacted = 0;
+        $ajaxDistributed = 0;
+        $ajaxInQueue = 0;
         $cStmt = $this->db->prepare($cSql);
         if ($cStmt) {
             if (!empty($cParams)) {
@@ -696,6 +730,8 @@ public function deleteBudget($id)
             $cRow = $cStmt->get_result()->fetch_assoc();
             $ajaxContacted = (int)($cRow['contacted'] ?? 0);
             $ajaxNotContacted = (int)($cRow['not_contacted'] ?? 0);
+            $ajaxDistributed = (int)($cRow['distributed'] ?? 0);
+            $ajaxInQueue = (int)($cRow['in_queue'] ?? 0);
         }
 
         // Build HTML rows
@@ -856,6 +892,8 @@ public function deleteBudget($id)
             'total'         => $total,
             'contacted'     => $ajaxContacted,
             'not_contacted' => $ajaxNotContacted,
+            'distributed'   => $ajaxDistributed,
+            'in_queue'      => $ajaxInQueue,
             'page'          => $page,
             'per_page'      => $perPage,
             'total_pages'   => (int)ceil($total / $perPage),

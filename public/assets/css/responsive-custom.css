@@ -172,7 +172,9 @@
 [bd-theme="bd-theme-dark"] .card,
 [bd-theme="bd-theme-dark"] .custom-card,
 [bd-theme="bd-theme-dark"] .card.custom-card,
-[bd-theme="bd-theme-dark"] .card__wrapper {
+[bd-theme="bd-theme-dark"] .card__wrapper,
+[bd-theme="bd-theme-dark"] .card_wrapper,
+[bd-theme="bd-theme-dark"] .collection-stat-card {
     background-color: var(--clr-bg-card, #1f2937) !important;
     border-color: var(--clr-border-1, #374151) !important;
     color: var(--clr-text-body, #f9fafb) !important;

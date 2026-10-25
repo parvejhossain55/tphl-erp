@@ -227,7 +227,9 @@ class CollectionStatementController extends Controller
             'Bank / Cheque Details',
             'Receipt / Voucher Ref',
             'Amount (BDT)',
-            'Verification Status'
+            'Verification Status',
+            'Verified By',
+            'Verifier Branch'
         ]);
 
         $sl = 1;
@@ -253,7 +255,9 @@ class CollectionStatementController extends Controller
                 $bankDetail,
                 $t['transaction_ref'] ?? '',
                 number_format((float)$t['amount'], 2, '.', ''),
-                ucfirst($t['verification_status'] ?? '')
+                ucfirst($t['verification_status'] ?? ''),
+                $t['verifier_name'] ?? '',
+                (!empty($t['verifier_branch_name']) ? $t['verifier_branch_name'] : '') . (!empty($t['verifier_branch_id']) ? " [ID: {$t['verifier_branch_id']}]" : '')
             ]);
         }
 
@@ -393,6 +397,23 @@ class CollectionStatementController extends Controller
     }
 
     /**
+     * Get dynamic JOINs for lead_payments only when required by active filters
+     */
+    protected function getLeadPaymentsJoins($filters)
+    {
+        $joins = "";
+        if (!empty($filters['project_id']) || !empty($filters['search'])) {
+            $joins .= " INNER JOIN lead_bookings lb ON lp.booking_id = lb.id";
+        }
+        if (!empty($filters['search'])) {
+            $joins .= " INNER JOIN leads l ON lb.lead_id = l.id
+                        LEFT JOIN projects p ON lb.project_id = p.id
+                        LEFT JOIN flats f ON lb.flat_id = f.id";
+        }
+        return $joins;
+    }
+
+    /**
      * Build WHERE conditions for lead_payments and management_cashin
      */
     protected function buildLeadPaymentsConditions($startDate, $endDate, $filters)
@@ -518,6 +539,7 @@ class CollectionStatementController extends Controller
         // 1. Client Lead Payments
         if ($filters['source'] === 'all' || $filters['source'] === 'client') {
             $whereLp = $this->buildLeadPaymentsConditions($startDate, $endDate, $filters);
+            $joinsLp = $this->getLeadPaymentsJoins($filters);
             $sqlLp = "
                 SELECT 
                     COUNT(*) as total_count,
@@ -539,10 +561,7 @@ class CollectionStatementController extends Controller
                     COALESCE(SUM(CASE WHEN lp.payment_type = 'development_charge' THEN lp.amount ELSE 0 END), 0) as development_charge,
                     COALESCE(SUM(CASE WHEN lp.payment_type = 'shop_service_charge' THEN lp.amount ELSE 0 END), 0) as shop_service_charge
                 FROM lead_payments lp
-                INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
-                INNER JOIN leads l ON lb.lead_id = l.id
-                LEFT JOIN projects p ON lb.project_id = p.id
-                LEFT JOIN flats f ON lb.flat_id = f.id
+                {$joinsLp}
                 WHERE {$whereLp}
             ";
 
@@ -577,10 +596,7 @@ class CollectionStatementController extends Controller
                     SUM(lp.amount) as btotal,
                     COUNT(*) as bcount
                 FROM lead_payments lp
-                INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
-                INNER JOIN leads l ON lb.lead_id = l.id
-                LEFT JOIN projects p ON lb.project_id = p.id
-                LEFT JOIN flats f ON lb.flat_id = f.id
+                {$joinsLp}
                 WHERE {$whereLp} AND lp.payment_method IN ('bank', 'cheque')
                 GROUP BY bname
                 ORDER BY btotal DESC
@@ -772,6 +788,7 @@ class CollectionStatementController extends Controller
             $matrixFilters = $filters;
             // In the type summary matrix, we want to see all types unless the user specifically filtered
             $whereLp = $this->buildLeadPaymentsConditions($startDate, $endDate, $matrixFilters);
+            $joinsLp = $this->getLeadPaymentsJoins($matrixFilters);
             $sql = "
                 SELECT 
                     CASE 
@@ -785,10 +802,7 @@ class CollectionStatementController extends Controller
                     COALESCE(SUM(CASE WHEN lp.payment_method = 'cheque' THEN lp.amount ELSE 0 END), 0) as cheque_amount,
                     COALESCE(SUM(CASE WHEN lp.payment_method = 'online' THEN lp.amount ELSE 0 END), 0) as online_amount
                 FROM lead_payments lp
-                INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
-                INNER JOIN leads l ON lb.lead_id = l.id
-                LEFT JOIN projects p ON lb.project_id = p.id
-                LEFT JOIN flats f ON lb.flat_id = f.id
+                {$joinsLp}
                 WHERE {$whereLp}
                 GROUP BY ptype
             ";
@@ -901,6 +915,11 @@ class CollectionStatementController extends Controller
                     lp.transaction_ref AS money_receipt_no,
                     lp.payment_status,
                     lp.verification_status,
+                    lp.verified_by,
+                    lp.verified_at,
+                    COALESCE(u_v.full_name, e_v.full_name, '') AS verifier_name,
+                    e_v.office_branch_id AS verifier_branch_id,
+                    COALESCE(ob_v.name, e_v.office_branch, '') AS verifier_branch_name,
                     l.full_name AS client_name,
                     l.phone AS client_phone,
                     l.phone AS phone,
@@ -914,6 +933,9 @@ class CollectionStatementController extends Controller
                 INNER JOIN leads l ON lb.lead_id = l.id
                 LEFT JOIN projects p ON lb.project_id = p.id
                 LEFT JOIN flats f ON lb.flat_id = f.id
+                LEFT JOIN users u_v ON lp.verified_by = u_v.id
+                LEFT JOIN employees e_v ON (e_v.user_id = u_v.id OR e_v.id = u_v.employee_id)
+                LEFT JOIN office_branches ob_v ON e_v.office_branch_id = ob_v.id
                 WHERE {$whereLp}
             ";
         }
@@ -938,6 +960,11 @@ class CollectionStatementController extends Controller
                     mci.transaction_ref AS money_receipt_no,
                     mci.payment_status,
                     'verified' AS verification_status,
+                    mci.created_by AS verified_by,
+                    mci.created_at AS verified_at,
+                    COALESCE(u_m.full_name, mci.person_name, 'Management') AS verifier_name,
+                    e_m.office_branch_id AS verifier_branch_id,
+                    COALESCE(ob_m.name, e_m.office_branch, 'Corporate') AS verifier_branch_name,
                     CONCAT(mci.person_name, ' (', mci.role_name, ')') AS client_name,
                     NULL AS client_phone,
                     NULL AS phone,
@@ -947,6 +974,9 @@ class CollectionStatementController extends Controller
                     NULL AS floor_no,
                     mci.created_at
                 FROM management_cashin mci
+                LEFT JOIN users u_m ON mci.created_by = u_m.id
+                LEFT JOIN employees e_m ON (e_m.user_id = u_m.id OR e_m.id = u_m.employee_id)
+                LEFT JOIN office_branches ob_m ON e_m.office_branch_id = ob_m.id
                 WHERE {$whereMci}
             ";
         }
@@ -969,10 +999,13 @@ class CollectionStatementController extends Controller
     }
 
     /**
-     * Get list of projects for dropdown
+     * Get list of projects for dropdown (cached in session)
      */
     protected function fetchProjects()
     {
+        if (!empty($_SESSION['cache_cs_projects'])) {
+            return $_SESSION['cache_cs_projects'];
+        }
         $res = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC");
         $projects = [];
         if ($res) {
@@ -980,14 +1013,20 @@ class CollectionStatementController extends Controller
                 $projects[] = $r;
             }
         }
+        if (!empty($projects)) {
+            $_SESSION['cache_cs_projects'] = $projects;
+        }
         return $projects;
     }
 
     /**
-     * Get distinct bank names present in lead_payments for filter dropdown
+     * Get distinct bank names present in lead_payments for filter dropdown (cached in session)
      */
     protected function fetchDistinctBankNames()
     {
+        if (!empty($_SESSION['cache_cs_bank_names'])) {
+            return $_SESSION['cache_cs_bank_names'];
+        }
         $res = $this->db->query("
             SELECT DISTINCT bank_name 
             FROM lead_payments 
@@ -1000,6 +1039,10 @@ class CollectionStatementController extends Controller
                 $banks[] = trim($r['bank_name']);
             }
         }
-        return array_unique($banks);
+        $banks = array_values(array_unique($banks));
+        if (!empty($banks)) {
+            $_SESSION['cache_cs_bank_names'] = $banks;
+        }
+        return $banks;
     }
 }

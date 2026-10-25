@@ -482,12 +482,27 @@
   <!-- Stat row -->
   <div class="row mb-4">
     <div class="col-xl-3 col-sm-6 col-6 mb-2">
-      <div class="card__wrapper stat-card">
-
+      <div class="card__wrapper stat-card" style="border-left:4px solid #2563eb;">
         <div>
-          <div class="label">Total Leads</div>
-          <div class="value" id="dmTotalLeadsCardVal"><?= number_format($totalLeads ?? 0) ?></div>
-          <div class="change text-success"><i class="bi bi-arrow-up-short"></i>Data sync ready</div>
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <div class="label mb-0"><i class="bi bi-people-fill me-1 text-primary"></i>Total Leads</div>
+            <a href="<?= $GLOBALS['base_url'] ?>/lead-automation-upload" 
+               id="dmExecQueueBadge" 
+               class="badge <?= (($totalInQueue ?? 0) > 0) ? 'bg-warning text-dark' : 'bg-light text-muted' ?> text-decoration-none" 
+               title="Click to view Leads Automation approval queue"
+               style="font-size:0.68rem; font-weight:600; padding: 4px 7px; border-radius: 6px; <?= (($totalInQueue ?? 0) > 0) ? '' : 'display:none;' ?>">
+              <i class="bi bi-hourglass-split me-1 text-dark"></i><span id="dmExecQueueBadgeVal"><?= number_format($totalInQueue ?? 0) ?></span> in Queue
+            </a>
+          </div>
+          <div class="value" id="dmTotalLeadsCardVal" style="color:#2563eb;"><?= number_format($totalLeads ?? 0) ?></div>
+          <div class="change mt-2 pt-2 border-top d-flex align-items-center justify-content-between flex-wrap gap-1" style="font-size:0.75rem;">
+            <span class="text-success fw-bold" id="dmExecDistributedVal" title="Distributed to Sales Team (Visible in lead-lists & Sales Intelligence)">
+              <i class="bi bi-check-circle-fill me-1"></i>Distributed: <?= number_format($totalDistributed ?? 0) ?>
+            </span>
+            <span class="text-secondary" id="dmExecInQueueVal" title="Unapproved / Waiting in Leads Automation queue">
+              <i class="bi bi-clock-history me-1 <?= (($totalInQueue ?? 0) > 0) ? 'text-warning' : 'text-muted' ?>"></i>Queue: <?= number_format($totalInQueue ?? 0) ?>
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -1078,6 +1093,27 @@
         document.getElementById('dmLeadCount').textContent = `${data.total} Leads`;
         const totalCardVal = document.getElementById('dmTotalLeadsCardVal');
         if (totalCardVal) totalCardVal.textContent = data.total.toLocaleString();
+
+        // Update Distributed and In Queue indicator
+        if (data.distributed !== undefined) {
+          const distEl = document.getElementById('dmExecDistributedVal');
+          if (distEl) distEl.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i>Distributed: ${(Number(data.distributed) || 0).toLocaleString()}`;
+        }
+        if (data.in_queue !== undefined) {
+          const qVal = Number(data.in_queue) || 0;
+          const qEl = document.getElementById('dmExecInQueueVal');
+          if (qEl) qEl.innerHTML = `<i class="bi bi-clock-history me-1 ${qVal > 0 ? 'text-warning' : 'text-muted'}"></i>Queue: ${qVal.toLocaleString()}`;
+          const qBadge = document.getElementById('dmExecQueueBadge');
+          const qBadgeVal = document.getElementById('dmExecQueueBadgeVal');
+          if (qBadge && qBadgeVal) {
+            if (qVal > 0) {
+              qBadgeVal.textContent = qVal.toLocaleString();
+              qBadge.style.display = 'inline-block';
+            } else {
+              qBadge.style.display = 'none';
+            }
+          }
+        }
 
         // Update contacted / not contacted summary cards & progress dynamically
         if (data.contacted !== undefined) {
