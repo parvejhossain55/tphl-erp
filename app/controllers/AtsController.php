@@ -5,12 +5,14 @@ class AtsController extends Controller
     protected $db;
     protected $candidateModel;
     protected $dropdownModel;
+    protected $activityModel;
 
     public function __construct($db)
     {
         $this->db = $db;
         $this->candidateModel = new AtsCandidate($this->db);
         $this->dropdownModel = new AtsDropdownOption($this->db);
+        $this->activityModel = new AtsActivityLog($this->db);
     }
 
     /**
@@ -45,28 +47,119 @@ class AtsController extends Controller
     {
         $this->checkAuth();
 
-        $filters = [
-            'search' => $_GET['q'] ?? '',
-            'tab' => $_GET['tab'] ?? 'all',
-            'department' => $_GET['department'] ?? '',
-            'position' => $_GET['position'] ?? '',
-            'source' => $_GET['source'] ?? '',
-            'invitation_status' => $_GET['invitation_status'] ?? '',
-            'interview_attendance' => $_GET['interview_attendance'] ?? '',
-            'hired' => $_GET['hired'] ?? '',
-            'date_type' => $_GET['date_type'] ?? 'interview_date',
-            'date_from' => $_GET['date_from'] ?? '',
-            'date_to' => $_GET['date_to'] ?? '',
+        if (empty($_GET['ajax']) && empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
+            AtsActivityLog::log($this->db, [
+                'action_type' => 'page_view',
+                'description' => 'Viewed Candidate Tracker'
+            ]);
+        }
+
+        $userId = $_SESSION['user']['id'] ?? 'guest';
+        $sessionKey = 'ats_tracker_filters_' . $userId;
+
+        // 1. Explicit Reset Filter Request
+        if (isset($_GET['reset_filter']) || isset($_GET['reset'])) {
+            unset($_SESSION[$sessionKey]);
+            header("Location: " . $GLOBALS['base_url'] . "/ats-tracker");
+            exit;
+        }
+
+        // 2. Default Filters
+        $defaultFilters = [
+            'search' => '',
+            'tab' => 'all',
+            'department' => [],
+            'position' => [],
+            'source' => '',
+            'invitation_status' => [],
+            'interview_attendance' => [],
+            'interview_location' => [],
+            'hired' => [],
+            'cv_uploaded' => '',
+            'email_sent' => '',
+            'sms_sent' => '',
+            'date_type' => 'interview_date',
+            'date_from' => '',
+            'date_to' => '',
+            'per_page' => '50',
+            'sort_by' => '',
+            'sort_order' => '',
         ];
 
-        $rawPerPage = strtolower(trim($_GET['per_page'] ?? '20'));
+        // 3. Load Saved Filters from User Session
+        $savedFilters = array_merge($defaultFilters, $_SESSION[$sessionKey] ?? []);
+
+        // Helper to normalize multi-select values into array of strings
+        $normalizeMulti = function($val) {
+            if (is_array($val)) {
+                return array_values(array_filter(array_map('trim', $val), fn($v) => $v !== ''));
+            }
+            if ($val !== null && $val !== '') {
+                return [trim((string)$val)];
+            }
+            return [];
+        };
+
+        // 4. Update filters if submitted
+        if (isset($_GET['filter_applied'])) {
+            // Full filter form was submitted
+            $savedFilters['search'] = trim($_GET['q'] ?? '');
+            $savedFilters['tab'] = trim($_GET['tab'] ?? ($savedFilters['tab'] ?? 'all'));
+            $savedFilters['department'] = isset($_GET['department']) ? $normalizeMulti($_GET['department']) : [];
+            $savedFilters['position'] = isset($_GET['position']) ? $normalizeMulti($_GET['position']) : [];
+            $savedFilters['source'] = trim($_GET['source'] ?? '');
+            $savedFilters['invitation_status'] = isset($_GET['invitation_status']) ? $normalizeMulti($_GET['invitation_status']) : [];
+            $savedFilters['interview_attendance'] = isset($_GET['interview_attendance']) ? $normalizeMulti($_GET['interview_attendance']) : [];
+            $savedFilters['interview_location'] = isset($_GET['interview_location']) ? $normalizeMulti($_GET['interview_location']) : [];
+            $savedFilters['hired'] = isset($_GET['hired']) ? $normalizeMulti($_GET['hired']) : [];
+            $savedFilters['cv_uploaded'] = trim($_GET['cv_uploaded'] ?? '');
+            $savedFilters['email_sent'] = trim($_GET['email_sent'] ?? '');
+            $savedFilters['sms_sent'] = trim($_GET['sms_sent'] ?? '');
+            $savedFilters['date_type'] = trim($_GET['date_type'] ?? 'interview_date');
+            $savedFilters['date_from'] = trim($_GET['date_from'] ?? '');
+            $savedFilters['date_to'] = trim($_GET['date_to'] ?? '');
+            if (isset($_GET['per_page'])) $savedFilters['per_page'] = trim($_GET['per_page']);
+            if (isset($_GET['sort_by'])) $savedFilters['sort_by'] = trim($_GET['sort_by']);
+            if (isset($_GET['sort_order'])) $savedFilters['sort_order'] = trim($_GET['sort_order']);
+
+            $_SESSION[$sessionKey] = $savedFilters;
+        } else {
+            // Check individual query params
+            $hasAnyGet = false;
+            if (isset($_GET['tab'])) { $savedFilters['tab'] = trim($_GET['tab']); $hasAnyGet = true; }
+            if (isset($_GET['q'])) { $savedFilters['search'] = trim($_GET['q']); $hasAnyGet = true; }
+            if (isset($_GET['department'])) { $savedFilters['department'] = $normalizeMulti($_GET['department']); $hasAnyGet = true; }
+            if (isset($_GET['position'])) { $savedFilters['position'] = $normalizeMulti($_GET['position']); $hasAnyGet = true; }
+            if (isset($_GET['invitation_status'])) { $savedFilters['invitation_status'] = $normalizeMulti($_GET['invitation_status']); $hasAnyGet = true; }
+            if (isset($_GET['interview_attendance'])) { $savedFilters['interview_attendance'] = $normalizeMulti($_GET['interview_attendance']); $hasAnyGet = true; }
+            if (isset($_GET['interview_location'])) { $savedFilters['interview_location'] = $normalizeMulti($_GET['interview_location']); $hasAnyGet = true; }
+            if (isset($_GET['hired'])) { $savedFilters['hired'] = $normalizeMulti($_GET['hired']); $hasAnyGet = true; }
+            if (isset($_GET['cv_uploaded'])) { $savedFilters['cv_uploaded'] = trim($_GET['cv_uploaded']); $hasAnyGet = true; }
+            if (isset($_GET['email_sent'])) { $savedFilters['email_sent'] = trim($_GET['email_sent']); $hasAnyGet = true; }
+            if (isset($_GET['sms_sent'])) { $savedFilters['sms_sent'] = trim($_GET['sms_sent']); $hasAnyGet = true; }
+            if (isset($_GET['date_type'])) { $savedFilters['date_type'] = trim($_GET['date_type']); $hasAnyGet = true; }
+            if (isset($_GET['date_from'])) { $savedFilters['date_from'] = trim($_GET['date_from']); $hasAnyGet = true; }
+            if (isset($_GET['date_to'])) { $savedFilters['date_to'] = trim($_GET['date_to']); $hasAnyGet = true; }
+            if (isset($_GET['per_page'])) { $savedFilters['per_page'] = trim($_GET['per_page']); $hasAnyGet = true; }
+            if (isset($_GET['sort_by'])) { $savedFilters['sort_by'] = trim($_GET['sort_by']); $hasAnyGet = true; }
+            if (isset($_GET['sort_order'])) { $savedFilters['sort_order'] = trim($_GET['sort_order']); $hasAnyGet = true; }
+
+            if ($hasAnyGet) {
+                $_SESSION[$sessionKey] = $savedFilters;
+            }
+        }
+
+        // Active filters are the persisted filters
+        $filters = $savedFilters;
+
+        $rawPerPage = strtolower(trim($filters['per_page'] ?? '50'));
         if ($rawPerPage === 'all') {
             $perPage = 10000;
         } else {
             $perPage = (int)$rawPerPage;
-            if (!in_array($perPage, [10, 20, 50])) {
-                $perPage = 20;
-                $rawPerPage = '20';
+            if (!in_array($perPage, [10, 20, 50, 100])) {
+                $perPage = 50;
+                $rawPerPage = '50';
             }
         }
 
@@ -86,6 +179,9 @@ class AtsController extends Controller
             'tabCounts' => $result['counts'],
             'filters' => $filters,
             'options' => $options,
+            'sortBy' => $filters['sort_by'] ?? '',
+            'sortOrder' => $filters['sort_order'] ?? '',
+            'trashCount' => $this->candidateModel->getTrashCount(),
         ];
 
         $this->view('hrm/ats/tracker', $data);
@@ -172,6 +268,13 @@ class AtsController extends Controller
         $insertedId = $this->candidateModel->create($candidateData);
 
         if ($insertedId) {
+            AtsActivityLog::log($this->db, [
+                'action_type' => 'candidate_create',
+                'candidate_id' => $insertedId,
+                'candidate_name' => $name,
+                'description' => "Added new candidate '{$name}' for position '{$position}' ({$department})",
+                'details' => ['phone' => $phone, 'position' => $position, 'department' => $department]
+            ]);
             $_SESSION['success'] = "Candidate '{$name}' created successfully.";
         } else {
             $_SESSION['error'] = "Failed to create candidate. Please try again.";
@@ -285,6 +388,13 @@ class AtsController extends Controller
         $updated = $this->candidateModel->update((int)$id, $updateData);
 
         if ($updated) {
+            AtsActivityLog::log($this->db, [
+                'action_type' => 'candidate_edit',
+                'candidate_id' => $id,
+                'candidate_name' => $name,
+                'description' => "Updated full candidate details for '{$name}'",
+                'details' => ['updated_fields' => array_keys($updateData)]
+            ]);
             $_SESSION['success'] = "Candidate record updated successfully.";
         } else {
             $_SESSION['error'] = "Failed to update candidate record.";
@@ -311,13 +421,129 @@ class AtsController extends Controller
             exit;
         }
 
+        $candidate = $this->candidateModel->getById($id);
+        $candidateName = $candidate['name'] ?? "Candidate #{$id}";
+        $oldValue = $candidate[$field] ?? '';
+
         $updated = $this->candidateModel->updateField($id, $field, $value);
 
         if ($updated) {
+            AtsActivityLog::log($this->db, [
+                'action_type' => 'inline_cell_edit',
+                'candidate_id' => $id,
+                'candidate_name' => $candidateName,
+                'description' => "Changed " . ucfirst(str_replace('_', ' ', $field)) . " to '{$value}' for '{$candidateName}'",
+                'details' => ['field' => $field, 'old' => $oldValue, 'new' => $value]
+            ]);
             echo json_encode(['success' => true, 'message' => 'Status updated']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Failed to update status']);
         }
+        exit;
+    }
+
+    /**
+     * Quick Edit Candidate Details (Contact or Position/Dept) via AJAX
+     */
+    public function quickEditDetails()
+    {
+        $this->checkAuth();
+        header('Content-Type: application/json');
+
+        $id = (int)($_POST['id'] ?? 0);
+        $type = trim($_POST['type'] ?? '');
+
+        if (!$id || empty($type)) {
+            echo json_encode(['success' => false, 'message' => 'Invalid parameters']);
+            exit;
+        }
+
+        $candidate = $this->candidateModel->getById($id);
+        if (!$candidate) {
+            echo json_encode(['success' => false, 'message' => 'Candidate not found']);
+            exit;
+        }
+
+        if ($type === 'contact') {
+            $name = trim($_POST['name'] ?? '');
+            $phone = trim($_POST['phone'] ?? '');
+            $email = trim($_POST['email'] ?? '');
+
+            if (empty($name) || empty($phone)) {
+                echo json_encode(['success' => false, 'message' => 'Name and Phone are required.']);
+                exit;
+            }
+
+            $updated = $this->candidateModel->updateContactDetails($id, $name, $phone, $email);
+            if ($updated) {
+                AtsActivityLog::log($this->db, [
+                    'action_type' => 'inline_cell_edit',
+                    'candidate_id' => $id,
+                    'candidate_name' => $name,
+                    'description' => "Updated contact info for '{$name}' (Phone: {$phone}, Email: {$email})",
+                    'details' => ['name' => $name, 'phone' => $phone, 'email' => $email]
+                ]);
+                $waPhone = preg_replace('/[^0-9]/', '', $phone);
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Candidate details updated successfully',
+                    'data' => [
+                        'id' => $id,
+                        'name' => $name,
+                        'phone' => $phone,
+                        'email' => $email,
+                        'wa_phone' => $waPhone
+                    ]
+                ]);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Failed to update candidate details']);
+            }
+            exit;
+        } elseif ($type === 'position_dept') {
+            $position = trim($_POST['position'] ?? '');
+            $department = trim($_POST['department'] ?? '');
+
+            if ($department === 'Other' && !empty($_POST['department_other'])) {
+                $department = trim($_POST['department_other']);
+                $this->dropdownModel->ensureOptionExists('department', $department, $_SESSION['user']['id'] ?? null);
+            }
+            if ($position === 'Other' && !empty($_POST['position_other'])) {
+                $position = trim($_POST['position_other']);
+                $this->dropdownModel->ensureOptionExists('position', $position, $_SESSION['user']['id'] ?? null);
+            }
+
+            if (empty($position) || empty($department)) {
+                echo json_encode(['success' => false, 'message' => 'Position and Department cannot be empty.']);
+                exit;
+            }
+
+            $updated = $this->candidateModel->updatePositionDept($id, $position, $department);
+            if ($updated) {
+                $cand = $this->candidateModel->getById($id);
+                $candName = $cand['name'] ?? "Candidate #{$id}";
+                AtsActivityLog::log($this->db, [
+                    'action_type' => 'inline_cell_edit',
+                    'candidate_id' => $id,
+                    'candidate_name' => $candName,
+                    'description' => "Updated Position to '{$position}' and Department to '{$department}' for '{$candName}'",
+                    'details' => ['position' => $position, 'department' => $department]
+                ]);
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Position & Department updated successfully',
+                    'data' => [
+                        'id' => $id,
+                        'position' => $position,
+                        'department' => $department
+                    ]
+                ]);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Failed to update Position & Department']);
+            }
+            exit;
+        }
+
+        echo json_encode(['success' => false, 'message' => 'Invalid update type']);
         exit;
     }
 
@@ -343,10 +569,15 @@ class AtsController extends Controller
         $updates = [];
 
         if ($action === 'delete') {
-            $affected = $this->candidateModel->bulkDelete($ids);
+            $affected = $this->candidateModel->bulkSoftDelete($ids);
+            AtsActivityLog::log($this->db, [
+                'action_type' => 'bulk_trash',
+                'description' => "Moved {$affected} candidate(s) to Trash",
+                'details' => ['candidate_ids' => $ids]
+            ]);
             echo json_encode([
                 'success' => true,
-                'message' => "Successfully deleted {$affected} candidate(s)."
+                'message' => "Successfully moved {$affected} candidate(s) to trash."
             ]);
             exit;
         } elseif ($action === 'communication') {
@@ -362,6 +593,24 @@ class AtsController extends Controller
             if (isset($_POST['interview_location'])) $updates['interview_location'] = trim($_POST['interview_location']);
         } elseif ($action === 'hired' && !empty($_POST['hired'])) {
             $updates['hired'] = $_POST['hired'];
+        } elseif ($action === 'position_dept') {
+            $position = trim($_POST['position'] ?? '');
+            if ($position === 'Other' && !empty($_POST['position_other'])) {
+                $position = trim($_POST['position_other']);
+                $this->dropdownModel->ensureOptionExists('position', $position, $_SESSION['user']['id'] ?? null);
+            }
+            if ($position !== '') {
+                $updates['position'] = $position;
+            }
+
+            $department = trim($_POST['department'] ?? '');
+            if ($department === 'Other' && !empty($_POST['department_other'])) {
+                $department = trim($_POST['department_other']);
+                $this->dropdownModel->ensureOptionExists('department', $department, $_SESSION['user']['id'] ?? null);
+            }
+            if ($department !== '') {
+                $updates['department'] = $department;
+            }
         }
 
         if (empty($updates)) {
@@ -371,6 +620,12 @@ class AtsController extends Controller
 
         $affected = $this->candidateModel->bulkUpdate($ids, $updates);
 
+        AtsActivityLog::log($this->db, [
+            'action_type' => 'bulk_edit',
+            'description' => "Bulk updated {$affected} candidate(s) with action '{$action}'",
+            'details' => ['candidate_ids' => $ids, 'updates' => $updates]
+        ]);
+
         echo json_encode([
             'success' => true,
             'message' => "Successfully updated {$affected} candidate(s)."
@@ -379,9 +634,192 @@ class AtsController extends Controller
     }
 
     /**
-     * Delete Candidate (AJAX / POST)
+     * Soft Delete Candidate (Move to Trash) (AJAX / POST)
      */
     public function delete()
+    {
+        $this->checkAuth();
+        header('Content-Type: application/json');
+
+        $id = (int)($_POST['id'] ?? 0);
+        if (!$id) {
+            echo json_encode(['success' => false, 'message' => 'Invalid candidate ID']);
+            exit;
+        }
+
+        $candidate = $this->candidateModel->getById($id);
+        if (!$candidate) {
+            echo json_encode(['success' => false, 'message' => 'Candidate not found']);
+            exit;
+        }
+
+        $deleted = $this->candidateModel->softDelete($id);
+
+        if ($deleted) {
+            AtsActivityLog::log($this->db, [
+                'action_type' => 'soft_delete',
+                'candidate_id' => $id,
+                'candidate_name' => $candidate['name'],
+                'description' => "Moved candidate '{$candidate['name']}' to Trash"
+            ]);
+            echo json_encode(['success' => true, 'message' => "Candidate '{$candidate['name']}' moved to trash."]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to move candidate to trash.']);
+        }
+        exit;
+    }
+
+    /**
+     * Dedicated ATS Trash Page
+     */
+    public function trash()
+    {
+        $this->checkAuth();
+
+        AtsActivityLog::log($this->db, [
+            'action_type' => 'page_view',
+            'description' => 'Viewed Trash / Recycle Bin'
+        ]);
+
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $perPage = 20;
+        $search = trim($_GET['q'] ?? '');
+
+        $filters = [
+            'trash' => true,
+            'search' => $search
+        ];
+
+        $result = $this->candidateModel->getFiltered($filters, $page, $perPage);
+
+        $data = [
+            'page_title' => 'HR ATS - Candidate Trash',
+            'candidates' => $result['data'],
+            'total' => $result['total'],
+            'currentPage' => $result['page'],
+            'perPage' => $result['per_page'],
+            'totalPages' => $result['total_pages'],
+            'search' => $search,
+        ];
+
+        $this->view('hrm/ats/trash', $data);
+    }
+
+    /**
+     * Dedicated ATS Activity Log / Audit Trail Page
+     */
+    public function activityLogs()
+    {
+        $this->checkAuth();
+
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $perPage = 30;
+        $search = trim($_GET['q'] ?? '');
+        $userId = !empty($_GET['user_id']) ? (int)$_GET['user_id'] : null;
+        $actionType = !empty($_GET['action_type']) ? trim($_GET['action_type']) : null;
+        $dateFrom = !empty($_GET['date_from']) ? trim($_GET['date_from']) : null;
+        $dateTo = !empty($_GET['date_to']) ? trim($_GET['date_to']) : null;
+
+        $filters = [
+            'search' => $search,
+            'user_id' => $userId,
+            'action_type' => $actionType,
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
+        ];
+
+        $activityModel = new AtsActivityLog($this->db);
+        $result = $activityModel->getLogs($filters, $page, $perPage);
+        $stats = $activityModel->getStats();
+        $usersList = $activityModel->getUsersList();
+        $actionTypes = $activityModel->getActionTypes();
+
+        $data = [
+            'page_title' => 'HR ATS - Activity Logs & Audit Trail',
+            'logs' => $result['data'],
+            'total' => $result['total'],
+            'currentPage' => $result['page'],
+            'perPage' => $result['per_page'],
+            'totalPages' => $result['total_pages'],
+            'stats' => $stats,
+            'usersList' => $usersList,
+            'actionTypes' => $actionTypes,
+            'filters' => $filters,
+        ];
+
+        $this->view('hrm/ats/activity-logs', $data);
+    }
+
+    /**
+     * Restore Candidate from Trash (AJAX / POST)
+     */
+    public function restore()
+    {
+        $this->checkAuth();
+        header('Content-Type: application/json');
+
+        $id = (int)($_POST['id'] ?? 0);
+        if (!$id) {
+            echo json_encode(['success' => false, 'message' => 'Invalid candidate ID']);
+            exit;
+        }
+
+        $candidate = $this->candidateModel->getById($id);
+        if (!$candidate) {
+            echo json_encode(['success' => false, 'message' => 'Candidate not found']);
+            exit;
+        }
+
+        $restored = $this->candidateModel->restore($id);
+        if ($restored) {
+            AtsActivityLog::log($this->db, [
+                'action_type' => 'restore',
+                'candidate_id' => $id,
+                'candidate_name' => $candidate['name'],
+                'description' => "Restored candidate '{$candidate['name']}' from Trash"
+            ]);
+            echo json_encode(['success' => true, 'message' => "Candidate '{$candidate['name']}' restored successfully."]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to restore candidate.']);
+        }
+        exit;
+    }
+
+    /**
+     * Bulk Restore Candidates from Trash (AJAX / POST)
+     */
+    public function bulkRestore()
+    {
+        $this->checkAuth();
+        header('Content-Type: application/json');
+
+        $ids = $_POST['ids'] ?? [];
+        if (is_string($ids)) {
+            $ids = explode(',', $ids);
+        }
+
+        if (empty($ids) || !is_array($ids)) {
+            echo json_encode(['success' => false, 'message' => 'No candidates selected']);
+            exit;
+        }
+
+        $affected = $this->candidateModel->bulkRestore($ids);
+        AtsActivityLog::log($this->db, [
+            'action_type' => 'bulk_restore',
+            'description' => "Bulk restored {$affected} candidate(s) from Trash",
+            'details' => ['candidate_ids' => $ids]
+        ]);
+        echo json_encode([
+            'success' => true,
+            'message' => "Successfully restored {$affected} candidate(s)."
+        ]);
+        exit;
+    }
+
+    /**
+     * Force / Hard Delete Candidate permanently from Trash (AJAX / POST)
+     */
+    public function forceDelete()
     {
         $this->checkAuth();
         header('Content-Type: application/json');
@@ -406,13 +844,91 @@ class AtsController extends Controller
             }
         }
 
-        $deleted = $this->candidateModel->delete($id);
-
+        $deleted = $this->candidateModel->forceDelete($id);
         if ($deleted) {
-            echo json_encode(['success' => true, 'message' => "Candidate '{$candidate['name']}' deleted successfully."]);
+            AtsActivityLog::log($this->db, [
+                'action_type' => 'force_delete',
+                'candidate_id' => $id,
+                'candidate_name' => $candidate['name'],
+                'description' => "Permanently deleted candidate '{$candidate['name']}'"
+            ]);
+            echo json_encode(['success' => true, 'message' => "Candidate '{$candidate['name']}' permanently deleted."]);
         } else {
-            echo json_encode(['success' => false, 'message' => 'Failed to delete candidate.']);
+            echo json_encode(['success' => false, 'message' => 'Failed to permanently delete candidate.']);
         }
+        exit;
+    }
+
+    /**
+     * Bulk Force Delete Candidates permanently from Trash (AJAX / POST)
+     */
+    public function bulkForceDelete()
+    {
+        $this->checkAuth();
+        header('Content-Type: application/json');
+
+        $ids = $_POST['ids'] ?? [];
+        if (is_string($ids)) {
+            $ids = explode(',', $ids);
+        }
+
+        if (empty($ids) || !is_array($ids)) {
+            echo json_encode(['success' => false, 'message' => 'No candidates selected']);
+            exit;
+        }
+
+        // Clean up CV files for selected candidates
+        foreach ($ids as $id) {
+            $cand = $this->candidateModel->getById((int)$id);
+            if ($cand && !empty($cand['cv_file_path'])) {
+                $filePath = BASE_PATH . '/public/' . $cand['cv_file_path'];
+                if (file_exists($filePath)) {
+                    @unlink($filePath);
+                }
+            }
+        }
+
+        $affected = $this->candidateModel->bulkForceDelete($ids);
+        AtsActivityLog::log($this->db, [
+            'action_type' => 'bulk_force_delete',
+            'description' => "Bulk permanently deleted {$affected} candidate(s)",
+            'details' => ['candidate_ids' => $ids]
+        ]);
+        echo json_encode([
+            'success' => true,
+            'message' => "Successfully permanently deleted {$affected} candidate(s)."
+        ]);
+        exit;
+    }
+
+    /**
+     * Empty entire Trash permanently (AJAX / POST)
+     */
+    public function emptyTrash()
+    {
+        $this->checkAuth();
+        header('Content-Type: application/json');
+
+        // Fetch all deleted candidates to remove their CV files
+        $trashCandidates = $this->candidateModel->getAllFiltered(['trash' => true]);
+        foreach ($trashCandidates as $cand) {
+            if (!empty($cand['cv_file_path'])) {
+                $filePath = BASE_PATH . '/public/' . $cand['cv_file_path'];
+                if (file_exists($filePath)) {
+                    @unlink($filePath);
+                }
+            }
+        }
+
+        $affected = $this->candidateModel->emptyTrash();
+        AtsActivityLog::log($this->db, [
+            'action_type' => 'empty_trash',
+            'description' => "Emptied entire Trash ({$affected} records permanently removed)"
+        ]);
+        echo json_encode([
+            'success' => true,
+            'message' => "Successfully cleared {$affected} record(s) from trash."
+        ]);
         exit;
     }
 
@@ -509,6 +1025,14 @@ class AtsController extends Controller
 
         fclose($handle);
 
+        if ($successCount > 0) {
+            AtsActivityLog::log($this->db, [
+                'action_type' => 'batch_csv_import',
+                'description' => "Batch imported {$successCount} candidate(s) via CSV ({$skippedCount} skipped)",
+                'details' => ['imported_count' => $successCount, 'skipped_count' => $skippedCount]
+            ]);
+        }
+
         $_SESSION['success'] = "CSV Upload completed: {$successCount} candidates imported successfully" . ($skippedCount > 0 ? " ({$skippedCount} skipped due to missing mandatory fields)." : ".");
         header("Location: " . $GLOBALS['base_url'] . "/ats-tracker");
         exit;
@@ -572,6 +1096,10 @@ class AtsController extends Controller
         $res = $this->dropdownModel->create($category, $optionValue, $displayOrder, $_SESSION['user']['id'] ?? null);
 
         if ($res) {
+            AtsActivityLog::log($this->db, [
+                'action_type' => 'settings_change',
+                'description' => "Added dropdown option '{$optionValue}' to category '{$category}'"
+            ]);
             echo json_encode(['success' => true, 'message' => 'Option added successfully.']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Failed to add option.']);
@@ -620,6 +1148,10 @@ class AtsController extends Controller
         $res = $this->dropdownModel->delete($id);
 
         if ($res) {
+            AtsActivityLog::log($this->db, [
+                'action_type' => 'settings_change',
+                'description' => "Deleted dropdown option #{$id}"
+            ]);
             echo json_encode(['success' => true, 'message' => 'Option deleted permanently.']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Failed to delete option.']);
@@ -725,6 +1257,14 @@ class AtsController extends Controller
             }
             $this->candidateModel->updateField($id, 'cv_source', 'drive_link');
             $this->candidateModel->updateField($id, 'cv_drive_link', $driveLink);
+
+            AtsActivityLog::log($this->db, [
+                'action_type' => 'cv_upload',
+                'candidate_id' => $id,
+                'candidate_name' => $candidate['name'],
+                'description' => "Saved Google Drive CV link for candidate '{$candidate['name']}'"
+            ]);
+
             echo json_encode(['success' => true, 'message' => 'CV Drive link saved successfully!']);
             exit;
         }
@@ -751,8 +1291,50 @@ class AtsController extends Controller
         $this->candidateModel->updateField($id, 'cv_source', 'file');
         $this->candidateModel->updateField($id, 'cv_file_path', $filePath);
 
+        AtsActivityLog::log($this->db, [
+            'action_type' => 'cv_upload',
+            'candidate_id' => $id,
+            'candidate_name' => $candidate['name'],
+            'description' => "Uploaded CV file for candidate '{$candidate['name']}'",
+            'details' => ['file_path' => $filePath]
+        ]);
+
         echo json_encode(['success' => true, 'message' => 'CV uploaded successfully!']);
         exit;
+    }
+
+    /**
+     * Extract normalized request filters from GET
+     */
+    private function extractRequestFilters(): array
+    {
+        $normalizeMulti = function($val) {
+            if (is_array($val)) {
+                return array_values(array_filter(array_map('trim', $val), fn($v) => $v !== ''));
+            }
+            if ($val !== null && $val !== '') {
+                return [trim((string)$val)];
+            }
+            return [];
+        };
+
+        return [
+            'search' => trim($_GET['q'] ?? ''),
+            'tab' => trim($_GET['tab'] ?? 'all'),
+            'department' => isset($_GET['department']) ? $normalizeMulti($_GET['department']) : [],
+            'position' => isset($_GET['position']) ? $normalizeMulti($_GET['position']) : [],
+            'source' => trim($_GET['source'] ?? ''),
+            'invitation_status' => isset($_GET['invitation_status']) ? $normalizeMulti($_GET['invitation_status']) : [],
+            'interview_attendance' => isset($_GET['interview_attendance']) ? $normalizeMulti($_GET['interview_attendance']) : [],
+            'interview_location' => isset($_GET['interview_location']) ? $normalizeMulti($_GET['interview_location']) : [],
+            'hired' => isset($_GET['hired']) ? $normalizeMulti($_GET['hired']) : [],
+            'cv_uploaded' => trim($_GET['cv_uploaded'] ?? ''),
+            'email_sent' => trim($_GET['email_sent'] ?? ''),
+            'sms_sent' => trim($_GET['sms_sent'] ?? ''),
+            'date_type' => trim($_GET['date_type'] ?? 'interview_date'),
+            'date_from' => trim($_GET['date_from'] ?? ''),
+            'date_to' => trim($_GET['date_to'] ?? ''),
+        ];
     }
 
     /**
@@ -762,19 +1344,7 @@ class AtsController extends Controller
     {
         $this->checkAuth();
 
-        $filters = [
-            'search' => $_GET['q'] ?? '',
-            'tab' => $_GET['tab'] ?? 'all',
-            'department' => $_GET['department'] ?? '',
-            'position' => $_GET['position'] ?? '',
-            'source' => $_GET['source'] ?? '',
-            'invitation_status' => $_GET['invitation_status'] ?? '',
-            'interview_attendance' => $_GET['interview_attendance'] ?? '',
-            'hired' => $_GET['hired'] ?? '',
-            'date_type' => $_GET['date_type'] ?? 'interview_date',
-            'date_from' => $_GET['date_from'] ?? '',
-            'date_to' => $_GET['date_to'] ?? '',
-        ];
+        $filters = $this->extractRequestFilters();
 
         $candidates = $this->candidateModel->getAllFiltered($filters);
         $totalCandidates = count($candidates);
@@ -1049,19 +1619,7 @@ class AtsController extends Controller
     {
         $this->checkAuth();
 
-        $filters = [
-            'search' => $_GET['q'] ?? '',
-            'tab' => $_GET['tab'] ?? 'all',
-            'department' => $_GET['department'] ?? '',
-            'position' => $_GET['position'] ?? '',
-            'source' => $_GET['source'] ?? '',
-            'invitation_status' => $_GET['invitation_status'] ?? '',
-            'interview_attendance' => $_GET['interview_attendance'] ?? '',
-            'hired' => $_GET['hired'] ?? '',
-            'date_type' => $_GET['date_type'] ?? 'interview_date',
-            'date_from' => $_GET['date_from'] ?? '',
-            'date_to' => $_GET['date_to'] ?? '',
-        ];
+        $filters = $this->extractRequestFilters();
 
         $candidates = $this->candidateModel->getAllFiltered($filters);
 
@@ -1253,19 +1811,7 @@ class AtsController extends Controller
     {
         $this->checkAuth();
 
-        $filters = [
-            'search' => $_GET['q'] ?? '',
-            'tab' => $_GET['tab'] ?? 'all',
-            'department' => $_GET['department'] ?? '',
-            'position' => $_GET['position'] ?? '',
-            'source' => $_GET['source'] ?? '',
-            'invitation_status' => $_GET['invitation_status'] ?? '',
-            'interview_attendance' => $_GET['interview_attendance'] ?? '',
-            'hired' => $_GET['hired'] ?? '',
-            'date_type' => $_GET['date_type'] ?? 'interview_date',
-            'date_from' => $_GET['date_from'] ?? '',
-            'date_to' => $_GET['date_to'] ?? '',
-        ];
+        $filters = $this->extractRequestFilters();
 
         $candidates = $this->candidateModel->getAllFiltered($filters);
 
