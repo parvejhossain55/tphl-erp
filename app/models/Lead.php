@@ -626,9 +626,18 @@ class Lead extends Model
                     ))";
                 }
             } elseif ($filter_card === 'today_follow_up') {
+                $sql .= " AND l.assigned_id > 0
+                          AND COALESCE(l.lead_type, '') NOT IN ('Not Interested', 'Don\'t Call Again', 'Irrelevant', 'Refund', 'Lead Transferred', 'Project Transferred', 'Sold')
+                          AND NOT EXISTS (
+                              SELECT 1 FROM lead_bookings b_sub 
+                              WHERE b_sub.lead_id = l.id 
+                                AND b_sub.deleted_at IS NULL 
+                                AND b_sub.booking_status IN ('booked', 'completed')
+                          )";
                 if (!empty($from_date) && !empty($to_date)) {
                     $sql .= " AND EXISTS (
                         SELECT 1 FROM lead_follow_ups lf_sub
+                        JOIN (SELECT lead_id, MAX(id) AS mid FROM lead_follow_ups WHERE deleted_at IS NULL GROUP BY lead_id) m ON m.mid = lf_sub.id
                         WHERE lf_sub.lead_id = l.id
                           AND lf_sub.deleted_at IS NULL
                           AND DATE(lf_sub.next_follow_up_date) BETWEEN ? AND ?
@@ -639,32 +648,53 @@ class Lead extends Model
                 } else {
                     $sql .= " AND EXISTS (
                         SELECT 1 FROM lead_follow_ups lf_sub
+                        JOIN (SELECT lead_id, MAX(id) AS mid FROM lead_follow_ups WHERE deleted_at IS NULL GROUP BY lead_id) m ON m.mid = lf_sub.id
                         WHERE lf_sub.lead_id = l.id
                           AND lf_sub.deleted_at IS NULL
-                          AND lf_sub.next_follow_up_date >= CURDATE()
-                          AND lf_sub.next_follow_up_date < CURDATE() + INTERVAL 1 DAY
+                          AND DATE(lf_sub.next_follow_up_date) = CURDATE()
                     )";
                 }
             } elseif ($filter_card === 'pending_follow_ups') {
+                $sql .= " AND l.assigned_id > 0
+                          AND COALESCE(l.lead_type, '') NOT IN ('Not Interested', 'Don\'t Call Again', 'Irrelevant', 'Refund', 'Lead Transferred', 'Project Transferred', 'Sold')
+                          AND NOT EXISTS (
+                              SELECT 1 FROM lead_bookings b_sub 
+                              WHERE b_sub.lead_id = l.id 
+                                AND b_sub.deleted_at IS NULL 
+                                AND b_sub.booking_status IN ('booked', 'completed')
+                          )";
                 if (!empty($from_date) && !empty($to_date)) {
                     $sql .= " AND EXISTS (
                         SELECT 1 FROM lead_follow_ups lf_sub
+                        JOIN (SELECT lead_id, MAX(id) AS mid FROM lead_follow_ups WHERE deleted_at IS NULL GROUP BY lead_id) m ON m.mid = lf_sub.id
                         WHERE lf_sub.lead_id = l.id
                           AND lf_sub.deleted_at IS NULL
-                          AND lf_sub.status = 'pending'
                           AND DATE(lf_sub.next_follow_up_date) BETWEEN ? AND ?
+                    ) AND NOT EXISTS (
+                        SELECT 1 FROM lead_follow_ups done_sub
+                        WHERE done_sub.lead_id = l.id
+                          AND (DATE(done_sub.created_at) BETWEEN ? AND ? OR done_sub.follow_up_date BETWEEN ? AND ?)
+                          AND done_sub.deleted_at IS NULL
                     )";
                     $params[] = $from_date;
                     $params[] = $to_date;
-                    $types .= "ss";
+                    $params[] = $from_date;
+                    $params[] = $to_date;
+                    $params[] = $from_date;
+                    $params[] = $to_date;
+                    $types .= "ssssss";
                 } else {
                     $sql .= " AND EXISTS (
                         SELECT 1 FROM lead_follow_ups lf_sub
+                        JOIN (SELECT lead_id, MAX(id) AS mid FROM lead_follow_ups WHERE deleted_at IS NULL GROUP BY lead_id) m ON m.mid = lf_sub.id
                         WHERE lf_sub.lead_id = l.id
                           AND lf_sub.deleted_at IS NULL
-                          AND lf_sub.next_follow_up_date >= CURDATE()
-                          AND lf_sub.next_follow_up_date < CURDATE() + INTERVAL 1 DAY
-                          AND lf_sub.status = 'pending'
+                          AND DATE(lf_sub.next_follow_up_date) = CURDATE()
+                    ) AND NOT EXISTS (
+                        SELECT 1 FROM lead_follow_ups done_sub
+                        WHERE done_sub.lead_id = l.id
+                          AND (DATE(done_sub.created_at) = CURDATE() OR done_sub.follow_up_date = CURDATE())
+                          AND done_sub.deleted_at IS NULL
                     )";
                 }
             } elseif ($filter_card === 'hot_leads') {
@@ -1222,9 +1252,18 @@ class Lead extends Model
                     ))";
                 }
             } elseif ($filter_card === 'today_follow_up') {
+                $sql .= " AND l.assigned_id > 0
+                          AND COALESCE(l.lead_type, '') NOT IN ('Not Interested', 'Don\'t Call Again', 'Irrelevant', 'Refund', 'Lead Transferred', 'Project Transferred', 'Sold')
+                          AND NOT EXISTS (
+                              SELECT 1 FROM lead_bookings b_sub 
+                              WHERE b_sub.lead_id = l.id 
+                                AND b_sub.deleted_at IS NULL 
+                                AND b_sub.booking_status IN ('booked', 'completed')
+                          )";
                 if (!empty($from_date) && !empty($to_date)) {
                     $sql .= " AND EXISTS (
                         SELECT 1 FROM lead_follow_ups lf_sub
+                        JOIN (SELECT lead_id, MAX(id) AS mid FROM lead_follow_ups WHERE deleted_at IS NULL GROUP BY lead_id) m ON m.mid = lf_sub.id
                         WHERE lf_sub.lead_id = l.id
                           AND lf_sub.deleted_at IS NULL
                           AND DATE(lf_sub.next_follow_up_date) BETWEEN ? AND ?
@@ -1235,32 +1274,53 @@ class Lead extends Model
                 } else {
                     $sql .= " AND EXISTS (
                         SELECT 1 FROM lead_follow_ups lf_sub
+                        JOIN (SELECT lead_id, MAX(id) AS mid FROM lead_follow_ups WHERE deleted_at IS NULL GROUP BY lead_id) m ON m.mid = lf_sub.id
                         WHERE lf_sub.lead_id = l.id
                           AND lf_sub.deleted_at IS NULL
-                          AND lf_sub.next_follow_up_date >= CURDATE()
-                          AND lf_sub.next_follow_up_date < CURDATE() + INTERVAL 1 DAY
+                          AND DATE(lf_sub.next_follow_up_date) = CURDATE()
                     )";
                 }
             } elseif ($filter_card === 'pending_follow_ups') {
+                $sql .= " AND l.assigned_id > 0
+                          AND COALESCE(l.lead_type, '') NOT IN ('Not Interested', 'Don\'t Call Again', 'Irrelevant', 'Refund', 'Lead Transferred', 'Project Transferred', 'Sold')
+                          AND NOT EXISTS (
+                              SELECT 1 FROM lead_bookings b_sub 
+                              WHERE b_sub.lead_id = l.id 
+                                AND b_sub.deleted_at IS NULL 
+                                AND b_sub.booking_status IN ('booked', 'completed')
+                          )";
                 if (!empty($from_date) && !empty($to_date)) {
                     $sql .= " AND EXISTS (
                         SELECT 1 FROM lead_follow_ups lf_sub
+                        JOIN (SELECT lead_id, MAX(id) AS mid FROM lead_follow_ups WHERE deleted_at IS NULL GROUP BY lead_id) m ON m.mid = lf_sub.id
                         WHERE lf_sub.lead_id = l.id
                           AND lf_sub.deleted_at IS NULL
-                          AND lf_sub.status = 'pending'
                           AND DATE(lf_sub.next_follow_up_date) BETWEEN ? AND ?
+                    ) AND NOT EXISTS (
+                        SELECT 1 FROM lead_follow_ups done_sub
+                        WHERE done_sub.lead_id = l.id
+                          AND (DATE(done_sub.created_at) BETWEEN ? AND ? OR done_sub.follow_up_date BETWEEN ? AND ?)
+                          AND done_sub.deleted_at IS NULL
                     )";
                     $params[] = $from_date;
                     $params[] = $to_date;
-                    $types .= "ss";
+                    $params[] = $from_date;
+                    $params[] = $to_date;
+                    $params[] = $from_date;
+                    $params[] = $to_date;
+                    $types .= "ssssss";
                 } else {
                     $sql .= " AND EXISTS (
                         SELECT 1 FROM lead_follow_ups lf_sub
+                        JOIN (SELECT lead_id, MAX(id) AS mid FROM lead_follow_ups WHERE deleted_at IS NULL GROUP BY lead_id) m ON m.mid = lf_sub.id
                         WHERE lf_sub.lead_id = l.id
                           AND lf_sub.deleted_at IS NULL
-                          AND lf_sub.next_follow_up_date >= CURDATE()
-                          AND lf_sub.next_follow_up_date < CURDATE() + INTERVAL 1 DAY
-                          AND lf_sub.status = 'pending'
+                          AND DATE(lf_sub.next_follow_up_date) = CURDATE()
+                    ) AND NOT EXISTS (
+                        SELECT 1 FROM lead_follow_ups done_sub
+                        WHERE done_sub.lead_id = l.id
+                          AND (DATE(done_sub.created_at) = CURDATE() OR done_sub.follow_up_date = CURDATE())
+                          AND done_sub.deleted_at IS NULL
                     )";
                 }
             } elseif ($filter_card === 'hot_leads') {
@@ -4734,6 +4794,7 @@ class Lead extends Model
     }
 
     /**
+     * 
      * Get Team Lead Upload Report
      * Summarizes leads uploaded by role 11 executives grouped by member and upload date,
      * including sessions, first/last upload time, and KPI dashboard metrics.

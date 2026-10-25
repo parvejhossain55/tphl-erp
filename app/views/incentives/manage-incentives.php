@@ -207,13 +207,19 @@ $canApproveAh = $isAccountsHead || in_array($userRole, [1, 3]) || strpos($roleNa
                                         </td>
                                         <td>
                                             <?php if($ind['target_amount'] > 0): ?>
-                                                <div class="small">Eligible Payout: <strong><?= $ind['eligible_payout_pct'] ?>%</strong></div>
-                                                <div class="small">Slab: <strong><?= $ind['base_slab_pct'] ?>%</strong></div>
-                                                <?php if($ind['final_assigned_pct'] > 0): ?>
-                                                    <span class="badge bg-primary mt-1">Final: <?= $ind['final_assigned_pct'] ?>%</span>
+                                                <?php if(!empty($ind['is_min_eligible'])): ?>
+                                                    <span class="badge bg-success-subtle text-success fw-semibold mb-1">
+                                                        <i class="fa-solid fa-check me-1"></i>Qualified (≥ 25L)
+                                                    </span>
+                                                    <div class="small fw-bold text-primary">Rate: <?= number_format($ind['final_assigned_pct'] ?? $ind['base_rate'] ?? 0.70, 2) ?>%</div>
+                                                <?php else: ?>
+                                                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle extra-small">
+                                                        <i class="fa-solid fa-circle-exclamation me-1"></i>Under 25 Lakh Min
+                                                    </span>
+                                                    <div class="extra-small text-muted mt-1">Rate: 0.00%</div>
                                                 <?php endif; ?>
                                             <?php else: ?>
-                                                -
+                                                <span class="text-muted small">-</span>
                                             <?php endif; ?>
                                         </td>
                                         <td>
@@ -230,14 +236,14 @@ $canApproveAh = $isAccountsHead || in_array($userRole, [1, 3]) || strpos($roleNa
                                         </td>
                                         <td>
                                             <?php if($team['eligible'] && $team['team_target'] > 0): ?>
-                                                <?php if($team['incentive_earned'] > 0): ?>
+                                                <?php if(($team['incentive_earned'] ?? 0) > 0): ?>
                                                     <h6 class="text-success fw-bold mb-0">৳<?= number_format($team['incentive_earned'], 2) ?></h6>
-                                                    <span class="extra-small text-muted"><?= $team['slabs_hit'] ?> slabs hit (<?= $team['eligible_payout_pct'] ?>% payout)</span>
+                                                    <span class="extra-small text-muted">0.05% of qualified sales</span>
                                                 <?php else: ?>
                                                     <span class="text-muted small">৳0.00</span>
                                                 <?php endif; ?>
                                             <?php else: ?>
-                                                -
+                                                <span class="text-muted small">-</span>
                                             <?php endif; ?>
                                         </td>
                                     </tr>

@@ -103,9 +103,23 @@ class ApprovalRequestController extends Controller
             }
         }
 
+        $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+        $perPage = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 25;
+        if (!in_array($perPage, [25, 50, 70, 100, 200], true)) {
+            $perPage = 25;
+        }
+        $offset = ($page - 1) * $perPage;
+
+        $totalRecords = $this->approvalModel->countAllApprovalHistory($filters);
+        $totalPages = $totalRecords > 0 ? (int)ceil($totalRecords / $perPage) : 1;
+        if ($page > $totalPages && $totalPages > 0) {
+            $page = $totalPages;
+            $offset = ($page - 1) * $perPage;
+        }
+
         $metrics = $this->approvalModel->getApprovalDashboardMetrics();
         $moduleMetrics = $this->approvalModel->getModuleExpenseBreakdown($filters);
-        $history = $this->approvalModel->getAllApprovalHistory($filters);
+        $history = $this->approvalModel->getAllApprovalHistory($filters, $perPage, $offset);
 
         $this->view("approvals/all-approval-requests", [
             "current_route"   => "all-approval-requests",
@@ -115,7 +129,15 @@ class ApprovalRequestController extends Controller
             "approvalHistory" => $history,
             "departmentsList" => $departmentsList,
             "coaList"         => $coaList,
-            "filters"         => $filters
+            "filters"         => $filters,
+            "pagination"      => [
+                "currentPage"  => $page,
+                "perPage"      => $perPage,
+                "totalRecords" => $totalRecords,
+                "totalPages"   => $totalPages,
+                "startRecord"  => $totalRecords > 0 ? $offset + 1 : 0,
+                "endRecord"    => min($offset + $perPage, $totalRecords)
+            ]
         ]);
     }
 

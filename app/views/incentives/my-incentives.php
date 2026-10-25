@@ -119,9 +119,9 @@
                                     <th class="ps-4">Booking Ref</th>
                                     <th>Customer & Phone</th>
                                     <th>Project & Flat Unit</th>
-                                    <th>Flat Price & Land Share</th>
-                                    <th>Total Money Collected</th>
-                                    <th>Category & %</th>
+                                    <th>Land Share (Calculation Base)</th>
+                                    <th>Total Collected</th>
+                                    <th>Applied Rate (%)</th>
                                     <th>Incentive Amount</th>
                                     <th class="text-center">Booking Money Status</th>
                                     <th class="text-center">Registration Status</th>
@@ -158,12 +158,12 @@
                                                 <span class="text-primary extra-small fw-semibold"><?= htmlspecialchars($sale['flat_name']) ?> (<?= $sale['sqft'] ?> sqft)</span>
                                             </td>
 
-                                            <!-- Flat Price & Land Share -->
+                                            <!-- Land Share (Base) & Flat Price -->
                                             <td>
-                                                <span class="fw-bold text-dark d-block">৳<?= number_format($sale['flat_price'], 2) ?></span>
-                                                <span class="badge bg-primary-subtle text-primary extra-small" title="Land Share Value">
-                                                    <i class="fa-solid fa-map-location-dot me-1"></i>Land Share: ৳<?= number_format($sale['land_share_value'], 2) ?>
+                                                <span class="badge bg-primary-subtle text-primary fw-bold fs-7 mb-1" title="Land Share Value">
+                                                    <i class="fa-solid fa-map-location-dot me-1"></i>৳<?= number_format($sale['land_share_value'], 2) ?>
                                                 </span>
+                                                <span class="text-muted extra-small d-block">Flat: ৳<?= number_format($sale['flat_price'], 2) ?></span>
                                             </td>
 
                                             <!-- Total Money Collected So Far -->
@@ -173,15 +173,16 @@
                                                 </span>
                                             </td>
 
-                                            <!-- Category % -->
+                                            <!-- Applied Rate -->
                                             <td>
-                                                <span class="badge bg-secondary-subtle text-secondary fw-semibold mb-1 d-inline-block"><?= htmlspecialchars($sale['category_name']) ?></span>
-                                                <div class="extra-small text-muted fw-bold"><?= number_format($sale['incentive_percentage'], 2) ?>% Incentive</div>
+                                                <span class="badge bg-info-subtle text-info fw-bold fs-7 mb-1 d-inline-block"><?= number_format($sale['incentive_percentage'], 2) ?>%</span>
+                                                <span class="extra-small text-muted d-block"><?= htmlspecialchars($sale['category_name'] ?? 'Modality') ?></span>
                                             </td>
 
                                             <!-- Incentive Amount -->
                                             <td>
-                                                <span class="fw-bold text-success fs-6">৳<?= number_format($sale['calculated_incentive'], 2) ?></span>
+                                                <h6 class="fw-bold text-success mb-0">৳<?= number_format($sale['calculated_incentive'], 2) ?></h6>
+                                                <span class="text-muted extra-small">on Land Share</span>
                                             </td>
 
                                             <!-- Booking Money Badge -->

@@ -319,10 +319,24 @@
     <!-- Total Leads Card -->
     <div class="col-xl-3 col-sm-6 col-6 mb-2">
       <div class="card__wrapper stat-card" style="border-left:4px solid #2563eb;">
-        <div class="label"><i class="bi bi-people-fill me-1 text-primary"></i>Total Leads</div>
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <div class="label mb-0"><i class="bi bi-people-fill me-1 text-primary"></i>Total Leads</div>
+          <a href="<?= $GLOBALS['base_url'] ?>/lead-automation-upload" 
+             id="dmHeadQueueBadge" 
+             class="badge <?= (($totalInQueue ?? 0) > 0) ? 'bg-warning text-dark' : 'bg-light text-muted' ?> text-decoration-none" 
+             title="Click to view Leads Automation approval queue"
+             style="font-size:0.68rem; font-weight:600; padding: 4px 7px; border-radius: 6px; <?= (($totalInQueue ?? 0) > 0) ? '' : 'display:none;' ?>">
+            <i class="bi bi-hourglass-split me-1 text-dark"></i><span id="dmHeadQueueBadgeVal"><?= number_format($totalInQueue ?? 0) ?></span> in Queue
+          </a>
+        </div>
         <div class="value" id="dmHeadTotalLeadsCardVal" style="color:#2563eb;"><?= number_format($totalLeadsCount) ?></div>
-        <div class="change text-muted">
-          <i class="bi bi-bar-chart-fill me-1 text-primary"></i>All uploaded leads
+        <div class="change mt-2 pt-2 border-top d-flex align-items-center justify-content-between flex-wrap gap-1" style="font-size:0.75rem;">
+          <span class="text-success fw-bold" id="dmHeadDistributedVal" title="Distributed to Sales Team (Visible in lead-lists & Sales Intelligence)">
+            <i class="bi bi-check-circle-fill me-1"></i>Distributed: <?= number_format($totalDistributed ?? 0) ?>
+          </span>
+          <span class="text-secondary" id="dmHeadInQueueVal" title="Unapproved / Waiting in Leads Automation queue">
+            <i class="bi bi-clock-history me-1 <?= (($totalInQueue ?? 0) > 0) ? 'text-warning' : 'text-muted' ?>"></i>Queue: <?= number_format($totalInQueue ?? 0) ?>
+          </span>
         </div>
       </div>
     </div>
@@ -365,7 +379,7 @@
             </div>
             <div>
               <div class="text-muted" style="font-size:.72rem;font-weight:600;letter-spacing:.05em;">CONTACTED</div>
-              <div style="font-size:1.6rem;font-weight:800;color:#155724;line-height:1.1;"><?= number_format($totalContacted ?? 0) ?></div>
+              <div id="dmHeadContactedCardVal" style="font-size:1.6rem;font-weight:800;color:#155724;line-height:1.1;"><?= number_format($totalContacted ?? 0) ?></div>
               <div style="font-size:.68rem;color:#28a745;">Contacted Leads</div>
             </div>
           </div>
@@ -381,7 +395,7 @@
             </div>
             <div>
               <div class="text-muted" style="font-size:.72rem;font-weight:600;letter-spacing:.05em;">NOT CONTACTED</div>
-              <div style="font-size:1.6rem;font-weight:800;color:#721c24;line-height:1.1;"><?= number_format($totalNotContacted ?? 0) ?></div>
+              <div id="dmHeadNotContactedCardVal" style="font-size:1.6rem;font-weight:800;color:#721c24;line-height:1.1;"><?= number_format($totalNotContacted ?? 0) ?></div>
               <div style="font-size:.68rem;color:#dc3545;">Not contacted yet</div>
             </div>
           </div>
@@ -393,14 +407,14 @@
         <div class="card-body py-3 px-4">
           <div class="d-flex justify-content-between align-items-center mb-2">
             <span style="font-size:.78rem;font-weight:700;color:#1a2744;">Contact Progress</span>
-            <span style="font-size:.78rem;color:#6c757d;"><?= $contactedPct ?>% Contacted</span>
+            <span style="font-size:.78rem;color:#6c757d;" id="dmHeadContactedPctText"><?= $contactedPct ?>% Contacted</span>
           </div>
           <div class="progress" style="height:12px;border-radius:8px;background:#f0f4f8;">
-            <div class="progress-bar bg-success" role="progressbar" style="width:<?= $contactedPct ?>%; border-radius:8px;" aria-valuenow="<?= $contactedPct ?>" aria-valuemin="0" aria-valuemax="100"></div>
+            <div class="progress-bar bg-success" id="dmHeadProgressBar" role="progressbar" style="width:<?= $contactedPct ?>%; border-radius:8px;" aria-valuenow="<?= $contactedPct ?>" aria-valuemin="0" aria-valuemax="100"></div>
           </div>
           <div class="d-flex justify-content-between mt-2">
-            <small class="text-success fw-semibold"><i class="bi bi-circle-fill me-1" style="font-size:.5rem;"></i><?= number_format($totalContacted ?? 0) ?> Contacted</small>
-            <small class="text-danger fw-semibold"><i class="bi bi-circle-fill me-1" style="font-size:.5rem;"></i><?= number_format($totalNotContacted ?? 0) ?> Pending</small>
+            <small class="text-success fw-semibold" id="dmHeadContactedSubText"><i class="bi bi-circle-fill me-1" style="font-size:.5rem;"></i><?= number_format($totalContacted ?? 0) ?> Contacted</small>
+            <small class="text-danger fw-semibold" id="dmHeadNotContactedSubText"><i class="bi bi-circle-fill me-1" style="font-size:.5rem;"></i><?= number_format($totalNotContacted ?? 0) ?> Pending</small>
           </div>
         </div>
       </div>
@@ -918,6 +932,56 @@
         document.getElementById('dmHeadLeadCount').textContent   = `${data.total} Leads`;
         const totalHeadCardVal = document.getElementById('dmHeadTotalLeadsCardVal');
         if (totalHeadCardVal) totalHeadCardVal.textContent = data.total.toLocaleString();
+
+        // Update Distributed and In Queue indicator
+        if (data.distributed !== undefined) {
+          const distEl = document.getElementById('dmHeadDistributedVal');
+          if (distEl) distEl.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i>Distributed: ${(Number(data.distributed) || 0).toLocaleString()}`;
+        }
+        if (data.in_queue !== undefined) {
+          const qVal = Number(data.in_queue) || 0;
+          const qEl = document.getElementById('dmHeadInQueueVal');
+          if (qEl) qEl.innerHTML = `<i class="bi bi-clock-history me-1 ${qVal > 0 ? 'text-warning' : 'text-muted'}"></i>Queue: ${qVal.toLocaleString()}`;
+          const qBadge = document.getElementById('dmHeadQueueBadge');
+          const qBadgeVal = document.getElementById('dmHeadQueueBadgeVal');
+          if (qBadge && qBadgeVal) {
+            if (qVal > 0) {
+              qBadgeVal.textContent = qVal.toLocaleString();
+              qBadge.style.display = 'inline-block';
+            } else {
+              qBadge.style.display = 'none';
+            }
+          }
+        }
+
+        // Update Contacted / Not Contacted cards & progress dynamically
+        if (data.contacted !== undefined) {
+          const contacted = Number(data.contacted) || 0;
+          const notContacted = Number(data.not_contacted) || 0;
+          const totalShown = contacted + notContacted;
+          const pct = totalShown > 0 ? Math.round((contacted / totalShown) * 100) : 0;
+
+          const contactedEl = document.getElementById('dmHeadContactedCardVal');
+          if (contactedEl) contactedEl.textContent = contacted.toLocaleString();
+
+          const notContactedEl = document.getElementById('dmHeadNotContactedCardVal');
+          if (notContactedEl) notContactedEl.textContent = notContacted.toLocaleString();
+
+          const pctTextEl = document.getElementById('dmHeadContactedPctText');
+          if (pctTextEl) pctTextEl.textContent = `${pct}% Contacted`;
+
+          const progressBarEl = document.getElementById('dmHeadProgressBar');
+          if (progressBarEl) {
+            progressBarEl.style.width = `${pct}%`;
+            progressBarEl.setAttribute('aria-valuenow', pct);
+          }
+
+          const contactedSubEl = document.getElementById('dmHeadContactedSubText');
+          if (contactedSubEl) contactedSubEl.innerHTML = `<i class="bi bi-circle-fill me-1" style="font-size:.5rem;"></i>${contacted.toLocaleString()} Contacted`;
+
+          const notContactedSubEl = document.getElementById('dmHeadNotContactedSubText');
+          if (notContactedSubEl) notContactedSubEl.innerHTML = `<i class="bi bi-circle-fill me-1" style="font-size:.5rem;"></i>${notContacted.toLocaleString()} Pending`;
+        }
 
         if (!data.rows || data.rows.length === 0) {
           tbody.innerHTML = '<tr><td colspan="10" class="text-center py-5"><i class="bi bi-inbox fs-1 d-block mb-2 text-muted"></i><div class="text-muted">No leads found.</div></td></tr>';

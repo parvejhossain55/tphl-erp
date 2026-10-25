@@ -215,6 +215,9 @@
 
         // Calculate pending Fund Requisition action counts — role-specific
         $pendingFundReqTotalCount = 0;
+        $pendingFundReqDeptCount = 0;
+        $pendingFundReqMgmtCount = 0;
+        $pendingFundReqAccountsCount = 0;
 
         $loggedUserId = (int) $_SESSION['user']['id'];
         $loggedRoleId = (int) ($_SESSION['user']['role_id'] ?? 0);

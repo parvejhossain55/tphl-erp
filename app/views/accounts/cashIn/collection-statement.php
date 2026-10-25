@@ -130,13 +130,16 @@ $exportTrxUrl  = $base_url . '/collection-statement-export?' . http_build_query(
 
     .collection-stat-card {
         border-radius: 10px;
-        padding: 16px 18px;
-        background: #ffffff;
+        padding: 14px 16px !important;
+        margin-bottom: 0 !important;
+        background: var(--clr-bg-card, #ffffff);
         box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--clr-border-1, #e2e8f0);
         border-left: 4px solid #3b82f6;
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease, border-color 0.2s ease;
         height: 100%;
+        cursor: pointer;
+        position: relative;
     }
     .collection-stat-card:hover {
         transform: translateY(-2px);
@@ -149,13 +152,13 @@ $exportTrxUrl  = $base_url . '/collection-statement-export?' . http_build_query(
     .collection-stat-card.c-online { border-left-color: #ec4899; }
 
     .collection-stat-card .card-icon {
-        width: 38px;
-        height: 38px;
+        width: 36px;
+        height: 36px;
         border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 17px;
+        font-size: 16px;
         flex-shrink: 0;
     }
     .c-total .card-icon  { background: rgba(99,102,241,0.12); color: #6366f1; }
@@ -165,9 +168,18 @@ $exportTrxUrl  = $base_url . '/collection-statement-export?' . http_build_query(
     .c-online .card-icon { background: rgba(236,72,153,0.12); color: #ec4899; }
 
     .c-amount {
-        font-size: 1.25rem;
+        font-size: clamp(0.95rem, 1.08vw, 1.2rem);
         font-weight: 700;
-        line-height: 1.2;
+        line-height: 1.25;
+        transition: all 0.2s ease;
+        letter-spacing: -0.2px;
+    }
+    .c-amount.expanded-amount {
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: unset !important;
+        font-size: 0.95rem !important;
+        word-break: break-all !important;
     }
     .badge-subtle-bank   { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
     .badge-subtle-cash   { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
@@ -187,6 +199,114 @@ $exportTrxUrl  = $base_url . '/collection-statement-export?' . http_build_query(
         padding: 9px 12px;
         font-size: 13px;
         vertical-align: middle;
+    }
+
+    .cs-view-switcher-bar {
+        background-color: var(--clr-bg-card, #ffffff);
+        border: 1px solid var(--clr-border-1, #e2e8f0);
+    }
+
+    /* =========================================================
+       DARK MODE THEME INTEGRATION
+       Applies dynamically when bd-theme="bd-theme-dark",
+       data-bs-theme="dark", body.dark-only, or body.dark-mode
+    ========================================================= */
+    [bd-theme="bd-theme-dark"] .collection-stat-card,
+    [data-bs-theme="dark"] .collection-stat-card,
+    body.dark-only .collection-stat-card,
+    body.dark-mode .collection-stat-card {
+        background: var(--clr-bg-card, #1e293b) !important;
+        border-color: var(--clr-border-1, #334155) !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+        color: var(--clr-text-body, #f1f5f9) !important;
+    }
+
+    [bd-theme="bd-theme-dark"] .collection-stat-card:hover,
+    [data-bs-theme="dark"] .collection-stat-card:hover,
+    body.dark-only .collection-stat-card:hover,
+    body.dark-mode .collection-stat-card:hover {
+        background: #283548 !important;
+        border-color: #475569 !important;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5) !important;
+        transform: translateY(-2px);
+    }
+
+    /* Left accent borders in dark mode */
+    [bd-theme="bd-theme-dark"] .collection-stat-card.c-total,
+    [data-bs-theme="dark"] .collection-stat-card.c-total { border-left-color: #818cf8 !important; }
+    [bd-theme="bd-theme-dark"] .collection-stat-card.c-bank,
+    [data-bs-theme="dark"] .collection-stat-card.c-bank { border-left-color: #38bdf8 !important; }
+    [bd-theme="bd-theme-dark"] .collection-stat-card.c-cash,
+    [data-bs-theme="dark"] .collection-stat-card.c-cash { border-left-color: #34d399 !important; }
+    [bd-theme="bd-theme-dark"] .collection-stat-card.c-cheque,
+    [data-bs-theme="dark"] .collection-stat-card.c-cheque { border-left-color: #fbbf24 !important; }
+    [bd-theme="bd-theme-dark"] .collection-stat-card.c-online,
+    [data-bs-theme="dark"] .collection-stat-card.c-online { border-left-color: #f472b6 !important; }
+
+    /* Card Icons in dark mode */
+    [bd-theme="bd-theme-dark"] .c-total .card-icon,
+    [data-bs-theme="dark"] .c-total .card-icon  { background: rgba(129, 140, 248, 0.18) !important; color: #a5b4fc !important; }
+    [bd-theme="bd-theme-dark"] .c-bank .card-icon,
+    [data-bs-theme="dark"] .c-bank .card-icon   { background: rgba(56, 189, 248, 0.18) !important; color: #7dd3fc !important; }
+    [bd-theme="bd-theme-dark"] .c-cash .card-icon,
+    [data-bs-theme="dark"] .c-cash .card-icon   { background: rgba(52, 211, 153, 0.18) !important; color: #6ee7b7 !important; }
+    [bd-theme="bd-theme-dark"] .c-cheque .card-icon,
+    [data-bs-theme="dark"] .c-cheque .card-icon { background: rgba(251, 191, 36, 0.18) !important; color: #fde047 !important; }
+    [bd-theme="bd-theme-dark"] .c-online .card-icon,
+    [data-bs-theme="dark"] .c-online .card-icon { background: rgba(244, 114, 182, 0.18) !important; color: #f9a8d4 !important; }
+
+    /* Text & Amounts in dark mode */
+    [bd-theme="bd-theme-dark"] .collection-stat-card .text-muted,
+    [data-bs-theme="dark"] .collection-stat-card .text-muted,
+    [bd-theme="bd-theme-dark"] .collection-stat-card small,
+    [data-bs-theme="dark"] .collection-stat-card small {
+        color: #94a3b8 !important;
+    }
+    [bd-theme="bd-theme-dark"] .c-total .c-amount,
+    [data-bs-theme="dark"] .c-total .c-amount  { color: #a5b4fc !important; }
+    [bd-theme="bd-theme-dark"] .c-bank .c-amount,
+    [data-bs-theme="dark"] .c-bank .c-amount   { color: #38bdf8 !important; }
+    [bd-theme="bd-theme-dark"] .c-cash .c-amount,
+    [data-bs-theme="dark"] .c-cash .c-amount   { color: #34d399 !important; }
+    [bd-theme="bd-theme-dark"] .c-cheque .c-amount,
+    [data-bs-theme="dark"] .c-cheque .c-amount { color: #fbbf24 !important; }
+    [bd-theme="bd-theme-dark"] .c-online .c-amount,
+    [data-bs-theme="dark"] .c-online .c-amount { color: #f472b6 !important; }
+
+    /* View bar and action elements in dark mode */
+    [bd-theme="bd-theme-dark"] .cs-view-switcher-bar,
+    [data-bs-theme="dark"] .cs-view-switcher-bar,
+    body.dark-only .cs-view-switcher-bar {
+        background-color: var(--clr-bg-card, #1F2937) !important;
+        border-color: var(--clr-border-1, #374151) !important;
+    }
+    [bd-theme="bd-theme-dark"] .cs-view-switcher-bar .btn-group,
+    [data-bs-theme="dark"] .cs-view-switcher-bar .btn-group {
+        background-color: #111827 !important;
+        border-color: #374151 !important;
+    }
+    [bd-theme="bd-theme-dark"] .cs-view-switcher-bar .btn-light,
+    [data-bs-theme="dark"] .cs-view-switcher-bar .btn-light {
+        background-color: #2b3544 !important;
+        border-color: #3f4d61 !important;
+        color: #e2e8f0 !important;
+    }
+    [bd-theme="bd-theme-dark"] .cs-view-switcher-bar .btn-light:hover,
+    [data-bs-theme="dark"] .cs-view-switcher-bar .btn-light:hover {
+        background-color: #374151 !important;
+        color: #ffffff !important;
+    }
+
+    /* Table headers & cells in dark mode */
+    [bd-theme="bd-theme-dark"] .table-collection th,
+    [data-bs-theme="dark"] .table-collection th {
+        background-color: #1e293b !important;
+        color: #cbd5e1 !important;
+        border-bottom-color: #334155 !important;
+    }
+    [bd-theme="bd-theme-dark"] .table-collection td,
+    [data-bs-theme="dark"] .table-collection td {
+        border-color: #334155 !important;
     }
 </style>
 
@@ -476,77 +596,86 @@ $exportTrxUrl  = $base_url . '/collection-statement-export?' . http_build_query(
         </div>
     </div>
 
-    <!-- Summary Cards Row -->
-    <div class="col-xxl-3 col-xl-4 col-lg-6 col-md-6 col-12 mb-3">
-        <div class="collection-stat-card c-total">
-            <div class="d-flex align-items-center gap-3">
-                <div class="card-icon">
-                    <i class="fa-solid fa-vault"></i>
-                </div>
-                <div class="flex-grow-1 overflow-hidden">
-                    <div class="text-muted extra-small text-uppercase fw-bold" style="font-size: 10px;">Total Collection</div>
-                    <div class="c-amount text-primary text-truncate">৳<?= number_format($summary['total_amount'] ?? 0, 2) ?></div>
-                    <small class="text-muted extra-small"><?= number_format($summary['total_count'] ?? 0) ?> Transactions (Client + Mgmt)</small>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xxl-3 col-xl-4 col-lg-6 col-md-6 col-12 mb-3">
-        <div class="collection-stat-card c-bank">
-            <div class="d-flex align-items-center gap-3">
-                <div class="card-icon">
-                    <i class="fa-solid fa-building-columns"></i>
-                </div>
-                <div class="flex-grow-1 overflow-hidden">
-                    <div class="text-muted extra-small text-uppercase fw-bold" style="font-size: 10px;">Bank Collection</div>
-                    <div class="c-amount text-info text-truncate">৳<?= number_format($summary['bank_amount'] ?? 0, 2) ?></div>
-                    <small class="text-muted extra-small"><?= number_format($summary['bank_count'] ?? 0) ?> Transfers / Deposits</small>
+    <!-- Summary Cards Row (5 Balanced Responsive Columns) -->
+    <div class="col-12 mb-3">
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-5 g-2 align-items-stretch" id="summaryCardsRow">
+            <!-- 1. Total Collection -->
+            <div class="col">
+                <div class="card__wrapper card_wrapper collection-stat-card c-total h-100" onclick="toggleCardAmountFull(this)" title="Click to view full amount: ৳<?= number_format($summary['total_amount'] ?? 0, 2) ?>" data-bs-toggle="tooltip" data-bs-placement="top">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="card-icon">
+                            <i class="fa-solid fa-vault"></i>
+                        </div>
+                        <div class="flex-grow-1 overflow-hidden">
+                            <div class="text-muted extra-small text-uppercase fw-bold" style="font-size: 10px;">Total Collection</div>
+                            <div class="c-amount text-primary text-truncate" data-full-amount="৳<?= number_format($summary['total_amount'] ?? 0, 2) ?>" title="৳<?= number_format($summary['total_amount'] ?? 0, 2) ?>">৳<?= number_format($summary['total_amount'] ?? 0, 2) ?></div>
+                            <small class="text-muted extra-small text-truncate d-block" style="font-size: 10px;"><?= number_format($summary['total_count'] ?? 0) ?> Trx (Client + Mgmt)</small>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <div class="col-xxl-2 col-xl-4 col-lg-4 col-md-4 col-6 mb-3">
-        <div class="collection-stat-card c-cash">
-            <div class="d-flex align-items-center gap-2">
-                <div class="card-icon">
-                    <i class="fa-solid fa-money-bill-wave"></i>
-                </div>
-                <div class="flex-grow-1 overflow-hidden">
-                    <div class="text-muted extra-small text-uppercase fw-bold" style="font-size: 10px;">Cash In Hand</div>
-                    <div class="c-amount text-success text-truncate">৳<?= number_format($summary['cash_amount'] ?? 0, 2) ?></div>
-                    <small class="text-muted extra-small"><?= number_format($summary['cash_count'] ?? 0) ?> Cash Collections</small>
+            <!-- 2. Bank Collection -->
+            <div class="col">
+                <div class="card__wrapper card_wrapper collection-stat-card c-bank h-100" onclick="toggleCardAmountFull(this)" title="Click to view full amount: ৳<?= number_format($summary['bank_amount'] ?? 0, 2) ?>" data-bs-toggle="tooltip" data-bs-placement="top">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="card-icon">
+                            <i class="fa-solid fa-building-columns"></i>
+                        </div>
+                        <div class="flex-grow-1 overflow-hidden">
+                            <div class="text-muted extra-small text-uppercase fw-bold" style="font-size: 10px;">Bank Collection</div>
+                            <div class="c-amount text-info text-truncate" data-full-amount="৳<?= number_format($summary['bank_amount'] ?? 0, 2) ?>" title="৳<?= number_format($summary['bank_amount'] ?? 0, 2) ?>">৳<?= number_format($summary['bank_amount'] ?? 0, 2) ?></div>
+                            <small class="text-muted extra-small text-truncate d-block" style="font-size: 10px;"><?= number_format($summary['bank_count'] ?? 0) ?> Transfers / Deposits</small>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <div class="col-xxl-2 col-xl-4 col-lg-4 col-md-4 col-6 mb-3">
-        <div class="collection-stat-card c-cheque">
-            <div class="d-flex align-items-center gap-2">
-                <div class="card-icon">
-                    <i class="fa-solid fa-money-check"></i>
-                </div>
-                <div class="flex-grow-1 overflow-hidden">
-                    <div class="text-muted extra-small text-uppercase fw-bold" style="font-size: 10px;">Cheque Received</div>
-                    <div class="c-amount text-warning text-truncate">৳<?= number_format($summary['cheque_amount'] ?? 0, 2) ?></div>
-                    <small class="text-muted extra-small"><?= number_format($summary['cheque_count'] ?? 0) ?> Cheque Transactions</small>
+            <!-- 3. Cash In Hand -->
+            <div class="col">
+                <div class="card__wrapper card_wrapper collection-stat-card c-cash h-100" onclick="toggleCardAmountFull(this)" title="Click to view full amount: ৳<?= number_format($summary['cash_amount'] ?? 0, 2) ?>" data-bs-toggle="tooltip" data-bs-placement="top">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="card-icon">
+                            <i class="fa-solid fa-money-bill-wave"></i>
+                        </div>
+                        <div class="flex-grow-1 overflow-hidden">
+                            <div class="text-muted extra-small text-uppercase fw-bold" style="font-size: 10px;">Cash In Hand</div>
+                            <div class="c-amount text-success text-truncate" data-full-amount="৳<?= number_format($summary['cash_amount'] ?? 0, 2) ?>" title="৳<?= number_format($summary['cash_amount'] ?? 0, 2) ?>">৳<?= number_format($summary['cash_amount'] ?? 0, 2) ?></div>
+                            <small class="text-muted extra-small text-truncate d-block" style="font-size: 10px;"><?= number_format($summary['cash_count'] ?? 0) ?> Cash Collections</small>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <div class="col-xxl-2 col-xl-4 col-lg-4 col-md-4 col-12 mb-3">
-        <div class="collection-stat-card c-online">
-            <div class="d-flex align-items-center gap-2">
-                <div class="card-icon">
-                    <i class="fa-solid fa-mobile-screen-button"></i>
+            <!-- 4. Cheque Received -->
+            <div class="col">
+                <div class="card__wrapper card_wrapper collection-stat-card c-cheque h-100" onclick="toggleCardAmountFull(this)" title="Click to view full amount: ৳<?= number_format($summary['cheque_amount'] ?? 0, 2) ?>" data-bs-toggle="tooltip" data-bs-placement="top">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="card-icon">
+                            <i class="fa-solid fa-money-check"></i>
+                        </div>
+                        <div class="flex-grow-1 overflow-hidden">
+                            <div class="text-muted extra-small text-uppercase fw-bold" style="font-size: 10px;">Cheque Received</div>
+                            <div class="c-amount text-warning text-truncate" data-full-amount="৳<?= number_format($summary['cheque_amount'] ?? 0, 2) ?>" title="৳<?= number_format($summary['cheque_amount'] ?? 0, 2) ?>">৳<?= number_format($summary['cheque_amount'] ?? 0, 2) ?></div>
+                            <small class="text-muted extra-small text-truncate d-block" style="font-size: 10px;"><?= number_format($summary['cheque_count'] ?? 0) ?> Cheque Transactions</small>
+                        </div>
+                    </div>
                 </div>
-                <div class="flex-grow-1 overflow-hidden">
-                    <div class="text-muted extra-small text-uppercase fw-bold" style="font-size: 10px;">Online / MFS</div>
-                    <div class="c-amount text-danger text-truncate">৳<?= number_format($summary['online_amount'] ?? 0, 2) ?></div>
-                    <small class="text-muted extra-small"><?= number_format($summary['online_count'] ?? 0) ?> Digital Payments</small>
+            </div>
+
+            <!-- 5. Online / MFS -->
+            <div class="col">
+                <div class="card__wrapper card_wrapper collection-stat-card c-online h-100" onclick="toggleCardAmountFull(this)" title="Click to view full amount: ৳<?= number_format($summary['online_amount'] ?? 0, 2) ?>" data-bs-toggle="tooltip" data-bs-placement="top">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="card-icon">
+                            <i class="fa-solid fa-mobile-screen-button"></i>
+                        </div>
+                        <div class="flex-grow-1 overflow-hidden">
+                            <div class="text-muted extra-small text-uppercase fw-bold" style="font-size: 10px;">Online / MFS</div>
+                            <div class="c-amount text-danger text-truncate" data-full-amount="৳<?= number_format($summary['online_amount'] ?? 0, 2) ?>" title="৳<?= number_format($summary['online_amount'] ?? 0, 2) ?>">৳<?= number_format($summary['online_amount'] ?? 0, 2) ?></div>
+                            <small class="text-muted extra-small text-truncate d-block" style="font-size: 10px;"><?= number_format($summary['online_count'] ?? 0) ?> Digital Payments</small>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -554,7 +683,7 @@ $exportTrxUrl  = $base_url . '/collection-statement-export?' . http_build_query(
 
     <!-- View Mode Switcher Bar -->
     <div class="col-12 mb-3">
-        <div class="bg-white p-2 px-3 rounded-3 shadow-sm border d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="card__wrapper card_wrapper cs-view-switcher-bar p-2 px-3 rounded-3 shadow-sm border d-flex align-items-center justify-content-between flex-wrap gap-2 mb-0">
             <div class="d-flex align-items-center gap-2">
                 <span class="text-muted small fw-bold text-uppercase d-none d-md-inline" style="font-size: 11px;">
                     <i class="fa-solid fa-sliders text-primary me-1"></i> Statement View:
@@ -900,7 +1029,7 @@ $exportTrxUrl  = $base_url . '/collection-statement-export?' . http_build_query(
                             <th>Bank / Cheque Details</th>
                             <th>Ref / Voucher</th>
                             <th class="text-end">Amount (BDT)</th>
-                            <th class="text-center">Verification</th>
+                            <th style="min-width: 175px;">Verification &amp; Verifier</th>
                             <th class="text-center" style="width: 70px;">Action</th>
                         </tr>
                     </thead>
@@ -1002,10 +1131,55 @@ $exportTrxUrl  = $base_url . '/collection-statement-export?' . http_build_query(
                                     <td class="text-end text-nowrap fw-bold text-success fs-13">
                                         ৳<?= number_format($amt, 2) ?>
                                     </td>
-                                    <td class="text-center">
-                                        <span class="badge <?= $vClass ?> px-2 py-1 text-capitalize" style="font-size: 10.5px;">
-                                            <?= $vStatus ?>
-                                        </span>
+                                    <td class="text-start" style="min-width: 175px;">
+                                        <?php if ($vStatus === 'verified'): ?>
+                                            <div class="d-flex align-items-center gap-1 mb-1">
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5" style="font-size: 10px; font-weight: 700;">
+                                                    <i class="fa-solid fa-circle-check me-1"></i>Verified
+                                                </span>
+                                                <?php if (!empty($t['verified_at'])): ?>
+                                                    <span class="text-muted extra-small" style="font-size: 10px; white-space: nowrap;">
+                                                        <?= date('d M, h:i A', strtotime($t['verified_at'])) ?>
+                                                    </span>
+                                                <?php endif; ?>
+                                            </div>
+                                            <?php if (!empty($t['verifier_name'])): ?>
+                                                <div style="line-height: 1.25;">
+                                                    <div class="fw-bold text-dark extra-small d-flex align-items-center gap-1" title="Verified by: <?= htmlspecialchars($t['verifier_name']) ?>">
+                                                        <i class="fa-solid fa-user-check text-success" style="font-size: 10.5px;"></i>
+                                                        <span class="text-truncate" style="max-width: 155px;"><?= htmlspecialchars($t['verifier_name']) ?></span>
+                                                    </div>
+                                                    <?php if (!empty($t['verifier_branch_name']) || !empty($t['verifier_branch_id'])): ?>
+                                                        <div class="text-muted extra-small d-flex align-items-center gap-1 mt-0.5" style="font-size: 10px;">
+                                                            <i class="fa-solid fa-building-user text-primary" style="font-size: 9.5px;"></i>
+                                                            <span class="badge bg-light text-secondary border px-1" style="font-size: 9.5px; font-weight: 600;">
+                                                                <?= htmlspecialchars($t['verifier_branch_name'] ?: 'Branch') ?>
+                                                            </span>
+                                                            <?php if (!empty($t['verifier_branch_id'])): ?>
+                                                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-1" style="font-size: 9px; font-weight: 600;">
+                                                                    ID: <?= (int)$t['verifier_branch_id'] ?>
+                                                                </span>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                </div>
+                                            <?php else: ?>
+                                                <span class="text-muted extra-small">Auto-Verified</span>
+                                            <?php endif; ?>
+                                        <?php elseif ($vStatus === 'rejected'): ?>
+                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 text-capitalize" style="font-size: 10px; font-weight: 700;">
+                                                <i class="fa-solid fa-circle-xmark me-1"></i>Rejected
+                                            </span>
+                                            <?php if (!empty($t['verifier_name'])): ?>
+                                                <div class="extra-small text-muted mt-1 text-truncate" style="max-width: 140px;">
+                                                    By: <?= htmlspecialchars($t['verifier_name']) ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1 text-capitalize" style="font-size: 10px; font-weight: 700;">
+                                                <i class="fa-solid fa-clock me-1"></i>Pending
+                                            </span>
+                                        <?php endif; ?>
                                     </td>
                                     <td class="text-center">
                                         <?php if ($t['source'] === 'client' && !empty($t['id'])): ?>
@@ -1169,8 +1343,45 @@ function togglePeriodFields() {
     }
 }
 
+function toggleCardAmountFull(card) {
+    if (!card) return;
+    const amountEl = card.querySelector('.c-amount') || card;
+    if (!amountEl) return;
+
+    // Toggle expanded state
+    const isExpanded = amountEl.classList.toggle('expanded-amount');
+    if (isExpanded) {
+        amountEl.classList.remove('text-truncate');
+    } else {
+        amountEl.classList.add('text-truncate');
+    }
+
+    const fullVal = amountEl.getAttribute('data-full-amount') || amountEl.getAttribute('title');
+    const label = card.querySelector('.text-muted.extra-small')?.textContent || 'Collection Amount';
+
+    if (typeof Swal !== 'undefined' && fullVal) {
+        Swal.fire({
+            title: label,
+            html: `<div class="fs-2 fw-bold text-success my-2">${fullVal}</div><div class="text-muted small">Total Filtered Collection Amount</div>`,
+            icon: 'info',
+            confirmButtonText: 'OK',
+            confirmButtonColor: '#006837',
+            timer: 4000,
+            timerProgressBar: true
+        });
+    } else if (typeof toastr !== 'undefined' && fullVal) {
+        toastr.info(`<strong>${fullVal}</strong>`, label, { timeOut: 3500 });
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     togglePeriodFields();
+    if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    }
 });
 </script>
 
