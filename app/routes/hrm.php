@@ -426,6 +426,7 @@ return [
     'ats-candidate-update/(\d+)' => ['controller' => 'AtsController', 'method' => 'update'],
     'api/ats/candidate-delete' => ['controller' => 'AtsController', 'method' => 'delete'],
     'api/ats/quick-update' => ['controller' => 'AtsController', 'method' => 'quickUpdate'],
+    'api/ats/quick-edit-details' => ['controller' => 'AtsController', 'method' => 'quickEditDetails'],
     'api/ats/bulk-update' => ['controller' => 'AtsController', 'method' => 'bulkUpdate'],
     'ats-csv-upload' => ['controller' => 'AtsController', 'method' => 'csvUpload'],
     'ats-sample-csv' => ['controller' => 'AtsController', 'method' => 'downloadSampleCsv'],
@@ -438,5 +439,12 @@ return [
     'ats-export-excel' => ['controller' => 'AtsController', 'method' => 'exportExcel'],
     'ats-export-csv' => ['controller' => 'AtsController', 'method' => 'exportCsv'],
     'api/ats/upload-cv' => ['controller' => 'AtsController', 'method' => 'uploadCv'],
+    'ats-trash' => ['controller' => 'AtsController', 'method' => 'trash'],
+    'api/ats/candidate-restore' => ['controller' => 'AtsController', 'method' => 'restore'],
+    'api/ats/bulk-restore' => ['controller' => 'AtsController', 'method' => 'bulkRestore'],
+    'api/ats/candidate-force-delete' => ['controller' => 'AtsController', 'method' => 'forceDelete'],
+    'api/ats/bulk-force-delete' => ['controller' => 'AtsController', 'method' => 'bulkForceDelete'],
+    'api/ats/empty-trash' => ['controller' => 'AtsController', 'method' => 'emptyTrash'],
+    'ats-activity-logs' => ['controller' => 'AtsController', 'method' => 'activityLogs'],
 ];
 

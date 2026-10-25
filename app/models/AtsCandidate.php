@@ -14,7 +14,12 @@ class AtsCandidate extends Model
      */
     private function buildFilterConditions(array $filters): array
     {
-        $conditions = ["1=1"];
+        $isTrash = !empty($filters['trash']);
+        if ($isTrash) {
+            $conditions = ["1=1", "deleted_at IS NOT NULL"];
+        } else {
+            $conditions = ["1=1", "deleted_at IS NULL"];
+        }
         $params = [];
         $types = "";
 
@@ -44,49 +49,81 @@ class AtsCandidate extends Model
             $conditions[] = "hired = 'yes'";
         }
 
-        // 3. Department Filter
-        if (!empty($filters['department'])) {
-            $conditions[] = "department = ?";
-            $params[] = trim($filters['department']);
-            $types .= "s";
+        // Helper to add condition for string or array (multi-select)
+        $addMultiOrSingleCondition = function($field, $val) use (&$conditions, &$params, &$types) {
+            if (empty($val)) return;
+            if (is_array($val)) {
+                $filteredVals = array_values(array_filter(array_map('trim', $val), fn($v) => $v !== ''));
+                if (!empty($filteredVals)) {
+                    $placeholders = implode(',', array_fill(0, count($filteredVals), '?'));
+                    $conditions[] = "`{$field}` IN ({$placeholders})";
+                    foreach ($filteredVals as $item) {
+                        $params[] = $item;
+                        $types .= "s";
+                    }
+                }
+            } else {
+                $trimmed = trim((string)$val);
+                if ($trimmed !== '') {
+                    $conditions[] = "`{$field}` = ?";
+                    $params[] = $trimmed;
+                    $types .= "s";
+                }
+            }
+        };
+
+        // 3. Department Filter (Multi or Single)
+        $addMultiOrSingleCondition('department', $filters['department'] ?? null);
+
+        // 4. Position Filter (Multi or Single)
+        $addMultiOrSingleCondition('position', $filters['position'] ?? null);
+
+        // 5. Source Filter (Multi or Single)
+        $addMultiOrSingleCondition('source', $filters['source'] ?? null);
+
+        // 6. Invitation Status Filter (Multi or Single)
+        $addMultiOrSingleCondition('invitation_status', $filters['invitation_status'] ?? null);
+
+        // 7. Interview Attendance Filter (Multi or Single)
+        $addMultiOrSingleCondition('interview_attendance', $filters['interview_attendance'] ?? null);
+
+        // 8. Interview Location Filter (Multi or Single)
+        $addMultiOrSingleCondition('interview_location', $filters['interview_location'] ?? null);
+
+        // 9. Hired / Final Decision Filter (Multi or Single)
+        $addMultiOrSingleCondition('hired', $filters['hired'] ?? null);
+
+        // 10. CV Uploaded Filter ('yes' / 'no')
+        if (!empty($filters['cv_uploaded'])) {
+            $cvVal = strtolower(trim((string)$filters['cv_uploaded']));
+            if ($cvVal === 'yes' || $cvVal === '1') {
+                $conditions[] = "((cv_file_path IS NOT NULL AND cv_file_path != '') OR (cv_drive_link IS NOT NULL AND cv_drive_link != ''))";
+            } elseif ($cvVal === 'no' || $cvVal === '0') {
+                $conditions[] = "((cv_file_path IS NULL OR cv_file_path = '') AND (cv_drive_link IS NULL OR cv_drive_link = ''))";
+            }
         }
 
-        // 4. Position Filter
-        if (!empty($filters['position'])) {
-            $conditions[] = "position = ?";
-            $params[] = trim($filters['position']);
-            $types .= "s";
+        // 11. Email Sent Filter ('yes' / 'no' / '1' / '0')
+        if (isset($filters['email_sent']) && $filters['email_sent'] !== '') {
+            $emailVal = strtolower(trim((string)$filters['email_sent']));
+            if ($emailVal === 'yes' || $emailVal === '1') {
+                $conditions[] = "email_sent = 1";
+            } elseif ($emailVal === 'no' || $emailVal === '0') {
+                $conditions[] = "(email_sent = 0 OR email_sent IS NULL)";
+            }
         }
 
-        // 5. Source Filter
-        if (!empty($filters['source'])) {
-            $conditions[] = "source = ?";
-            $params[] = trim($filters['source']);
-            $types .= "s";
+        // 12. SMS Sent Filter ('yes' / 'no' / '1' / '0')
+        if (isset($filters['sms_sent']) && $filters['sms_sent'] !== '') {
+            $smsVal = strtolower(trim((string)$filters['sms_sent']));
+            if ($smsVal === 'yes' || $smsVal === '1') {
+                $conditions[] = "sms_sent = 1";
+            } elseif ($smsVal === 'no' || $smsVal === '0') {
+                $conditions[] = "(sms_sent = 0 OR sms_sent IS NULL)";
+            }
         }
 
-        // 6. Invitation Status Filter
-        if (!empty($filters['invitation_status'])) {
-            $conditions[] = "invitation_status = ?";
-            $params[] = trim($filters['invitation_status']);
-            $types .= "s";
-        }
-
-        // 7. Interview Attendance Filter
-        if (!empty($filters['interview_attendance'])) {
-            $conditions[] = "interview_attendance = ?";
-            $params[] = trim($filters['interview_attendance']);
-            $types .= "s";
-        }
-
-        // 8. Hired Filter
-        if (!empty($filters['hired'])) {
-            $conditions[] = "hired = ?";
-            $params[] = trim($filters['hired']);
-            $types .= "s";
-        }
-
-        // 9. Date Range Filter
+        // 13. Date Range Filter
         $dateType = $filters['date_type'] ?? 'interview_date';
         $allowedDateCols = ['interview_date', 'interview_call_date', 'created_at'];
         if (!in_array($dateType, $allowedDateCols)) {
@@ -133,14 +170,48 @@ class AtsCandidate extends Model
         $countStmt->execute();
         $total = (int) ($countStmt->get_result()->fetch_assoc()['total'] ?? 0);
 
+        // Dynamic Column Sorting
+        $sortableColumns = [
+            'id' => 'id',
+            'name' => 'name',
+            'position' => 'position',
+            'department' => 'department',
+            'invitation_status' => 'invitation_status',
+            'interview_date' => 'interview_date',
+            'interview_attendance' => 'interview_attendance',
+            'hired' => 'hired',
+            'email_sent' => 'email_sent',
+            'cv_file_path' => 'cv_file_path',
+            'created_at' => 'created_at',
+        ];
+
+        $sortBy = $filters['sort_by'] ?? '';
+        $sortOrder = strtoupper($filters['sort_order'] ?? '') === 'ASC' ? 'ASC' : 'DESC';
+
+        if (!empty($sortBy) && isset($sortableColumns[$sortBy])) {
+            $col = $sortableColumns[$sortBy];
+            if ($col === 'interview_date') {
+                $orderByClause = "interview_date IS NULL, interview_date {$sortOrder}, interview_time {$sortOrder}, id DESC";
+            } elseif ($col === 'position') {
+                $orderByClause = "position {$sortOrder}, department {$sortOrder}, id DESC";
+            } elseif ($col === 'cv_file_path') {
+                $orderByClause = "CASE WHEN (cv_file_path IS NOT NULL AND cv_file_path != '') OR (cv_drive_link IS NOT NULL AND cv_drive_link != '') THEN 0 ELSE 1 END {$sortOrder}, id DESC";
+            } else {
+                $orderByClause = "{$col} {$sortOrder}, id DESC";
+            }
+        } else {
+            $orderByClause = "
+                CASE WHEN interview_date = CURDATE() THEN 0 ELSE 1 END ASC,
+                interview_date DESC,
+                id DESC
+            ";
+        }
+
         // Fetch Data
         $dataSql = "
             SELECT * FROM {$this->table}
             WHERE {$whereClause}
-            ORDER BY 
-                CASE WHEN interview_date = CURDATE() THEN 0 ELSE 1 END ASC,
-                interview_date DESC,
-                id DESC
+            ORDER BY {$orderByClause}
             LIMIT ? OFFSET ?
         ";
 
@@ -206,6 +277,7 @@ class AtsCandidate extends Model
                 SUM(CASE WHEN interview_attendance = 'present' AND hired = 'pending' THEN 1 ELSE 0 END) as shortlisted_count,
                 SUM(CASE WHEN hired = 'yes' THEN 1 ELSE 0 END) as hired_count
             FROM {$this->table}
+            WHERE deleted_at IS NULL
         ";
 
         $res = $this->db->query($sql);
@@ -419,6 +491,28 @@ class AtsCandidate extends Model
     }
 
     /**
+     * Quick update candidate contact details (Name, Phone, Email)
+     */
+    public function updateContactDetails(int $id, string $name, string $phone, string $email): bool
+    {
+        $stmt = $this->db->prepare("UPDATE {$this->table} SET name = ?, phone = ?, email = ? WHERE id = ?");
+        if (!$stmt) return false;
+        $stmt->bind_param("sssi", $name, $phone, $email, $id);
+        return $stmt->execute();
+    }
+
+    /**
+     * Quick update candidate position and department
+     */
+    public function updatePositionDept(int $id, string $position, string $department): bool
+    {
+        $stmt = $this->db->prepare("UPDATE {$this->table} SET position = ?, department = ? WHERE id = ?");
+        if (!$stmt) return false;
+        $stmt->bind_param("ssi", $position, $department, $id);
+        return $stmt->execute();
+    }
+
+    /**
      * Bulk update multiple candidate records
      */
     public function bulkUpdate(array $ids, array $updates): int
@@ -523,9 +617,77 @@ class AtsCandidate extends Model
     }
 
     /**
-     * Delete candidate record
+     * Soft delete candidate record (Move to Trash)
      */
     public function delete(int $id): bool
+    {
+        return $this->softDelete($id);
+    }
+
+    public function softDelete(int $id): bool
+    {
+        $stmt = $this->db->prepare("UPDATE {$this->table} SET deleted_at = NOW() WHERE id = ?");
+        if (!$stmt) return false;
+        $stmt->bind_param("i", $id);
+        return $stmt->execute();
+    }
+
+    /**
+     * Bulk soft delete candidates by IDs (Move to Trash)
+     */
+    public function bulkDelete(array $ids): int
+    {
+        return $this->bulkSoftDelete($ids);
+    }
+
+    public function bulkSoftDelete(array $ids): int
+    {
+        $validIds = array_filter(array_map('intval', $ids));
+        if (empty($validIds)) return 0;
+
+        $idPlaceholders = implode(',', array_fill(0, count($validIds), '?'));
+        $stmt = $this->db->prepare("UPDATE {$this->table} SET deleted_at = NOW() WHERE id IN ({$idPlaceholders})");
+        if (!$stmt) return 0;
+
+        $types = str_repeat("i", count($validIds));
+        $stmt->bind_param($types, ...$validIds);
+        $stmt->execute();
+        return $stmt->affected_rows;
+    }
+
+    /**
+     * Restore candidate from Trash
+     */
+    public function restore(int $id): bool
+    {
+        $stmt = $this->db->prepare("UPDATE {$this->table} SET deleted_at = NULL WHERE id = ?");
+        if (!$stmt) return false;
+        $stmt->bind_param("i", $id);
+        return $stmt->execute();
+    }
+
+    /**
+     * Bulk restore candidates from Trash
+     */
+    public function bulkRestore(array $ids): int
+    {
+        $validIds = array_filter(array_map('intval', $ids));
+        if (empty($validIds)) return 0;
+
+        $idPlaceholders = implode(',', array_fill(0, count($validIds), '?'));
+        $stmt = $this->db->prepare("UPDATE {$this->table} SET deleted_at = NULL WHERE id IN ({$idPlaceholders})");
+        if (!$stmt) return 0;
+
+        $types = str_repeat("i", count($validIds));
+        $stmt->bind_param($types, ...$validIds);
+        $stmt->execute();
+        return $stmt->affected_rows;
+    }
+
+    /**
+     * Hard delete candidate permanently from database
+     */
+    public function forceDelete(int $id): bool
     {
         $stmt = $this->db->prepare("DELETE FROM {$this->table} WHERE id = ?");
         if (!$stmt) return false;
@@ -534,9 +696,9 @@ class AtsCandidate extends Model
     }
 
     /**
-     * Bulk delete candidates by IDs
+     * Bulk hard delete candidates permanently
      */
-    public function bulkDelete(array $ids): int
+    public function bulkForceDelete(array $ids): int
     {
         $validIds = array_filter(array_map('intval', $ids));
         if (empty($validIds)) return 0;
@@ -552,20 +714,41 @@ class AtsCandidate extends Model
     }
 
     /**
+     * Empty all records in trash permanently
+     */
+    public function emptyTrash(): int
+    {
+        $this->db->query("DELETE FROM {$this->table} WHERE deleted_at IS NOT NULL");
+        return $this->db->affected_rows;
+    }
+
+    /**
+     * Get count of deleted candidates in trash
+     */
+    public function getTrashCount(): int
+    {
+        $res = $this->db->query("SELECT COUNT(*) as total FROM {$this->table} WHERE deleted_at IS NOT NULL");
+        if ($res && $row = $res->fetch_assoc()) {
+            return (int) $row['total'];
+        }
+        return 0;
+    }
+
+    /**
      * Get recruitment analytics dashboard data
      */
     public function getDashboardMetrics(?string $fromDate = null, ?string $toDate = null): array
     {
-        $dateCondition = "1=1";
+        $dateCondition = "deleted_at IS NULL";
         $params = [];
         $types = "";
 
         if (!empty($fromDate) && !empty($toDate)) {
-            $dateCondition = "DATE(created_at) BETWEEN ? AND ?";
+            $dateCondition .= " AND DATE(created_at) BETWEEN ? AND ?";
             $params = [$fromDate, $toDate];
             $types = "ss";
         } elseif (!empty($fromDate)) {
-            $dateCondition = "DATE(created_at) >= ?";
+            $dateCondition .= " AND DATE(created_at) >= ?";
             $params = [$fromDate];
             $types = "s";
         }
