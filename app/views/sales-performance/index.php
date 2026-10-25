@@ -693,6 +693,69 @@ $jsData = [
     .sp-defs dt { font-weight: 600; }
     .sp-defs dd { margin: 0; color: var(--sp-muted); line-height: 1.5; }
 
+    /* Today's Follow-up Accordion Grouping */
+    .sp-exec-acc-card {
+        background: var(--sp-card);
+        border: 1px solid var(--sp-border);
+        border-radius: 9px;
+        overflow: hidden;
+        flex-shrink: 0;
+        margin-bottom: 10px;
+        transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    .sp-exec-acc-card:hover {
+        border-color: #cbd5e1;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    }
+    .sp-exec-acc-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 11px 15px;
+        min-height: 54px;
+        background: var(--sp-bg-soft, #f8fafc);
+        cursor: pointer;
+        user-select: none;
+        box-sizing: border-box;
+        transition: background .15s ease;
+    }
+    .sp-exec-acc-header:hover {
+        background: #f1f5f9;
+    }
+    .sp-acc-tab-btn {
+        font-family: inherit;
+        border: 1px solid var(--sp-border);
+        background: var(--sp-card);
+        color: var(--sp-text);
+        padding: 4px 11px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all .15s ease;
+    }
+    .sp-acc-tab-btn:hover {
+        background: #f1f5f9;
+    }
+    .sp-acc-tab-btn[data-status="all"].active {
+        background: var(--sp-green) !important;
+        color: #fff !important;
+        border-color: var(--sp-green) !important;
+    }
+    .sp-acc-tab-btn[data-status="incomplete"].active {
+        background: #b45309 !important;
+        color: #fff !important;
+        border-color: #b45309 !important;
+    }
+    .sp-acc-tab-btn[data-status="completed"].active {
+        background: #047857 !important;
+        color: #fff !important;
+        border-color: #047857 !important;
+    }
+    .sp-acc-chevron {
+        transition: transform .2s ease;
+    }
+
     /* ==========================================================================
        Responsive Media Queries: Mobile & Tablet Optimization
        ========================================================================== */
@@ -1981,10 +2044,14 @@ $jsData = [
                 <div class="val"><?= sp_n($o['confirmed_sales']) ?></div>
                 <div class="hint"><?= sp_pct($o['confirmed_sales'], $o['bookings']) ?> of bookings verified <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;margin-left:2px"></i></div>
             </div>
-            <div class="sp-kpi click" data-gap="collection" style="cursor:pointer" title="Click to view Verified Collections">
-                <div class="lbl"><i class="fa-regular fa-arrow-trend-up"></i> Booking Collection</div>
-                <div class="val"><?= sp_tk($o['collection']) ?></div>
-                <div class="hint">New: <?= sp_tk($o['collection_new'] ?? 0) ?> · Prev: <?= sp_tk($o['collection_prev'] ?? 0) ?> <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;margin-left:2px"></i></div>
+            <div class="sp-kpi click" data-gap="today_followups" style="cursor:pointer" title="Click to view Today's Scheduled Follow-ups">
+                <div class="lbl"><i class="fa-regular fa-calendar-check"></i> Today's Follow-up</div>
+                <div class="val"><?= sp_n($o['today_followups_total'] ?? $o['due_today'] ?? 0) ?></div>
+                <div class="hint">
+                    <span style="color:var(--sp-green);font-weight:600"><i class="fa-regular fa-circle-check"></i> <?= sp_n($o['today_followups_completed'] ?? 0) ?> complete</span> · 
+                    <span style="color:var(--sp-amber);font-weight:600"><i class="fa-regular fa-clock"></i> <?= sp_n($o['today_followups_incomplete'] ?? ($o['due_today'] ?? 0)) ?> incomplete</span>
+                    <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;margin-left:2px"></i>
+                </div>
             </div>
         </div>
 

@@ -65,10 +65,15 @@ if (!isset($discountApprovalReq)) {
         if ($dbConn) {
             $arStmt = $dbConn->prepare("
                 SELECT ar.*,
-                       u_req.full_name AS requester_name, e_req.employee_id AS requester_code,
+                       COALESCE(u_sales.full_name, u_req.full_name) AS requester_name,
+                       COALESCE(e_sales.employee_id, e_req.employee_id) AS requester_code,
                        u_op.full_name AS op_head_name, e_op.employee_id AS op_head_code,
                        u_app.full_name AS approver_name
                 FROM approval_requests ar
+                LEFT JOIN lead_bookings lb ON (ar.source_table = 'lead_bookings' AND ar.source_id = lb.id)
+                LEFT JOIN leads l ON lb.lead_id = l.id
+                LEFT JOIN users u_sales ON u_sales.id = COALESCE(NULLIF(lb.sales_by_id, 0), l.assigned_id)
+                LEFT JOIN employees e_sales ON (e_sales.user_id = u_sales.id OR e_sales.id = u_sales.employee_id)
                 LEFT JOIN users u_req ON ar.requested_by = u_req.id
                 LEFT JOIN employees e_req ON (e_req.user_id = u_req.id OR e_req.id = u_req.employee_id)
                 LEFT JOIN users u_op ON ar.op_head_by = u_op.id

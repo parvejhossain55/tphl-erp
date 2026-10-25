@@ -39,7 +39,7 @@ ONBOARD_CLIENTS_AUDIT_REPORT.md
 
 # Ignore Uploads
 public/uploads/*
-!public/uploads/.gitkeep
+!public/uploads/.htaccess
 
 # Temporary / Cache files
 tmp/
