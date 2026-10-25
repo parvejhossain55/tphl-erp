@@ -788,170 +788,192 @@
                                                 $badgeClass = 'bg-success text-white';
                                             }
                                             ?>
-                                            <span class="badge <?= $badgeClass ?> rounded-pill px-3 py-1 extra-small fw-semibold">
-                                                <i class="fa-solid fa-clock me-1"></i><?= htmlspecialchars($stageLabel) ?>
-                                            </span>
-                                            <div class="extra-small text-dark mt-1">
-                                                <i class="fa-solid fa-hourglass-half text-warning me-1"></i><strong>Pending at:</strong>
-                                                <span class="text-primary fw-semibold d-block"><?= htmlspecialchars($pendingFor) ?></span>
-                                            </div>
-                                            <?php if (strtolower($req['op_head_status'] ?? '') === 'approved' || !empty($req['op_head_by'])): ?>
-                                                <div class="mt-2 pt-1 border-top border-success-subtle text-start">
-                                                    <span class="badge bg-success-subtle text-success border border-success-subtle extra-small fw-semibold d-inline-block mb-1" style="font-size: 9.5px; padding: 2px 6px;">
-                                                        <i class="fa-solid fa-circle-check me-1"></i><?= !empty($req['mgmt_approvals']) ? 'Approved: Admin & Operation Head' : 'Last Approved: Operation Head' ?>
+                                            <div class="d-flex flex-column gap-1 text-center" style="max-width: 210px; margin: 0 auto;">
+                                                <div>
+                                                    <span class="badge <?= $badgeClass ?> rounded-pill px-2.5 py-1 extra-small fw-semibold">
+                                                        <i class="fa-solid fa-clock me-1"></i><?= htmlspecialchars($stageLabel) ?>
                                                     </span>
-                                                    <div class="extra-small text-dark fw-bold" style="font-size: 11px;">
-                                                        <i class="fa-solid fa-user-check text-success me-1"></i><?= htmlspecialchars(!empty($req['op_head_name']) ? $req['op_head_name'] : 'Admin & Operation Head') ?>
-                                                        <?php if (!empty($req['op_head_code'])): ?>
-                                                            <span class="badge bg-light text-secondary border extra-small"><?= htmlspecialchars($req['op_head_code']) ?></span>
+                                                </div>
+                                                <div class="extra-small text-dark" style="font-size: 11px;">
+                                                    <i class="fa-solid fa-hourglass-half text-warning me-1"></i><span class="text-muted">Pending:</span>
+                                                    <span class="text-primary fw-semibold"><?= htmlspecialchars($pendingFor) ?></span>
+                                                </div>
+                                                <?php if (strtolower($req['op_head_status'] ?? '') === 'approved' || !empty($req['op_head_by'])): ?>
+                                                    <div class="p-1 px-2 rounded-2 bg-success-subtle border border-success-subtle text-start d-flex align-items-center justify-content-between"
+                                                         title="<?= htmlspecialchars(($req['op_head_name'] ?? 'Admin & Operation Head') . (!empty($req['op_head_at']) ? ' • ' . date('d M, Y h:i A', strtotime($req['op_head_at'])) : '')) ?>">
+                                                        <div class="d-flex align-items-center gap-1 text-truncate me-1">
+                                                            <i class="fa-solid fa-circle-check text-success flex-shrink-0" style="font-size: 10px;"></i>
+                                                            <span class="fw-bold text-dark text-truncate" style="font-size: 10.5px; max-width: 110px;">
+                                                                <?= htmlspecialchars(!empty($req['op_head_name']) ? $req['op_head_name'] : 'Op Head') ?>
+                                                            </span>
+                                                            <?php if (!empty($req['op_head_code'])): ?>
+                                                                <span class="badge bg-light text-secondary border p-0 px-1" style="font-size: 9px;"><?= htmlspecialchars($req['op_head_code']) ?></span>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                        <span class="text-success fw-semibold flex-shrink-0" style="font-size: 9.5px;">
+                                                            <?= !empty($req['op_head_at']) ? date('d M, h:i A', strtotime($req['op_head_at'])) : 'Approved' ?>
+                                                        </span>
+                                                    </div>
+                                                <?php endif; ?>
+                                                <?php include __DIR__ . '/partials/fr_mgmt_approvals_block.php'; ?>
+                                            </div>
+
+                                        <?php elseif (in_array($req['status'], ['approved', 'partially_approved', 'partially_paid'])): ?>
+                                            <div class="d-flex flex-column gap-1 text-start" style="max-width: 220px; margin: 0 auto;">
+                                                <!-- Step 1: Management / Op Head Approval Card -->
+                                                <?php
+                                                $approverTooltip = trim(
+                                                    (!empty($req['approver_designation']) ? $req['approver_designation'] : 'Management Executive') .
+                                                    (!empty($req['approver_email']) ? ' • ' . $req['approver_email'] : '') .
+                                                    ($req['approved_at'] ? ' • ' . date('d M, Y h:i A', strtotime($req['approved_at'])) : '')
+                                                );
+                                                $mgmtTitle = $req['status'] === 'approved' ? 'Mgmt Approved' : 'Partially Approved';
+                                                $mgmtBadgeBg = $req['status'] === 'approved' ? 'bg-success-subtle text-success border-success-subtle' : 'bg-info-subtle text-info border-info-subtle';
+                                                ?>
+                                                <div class="p-1 px-2 rounded-2 <?= $mgmtBadgeBg ?> border" title="<?= htmlspecialchars($approverTooltip) ?>">
+                                                    <div class="d-flex align-items-center justify-content-between gap-1">
+                                                        <span class="fw-bold" style="font-size: 10px;">
+                                                            <i class="fa-solid fa-circle-check me-1"></i><?= $mgmtTitle ?>
+                                                        </span>
+                                                        <?php if ($req['approved_at']): ?>
+                                                            <span class="text-muted" style="font-size: 9.5px;"><?= date('d M, h:i A', strtotime($req['approved_at'])) ?></span>
                                                         <?php endif; ?>
                                                     </div>
-                                                    <?php if (!empty($req['op_head_at'])): ?>
-                                                        <span class="text-muted extra-small d-block" style="font-size: 10px;">
-                                                            <i class="fa-solid fa-calendar-check me-1"></i><?= date('d M, Y h:i A', strtotime($req['op_head_at'])) ?>
-                                                        </span>
-                                                    <?php endif; ?>
+                                                    <div class="fw-semibold text-dark text-truncate" style="font-size: 11px;">
+                                                        <?= htmlspecialchars($req['approver_name'] ?? 'Management') ?>
+                                                    </div>
                                                 </div>
-                                            <?php endif; ?>
-                                            <?php include __DIR__ . '/partials/fr_mgmt_approvals_block.php'; ?>
-                                        <?php elseif (in_array($req['status'], ['approved', 'partially_approved', 'partially_paid'])): ?>
-                                            <span
-                                                class="badge <?= $req['status'] === 'approved' ? 'bg-success' : 'bg-info' ?> text-white rounded-pill px-3 py-1 extra-small d-block mb-1">
-                                                <i class="fa-solid fa-user-shield me-1"></i>
-                                                <?= $req['status'] === 'approved' ? 'Approved from Management' : 'Partially Approved' ?>
-                                            </span>
-                                            <div class="fw-bold text-dark extra-small">
-                                                <i class="fa-solid fa-user-check text-success me-1"></i>
-                                                <?= htmlspecialchars($req['approver_name'] ?? 'Management') ?>
+
+                                                <?php if (strtolower($req['op_head_status'] ?? '') === 'approved' && !empty($req['op_head_by']) && (int)$req['op_head_by'] !== (int)($req['approved_by'] ?? 0)): ?>
+                                                    <div class="extra-small text-muted text-start px-1" style="font-size: 9.5px;" title="<?= htmlspecialchars(!empty($req['op_head_name']) ? $req['op_head_name'] : 'Admin & Operation Head') ?>">
+                                                        <i class="fa-solid fa-check text-success me-1"></i>Op Head: <strong class="text-dark"><?= htmlspecialchars(!empty($req['op_head_name']) ? $req['op_head_name'] : 'Op Head') ?></strong>
+                                                        <?php if (!empty($req['op_head_at'])): ?> · <?= date('d M, h:i A', strtotime($req['op_head_at'])) ?><?php endif; ?>
+                                                    </div>
+                                                <?php endif; ?>
+
+                                                <?php if (count($req['mgmt_approvals'] ?? []) > 1 || (($req['fr_status'] ?? '') === 'partially_approved')) { include __DIR__ . '/partials/fr_mgmt_approvals_block.php'; } ?>
+
+                                                <!-- Step 2: Accounts Head Card (Pending or Approved) -->
+                                                <?php if ($isPendingAccountsHead): ?>
+                                                    <div class="p-1 px-2 rounded-2 bg-warning-subtle text-dark border border-warning-subtle" title="Payment locked until Accounts Head (Md. Mamunoor Rashid [1309]) approves">
+                                                        <div class="d-flex align-items-center justify-content-between gap-1">
+                                                            <span class="fw-bold text-dark" style="font-size: 10px;">
+                                                                <i class="fa-solid fa-hourglass-half text-warning me-1"></i>Pending Accts Head
+                                                            </span>
+                                                            <span class="badge bg-warning text-dark p-0 px-1" style="font-size: 9px;">1309</span>
+                                                        </div>
+                                                        <div class="text-dark fw-semibold text-truncate" style="font-size: 11px;">
+                                                            Md. Mamunoor Rashid
+                                                        </div>
+                                                    </div>
+                                                <?php elseif ($isAccountsHeadApproved): ?>
+                                                    <?php
+                                                    $ahTooltip = trim(
+                                                        (!empty($req['accounts_head_designation']) ? $req['accounts_head_designation'] : 'AGM - Finance & Accounts') .
+                                                        (!empty($req['accounts_head_at']) ? ' • Approved: ' . date('d M, Y h:i A', strtotime($req['accounts_head_at'])) : '')
+                                                    );
+                                                    ?>
+                                                    <div class="p-1 px-2 rounded-2 bg-primary-subtle text-primary border border-primary-subtle" title="<?= htmlspecialchars($ahTooltip) ?>">
+                                                        <div class="d-flex align-items-center justify-content-between gap-1">
+                                                            <span class="fw-bold text-primary" style="font-size: 10px;">
+                                                                <i class="fa-solid fa-check-double me-1"></i>Accts Head Approved
+                                                            </span>
+                                                            <?php if (!empty($req['accounts_head_at'])): ?>
+                                                                <span class="text-muted" style="font-size: 9.5px;"><?= date('d M, h:i A', strtotime($req['accounts_head_at'])) ?></span>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                        <div class="fw-semibold text-dark text-truncate d-flex align-items-center gap-1" style="font-size: 11px;">
+                                                            <span class="text-truncate"><?= htmlspecialchars(!empty($req['accounts_head_name']) ? $req['accounts_head_name'] : 'Md. Mamunoor Rashid') ?></span>
+                                                            <?php if (!empty($req['accounts_head_employee_code'])): ?>
+                                                                <span class="badge bg-light text-secondary border p-0 px-1" style="font-size: 9px;"><?= htmlspecialchars($req['accounts_head_employee_code']) ?></span>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                    </div>
+                                                <?php endif; ?>
                                             </div>
-                                            <?php if (!empty($req['approver_designation'])): ?>
-                                                <span
-                                                    class="badge bg-primary-subtle text-primary border border-primary-subtle extra-small d-block my-1">
-                                                    <?= htmlspecialchars($req['approver_designation']) ?>
-                                                </span>
-                                            <?php endif; ?>
-                                            <?php if (!empty($req['approver_email'])): ?>
-                                                <span class="text-muted extra-small d-block"><i class="fa-solid fa-envelope me-1"></i>
-                                                    <?= htmlspecialchars($req['approver_email']) ?>
-                                                </span>
-                                            <?php endif; ?>
-                                            <?php if ($req['approved_at']): ?>
-                                                <span class="text-muted extra-small d-block"><i
-                                                        class="fa-solid fa-calendar-check me-1"></i>
-                                                    <?= date('d M, Y h:i A', strtotime($req['approved_at'])) ?>
-                                                </span>
-                                            <?php endif; ?>
 
-                                            <?php if (strtolower($req['op_head_status'] ?? '') === 'approved' && !empty($req['op_head_by']) && (int)$req['op_head_by'] !== (int)($req['approved_by'] ?? 0)): ?>
-                                                <div class="extra-small text-muted text-start mt-1" style="font-size: 10px;">
-                                                    <i class="fa-solid fa-circle-check text-success me-1"></i>Op Head: <strong class="text-dark"><?= htmlspecialchars(!empty($req['op_head_name']) ? $req['op_head_name'] : 'Admin & Operation Head') ?></strong>
-                                                    <?php if (!empty($req['op_head_at'])): ?> · <?= date('d M, Y h:i A', strtotime($req['op_head_at'])) ?><?php endif; ?>
-                                                </div>
-                                            <?php endif; ?>
-                                            <?php if (count($req['mgmt_approvals'] ?? []) > 1 || (($req['fr_status'] ?? '') === 'partially_approved')) { include __DIR__ . '/partials/fr_mgmt_approvals_block.php'; } ?>
-
-                                            <?php if ($isPendingAccountsHead): ?>
-                                                <div class="mt-2 pt-2 border-top border-warning-subtle text-start">
-                                                    <span class="badge bg-warning text-dark rounded-pill px-2 py-1 extra-small d-inline-block mb-1 fw-bold">
-                                                        <i class="fa-solid fa-hourglass-half me-1"></i>Pending Accounts Head
-                                                    </span>
-                                                    <div class="extra-small text-dark fw-bold">
-                                                        <i class="fa-solid fa-user-clock text-warning me-1"></i>Md. Mamunoor Rashid
-                                                        <span class="badge bg-light text-secondary border extra-small">1309</span>
-                                                    </div>
-                                                    <span class="text-muted extra-small d-block">AGM - Finance & Accounts</span>
-                                                </div>
-                                            <?php elseif ($isAccountsHeadApproved): ?>
-                                                <div class="mt-2 pt-2 border-top border-primary-subtle text-start">
-                                                    <span class="badge bg-primary text-white rounded-pill px-2 py-1 extra-small d-inline-block mb-1 fw-bold">
-                                                        <i class="fa-solid fa-user-check me-1"></i>Accounts Head Approved
-                                                    </span>
-                                                    <div class="extra-small text-dark fw-bold">
-                                                        <i class="fa-solid fa-check-double text-primary me-1"></i><?= htmlspecialchars(!empty($req['accounts_head_name']) ? $req['accounts_head_name'] : 'Md. Mamunoor Rashid') ?>
-                                                        <span class="badge bg-light text-secondary border extra-small"><?= htmlspecialchars(!empty($req['accounts_head_employee_code']) ? $req['accounts_head_employee_code'] : '1309') ?></span>
-                                                    </div>
-                                                    <span class="text-muted extra-small d-block"><?= htmlspecialchars(!empty($req['accounts_head_designation']) ? $req['accounts_head_designation'] : 'AGM - Finance & Accounts') ?></span>
-                                                    <?php if (!empty($req['accounts_head_at'])): ?>
-                                                        <span class="text-muted extra-small d-block"><i class="fa-solid fa-calendar-check me-1"></i><?= date('d M, Y h:i A', strtotime($req['accounts_head_at'])) ?></span>
-                                                    <?php endif; ?>
-                                                </div>
-                                            <?php endif; ?>
                                         <?php elseif ($req['status'] === 'rejected'): ?>
-                                            <span
-                                                class="badge bg-danger text-white rounded-pill px-3 py-1 extra-small d-block mb-1">
-                                                <i class="fa-solid fa-circle-xmark me-1"></i>Rejected
-                                            </span>
-                                            <span class="extra-small text-muted">By:
-                                                <?= htmlspecialchars($req['approver_name'] ?? 'Management') ?>
-                                            </span>
+                                            <div class="d-flex flex-column gap-1 text-center" style="max-width: 180px; margin: 0 auto;">
+                                                <span class="badge bg-danger text-white rounded-pill px-2.5 py-1 extra-small fw-semibold">
+                                                    <i class="fa-solid fa-circle-xmark me-1"></i>Rejected
+                                                </span>
+                                                <span class="extra-small text-muted" title="<?= htmlspecialchars($req['approver_name'] ?? 'Management') ?>">
+                                                    By: <?= htmlspecialchars($req['approver_name'] ?? 'Management') ?>
+                                                </span>
+                                            </div>
                                         <?php endif; ?>
                                     </td>
 
                                     <!-- Accounts Payout Status -->
                                     <td class="text-center">
                                         <?php if ($req['payout_status'] === 'Paid & Settled'): ?>
-                                            <span
-                                                class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 extra-small d-block mb-1">
-                                                <i class="fa-solid fa-money-check-dollar me-1"></i>Paid & Settled
-                                            </span>
-                                            <span class="extra-small fw-bold text-success">৳
-                                                <?= number_format($req['payout_amount'], 2) ?>
-                                            </span>
-                                            <?php if (!empty($req['disbursed_by_name'])): ?>
-                                                <div class="extra-small text-dark fw-semibold mt-1" title="Disbursed by <?= htmlspecialchars($req['disbursed_by_name']) ?> (<?= htmlspecialchars($req['disbursed_by_code'] ?? '') ?>)">
-                                                    <i class="fa-solid fa-user-check text-success me-1"></i><?= htmlspecialchars($req['disbursed_by_name']) ?>
-                                                </div>
-                                            <?php endif; ?>
-                                            <?php if (!empty($req['disbursed_branch_name'])): ?>
+                                            <?php
+                                            $payoutTooltip = trim(
+                                                'Paid & Settled: ৳ ' . number_format($req['payout_amount'], 2) .
+                                                (!empty($req['disbursed_by_name']) ? ' • Disbursed by: ' . $req['disbursed_by_name'] : '') .
+                                                (!empty($req['disbursed_branch_name']) ? ' (' . $req['disbursed_branch_name'] . ')' : '') .
+                                                (!empty($req['payout_date']) ? ' • ' . date('d M, Y', strtotime($req['payout_date'])) : '')
+                                            );
+                                            ?>
+                                            <div class="d-flex flex-column gap-1 text-center" style="max-width: 190px; margin: 0 auto;" title="<?= htmlspecialchars($payoutTooltip) ?>">
                                                 <div>
-                                                    <span class="badge bg-light text-secondary border px-1 py-0 mt-1" style="font-size: 10px;">
-                                                        <i class="fa-solid fa-building me-1 text-muted"></i><?= htmlspecialchars($req['disbursed_branch_name']) ?>
+                                                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 extra-small fw-bold">
+                                                        <i class="fa-solid fa-money-check-dollar me-1"></i>Paid: ৳ <?= number_format($req['payout_amount'], 2) ?>
                                                     </span>
                                                 </div>
-                                            <?php endif; ?>
-                                            <?php if ($req['payout_date']): ?>
-                                                <div class="extra-small text-muted mt-1">
-                                                    <?= date('d M, Y', strtotime($req['payout_date'])) ?>
+                                                <?php if (!empty($req['disbursed_by_name'])): ?>
+                                                    <div class="extra-small text-dark fw-semibold text-truncate" style="font-size: 11px;">
+                                                        <i class="fa-solid fa-user-check text-success me-1"></i><?= htmlspecialchars($req['disbursed_by_name']) ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                                <div class="d-flex align-items-center justify-content-center gap-1 extra-small text-muted" style="font-size: 10px;">
+                                                    <?php if (!empty($req['disbursed_branch_name'])): ?>
+                                                        <span class="badge bg-light text-secondary border p-0 px-1" style="font-size: 9px;">
+                                                            <i class="fa-solid fa-building me-1 text-muted"></i><?= htmlspecialchars($req['disbursed_branch_name']) ?>
+                                                        </span>
+                                                    <?php endif; ?>
+                                                    <?php if ($req['payout_date']): ?>
+                                                        <span><?= date('d M, Y', strtotime($req['payout_date'])) ?></span>
+                                                    <?php endif; ?>
                                                 </div>
-                                            <?php endif; ?>
+                                            </div>
+
                                         <?php elseif ($req['payout_status'] === 'Partially Paid'): ?>
-                                            <span
-                                                class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 extra-small d-block mb-1">
-                                                <i class="fa-solid fa-money-check-dollar me-1"></i>Partially Paid
-                                            </span>
-                                            <span class="extra-small fw-bold text-success">৳
-                                                <?= number_format($req['payout_amount'], 2) ?>
-                                            </span>
-                                            <?php if (!empty($req['disbursed_by_name'])): ?>
-                                                <div class="extra-small text-dark fw-semibold mt-1" title="Disbursed by <?= htmlspecialchars($req['disbursed_by_name']) ?> (<?= htmlspecialchars($req['disbursed_by_code'] ?? '') ?>)">
-                                                    <i class="fa-solid fa-user-check text-success me-1"></i><?= htmlspecialchars($req['disbursed_by_name']) ?>
-                                                </div>
-                                            <?php endif; ?>
-                                            <?php if (!empty($req['disbursed_branch_name'])): ?>
+                                            <?php
+                                            $payoutTooltip = trim(
+                                                'Partially Paid: ৳ ' . number_format($req['payout_amount'], 2) .
+                                                (!empty($req['disbursed_by_name']) ? ' • By: ' . $req['disbursed_by_name'] : '') .
+                                                (!empty($req['disbursed_branch_name']) ? ' (' . $req['disbursed_branch_name'] . ')' : '') .
+                                                (!empty($req['payout_date']) ? ' • ' . date('d M, Y', strtotime($req['payout_date'])) : '')
+                                            );
+                                            ?>
+                                            <div class="d-flex flex-column gap-1 text-center" style="max-width: 190px; margin: 0 auto;" title="<?= htmlspecialchars($payoutTooltip) ?>">
                                                 <div>
-                                                    <span class="badge bg-light text-secondary border px-1 py-0 mt-1" style="font-size: 10px;">
-                                                        <i class="fa-solid fa-building me-1 text-muted"></i><?= htmlspecialchars($req['disbursed_branch_name']) ?>
+                                                    <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2.5 py-1 extra-small fw-bold">
+                                                        <i class="fa-solid fa-money-check-dollar me-1"></i>Partially Paid
                                                     </span>
                                                 </div>
-                                            <?php endif; ?>
-                                            <?php if ($req['payout_date']): ?>
-                                                <div class="extra-small text-muted mt-1">
-                                                    <?= date('d M, Y', strtotime($req['payout_date'])) ?>
+                                                <span class="extra-small fw-bold text-success">৳ <?= number_format($req['payout_amount'], 2) ?></span>
+                                                <div class="d-flex align-items-center justify-content-center gap-1 extra-small text-muted" style="font-size: 10px;">
+                                                    <?php if (!empty($req['disbursed_by_name'])): ?>
+                                                        <span class="text-dark fw-semibold text-truncate"><?= htmlspecialchars($req['disbursed_by_name']) ?></span>
+                                                    <?php endif; ?>
+                                                    <?php if ($req['payout_date']): ?>
+                                                        <span><?= date('d M, Y', strtotime($req['payout_date'])) ?></span>
+                                                    <?php endif; ?>
                                                 </div>
-                                            <?php endif; ?>
+                                            </div>
+
                                         <?php elseif ($isPendingAccountsHead): ?>
-                                            <span
-                                                class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-1 extra-small">
-                                                <i class="fa-solid fa-user-clock me-1"></i>Pending Accounts Head Approval
+                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2.5 py-1 extra-small">
+                                                <i class="fa-solid fa-user-clock me-1"></i>Pending Accts Head
                                             </span>
                                         <?php elseif ($req['payout_status'] === 'Pending Accounts Payout' || $req['status'] === 'partially_approved'): ?>
-                                            <span
-                                                class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-1 extra-small">
-                                                <i class="fa-solid fa-wallet me-1"></i>Pending Accounts Payout
+                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2.5 py-1 extra-small">
+                                                <i class="fa-solid fa-wallet me-1"></i>Pending Payout
                                             </span>
                                         <?php elseif (in_array($req['status'], ['approved', 'partially_approved'])): ?>
-                                            <span
-                                                class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-3 py-1 extra-small">
+                                            <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2.5 py-1 extra-small">
                                                 <i class="fa-solid fa-check me-1"></i>Approved
                                             </span>
                                         <?php else: ?>

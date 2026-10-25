@@ -587,7 +587,7 @@ function generateCombinedReceipt() {
                                             <!-- Individual Invoice -->
                                             <a target="_blank"
                                                 href="<?= $GLOBALS['base_url'] ?>/payment-invoice?payment_id=<?= $p['id'] ?>"
-                                                class="btn btn-success btn-sm"
+                                                class="d-none btn btn-success btn-sm"
                                                 title="Print Individual Money Receipt">
                                                 <i class="fa-solid fa-receipt me-1"></i> <?= $p['payment_type'] === 'registration' ? 'Registration Invoice' : ($p['payment_type'] === 'land_share' ? 'Land Share Invoice' : 'Booking Invoice') ?>
                                             </a>
