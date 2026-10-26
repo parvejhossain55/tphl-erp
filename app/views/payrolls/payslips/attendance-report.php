@@ -531,6 +531,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 const rawData = res.data || [];
                 const localEmployees = res.local_employees || [];
                 const dbOverrides = (overridesRes && overridesRes.success) ? overridesRes.data : {};
+                const customHolidays = res.custom_holidays || { global: {}, department: {}, employee: {} };
 
                 let aggregatedRows = "";
                 let index = 1;
@@ -575,6 +576,77 @@ document.addEventListener("DOMContentLoaded", function () {
                     if (summ.totalHolidays) {
                         dayOff += parseInt(summ.totalHolidays, 10);
                     }
+
+                    // Align Custom Holidays (Global, Department-wise, or Employee-wise)
+                    const empIdNum = parseInt(localMatch.id, 10);
+                    const empIdStr = String(localMatch.id || '');
+                    const deptIdNum = parseInt(localMatch.department_id, 10);
+                    const deptIdStr = String(localMatch.department_id || '');
+
+                    const getCustomHolidayTitle = (dayDate) => {
+                        if (!dayDate) return null;
+                        if (customHolidays.employee) {
+                            if (customHolidays.employee[empIdNum] && customHolidays.employee[empIdNum][dayDate]) return customHolidays.employee[empIdNum][dayDate];
+                            if (customHolidays.employee[empIdStr] && customHolidays.employee[empIdStr][dayDate]) return customHolidays.employee[empIdStr][dayDate];
+                        }
+                        if (customHolidays.department) {
+                            if (customHolidays.department[deptIdNum] && customHolidays.department[deptIdNum][dayDate]) return customHolidays.department[deptIdNum][dayDate];
+                            if (customHolidays.department[deptIdStr] && customHolidays.department[deptIdStr][dayDate]) return customHolidays.department[deptIdStr][dayDate];
+                        }
+                        if (customHolidays.global && customHolidays.global[dayDate]) {
+                            return customHolidays.global[dayDate];
+                        }
+                        return null;
+                    };
+
+                    const normalizeToYmd = (dateVal, tsKey) => {
+                        if (dateVal) {
+                            const s = String(dateVal).trim();
+                            const m1 = s.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})/);
+                            if (m1) return `${m1[3]}-${m1[2].padStart(2, '0')}-${m1[1].padStart(2, '0')}`;
+                            const m2 = s.match(/^(\d{4})[.\/-](\d{1,2})[.\/-](\d{1,2})/);
+                            if (m2) return `${m2[1]}-${m2[2].padStart(2, '0')}-${m2[3].padStart(2, '0')}`;
+                        }
+                        if (tsKey) {
+                            const n = parseInt(tsKey, 10);
+                            if (!isNaN(n) && n > 0) {
+                                const sec = n > 9999999999 ? Math.floor(n / 1000) : n;
+                                const d = new Date((sec + 6 * 3600) * 1000);
+                                return d.toISOString().substring(0, 10);
+                            }
+                        }
+                        return '';
+                    };
+
+                    let appliedCustomHolidayCount = 0;
+
+                    Object.keys(attMap).forEach(timestamp => {
+                        const dayAtt = attMap[timestamp];
+                        const dayDate = normalizeToYmd(dayAtt.date || dayAtt.attendanceDate, timestamp);
+                        if (!dayDate) return;
+
+                        const customTitle = getCustomHolidayTitle(dayDate);
+                        if (customTitle) {
+                            dayAtt.isCustomHoliday = true;
+                            dayAtt.customHolidayTitle = customTitle;
+
+                            const isTipsoiOff = (dayAtt.isOffday == 1 || dayAtt.isOffday === true || dayAtt.isHoliday == 1 || dayAtt.isHoliday === true);
+                            const isPresent = (dayAtt.isPresent == 1 || dayAtt.isPresent === true || (dayAtt.firstLoggedTime && String(dayAtt.firstLoggedTime).trim() !== '-'));
+                            const isLeave = (dayAtt.isLeave == 1 || dayAtt.isLeave === true);
+
+                            if (!isTipsoiOff) {
+                                if (!isPresent && !isLeave) {
+                                    dayAtt.isHoliday = true;
+                                    dayAtt.isAbsent = false;
+                                    absent = Math.max(0, absent - 1);
+                                    dayOff += 1;
+                                    appliedCustomHolidayCount++;
+                                } else if (isPresent) {
+                                    dayAtt.isHolidayPresent = true;
+                                }
+                            }
+                        }
+                    });
 
                     const totalPeriodDays = Object.keys(attMap).length || 30;
                     let workingDays = Math.max(0, totalPeriodDays - dayOff);

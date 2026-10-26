@@ -80,6 +80,7 @@ $show_breadcrumb = true;
                       <th>Date</th>
                       <th>Day</th>
                       <th>Holiday Name</th>
+                      <th>Applies To</th>
                       <th>Action</th>
                     </tr>
                   </thead>
@@ -88,6 +89,7 @@ $show_breadcrumb = true;
                       $start = strtotime($h['start_date']);
                       $end   = strtotime($h['end_date']);
                       $title = htmlspecialchars($h['title']);
+                      $appliesTo = $h['applies_to'] ?? 'all';
 
                       for ($d = $start; $d <= $end; $d += 86400):
                         $dateStr = date('Y-m-d', $d);
@@ -97,7 +99,22 @@ $show_breadcrumb = true;
                         <tr>
                           <td class="table__date"><?= $dateDisplay ?></td>
                           <td class="table__day"><?= $dayName ?></td>
-                          <td class="table__name"><?= $title ?></td>
+                          <td class="table__name fw-bold"><?= $title ?></td>
+                          <td>
+                            <?php if ($appliesTo === 'department'): ?>
+                              <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
+                                <i class="fa-solid fa-building me-1"></i> Dept: <?= htmlspecialchars($h['department_name'] ?? 'N/A') ?>
+                              </span>
+                            <?php elseif ($appliesTo === 'employee'): ?>
+                              <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1">
+                                <i class="fa-solid fa-user me-1"></i> Emp: <?= htmlspecialchars(($h['employee_code'] ?? '') . ' - ' . ($h['employee_name'] ?? '')) ?>
+                              </span>
+                            <?php else: ?>
+                              <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                                <i class="fa-solid fa-users me-1"></i> All Employees
+                              </span>
+                            <?php endif; ?>
+                          </td>
                           <td>
                             <div class="d-flex align-items-center gap-10">
                               <!-- Edit Button -->
@@ -107,7 +124,10 @@ $show_breadcrumb = true;
                                 data-id="<?= $h['id'] ?>"
                                 data-title="<?= htmlspecialchars($h['title']) ?>"
                                 data-start-date="<?= $h['start_date'] ?>"
-                                data-end-date="<?= $h['end_date'] ?>">
+                                data-end-date="<?= $h['end_date'] ?>"
+                                data-applies-to="<?= htmlspecialchars($appliesTo) ?>"
+                                data-department-id="<?= htmlspecialchars($h['department_id'] ?? '') ?>"
+                                data-employee-id="<?= htmlspecialchars($h['employee_id'] ?? '') ?>">
                                 <i class="fa-sharp fa-light fa-pen"></i>
                               </button>
                               <!-- Delete Button -->
@@ -188,7 +208,7 @@ $show_breadcrumb = true;
               <div class="col-md-12">
                 <div class="from__input-box">
                   <div class="form__input-title">
-                    <label>From Date</label>
+                    <label>From Date <span class="text-danger">*</span></label>
                   </div>
                   <div class="form__input">
                     <input type="date" name="start_date" class="form-control" required>
@@ -200,7 +220,7 @@ $show_breadcrumb = true;
               <div class="col-md-12">
                 <div class="from__input-box">
                   <div class="form__input-title">
-                    <label>To Date</label>
+                    <label>To Date <span class="text-danger">*</span></label>
                   </div>
                   <div class="form__input">
                     <input type="date" name="end_date" class="form-control" required>
@@ -212,15 +232,85 @@ $show_breadcrumb = true;
               <div class="col-md-12">
                 <div class="from__input-box">
                   <div class="form__input-title">
-                    <label>Holiday Name</label>
+                    <label>Holiday Name <span class="text-danger">*</span></label>
                   </div>
                   <div class="form__input">
-                    <input type="text" name="title" class="form-control" required>
+                    <input type="text" name="title" class="form-control" placeholder="e.g. Eid Holiday, Special Company Off" required>
                   </div>
                 </div>
               </div>
 
+              <!-- APPLIES TO / SCOPE -->
+              <div class="col-md-12">
+                <div class="from__input-box">
+                  <div class="form__input-title">
+                    <label>Holiday For / Target <span class="text-danger">*</span></label>
+                  </div>
+                  <div class="form__input">
+                    <select name="applies_to" id="add_applies_to" class="form-select form-control" required>
+                      <option value="all">All Employees (Company-wide)</option>
+                      <option value="department">Specific Department</option>
+                      <option value="employee">Specific Employee</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
 
+              <!-- DEPARTMENT SELECT -->
+              <div class="col-md-12" id="add_department_group" style="display: none;">
+                <div class="from__input-box">
+                  <div class="form__input-title">
+                    <label>Select Department <span class="text-danger">*</span></label>
+                  </div>
+                  <div class="form__input">
+                    <select name="department_id" id="add_department_id" class="form-select form-control">
+                      <option value="">-- Select Department --</option>
+                      <?php if (!empty($departments)): ?>
+                        <?php foreach ($departments as $dept): ?>
+                          <option value="<?= $dept['id'] ?>"><?= htmlspecialchars($dept['name']) ?></option>
+                        <?php endforeach; ?>
+                      <?php endif; ?>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- EMPLOYEE SELECT (Multiple) -->
+              <div class="col-md-12" id="add_employee_group" style="display: none;">
+                <div class="from__input-box">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <label class="form-label mb-0 fw-bold">Select Employee(s) <span class="text-danger">*</span></label>
+                    <div class="d-flex gap-2">
+                      <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 fs-12" id="btnSelectAllEmployees">Select All</button>
+                      <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 fs-12" id="btnClearAllEmployees">Clear</button>
+                    </div>
+                  </div>
+                  <!-- Quick department auto-select helper -->
+                  <div class="mb-2">
+                    <select id="helper_filter_by_dept" class="form-select form-select-sm">
+                      <option value="">⚡ Quick select all from department...</option>
+                      <?php if (!empty($departments)): ?>
+                        <?php foreach ($departments as $dept): ?>
+                          <option value="<?= $dept['id'] ?>"><?= htmlspecialchars($dept['name']) ?></option>
+                        <?php endforeach; ?>
+                      <?php endif; ?>
+                    </select>
+                  </div>
+                  <div class="form__input">
+                    <select name="employee_ids[]" id="add_employee_ids" class="form-select form-control" multiple="multiple" style="min-height: 160px;">
+                      <?php if (!empty($employees)): ?>
+                        <?php foreach ($employees as $emp): ?>
+                          <option value="<?= $emp['id'] ?>" data-dept="<?= $emp['department_id'] ?? '' ?>">
+                            <?= htmlspecialchars($emp['employee_id'] . ' - ' . $emp['full_name']) ?> (<?= htmlspecialchars($emp['department_name'] ?? 'N/A') ?>)
+                          </option>
+                        <?php endforeach; ?>
+                      <?php endif; ?>
+                    </select>
+                    <small class="text-muted d-block mt-1">Hold Ctrl (or Cmd) to pick multiple employees, or use the Quick Select buttons above.</small>
+                    <div class="mt-1 fw-semibold text-primary fs-12" id="selectedEmpCounter">Selected: 0 employee(s)</div>
+                  </div>
+                </div>
+              </div>
 
             </div>
 
@@ -241,7 +331,7 @@ $show_breadcrumb = true;
     <div class="modal-dialog modal-dialog-centered modal-md" role="document">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">New Holidays</h5>
+          <h5 class="modal-title">Edit Holiday</h5>
           <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close"><i
               class="fa-solid fa-xmark-large"></i></button>
         </div>
@@ -254,7 +344,7 @@ $show_breadcrumb = true;
               <!-- FROM DATE -->
               <div class="col-md-12">
                 <div class="from__input-box">
-                  <div class="form__input-title"><label>From Date</label></div>
+                  <div class="form__input-title"><label>From Date <span class="text-danger">*</span></label></div>
                   <div class="form__input">
                     <input type="date" name="start_date" id="edit_start_date" class="form-control" required>
                   </div>
@@ -264,7 +354,7 @@ $show_breadcrumb = true;
               <!-- TO DATE -->
               <div class="col-md-12">
                 <div class="from__input-box">
-                  <div class="form__input-title"><label>To Date</label></div>
+                  <div class="form__input-title"><label>To Date <span class="text-danger">*</span></label></div>
                   <div class="form__input">
                     <input type="date" name="end_date" id="edit_end_date" class="form-control" required>
                   </div>
@@ -274,19 +364,57 @@ $show_breadcrumb = true;
               <!-- HOLIDAY NAME -->
               <div class="col-md-12">
                 <div class="from__input-box">
-                  <div class="form__input-title"><label>Holiday Name</label></div>
+                  <div class="form__input-title"><label>Holiday Name <span class="text-danger">*</span></label></div>
                   <div class="form__input">
                     <input type="text" name="title" id="edit_title" class="form-control" required>
                   </div>
                 </div>
               </div>
 
-              <!-- DESCRIPTION -->
+              <!-- APPLIES TO / SCOPE -->
               <div class="col-md-12">
                 <div class="from__input-box">
-                  <div class="form__input-title"><label>Description (optional)</label></div>
+                  <div class="form__input-title"><label>Holiday For / Target <span class="text-danger">*</span></label></div>
                   <div class="form__input">
-                    <textarea name="description" id="edit_description" class="form-control"></textarea>
+                    <select name="applies_to" id="edit_applies_to" class="form-select form-control" required>
+                      <option value="all">All Employees (Company-wide)</option>
+                      <option value="department">Specific Department</option>
+                      <option value="employee">Specific Employee</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- DEPARTMENT SELECT -->
+              <div class="col-md-12" id="edit_department_group" style="display: none;">
+                <div class="from__input-box">
+                  <div class="form__input-title"><label>Select Department <span class="text-danger">*</span></label></div>
+                  <div class="form__input">
+                    <select name="department_id" id="edit_department_id" class="form-select form-control">
+                      <option value="">-- Select Department --</option>
+                      <?php if (!empty($departments)): ?>
+                        <?php foreach ($departments as $dept): ?>
+                          <option value="<?= $dept['id'] ?>"><?= htmlspecialchars($dept['name']) ?></option>
+                        <?php endforeach; ?>
+                      <?php endif; ?>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- EMPLOYEE SELECT -->
+              <div class="col-md-12" id="edit_employee_group" style="display: none;">
+                <div class="from__input-box">
+                  <div class="form__input-title"><label>Select Employee <span class="text-danger">*</span></label></div>
+                  <div class="form__input">
+                    <select name="employee_id" id="edit_employee_id" class="form-select form-control">
+                      <option value="">-- Select Employee --</option>
+                      <?php if (!empty($employees)): ?>
+                        <?php foreach ($employees as $emp): ?>
+                          <option value="<?= $emp['id'] ?>"><?= htmlspecialchars($emp['employee_id'] . ' - ' . $emp['full_name']) ?></option>
+                        <?php endforeach; ?>
+                      <?php endif; ?>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -323,23 +451,144 @@ $show_breadcrumb = true;
     }
 
     // -------------------------------------------------------------
-    // Edit Modal Binding
+    // Add Holiday Modal: Scope dynamic toggle & Multi-select helpers
+    // -------------------------------------------------------------
+    const addAppliesTo = document.getElementById('add_applies_to');
+    const addDeptGroup = document.getElementById('add_department_group');
+    const addEmpGroup = document.getElementById('add_employee_group');
+    const addDeptSelect = document.getElementById('add_department_id');
+    const addEmpSelect = document.getElementById('add_employee_ids');
+    const btnSelectAll = document.getElementById('btnSelectAllEmployees');
+    const btnClearAll = document.getElementById('btnClearAllEmployees');
+    const helperDept = document.getElementById('helper_filter_by_dept');
+    const counterEl = document.getElementById('selectedEmpCounter');
+
+    function updateEmpCounter() {
+      if (!addEmpSelect || !counterEl) return;
+      let count = 0;
+      for (let i = 0; i < addEmpSelect.options.length; i++) {
+        if (addEmpSelect.options[i].selected) count++;
+      }
+      counterEl.textContent = `Selected: ${count} employee(s)`;
+    }
+
+    if (addEmpSelect) {
+      addEmpSelect.addEventListener('change', updateEmpCounter);
+    }
+
+    if (btnSelectAll && addEmpSelect) {
+      btnSelectAll.addEventListener('click', function() {
+        for (let i = 0; i < addEmpSelect.options.length; i++) {
+          addEmpSelect.options[i].selected = true;
+        }
+        updateEmpCounter();
+      });
+    }
+
+    if (btnClearAll && addEmpSelect) {
+      btnClearAll.addEventListener('click', function() {
+        for (let i = 0; i < addEmpSelect.options.length; i++) {
+          addEmpSelect.options[i].selected = false;
+        }
+        updateEmpCounter();
+      });
+    }
+
+    if (helperDept && addEmpSelect) {
+      helperDept.addEventListener('change', function() {
+        const deptId = this.value;
+        if (!deptId) return;
+        for (let i = 0; i < addEmpSelect.options.length; i++) {
+          const optDept = addEmpSelect.options[i].getAttribute('data-dept');
+          if (optDept == deptId) {
+            addEmpSelect.options[i].selected = true;
+          }
+        }
+        updateEmpCounter();
+      });
+    }
+
+    if (addAppliesTo) {
+      addAppliesTo.addEventListener('change', function() {
+        const val = this.value;
+        if (val === 'department') {
+          addDeptGroup.style.display = 'block';
+          addEmpGroup.style.display = 'none';
+          if (addDeptSelect) addDeptSelect.required = true;
+          if (addEmpSelect) addEmpSelect.required = false;
+        } else if (val === 'employee') {
+          addDeptGroup.style.display = 'none';
+          addEmpGroup.style.display = 'block';
+          if (addDeptSelect) addDeptSelect.required = false;
+          if (addEmpSelect) addEmpSelect.required = true;
+          updateEmpCounter();
+        } else {
+          addDeptGroup.style.display = 'none';
+          addEmpGroup.style.display = 'none';
+          if (addDeptSelect) addDeptSelect.required = false;
+          if (addEmpSelect) addEmpSelect.required = false;
+        }
+      });
+    }
+
+    // -------------------------------------------------------------
+    // Edit Modal Binding & Scope Toggle
     // -------------------------------------------------------------
     const modal = document.getElementById('editHolidayModal');
+    const editAppliesTo = document.getElementById('edit_applies_to');
+    const editDeptGroup = document.getElementById('edit_department_group');
+    const editEmpGroup = document.getElementById('edit_employee_group');
+    const editDeptSelect = document.getElementById('edit_department_id');
+    const editEmpSelect = document.getElementById('edit_employee_id');
+
+    function toggleEditScope(val) {
+      if (val === 'department') {
+        editDeptGroup.style.display = 'block';
+        editEmpGroup.style.display = 'none';
+        editDeptSelect.required = true;
+        editEmpSelect.required = false;
+      } else if (val === 'employee') {
+        editDeptGroup.style.display = 'none';
+        editEmpGroup.style.display = 'block';
+        editDeptSelect.required = false;
+        editEmpSelect.required = true;
+      } else {
+        editDeptGroup.style.display = 'none';
+        editEmpGroup.style.display = 'none';
+        editDeptSelect.required = false;
+        editEmpSelect.required = false;
+      }
+    }
+
+    if (editAppliesTo) {
+      editAppliesTo.addEventListener('change', function() {
+        toggleEditScope(this.value);
+      });
+    }
+
     modal.addEventListener('show.bs.modal', function(event) {
       const button = event.relatedTarget;
+      if (!button) return;
 
       const id = button.getAttribute('data-id');
       const title = button.getAttribute('data-title');
       const start = button.getAttribute('data-start-date');
       const end = button.getAttribute('data-end-date');
-      const desc = button.getAttribute('data-description') ?? '';
+      const appliesTo = button.getAttribute('data-applies-to') || 'all';
+      const deptId = button.getAttribute('data-department-id') || '';
+      const empId = button.getAttribute('data-employee-id') || '';
 
       document.getElementById('edit_holiday_id').value = id;
       document.getElementById('edit_title').value = title;
       document.getElementById('edit_start_date').value = start;
       document.getElementById('edit_end_date').value = end;
-      document.getElementById('edit_description').value = desc;
+      
+      if (editAppliesTo) {
+        editAppliesTo.value = appliesTo;
+        editDeptSelect.value = deptId;
+        editEmpSelect.value = empId;
+        toggleEditScope(appliesTo);
+      }
     });
 
     // -------------------------------------------------------------

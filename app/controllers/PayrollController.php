@@ -2703,7 +2703,7 @@ class PayrollController extends Controller
         $escapedToDate = $this->db->real_escape_string($toDateStr);
         $escapedFromDate = $this->db->real_escape_string($fromDateStr);
 
-        $localSql = "SELECT e.id, e.employee_id, e.email, e.full_name, e.joining_date, e.resign_date, e.workplace,
+        $localSql = "SELECT e.id, e.employee_id, e.email, e.full_name, e.joining_date, e.resign_date, e.workplace, e.department_id,
                             d.name as department, des.name as designation 
                      FROM employees e 
                      LEFT JOIN departments d ON e.department_id = d.id 
@@ -2718,6 +2718,11 @@ class PayrollController extends Controller
                 $localEmployees[] = $row;
             }
         }
+
+        // Fetch Custom Holidays for the date range
+        require_once dirname(__DIR__) . '/models/Holiday.php';
+        $holidayModel = new Holiday($this->db);
+        $customHolidays = $holidayModel->getHolidayMapForRange($fromDateStr, $toDateStr);
 
         // Helpers
         $normalizeId = function ($id) {
@@ -2784,6 +2789,53 @@ class PayrollController extends Controller
             if (!empty($summ['totalHolidays'])) {
                 $dayOff += (int) $summ['totalHolidays'];
             }
+
+            // Align Custom Holidays (Global, Department-wise, or Employee-wise)
+            $empRowId = (int) ($localMatch['id'] ?? 0);
+            $empDeptId = (int) ($localMatch['department_id'] ?? 0);
+
+            foreach ($attMap as $ts => &$dayAttRef) {
+                $rawDate = $dayAttRef['date'] ?? ($dayAttRef['attendanceDate'] ?? null);
+                $dayDate = null;
+                if (!empty($rawDate)) {
+                    $s = trim((string)$rawDate);
+                    if (preg_match('/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})/', $s, $m)) {
+                        $dayDate = sprintf('%04d-%02d-%02d', (int)$m[3], (int)$m[2], (int)$m[1]);
+                    } elseif (preg_match('/^(\d{4})[.\/-](\d{1,2})[.\/-](\d{1,2})/', $s, $m)) {
+                        $dayDate = sprintf('%04d-%02d-%02d', (int)$m[1], (int)$m[2], (int)$m[3]);
+                    }
+                }
+                if (!$dayDate && is_numeric($ts) && $ts > 0) {
+                    $sec = $ts > 9999999999 ? (int)($ts / 1000) : (int)$ts;
+                    $dt = new DateTime("@$sec");
+                    $dt->setTimezone(new DateTimeZone('Asia/Dhaka'));
+                    $dayDate = $dt->format('Y-m-d');
+                }
+
+                if (!$dayDate) continue;
+
+                $customTitle = $customHolidays['employee'][$empRowId][$dayDate]
+                    ?? ($customHolidays['department'][$empDeptId][$dayDate]
+                    ?? ($customHolidays['global'][$dayDate] ?? null));
+
+                if ($customTitle) {
+                    $dayAttRef['isCustomHoliday'] = 1;
+                    $isOff = !empty($dayAttRef['isOffday']) || !empty($dayAttRef['isHoliday']);
+                    $isPres = !empty($dayAttRef['isPresent']) || (!empty($dayAttRef['firstLoggedTime']) && trim($dayAttRef['firstLoggedTime']) !== '-');
+                    $isLeave = !empty($dayAttRef['isLeave']);
+
+                    if (!$isOff) {
+                        if (!$isPres && !$isLeave) {
+                            $dayAttRef['isHoliday'] = 1;
+                            $absent = max(0, $absent - 1);
+                            $dayOff += 1;
+                        } elseif ($isPres) {
+                            $dayAttRef['isHolidayPresent'] = 1;
+                        }
+                    }
+                }
+            }
+            unset($dayAttRef);
 
             $totalPeriodDays = count($attMap) ?: 30;
             $workingDays = max(0, $totalPeriodDays - $dayOff);
