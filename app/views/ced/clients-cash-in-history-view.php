@@ -1040,7 +1040,7 @@ if (!isset($discountApprovalReq)) {
                     </span>
                     <div>
                         <h6 class="mb-0 text-danger fw-bold" style="font-size: 15px;">
-                            Overdue & Due Installments (বকেয়া ও মেয়াদোত্তীর্ণ কিস্তিসমূহ)
+                            Overdue & Due Installments 
                         </h6>
                         <small class="text-muted">
                             Total <strong><?= count($dueEmisList) ?></strong> EMI installment(s) currently due / expired.

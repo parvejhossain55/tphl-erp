@@ -95,9 +95,11 @@ class LeadAutomationController extends Controller
 
         $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
         $secondaryRole = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $primaryRole = (int)($_SESSION['user']['primary_role_id'] ?? 0);
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
 
         // Strictly block Executive Of Digital Marketing Team (Role 11)
-        if ($userRole === 11 || $secondaryRole === 11) {
+        if ($userRole === 11 || $secondaryRole === 11 || $primaryRole === 11) {
             if (function_exists('setError')) {
                 setError("You do not have permission to access Lead Automation.");
             }
@@ -105,11 +107,17 @@ class LeadAutomationController extends Controller
             exit;
         }
 
-        $allowedRoles = [1, 10, 33, 34, 35]; // Admin, DM Head, Management
+        $allowedRoles = [1, 3, 10, 33, 34, 35]; // Admin, Super Admin, DM Head, Management
 
         $hasPerm = function_exists('hasPermission') && hasPermission("Digital Marketing Panel");
 
-        if (!in_array($userRole, $allowedRoles, true) && !in_array($secondaryRole, $allowedRoles, true) && !$hasPerm) {
+        $isAuthorized = in_array($userRole, $allowedRoles, true)
+            || in_array($secondaryRole, $allowedRoles, true)
+            || in_array($primaryRole, $allowedRoles, true)
+            || $userId === 94
+            || $hasPerm;
+
+        if (!$isAuthorized) {
             if (function_exists('setError')) {
                 setError("You do not have permission to access Lead Automation.");
             }

@@ -1230,7 +1230,10 @@
                 <?php endif; ?>
                 <!-- for sales executive  -->
 
-                <?php if (($_SESSION['user']['role_id'] ?? 0) == 33): ?>
+                <?php 
+                $isMgmtUserForDM = !empty($isManagement) || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33, 34, 35], true);
+                if ($isMgmtUserForDM && !hasPermission("Digital Marketing Panel") && ($_SESSION['user']['role_id'] ?? 0) != 10 && ($_SESSION['user']['secondary_role_id'] ?? 0) != 10): 
+                ?>
                     <li class="slide ">
                         <a href="<?= $base_url ?>/all-platform-leads"
                             class="sidebar__menu-item <?= isActive('all-platform-leads', $current_route) ?>">
@@ -1250,6 +1253,13 @@
                             class="sidebar__menu-item <?= isActive(['team-lead-report', 'digital-marketing-upload-report'], $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-file-waveform"></i></div>
                             <span class="sidebar__menu-label">Team Lead Report</span>
+                        </a>
+                    </li>
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/lead-automation-upload"
+                            class="sidebar__menu-item <?= isActive('lead-automation-upload', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-wand-magic-sparkles text-primary"></i></div>
+                            <span class="sidebar__menu-label">Lead Automation Upload</span>
                         </a>
                     </li>
                 <?php endif; ?>
@@ -2208,7 +2218,7 @@
                     || (strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'credit recovery') !== false)
                     || (strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'recovery') !== false)
                     || (strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'communicat') !== false);
-                $canViewCedCategory = (hasPermission("CED Manage") || in_array($sbUserRoleId, [1, 3, 33, 34, 35]) || $isClientCommUser) && ($sbUserRoleId != 9);
+                $canViewCedCategory = (hasPermission("CED Manage") || in_array($sbUserRoleId, [1, 3, 7, 33, 34, 35, 37]) || $isClientCommUser) && ($sbUserRoleId != 9);
 
                 $sbTodayFollowupCount = 0;
                 $sbUpcomingFollowupCount = 0;
@@ -2268,6 +2278,17 @@
                                 <span class="sidebar__menu-label">Upcoming Follow Up</span>
                                 <?php if ($sbUpcomingFollowupCount > 0): ?>
                                     <span class="badge bg-info rounded-pill ms-auto me-2"><?= $sbUpcomingFollowupCount ?></span>
+                                <?php endif; ?>
+                            </a>
+                        </li>
+                        <li class="slide <?= isActive('client-refunds', $current_route) ?>">
+                            <a href="<?= $base_url ?>/client-refunds"
+                                class="sidebar__menu-item <?= isActive('client-refunds', $current_route) ?>"
+                                title="Client Refunds">
+                                <div class="side-menu__icon"><i class="fa-solid fa-arrow-rotate-left"></i></div>
+                                <span class="sidebar__menu-label">Client Refunds</span>
+                                <?php if ($unpaidRefundsCount > 0): ?>
+                                    <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $unpaidRefundsCount ?></span>
                                 <?php endif; ?>
                             </a>
                         </li>
@@ -2368,7 +2389,7 @@
                                 <li class="slide <?= isActive('client-refunds', $current_route) ?>">
                                     <a href="<?= $base_url ?>/client-refunds"
                                         class="sidebar__menu-item <?= isActive('client-refunds', $current_route) ?>">
-                                        Refunds
+                                        Client Refunds
                                         <?php if ($unpaidRefundsCount > 0): ?>
                                             <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $unpaidRefundsCount ?></span>
                                         <?php endif; ?>
