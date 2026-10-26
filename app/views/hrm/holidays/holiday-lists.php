@@ -13,6 +13,27 @@ $show_breadcrumb = true;
 <!-- CONTENT -->
 <div class="content">
 
+<style>
+.emp-row-card {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.emp-row-card.is-hidden {
+  display: none !important;
+}
+.emp-row-card:hover {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+.emp-row-card.is-checked {
+  background-color: #eff6ff !important;
+  border-color: #3b82f6 !important;
+}
+</style>
+
   <!-- STAT CARDS -->
   <div class="row mb-4">
     <div class="col-6 col-xl-3">
@@ -275,42 +296,75 @@ $show_breadcrumb = true;
                 </div>
               </div>
 
-              <!-- EMPLOYEE SELECT (Multiple) -->
+              <!-- EMPLOYEE SELECT (Multiple with Modern Interactive List) -->
               <div class="col-md-12" id="add_employee_group" style="display: none;">
                 <div class="from__input-box">
-                  <div class="d-flex justify-content-between align-items-center mb-1">
-                    <label class="form-label mb-0 fw-bold">Select Employee(s) <span class="text-danger">*</span></label>
-                    <div class="d-flex gap-2">
-                      <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 fs-12" id="btnSelectAllEmployees">Select All</button>
-                      <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 fs-12" id="btnClearAllEmployees">Clear</button>
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label class="form-label mb-0 fw-bold">
+                      <i class="fa-solid fa-users text-primary me-1"></i> Target Employees <span class="text-danger">*</span>
+                    </label>
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="badge bg-secondary px-2 py-1 fs-12 rounded-pill" id="selectedEmpCounter">0 Selected</span>
+                      <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 fs-12" id="btnSelectAllEmployees">
+                        <i class="fa-solid fa-check-double me-1"></i>Select Visible
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 fs-12" id="btnClearAllEmployees">
+                        <i class="fa-solid fa-xmark me-1"></i>Clear
+                      </button>
                     </div>
                   </div>
-                  <!-- Quick department auto-select helper -->
-                  <div class="mb-2">
-                    <select id="helper_filter_by_dept" class="form-select form-select-sm">
-                      <option value="">⚡ Quick select all from department...</option>
-                      <?php if (!empty($departments)): ?>
-                        <?php foreach ($departments as $dept): ?>
-                          <option value="<?= $dept['id'] ?>"><?= htmlspecialchars($dept['name']) ?></option>
-                        <?php endforeach; ?>
-                      <?php endif; ?>
-                    </select>
+
+                  <!-- Quick Filter & Search Bar -->
+                  <div class="row g-2 mb-2">
+                    <div class="col-md-6">
+                      <select id="emp_filter_department" class="form-select form-select-sm">
+                        <option value="">🏢 All Departments (<?= count($employees) ?> active)</option>
+                        <?php if (!empty($departments)): ?>
+                          <?php foreach ($departments as $dept): ?>
+                            <option value="<?= $dept['id'] ?>"><?= htmlspecialchars($dept['name']) ?></option>
+                          <?php endforeach; ?>
+                        <?php endif; ?>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                        <input type="text" id="emp_search_input" class="form-control border-start-0" placeholder="Search by name or ID...">
+                      </div>
+                    </div>
                   </div>
-                  <div class="form__input">
-                    <select name="employee_ids[]" id="add_employee_ids" class="form-select form-control" multiple="multiple" style="min-height: 160px;">
-                      <?php if (!empty($employees)): ?>
-                        <?php foreach ($employees as $emp): ?>
-                          <option value="<?= $emp['id'] ?>" data-dept="<?= $emp['department_id'] ?? '' ?>">
-                            <?= htmlspecialchars($emp['employee_id'] . ' - ' . $emp['full_name']) ?> (<?= htmlspecialchars($emp['department_name'] ?? 'N/A') ?>)
-                          </option>
-                        <?php endforeach; ?>
-                      <?php endif; ?>
-                    </select>
-                    <small class="text-muted d-block mt-1">Hold Ctrl (or Cmd) to pick multiple employees, or use the Quick Select buttons above.</small>
-                    <div class="mt-1 fw-semibold text-primary fs-12" id="selectedEmpCounter">Selected: 0 employee(s)</div>
+
+                  <!-- Modern Scrollable Checkbox Card List -->
+                  <div id="emp_cards_container" class="border rounded-3 p-2 bg-light-subtle shadow-sm" style="max-height: 230px; overflow-y: auto;">
+                    <?php if (!empty($employees)): ?>
+                      <?php foreach ($employees as $emp): ?>
+                        <label class="emp-row-card align-items-center justify-content-between p-2 mb-1 rounded-2 bg-white border user-select-none"
+                               data-dept="<?= $emp['department_id'] ?? '' ?>"
+                               data-name="<?= strtolower(htmlspecialchars($emp['full_name'])) ?>"
+                               data-code="<?= strtolower(htmlspecialchars($emp['employee_id'])) ?>"
+                               style="cursor: pointer; transition: all 0.15s ease;">
+                          <div class="d-flex align-items-center gap-2 text-truncate" style="max-width: 75%;">
+                            <input type="checkbox" name="employee_ids[]" value="<?= $emp['id'] ?>" class="form-check-input emp-checkbox mt-0 flex-shrink-0">
+                            <span class="badge bg-light text-dark border font-monospace px-2 py-1 fs-11"><?= htmlspecialchars($emp['employee_id']) ?></span>
+                            <span class="fw-semibold text-dark text-truncate fs-13"><?= htmlspecialchars($emp['full_name']) ?></span>
+                          </div>
+                          <div class="text-end flex-shrink-0 ms-2">
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 fs-11">
+                              <?= htmlspecialchars($emp['department_name'] ?? 'N/A') ?>
+                            </span>
+                          </div>
+                        </label>
+                      <?php endforeach; ?>
+                    <?php endif; ?>
+                    <div id="emp_empty_state" class="text-center py-4 text-muted" style="display: none;">
+                      <i class="fa-solid fa-user-slash fs-20 mb-1 d-block opacity-50"></i>
+                      <span class="fs-12">No active employees found matching the filter.</span>
+                    </div>
                   </div>
+                  <small class="text-muted d-block mt-1 fs-11">Click on any employee row to toggle selection.</small>
                 </div>
               </div>
+
 
             </div>
 
@@ -402,16 +456,28 @@ $show_breadcrumb = true;
                 </div>
               </div>
 
-              <!-- EMPLOYEE SELECT -->
+              <!-- EMPLOYEE SELECT (Edit Modal) -->
               <div class="col-md-12" id="edit_employee_group" style="display: none;">
                 <div class="from__input-box">
                   <div class="form__input-title"><label>Select Employee <span class="text-danger">*</span></label></div>
+                  <div class="mb-2">
+                    <select id="edit_filter_department" class="form-select form-select-sm">
+                      <option value="">🏢 Filter by Department (Optional)...</option>
+                      <?php if (!empty($departments)): ?>
+                        <?php foreach ($departments as $dept): ?>
+                          <option value="<?= $dept['id'] ?>"><?= htmlspecialchars($dept['name']) ?></option>
+                        <?php endforeach; ?>
+                      <?php endif; ?>
+                    </select>
+                  </div>
                   <div class="form__input">
                     <select name="employee_id" id="edit_employee_id" class="form-select form-control">
                       <option value="">-- Select Employee --</option>
                       <?php if (!empty($employees)): ?>
                         <?php foreach ($employees as $emp): ?>
-                          <option value="<?= $emp['id'] ?>"><?= htmlspecialchars($emp['employee_id'] . ' - ' . $emp['full_name']) ?></option>
+                          <option value="<?= $emp['id'] ?>" data-dept="<?= $emp['department_id'] ?? '' ?>">
+                            <?= htmlspecialchars($emp['employee_id'] . ' - ' . $emp['full_name']) ?> (<?= htmlspecialchars($emp['department_name'] ?? 'N/A') ?>)
+                          </option>
                         <?php endforeach; ?>
                       <?php endif; ?>
                     </select>
@@ -451,59 +517,103 @@ $show_breadcrumb = true;
     }
 
     // -------------------------------------------------------------
-    // Add Holiday Modal: Scope dynamic toggle & Multi-select helpers
+    // Add Holiday Modal: Modern Interactive Employee Selector & Filters
     // -------------------------------------------------------------
     const addAppliesTo = document.getElementById('add_applies_to');
     const addDeptGroup = document.getElementById('add_department_group');
     const addEmpGroup = document.getElementById('add_employee_group');
     const addDeptSelect = document.getElementById('add_department_id');
-    const addEmpSelect = document.getElementById('add_employee_ids');
+    const empCards = document.querySelectorAll('.emp-row-card');
+    const empFilterDept = document.getElementById('emp_filter_department');
+    const empSearchInput = document.getElementById('emp_search_input');
+    const empEmptyState = document.getElementById('emp_empty_state');
     const btnSelectAll = document.getElementById('btnSelectAllEmployees');
     const btnClearAll = document.getElementById('btnClearAllEmployees');
-    const helperDept = document.getElementById('helper_filter_by_dept');
-    const counterEl = document.getElementById('selectedEmpCounter');
+    const counterBadge = document.getElementById('selectedEmpCounter');
+
+    function filterEmployees() {
+      const selectedDept = empFilterDept ? empFilterDept.value.trim() : '';
+      const searchQuery = empSearchInput ? empSearchInput.value.toLowerCase().trim() : '';
+      let visibleCount = 0;
+
+      empCards.forEach(card => {
+        const cardDept = (card.getAttribute('data-dept') || '').trim();
+        const cardName = (card.getAttribute('data-name') || '').toLowerCase();
+        const cardCode = (card.getAttribute('data-code') || '').toLowerCase();
+
+        const matchesDept = (selectedDept === '' || cardDept === selectedDept);
+        const matchesSearch = (searchQuery === '' || cardName.indexOf(searchQuery) !== -1 || cardCode.indexOf(searchQuery) !== -1);
+
+        if (matchesDept && matchesSearch) {
+          card.classList.remove('is-hidden');
+          visibleCount++;
+        } else {
+          card.classList.add('is-hidden');
+        }
+      });
+
+      if (empEmptyState) {
+        if (visibleCount === 0) {
+          empEmptyState.style.setProperty('display', 'block', 'important');
+        } else {
+          empEmptyState.style.setProperty('display', 'none', 'important');
+        }
+      }
+    }
 
     function updateEmpCounter() {
-      if (!addEmpSelect || !counterEl) return;
-      let count = 0;
-      for (let i = 0; i < addEmpSelect.options.length; i++) {
-        if (addEmpSelect.options[i].selected) count++;
+      const checkedBoxes = document.querySelectorAll('.emp-checkbox:checked');
+      const count = checkedBoxes.length;
+      if (counterBadge) {
+        counterBadge.textContent = `${count} Selected`;
+        if (count > 0) {
+          counterBadge.className = 'badge bg-primary px-2 py-1 fs-12 rounded-pill';
+        } else {
+          counterBadge.className = 'badge bg-secondary px-2 py-1 fs-12 rounded-pill';
+        }
       }
-      counterEl.textContent = `Selected: ${count} employee(s)`;
-    }
 
-    if (addEmpSelect) {
-      addEmpSelect.addEventListener('change', updateEmpCounter);
-    }
-
-    if (btnSelectAll && addEmpSelect) {
-      btnSelectAll.addEventListener('click', function() {
-        for (let i = 0; i < addEmpSelect.options.length; i++) {
-          addEmpSelect.options[i].selected = true;
-        }
-        updateEmpCounter();
-      });
-    }
-
-    if (btnClearAll && addEmpSelect) {
-      btnClearAll.addEventListener('click', function() {
-        for (let i = 0; i < addEmpSelect.options.length; i++) {
-          addEmpSelect.options[i].selected = false;
-        }
-        updateEmpCounter();
-      });
-    }
-
-    if (helperDept && addEmpSelect) {
-      helperDept.addEventListener('change', function() {
-        const deptId = this.value;
-        if (!deptId) return;
-        for (let i = 0; i < addEmpSelect.options.length; i++) {
-          const optDept = addEmpSelect.options[i].getAttribute('data-dept');
-          if (optDept == deptId) {
-            addEmpSelect.options[i].selected = true;
+      document.querySelectorAll('.emp-checkbox').forEach(cb => {
+        const card = cb.closest('.emp-row-card');
+        if (card) {
+          if (cb.checked) {
+            card.classList.add('is-checked');
+          } else {
+            card.classList.remove('is-checked');
           }
         }
+      });
+    }
+
+    if (empFilterDept) {
+      empFilterDept.addEventListener('change', filterEmployees);
+    }
+    if (empSearchInput) {
+      empSearchInput.addEventListener('input', filterEmployees);
+      empSearchInput.addEventListener('keyup', filterEmployees);
+    }
+
+    document.querySelectorAll('.emp-checkbox').forEach(cb => {
+      cb.addEventListener('change', updateEmpCounter);
+    });
+
+    if (btnSelectAll) {
+      btnSelectAll.addEventListener('click', function() {
+        empCards.forEach(card => {
+          if (!card.classList.contains('is-hidden')) {
+            const cb = card.querySelector('.emp-checkbox');
+            if (cb) cb.checked = true;
+          }
+        });
+        updateEmpCounter();
+      });
+    }
+
+    if (btnClearAll) {
+      btnClearAll.addEventListener('click', function() {
+        document.querySelectorAll('.emp-checkbox').forEach(cb => {
+          cb.checked = false;
+        });
         updateEmpCounter();
       });
     }
@@ -515,18 +625,31 @@ $show_breadcrumb = true;
           addDeptGroup.style.display = 'block';
           addEmpGroup.style.display = 'none';
           if (addDeptSelect) addDeptSelect.required = true;
-          if (addEmpSelect) addEmpSelect.required = false;
         } else if (val === 'employee') {
           addDeptGroup.style.display = 'none';
           addEmpGroup.style.display = 'block';
           if (addDeptSelect) addDeptSelect.required = false;
-          if (addEmpSelect) addEmpSelect.required = true;
+          filterEmployees();
           updateEmpCounter();
         } else {
           addDeptGroup.style.display = 'none';
           addEmpGroup.style.display = 'none';
           if (addDeptSelect) addDeptSelect.required = false;
-          if (addEmpSelect) addEmpSelect.required = false;
+        }
+      });
+    }
+
+    // Validation for Add Holiday Form (ensure at least 1 employee selected if applies_to == employee)
+    const addHolidayForm = document.querySelector('#addNewHolidays form');
+    if (addHolidayForm) {
+      addHolidayForm.addEventListener('submit', function(e) {
+        if (addAppliesTo && addAppliesTo.value === 'employee') {
+          const checked = document.querySelectorAll('.emp-checkbox:checked').length;
+          if (checked === 0) {
+            e.preventDefault();
+            alert('Please select at least one employee from the list.');
+            return false;
+          }
         }
       });
     }
@@ -540,6 +663,26 @@ $show_breadcrumb = true;
     const editEmpGroup = document.getElementById('edit_employee_group');
     const editDeptSelect = document.getElementById('edit_department_id');
     const editEmpSelect = document.getElementById('edit_employee_id');
+    const editFilterDept = document.getElementById('edit_filter_department');
+
+    function filterEditEmployees() {
+      if (!editFilterDept || !editEmpSelect) return;
+      const deptId = editFilterDept.value.trim();
+      for (let i = 0; i < editEmpSelect.options.length; i++) {
+        const opt = editEmpSelect.options[i];
+        if (i === 0) continue;
+        const optDept = opt.getAttribute('data-dept') || '';
+        if (!deptId || optDept === deptId) {
+          opt.style.display = '';
+        } else {
+          opt.style.display = 'none';
+        }
+      }
+    }
+
+    if (editFilterDept) {
+      editFilterDept.addEventListener('change', filterEditEmployees);
+    }
 
     function toggleEditScope(val) {
       if (val === 'department') {
@@ -552,6 +695,7 @@ $show_breadcrumb = true;
         editEmpGroup.style.display = 'block';
         editDeptSelect.required = false;
         editEmpSelect.required = true;
+        filterEditEmployees();
       } else {
         editDeptGroup.style.display = 'none';
         editEmpGroup.style.display = 'none';
@@ -586,7 +730,9 @@ $show_breadcrumb = true;
       if (editAppliesTo) {
         editAppliesTo.value = appliesTo;
         editDeptSelect.value = deptId;
+        if (editFilterDept) editFilterDept.value = '';
         editEmpSelect.value = empId;
+        filterEditEmployees();
         toggleEditScope(appliesTo);
       }
     });

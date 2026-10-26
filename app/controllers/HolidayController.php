@@ -31,7 +31,7 @@ class HolidayController extends Controller
     {
         $holidays = $this->holidayModel->getHoliday();
         $departments = $this->departmentModel->getAll();
-        $employees = $this->employeeModel->getAll();
+        $employees = $this->employeeModel->getActiveEmployees();
 
         // Stat calculations
         $totalYearHoliday = count($holidays);

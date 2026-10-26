@@ -142,6 +142,36 @@ class Employee extends Model
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
 
+    public function getActiveEmployees($departmentId = null)
+    {
+        $sql = "
+            SELECT 
+                e.id, 
+                e.full_name, 
+                e.photo, 
+                e.employee_id,  
+                e.joining_date,
+                e.email,
+                desg.name AS designation_name,
+                desg.id AS designation_id, 
+                dept.id AS department_id,
+                dept.name AS department_name
+            FROM employees AS e
+            LEFT JOIN designations AS desg ON e.designation_id = desg.id
+            LEFT JOIN departments AS dept ON e.department_id = dept.id
+            WHERE (LOWER(IFNULL(e.employee_status, 'active')) = 'active')
+              AND e.deleted_at IS NULL
+              AND e.resign_date IS NULL
+        ";
+        if ($departmentId) {
+            $sql .= " AND e.department_id = " . (int)$departmentId;
+        }
+        $sql .= " ORDER BY dept.name ASC, e.employee_id ASC, e.full_name ASC";
+
+        $res = $this->db->query($sql);
+        return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
     public function getTotalCount()
     {
         $stmt = $this->db->prepare("SELECT COUNT(*) AS total FROM employees");
