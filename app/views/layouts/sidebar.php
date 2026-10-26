@@ -1293,6 +1293,7 @@
                         </a>
                     </li>
 
+                    <?php if (($_SESSION['user']['role_id'] ?? 0) != 11 && ($_SESSION['user']['secondary_role_id'] ?? 0) != 11): ?>
                     <li class="slide ">
                         <a href="<?= $base_url ?>/lead-automation-upload"
                             class="sidebar__menu-item <?= isActive('lead-automation-upload', $current_route) ?>">
@@ -1300,6 +1301,7 @@
                             <span class="sidebar__menu-label">Lead Automation Upload</span>
                         </a>
                     </li>
+                    <?php endif; ?>
                 <?php endif; ?>
                 <!--End Marketing Head Dashboard  -->
                 <!--Start Marketing Executive Dashboard  -->
@@ -1340,13 +1342,6 @@
                         </a>
                     </li>
 
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/lead-automation-upload"
-                            class="sidebar__menu-item <?= isActive('lead-automation-upload', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-wand-magic-sparkles text-primary"></i></div>
-                            <span class="sidebar__menu-label">Lead Automation Upload</span>
-                        </a>
-                    </li>
                     <li class="slide">
                         <a href="<?= $base_url ?>/create-lead"
                             class="sidebar__menu-item <?= isActive('create-lead', $current_route) ?>">

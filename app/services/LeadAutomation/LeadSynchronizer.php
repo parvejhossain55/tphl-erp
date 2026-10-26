@@ -10,10 +10,12 @@ class LeadSynchronizer
     private ?PDO $pdo = null;
     private array $projectRotations = [];
     private array $logs = [];
+    private ?int $userId = null;
 
-    public function __construct(array $config)
+    public function __construct(array $config, ?int $userId = null)
     {
         $this->config = $config;
+        $this->userId = $userId ?? (isset($_SESSION['user']['id']) ? (int)$_SESSION['user']['id'] : null);
     }
 
     /**
@@ -181,6 +183,7 @@ class LeadSynchronizer
                 $this->log(sprintf("Processing Tab [%d/%d] '%s' (Highest Row: %d)...", $i + 1, $sheetCount, $tabName, $highestRow));
 
                 if ($highestRow < 2) {
+                    
                     $this->log(" -> Tab '{$tabName}' has no lead rows. Skipping.");
                     $aggregated['tabs_synced'][] = [
                         'tab'      => $tabName,
@@ -799,6 +802,7 @@ class LeadSynchronizer
             `currency`,
             `visibility`,
             `residency_type`,
+            `created_by`,
             `created_at`,
             `updated_at`
         ) VALUES (
@@ -831,9 +835,14 @@ class LeadSynchronizer
             :currency,
             :visibility,
             :residency_type,
+            :created_by,
             :created_at,
             NOW()
         )";
+
+        $currentUserId = !empty($lead['created_by']) 
+            ? (int)$lead['created_by'] 
+            : ($this->userId ?? (isset($_SESSION['user']['id']) ? (int)$_SESSION['user']['id'] : null));
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
@@ -866,6 +875,7 @@ class LeadSynchronizer
             ':currency'                                 => $defaults['currency'] ?? 'BDT',
             ':visibility'                               => $defaults['visibility'] ?? 'public',
             ':residency_type'                           => $defaults['residency_type'] ?? 'local',
+            ':created_by'                               => $currentUserId,
             ':created_at'                               => !empty($lead['created_at']) ? $lead['created_at'] : date('Y-m-d H:i:s'),
         ]);
 

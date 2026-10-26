@@ -96,6 +96,7 @@ class AccountClient extends Model
                     $types .= 's';
                 }
             }
+        
         }
         
         if ($verificationStatus === 'verified') {
@@ -106,6 +107,7 @@ class AccountClient extends Model
             $havingParts[] = "latest_verification_status = 'rejected' AND total_pending_payments = 0";
         }
 
+        
         if (!empty($paymentType)) {
             if ($paymentType === 'full_payment') {
                 $havingParts[] = "(total_price_target > 0 OR total_paid > 0)";
@@ -125,8 +127,7 @@ class AccountClient extends Model
 
         $projectSubFilter = $projectId ? " AND lb_sub.project_id = " . (int)$projectId : "";
 
-        $dataSql = "
-        SELECT
+        $dataSql ="SELECT
             l.id AS lead_id,
             l.full_name AS client_name,
             l.phone,
@@ -230,6 +231,7 @@ class AccountClient extends Model
                AND (lb_sub.landshare_status IS NULL OR lb_sub.landshare_status != 'cancelled')
                AND lb_sub.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
                {$projectSubFilter}
+
             GROUP BY lb_sub.lead_id
         ) AS agents ON agents.lead_id = l.id
         $whereClause
@@ -2051,7 +2053,7 @@ class AccountClient extends Model
                     }
                     $remainingBooking = $summary['agreement_value'] - $summary['booking_money_paid'];
                     if ($amount > $remainingBooking) {
-                        throw new Exception("Amount exceeds outstanding booking balance: ৳" . number_format($remainingBooking, 2));
+                        throw new Exception("Amount exceeds outstanding booking balance: Tk. " . number_format($remainingBooking, 2));
                     }
                     $landShareAmount = $amount;
                     break;
@@ -2061,7 +2063,7 @@ class AccountClient extends Model
                         throw new Exception("Land share payment is already completed!");
                     }
                     if ($amount > $summary['remaining_land_share']) {
-                        throw new Exception("Land share amount cannot exceed remaining land share: ৳" . number_format($summary['remaining_land_share'], 2));
+                        throw new Exception("Land share amount cannot exceed remaining land share: Tk. " . number_format($summary['remaining_land_share'], 2));
                     }
                     $landShareAmount = $amount;
                     break;
@@ -2082,7 +2084,7 @@ class AccountClient extends Model
                         throw new Exception("Development charge is already fully paid!");
                     }
                     if ($amount > $devRemaining) {
-                        throw new Exception("Amount exceeds remaining development charge: ৳" . number_format($devRemaining, 2));
+                        throw new Exception("Amount exceeds remaining development charge: Tk. " . number_format($devRemaining, 2));
                     }
                     break;
 
@@ -2103,7 +2105,7 @@ class AccountClient extends Model
                         throw new Exception("Construction fee is already fully paid! No more EMIs required.");
                     }
                     if ($amount > $effectiveCFRemaining) {
-                        throw new Exception("Amount exceeds remaining construction fee: ৳" . number_format($effectiveCFRemaining, 2));
+                        throw new Exception("Amount exceeds remaining construction fee: Tk. " . number_format($effectiveCFRemaining, 2));
                     }
 
                     $remainingAfterThis   = max(0, $effectiveCFRemaining - $amount);
@@ -2124,7 +2126,7 @@ class AccountClient extends Model
                         $transactionData['payment_status'] = 'partially_paid';
                     }
                     if (($emiPaidSoFar + $amount) > $effectiveCFRemaining + $emiPaidSoFar) {
-                        throw new Exception("EMI payment cannot exceed total construction fee: ৳" . number_format($cfTotal, 2));
+                        throw new Exception("EMI payment cannot exceed total construction fee: Tk. " . number_format($cfTotal, 2));
                     }
                     break;
 
@@ -2146,7 +2148,7 @@ class AccountClient extends Model
                         throw new Exception("This EMI has no outstanding due balance.");
                     }
                     if ($amount > $remainingDue) {
-                        throw new Exception("Settle amount (৳" . number_format($amount, 2) . ") cannot exceed outstanding due (৳" . number_format($remainingDue, 2) . ").");
+                        throw new Exception("Settle amount (Tk. " . number_format($amount, 2) . ") cannot exceed outstanding due (Tk. " . number_format($remainingDue, 2) . ").");
                     }
                     // Service fee applies on the settled amount at same rate
                     $serviceChargeRate = (float) ($summary['service_charge_per_emi'] ?? 0);
@@ -3066,7 +3068,7 @@ class AccountClient extends Model
                 $remainingAfterChange = $summary['remaining_land_share'] - $effectiveAmountChange;
 
                 if ($remainingAfterChange < 0) {
-                    throw new Exception("Land share amount would exceed remaining land share by: ৳" .
+                    throw new Exception("Land share amount would exceed remaining land share by: Tk. " .
                         number_format(abs($remainingAfterChange), 2));
                 }
                 $landShareAmount = $newAmount;
@@ -3672,18 +3674,18 @@ class AccountClient extends Model
             } else if ($bulkEmiDiscount > 0) {
                 // Discount only allowed when paying >= 2 EMIs worth
                 if ($perEmiAmount > 0 && $pool < ($perEmiAmount * 2)) {
-                    throw new Exception("Bulk EMI discount requires paying at least 2 EMI installments at once (minimum: ৳" . number_format($perEmiAmount * 2, 2) . ").");
+                    throw new Exception("Bulk EMI discount requires paying at least 2 EMI installments at once (minimum: Tk. " . number_format($perEmiAmount * 2, 2) . ").");
                 }
                 // Discount cannot exceed remaining construction fee after this payment
                 $remainingAfterPayment = $effectiveCF - $emiPaidSoFar - $pool;
                 if ($bulkEmiDiscount > $remainingAfterPayment) {
-                    throw new Exception("Bulk discount (৳" . number_format($bulkEmiDiscount, 2) . ") exceeds remaining construction fee after payment (৳" . number_format(max(0, $remainingAfterPayment), 2) . "). Max discount: ৳" . number_format(max(0, $remainingAfterPayment), 2));
+                    throw new Exception("Bulk discount (Tk. " . number_format($bulkEmiDiscount, 2) . ") exceeds remaining construction fee after payment (Tk. " . number_format(max(0, $remainingAfterPayment), 2) . "). Max discount: Tk. " . number_format(max(0, $remainingAfterPayment), 2));
                 }
             }
 
             if (($emiPaidSoFar + $pool + ($isEmiDiscount ? $bulkEmiDiscount : 0)) > $effectiveCF) {
                 $maxPayable = max(0, $effectiveCF - $emiPaidSoFar);
-                throw new Exception("EMI payment (including discount) exceeds remaining construction fee. Maximum payable: ৳" . number_format($maxPayable, 2));
+                throw new Exception("EMI payment (including discount) exceeds remaining construction fee. Maximum payable: Tk. " . number_format($maxPayable, 2));
             }
 
             // Common payment metadata
@@ -3973,16 +3975,16 @@ class AccountClient extends Model
             $msgParts = [];
             if ($settledDues > 0) {
                 $settledTotal = array_sum(array_column($settlementDetails, 'settled'));
-                $msgParts[] = $settledDues . ' outstanding due(s) settled (৳' . number_format($settledTotal, 2) . ')';
+                $msgParts[] = $settledDues . ' outstanding due(s) settled (Tk. ' . number_format($settledTotal, 2) . ')';
             }
             if ($newInstallments > 0) {
                 $msgParts[] = $newInstallments . ' new EMI installment(s) recorded';
             }
             if ($totalServiceFee > 0) {
-                $msgParts[] = 'Service fee: ৳' . number_format($totalServiceFee, 2);
+                $msgParts[] = 'Service fee: Tk. ' . number_format($totalServiceFee, 2);
             }
             if ($bulkEmiDiscount > 0) {
-                $msgParts[] = 'Bulk EMI discount: ৳' . number_format($bulkEmiDiscount, 2) . ' (applied after verification)';
+                $msgParts[] = 'Bulk EMI discount: Tk. ' . number_format($bulkEmiDiscount, 2) . ' (applied after verification)';
             }
 
             return [
@@ -4233,7 +4235,7 @@ class AccountClient extends Model
             return [
                 'success' => true,
                 'message' => 'Transaction updated successfully!' .
-                    ($finalServiceFee > 0 ? ' Service fee: ৳' . number_format($finalServiceFee, 2) : '')
+                    ($finalServiceFee > 0 ? ' Service fee: Tk. ' . number_format($finalServiceFee, 2) : '')
             ];
         } catch (Exception $e) {
             $this->db->rollback();
@@ -5923,6 +5925,7 @@ class AccountClient extends Model
                 p.id AS project_id,
                 p.name AS project_name,
                 COUNT(DISTINCT calc.booking_id) AS total_clients,
+                COALESCE(SUM(CASE WHEN calc.land_share_due <= 0 AND calc.total_land_share > 0 THEN 1 ELSE 0 END), 0) AS registered_clients_count,
                 COALESCE(SUM(calc.total_price), 0) AS total_project_value,
                 COALESCE(SUM(calc.total_paid), 0) AS total_paid,
                 COALESCE(SUM(calc.overall_due), 0) AS overall_due,
@@ -6019,11 +6022,94 @@ class AccountClient extends Model
                 $totalPaid = (float)$row['total_paid'];
                 $ratio = ($totalVal > 0) ? round(($totalPaid / $totalVal) * 100, 1) : 0;
                 $row['collection_ratio'] = $ratio;
+                $row['registered_clients_count'] = (int)($row['registered_clients_count'] ?? 0);
                 $projects[] = $row;
             }
         }
 
         return $projects;
+    }
+
+    /**
+     * Get Clients Who Have Completed Their Land Share for a Given Project
+     * (Only counting verified active payments)
+     *
+     * @param int $projectId
+     * @return array
+     */
+    public function getRegisteredClientsByProject($projectId)
+    {
+        $projectId = (int)$projectId;
+        if ($projectId <= 0) {
+            return [];
+        }
+
+        $sql = "
+            SELECT 
+                calc.*
+            FROM (
+                SELECT 
+                    lb.id AS booking_id,
+                    lb.lead_id,
+                    lb.project_id,
+                    p.name AS project_name,
+                    f.id AS flat_id,
+                    f.flat_name AS unit_name,
+                    f.floor_no,
+                    COALESCE(f.is_shop, 0) AS is_shop,
+                    f.unit_type,
+                    l.full_name AS client_name,
+                    COALESCE(NULLIF(TRIM(l.phone), ''), TRIM(l.phone_number)) AS phone,
+                    l.email,
+                    u.full_name AS sales_agent_name,
+                    COALESCE(lb.booking_date, DATE(lb.created_at)) AS booking_date,
+                    COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) AS total_price,
+                    COALESCE(f.land_share_value, 0) AS total_land_share,
+                    COALESCE(lb.discount_amount, 0) AS discount_amount,
+                    COALESCE(p_agg.total_paid, 0) AS total_paid,
+                    COALESCE(p_agg.land_share_paid, 0) AS land_share_paid,
+                    p_agg.last_payment_date,
+                    GREATEST(0, ROUND(GREATEST(0, COALESCE(f.land_share_value, 0) - COALESCE(lb.discount_amount, 0)) - COALESCE(p_agg.land_share_paid, 0))) AS land_share_due,
+                    GREATEST(0, ROUND(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) - COALESCE(lb.discount_amount, 0) - COALESCE(p_agg.total_paid, 0) - COALESCE(p_agg.total_bulk_emi_discount, 0))) AS overall_due
+                FROM lead_bookings lb
+                INNER JOIN leads l ON lb.lead_id = l.id
+                LEFT JOIN projects p ON lb.project_id = p.id
+                LEFT JOIN flats f ON lb.flat_id = f.id
+                LEFT JOIN users u ON COALESCE(NULLIF(lb.sales_by_id, 0), NULLIF(l.assigned_id, 0)) = u.id
+                LEFT JOIN (
+                    SELECT 
+                        lp.booking_id,
+                        SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS total_paid,
+                        SUM(CASE WHEN lp.payment_type IN ('booking_money', 'registration', 'land_share') 
+                                      AND lp.payment_status IN ('paid', 'partially_paid') 
+                                      AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS land_share_paid,
+                        SUM(CASE WHEN (lp.bulk_emi_discount > 0 OR COALESCE(lp.is_emi_discount, 0) = 1) AND lp.verification_status = 'verified' 
+                                 THEN CASE WHEN COALESCE(lp.is_emi_discount, 0) = 1 THEN lp.amount ELSE lp.bulk_emi_discount END ELSE 0 END) AS total_bulk_emi_discount,
+                        MAX(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' THEN lp.payment_date ELSE NULL END) AS last_payment_date
+                    FROM lead_payments lp
+                    WHERE lp.is_trashed = 0
+                    GROUP BY lp.booking_id
+                ) AS p_agg ON p_agg.booking_id = lb.id
+                WHERE lb.deleted_at IS NULL
+                  AND lb.booking_status NOT IN ('refunded', 'cancelled')
+                  AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
+                  AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+                  AND lb.project_id = ?
+            ) AS calc
+            WHERE calc.land_share_due <= 0 AND calc.total_land_share > 0
+            ORDER BY calc.client_name ASC
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            error_log("getRegisteredClientsByProject prepare failed: " . $this->db->error);
+            return [];
+        }
+
+        $stmt->bind_param("i", $projectId);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
     }
 
     /**
@@ -6053,6 +6139,7 @@ class AccountClient extends Model
         ];
         $params = [];
         $types = "";
+        $currentEndOfMonth = date('Y-m-t');
 
         if ($projectId) {
             $whereParts[] = "lb.project_id = ?";
@@ -6104,12 +6191,18 @@ class AccountClient extends Model
         $outerWhere = ["1=1"];
         if ($dueType === 'land_share_due') {
             $outerWhere[] = "calc.land_share_due > 0";
+        } elseif ($dueType === 'land_share_cleared' || $dueType === 'registered') {
+            $outerWhere[] = "(calc.land_share_due <= 0 AND calc.total_land_share > 0)";
         } elseif ($dueType === 'dev_charge_due') {
             $outerWhere[] = "(calc.dev_charge_due > 0 OR (calc.is_shop = 1 AND calc.shop_service_charge_due > 0))";
         } elseif ($dueType === 'shop_service_due') {
             $outerWhere[] = "(calc.is_shop = 1 AND calc.shop_service_charge_due > 0)";
         } elseif ($dueType === 'emi_due') {
             $outerWhere[] = "(calc.remaining_emi_due > 0 OR calc.overdue_emi_amount > 0)";
+        } elseif ($dueType === 'regular_emi_paid') {
+            $outerWhere[] = "calc.regular_emi_paid > 0";
+        } elseif ($dueType === 'advance_emi_paid') {
+            $outerWhere[] = "calc.advance_emi_paid > 0";
         } elseif ($dueType === 'overall_due') {
             $outerWhere[] = "calc.overall_due > 0";
         } elseif ($dueType === 'cleared') {
@@ -6127,6 +6220,8 @@ class AccountClient extends Model
             'dev_charge_due'          => 'calc.dev_charge_due',
             'shop_service_charge_due' => 'calc.shop_service_charge_due',
             'remaining_emi_due'       => 'calc.remaining_emi_due',
+            'regular_emi_paid'        => 'calc.regular_emi_paid',
+            'advance_emi_paid'        => 'calc.advance_emi_paid',
             'total_paid'              => 'calc.total_paid',
             'total_price'             => 'calc.total_price',
             'last_payment_date'       => 'calc.last_payment_date'
@@ -6182,6 +6277,17 @@ class AccountClient extends Model
                     COALESCE(p_agg.pending_payment_count, 0) AS pending_payment_count,
                     COALESCE(p_agg.pending_emi_payment_count, 0) AS pending_emi_payment_count,
                     p_agg.last_payment_date,
+                    COALESCE(es_agg.max_regular_paid_due_date, NULL) AS max_regular_paid_due_date,
+                    COALESCE(es_agg.max_regular_paid_emi_no, 0) AS max_regular_paid_emi_no,
+                    COALESCE(es_agg.regular_completed_emi_count, 0) AS regular_completed_emi_count,
+                    COALESCE(es_agg.advance_emi_count, 0) AS advance_emi_count,
+                    COALESCE(es_agg.advance_emi_numbers, '') AS advance_emi_numbers,
+                    COALESCE(es_agg.max_advance_due_date, NULL) AS max_advance_due_date,
+                    COALESCE(es_agg.advance_emi_paid, 0) AS advance_emi_paid,
+                    GREATEST(0, COALESCE(p_agg.emi_paid, 0) - COALESCE(es_agg.advance_emi_paid, 0)) AS regular_emi_paid,
+                    COALESCE(p_agg.last_regular_paid_amount, p_agg.last_emi_paid_amount, 0) AS last_regular_paid_amount,
+                    COALESCE(p_agg.last_regular_payment_date, p_agg.last_emi_payment_date) AS last_regular_payment_date,
+                    p_agg.last_emi_payment_date,
                     GREATEST(0, ROUND(GREATEST(0, COALESCE(f.land_share_value, 0) - COALESCE(lb.discount_amount, 0)) - COALESCE(p_agg.land_share_paid, 0))) AS land_share_due,
                     GREATEST(0, ROUND(COALESCE(f.development_charges, 0) - COALESCE(p_agg.dev_charge_paid, 0))) AS dev_charge_due,
                     GREATEST(0, ROUND(CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END - COALESCE(p_agg.shop_service_charge_paid, 0))) AS shop_service_charge_due,
@@ -6217,7 +6323,11 @@ class AccountClient extends Model
                         COUNT(DISTINCT CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') AND lp.payment_status = 'paid' AND lp.verification_status = 'verified' AND lp.emi_no IS NOT NULL AND lp.emi_no > 0 THEN lp.emi_no ELSE NULL END) AS direct_emi_count,
                         SUM(CASE WHEN lp.verification_status = 'pending' THEN 1 ELSE 0 END) AS pending_payment_count,
                         SUM(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') AND lp.verification_status = 'pending' THEN 1 ELSE 0 END) AS pending_emi_payment_count,
-                        MAX(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' THEN lp.payment_date ELSE NULL END) AS last_payment_date
+                        MAX(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' THEN lp.payment_date ELSE NULL END) AS last_payment_date,
+                        MAX(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') AND lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' THEN lp.payment_date ELSE NULL END) AS last_emi_payment_date,
+                        SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') AND lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' THEN lp.amount END ORDER BY lp.payment_date DESC, lp.id DESC), ',', 1) AS last_emi_paid_amount,
+                        MAX(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') AND lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' AND DATE(lp.payment_date) <= '{$currentEndOfMonth}' THEN lp.payment_date ELSE NULL END) AS last_regular_payment_date,
+                        SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') AND lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' AND DATE(lp.payment_date) <= '{$currentEndOfMonth}' THEN lp.amount END ORDER BY lp.payment_date DESC, lp.id DESC), ',', 1) AS last_regular_paid_amount
                     FROM lead_payments lp
                     WHERE lp.is_trashed = 0
                     GROUP BY lp.booking_id
@@ -6231,6 +6341,55 @@ class AccountClient extends Model
                             THEN es.emi_no 
                             ELSE NULL 
                         END) AS completed_emi_count,
+                        COUNT(DISTINCT CASE 
+                            WHEN ((lp.id IS NOT NULL AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' AND lp.is_trashed = 0)
+                              OR (lp.id IS NULL AND es.status = 'paid'))
+                              AND es.due_date <= '{$currentEndOfMonth}'
+                            THEN es.emi_no 
+                            ELSE NULL 
+                        END) AS regular_completed_emi_count,
+                        MAX(CASE 
+                            WHEN ((lp.id IS NOT NULL AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' AND lp.is_trashed = 0)
+                              OR (lp.id IS NULL AND es.status = 'paid'))
+                              AND es.due_date <= '{$currentEndOfMonth}'
+                            THEN es.due_date 
+                            ELSE NULL 
+                        END) AS max_regular_paid_due_date,
+                        MAX(CASE 
+                            WHEN ((lp.id IS NOT NULL AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' AND lp.is_trashed = 0)
+                              OR (lp.id IS NULL AND es.status = 'paid'))
+                              AND es.due_date <= '{$currentEndOfMonth}'
+                            THEN es.emi_no 
+                            ELSE 0 
+                        END) AS max_regular_paid_emi_no,
+                        COUNT(DISTINCT CASE 
+                            WHEN ((lp.id IS NOT NULL AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' AND lp.is_trashed = 0)
+                              OR (lp.id IS NULL AND es.status = 'paid'))
+                              AND es.due_date > '{$currentEndOfMonth}'
+                            THEN es.emi_no 
+                            ELSE NULL 
+                        END) AS advance_emi_count,
+                        GROUP_CONCAT(DISTINCT CASE 
+                            WHEN ((lp.id IS NOT NULL AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' AND lp.is_trashed = 0)
+                              OR (lp.id IS NULL AND es.status = 'paid'))
+                              AND es.due_date > '{$currentEndOfMonth}'
+                            THEN es.emi_no 
+                            ELSE NULL 
+                        END ORDER BY es.emi_no SEPARATOR ', ') AS advance_emi_numbers,
+                        MAX(CASE 
+                            WHEN ((lp.id IS NOT NULL AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' AND lp.is_trashed = 0)
+                              OR (lp.id IS NULL AND es.status = 'paid'))
+                              AND es.due_date > '{$currentEndOfMonth}'
+                            THEN es.due_date 
+                            ELSE NULL 
+                        END) AS max_advance_due_date,
+                        SUM(CASE 
+                            WHEN ((lp.id IS NOT NULL AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' AND lp.is_trashed = 0)
+                              OR (lp.id IS NULL AND es.status = 'paid'))
+                              AND es.due_date > '{$currentEndOfMonth}'
+                            THEN es.emi_amount 
+                            ELSE 0 
+                        END) AS advance_emi_paid,
                         MAX(es.emi_no) AS max_sched_emi_no
                     FROM emi_schedules es
                     LEFT JOIN lead_payments lp ON lp.id = es.lead_payment_id AND lp.is_trashed = 0
@@ -6287,6 +6446,7 @@ class AccountClient extends Model
         ];
         $params = [];
         $types = "";
+        $currentEndOfMonth = date('Y-m-t');
 
         if ($projectId) {
             $whereParts[] = "lb.project_id = ?";
@@ -6338,12 +6498,18 @@ class AccountClient extends Model
         $outerWhere = ["1=1"];
         if ($dueType === 'land_share_due') {
             $outerWhere[] = "calc.land_share_due > 0";
+        } elseif ($dueType === 'land_share_cleared' || $dueType === 'registered') {
+            $outerWhere[] = "(calc.land_share_due <= 0 AND calc.total_land_share > 0)";
         } elseif ($dueType === 'dev_charge_due') {
             $outerWhere[] = "(calc.dev_charge_due > 0 OR (calc.is_shop = 1 AND calc.shop_service_charge_due > 0))";
         } elseif ($dueType === 'shop_service_due') {
             $outerWhere[] = "(calc.is_shop = 1 AND calc.shop_service_charge_due > 0)";
         } elseif ($dueType === 'emi_due') {
             $outerWhere[] = "(calc.remaining_emi_due > 0 OR calc.overdue_emi_amount > 0)";
+        } elseif ($dueType === 'regular_emi_paid') {
+            $outerWhere[] = "calc.regular_emi_paid > 0";
+        } elseif ($dueType === 'advance_emi_paid') {
+            $outerWhere[] = "calc.advance_emi_paid > 0";
         } elseif ($dueType === 'overall_due') {
             $outerWhere[] = "calc.overall_due > 0";
         } elseif ($dueType === 'cleared') {
@@ -6357,11 +6523,14 @@ class AccountClient extends Model
                 SELECT 
                     lb.id,
                     COALESCE(f.is_shop, 0) AS is_shop,
+                    COALESCE(f.land_share_value, 0) AS total_land_share,
                     GREATEST(0, ROUND(GREATEST(0, COALESCE(f.land_share_value, 0) - COALESCE(lb.discount_amount, 0)) - COALESCE(p_agg.land_share_paid, 0))) AS land_share_due,
                     GREATEST(0, ROUND(COALESCE(f.development_charges, 0) - COALESCE(p_agg.dev_charge_paid, 0))) AS dev_charge_due,
                     GREATEST(0, ROUND(CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END - COALESCE(p_agg.shop_service_charge_paid, 0))) AS shop_service_charge_due,
                     GREATEST(0, ROUND(GREATEST(0, COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) - (COALESCE(f.land_share_value, 0) + COALESCE(f.development_charges, 0) + CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END)) - COALESCE(p_agg.emi_paid, 0) - COALESCE(p_agg.total_bulk_emi_discount, 0))) AS remaining_emi_due,
                     COALESCE(p_agg.overdue_emi_amount, 0) AS overdue_emi_amount,
+                    COALESCE(es_agg.advance_emi_paid, 0) AS advance_emi_paid,
+                    GREATEST(0, COALESCE(p_agg.emi_paid, 0) - COALESCE(es_agg.advance_emi_paid, 0)) AS regular_emi_paid,
                     GREATEST(0, ROUND(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) - COALESCE(lb.discount_amount, 0) - COALESCE(p_agg.total_paid, 0) - COALESCE(p_agg.total_bulk_emi_discount, 0))) AS overall_due
                 FROM lead_bookings lb
                 INNER JOIN leads l ON lb.lead_id = l.id
@@ -6391,6 +6560,20 @@ class AccountClient extends Model
                     WHERE lp.is_trashed = 0
                     GROUP BY lp.booking_id
                 ) AS p_agg ON p_agg.booking_id = lb.id
+                LEFT JOIN (
+                    SELECT 
+                        es.lead_booking_id AS booking_id,
+                        SUM(CASE 
+                            WHEN ((lp.id IS NOT NULL AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' AND lp.is_trashed = 0)
+                              OR (lp.id IS NULL AND es.status = 'paid'))
+                              AND es.due_date > '{$currentEndOfMonth}'
+                            THEN es.emi_amount 
+                            ELSE 0 
+                        END) AS advance_emi_paid
+                    FROM emi_schedules es
+                    LEFT JOIN lead_payments lp ON lp.id = es.lead_payment_id AND lp.is_trashed = 0
+                    GROUP BY es.lead_booking_id
+                ) AS es_agg ON es_agg.booking_id = lb.id
                 $whereClause
             ) AS calc
             $outerWhereClause
@@ -6411,7 +6594,260 @@ class AccountClient extends Model
         return $res ? (int)($res->fetch_assoc()['total_count'] ?? 0) : 0;
     }
 
-    
+    /**
+     * Get EMI Analytics Summary (Total EMI Paid, Regular EMI Paid, Advance EMI Paid, Due EMI)
+     *
+     * @param int|null $projectId
+     * @return array
+     */
+    public function getEmiAnalyticsSummary($projectId = null)
+    {
+        $currentEndOfMonth = date('Y-m-t'); // e.g. current month end
+        $projectFilterLb = "";
+        if (!empty($projectId) && (int)$projectId > 0) {
+            $projectFilterLb = " AND lb.project_id = " . (int)$projectId;
+        }
+
+        $sql = "
+            SELECT 
+                COUNT(DISTINCT c.booking_id) AS total_emi_clients,
+                COALESCE(SUM(c.total_emi_paid), 0) AS total_emi_paid,
+                
+                COUNT(DISTINCT CASE WHEN (c.max_paid_due_date IS NULL OR c.max_paid_due_date <= '{$currentEndOfMonth}') AND c.total_emi_paid > 0 THEN c.booking_id END) AS regular_emi_clients,
+                COALESCE(SUM(c.regular_emi_paid), 0) AS regular_emi_paid,
+                
+                COUNT(DISTINCT CASE WHEN c.max_paid_due_date > '{$currentEndOfMonth}' THEN c.booking_id END) AS advance_emi_clients,
+                COALESCE(SUM(c.advance_emi_paid), 0) AS advance_emi_paid,
+                
+                COUNT(DISTINCT CASE WHEN c.overdue_emi_amount > 0 THEN c.booking_id END) AS due_emi_clients,
+                COALESCE(SUM(c.overdue_emi_amount), 0) AS due_emi_amount
+            FROM (
+                SELECT 
+                    lb.id AS booking_id,
+                    COALESCE(p_agg.total_emi_paid, 0) AS total_emi_paid,
+                    COALESCE(p_agg.overdue_emi_amount, 0) AS overdue_emi_amount,
+                    es_agg.max_paid_due_date,
+                    COALESCE(es_agg.advance_emi_paid, 0) AS advance_emi_paid,
+                    GREATEST(0, COALESCE(p_agg.total_emi_paid, 0) - COALESCE(es_agg.advance_emi_paid, 0)) AS regular_emi_paid
+                FROM lead_bookings lb
+                INNER JOIN (
+                    SELECT 
+                        lp.booking_id,
+                        SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END) AS total_emi_paid,
+                        SUM(CASE WHEN lp.payment_type = 'emi' AND lp.due_emi_amount > 0 AND lp.verification_status = 'verified' AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement') THEN lp.due_emi_amount ELSE 0 END) AS overdue_emi_amount
+                    FROM lead_payments lp
+                    WHERE lp.is_trashed = 0 AND lp.payment_type IN ('emi', 'emi_due_settlement')
+                    GROUP BY lp.booking_id
+                    HAVING total_emi_paid > 0 OR overdue_emi_amount > 0
+                ) AS p_agg ON p_agg.booking_id = lb.id
+                LEFT JOIN (
+                    SELECT 
+                        es.lead_booking_id AS booking_id,
+                        MAX(CASE WHEN es.status = 'paid' OR (lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified') THEN es.emi_no ELSE 0 END) AS max_paid_emi_no,
+                        MAX(CASE WHEN es.status = 'paid' OR (lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified') THEN es.due_date ELSE NULL END) AS max_paid_due_date,
+                        SUM(CASE WHEN (es.status = 'paid' OR (lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified')) AND es.due_date > '{$currentEndOfMonth}' THEN es.emi_amount ELSE 0 END) AS advance_emi_paid
+                    FROM emi_schedules es
+                    LEFT JOIN lead_payments lp ON lp.id = es.lead_payment_id AND lp.is_trashed = 0
+                    GROUP BY es.lead_booking_id
+                ) AS es_agg ON es_agg.booking_id = lb.id
+                WHERE lb.deleted_at IS NULL
+                  AND lb.booking_status NOT IN ('refunded', 'cancelled')
+                  AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
+                  AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+                  {$projectFilterLb}
+            ) AS c
+        ";
+
+        $res = $this->db->query($sql);
+        if ($res && ($row = $res->fetch_assoc())) {
+            return [
+                'total_emi_paid'       => (float)($row['total_emi_paid'] ?? 0),
+                'total_emi_clients'    => (int)($row['total_emi_clients'] ?? 0),
+                'regular_emi_paid'     => (float)($row['regular_emi_paid'] ?? 0),
+                'regular_emi_clients'  => (int)($row['regular_emi_clients'] ?? 0),
+                'advance_emi_paid'     => (float)($row['advance_emi_paid'] ?? 0),
+                'advance_emi_clients'  => (int)($row['advance_emi_clients'] ?? 0),
+                'due_emi_amount'       => (float)($row['due_emi_amount'] ?? 0),
+                'due_emi_clients'      => (int)($row['due_emi_clients'] ?? 0)
+            ];
+        }
+
+        return [
+            'total_emi_paid'       => 0,
+            'total_emi_clients'    => 0,
+            'regular_emi_paid'     => 0,
+            'regular_emi_clients'  => 0,
+            'advance_emi_paid'     => 0,
+            'advance_emi_clients'  => 0,
+            'due_emi_amount'       => 0,
+            'due_emi_clients'      => 0
+        ];
+    }
+
+    /**
+     * Get EMI Analytics Clients Breakdown List
+     *
+     * @param string $category 'all' | 'regular' | 'advance' | 'due'
+     * @param int|null $projectId
+     * @param string|null $search
+     * @param int $limit
+     * @return array
+     */
+    public function getEmiAnalyticsClientsList($category = 'all', $projectId = null, $search = null, $limit = 500)
+    {
+        $currentEndOfMonth = date('Y-m-t'); // e.g. current month end
+        $projectFilterLb = "";
+        if (!empty($projectId) && (int)$projectId > 0) {
+            $projectFilterLb = " AND lb.project_id = " . (int)$projectId;
+        }
+
+        $whereCategory = "";
+        if ($category === 'advance') {
+            $whereCategory = "AND c.advance_emi_paid > 0";
+        } elseif ($category === 'regular') {
+            $whereCategory = "AND c.regular_emi_paid > 0";
+        } elseif ($category === 'due') {
+            $whereCategory = "AND c.overdue_emi_amount > 0";
+        } else {
+            // 'all'
+            $whereCategory = "AND (c.total_emi_paid > 0 OR c.overdue_emi_amount > 0)";
+        }
+
+        $searchClause = "";
+        $params = [];
+        $types = "";
+        if (!empty($search)) {
+            $searchClause = " AND (
+                l.full_name LIKE ? OR 
+                l.phone LIKE ? OR 
+                l.phone_number LIKE ? OR 
+                f.flat_name LIKE ? OR 
+                p.name LIKE ? OR
+                lb.id LIKE ?
+            )";
+            $sParam = '%' . trim($search) . '%';
+            $params = [$sParam, $sParam, $sParam, $sParam, $sParam, $sParam];
+            $types = "ssssss";
+        }
+
+        $limitVal = max(1, min(1000, (int)$limit));
+
+        $orderSql = "c.total_emi_paid DESC";
+        if ($category === 'due') {
+            $orderSql = "c.overdue_emi_amount DESC, c.total_emi_paid DESC";
+        } elseif ($category === 'advance') {
+            $orderSql = "c.advance_emi_paid DESC, c.max_paid_due_date DESC";
+        }
+
+        $sql = "
+            SELECT 
+                c.*,
+                l.full_name AS client_name,
+                COALESCE(NULLIF(TRIM(l.phone), ''), TRIM(l.phone_number)) AS phone,
+                l.email,
+                p.name AS project_name,
+                f.flat_name AS unit_name,
+                f.floor_no,
+                COALESCE(f.is_shop, 0) AS is_shop,
+                u.full_name AS sales_agent_name,
+                COALESCE(lb.booking_date, DATE(lb.created_at)) AS booking_date,
+                GREATEST(0, ROUND(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) - COALESCE(lb.discount_amount, 0) - COALESCE(p_all.total_paid, 0))) AS overall_due
+            FROM (
+                SELECT 
+                    lb.id AS booking_id,
+                    lb.lead_id,
+                    lb.project_id,
+                    lb.flat_id,
+                    lb.sales_by_id,
+                    COALESCE(p_agg.total_emi_paid, 0) AS total_emi_paid,
+                    COALESCE(p_agg.overdue_emi_amount, 0) AS overdue_emi_amount,
+                    p_agg.last_payment_date,
+                    p_agg.last_paid_amount,
+                    es_agg.max_paid_due_date,
+                    COALESCE(es_agg.max_paid_emi_no, 0) AS max_paid_emi_no,
+                    COALESCE(es_agg.max_regular_paid_due_date, NULL) AS max_regular_paid_due_date,
+                    COALESCE(es_agg.max_regular_paid_emi_no, 0) AS max_regular_paid_emi_no,
+                    COALESCE(es_agg.advance_emi_count, 0) AS advance_emi_count,
+                    COALESCE(es_agg.advance_emi_numbers, '') AS advance_emi_numbers,
+                    COALESCE(es_agg.max_advance_due_date, NULL) AS max_advance_due_date,
+                    GREATEST(
+                        COALESCE(
+                            NULLIF(CASE WHEN lb.total_emi_no > 0 AND lb.total_emi_no <= 120 THEN lb.total_emi_no ELSE NULL END, 0),
+                            NULLIF(es_agg.total_sched_emi_no, 0),
+                            36
+                        ),
+                        COALESCE(es_agg.max_paid_emi_no, 0)
+                    ) AS total_emi_no,
+                    COALESCE(es_agg.advance_emi_paid, 0) AS advance_emi_paid,
+                    GREATEST(0, COALESCE(p_agg.total_emi_paid, 0) - COALESCE(es_agg.advance_emi_paid, 0)) AS regular_emi_paid
+                FROM lead_bookings lb
+                INNER JOIN (
+                    SELECT 
+                        lp.booking_id,
+                        SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END) AS total_emi_paid,
+                        SUM(CASE WHEN lp.payment_type = 'emi' AND lp.due_emi_amount > 0 AND lp.verification_status = 'verified' AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement') THEN lp.due_emi_amount ELSE 0 END) AS overdue_emi_amount,
+                        MAX(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' THEN lp.payment_date ELSE NULL END) AS last_payment_date,
+                        SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' THEN lp.amount END ORDER BY lp.payment_date DESC, lp.id DESC), ',', 1) AS last_paid_amount
+                    FROM lead_payments lp
+                    WHERE lp.is_trashed = 0 AND lp.payment_type IN ('emi', 'emi_due_settlement')
+                    GROUP BY lp.booking_id
+                    HAVING total_emi_paid > 0 OR overdue_emi_amount > 0
+                ) AS p_agg ON p_agg.booking_id = lb.id
+                LEFT JOIN (
+                    SELECT 
+                        es.lead_booking_id AS booking_id,
+                        MAX(CASE WHEN es.status = 'paid' OR (lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified') THEN es.emi_no ELSE 0 END) AS max_paid_emi_no,
+                        MAX(CASE WHEN es.status = 'paid' OR (lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified') THEN es.due_date ELSE NULL END) AS max_paid_due_date,
+                        MAX(CASE WHEN (es.status = 'paid' OR (lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified')) AND es.due_date <= '{$currentEndOfMonth}' THEN es.due_date ELSE NULL END) AS max_regular_paid_due_date,
+                        MAX(CASE WHEN (es.status = 'paid' OR (lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified')) AND es.due_date <= '{$currentEndOfMonth}' THEN es.emi_no ELSE 0 END) AS max_regular_paid_emi_no,
+                        COUNT(DISTINCT CASE WHEN (es.status = 'paid' OR (lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified')) AND es.due_date > '{$currentEndOfMonth}' THEN es.emi_no ELSE NULL END) AS advance_emi_count,
+                        GROUP_CONCAT(DISTINCT CASE WHEN (es.status = 'paid' OR (lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified')) AND es.due_date > '{$currentEndOfMonth}' THEN es.emi_no ELSE NULL END ORDER BY es.emi_no SEPARATOR ', ') AS advance_emi_numbers,
+                        MAX(CASE WHEN (es.status = 'paid' OR (lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified')) AND es.due_date > '{$currentEndOfMonth}' THEN es.due_date ELSE NULL END) AS max_advance_due_date,
+                        MAX(es.emi_no) AS total_sched_emi_no,
+                        SUM(CASE WHEN (es.status = 'paid' OR (lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified')) AND es.due_date > '{$currentEndOfMonth}' THEN es.emi_amount ELSE 0 END) AS advance_emi_paid
+                    FROM emi_schedules es
+                    LEFT JOIN lead_payments lp ON lp.id = es.lead_payment_id AND lp.is_trashed = 0
+                    GROUP BY es.lead_booking_id
+                ) AS es_agg ON es_agg.booking_id = lb.id
+                WHERE lb.deleted_at IS NULL
+                  AND lb.booking_status NOT IN ('refunded', 'cancelled')
+                  AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
+                  AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+                  {$projectFilterLb}
+            ) AS c
+            INNER JOIN lead_bookings lb ON c.booking_id = lb.id
+            INNER JOIN leads l ON lb.lead_id = l.id
+            LEFT JOIN projects p ON lb.project_id = p.id
+            LEFT JOIN flats f ON lb.flat_id = f.id
+            LEFT JOIN users u ON COALESCE(NULLIF(lb.sales_by_id, 0), NULLIF(l.assigned_id, 0)) = u.id
+            LEFT JOIN (
+                SELECT lp.booking_id, SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS total_paid
+                FROM lead_payments lp
+                WHERE lp.is_trashed = 0
+                GROUP BY lp.booking_id
+            ) AS p_all ON p_all.booking_id = lb.id
+            WHERE 1=1
+            {$whereCategory}
+            {$searchClause}
+            ORDER BY {$orderSql}
+            LIMIT {$limitVal}
+        ";
+
+        if (!empty($params)) {
+            $stmt = $this->db->prepare($sql);
+            if (!$stmt) {
+                error_log("getEmiAnalyticsClientsList prepare failed: " . $this->db->error);
+                return [];
+            }
+            $stmt->bind_param($types, ...$params);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+        } else {
+            $res = $this->db->query($sql);
+            return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+        }
+    }
 }
 
 

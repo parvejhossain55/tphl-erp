@@ -654,7 +654,7 @@ window.openEditPaymentDateModal = function(target) {
                             <i class="fa-light fa-check-circle me-2"></i> Refunded Paid
                         </button>
                     <?php else: ?>
-                        <?php if ($userRoleId === 7 || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'client experience') !== false): ?>
+                        <?php if ($userRoleId === 7 || $userRoleId === 37 || (function_exists('isCreditRecovery') && isCreditRecovery()) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'client experience') !== false): ?>
                             <a href="<?= $GLOBALS['base_url'] ?>/ced-add-transaction-form?booking_id=<?= $clientDetails['booking_id'] ?>" class="btn btn-success">
                                 <i class="fa-light fa-plus me-2"></i> Add Transaction
                             </a>

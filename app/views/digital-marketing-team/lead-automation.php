@@ -1758,7 +1758,7 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
                         <th style="min-width: 160px;">Matched Project</th>
                         <th style="min-width: 180px;">Campaign Name</th>
                         <th style="min-width: 110px;">Platform</th>
-                        <th style="min-width: 110px;">Sync Date</th>
+                        <th style="min-width: 140px;">Sync Date & Time</th>
                         <th style="min-width: 140px;">Assigned Team</th>
                         <th style="min-width: 150px; text-align: right;">Action</th>
                     </tr>
@@ -2728,7 +2728,17 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
                         `}
                     </td>
                     <td>
-                        <span class="small text-muted">${formatDate(lead.created_at)}</span>
+                        <div class="fw-semibold text-dark small" style="white-space: nowrap;">
+                            <i class="fa-regular fa-calendar-days text-muted me-1"></i>${escapeHtml(lead.formatted_sync_date || formatDate(lead.sync_datetime || lead.created_at))}
+                        </div>
+                        <div class="text-muted" style="font-size: 11px; white-space: nowrap; margin-top: 2px;">
+                            <i class="fa-regular fa-clock me-1 text-primary"></i>${escapeHtml(lead.formatted_sync_time || formatTime(lead.sync_datetime || lead.created_at))}
+                        </div>
+                        <div class="mt-1" style="font-size: 11px; white-space: nowrap;" title="Synced / Added by ${escapeHtml(lead.synced_by || 'System')}">
+                            <span class="badge bg-light text-dark border px-1 py-0" style="font-size: 10.5px; font-weight: 600;">
+                                <i class="fa-solid fa-user text-primary me-1"></i>By: ${escapeHtml(lead.synced_by || 'System')}
+                            </span>
+                        </div>
                     </td>
                     <td>
                         <div class="fw-bold small ${isUnassigned ? 'text-danger' : 'text-dark'}">
@@ -3334,7 +3344,13 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
     function formatDate(dateStr) {
         if (!dateStr) return 'N/A';
         const d = new Date(dateStr);
-        return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    function formatTime(dateStr) {
+        if (!dateStr) return '';
+        const d = new Date(dateStr);
+        return isNaN(d.getTime()) ? '' : d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
     }
 
     function escapeHtml(text) {

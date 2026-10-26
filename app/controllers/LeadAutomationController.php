@@ -84,7 +84,8 @@ class LeadAutomationController extends Controller
     }
 
     /**
-     * Check authorization for Role 10, 11, Admin, or users with Digital Marketing permissions
+     * Check authorization for Role 10, Admin, or users with Digital Marketing permissions.
+     * Role 11 (Executive Of Digital Marketing Team) is strictly restricted.
      */
     private function checkAccess(): void
     {
@@ -94,9 +95,19 @@ class LeadAutomationController extends Controller
 
         $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
         $secondaryRole = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
-        $allowedRoles = [1, 10, 11, 33, 34, 35]; // Admin, DM Head, DM Exec, Management
 
-        $hasPerm = function_exists('hasPermission') && (hasPermission("Digital Marketing Panel") || hasPermission("Upload CSV"));
+        // Strictly block Executive Of Digital Marketing Team (Role 11)
+        if ($userRole === 11 || $secondaryRole === 11) {
+            if (function_exists('setError')) {
+                setError("You do not have permission to access Lead Automation.");
+            }
+            header("Location: {$GLOBALS['base_url']}/my-dashboard");
+            exit;
+        }
+
+        $allowedRoles = [1, 10, 33, 34, 35]; // Admin, DM Head, Management
+
+        $hasPerm = function_exists('hasPermission') && hasPermission("Digital Marketing Panel");
 
         if (!in_array($userRole, $allowedRoles, true) && !in_array($secondaryRole, $allowedRoles, true) && !$hasPerm) {
             if (function_exists('setError')) {
@@ -153,7 +164,8 @@ class LeadAutomationController extends Controller
                 $sheetUrl = null;
             }
 
-            $synchronizer = new LeadSynchronizer($this->automationConfig);
+            $currentUserId = isset($_SESSION['user']['id']) ? (int)$_SESSION['user']['id'] : null;
+            $synchronizer = new LeadSynchronizer($this->automationConfig, $currentUserId);
             $result = $synchronizer->runSync($sheetUrl);
 
             $tabCount = count($result['tabs_synced'] ?? []);
@@ -354,7 +366,7 @@ class LeadAutomationController extends Controller
 
             $whereSql = implode(" AND ", $where);
 
-            // Fetch leads with team names and project names
+            // Fetch leads with team names, project names, and creator user
             $sql = "SELECT 
                         l.id, 
                         l.full_name, 
@@ -377,12 +389,17 @@ class LeadAutomationController extends Controller
                         l.is_repibee,
                         l.is_brocure_leads,
                         l.platform,
+                        l.created_by,
                         l.created_at,
+                        DATE_ADD(l.created_at, INTERVAL 6 HOUR) AS sync_datetime,
                         t.name as team_name,
-                        p.name as project_name
+                        p.name as project_name,
+                        u.full_name as creator_name,
+                        u.user_name as creator_username
                     FROM `leads` l
                     LEFT JOIN `teams` t ON l.team_id = t.id
                     LEFT JOIN `projects` p ON l.project_id = p.id
+                    LEFT JOIN `users` u ON l.created_by = u.id
                     WHERE {$whereSql}
                     ORDER BY l.id DESC
                     LIMIT {$limit} OFFSET {$offset}";
@@ -390,6 +407,37 @@ class LeadAutomationController extends Controller
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
             $leads = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($leads as &$lead) {
+                // Determine who synced / added the lead
+                if (!empty($lead['creator_name'])) {
+                    $lead['synced_by'] = $lead['creator_name'];
+                } elseif (!empty($lead['creator_username'])) {
+                    $lead['synced_by'] = $lead['creator_username'];
+                } elseif ((int)($lead['is_repibee'] ?? 0) === 1) {
+                    $lead['synced_by'] = 'Replibee Bot';
+                } elseif ((int)($lead['is_brocure_leads'] ?? 0) === 1) {
+                    $lead['synced_by'] = 'Brochure API';
+                } elseif ((int)($lead['is_automated'] ?? 0) === 1) {
+                    $lead['synced_by'] = 'Sheet Automation';
+                } else {
+                    $lead['synced_by'] = 'System';
+                }
+
+                // Format GMT+6 sync date and time
+                $dtRaw = $lead['sync_datetime'] ?? $lead['created_at'];
+                if (!empty($dtRaw)) {
+                    $dt = new DateTime($dtRaw);
+                    $lead['formatted_sync_date'] = $dt->format('d M Y');
+                    $lead['formatted_sync_time'] = $dt->format('h:i A');
+                    $lead['formatted_sync_datetime'] = $dt->format('d M Y, h:i A');
+                } else {
+                    $lead['formatted_sync_date'] = 'N/A';
+                    $lead['formatted_sync_time'] = '';
+                    $lead['formatted_sync_datetime'] = 'N/A';
+                }
+            }
+            unset($lead);
 
             // Total count for current filter
             $countSql = "SELECT COUNT(*) FROM `leads` l LEFT JOIN `teams` t ON l.team_id = t.id LEFT JOIN `projects` p ON l.project_id = p.id WHERE {$whereSql}";
@@ -1750,6 +1798,7 @@ class LeadAutomationController extends Controller
                     'is_automated'     => 1,
                     'is_repibee'       => 0,
                     'is_brocure_leads' => 1,
+                    'created_by'       => $_SESSION['user']['id'] ?? null,
                     'created_at'       => $formattedCreatedAt,
                 ];
 

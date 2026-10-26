@@ -725,7 +725,7 @@ if ($totalPrice > 0) {
         </div>
 
         <!-- Footer Note -->
-        <div class="statement-footer">
+     <div class="statement-footer">
             <strong>Note:</strong> This statement includes only verified transactions. Rejected and pending payments are excluded from this report.
             <?php if ($totalDiscounts > 0): ?>
             <?php if ($bookingDiscount > 0): ?> Booking discount of ৳<?= number_format($bookingDiscount, 2) ?> has been applied.<?php endif; ?>
