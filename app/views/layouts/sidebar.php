@@ -1230,7 +1230,10 @@
                 <?php endif; ?>
                 <!-- for sales executive  -->
 
-                <?php if (($_SESSION['user']['role_id'] ?? 0) == 33): ?>
+                <?php 
+                $isMgmtUserForDM = !empty($isManagement) || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33, 34, 35], true);
+                if ($isMgmtUserForDM && !hasPermission("Digital Marketing Panel") && ($_SESSION['user']['role_id'] ?? 0) != 10 && ($_SESSION['user']['secondary_role_id'] ?? 0) != 10): 
+                ?>
                     <li class="slide ">
                         <a href="<?= $base_url ?>/all-platform-leads"
                             class="sidebar__menu-item <?= isActive('all-platform-leads', $current_route) ?>">
@@ -1250,6 +1253,13 @@
                             class="sidebar__menu-item <?= isActive(['team-lead-report', 'digital-marketing-upload-report'], $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-file-waveform"></i></div>
                             <span class="sidebar__menu-label">Team Lead Report</span>
+                        </a>
+                    </li>
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/lead-automation-upload"
+                            class="sidebar__menu-item <?= isActive('lead-automation-upload', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-wand-magic-sparkles text-primary"></i></div>
+                            <span class="sidebar__menu-label">Lead Automation Upload</span>
                         </a>
                     </li>
                 <?php endif; ?>
