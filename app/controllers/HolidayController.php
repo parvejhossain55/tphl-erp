@@ -4,19 +4,21 @@ class HolidayController extends Controller
 {
     protected $db;
     protected $employeeModel;
-    protected $departmetModel;
+    protected $departmentModel;
+    protected $designationModel;
     protected $taskModel;
     protected $holidayModel;
     protected $payslipModel;
     protected $approvalModel;
     protected $EmpAttendanceModel;
     protected $leaveModel;
+
     public function __construct($db)
     {
         $this->db = $db;
         $this->employeeModel = new Employee($this->db);
-        $this->departmetModel = new Department($this->db);
-        $this->departmetModel = new Designation($this->db);
+        $this->departmentModel = new Department($this->db);
+        $this->designationModel = new Designation($this->db);
         $this->EmpAttendanceModel = new EmpAttentendance($this->db);
         $this->taskModel = new Task($this->db);
         $this->holidayModel = new Holiday($this->db);
@@ -25,11 +27,11 @@ class HolidayController extends Controller
         $this->leaveModel = new EmployeeLeave($this->db);
     }
 
-
-
     public function index()
     {
         $holidays = $this->holidayModel->getHoliday();
+        $departments = $this->departmentModel->getAll();
+        $employees = $this->employeeModel->getAll();
 
         // Stat calculations
         $totalYearHoliday = count($holidays);
@@ -69,6 +71,8 @@ class HolidayController extends Controller
             [
                 "current_route" => "holiday-lists",
                 "holidays" => $holidays,
+                "departments" => $departments,
+                "employees" => $employees,
                 "totalYearHoliday" => $totalYearHoliday,
                 "thisMonthHoliday" => $thisMonthHoliday,
                 "weeklyHolidayCount" => $weeklyHolidayCount,
@@ -76,13 +80,16 @@ class HolidayController extends Controller
             ]
         );
     }
+
     public function store()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-            $start = $_POST['start_date'];
-            $end   = $_POST['end_date'];
-            $title = trim($_POST['title']);
+            $start = $_POST['start_date'] ?? '';
+            $end   = $_POST['end_date'] ?? '';
+            $title = trim($_POST['title'] ?? '');
+            $appliesTo = in_array($_POST['applies_to'] ?? '', ['all', 'department', 'employee']) ? $_POST['applies_to'] : 'all';
+            $departmentId = ($appliesTo === 'department' && !empty($_POST['department_id'])) ? (int)$_POST['department_id'] : null;
 
             // validation
             if (empty($start) || empty($end) || empty($title)) {
@@ -96,14 +103,82 @@ class HolidayController extends Controller
                 $end = $start;
             }
 
+            if ($appliesTo === 'department') {
+                if (empty($departmentId)) {
+                    setError("Please select a target department!");
+                    header("Location: " . $_SERVER['HTTP_REFERER']);
+                    exit;
+                }
+
+                $data = [
+                    'title' => $title,
+                    'start_date' => $start,
+                    'end_date' => $end,
+                    'applies_to' => 'department',
+                    'department_id' => $departmentId,
+                    'employee_id' => null
+                ];
+
+                if ($this->holidayModel->create($data)) {
+                    setSuccess("Department holiday created successfully!");
+                } else {
+                    setError("Something went wrong!");
+                }
+
+                header("Location: {$GLOBALS['base_url']}/holiday-lists");
+                exit;
+            }
+
+            if ($appliesTo === 'employee') {
+                $employeeIds = $_POST['employee_ids'] ?? [];
+                if (!is_array($employeeIds) && !empty($_POST['employee_id'])) {
+                    $employeeIds = [(int)$_POST['employee_id']];
+                }
+                $employeeIds = array_filter(array_map('intval', (array)$employeeIds));
+
+                if (empty($employeeIds)) {
+                    setError("Please select at least one target employee!");
+                    header("Location: " . $_SERVER['HTTP_REFERER']);
+                    exit;
+                }
+
+                $inserted = 0;
+                foreach ($employeeIds as $empId) {
+                    $data = [
+                        'title' => $title,
+                        'start_date' => $start,
+                        'end_date' => $end,
+                        'applies_to' => 'employee',
+                        'department_id' => null,
+                        'employee_id' => $empId
+                    ];
+                    if ($this->holidayModel->create($data)) {
+                        $inserted++;
+                    }
+                }
+
+                if ($inserted > 0) {
+                    setSuccess("Custom holiday successfully added for {$inserted} employee(s)!");
+                } else {
+                    setError("Failed to create employee holiday!");
+                }
+
+                header("Location: {$GLOBALS['base_url']}/holiday-lists");
+                exit;
+            }
+
+            // Company-wide holiday
             $data = [
                 'title' => $title,
                 'start_date' => $start,
-                'end_date' => $end
+                'end_date' => $end,
+                'applies_to' => 'all',
+                'department_id' => null,
+                'employee_id' => null
             ];
 
             if ($this->holidayModel->create($data)) {
-                setSuccess("Holiday created successfully!");
+                setSuccess("Company-wide holiday created successfully!");
             } else {
                 setError("Something went wrong!");
             }
@@ -112,6 +187,7 @@ class HolidayController extends Controller
             exit;
         }
     }
+
     public function update()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -120,10 +196,25 @@ class HolidayController extends Controller
             $start = $_POST['start_date'] ?? null;
             $end   = $_POST['end_date'] ?? null;
             $title = trim($_POST['title'] ?? '');
+            $appliesTo = in_array($_POST['applies_to'] ?? '', ['all', 'department', 'employee']) ? $_POST['applies_to'] : 'all';
+            $departmentId = ($appliesTo === 'department' && !empty($_POST['department_id'])) ? (int)$_POST['department_id'] : null;
+            $employeeId = ($appliesTo === 'employee' && !empty($_POST['employee_id'])) ? (int)$_POST['employee_id'] : null;
 
             // validation
             if (!$id || empty($start) || empty($end) || empty($title)) {
                 setError("All required fields must be filled!");
+                header("Location: " . $_SERVER['HTTP_REFERER']);
+                exit;
+            }
+
+            if ($appliesTo === 'department' && empty($departmentId)) {
+                setError("Please select a target department!");
+                header("Location: " . $_SERVER['HTTP_REFERER']);
+                exit;
+            }
+
+            if ($appliesTo === 'employee' && empty($employeeId)) {
+                setError("Please select a target employee!");
                 header("Location: " . $_SERVER['HTTP_REFERER']);
                 exit;
             }
@@ -134,7 +225,10 @@ class HolidayController extends Controller
             $data = [
                 'title' => $title,
                 'start_date' => $start,
-                'end_date' => $end
+                'end_date' => $end,
+                'applies_to' => $appliesTo,
+                'department_id' => $departmentId,
+                'employee_id' => $employeeId
             ];
 
             if ($this->holidayModel->update($id, $data)) {
@@ -147,7 +241,6 @@ class HolidayController extends Controller
             exit;
         }
     }
-
 
     public function delete()
     {

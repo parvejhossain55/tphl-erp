@@ -447,7 +447,7 @@ class HrmApiController extends Controller
             $escapedToDate = $this->db->real_escape_string($toDateStr);
             $escapedFromDate = $this->db->real_escape_string($fromDateStr);
             
-            $localQuery = $this->db->query("SELECT e.id, e.employee_id, e.email, e.full_name, e.joining_date, d.name as department_name, des.name as designation_name 
+            $localQuery = $this->db->query("SELECT e.id, e.employee_id, e.email, e.full_name, e.joining_date, e.department_id, d.name as department_name, des.name as designation_name 
                                             FROM employees e 
                                             LEFT JOIN departments d ON e.department_id = d.id 
                                             LEFT JOIN designations des ON e.designation_id = des.id
@@ -470,6 +470,7 @@ class HrmApiController extends Controller
                         'email' => strtolower($empEmail),
                         'full_name' => $empName,
                         'joining_date' => $empJoin,
+                        'department_id' => (int) ($row['department_id'] ?? 0),
                         'department_name' => $row['department_name'] ?? 'N/A',
                         'designation_name' => $row['designation_name'] ?? 'N/A'
                     ];
@@ -483,6 +484,11 @@ class HrmApiController extends Controller
                 }
             }
 
+            // Fetch Custom Holidays for the date range
+            require_once dirname(__DIR__) . '/models/Holiday.php';
+            $holidayModel = new Holiday($this->db);
+            $customHolidays = $holidayModel->getHolidayMapForRange($fromDateStr, $toDateStr);
+
             echo json_encode([
                 'success' => true,
                 'data' => $data['attendance'],
@@ -490,6 +496,7 @@ class HrmApiController extends Controller
                 'local_employee_ids' => $localIds,
                 'local_employee_emails' => $localEmails,
                 'local_employees' => $localEmployees,
+                'custom_holidays' => $customHolidays,
                 'from_date' => $fromDateStr,
                 'to_date' => $toDateStr
             ]);
