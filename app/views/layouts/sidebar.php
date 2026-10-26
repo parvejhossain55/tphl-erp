@@ -2235,7 +2235,17 @@
                     </li>
 
                     <?php if ($isClientCommUser): ?>
-                        <!-- For Clients Communicated: Client-wise Due Tracking, Today Follow Up, and Upcoming Follow Up -->
+                        <!-- For Clients Communicated: Collection Statement, Client-wise Due Tracking, Today Follow Up, and Upcoming Follow Up -->
+                        <li class="slide <?= isActive('ced-collection-statement', $current_route) ?>">
+                            <a href="<?= $base_url ?>/ced-collection-statement"
+                                class="sidebar__menu-item <?= isActive('ced-collection-statement', $current_route) ?>"
+                                title="CED Collection Statement">
+                                <div class="side-menu__icon"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                                <span class="sidebar__menu-label">Collection Statement</span>
+                                <span class="badge bg-primary text-white rounded-pill ms-auto me-2 flex-shrink-0"
+                                    style="font-size:9px; padding: 2px 5px;">New</span>
+                            </a>
+                        </li>
                         <li class="slide <?= isActive(['client-wise-due-tracking', 'client-due-tracking'], $current_route) ?>">
                             <a href="<?= $base_url ?>/client-wise-due-tracking"
                                 class="sidebar__menu-item <?= isActive(['client-wise-due-tracking', 'client-due-tracking'], $current_route) ?>"
@@ -2306,15 +2316,24 @@
 
                         <!-- Cash In Manage -->
                         <li
-                            class="slide has-sub <?= isActive(['clients-cashin-view', 'clients-cash-in-history-view', 'client-refunds', 'client-wise-due-tracking', 'client-due-tracking', 'today-follow-ups', 'today-followups', 'upcoming-follow-ups', 'upcoming-followups'], $current_route) ? 'open active' : '' ?>">
+                            class="slide has-sub <?= isActive(['ced-collection-statement', 'clients-cashin-view', 'clients-cash-in-history-view', 'client-refunds', 'client-wise-due-tracking', 'client-due-tracking', 'today-follow-ups', 'today-followups', 'upcoming-follow-ups', 'upcoming-followups'], $current_route) ? 'open active' : '' ?>">
                             <a href="javascript:void(0);"
-                                class="sidebar__menu-item <?= isActive(['clients-cashin-view', 'clients-cash-in-history-view', 'client-refunds', 'client-wise-due-tracking', 'client-due-tracking', 'today-follow-ups', 'today-followups', 'upcoming-follow-ups', 'upcoming-followups'], $current_route) ? 'active' : '' ?>">
+                                class="sidebar__menu-item <?= isActive(['ced-collection-statement', 'clients-cashin-view', 'clients-cash-in-history-view', 'client-refunds', 'client-wise-due-tracking', 'client-due-tracking', 'today-follow-ups', 'today-followups', 'upcoming-follow-ups', 'upcoming-followups'], $current_route) ? 'active' : '' ?>">
                                 <div class="side-menu__icon"><i class="fa-solid fa-money-bill-trend-up"></i></div>
                                 <span class="sidebar__menu-label">Cash In View</span>
                                 <i class="fa-regular fa-angle-down side-menu__angle"></i>
                             </a>
                             <ul class="sidebar-menu child2"
-                                style="<?= isMenuOpen(['clients-cashin-view', 'clients-cash-in-history-view', 'client-refunds', 'client-wise-due-tracking', 'client-due-tracking', 'today-follow-ups', 'today-followups', 'upcoming-follow-ups', 'upcoming-followups'], $current_route) ? 'display:block;' : 'display:none;' ?>">
+                                style="<?= isMenuOpen(['ced-collection-statement', 'clients-cashin-view', 'clients-cash-in-history-view', 'client-refunds', 'client-wise-due-tracking', 'client-due-tracking', 'today-follow-ups', 'today-followups', 'upcoming-follow-ups', 'upcoming-followups'], $current_route) ? 'display:block;' : 'display:none;' ?>">
+                                <li class="slide <?= isActive('ced-collection-statement', $current_route) ?>">
+                                    <a href="<?= $base_url ?>/ced-collection-statement"
+                                        class="sidebar__menu-item <?= isActive('ced-collection-statement', $current_route) ?>"
+                                        style="display:flex; align-items:center;">
+                                        <span class="text-truncate"><strong>Collection Statement</strong></span>
+                                        <span class="badge bg-primary text-white rounded-pill ms-auto me-2 flex-shrink-0"
+                                            style="font-size:9px; padding: 2px 5px;">New</span>
+                                    </a>
+                                </li>
                                 <li class="slide <?= isActive('clients-cashin-view', $current_route) ?>">
                                     <a href="<?= $base_url ?>/clients-cashin-view"
                                         class="sidebar__menu-item <?= isActive('clients-cashin-view', $current_route) ?>">Clients</a>

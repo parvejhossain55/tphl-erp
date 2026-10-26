@@ -1,4 +1,4 @@
-﻿<?php if (empty($approvalHistory)): ?>
+<?php if (empty($approvalHistory)): ?>
     <tr>
         <td colspan="10" class="text-center py-4 text-muted">
             <i class="fa-solid fa-folder-open fs-3 d-block mb-2"></i>
@@ -323,17 +323,58 @@
                                         $appAmt = (float)($req['approved_amount'] ?? 0);
                                         $qcAmt = (float)($req['qc_approved_amount'] ?? 0);
                                         $isPendingMgmt = in_array(strtolower($req['approve_role'] ?? ''), ['management', 'operation_head']);
+                                        $isQcOnlyApproved = ($qcAmt > 0 && ($appAmt == $qcAmt || $appAmt <= 0) && $isPendingMgmt);
+                                        $isFullyApproved = ($appAmt > 0 && !$isQcOnlyApproved);
+                                        $reqAmt = (float)($req['request_amount'] ?? 0);
                                         ?>
-                                        <?php if ($appAmt > 0): ?>
-                                            <span class="fw-bold <?= ($qcAmt > 0 && $appAmt == $qcAmt && $isPendingMgmt) ? 'text-primary' : 'text-success' ?>">
-                                                à§³ <?= number_format($appAmt, 2) ?>
-                                            </span>
-                                            <?php if ($qcAmt > 0 && $appAmt == $qcAmt && $isPendingMgmt): ?>
-                                                <div class="mt-1"><span class="badge bg-info-subtle text-info border border-info-subtle extra-small" style="font-size: 9px; padding: 2px 6px;"><i class="bi bi-shield-check me-1"></i>QC Approved</span></div>
+                                        <?php if ($isQcOnlyApproved): ?>
+                                            <span class="fw-bold text-primary">৳ <?= number_format($qcAmt, 2) ?></span>
+                                            <div class="mt-1">
+                                                <span class="badge bg-info-subtle text-info border border-info-subtle extra-small" style="font-size: 9px; padding: 2px 6px;">
+                                                    <i class="bi bi-shield-check me-1"></i>QC Approved
+                                                </span>
+                                            </div>
+                                            <?php if ($reqAmt > $qcAmt): ?>
+                                                <div class="extra-small text-danger fw-semibold mt-0.5" style="font-size: 10px;" title="Original Requested: ৳ <?= number_format($reqAmt, 2) ?>">
+                                                    <i class="fa-solid fa-arrow-down me-1"></i>Reduced by ৳ <?= number_format($reqAmt - $qcAmt, 2) ?>
+                                                </div>
                                             <?php endif; ?>
-                                        <?php elseif ($qcAmt > 0): ?>
-                                            <span class="fw-bold text-primary">à§³ <?= number_format($qcAmt, 2) ?></span>
-                                            <div class="mt-1"><span class="badge bg-info-subtle text-info border border-info-subtle extra-small" style="font-size: 9px; padding: 2px 6px;"><i class="bi bi-shield-check me-1"></i>QC Approved</span></div>
+                                            <?php if (!empty($req['qc_approver_name'])): ?>
+                                                <div class="extra-small text-muted mt-1 lh-sm" style="font-size: 10px;">
+                                                    <div class="text-truncate" style="max-width: 150px;" title="<?= htmlspecialchars($req['qc_approver_name']) ?>">
+                                                        <i class="fa-solid fa-user-check text-primary me-1"></i><?= htmlspecialchars($req['qc_approver_name']) ?>
+                                                    </div>
+                                                    <?php if (!empty($req['qc_approved_at'])): ?>
+                                                        <div class="text-muted" style="font-size: 9.5px;">
+                                                            <i class="fa-regular fa-clock me-1"></i><?= date('d M Y, h:i A', strtotime($req['qc_approved_at'])) ?>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                    <?php if (!empty($req['qc_note'])): ?>
+                                                        <div class="fst-italic text-secondary text-truncate" style="max-width: 150px;" title="<?= htmlspecialchars($req['qc_note']) ?>">
+                                                            <i class="fa-solid fa-comment-dots text-muted me-1"></i>"<?= htmlspecialchars($req['qc_note']) ?>"
+                                                        </div>
+                                                    <?php endif; ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        <?php elseif ($isFullyApproved): ?>
+                                            <span class="fw-bold text-success">৳ <?= number_format($appAmt, 2) ?></span>
+                                            <?php if ($reqAmt > $appAmt): ?>
+                                                <div class="extra-small text-danger fw-semibold mt-0.5" style="font-size: 10px;" title="Original Requested: ৳ <?= number_format($reqAmt, 2) ?>">
+                                                    <i class="fa-solid fa-arrow-down me-1"></i>Reduced by ৳ <?= number_format($reqAmt - $appAmt, 2) ?>
+                                                </div>
+                                            <?php endif; ?>
+                                            <?php if (!empty($req['approver_name'])): ?>
+                                                <div class="extra-small text-muted mt-1 lh-sm" style="font-size: 10px;">
+                                                    <div class="text-truncate" style="max-width: 150px;" title="<?= htmlspecialchars($req['approver_name']) ?>">
+                                                        <i class="fa-solid fa-user-check text-success me-1"></i><?= htmlspecialchars($req['approver_name']) ?>
+                                                    </div>
+                                                    <?php if (!empty($req['approved_at'])): ?>
+                                                        <div class="text-muted" style="font-size: 9.5px;">
+                                                            <i class="fa-regular fa-clock me-1"></i><?= date('d M Y, h:i A', strtotime($req['approved_at'])) ?>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                </div>
+                                            <?php endif; ?>
                                         <?php else: ?>
                                             <span class="text-muted extra-small">--</span>
                                         <?php endif; ?>

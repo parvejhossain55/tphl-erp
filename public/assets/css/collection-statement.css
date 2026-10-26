@@ -1,0 +1,707 @@
+/* =========================================================================
+   Collection Statement Shared Stylesheet (Accounts & CED Modules)
+   File: public/assets/css/collection-statement.css
+   ========================================================================= */
+
+/* --- Header Action Buttons & Dropdowns --- */
+.cs-header-btns {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+}
+
+.cs-header-btns .cs-dropdown-wrapper,
+.cs-header-btns .dropdown {
+    display: inline-block !important;
+    position: relative !important;
+    width: auto !important;
+    margin: 0 !important;
+}
+
+/* Force override of any 30px circular buttons from main.css */
+.cs-header-btns .btn,
+.cs-header-btns .dropdown > button,
+.cs-header-btns .dropdown > button.btn,
+.cs-header-btns .cs-dropdown-wrapper > button,
+.cs-header-btns .cs-dropdown-wrapper > button.btn,
+.cs-header-btns a.btn {
+    width: auto !important;
+    min-width: unset !important;
+    max-width: unset !important;
+    height: 35px !important;
+    padding: 6px 14px !important;
+    border-radius: 6px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+    text-align: center !important;
+    line-height: normal !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+    text-decoration: none !important;
+}
+
+.cs-header-btns .btn i {
+    font-size: 13.5px !important;
+    color: inherit !important;
+    margin-inline-end: 0 !important;
+    flex-shrink: 0 !important;
+}
+
+.cs-header-btns .dropdown-toggle::after {
+    display: inline-block !important;
+    margin-left: 6px !important;
+    vertical-align: middle !important;
+    border-top-color: currentColor !important;
+}
+
+/* Button color themes */
+.cs-header-btns .btn-outline-primary {
+    background-color: #ffffff !important;
+    border: 1px solid #3b82f6 !important;
+    color: #2563eb !important;
+}
+.cs-header-btns .btn-outline-primary:hover,
+.cs-header-btns .btn-outline-primary:focus,
+.cs-header-btns .btn-outline-primary.show {
+    background-color: #2563eb !important;
+    color: #ffffff !important;
+    border-color: #2563eb !important;
+}
+
+.cs-header-btns .btn-outline-success {
+    background-color: #ffffff !important;
+    border: 1px solid #10b981 !important;
+    color: #059669 !important;
+}
+.cs-header-btns .btn-outline-success:hover,
+.cs-header-btns .btn-outline-success:focus,
+.cs-header-btns .btn-outline-success.show {
+    background-color: #059669 !important;
+    color: #ffffff !important;
+    border-color: #059669 !important;
+}
+
+.cs-header-btns .btn-outline-secondary {
+    background-color: #ffffff !important;
+    border: 1px solid #64748b !important;
+    color: #475569 !important;
+}
+.cs-header-btns .btn-outline-secondary:hover,
+.cs-header-btns .btn-outline-secondary:focus {
+    background-color: #475569 !important;
+    color: #ffffff !important;
+    border-color: #475569 !important;
+}
+
+/* --- KPI / Summary Metric Cards --- */
+.collection-stat-card,
+.ced-stat-card {
+    border-radius: 10px;
+    padding: 14px 16px !important;
+    margin-bottom: 0 !important;
+    background: var(--clr-bg-card, #ffffff);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--clr-border-1, #e2e8f0);
+    border-left: 4px solid #3b82f6;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease, border-color 0.2s ease;
+    height: 100%;
+    position: relative;
+}
+
+.collection-stat-card:hover,
+.ced-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
+}
+
+.collection-stat-card.c-total,  .ced-stat-card.c-total  { border-left-color: #6366f1; }
+.collection-stat-card.c-dev,    .ced-stat-card.c-dev    { border-left-color: #d97706; }
+.collection-stat-card.c-emi,    .ced-stat-card.c-emi    { border-left-color: #16a34a; }
+.collection-stat-card.c-book,   .ced-stat-card.c-book   { border-left-color: #9333ea; }
+.collection-stat-card.c-bank,   .ced-stat-card.c-bank   { border-left-color: #0284c7; }
+.collection-stat-card.c-cash,   .ced-stat-card.c-cash   { border-left-color: #10b981; }
+.collection-stat-card.c-cheque, .ced-stat-card.c-cheque { border-left-color: #f59e0b; }
+.collection-stat-card.c-online, .ced-stat-card.c-online { border-left-color: #ec4899; }
+
+.collection-stat-card .card-icon,
+.ced-stat-card .ced-stat-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    flex-shrink: 0;
+}
+
+.c-total .card-icon,  .ced-stat-icon.c-total { background: rgba(99, 102, 241, 0.12); color: #6366f1; }
+.c-dev .card-icon,    .ced-stat-icon.c-dev   { background: rgba(217, 119, 6, 0.12);   color: #d97706; }
+.c-emi .card-icon,    .ced-stat-icon.c-emi   { background: rgba(22, 163, 74, 0.12);   color: #16a34a; }
+.c-book .card-icon,   .ced-stat-icon.c-book  { background: rgba(147, 51, 234, 0.12);  color: #9333ea; }
+.c-bank .card-icon,   .ced-stat-icon.c-bank  { background: rgba(2, 132, 199, 0.12);   color: #0284c7; }
+.c-cash .card-icon,   .ced-stat-icon.c-cash  { background: rgba(16, 185, 129, 0.12);  color: #10b981; }
+.c-cheque .card-icon, .ced-stat-icon.c-cheque{ background: rgba(245, 158, 11, 0.12);  color: #f59e0b; }
+.c-online .card-icon, .ced-stat-icon.c-online{ background: rgba(236, 72, 153, 0.12);  color: #ec4899; }
+
+.c-amount {
+    font-size: clamp(0.95rem, 1.08vw, 1.2rem);
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.2px;
+}
+
+/* --- View Mode Switcher --- */
+.cs-view-switcher-bar,
+.ced-view-switcher {
+    background-color: var(--clr-bg-card, #ffffff);
+    border: 1px solid var(--clr-border-1, #e2e8f0);
+}
+
+.ced-mode-btn,
+.mode-btn {
+    font-weight: 600;
+    font-size: 13px;
+    padding: 6px 14px;
+    border-radius: 6px !important;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+/* --- Tables --- */
+.table-collection th,
+.table-ced th {
+    background-color: #f8fafc;
+    color: #334155;
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    border-bottom: 2px solid #cbd5e1;
+    padding: 10px 12px;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.table-collection td,
+.table-ced td {
+    padding: 9px 12px;
+    font-size: 13px;
+    vertical-align: middle;
+}
+
+.collector-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #f1f5f9;
+    color: #334155;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 12.5px;
+    border: 1px solid #cbd5e1;
+    flex-shrink: 0;
+}
+
+.badge-ced {
+    font-size: 10px;
+    padding: 3px 7px;
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+/* Subtle payment method badges */
+.badge-subtle-bank   { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+.badge-subtle-cash   { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+.badge-subtle-cheque { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+.badge-subtle-online { background: #fce7f3; color: #be185d; border: 1px solid #fbcfe8; }
+
+/* Subtle collection purpose / head badges */
+.badge-subtle-advance     { background: #ccfbf1 !important; color: #0f766e !important; border: 1px solid #99f6e4 !important; }
+.badge-subtle-settlement  { background: #e0f2fe !important; color: #0369a1 !important; border: 1px solid #bae6fd !important; }
+.badge-subtle-emi         { background: #dcfce7 !important; color: #15803d !important; border: 1px solid #bbf7d0 !important; }
+.badge-subtle-dev         { background: #fef3c7 !important; color: #b45309 !important; border: 1px solid #fde68a !important; }
+.badge-subtle-booking     { background: #ede9fe !important; color: #6d28d9 !important; border: 1px solid #ddd6fe !important; }
+.badge-subtle-registration{ background: #f1f5f9 !important; color: #475569 !important; border: 1px solid #cbd5e1 !important; }
+
+
+/* =========================================================================
+   DARK MODE INTEGRATION
+   Supports: [bd-theme="bd-theme-dark"], [data-bs-theme="dark"], 
+             body.dark-only, body.dark-mode, html.dark, body.dark
+   ========================================================================= */
+[bd-theme="bd-theme-dark"] .collection-stat-card,
+[data-bs-theme="dark"] .collection-stat-card,
+body.dark-only .collection-stat-card,
+body.dark-mode .collection-stat-card,
+html.dark .collection-stat-card,
+body.dark .collection-stat-card,
+[bd-theme="bd-theme-dark"] .ced-stat-card,
+[data-bs-theme="dark"] .ced-stat-card,
+body.dark-only .ced-stat-card,
+body.dark-mode .ced-stat-card,
+html.dark .ced-stat-card,
+body.dark .ced-stat-card {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+    color: #f1f5f9 !important;
+}
+
+[bd-theme="bd-theme-dark"] .collection-stat-card:hover,
+[data-bs-theme="dark"] .collection-stat-card:hover,
+body.dark-only .collection-stat-card:hover,
+body.dark-mode .collection-stat-card:hover,
+html.dark .collection-stat-card:hover,
+body.dark .collection-stat-card:hover,
+[bd-theme="bd-theme-dark"] .ced-stat-card:hover,
+[data-bs-theme="dark"] .ced-stat-card:hover,
+body.dark-only .ced-stat-card:hover,
+body.dark-mode .ced-stat-card:hover,
+html.dark .ced-stat-card:hover,
+body.dark .ced-stat-card:hover {
+    background: #283548 !important;
+    border-color: #475569 !important;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5) !important;
+    transform: translateY(-2px);
+}
+
+/* Dark mode header buttons */
+[bd-theme="bd-theme-dark"] .cs-header-btns .btn-outline-primary,
+[data-bs-theme="dark"] .cs-header-btns .btn-outline-primary,
+body.dark-only .cs-header-btns .btn-outline-primary,
+html.dark .cs-header-btns .btn-outline-primary,
+body.dark .cs-header-btns .btn-outline-primary {
+    background-color: #1e293b !important;
+    border-color: #3b82f6 !important;
+    color: #60a5fa !important;
+}
+[bd-theme="bd-theme-dark"] .cs-header-btns .btn-outline-primary:hover,
+[data-bs-theme="dark"] .cs-header-btns .btn-outline-primary:hover,
+html.dark .cs-header-btns .btn-outline-primary:hover,
+body.dark .cs-header-btns .btn-outline-primary:hover {
+    background-color: #2563eb !important;
+    color: #ffffff !important;
+}
+
+[bd-theme="bd-theme-dark"] .cs-header-btns .btn-outline-success,
+[data-bs-theme="dark"] .cs-header-btns .btn-outline-success,
+body.dark-only .cs-header-btns .btn-outline-success,
+html.dark .cs-header-btns .btn-outline-success,
+body.dark .cs-header-btns .btn-outline-success {
+    background-color: #1e293b !important;
+    border-color: #10b981 !important;
+    color: #34d399 !important;
+}
+[bd-theme="bd-theme-dark"] .cs-header-btns .btn-outline-success:hover,
+[data-bs-theme="dark"] .cs-header-btns .btn-outline-success:hover,
+html.dark .cs-header-btns .btn-outline-success:hover,
+body.dark .cs-header-btns .btn-outline-success:hover {
+    background-color: #059669 !important;
+    color: #ffffff !important;
+}
+
+[bd-theme="bd-theme-dark"] .cs-header-btns .btn-outline-secondary,
+[data-bs-theme="dark"] .cs-header-btns .btn-outline-secondary,
+body.dark-only .cs-header-btns .btn-outline-secondary,
+html.dark .cs-header-btns .btn-outline-secondary,
+body.dark .cs-header-btns .btn-outline-secondary {
+    background-color: #1e293b !important;
+    border-color: #64748b !important;
+    color: #94a3b8 !important;
+}
+[bd-theme="bd-theme-dark"] .cs-header-btns .btn-outline-secondary:hover,
+[data-bs-theme="dark"] .cs-header-btns .btn-outline-secondary:hover,
+html.dark .cs-header-btns .btn-outline-secondary:hover,
+body.dark .cs-header-btns .btn-outline-secondary:hover {
+    background-color: #475569 !important;
+    color: #ffffff !important;
+}
+
+/* Dark mode text and amounts */
+[bd-theme="bd-theme-dark"] .c-total .c-amount, [data-bs-theme="dark"] .c-total .c-amount, html.dark .c-total .c-amount, body.dark .c-total .c-amount { color: #a5b4fc !important; }
+[bd-theme="bd-theme-dark"] .c-dev .c-amount,   [data-bs-theme="dark"] .c-dev .c-amount,   html.dark .c-dev .c-amount,   body.dark .c-dev .c-amount   { color: #fcd34d !important; }
+[bd-theme="bd-theme-dark"] .c-emi .c-amount,   [data-bs-theme="dark"] .c-emi .c-amount,   html.dark .c-emi .c-amount,   body.dark .c-emi .c-amount   { color: #4ade80 !important; }
+[bd-theme="bd-theme-dark"] .c-book .c-amount,  [data-bs-theme="dark"] .c-book .c-amount,  html.dark .c-book .c-amount,  body.dark .c-book .c-amount  { color: #c084fc !important; }
+[bd-theme="bd-theme-dark"] .c-bank .c-amount,  [data-bs-theme="dark"] .c-bank .c-amount,  html.dark .c-bank .c-amount,  body.dark .c-bank .c-amount  { color: #38bdf8 !important; }
+[bd-theme="bd-theme-dark"] .c-cash .c-amount,  [data-bs-theme="dark"] .c-cash .c-amount,  html.dark .c-cash .c-amount,  body.dark .c-cash .c-amount  { color: #34d399 !important; }
+[bd-theme="bd-theme-dark"] .c-cheque .c-amount,[data-bs-theme="dark"] .c-cheque .c-amount,html.dark .c-cheque .c-amount,body.dark .c-cheque .c-amount{ color: #fbbf24 !important; }
+[bd-theme="bd-theme-dark"] .c-online .c-amount,[data-bs-theme="dark"] .c-online .c-amount,html.dark .c-online .c-amount,body.dark .c-online .c-amount{ color: #f472b6 !important; }
+
+[bd-theme="bd-theme-dark"] .table-collection th,
+[data-bs-theme="dark"] .table-collection th,
+html.dark .table-collection th,
+body.dark .table-collection th,
+[bd-theme="bd-theme-dark"] .table-ced th,
+[data-bs-theme="dark"] .table-ced th,
+html.dark .table-ced th,
+body.dark .table-ced th {
+    background-color: #1e293b !important;
+    color: #cbd5e1 !important;
+    border-bottom-color: #334155 !important;
+}
+
+[bd-theme="bd-theme-dark"] .table-collection td,
+[data-bs-theme="dark"] .table-collection td,
+html.dark .table-collection td,
+body.dark .table-collection td,
+[bd-theme="bd-theme-dark"] .table-ced td,
+[data-bs-theme="dark"] .table-ced td,
+html.dark .table-ced td,
+body.dark .table-ced td {
+    border-color: #334155 !important;
+}
+
+[bd-theme="bd-theme-dark"] .collector-avatar,
+[data-bs-theme="dark"] .collector-avatar,
+html.dark .collector-avatar,
+body.dark .collector-avatar {
+    background: #334155 !important;
+    color: #f1f5f9 !important;
+    border-color: #475569 !important;
+}
+
+/* Subtle purpose badges dark mode overrides */
+[bd-theme="bd-theme-dark"] .badge-subtle-advance,
+[data-bs-theme="dark"] .badge-subtle-advance,
+html.dark .badge-subtle-advance,
+body.dark .badge-subtle-advance {
+    background-color: rgba(20, 184, 166, 0.2) !important;
+    color: #5eead4 !important;
+    border-color: rgba(20, 184, 166, 0.4) !important;
+}
+
+[bd-theme="bd-theme-dark"] .badge-subtle-settlement,
+[data-bs-theme="dark"] .badge-subtle-settlement,
+html.dark .badge-subtle-settlement,
+body.dark .badge-subtle-settlement {
+    background-color: rgba(2, 132, 199, 0.2) !important;
+    color: #7dd3fc !important;
+    border-color: rgba(2, 132, 199, 0.4) !important;
+}
+
+[bd-theme="bd-theme-dark"] .badge-subtle-emi,
+[data-bs-theme="dark"] .badge-subtle-emi,
+html.dark .badge-subtle-emi,
+body.dark .badge-subtle-emi {
+    background-color: rgba(34, 197, 94, 0.2) !important;
+    color: #86efac !important;
+    border-color: rgba(34, 197, 94, 0.4) !important;
+}
+
+[bd-theme="bd-theme-dark"] .badge-subtle-dev,
+[data-bs-theme="dark"] .badge-subtle-dev,
+html.dark .badge-subtle-dev,
+body.dark .badge-subtle-dev {
+    background-color: rgba(245, 158, 11, 0.2) !important;
+    color: #fde047 !important;
+    border-color: rgba(245, 158, 11, 0.4) !important;
+}
+
+[bd-theme="bd-theme-dark"] .badge-subtle-booking,
+[data-bs-theme="dark"] .badge-subtle-booking,
+html.dark .badge-subtle-booking,
+body.dark .badge-subtle-booking {
+    background-color: rgba(147, 51, 234, 0.2) !important;
+    color: #d8b4fe !important;
+    border-color: rgba(147, 51, 234, 0.4) !important;
+}
+
+[bd-theme="bd-theme-dark"] .badge-subtle-registration,
+[data-bs-theme="dark"] .badge-subtle-registration,
+html.dark .badge-subtle-registration,
+body.dark .badge-subtle-registration {
+    background-color: rgba(100, 116, 139, 0.2) !important;
+    color: #cbd5e1 !important;
+    border-color: rgba(100, 116, 139, 0.4) !important;
+}
+
+/* =========================================================================
+   Select2 Filter Bar Styling
+   ========================================================================= */
+.select2-container {
+    width: 100% !important;
+}
+
+.card-body .select2-container--default .select2-selection--single {
+    height: 31px !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 6px !important;
+    display: flex !important;
+    align-items: center !important;
+    background-color: #ffffff !important;
+}
+
+.card-body .select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 29px !important;
+    padding-left: 8px !important;
+    padding-right: 24px !important;
+    font-size: 12.5px !important;
+    color: #1e293b !important;
+}
+
+.card-body .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 29px !important;
+    right: 4px !important;
+}
+
+.card-body .select2-container--default .select2-selection--single .select2-selection__clear {
+    margin-right: 18px !important;
+    line-height: 29px !important;
+    font-size: 14px !important;
+    color: #94a3b8 !important;
+}
+
+/* Dark mode select2 */
+[bd-theme="bd-theme-dark"] .card-body .select2-container--default .select2-selection--single,
+[data-bs-theme="dark"] .card-body .select2-container--default .select2-selection--single,
+body.dark-only .card-body .select2-container--default .select2-selection--single,
+body.dark-mode .card-body .select2-container--default .select2-selection--single,
+html.dark .card-body .select2-container--default .select2-selection--single,
+body.dark .card-body .select2-container--default .select2-selection--single {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f1f5f9 !important;
+}
+
+[bd-theme="bd-theme-dark"] .card-body .select2-container--default .select2-selection--single .select2-selection__rendered,
+[data-bs-theme="dark"] .card-body .select2-container--default .select2-selection--single .select2-selection__rendered,
+body.dark-only .card-body .select2-container--default .select2-selection--single .select2-selection__rendered,
+body.dark-mode .card-body .select2-container--default .select2-selection--single .select2-selection__rendered,
+html.dark .card-body .select2-container--default .select2-selection--single .select2-selection__rendered,
+body.dark .card-body .select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: #f1f5f9 !important;
+}
+
+/* =========================================================================
+   RESPONSIVE DESIGN SYSTEM (Desktop, Laptop, Tablet, Mobile)
+   Breakpoints:
+     - Large Desktop: >= 1200px
+     - Tablet / Small Laptop: 768px - 1199.98px
+     - Mobile: < 768px
+     - Extra Small Mobile: < 576px
+   ========================================================================= */
+
+/* Table Search Input Box Helper */
+.cs-table-search-box {
+    width: 220px;
+    max-width: 100%;
+}
+
+/* Base table scrolling enhancements */
+.table-responsive {
+    -webkit-overflow-scrolling: touch;
+    border-radius: 6px;
+}
+
+.table-responsive::-webkit-scrollbar {
+    height: 6px;
+    width: 6px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Ensure wide tables retain readable column proportions on mobile */
+.table-ced,
+.table-collection {
+    min-width: 860px;
+}
+
+#transactionsTable,
+#collectorTable {
+    min-width: 980px;
+}
+
+/* --- Media Queries: Desktops and Laptops (max-width: 1199.98px) --- */
+@media (max-width: 1199.98px) {
+    .collection-stat-card,
+    .ced-stat-card {
+        padding: 12px 14px !important;
+    }
+    .c-amount {
+        font-size: 13.5px !important;
+    }
+}
+
+/* --- Media Queries: Tablets & Medium Devices (max-width: 991.98px) --- */
+@media (max-width: 991.98px) {
+    .cs-header-btns {
+        width: 100% !important;
+        margin-top: 10px !important;
+        justify-content: flex-start !important;
+        flex-wrap: wrap !important;
+    }
+
+    .cs-view-switcher-bar,
+    .ced-view-switcher {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+    }
+
+    .cs-view-switcher-bar .btn-group,
+    .card-body .btn-group[role="group"] {
+        display: flex !important;
+        width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        padding: 3px !important;
+    }
+
+    .cs-view-switcher-bar .btn-group::-webkit-scrollbar,
+    .card-body .btn-group[role="group"]::-webkit-scrollbar {
+        display: none !important;
+    }
+
+    .ced-mode-btn,
+    .mode-btn {
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+        padding: 6px 12px !important;
+        font-size: 12.5px !important;
+    }
+
+    .cs-table-search-box {
+        width: 100% !important;
+    }
+}
+
+/* --- Media Queries: Mobile Devices (max-width: 767.98px) --- */
+@media (max-width: 767.98px) {
+    .cs-header-btns {
+        width: 100% !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 6px !important;
+    }
+
+    .cs-header-btns .btn,
+    .cs-header-btns .dropdown,
+    .cs-header-btns .cs-dropdown-wrapper {
+        flex: 1 1 auto !important;
+    }
+
+    .cs-header-btns .btn,
+    .cs-header-btns a.btn {
+        width: 100% !important;
+        height: 34px !important;
+        padding: 6px 10px !important;
+        font-size: 12px !important;
+        justify-content: center !important;
+    }
+
+    .cs-header-btns .dropdown-menu {
+        min-width: 220px !important;
+        max-width: calc(100vw - 30px) !important;
+    }
+
+    .collection-stat-card,
+    .ced-stat-card {
+        padding: 10px 12px !important;
+    }
+
+    .collection-stat-card .card-icon,
+    .ced-stat-card .ced-stat-icon {
+        width: 34px !important;
+        height: 34px !important;
+        font-size: 14px !important;
+    }
+
+    .c-amount {
+        font-size: 13px !important;
+    }
+
+    .card-header {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+    }
+
+    .card-header > div:last-child {
+        width: 100% !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+
+    .card-header > div:last-child .btn,
+    .card-header > div:last-child a.btn {
+        flex: 1 1 auto !important;
+        justify-content: center !important;
+    }
+
+    .card-footer {
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 10px !important;
+        text-align: center !important;
+    }
+
+    .pagination {
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+    }
+
+    .badge-ced,
+    .badge-subtle-advance,
+    .badge-subtle-settlement,
+    .badge-subtle-emi,
+    .badge-subtle-dev,
+    .badge-subtle-booking,
+    .badge-subtle-registration {
+        white-space: nowrap !important;
+        font-size: 9.5px !important;
+    }
+}
+
+/* --- Media Queries: Small Phones (max-width: 575.98px) --- */
+@media (max-width: 575.98px) {
+    .cs-header-btns .btn,
+    .cs-header-btns .dropdown,
+    .cs-header-btns .cs-dropdown-wrapper {
+        flex: 1 1 100% !important;
+    }
+
+    .c-amount {
+        font-size: 12.5px !important;
+    }
+
+    .table-ced th,
+    .table-collection th {
+        font-size: 10.5px !important;
+        padding: 8px 10px !important;
+    }
+
+    .table-ced td,
+    .table-collection td {
+        font-size: 11.5px !important;
+        padding: 7px 8px !important;
+    }
+
+    .collector-avatar {
+        width: 28px !important;
+        height: 28px !important;
+        font-size: 11px !important;
+    }
+}
+
+

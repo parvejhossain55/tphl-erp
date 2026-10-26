@@ -79,6 +79,9 @@ return [
     'ced-report' => ['controller' => 'CedReportController', 'method' => 'index'],
     'ced-central-report' => ['controller' => 'CedReportController', 'method' => 'centralReport'],
     'ced-project-notices' => ['controller' => 'AccountClientController', 'method' => 'cedProjectNotices'],
+    'ced-collection-statement' => ['controller' => 'CedCollectionStatementController', 'method' => 'index'],
+    'ced-collection-statement-print' => ['controller' => 'CedCollectionStatementController', 'method' => 'printStatement'],
+    'ced-collection-statement-export' => ['controller' => 'CedCollectionStatementController', 'method' => 'exportCSV'],
 
     'payment-invoice' => ['controller' => 'AccountClientController', 'method' => 'viewPaymentInvoice'],
     'payment-invoice/(\d+)' => ['controller' => 'AccountClientController', 'method' => 'viewPaymentInvoice'],
