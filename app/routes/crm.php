@@ -259,6 +259,7 @@ return [
     'ced-project-polls'            => ['controller' => 'CedPollController', 'method' => 'viewPage'],
     'api/polls'                    => ['controller' => 'CedPollController', 'method' => 'index'],
     'api/polls/create'             => ['controller' => 'CedPollController', 'method' => 'create'],
+    'api/polls/(\d+)/voters'       => ['controller' => 'CedPollController', 'method' => 'getVoters'],
     'api/polls/(\d+)'              => ['controller' => 'CedPollController', 'method' => 'show'],
     'api/polls/project/(\d+)'      => ['controller' => 'CedPollController', 'method' => 'getByProject'],
     'api/polls/update/(\d+)'       => ['controller' => 'CedPollController', 'method' => 'update'],

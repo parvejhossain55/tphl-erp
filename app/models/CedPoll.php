@@ -476,4 +476,71 @@ class CedPoll extends Model
         $baseUrl = rtrim($GLOBALS['base_url'] ?? '', '/');
         return $baseUrl . '/' . ltrim($imagePath, '/');
     }
+
+    /**
+     * Get list of voters for a poll with client name and flat number
+     */
+    public function getPollVoters($pollId, $optionId = null)
+    {
+        $pollId = (int)$pollId;
+        $where = ["v.poll_id = ?"];
+        $params = [$pollId];
+        $types = "i";
+
+        if (!empty($optionId)) {
+            $where[] = "v.option_id = ?";
+            $params[] = (int)$optionId;
+            $types .= "i";
+        }
+
+        $whereClause = implode(" AND ", $where);
+
+        $sql = "
+            SELECT 
+                v.id AS vote_id,
+                v.poll_id,
+                v.option_id,
+                v.client_id,
+                v.remarks,
+                v.created_at AS voted_at,
+                o.option_text,
+                COALESCE(NULLIF(TRIM(l.full_name), ''), NULLIF(TRIM(l_oc.full_name), ''), CONCAT('Client #', v.client_id)) AS client_name,
+                COALESCE(l.phone, l_oc.phone, '') AS client_phone,
+                COALESCE(
+                    GROUP_CONCAT(DISTINCT f.flat_name SEPARATOR ', '),
+                    GROUP_CONCAT(DISTINCT f_oc.flat_name SEPARATOR ', '),
+                    'N/A'
+                ) AS flat_name,
+                COALESCE(p.name, p_oc.name, 'N/A') AS project_name
+            FROM ced_poll_votes v
+            INNER JOIN ced_poll_options o ON o.id = v.option_id
+            -- Match when client_id is lead_id:
+            LEFT JOIN leads l ON l.id = v.client_id
+            LEFT JOIN lead_bookings lb ON lb.lead_id = l.id
+            LEFT JOIN flats f ON f.id = lb.flat_id
+            LEFT JOIN projects p ON p.id = lb.project_id
+            -- Match when client_id is onboard_clients.id:
+            LEFT JOIN onboard_clients oc ON oc.id = v.client_id
+            LEFT JOIN leads l_oc ON l_oc.id = oc.lead_id
+            LEFT JOIN lead_bookings lb_oc ON lb_oc.lead_id = oc.lead_id
+            LEFT JOIN flats f_oc ON f_oc.id = lb_oc.flat_id
+            LEFT JOIN projects p_oc ON p_oc.id = lb_oc.project_id
+            WHERE {$whereClause}
+            GROUP BY v.id, v.poll_id, v.option_id, v.client_id, v.remarks, v.created_at, o.option_text
+            ORDER BY v.created_at DESC
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            throw new Exception("Prepare voters failed: " . $this->db->error);
+        }
+
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $voters = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+        $stmt->close();
+
+        return $voters;
+    }
 }
