@@ -164,7 +164,8 @@ class LeadAutomationController extends Controller
                 $sheetUrl = null;
             }
 
-            $synchronizer = new LeadSynchronizer($this->automationConfig);
+            $currentUserId = isset($_SESSION['user']['id']) ? (int)$_SESSION['user']['id'] : null;
+            $synchronizer = new LeadSynchronizer($this->automationConfig, $currentUserId);
             $result = $synchronizer->runSync($sheetUrl);
 
             $tabCount = count($result['tabs_synced'] ?? []);

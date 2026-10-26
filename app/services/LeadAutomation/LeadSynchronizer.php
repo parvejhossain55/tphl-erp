@@ -10,10 +10,12 @@ class LeadSynchronizer
     private ?PDO $pdo = null;
     private array $projectRotations = [];
     private array $logs = [];
+    private ?int $userId = null;
 
-    public function __construct(array $config)
+    public function __construct(array $config, ?int $userId = null)
     {
         $this->config = $config;
+        $this->userId = $userId ?? (isset($_SESSION['user']['id']) ? (int)$_SESSION['user']['id'] : null);
     }
 
     /**
@@ -840,7 +842,7 @@ class LeadSynchronizer
 
         $currentUserId = !empty($lead['created_by']) 
             ? (int)$lead['created_by'] 
-            : (isset($_SESSION['user']['id']) ? (int)$_SESSION['user']['id'] : null);
+            : ($this->userId ?? (isset($_SESSION['user']['id']) ? (int)$_SESSION['user']['id'] : null));
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
