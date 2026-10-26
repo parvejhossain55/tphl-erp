@@ -12,6 +12,34 @@ class CedPollController extends Controller
     }
 
     /**
+     * Render the CED Project Polls page in ERP
+     */
+    public function viewPage()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (function_exists('isClientsCommunicated') && isClientsCommunicated()) {
+            header("Location: {$GLOBALS['base_url']}/client-wise-due-tracking");
+            exit;
+        }
+
+        // Fetch active projects from database
+        $projects = [];
+        $res = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC");
+        if ($res) {
+            $projects = $res->fetch_all(MYSQLI_ASSOC);
+        }
+
+        $this->view("ced/ced-project-polls", [
+            "current_route" => "ced-project-polls",
+            "page_title"    => "Project Polls",
+            "projects"      => $projects,
+        ]);
+    }
+
+    /**
      * Send standard JSON response
      */
     protected function jsonResponse($success, $message, $data = null, $statusCode = 200)
@@ -178,6 +206,13 @@ class CedPollController extends Controller
             $uploadedImage = $this->handleImageUpload('image');
             if ($uploadedImage) {
                 $data['image'] = $uploadedImage;
+            }
+
+            if (empty($data['created_by'])) {
+                if (session_status() === PHP_SESSION_NONE) {
+                    @session_start();
+                }
+                $data['created_by'] = $_SESSION['user']['id'] ?? $_SESSION['user_id'] ?? null;
             }
 
             // Parse options (supports array or JSON-string)

@@ -256,6 +256,7 @@ return [
     // =========================================================================
     // Controller: CedPollController (CED Open & Public Poll APIs)
     // =========================================================================
+    'ced-project-polls'            => ['controller' => 'CedPollController', 'method' => 'viewPage'],
     'api/polls'                    => ['controller' => 'CedPollController', 'method' => 'index'],
     'api/polls/create'             => ['controller' => 'CedPollController', 'method' => 'create'],
     'api/polls/(\d+)'              => ['controller' => 'CedPollController', 'method' => 'show'],
