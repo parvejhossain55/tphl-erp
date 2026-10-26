@@ -324,4 +324,22 @@ class CedPollController extends Controller
             return $this->jsonResponse(false, $e->getMessage(), null, 400);
         }
     }
+
+    /**
+     * GET /api/polls/{id}/voters
+     * Optional ?option_id=X to filter by option
+     */
+    public function getVoters($pollId)
+    {
+        try {
+            $pollId = (int)$pollId;
+            $data = $this->getRequestData();
+            $optionId = !empty($data['option_id']) ? (int)$data['option_id'] : null;
+
+            $voters = $this->pollModel->getPollVoters($pollId, $optionId);
+            return $this->jsonResponse(true, "Voters retrieved successfully.", $voters);
+        } catch (Exception $e) {
+            return $this->jsonResponse(false, $e->getMessage(), null, 500);
+        }
+    }
 }

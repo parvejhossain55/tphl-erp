@@ -82,6 +82,7 @@
 | `GET` | `/api/polls/{id}` | Get single poll details (Pass `?client_id=X` to check voting status) |
 | `GET` | `/api/polls/project/{projectId}` | Get all polls for a specific project |
 | `POST` | `/api/polls/vote` | Submit a vote or change an existing vote |
+| `GET` | `/api/polls/{id}/voters` | Get list of voters (voter name, flat/unit no, choice, date) |
 | `POST` | `/api/polls/update/{id}` | Update poll details or replace image |
 | `POST` | `/api/polls/delete/{id}` | Delete a poll and its associated data/images |
 
@@ -347,5 +348,38 @@ Deletes a poll, cascades delete to all associated options and votes, and removes
 {
   "success": true,
   "message": "Poll deleted successfully."
+}
+```
+
+---
+
+### 8. Get Poll Voters
+Returns the list of clients/voters who cast a vote in the poll, including client name, flat/unit number, contact phone, selected option, and voting timestamp.
+
+- **Method**: `GET`
+- **URL**: `/api/polls/{id}/voters`
+- **Query Parameters**:
+  - `option_id` *(int, optional)*: Filter voters who chose a specific option (e.g. `?option_id=5`)
+
+#### Response Example:
+```json
+{
+  "success": true,
+  "message": "Voters retrieved successfully.",
+  "data": [
+    {
+      "vote_id": 1,
+      "poll_id": 1,
+      "option_id": 2,
+      "client_id": 101,
+      "remarks": "I really love the green lawn design!",
+      "voted_at": "2026-10-26 14:32:00",
+      "option_text": "Design B: Green Lawn with Coffee Corner",
+      "client_name": "Tanvir Ahmed",
+      "client_phone": "01711223344",
+      "flat_name": "A-12",
+      "project_name": "The Grand Residence"
+    }
+  ]
 }
 ```

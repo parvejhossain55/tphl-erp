@@ -294,6 +294,18 @@ $projectsJson = json_encode($projects ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON
         color: #ffffff;
     }
 
+    .poll-voters-clickable {
+        cursor: pointer;
+        transition: all 0.2s ease;
+        user-select: none;
+    }
+
+    .poll-voters-clickable:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12) !important;
+        filter: brightness(0.96);
+    }
+
     .empty-state-text {
         font-size: 14.5px;
         color: #64748b;
@@ -508,6 +520,80 @@ $projectsJson = json_encode($projects ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON
             <div class="modal-body p-0 position-relative text-center">
                 <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Close" style="z-index: 1060; background-color: rgba(0,0,0,0.5); border-radius: 50%; padding: 8px;"></button>
                 <img id="fullImageModalImg" src="" alt="Poll Banner" class="img-fluid rounded shadow" style="max-height: 85vh; object-fit: contain; background: #fff;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══ MODAL: VOTERS LIST ══ -->
+<div class="modal fade" id="votersListModal" tabindex="-1" aria-labelledby="votersListModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header border-bottom py-3" style="background-color: #f8fafc;">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="theme-header-icon" style="width: 38px; height: 38px; font-size: 18px;">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold text-dark mb-0 d-flex align-items-center gap-2" id="votersListModalLabel" style="font-size: 16px;">
+                            Voters List
+                            <span class="badge bg-success-subtle text-success border border-success-subtle small fw-semibold" id="modalVotersCountBadge">0 Voters</span>
+                        </h5>
+                        <div class="text-muted small" id="modalPollQuestionSubtitle">Poll Question</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-3 p-md-4">
+                <!-- Filter Badge info if filtered by option -->
+                <div id="modalOptionFilterNotice" class="alert alert-light border py-2 px-3 small d-flex align-items-center justify-content-between mb-3" style="display: none;">
+                    <div>
+                        <span class="text-muted">Filtered by Choice:</span> 
+                        <strong class="text-success ms-1" id="modalFilteredOptionName">Option</strong>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-link text-decoration-none p-0 text-secondary" onclick="viewAllPollVoters()" title="View All Voters">
+                        View All Voters &rarr;
+                    </button>
+                </div>
+
+                <!-- Search input -->
+                <div class="mb-3 position-relative">
+                    <input type="text" class="form-control form-control-sm ps-4" id="voterSearchInput" placeholder="Search by client name, flat/unit, phone..." onkeyup="filterVotersList()">
+                    <i class="fa-solid fa-magnifying-glass position-absolute top-50 start-0 translate-middle-y ms-2 text-muted small"></i>
+                </div>
+
+                <!-- Loading state -->
+                <div id="votersModalLoading" class="text-center py-4" style="display: none;">
+                    <div class="spinner-border spinner-border-sm text-success" role="status"></div>
+                    <p class="text-muted small mt-2 mb-0">Loading voters list...</p>
+                </div>
+
+                <!-- Empty state -->
+                <div id="votersModalEmpty" class="text-center py-4" style="display: none;">
+                    <div class="text-muted mb-1"><i class="fa-regular fa-folder-open fa-2x" style="color: #cbd5e1;"></i></div>
+                    <p class="text-muted small mb-0" id="votersModalEmptyText">No votes recorded yet for this selection.</p>
+                </div>
+
+                <!-- Voters Table -->
+                <div class="table-responsive" id="votersTableContainer" style="display: none; max-height: 380px; overflow-y: auto;">
+                    <table class="table table-hover align-middle mb-0 small">
+                        <thead class="table-light sticky-top" style="z-index: 1;">
+                            <tr>
+                                <th style="width: 45px;" class="text-center">#</th>
+                                <th>Client / User Name</th>
+                                <th>Unit / Flat No</th>
+                                <th>Selected Option</th>
+                                <th>Voted At</th>
+                            </tr>
+                        </thead>
+                        <tbody id="votersTableBody">
+                            <!-- Injected via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer border-top py-2 bg-light">
+                <button type="button" class="btn btn-sm btn-secondary px-3" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -788,8 +874,11 @@ $projectsJson = json_encode($projects ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON
                                 <span class="fw-semibold text-dark text-truncate me-2">
                                     <i class="fa-regular fa-circle-dot text-muted me-1"></i> ${escapeHtml(opt.option_text)}
                                 </span>
-                                <span class="badge bg-white text-secondary border flex-shrink-0">
+                                <span class="badge bg-white text-secondary border flex-shrink-0 poll-voters-clickable" 
+                                      onclick="openVotersModal(${poll.id}, ${opt.id})" 
+                                      title="Click to view voters for this option">
                                     <strong>${count}</strong> ${count === 1 ? 'vote' : 'votes'} (${pct}%)
+                                    <i class="fa-solid fa-users ms-1 text-success" style="font-size: 10px;"></i>
                                 </span>
                             </div>
                             <div class="poll-progress-custom">
@@ -827,7 +916,9 @@ $projectsJson = json_encode($projects ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON
                         <span class="fw-bold small text-dark">
                             <i class="fa-solid fa-square-poll-vertical text-success me-1"></i> Voting Results
                         </span>
-                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 poll-voters-clickable" 
+                              onclick="openVotersModal(${poll.id}, null)" 
+                              title="Click to view all voters">
                             <i class="fa-solid fa-users me-1"></i> <strong>${totalVotes}</strong> Total Votes
                         </span>
                     </div>
@@ -1208,6 +1299,162 @@ $projectsJson = json_encode($projects ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    // ── Voters Modal Logic ──────────────────────────────────────────
+    let currentVotersList = [];
+    let activePollIdForVoters = null;
+    let votersListModalInstance = null;
+
+    window.openVotersModal = async function(pollId, optionId = null) {
+        if (!pollId) return;
+
+        activePollIdForVoters = pollId;
+
+        const poll = rawPolls.find(p => p.id === pollId);
+        const pollTitle = poll ? poll.title : `Poll #${pollId}`;
+        let optionText = null;
+
+        if (optionId && poll && poll.options) {
+            const opt = poll.options.find(o => o.id === optionId);
+            if (opt) optionText = opt.option_text;
+        }
+
+        // Subtitles and labels
+        document.getElementById('modalPollQuestionSubtitle').innerText = pollTitle;
+        const filterNotice = document.getElementById('modalOptionFilterNotice');
+        if (optionText) {
+            document.getElementById('modalFilteredOptionName').innerText = optionText;
+            filterNotice.style.display = 'flex';
+        } else {
+            filterNotice.style.display = 'none';
+        }
+
+        // Reset UI states
+        document.getElementById('voterSearchInput').value = '';
+        document.getElementById('votersModalLoading').style.display = 'block';
+        document.getElementById('votersModalEmpty').style.display = 'none';
+        document.getElementById('votersTableContainer').style.display = 'none';
+        document.getElementById('modalVotersCountBadge').innerText = 'Loading...';
+
+        // Show Modal
+        const modalEl = document.getElementById('votersListModal');
+        votersListModalInstance = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+        votersListModalInstance.show();
+
+        try {
+            let url = `${API_BASE_URL}/${pollId}/voters`;
+            if (optionId) {
+                url += `?option_id=${optionId}`;
+            }
+
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP Error ${response.status}`);
+            }
+
+            const resData = await response.json();
+            currentVotersList = Array.isArray(resData.data) ? resData.data : [];
+
+            document.getElementById('votersModalLoading').style.display = 'none';
+            renderVotersTable(currentVotersList);
+
+        } catch (error) {
+            console.error("Failed to load voters:", error);
+            document.getElementById('votersModalLoading').style.display = 'none';
+            document.getElementById('votersModalEmpty').style.display = 'block';
+            document.getElementById('votersModalEmptyText').innerText = "Failed to load voters from server.";
+            document.getElementById('modalVotersCountBadge').innerText = '0 Voters';
+        }
+    };
+
+    window.viewAllPollVoters = function() {
+        if (activePollIdForVoters) {
+            openVotersModal(activePollIdForVoters, null);
+        }
+    };
+
+    window.filterVotersList = function() {
+        const query = document.getElementById('voterSearchInput').value.toLowerCase().trim();
+        if (!query) {
+            renderVotersTable(currentVotersList);
+            return;
+        }
+
+        const filtered = currentVotersList.filter(v => {
+            const name = (v.client_name || '').toLowerCase();
+            const flat = (v.flat_name || '').toLowerCase();
+            const phone = (v.client_phone || '').toLowerCase();
+            const opt = (v.option_text || '').toLowerCase();
+            return name.includes(query) || flat.includes(query) || phone.includes(query) || opt.includes(query);
+        });
+
+        renderVotersTable(filtered);
+    };
+
+    function renderVotersTable(voters) {
+        const tbody = document.getElementById('votersTableBody');
+        const emptyBox = document.getElementById('votersModalEmpty');
+        const tableContainer = document.getElementById('votersTableContainer');
+        const countBadge = document.getElementById('modalVotersCountBadge');
+
+        countBadge.innerText = `${voters.length} Voter${voters.length === 1 ? '' : 's'}`;
+        tbody.innerHTML = '';
+
+        if (!voters || voters.length === 0) {
+            tableContainer.style.display = 'none';
+            emptyBox.style.display = 'block';
+            document.getElementById('votersModalEmptyText').innerText = currentVotersList.length > 0 
+                ? "No voters match your search query." 
+                : "No votes recorded yet for this selection.";
+            return;
+        }
+
+        emptyBox.style.display = 'none';
+        tableContainer.style.display = 'block';
+
+        voters.forEach((v, index) => {
+            const tr = document.createElement('tr');
+
+            // Flat / Unit pill
+            let flatHtml = '<span class="text-muted">-</span>';
+            if (v.flat_name && v.flat_name !== 'N/A') {
+                flatHtml = `<span class="badge bg-light text-dark border px-2 py-1"><i class="fa-solid fa-door-closed me-1 text-success"></i>${escapeHtml(v.flat_name)}</span>`;
+            }
+
+            // Phone
+            const phoneHtml = v.client_phone ? `<div class="text-muted" style="font-size: 11px;"><i class="fa-solid fa-phone me-1"></i>${escapeHtml(v.client_phone)}</div>` : '';
+
+            // Remarks
+            const remarksHtml = v.remarks ? `<div class="text-muted fst-italic mt-1" style="font-size: 11px;">&ldquo;${escapeHtml(v.remarks)}&rdquo;</div>` : '';
+
+            tr.innerHTML = `
+                <td class="text-center text-muted fw-bold">${index + 1}</td>
+                <td>
+                    <div class="fw-semibold text-dark d-flex align-items-center gap-1">
+                        <i class="fa-regular fa-user text-secondary" style="font-size: 11px;"></i>
+                        <span>${escapeHtml(v.client_name || 'Client #' + v.client_id)}</span>
+                    </div>
+                    ${phoneHtml}
+                </td>
+                <td>${flatHtml}</td>
+                <td>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                        <i class="fa-regular fa-circle-check me-1"></i>${escapeHtml(v.option_text)}
+                    </span>
+                    ${remarksHtml}
+                </td>
+                <td class="text-muted small">${formatDate(v.voted_at)}</td>
+            `;
+
+            tbody.appendChild(tr);
+        });
     }
 
 })();
