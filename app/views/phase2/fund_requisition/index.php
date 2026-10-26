@@ -9,6 +9,79 @@ $isSiteEngineer = ($roleId === 12 || $designationId === 38);
 $canRequestPettyCash = ($isSiteEngineer || in_array($roleId, [1, 3, 20, 32], true));
 ?>
 
+<style>
+/* Transport Details Box (Adaptive Light & Dark Theme) */
+.transport-details-box {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0 !important;
+}
+.transport-purpose-box {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    color: #1e293b;
+}
+
+/* Dark Mode Overrides */
+html[data-theme-mode="dark"] .transport-details-box,
+[data-theme-mode="dark"] .transport-details-box,
+[data-bs-theme="dark"] .transport-details-box,
+body.dark-theme .transport-details-box {
+    background-color: #111c2e !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+html[data-theme-mode="dark"] .transport-details-box .form-label,
+html[data-theme-mode="dark"] .transport-details-box label,
+html[data-theme-mode="dark"] .transport-details-box small,
+[data-theme-mode="dark"] .transport-details-box .form-label,
+[data-theme-mode="dark"] .transport-details-box label,
+[data-theme-mode="dark"] .transport-details-box small,
+[data-bs-theme="dark"] .transport-details-box .form-label,
+[data-bs-theme="dark"] .transport-details-box label,
+[data-bs-theme="dark"] .transport-details-box small {
+    color: #cbd5e1 !important;
+}
+
+html[data-theme-mode="dark"] .transport-details-box .text-dark,
+[data-theme-mode="dark"] .transport-details-box .text-dark,
+[data-bs-theme="dark"] .transport-details-box .text-dark {
+    color: #f1f5f9 !important;
+}
+
+html[data-theme-mode="dark"] .transport-details-box .border-bottom,
+[data-theme-mode="dark"] .transport-details-box .border-bottom,
+[data-bs-theme="dark"] .transport-details-box .border-bottom {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html[data-theme-mode="dark"] .transport-details-box .input-group-text,
+[data-theme-mode="dark"] .transport-details-box .input-group-text,
+[data-bs-theme="dark"] .transport-details-box .input-group-text {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border-color: rgba(255, 255, 255, 0.14) !important;
+    color: #94a3b8 !important;
+}
+
+html[data-theme-mode="dark"] .transport-details-box .form-control,
+html[data-theme-mode="dark"] .transport-details-box .form-select,
+[data-theme-mode="dark"] .transport-details-box .form-control,
+[data-theme-mode="dark"] .transport-details-box .form-select,
+[data-bs-theme="dark"] .transport-details-box .form-control,
+[data-bs-theme="dark"] .transport-details-box .form-select {
+    background-color: #111c2e !important;
+    border-color: rgba(255, 255, 255, 0.14) !important;
+    color: #f1f5f9 !important;
+}
+
+html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
+[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
+[data-bs-theme="dark"] .transport-details-box .transport-purpose-box {
+    background-color: rgba(255, 255, 255, 0.04) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    color: #f1f5f9 !important;
+}
+</style>
+
     <div class="container-fluid">
         <!-- Page Header -->
         <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb no-print">
@@ -268,6 +341,9 @@ $canRequestPettyCash = ($isSiteEngineer || in_array($roleId, [1, 3, 20, 32], tru
                     $oldCategory = $oldFundReq['category'] ?? 'Other Expense';
                     $oldAmount = $oldFundReq['amount'] ?? '';
                     $oldPurpose = $oldFundReq['purpose'] ?? '';
+                    $oldLocation = $oldFundReq['location'] ?? '';
+                    $oldPurposeToVisit = $oldFundReq['purpose_to_visit'] ?? '';
+                    $oldModeOfTransport = $oldFundReq['mode_of_transport'] ?? '';
                     ?>
 
                     <?php if (!empty($coaList)): ?>
@@ -303,12 +379,63 @@ $canRequestPettyCash = ($isSiteEngineer || in_array($roleId, [1, 3, 20, 32], tru
 
                     <div class="mb-3" id="categoryGroup" style="<?= ($oldReqType === 'petty_cash') ? 'display: none;' : '' ?>">
                         <label for="category" class="form-label">Expense Category <span class="text-danger">*</span></label>
-                        <select name="category" id="category" class="form-select">
+                        <select name="category" id="category" class="form-select" onchange="toggleTransportFields()">
                             <option value="Transport" <?= ($oldCategory === 'Transport') ? 'selected' : '' ?>>Transport / Conveyance</option>
                             <option value="Food" <?= ($oldCategory === 'Food') ? 'selected' : '' ?>>Food / Entertainment</option>
                             <option value="Office Supplies" <?= ($oldCategory === 'Office Supplies') ? 'selected' : '' ?>>Office Supplies</option>
                             <option value="Other Expense" <?= ($oldCategory === 'Other Expense') ? 'selected' : '' ?>>Other Expense</option>
                         </select>
+                    </div>
+
+                    <!-- Dynamic Transport / Conveyance Fields (Location, Purpose to Visit, Mode of Transport) -->
+                    <div class="mb-3" id="transportFieldsGroup" style="<?= ($oldReqType !== 'petty_cash' && $oldCategory === 'Transport') ? '' : 'display: none;' ?>">
+                        <div class="p-3 rounded-3 transport-details-box">
+                            <div class="d-flex align-items-center gap-2 mb-2 pb-1 border-bottom">
+                                <i class="fa-solid fa-car-side text-primary"></i>
+                                <span class="fw-bold fs-12 text-primary text-uppercase">Transport / Conveyance Details</span>
+                            </div>
+                            
+                            <!-- 1. Location / Destination -->
+                            <div class="mb-2">
+                                <label for="location" class="form-label fs-12 mb-1 fw-semibold">
+                                    Location / Destination <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text"><i class="fa-solid fa-location-dot text-danger"></i></span>
+                                    <input type="text" name="location" id="location" class="form-control" placeholder="e.g. Uttara Project / Head Office / Client Site" value="<?= htmlspecialchars($oldLocation) ?>">
+                                </div>
+                            </div>
+
+                            <!-- 2. Purpose to Visit -->
+                            <div class="mb-2">
+                                <label for="purpose_to_visit" class="form-label fs-12 mb-1 fw-semibold">
+                                    Purpose to Visit <span class="text-danger">*</span>
+                                </label>
+                                <textarea name="purpose_to_visit" id="purpose_to_visit" class="form-control form-control-sm" rows="2" placeholder="Describe the purpose of visit (e.g. Site inspection, drawing handover, meeting)..."><?= htmlspecialchars($oldPurposeToVisit) ?></textarea>
+                            </div>
+
+                            <!-- 3. Mode of Transport -->
+                            <div class="mb-0">
+                                <label for="mode_of_transport" class="form-label fs-12 mb-1 fw-semibold">
+                                    Mode of Transport <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text"><i class="fa-solid fa-van-shuttle text-info"></i></span>
+                                    <select name="mode_of_transport" id="mode_of_transport" class="form-select">
+                                        <option value="">-- Select Transport Mode --</option>
+                                        <option value="Uber / Car" <?= ($oldModeOfTransport === 'Uber / Car') ? 'selected' : '' ?>>Uber / Car / Taxi</option>
+                                        <option value="CNG" <?= ($oldModeOfTransport === 'CNG') ? 'selected' : '' ?>>CNG Auto-rickshaw</option>
+                                        <option value="Rickshaw" <?= ($oldModeOfTransport === 'Rickshaw') ? 'selected' : '' ?>>Rickshaw</option>
+                                        <option value="Bike / Pathao" <?= ($oldModeOfTransport === 'Bike / Pathao') ? 'selected' : '' ?>>Bike / Ride Sharing</option>
+                                        <option value="Bus / Public" <?= ($oldModeOfTransport === 'Bus / Public') ? 'selected' : '' ?>>Bus / Public Transport</option>
+                                        <option value="Train" <?= ($oldModeOfTransport === 'Train') ? 'selected' : '' ?>>Train</option>
+                                        <option value="Air" <?= ($oldModeOfTransport === 'Air') ? 'selected' : '' ?>>Air Flight</option>
+                                        <option value="Office Vehicle" <?= ($oldModeOfTransport === 'Office Vehicle') ? 'selected' : '' ?>>Company / Office Vehicle</option>
+                                        <option value="Other" <?= ($oldModeOfTransport === 'Other') ? 'selected' : '' ?>>Other</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="mb-3">
@@ -582,6 +709,28 @@ $canRequestPettyCash = ($isSiteEngineer || in_array($roleId, [1, 3, 20, 32], tru
                                 <label class="text-muted fs-11 uppercase fw-semibold d-block">Purpose</label>
                                 <p class="mb-0 text-dark fs-12 text-wrap bg-light p-2 rounded" id="vPurpose">Purpose description goes here...</p>
                             </div>
+                            <div class="col-md-12 d-none" id="vTransportDetailsSection">
+                                <div class="p-3 rounded-3 transport-details-box">
+                                    <div class="d-flex align-items-center gap-2 mb-2 pb-1 border-bottom">
+                                        <i class="fa-solid fa-car-side text-primary"></i>
+                                        <span class="fw-bold fs-12 text-primary text-uppercase">Transport / Conveyance Details</span>
+                                    </div>
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <small class="text-muted fs-11 uppercase fw-semibold d-block"><i class="fa-solid fa-location-dot me-1 text-danger"></i>Location / Destination</small>
+                                            <span class="fs-12 fw-semibold text-dark d-block mt-1" id="vTransportLocation">—</span>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <small class="text-muted fs-11 uppercase fw-semibold d-block"><i class="fa-solid fa-van-shuttle me-1 text-info"></i>Mode of Transport</small>
+                                            <span class="badge bg-info-subtle text-info border border-info-subtle fs-12 mt-1" id="vTransportMode">—</span>
+                                        </div>
+                                        <div class="col-12 mt-1">
+                                            <small class="text-muted fs-11 uppercase fw-semibold d-block"><i class="fa-solid fa-route me-1 text-primary"></i>Purpose to Visit</small>
+                                            <p class="mb-0 fs-12 p-2 rounded transport-purpose-box mt-1" id="vTransportPurpose">—</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -850,6 +999,16 @@ function openPurposeModal(id, fullPurpose, requesterName) {
     myModal.show();
 }
 
+function toggleTransportFields() {
+    var typeEl = document.getElementById('requisition_type');
+    var catEl = document.getElementById('category');
+    var tGroup = document.getElementById('transportFieldsGroup');
+    if (!typeEl || !catEl || !tGroup) return;
+
+    var isTransport = (typeEl.value === 'general' && catEl.value === 'Transport');
+    tGroup.style.display = isTransport ? 'block' : 'none';
+}
+
 function toggleRequisitionType() {
     var type = document.getElementById('requisition_type').value;
     var categoryGroup = document.getElementById('categoryGroup');
@@ -858,16 +1017,21 @@ function toggleRequisitionType() {
     if (type === 'petty_cash') {
         categoryGroup.style.display = 'none';
         amountInput.setAttribute('max', '10000');
+        var tGroup = document.getElementById('transportFieldsGroup');
+        if (tGroup) tGroup.style.display = 'none';
     } else {
         categoryGroup.style.display = 'block';
         amountInput.removeAttribute('max');
         document.getElementById('amountLimitWarning').classList.add('d-none');
+        toggleTransportFields();
     }
 }
 
 // Client-side validations
 // Dynamic multiple receipts upload (Max 4)
 document.addEventListener('DOMContentLoaded', function() {
+    toggleTransportFields();
+
     var addBtn = document.getElementById('addMoreReceiptBtn');
     var container = document.getElementById('receiptInputsContainer');
     var badge = document.getElementById('receiptCountBadge');
@@ -933,6 +1097,8 @@ document.getElementById('requisitionForm').addEventListener('submit', function(e
     var dept = deptEl ? deptEl.value : '';
     var typeEl = document.getElementById('requisition_type');
     var type = typeEl ? typeEl.value : 'general';
+    var catEl = document.getElementById('category');
+    var cat = catEl ? catEl.value : '';
     var amountEl = document.getElementById('amount');
     var amount = parseFloat(amountEl ? amountEl.value : 0);
     var purposeEl = document.getElementById('purpose');
@@ -954,6 +1120,70 @@ document.getElementById('requisitionForm').addEventListener('submit', function(e
         }
         if (deptEl) deptEl.focus();
         return false;
+    }
+
+    if (type === 'general' && cat === 'Transport') {
+        var locEl = document.getElementById('location');
+        var visitEl = document.getElementById('purpose_to_visit');
+        var modeEl = document.getElementById('mode_of_transport');
+        
+        var locVal = locEl ? locEl.value.trim() : '';
+        var visitVal = visitEl ? visitEl.value.trim() : '';
+        var modeVal = modeEl ? modeEl.value.trim() : '';
+
+        if (!locVal) {
+            e.preventDefault();
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'warning',
+                    title: 'Please specify Location / Destination for Transport requisition.',
+                    showConfirmButton: false,
+                    timer: 3500
+                });
+            } else {
+                alert('Please specify Location / Destination for Transport requisition.');
+            }
+            if (locEl) locEl.focus();
+            return false;
+        }
+
+        if (!visitVal) {
+            e.preventDefault();
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'warning',
+                    title: 'Please describe Purpose to Visit for Transport requisition.',
+                    showConfirmButton: false,
+                    timer: 3500
+                });
+            } else {
+                alert('Please describe Purpose to Visit for Transport requisition.');
+            }
+            if (visitEl) visitEl.focus();
+            return false;
+        }
+
+        if (!modeVal) {
+            e.preventDefault();
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'warning',
+                    title: 'Please select Mode of Transport.',
+                    showConfirmButton: false,
+                    timer: 3500
+                });
+            } else {
+                alert('Please select Mode of Transport.');
+            }
+            if (modeEl) modeEl.focus();
+            return false;
+        }
     }
 
     if (isNaN(amount) || amount <= 0) {
@@ -1173,6 +1403,18 @@ function fetchModalExpensesData(id, startDate = '', endDate = '') {
             document.getElementById('vDeptProject').innerText = (req.department_name || 'N/A') + ' / ' + (req.project_name || 'Office General');
             document.getElementById('vAmount').innerText = 'BDT ' + parseFloat(req.amount).toLocaleString('en-US', {minimumFractionDigits: 2});
             document.getElementById('vPurpose').innerText = req.purpose;
+
+            var tSection = document.getElementById('vTransportDetailsSection');
+            if (req.location || req.purpose_to_visit || req.mode_of_transport || req.category === 'Transport') {
+                if (tSection) {
+                    tSection.classList.remove('d-none');
+                    document.getElementById('vTransportLocation').innerText = req.location || '—';
+                    document.getElementById('vTransportMode').innerText = req.mode_of_transport || '—';
+                    document.getElementById('vTransportPurpose').innerText = req.purpose_to_visit || '—';
+                }
+            } else {
+                if (tSection) tSection.classList.add('d-none');
+            }
             
             if (req.receipt_path) {
                 var receiptsList = [];
@@ -1710,6 +1952,14 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer, $serial = 1) {
         <td>
             <span class="<?= $badgeType ?> mb-1"><?= $typeText ?></span>
             <div class="fs-11 text-muted"><?= htmlspecialchars($req['category'] ?? 'Miscellaneous') ?></div>
+            <?php if (!empty($req['location']) || !empty($req['mode_of_transport'])): ?>
+                <div class="fs-10 text-primary mt-1" title="Destination: <?= htmlspecialchars($req['location'] ?? '') ?>">
+                    <i class="fa-solid fa-location-dot me-1 text-danger"></i><?= htmlspecialchars($req['location'] ?? '') ?>
+                    <?php if (!empty($req['mode_of_transport'])): ?>
+                        <span class="text-muted">(<?= htmlspecialchars($req['mode_of_transport']) ?>)</span>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
         </td>
         <td class="text-end fw-bold text-dark">
             BDT <?= number_format($req['amount'], 2) ?>

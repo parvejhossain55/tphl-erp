@@ -2288,7 +2288,7 @@ class ApprovalRequest extends Model
                     ar.source_id,
                     ar.approve_role,
                     IFNULL(ar.request_amount, 0.00) AS request_amount,
-                    IFNULL(ar.approved_amount, ar.request_amount) AS approved_amount,
+                    CASE WHEN ar.status = 'approved' THEN IFNULL(ar.approved_amount, ar.request_amount) ELSE ar.approved_amount END AS approved_amount,
                     ar.attachment,
                     ar.status,
                     ar.created_at AS requested_at,
@@ -2515,10 +2515,19 @@ class ApprovalRequest extends Model
                     }
                 }
             } else if ($sourceTable === 'con_labor_requisitions') {
-                $lrSql = "SELECT status, total_amount, approved_amount, qc_approved_amount, 
-                                 IFNULL(approved_amount, total_amount) AS app_amt,
-                                 IFNULL(total_paid, 0.00) AS total_paid, payment_date 
-                          FROM con_labor_requisitions WHERE id = ? LIMIT 1";
+                $lrSql = "SELECT lr.status, lr.total_amount, lr.approved_amount, lr.qc_approved_amount, 
+                                 lr.qc_approved_by, lr.qc_approved_at, lr.qc_note,
+                                 u_qc.full_name AS qc_approver_name,
+                                 e_qc.employee_id AS qc_approver_code,
+                                 COALESCE(des_qc.name, r_qc.name, 'QC & Audit Head') AS qc_approver_designation,
+                                 IFNULL(lr.approved_amount, lr.total_amount) AS app_amt,
+                                 IFNULL(lr.total_paid, 0.00) AS total_paid, lr.payment_date 
+                          FROM con_labor_requisitions lr
+                          LEFT JOIN users u_qc ON lr.qc_approved_by = u_qc.id
+                          LEFT JOIN roles r_qc ON u_qc.role_id = r_qc.id
+                          LEFT JOIN employees e_qc ON (e_qc.user_id = u_qc.id OR e_qc.id = u_qc.employee_id)
+                          LEFT JOIN designations des_qc ON des_qc.id = COALESCE(e_qc.designation_id, u_qc.designation_id)
+                          WHERE lr.id = ? LIMIT 1";
                 $lrStmt = $this->db->prepare($lrSql);
                 if ($lrStmt) {
                     $lrStmt->bind_param("i", $sourceId);
@@ -2527,10 +2536,20 @@ class ApprovalRequest extends Model
                     $lrStmt->close();
                     if ($lrRow) {
                         $row['qc_approved_amount'] = (float)($lrRow['qc_approved_amount'] ?? 0);
+                        $row['qc_approved_by'] = $lrRow['qc_approved_by'] ?? null;
+                        $row['qc_approved_at'] = $lrRow['qc_approved_at'] ?? null;
+                        $row['qc_note'] = $lrRow['qc_note'] ?? null;
+                        $row['qc_approver_name'] = $lrRow['qc_approver_name'] ?? null;
+                        $row['qc_approver_code'] = $lrRow['qc_approver_code'] ?? null;
+                        $row['qc_approver_designation'] = $lrRow['qc_approver_designation'] ?? null;
+                        $row['request_amount'] = (float)($lrRow['total_amount'] ?? $row['request_amount']);
+
                         if (!empty($lrRow['approved_amount']) && (float)$lrRow['approved_amount'] > 0) {
                             $row['approved_amount'] = (float)$lrRow['approved_amount'];
                         } elseif (!empty($lrRow['qc_approved_amount']) && (float)$lrRow['qc_approved_amount'] > 0) {
                             $row['approved_amount'] = (float)$lrRow['qc_approved_amount'];
+                        } else {
+                            $row['approved_amount'] = null;
                         }
                         $lrStatus = strtolower($lrRow['status'] ?? '');
                         if ($lrStatus === 'pending') {
@@ -3848,7 +3867,7 @@ class ApprovalRequest extends Model
                 $requestType = 'Labor Bill by SE';
                 $projectName = !empty($row['project_name']) ? $row['project_name'] : 'Project #' . $row['project_id'];
                 $title       = "Labor Bill — " . $row['requisition_no'] . " | " . $projectName . " (" . $row['labor_count'] . " " . $row['labor_type'] . " Labors)";
-                $amount      = !empty($row['pm_verified_amount']) ? (float)$row['pm_verified_amount'] : (!empty($row['qc_approved_amount']) ? (float)$row['qc_approved_amount'] : (float)$row['total_amount']);
+                $amount      = (float)$row['total_amount'];
                 $requestedBy = (int) $row['requested_by'];
                 
                 $lrStatus = $row['status'];
@@ -3930,10 +3949,11 @@ class ApprovalRequest extends Model
                 ar.approved_by = lr.management_approved_by,
                 ar.approved_at = lr.management_approved_at,
                 ar.approval_note = lr.management_note,
-                ar.request_amount = COALESCE(lr.qc_approved_amount, lr.total_amount),
+                ar.request_amount = lr.total_amount,
                 ar.approved_amount = CASE 
                     WHEN lr.status IN ('management_approved', 'partially_paid', 'paid', 'labor_disbursed') THEN COALESCE(lr.approved_amount, lr.total_amount) 
-                    ELSE ar.approved_amount 
+                    WHEN lr.status IN ('qc_approved', 'pm_payment_approved') THEN COALESCE(lr.qc_approved_amount, lr.approved_amount)
+                    ELSE NULL 
                 END
         ";
         @$this->db->query($syncSql);

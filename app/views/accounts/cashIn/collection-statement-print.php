@@ -427,6 +427,48 @@ $printMode   = $print_mode ?? ($_GET['print_mode'] ?? 'full');
             color: #64748b;
         }
 
+        /* Screen preview responsive styling for mobile & tablets */
+        @media screen and (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            .no-print-bar {
+                flex-direction: column;
+                gap: 12px;
+                text-align: center;
+                padding: 12px;
+            }
+            .no-print-bar > div:last-child {
+                display: flex;
+                width: 100%;
+                gap: 8px;
+            }
+            .no-print-bar .btn {
+                flex: 1;
+                justify-content: center;
+            }
+            .print-container {
+                padding: 14px;
+                overflow-x: auto;
+            }
+            .company-header {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .statement-title-badge {
+                text-align: left;
+            }
+            .stat-cards-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 8px;
+            }
+            table.statement-table,
+            table.type-summary-table,
+            table.bank-summary-table {
+                min-width: 680px;
+            }
+        }
+
         @media print {
             body {
                 background: #fff;

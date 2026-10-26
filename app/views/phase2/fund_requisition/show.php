@@ -54,6 +54,61 @@ $settleBadgeMap = [
 $baseAmount = ($effectiveApprovedAmount > 0) ? $effectiveApprovedAmount : (float)$req['amount'];
 $spentPercent = ($baseAmount > 0) ? min(100, round(((float)($totalSpent ?? 0) / $baseAmount) * 100, 1)) : 0;
 ?>
+
+<style>
+/* Transport Details Box (Adaptive Light & Dark Theme) */
+.transport-details-box {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0 !important;
+}
+.transport-purpose-box {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    color: #1e293b;
+}
+
+/* Dark Mode Overrides */
+html[data-theme-mode="dark"] .transport-details-box,
+[data-theme-mode="dark"] .transport-details-box,
+[data-bs-theme="dark"] .transport-details-box,
+body.dark-theme .transport-details-box {
+    background-color: #111c2e !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+html[data-theme-mode="dark"] .transport-details-box .form-label,
+html[data-theme-mode="dark"] .transport-details-box label,
+html[data-theme-mode="dark"] .transport-details-box small,
+[data-theme-mode="dark"] .transport-details-box .form-label,
+[data-theme-mode="dark"] .transport-details-box label,
+[data-theme-mode="dark"] .transport-details-box small,
+[data-bs-theme="dark"] .transport-details-box .form-label,
+[data-bs-theme="dark"] .transport-details-box label,
+[data-bs-theme="dark"] .transport-details-box small {
+    color: #cbd5e1 !important;
+}
+
+html[data-theme-mode="dark"] .transport-details-box .text-dark,
+[data-theme-mode="dark"] .transport-details-box .text-dark,
+[data-bs-theme="dark"] .transport-details-box .text-dark {
+    color: #f1f5f9 !important;
+}
+
+html[data-theme-mode="dark"] .transport-details-box .border-bottom,
+[data-theme-mode="dark"] .transport-details-box .border-bottom,
+[data-bs-theme="dark"] .transport-details-box .border-bottom {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
+[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
+[data-bs-theme="dark"] .transport-details-box .transport-purpose-box {
+    background-color: rgba(255, 255, 255, 0.04) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    color: #f1f5f9 !important;
+}
+</style>
+
 <div class="container-fluid py-3">
     <!-- PAGE BREADCRUMB & HEADER -->
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4 page-header-breadcrumb">
@@ -136,6 +191,11 @@ $spentPercent = ($baseAmount > 0) ? min(100, round(((float)($totalSpent ?? 0) / 
             <div class="col-4"><small class="text-muted d-block">Type</small><strong><?php echo ucfirst(str_replace('_', ' ', $req['requisition_type'] ?? '')); ?> — <?php echo htmlspecialchars($req['category'] ?? ''); ?></strong></div>
             <div class="col-4"><small class="text-muted d-block">Amount Requested</small><strong>&#2547; <?php echo number_format($req['amount'], 2); ?></strong></div>
             <div class="col-4"><small class="text-muted d-block">Date</small><strong><?php echo date('d M Y', strtotime($req['created_at'])); ?></strong></div>
+            <?php if (!empty($req['location']) || !empty($req['purpose_to_visit']) || !empty($req['mode_of_transport'])): ?>
+                <div class="col-4"><small class="text-muted d-block">Location / Destination</small><strong><?= htmlspecialchars($req['location'] ?? '---') ?></strong></div>
+                <div class="col-4"><small class="text-muted d-block">Mode of Transport</small><strong><?= htmlspecialchars($req['mode_of_transport'] ?? '---') ?></strong></div>
+                <div class="col-4"><small class="text-muted d-block">Purpose to Visit</small><strong><?= htmlspecialchars($req['purpose_to_visit'] ?? '---') ?></strong></div>
+            <?php endif; ?>
             <div class="col-12"><small class="text-muted d-block">Purpose</small><p class="mb-0"><?php echo nl2br(htmlspecialchars($req['purpose'])); ?></p></div>
             <?php if ($req['status'] === 'paid'): ?>
                 <div class="col-4"><small class="text-muted d-block">Status</small><strong>Paid via <?php echo htmlspecialchars($req['payment_method'] ?? 'Cash'); ?></strong></div>
@@ -305,6 +365,31 @@ $spentPercent = ($baseAmount > 0) ? min(100, round(((float)($totalSpent ?? 0) / 
                                 <?php endif; ?>
                             </div>
                         </div>
+
+                        <?php if (!empty($req['location']) || !empty($req['purpose_to_visit']) || !empty($req['mode_of_transport']) || ($req['category'] ?? '') === 'Transport'): ?>
+                            <div class="col-12">
+                                <div class="p-3 rounded-3 transport-details-box">
+                                    <div class="d-flex align-items-center gap-2 mb-2 pb-1 border-bottom">
+                                        <i class="fa-solid fa-car-side text-primary"></i>
+                                        <span class="fw-bold fs-12 text-primary text-uppercase">Transport &amp; Visit Details</span>
+                                    </div>
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <small class="text-muted d-block fs-11 text-uppercase fw-semibold"><i class="fa-solid fa-location-dot me-1 text-danger"></i>Location / Destination</small>
+                                            <span class="fs-13 fw-semibold text-dark mt-1 d-block"><?= !empty($req['location']) ? htmlspecialchars($req['location']) : '—' ?></span>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <small class="text-muted d-block fs-11 text-uppercase fw-semibold"><i class="fa-solid fa-van-shuttle me-1 text-info"></i>Mode of Transport</small>
+                                            <span class="badge bg-info-subtle text-info border border-info-subtle fs-12 mt-1"><?= !empty($req['mode_of_transport']) ? htmlspecialchars($req['mode_of_transport']) : '—' ?></span>
+                                        </div>
+                                        <div class="col-12 mt-1">
+                                            <small class="text-muted d-block fs-11 text-uppercase fw-semibold"><i class="fa-solid fa-route me-1 text-primary"></i>Purpose to Visit</small>
+                                            <div class="fs-12 p-2 rounded transport-purpose-box mt-1"><?= !empty($req['purpose_to_visit']) ? nl2br(htmlspecialchars($req['purpose_to_visit'])) : '—' ?></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endif; ?>
 
                         <?php if (!empty($req['asset_code'])): ?>
                             <div class="col-12">

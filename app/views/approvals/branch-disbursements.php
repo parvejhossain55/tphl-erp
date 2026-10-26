@@ -38,7 +38,54 @@ $moduleOptions = [
 ];
 ?>
 
+
+
 <style>
+    /* =========================================================
+       BRANCH CARDS & RESPONSIVE GRID (PC: 5 CARDS, LAPTOP: 3 CARDS)
+       ========================================================= */
+    .branch-cards-row {
+        display: flex;
+        flex-wrap: wrap;
+        margin-right: -0.5rem;
+        margin-left: -0.5rem;
+    }
+    .branch-card-col {
+        padding-right: 0.5rem;
+        padding-left: 0.5rem;
+        margin-bottom: 1rem;
+        display: flex;
+        flex-direction: column;
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+    .branch-card-col > a {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        height: 100%;
+    }
+    @media (min-width: 576px) {
+        .branch-card-col {
+            flex: 0 0 50%;
+            max-width: 50%;
+        }
+    }
+    @media (min-width: 992px) {
+        /* Laptop screens: 3 cards per row */
+        .branch-card-col {
+            flex: 0 0 33.333333%;
+            max-width: 33.333333%;
+        }
+    }
+    @media (min-width: 1400px) {
+        /* PC / Wide Desktop screens: All 5 cards in the same row */
+        .branch-card-col {
+            flex: 0 0 20%;
+            max-width: 20%;
+        }
+    }
+
     .branch-card {
         border-radius: 12px;
         transition: all 0.25s cubic-bezier(0.165, 0.84, 0.44, 1);
@@ -46,6 +93,9 @@ $moduleOptions = [
         background: #ffffff;
         position: relative;
         overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
     }
     .branch-card:hover {
         transform: translateY(-3px);
@@ -65,6 +115,12 @@ $moduleOptions = [
         align-items: center;
         justify-content: center;
         font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+    .branch-card-amount {
+        font-size: clamp(1.15rem, 1.2vw, 1.4rem);
+        font-weight: 700;
+        line-height: 1.2;
     }
     .officer-badge-item {
         background: #f8fafc;
@@ -76,6 +132,11 @@ $moduleOptions = [
     }
     .officer-badge-item:hover {
         background: #e2e8f0;
+    }
+    .kpi-summary-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        transition: all 0.2s ease;
     }
     .search-filter-card {
         background: #ffffff;
@@ -104,6 +165,184 @@ $moduleOptions = [
         font-size: 11px;
         font-weight: 600;
     }
+
+    /* =========================================================
+       DARK MODE THEME COMPATIBILITY (Supports [bd-theme="bd-theme-dark"])
+       ========================================================= */
+    [bd-theme="bd-theme-dark"] .branch-card,
+    html[data-theme-mode="dark"] .branch-card {
+        background: #111c2e !important;
+        border-color: rgba(255, 255, 255, 0.08) !important;
+        color: #f1f5f9 !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+    }
+    [bd-theme="bd-theme-dark"] .branch-card:hover,
+    html[data-theme-mode="dark"] .branch-card:hover {
+        border-color: #38bdf8 !important;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(56, 189, 248, 0.15) !important;
+        transform: translateY(-3px);
+    }
+    [bd-theme="bd-theme-dark"] .branch-card.active-branch-card,
+    html[data-theme-mode="dark"] .branch-card.active-branch-card {
+        border-color: #38bdf8 !important;
+        background: #152338 !important;
+        box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.3) !important;
+    }
+    [bd-theme="bd-theme-dark"] .branch-card h6,
+    [bd-theme="bd-theme-dark"] .branch-card h4,
+    [bd-theme="bd-theme-dark"] .branch-card .text-dark,
+    html[data-theme-mode="dark"] .branch-card h6,
+    html[data-theme-mode="dark"] .branch-card h4,
+    html[data-theme-mode="dark"] .branch-card .text-dark {
+        color: #f8fafc !important;
+    }
+    [bd-theme="bd-theme-dark"] .branch-card .text-muted,
+    html[data-theme-mode="dark"] .branch-card .text-muted {
+        color: #94a3b8 !important;
+    }
+    [bd-theme="bd-theme-dark"] .branch-card .border-top,
+    html[data-theme-mode="dark"] .branch-card .border-top {
+        border-color: rgba(255, 255, 255, 0.08) !important;
+    }
+    [bd-theme="bd-theme-dark"] .branch-card .badge.bg-light,
+    [bd-theme="bd-theme-dark"] .badge.bg-light,
+    html[data-theme-mode="dark"] .branch-card .badge.bg-light,
+    html[data-theme-mode="dark"] .badge.bg-light {
+        background-color: #0b1320 !important;
+        border-color: rgba(255, 255, 255, 0.1) !important;
+        color: #e2e8f0 !important;
+    }
+
+    /* Officer badge inside branch card in Dark Mode */
+    [bd-theme="bd-theme-dark"] .officer-badge-item,
+    html[data-theme-mode="dark"] .officer-badge-item {
+        background: #0b1320 !important;
+        border-color: rgba(255, 255, 255, 0.07) !important;
+        color: #e2e8f0 !important;
+    }
+    [bd-theme="bd-theme-dark"] .officer-badge-item:hover,
+    html[data-theme-mode="dark"] .officer-badge-item:hover {
+        background: #17263c !important;
+        border-color: rgba(255, 255, 255, 0.15) !important;
+    }
+    [bd-theme="bd-theme-dark"] .officer-badge-item .text-dark,
+    html[data-theme-mode="dark"] .officer-badge-item .text-dark {
+        color: #f1f5f9 !important;
+    }
+
+    /* Top KPI Summary Cards in Dark Mode */
+    [bd-theme="bd-theme-dark"] .kpi-summary-card,
+    html[data-theme-mode="dark"] .kpi-summary-card {
+        background: #111c2e !important;
+        border-color: rgba(255, 255, 255, 0.08) !important;
+        color: #f1f5f9 !important;
+    }
+    [bd-theme="bd-theme-dark"] .kpi-summary-card .text-dark,
+    html[data-theme-mode="dark"] .kpi-summary-card .text-dark {
+        color: #f8fafc !important;
+    }
+    [bd-theme="bd-theme-dark"] .kpi-summary-card .text-muted,
+    html[data-theme-mode="dark"] .kpi-summary-card .text-muted {
+        color: #94a3b8 !important;
+    }
+
+    /* Search & Filter Toolbar in Dark Mode */
+    [bd-theme="bd-theme-dark"] .search-filter-card,
+    html[data-theme-mode="dark"] .search-filter-card {
+        background: #111c2e !important;
+        border-color: rgba(255, 255, 255, 0.08) !important;
+        color: #f1f5f9 !important;
+    }
+    [bd-theme="bd-theme-dark"] .search-filter-card .form-control,
+    [bd-theme="bd-theme-dark"] .search-filter-card .form-select,
+    [bd-theme="bd-theme-dark"] .search-filter-card .input-group-text,
+    [bd-theme="bd-theme-dark"] #tableLiveFilter,
+    html[data-theme-mode="dark"] .search-filter-card .form-control,
+    html[data-theme-mode="dark"] .search-filter-card .form-select,
+    html[data-theme-mode="dark"] .search-filter-card .input-group-text,
+    html[data-theme-mode="dark"] #tableLiveFilter {
+        background-color: #0b1320 !important;
+        border-color: rgba(255, 255, 255, 0.12) !important;
+        color: #f8fafc !important;
+    }
+    [bd-theme="bd-theme-dark"] .search-filter-card label,
+    html[data-theme-mode="dark"] .search-filter-card label {
+        color: #94a3b8 !important;
+    }
+
+    /* Table & Container Card in Dark Mode */
+    [bd-theme="bd-theme-dark"] .disbursements-table-card,
+    html[data-theme-mode="dark"] .disbursements-table-card {
+        background: #111c2e !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+    [bd-theme="bd-theme-dark"] .table-disbursements th,
+    html[data-theme-mode="dark"] .table-disbursements th {
+        background-color: #0b1320 !important;
+        border-color: rgba(255, 255, 255, 0.08) !important;
+        color: #94a3b8 !important;
+    }
+    [bd-theme="bd-theme-dark"] .table-disbursements td,
+    html[data-theme-mode="dark"] .table-disbursements td {
+        border-color: rgba(255, 255, 255, 0.06) !important;
+        color: #cbd5e1 !important;
+    }
+    [bd-theme="bd-theme-dark"] .table-disbursements tr.disbursement-row:hover td,
+    html[data-theme-mode="dark"] .table-disbursements tr.disbursement-row:hover td {
+        background-color: rgba(255, 255, 255, 0.03) !important;
+    }
+    [bd-theme="bd-theme-dark"] .table-disbursements .text-dark,
+    html[data-theme-mode="dark"] .table-disbursements .text-dark {
+        color: #f8fafc !important;
+    }
+    [bd-theme="bd-theme-dark"] .table-disbursements tfoot,
+    [bd-theme="bd-theme-dark"] .table-disbursements tfoot th,
+    html[data-theme-mode="dark"] .table-disbursements tfoot,
+    html[data-theme-mode="dark"] .table-disbursements tfoot th {
+        background-color: #0b1320 !important;
+        border-color: rgba(255, 255, 255, 0.08) !important;
+        color: #f8fafc !important;
+    }
+    [bd-theme="bd-theme-dark"] .card-footer.table-pagination-footer,
+    html[data-theme-mode="dark"] .card-footer.table-pagination-footer {
+        background: #0b1320 !important;
+        border-color: rgba(255, 255, 255, 0.08) !important;
+        color: #94a3b8 !important;
+    }
+    [bd-theme="bd-theme-dark"] .card-footer.table-pagination-footer strong,
+    html[data-theme-mode="dark"] .card-footer.table-pagination-footer strong {
+        color: #f8fafc !important;
+    }
+    [bd-theme="bd-theme-dark"] .pagination .page-link,
+    html[data-theme-mode="dark"] .pagination .page-link {
+        background-color: #111c2e !important;
+        border-color: rgba(255, 255, 255, 0.1) !important;
+        color: #cbd5e1 !important;
+    }
+    [bd-theme="bd-theme-dark"] .pagination .page-item.active .page-link,
+    html[data-theme-mode="dark"] .pagination .page-item.active .page-link {
+        background-color: #0d6efd !important;
+        border-color: #0d6efd !important;
+        color: #ffffff !important;
+    }
+    [bd-theme="bd-theme-dark"] .pagination .page-item.disabled .page-link,
+    html[data-theme-mode="dark"] .pagination .page-item.disabled .page-link {
+        background-color: #070d18 !important;
+        border-color: rgba(255, 255, 255, 0.05) !important;
+        color: #64748b !important;
+    }
+
+    /* Subtle Dark Mode Variants for Branch Card Icons */
+    [bd-theme="bd-theme-dark"] .branch-card-icon-0,
+    html[data-theme-mode="dark"] .branch-card-icon-0 { background: rgba(56, 189, 248, 0.16) !important; color: #38bdf8 !important; }
+    [bd-theme="bd-theme-dark"] .branch-card-icon-1,
+    html[data-theme-mode="dark"] .branch-card-icon-1 { background: rgba(52, 211, 153, 0.16) !important; color: #34d399 !important; }
+    [bd-theme="bd-theme-dark"] .branch-card-icon-2,
+    html[data-theme-mode="dark"] .branch-card-icon-2 { background: rgba(251, 191, 36, 0.16) !important; color: #fbbf24 !important; }
+    [bd-theme="bd-theme-dark"] .branch-card-icon-3,
+    html[data-theme-mode="dark"] .branch-card-icon-3 { background: rgba(192, 132, 252, 0.16) !important; color: #c084fc !important; }
+    [bd-theme="bd-theme-dark"] .branch-card-icon-4,
+    html[data-theme-mode="dark"] .branch-card-icon-4 { background: rgba(248, 113, 113, 0.16) !important; color: #f87171 !important; }
 </style>
 
 <div class="container-fluid px-3 py-3">
@@ -139,10 +378,10 @@ $moduleOptions = [
     </div>
 
     <!-- Company High-Level KPI Summary Row -->
-    <div class="row  mb-4">
+    <div class="row mb-4">
         <!-- Total Disbursed Amount -->
-        <div class="col-xl-3 col-md-6">
-            <div class="card border-0 shadow-sm rounded-3 h-100 bg-white border-start border-4 border-success">
+        <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
+            <div class="card kpi-summary-card border-0 shadow-sm rounded-3 h-100 border-start border-4 border-success">
                 <div class="card-body p-3">
                     <div class="d-flex align-items-center justify-content-between mb-2">
                         <span class="text-muted small fw-semibold text-uppercase">Total Disbursed Amount</span>
@@ -159,8 +398,8 @@ $moduleOptions = [
         </div>
 
         <!-- Total Transactions Count -->
-        <div class="col-xl-3 col-md-6">
-            <div class="card border-0 shadow-sm rounded-3 h-100 bg-white border-start border-4 border-primary">
+        <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
+            <div class="card kpi-summary-card border-0 shadow-sm rounded-3 h-100 border-start border-4 border-primary">
                 <div class="card-body p-3">
                     <div class="d-flex align-items-center justify-content-between mb-2">
                         <span class="text-muted small fw-semibold text-uppercase">Paid Transactions</span>
@@ -177,8 +416,8 @@ $moduleOptions = [
         </div>
 
         <!-- Active Disbursing Officers -->
-        <div class="col-xl-3 col-md-6">
-            <div class="card border-0 shadow-sm rounded-3 h-100 bg-white border-start border-4 border-info">
+        <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
+            <div class="card kpi-summary-card border-0 shadow-sm rounded-3 h-100 border-start border-4 border-info">
                 <div class="card-body p-3">
                     <div class="d-flex align-items-center justify-content-between mb-2">
                         <span class="text-muted small fw-semibold text-uppercase">Disbursing Officers</span>
@@ -195,8 +434,8 @@ $moduleOptions = [
         </div>
 
         <!-- Active Branches -->
-        <div class="col-xl-3 col-md-6">
-            <div class="card border-0 shadow-sm rounded-3 h-100 bg-white border-start border-4 border-warning">
+        <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
+            <div class="card kpi-summary-card border-0 shadow-sm rounded-3 h-100 border-start border-4 border-warning">
                 <div class="card-body p-3">
                     <div class="d-flex align-items-center justify-content-between mb-2">
                         <span class="text-muted small fw-semibold text-uppercase">Active Office Branches</span>
@@ -213,7 +452,7 @@ $moduleOptions = [
         </div>
     </div>
 
-    <!-- Office Branch Cards Grid (Required: "kon office e koto taka paid hoiche and ke ke koreche") -->
+    <!-- Office Branch Cards Grid (PC: 5 cards in same row, Laptop: 3 cards per row) -->
     <div class="mb-4">
         <div class="d-flex align-items-center justify-content-between mb-2">
             <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
@@ -223,7 +462,7 @@ $moduleOptions = [
             <span class="badge bg-light text-secondary border">Click on any card to filter by that office</span>
         </div>
 
-        <div class="row ">
+        <div class="row branch-cards-row g-2">
             <?php 
             $branchColorIndex = 0;
             $palette = [
@@ -235,7 +474,8 @@ $moduleOptions = [
             ];
 
             foreach ($branchesData as $bId => $branch): 
-                $style = $palette[$branchColorIndex % count($palette)];
+                $iconVariantIndex = $branchColorIndex % count($palette);
+                $style = $palette[$iconVariantIndex];
                 $branchColorIndex++;
                 $isSelected = ($selectedBranch !== '' && (string)$selectedBranch === (string)$bId);
                 $branchUrl = $base_url . '/branch-disbursements?' . http_build_query(array_merge($currentFilters, ['branch_id' => $bId]));
@@ -246,39 +486,41 @@ $moduleOptions = [
                     $branchUrl = $base_url . '/branch-disbursements?' . http_build_query($clearFilters);
                 }
             ?>
-                <div class="col-xl-3 col-md-6">
+                <div class="branch-card-col">
                     <a href="<?= $branchUrl ?>" class="text-decoration-none">
                         <div class="branch-card p-3 h-100 <?= $isSelected ? 'active-branch-card' : '' ?>">
-                            <div class="d-flex align-items-start justify-content-between mb-3">
-                                <div class="d-flex align-items-center gap-2">
-                                    <div class="branch-card-icon" style="background-color: <?= $style['icon_bg'] ?>; color: <?= $style['icon_color'] ?>;">
-                                        <i class="fa-solid fa-building"></i>
+                            <div>
+                                <div class="d-flex align-items-start justify-content-between mb-3">
+                                    <div class="d-flex align-items-center gap-2 overflow-hidden">
+                                        <div class="branch-card-icon branch-card-icon-<?= $iconVariantIndex ?>" style="background-color: <?= $style['icon_bg'] ?>; color: <?= $style['icon_color'] ?>;">
+                                            <i class="fa-solid fa-building"></i>
+                                        </div>
+                                        <div class="overflow-hidden">
+                                            <h6 class="fw-bold mb-0 text-dark text-truncate" title="<?= htmlspecialchars($branch['branch_name']) ?>"><?= htmlspecialchars($branch['branch_name']) ?></h6>
+                                            <span class="text-muted extra-small">
+                                                Code: <?= htmlspecialchars($branch['branch_code'] ?? 'N/A') ?>
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h6 class="fw-bold mb-0 text-dark"><?= htmlspecialchars($branch['branch_name']) ?></h6>
-                                        <span class="text-muted extra-small">
-                                            Code: <?= htmlspecialchars($branch['branch_code'] ?? 'N/A') ?>
+                                    <?php if ($isSelected): ?>
+                                        <span class="badge bg-primary rounded-pill extra-small flex-shrink-0 ms-1"><i class="fa-solid fa-check me-1"></i>Filtered</span>
+                                    <?php endif; ?>
+                                </div>
+
+                                <!-- Amount Paid from this Office -->
+                                <div class="mb-3">
+                                    <div class="text-muted extra-small text-uppercase fw-semibold">Total Paid from Office</div>
+                                    <h4 class="fw-bold mb-0 text-dark branch-card-amount">
+                                        ৳ <?= number_format($branch['total_amount'], 2) ?>
+                                    </h4>
+                                    <div class="d-flex flex-wrap align-items-center gap-1 mt-1">
+                                        <span class="badge bg-light text-dark border extra-small">
+                                            <i class="fa-solid fa-receipt me-1 text-primary"></i><?= number_format($branch['transaction_count']) ?> payouts
+                                        </span>
+                                        <span class="badge bg-light text-dark border extra-small">
+                                            <i class="fa-solid fa-users me-1 text-success"></i><?= count($branch['officers']) ?> officers
                                         </span>
                                     </div>
-                                </div>
-                                <?php if ($isSelected): ?>
-                                    <span class="badge bg-primary rounded-pill extra-small"><i class="fa-solid fa-check me-1"></i>Filtered</span>
-                                <?php endif; ?>
-                            </div>
-
-                            <!-- Amount Paid from this Office -->
-                            <div class="mb-3">
-                                <div class="text-muted extra-small text-uppercase fw-semibold">Total Paid from Office</div>
-                                <h4 class="fw-bold mb-0 text-dark">
-                                    ৳ <?= number_format($branch['total_amount'], 2) ?>
-                                </h4>
-                                <div class="d-flex align-items-center gap-2 mt-1">
-                                    <span class="badge bg-light text-dark border extra-small">
-                                        <i class="fa-solid fa-receipt me-1 text-primary"></i><?= number_format($branch['transaction_count']) ?> payouts
-                                    </span>
-                                    <span class="badge bg-light text-dark border extra-small">
-                                        <i class="fa-solid fa-users me-1 text-success"></i><?= count($branch['officers']) ?> officers
-                                    </span>
                                 </div>
                             </div>
 
@@ -286,7 +528,7 @@ $moduleOptions = [
                             <div class="border-top pt-2 mt-2">
                                 <div class="text-muted extra-small fw-semibold mb-1 d-flex justify-content-between align-items-center">
                                     <span><i class="fa-solid fa-user-check me-1 text-secondary"></i>Officers at this Office:</span>
-                                    <span class="extra-small text-primary"><?= count($branch['officers']) ?></span>
+                                    <span class="extra-small text-primary fw-bold"><?= count($branch['officers']) ?></span>
                                 </div>
                                 <?php if (!empty($branch['officers'])): ?>
                                     <div class="d-flex flex-column gap-1">
@@ -416,7 +658,7 @@ $moduleOptions = [
                 Transactions List
             </span>
             <span class="badge bg-secondary-subtle text-secondary rounded-pill">
-                <?= number_format(count($transactions)) ?> Records Found
+                <?= number_format($totalTransactionsCount ?? count($transactions)) ?> Records Found
             </span>
 
             <?php if (!empty($selectedBranch)): ?>
@@ -470,7 +712,7 @@ $moduleOptions = [
     </div>
 
     <!-- Main Transactions Table -->
-    <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+    <div class="card disbursements-table-card border-0 shadow-sm rounded-3 overflow-hidden">
         <div class="table-responsive">
             <table class="table table-hover table-disbursements mb-0" id="disbursementsTable">
                 <thead>
@@ -629,7 +871,7 @@ $moduleOptions = [
 
         <!-- Pagination Controls -->
         <?php if (($totalPages ?? 1) > 1): ?>
-            <div class="card-footer bg-white border-top py-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="card-footer table-pagination-footer border-top py-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
                 <div class="small text-muted">
                     Showing <strong><?= number_format((($currentPage ?? 1) - 1) * ($perPage ?? 50) + 1) ?></strong> to 
                     <strong><?= number_format(min(($currentPage ?? 1) * ($perPage ?? 50), $totalTransactionsCount ?? count($transactions))) ?></strong> of 
@@ -744,3 +986,6 @@ function exportDisbursementsTableToCSV() {
     document.body.removeChild(downloadLink);
 }
 </script>
+
+
+

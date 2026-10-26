@@ -28,7 +28,10 @@ class FundRequisitionController extends Controller {
             'qc_approved_by' => "INT(11) NULL DEFAULT NULL AFTER dept_head_approval_note",
             'qc_approved_at' => "TIMESTAMP NULL DEFAULT NULL AFTER qc_approved_by",
             'qc_approval_note' => "TEXT NULL DEFAULT NULL AFTER qc_approved_at",
-            'qc_approved_amount' => "DECIMAL(12,2) NULL DEFAULT NULL AFTER qc_approval_note"
+            'qc_approved_amount' => "DECIMAL(12,2) NULL DEFAULT NULL AFTER qc_approval_note",
+            'location' => "VARCHAR(255) NULL DEFAULT NULL AFTER category",
+            'purpose_to_visit' => "TEXT NULL DEFAULT NULL AFTER location",
+            'mode_of_transport' => "VARCHAR(100) NULL DEFAULT NULL AFTER purpose_to_visit"
         ];
 
         foreach ($colsNeeded as $col => $definition) {
@@ -548,6 +551,10 @@ class FundRequisitionController extends Controller {
         $amount = is_numeric($rawAmount) ? (float)$rawAmount : 0;
         $purpose = trim($_POST['purpose'] ?? '');
 
+        $location = trim($_POST['location'] ?? '');
+        $purpose_to_visit = trim($_POST['purpose_to_visit'] ?? '');
+        $mode_of_transport = trim($_POST['mode_of_transport'] ?? '');
+
         // Exact field-by-field validation with specific error messages
         $errors = [];
         if ($department_id <= 0) {
@@ -560,15 +567,35 @@ class FundRequisitionController extends Controller {
             $errors[] = 'Please describe the Purpose / Description of this requisition.';
         }
 
+        // If category is Transport / Conveyance, validate transport-specific fields
+        if ($requisition_type === 'general' && $category === 'Transport') {
+            if ($location === '') {
+                $errors[] = 'Please specify Location / Destination for Transport requisition.';
+            }
+            if ($purpose_to_visit === '') {
+                $errors[] = 'Please describe Purpose to Visit for Transport requisition.';
+            }
+            if ($mode_of_transport === '') {
+                $errors[] = 'Please select or specify Mode of Transport.';
+            }
+        } else {
+            $location = !empty($location) ? $location : null;
+            $purpose_to_visit = !empty($purpose_to_visit) ? $purpose_to_visit : null;
+            $mode_of_transport = !empty($mode_of_transport) ? $mode_of_transport : null;
+        }
+
         if (!empty($errors)) {
             setError(count($errors) === 1 ? $errors[0] : implode(' • ', $errors));
             $_SESSION['old_fund_requisition'] = [
-                'department_id'    => $department_id,
-                'project_id'       => $project_id,
-                'requisition_type' => $requisition_type,
-                'category'         => $category,
-                'amount'           => $rawAmount,
-                'purpose'          => $purpose,
+                'department_id'      => $department_id,
+                'project_id'         => $project_id,
+                'requisition_type'   => $requisition_type,
+                'category'           => $category,
+                'amount'             => $rawAmount,
+                'purpose'            => $purpose,
+                'location'           => $location,
+                'purpose_to_visit'   => $purpose_to_visit,
+                'mode_of_transport'  => $mode_of_transport,
             ];
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions?open_modal=1");
             exit;
@@ -593,6 +620,9 @@ class FundRequisitionController extends Controller {
                 exit;
             }
             $category = 'Petty Cash';
+            $location = null;
+            $purpose_to_visit = null;
+            $mode_of_transport = null;
         }
 
         // Receipt Uploads (Supports multiple files up to 4 images/documents)
@@ -657,10 +687,10 @@ class FundRequisitionController extends Controller {
 
         $stmt = $this->db->prepare("
             INSERT INTO fund_requisitions 
-            (department_id, project_id, requested_by, requisition_type, category, amount, purpose, receipt_path, status, is_dept_approval_required, dept_head_status, account_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (department_id, project_id, requested_by, requisition_type, category, amount, purpose, receipt_path, status, is_dept_approval_required, dept_head_status, account_id, location, purpose_to_visit, mode_of_transport)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->bind_param("iiissdsssisi", $department_id, $project_id, $requested_by, $requisition_type, $category, $amount, $purpose, $receipt_path, $status, $isDeptApprovalRequired, $deptHeadStatus, $account_id);
+        $stmt->bind_param("iiissdsssisisss", $department_id, $project_id, $requested_by, $requisition_type, $category, $amount, $purpose, $receipt_path, $status, $isDeptApprovalRequired, $deptHeadStatus, $account_id, $location, $purpose_to_visit, $mode_of_transport);
 
         if ($stmt->execute()) {
             $newReqId = $stmt->insert_id;
