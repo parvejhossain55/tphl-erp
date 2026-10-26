@@ -2011,15 +2011,6 @@ public function showCedTransactionForm($bookingId = null)
 {
     if (session_status() === PHP_SESSION_NONE) session_start();
 
-    if ((function_exists('isClientsCommunicated') && isClientsCommunicated()) 
-        || ((int)($_SESSION['user']['role_id'] ?? 0) === 37) 
-        || ((int)($_SESSION['user']['secondary_role_id'] ?? 0) === 37)
-        || ((int)($_SESSION['user']['id'] ?? 0) === 359)) {
-        setError("Access Denied: The Clients Communicated role is not permitted to add transactions.");
-        header("Location: {$GLOBALS['base_url']}/client-wise-due-tracking");
-        exit;
-    }
-
     if (!$bookingId) {
         $bookingId = $_GET['booking_id'] ?? null;
     }
@@ -2081,15 +2072,6 @@ public function addCedTransaction()
     }
 
     if (session_status() === PHP_SESSION_NONE) session_start();
-
-    if ((function_exists('isClientsCommunicated') && isClientsCommunicated()) 
-        || ((int)($_SESSION['user']['role_id'] ?? 0) === 37) 
-        || ((int)($_SESSION['user']['secondary_role_id'] ?? 0) === 37)
-        || ((int)($_SESSION['user']['id'] ?? 0) === 359)) {
-        setError("Access Denied: The Clients Communicated role is not permitted to add transactions.");
-        header("Location: {$GLOBALS['base_url']}/client-wise-due-tracking");
-        exit;
-    }
 
     $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
     if (!empty($clientDetails['is_shop']) && $clientDetails['is_shop'] == 1) {
