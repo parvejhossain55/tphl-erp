@@ -6,19 +6,35 @@ $show_breadcrumb = true;
 
 <style>
     /* Styling for Client-wise Due Tracking */
-    .due-stat-card {
+    .due-stat-card, .emi-stat-card {
         border: 0;
         border-radius: 12px;
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
         transition: transform 0.2s ease, box-shadow 0.2s ease;
         overflow: hidden;
     }
-    .due-stat-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+    .emi-stat-card {
+        cursor: pointer;
     }
-    .due-stat-card .card-body {
+    .due-stat-card:hover, .emi-stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    }
+    .due-stat-card .card-body, .emi-stat-card .card-body {
         padding: 1.15rem 1.25rem;
+    }
+    .emi-category-pills .nav-link {
+        color: #475569;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+    }
+    .emi-category-pills .nav-link:hover {
+        background-color: #f1f5f9;
+        color: #0f172a;
+    }
+    .emi-category-pills .nav-link.active {
+        background-color: #0f172a !important;
+        color: #ffffff !important;
     }
     .stat-pill {
         font-size: 11px;
@@ -37,6 +53,34 @@ $show_breadcrumb = true;
         border-color: #0d6efd;
         background: #f0f7ff;
         box-shadow: 0 2px 8px rgba(13, 110, 253, 0.15);
+    }
+    .registered-client-chip-btn {
+        transition: all 0.15s ease;
+    }
+    .registered-client-chip-btn:hover {
+        background-color: #198754 !important;
+        color: #fff !important;
+        border-color: #198754 !important;
+        transform: scale(1.02);
+    }
+    #projectChipsContainer {
+        max-height: 295px;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+    #projectChipsContainer::-webkit-scrollbar {
+        width: 6px;
+    }
+    #projectChipsContainer::-webkit-scrollbar-track {
+        background: #f8f9fa;
+        border-radius: 4px;
+    }
+    #projectChipsContainer::-webkit-scrollbar-thumb {
+        background: #ced4da;
+        border-radius: 4px;
+    }
+    #projectChipsContainer::-webkit-scrollbar-thumb:hover {
+        background: #adb5bd;
     }
     .due-type-pill {
         border-radius: 20px;
@@ -155,6 +199,452 @@ $show_breadcrumb = true;
         padding: 8px 14px;
     }
 
+    /* =========================================================================
+       DARK THEME COMPATIBILITY FOR CLIENT-WISE DUE TRACKING
+       ========================================================================= */
+    [bd-theme="bd-theme-dark"] .client-due-tracking-wrapper .bg-white,
+    [data-bs-theme="dark"] .client-due-tracking-wrapper .bg-white,
+    body.dark-only .client-due-tracking-wrapper .bg-white,
+    body.dark-mode .client-due-tracking-wrapper .bg-white,
+    .dark-mode .client-due-tracking-wrapper .bg-white,
+    [bd-theme="bd-theme-dark"] .client-due-tracking-wrapper .card,
+    [data-bs-theme="dark"] .client-due-tracking-wrapper .card,
+    body.dark-only .client-due-tracking-wrapper .card,
+    body.dark-mode .client-due-tracking-wrapper .card,
+    .dark-mode .client-due-tracking-wrapper .card,
+    [bd-theme="bd-theme-dark"] .client-due-tracking-wrapper .card-header,
+    [data-bs-theme="dark"] .client-due-tracking-wrapper .card-header,
+    body.dark-only .client-due-tracking-wrapper .card-header,
+    body.dark-mode .client-due-tracking-wrapper .card-header,
+    .dark-mode .client-due-tracking-wrapper .card-header,
+    [bd-theme="bd-theme-dark"] .client-due-tracking-wrapper .card-footer,
+    [data-bs-theme="dark"] .client-due-tracking-wrapper .card-footer,
+    body.dark-only .client-due-tracking-wrapper .card-footer,
+    body.dark-mode .client-due-tracking-wrapper .card-footer,
+    .dark-mode .client-due-tracking-wrapper .card-footer {
+        background-color: var(--clr-bg-card, #1e293b) !important;
+        border-color: #334155 !important;
+        color: #f1f5f9 !important;
+    }
+
+    [bd-theme="bd-theme-dark"] .client-due-tracking-wrapper .border,
+    [data-bs-theme="dark"] .client-due-tracking-wrapper .border,
+    body.dark-only .client-due-tracking-wrapper .border,
+    body.dark-mode .client-due-tracking-wrapper .border,
+    .dark-mode .client-due-tracking-wrapper .border {
+        border-color: #334155 !important;
+    }
+
+    [bd-theme="bd-theme-dark"] .client-due-tracking-wrapper .text-dark,
+    [data-bs-theme="dark"] .client-due-tracking-wrapper .text-dark,
+    body.dark-only .client-due-tracking-wrapper .text-dark,
+    body.dark-mode .client-due-tracking-wrapper .text-dark,
+    .dark-mode .client-due-tracking-wrapper .text-dark {
+        color: #f1f5f9 !important;
+    }
+
+    [bd-theme="bd-theme-dark"] .client-due-tracking-wrapper .text-muted,
+    [data-bs-theme="dark"] .client-due-tracking-wrapper .text-muted,
+    body.dark-only .client-due-tracking-wrapper .text-muted,
+    body.dark-mode .client-due-tracking-wrapper .text-muted,
+    .dark-mode .client-due-tracking-wrapper .text-muted {
+        color: #94a3b8 !important;
+    }
+
+    /* Top KPI & EMI Cards */
+    [bd-theme="bd-theme-dark"] .due-stat-card,
+    [data-bs-theme="dark"] .due-stat-card,
+    body.dark-only .due-stat-card,
+    body.dark-mode .due-stat-card,
+    .dark-mode .due-stat-card,
+    [bd-theme="bd-theme-dark"] .emi-stat-card,
+    [data-bs-theme="dark"] .emi-stat-card,
+    body.dark-only .emi-stat-card,
+    body.dark-mode .emi-stat-card,
+    .dark-mode .emi-stat-card {
+        background-color: #1e293b !important;
+        border: 1px solid #334155 !important;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3) !important;
+    }
+    [bd-theme="bd-theme-dark"] .due-stat-card.border-danger,
+    [data-bs-theme="dark"] .due-stat-card.border-danger,
+    [bd-theme="bd-theme-dark"] .emi-stat-card.border-danger,
+    [data-bs-theme="dark"] .emi-stat-card.border-danger { border-left: 4px solid #ef4444 !important; }
+    [bd-theme="bd-theme-dark"] .due-stat-card.border-warning,
+    [data-bs-theme="dark"] .due-stat-card.border-warning,
+    [bd-theme="bd-theme-dark"] .emi-stat-card.border-warning,
+    [data-bs-theme="dark"] .emi-stat-card.border-warning { border-left: 4px solid #f59e0b !important; }
+    [bd-theme="bd-theme-dark"] .due-stat-card.border-info,
+    [data-bs-theme="dark"] .due-stat-card.border-info,
+    [bd-theme="bd-theme-dark"] .emi-stat-card.border-info,
+    [data-bs-theme="dark"] .emi-stat-card.border-info { border-left: 4px solid #06b6d4 !important; }
+    [bd-theme="bd-theme-dark"] .due-stat-card.border-primary,
+    [data-bs-theme="dark"] .due-stat-card.border-primary,
+    [bd-theme="bd-theme-dark"] .emi-stat-card.border-primary,
+    [data-bs-theme="dark"] .emi-stat-card.border-primary { border-left: 4px solid #3b82f6 !important; }
+    [bd-theme="bd-theme-dark"] .emi-stat-card.border-success,
+    [data-bs-theme="dark"] .emi-stat-card.border-success { border-left: 4px solid #10b981 !important; }
+
+    /* Category Pills in Dark Mode */
+    [bd-theme="bd-theme-dark"] .emi-category-pills,
+    [data-bs-theme="dark"] .emi-category-pills,
+    body.dark-only .emi-category-pills,
+    body.dark-mode .emi-category-pills,
+    .dark-mode .emi-category-pills {
+        background-color: #0f172a !important;
+        border-color: #334155 !important;
+    }
+    [bd-theme="bd-theme-dark"] .emi-category-pills .nav-link,
+    [data-bs-theme="dark"] .emi-category-pills .nav-link,
+    body.dark-only .emi-category-pills .nav-link,
+    body.dark-mode .emi-category-pills .nav-link,
+    .dark-mode .emi-category-pills .nav-link {
+        color: #94a3b8 !important;
+    }
+    [bd-theme="bd-theme-dark"] .emi-category-pills .nav-link.active,
+    [data-bs-theme="dark"] .emi-category-pills .nav-link.active,
+    body.dark-only .emi-category-pills .nav-link.active,
+    body.dark-mode .emi-category-pills .nav-link.active,
+    .dark-mode .emi-category-pills .nav-link.active {
+        background-color: #3b82f6 !important;
+        color: #ffffff !important;
+    }
+
+    /* Project Chip Cards */
+    [bd-theme="bd-theme-dark"] .project-chip,
+    [data-bs-theme="dark"] .project-chip,
+    body.dark-only .project-chip,
+    body.dark-mode .project-chip,
+    .dark-mode .project-chip {
+        background: #1e293b !important;
+        border-color: #334155 !important;
+        color: #f1f5f9 !important;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2) !important;
+    }
+    [bd-theme="bd-theme-dark"] .project-chip:hover,
+    [data-bs-theme="dark"] .project-chip:hover,
+    body.dark-only .project-chip:hover,
+    body.dark-mode .project-chip:hover,
+    .dark-mode .project-chip:hover {
+        background: #273549 !important;
+        border-color: #3b82f6 !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.35) !important;
+    }
+    [bd-theme="bd-theme-dark"] .project-chip.active,
+    [data-bs-theme="dark"] .project-chip.active,
+    body.dark-only .project-chip.active,
+    body.dark-mode .project-chip.active,
+    .dark-mode .project-chip.active {
+        background: #1e3a5f !important;
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 1px #3b82f6, 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+    }
+    [bd-theme="bd-theme-dark"] .project-chip .border-top,
+    [data-bs-theme="dark"] .project-chip .border-top,
+    body.dark-only .project-chip .border-top,
+    body.dark-mode .project-chip .border-top,
+    .dark-mode .project-chip .border-top {
+        border-top-color: #334155 !important;
+        color: #94a3b8 !important;
+    }
+
+    /* Scrollbar for Project Chips */
+    [bd-theme="bd-theme-dark"] #projectChipsContainer::-webkit-scrollbar-track,
+    [data-bs-theme="dark"] #projectChipsContainer::-webkit-scrollbar-track,
+    body.dark-only #projectChipsContainer::-webkit-scrollbar-track,
+    body.dark-mode #projectChipsContainer::-webkit-scrollbar-track {
+        background: #0f172a;
+    }
+    [bd-theme="bd-theme-dark"] #projectChipsContainer::-webkit-scrollbar-thumb,
+    [data-bs-theme="dark"] #projectChipsContainer::-webkit-scrollbar-thumb,
+    body.dark-only #projectChipsContainer::-webkit-scrollbar-thumb,
+    body.dark-mode #projectChipsContainer::-webkit-scrollbar-thumb {
+        background: #334155;
+    }
+    [bd-theme="bd-theme-dark"] #projectChipsContainer::-webkit-scrollbar-thumb:hover,
+    [data-bs-theme="dark"] #projectChipsContainer::-webkit-scrollbar-thumb:hover,
+    body.dark-only #projectChipsContainer::-webkit-scrollbar-thumb:hover,
+    body.dark-mode #projectChipsContainer::-webkit-scrollbar-thumb:hover {
+        background: #475569;
+    }
+
+    /* Quick Filter Pills */
+    [bd-theme="bd-theme-dark"] .due-type-pill,
+    [data-bs-theme="dark"] .due-type-pill,
+    body.dark-only .due-type-pill,
+    body.dark-mode .due-type-pill,
+    .dark-mode .due-type-pill {
+        background: #1e293b !important;
+        color: #cbd5e1 !important;
+        border-color: #334155 !important;
+    }
+    [bd-theme="bd-theme-dark"] .due-type-pill:hover,
+    [data-bs-theme="dark"] .due-type-pill:hover,
+    body.dark-only .due-type-pill:hover,
+    body.dark-mode .due-type-pill:hover,
+    .dark-mode .due-type-pill:hover {
+        background: #273549 !important;
+        border-color: #475569 !important;
+        color: #ffffff !important;
+    }
+    [bd-theme="bd-theme-dark"] .due-type-pill.active,
+    [data-bs-theme="dark"] .due-type-pill.active,
+    body.dark-only .due-type-pill.active,
+    body.dark-mode .due-type-pill.active,
+    .dark-mode .due-type-pill.active {
+        background: #0d6efd !important;
+        color: #ffffff !important;
+        border-color: #0d6efd !important;
+        box-shadow: 0 2px 8px rgba(13, 110, 253, 0.4) !important;
+    }
+
+    /* Due Toolbar & Inputs */
+    [bd-theme="bd-theme-dark"] .due-toolbar,
+    [data-bs-theme="dark"] .due-toolbar,
+    body.dark-only .due-toolbar,
+    body.dark-mode .due-toolbar,
+    .dark-mode .due-toolbar {
+        background-color: #141d2e !important;
+        border-color: #334155 !important;
+    }
+    [bd-theme="bd-theme-dark"] .due-toolbar .form-control,
+    [bd-theme="bd-theme-dark"] .due-toolbar .form-select,
+    [bd-theme="bd-theme-dark"] #projectChipSearch,
+    [data-bs-theme="dark"] .due-toolbar .form-control,
+    [data-bs-theme="dark"] .due-toolbar .form-select,
+    [data-bs-theme="dark"] #projectChipSearch,
+    body.dark-only .due-toolbar .form-control,
+    body.dark-only .due-toolbar .form-select,
+    body.dark-only #projectChipSearch,
+    body.dark-mode .due-toolbar .form-control,
+    body.dark-mode .due-toolbar .form-select,
+    body.dark-mode #projectChipSearch,
+    .dark-mode .due-toolbar .form-control,
+    .dark-mode .due-toolbar .form-select,
+    .dark-mode #projectChipSearch {
+        background-color: #1e293b !important;
+        border-color: #334155 !important;
+        color: #f1f5f9 !important;
+    }
+    [bd-theme="bd-theme-dark"] .due-toolbar .form-control::placeholder,
+    [bd-theme="bd-theme-dark"] #projectChipSearch::placeholder,
+    [data-bs-theme="dark"] .due-toolbar .form-control::placeholder,
+    [data-bs-theme="dark"] #projectChipSearch::placeholder {
+        color: #64748b !important;
+    }
+
+    /* Select2 in Toolbar */
+    [bd-theme="bd-theme-dark"] .due-toolbar .select2-container--default .select2-selection--single,
+    [data-bs-theme="dark"] .due-toolbar .select2-container--default .select2-selection--single,
+    body.dark-only .due-toolbar .select2-container--default .select2-selection--single,
+    body.dark-mode .due-toolbar .select2-container--default .select2-selection--single,
+    .dark-mode .due-toolbar .select2-container--default .select2-selection--single {
+        background-color: #1e293b !important;
+        border-color: #334155 !important;
+    }
+    [bd-theme="bd-theme-dark"] .due-toolbar .select2-container--default .select2-selection--single .select2-selection__rendered,
+    [data-bs-theme="dark"] .due-toolbar .select2-container--default .select2-selection--single .select2-selection__rendered,
+    body.dark-only .due-toolbar .select2-container--default .select2-selection--single .select2-selection__rendered,
+    body.dark-mode .due-toolbar .select2-container--default .select2-selection--single .select2-selection__rendered,
+    .dark-mode .due-toolbar .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: #f1f5f9 !important;
+    }
+    [bd-theme="bd-theme-dark"] .select2-dropdown,
+    [data-bs-theme="dark"] .select2-dropdown,
+    body.dark-only .select2-dropdown,
+    body.dark-mode .select2-dropdown,
+    .dark-mode .select2-dropdown {
+        background-color: #1e293b !important;
+        border-color: #334155 !important;
+    }
+    [bd-theme="bd-theme-dark"] .select2-container--default .select2-search--dropdown,
+    [data-bs-theme="dark"] .select2-container--default .select2-search--dropdown,
+    body.dark-only .select2-container--default .select2-search--dropdown,
+    body.dark-mode .select2-container--default .select2-search--dropdown,
+    .dark-mode .select2-container--default .select2-search--dropdown {
+        background-color: #141d2e !important;
+        border-color: #334155 !important;
+    }
+    [bd-theme="bd-theme-dark"] .select2-container--default .select2-search--dropdown .select2-search__field,
+    [data-bs-theme="dark"] .select2-container--default .select2-search--dropdown .select2-search__field,
+    body.dark-only .select2-container--default .select2-search--dropdown .select2-search__field,
+    body.dark-mode .select2-container--default .select2-search--dropdown .select2-search__field,
+    .dark-mode .select2-container--default .select2-search--dropdown .select2-search__field {
+        background-color: #1e293b !important;
+        border-color: #334155 !important;
+        color: #f1f5f9 !important;
+    }
+    [bd-theme="bd-theme-dark"] .select2-container--default .select2-results__option,
+    [data-bs-theme="dark"] .select2-container--default .select2-results__option,
+    body.dark-only .select2-container--default .select2-results__option,
+    body.dark-mode .select2-container--default .select2-results__option,
+    .dark-mode .select2-container--default .select2-results__option {
+        color: #cbd5e1 !important;
+    }
+    [bd-theme="bd-theme-dark"] .select2-container--default .select2-results__option--highlighted,
+    [data-bs-theme="dark"] .select2-container--default .select2-results__option--highlighted,
+    body.dark-only .select2-container--default .select2-results__option--highlighted,
+    body.dark-mode .select2-container--default .select2-results__option--highlighted,
+    .dark-mode .select2-container--default .select2-results__option--highlighted {
+        background-color: #2563eb !important;
+        color: #ffffff !important;
+    }
+
+    /* Table Due */
+    [bd-theme="bd-theme-dark"] .table-due,
+    [data-bs-theme="dark"] .table-due,
+    body.dark-only .table-due,
+    body.dark-mode .table-due,
+    .dark-mode .table-due {
+        color: #e2e8f0 !important;
+        border-color: #334155 !important;
+    }
+    [bd-theme="bd-theme-dark"] .table-due thead th,
+    [data-bs-theme="dark"] .table-due thead th,
+    body.dark-only .table-due thead th,
+    body.dark-mode .table-due thead th,
+    .dark-mode .table-due thead th {
+        background-color: #141d2e !important;
+        color: #94a3b8 !important;
+        border-bottom-color: #334155 !important;
+    }
+    [bd-theme="bd-theme-dark"] .table-due tbody td,
+    [data-bs-theme="dark"] .table-due tbody td,
+    body.dark-only .table-due tbody td,
+    body.dark-mode .table-due tbody td,
+    .dark-mode .table-due tbody td {
+        border-bottom-color: #263345 !important;
+        color: #e2e8f0 !important;
+        background-color: transparent !important;
+    }
+    [bd-theme="bd-theme-dark"] .table-due tbody tr:hover,
+    [data-bs-theme="dark"] .table-due tbody tr:hover,
+    body.dark-only .table-due tbody tr:hover,
+    body.dark-mode .table-due tbody tr:hover,
+    .dark-mode .table-due tbody tr:hover {
+        background-color: rgba(255, 255, 255, 0.04) !important;
+    }
+    [bd-theme="bd-theme-dark"] .table-due tbody tr:hover td,
+    [data-bs-theme="dark"] .table-due tbody tr:hover td,
+    body.dark-only .table-due tbody tr:hover td,
+    body.dark-mode .table-due tbody tr:hover td,
+    .dark-mode .table-due tbody tr:hover td {
+        background-color: rgba(255, 255, 255, 0.04) !important;
+    }
+    [bd-theme="bd-theme-dark"] .table-due .bg-light,
+    [data-bs-theme="dark"] .table-due .bg-light,
+    body.dark-only .table-due .bg-light,
+    body.dark-mode .table-due .bg-light,
+    .dark-mode .table-due .bg-light {
+        background-color: #1e293b !important;
+        border-color: #334155 !important;
+        color: #38bdf8 !important;
+    }
+
+    /* Modals in Dark Mode */
+    [bd-theme="bd-theme-dark"] .modal-content,
+    [data-bs-theme="dark"] .modal-content,
+    body.dark-only .modal-content,
+    body.dark-mode .modal-content,
+    .dark-mode .modal-content {
+        background-color: #1e293b !important;
+        border-color: #334155 !important;
+        color: #f1f5f9 !important;
+    }
+    [bd-theme="bd-theme-dark"] .modal-content .modal-header,
+    [data-bs-theme="dark"] .modal-content .modal-header,
+    body.dark-only .modal-content .modal-header,
+    body.dark-mode .modal-content .modal-header,
+    .dark-mode .modal-content .modal-header {
+        border-bottom-color: #334155 !important;
+    }
+    [bd-theme="bd-theme-dark"] .modal-content .modal-footer,
+    [data-bs-theme="dark"] .modal-content .modal-footer,
+    body.dark-only .modal-content .modal-footer,
+    body.dark-mode .modal-content .modal-footer,
+    .dark-mode .modal-content .modal-footer {
+        background-color: #141d2e !important;
+        border-top-color: #334155 !important;
+    }
+    [bd-theme="bd-theme-dark"] .modal-content .bg-light,
+    [data-bs-theme="dark"] .modal-content .bg-light,
+    body.dark-only .modal-content .bg-light,
+    body.dark-mode .modal-content .bg-light,
+    .dark-mode .modal-content .bg-light {
+        background-color: #141d2e !important;
+        border-color: #334155 !important;
+        color: #cbd5e1 !important;
+    }
+    [bd-theme="bd-theme-dark"] .modal-content .table,
+    [data-bs-theme="dark"] .modal-content .table,
+    body.dark-only .modal-content .table,
+    body.dark-mode .modal-content .table,
+    .dark-mode .modal-content .table {
+        color: #e2e8f0 !important;
+    }
+    [bd-theme="bd-theme-dark"] .modal-content .table th,
+    [bd-theme="bd-theme-dark"] .modal-content .table td,
+    [data-bs-theme="dark"] .modal-content .table th,
+    [data-bs-theme="dark"] .modal-content .table td,
+    body.dark-only .modal-content .table th,
+    body.dark-only .modal-content .table td,
+    body.dark-mode .modal-content .table th,
+    body.dark-mode .modal-content .table td,
+    .dark-mode .modal-content .table th,
+    .dark-mode .modal-content .table td {
+        border-color: #334155 !important;
+    }
+    [bd-theme="bd-theme-dark"] .modal-content .table-light,
+    [bd-theme="bd-theme-dark"] .modal-content .table-light th,
+    [data-bs-theme="dark"] .modal-content .table-light,
+    [data-bs-theme="dark"] .modal-content .table-light th,
+    body.dark-only .modal-content .table-light,
+    body.dark-only .modal-content .table-light th,
+    body.dark-mode .modal-content .table-light,
+    body.dark-mode .modal-content .table-light th,
+    .dark-mode .modal-content .table-light,
+    .dark-mode .modal-content .table-light th {
+        background-color: #141d2e !important;
+        color: #94a3b8 !important;
+    }
+    [bd-theme="bd-theme-dark"] .modal-content .table-hover tbody tr:hover,
+    [data-bs-theme="dark"] .modal-content .table-hover tbody tr:hover,
+    body.dark-only .modal-content .table-hover tbody tr:hover,
+    body.dark-mode .modal-content .table-hover tbody tr:hover,
+    .dark-mode .modal-content .table-hover tbody tr:hover {
+        background-color: rgba(255, 255, 255, 0.04) !important;
+    }
+    [bd-theme="bd-theme-dark"] .modal-content .bg-white,
+    [data-bs-theme="dark"] .modal-content .bg-white,
+    body.dark-only .modal-content .bg-white,
+    body.dark-mode .modal-content .bg-white,
+    .dark-mode .modal-content .bg-white {
+        background-color: #141d2e !important;
+        border-color: #334155 !important;
+        color: #f1f5f9 !important;
+    }
+    [bd-theme="bd-theme-dark"] .modal-content .text-dark,
+    [data-bs-theme="dark"] .modal-content .text-dark,
+    body.dark-only .modal-content .text-dark,
+    body.dark-mode .modal-content .text-dark,
+    .dark-mode .modal-content .text-dark {
+        color: #f1f5f9 !important;
+    }
+    [bd-theme="bd-theme-dark"] .modal-content .form-control,
+    [bd-theme="bd-theme-dark"] .modal-content .form-select,
+    [data-bs-theme="dark"] .modal-content .form-control,
+    [data-bs-theme="dark"] .modal-content .form-select,
+    body.dark-only .modal-content .form-control,
+    body.dark-only .modal-content .form-select,
+    body.dark-mode .modal-content .form-control,
+    body.dark-mode .modal-content .form-select,
+    .dark-mode .modal-content .form-control,
+    .dark-mode .modal-content .form-select {
+        background-color: #141d2e !important;
+        border-color: #334155 !important;
+        color: #f1f5f9 !important;
+    }
+
     @media print {
         #sidebar, .main-header, .due-toolbar, .no-print {
             display: none !important;
@@ -170,11 +660,11 @@ $show_breadcrumb = true;
     }
 </style>
 
-<div class="row">
+<div class="row client-due-tracking-wrapper">
 
     <!-- ══ HEADER & ACTIONS ══ -->
     <div class="col-12 mb-3">
-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 bg-white p-3 rounded-3 shadow-sm border">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 bg-white p-3 rounded-3 shadow-sm border due-header-box">
             <div>
                 <div class="d-flex align-items-center gap-2">
                     <div class="avatar avatar-md bg-primary-subtle text-primary rounded-3 d-flex align-items-center justify-content-center">
@@ -217,10 +707,10 @@ $show_breadcrumb = true;
                     </span>
                 </div>
                 <h3 class="fw-bold text-danger mb-1" id="statOverallDue">
-                    ৳<?= number_format($stats['overall_due'] ?? 0) ?>
+                    Tk. <?= number_format($stats['overall_due'] ?? 0) ?>
                 </h3>
                 <div class="d-flex align-items-center justify-content-between text-muted fs-12">
-                    <span>Total Booked Value: <strong>৳<?= number_format(($stats['total_value'] ?? 0) / 10000000, 2) ?> Cr</strong></span>
+                    <span>Total Booked Value: <strong>Tk. <?= number_format(($stats['total_value'] ?? 0) / 10000000, 2) ?> Cr</strong></span>
                     <span class="badge bg-danger-subtle text-danger stat-pill">
                         <?= ($stats['total_value'] ?? 0) > 0 ? round((($stats['overall_due'] ?? 0) / ($stats['total_value'] ?? 1)) * 100, 1) : 0 ?>% Due
                     </span>
@@ -240,12 +730,12 @@ $show_breadcrumb = true;
                     </span>
                 </div>
                 <h3 class="fw-bold text-dark mb-1" id="statLandShareDue">
-                    ৳<?= number_format($stats['total_land_share_due'] ?? 0) ?>
+                    Tk. <?= number_format($stats['total_land_share_due'] ?? 0) ?>
                 </h3>
                 <div class="d-flex align-items-center justify-content-between text-muted fs-12">
-                    <span title="Booking Money + Registration Fee">Paid: <strong>৳<?= number_format(($stats['total_land_share_paid'] ?? 0) / 10000000, 2) ?> Cr</strong></span>
-                    <span class="badge bg-warning-subtle text-dark stat-pill" title="Target: ৳<?= number_format(($stats['total_land_share_target'] ?? 0) / 10000000, 2) ?> Cr">
-                        Target: ৳<?= number_format(($stats['total_land_share_target'] ?? 0) / 10000000, 2) ?> Cr
+                    <span title="Booking Money + Registration Fee">Paid: <strong>Tk. <?= number_format(($stats['total_land_share_paid'] ?? 0) / 10000000, 2) ?> Cr</strong></span>
+                    <span class="badge bg-warning-subtle text-dark stat-pill" title="Target: Tk. <?= number_format(($stats['total_land_share_target'] ?? 0) / 10000000, 2) ?> Cr">
+                        Target: Tk. <?= number_format(($stats['total_land_share_target'] ?? 0) / 10000000, 2) ?> Cr
                     </span>
                 </div>
             </div>
@@ -263,12 +753,12 @@ $show_breadcrumb = true;
                     </span>
                 </div>
                 <h3 class="fw-bold text-info mb-1" id="statDevChargeDue">
-                    ৳<?= number_format($stats['total_dev_charge_due'] ?? 0) ?>
+                    Tk. <?= number_format($stats['total_dev_charge_due'] ?? 0) ?>
                 </h3>
                 <div class="d-flex align-items-center justify-content-between text-muted fs-12">
-                    <span>Paid: <strong>৳<?= number_format(($stats['total_dev_charges_paid'] ?? 0) / 100000, 2) ?> Lac</strong></span>
+                    <span>Paid: <strong>Tk. <?= number_format(($stats['total_dev_charges_paid'] ?? 0) / 100000, 2) ?> Lac</strong></span>
                     <span class="badge bg-info-subtle text-info stat-pill">
-                        Target: ৳<?= number_format(($stats['total_dev_charges_target'] ?? 0) / 100000, 2) ?> Lac
+                        Target: Tk. <?= number_format(($stats['total_dev_charges_target'] ?? 0) / 100000, 2) ?> Lac
                     </span>
                 </div>
             </div>
@@ -286,13 +776,13 @@ $show_breadcrumb = true;
                     </span>
                 </div>
                 <h3 class="fw-bold text-primary mb-1" id="statEmiDue">
-                    ৳<?= number_format($stats['total_emi_due'] ?? 0) ?>
+                    Tk. <?= number_format($stats['total_emi_due'] ?? 0) ?>
                 </h3>
                 <div class="d-flex align-items-center justify-content-between text-muted fs-12">
-                    <span>EMI Paid: <strong>৳<?= number_format(($stats['total_emi_paid'] ?? 0) / 10000000, 2) ?> Cr</strong></span>
+                    <span>EMI Paid: <strong>Tk. <?= number_format(($stats['total_emi_paid'] ?? 0) / 10000000, 2) ?> Cr</strong></span>
                     <?php if (($stats['total_overdue_emi'] ?? 0) > 0): ?>
                         <span class="badge bg-danger text-white stat-pill" title="Matured installments overdue">
-                            <i class="fa-solid fa-triangle-exclamation me-1"></i>Overdue: ৳<?= number_format(($stats['total_overdue_emi'] ?? 0) / 100000, 2) ?> L
+                            <i class="fa-solid fa-triangle-exclamation me-1"></i>Overdue: Tk. <?= number_format(($stats['total_overdue_emi'] ?? 0) / 100000, 2) ?> L
                         </span>
                     <?php else: ?>
                         <span class="badge bg-success-subtle text-success stat-pill">No Overdues</span>
@@ -302,9 +792,119 @@ $show_breadcrumb = true;
         </div>
     </div>
 
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- ══ ROW 2: EMI PAYMENT ANALYTICS & BREAKDOWN CARDS ══════ -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div class="col-12 mb-1 mt-1">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 py-1">
+            <div class="d-flex align-items-center gap-2">
+                <i class="fa-solid fa-chart-pie text-success fs-6"></i>
+                <span class="text-uppercase fw-bold text-dark fs-12 tracking-wider">EMI Collection & Installment Status</span>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill fs-11">
+                    <i class="fa-solid fa-calendar me-1"></i>Current Month: <?= date('M Y') ?>
+                </span>
+            </div>
+            <span class="text-muted extra-small fs-11">
+                <i class="fa-solid fa-circle-info me-1"></i>Click any card to view detailed client breakdown
+            </span>
+        </div>
+    </div>
+
+    <!-- 1. Total EMI Paid -->
+    <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-12 mb-3">
+        <div class="card emi-stat-card border-start border-4 border-success h-100 bg-white" onclick="openEmiAnalyticsModal('all')" title="Click to view all clients who paid EMIs">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-uppercase fw-bold text-muted fs-11 tracking-wider">Total EMI Paid</span>
+                    <span class="avatar avatar-xs bg-success-subtle text-success rounded-circle d-flex align-items-center justify-content-center">
+                        <i class="fa-solid fa-receipt"></i>
+                    </span>
+                </div>
+                <h3 class="fw-bold text-success mb-1" id="statTotalEmiPaid">
+                    Tk. <?= number_format($emiAnalytics['total_emi_paid'] ?? 0) ?>
+                </h3>
+                <div class="d-flex align-items-center justify-content-between text-muted fs-12">
+                    <span>Clients: <strong id="statTotalEmiClients"><?= number_format($emiAnalytics['total_emi_clients'] ?? 0) ?></strong></span>
+                    <span class="badge bg-success-subtle text-success stat-pill">
+                        Breakdown <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Regular EMI Paid (Up to Current Month) -->
+    <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-12 mb-3">
+        <div class="card emi-stat-card border-start border-4 border-primary h-100 bg-white" onclick="openEmiAnalyticsModal('regular')" title="Click to view regular EMI payers up to current month">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-uppercase fw-bold text-muted fs-11 tracking-wider">Regular EMI Paid</span>
+                    <span class="avatar avatar-xs bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center">
+                        <i class="fa-solid fa-calendar-check"></i>
+                    </span>
+                </div>
+                <h3 class="fw-bold text-primary mb-1" id="statRegularEmiPaid">
+                    Tk. <?= number_format($emiAnalytics['regular_emi_paid'] ?? 0) ?>
+                </h3>
+                <div class="d-flex align-items-center justify-content-between text-muted fs-12">
+                    <span>Up to <strong><?= date('M Y') ?></strong> (<strong id="statRegularEmiClients"><?= number_format($emiAnalytics['regular_emi_clients'] ?? 0) ?></strong>)</span>
+                    <span class="badge bg-primary-subtle text-primary stat-pill">
+                        Current <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Advance EMI Paid -->
+    <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-12 mb-3">
+        <div class="card emi-stat-card border-start border-4 h-100 bg-white" onclick="openEmiAnalyticsModal('advance')" style="border-left-color: #0d9488 !important;" title="Click to view clients who paid installments in advance">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-uppercase fw-bold text-muted fs-11 tracking-wider">Advance EMI Paid</span>
+                    <span class="avatar avatar-xs rounded-circle d-flex align-items-center justify-content-center" style="background-color: #ccfbf1; color: #0d9488;">
+                        <i class="fa-solid fa-forward"></i>
+                    </span>
+                </div>
+                <h3 class="fw-bold mb-1" style="color: #0d9488;" id="statAdvanceEmiPaid">
+                    Tk. <?= number_format($emiAnalytics['advance_emi_paid'] ?? 0) ?>
+                </h3>
+                <div class="d-flex align-items-center justify-content-between text-muted fs-12">
+                    <span>Ahead of Schedule (<strong id="statAdvanceEmiClients"><?= number_format($emiAnalytics['advance_emi_clients'] ?? 0) ?></strong>)</span>
+                    <span class="badge stat-pill" style="background-color: #ccfbf1; color: #0d9488;">
+                        Advance <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Due / Overdue EMI -->
+    <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-12 mb-3">
+        <div class="card emi-stat-card border-start border-4 border-warning h-100 bg-white" onclick="openEmiAnalyticsModal('due')" title="Click to view clients with overdue EMI amounts">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-uppercase fw-bold text-muted fs-11 tracking-wider">Due EMI (Overdue)</span>
+                    <span class="avatar avatar-xs bg-warning-subtle text-warning rounded-circle d-flex align-items-center justify-content-center">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </span>
+                </div>
+                <h3 class="fw-bold text-warning mb-1" id="statDueEmiAmount">
+                    Tk. <?= number_format($emiAnalytics['due_emi_amount'] ?? 0) ?>
+                </h3>
+                <div class="d-flex align-items-center justify-content-between text-muted fs-12">
+                    <span>Clients with Dues: (<strong id="statDueEmiClients"><?= number_format($emiAnalytics['due_emi_clients'] ?? 0) ?></strong>)</span>
+                    <span class="badge bg-warning-subtle text-warning stat-pill">
+                        Dues List <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ══ PROJECT-WISE DUES SUMMARY GRID ══ -->
     <div class="col-12 mb-3">
-        <div class="card border-0 shadow-sm rounded-3 bg-white">
+        <div class="card border-0 shadow-sm rounded-3 bg-white due-project-card">
             <div class="card-header bg-white py-3 border-bottom d-flex flex-wrap align-items-center justify-content-between gap-2">
                 <div class="d-flex align-items-center gap-2">
                     <i class="fa-solid fa-diagram-project text-primary fs-5"></i>
@@ -319,11 +919,6 @@ $show_breadcrumb = true;
                                oninput="filterProjectChips(this.value)" 
                                style="height: 30px; border-radius: 6px; font-size: 12px;">
                     </div>
-                    <?php if (count($projectBreakdown ?? []) > 12): ?>
-                        <button type="button" class="btn btn-xs btn-outline-secondary py-1 px-2 fs-12" id="toggleProjectChipsBtn" onclick="toggleProjectChipsView()">
-                            <i class="fa-solid fa-layer-group me-1"></i> <span id="toggleProjectChipsText">Show All (<?= count($projectBreakdown ?? []) ?>)</span>
-                        </button>
-                    <?php endif; ?>
                     <button type="button" class="btn btn-xs btn-outline-secondary py-1 px-2 fs-12" id="clearProjectFilterBtn" onclick="selectProjectFilter('')" style="<?= empty($selectedProjectId) ? 'display:none;' : '' ?>">
                         <i class="fa-solid fa-filter-circle-xmark me-1"></i> Show All Projects
                     </button>
@@ -333,28 +928,41 @@ $show_breadcrumb = true;
                 </div>
             </div>
             <div class="card-body p-3">
-                <div class="row g-2" id="projectChipsContainer" style="max-height: 245px; overflow-y: auto;">
+                <div class="row g-2" id="projectChipsContainer">
                     <?php if (!empty($projectBreakdown)): ?>
                         <?php foreach ($projectBreakdown as $idx => $pb): 
                             $isPbActive = ((int)$pb['project_id'] === (int)($selectedProjectId ?? 0));
-                            $isExtra = ($idx >= 12 && !$isPbActive);
                         ?>
-                            <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-sm-12 project-chip-item <?= $isExtra ? 'project-chip-extra d-none' : '' ?>" data-project-name="<?= strtolower(htmlspecialchars($pb['project_name'])) ?>">
+                            <div class="col-xxl-3 col-xl-3 col-lg-4 col-md-6 col-sm-12 project-chip-item" data-project-name="<?= strtolower(htmlspecialchars($pb['project_name'])) ?>">
                                 <div class="p-3 project-chip <?= $isPbActive ? 'active border-primary' : '' ?>" onclick="selectProjectFilter(<?= $pb['project_id'] ?>)" title="Click to filter by <?= htmlspecialchars($pb['project_name']) ?>">
-                                    <div class="d-flex align-items-center justify-content-between mb-1">
-                                        <strong class="text-truncate d-inline-block text-dark fs-13" style="max-width: 175px;">
-                                            <?= htmlspecialchars($pb['project_name']) ?>
-                                        </strong>
-                                        <span class="badge bg-primary-subtle text-primary rounded-pill fs-11"><?= $pb['total_clients'] ?> Clients</span>
+                                    <div class="d-flex align-items-start justify-content-between mb-2">
+                                        <div class="pe-2">
+                                            <strong class="text-truncate d-inline-block text-dark fs-13" style="max-width: 140px;" title="<?= htmlspecialchars($pb['project_name']) ?>">
+                                                <?= htmlspecialchars($pb['project_name']) ?>
+                                            </strong>
+                                        </div>
+                                        <div class="text-end">
+                                            <span class="badge bg-primary-subtle text-primary rounded-pill fs-11 d-block mb-1" title="Total Booked Clients in <?= htmlspecialchars($pb['project_name']) ?>">
+                                                <i class="fa-solid fa-users me-1"></i><?= $pb['total_clients'] ?> Clients
+                                            </span>
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill fs-11 registered-client-chip-btn d-inline-flex align-items-center gap-1"
+                                                  onclick="event.stopPropagation(); openRegisteredClientsModal(<?= $pb['project_id'] ?>, '<?= htmlspecialchars(addslashes($pb['project_name'])) ?>')"
+                                                  style="cursor: pointer;"
+                                                  title="Click to view <?= (int)($pb['registered_clients_count'] ?? 0) ?> verified registered clients who completed land share">
+                                                <i class="fa-solid fa-file-circle-check"></i>
+                                                <span><?= (int)($pb['registered_clients_count'] ?? 0) ?> Reg. Complete</span>
+                                                <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 8px;"></i>
+                                            </span>
+                                        </div>
                                     </div>
                                     <div class="d-flex align-items-baseline justify-content-between text-muted fs-11 mt-1">
                                         <span>Overall Due:</span>
-                                        <strong class="text-danger fs-12">৳<?= number_format($pb['overall_due']) ?></strong>
+                                        <strong class="text-danger fs-12">Tk. <?= number_format($pb['overall_due']) ?></strong>
                                     </div>
                                     <div class="d-flex align-items-center justify-content-between mt-2 pt-1 border-top" style="font-size: 10px; color: #6c757d;">
-                                        <span title="Land Share Due">Land: <strong>৳<?= number_format($pb['land_share_due']) ?></strong></span>
-                                        <span title="Dev Charge Due">Dev: <strong>৳<?= number_format($pb['dev_charge_due']) ?></strong></span>
-                                        <span title="EMI / Cons Due">EMI: <strong>৳<?= number_format($pb['emi_due']) ?></strong></span>
+                                        <span title="Land Share Due">Land: <strong>Tk. <?= number_format($pb['land_share_due']) ?></strong></span>
+                                        <span title="Dev Charge Due">Dev: <strong>Tk. <?= number_format($pb['dev_charge_due']) ?></strong></span>
+                                        <span title="EMI / Cons Due">EMI: <strong>Tk. <?= number_format($pb['emi_due']) ?></strong></span>
                                         <span title="Collection ratio" class="badge bg-success-subtle text-success"><?= $pb['collection_ratio'] ?>% Rec</span>
                                     </div>
                                 </div>
@@ -370,7 +978,7 @@ $show_breadcrumb = true;
 
     <!-- ══ MAIN CLIENT DUE TRACKING SECTION ══ -->
     <div class="col-12">
-        <div class="card border-0 shadow-sm rounded-3 bg-white">
+        <div class="card border-0 shadow-sm rounded-3 bg-white due-main-card">
             
             <!-- Card Header: Title & Quick Counts -->
             <div class="card-header bg-white py-3 border-bottom d-flex flex-wrap align-items-center justify-content-between gap-2">
@@ -397,6 +1005,9 @@ $show_breadcrumb = true;
                     </button>
                     <button type="button" class="due-type-pill <?= ($dueType === 'land_share_due') ? 'active' : '' ?>" onclick="setDueTypeFilter('land_share_due')">
                         <i class="fa-solid fa-map-location-dot me-1"></i> Land Share Due
+                    </button>
+                    <button type="button" class="due-type-pill <?= in_array($dueType, ['land_share_cleared', 'registered']) ? 'active' : '' ?>" onclick="setDueTypeFilter('land_share_cleared')">
+                        <i class="fa-solid fa-file-circle-check me-1 text-success"></i> Land Share Complete (Reg.)
                     </button>
                     <button type="button" class="due-type-pill <?= ($dueType === 'dev_charge_due') ? 'active' : '' ?>" onclick="setDueTypeFilter('dev_charge_due')">
                         <i class="fa-solid fa-screwdriver-wrench me-1"></i> Dev Charge Due
@@ -502,7 +1113,9 @@ $show_breadcrumb = true;
                             <th class="text-end" style="width: 140px;">Flat Value</th>
                             <th class="text-end" style="width: 150px;">Land Share Due</th>
                             <th class="text-end" style="width: 140px;">Dev Charge Due</th>
-                            <th class="text-end" style="width: 160px;">EMI / Cons Due</th>
+                            <th class="text-end" style="min-width: 165px;">Regular EMI Paid</th>
+                            <th class="text-end" style="min-width: 140px;">Advance EMI Paid</th>
+                            <th class="text-end" style="min-width: 150px;">Due EMI</th>
                             <th class="text-end" style="width: 140px;">Overall Due</th>
                             <th class="text-center no-print" style="width: 110px;">Actions</th>
                         </tr>
@@ -583,7 +1196,8 @@ $show_breadcrumb = true;
                             <tr>
                                 <th>#</th>
                                 <th>Project Name</th>
-                                <th class="text-center">Clients</th>
+                                <th class="text-center">Total Clients</th>
+                                <th class="text-center text-success">Reg. Complete</th>
                                 <th class="text-end">Total Value</th>
                                 <th class="text-end">Total Paid</th>
                                 <th class="text-end text-danger">Land Share Due</th>
@@ -605,12 +1219,19 @@ $show_breadcrumb = true;
                                         <td class="text-center">
                                             <span class="badge bg-primary-subtle text-primary rounded-pill"><?= $pRow['total_clients'] ?></span>
                                         </td>
-                                        <td class="text-end">৳<?= number_format($pRow['total_project_value']) ?></td>
-                                        <td class="text-end text-success">৳<?= number_format($pRow['total_paid']) ?></td>
-                                        <td class="text-end text-danger">৳<?= number_format($pRow['land_share_due']) ?></td>
-                                        <td class="text-end text-danger">৳<?= number_format($pRow['dev_charge_due']) ?></td>
-                                        <td class="text-end text-danger">৳<?= number_format($pRow['emi_due']) ?></td>
-                                        <td class="text-end text-danger fw-bold">৳<?= number_format($pRow['overall_due']) ?></td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-xs btn-outline-success py-1 px-2 fw-semibold" 
+                                                    onclick="openRegisteredClientsModal(<?= $pRow['project_id'] ?>, '<?= htmlspecialchars(addslashes($pRow['project_name'])) ?>'); bootstrap.Modal.getInstance(document.getElementById('projectBreakdownModal')).hide();"
+                                                    title="View <?= (int)($pRow['registered_clients_count'] ?? 0) ?> Registered Clients (Land Share Complete)">
+                                                <i class="fa-solid fa-file-circle-check me-1"></i><?= (int)($pRow['registered_clients_count'] ?? 0) ?>
+                                            </button>
+                                        </td>
+                                        <td class="text-end">Tk. <?= number_format($pRow['total_project_value']) ?></td>
+                                        <td class="text-end text-success">Tk. <?= number_format($pRow['total_paid']) ?></td>
+                                        <td class="text-end text-danger">Tk. <?= number_format($pRow['land_share_due']) ?></td>
+                                        <td class="text-end text-danger">Tk. <?= number_format($pRow['dev_charge_due']) ?></td>
+                                        <td class="text-end text-danger">Tk. <?= number_format($pRow['emi_due']) ?></td>
+                                        <td class="text-end text-danger fw-bold">Tk. <?= number_format($pRow['overall_due']) ?></td>
                                         <td class="text-center">
                                             <span class="badge bg-success-subtle text-success"><?= $pRow['collection_ratio'] ?>%</span>
                                         </td>
@@ -631,6 +1252,163 @@ $show_breadcrumb = true;
             </div>
             <div class="modal-footer bg-light py-2 px-4">
                 <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══ MODAL: REGISTERED CLIENTS (LAND SHARE COMPLETED) ══ -->
+<div class="modal fade" id="registeredClientsModal" tabindex="-1" aria-labelledby="regModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header py-3 px-4 bg-success text-white">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="avatar avatar-sm bg-white text-success rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width:34px; height:34px;">
+                        <i class="fa-solid fa-file-circle-check fs-5"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0 text-white" id="regModalTitle">Registered Clients (Land Share Complete)</h5>
+                        <small class="text-white-50" id="regModalSubtitle">Clients who have completed 100% verified Land Share payment (Booking + Registration)</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0" id="regModalBody">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-success mb-2" role="status"></div>
+                    <p class="text-muted mb-0">Loading registered clients data...</p>
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2 px-4 d-flex justify-content-between">
+                <button type="button" id="regModalFilterBtn" class="btn btn-sm btn-outline-success fw-semibold">
+                    <i class="fa-solid fa-filter me-1"></i> Filter These Clients in Main Table
+                </button>
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════════ -->
+<!-- ══ EMI ANALYTICS CLIENTS BREAKDOWN MODAL ═════════════════════ -->
+<!-- ═════════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="emiAnalyticsModal" tabindex="-1" aria-labelledby="emiAnalyticsModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" style="max-width: 95%;">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <!-- Modal Header -->
+            <div class="modal-header py-3 px-4 text-white" style="background: linear-gradient(135deg, #0f172a, #1e293b);">
+                <div class="d-flex align-items-center gap-3">
+                    <span class="avatar avatar-sm bg-success text-white rounded-circle d-flex align-items-center justify-content-center">
+                        <i class="fa-solid fa-chart-line"></i>
+                    </span>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0 text-white" id="emiAnalyticsModalTitle">
+                            EMI Collection & Status Breakdown
+                        </h5>
+                        <small class="text-white-50" id="emiAnalyticsModalSubtitle">
+                            Detailed installment analysis for all active clients
+                        </small>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-light py-1 px-3 fs-12" onclick="refreshEmiAnalyticsModal()">
+                        <i class="fa-solid fa-arrows-rotate me-1"></i>Refresh
+                    </button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+            </div>
+
+            <!-- Modal Subheader: Tabs & Search Controls -->
+            <div class="p-3 bg-light border-bottom d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <!-- Category Tabs -->
+                <div class="nav nav-pills emi-category-pills d-inline-flex bg-white p-1 rounded-3 border" role="tablist">
+                    <button type="button" class="btn btn-sm nav-link active py-1 px-3 rounded-2 fw-semibold fs-12" id="tabEmiAll" onclick="switchEmiAnalyticsTab('all')">
+                        <i class="fa-solid fa-receipt me-1 text-success"></i> All EMI Paid
+                        <span class="badge bg-success-subtle text-success rounded-pill ms-1" id="badgeEmiAllCount">0</span>
+                    </button>
+                    <button type="button" class="btn btn-sm nav-link py-1 px-3 rounded-2 fw-semibold fs-12" id="tabEmiRegular" onclick="switchEmiAnalyticsTab('regular')">
+                        <i class="fa-solid fa-calendar-check me-1 text-primary"></i> Regular (Current)
+                        <span class="badge bg-primary-subtle text-primary rounded-pill ms-1" id="badgeEmiRegularCount">0</span>
+                    </button>
+                    <button type="button" class="btn btn-sm nav-link py-1 px-3 rounded-2 fw-semibold fs-12" id="tabEmiAdvance" onclick="switchEmiAnalyticsTab('advance')">
+                        <i class="fa-solid fa-forward me-1" style="color: #0d9488;"></i> Advance EMI
+                        <span class="badge rounded-pill ms-1" style="background-color: #ccfbf1; color: #0d9488;" id="badgeEmiAdvanceCount">0</span>
+                    </button>
+                    <button type="button" class="btn btn-sm nav-link py-1 px-3 rounded-2 fw-semibold fs-12" id="tabEmiDue" onclick="switchEmiAnalyticsTab('due')">
+                        <i class="fa-solid fa-triangle-exclamation me-1 text-warning"></i> Due / Overdue
+                        <span class="badge bg-warning-subtle text-warning rounded-pill ms-1" id="badgeEmiDueCount">0</span>
+                    </button>
+                </div>
+
+                <!-- Search and Project Dropdown in Modal -->
+                <div class="d-flex align-items-center gap-2 flex-grow-1 justify-content-end" style="max-width: 500px;">
+                    <select id="emiModalProjectSelect" class="form-select form-select-sm" style="max-width: 200px; font-size: 12px;" onchange="handleEmiModalProjectChange(this.value)">
+                        <option value="">All Projects</option>
+                        <?php if (!empty($projects)): ?>
+                            <?php foreach ($projects as $prj): ?>
+                                <option value="<?= $prj['id'] ?>" <?= ((int)($selectedProjectId ?? 0) === (int)$prj['id']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($prj['name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </select>
+
+                    <div class="position-relative flex-grow-1">
+                        <i class="fa-solid fa-magnifying-glass position-absolute text-muted" style="left: 10px; top: 50%; transform: translateY(-50%); font-size: 11px;"></i>
+                        <input type="text" id="emiModalSearchInput" class="form-control form-control-sm ps-4" 
+                               placeholder="Search client, phone, flat..." 
+                               oninput="filterEmiModalRows(this.value)" 
+                               style="height: 32px; border-radius: 6px; font-size: 12px;">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Info Banner -->
+            <div class="px-4 py-2 bg-body-tertiary border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2 text-muted fs-12">
+                <div>
+                    <span id="emiModalStatusText" class="fw-semibold text-dark">Showing all clients who made EMI payments</span>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <span>Total In View: <strong class="text-dark" id="emiModalTotalCount">0</strong> Clients</span>
+                    <span class="border-start ps-3">Total Amount: <strong class="text-success" id="emiModalTotalAmount">Tk. 0</strong></span>
+                </div>
+            </div>
+
+            <!-- Modal Body Table -->
+            <div class="modal-body p-0">
+                <div class="table-responsive" style="max-height: 520px;">
+                    <table class="table table-hover align-middle mb-0 fs-12" id="emiModalTable">
+                        <thead class="table-light sticky-top" style="z-index: 2;">
+                            <tr class="text-uppercase fs-11 tracking-wider text-muted">
+                                <th class="text-center" style="width: 80px;">#ID & Date</th>
+                                <th style="min-width: 180px;">Client Info</th>
+                                <th style="min-width: 150px;">Project & Unit</th>
+                                <th style="min-width: 140px;">Paid Up To (Month)</th>
+                                <th class="text-end" style="min-width: 120px;">Last EMI Paid</th>
+                                <th class="text-end" style="min-width: 110px;">Regular Paid</th>
+                                <th class="text-end" style="min-width: 110px;">Advance Paid</th>
+                                <th class="text-end" style="min-width: 100px;">Due EMI</th>
+                                <th class="text-center" style="min-width: 160px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="emiModalTableBody">
+                            <tr>
+                                <td colspan="9" class="text-center py-5">
+                                    <div class="spinner-border text-primary mb-2" role="status"></div>
+                                    <p class="text-muted mb-0">Loading EMI breakdown...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer bg-light py-2 px-4 d-flex justify-content-between">
+                <span class="text-muted extra-small">
+                    <i class="fa-solid fa-shield-halved me-1 text-success"></i>Only verified payments are counted. Current month: <strong><?= date('F Y') ?></strong>
+                </span>
+                <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -778,58 +1556,19 @@ $show_breadcrumb = true;
         loadDueTrackingPage(1);
     }
 
-    let projectChipsExpanded = false;
-
-    // Toggle between showing top 12 vs all projects in the breakdown card
-    function toggleProjectChipsView() {
-        projectChipsExpanded = !projectChipsExpanded;
-        const extras = document.querySelectorAll('.project-chip-extra');
-        const container = document.getElementById('projectChipsContainer');
-        const textSpan = document.getElementById('toggleProjectChipsText');
-        const btn = document.getElementById('toggleProjectChipsBtn');
-
-        if (projectChipsExpanded) {
-            extras.forEach(el => el.classList.remove('d-none'));
-            if (container) container.style.maxHeight = '450px';
-            if (textSpan) textSpan.innerText = 'Show Top 12';
-            if (btn) btn.classList.replace('btn-outline-secondary', 'btn-primary');
-        } else {
-            const searchVal = document.getElementById('projectChipSearch')?.value.trim() || '';
-            if (!searchVal) {
-                extras.forEach(el => el.classList.add('d-none'));
-                if (container) container.style.maxHeight = '245px';
-            }
-            if (textSpan) textSpan.innerText = `Show All (${document.querySelectorAll('.project-chip-item').length})`;
-            if (btn) btn.classList.replace('btn-primary', 'btn-outline-secondary');
-        }
-    }
-
     // Instant live search filter for project breakdown cards
     function filterProjectChips(query) {
         const q = (query || '').toLowerCase().trim();
         const items = document.querySelectorAll('.project-chip-item');
-        const container = document.getElementById('projectChipsContainer');
 
-        if (q.length > 0) {
-            if (container) container.style.maxHeight = '450px';
-            items.forEach(item => {
-                const name = item.getAttribute('data-project-name') || '';
-                if (name.includes(q)) {
-                    item.classList.remove('d-none');
-                } else {
-                    item.classList.add('d-none');
-                }
-            });
-        } else {
-            if (container) container.style.maxHeight = projectChipsExpanded ? '450px' : '245px';
-            items.forEach(item => {
-                if (item.classList.contains('project-chip-extra') && !projectChipsExpanded) {
-                    item.classList.add('d-none');
-                } else {
-                    item.classList.remove('d-none');
-                }
-            });
-        }
+        items.forEach(item => {
+            const name = item.getAttribute('data-project-name') || '';
+            if (!q || name.includes(q)) {
+                item.classList.remove('d-none');
+            } else {
+                item.classList.add('d-none');
+            }
+        });
     }
 
     // Handle project filter changes (from select2 dropdown or chip clicks)
@@ -945,7 +1684,7 @@ $show_breadcrumb = true;
 
         const tbody = document.getElementById('dueTrackingTableBody');
         if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="10" class="text-center py-5 text-muted"><div class="spinner-border text-primary spinner-border-sm me-2" role="status"></div>Loading due records...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" class="text-center py-5 text-muted"><div class="spinner-border text-primary spinner-border-sm me-2" role="status"></div>Loading due records...</td></tr>';
         }
 
         const params = new URLSearchParams({
@@ -988,19 +1727,33 @@ $show_breadcrumb = true;
                 // Update Top KPI stats if returned
                 if (data.stats) {
                     const s = data.stats;
-                    const fmt = (num) => '৳' + Number(num || 0).toLocaleString();
+                    const fmt = (num) => 'Tk. ' + Number(num || 0).toLocaleString();
                     if (document.getElementById('statOverallDue')) document.getElementById('statOverallDue').innerText = fmt(s.overall_due);
                     if (document.getElementById('statLandShareDue')) document.getElementById('statLandShareDue').innerText = fmt(s.total_land_share_due);
                     if (document.getElementById('statDevChargeDue')) document.getElementById('statDevChargeDue').innerText = fmt(s.total_dev_charge_due);
                     if (document.getElementById('statEmiDue')) document.getElementById('statEmiDue').innerText = fmt(s.total_emi_due);
                 }
+
+                // Update EMI Analytics KPI cards if returned
+                if (data.emi_analytics) {
+                    const ea = data.emi_analytics;
+                    const fmt = (num) => 'Tk. ' + Number(num || 0).toLocaleString();
+                    if (document.getElementById('statTotalEmiPaid')) document.getElementById('statTotalEmiPaid').innerText = fmt(ea.total_emi_paid);
+                    if (document.getElementById('statTotalEmiClients')) document.getElementById('statTotalEmiClients').innerText = Number(ea.total_emi_clients || 0).toLocaleString();
+                    if (document.getElementById('statRegularEmiPaid')) document.getElementById('statRegularEmiPaid').innerText = fmt(ea.regular_emi_paid);
+                    if (document.getElementById('statRegularEmiClients')) document.getElementById('statRegularEmiClients').innerText = Number(ea.regular_emi_clients || 0).toLocaleString();
+                    if (document.getElementById('statAdvanceEmiPaid')) document.getElementById('statAdvanceEmiPaid').innerText = fmt(ea.advance_emi_paid);
+                    if (document.getElementById('statAdvanceEmiClients')) document.getElementById('statAdvanceEmiClients').innerText = Number(ea.advance_emi_clients || 0).toLocaleString();
+                    if (document.getElementById('statDueEmiAmount')) document.getElementById('statDueEmiAmount').innerText = fmt(ea.due_emi_amount);
+                    if (document.getElementById('statDueEmiClients')) document.getElementById('statDueEmiClients').innerText = Number(ea.due_emi_clients || 0).toLocaleString();
+                }
             } else {
-                if (tbody) tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-danger">Failed to load data.</td></tr>';
+                if (tbody) tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-danger">Failed to load data.</td></tr>';
             }
         })
         .catch(err => {
             console.error('Error loading due tracking data:', err);
-            if (tbody) tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-danger">Error loading data. Please try again.</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-danger">Error loading data. Please try again.</td></tr>';
         });
     }
 
@@ -1032,7 +1785,7 @@ $show_breadcrumb = true;
                 if (data.success && data.summary && data.details) {
                     const s = data.summary;
                     const d = data.details;
-                    const fmt = (num) => '৳' + Number(num || 0).toLocaleString();
+                    const fmt = (num) => 'Tk. ' + Number(num || 0).toLocaleString();
 
                     body.innerHTML = `
                         <!-- Client Header -->
@@ -1125,6 +1878,154 @@ $show_breadcrumb = true;
             .catch(err => {
                 console.error(err);
                 body.innerHTML = '<div class="alert alert-danger mb-0">An error occurred while fetching details.</div>';
+            });
+    }
+
+    // Open Registered Clients Modal (Clients who completed Land Share in a Project)
+    function openRegisteredClientsModal(projectId, projectName) {
+        const modalEl = document.getElementById('registeredClientsModal');
+        const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+        const title = document.getElementById('regModalTitle');
+        const subtitle = document.getElementById('regModalSubtitle');
+        const body = document.getElementById('regModalBody');
+        const filterBtn = document.getElementById('regModalFilterBtn');
+
+        title.innerHTML = `<i class="fa-solid fa-file-circle-check me-2"></i>Registered Clients — <span class="text-warning">${projectName || 'Project'}</span>`;
+        subtitle.textContent = `Clients who completed 100% verified Land Share payment (Booking + Registration) in ${projectName}`;
+
+        if (filterBtn) {
+            filterBtn.onclick = function() {
+                modal.hide();
+                selectProjectFilter(projectId);
+                setDueTypeFilter('land_share_cleared');
+            };
+        }
+
+        body.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-success mb-2" role="status"></div>
+                <p class="text-muted mb-0">Loading registered clients for ${projectName}...</p>
+            </div>
+        `;
+        modal.show();
+
+        fetch(`${window.base_url || ''}/client-wise-due-tracking?ajax=registered_clients&project_id=${projectId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const clients = data.clients || [];
+                    if (clients.length === 0) {
+                        body.innerHTML = `
+                            <div class="text-center py-5 text-muted">
+                                <i class="fa-solid fa-folder-open fa-3x mb-3 text-secondary opacity-50 d-block"></i>
+                                <h5>No Registered Clients Yet</h5>
+                                <p class="small text-muted mb-0">No client in <strong>${projectName}</strong> has 100% completed their verified Land Share payment yet.</p>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    const fmt = (num) => 'Tk. ' + Number(num || 0).toLocaleString();
+                    let html = `
+                        <div class="p-3 bg-light border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
+                            <div>
+                                <span class="badge bg-success rounded-pill px-3 py-2 fs-12 fw-bold">
+                                    <i class="fa-solid fa-user-check me-1"></i>${clients.length} Registered Client(s)
+                                </span>
+                                <small class="text-muted ms-2"><i class="fa-solid fa-shield-check text-success me-1"></i>All payments verified by accounts</small>
+                            </div>
+                            <div class="fs-12 text-muted">
+                                Click <strong>"History / Ledger"</strong> to view full cash-in ledger & receipts
+                            </div>
+                        </div>
+                        <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light sticky-top" style="z-index: 2;">
+                                    <tr class="fs-12 text-muted text-uppercase">
+                                        <th class="ps-3" style="width: 85px;">#ID</th>
+                                        <th>Client Information</th>
+                                        <th>Unit / Flat</th>
+                                        <th class="text-end">Land Share Target</th>
+                                        <th class="text-end text-success">Verified Paid</th>
+                                        <th class="text-center">Status</th>
+                                        <th class="text-end">Overall Due</th>
+                                        <th class="text-center pe-3" style="width: 175px;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+
+                    clients.forEach(c => {
+                        const ledgerUrl = `${window.base_url || ''}/clients-cash-in-history-view/${c.booking_id}`;
+                        const phone = c.phone ? `<a href="tel:${c.phone}" class="text-muted extra-small text-decoration-none d-block"><i class="fa-solid fa-phone me-1"></i>${c.phone}</a>` : '';
+                        const agent = c.sales_agent_name ? `<span class="extra-small text-muted d-block" title="Assigned Sales Agent"><i class="fa-solid fa-user-tie me-1 text-info"></i>${c.sales_agent_name}</span>` : '';
+                        const floorText = c.floor_no ? ` (Floor ${c.floor_no})` : '';
+                        const lastPay = c.last_payment_date ? `<div class="extra-small text-muted" style="font-size:10px;"><i class="fa-solid fa-clock-rotate-left me-1"></i>Last: ${c.last_payment_date}</div>` : '';
+                        const overallBadge = Number(c.overall_due) <= 0 
+                            ? `<span class="badge bg-success-subtle text-success fw-bold"><i class="fa-solid fa-check-double me-1"></i>All Paid</span>`
+                            : `<span class="fw-bold text-danger fs-12">${fmt(c.overall_due)}</span>`;
+
+                        html += `
+                            <tr>
+                                <td class="ps-3">
+                                    <a href="${ledgerUrl}" target="_blank" class="fw-bold text-primary text-decoration-none">#${c.booking_id}</a>
+                                    <div class="extra-small text-muted">${c.booking_date || ''}</div>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar avatar-sm bg-success-subtle text-success rounded-circle me-2 d-flex align-items-center justify-content-center fw-bold" style="width:34px; height:34px; font-size:12px;">
+                                            ${(c.client_name || 'C').charAt(0).toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <a href="${ledgerUrl}" target="_blank" class="fw-bold text-dark text-decoration-none d-block">${c.client_name || 'N/A'}</a>
+                                            ${phone}
+                                            ${agent}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <strong class="text-dark fs-12">${c.unit_name || 'N/A'}</strong>${floorText}
+                                    ${c.is_shop == 1 ? '<span class="badge bg-warning text-dark extra-small ms-1">Shop</span>' : ''}
+                                </td>
+                                <td class="text-end fw-semibold text-dark fs-12">${fmt(c.total_land_share)}</td>
+                                <td class="text-end fw-bold text-success fs-12">
+                                    ${fmt(c.land_share_paid)}
+                                    ${lastPay}
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-success text-white px-2 py-1 fs-11" title="100% of Land Share Target has been verified paid">
+                                        <i class="fa-solid fa-circle-check me-1"></i>100% Cleared
+                                    </span>
+                                </td>
+                                <td class="text-end">${overallBadge}</td>
+                                <td class="text-center pe-3">
+                                    <div class="d-flex align-items-center justify-content-center gap-1">
+                                        <a href="${ledgerUrl}" target="_blank" class="btn btn-sm btn-primary py-1 px-2 text-nowrap" style="font-size:11px;" title="View Full Payment Ledger & History">
+                                            <i class="fa-solid fa-receipt me-1"></i>Ledger / History
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2" style="font-size:11px;" onclick="openClientDueBreakdownModal(${c.booking_id})" title="Quick Due Breakdown">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                    html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+
+                    body.innerHTML = html;
+                } else {
+                    body.innerHTML = '<div class="alert alert-danger m-3">Failed to load registered clients.</div>';
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                body.innerHTML = '<div class="alert alert-danger m-3">An error occurred while fetching data.</div>';
             });
     }
 
@@ -1402,5 +2303,154 @@ $show_breadcrumb = true;
                 }
             }
         });
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // ══ EMI ANALYTICS & BREAKDOWN MODAL HANDLERS ══════════════════
+    // ══════════════════════════════════════════════════════════════
+    let currentEmiCategory = 'all';
+    let emiAnalyticsModalInstance = null;
+
+    function openEmiAnalyticsModal(category = 'all') {
+        currentEmiCategory = category;
+        const modalEl = document.getElementById('emiAnalyticsModal');
+        if (!modalEl) return;
+        emiAnalyticsModalInstance = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+
+        // Sync project dropdown in modal with currently selected project filter
+        const mainPrjSelect = document.getElementById('dueProjectFilter');
+        const modalPrjSelect = document.getElementById('emiModalProjectSelect');
+        if (mainPrjSelect && modalPrjSelect) {
+            modalPrjSelect.value = mainPrjSelect.value || '';
+        }
+
+        // Reset search input
+        const searchInput = document.getElementById('emiModalSearchInput');
+        if (searchInput) searchInput.value = '';
+
+        updateEmiModalTabUI(category);
+        emiAnalyticsModalInstance.show();
+        loadEmiAnalyticsModalData(category);
+    }
+
+    function switchEmiAnalyticsTab(category) {
+        currentEmiCategory = category;
+        updateEmiModalTabUI(category);
+        loadEmiAnalyticsModalData(category);
+    }
+
+    function updateEmiModalTabUI(category) {
+        document.querySelectorAll('.emi-category-pills .nav-link').forEach(btn => btn.classList.remove('active'));
+        if (category === 'all') document.getElementById('tabEmiAll')?.classList.add('active');
+        else if (category === 'regular') document.getElementById('tabEmiRegular')?.classList.add('active');
+        else if (category === 'advance') document.getElementById('tabEmiAdvance')?.classList.add('active');
+        else if (category === 'due') document.getElementById('tabEmiDue')?.classList.add('active');
+
+        const statusText = document.getElementById('emiModalStatusText');
+        if (statusText) {
+            if (category === 'all') statusText.innerText = 'Showing all clients who made EMI installment payments';
+            else if (category === 'regular') statusText.innerText = 'Showing clients who are up-to-date with regular installments through current month';
+            else if (category === 'advance') statusText.innerText = 'Showing clients who paid advance installments beyond current month';
+            else if (category === 'due') statusText.innerText = 'Showing clients with overdue / pending installment amounts';
+        }
+    }
+
+    function handleEmiModalProjectChange(projectId) {
+        loadEmiAnalyticsModalData(currentEmiCategory);
+    }
+
+    function refreshEmiAnalyticsModal() {
+        loadEmiAnalyticsModalData(currentEmiCategory);
+    }
+
+    function loadEmiAnalyticsModalData(category) {
+        const tbody = document.getElementById('emiModalTableBody');
+        const modalPrjSelect = document.getElementById('emiModalProjectSelect');
+        const projectId = modalPrjSelect ? modalPrjSelect.value : '';
+        const searchInput = document.getElementById('emiModalSearchInput');
+        const searchVal = searchInput ? searchInput.value.trim() : '';
+
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" class="text-center py-5">
+                        <div class="spinner-border text-primary mb-2" role="status"></div>
+                        <p class="text-muted mb-0">Loading EMI breakdown data...</p>
+                    </td>
+                </tr>
+            `;
+        }
+
+        const params = new URLSearchParams({
+            ajax: 'emi_analytics_clients',
+            category: category,
+            project_id: projectId,
+            search: searchVal
+        });
+
+        fetch(`${window.base_url || ''}/client-wise-due-tracking?${params.toString()}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    if (tbody) tbody.innerHTML = data.html;
+
+                    // Update Tab Badges
+                    if (data.summary) {
+                        const s = data.summary;
+                        const fmt = (num) => 'Tk. ' + Number(num || 0).toLocaleString();
+
+                        if (document.getElementById('badgeEmiAllCount')) 
+                            document.getElementById('badgeEmiAllCount').innerText = Number(s.total_emi_clients || 0).toLocaleString();
+                        if (document.getElementById('badgeEmiRegularCount')) 
+                            document.getElementById('badgeEmiRegularCount').innerText = Number(s.regular_emi_clients || 0).toLocaleString();
+                        if (document.getElementById('badgeEmiAdvanceCount')) 
+                            document.getElementById('badgeEmiAdvanceCount').innerText = Number(s.advance_emi_clients || 0).toLocaleString();
+                        if (document.getElementById('badgeEmiDueCount')) 
+                            document.getElementById('badgeEmiDueCount').innerText = Number(s.due_emi_clients || 0).toLocaleString();
+
+                        // Update in-view count & amount
+                        const totalCountEl = document.getElementById('emiModalTotalCount');
+                        const totalAmountEl = document.getElementById('emiModalTotalAmount');
+
+                        if (totalCountEl) totalCountEl.innerText = Number(data.count || 0).toLocaleString();
+
+                        if (totalAmountEl) {
+                            if (category === 'advance') totalAmountEl.innerText = fmt(s.advance_emi_paid);
+                            else if (category === 'regular') totalAmountEl.innerText = fmt(s.regular_emi_paid);
+                            else if (category === 'due') totalAmountEl.innerText = fmt(s.due_emi_amount);
+                            else totalAmountEl.innerText = fmt(s.total_emi_paid);
+                        }
+                    }
+                } else {
+                    if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-danger">Failed to load EMI analytics records.</td></tr>';
+                }
+            })
+            .catch(err => {
+                console.error('Error loading EMI analytics clients:', err);
+                if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-danger">Error loading data. Please try again.</td></tr>';
+            });
+    }
+
+    // Client-side quick filter for instantaneous typing response
+    function filterEmiModalRows(query) {
+        const q = (query || '').toLowerCase().trim();
+        const tbody = document.getElementById('emiModalTableBody');
+        if (!tbody) return;
+        const rows = tbody.querySelectorAll('tr');
+        let visibleCount = 0;
+
+        rows.forEach(tr => {
+            if (tr.children.length < 9) return; // skip no-records row
+            const text = tr.innerText.toLowerCase();
+            if (!q || text.includes(q)) {
+                tr.style.display = '';
+                visibleCount++;
+            } else {
+                tr.style.display = 'none';
+            }
+        });
+
+        const totalCountEl = document.getElementById('emiModalTotalCount');
+        if (totalCountEl) totalCountEl.innerText = Number(visibleCount).toLocaleString();
     }
 </script>

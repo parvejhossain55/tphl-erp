@@ -990,15 +990,15 @@ $show_breadcrumb = true;
                 
             if (isManagement) {
                 actionHtml += `
-                    <button type="button" class="table__icon" style="color: #eab308; border: 1px solid #eab308; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px;"
+                    <button type="button" class="d-none table__icon" style="color: #eab308; border: 1px solid #eab308; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px;"
                         onclick="cancelBookingFromModal(${land.booking_id}, '${escapeHtml(land.unit_name || '')}')"
                         title="Cancel Booking">
-                        <i class="fa-solid fa-ban"></i>
+                        <i class="d-none fa-solid fa-ban"></i>
                     </button>
-                    <button type="button" class="table__icon delete" style="color: #dc3545; border: 1px solid #dc3545; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px;"
+                    <button type="button" class="d-none table__icon delete" style="color: #dc3545; border: 1px solid #dc3545; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px;"
                         onclick="deleteBookingFromModal(${land.booking_id})"
                         title="Delete Booking & All Payments">
-                        <i class="fa-regular fa-trash-can"></i>
+                        <i class="d-none fa-regular fa-trash-can"></i>
                     </button>`;
             }
             

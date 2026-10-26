@@ -1252,7 +1252,7 @@ public function indexTwo($bookingId = null)
                 }
                 $html .= '<td class="fw-bold text-dark text-nowrap">TK.' . number_format($targetVal, 2);
                 if ($rowDiscount > 0) {
-                    $html .= '<div style="font-size: 10.5px; color: #d97706; font-weight: 500;">(' . $discLabel . ': ৳' . number_format($rowDiscount, 2) . ')</div>';
+                    $html .= '<div style="font-size: 10.5px; color: #d97706; font-weight: 500;">(' . $discLabel . ': Tk. ' . number_format($rowDiscount, 2) . ')</div>';
                 }
                 $html .= '</td>';
                 $html .= '<td class="text-nowrap"><span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" style="font-size: 11.5px;">TK.' . number_format($paidVal, 2) . '</span></td>';
@@ -1496,7 +1496,7 @@ public function indexTwo($bookingId = null)
             if ($hasDueEmis) {
                 $html .= '<span class="badge bg-danger text-white mb-1" title="Due EMIs: ' . htmlspecialchars($client['due_summary_text']) . '">';
                 $html .= '<i class="fa-solid fa-triangle-exclamation me-1"></i>Due: ' . htmlspecialchars($client['due_summary_text']) . '</span>';
-                $html .= '<small class="d-block text-danger fw-bold" style="font-size: 11px;">৳' . number_format($client['total_due_amount'] ?? 0, 2) . '</small>';
+                $html .= '<small class="d-block text-danger fw-bold" style="font-size: 11px;">Tk. ' . number_format($client['total_due_amount'] ?? 0, 2) . '</small>';
             } elseif ($cms === 'paid') {
                 $html .= '<span class="badge bg-success">Paid</span>';
             } elseif ($cms === 'matured') {
@@ -1566,8 +1566,8 @@ public function indexTwo($bookingId = null)
 
             $html .= '<td><div class="d-flex flex-wrap gap-1">';
             foreach ($dClient['due_emis'] as $dEmi) {
-                $html .= '<span class="badge ' . ($dEmi['badge_class'] ?? 'bg-danger text-white') . ' py-1 px-2" style="font-size: 11px;" title="' . ($dEmi['type_label'] ?? '') . ': ৳' . number_format($dEmi['due_amount'], 2) . '">';
-                $html .= 'EMI #' . $dEmi['emi_no'] . ': ৳' . number_format($dEmi['due_amount'], 0);
+                $html .= '<span class="badge ' . ($dEmi['badge_class'] ?? 'bg-danger text-white') . ' py-1 px-2" style="font-size: 11px;" title="' . ($dEmi['type_label'] ?? '') . ': Tk. ' . number_format($dEmi['due_amount'], 2) . '">';
+                $html .= 'EMI #' . $dEmi['emi_no'] . ': Tk. ' . number_format($dEmi['due_amount'], 0);
                 $html .= '</span>';
             }
             $html .= '</div></td>';
@@ -1585,7 +1585,7 @@ public function indexTwo($bookingId = null)
             }
             $html .= '</td>';
 
-            $html .= '<td class="text-end fw-bold text-danger font-monospace fs-14">৳' . number_format($dClient['total_due_amount'], 2) . '</td>';
+            $html .= '<td class="text-end fw-bold text-danger font-monospace fs-14">Tk. ' . number_format($dClient['total_due_amount'], 2) . '</td>';
             $html .= '<td class="text-center">';
             if (!empty($dClient['booking_id'])) {
                 $html .= '<a href="' . $GLOBALS['base_url'] . '/clients-cash-in-history-view/' . (int)$dClient['booking_id'] . '" class="btn btn-xs btn-outline-primary py-1 px-2" title="View Cash In History & Pay"><i class="fa-solid fa-eye me-1"></i>View</a>';
@@ -3906,7 +3906,7 @@ public function addPayment()
             if ($data['amount'] > $remainingLandShare) {
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Land share amount cannot exceed remaining: ৳' . number_format($remainingLandShare, 2)
+                    'message' => 'Land share amount cannot exceed remaining: Tk. ' . number_format($remainingLandShare, 2)
                 ]);
                 return;
             }
@@ -5530,12 +5530,60 @@ public function discountStatement($bookingId = null)
             exit;
         }
 
+        // Handle AJAX registered clients list for a specific project (Land Share Complete)
+        if (isset($_GET['ajax']) && $_GET['ajax'] === 'registered_clients') {
+            $projectId = (int)($_GET['project_id'] ?? 0);
+            $registeredList = $projectId > 0 ? $this->clientModel->getRegisteredClientsByProject($projectId) : [];
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success'    => true,
+                'project_id' => $projectId,
+                'count'      => count($registeredList),
+                'clients'    => $registeredList
+            ]);
+            exit;
+        }
+
+        // Handle AJAX EMI Analytics summary
+        if (isset($_GET['ajax']) && $_GET['ajax'] === 'emi_analytics_summary') {
+            $projectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
+            $summary = $this->clientModel->getEmiAnalyticsSummary($projectId);
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'summary' => $summary
+            ]);
+            exit;
+        }
+
+        // Handle AJAX EMI Analytics clients breakdown list
+        if (isset($_GET['ajax']) && $_GET['ajax'] === 'emi_analytics_clients') {
+            $projectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
+            $category = trim($_GET['category'] ?? 'all');
+            if (!in_array($category, ['all', 'regular', 'advance', 'due'], true)) {
+                $category = 'all';
+            }
+            $search = trim($_GET['search'] ?? '');
+            $clients = $this->clientModel->getEmiAnalyticsClientsList($category, $projectId, $search ?: null, 500);
+            $summary = $this->clientModel->getEmiAnalyticsSummary($projectId);
+            $html = $this->renderEmiAnalyticsModalRowsHtml($clients, $category);
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success'  => true,
+                'category' => $category,
+                'count'    => count($clients),
+                'summary'  => $summary,
+                'html'     => $html
+            ]);
+            exit;
+        }
+
         $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') 
                   || (isset($_GET['ajax']) && $_GET['ajax'] == '1');
 
         $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
         $dueType = trim($_GET['due_type'] ?? 'all');
-        if (!in_array($dueType, ['all', 'land_share_due', 'dev_charge_due', 'emi_due', 'overall_due', 'cleared'], true)) {
+        if (!in_array($dueType, ['all', 'land_share_due', 'land_share_cleared', 'registered', 'dev_charge_due', 'emi_due', 'overall_due', 'cleared'], true)) {
             $dueType = 'all';
         }
 
@@ -5576,6 +5624,7 @@ public function discountStatement($bookingId = null)
 
         $clients = $this->clientModel->getClientWiseDueList($filters, $limit, $offset);
         $stats = $this->clientModel->getClientDueTrackingStats($selectedProjectId);
+        $emiAnalytics = $this->clientModel->getEmiAnalyticsSummary($selectedProjectId);
 
         if ($isAjax) {
             $tableHtml = $this->renderDueTrackingRowsHtml($clients);
@@ -5594,7 +5643,8 @@ public function discountStatement($bookingId = null)
                 'table_html' => $tableHtml,
                 'pagination_html' => $paginationHtml,
                 'info_text' => $infoText,
-                'stats' => $stats
+                'stats' => $stats,
+                'emi_analytics' => $emiAnalytics
             ]);
             exit;
         }
@@ -5630,6 +5680,7 @@ public function discountStatement($bookingId = null)
             "search"              => $search,
             "dueType"             => $dueType,
             "stats"               => $stats,
+            "emiAnalytics"        => $emiAnalytics,
             "projects"            => $projects,
             "projectBreakdown"    => $projectBreakdown,
             "selectedProjectId"   => $selectedProjectId,
@@ -5651,7 +5702,7 @@ public function discountStatement($bookingId = null)
     public function renderDueTrackingRowsHtml(array $clients): string
     {
         if (empty($clients)) {
-            return '<tr><td colspan="10" class="text-center py-5 text-muted"><i class="fa-solid fa-folder-open fa-3x mb-3 text-secondary opacity-50 d-block"></i>No client due records found matching the criteria.</td></tr>';
+            return '<tr><td colspan="11" class="text-center py-5 text-muted"><i class="fa-solid fa-folder-open fa-3x mb-3 text-secondary opacity-50 d-block"></i>No client due records found matching the criteria.</td></tr>';
         }
 
         // Batch query followup counts for these bookings
@@ -5697,6 +5748,45 @@ public function discountStatement($bookingId = null)
             $remEmiDue = (float)($client['remaining_emi_due'] ?? 0);
             $overdueEmi = (float)($client['overdue_emi_amount'] ?? 0);
 
+            $regularEmiPaid = (float)($client['regular_emi_paid'] ?? 0);
+            $advanceEmiPaid = (float)($client['advance_emi_paid'] ?? 0);
+            $maxPaidDueDate = !empty($client['max_regular_paid_due_date']) ? $client['max_regular_paid_due_date'] : null;
+            $maxPaidEmiNo = (int)($client['max_regular_paid_emi_no'] ?? 0);
+            $regularCompletedEmi = (int)($client['regular_completed_emi_count'] ?? 0);
+            $advanceEmiCount = (int)($client['advance_emi_count'] ?? 0);
+            $advanceEmiNumbers = trim($client['advance_emi_numbers'] ?? '');
+            $maxAdvanceDueDate = !empty($client['max_advance_due_date']) ? $client['max_advance_due_date'] : null;
+            $lastRegularPaidAmount = (float)($client['last_regular_paid_amount'] ?? 0);
+            $lastRegularPaymentDate = !empty($client['last_regular_payment_date']) ? date('d M, Y', strtotime($client['last_regular_payment_date'])) : null;
+
+            // Format advance EMI display badge text
+            $advanceEmiBadgeText = '';
+            if ($advanceEmiPaid > 0) {
+                if (!empty($advanceEmiNumbers)) {
+                    $advNos = array_unique(array_filter(array_map('intval', explode(',', $advanceEmiNumbers))));
+                    sort($advNos);
+                    $advCount = count($advNos);
+                    $isConsecutive = true;
+                    for ($k = 0; $k < $advCount - 1; $k++) {
+                        if ($advNos[$k + 1] !== $advNos[$k] + 1) {
+                            $isConsecutive = false;
+                            break;
+                        }
+                    }
+                    if ($advCount === 1) {
+                        $advanceEmiBadgeText = "1 EMI (#{$advNos[0]})";
+                    } elseif ($isConsecutive && $advCount > 3) {
+                        $advanceEmiBadgeText = "{$advCount} EMIs (#{$advNos[0]} - #{$advNos[$advCount - 1]})";
+                    } else {
+                        $advanceEmiBadgeText = "{$advCount} EMIs (#" . implode(', #', $advNos) . ")";
+                    }
+                } elseif ($advanceEmiCount > 0) {
+                    $advanceEmiBadgeText = "{$advanceEmiCount} Advance " . ($advanceEmiCount > 1 ? 'EMIs' : 'EMI');
+                } else {
+                    $advanceEmiBadgeText = 'Advance Paid';
+                }
+            }
+
             $completedEmi = (int)($client['completed_emi_count'] ?? 0);
             $totalEmi = (int)($client['total_emi_no'] ?? 0);
             if ($totalEmi <= 0) $totalEmi = 36;
@@ -5708,17 +5798,18 @@ public function discountStatement($bookingId = null)
             // Status badges
             $landBadge = ($landDue <= 0)
                 ? '<span class="badge bg-success-subtle text-success fw-semibold"><i class="fa-solid fa-check me-1"></i>Cleared</span>'
-                : '<span class="badge bg-danger-subtle text-danger fw-bold fs-12">৳' . number_format($landDue) . '</span>';
+                : '<span class="badge bg-danger-subtle text-danger fw-bold fs-12">Tk. ' . number_format($landDue) . '</span>';
 
             $devBadge = ($devDue <= 0)
                 ? '<span class="badge bg-success-subtle text-success fw-semibold"><i class="fa-solid fa-check me-1"></i>Cleared</span>'
-                : '<span class="badge bg-danger-subtle text-danger fw-bold fs-12">৳' . number_format($devDue) . '</span>';
+                : '<span class="badge bg-danger-subtle text-danger fw-bold fs-12">Tk. ' . number_format($devDue) . '</span>';
 
             $overallBadge = ($overallDue <= 0)
                 ? '<span class="badge bg-success text-white fw-bold px-2 py-1"><i class="fa-solid fa-check-double me-1"></i>Fully Paid</span>'
-                : '<span class="fw-bold text-danger fs-14">৳' . number_format($overallDue) . '</span>';
+                : '<span class="fw-bold text-danger fs-14">Tk. ' . number_format($overallDue) . '</span>';
 
-            $ledgerUrl = "{$GLOBALS['base_url']}/clients-cash-in-history-view/{$bookingId}";
+            $baseUrl = $GLOBALS['base_url'] ?? '';
+            $ledgerUrl = "{$baseUrl}/clients-cash-in-history-view/{$bookingId}";
 
             $html .= '<tr class="align-middle">';
             
@@ -5757,18 +5848,18 @@ public function discountStatement($bookingId = null)
 
             // Col 4: Total Value & Paid
             $html .= '<td class="text-end">';
-            $html .= '<div class="fw-bold text-dark">৳' . number_format($totalPrice) . '</div>';
+            $html .= '<div class="fw-bold text-dark">Tk. ' . number_format($totalPrice) . '</div>';
             if ($discount > 0) {
-                $html .= '<div class="extra-small text-success" title="Booking Discount"><i class="fa-solid fa-tag me-1"></i>Disc: ৳' . number_format($discount) . '</div>';
+                $html .= '<div class="extra-small text-success" title="Booking Discount"><i class="fa-solid fa-tag me-1"></i>Disc: Tk. ' . number_format($discount) . '</div>';
             }
-            $html .= '<div class="extra-small text-muted">Paid: ৳' . number_format($totalPaid) . '</div>';
+            $html .= '<div class="extra-small text-muted">Paid: Tk. ' . number_format($totalPaid) . '</div>';
             $html .= '</td>';
 
             // Col 5: Land Share Due
             $html .= '<td class="text-end">';
             $html .= '<div class="mb-1">' . $landBadge . '</div>';
             $html .= '<div class="extra-small text-muted" style="font-size:10px;" title="Booking + Registration Fee">';
-            $html .= 'Target: ৳' . number_format($landTarget) . '<br>Paid: ৳' . number_format($landPaid);
+            $html .= 'Target: Tk. ' . number_format($landTarget) . '<br>Paid: Tk. ' . number_format($landPaid);
             $html .= '</div>';
             $html .= '</td>';
 
@@ -5776,25 +5867,71 @@ public function discountStatement($bookingId = null)
             $html .= '<td class="text-end">';
             $html .= '<div class="mb-1">' . $devBadge . '</div>';
             $html .= '<div class="extra-small text-muted" style="font-size:10px;">';
-            $html .= 'Target: ৳' . number_format($devTarget) . '<br>Paid: ৳' . number_format($devPaid);
+            $html .= 'Target: Tk. ' . number_format($devTarget) . '<br>Paid: Tk. ' . number_format($devPaid);
             $html .= '</div>';
             $html .= '</td>';
 
-            // Col 7: EMI / Construction Due
-            $emiPaidClass = ($completedEmi > 0 && $remEmiDue <= 0) ? 'text-success fw-semibold' : 'text-muted';
+            // Col 7: Regular EMI Paid
             $html .= '<td class="text-end">';
-            $html .= '<div class="fw-bold ' . ($remEmiDue > 0 ? 'text-dark' : 'text-success') . '">৳' . number_format($remEmiDue) . '</div>';
-            $html .= '<div class="extra-small ' . $emiPaidClass . '" style="font-size:10px;"><i class="fa-solid fa-calendar-check me-1"></i>' . $completedEmi . '/' . $totalEmi . ' EMIs paid</div>';
+            $html .= '<div class="fw-bold ' . ($regularEmiPaid > 0 ? 'text-dark' : 'text-muted') . '">Tk. ' . number_format($regularEmiPaid) . '</div>';
+            if ($maxPaidDueDate) {
+                $monthYearStr = date('M Y', strtotime($maxPaidDueDate));
+                $html .= '<div class="extra-small mt-1">';
+                $html .= '<a href="javascript:void(0)" onclick="openEmiAnalyticsModal(\'regular\')" class="badge bg-primary-subtle text-primary border border-primary-subtle text-decoration-none" title="Regular installments paid up to ' . $monthYearStr . ' (Click to view breakdown)">';
+                $html .= '<i class="fa-solid fa-calendar-check me-1 text-primary"></i>Up to: ' . $monthYearStr . ' (#' . ($maxPaidEmiNo > 0 ? $maxPaidEmiNo : $regularCompletedEmi) . '/' . $totalEmi . ')';
+                $html .= '</a>';
+                $html .= '</div>';
+            } else {
+                $html .= '<div class="extra-small text-muted" style="font-size:10px;">0/' . $totalEmi . ' EMIs</div>';
+            }
+            if ($lastRegularPaidAmount > 0 && $lastRegularPaymentDate) {
+                $html .= '<div class="extra-small text-muted" style="font-size:10px;" title="Last regular installment payment">';
+                $html .= '<i class="fa-solid fa-receipt me-1 text-secondary"></i>Last: Tk. ' . number_format($lastRegularPaidAmount) . ' <span class="text-secondary">(' . $lastRegularPaymentDate . ')</span>';
+                $html .= '</div>';
+            }
+            $html .= '</td>';
+
+            // Col 8: Advance EMI Paid
+            $html .= '<td class="text-end">';
+            if ($advanceEmiPaid > 0) {
+                $html .= '<div class="mb-1">';
+                $html .= '<a href="javascript:void(0)" onclick="openEmiAnalyticsModal(\'advance\')" class="badge bg-success-subtle text-success fw-bold fs-12 text-decoration-none" title="Paid in advance for future months: ' . htmlspecialchars($advanceEmiBadgeText) . ' (Click to view breakdown)">';
+                $html .= '<i class="fa-solid fa-forward me-1"></i>Tk. ' . number_format($advanceEmiPaid);
+                $html .= '</a>';
+                $html .= '</div>';
+                $html .= '<div class="extra-small text-success fw-semibold" style="font-size:10px;" title="Advance Installment Numbers">';
+                $html .= '<i class="fa-solid fa-layer-group me-1"></i>' . htmlspecialchars($advanceEmiBadgeText);
+                $html .= '</div>';
+                if ($maxAdvanceDueDate) {
+                    $html .= '<div class="extra-small text-muted" style="font-size:9px;">Due: ' . date('M Y', strtotime($maxAdvanceDueDate)) . '</div>';
+                }
+            } else {
+                $html .= '<div class="fw-semibold text-muted" style="font-size:13px;">Tk. 0</div>';
+                $html .= '<div class="extra-small text-muted" style="font-size:10px;">No advance</div>';
+            }
+            $html .= '</td>';
+
+            // Col 9: Due EMI
+            $html .= '<td class="text-end">';
+            if ($overdueEmi > 0) {
+                $html .= '<div class="mb-1">';
+                $html .= '<a href="javascript:void(0)" onclick="openEmiAnalyticsModal(\'due\')" class="badge bg-danger-subtle text-danger fw-bold fs-12 text-decoration-none" title="Overdue installments pending payment (Click to view breakdown)">';
+                $html .= '<i class="fa-solid fa-triangle-exclamation me-1"></i>Tk. ' . number_format($overdueEmi);
+                $html .= '</a>';
+                $html .= '</div>';
+            } elseif ($remEmiDue <= 0 && $completedEmi > 0) {
+                $html .= '<div class="mb-1"><span class="badge bg-success-subtle text-success fw-semibold"><i class="fa-solid fa-check me-1"></i>Cleared</span></div>';
+            } else {
+                $html .= '<div class="mb-1"><span class="badge bg-light text-secondary border fw-semibold" style="font-size:11px;">Current</span></div>';
+            }
+            $html .= '<div class="extra-small text-muted" style="font-size:10px;">Rem: Tk. ' . number_format($remEmiDue) . '</div>';
             $pendingEmiCount = (int)($client['pending_emi_payment_count'] ?? 0);
             if ($pendingEmiCount > 0) {
                 $html .= '<div class="mt-1"><span class="badge bg-warning text-dark extra-small" style="font-size:9px;" title="' . $pendingEmiCount . ' EMI payment(s) awaiting verification"><i class="fa-solid fa-clock me-1"></i>+' . $pendingEmiCount . ' Pending</span></div>';
             }
-            if ($overdueEmi > 0 && $remEmiDue > 0) {
-                $html .= '<div class="mt-1"><span class="badge bg-warning text-dark extra-small" title="Overdue installments pending payment"><i class="fa-solid fa-triangle-exclamation me-1"></i>Overdue: ৳' . number_format($overdueEmi) . '</span></div>';
-            }
             $html .= '</td>';
 
-            // Col 8: Overall Due
+            // Col 10: Overall Due
             $html .= '<td class="text-end">';
             $html .= '<div class="mb-1">' . $overallBadge . '</div>';
             if ($lastPaymentDate) {
@@ -5802,10 +5939,212 @@ public function discountStatement($bookingId = null)
             }
             $html .= '</td>';
 
-            // Col 9: Action
+            // Col 11: Action
             $html .= '<td class="text-center">';
             $html .= '<div class="d-flex align-items-center justify-content-center gap-1">';
             $html .= '<a href="' . $ledgerUrl . '" class="btn btn-outline-primary btn-sm py-1 px-2" style="font-size:11px;" title="View Full Client Ledger & Cash In History"><i class="fa-solid fa-receipt me-1"></i>Ledger</a>';
+            $html .= '<button type="button" class="btn btn-outline-secondary btn-sm py-1 px-2" style="font-size:11px;" onclick="openClientDueBreakdownModal(' . $bookingId . ')" title="Quick Due Breakdown Preview"><i class="fa-solid fa-eye"></i></button>';
+
+            $fCount = $followupCounts[$bookingId] ?? 0;
+            $escapedName = htmlspecialchars(trim(preg_replace('/\s+/', ' ', $client['client_name'] ?? 'Client')), ENT_QUOTES);
+            $totalEmiVal = (int)($client['total_emi_no'] ?? 36);
+            $leadIdVal = (int)($client['lead_id'] ?? 0) ?: 'null';
+            $html .= '<button type="button" onclick="openClientEmiFollowupModal(' . $bookingId . ', \'' . $escapedName . '\', ' . $totalEmiVal . ', ' . $leadIdVal . ')" class="btn btn-sm btn-outline-primary py-1 px-2 text-nowrap" style="font-size:11px;" title="Add / View Follow Up Notes">';
+            $html .= '<i class="fa-light fa-comment-dots me-1"></i>Follow Up';
+            $html .= '<span class="badge ' . ($fCount > 0 ? 'bg-primary' : 'bg-secondary') . ' rounded-pill ms-1 followup-count-badge" data-booking-id="' . $bookingId . '" style="font-size:10px;">' . $fCount . '</span>';
+            $html .= '</button>';
+            $html .= '</div>';
+            $html .= '</td>';
+
+            $html .= '</tr>';
+        }
+
+        return $html;
+    }
+
+    /**
+     * Render Table Rows HTML for EMI Analytics Breakdown Modal
+     *
+     * @param array $clients
+     * @param string $category
+     * @return string
+     */
+    public function renderEmiAnalyticsModalRowsHtml(array $clients, string $category = 'all'): string
+    {
+        if (empty($clients)) {
+            return '<tr><td colspan="9" class="text-center py-5 text-muted"><i class="fa-solid fa-folder-open fa-3x mb-3 text-secondary opacity-50 d-block"></i>No client records found matching the criteria.</td></tr>';
+        }
+
+        // Batch query followup counts for these bookings
+        $bookingIds = array_filter(array_column($clients, 'booking_id'));
+        $followupCounts = [];
+        if (!empty($bookingIds)) {
+            $bIdsStr = implode(',', array_map('intval', $bookingIds));
+            $fcRes = $this->db->query("SELECT booking_id, COUNT(*) as cnt FROM emi_followups WHERE booking_id IN ($bIdsStr) GROUP BY booking_id");
+            if ($fcRes) {
+                while ($fcRow = $fcRes->fetch_assoc()) {
+                    $followupCounts[(int)$fcRow['booking_id']] = (int)$fcRow['cnt'];
+                }
+            }
+        }
+
+        $html = '';
+        foreach ($clients as $client) {
+            $bookingId = (int)$client['booking_id'];
+            $clientName = htmlspecialchars($client['client_name'] ?? 'N/A');
+            $phone = htmlspecialchars($client['phone'] ?? '');
+            $salesAgent = htmlspecialchars($client['sales_agent_name'] ?? 'Not Assigned');
+            $projectName = htmlspecialchars($client['project_name'] ?? 'N/A');
+            $unitName = htmlspecialchars($client['unit_name'] ?? 'N/A');
+            $floorNo = htmlspecialchars($client['floor_no'] ?? '');
+            $isShop = !empty($client['is_shop']) && (int)$client['is_shop'] === 1;
+
+            $totalEmiPaid = (float)($client['total_emi_paid'] ?? 0);
+            $regularEmiPaid = (float)($client['regular_emi_paid'] ?? 0);
+            $advanceEmiPaid = (float)($client['advance_emi_paid'] ?? 0);
+            $overdueEmiAmount = (float)($client['overdue_emi_amount'] ?? 0);
+            $lastPaidAmount = (float)($client['last_paid_amount'] ?? 0);
+
+            $maxPaidEmiNo = (int)($client['max_paid_emi_no'] ?? 0);
+            $totalEmiNo = (int)($client['total_emi_no'] ?? 36);
+            if ($totalEmiNo <= 0) $totalEmiNo = 36;
+            if ($maxPaidEmiNo > $totalEmiNo) $totalEmiNo = $maxPaidEmiNo;
+
+            $maxRegularDueDate = !empty($client['max_regular_paid_due_date']) ? date('M Y', strtotime($client['max_regular_paid_due_date'])) : null;
+            $maxRegularEmiNo = (int)($client['max_regular_paid_emi_no'] ?? 0);
+            $maxAdvanceDueDate = !empty($client['max_advance_due_date']) ? date('M Y', strtotime($client['max_advance_due_date'])) : null;
+            $advanceEmiNumbers = trim($client['advance_emi_numbers'] ?? '');
+            $advanceEmiCount = (int)($client['advance_emi_count'] ?? 0);
+
+            // Format advance EMI display badge text
+            $advanceEmiBadgeText = '';
+            if ($advanceEmiPaid > 0) {
+                if (!empty($advanceEmiNumbers)) {
+                    $advNos = array_unique(array_filter(array_map('intval', explode(',', $advanceEmiNumbers))));
+                    sort($advNos);
+                    $advCount = count($advNos);
+                    $isConsecutive = true;
+                    for ($k = 0; $k < $advCount - 1; $k++) {
+                        if ($advNos[$k + 1] !== $advNos[$k] + 1) {
+                            $isConsecutive = false;
+                            break;
+                        }
+                    }
+                    if ($advCount === 1) {
+                        $advanceEmiBadgeText = "1 EMI (#{$advNos[0]})";
+                    } elseif ($isConsecutive && $advCount > 3) {
+                        $advanceEmiBadgeText = "{$advCount} EMIs (#{$advNos[0]} - #{$advNos[$advCount - 1]})";
+                    } else {
+                        $advanceEmiBadgeText = "{$advCount} EMIs (#" . implode(', #', $advNos) . ")";
+                    }
+                } elseif ($advanceEmiCount > 0) {
+                    $advanceEmiBadgeText = "{$advanceEmiCount} Advance " . ($advanceEmiCount > 1 ? 'EMIs' : 'EMI');
+                } else {
+                    $advanceEmiBadgeText = 'Advance Paid';
+                }
+            }
+
+            $bookingDate = !empty($client['booking_date']) ? date('d M, Y', strtotime($client['booking_date'])) : 'N/A';
+            $lastPaymentDate = !empty($client['last_payment_date']) ? date('d M, Y', strtotime($client['last_payment_date'])) : 'N/A';
+            $maxPaidDueDate = !empty($client['max_paid_due_date']) ? date('M Y', strtotime($client['max_paid_due_date'])) : null;
+            $baseUrl = $GLOBALS['base_url'] ?? '';
+            $ledgerUrl = "{$baseUrl}/clients-cash-in-history-view/{$bookingId}";
+
+            $html .= '<tr class="align-middle">';
+
+            // Col 1: ID & Date
+            $html .= '<td class="text-center">';
+            $html .= '<a href="' . $ledgerUrl . '" class="fw-bold text-primary text-decoration-none" target="_blank">#' . $bookingId . '</a>';
+            $html .= '<div class="extra-small text-muted" style="font-size:10px;">' . $bookingDate . '</div>';
+            $html .= '</td>';
+
+            // Col 2: Client Info
+            $html .= '<td>';
+            $html .= '<div class="d-flex align-items-center">';
+            $html .= '<div class="avatar avatar-sm bg-primary-subtle text-primary rounded-circle me-2 d-flex align-items-center justify-content-center fw-bold" style="width:32px; height:32px; font-size:11px;">' . mb_substr($clientName, 0, 1) . '</div>';
+            $html .= '<div>';
+            $html .= '<a href="' . $ledgerUrl . '" class="fw-bold text-dark text-decoration-none d-block" target="_blank">' . $clientName . '</a>';
+            if (!empty($phone)) {
+                $html .= '<a href="tel:' . $phone . '" class="extra-small text-muted text-decoration-none me-2" style="font-size:11px;"><i class="fa-solid fa-phone me-1 text-secondary"></i>' . $phone . '</a>';
+            }
+            if (!empty($salesAgent)) {
+                $html .= '<span class="extra-small text-muted d-block" style="font-size:10px;"><i class="fa-solid fa-user-tie me-1 text-info"></i>' . $salesAgent . '</span>';
+            }
+            $html .= '</div>';
+            $html .= '</div>';
+            $html .= '</td>';
+
+            // Col 3: Project & Unit
+            $html .= '<td>';
+            $html .= '<span class="badge bg-light text-primary border border-primary-subtle mb-1 d-inline-block text-truncate" style="max-width: 150px;" title="' . $projectName . '">' . $projectName . '</span>';
+            $html .= '<div class="fw-semibold text-dark extra-small" style="font-size:11px;">';
+            $html .= '<i class="fa-solid fa-building me-1 text-muted"></i>' . $unitName . (!empty($floorNo) ? ' (Fl ' . $floorNo . ')' : '');
+            if ($isShop) {
+                $html .= ' <span class="badge bg-warning text-dark extra-small">Shop</span>';
+            }
+            $html .= '</div>';
+            $html .= '</td>';
+
+            // Col 4: Paid Up To (Month & Installment)
+            $html .= '<td>';
+            if ($category === 'advance' && $maxAdvanceDueDate) {
+                $html .= '<span class="badge bg-success-subtle text-success border border-success-subtle fw-bold fs-12 px-2 py-1"><i class="fa-solid fa-forward me-1"></i>' . $maxAdvanceDueDate . '</span>';
+                if (!empty($advanceEmiBadgeText)) {
+                    $html .= '<div class="extra-small text-success mt-1" style="font-size:10px;"><i class="fa-solid fa-layer-group me-1"></i>' . htmlspecialchars($advanceEmiBadgeText) . '</div>';
+                }
+            } elseif ($maxRegularDueDate) {
+                $html .= '<span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-bold fs-12 px-2 py-1"><i class="fa-solid fa-calendar-check me-1"></i>' . $maxRegularDueDate . '</span>';
+                $html .= '<div class="extra-small text-muted mt-1" style="font-size:10px;">EMI #' . ($maxRegularEmiNo > 0 ? $maxRegularEmiNo : $maxPaidEmiNo) . ' of ' . $totalEmiNo . '</div>';
+            } elseif ($maxPaidDueDate) {
+                $html .= '<span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-bold fs-12 px-2 py-1"><i class="fa-solid fa-calendar-check me-1"></i>' . $maxPaidDueDate . '</span>';
+                $html .= '<div class="extra-small text-muted mt-1" style="font-size:10px;">EMI #' . $maxPaidEmiNo . ' of ' . $totalEmiNo . '</div>';
+            } else {
+                $html .= '<span class="badge bg-light text-muted border fs-11">No Schedule</span>';
+            }
+            $html .= '</td>';
+
+            // Col 5: Last EMI Paid
+            $html .= '<td class="text-end">';
+            $html .= '<div class="fw-bold text-dark fs-12">Tk. ' . number_format($lastPaidAmount) . '</div>';
+            if ($lastPaymentDate !== 'N/A') {
+                $html .= '<div class="extra-small text-muted" style="font-size:10px;"><i class="fa-solid fa-clock-rotate-left me-1"></i>' . $lastPaymentDate . '</div>';
+            }
+            $html .= '</td>';
+
+            // Col 6: Regular Paid
+            $html .= '<td class="text-end">';
+            $html .= '<div class="fw-bold text-dark fs-12">Tk. ' . number_format($regularEmiPaid) . '</div>';
+            $html .= '<div class="extra-small text-muted" style="font-size:10px;">Current Month</div>';
+            $html .= '</td>';
+
+            // Col 7: Advance Paid
+            $html .= '<td class="text-end">';
+            if ($advanceEmiPaid > 0) {
+                $html .= '<span class="badge bg-success-subtle text-success fw-bold fs-11">Tk. ' . number_format($advanceEmiPaid) . '</span>';
+                if (!empty($advanceEmiBadgeText)) {
+                    $html .= '<div class="extra-small text-success mt-1" style="font-size:10px;" title="Advance Installment Numbers"><i class="fa-solid fa-layer-group me-1"></i>' . htmlspecialchars($advanceEmiBadgeText) . '</div>';
+                } else {
+                    $html .= '<div class="extra-small text-success mt-1" style="font-size:9px;"><i class="fa-solid fa-forward me-1"></i>Advance</div>';
+                }
+            } else {
+                $html .= '<span class="text-muted fs-11">Tk. 0</span>';
+            }
+            $html .= '</td>';
+
+            // Col 8: Due EMI
+            $html .= '<td class="text-end">';
+            if ($overdueEmiAmount > 0) {
+                $html .= '<span class="badge bg-danger-subtle text-danger fw-bold fs-11">Tk. ' . number_format($overdueEmiAmount) . '</span>';
+                $html .= '<div class="extra-small text-danger mt-1" style="font-size:9px;"><i class="fa-solid fa-triangle-exclamation me-1"></i>Overdue</div>';
+            } else {
+                $html .= '<span class="badge bg-success-subtle text-success fs-10"><i class="fa-solid fa-check me-1"></i>Cleared</span>';
+            }
+            $html .= '</td>';
+
+            // Col 9: Actions
+            $html .= '<td class="text-center">';
+            $html .= '<div class="d-flex align-items-center justify-content-center gap-1">';
+            $html .= '<a href="' . $ledgerUrl . '" class="btn btn-outline-primary btn-sm py-1 px-2" style="font-size:11px;" target="_blank" title="View Full Client Ledger & Cash In History"><i class="fa-solid fa-receipt me-1"></i>Ledger</a>';
             $html .= '<button type="button" class="btn btn-outline-secondary btn-sm py-1 px-2" style="font-size:11px;" onclick="openClientDueBreakdownModal(' . $bookingId . ')" title="Quick Due Breakdown Preview"><i class="fa-solid fa-eye"></i></button>';
 
             $fCount = $followupCounts[$bookingId] ?? 0;
@@ -5887,7 +6226,10 @@ public function discountStatement($bookingId = null)
             'Dev Charges Paid (BDT)',
             'Dev Charges Due (BDT)',
             'Construction Target (BDT)',
-            'EMI Paid (BDT)',
+            'Regular EMI Paid (BDT)',
+            'Paid Up To',
+            'Advance EMI Paid (BDT)',
+            'Total EMI Paid (BDT)',
             'EMIs Paid / Total',
             'Remaining EMI Due (BDT)',
             'Overdue EMI (BDT)',
@@ -5912,6 +6254,9 @@ public function discountStatement($bookingId = null)
 
             $consFee = (float)$c['construction_fee'];
             $emiPaid = (float)$c['emi_paid'];
+            $regularEmiPaid = (float)($c['regular_emi_paid'] ?? 0);
+            $advanceEmiPaid = (float)($c['advance_emi_paid'] ?? 0);
+            $maxPaidDueDate = !empty($c['max_paid_due_date']) ? date('M Y', strtotime($c['max_paid_due_date'])) : 'N/A';
             $remEmiDue = (float)$c['remaining_emi_due'];
             $overdueEmi = (float)$c['overdue_emi_amount'];
 
@@ -5942,6 +6287,9 @@ public function discountStatement($bookingId = null)
                 number_format($devPaid, 2, '.', ''),
                 number_format($devDue, 2, '.', ''),
                 number_format($consFee, 2, '.', ''),
+                number_format($regularEmiPaid, 2, '.', ''),
+                $maxPaidDueDate,
+                number_format($advanceEmiPaid, 2, '.', ''),
                 number_format($emiPaid, 2, '.', ''),
                 "{$completedEmi}/{$totalEmi}",
                 number_format($remEmiDue, 2, '.', ''),

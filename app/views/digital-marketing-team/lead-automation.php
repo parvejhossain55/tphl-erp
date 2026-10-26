@@ -2735,8 +2735,8 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
                             <i class="fa-regular fa-clock me-1 text-primary"></i>${escapeHtml(lead.formatted_sync_time || formatTime(lead.sync_datetime || lead.created_at))}
                         </div>
                         <div class="mt-1" style="font-size: 11px; white-space: nowrap;" title="Synced / Added by ${escapeHtml(lead.synced_by || 'System')}">
-                            <span class="badge bg-light text-secondary border px-1 py-0" style="font-size: 10px; font-weight: 500;">
-                                <i class="fa-solid fa-user-circle text-muted me-1"></i>${escapeHtml(lead.synced_by || 'System')}
+                            <span class="badge bg-light text-dark border px-1 py-0" style="font-size: 10.5px; font-weight: 600;">
+                                <i class="fa-solid fa-user text-primary me-1"></i>By: ${escapeHtml(lead.synced_by || 'System')}
                             </span>
                         </div>
                     </td>
