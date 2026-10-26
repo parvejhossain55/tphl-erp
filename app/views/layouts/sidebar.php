@@ -2206,7 +2206,7 @@
                     || (strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'credit recovery') !== false)
                     || (strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'recovery') !== false)
                     || (strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'communicat') !== false);
-                $canViewCedCategory = (hasPermission("CED Manage") || in_array($sbUserRoleId, [1, 3, 33, 34, 35]) || $isClientCommUser) && ($sbUserRoleId != 9);
+                $canViewCedCategory = (hasPermission("CED Manage") || in_array($sbUserRoleId, [1, 3, 7, 33, 34, 35, 37]) || $isClientCommUser) && ($sbUserRoleId != 9);
 
                 $sbTodayFollowupCount = 0;
                 $sbUpcomingFollowupCount = 0;
@@ -2266,6 +2266,17 @@
                                 <span class="sidebar__menu-label">Upcoming Follow Up</span>
                                 <?php if ($sbUpcomingFollowupCount > 0): ?>
                                     <span class="badge bg-info rounded-pill ms-auto me-2"><?= $sbUpcomingFollowupCount ?></span>
+                                <?php endif; ?>
+                            </a>
+                        </li>
+                        <li class="slide <?= isActive('client-refunds', $current_route) ?>">
+                            <a href="<?= $base_url ?>/client-refunds"
+                                class="sidebar__menu-item <?= isActive('client-refunds', $current_route) ?>"
+                                title="Client Refunds">
+                                <div class="side-menu__icon"><i class="fa-solid fa-arrow-rotate-left"></i></div>
+                                <span class="sidebar__menu-label">Client Refunds</span>
+                                <?php if ($unpaidRefundsCount > 0): ?>
+                                    <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $unpaidRefundsCount ?></span>
                                 <?php endif; ?>
                             </a>
                         </li>
@@ -2359,7 +2370,7 @@
                                 <li class="slide <?= isActive('client-refunds', $current_route) ?>">
                                     <a href="<?= $base_url ?>/client-refunds"
                                         class="sidebar__menu-item <?= isActive('client-refunds', $current_route) ?>">
-                                        Refunds
+                                        Client Refunds
                                         <?php if ($unpaidRefundsCount > 0): ?>
                                             <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $unpaidRefundsCount ?></span>
                                         <?php endif; ?>
