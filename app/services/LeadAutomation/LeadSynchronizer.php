@@ -12,10 +12,16 @@ class LeadSynchronizer
     private array $logs = [];
     private ?int $userId = null;
 
-    public function __construct(array $config, ?int $userId = null)
+    public function __construct(array $config, $userId = null)
     {
         $this->config = $config;
-        $this->userId = $userId ?? (isset($_SESSION['user']['id']) ? (int)$_SESSION['user']['id'] : null);
+        if (is_int($userId) || (is_string($userId) && is_numeric($userId))) {
+            $this->userId = (int)$userId;
+        } elseif (isset($_SESSION['user']['id'])) {
+            $this->userId = (int)$_SESSION['user']['id'];
+        } else {
+            $this->userId = null;
+        }
     }
 
     /**

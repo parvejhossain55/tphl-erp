@@ -1399,7 +1399,8 @@ class LeadAutomationController extends Controller
             $leadsToProcess = [$payload];
         }
 
-        $synchronizer = new LeadSynchronizer($this->automationConfig, $this->db);
+        $currentUserId = isset($_SESSION['user']['id']) ? (int)$_SESSION['user']['id'] : null;
+        $synchronizer = new LeadSynchronizer($this->automationConfig, $currentUserId);
         $pdo = $synchronizer->getDb();
 
         $insertedCount = 0;
@@ -1617,7 +1618,8 @@ class LeadAutomationController extends Controller
 
         try {
             $this->ensureSchema();
-            $synchronizer = new LeadSynchronizer($this->automationConfig, $this->db);
+            $currentUserId = isset($_SESSION['user']['id']) ? (int)$_SESSION['user']['id'] : null;
+            $synchronizer = new LeadSynchronizer($this->automationConfig, $currentUserId);
             $pdo = $synchronizer->getDb();
 
             $apiUrl = 'https://api.dpremiumhomes.com/api/get-brochure-leads';
