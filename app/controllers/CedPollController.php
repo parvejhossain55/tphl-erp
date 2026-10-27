@@ -329,6 +329,9 @@ class CedPollController extends Controller
             $pollId = $this->pollModel->createPoll($data, $options);
             $poll = $this->pollModel->getPollById($pollId, null, true);
 
+            // Dispatch Firebase Push Notification to Cloud Run service
+            $this->sendFirebasePushNotification($poll);
+
             return $this->jsonResponse(true, "Poll created successfully.", $poll, 201);
         } catch (Exception $e) {
             return $this->jsonResponse(false, $e->getMessage(), null, 400);
@@ -457,6 +460,65 @@ class CedPollController extends Controller
             return $this->jsonResponse(true, "Voters retrieved successfully.", $voters);
         } catch (Exception $e) {
             return $this->jsonResponse(false, $e->getMessage(), null, 500);
+        }
+    }
+
+    /**
+     * Dispatch Firebase Push Notification via Cloud Run on Poll creation
+     */
+    protected function sendFirebasePushNotification($poll)
+    {
+        try {
+            $url = 'https://sendprojectnoticepush-408578905351.asia-southeast1.run.app';
+
+            // projectId null or empty passes 'all', which triggers 'all_users' topic in Cloud Run
+            $projectId   = !empty($poll['project_id']) ? (string)$poll['project_id'] : 'all';
+            $projectName = !empty($poll['project_name']) ? (string)$poll['project_name'] : 'TPHL Projects';
+            $title       = !empty($poll['title']) ? (string)$poll['title'] : 'নতুন ভোটিং';
+            $body        = !empty($poll['description']) 
+                            ? (string)$poll['description'] 
+                            : 'নতুন পোলে আপনার মূল্যবান মতামত বা ভোট দিন!';
+
+            $payload = [
+                'secret'       => 'TPHL_Secure_Secret_549320abcedf184759',
+                'type'         => 'poll',
+                'poll_id'      => (string)($poll['id'] ?? ''),
+                'project_id'   => $projectId,
+                'project_name' => $projectName,
+                'title'        => $title,
+                'body'         => $body,
+            ];
+
+            if (!empty($poll['image_url'])) {
+                $payload['project_image'] = (string)$poll['image_url'];
+            }
+
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_POST           => true,
+                CURLOPT_POSTFIELDS     => json_encode($payload, JSON_UNESCAPED_UNICODE),
+                CURLOPT_HTTPHEADER     => [
+                    'Content-Type: application/json',
+                    'Accept: application/json',
+                    'x-tphl-secret: TPHL_Secure_Secret_549320abcedf184759'
+                ],
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 5,
+                CURLOPT_CONNECTTIMEOUT => 3,
+                CURLOPT_SSL_VERIFYPEER => false,
+            ]);
+
+            $response  = curl_exec($ch);
+            $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
+            curl_close($ch);
+
+            if ($curlError || $httpCode >= 400) {
+                error_log("Firebase Push Notification error [Poll #{$poll['id']}]: HTTP {$httpCode} - {$curlError} - Response: {$response}");
+            }
+        } catch (\Throwable $e) {
+            // Fail-safe: Notification issue will not disrupt poll creation
+            error_log("Firebase Push Notification exception [Poll #" . ($poll['id'] ?? '') . "]: " . $e->getMessage());
         }
     }
 }
