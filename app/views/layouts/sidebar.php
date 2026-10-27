@@ -984,27 +984,29 @@
                                 <i class="fa-regular fa-angle-down side-menu__angle"></i>
                             </a>
                             <ul class="sidebar-menu child2" style="display:block;">
-                                <li class="slide child2">
-                                    <a href="<?= $base_url ?>/my-incentives"
-                                        class="sidebar__menu-item <?= isActive('my-incentives', $current_route) ?>">My
-                                        Incentives</a>
-                                </li>
-                                <!-- Visible to Management, Accounts, HR, Chairman, and Sales Heads/Managers -->
-                                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 4, 5, 6, 9, 33, 34, 35])): ?>
+                                <!-- My Incentives: Only for Sales Executives, Managers & Team Leaders (NOT Management) -->
+                                <?php if (!$isManagement && (in_array($_SESSION['user']['role_id'] ?? 0, [5, 8, 9, 15]) || (!empty($_SESSION['user']['is_team_leader']) && $_SESSION['user']['is_team_leader'] == 1))): ?>
                                     <li class="slide child2">
-                                        <a href="<?= $base_url ?>/incentive-management"
-                                            class="sidebar__menu-item <?= isActive('incentive-management', $current_route) ?>">Company
-                                            Incentives & Accounts</a>
+                                        <a href="<?= $base_url ?>/my-incentives"
+                                            class="sidebar__menu-item <?= isActive('my-incentives', $current_route) ?>">My
+                                            Incentives</a>
                                     </li>
                                 <?php endif; ?>
 
-                                <!-- Visible to Sales Managers, Heads, Co-ordinators (5,6,9,15) and Management -->
-                                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 6, 9, 15, 33, 34, 35])): ?>
+                                <!-- Team Incentives:
+                                     For Management/Accounts: "All Team Incentives"
+                                     For Sales Managers/Team Leaders: "My Team Incentives" -->
+                                <?php if ($isManagement || in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 6, 9, 15, 30, 32, 33, 34, 35, 36]) || (!empty($_SESSION['user']['is_team_leader']) && $_SESSION['user']['is_team_leader'] == 1)): ?>
                                     <li class="slide child2">
                                         <a href="<?= $base_url ?>/my-team-incentives"
-                                            class="sidebar__menu-item <?= isActive('my-team-incentives', $current_route) ?>">My
-                                            Team Incentives</a>
+                                            class="sidebar__menu-item <?= isActive('my-team-incentives', $current_route) ?>">
+                                            <?= ($isManagement || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 30, 32, 33, 35, 36])) ? 'All Team Incentives' : 'My Team Incentives' ?>
+                                        </a>
                                     </li>
+                                <?php endif; ?>
+
+                                <!-- Team Targets: For Sales Managers (5), Sales Heads (9), and Team Leaders (NOT general Management) -->
+                                <?php if (!$isManagement && (in_array($_SESSION['user']['role_id'] ?? 0, [5, 9, 15]) || (!empty($_SESSION['user']['is_team_leader']) && $_SESSION['user']['is_team_leader'] == 1))): ?>
                                     <li class="slide child2">
                                         <a href="<?= $base_url ?>/sales-executive-teams"
                                             class="sidebar__menu-item <?= isActive('sales-executive-teams', $current_route) ?>">My Team
@@ -1012,8 +1014,17 @@
                                     </li>
                                 <?php endif; ?>
 
+                                <!-- Visible ONLY to Management and Accounts -->
+                                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 30, 32, 33, 35, 36]) || $isManagement): ?>
+                                    <li class="slide child2">
+                                        <a href="<?= $base_url ?>/incentive-management"
+                                            class="sidebar__menu-item <?= isActive('incentive-management', $current_route) ?>">Company
+                                            Incentives & Accounts</a>
+                                    </li>
+                                <?php endif; ?>
+
                                 <!-- Settings for Management, Sales Manager and Sales Head -->
-                                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 6, 9, 33, 34, 35])): ?>
+                                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 6, 9, 33, 34, 35]) || $isManagement): ?>
                                     <li class="slide child2">
                                         <a href="<?= $base_url ?>/incentive-config"
                                             class="sidebar__menu-item <?= isActive('incentive-config', $current_route) ?>">Settings</a>

@@ -5795,55 +5795,103 @@ class AccountClient extends Model
                 COALESCE(SUM(calc.pending_payment_count), 0) AS total_pending_payments
             FROM (
                 SELECT 
-                    lb.id,
-                    COALESCE(f.is_shop, 0) AS is_shop,
-                    COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) AS total_price,
-                    COALESCE(f.land_share_value, 0) AS total_land_share,
-                    COALESCE(f.development_charges, 0) AS development_charges,
-                    COALESCE(f.shop_service_charge, 0) AS shop_service_charge,
-                    GREATEST(0, ROUND(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) - (COALESCE(f.land_share_value, 0) + COALESCE(f.development_charges, 0) + CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END))) AS construction_fee,
-                    COALESCE(p_agg.total_paid, 0) AS total_paid,
-                    COALESCE(p_agg.land_share_paid, 0) AS land_share_paid,
-                    COALESCE(p_agg.dev_charge_paid, 0) AS dev_charge_paid,
-                    COALESCE(p_agg.shop_service_charge_paid, 0) AS shop_service_charge_paid,
-                    COALESCE(p_agg.emi_paid, 0) AS emi_paid,
-                    COALESCE(p_agg.overdue_emi_amount, 0) AS overdue_emi_amount,
-                    COALESCE(p_agg.pending_payment_count, 0) AS pending_payment_count,
-                    GREATEST(0, ROUND(GREATEST(0, COALESCE(f.land_share_value, 0) - COALESCE(lb.discount_amount, 0)) - COALESCE(p_agg.land_share_paid, 0))) AS land_share_due,
-                    GREATEST(0, ROUND(COALESCE(f.development_charges, 0) - COALESCE(p_agg.dev_charge_paid, 0))) AS dev_charge_due,
-                    GREATEST(0, ROUND(CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END - COALESCE(p_agg.shop_service_charge_paid, 0))) AS shop_service_charge_due,
-                    GREATEST(0, ROUND(GREATEST(0, COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) - (COALESCE(f.land_share_value, 0) + COALESCE(f.development_charges, 0) + CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END)) - COALESCE(p_agg.emi_paid, 0) - COALESCE(p_agg.total_bulk_emi_discount, 0))) AS remaining_emi_due,
-                    GREATEST(0, ROUND(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) - COALESCE(lb.discount_amount, 0) - COALESCE(p_agg.total_paid, 0) - COALESCE(p_agg.total_bulk_emi_discount, 0))) AS overall_due
-                FROM lead_bookings lb
-                INNER JOIN leads l ON lb.lead_id = l.id
-                LEFT JOIN flats f ON lb.flat_id = f.id
-                LEFT JOIN (
+                    raw_c.id,
+                    raw_c.is_shop,
+                    raw_c.total_price,
+                    raw_c.total_land_share,
+                    raw_c.land_share_paid,
+                    raw_c.development_charges,
+                    raw_c.dev_charge_paid,
+                    raw_c.shop_service_charge,
+                    raw_c.shop_service_charge_paid,
+                    raw_c.construction_fee,
+                    raw_c.total_paid,
+                    raw_c.emi_paid,
+                    raw_c.overdue_emi_amount,
+                    raw_c.pending_payment_count,
+                    raw_c.overall_due,
+                    
+                    -- Reconciled Dues
+                    CASE 
+                        WHEN raw_c.overall_due <= 0 THEN 0 
+                        ELSE LEAST(raw_c.raw_ls_due, raw_c.overall_due) 
+                    END AS land_share_due,
+                    
+                    CASE 
+                        WHEN raw_c.overall_due <= 0 THEN 0 
+                        ELSE LEAST(raw_c.raw_dev_due, GREATEST(0, raw_c.overall_due - LEAST(raw_c.raw_ls_due, raw_c.overall_due))) 
+                    END AS dev_charge_due,
+                    
+                    CASE 
+                        WHEN raw_c.overall_due <= 0 THEN 0 
+                        ELSE LEAST(raw_c.raw_shop_due, GREATEST(0, 
+                            raw_c.overall_due 
+                            - LEAST(raw_c.raw_ls_due, raw_c.overall_due)
+                            - LEAST(raw_c.raw_dev_due, GREATEST(0, raw_c.overall_due - LEAST(raw_c.raw_ls_due, raw_c.overall_due)))
+                        )) 
+                    END AS shop_service_charge_due,
+                    
+                    GREATEST(0, 
+                        raw_c.overall_due
+                        - (CASE WHEN raw_c.overall_due <= 0 THEN 0 ELSE LEAST(raw_c.raw_ls_due, raw_c.overall_due) END)
+                        - (CASE WHEN raw_c.overall_due <= 0 THEN 0 ELSE LEAST(raw_c.raw_dev_due, GREATEST(0, raw_c.overall_due - LEAST(raw_c.raw_ls_due, raw_c.overall_due))) END)
+                        - (CASE WHEN raw_c.overall_due <= 0 THEN 0 ELSE LEAST(raw_c.raw_shop_due, GREATEST(0, 
+                            raw_c.overall_due 
+                            - LEAST(raw_c.raw_ls_due, raw_c.overall_due)
+                            - LEAST(raw_c.raw_dev_due, GREATEST(0, raw_c.overall_due - LEAST(raw_c.raw_ls_due, raw_c.overall_due)))
+                        )) END)
+                    ) AS remaining_emi_due
+                FROM (
                     SELECT 
-                        lp.booking_id,
-                        SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS total_paid,
-                        SUM(CASE WHEN lp.payment_type IN ('booking_money', 'registration', 'land_share') 
-                                      AND lp.payment_status IN ('paid', 'partially_paid') 
-                                      AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS land_share_paid,
-                        SUM(CASE WHEN lp.payment_type = 'development_charge' 
-                                      AND lp.payment_status IN ('paid', 'partially_paid') 
-                                      AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS dev_charge_paid,
-                        SUM(CASE WHEN lp.payment_type = 'shop_service_charge' 
-                                      AND lp.payment_status IN ('paid', 'partially_paid') 
-                                      AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS shop_service_charge_paid,
-                        SUM(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') 
-                                      AND lp.payment_status IN ('paid', 'partially_paid') 
-                                      AND lp.verification_status = 'verified' 
-                                      AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END) AS emi_paid,
-                        SUM(CASE WHEN lp.payment_type = 'emi' AND lp.due_emi_amount > 0 AND lp.verification_status = 'verified' 
-                                      AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement') THEN lp.due_emi_amount ELSE 0 END) AS overdue_emi_amount,
-                        SUM(CASE WHEN (lp.bulk_emi_discount > 0 OR COALESCE(lp.is_emi_discount, 0) = 1) AND lp.verification_status = 'verified' 
-                                 THEN CASE WHEN COALESCE(lp.is_emi_discount, 0) = 1 THEN lp.amount ELSE lp.bulk_emi_discount END ELSE 0 END) AS total_bulk_emi_discount,
-                        SUM(CASE WHEN lp.verification_status = 'pending' THEN 1 ELSE 0 END) AS pending_payment_count
-                    FROM lead_payments lp
-                    WHERE lp.is_trashed = 0
-                    GROUP BY lp.booking_id
-                ) AS p_agg ON p_agg.booking_id = lb.id
-                $whereClause
+                        lb.id,
+                        COALESCE(f.is_shop, 0) AS is_shop,
+                        COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) AS total_price,
+                        COALESCE(f.land_share_value, 0) AS total_land_share,
+                        COALESCE(f.development_charges, 0) AS development_charges,
+                        COALESCE(f.shop_service_charge, 0) AS shop_service_charge,
+                        GREATEST(0, ROUND(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) - (COALESCE(f.land_share_value, 0) + COALESCE(f.development_charges, 0) + CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END))) AS construction_fee,
+                        COALESCE(p_agg.total_paid, 0) AS total_paid,
+                        COALESCE(p_agg.land_share_paid, 0) AS land_share_paid,
+                        COALESCE(p_agg.dev_charge_paid, 0) AS dev_charge_paid,
+                        COALESCE(p_agg.shop_service_charge_paid, 0) AS shop_service_charge_paid,
+                        COALESCE(p_agg.emi_paid, 0) AS emi_paid,
+                        COALESCE(p_agg.overdue_emi_amount, 0) AS overdue_emi_amount,
+                        COALESCE(p_agg.pending_payment_count, 0) AS pending_payment_count,
+                        GREATEST(0, ROUND(GREATEST(0, COALESCE(f.land_share_value, 0) - COALESCE(lb.discount_amount, 0)) - COALESCE(p_agg.land_share_paid, 0))) AS raw_ls_due,
+                        GREATEST(0, ROUND(COALESCE(f.development_charges, 0) - COALESCE(p_agg.dev_charge_paid, 0))) AS raw_dev_due,
+                        GREATEST(0, ROUND(CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END - COALESCE(p_agg.shop_service_charge_paid, 0))) AS raw_shop_due,
+                        GREATEST(0, ROUND(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) - COALESCE(lb.discount_amount, 0) - COALESCE(p_agg.total_paid, 0) - COALESCE(p_agg.total_bulk_emi_discount, 0))) AS overall_due
+                    FROM lead_bookings lb
+                    INNER JOIN leads l ON lb.lead_id = l.id
+                    LEFT JOIN flats f ON lb.flat_id = f.id
+                    LEFT JOIN (
+                        SELECT 
+                            lp.booking_id,
+                            SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS total_paid,
+                            SUM(CASE WHEN lp.payment_type IN ('booking_money', 'registration', 'land_share') 
+                                          AND lp.payment_status IN ('paid', 'partially_paid') 
+                                          AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS land_share_paid,
+                            SUM(CASE WHEN lp.payment_type = 'development_charge' 
+                                          AND lp.payment_status IN ('paid', 'partially_paid') 
+                                          AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS dev_charge_paid,
+                            SUM(CASE WHEN lp.payment_type = 'shop_service_charge' 
+                                          AND lp.payment_status IN ('paid', 'partially_paid') 
+                                          AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS shop_service_charge_paid,
+                            SUM(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') 
+                                          AND lp.payment_status IN ('paid', 'partially_paid') 
+                                          AND lp.verification_status = 'verified' 
+                                          AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END) AS emi_paid,
+                            SUM(CASE WHEN lp.payment_type = 'emi' AND lp.due_emi_amount > 0 AND lp.verification_status = 'verified' 
+                                          AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement') THEN lp.due_emi_amount ELSE 0 END) AS overdue_emi_amount,
+                            SUM(CASE WHEN (lp.bulk_emi_discount > 0 OR COALESCE(lp.is_emi_discount, 0) = 1) AND lp.verification_status = 'verified' 
+                                     THEN CASE WHEN COALESCE(lp.is_emi_discount, 0) = 1 THEN lp.amount ELSE lp.bulk_emi_discount END ELSE 0 END) AS total_bulk_emi_discount,
+                            SUM(CASE WHEN lp.verification_status = 'pending' THEN 1 ELSE 0 END) AS pending_payment_count
+                        FROM lead_payments lp
+                        WHERE lp.is_trashed = 0
+                        GROUP BY lp.booking_id
+                    ) AS p_agg ON p_agg.booking_id = lb.id
+                    $whereClause
+                ) AS raw_c
             ) AS calc
         ";
 
@@ -5944,57 +5992,105 @@ class AccountClient extends Model
                 COALESCE(SUM(calc.overdue_emi_amount), 0) AS overdue_emi_amount
             FROM (
                 SELECT 
-                    lb.id AS booking_id,
-                    lb.project_id,
-                    COALESCE(f.is_shop, 0) AS is_shop,
-                    COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) AS total_price,
-                    COALESCE(f.land_share_value, 0) AS total_land_share,
-                    COALESCE(f.development_charges, 0) AS development_charges,
-                    COALESCE(f.shop_service_charge, 0) AS shop_service_charge,
-                    GREATEST(0, ROUND(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) - (COALESCE(f.land_share_value, 0) + COALESCE(f.development_charges, 0) + CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END))) AS construction_fee,
-                    COALESCE(p_agg.total_paid, 0) AS total_paid,
-                    COALESCE(p_agg.land_share_paid, 0) AS land_share_paid,
-                    COALESCE(p_agg.dev_charge_paid, 0) AS dev_charge_paid,
-                    COALESCE(p_agg.shop_service_charge_paid, 0) AS shop_service_charge_paid,
-                    COALESCE(p_agg.emi_paid, 0) AS emi_paid,
-                    COALESCE(p_agg.overdue_emi_amount, 0) AS overdue_emi_amount,
-                    GREATEST(0, ROUND(GREATEST(0, COALESCE(f.land_share_value, 0) - COALESCE(lb.discount_amount, 0)) - COALESCE(p_agg.land_share_paid, 0))) AS land_share_due,
-                    GREATEST(0, ROUND(COALESCE(f.development_charges, 0) - COALESCE(p_agg.dev_charge_paid, 0))) AS dev_charge_due,
-                    GREATEST(0, ROUND(CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END - COALESCE(p_agg.shop_service_charge_paid, 0))) AS shop_service_charge_due,
-                    GREATEST(0, ROUND(GREATEST(0, COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) - (COALESCE(f.land_share_value, 0) + COALESCE(f.development_charges, 0) + CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END)) - COALESCE(p_agg.emi_paid, 0) - COALESCE(p_agg.total_bulk_emi_discount, 0))) AS remaining_emi_due,
-                    GREATEST(0, ROUND(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) - COALESCE(lb.discount_amount, 0) - COALESCE(p_agg.total_paid, 0) - COALESCE(p_agg.total_bulk_emi_discount, 0))) AS overall_due
-                FROM lead_bookings lb
-                INNER JOIN leads l ON lb.lead_id = l.id
-                LEFT JOIN flats f ON lb.flat_id = f.id
-                LEFT JOIN (
+                    raw_c.booking_id,
+                    raw_c.project_id,
+                    raw_c.is_shop,
+                    raw_c.total_price,
+                    raw_c.total_land_share,
+                    raw_c.land_share_paid,
+                    raw_c.development_charges,
+                    raw_c.dev_charge_paid,
+                    raw_c.shop_service_charge,
+                    raw_c.shop_service_charge_paid,
+                    raw_c.construction_fee,
+                    raw_c.total_paid,
+                    raw_c.emi_paid,
+                    raw_c.overdue_emi_amount,
+                    raw_c.overall_due,
+                    
+                    -- Reconciled Dues
+                    CASE 
+                        WHEN raw_c.overall_due <= 0 THEN 0 
+                        ELSE LEAST(raw_c.raw_ls_due, raw_c.overall_due) 
+                    END AS land_share_due,
+                    
+                    CASE 
+                        WHEN raw_c.overall_due <= 0 THEN 0 
+                        ELSE LEAST(raw_c.raw_dev_due, GREATEST(0, raw_c.overall_due - LEAST(raw_c.raw_ls_due, raw_c.overall_due))) 
+                    END AS dev_charge_due,
+                    
+                    CASE 
+                        WHEN raw_c.overall_due <= 0 THEN 0 
+                        ELSE LEAST(raw_c.raw_shop_due, GREATEST(0, 
+                            raw_c.overall_due 
+                            - LEAST(raw_c.raw_ls_due, raw_c.overall_due)
+                            - LEAST(raw_c.raw_dev_due, GREATEST(0, raw_c.overall_due - LEAST(raw_c.raw_ls_due, raw_c.overall_due)))
+                        )) 
+                    END AS shop_service_charge_due,
+                    
+                    GREATEST(0, 
+                        raw_c.overall_due
+                        - (CASE WHEN raw_c.overall_due <= 0 THEN 0 ELSE LEAST(raw_c.raw_ls_due, raw_c.overall_due) END)
+                        - (CASE WHEN raw_c.overall_due <= 0 THEN 0 ELSE LEAST(raw_c.raw_dev_due, GREATEST(0, raw_c.overall_due - LEAST(raw_c.raw_ls_due, raw_c.overall_due))) END)
+                        - (CASE WHEN raw_c.overall_due <= 0 THEN 0 ELSE LEAST(raw_c.raw_shop_due, GREATEST(0, 
+                            raw_c.overall_due 
+                            - LEAST(raw_c.raw_ls_due, raw_c.overall_due)
+                            - LEAST(raw_c.raw_dev_due, GREATEST(0, raw_c.overall_due - LEAST(raw_c.raw_ls_due, raw_c.overall_due)))
+                        )) END)
+                    ) AS remaining_emi_due
+                FROM (
                     SELECT 
-                        lp.booking_id,
-                        SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS total_paid,
-                        SUM(CASE WHEN lp.payment_type IN ('booking_money', 'registration', 'land_share') 
-                                      AND lp.payment_status IN ('paid', 'partially_paid') 
-                                      AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS land_share_paid,
-                        SUM(CASE WHEN lp.payment_type = 'development_charge' 
-                                      AND lp.payment_status IN ('paid', 'partially_paid') 
-                                      AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS dev_charge_paid,
-                        SUM(CASE WHEN lp.payment_type = 'shop_service_charge' 
-                                      AND lp.payment_status IN ('paid', 'partially_paid') 
-                                      AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS shop_service_charge_paid,
-                        SUM(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') 
-                                      AND lp.payment_status IN ('paid', 'partially_paid') 
-                                      AND lp.verification_status = 'verified' 
-                                      AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END) AS emi_paid,
-                        SUM(CASE WHEN lp.payment_type = 'emi' AND lp.due_emi_amount > 0 AND lp.verification_status = 'verified' 
-                                      AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement') THEN lp.due_emi_amount ELSE 0 END) AS overdue_emi_amount,
-                        SUM(CASE WHEN (lp.bulk_emi_discount > 0 OR COALESCE(lp.is_emi_discount, 0) = 1) AND lp.verification_status = 'verified' 
-                                 THEN CASE WHEN COALESCE(lp.is_emi_discount, 0) = 1 THEN lp.amount ELSE lp.bulk_emi_discount END ELSE 0 END) AS total_bulk_emi_discount
-                    FROM lead_payments lp
-                    WHERE lp.is_trashed = 0
-                    GROUP BY lp.booking_id
-                ) AS p_agg ON p_agg.booking_id = lb.id
-                WHERE lb.deleted_at IS NULL
-                  AND lb.booking_status NOT IN ('refunded', 'cancelled')
-                  AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
-                  AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+                        lb.id AS booking_id,
+                        lb.project_id,
+                        COALESCE(f.is_shop, 0) AS is_shop,
+                        COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) AS total_price,
+                        COALESCE(f.land_share_value, 0) AS total_land_share,
+                        COALESCE(f.development_charges, 0) AS development_charges,
+                        COALESCE(f.shop_service_charge, 0) AS shop_service_charge,
+                        GREATEST(0, ROUND(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) - (COALESCE(f.land_share_value, 0) + COALESCE(f.development_charges, 0) + CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END))) AS construction_fee,
+                        COALESCE(p_agg.total_paid, 0) AS total_paid,
+                        COALESCE(p_agg.land_share_paid, 0) AS land_share_paid,
+                        COALESCE(p_agg.dev_charge_paid, 0) AS dev_charge_paid,
+                        COALESCE(p_agg.shop_service_charge_paid, 0) AS shop_service_charge_paid,
+                        COALESCE(p_agg.emi_paid, 0) AS emi_paid,
+                        COALESCE(p_agg.overdue_emi_amount, 0) AS overdue_emi_amount,
+                        GREATEST(0, ROUND(GREATEST(0, COALESCE(f.land_share_value, 0) - COALESCE(lb.discount_amount, 0)) - COALESCE(p_agg.land_share_paid, 0))) AS raw_ls_due,
+                        GREATEST(0, ROUND(COALESCE(f.development_charges, 0) - COALESCE(p_agg.dev_charge_paid, 0))) AS raw_dev_due,
+                        GREATEST(0, ROUND(CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END - COALESCE(p_agg.shop_service_charge_paid, 0))) AS raw_shop_due,
+                        GREATEST(0, ROUND(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) - COALESCE(lb.discount_amount, 0) - COALESCE(p_agg.total_paid, 0) - COALESCE(p_agg.total_bulk_emi_discount, 0))) AS overall_due
+                    FROM lead_bookings lb
+                    INNER JOIN leads l ON lb.lead_id = l.id
+                    LEFT JOIN flats f ON lb.flat_id = f.id
+                    LEFT JOIN (
+                        SELECT 
+                            lp.booking_id,
+                            SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS total_paid,
+                            SUM(CASE WHEN lp.payment_type IN ('booking_money', 'registration', 'land_share') 
+                                          AND lp.payment_status IN ('paid', 'partially_paid') 
+                                          AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS land_share_paid,
+                            SUM(CASE WHEN lp.payment_type = 'development_charge' 
+                                          AND lp.payment_status IN ('paid', 'partially_paid') 
+                                          AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS dev_charge_paid,
+                            SUM(CASE WHEN lp.payment_type = 'shop_service_charge' 
+                                          AND lp.payment_status IN ('paid', 'partially_paid') 
+                                          AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS shop_service_charge_paid,
+                            SUM(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') 
+                                          AND lp.payment_status IN ('paid', 'partially_paid') 
+                                          AND lp.verification_status = 'verified' 
+                                          AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END) AS emi_paid,
+                            SUM(CASE WHEN lp.payment_type = 'emi' AND lp.due_emi_amount > 0 AND lp.verification_status = 'verified' 
+                                          AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement') THEN lp.due_emi_amount ELSE 0 END) AS overdue_emi_amount,
+                            SUM(CASE WHEN (lp.bulk_emi_discount > 0 OR COALESCE(lp.is_emi_discount, 0) = 1) AND lp.verification_status = 'verified' 
+                                     THEN CASE WHEN COALESCE(lp.is_emi_discount, 0) = 1 THEN lp.amount ELSE lp.bulk_emi_discount END ELSE 0 END) AS total_bulk_emi_discount
+                        FROM lead_payments lp
+                        WHERE lp.is_trashed = 0
+                        GROUP BY lp.booking_id
+                    ) AS p_agg ON p_agg.booking_id = lb.id
+                    WHERE lb.deleted_at IS NULL
+                      AND lb.booking_status NOT IN ('refunded', 'cancelled')
+                      AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
+                      AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+                ) AS raw_c
             ) AS calc
             INNER JOIN projects p ON p.id = calc.project_id
             WHERE p.deleted_at IS NULL {$projectWhere}
@@ -6194,7 +6290,7 @@ class AccountClient extends Model
         } elseif ($dueType === 'land_share_cleared' || $dueType === 'registered') {
             $outerWhere[] = "(calc.land_share_due <= 0 AND calc.total_land_share > 0)";
         } elseif ($dueType === 'dev_charge_due') {
-            $outerWhere[] = "(calc.dev_charge_due > 0 OR (calc.is_shop = 1 AND calc.shop_service_charge_due > 0))";
+            $outerWhere[] = "calc.dev_charge_due > 0";
         } elseif ($dueType === 'shop_service_due') {
             $outerWhere[] = "(calc.is_shop = 1 AND calc.shop_service_charge_due > 0)";
         } elseif ($dueType === 'emi_due') {
@@ -6501,7 +6597,7 @@ class AccountClient extends Model
         } elseif ($dueType === 'land_share_cleared' || $dueType === 'registered') {
             $outerWhere[] = "(calc.land_share_due <= 0 AND calc.total_land_share > 0)";
         } elseif ($dueType === 'dev_charge_due') {
-            $outerWhere[] = "(calc.dev_charge_due > 0 OR (calc.is_shop = 1 AND calc.shop_service_charge_due > 0))";
+            $outerWhere[] = "calc.dev_charge_due > 0";
         } elseif ($dueType === 'shop_service_due') {
             $outerWhere[] = "(calc.is_shop = 1 AND calc.shop_service_charge_due > 0)";
         } elseif ($dueType === 'emi_due') {

@@ -97,6 +97,7 @@ return [
     // =========================================================================
     'bulk-bookings-import-csv' => ['controller' => 'BookingController', 'method' => 'importCsvBulkBookings'],
     'bulk-bookings-import-execute' => ['controller' => 'BookingController', 'method' => 'executeCsvBulkBookings'],
+    'booking-leads' => ['controller' => 'LeadController', 'method' => 'index'],
     'booking-leads/(\d+)' => ['controller' => 'BookingController', 'method' => 'index'],
     'booking-store' => ['controller' => 'BookingController', 'method' => 'store'],
     'booking-update' => ['controller' => 'BookingController', 'method' => 'update'],
@@ -223,6 +224,7 @@ return [
     'set-sales-target/(\d+)' => ['controller' => 'SalesDashboardController', 'method' => 'salesTarget'],
     'save-sales-target/(\d+)' => ['controller' => 'SalesDashboardController', 'method' => 'storeSalesTarget'],
     'update-sales-target' => ['controller' => 'SalesDashboardController', 'method' => 'updateSalesTarget'],
+    'delete-sales-target/(\d+)' => ['controller' => 'SalesDashboardController', 'method' => 'deleteSalesTarget'],
     'get-project-flats' => ['controller' => 'SalesDashboardController', 'method' => 'getProjectFlats'],
     'get-target-totals' => ['controller' => 'SalesDashboardController', 'method' => 'getTargetTotals'],
 

@@ -113,7 +113,7 @@ $show_breadcrumb = true;
                         <select name="flat_ids[]" id="flat_select" class="form-control select2" multiple data-placeholder="-- Select Flats/Units --">
                             <!-- Populated via AJAX -->
                         </select>
-                        <small class="text-muted">If you select specific units, the Volume Target will automatically calculate.</small>
+                        <small class="text-muted">Selecting units will suggest the Land Share amount, but you can freely customize or type any target amount.</small>
                     </div>
                     <!-- Land Share Target (Amount) -->
                     <div class="col-lg-6 mb-3">
@@ -243,30 +243,34 @@ $show_breadcrumb = true;
                                 <td><?= $row['booking_target'] ?></td>
                                 <td><?= number_format($row['booking_value_target'], 2) ?></td>
                                 <td>
-                                    <?php 
-                                        $roleId = $_SESSION['user']['role_id'] ?? null;
-                                        if (in_array($roleId, [1, 3, 9, 32, 33, 34, 35])): 
-                                    ?>
-                                    <button type="button"
-                                        class="table__icon edit"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#editSalesTarget"
-                                        data-id="<?= $row['id'] ?>"
-                                        data-month="<?= $row['month'] ?>"
-                                        data-from-date="<?= htmlspecialchars($row['from_date'] ?? '') ?>"
-                                        data-to-date="<?= htmlspecialchars($row['to_date'] ?? '') ?>"
-                                        data-category="<?= $row['category_id'] ?>"
-                                        data-category-ids="<?= htmlspecialchars($row['category_ids'] ?? '') ?>"
-                                        data-projects="<?= htmlspecialchars($row['project_ids']) ?>"
-                                        data-flats="<?= htmlspecialchars($row['flat_ids'] ?? '[]') ?>"
-                                        data-site_visit="<?= $row['site_visit_target'] ?>"
-                                        data-site_visit_leads="<?= $row['site_visit_leads_target'] ?? 0 ?>"
-                                        data-booking="<?= $row['booking_target'] ?>"
-                                        data-booking_value="<?= $row['booking_value_target'] ?>"
-                                        data-sales_role="<?= $row['sales_role'] ?>">
-                                        <i class="fa-sharp fa-light fa-pen"></i>
-                                    </button>
-                                    <?php endif; ?>
+                                    <div class="d-flex align-items-center">
+                                        <button type="button"
+                                            class="btn btn-sm btn-outline-primary rounded-2 px-2 py-1"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editSalesTarget"
+                                            data-id="<?= $row['id'] ?>"
+                                            data-month="<?= $row['month'] ?>"
+                                            data-from-date="<?= htmlspecialchars($row['from_date'] ?? '') ?>"
+                                            data-to-date="<?= htmlspecialchars($row['to_date'] ?? '') ?>"
+                                            data-category="<?= $row['category_id'] ?>"
+                                            data-category-ids="<?= htmlspecialchars($row['category_ids'] ?? '') ?>"
+                                            data-projects="<?= htmlspecialchars($row['project_ids']) ?>"
+                                            data-flats="<?= htmlspecialchars($row['flat_ids'] ?? '[]') ?>"
+                                            data-site_visit="<?= $row['site_visit_target'] ?>"
+                                            data-site_visit_leads="<?= $row['site_visit_leads_target'] ?? 0 ?>"
+                                            data-booking="<?= $row['booking_target'] ?>"
+                                            data-booking_value="<?= $row['booking_value_target'] ?>"
+                                            data-sales_role="<?= $row['sales_role'] ?>"
+                                            title="Edit Target">
+                                            <i class="fa-solid fa-pen-to-square me-1"></i>Edit
+                                        </button>
+                                        <a href="<?= $GLOBALS['base_url'] ?>/delete-sales-target/<?= $row['id'] ?>?user_id=<?= $user['id'] ?>"
+                                           class="btn btn-sm btn-outline-danger rounded-2 px-2 py-1 ms-1"
+                                           onclick="return confirm('Are you sure you want to delete this target?');"
+                                           title="Delete Target">
+                                            <i class="fa-solid fa-trash me-1"></i>Delete
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -399,8 +403,8 @@ $show_breadcrumb = true;
 
                             <!-- Booking Value Target -->
                             <div class="col-lg-4 mb-3">
-                                <label>Booking Value Target</label>
-                                <input type="number" name="booking_value_target" id="edit_target_booking_value" class="form-control" min="0" step="0.01">
+                                <label>Land Share Target (Amount) <span>*</span></label>
+                                <input type="number" name="booking_value_target" id="edit_target_booking_value" class="form-control" min="0" step="0.01" required>
                             </div>
 
                         </div>
@@ -648,9 +652,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (window.jQuery) $(editFlatSelect).trigger('change');
                 else editFlatSelect.dispatchEvent(new Event('change', { bubbles: true }));
             }
-            if (flatIdStrings.length > 0) {
-                editBookingValueTarget.readOnly = true;
-            } else {
+            if (editBookingValueTarget) {
                 editBookingValueTarget.readOnly = false;
             }
         }
@@ -711,11 +713,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                     if (editBookingValueTarget) {
                         editBookingValueTarget.value = totalValue.toFixed(2);
-                        editBookingValueTarget.readOnly = true;
+                        editBookingValueTarget.readOnly = false;
                     }
                     if (editBookingTarget) {
                         editBookingTarget.value = selectedFlats.length;
-                        editBookingTarget.readOnly = true;
+                        editBookingTarget.readOnly = false;
                     }
                 } else {
                     if (editBookingValueTarget) editBookingValueTarget.readOnly = false;
@@ -782,11 +784,11 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             if (valueInput) {
                 valueInput.value = totalValue.toFixed(2);
-                valueInput.readOnly = true;
+                valueInput.readOnly = false;
             }
             if (targetInput) {
                 targetInput.value = selectedFlats.length;
-                targetInput.readOnly = true;
+                targetInput.readOnly = false;
             }
             return;
         }
@@ -809,11 +811,11 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (valueInput) {
                 valueInput.value = data.value.toFixed(2);
-                valueInput.readOnly = true;
+                valueInput.readOnly = false;
             }
             if (targetInput) {
                 targetInput.value = data.units;
-                targetInput.readOnly = true;
+                targetInput.readOnly = false;
             }
         })
         .catch(err => console.error(err));

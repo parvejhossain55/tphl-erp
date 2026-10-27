@@ -15,14 +15,38 @@ class IncentiveModel extends Model
     /**
      * Get all sales bookings assigned to or created by a Sales Executive
      */
-    public function getMySalesBookings($userId)
+    public function getMySalesBookings($userId, $month = null)
     {
+        $dateCondition = "";
+        $params = [$userId, $userId];
+        $types = "ii";
+
+        if (!empty($month)) {
+            list($y, $m) = explode('-', $month);
+            $cycle = $this->getCycleDateRange((int)$y, (int)$m);
+            $startDate = substr($cycle['start'], 0, 10);
+            $endDate = substr($cycle['end'], 0, 10);
+
+            $tQ = $this->db->query("SELECT from_date, to_date FROM sales_targets WHERE sales_user_id = {$userId} AND DATE_FORMAT(month, '%Y-%m') = '{$month}' LIMIT 1");
+            if ($tQ && $tRow = $tQ->fetch_assoc()) {
+                if (!empty($tRow['from_date']) && !empty($tRow['to_date'])) {
+                    $startDate = $tRow['from_date'];
+                    $endDate = $tRow['to_date'];
+                }
+            }
+
+            $dateCondition = " AND DATE(COALESCE(lb.booking_date, lb.created_at)) BETWEEN ? AND ? ";
+            $params[] = $startDate;
+            $params[] = $endDate;
+            $types .= "ss";
+        }
+
         $sql = "SELECT 
                     lb.id AS booking_id,
                     lb.project_id,
                     lb.flat_id,
                     lb.lead_id,
-                    lb.created_at AS booking_date,
+                    COALESCE(lb.booking_date, lb.created_at) AS booking_date,
                     lb.sales_by_id,
                     l.full_name AS customer_name,
                     l.phone AS phone,
@@ -42,13 +66,15 @@ class IncentiveModel extends Model
                      FROM lead_payments lp 
                      WHERE lp.booking_id = lb.id 
                        AND lp.verification_status = 'verified' 
-                       AND lp.payment_status IN ('paid', 'partially_paid')) AS total_collected_amount,
+                       AND lp.payment_status IN ('paid', 'partially_paid')
+                       AND COALESCE(lp.is_trashed, 0) = 0) AS total_collected_amount,
                     (SELECT IFNULL(SUM(lp.amount), 0.00) 
                      FROM lead_payments lp 
                      WHERE lp.booking_id = lb.id 
                        AND lp.payment_type = 'booking_money' 
                        AND lp.verification_status = 'verified' 
-                       AND lp.payment_status IN ('paid', 'partially_paid')) AS booking_money_amount,
+                       AND lp.payment_status IN ('paid', 'partially_paid')
+                       AND COALESCE(lp.is_trashed, 0) = 0) AS booking_money_amount,
                     c.id AS claim_id,
                     c.claim_status,
                     c.claimed_at,
@@ -62,6 +88,8 @@ class IncentiveModel extends Model
                 LEFT JOIN project_incentive_claims c ON (c.booking_id = lb.id AND c.is_external = 0)
                 WHERE (lb.sales_by_id = ? OR l.assigned_id = ?)
                   AND lb.deleted_at IS NULL
+                  AND lb.booking_status NOT IN ('cancelled', 'refunded')
+                  {$dateCondition}
                 ORDER BY lb.id DESC";
 
         $stmt = $this->db->prepare($sql);
@@ -69,7 +97,7 @@ class IncentiveModel extends Model
             return [];
         }
 
-        $stmt->bind_param("ii", $userId, $userId);
+        $stmt->bind_param($types, ...$params);
         $stmt->execute();
         $result = $stmt->get_result();
 
@@ -78,6 +106,7 @@ class IncentiveModel extends Model
 
         while ($row = $result->fetch_assoc()) {
             $bookingId = (int)$row['booking_id'];
+            $flatId = (int)$row['flat_id'];
             $bookingDate = $row['booking_date'];
             $yearMonth = $this->getCycleForDate($bookingDate);
 
@@ -87,29 +116,61 @@ class IncentiveModel extends Model
             }
             $stats = $monthlyStatsCache[$yearMonth];
 
+            // Look up detailed booking from engine stats
+            $detail = null;
+            if (!empty($stats['detailed_bookings'])) {
+                foreach ($stats['detailed_bookings'] as $dbk) {
+                    if ((int)$dbk['booking_id'] === $bookingId) {
+                        $detail = $dbk;
+                        break;
+                    }
+                }
+            }
+
             // Check if Booking Money is paid & verified
             $bookingMoneyVerified = $this->isPaymentVerified($bookingId, 'booking_money');
 
             // Check if Registration is paid & verified
             $registrationVerified = $this->isPaymentVerified($bookingId, 'registration');
 
-            // Calculate incentive amount based on new rules
+            // Values
             $flatPrice = (float)$row['flat_price'];
             $landShareValue = (float)$row['land_share_value'];
-            
-            $isAssigned = ($stats['assigned_category_id'] > 0 && $row['category_id'] == $stats['assigned_category_id']);
-            $applicablePct = $isAssigned ? $stats['final_assigned_pct'] : $stats['final_unassigned_pct'];
-            
-            $calculatedIncentive = ($flatPrice * $applicablePct) / 100.0;
-            
+
+            $applicablePct = $detail ? (float)$detail['applicable_rate'] : 0.70;
+            $calculatedIncentive = $detail ? (float)$detail['calculated_incentive'] : 0.00;
+            $rateType = $detail ? $detail['rate_type'] : 'Standard Flat (0.70%)';
+            $isOnHold = $detail ? (int)($detail['is_on_hold'] ?? 0) : 0;
+            $alreadyClaimed = $detail ? !empty($detail['already_claimed']) : $this->engine->isFlatIncentiveClaimed($flatId, $bookingId);
+            $isAssigned = $detail ? !empty($detail['is_assigned']) : true;
+
             // Claim status logic
             $claimStatus = $row['claim_status'];
+            $statusRemarks = $row['remarks'] ?? '';
+
             if (empty($claimStatus)) {
-                if ($bookingMoneyVerified && $registrationVerified) {
-                    $claimStatus = 'eligible';
-                } else {
+                if ($alreadyClaimed) {
                     $claimStatus = 'ineligible';
+                    $statusRemarks = 'Duplicate flat: Incentive already claimed for this flat unit.';
+                    $calculatedIncentive = 0.00;
+                    $applicablePct = 0.00;
+                } elseif (!$bookingMoneyVerified) {
+                    $claimStatus = 'ineligible';
+                    $statusRemarks = 'Requires verified booking money.';
+                } elseif (!$stats['is_eligible']) {
+                    $claimStatus = 'ineligible';
+                    $statusRemarks = 'Target or minimum 25 Lakh sales not achieved.';
+                } else {
+                    $claimStatus = 'eligible';
+                    if (!$registrationVerified) {
+                        $statusRemarks = 'Booking Money verified. Registration pending.';
+                    }
                 }
+            } elseif ($claimStatus === 'rejected') {
+                // Keep rejected
+            } elseif ($alreadyClaimed && empty($row['claim_id'])) {
+                $claimStatus = 'ineligible';
+                $statusRemarks = 'Duplicate flat: Incentive already claimed for this flat unit.';
             }
 
             $bookings[] = [
@@ -124,16 +185,50 @@ class IncentiveModel extends Model
                 'land_share_value'       => $landShareValue,
                 'total_collected'        => (float)$row['total_collected_amount'],
                 'booking_money_collected'=> (float)$row['booking_money_amount'],
-                'category_name'          => $row['category_name'] ?? 'Standard',
+                'category_name'          => $rateType,
                 'incentive_percentage'   => $applicablePct,
                 'calculated_incentive'   => $calculatedIncentive,
                 'booking_completed'      => $bookingMoneyVerified ? 1 : 0,
                 'registration_completed' => $registrationVerified ? 1 : 0,
                 'claim_status'           => $claimStatus,
+                'is_on_hold'             => $isOnHold,
+                'already_claimed'        => $alreadyClaimed ? 1 : 0,
                 'claimed_at'             => $row['claimed_at'],
                 'approved_at'            => $row['approved_at'],
-                'remarks'                => $row['remarks'] ?? ''
+                'remarks'                => !empty($statusRemarks) ? $statusRemarks : ($row['remarks'] ?? '')
             ];
+        }
+
+        // Also append designated credits (30% share) from outside sales
+        $currentCycleMonth = $this->getCycleForDate(date('Y-m-d'));
+        if (isset($monthlyStatsCache[$currentCycleMonth]['designated_credits'])) {
+            foreach ($monthlyStatsCache[$currentCycleMonth]['designated_credits'] as $dc) {
+                $dcBookingId = (int)$dc['booking_id'];
+                $bookings[] = [
+                    'id'                     => $dcBookingId,
+                    'booking_no'             => 'CR-' . str_pad($dcBookingId, 5, '0', STR_PAD_LEFT),
+                    'customer_name'          => 'Designated 30% Share (Sold by ' . ($dc['seller_name'] ?? 'Team Member') . ')',
+                    'phone'                  => 'N/A',
+                    'project_name'           => $dc['project_name'] ?? 'N/A',
+                    'flat_name'              => $dc['flat_name'] ?? 'N/A',
+                    'sqft'                   => 0,
+                    'flat_price'             => (float)$dc['land_share_value'],
+                    'land_share_value'       => (float)$dc['land_share_value'],
+                    'total_collected'        => (float)$dc['land_share_value'],
+                    'booking_money_collected'=> (float)$dc['land_share_value'],
+                    'category_name'          => 'Designated Share (30%)',
+                    'incentive_percentage'   => 0.21, // ~30% of base
+                    'calculated_incentive'   => (float)$dc['credit_amount'],
+                    'booking_completed'      => 1,
+                    'registration_completed' => 1,
+                    'claim_status'           => !empty($dc['is_eligible']) ? 'eligible' : 'ineligible',
+                    'is_on_hold'             => !empty($dc['is_eligible']) ? 0 : 1,
+                    'already_claimed'        => 0,
+                    'claimed_at'             => null,
+                    'approved_at'            => null,
+                    'remarks'                => !empty($dc['is_eligible']) ? 'Designated agent 30% credit' : 'Designated 30% credit (Unlock upon achieving your target)'
+                ];
+            }
         }
 
         $stmt->close();
@@ -242,19 +337,17 @@ class IncentiveModel extends Model
      */
     public function claimIncentive($userId, $bookingId, $remarks = '')
     {
-        // Fetch booking details
+        // 1. Fetch booking details
         $sql = "SELECT 
-                    lb.id, lb.project_id, lb.flat_id,
+                    lb.id, lb.project_id, lb.flat_id, lb.booking_date,
                     p.name AS project_name,
-                    CASE 
-                        WHEN IFNULL(p.incentive_percentage, 0) > 0 THEN p.incentive_percentage 
-                        WHEN IFNULL(pc.incentive_percentage, 0) > 0 THEN pc.incentive_percentage 
-                        ELSE 1.00 
-                    END AS incentive_percentage,
+                    p.building_type,
+                    f.flat_name,
+                    f.floor_no,
+                    IFNULL(f.land_share_value, 0.00) AS land_share_value,
                     IFNULL(f.price_value, 0.00) AS flat_price
                 FROM lead_bookings lb
                 LEFT JOIN projects p ON lb.project_id = p.id
-                LEFT JOIN project_categories pc ON p.category_id = pc.id
                 LEFT JOIN flats f ON lb.flat_id = f.id
                 WHERE lb.id = ? LIMIT 1";
 
@@ -272,20 +365,63 @@ class IncentiveModel extends Model
             return ['success' => false, 'message' => 'Booking not found'];
         }
 
-        // Verify eligibility
+        $flatId = (int)$booking['flat_id'];
+
+        // 2. ONE-TIME FLAT INCENTIVE RULE: Check if flat was already claimed/approved in another booking
+        $existingClaim = $this->engine->getFlatClaimDetails($flatId, $bookingId);
+        if ($existingClaim) {
+            return [
+                'success' => false, 
+                'message' => 'Claim ineligible: This flat unit (' . ($booking['flat_name'] ?? 'Flat') . ') has already received/claimed an incentive (Claim #' . $existingClaim['id'] . '). Each flat can only receive an incentive once.'
+            ];
+        }
+
+        // 3. Verify payment conditions
         $bMoney = $this->isPaymentVerified($bookingId, 'booking_money');
         $reg = $this->isPaymentVerified($bookingId, 'registration');
 
-        if (!$bMoney || !$reg) {
-            return ['success' => false, 'message' => 'Claim ineligible: Booking Money and Registration must both be completed and verified.'];
+        if (!$bMoney) {
+            return ['success' => false, 'message' => 'Claim ineligible: Verified Booking Money is required to submit an incentive claim.'];
+        }
+
+        // 4. Calculate incentive from Engine using Month Cycle
+        $yearMonth = $this->getCycleForDate($booking['booking_date']);
+        $stats = $this->engine->getExecutiveMonthlyStats($userId, $yearMonth);
+
+        $detail = null;
+        if (!empty($stats['detailed_bookings'])) {
+            foreach ($stats['detailed_bookings'] as $dbk) {
+                if ((int)$dbk['booking_id'] === $bookingId) {
+                    $detail = $dbk;
+                    break;
+                }
+            }
+        }
+
+        if (!$detail) {
+            return ['success' => false, 'message' => 'Calculation error: Booking not found in current monthly cycle.'];
+        }
+
+        if (!empty($detail['already_claimed'])) {
+            return ['success' => false, 'message' => 'Claim denied: This flat unit has already received or claimed sales incentive.'];
+        }
+
+        $isAssigned = !empty($detail['is_assigned']);
+        if ($isAssigned && empty($stats['is_eligible'])) {
+            return [
+                'success' => false, 
+                'message' => 'Claim ineligible: You must achieve your assigned target or minimum eligible sales of 25 Lakh before claiming incentives.'
+            ];
         }
 
         $saleAmount = (float)$booking['flat_price'];
-        $incentivePct = (float)$booking['incentive_percentage'];
-        if ($incentivePct <= 0) $incentivePct = 1.00;
-        $incentiveAmount = ($saleAmount * $incentivePct) / 100.0;
+        $landShareValue = (float)$booking['land_share_value'];
+        $applicablePct = (float)$detail['applicable_rate'];
+        $incentiveAmount = (float)$detail['calculated_incentive'];
+        $isOnHold = (int)($detail['is_on_hold'] ?? 0);
+        $splitType = $isAssigned ? 'direct' : 'seller_70';
 
-        // Check if claim exists
+        // Check if claim already exists for this booking
         $chkSql = "SELECT id FROM project_incentive_claims WHERE booking_id = ? AND is_external = 0 LIMIT 1";
         $chkStmt = $this->db->prepare($chkSql);
         $chkStmt->bind_param("i", $bookingId);
@@ -297,27 +433,54 @@ class IncentiveModel extends Model
         if ($existing) {
             $claimId = (int)$existing['id'];
             $updSql = "UPDATE project_incentive_claims 
-                       SET claim_status = 'claimed', claimed_at = ?, remarks = ?, sale_amount = ?, incentive_percentage = ?, incentive_amount = ? 
+                       SET flat_id = ?, claim_status = 'claimed', claimed_at = ?, remarks = ?, 
+                           sale_amount = ?, land_share_value = ?, incentive_percentage = ?, incentive_amount = ?,
+                           split_type = ?, is_on_hold = ?
                        WHERE id = ?";
             $updStmt = $this->db->prepare($updSql);
-            $updStmt->bind_param("ssdddi", $now, $remarks, $saleAmount, $incentivePct, $incentiveAmount, $claimId);
+            $updStmt->bind_param("issddddsii", $flatId, $now, $remarks, $saleAmount, $landShareValue, $applicablePct, $incentiveAmount, $splitType, $isOnHold, $claimId);
             $updStmt->execute();
             $updStmt->close();
         } else {
             $insSql = "INSERT INTO project_incentive_claims 
-                       (booking_id, project_id, flat_id, user_id, is_external, sale_amount, incentive_percentage, incentive_amount, booking_completed, registration_completed, claim_status, claimed_at, remarks) 
-                       VALUES (?, ?, ?, ?, 0, ?, ?, ?, 1, 1, 'claimed', ?, ?)";
+                       (booking_id, project_id, flat_id, user_id, is_external, split_type, is_on_hold, sale_amount, land_share_value, incentive_percentage, incentive_amount, booking_completed, registration_completed, claim_status, claimed_at, remarks) 
+                       VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, 1, 1, 'claimed', ?, ?)";
             $insStmt = $this->db->prepare($insSql);
-            $insStmt->bind_param("iiiidddss", $bookingId, $booking['project_id'], $booking['flat_id'], $userId, $saleAmount, $incentivePct, $incentiveAmount, $now, $remarks);
+            $insStmt->bind_param("iiiisdddddss", $bookingId, $booking['project_id'], $flatId, $userId, $splitType, $isOnHold, $saleAmount, $landShareValue, $applicablePct, $incentiveAmount, $now, $remarks);
             $insStmt->execute();
             $claimId = $insStmt->insert_id;
             $insStmt->close();
         }
 
+        // If outside designated flat (seller_70) and designated agent exists:
+        if ($splitType === 'seller_70' && !empty($detail['designated_user_id']) && (float)$detail['designated_incentive'] > 0) {
+            $desUserId = (int)$detail['designated_user_id'];
+            $desIncentive = (float)$detail['designated_incentive'];
+            $desPct = $applicablePct * 0.30;
+
+            // Check if designated claim already exists
+            $chkDes = $this->db->query("SELECT id FROM project_incentive_claims WHERE booking_id = {$bookingId} AND user_id = {$desUserId} AND split_type = 'designated_30'");
+            if ($chkDes && $chkDes->num_rows == 0) {
+                $insDes = "INSERT INTO project_incentive_claims 
+                           (booking_id, project_id, flat_id, user_id, is_external, split_type, is_on_hold, sale_amount, land_share_value, incentive_percentage, incentive_amount, booking_completed, registration_completed, claim_status, claimed_at, remarks)
+                           VALUES (?, ?, ?, ?, 0, 'designated_30', 0, ?, ?, ?, ?, 1, 1, 'claimed', ?, 'Designated agent 30% share')";
+                $desStmt = $this->db->prepare($insDes);
+                if ($desStmt) {
+                    $desStmt->bind_param("iiiidddds", $bookingId, $booking['project_id'], $flatId, $desUserId, $saleAmount, $landShareValue, $desPct, $desIncentive, $now);
+                    $desStmt->execute();
+                    $desStmt->close();
+                }
+            }
+        }
+
         // Add Approval Request entry for Home Page & approval_requests queue
         $this->createApprovalRequest($userId, $claimId, $bookingId, $incentiveAmount);
 
-        return ['success' => true, 'message' => 'Incentive claim submitted successfully and sent for Management approval.'];
+        $msg = 'Incentive claim submitted successfully and sent for Management approval.';
+        if ($isOnHold) {
+            $msg .= ' Note: Because this was outside your assigned flats, your 70% share is ON HOLD until you achieve your assigned target or minimum 25 Lakh sales.';
+        }
+        return ['success' => true, 'message' => $msg];
     }
 
     /**
@@ -400,7 +563,9 @@ class IncentiveModel extends Model
                 WHERE c.is_external = 0";
 
         if ($month) {
-            $sql .= " AND DATE_FORMAT(c.created_at, '%Y-%m') = '" . $this->db->real_escape_string($month) . "'";
+            list($y, $m) = explode('-', $month);
+            $cycle = $this->getCycleDateRange($y, $m);
+            $sql .= " AND c.created_at BETWEEN '{$cycle['start']}' AND '{$cycle['end']}'";
         }
         
         $sql .= " ORDER BY c.id DESC";
@@ -426,6 +591,8 @@ class IncentiveModel extends Model
                     'department'            => $row['department'] ?? 'Sales',
                     'designation'           => $row['designation'] ?? 'Executive',
                     'is_external'           => 0,
+                    'split_type'            => $row['split_type'] ?? 'direct',
+                    'is_on_hold'            => (int)($row['is_on_hold'] ?? 0),
                     'project_name'          => $row['project_name'] ?? 'N/A',
                     'flat_name'             => $row['flat_name'] ?? 'N/A',
                     'sale_amount'           => (float)$row['sale_amount'],
@@ -453,16 +620,18 @@ class IncentiveModel extends Model
     {
         $stats = [];
         
-        // Find all users who have a target this month OR who are team leaders/coordinators
-        $sql = "SELECT DISTINCT u.id, u.full_name, e.employee_id, d.name AS department, des.name AS designation, e.team_id 
+        // Find ONLY users who have a target this month
+        $sql = "SELECT DISTINCT u.id, u.full_name, e.employee_id, d.name AS department, des.name AS designation, 
+                        e.team_id, t.name as team_name, e.is_team_leader 
                 FROM users u
                 JOIN employees e ON u.id = e.user_id
+                LEFT JOIN teams t ON e.team_id = t.id
                 LEFT JOIN departments d ON e.department_id = d.id
                 LEFT JOIN designations des ON e.designation_id = des.id
-                WHERE (u.id IN (
+                WHERE u.id IN (
                     SELECT sales_user_id FROM sales_targets WHERE DATE_FORMAT(month, '%Y-%m') = ?
-                ) OR u.role_id IN (5,6,7,9) OR e.is_sales_co_leader = 1)
-                AND e.employee_id IS NOT NULL AND e.employee_id != ''";
+                )
+                ORDER BY e.team_id ASC, u.full_name ASC";
                 
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param("s", $month);
@@ -473,16 +642,18 @@ class IncentiveModel extends Model
         foreach ($users as $u) {
             $userId = (int)$u['id'];
             $ind = $this->engine->getExecutiveMonthlyStats($userId, $month, $fromDate, $toDate);
-            $team = $this->engine->getTeamMonthlyStats($userId, $month, null, $fromDate, $toDate);
             
-            // Only add to list if they have some target or achievement
-            if ($ind['target_amount'] > 0 || $ind['assigned_achieved'] > 0 || $ind['unassigned_achieved'] > 0 || ($team['eligible'] && $team['team_target'] > 0)) {
-                $stats[] = [
-                    'user'       => $u,
-                    'individual' => $ind,
-                    'team'       => $team
-                ];
+            // Only fetch team stats if this user is a Team Leader with their explicit team_id
+            $team = null;
+            if (!empty($u['is_team_leader']) && !empty($u['team_id'])) {
+                $team = $this->engine->getTeamMonthlyStats($userId, $month, $u['team_id'], $fromDate, $toDate);
             }
+            
+            $stats[] = [
+                'user'       => $u,
+                'individual' => $ind,
+                'team'       => $team
+            ];
         }
         
         return $stats;
@@ -521,6 +692,11 @@ class IncentiveModel extends Model
             return [];
         }
 
+        list($y, $m) = explode('-', $month);
+        $cycle = $this->getCycleDateRange($y, $m);
+        $startDate = substr($cycle['start'], 0, 10);
+        $endDate   = substr($cycle['end'], 0, 10);
+
         // If sales head (role 9) or admin (1, 3) or management (6)
         if ($roleId == 1 || $roleId == 3 || $roleId == 6 || $roleId == 9) {
             if (!empty($filterTeamId) && (int)$filterTeamId > 0) {
@@ -530,19 +706,25 @@ class IncentiveModel extends Model
                             p.name as project_name, 
                             f.flat_name, 
                             IFNULL(f.land_share_value, 0.00) as land_share_value,
+                            (SELECT IFNULL(SUM(lp.amount), 0.00) 
+                             FROM lead_payments lp 
+                             WHERE lp.booking_id = lb.id 
+                               AND lp.verification_status = 'verified' 
+                               AND lp.payment_status IN ('paid', 'partially_paid')
+                               AND COALESCE(lp.is_trashed, 0) = 0) AS total_collected,
                             lb.booking_status
                         FROM lead_bookings lb
                         JOIN users u ON lb.sales_by_id = u.id
                         JOIN projects p ON lb.project_id = p.id
                         JOIN flats f ON lb.flat_id = f.id
                         WHERE u.id IN (SELECT user_id FROM employees WHERE team_id = ?)
-                        AND DATE_FORMAT(lb.booking_date, '%Y-%m') = ?
+                        AND lb.booking_date BETWEEN ? AND ?
                         AND lb.deleted_at IS NULL
-                        AND lb.booking_status != 'Cancelled'
+                        AND lb.booking_status NOT IN ('cancelled', 'refunded')
                         ORDER BY lb.booking_date DESC";
                 
                 $stmt = $this->db->prepare($sql);
-                $stmt->bind_param("is", $filterTeamId, $month);
+                $stmt->bind_param("iss", $filterTeamId, $startDate, $endDate);
             } else {
                 $sql = "SELECT 
                             lb.id, lb.booking_date, 
@@ -550,18 +732,24 @@ class IncentiveModel extends Model
                             p.name as project_name, 
                             f.flat_name, 
                             IFNULL(f.land_share_value, 0.00) as land_share_value,
+                            (SELECT IFNULL(SUM(lp.amount), 0.00) 
+                             FROM lead_payments lp 
+                             WHERE lp.booking_id = lb.id 
+                               AND lp.verification_status = 'verified' 
+                               AND lp.payment_status IN ('paid', 'partially_paid')
+                               AND COALESCE(lp.is_trashed, 0) = 0) AS total_collected,
                             lb.booking_status
                         FROM lead_bookings lb
                         JOIN users u ON lb.sales_by_id = u.id
                         JOIN projects p ON lb.project_id = p.id
                         JOIN flats f ON lb.flat_id = f.id
-                        WHERE DATE_FORMAT(lb.booking_date, '%Y-%m') = ?
+                        WHERE lb.booking_date BETWEEN ? AND ?
                         AND lb.deleted_at IS NULL
-                        AND lb.booking_status != 'Cancelled'
+                        AND lb.booking_status NOT IN ('cancelled', 'refunded')
                         ORDER BY lb.booking_date DESC";
                 
                 $stmt = $this->db->prepare($sql);
-                $stmt->bind_param("s", $month);
+                $stmt->bind_param("ss", $startDate, $endDate);
             }
         } else {
             $effectiveTeamId = (!empty($filterTeamId) && (int)$filterTeamId > 0) ? (int)$filterTeamId : $teamId;
@@ -572,19 +760,25 @@ class IncentiveModel extends Model
                         p.name as project_name, 
                         f.flat_name, 
                         IFNULL(f.land_share_value, 0.00) as land_share_value,
+                        (SELECT IFNULL(SUM(lp.amount), 0.00) 
+                         FROM lead_payments lp 
+                         WHERE lp.booking_id = lb.id 
+                           AND lp.verification_status = 'verified' 
+                           AND lp.payment_status IN ('paid', 'partially_paid')
+                           AND COALESCE(lp.is_trashed, 0) = 0) AS total_collected,
                         lb.booking_status
                     FROM lead_bookings lb
                     JOIN users u ON lb.sales_by_id = u.id
                     JOIN projects p ON lb.project_id = p.id
                     JOIN flats f ON lb.flat_id = f.id
                     WHERE u.id IN (SELECT user_id FROM employees WHERE team_id = ?)
-                    AND DATE_FORMAT(lb.booking_date, '%Y-%m') = ?
+                    AND lb.booking_date BETWEEN ? AND ?
                     AND lb.deleted_at IS NULL
-                    AND lb.booking_status != 'Cancelled'
+                    AND lb.booking_status NOT IN ('cancelled', 'refunded')
                     ORDER BY lb.booking_date DESC";
             
             $stmt = $this->db->prepare($sql);
-            $stmt->bind_param("is", $effectiveTeamId, $month);
+            $stmt->bind_param("iss", $effectiveTeamId, $startDate, $endDate);
         }
         
         $stmt->execute();
@@ -770,6 +964,22 @@ class IncentiveModel extends Model
      */
     public function approveClaim($approvedBy, $claimId)
     {
+        $claimId = (int)$claimId;
+
+        // Check if flat already has an approved claim
+        $q = $this->db->query("SELECT flat_id, booking_id FROM project_incentive_claims WHERE id = " . $claimId);
+        $claim = $q ? $q->fetch_assoc() : null;
+        if ($claim && !empty($claim['flat_id'])) {
+            $flatId = (int)$claim['flat_id'];
+            $dupClaim = $this->engine->getFlatClaimDetails($flatId, $claim['booking_id']);
+            if ($dupClaim && in_array($dupClaim['claim_status'], ['approved', 'partially_paid', 'paid'])) {
+                return [
+                    'success' => false, 
+                    'message' => 'Cannot approve claim: This flat unit has already been approved for sales incentive under Claim #' . $dupClaim['id'] . '.'
+                ];
+            }
+        }
+
         $now = date('Y-m-d H:i:s');
         $sql = "UPDATE project_incentive_claims SET claim_status = 'approved', approved_by = ?, approved_at = ? WHERE id = ?";
         $stmt = $this->db->prepare($sql);

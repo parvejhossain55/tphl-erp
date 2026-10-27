@@ -23,6 +23,12 @@ $show_breadcrumb = true;
     .due-stat-card .card-body, .emi-stat-card .card-body {
         padding: 1.15rem 1.25rem;
     }
+    @media (min-width: 1200px) {
+        .col-kpi-5 {
+            flex: 0 0 20% !important;
+            max-width: 20% !important;
+        }
+    }
     .emi-category-pills .nav-link {
         color: #475569;
         transition: all 0.2s ease;
@@ -282,6 +288,8 @@ $show_breadcrumb = true;
     [data-bs-theme="dark"] .due-stat-card.border-primary,
     [bd-theme="bd-theme-dark"] .emi-stat-card.border-primary,
     [data-bs-theme="dark"] .emi-stat-card.border-primary { border-left: 4px solid #3b82f6 !important; }
+    [bd-theme="bd-theme-dark"] .due-stat-card.border-indigo,
+    [data-bs-theme="dark"] .due-stat-card.border-indigo { border-left: 4px solid #6366f1 !important; }
     [bd-theme="bd-theme-dark"] .emi-stat-card.border-success,
     [data-bs-theme="dark"] .emi-stat-card.border-success { border-left: 4px solid #10b981 !important; }
 
@@ -688,7 +696,7 @@ $show_breadcrumb = true;
                 <button type="button" class="btn btn-sm btn-outline-secondary fw-semibold" onclick="window.print()">
                     <i class="fa-solid fa-print me-1"></i> Print Report
                 </button>
-                <button type="button" class="btn btn-sm btn-outline-info fw-semibold" onclick="refreshDueTracking(true)" title="Refresh data">
+                <button type="button" id="refreshDueBtn" class="btn btn-sm btn-outline-info fw-semibold" onclick="refreshDueTracking(true)" title="Refresh all data">
                     <i class="fa-solid fa-rotate me-1"></i> Refresh
                 </button>
             </div>
@@ -696,9 +704,30 @@ $show_breadcrumb = true;
     </div>
 
     <!-- ══ TOP KPI SUMMARY CARDS ══ -->
+    <?php
+    if (!function_exists('formatDueCardAmount')) {
+        function formatDueCardAmount($amount): string {
+            $amount = (float)$amount;
+            if (abs($amount) >= 10000000) {
+                return number_format($amount / 10000000, 2) . ' Cr';
+            } elseif (abs($amount) >= 100000) {
+                return number_format($amount / 100000, 2) . ' Lac';
+            } else {
+                return number_format($amount);
+            }
+        }
+    }
+    $devDue = (float)($stats['total_dev_charge_due'] ?? 0);
+    $devPaid = (float)($stats['total_dev_charges_paid'] ?? 0);
+    $devTarget = (float)($stats['total_dev_charges_target'] ?? 0);
+
+    $shopDue = (float)($stats['total_shop_service_charge_due'] ?? 0);
+    $shopPaid = (float)($stats['total_shop_service_charge_paid'] ?? 0);
+    $shopTarget = (float)($stats['total_shop_service_charge_target'] ?? 0);
+    ?>
     <!-- 1. Overall Outstanding Due -->
-    <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-12 mb-3">
-        <div class="card due-stat-card border-start border-4 border-danger h-100 bg-white">
+    <div class="col-kpi-5 col-xl col-lg-4 col-md-6 col-sm-12 mb-3">
+        <div class="card due-stat-card border-start border-4 border-danger h-100 bg-white" onclick="openOverallDueSummaryModal()" style="cursor: pointer;" title="Click to view total amount breakdown">
             <div class="card-body">
                 <div class="d-flex align-items-center justify-content-between mb-2">
                     <span class="text-uppercase fw-bold text-muted fs-11 tracking-wider">Overall Outstanding Due</span>
@@ -709,10 +738,16 @@ $show_breadcrumb = true;
                 <h3 class="fw-bold text-danger mb-1" id="statOverallDue">
                     Tk. <?= number_format($stats['overall_due'] ?? 0) ?>
                 </h3>
-                <div class="d-flex align-items-center justify-content-between text-muted fs-12">
-                    <span>Total Booked Value: <strong>Tk. <?= number_format(($stats['total_value'] ?? 0) / 10000000, 2) ?> Cr</strong></span>
-                    <span class="badge bg-danger-subtle text-danger stat-pill">
+                <div class="d-flex align-items-center justify-content-between text-muted fs-12 mb-1">
+                    <span>Target: <strong id="statTotalValueText">Tk. <?= formatDueCardAmount($stats['total_value'] ?? 0) ?></strong></span>
+                    <span class="badge bg-danger-subtle text-danger stat-pill" id="statOverallDuePercentBadge">
                         <?= ($stats['total_value'] ?? 0) > 0 ? round((($stats['overall_due'] ?? 0) / ($stats['total_value'] ?? 1)) * 100, 1) : 0 ?>% Due
+                    </span>
+                </div>
+                <div class="d-flex align-items-center justify-content-between text-muted fs-11 pt-1 border-top">
+                    <span>Paid: <strong class="text-success" id="statTotalPaidText">Tk. <?= formatDueCardAmount($stats['total_paid'] ?? 0) ?></strong></span>
+                    <span class="badge bg-primary-subtle text-primary stat-pill">
+                        Breakdown <i class="fa-solid fa-arrow-right ms-1"></i>
                     </span>
                 </div>
             </div>
@@ -720,8 +755,8 @@ $show_breadcrumb = true;
     </div>
 
     <!-- 2. Land Share Due (Booking + Registration) -->
-    <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-12 mb-3">
-        <div class="card due-stat-card border-start border-4 border-warning h-100 bg-white">
+    <div class="col-kpi-5 col-xl col-lg-4 col-md-6 col-sm-12 mb-3">
+        <div class="card due-stat-card border-start border-4 border-warning h-100 bg-white" onclick="setDueTypeFilter('land_share_due')" style="cursor: pointer;" title="Click to filter Land Share Dues">
             <div class="card-body">
                 <div class="d-flex align-items-center justify-content-between mb-2">
                     <span class="text-uppercase fw-bold text-muted fs-11 tracking-wider">Land Share Due</span>
@@ -732,19 +767,23 @@ $show_breadcrumb = true;
                 <h3 class="fw-bold text-dark mb-1" id="statLandShareDue">
                     Tk. <?= number_format($stats['total_land_share_due'] ?? 0) ?>
                 </h3>
-                <div class="d-flex align-items-center justify-content-between text-muted fs-12">
-                    <span title="Booking Money + Registration Fee">Paid: <strong>Tk. <?= number_format(($stats['total_land_share_paid'] ?? 0) / 10000000, 2) ?> Cr</strong></span>
-                    <span class="badge bg-warning-subtle text-dark stat-pill" title="Target: Tk. <?= number_format(($stats['total_land_share_target'] ?? 0) / 10000000, 2) ?> Cr">
-                        Target: Tk. <?= number_format(($stats['total_land_share_target'] ?? 0) / 10000000, 2) ?> Cr
+                <div class="d-flex align-items-center justify-content-between text-muted fs-12 mb-1">
+                    <span title="Booking Money + Registration Fee">Paid: <strong id="statLandSharePaidText">Tk. <?= formatDueCardAmount($stats['total_land_share_paid'] ?? 0) ?></strong></span>
+                    <span class="badge bg-warning-subtle text-dark stat-pill" id="statLandShareTargetBadge" title="Target: Tk. <?= formatDueCardAmount($stats['total_land_share_target'] ?? 0) ?>">
+                        Target: Tk. <?= formatDueCardAmount($stats['total_land_share_target'] ?? 0) ?>
                     </span>
+                </div>
+                <div class="d-flex align-items-center justify-content-between text-muted fs-11 pt-1 border-top">
+                    <span>Due: <strong class="text-dark" id="statLandShareDueText">Tk. <?= formatDueCardAmount($stats['total_land_share_due'] ?? 0) ?></strong></span>
+                    <span class="text-muted extra-small">Filter Dues <i class="fa-solid fa-arrow-right ms-1"></i></span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 3. Development Charge Due -->
-    <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-12 mb-3">
-        <div class="card due-stat-card border-start border-4 border-info h-100 bg-white">
+    <!-- 3. Development Charge Due (Residential Flats) -->
+    <div class="col-kpi-5 col-xl col-lg-4 col-md-6 col-sm-12 mb-3">
+        <div class="card due-stat-card border-start border-4 border-info h-100 bg-white" onclick="setDueTypeFilter('dev_charge_due')" style="cursor: pointer;" title="Click to filter Residential Development Charge Dues">
             <div class="card-body">
                 <div class="d-flex align-items-center justify-content-between mb-2">
                     <span class="text-uppercase fw-bold text-muted fs-11 tracking-wider">Development Charge Due</span>
@@ -753,21 +792,52 @@ $show_breadcrumb = true;
                     </span>
                 </div>
                 <h3 class="fw-bold text-info mb-1" id="statDevChargeDue">
-                    Tk. <?= number_format($stats['total_dev_charge_due'] ?? 0) ?>
+                    Tk. <?= number_format($devDue) ?>
                 </h3>
-                <div class="d-flex align-items-center justify-content-between text-muted fs-12">
-                    <span>Paid: <strong>Tk. <?= number_format(($stats['total_dev_charges_paid'] ?? 0) / 100000, 2) ?> Lac</strong></span>
-                    <span class="badge bg-info-subtle text-info stat-pill">
-                        Target: Tk. <?= number_format(($stats['total_dev_charges_target'] ?? 0) / 100000, 2) ?> Lac
+                <div class="d-flex align-items-center justify-content-between text-muted fs-12 mb-1">
+                    <span>Paid: <strong id="statDevChargePaidText">Tk. <?= formatDueCardAmount($devPaid) ?></strong></span>
+                    <span class="badge bg-info-subtle text-info stat-pill" id="statDevChargeTargetBadge" title="Target: Tk. <?= formatDueCardAmount($devTarget) ?>">
+                        Target: Tk. <?= formatDueCardAmount($devTarget) ?>
                     </span>
+                </div>
+                <div class="d-flex align-items-center justify-content-between text-muted fs-11 pt-1 border-top">
+                    <span>Due: <strong class="text-info" id="statDevChargeDueText">Tk. <?= formatDueCardAmount($devDue) ?></strong></span>
+                    <span class="text-muted extra-small">Filter Dues <i class="fa-solid fa-arrow-right ms-1"></i></span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 4. Total EMI / Construction Due -->
-    <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-12 mb-3">
-        <div class="card due-stat-card border-start border-4 border-primary h-100 bg-white">
+    <!-- 4. Shop Service Charge Due (Commercial Units) -->
+    <div class="col-kpi-5 col-xl col-lg-4 col-md-6 col-sm-12 mb-3">
+        <div class="card due-stat-card border-start border-4 border-indigo h-100 bg-white" onclick="setDueTypeFilter('shop_service_due')" style="cursor: pointer; border-left: 4px solid #6366f1 !important;" title="Click to filter Commercial Shop Service Charge Dues">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-uppercase fw-bold text-muted fs-11 tracking-wider">Shop Service Due</span>
+                    <span class="avatar avatar-xs rounded-circle d-flex align-items-center justify-content-center" style="background:#e0e7ff; color:#4f46e5;">
+                        <i class="fa-solid fa-store"></i>
+                    </span>
+                </div>
+                <h3 class="fw-bold mb-1" style="color:#4f46e5;" id="statShopServiceDue">
+                    Tk. <?= number_format($shopDue) ?>
+                </h3>
+                <div class="d-flex align-items-center justify-content-between text-muted fs-12 mb-1">
+                    <span>Paid: <strong id="statShopServicePaidText">Tk. <?= formatDueCardAmount($shopPaid) ?></strong></span>
+                    <span class="badge stat-pill" style="background:#e0e7ff; color:#4338ca;" id="statShopServiceTargetBadge" title="Target: Tk. <?= formatDueCardAmount($shopTarget) ?>">
+                        Target: Tk. <?= formatDueCardAmount($shopTarget) ?>
+                    </span>
+                </div>
+                <div class="d-flex align-items-center justify-content-between text-muted fs-11 pt-1 border-top">
+                    <span>Due: <strong style="color:#4f46e5;" id="statShopServiceDueText">Tk. <?= formatDueCardAmount($shopDue) ?></strong></span>
+                    <span class="text-muted extra-small">Filter Dues <i class="fa-solid fa-arrow-right ms-1"></i></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. Total EMI / Construction Due -->
+    <div class="col-kpi-5 col-xl col-lg-4 col-md-6 col-sm-12 mb-3">
+        <div class="card due-stat-card border-start border-4 border-primary h-100 bg-white" onclick="setDueTypeFilter('emi_due')" style="cursor: pointer;" title="Click to filter EMI & Construction Dues">
             <div class="card-body">
                 <div class="d-flex align-items-center justify-content-between mb-2">
                     <span class="text-uppercase fw-bold text-muted fs-11 tracking-wider">Construction / EMI Due</span>
@@ -778,15 +848,21 @@ $show_breadcrumb = true;
                 <h3 class="fw-bold text-primary mb-1" id="statEmiDue">
                     Tk. <?= number_format($stats['total_emi_due'] ?? 0) ?>
                 </h3>
-                <div class="d-flex align-items-center justify-content-between text-muted fs-12">
-                    <span>EMI Paid: <strong>Tk. <?= number_format(($stats['total_emi_paid'] ?? 0) / 10000000, 2) ?> Cr</strong></span>
+                <div class="d-flex align-items-center justify-content-between text-muted fs-12 mb-1">
+                    <span>Paid: <strong id="statEmiPaidText">Tk. <?= formatDueCardAmount($stats['total_emi_paid'] ?? 0) ?></strong></span>
+                    <span class="badge bg-primary-subtle text-primary stat-pill" id="statConstructionTargetBadge" title="Target: Tk. <?= formatDueCardAmount($stats['total_construction_target'] ?? 0) ?>">
+                        Target: Tk. <?= formatDueCardAmount($stats['total_construction_target'] ?? 0) ?>
+                    </span>
+                </div>
+                <div class="d-flex align-items-center justify-content-between text-muted fs-11 pt-1 border-top">
                     <?php if (($stats['total_overdue_emi'] ?? 0) > 0): ?>
-                        <span class="badge bg-danger text-white stat-pill" title="Matured installments overdue">
-                            <i class="fa-solid fa-triangle-exclamation me-1"></i>Overdue: Tk. <?= number_format(($stats['total_overdue_emi'] ?? 0) / 100000, 2) ?> L
+                        <span class="badge bg-danger text-white stat-pill" id="statOverdueBadge" title="Matured installments overdue">
+                            <i class="fa-solid fa-triangle-exclamation me-1"></i>Overdue: Tk. <?= formatDueCardAmount($stats['total_overdue_emi'] ?? 0) ?>
                         </span>
                     <?php else: ?>
-                        <span class="badge bg-success-subtle text-success stat-pill">No Overdues</span>
+                        <span class="badge bg-success-subtle text-success stat-pill" id="statOverdueBadge">No Overdues</span>
                     <?php endif; ?>
+                    <span class="text-muted extra-small">Filter Dues <i class="fa-solid fa-arrow-right ms-1"></i></span>
                 </div>
             </div>
         </div>
@@ -961,7 +1037,7 @@ $show_breadcrumb = true;
                                     </div>
                                     <div class="d-flex align-items-center justify-content-between mt-2 pt-1 border-top" style="font-size: 10px; color: #6c757d;">
                                         <span title="Land Share Due">Land: <strong>Tk. <?= number_format($pb['land_share_due']) ?></strong></span>
-                                        <span title="Dev Charge Due">Dev: <strong>Tk. <?= number_format($pb['dev_charge_due']) ?></strong></span>
+                                        <span title="Development & Shop Charge Due">Dev: <strong>Tk. <?= number_format((float)($pb['dev_charge_due'] ?? 0) + (float)($pb['shop_service_charge_due'] ?? 0)) ?></strong></span>
                                         <span title="EMI / Cons Due">EMI: <strong>Tk. <?= number_format($pb['emi_due']) ?></strong></span>
                                         <span title="Collection ratio" class="badge bg-success-subtle text-success"><?= $pb['collection_ratio'] ?>% Rec</span>
                                     </div>
@@ -1011,6 +1087,9 @@ $show_breadcrumb = true;
                     </button>
                     <button type="button" class="due-type-pill <?= ($dueType === 'dev_charge_due') ? 'active' : '' ?>" onclick="setDueTypeFilter('dev_charge_due')">
                         <i class="fa-solid fa-screwdriver-wrench me-1"></i> Dev Charge Due
+                    </button>
+                    <button type="button" class="due-type-pill <?= ($dueType === 'shop_service_due') ? 'active' : '' ?>" onclick="setDueTypeFilter('shop_service_due')">
+                        <i class="fa-solid fa-store me-1"></i> Shop Service Due
                     </button>
                     <button type="button" class="due-type-pill <?= ($dueType === 'emi_due') ? 'active' : '' ?>" onclick="setDueTypeFilter('emi_due')">
                         <i class="fa-solid fa-building-columns me-1"></i> EMI Due
@@ -1066,6 +1145,7 @@ $show_breadcrumb = true;
                             <option value="overall_due" <?= (($sortBy ?? '') === 'overall_due') ? 'selected' : '' ?>>Sort: Overall Due (High-Low)</option>
                             <option value="land_share_due" <?= (($sortBy ?? '') === 'land_share_due') ? 'selected' : '' ?>>Sort: Land Share Due</option>
                             <option value="dev_charge_due" <?= (($sortBy ?? '') === 'dev_charge_due') ? 'selected' : '' ?>>Sort: Dev Charge Due</option>
+                            <option value="shop_service_charge_due" <?= (($sortBy ?? '') === 'shop_service_charge_due') ? 'selected' : '' ?>>Sort: Shop Service Due</option>
                             <option value="remaining_emi_due" <?= (($sortBy ?? '') === 'remaining_emi_due') ? 'selected' : '' ?>>Sort: EMI Due</option>
                             <option value="total_paid" <?= (($sortBy ?? '') === 'total_paid') ? 'selected' : '' ?>>Sort: Total Paid</option>
                             <option value="booking_id" <?= (($sortBy ?? '') === 'booking_id') ? 'selected' : '' ?>>Sort: Recent Booking ID</option>
@@ -1143,6 +1223,272 @@ $show_breadcrumb = true;
         </div>
     </div>
 
+</div>
+
+<!-- ══ MODAL 0: OVERALL OUTSTANDING DUE & FINANCIAL BREAKDOWN ══ -->
+<div class="modal fade" id="overallDueSummaryModal" tabindex="-1" aria-labelledby="overallDueModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <!-- Modal Header -->
+            <div class="modal-header py-3 px-4 text-white" style="background: linear-gradient(135deg, #0f172a, #1e293b); border-bottom: 1px solid rgba(255,255,255,0.1);">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="avatar avatar-md bg-danger text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width:42px; height:42px;">
+                        <i class="fa-solid fa-chart-pie fs-5"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0 text-white" id="overallDueModalTitle">Overall Outstanding Due & Collections Breakdown</h5>
+                        <small class="text-white-50">4-Pillar Financial Reconciliation: Land Share, Development, Shop Service, and Construction/EMI</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body p-4" style="background-color: #f8fafc;">
+                <!-- 3 Top Master Cards -->
+                <div class="row  mb-4">
+                    <!-- Total Target (Booked Value) -->
+                    <div class="col-md-4">
+                        <div class="p-3 bg-white rounded-3 border border-start border-4 border-info shadow-sm h-100">
+                            <div class="d-flex align-items-center justify-content-between text-muted fs-12 mb-1">
+                                <span class="text-uppercase fw-bold">Total Target (Booked Value)</span>
+                                <i class="fa-solid fa-bullseye text-info fs-6"></i>
+                            </div>
+                            <h4 class="fw-bold text-dark mb-1" id="mTotTarget">Tk. <?= formatDueCardAmount($stats['total_value'] ?? 0) ?></h4>
+                            <div class="extra-small text-muted" id="mTotTargetFull">Exact: Tk. <?= number_format($stats['total_value'] ?? 0) ?></div>
+                            <div class="extra-small text-info mt-1"><i class="fa-solid fa-users me-1"></i><?= number_format($stats['total_clients'] ?? 0) ?> Booked Client Units</div>
+                        </div>
+                    </div>
+
+                    <!-- Total Paid (Collected) -->
+                    <div class="col-md-4">
+                        <div class="p-3 bg-white rounded-3 border border-start border-4 border-success shadow-sm h-100">
+                            <div class="d-flex align-items-center justify-content-between text-muted fs-12 mb-1">
+                                <span class="text-uppercase fw-bold">Total Paid (Collected)</span>
+                                <i class="fa-solid fa-circle-check text-success fs-6"></i>
+                            </div>
+                            <h4 class="fw-bold text-success mb-1" id="mTotPaid">Tk. <?= formatDueCardAmount($stats['total_paid'] ?? 0) ?></h4>
+                            <div class="extra-small text-muted" id="mTotPaidFull">Exact: Tk. <?= number_format($stats['total_paid'] ?? 0) ?></div>
+                            <div class="extra-small text-success mt-1">
+                                <i class="fa-solid fa-chart-line me-1"></i><?= ($stats['total_value'] ?? 0) > 0 ? round((($stats['total_paid'] ?? 0) / ($stats['total_value'] ?? 1)) * 100, 1) : 0 ?>% Recovery Rate
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Total Outstanding Due -->
+                    <div class="col-md-4">
+                        <div class="p-3 bg-white rounded-3 border border-start border-4 border-danger shadow-sm h-100">
+                            <div class="d-flex align-items-center justify-content-between text-muted fs-12 mb-1">
+                                <span class="text-uppercase fw-bold">Total Outstanding Due</span>
+                                <i class="fa-solid fa-circle-exclamation text-danger fs-6"></i>
+                            </div>
+                            <h4 class="fw-bold text-danger mb-1" id="mTotDue">Tk. <?= formatDueCardAmount($stats['overall_due'] ?? 0) ?></h4>
+                            <div class="extra-small text-muted" id="mTotDueFull">Exact: Tk. <?= number_format($stats['overall_due'] ?? 0) ?></div>
+                            <div class="extra-small text-danger mt-1">
+                                <i class="fa-solid fa-triangle-exclamation me-1"></i><?= ($stats['total_value'] ?? 0) > 0 ? round((($stats['overall_due'] ?? 0) / ($stats['total_value'] ?? 1)) * 100, 1) : 0 ?>% Remaining Due
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4 Pillars Breakdown Table -->
+                <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-4">
+                    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+                        <h6 class="fw-bold mb-0 text-dark">
+                            <i class="fa-solid fa-layer-group text-primary me-2"></i>Component Breakdown (How Amounts Formed)
+                        </h6>
+                        <span class="badge bg-light text-secondary border fs-11">Verified Accounting</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="min-width: 220px;">Component / Pillar</th>
+                                    <th class="text-end" style="min-width: 140px;">Target Amount</th>
+                                    <th class="text-end" style="min-width: 140px;">Paid Amount</th>
+                                    <th class="text-end" style="min-width: 140px;">Outstanding Due</th>
+                                    <th class="text-center" style="width: 110px;">Recovery %</th>
+                                    <th class="text-center" style="width: 130px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="overallDueBreakdownTableBody">
+                                <!-- Row 1: Land Share -->
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="avatar avatar-xs bg-warning-subtle text-warning rounded-circle d-flex align-items-center justify-content-center">
+                                                <i class="fa-solid fa-map-location-dot"></i>
+                                            </span>
+                                            <div>
+                                                <strong class="text-dark d-block">1. Land Share</strong>
+                                                <small class="text-muted extra-small">Booking Money + Land Registration Fee</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-end fw-semibold" id="mRowLandTarget">Tk. <?= number_format($stats['total_land_share_target'] ?? 0) ?></td>
+                                    <td class="text-end text-success fw-semibold" id="mRowLandPaid">Tk. <?= number_format($stats['total_land_share_paid'] ?? 0) ?></td>
+                                    <td class="text-end text-danger fw-bold" id="mRowLandDue">Tk. <?= number_format($stats['total_land_share_due'] ?? 0) ?></td>
+                                    <td class="text-center" id="mRowLandRec">
+                                        <span class="badge bg-warning-subtle text-dark">
+                                            <?= ($stats['total_land_share_target'] ?? 0) > 0 ? round((($stats['total_land_share_paid'] ?? 0) / ($stats['total_land_share_target'] ?? 1)) * 100, 1) : 0 ?>%
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-xs btn-outline-warning text-dark py-1 px-2 fs-11" onclick="filterByDueTypeFromModal('land_share_due')">
+                                            <i class="fa-solid fa-filter me-1"></i>Filter Due
+                                        </button>
+                                    </td>
+                                </tr>
+
+                                <!-- Row 2: Development Charges -->
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="avatar avatar-xs bg-info-subtle text-info rounded-circle d-flex align-items-center justify-content-center">
+                                                <i class="fa-solid fa-screwdriver-wrench"></i>
+                                            </span>
+                                            <div>
+                                                <strong class="text-dark d-block">2. Development Charges</strong>
+                                                <small class="text-muted extra-small">Residential Flats Utility & Site Development</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-end fw-semibold" id="mRowDevTarget">Tk. <?= number_format($stats['total_dev_charges_target'] ?? 0) ?></td>
+                                    <td class="text-end text-success fw-semibold" id="mRowDevPaid">Tk. <?= number_format($stats['total_dev_charges_paid'] ?? 0) ?></td>
+                                    <td class="text-end text-danger fw-bold" id="mRowDevDue">Tk. <?= number_format($stats['total_dev_charge_due'] ?? 0) ?></td>
+                                    <td class="text-center" id="mRowDevRec">
+                                        <span class="badge bg-info-subtle text-info">
+                                            <?= ($stats['total_dev_charges_target'] ?? 0) > 0 ? round((($stats['total_dev_charges_paid'] ?? 0) / ($stats['total_dev_charges_target'] ?? 1)) * 100, 1) : 0 ?>%
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-xs btn-outline-info py-1 px-2 fs-11" onclick="filterByDueTypeFromModal('dev_charge_due')">
+                                            <i class="fa-solid fa-filter me-1"></i>Filter Due
+                                        </button>
+                                    </td>
+                                </tr>
+
+                                <!-- Row 3: Shop Service Charges -->
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="avatar avatar-xs rounded-circle d-flex align-items-center justify-content-center" style="background:#e0e7ff; color:#4338ca;">
+                                                <i class="fa-solid fa-store"></i>
+                                            </span>
+                                            <div>
+                                                <strong class="text-dark d-block">3. Shop Service Charges</strong>
+                                                <small class="text-muted extra-small">Commercial Units Maintenance & Service Fee</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-end fw-semibold" id="mRowShopTarget">Tk. <?= number_format($stats['total_shop_service_charge_target'] ?? 0) ?></td>
+                                    <td class="text-end text-success fw-semibold" id="mRowShopPaid">Tk. <?= number_format($stats['total_shop_service_charge_paid'] ?? 0) ?></td>
+                                    <td class="text-end text-danger fw-bold" id="mRowShopDue">Tk. <?= number_format($stats['total_shop_service_charge_due'] ?? 0) ?></td>
+                                    <td class="text-center" id="mRowShopRec">
+                                        <span class="badge bg-light text-secondary border">
+                                            <?= ($stats['total_shop_service_charge_target'] ?? 0) > 0 ? round((($stats['total_shop_service_charge_paid'] ?? 0) / ($stats['total_shop_service_charge_target'] ?? 1)) * 100, 1) : 0 ?>%
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-xs btn-outline-indigo py-1 px-2 fs-11" style="color:#4f46e5; border-color:#c7d2fe;" onclick="filterByDueTypeFromModal('shop_service_due')">
+                                            <i class="fa-solid fa-filter me-1"></i>Filter Due
+                                        </button>
+                                    </td>
+                                </tr>
+
+                                <!-- Row 4: Construction & EMI -->
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="avatar avatar-xs bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center">
+                                                <i class="fa-solid fa-building-columns"></i>
+                                            </span>
+                                            <div>
+                                                <strong class="text-dark d-block">4. Construction Fee & EMI</strong>
+                                                <small class="text-muted extra-small">Monthly Installment Schedules</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-end fw-semibold" id="mRowConsTarget">Tk. <?= number_format($stats['total_construction_target'] ?? 0) ?></td>
+                                    <td class="text-end text-success fw-semibold" id="mRowConsPaid">Tk. <?= number_format($stats['total_emi_paid'] ?? 0) ?></td>
+                                    <td class="text-end text-danger fw-bold" id="mRowConsDue">Tk. <?= number_format($stats['total_emi_due'] ?? 0) ?></td>
+                                    <td class="text-center" id="mRowConsRec">
+                                        <span class="badge bg-primary-subtle text-primary">
+                                            <?= ($stats['total_construction_target'] ?? 0) > 0 ? round((($stats['total_emi_paid'] ?? 0) / ($stats['total_construction_target'] ?? 1)) * 100, 1) : 0 ?>%
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-xs btn-outline-primary py-1 px-2 fs-11" onclick="filterByDueTypeFromModal('emi_due')">
+                                            <i class="fa-solid fa-filter me-1"></i>Filter Due
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+
+                            <!-- Summary Footer Row in Table -->
+                            <tfoot class="table-light border-top border-2">
+                                <tr>
+                                    <th class="text-dark fw-bold">TOTAL RECONCILIATION</th>
+                                    <th class="text-end text-dark fw-bold" id="mFooterTfootTarget">Tk. <?= number_format($stats['total_value'] ?? 0) ?></th>
+                                    <th class="text-end text-success fw-bold" id="mFooterTfootPaid">Tk. <?= number_format($stats['total_paid'] ?? 0) ?></th>
+                                    <th class="text-end text-danger fw-bold" id="mFooterTfootDue">Tk. <?= number_format($stats['overall_due'] ?? 0) ?></th>
+                                    <th class="text-center" id="mFooterTfootRec">
+                                        <span class="badge bg-success text-white">
+                                            <?= ($stats['total_value'] ?? 0) > 0 ? round((($stats['total_paid'] ?? 0) / ($stats['total_value'] ?? 1)) * 100, 1) : 0 ?>%
+                                        </span>
+                                    </th>
+                                    <th class="text-center">
+                                        <button type="button" class="btn btn-xs btn-secondary py-1 px-2 fs-11" onclick="filterByDueTypeFromModal('all')">
+                                            Reset Filter
+                                        </button>
+                                    </th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Bottom Reconciliation Summary Cards -->
+                <div class="row g-2">
+                    <div class="col-md-3 col-sm-6">
+                        <div class="p-3 border rounded-3 bg-white text-center shadow-sm">
+                            <span class="text-uppercase fw-bold text-muted extra-small d-block mb-1">Total Target Amount</span>
+                            <h5 class="fw-bold text-dark mb-0" id="mFooterTarget">Tk. <?= formatDueCardAmount($stats['total_value'] ?? 0) ?></h5>
+                            <small class="text-muted extra-small d-block mt-1" id="mFooterTargetExact">Exact: Tk. <?= number_format($stats['total_value'] ?? 0) ?></small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="p-3 border rounded-3 bg-white text-center shadow-sm">
+                            <span class="text-uppercase fw-bold text-muted extra-small d-block mb-1">Total Paid Value</span>
+                            <h5 class="fw-bold text-success mb-0" id="mFooterPaid">Tk. <?= formatDueCardAmount($stats['total_paid'] ?? 0) ?></h5>
+                            <small class="text-muted extra-small d-block mt-1" id="mFooterPaidExact">Exact: Tk. <?= number_format($stats['total_paid'] ?? 0) ?></small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="p-3 border rounded-3 bg-white text-center shadow-sm">
+                            <span class="text-uppercase fw-bold text-muted extra-small d-block mb-1">Total Outstanding Due</span>
+                            <h5 class="fw-bold text-danger mb-0" id="mFooterDue">Tk. <?= formatDueCardAmount($stats['overall_due'] ?? 0) ?></h5>
+                            <small class="text-muted extra-small d-block mt-1" id="mFooterDueExact">Exact: Tk. <?= number_format($stats['overall_due'] ?? 0) ?></small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="p-3 border rounded-3 bg-white text-center shadow-sm">
+                            <span class="text-uppercase fw-bold text-muted extra-small d-block mb-1">Active Booked Units</span>
+                            <h5 class="fw-bold text-primary mb-0" id="mFooterUnits"><?= number_format($stats['total_clients'] ?? 0) ?> Bookings</h5>
+                            <small class="text-muted extra-small d-block mt-1">Across All Projects</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer bg-light py-2 px-4 d-flex justify-content-between">
+                <span class="text-muted extra-small">
+                    <i class="fa-solid fa-circle-check text-success me-1"></i>All figures derived from verified transaction records.
+                </span>
+                <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- ══ MODAL 1: QUICK CLIENT DUE BREAKDOWN ══ -->
@@ -1229,7 +1575,7 @@ $show_breadcrumb = true;
                                         <td class="text-end">Tk. <?= number_format($pRow['total_project_value']) ?></td>
                                         <td class="text-end text-success">Tk. <?= number_format($pRow['total_paid']) ?></td>
                                         <td class="text-end text-danger">Tk. <?= number_format($pRow['land_share_due']) ?></td>
-                                        <td class="text-end text-danger">Tk. <?= number_format($pRow['dev_charge_due']) ?></td>
+                                        <td class="text-end text-danger" title="Dev: Tk. <?= number_format($pRow['dev_charge_due']) ?><?= ((float)($pRow['shop_service_charge_due'] ?? 0) > 0 ? ' | Shop: Tk. ' . number_format($pRow['shop_service_charge_due']) : '') ?>">Tk. <?= number_format((float)($pRow['dev_charge_due'] ?? 0) + (float)($pRow['shop_service_charge_due'] ?? 0)) ?></td>
                                         <td class="text-end text-danger">Tk. <?= number_format($pRow['emi_due']) ?></td>
                                         <td class="text-end text-danger fw-bold">Tk. <?= number_format($pRow['overall_due']) ?></td>
                                         <td class="text-center">
@@ -1543,9 +1889,28 @@ $show_breadcrumb = true;
 
 <!-- ══ CLIENT DUE TRACKING JAVASCRIPT ══ -->
 <script>
+    window.base_url = '<?= $GLOBALS['base_url'] ?? '' ?>';
     let dueCurrentPage = <?= (int)($currentPage ?? 1) ?>;
     let dueActiveType = '<?= htmlspecialchars($dueType ?? 'all') ?>';
     let dueSearchTimer = null;
+
+    // Open Overall Outstanding Due Breakdown Modal
+    function openOverallDueSummaryModal() {
+        const modalEl = document.getElementById('overallDueSummaryModal');
+        if (!modalEl) return;
+        const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+
+    // Filter by Due Type directly from Modal and close modal
+    function filterByDueTypeFromModal(type) {
+        const modalEl = document.getElementById('overallDueSummaryModal');
+        if (modalEl) {
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+        }
+        setDueTypeFilter(type);
+    }
 
     // Set Due Type filter tab
     function setDueTypeFilter(type) {
@@ -1728,10 +2093,123 @@ $show_breadcrumb = true;
                 if (data.stats) {
                     const s = data.stats;
                     const fmt = (num) => 'Tk. ' + Number(num || 0).toLocaleString();
+                    const fmtCrLac = (amount) => {
+                        const val = Number(amount || 0);
+                        if (Math.abs(val) >= 10000000) return (val / 10000000).toFixed(2) + ' Cr';
+                        if (Math.abs(val) >= 100000) return (val / 100000).toFixed(2) + ' Lac';
+                        return val.toLocaleString();
+                    };
+
+                    const devDue = Number(s.total_dev_charge_due || 0);
+                    const devPaid = Number(s.total_dev_charges_paid || 0);
+                    const devTarget = Number(s.total_dev_charges_target || 0);
+
+                    const shopDue = Number(s.total_shop_service_charge_due || 0);
+                    const shopPaid = Number(s.total_shop_service_charge_paid || 0);
+                    const shopTarget = Number(s.total_shop_service_charge_target || 0);
+
                     if (document.getElementById('statOverallDue')) document.getElementById('statOverallDue').innerText = fmt(s.overall_due);
+                    if (document.getElementById('statTotalValueText')) document.getElementById('statTotalValueText').innerText = 'Tk. ' + fmtCrLac(s.total_value);
+                    if (document.getElementById('statOverallDuePercentBadge')) {
+                        const pct = Number(s.total_value || 0) > 0 ? Math.round((Number(s.overall_due || 0) / Number(s.total_value)) * 1000) / 10 : 0;
+                        document.getElementById('statOverallDuePercentBadge').innerText = pct + '% Due';
+                    }
+
                     if (document.getElementById('statLandShareDue')) document.getElementById('statLandShareDue').innerText = fmt(s.total_land_share_due);
-                    if (document.getElementById('statDevChargeDue')) document.getElementById('statDevChargeDue').innerText = fmt(s.total_dev_charge_due);
+                    if (document.getElementById('statLandSharePaidText')) document.getElementById('statLandSharePaidText').innerText = 'Tk. ' + fmtCrLac(s.total_land_share_paid);
+                    if (document.getElementById('statLandShareTargetBadge')) {
+                        document.getElementById('statLandShareTargetBadge').innerText = 'Target: Tk. ' + fmtCrLac(s.total_land_share_target);
+                        document.getElementById('statLandShareTargetBadge').title = 'Target: Tk. ' + fmtCrLac(s.total_land_share_target);
+                    }
+                    if (document.getElementById('statLandShareDueText')) document.getElementById('statLandShareDueText').innerText = 'Tk. ' + fmtCrLac(s.total_land_share_due);
+
+                    if (document.getElementById('statDevChargeDue')) document.getElementById('statDevChargeDue').innerText = fmt(devDue);
+                    if (document.getElementById('statDevChargePaidText')) document.getElementById('statDevChargePaidText').innerText = 'Tk. ' + fmtCrLac(devPaid);
+                    if (document.getElementById('statDevChargeTargetBadge')) {
+                        document.getElementById('statDevChargeTargetBadge').innerText = 'Target: Tk. ' + fmtCrLac(devTarget);
+                        document.getElementById('statDevChargeTargetBadge').title = 'Target: Tk. ' + fmtCrLac(devTarget);
+                    }
+                    if (document.getElementById('statDevChargeDueText')) document.getElementById('statDevChargeDueText').innerText = 'Tk. ' + fmtCrLac(devDue);
+
+                    if (document.getElementById('statShopServiceDue')) document.getElementById('statShopServiceDue').innerText = fmt(shopDue);
+                    if (document.getElementById('statShopServicePaidText')) document.getElementById('statShopServicePaidText').innerText = 'Tk. ' + fmtCrLac(shopPaid);
+                    if (document.getElementById('statShopServiceTargetBadge')) {
+                        document.getElementById('statShopServiceTargetBadge').innerText = 'Target: Tk. ' + fmtCrLac(shopTarget);
+                        document.getElementById('statShopServiceTargetBadge').title = 'Target: Tk. ' + fmtCrLac(shopTarget);
+                    }
+                    if (document.getElementById('statShopServiceDueText')) document.getElementById('statShopServiceDueText').innerText = 'Tk. ' + fmtCrLac(shopDue);
+
                     if (document.getElementById('statEmiDue')) document.getElementById('statEmiDue').innerText = fmt(s.total_emi_due);
+                    if (document.getElementById('statEmiPaidText')) document.getElementById('statEmiPaidText').innerText = 'Tk. ' + fmtCrLac(s.total_emi_paid);
+                    if (document.getElementById('statConstructionTargetBadge')) {
+                        document.getElementById('statConstructionTargetBadge').innerText = 'Target: Tk. ' + fmtCrLac(s.total_construction_target);
+                        document.getElementById('statConstructionTargetBadge').title = 'Target: Tk. ' + fmtCrLac(s.total_construction_target);
+                    }
+                    if (document.getElementById('statOverdueBadge')) {
+                        if (Number(s.total_overdue_emi || 0) > 0) {
+                            document.getElementById('statOverdueBadge').className = 'badge bg-danger text-white stat-pill';
+                            document.getElementById('statOverdueBadge').innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i>Overdue: Tk. ' + fmtCrLac(s.total_overdue_emi);
+                        } else {
+                            document.getElementById('statOverdueBadge').className = 'badge bg-success-subtle text-success stat-pill';
+                            document.getElementById('statOverdueBadge').innerText = 'No Overdues';
+                        }
+                    }
+
+                    // Dynamically update Breakdown Modal stats
+                    const setTxt = (id, val) => {
+                        const el = document.getElementById(id);
+                        if (el) el.innerText = val;
+                    };
+                    const getPct = (p, t) => {
+                        const paid = Number(p || 0);
+                        const tgt = Number(t || 0);
+                        return tgt > 0 ? (Math.round((paid / tgt) * 1000) / 10) + '%' : '0%';
+                    };
+
+                    setTxt('mTotTarget', 'Tk. ' + fmtCrLac(s.total_value));
+                    setTxt('mTotTargetFull', 'Exact: Tk. ' + Number(s.total_value || 0).toLocaleString());
+                    setTxt('mTotPaid', 'Tk. ' + fmtCrLac(s.total_paid));
+                    setTxt('mTotPaidFull', 'Exact: Tk. ' + Number(s.total_paid || 0).toLocaleString());
+                    setTxt('mTotDue', 'Tk. ' + fmtCrLac(s.overall_due));
+                    setTxt('mTotDueFull', 'Exact: Tk. ' + Number(s.overall_due || 0).toLocaleString());
+
+                    setTxt('mRowLandTarget', fmt(s.total_land_share_target));
+                    setTxt('mRowLandPaid', fmt(s.total_land_share_paid));
+                    setTxt('mRowLandDue', fmt(s.total_land_share_due));
+                    const mRowLandRec = document.getElementById('mRowLandRec');
+                    if (mRowLandRec) mRowLandRec.innerHTML = `<span class="badge bg-warning-subtle text-dark">${getPct(s.total_land_share_paid, s.total_land_share_target)}</span>`;
+
+                    setTxt('mRowDevTarget', fmt(s.total_dev_charges_target));
+                    setTxt('mRowDevPaid', fmt(s.total_dev_charges_paid));
+                    setTxt('mRowDevDue', fmt(s.total_dev_charge_due));
+                    const mRowDevRec = document.getElementById('mRowDevRec');
+                    if (mRowDevRec) mRowDevRec.innerHTML = `<span class="badge bg-info-subtle text-info">${getPct(s.total_dev_charges_paid, s.total_dev_charges_target)}</span>`;
+
+                    setTxt('mRowShopTarget', fmt(s.total_shop_service_charge_target));
+                    setTxt('mRowShopPaid', fmt(s.total_shop_service_charge_paid));
+                    setTxt('mRowShopDue', fmt(s.total_shop_service_charge_due));
+                    const mRowShopRec = document.getElementById('mRowShopRec');
+                    if (mRowShopRec) mRowShopRec.innerHTML = `<span class="badge bg-light text-secondary border">${getPct(s.total_shop_service_charge_paid, s.total_shop_service_charge_target)}</span>`;
+
+                    setTxt('mRowConsTarget', fmt(s.total_construction_target));
+                    setTxt('mRowConsPaid', fmt(s.total_emi_paid));
+                    setTxt('mRowConsDue', fmt(s.total_emi_due));
+                    const mRowConsRec = document.getElementById('mRowConsRec');
+                    if (mRowConsRec) mRowConsRec.innerHTML = `<span class="badge bg-primary-subtle text-primary">${getPct(s.total_emi_paid, s.total_construction_target)}</span>`;
+
+                    setTxt('mFooterTfootTarget', fmt(s.total_value));
+                    setTxt('mFooterTfootPaid', fmt(s.total_paid));
+                    setTxt('mFooterTfootDue', fmt(s.overall_due));
+                    const mFooterTfootRec = document.getElementById('mFooterTfootRec');
+                    if (mFooterTfootRec) mFooterTfootRec.innerHTML = `<span class="badge bg-success text-white">${getPct(s.total_paid, s.total_value)}</span>`;
+
+                    setTxt('mFooterTarget', 'Tk. ' + fmtCrLac(s.total_value));
+                    setTxt('mFooterTargetExact', 'Exact: Tk. ' + Number(s.total_value || 0).toLocaleString());
+                    setTxt('mFooterPaid', 'Tk. ' + fmtCrLac(s.total_paid));
+                    setTxt('mFooterPaidExact', 'Exact: Tk. ' + Number(s.total_paid || 0).toLocaleString());
+                    setTxt('mFooterDue', 'Tk. ' + fmtCrLac(s.overall_due));
+                    setTxt('mFooterDueExact', 'Exact: Tk. ' + Number(s.overall_due || 0).toLocaleString());
+                    setTxt('mFooterUnits', Number(s.total_clients || 0).toLocaleString() + ' Bookings');
                 }
 
                 // Update EMI Analytics KPI cards if returned
@@ -1759,7 +2237,21 @@ $show_breadcrumb = true;
 
     // Refresh data handler
     function refreshDueTracking(force = false) {
+        const btn = document.getElementById('refreshDueBtn');
+        const icon = btn ? btn.querySelector('i') : null;
+        if (icon) icon.className = 'fa-solid fa-rotate fa-spin me-1';
+        if (btn) btn.disabled = true;
+
+        if (force === true) {
+            window.location.reload();
+            return;
+        }
+
         loadDueTrackingPage(dueCurrentPage);
+        setTimeout(() => {
+            if (icon) icon.className = 'fa-solid fa-rotate me-1';
+            if (btn) btn.disabled = false;
+        }, 600);
     }
 
     // Open Quick Client Due Breakdown Modal

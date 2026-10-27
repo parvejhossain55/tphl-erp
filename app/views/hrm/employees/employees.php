@@ -390,6 +390,16 @@ $listReturnUrl = $GLOBALS['base_url'] . '/employee-lists' . $currentQuery;
                                         <i class="fa-solid fa-calendar-xmark me-1"></i>Resigned (<?= date('M Y', $rTime) ?>)
                                     </span>
                                 <?php endif; ?>
+                                <?php if (!empty($employee['is_team_leader'])): ?>
+                                    <span class="badge bg-primary text-white px-2 py-1 fs-11 rounded-pill" title="Sales Team Leader">
+                                        <i class="fa-solid fa-crown me-1 text-warning"></i>Team Leader
+                                    </span>
+                                <?php endif; ?>
+                                <?php if (!empty($employee['is_sales_co_leader'])): ?>
+                                    <span class="badge bg-info-subtle text-info px-2 py-1 fs-11 rounded-pill" title="Sales Co-Leader">
+                                        <i class="fa-solid fa-user-shield me-1"></i>Co-Leader
+                                    </span>
+                                <?php endif; ?>
                             </div>
 
                             <p><?= $employee['department_name'] ?> - <strong><?= $employee['designation_name'] ?? '' ?></strong></p>
@@ -501,6 +511,16 @@ $listReturnUrl = $GLOBALS['base_url'] . '/employee-lists' . $currentQuery;
                                 <td>
                                     <div class="fw-semibold text-dark">
                                         <?= !empty($employee['team_name']) ? htmlspecialchars($employee['team_name']) : '<span class="text-muted">No Team</span>' ?>
+                                        <?php if (!empty($employee['is_team_leader'])): ?>
+                                            <span class="badge bg-primary text-white px-2 py-0 fs-11 rounded-pill ms-1" title="Sales Team Leader">
+                                                <i class="fa-solid fa-crown me-1 text-warning"></i>TL
+                                            </span>
+                                        <?php endif; ?>
+                                        <?php if (!empty($employee['is_sales_co_leader'])): ?>
+                                            <span class="badge bg-info-subtle text-info px-2 py-0 fs-11 rounded-pill ms-1" title="Sales Co-Leader">
+                                                <i class="fa-solid fa-user-shield me-1"></i>Co-Leader
+                                            </span>
+                                        <?php endif; ?>
                                     </div>
                                     <div class="text-primary small">
                                         <i class="fa-solid fa-building me-1"></i><?= htmlspecialchars($employee['office_branch_name'] ?? 'Ashulia Site Office') ?>
