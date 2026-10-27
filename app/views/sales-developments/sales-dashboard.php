@@ -1886,6 +1886,8 @@ function renderDrilldownRows(rows, isCollection) {
 
     bodyEl.innerHTML = html;
     if (totalAmountEl) totalAmountEl.textContent = fmtCr(totalSum);
+    const badgeEl = document.getElementById('drilldownCountBadge');
+    if (badgeEl) badgeEl.textContent = (rows ? rows.length : 0) + ' Records';
 }
 
 function escapeHtml(text) {
