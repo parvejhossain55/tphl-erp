@@ -488,6 +488,40 @@ class LeadController extends Controller
                 if (!empty($lead['project_category_name'])) {
                     $campName .= ' (' . $lead['project_category_name'] . ')';
                 }
+                // 2-Tier Assignment Tracking for Mobile
+                $mIsAuto = !empty($lead['is_automated']) && (int)$lead['is_automated'] === 1;
+                if ($mIsAuto) {
+                    $mFirstAssigner = 'System';
+                } elseif (!empty($lead['approved_by_name'])) {
+                    $mFirstAssigner = $lead['approved_by_name'];
+                } elseif (!empty($lead['creator_name'])) {
+                    $mFirstAssigner = $lead['creator_name'];
+                } else {
+                    $mFirstAssigner = !empty($lead['assigned_by_name']) ? $lead['assigned_by_name'] : 'System';
+                }
+
+                $mFirstAssignedRaw = (!empty($lead['approved_at']) && $lead['approved_at'] !== '0000-00-00 00:00:00' && $lead['approved_at'] !== '0000-00-00')
+                    ? $lead['approved_at']
+                    : (!empty($lead['created_at']) && $lead['created_at'] !== '0000-00-00 00:00:00' ? $lead['created_at'] : '');
+                $mFirstAssignedFormatted = !empty($mFirstAssignedRaw) ? date('d M, Y, h:i A', strtotime($mFirstAssignedRaw)) : '';
+
+                $mHasAgent = !empty($lead['agent_name']);
+                $mTeamAssigner = !empty($lead['team_assigner_name'])
+                    ? $lead['team_assigner_name']
+                    : (!empty($lead['assigned_by_name']) && $lead['assigned_by_name'] !== 'System' ? $lead['assigned_by_name'] : $mFirstAssigner);
+
+                $mTeamAssignedAtRaw = (!empty($lead['assigned_at']) && $lead['assigned_at'] !== '0000-00-00 00:00:00' && $lead['assigned_at'] !== '0000-00-00')
+                    ? $lead['assigned_at']
+                    : '';
+                $mTeamAssignedAtFormatted = !empty($mTeamAssignedAtRaw) ? date('d M, Y, h:i A', strtotime($mTeamAssignedAtRaw)) : '';
+
+                $mTeamName = !empty($lead['team_id']) && isset($teamsData[$lead['team_id']])
+                    ? $teamsData[$lead['team_id']]['team_name']
+                    : ($mIsAuto ? 'Pending Team Distribution' : 'Self Added');
+                $mManagerName = !empty($lead['team_id']) && isset($teamsData[$lead['team_id']])
+                    ? $teamsData[$lead['team_id']]['manager_name']
+                    : ($mIsAuto ? 'No Team Assigned' : (!empty($lead['creator_name']) ? $lead['creator_name'] : 'System'));
+
                 $mobileData[] = [
                     'id'               => $lead['id'],
                     'full_name'        => $lead['full_name'] ?? '',
@@ -502,6 +536,11 @@ class LeadController extends Controller
                     'assigned_at_formatted' => (!empty($lead['assigned_at']) && $lead['assigned_at'] !== '0000-00-00 00:00:00' && $lead['assigned_at'] !== '0000-00-00')
                         ? date('d M, Y, h:i A', strtotime($lead['assigned_at']))
                         : ((!empty($lead['updated_at']) && $lead['updated_at'] !== '0000-00-00 00:00:00') ? date('d M, Y, h:i A', strtotime($lead['updated_at'])) : (!empty($lead['created_at']) ? date('d M, Y, h:i A', strtotime($lead['created_at'])) : '')),
+                    'first_assigner_name'         => $mFirstAssigner,
+                    'first_assigned_at_formatted' => $mFirstAssignedFormatted,
+                    'team_assigner_name'          => $mTeamAssigner,
+                    'team_assigned_at_formatted'  => $mTeamAssignedAtFormatted,
+                    'has_agent'                   => $mHasAgent ? 1 : 0,
                     'follow_up_count'  => $followUpCounts[$lead['id']] ?? 0,
                     'booking_count'    => $bookingCounts[$lead['id']] ?? 0,
                     'created_at'       => !empty($lead['created_at']) ? date('d M, Y, h:i A', strtotime($lead['created_at'])) : '',
@@ -510,8 +549,8 @@ class LeadController extends Controller
                     'job_title'        => $lead['job_title'] ?? '',
                     'designation'      => $lead['designation'] ?? '',
                     'when_is_the_best_time_to_contact_you' => $lead['when_is_the_best_time_to_contact_you'] ?? '',
-                    'team_name'        => !empty($lead['team_id']) && isset($teamsData[$lead['team_id']]) ? $teamsData[$lead['team_id']]['team_name'] : '',
-                    'manager_name'     => !empty($lead['team_id']) && isset($teamsData[$lead['team_id']]) ? $teamsData[$lead['team_id']]['manager_name'] : '',
+                    'team_name'        => $mTeamName,
+                    'manager_name'     => $mManagerName,
                     'lead_type'        => !empty($lead['lead_type']) ? $lead['lead_type'] : (!empty($lead['last_follow_up_lead_status']) ? $lead['last_follow_up_lead_status'] : 'Pending'),
                     'call_status'      => $lead['call_status'] ?? '',
                     'follow_up_type'   => $lead['follow_up_type'] ?? '',
@@ -666,15 +705,21 @@ class LeadController extends Controller
             $row[] = '<div>' . $next_date . '</div>';
 
             if (empty($lead['agent_name'])) {
-                $creatorName = !empty($lead['assigned_by_name']) ? htmlspecialchars($lead['assigned_by_name']) : 'System';
+                $isAuto = !empty($lead['is_automated']) && (int)$lead['is_automated'] === 1;
                 
                 if (!empty($lead['team_id']) && isset($teamsData[$lead['team_id']])) {
                     $tData = $teamsData[$lead['team_id']];
-                    $managerText = !empty($tData['manager_name']) ? $tData['manager_name'] : $creatorName;
+                    $managerText = !empty($tData['manager_name']) ? $tData['manager_name'] : (!empty($lead['team_assigner_name']) ? $lead['team_assigner_name'] : 'Team Manager');
                     $teamText = htmlspecialchars($tData['team_name']);
                 } else {
-                    $managerText = $creatorName;
-                    $teamText = 'Self Added';
+                    if ($isAuto) {
+                        $managerText = 'No Team Assigned';
+                        $teamText = 'Pending Team Distribution';
+                    } else {
+                        $creatorName = !empty($lead['creator_name']) ? htmlspecialchars($lead['creator_name']) : (!empty($lead['assigned_by_name']) ? htmlspecialchars($lead['assigned_by_name']) : 'System');
+                        $managerText = $creatorName;
+                        $teamText = 'Self Added';
+                    }
                 }
                 
                 $agentBadge = '<div>
@@ -715,22 +760,67 @@ class LeadController extends Controller
             $noteHtml .= '</span></div>';
             $row[] = $noteHtml;
 
-            $assignedByStr = !empty($lead['assigned_by_name']) ? htmlspecialchars($lead['assigned_by_name']) : 'System';
-            $isAutoLead = !empty($lead['is_automated']) && (int)$lead['is_automated'] === 1;
-
-            if ($isAutoLead) {
-                $assignedByHtml = '<div class="d-flex flex-column gap-1" style="min-width: 140px;">';
-                $assignedByHtml .= '<div><span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-0.5" style="font-size: 11px;"><i class="fa-solid fa-robot me-1"></i>Assigned by System</span></div>';
-                
-                // When Team Leader distributes/assigns to an executive, keep system and show team leader assigner!
-                if (!empty($lead['agent_name']) && !empty($lead['assigned_by_name']) && $lead['assigned_by_name'] !== 'System') {
-                    $assignedByHtml .= '<div class="text-primary small pt-1 border-top mt-1" style="font-size: 11px; line-height: 1.25;"><i class="bi bi-person-check me-1"></i>Assigned by: <strong class="text-dark">' . $assignedByStr . '</strong></div>';
-                }
-                $assignedByHtml .= '</div>';
-                $row[] = $assignedByHtml;
+            // ── 2-Tier Assignment Tracking: First Assigner & Team Assigner ──
+            // Tier 1: First Distribution / Ingestion
+            if (!empty($lead['is_automated']) && (int)$lead['is_automated'] === 1) {
+                $firstAssignerName = 'System';
+            } elseif (!empty($lead['approved_by_name'])) {
+                $firstAssignerName = $lead['approved_by_name'];
+            } elseif (!empty($lead['creator_name'])) {
+                $firstAssignerName = $lead['creator_name'];
             } else {
-                $row[] = '<span class="bd-badge bg-secondary text-truncate" style="max-width: 150px;"><i class="bi bi-person-check me-1"></i>' . $assignedByStr . '</span>';
+                $firstAssignerName = !empty($lead['assigned_by_name']) ? $lead['assigned_by_name'] : 'System';
             }
+
+            $firstAssignedRaw = (!empty($lead['approved_at']) && $lead['approved_at'] !== '0000-00-00 00:00:00' && $lead['approved_at'] !== '0000-00-00')
+                ? $lead['approved_at']
+                : (!empty($lead['created_at']) && $lead['created_at'] !== '0000-00-00 00:00:00' ? $lead['created_at'] : '');
+            $firstAssignedFormatted = !empty($firstAssignedRaw) ? date('d M, Y, h:i A', strtotime($firstAssignedRaw)) : '';
+
+            // Tier 2: Team Level Assignment
+            $hasAgent = !empty($lead['agent_name']);
+            $teamAssignerName = !empty($lead['team_assigner_name'])
+                ? $lead['team_assigner_name']
+                : (!empty($lead['assigned_by_name']) && $lead['assigned_by_name'] !== 'System' ? $lead['assigned_by_name'] : $firstAssignerName);
+
+            $teamAssignedAtRaw = (!empty($lead['assigned_at']) && $lead['assigned_at'] !== '0000-00-00 00:00:00' && $lead['assigned_at'] !== '0000-00-00')
+                ? $lead['assigned_at']
+                : '';
+            $teamAssignedAtFormatted = !empty($teamAssignedAtRaw) ? date('d M, Y, h:i A', strtotime($teamAssignedAtRaw)) : '';
+
+            $isAutoLead = !empty($lead['is_automated']) && (int)$lead['is_automated'] === 1;
+            $autoBadge = $isAutoLead
+                ? '<span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-1.5 py-0.5" style="font-size: 9px;" title="Automated Lead"><i class="fa-solid fa-robot me-1"></i>Auto</span>'
+                : '';
+
+            $assignedByHtml = '<div class="d-flex flex-column gap-1" style="min-width: 145px; font-size: 11px;">';
+            // Block 1: 1st Assigned / Distributed By
+            $assignedByHtml .= '<div>';
+            $assignedByHtml .= '  <div class="d-flex align-items-center gap-1 flex-wrap">';
+            $assignedByHtml .= '    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2 py-0.5" style="font-size: 10px;" title="First Distributed By">';
+            $assignedByHtml .= '      <i class="bi bi-box-arrow-in-right me-1 text-primary"></i>1st: <strong class="text-dark">' . htmlspecialchars($firstAssignerName) . '</strong>';
+            $assignedByHtml .= '    </span>';
+            $assignedByHtml .= '    ' . $autoBadge;
+            $assignedByHtml .= '  </div>';
+            if (!empty($firstAssignedFormatted)) {
+                $assignedByHtml .= '  <div class="text-muted ps-1" style="font-size: 10px; margin-top: 2px;" title="1st Assigned Date & Time"><i class="bi bi-clock-history me-1"></i>' . $firstAssignedFormatted . '</div>';
+            }
+            $assignedByHtml .= '</div>';
+
+            // Block 2: Assigned from Team
+            $assignedByHtml .= '<div class="pt-1 border-top mt-1" style="line-height: 1.25;">';
+            if ($hasAgent) {
+                $assignedByHtml .= '  <div class="text-primary fw-medium ps-1" title="Assigned from Team to Executive"><i class="bi bi-people-fill me-1"></i>Team: <strong class="text-dark">' . htmlspecialchars($teamAssignerName) . '</strong></div>';
+                if (!empty($teamAssignedAtFormatted)) {
+                    $assignedByHtml .= '  <div class="text-muted ps-1" style="font-size: 10px; margin-top: 2px;" title="Team Assigned Date & Time"><i class="bi bi-calendar-check me-1"></i>' . $teamAssignedAtFormatted . '</div>';
+                }
+            } else {
+                $assignedByHtml .= '  <div class="ps-1"><span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-0.5" style="font-size: 10px;"><i class="bi bi-hourglass-split me-1 text-warning"></i>Pending Team Assign</span></div>';
+            }
+            $assignedByHtml .= '</div>';
+            $assignedByHtml .= '</div>';
+
+            $row[] = $assignedByHtml;
 
             $actionHtml = '';
             if ((isset($_SESSION['user']['role_id']) && (in_array($_SESSION['user']['role_id'], [1, 3, 5, 9, 33]) || $isManagement)) || isSalesCoLeader()) {
@@ -824,7 +914,7 @@ class LeadController extends Controller
         set_time_limit(300);
         ini_set('memory_limit', '1024M');
 
-        // Extract filters from GET
+        // Extract filters from GE
         $year           = $_GET['year']           ?? null;
         $month          = $_GET['month']          ?? null;
         $lastAction     = $_GET['last_action']     ?? null;

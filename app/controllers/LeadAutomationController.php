@@ -399,7 +399,7 @@ class LeadAutomationController extends Controller
                         l.platform,
                         l.created_by,
                         l.created_at,
-                        DATE_ADD(l.created_at, INTERVAL 6 HOUR) AS sync_datetime,
+                        l.created_at AS sync_datetime,
                         t.name as team_name,
                         p.name as project_name,
                         u.full_name as creator_name,
@@ -1399,7 +1399,8 @@ class LeadAutomationController extends Controller
             $leadsToProcess = [$payload];
         }
 
-        $synchronizer = new LeadSynchronizer($this->automationConfig, $this->db);
+        $currentUserId = isset($_SESSION['user']['id']) ? (int)$_SESSION['user']['id'] : null;
+        $synchronizer = new LeadSynchronizer($this->automationConfig, $currentUserId);
         $pdo = $synchronizer->getDb();
 
         $insertedCount = 0;
@@ -1617,7 +1618,8 @@ class LeadAutomationController extends Controller
 
         try {
             $this->ensureSchema();
-            $synchronizer = new LeadSynchronizer($this->automationConfig, $this->db);
+            $currentUserId = isset($_SESSION['user']['id']) ? (int)$_SESSION['user']['id'] : null;
+            $synchronizer = new LeadSynchronizer($this->automationConfig, $currentUserId);
             $pdo = $synchronizer->getDb();
 
             $apiUrl = 'https://api.dpremiumhomes.com/api/get-brochure-leads';
@@ -1707,7 +1709,7 @@ class LeadAutomationController extends Controller
             // All active teams fallback
             $allActiveTeamIds = [];
             try {
-                $tStmt = $pdo->query("SELECT id FROM `teams` WHERE deleted_at IS NULL ORDER BY id ASC");
+                $tStmt = $pdo->query("SELECT id FROM `teams` WHERE `status` = 1 ORDER BY id ASC");
                 $allActiveTeamIds = $tStmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
             } catch (Throwable $t) {}
 
@@ -1726,16 +1728,24 @@ class LeadAutomationController extends Controller
                 if (!is_array($lead)) continue;
 
                 $leadCreatedAt = !empty($lead['created_at']) ? $lead['created_at'] : '';
-                $leadDate = substr($leadCreatedAt, 0, 10);
+                $leadTimestamp = !empty($leadCreatedAt) ? strtotime($leadCreatedAt) : 0;
+                $leadDateBst = $leadTimestamp > 0 ? date('Y-m-d', $leadTimestamp + 6 * 3600) : '';
 
-                // Daily Filter: Default to 'today' only so old past-months leads are never pulled
+                // Daily / Recent Filter: Default to 'today' (last 48 hours / yesterday and today in BST)
+                // This ensures daily leads from the last 24-48 hours are synced, while excluding old historical leads from months ago.
+                $cutoff48h = strtotime('-48 hours');
                 if ($syncPeriod === 'today') {
-                    if ($leadDate !== $todayDate) {
+                    if ($leadTimestamp < $cutoff48h && $leadDateBst < $yesterdayDate) {
                         $skippedOldDate++;
                         continue;
                     }
-                } elseif ($syncPeriod === 'recent' || $syncPeriod === 'yesterday') {
-                    if ($leadDate < $yesterdayDate) {
+                } elseif ($syncPeriod === 'strict_today') {
+                    if ($leadDateBst !== $todayDate) {
+                        $skippedOldDate++;
+                        continue;
+                    }
+                } elseif ($syncPeriod === '7days') {
+                    if ($leadTimestamp < strtotime('-7 days')) {
                         $skippedOldDate++;
                         continue;
                     }
@@ -1790,9 +1800,13 @@ class LeadAutomationController extends Controller
                 $eligibleTeams = $projectTeamsMap[$projectId] ?? $allActiveTeamIds;
                 $assignedTeamId = $synchronizer->resolveNextTeamId($projectId, $eligibleTeams, $pdo);
 
-                $formattedCreatedAt = !empty($leadCreatedAt) 
-                    ? date('Y-m-d H:i:s', strtotime($leadCreatedAt)) 
-                    : date('Y-m-d H:i:s');
+                // When syncing leads into ERP, set created_at to current sync time so that newly imported
+                // leads immediately appear under Today's queue & platform dashboard.
+                // Store original website download timestamp in description for full traceability.
+                $webSubmissionNote = $leadTimestamp > 0 
+                    ? ("Brochure downloaded: " . date('Y-m-d H:i:s', $leadTimestamp + 6 * 3600) . " BST") 
+                    : '';
+                $syncCreatedAt = date('Y-m-d H:i:s');
 
                 $leadData = [
                     'campaign_name'    => $campaignName,
@@ -1806,8 +1820,9 @@ class LeadAutomationController extends Controller
                     'is_automated'     => 1,
                     'is_repibee'       => 0,
                     'is_brocure_leads' => 1,
+                    'description'      => $webSubmissionNote,
                     'created_by'       => $_SESSION['user']['id'] ?? null,
-                    'created_at'       => $formattedCreatedAt,
+                    'created_at'       => $syncCreatedAt,
                 ];
 
                 try {
@@ -1830,7 +1845,7 @@ class LeadAutomationController extends Controller
 
             echo json_encode([
                 'status'             => 'success',
-                'message'            => sprintf("Brochure Leads Sync Completed! Processed today's leads (%s): %d newly inserted, %d duplicates skipped, %d old historical leads excluded.", $todayDate, $insertedCount, $skippedDuplicates, $skippedOldDate),
+                'message'            => sprintf("Brochure Leads Sync Completed! Processed recent leads (%s): %d newly inserted, %d duplicates skipped, %d old historical leads excluded.", $todayDate, $insertedCount, $skippedDuplicates, $skippedOldDate),
                 'inserted_count'     => $insertedCount,
                 'skipped_duplicates' => $skippedDuplicates,
                 'skipped_old_date'   => $skippedOldDate,
