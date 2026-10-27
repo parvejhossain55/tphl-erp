@@ -1709,7 +1709,7 @@ class LeadAutomationController extends Controller
             // All active teams fallback
             $allActiveTeamIds = [];
             try {
-                $tStmt = $pdo->query("SELECT id FROM `teams` WHERE deleted_at IS NULL ORDER BY id ASC");
+                $tStmt = $pdo->query("SELECT id FROM `teams` WHERE `status` = 1 ORDER BY id ASC");
                 $allActiveTeamIds = $tStmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
             } catch (Throwable $t) {}
 
@@ -1800,9 +1800,13 @@ class LeadAutomationController extends Controller
                 $eligibleTeams = $projectTeamsMap[$projectId] ?? $allActiveTeamIds;
                 $assignedTeamId = $synchronizer->resolveNextTeamId($projectId, $eligibleTeams, $pdo);
 
-                $formattedCreatedAt = $leadTimestamp > 0 
-                    ? date('Y-m-d H:i:s', $leadTimestamp + 6 * 3600) 
-                    : date('Y-m-d H:i:s');
+                // When syncing leads into ERP, set created_at to current sync time so that newly imported
+                // leads immediately appear under Today's queue & platform dashboard.
+                // Store original website download timestamp in description for full traceability.
+                $webSubmissionNote = $leadTimestamp > 0 
+                    ? ("Brochure downloaded: " . date('Y-m-d H:i:s', $leadTimestamp + 6 * 3600) . " BST") 
+                    : '';
+                $syncCreatedAt = date('Y-m-d H:i:s');
 
                 $leadData = [
                     'campaign_name'    => $campaignName,
@@ -1816,8 +1820,9 @@ class LeadAutomationController extends Controller
                     'is_automated'     => 1,
                     'is_repibee'       => 0,
                     'is_brocure_leads' => 1,
+                    'description'      => $webSubmissionNote,
                     'created_by'       => $_SESSION['user']['id'] ?? null,
-                    'created_at'       => $formattedCreatedAt,
+                    'created_at'       => $syncCreatedAt,
                 ];
 
                 try {

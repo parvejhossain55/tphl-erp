@@ -994,6 +994,7 @@ class Lead extends Model
         $sql = "SELECT 
         l.*,
         u.full_name AS agent_name,
+        u_assigned_by.full_name AS team_assigner_name,
         COALESCE(u_assigned_by.full_name, u_by.full_name, 'System') AS assigned_by_name,
         u_by.full_name AS creator_name,
         u_appr.full_name AS approved_by_name,

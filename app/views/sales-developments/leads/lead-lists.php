@@ -978,14 +978,20 @@ $activeCard = $_GET['filter_card'] ?? '';
                             <div>
                                 <?php if (empty($lead['agent_name'])): ?>
                                     <?php
-                                        $creatorName = !empty($lead['assigned_by_name']) ? htmlspecialchars($lead['assigned_by_name']) : 'System';
+                                        $isAuto = !empty($lead['is_automated']) && (int)$lead['is_automated'] === 1;
                                         if (!empty($lead['team_id']) && isset($teamsData[$lead['team_id']])) {
                                             $tData = $teamsData[$lead['team_id']];
-                                            $managerText = !empty($tData['manager_name']) ? $tData['manager_name'] : $creatorName;
+                                            $managerText = !empty($tData['manager_name']) ? $tData['manager_name'] : (!empty($lead['team_assigner_name']) ? $lead['team_assigner_name'] : 'Team Manager');
                                             $teamText = htmlspecialchars($tData['team_name']);
                                         } else {
-                                            $managerText = $creatorName;
-                                            $teamText = 'Self Added';
+                                            if ($isAuto) {
+                                                $managerText = 'No Team Assigned';
+                                                $teamText = 'Pending Team Distribution';
+                                            } else {
+                                                $creatorName = !empty($lead['creator_name']) ? htmlspecialchars($lead['creator_name']) : (!empty($lead['assigned_by_name']) ? htmlspecialchars($lead['assigned_by_name']) : 'System');
+                                                $managerText = $creatorName;
+                                                $teamText = 'Self Added';
+                                            }
                                         }
                                     ?>
                                     <div>
@@ -1016,27 +1022,59 @@ $activeCard = $_GET['filter_card'] ?? '';
                             </div>
                         </div>
 
-                        <!-- Assigned By Name -->
+                        <!-- Assigned By (2-Tier Tracking) -->
                         <div class="d-flex align-items-start gap-2 mt-2">
                             <div class="info-label flex-shrink-0 mt-1">Assigned By</div>
-                            <div>
-                                <?php if (!empty($lead['is_automated']) && (int)$lead['is_automated'] === 1): ?>
-                                    <div>
-                                        <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-0.5" style="font-size: 0.75rem;">
-                                            <i class="fa-solid fa-robot me-1"></i>Assigned by System
+                            <div class="d-flex flex-column gap-1 w-100" style="font-size: 11px;">
+                                <?php
+                                if (!empty($lead['is_automated']) && (int)$lead['is_automated'] === 1) {
+                                    $sFirstAssigner = 'System';
+                                } elseif (!empty($lead['approved_by_name'])) {
+                                    $sFirstAssigner = $lead['approved_by_name'];
+                                } elseif (!empty($lead['creator_name'])) {
+                                    $sFirstAssigner = $lead['creator_name'];
+                                } else {
+                                    $sFirstAssigner = !empty($lead['assigned_by_name']) ? $lead['assigned_by_name'] : 'System';
+                                }
+
+                                $sFirstAssignedRaw = (!empty($lead['approved_at']) && $lead['approved_at'] !== '0000-00-00 00:00:00' && $lead['approved_at'] !== '0000-00-00')
+                                    ? $lead['approved_at']
+                                    : (!empty($lead['created_at']) && $lead['created_at'] !== '0000-00-00 00:00:00' ? $lead['created_at'] : '');
+                                $sFirstAssignedFormatted = !empty($sFirstAssignedRaw) ? date('d M, Y, h:i A', strtotime($sFirstAssignedRaw)) : '';
+
+                                $sHasAgent = !empty($lead['agent_name']);
+                                $sTeamAssigner = !empty($lead['team_assigner_name'])
+                                    ? $lead['team_assigner_name']
+                                    : (!empty($lead['assigned_by_name']) && $lead['assigned_by_name'] !== 'System' ? $lead['assigned_by_name'] : $sFirstAssigner);
+
+                                $sTeamAssignedAtRaw = (!empty($lead['assigned_at']) && $lead['assigned_at'] !== '0000-00-00 00:00:00' && $lead['assigned_at'] !== '0000-00-00')
+                                    ? $lead['assigned_at']
+                                    : '';
+                                $sTeamAssignedAtFormatted = !empty($sTeamAssignedAtRaw) ? date('d M, Y, h:i A', strtotime($sTeamAssignedAtRaw)) : '';
+                                ?>
+                                <div>
+                                    <div class="d-flex align-items-center gap-1 flex-wrap">
+                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2 py-0.5" style="font-size: 10px;" title="First Distributed By">
+                                            <i class="bi bi-box-arrow-in-right me-1 text-primary"></i>1st: <strong class="text-dark"><?= htmlspecialchars($sFirstAssigner) ?></strong>
                                         </span>
+                                        <?php if (!empty($lead['is_automated']) && (int)$lead['is_automated'] === 1): ?>
+                                            <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-1.5 py-0.5" style="font-size: 9px;"><i class="fa-solid fa-robot me-1"></i>Auto</span>
+                                        <?php endif; ?>
                                     </div>
-                                    <?php if (!empty($lead['agent_name']) && !empty($lead['assigned_by_name']) && $lead['assigned_by_name'] !== 'System'): ?>
-                                        <div class="text-primary small pt-1 border-top mt-1" style="font-size: 11px;">
-                                            <i class="bi bi-person-check me-1"></i>Assigned by: <strong class="text-dark"><?= htmlspecialchars($lead['assigned_by_name']) ?></strong>
-                                        </div>
+                                    <?php if (!empty($sFirstAssignedFormatted)): ?>
+                                        <div class="text-muted ps-1" style="font-size: 10px; margin-top: 2px;" title="1st Assigned Date & Time"><i class="bi bi-clock-history me-1"></i><?= $sFirstAssignedFormatted ?></div>
                                     <?php endif; ?>
-                                <?php else: ?>
-                                    <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-1" style="font-size: 0.75rem;">
-                                        <i class="bi bi-person-check me-1"></i>
-                                        <?= htmlspecialchars($lead['assigned_by_name'] ?? 'System') ?>
-                                    </span>
-                                <?php endif; ?>
+                                </div>
+                                <div class="pt-1 border-top mt-1" style="line-height: 1.25;">
+                                    <?php if ($sHasAgent): ?>
+                                        <div class="text-primary fw-medium ps-1" title="Assigned from Team to Executive"><i class="bi bi-people-fill me-1"></i>Team: <strong class="text-dark"><?= htmlspecialchars($sTeamAssigner) ?></strong></div>
+                                        <?php if (!empty($sTeamAssignedAtFormatted)): ?>
+                                            <div class="text-muted ps-1" style="font-size: 10px; margin-top: 2px;" title="Team Assigned Date & Time"><i class="bi bi-calendar-check me-1"></i><?= $sTeamAssignedAtFormatted ?></div>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <div class="ps-1"><span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-0.5" style="font-size: 10px;"><i class="bi bi-hourglass-split me-1 text-warning"></i>Pending Team Assign</span></div>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2364,17 +2402,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 ${assignedAtStr ? `<div class="text-muted" style="font-size:11px; margin-top:3px;"><i class="bi bi-calendar-event me-1"></i>Assigned Date: ${assignedAtStr}</div>` : ''}
             </div>`;
         } else {
-            const creatorName = lead.assigned_by_name ? lead.assigned_by_name.replace(/</g,'&lt;').replace(/>/g,'&gt;') : 'System';
+            const isAuto = Number(lead.is_automated) === 1;
             let teamText = '';
             let managerText = '';
             
             if (lead.team_name) {
                 const safeTeamName = lead.team_name.replace(/</g,'&lt;').replace(/>/g,'&gt;');
-                managerText = lead.manager_name ? lead.manager_name.replace(/</g,'&lt;').replace(/>/g,'&gt;') : creatorName;
+                managerText = lead.manager_name ? lead.manager_name.replace(/</g,'&lt;').replace(/>/g,'&gt;') : 'Team Manager';
                 teamText = safeTeamName;
             } else {
-                managerText = creatorName;
-                teamText = 'Self Added';
+                if (isAuto) {
+                    managerText = 'No Team Assigned';
+                    teamText = 'Pending Team Distribution';
+                } else {
+                    const creatorName = lead.assigned_by_name ? lead.assigned_by_name.replace(/</g,'&lt;').replace(/>/g,'&gt;') : 'System';
+                    managerText = creatorName;
+                    teamText = 'Self Added';
+                }
             }
             
             agentBadge = `<div>
@@ -2390,19 +2434,33 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>`;
         }
 
-        let assignedByHtml = '';
-        if (Number(lead.is_automated) === 1) {
-            assignedByHtml = `<div>
-                <div><span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-0.5" style="font-size:.72rem;"><i class="fa-solid fa-robot me-1"></i>Assigned by System</span></div>`;
-            if (lead.agent_name && lead.assigned_by_name && lead.assigned_by_name !== 'System') {
-                const assigner = lead.assigned_by_name.replace(/</g,'&lt;').replace(/>/g,'&gt;');
-                assignedByHtml += `<div class="text-primary small pt-1 border-top mt-1" style="font-size:11px;"><i class="bi bi-person-check me-1"></i>Assigned by: <strong class="text-dark">${assigner}</strong></div>`;
-            }
-            assignedByHtml += `</div>`;
-        } else {
-            const assigner = lead.assigned_by_name ? lead.assigned_by_name.replace(/</g,'&lt;').replace(/>/g,'&gt;') : 'System';
-            assignedByHtml = `<span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-1" style="font-size:.75rem;"><i class="bi bi-person-check me-1"></i>${assigner}</span>`;
-        }
+        const isAutoLead = Number(lead.is_automated) === 1;
+        const firstAssignerClean = isAutoLead ? 'System' : (lead.first_assigner_name || lead.approved_by_name || lead.creator_name || lead.assigned_by_name || 'System').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const firstAssignedAtStr = lead.first_assigned_at_formatted || '';
+        const hasAgent = !!(lead.agent_name || lead.has_agent);
+        const teamAssignerClean = (lead.team_assigner_name || lead.assigned_by_name || firstAssignerClean).replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const teamAssignedAtStr = lead.team_assigned_at_formatted || '';
+
+        let assignedByHtml = `
+            <div class="d-flex flex-column gap-1 w-100" style="font-size:11px;">
+                <div>
+                    <div class="d-flex align-items-center gap-1 flex-wrap">
+                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2 py-0.5" style="font-size:10px;" title="First Distributed By">
+                            <i class="bi bi-box-arrow-in-right me-1 text-primary"></i>1st: <strong class="text-dark">${firstAssignerClean}</strong>
+                        </span>
+                        ${Number(lead.is_automated) === 1 ? '<span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-1.5 py-0.5" style="font-size:9px;"><i class="fa-solid fa-robot me-1"></i>Auto</span>' : ''}
+                    </div>
+                    ${firstAssignedAtStr ? `<div class="text-muted ps-1" style="font-size:10px; margin-top:2px;" title="1st Assigned Date & Time"><i class="bi bi-clock-history me-1"></i>${firstAssignedAtStr}</div>` : ''}
+                </div>
+                <div class="pt-1 border-top mt-1" style="line-height:1.25;">
+                    ${hasAgent ? `
+                        <div class="text-primary fw-medium ps-1" title="Assigned from Team to Executive"><i class="bi bi-people-fill me-1"></i>Team: <strong class="text-dark">${teamAssignerClean}</strong></div>
+                        ${teamAssignedAtStr ? `<div class="text-muted ps-1" style="font-size:10px; margin-top:2px;" title="Team Assigned Date & Time"><i class="bi bi-calendar-check me-1"></i>${teamAssignedAtStr}</div>` : ''}
+                    ` : `
+                        <div class="ps-1"><span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-0.5" style="font-size:10px;"><i class="bi bi-hourglass-split me-1 text-warning"></i>Pending Team Assign</span></div>
+                    `}
+                </div>
+            </div>`;
 
         return `
         <div class="col-12 col-sm-6">

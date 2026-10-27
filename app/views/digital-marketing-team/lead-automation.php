@@ -2339,6 +2339,7 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
 
             if (res.status === 'success') {
                 showLeadToast(res.message, 'success');
+                loadPlatformStats();
                 loadLeads();
             } else {
                 showLeadToast('Sync Failed: ' + (res.message || 'Unknown error'), 'error');
@@ -2374,6 +2375,7 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
 
             if (res.status === 'success') {
                 showLeadToast(res.message, 'success');
+                loadPlatformStats();
                 loadLeads();
             } else {
                 showLeadToast('Brochure Sync Failed: ' + (res.message || 'Unknown error'), 'error');
