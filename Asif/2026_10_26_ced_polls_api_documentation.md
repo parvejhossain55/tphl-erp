@@ -66,6 +66,8 @@
 | `id` | Integer | Option identifier |
 | `poll_id` | Integer | ID of parent poll |
 | `option_text` | String | Title / Text of the option |
+| `image` | String / null | Relative storage path (`uploads/polls/options/...`) |
+| `image_url` | String / null | Fully qualified public URL to the option image |
 | `sort_order` | Integer | Display sequence order |
 | `is_user_choice` | Boolean | True if this option was chosen by the current `client_id` |
 | `votes_count` | Integer | Total votes for this option *(visible only after voting)* |
@@ -77,13 +79,13 @@
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `POST` | `/api/polls` | Create a new poll (Supports multipart `data` + `image`) |
+| `POST` | `/api/polls` | Create a new poll (Supports multipart `data` + banner `image` + option images) |
 | `GET` | `/api/polls` | List all polls (Filterable by `project_id`, `status`, `client_id`) |
 | `GET` | `/api/polls/{id}` | Get single poll details (Pass `?client_id=X` to check voting status) |
 | `GET` | `/api/polls/project/{projectId}` | Get all polls for a specific project |
 | `POST` | `/api/polls/vote` | Submit a vote or change an existing vote |
 | `GET` | `/api/polls/{id}/voters` | Get list of voters (voter name, flat/unit no, choice, date) |
-| `POST` | `/api/polls/update/{id}` | Update poll details or replace image |
+| `POST` | `/api/polls/update/{id}` | Update poll details or replace images |
 | `POST` | `/api/polls/delete/{id}` | Delete a poll and its associated data/images |
 
 ---
@@ -91,7 +93,7 @@
 ## 📖 Endpoint Details & Examples
 
 ### 1. Create Poll
-Creates a new poll along with 2 or more options and an optional banner image.
+Creates a new poll along with 2 or more options, an optional banner image, and optional images for each option.
 
 - **Method**: `POST`
 - **URL**: `/api/polls` or `/api/polls/create`
@@ -112,7 +114,8 @@ Creates a new poll along with 2 or more options and an optional banner image.
     ]
   }
   ```
-- **`image`** *(File, Optional)*: Image file (`.jpg`, `.jpeg`, `.png`, `.webp`). Maximum size: 10MB.
+- **`image`** *(File, Optional)*: Main banner image file (`.jpg`, `.jpeg`, `.png`, `.webp`, `.gif`). Maximum size: 10MB.
+- **`option_image_0`**, **`option_image_1`**, ... *(File, Optional)*: Optional image file for the option at index 0, 1, etc. (Can also be sent as `option_images[]`).
 
 #### Response (201 Created):
 ```json
@@ -134,9 +137,30 @@ Creates a new poll along with 2 or more options and an optional banner image.
     "has_voted": false,
     "user_voted_option_id": null,
     "options": [
-      { "id": 1, "poll_id": 1, "option_text": "Design A: Modern Zen Garden with Pergola", "sort_order": 0 },
-      { "id": 2, "poll_id": 1, "option_text": "Design B: Green Lawn with Coffee Corner", "sort_order": 1 },
-      { "id": 3, "poll_id": 1, "option_text": "Design C: Infinity Walkway with Flowering Plants", "sort_order": 2 }
+      { 
+        "id": 1, 
+        "poll_id": 1, 
+        "option_text": "Design A: Modern Zen Garden with Pergola", 
+        "image": "uploads/polls/options/opt_20261027_105000_f1e2d3c4.jpg",
+        "image_url": "/TPHL-ERP/uploads/polls/options/opt_20261027_105000_f1e2d3c4.jpg",
+        "sort_order": 0 
+      },
+      { 
+        "id": 2, 
+        "poll_id": 1, 
+        "option_text": "Design B: Green Lawn with Coffee Corner", 
+        "image": null,
+        "image_url": null,
+        "sort_order": 1 
+      },
+      { 
+        "id": 3, 
+        "poll_id": 1, 
+        "option_text": "Design C: Infinity Walkway with Flowering Plants", 
+        "image": "uploads/polls/options/opt_20261027_105002_a9b8c7d6.jpg",
+        "image_url": "/TPHL-ERP/uploads/polls/options/opt_20261027_105002_a9b8c7d6.jpg",
+        "sort_order": 2 
+      }
     ]
   }
 }
