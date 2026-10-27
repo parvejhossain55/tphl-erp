@@ -5724,6 +5724,11 @@ public function discountStatement($bookingId = null)
             $devTarget = (float)($client['development_charges'] ?? 0);
             $devPaid = (float)($client['dev_charge_paid'] ?? 0);
             $devDue = (float)($client['dev_charge_due'] ?? 0);
+            if ($isShop) {
+                $devTarget += (float)($client['shop_service_charge_target'] ?? 0);
+                $devPaid += (float)($client['shop_service_charge_paid'] ?? 0);
+                $devDue += (float)($client['shop_service_charge_due'] ?? 0);
+            }
 
             $consFee = (float)($client['construction_fee'] ?? 0);
             $emiPaid = (float)($client['emi_paid'] ?? 0);
@@ -5850,6 +5855,9 @@ public function discountStatement($bookingId = null)
             $html .= '<div class="mb-1">' . $devBadge . '</div>';
             $html .= '<div class="extra-small text-muted" style="font-size:10px;">';
             $html .= 'Target: Tk. ' . number_format($devTarget) . '<br>Paid: Tk. ' . number_format($devPaid);
+            if ($isShop && (float)($client['shop_service_charge_target'] ?? 0) > 0) {
+                $html .= '<div class="extra-small text-info" style="font-size:9px;">(Shop Svc Charge)</div>';
+            }
             $html .= '</div>';
             $html .= '</td>';
 

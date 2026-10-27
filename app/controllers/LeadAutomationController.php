@@ -1403,6 +1403,8 @@ class LeadAutomationController extends Controller
         $synchronizer = new LeadSynchronizer($this->automationConfig, $currentUserId);
         $pdo = $synchronizer->getDb();
 
+        $synchronizer->log(sprintf("[Replibee Webhook] Inbound request received with %d item(s).", count($leadsToProcess)));
+
         $insertedCount = 0;
         $skippedDuplicateCount = 0;
         $errorsCount = 0;
@@ -1427,6 +1429,7 @@ class LeadAutomationController extends Controller
 
             if (empty($cleanPhone) && empty($fullName)) {
                 $errorsCount++;
+                $synchronizer->log("[Replibee Webhook] Skipped invalid payload: Missing both phone_number and full_name.");
                 $processedResults[] = [
                     'index'   => $idx,
                     'status'  => 'error',
@@ -1541,6 +1544,13 @@ class LeadAutomationController extends Controller
 
             if ($existingId) {
                 $skippedDuplicateCount++;
+                $synchronizer->log(sprintf(
+                    "[Replibee Webhook] SKIPPED DUPLICATE: Name='%s', Phone='%s', Campaign='%s' matched existing Lead ID=%d",
+                    $fullName,
+                    $cleanPhone,
+                    $campaign,
+                    (int)$existingId
+                ));
                 $processedResults[] = [
                     'index'        => $idx,
                     'status'       => 'skipped',
@@ -1564,6 +1574,15 @@ class LeadAutomationController extends Controller
                 // Insert into DB using LeadSynchronizer
                 $insertId = $synchronizer->insertLeadIntoDatabase($leadData, $pdo);
                 $insertedCount++;
+                $synchronizer->log(sprintf(
+                    "[Replibee Webhook] INSERTED NEW LEAD: Lead ID=%d, Name='%s', Phone='%s', Campaign='%s', Team ID=%d, Project ID=%d",
+                    $insertId,
+                    $fullName,
+                    $cleanPhone,
+                    $campaign,
+                    (int)($leadData['team_id'] ?? 0),
+                    (int)($leadData['project_id'] ?? 0)
+                ));
                 $processedResults[] = [
                     'index'            => $idx,
                     'status'           => 'success',
@@ -1576,6 +1595,12 @@ class LeadAutomationController extends Controller
                 ];
             } catch (Throwable $e) {
                 $errorsCount++;
+                $synchronizer->log(sprintf(
+                    "[Replibee Webhook] DB INSERT ERROR: Name='%s', Phone='%s', Error=%s",
+                    $fullName,
+                    $cleanPhone,
+                    $e->getMessage()
+                ));
                 $processedResults[] = [
                     'index'   => $idx,
                     'status'  => 'error',
@@ -1583,6 +1608,14 @@ class LeadAutomationController extends Controller
                 ];
             }
         }
+
+        $synchronizer->log(sprintf(
+            "[Replibee Webhook] Finished: Processed %d lead(s) -> %d inserted, %d duplicates skipped, %d errors.",
+            count($leadsToProcess),
+            $insertedCount,
+            $skippedDuplicateCount,
+            $errorsCount
+        ));
 
         http_response_code($insertedCount > 0 ? 200 : ($errorsCount > 0 ? 400 : 200));
         echo json_encode([
@@ -1842,6 +1875,13 @@ class LeadAutomationController extends Controller
                     error_log("Brochure Lead Insert Error: " . $ex->getMessage());
                 }
             }
+
+            $synchronizer->log(sprintf(
+                "[Brochure Sync] Process finished: %d newly inserted, %d duplicates skipped, %d old historical leads excluded.",
+                $insertedCount,
+                $skippedDuplicates,
+                $skippedOldDate
+            ));
 
             echo json_encode([
                 'status'             => 'success',

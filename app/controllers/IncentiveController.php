@@ -41,19 +41,40 @@ class IncentiveController extends Controller
     public function myIncentives()
     {
         $userId = (int)$_SESSION['user']['id'];
+        $month = $_GET['month'] ?? date('Y-m'); // Default current month (e.g. 2026-10)
 
         $walletSummary   = $this->incentiveModel->getWalletSummary($userId);
-        $mySalesBookings = $this->incentiveModel->getMySalesBookings($userId);
-        $payoutHistory   = $this->incentiveModel->getDisbursementLogs(); // User specific log if needed
+        $monthlyStats    = $this->engine->getExecutiveMonthlyStats($userId, $month);
+        $mySalesBookings = $this->incentiveModel->getMySalesBookings($userId, $month);
+        $payoutHistory   = $this->incentiveModel->getDisbursementLogs();
 
-        // Filter payouts for this user
-        $payoutHistory = array_filter($payoutHistory, function($p) use ($userId) {
-            return true; // Returns logs list
-        });
+        // Calculate money collected by this user in this cycle
+        $mStart = substr($monthlyStats['cycle_start'], 0, 10);
+        $mEnd   = substr($monthlyStats['cycle_end'], 0, 10);
+        $collStmt = $this->db->prepare("
+            SELECT IFNULL(SUM(lp.amount), 0.00) as collected
+            FROM lead_payments lp
+            JOIN lead_bookings lb ON lp.booking_id = lb.id
+            WHERE lb.sales_by_id = ?
+              AND lb.booking_date BETWEEN ? AND ?
+              AND lp.verification_status = 'verified'
+              AND lp.payment_status IN ('paid', 'partially_paid')
+              AND COALESCE(lp.is_trashed, 0) = 0
+        ");
+        $cycleCollected = 0.00;
+        if ($collStmt) {
+            $collStmt->bind_param("iss", $userId, $mStart, $mEnd);
+            $collStmt->execute();
+            $cycleCollected = (float)($collStmt->get_result()->fetch_assoc()['collected'] ?? 0.00);
+            $collStmt->close();
+        }
 
         $this->view("incentives/my-incentives", [
             "current_route"   => "my-incentives",
             "page_title"      => "My Sales Incentives",
+            "selectedMonth"   => $month,
+            "monthlyStats"    => $monthlyStats,
+            "cycleCollected"  => $cycleCollected,
             "walletSummary"   => $walletSummary,
             "mySalesBookings" => $mySalesBookings,
             "payoutHistory"   => array_values($payoutHistory)
@@ -68,16 +89,16 @@ class IncentiveController extends Controller
         $userId = (int)$_SESSION['user']['id'];
         $roleId = (int)$_SESSION['user']['role_id'];
 
-        // Only allow Manager (5) or Sales Head (9) or Coordinator (is_sales_co_leader) or Admin (1, 3)
+        // Allow Manager (5), Sales Head (9), Admin (1, 3), Team Leader (is_team_leader = 1), or Coordinator (is_sales_co_leader = 1)
         if (!in_array($roleId, [5, 9, 1, 3])) {
-            $emp = $this->db->query("SELECT is_sales_co_leader FROM employees WHERE user_id = {$userId}")->fetch_assoc();
-            if (empty($emp) || $emp['is_sales_co_leader'] != 1) {
+            $emp = $this->db->query("SELECT is_team_leader, is_sales_co_leader FROM employees WHERE user_id = {$userId}")->fetch_assoc();
+            if (empty($emp) || ($emp['is_team_leader'] != 1 && $emp['is_sales_co_leader'] != 1)) {
                 header("Location: {$GLOBALS['base_url']}/my-incentives");
                 exit;
             }
         }
 
-        $month = $_GET['month'] ?? $this->incentiveModel->getCycleForDate(date('Y-m-d'));
+        $month = $_GET['month'] ?? date('Y-m'); // Default current month (e.g. 2026-10)
         $filterTeamId = isset($_GET['team_id']) && $_GET['team_id'] !== '' && $_GET['team_id'] !== 'all' ? (int)$_GET['team_id'] : null;
 
         $teamMetrics = $this->engine->getTeamMonthlyStats($userId, $month, $filterTeamId);
@@ -103,7 +124,14 @@ class IncentiveController extends Controller
      */
     public function manageIncentives()
     {
-        $month = $_GET['month'] ?? $this->incentiveModel->getCycleForDate(date('Y-m-d'));
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $allowedRoles = [1, 3, 6, 30, 32, 33, 35, 36];
+        if (!in_array($roleId, $allowedRoles)) {
+            header("Location: {$GLOBALS['base_url']}/my-incentives");
+            exit;
+        }
+
+        $month = $_GET['month'] ?? date('Y-m');
         $fromDate = $_GET['from_date'] ?? null;
         $toDate = $_GET['to_date'] ?? null;
 

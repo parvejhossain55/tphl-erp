@@ -207,35 +207,35 @@ $canApproveAh = $isAccountsHead || in_array($userRole, [1, 3]) || strpos($roleNa
                                         </td>
                                         <td>
                                             <?php if($ind['target_amount'] > 0): ?>
-                                                <?php if(!empty($ind['is_min_eligible'])): ?>
+                                                <?php if(!empty($ind['is_eligible'])): ?>
                                                     <span class="badge bg-success-subtle text-success fw-semibold mb-1">
                                                         <i class="fa-solid fa-check me-1"></i>Qualified (≥ 25L)
                                                     </span>
-                                                    <div class="small fw-bold text-primary">Rate: <?= number_format($ind['final_assigned_pct'] ?? $ind['base_rate'] ?? 0.70, 2) ?>%</div>
+                                                    <div class="small fw-bold text-success">Earned: ৳<?= number_format($ind['total_earned_incentive'], 2) ?></div>
                                                 <?php else: ?>
                                                     <span class="badge bg-warning-subtle text-warning border border-warning-subtle extra-small">
-                                                        <i class="fa-solid fa-circle-exclamation me-1"></i>Under 25 Lakh Min
+                                                        <i class="fa-solid fa-circle-exclamation me-1"></i>Pending 25L Min
                                                     </span>
-                                                    <div class="extra-small text-muted mt-1">Rate: 0.00%</div>
+                                                    <div class="extra-small text-muted mt-1">Earned: ৳0.00</div>
                                                 <?php endif; ?>
                                             <?php else: ?>
                                                 <span class="text-muted small">-</span>
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <?php if($team['eligible'] && $team['team_target'] > 0): ?>
+                                            <?php if(!empty($team['eligible']) && $team['team_target'] > 0): ?>
                                                 <div class="small">Target: <strong class="text-dark">৳<?= number_format($team['team_target'], 2) ?></strong></div>
                                                 <div class="small">Achieved: <strong class="text-success">৳<?= number_format($team['team_achieved'], 2) ?></strong></div>
                                                 <div class="progress mt-1" style="height: 5px;">
-                                                    <div class="progress-bar bg-success" role="progressbar" style="width: <?= min(100, $team['team_achievement_pct']) ?>%;" aria-valuenow="<?= $team['team_achievement_pct'] ?>" aria-valuemin="0" aria-valuemax="100"></div>
+                                                    <div class="progress-bar bg-success" role="progressbar" style="width: <?= min(100, $team['team_achievement_pct']) ?>%;"></div>
                                                 </div>
-                                                <div class="extra-small text-muted mt-1"><?= number_format($team['team_achievement_pct'], 2) ?>% Achieved</div>
+                                                <div class="extra-small text-muted mt-1"><?= number_format($team['team_achievement_pct'], 1) ?>% Achieved (<?= htmlspecialchars($team['team_name'] ?? 'Team') ?>)</div>
                                             <?php else: ?>
-                                                <span class="text-muted small">Not Eligible</span>
+                                                <span class="text-muted extra-small"><i class="fa-solid fa-user-group me-1"></i><?= htmlspecialchars($u['team_name'] ?? 'No Team') ?></span>
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <?php if($team['eligible'] && $team['team_target'] > 0): ?>
+                                            <?php if(!empty($team['eligible']) && $team['team_target'] > 0): ?>
                                                 <?php if(($team['incentive_earned'] ?? 0) > 0): ?>
                                                     <h6 class="text-success fw-bold mb-0">৳<?= number_format($team['incentive_earned'], 2) ?></h6>
                                                     <span class="extra-small text-muted">0.05% of qualified sales</span>

@@ -456,8 +456,25 @@ $show_breadcrumb = true;
                             </div>
                         </div>
 
+                        <!-- Is Team Leader -->
+                        <div class="col-lg-6">
+                            <div class="from__input-box">
+                                <div class="form__input-title">
+                                    <label class="form-label">Is Team Leader? <span class="text-muted fs-11">(Sales Team Leader)</span></label>
+                                </div>
+                                <div class="form__input d-flex gap-4 pt-1">
+                                    <label class="d-flex align-items-center gap-2">
+                                        <input type="radio" name="is_team_leader" value="1"> Yes
+                                    </label>
+                                    <label class="d-flex align-items-center gap-2">
+                                        <input type="radio" name="is_team_leader" value="0" checked> No
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Is Sales Co-Leader -->
-                        <div class="col-lg-12">
+                        <div class="col-lg-6">
                             <div class="from__input-box">
                                 <div class="form__input-title">
                                     <label class="form-label">Is Sales Co-Leader? <span class="text-muted fs-11">(Can

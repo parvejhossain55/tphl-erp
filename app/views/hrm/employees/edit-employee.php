@@ -318,7 +318,26 @@
                              </select>
                          </div>
                      </div>
-                 </div>
+                 </div>                  <!-- Is Team Leader -->
+                  <div class="col-lg-6">
+                      <div class="from__input-box">
+                          <div class="form__input-title">
+                              <label>Is Team Leader? <span class="text-muted" style="font-size:11px;">(Sales Team Leader)</span></label>
+                          </div>
+                          <div class="form__input d-flex gap-4 pt-1">
+                              <label class="d-flex align-items-center gap-2">
+                                  <input type="radio" name="is_team_leader" value="1"
+                                      <?= ((int)($employee['is_team_leader'] ?? 0) === 1) ? 'checked' : '' ?>> Yes
+                              </label>
+                              <label class="d-flex align-items-center gap-2">
+                                  <input type="radio" name="is_team_leader" value="0"
+                                      <?= ((int)($employee['is_team_leader'] ?? 0) !== 1) ? 'checked' : '' ?>> No
+                              </label>
+                          </div>
+                      </div>
+                  </div>
+
+
 
                  <!-- Is Sales Co-Leader -->
                  <div class="col-lg-6">

@@ -110,7 +110,7 @@ class User extends Model
 
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
-public function getPaginatedWithSalesExecutive($limit, $offset, $search = '', $roleId = null, $teamId = null)
+public function getPaginatedWithSalesExecutive($limit, $offset, $search = '', $roleId = null, $teamId = null, $selectedUserId = null)
 {
     $sql = "SELECT
                 u.*,
@@ -122,28 +122,38 @@ public function getPaginatedWithSalesExecutive($limit, $offset, $search = '', $r
                 r.name AS role_name,
                 t.name AS team_name
             " . $this->baseUserQuery() . "
-            WHERE (u.role_id IN (5,8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))
+            WHERE u.role_id IN (5, 8, 9)
               AND (e.employee_status IS NULL OR (e.deleted_at IS NULL AND LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
-              AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))"; // important change
+              AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))";
 
     $params = [];
     $types = "";
 
-    // 🔥 TEAM FILTER LOGIC
-    if (in_array($roleId, [5, 9]) && !empty($teamId)) {
-        $sql .= " AND u.team_id = ?";
+    // TEAM FILTER
+    if (!empty($teamId)) {
+        
+        $sql .= " AND (u.team_id = ? OR e.team_id = ?)";
         $params[] = $teamId;
+        $params[] = $teamId;
+        $types .= "ii";
+    }
+
+    // SPECIFIC EMPLOYEE / USER FILTER
+    if (!empty($selectedUserId)) {
+        $sql .= " AND u.id = ?";
+        $params[] = $selectedUserId;
         $types .= "i";
     }
-    // else → show all (no condition)
 
-    // 🔍 Search filter
+    // Search filter
     if (!empty($search)) {
-        $sql .= " AND (u.full_name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)";
-        $params[] = "%$search%";
-        $params[] = "%$search%";
-        $params[] = "%$search%";
-        $types .= "sss";
+        $sql .= " AND (u.full_name LIKE ? OR u.phone LIKE ? OR u.email LIKE ? OR e.employee_id LIKE ?)";
+        $searchParam = "%$search%";
+        $params[] = $searchParam;
+        $params[] = $searchParam;
+        $params[] = $searchParam;
+        $params[] = $searchParam;
+        $types .= "ssss";
     }
 
     $sql .= " ORDER BY u.id DESC LIMIT ? OFFSET ?";
@@ -203,29 +213,40 @@ public function getPaginatedWithSalesExecutive($limit, $offset, $search = '', $r
 
         return $stmt->get_result()->fetch_assoc()['total'];
     }
-   public function countAllForSalesExecutive($search = '', $roleId = null, $teamId = null)
+   public function countAllForSalesExecutive($search = '', $roleId = null, $teamId = null, $selectedUserId = null)
 {
-    $sql = "SELECT COUNT(*) as total FROM users u
+    $sql = "SELECT COUNT(DISTINCT u.id) as total FROM users u
             LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
-            WHERE (u.role_id IN (5,8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))
+            LEFT JOIN designations d ON d.id = u.designation_id
+            LEFT JOIN departments dep ON (d.department_id = dep.id OR e.department_id = dep.id)
+            WHERE u.role_id IN (5, 8, 9)
               AND (e.employee_status IS NULL OR (e.deleted_at IS NULL AND LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
               AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))";
 
     $params = [];
     $types = "";
 
-    if (in_array($roleId, [5, 9]) && !empty($teamId)) {
-        $sql .= " AND u.team_id = ?";
+    if (!empty($teamId)) {
+        $sql .= " AND (u.team_id = ? OR e.team_id = ?)";
         $params[] = $teamId;
+        $params[] = $teamId;
+        $types .= "ii";
+    }
+
+    if (!empty($selectedUserId)) {
+        $sql .= " AND u.id = ?";
+        $params[] = $selectedUserId;
         $types .= "i";
     }
 
     if (!empty($search)) {
-        $sql .= " AND (u.full_name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)";
-        $params[] = "%$search%";
-        $params[] = "%$search%";
-        $params[] = "%$search%";
-        $types .= "sss";
+        $sql .= " AND (u.full_name LIKE ? OR u.phone LIKE ? OR u.email LIKE ? OR e.employee_id LIKE ?)";
+        $searchParam = "%$search%";
+        $params[] = $searchParam;
+        $params[] = $searchParam;
+        $params[] = $searchParam;
+        $params[] = $searchParam;
+        $types .= "ssss";
     }
 
     $stmt = $this->db->prepare($sql);
@@ -646,6 +667,7 @@ public function getUsersByTeamAndRole($teamId)
             "SELECT u.*, LOWER(r.name) AS role_name, des.name AS designation_name, des.id as designation_id,
                     dept.name AS department_name, dept.id AS department_id,
                     e.id AS employee_db_id,
+                    e.is_team_leader,
                     e.is_sales_co_leader,
                     e.team_id AS emp_team_id,
                     e.employee_status

@@ -122,6 +122,7 @@ class LoginController extends Controller
                                 "department_name" => strtolower($user['department_name'] ?? ''),
                                 "department_id" => $user['department_id'] ?? null,
                                 "designation_id" => $user['designation_id'] ?? null,
+                                "is_team_leader" => (int)($user['is_team_leader'] ?? 0),
                                 "is_sales_co_leader" => (int)($user['is_sales_co_leader'] ?? 0),
                             ];
 

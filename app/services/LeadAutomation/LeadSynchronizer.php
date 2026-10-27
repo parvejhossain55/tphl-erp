@@ -1026,12 +1026,19 @@ class LeadSynchronizer
     }
 
     /**
-     * Log helper
+     * Log helper (writes to in-memory array and appends to configured log file)
      */
-    private function log(string $message): void
+    public function log(string $message): void
     {
         $line = '[' . date('Y-m-d H:i:s') . '] ' . $message;
         $this->logs[] = $line;
+
+        $logFile = $this->config['log_file'] ?? (__DIR__ . '/../../logs/lead_sync.log');
+        $logDir = dirname($logFile);
+        if (!is_dir($logDir)) {
+            @mkdir($logDir, 0755, true);
+        }
+        @file_put_contents($logFile, $line . PHP_EOL, FILE_APPEND | LOCK_EX);
 
         // If running from CLI, echo directly
         if (php_sapi_name() === 'cli') {
