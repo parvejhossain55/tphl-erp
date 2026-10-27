@@ -76,17 +76,18 @@ class CedPoll extends Model
     public function saveOptions($pollId, array $options)
     {
         $pollId = (int)$pollId;
-        $stmt = $this->db->prepare("INSERT INTO ced_poll_options (poll_id, option_text, sort_order, created_at) VALUES (?, ?, ?, NOW())");
+        $stmt = $this->db->prepare("INSERT INTO ced_poll_options (poll_id, option_text, image, sort_order, created_at) VALUES (?, ?, ?, ?, NOW())");
         if (!$stmt) {
             throw new Exception("Prepare options failed: " . $this->db->error);
         }
 
         foreach ($options as $index => $opt) {
             $optionText = is_array($opt) ? trim($opt['option_text'] ?? '') : trim($opt);
+            $image = is_array($opt) && !empty($opt['image']) ? trim($opt['image']) : null;
             $sortOrder = is_array($opt) && isset($opt['sort_order']) ? (int)$opt['sort_order'] : (int)$index;
 
             if ($optionText !== '') {
-                $stmt->bind_param("isi", $pollId, $optionText, $sortOrder);
+                $stmt->bind_param("issi", $pollId, $optionText, $image, $sortOrder);
                 $stmt->execute();
             }
         }
@@ -189,7 +190,7 @@ class CedPoll extends Model
 
         // 1. Get options
         $optStmt = $this->db->prepare("
-            SELECT id, poll_id, option_text, sort_order
+            SELECT id, poll_id, option_text, image, sort_order
             FROM ced_poll_options
             WHERE poll_id = ?
             ORDER BY sort_order ASC, id ASC
@@ -248,6 +249,7 @@ class CedPoll extends Model
         foreach ($options as &$opt) {
             $optId = (int)$opt['id'];
             $opt['is_user_choice'] = ($userVotedOptionId === $optId);
+            $opt['image_url'] = !empty($opt['image']) ? $this->buildImageUrl($opt['image']) : null;
 
             if ($showResults) {
                 $optVotes = $voteCounts[$optId] ?? 0;
@@ -422,10 +424,11 @@ class CedPoll extends Model
                 $existingTexts = array_map('strtolower', array_column($existing['options'], 'option_text'));
                 foreach ($newOptions as $idx => $opt) {
                     $optText = is_array($opt) ? trim($opt['option_text'] ?? '') : trim($opt);
+                    $optImage = is_array($opt) && !empty($opt['image']) ? trim($opt['image']) : null;
                     if ($optText !== '' && !in_array(strtolower($optText), $existingTexts)) {
                         $sOrder = is_array($opt) && isset($opt['sort_order']) ? (int)$opt['sort_order'] : (int)$idx;
-                        $insStmt = $this->db->prepare("INSERT INTO ced_poll_options (poll_id, option_text, sort_order, created_at) VALUES (?, ?, ?, NOW())");
-                        $insStmt->bind_param("isi", $id, $optText, $sOrder);
+                        $insStmt = $this->db->prepare("INSERT INTO ced_poll_options (poll_id, option_text, image, sort_order, created_at) VALUES (?, ?, ?, ?, NOW())");
+                        $insStmt->bind_param("issi", $id, $optText, $optImage, $sOrder);
                         $insStmt->execute();
                         $insStmt->close();
                     }
@@ -452,6 +455,18 @@ class CedPoll extends Model
             $imagePath = dirname(dirname(__DIR__)) . '/public/' . ltrim($poll['image'], '/');
             if (file_exists($imagePath) && is_file($imagePath)) {
                 @unlink($imagePath);
+            }
+        }
+
+        // Delete physical option images if any
+        if (!empty($poll['options'])) {
+            foreach ($poll['options'] as $opt) {
+                if (!empty($opt['image'])) {
+                    $optImgPath = dirname(dirname(__DIR__)) . '/public/' . ltrim($opt['image'], '/');
+                    if (file_exists($optImgPath) && is_file($optImgPath)) {
+                        @unlink($optImgPath);
+                    }
+                }
             }
         }
 
@@ -504,6 +519,7 @@ class CedPoll extends Model
                 v.remarks,
                 v.created_at AS voted_at,
                 o.option_text,
+                o.image AS option_image,
                 COALESCE(NULLIF(TRIM(l.full_name), ''), NULLIF(TRIM(l_oc.full_name), ''), CONCAT('Client #', v.client_id)) AS client_name,
                 COALESCE(l.phone, l_oc.phone, '') AS client_phone,
                 COALESCE(

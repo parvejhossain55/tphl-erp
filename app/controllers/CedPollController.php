@@ -84,9 +84,9 @@ class CedPollController extends Controller
     }
 
     /**
-     * Handle Image Upload
+     * Handle Image Upload for banner or option
      */
-    protected function handleImageUpload($inputName = 'image')
+    protected function handleImageUpload($inputName = 'image', $subfolder = '')
     {
         if (empty($_FILES[$inputName]) || $_FILES[$inputName]['error'] !== UPLOAD_ERR_OK) {
             return null;
@@ -104,19 +104,69 @@ class CedPollController extends Controller
             throw new Exception("Image size must be less than 10MB.");
         }
 
-        $uploadDir = dirname(dirname(__DIR__)) . '/public/uploads/polls/';
+        $subpath = 'uploads/polls/' . ($subfolder ? trim($subfolder, '/') . '/' : '');
+        $uploadDir = dirname(dirname(__DIR__)) . '/public/' . $subpath;
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0777, true);
         }
 
-        $fileName = 'poll_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+        $prefix = $subfolder ? 'opt_' : 'poll_';
+        $fileName = $prefix . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
         $targetPath = $uploadDir . $fileName;
 
         if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
             throw new Exception("Failed to upload image.");
         }
 
-        return 'uploads/polls/' . $fileName;
+        return $subpath . $fileName;
+    }
+
+    /**
+     * Handle Option Image upload for a specific index
+     * Supports:
+     * - option_image_0, option_image_1 ...
+     * - option_images[0], option_images[1] ...
+     */
+    protected function handleOptionImageUpload($index)
+    {
+        // 1. Check named option_image_{index}
+        $singleKey = "option_image_{$index}";
+        if (!empty($_FILES[$singleKey]) && $_FILES[$singleKey]['error'] === UPLOAD_ERR_OK) {
+            return $this->handleImageUpload($singleKey, 'options');
+        }
+
+        // 2. Check array option_images[index]
+        if (isset($_FILES['option_images']['name'][$index]) && $_FILES['option_images']['error'][$index] === UPLOAD_ERR_OK) {
+            $name = $_FILES['option_images']['name'][$index];
+            $tmpName = $_FILES['option_images']['tmp_name'][$index];
+            $size = $_FILES['option_images']['size'][$index];
+
+            $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+            $allowed = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+
+            if (!in_array($ext, $allowed)) {
+                throw new Exception("Invalid image format for option #{$index}. Allowed: " . implode(', ', $allowed));
+            }
+
+            if ($size > 10 * 1024 * 1024) {
+                throw new Exception("Option image size must be less than 10MB.");
+            }
+
+            $subpath = 'uploads/polls/options/';
+            $uploadDir = dirname(dirname(__DIR__)) . '/public/' . $subpath;
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0777, true);
+            }
+
+            $fileName = 'opt_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+            if (!move_uploaded_file($tmpName, $uploadDir . $fileName)) {
+                throw new Exception("Failed to upload option image #{$index}.");
+            }
+
+            return $subpath . $fileName;
+        }
+
+        return null;
     }
 
     /**
@@ -216,18 +266,44 @@ class CedPollController extends Controller
             }
 
             // Parse options (supports array or JSON-string)
-            $options = $data['options'] ?? [];
-            if (is_string($options)) {
-                $decoded = json_decode($options, true);
+            $rawOptions = $data['options'] ?? [];
+            if (is_string($rawOptions)) {
+                $decoded = json_decode($rawOptions, true);
                 if (is_array($decoded)) {
-                    $options = $decoded;
+                    $rawOptions = $decoded;
                 } else {
-                    $options = array_filter(array_map('trim', explode(',', $options)));
+                    $rawOptions = array_filter(array_map('trim', explode(',', $rawOptions)));
                 }
             }
 
-            if (empty($options) || count($options) < 2) {
+            if (empty($rawOptions) || count($rawOptions) < 2) {
                 return $this->jsonResponse(false, "At least 2 options are required.", null, 400);
+            }
+
+            // Normalize options with optional image
+            $options = [];
+            foreach ($rawOptions as $idx => $opt) {
+                $optText = is_array($opt) ? trim($opt['option_text'] ?? '') : trim($opt);
+                if ($optText === '') continue;
+
+                $optImage = null;
+                // Check if uploaded via file input
+                $uploadedOptImg = $this->handleOptionImageUpload($idx);
+                if ($uploadedOptImg) {
+                    $optImage = $uploadedOptImg;
+                } elseif (is_array($opt) && !empty($opt['image'])) {
+                    $optImage = trim($opt['image']);
+                }
+
+                $options[] = [
+                    'option_text' => $optText,
+                    'image'       => $optImage,
+                    'sort_order'  => is_array($opt) && isset($opt['sort_order']) ? (int)$opt['sort_order'] : (int)$idx
+                ];
+            }
+
+            if (count($options) < 2) {
+                return $this->jsonResponse(false, "At least 2 non-empty options are required.", null, 400);
             }
 
             if (empty($data['title'])) {
@@ -261,13 +337,35 @@ class CedPollController extends Controller
             // Parse options if provided
             $options = null;
             if (isset($data['options'])) {
-                $options = $data['options'];
-                if (is_string($options)) {
-                    $decoded = json_decode($options, true);
+                $rawOptions = $data['options'];
+                if (is_string($rawOptions)) {
+                    $decoded = json_decode($rawOptions, true);
                     if (is_array($decoded)) {
-                        $options = $decoded;
+                        $rawOptions = $decoded;
                     } else {
-                        $options = array_filter(array_map('trim', explode(',', $options)));
+                        $rawOptions = array_filter(array_map('trim', explode(',', $rawOptions)));
+                    }
+                }
+
+                if (is_array($rawOptions)) {
+                    $options = [];
+                    foreach ($rawOptions as $idx => $opt) {
+                        $optText = is_array($opt) ? trim($opt['option_text'] ?? '') : trim($opt);
+                        if ($optText === '') continue;
+
+                        $optImage = null;
+                        $uploadedOptImg = $this->handleOptionImageUpload($idx);
+                        if ($uploadedOptImg) {
+                            $optImage = $uploadedOptImg;
+                        } elseif (is_array($opt) && !empty($opt['image'])) {
+                            $optImage = trim($opt['image']);
+                        }
+
+                        $options[] = [
+                            'option_text' => $optText,
+                            'image'       => $optImage,
+                            'sort_order'  => is_array($opt) && isset($opt['sort_order']) ? (int)$opt['sort_order'] : (int)$idx
+                        ];
                     }
                 }
             }

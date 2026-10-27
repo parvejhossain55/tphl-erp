@@ -2325,7 +2325,7 @@
                             <a href="<?= $base_url ?>/ced-project-polls"
                                 class="sidebar__menu-item <?= isActive('ced-project-polls', $current_route) ?>">
                                 <div class="side-menu__icon"><i class="fa-solid fa-square-poll-vertical"></i></div>
-                                <span class="sidebar__menu-label">Project Polls</span>
+                                <span class="sidebar__menu-label">Polling Agent</span>
                             </a>
                         </li>
                         <li class="slide ">

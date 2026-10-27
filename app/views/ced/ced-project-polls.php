@@ -270,6 +270,25 @@ $projectsJson = json_encode($projects ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON
         overflow: hidden;
     }
 
+    .poll-opt-thumb {
+        width: 36px;
+        height: 36px;
+        border-radius: 6px;
+        object-fit: cover;
+        border: 1px solid #cbd5e1;
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .poll-opt-thumb:hover {
+        transform: scale(1.08);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+
+    .btn-opt-image-trigger {
+        transition: all 0.2s ease;
+    }
+
     .poll-progress-bar-custom {
         background-color: #0d5c3a;
         transition: width 0.6s ease;
@@ -394,14 +413,40 @@ $projectsJson = json_encode($projects ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON
                         
                         <div id="pollOptionsContainer" class="d-flex flex-column gap-2 mb-2">
                             <!-- Option 1 -->
-                            <div class="input-group poll-option-row">
-                                <span class="input-group-text bg-light text-muted small fw-bold" style="width: 38px; justify-content: center;">1</span>
-                                <input type="text" class="form-control poll-option-input" placeholder="Option 1 (e.g. Zen Garden)" required>
+                            <div class="poll-option-row">
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light text-muted small fw-bold option-idx" style="width: 38px; justify-content: center;">1</span>
+                                    <input type="text" class="form-control poll-option-input" placeholder="Option 1 (e.g. Zen Garden)" required>
+                                    <button type="button" class="btn btn-outline-secondary btn-opt-image-trigger" onclick="triggerOptionImage(this)" title="Attach image (optional)">
+                                        <i class="fa-regular fa-image"></i>
+                                    </button>
+                                </div>
+                                <input type="file" class="poll-option-file-input d-none" accept="image/jpeg,image/png,image/webp,image/gif" onchange="handleOptionImageSelected(this)">
+                                <div class="opt-img-preview-badge mt-1 align-items-center gap-2 px-2 py-1 bg-light rounded border small" style="display: none; width: fit-content;">
+                                    <img class="opt-preview-thumb rounded" style="width: 26px; height: 26px; object-fit: cover;" src="" alt="">
+                                    <span class="opt-preview-name text-truncate" style="max-width: 140px; font-size: 11px;"></span>
+                                    <button type="button" class="btn btn-link text-danger p-0 ms-1 text-decoration-none" onclick="removeOptionImage(this)" title="Remove image">
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                </div>
                             </div>
                             <!-- Option 2 -->
-                            <div class="input-group poll-option-row">
-                                <span class="input-group-text bg-light text-muted small fw-bold" style="width: 38px; justify-content: center;">2</span>
-                                <input type="text" class="form-control poll-option-input" placeholder="Option 2 (e.g. Coffee Corner)" required>
+                            <div class="poll-option-row">
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light text-muted small fw-bold option-idx" style="width: 38px; justify-content: center;">2</span>
+                                    <input type="text" class="form-control poll-option-input" placeholder="Option 2 (e.g. Coffee Corner)" required>
+                                    <button type="button" class="btn btn-outline-secondary btn-opt-image-trigger" onclick="triggerOptionImage(this)" title="Attach image (optional)">
+                                        <i class="fa-regular fa-image"></i>
+                                    </button>
+                                </div>
+                                <input type="file" class="poll-option-file-input d-none" accept="image/jpeg,image/png,image/webp,image/gif" onchange="handleOptionImageSelected(this)">
+                                <div class="opt-img-preview-badge mt-1 align-items-center gap-2 px-2 py-1 bg-light rounded border small" style="display: none; width: fit-content;">
+                                    <img class="opt-preview-thumb rounded" style="width: 26px; height: 26px; object-fit: cover;" src="" alt="">
+                                    <span class="opt-preview-name text-truncate" style="max-width: 140px; font-size: 11px;"></span>
+                                    <button type="button" class="btn btn-link text-danger p-0 ms-1 text-decoration-none" onclick="removeOptionImage(this)" title="Remove image">
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -867,12 +912,20 @@ $projectsJson = json_encode($projects ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON
                 poll.options.forEach(opt => {
                     const pct = opt.percentage !== undefined ? opt.percentage : (totalVotes > 0 ? Math.round(((opt.votes_count || 0) / totalVotes) * 100) : 0);
                     const count = opt.votes_count || 0;
+                    const optImgHtml = opt.image_url ? `
+                        <img src="${opt.image_url}" class="poll-opt-thumb me-2 flex-shrink-0" 
+                             onclick="event.stopPropagation(); viewFullImage('${opt.image_url}')" 
+                             title="Click to view image" alt="">
+                    ` : '';
 
                     optionsHtml += `
                         <div class="poll-option-result-item">
                             <div class="d-flex justify-content-between align-items-center mb-1 small">
-                                <span class="fw-semibold text-dark text-truncate me-2">
-                                    <i class="fa-regular fa-circle-dot text-muted me-1"></i> ${escapeHtml(opt.option_text)}
+                                <span class="fw-semibold text-dark text-truncate me-2 d-flex align-items-center">
+                                    ${optImgHtml}
+                                    <span class="text-truncate">
+                                        <i class="fa-regular fa-circle-dot text-muted me-1"></i> ${escapeHtml(opt.option_text)}
+                                    </span>
                                 </span>
                                 <span class="badge bg-white text-secondary border flex-shrink-0 poll-voters-clickable" 
                                       onclick="openVotersModal(${poll.id}, ${opt.id})" 
@@ -959,17 +1012,94 @@ $projectsJson = json_encode($projects ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON
 
         const nextNum = rows.length + 1;
         const rowDiv = document.createElement('div');
-        rowDiv.className = 'input-group poll-option-row';
+        rowDiv.className = 'poll-option-row';
         rowDiv.innerHTML = `
-            <span class="input-group-text bg-light text-muted small fw-bold" style="width: 38px; justify-content: center;">${nextNum}</span>
-            <input type="text" class="form-control poll-option-input" placeholder="Option ${nextNum}" required>
-            <button type="button" class="btn btn-outline-danger btn-remove-option" onclick="removePollOption(this)" title="Remove Option">
-                <i class="fa-solid fa-trash-can"></i>
-            </button>
+            <div class="input-group">
+                <span class="input-group-text bg-light text-muted small fw-bold option-idx" style="width: 38px; justify-content: center;">${nextNum}</span>
+                <input type="text" class="form-control poll-option-input" placeholder="Option ${nextNum}" required>
+                <button type="button" class="btn btn-outline-secondary btn-opt-image-trigger" onclick="triggerOptionImage(this)" title="Attach image (optional)">
+                    <i class="fa-regular fa-image"></i>
+                </button>
+                <button type="button" class="btn btn-outline-danger btn-remove-option" onclick="removePollOption(this)" title="Remove Option">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            </div>
+            <input type="file" class="poll-option-file-input d-none" accept="image/jpeg,image/png,image/webp,image/gif" onchange="handleOptionImageSelected(this)">
+            <div class="opt-img-preview-badge mt-1 align-items-center gap-2 px-2 py-1 bg-light rounded border small" style="display: none; width: fit-content;">
+                <img class="opt-preview-thumb rounded" style="width: 26px; height: 26px; object-fit: cover;" src="" alt="">
+                <span class="opt-preview-name text-truncate" style="max-width: 140px; font-size: 11px;"></span>
+                <button type="button" class="btn btn-link text-danger p-0 ms-1 text-decoration-none" onclick="removeOptionImage(this)" title="Remove image">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
         `;
 
         pollOptionsContainer.appendChild(rowDiv);
         updateOptionsIndices();
+    };
+
+    window.triggerOptionImage = function(btn) {
+        const row = btn.closest('.poll-option-row');
+        if (!row) return;
+        const fileInput = row.querySelector('.poll-option-file-input');
+        if (fileInput) fileInput.click();
+    };
+
+    window.handleOptionImageSelected = function(fileInput) {
+        const file = fileInput.files && fileInput.files[0];
+        const row = fileInput.closest('.poll-option-row');
+        if (!row) return;
+
+        const badge = row.querySelector('.opt-img-preview-badge');
+        const triggerBtn = row.querySelector('.btn-opt-image-trigger');
+        const thumb = row.querySelector('.opt-preview-thumb');
+        const nameSpan = row.querySelector('.opt-preview-name');
+
+        if (!file) {
+            if (badge) badge.style.display = 'none';
+            if (triggerBtn) {
+                triggerBtn.classList.remove('btn-success', 'text-white');
+                triggerBtn.classList.add('btn-outline-secondary');
+            }
+            return;
+        }
+
+        if (file.size > 10 * 1024 * 1024) {
+            showErrorNotification("Option image size exceeds the 10MB limit.");
+            fileInput.value = '';
+            return;
+        }
+
+        nameSpan.innerText = file.name;
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            thumb.src = evt.target.result;
+            badge.style.display = 'flex';
+            if (triggerBtn) {
+                triggerBtn.classList.remove('btn-outline-secondary');
+                triggerBtn.classList.add('btn-success', 'text-white');
+            }
+        };
+        reader.readAsDataURL(file);
+    };
+
+    window.removeOptionImage = function(btn) {
+        const row = btn.closest('.poll-option-row');
+        if (!row) return;
+        const fileInput = row.querySelector('.poll-option-file-input');
+        if (fileInput) fileInput.value = '';
+
+        const badge = row.querySelector('.opt-img-preview-badge');
+        if (badge) badge.style.display = 'none';
+
+        const thumb = row.querySelector('.opt-preview-thumb');
+        if (thumb) thumb.src = '';
+
+        const triggerBtn = row.querySelector('.btn-opt-image-trigger');
+        if (triggerBtn) {
+            triggerBtn.classList.remove('btn-success', 'text-white');
+            triggerBtn.classList.add('btn-outline-secondary');
+        }
     };
 
     window.removePollOption = function(btn) {
@@ -989,7 +1119,7 @@ $projectsJson = json_encode($projects ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON
     function updateOptionsIndices() {
         const rows = pollOptionsContainer.querySelectorAll('.poll-option-row');
         rows.forEach((row, idx) => {
-            const numSpan = row.querySelector('.input-group-text');
+            const numSpan = row.querySelector('.option-idx') || row.querySelector('.input-group-text');
             if (numSpan) numSpan.innerText = idx + 1;
             const input = row.querySelector('.poll-option-input');
             if (input && !input.value) input.placeholder = `Option ${idx + 1}`;
@@ -1051,11 +1181,19 @@ $projectsJson = json_encode($projects ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON
             return;
         }
 
-        const optionInputs = document.querySelectorAll('.poll-option-input');
+        const rows = pollOptionsContainer.querySelectorAll('.poll-option-row');
         const options = [];
-        optionInputs.forEach(inp => {
-            const val = inp.value.trim();
-            if (val) options.push(val);
+        const optionImageFiles = [];
+
+        rows.forEach(row => {
+            const inp = row.querySelector('.poll-option-input');
+            const val = inp ? inp.value.trim() : '';
+            if (val) {
+                options.push(val);
+                const fileInp = row.querySelector('.poll-option-file-input');
+                const file = (fileInp && fileInp.files && fileInp.files[0]) ? fileInp.files[0] : null;
+                optionImageFiles.push(file);
+            }
         });
 
         if (options.length < 2) {
@@ -1094,6 +1232,13 @@ $projectsJson = json_encode($projects ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON
         if (selectedImageFile) {
             formData.append('image', selectedImageFile);
         }
+
+        // Attach option images matching option index
+        optionImageFiles.forEach((file, index) => {
+            if (file) {
+                formData.append(`option_image_${index}`, file);
+            }
+        });
 
         try {
             const response = await fetch(`${API_BASE_URL}/create`, {
@@ -1138,13 +1283,39 @@ $projectsJson = json_encode($projects ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON
 
     function resetOptionsForm() {
         pollOptionsContainer.innerHTML = `
-            <div class="input-group poll-option-row">
-                <span class="input-group-text bg-light text-muted small fw-bold" style="width: 38px; justify-content: center;">1</span>
-                <input type="text" class="form-control poll-option-input" placeholder="Option 1" required>
+            <div class="poll-option-row">
+                <div class="input-group">
+                    <span class="input-group-text bg-light text-muted small fw-bold option-idx" style="width: 38px; justify-content: center;">1</span>
+                    <input type="text" class="form-control poll-option-input" placeholder="Option 1" required>
+                    <button type="button" class="btn btn-outline-secondary btn-opt-image-trigger" onclick="triggerOptionImage(this)" title="Attach image (optional)">
+                        <i class="fa-regular fa-image"></i>
+                    </button>
+                </div>
+                <input type="file" class="poll-option-file-input d-none" accept="image/jpeg,image/png,image/webp,image/gif" onchange="handleOptionImageSelected(this)">
+                <div class="opt-img-preview-badge mt-1 align-items-center gap-2 px-2 py-1 bg-light rounded border small" style="display: none; width: fit-content;">
+                    <img class="opt-preview-thumb rounded" style="width: 26px; height: 26px; object-fit: cover;" src="" alt="">
+                    <span class="opt-preview-name text-truncate" style="max-width: 140px; font-size: 11px;"></span>
+                    <button type="button" class="btn btn-link text-danger p-0 ms-1 text-decoration-none" onclick="removeOptionImage(this)" title="Remove image">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
             </div>
-            <div class="input-group poll-option-row">
-                <span class="input-group-text bg-light text-muted small fw-bold" style="width: 38px; justify-content: center;">2</span>
-                <input type="text" class="form-control poll-option-input" placeholder="Option 2" required>
+            <div class="poll-option-row">
+                <div class="input-group">
+                    <span class="input-group-text bg-light text-muted small fw-bold option-idx" style="width: 38px; justify-content: center;">2</span>
+                    <input type="text" class="form-control poll-option-input" placeholder="Option 2" required>
+                    <button type="button" class="btn btn-outline-secondary btn-opt-image-trigger" onclick="triggerOptionImage(this)" title="Attach image (optional)">
+                        <i class="fa-regular fa-image"></i>
+                    </button>
+                </div>
+                <input type="file" class="poll-option-file-input d-none" accept="image/jpeg,image/png,image/webp,image/gif" onchange="handleOptionImageSelected(this)">
+                <div class="opt-img-preview-badge mt-1 align-items-center gap-2 px-2 py-1 bg-light rounded border small" style="display: none; width: fit-content;">
+                    <img class="opt-preview-thumb rounded" style="width: 26px; height: 26px; object-fit: cover;" src="" alt="">
+                    <span class="opt-preview-name text-truncate" style="max-width: 140px; font-size: 11px;"></span>
+                    <button type="button" class="btn btn-link text-danger p-0 ms-1 text-decoration-none" onclick="removeOptionImage(this)" title="Remove image">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
             </div>
         `;
         optionsCountDisplay.innerText = "2 options";
