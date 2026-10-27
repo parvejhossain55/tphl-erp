@@ -74,9 +74,22 @@ class CedPollController extends Controller
 
         // If 'data' parameter contains a JSON string (common in multipart form-data)
         if (!empty($data['data']) && is_string($data['data'])) {
-            $parsedPayload = json_decode($data['data'], true);
+            $rawJson = trim($data['data']);
+            $parsedPayload = json_decode($rawJson, true);
+            if (!is_array($parsedPayload)) {
+                $parsedPayload = json_decode(stripslashes($rawJson), true);
+            }
             if (is_array($parsedPayload)) {
                 $data = array_merge($data, $parsedPayload);
+            }
+        }
+
+        // Support direct options array or options JSON from $_POST or $_REQUEST
+        if (empty($data['options'])) {
+            if (!empty($_POST['options'])) {
+                $data['options'] = $_POST['options'];
+            } elseif (!empty($_REQUEST['options'])) {
+                $data['options'] = $_REQUEST['options'];
             }
         }
 
@@ -269,6 +282,9 @@ class CedPollController extends Controller
             $rawOptions = $data['options'] ?? [];
             if (is_string($rawOptions)) {
                 $decoded = json_decode($rawOptions, true);
+                if (!is_array($decoded)) {
+                    $decoded = json_decode(stripslashes($rawOptions), true);
+                }
                 if (is_array($decoded)) {
                     $rawOptions = $decoded;
                 } else {
@@ -340,6 +356,9 @@ class CedPollController extends Controller
                 $rawOptions = $data['options'];
                 if (is_string($rawOptions)) {
                     $decoded = json_decode($rawOptions, true);
+                    if (!is_array($decoded)) {
+                        $decoded = json_decode(stripslashes($rawOptions), true);
+                    }
                     if (is_array($decoded)) {
                         $rawOptions = $decoded;
                     } else {

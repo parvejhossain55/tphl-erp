@@ -1228,7 +1228,24 @@ $projectsJson = json_encode($projects ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON
         };
 
         const formData = new FormData();
+        // 1. Send JSON payload in 'data'
         formData.append('data', JSON.stringify(payload));
+
+        // 2. Also append direct POST fields for robust fail-safe compatibility on all server configurations
+        formData.append('title', title);
+        formData.append('description', description);
+        if (selectedProject && selectedProject.id) {
+            formData.append('project_id', selectedProject.id);
+        }
+        if (startDate) formData.append('start_date', startDate);
+        if (endDate) formData.append('end_date', endDate);
+        formData.append('status', status);
+
+        // Directly append options array so $_POST['options'] is populated natively
+        options.forEach(opt => {
+            formData.append('options[]', opt);
+        });
+
         if (selectedImageFile) {
             formData.append('image', selectedImageFile);
         }
