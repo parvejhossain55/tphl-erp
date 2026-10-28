@@ -1607,20 +1607,20 @@ window.openEditPaymentDateModal = function(target) {
     </div>
 </div>
 
-<!-- Modal: Edit Registration Payment Date -->
+<!-- Modal: Edit Payment Date -->
 <div class="modal fade" id="editPaymentDateModal" tabindex="-1" aria-labelledby="editPaymentDateModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-light">
                 <h5 class="modal-title fw-bold" id="editPaymentDateModalLabel">
-                    <i class="fa-solid fa-pen-to-square text-warning me-2"></i>Edit Registration Payment Date
+                    <i class="fa-solid fa-pen-to-square text-warning me-2"></i><span id="epd_modal_title_text">Edit Payment Date</span>
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form action="<?= $GLOBALS['base_url'] ?>/update-payment-date" method="POST" id="editPaymentDateForm">
                 <input type="hidden" name="payment_id" id="epd_payment_id" value="">
                 <input type="hidden" name="booking_id" id="epd_booking_id" value="<?= htmlspecialchars($bookingId) ?>">
-                <input type="hidden" name="payment_type" id="epd_payment_type" value="registration">
+                <input type="hidden" name="payment_type" id="epd_payment_type" value="emi">
                 <input type="hidden" name="redirect_to" value="clients-cash-in-history/<?= htmlspecialchars($bookingId) ?>">
 
                 <div class="modal-body p-4">
@@ -1628,18 +1628,18 @@ window.openEditPaymentDateModal = function(target) {
                         <div class="d-flex align-items-start gap-2">
                             <i class="fa-solid fa-circle-info text-primary mt-1" style="font-size: 15px;"></i>
                             <div>
-                                Updating <strong>Registration Payment Date</strong> will only update this specific payment record (<span class="fw-bold text-dark" id="epd_details">Registration Money</span> - <span class="fw-bold text-success" id="epd_amount">TK. 0.00</span>).<br>
-                                Booking Date and other payment records will remain unchanged.
+                                Updating <strong id="epd_type_name">Payment Date</strong> will only update this specific payment record (<span class="fw-bold text-dark" id="epd_details">EMI Payment</span> - <span class="fw-bold text-success" id="epd_amount">TK. 0.00</span>).<br>
+                                Verification status and other payment records will remain unchanged.
                             </div>
                         </div>
                     </div>
 
                     <div class="mb-3">
                         <label for="epd_payment_date" class="form-label fw-bold">
-                            <i class="fa-light fa-calendar-days text-primary me-1"></i> Registration Payment Date <span class="text-danger">*</span>
+                            <i class="fa-light fa-calendar-days text-primary me-1"></i> <span id="epd_input_label">Payment Date</span> <span class="text-danger">*</span>
                         </label>
                         <input type="date" name="payment_date" id="epd_payment_date" class="form-control" required>
-                        <small class="text-muted d-block mt-1">Updates payment date only for this registration payment.</small>
+                        <small class="text-muted d-block mt-1">Updates payment date only for this specific transaction.</small>
                     </div>
                 </div>
 
@@ -2657,8 +2657,9 @@ window.openEditPaymentDateModal = function(target) {
 
         var pId = btn.getAttribute('data-payment-id') || '';
         var bId = btn.getAttribute('data-booking-id') || '';
-        var pType = btn.getAttribute('data-payment-type') || 'registration';
-        var pDetails = btn.getAttribute('data-payment-details') || 'Registration Money';
+        var pType = btn.getAttribute('data-payment-type') || 'emi';
+        var pLabel = btn.getAttribute('data-payment-label') || 'Payment';
+        var pDetails = btn.getAttribute('data-payment-details') || pLabel;
         var amount = btn.getAttribute('data-amount') || '0.00';
         var pDate = btn.getAttribute('data-payment-date') || '';
 
@@ -2668,6 +2669,9 @@ window.openEditPaymentDateModal = function(target) {
         var elDetails = document.getElementById('epd_details');
         var elAmount = document.getElementById('epd_amount');
         var elPaymentDate = document.getElementById('epd_payment_date');
+        var elModalTitle = document.getElementById('epd_modal_title_text');
+        var elTypeName = document.getElementById('epd_type_name');
+        var elInputLabel = document.getElementById('epd_input_label');
 
         if (elPaymentId) elPaymentId.value = pId;
         if (elBookingId) elBookingId.value = bId;
@@ -2675,6 +2679,9 @@ window.openEditPaymentDateModal = function(target) {
         if (elDetails) elDetails.textContent = pDetails;
         if (elAmount) elAmount.textContent = 'TK. ' + amount;
         if (elPaymentDate) elPaymentDate.value = pDate;
+        if (elModalTitle) elModalTitle.textContent = 'Edit ' + pLabel + ' Date';
+        if (elTypeName) elTypeName.textContent = pLabel;
+        if (elInputLabel) elInputLabel.textContent = pLabel + ' Payment Date';
     };
 
     // Handle AJAX submit for editPaymentDateForm
