@@ -89,7 +89,6 @@ class ApprovalRequest extends Model
         (department, request_type, title, source_table, source_id, requested_days, requested_by, approve_role, meta_data, request_amount, attachment, status, approved_amount, approved_by, approved_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-        $stmt = $this->db->prepare($sql);
         if (!$stmt) {
             die("Prepare failed: " . $this->db->error);
         }
@@ -431,6 +430,7 @@ class ApprovalRequest extends Model
         $this->syncMissingVendorPaymentRequests();
         $this->syncMissingContractorBills();
         $this->syncMissingLandFundRequisitions();
+        $this->syncMissingClientRefundRequests();
 
         $roles = array_map('strtolower', $roles);
 
@@ -458,10 +458,16 @@ class ApprovalRequest extends Model
             LIMIT $limit";
 
         $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return [];
+        }
+
         $stmt->bind_param($types, ...$params);
         $stmt->execute();
 
-        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $res = $stmt->get_result();
+        $rows = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+        $stmt->close();
 
         foreach ($rows as &$row) {
             $row['context'] = $this->resolveApprovalDetails($row);
@@ -712,6 +718,25 @@ class ApprovalRequest extends Model
             $this->db->query("UPDATE project_incentive_claims SET claim_status = 'approved', approved_by = {$userId}, approved_at = NOW() WHERE id = {$sourceId}");
         } elseif ($sourceTable === 'client_refund_requests') {
             $this->db->query("UPDATE client_refund_requests SET status = 'approved', approved_by = {$userId}, approved_at = NOW() WHERE id = {$sourceId}");
+            
+            // Check if cashout_requests exists for this refund; if not, auto-create it
+            $crRes = $this->db->query("SELECT * FROM client_refund_requests WHERE id = {$sourceId} LIMIT 1");
+            if ($crRes && ($crRow = $crRes->fetch_assoc())) {
+                if (empty($crRow['cashout_request_id'])) {
+                    $coAmt = (float)$crRow['refund_amount'];
+                    $bId = (int)$crRow['booking_id'];
+                    $bRes = $this->db->query("SELECT c.name as client_name, f.flat_name, p.name as project_name FROM lead_bookings lb LEFT JOIN clients c ON lb.client_id = c.id LEFT JOIN flats f ON lb.flat_id = f.id LEFT JOIN projects p ON lb.project_id = p.id WHERE lb.id = {$bId} LIMIT 1");
+                    $bData = $bRes ? $bRes->fetch_assoc() : [];
+                    $coTitle = 'Client Refund — ' . ($bData['client_name'] ?? 'Client') . ' | ' . ($bData['flat_name'] ?? '') . ' | ' . ($bData['project_name'] ?? '');
+                    $coDesc = 'Auto-generated from Client Refund #' . $sourceId . '. Reason: ' . ($crRow['reason'] ?? 'N/A');
+                    
+                    $this->db->query("INSERT INTO cashout_requests (requested_by, purpose_paid_to, amount, approved_amount, due_amount, description, payment_method, project_id, status, created_at, updated_at) VALUES (" . (int)$crRow['requested_by'] . ", '" . $this->db->real_escape_string($coTitle) . "', {$coAmt}, {$coAmt}, {$coAmt}, '" . $this->db->real_escape_string($coDesc) . "', 'cash', " . (int)$crRow['project_id'] . ", 'approved', NOW(), NOW())");
+                    $newCoId = $this->db->insert_id;
+                    if ($newCoId) {
+                        $this->db->query("UPDATE client_refund_requests SET cashout_request_id = {$newCoId} WHERE id = {$sourceId}");
+                    }
+                }
+            }
         } elseif ($sourceTable === 'lead_bookings') {
             if ($status === 'approved') {
                 $approvedAmt = ($amount !== null && (float)$amount > 0) ? (float)$amount : "discount_amount";
@@ -1069,7 +1094,6 @@ class ApprovalRequest extends Model
                 WHERE id = ?";
         }
 
-        $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
             'sdiisi',
             $status,
@@ -1575,10 +1599,9 @@ class ApprovalRequest extends Model
     public function find($id)
     {
         $sql = "SELECT * FROM {$this->table} WHERE id = ?";
-        $stmt = $this->db->prepare($sql);
         $stmt->bind_param('i', $id);
         $stmt->execute();
-        $result = $stmt->get_result(); // get_result() needed for mysqli
+        $result = $stmt->get_result();
         return $result->fetch_assoc(); // fetch_assoc() instead of fetch()
     }
 
@@ -1593,6 +1616,8 @@ class ApprovalRequest extends Model
         $this->syncMissingAdvanceSalaries();
         $this->syncMissingCashoutRequests();
         $this->syncMissingLandFundRequisitions();
+            $this->syncMissingClientRefundRequests();
+        $this->syncMissingClientRefundRequests();
 
         $sql = "SELECT 
                     COUNT(*) AS total_requests,
@@ -1738,6 +1763,7 @@ class ApprovalRequest extends Model
         $this->syncMissingCashoutRequests();
         $this->syncMissingExpenseAdjustments();
         $this->syncMissingLandFundRequisitions();
+        $this->syncMissingClientRefundRequests();
 
         $moduleDefs = [
             'contractor_bill_requests' => [
@@ -2245,7 +2271,6 @@ class ApprovalRequest extends Model
                 LEFT JOIN departments d_req ON e_req.department_id = d_req.id
                 WHERE {$whereClause}";
 
-        $stmt = $this->db->prepare($sql);
         if (!$stmt) {
             return 0;
         }
@@ -2274,6 +2299,7 @@ class ApprovalRequest extends Model
             $this->syncMissingCashoutRequests();
             $this->syncMissingExpenseAdjustments();
             $this->syncMissingLandFundRequisitions();
+        $this->syncMissingClientRefundRequests();
         }
 
         list($where, $params, $types) = $this->buildApprovalHistoryWhere($filters);
@@ -2292,6 +2318,7 @@ class ApprovalRequest extends Model
                     ar.attachment,
                     ar.status,
                     ar.created_at AS requested_at,
+                    ar.updated_at,
                     ar.approved_at,
                     ar.approval_note,
                     ar.accounts_head_status,
@@ -2328,7 +2355,7 @@ class ApprovalRequest extends Model
                 LEFT JOIN employees e_ah ON (e_ah.user_id = u_ah.id OR e_ah.id = u_ah.employee_id)
                 LEFT JOIN designations des_ah ON des_ah.id = COALESCE(e_ah.designation_id, u_ah.designation_id)
                 WHERE {$whereClause}
-                ORDER BY ar.id DESC";
+                ORDER BY COALESCE(ar.updated_at, ar.created_at) DESC, ar.id DESC";
 
         if ($limit > 0) {
             $sql .= " LIMIT ? OFFSET ?";
@@ -2347,7 +2374,6 @@ class ApprovalRequest extends Model
         }
         $stmt->execute();
         $result = $stmt->get_result();
-
         $list = [];
         while ($row = $result->fetch_assoc()) {
             $sourceTable = $row['source_table'];
@@ -3425,7 +3451,7 @@ class ApprovalRequest extends Model
             $row['pending_stage_label'] = $pendingStageLabel;
             $row['pending_for_text'] = $pendingForText;
 
-            $list[] = $row;
+            $list[] = $row; 
         }
 
         if (isset($stmt) && $stmt) {
@@ -3626,9 +3652,14 @@ class ApprovalRequest extends Model
         }
         // If $statusFilter === 'all', keep all items for complete company audit
 
-        // Sort: Newest requests first (id DESC)
+        // Sort: Most recently updated/actionable requests first (updated_at DESC, id DESC)
         usort($list, function($a, $b) {
-            return ((int)$b['id']) <=> ((int)$a['id']);
+            $timeA = strtotime(!empty($a['updated_at']) ? $a['updated_at'] : ($a['requested_at'] ?? ''));
+            $timeB = strtotime(!empty($b['updated_at']) ? $b['updated_at'] : ($b['requested_at'] ?? ''));
+            if ($timeA === $timeB) {
+                return ((int)$b['id']) <=> ((int)$a['id']);
+            }
+            return $timeB <=> $timeA;
         });
 
         return $list;
@@ -4506,6 +4537,81 @@ class ApprovalRequest extends Model
                 OR (cr.status = 'rejected' AND ar.status != 'rejected')
                 OR (cr.status = 'pending' AND (ar.approve_role != 'management' OR ar.status != 'pending'))
                 OR ar.status = '' OR ar.status IS NULL
+        ";
+        @$this->db->query($syncSql);
+    }
+
+    
+    public function syncMissingClientRefundRequests()
+    {
+        // 1. Insert missing approval_requests for client_refund_requests
+        $missingSql = "
+            SELECT cr.id, cr.booking_id, cr.status, cr.total_paid, cr.retention_amount, cr.refund_amount, cr.requested_by, cr.reason, cr.created_at,
+                   l.full_name AS client_name, f.flat_name, p.name AS project_name
+            FROM client_refund_requests cr
+            LEFT JOIN leads l ON l.id = cr.lead_id
+            LEFT JOIN flats f ON f.id = cr.flat_id
+            LEFT JOIN projects p ON p.id = cr.project_id
+            LEFT JOIN approval_requests ar ON (ar.source_table = 'client_refund_requests' AND ar.source_id = cr.id)
+            WHERE ar.id IS NULL
+        ";
+        $missingRes = $this->db->query($missingSql);
+        if ($missingRes && $missingRes->num_rows > 0) {
+            while ($row = $missingRes->fetch_assoc()) {
+                $rfId = (int)$row['id'];
+                $reqAmt = (float)$row['refund_amount'];
+                $status = strtolower($row['status'] ?? 'pending');
+                $title = 'Client Refund — ' . ($row['client_name'] ?? 'Client') . ' | ' . ($row['flat_name'] ?? '') . ' | ' . ($row['project_name'] ?? '');
+                
+                $appRole = 'management';
+                if ($status === 'approved') {
+                    $appRole = 'accounts_head';
+                } elseif ($status === 'refunded') {
+                    $appRole = 'completed';
+                } elseif ($status === 'rejected') {
+                    $appRole = 'rejected';
+                }
+                
+                $stmt = $this->db->prepare("
+                    INSERT INTO approval_requests (department, request_type, title, source_table, source_id, requested_days, requested_by, approve_role, request_amount, approved_amount, status, op_head_status, accounts_head_status, created_at, updated_at)
+                    VALUES ('accounts', 'client_refund', ?, 'client_refund_requests', ?, 0, ?, ?, ?, ?, ?, 'pending', 'pending', ?, ?)
+                ");
+                if ($stmt) {
+                    $reqBy = (int)$row['requested_by'];
+                    $stmt->bind_param('siisddssss', $title, $rfId, $reqBy, $appRole, $reqAmt, $reqAmt, $status, $row['created_at'], $row['created_at']);
+                    $stmt->execute();
+                    $stmt->close();
+                }
+            }
+        }
+
+        // 2. Keep existing approval_requests in sync with client_refund_requests status and refund_amount
+        $syncSql = "
+            UPDATE approval_requests ar
+            INNER JOIN client_refund_requests cr ON (ar.source_table = 'client_refund_requests' AND ar.source_id = cr.id)
+            SET 
+                ar.request_amount = cr.refund_amount,
+                ar.approved_amount = CASE 
+                    WHEN cr.status IN ('approved', 'refunded') THEN cr.refund_amount 
+                    ELSE ar.approved_amount 
+                END,
+                ar.status = CASE
+                    WHEN cr.status = 'rejected' THEN 'rejected'
+                    WHEN cr.status IN ('approved', 'refunded') THEN 'approved'
+                    ELSE 'pending'
+                END,
+                ar.approve_role = CASE
+                    WHEN cr.status = 'rejected' THEN 'rejected'
+                    WHEN cr.status = 'refunded' THEN 'completed'
+                    WHEN cr.status = 'approved' THEN CASE WHEN ar.accounts_head_status = 'approved' THEN 'accounts' ELSE 'accounts_head' END
+                    WHEN cr.status = 'pending' THEN 'management'
+                    ELSE ar.approve_role
+                END
+            WHERE 
+                ar.request_amount != cr.refund_amount
+                OR (cr.status = 'pending' AND ar.approve_role NOT IN ('management', 'operations') AND ar.status != 'pending')
+                OR (cr.status = 'approved' AND ar.status != 'approved')
+                OR (cr.status = 'rejected' AND ar.status != 'rejected')
         ";
         @$this->db->query($syncSql);
     }

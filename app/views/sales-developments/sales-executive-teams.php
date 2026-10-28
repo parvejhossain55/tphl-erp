@@ -91,7 +91,26 @@ body.dark-mode .set-filter-card .select2-container--default .select2-selection--
     border-radius: 12px;
     font-weight: 600;
 }
+.target-card-info {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+}
+[data-bs-theme="dark"] .target-card-info,
+body.dark-mode .target-card-info {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+}
+[data-bs-theme="dark"] .target-card-info .text-muted,
+body.dark-mode .target-card-info .text-muted {
+    color: #94a3b8 !important;
+}
+[data-bs-theme="dark"] .target-card-info .fw-semibold,
+body.dark-mode .target-card-info .fw-semibold {
+    color: #e2e8f0 !important;
+}
 </style>
+
 
 <!-- Header & Add User Action -->
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
@@ -246,12 +265,70 @@ body.dark-mode .set-filter-card .select2-container--default .select2-selection--
                                 </div>
                             </div>
                         </div>
+                                                <?php 
+                            $uId = (int)$user['id'];
+                            $lastTarget = $latestTargets[$uId] ?? null;
+                        ?>
+                        <div class="target-card-info p-2 mb-2 text-start">
+                            <?php if (!empty($lastTarget)): ?>
+                                <div class="d-flex align-items-center justify-content-between mb-1 pb-1 border-bottom">
+                                    <span class="badge bg-primary text-white" style="font-size: 10px;">
+                                        <i class="fa-solid fa-bullseye me-1"></i>Last: <?= htmlspecialchars($lastTarget['month_display']) ?>
+                                    </span>
+                                    <span class="text-muted font-size-11" title="Target Period: <?= htmlspecialchars($lastTarget['period_display']) ?>">
+                                        <i class="fa-regular fa-calendar me-1"></i><?= htmlspecialchars($lastTarget['period_display']) ?>
+                                    </span>
+                                </div>
+                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                    <span class="text-muted font-size-12"><i class="fa-solid fa-coins text-warning me-1"></i>Land Share:</span>
+                                    <span class="fw-bold text-success font-size-12">
+                                        ৳ <?= number_format((float)$lastTarget['booking_value_target'], 0) ?>
+                                    </span>
+                                </div>
+                                <div class="d-flex align-items-start justify-content-between mb-1">
+                                    <span class="text-muted font-size-12 me-1"><i class="fa-solid fa-city text-primary me-1"></i>Project:</span>
+                                    <span class="fw-semibold text-truncate text-end font-size-12" style="max-width: 140px;" title="<?= htmlspecialchars($lastTarget['projects_summary']) ?>">
+                                        <?= htmlspecialchars($lastTarget['projects_summary']) ?>
+                                    </span>
+                                </div>
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <span class="text-muted font-size-12"><i class="fa-solid fa-layer-group text-info me-1"></i>Units:</span>
+                                    <?php if (!empty($lastTarget['units_is_all'])): ?>
+                                        <span class="badge bg-success-subtle text-success font-size-11">
+                                            <i class="fa-solid fa-check-double me-1"></i>All Units
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="badge bg-info-subtle text-info font-size-11" title="<?= htmlspecialchars(implode(', ', $lastTarget['flat_names_display'] ?? [])) ?>">
+                                            <i class="fa-solid fa-list-check me-1"></i><?= htmlspecialchars($lastTarget['units_summary']) ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
+                                <?php if (!empty($lastTarget['booking_target']) && (int)$lastTarget['booking_target'] > 0): ?>
+                                    <div class="d-flex align-items-center justify-content-between mt-1 pt-1 border-top" style="border-style: dashed !important;">
+                                        <span class="text-muted font-size-11">Target Units:</span>
+                                        <span class="badge bg-secondary-subtle text-secondary font-size-11">
+                                            <?= (int)$lastTarget['booking_target'] ?> Unit(s)
+                                        </span>
+                                    </div>
+                                <?php endif; ?>
+                            <?php else: ?>
+                                <div class="text-center py-1 text-muted font-size-12">
+                                    <i class="fa-regular fa-calendar-xmark me-1"></i> No Target Set Yet
+                                </div>
+                            <?php endif; ?>
+                        </div>
                         <div class="employee__btn mt-auto pt-2">
                             <div class="d-flex align-items-center justify-content-center gap-2">
                                 <a class="btn btn-outline-theme-border flex-fill"
-                                    href="<?= $base_url ?>/user-profile/<?= $user['id'] ?>">View</a>
+                                    href="<?= $base_url ?>/user-profile/<?= $user['id'] ?>">View Profile</a>
+                                <?php 
+                                    $canSetTargetBtn = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 20, 30, 32, 33, 34, 35], true)
+                                        || in_array((int)($_SESSION['user']['secondary_role_id'] ?? 0), [1, 3, 6, 20, 30, 32, 33, 34, 35], true);
+                                ?>
+                                <?php if ($canSetTargetBtn): ?>
                                 <a class="btn btn-primary flex-fill"
                                     href="<?= $base_url ?>/set-sales-target/<?= $user['id'] ?>">Set Target</a>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>

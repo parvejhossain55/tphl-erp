@@ -32,14 +32,29 @@ $renderCard = (!empty($ahInfo) && !empty($ahInfo['has_request']));
 $currentUserId = (int)($_SESSION['user']['id'] ?? 0);
 $currentUserRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
 $currentRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+$currentUserName = strtolower(trim($_SESSION['user']['user_name'] ?? ''));
+$currentUserFullName = strtolower(trim($_SESSION['user']['full_name'] ?? ''));
 
-$isAccountsHeadUser = ($currentUserRoleId === 30) || strpos($currentRoleName, 'accounts head') !== false;
-$isManagementUser = in_array($currentUserRoleId, [1, 3], true) || strpos($currentRoleName, 'super admin') !== false || strpos($currentRoleName, 'admin') !== false;
-$isAccountsStaffUser = ($currentUserRoleId === 6) || (strpos($currentRoleName, 'account') !== false && !$isAccountsHeadUser);
+// Designated Accounts Head is specifically Md. Mamunoor Rashid (user 247, emp 1309 / 210)
+$isDesignatedAccountsHead = ($currentUserId === 247)
+    || ($currentUserId === 1309)
+    || (strpos($currentUserFullName, 'mamun') !== false)
+    || (($currentUserRoleId === 30) && $currentUserId !== 207 && strpos($currentUserName, 'accounts') === false && strpos($currentUserFullName, 'accounts') === false);
+
+$isManagementUser = in_array($currentUserRoleId, [1, 3], true) 
+    || strpos($currentRoleName, 'super admin') !== false 
+    || ($currentUserRoleId === 1);
+
+$isAccountsStaffUser = ($currentUserRoleId === 6) 
+    || ($currentUserId === 207) 
+    || strpos($currentUserName, 'accounts') !== false 
+    || (strpos($currentRoleName, 'account') !== false && !$isDesignatedAccountsHead && !$isManagementUser);
+
 $isOpHeadUser = in_array($currentUserRoleId, [20, 32], true) || strpos($currentRoleName, 'operation head') !== false || strpos($currentRoleName, 'admin & operation') !== false;
 
-$canUserApproveAccountsHead = $isAccountsHeadUser || $isManagementUser;
-$canUserApproveOpHead = $isOpHeadUser || $isManagementUser;
+// ONLY designated Accounts Head (Md. Mamunoor Rashid) or Super Admin (1) can approve as Accounts Head (Role 3 Management is strictly excluded)
+$canUserApproveAccountsHead = ($isDesignatedAccountsHead && ($currentUserRoleId === 30 || $currentUserRoleId === 1)) || ($currentUserRoleId === 1);
+$canUserApproveOpHead = $isOpHeadUser || in_array($currentUserRoleId, [1, 3], true);
 
 $isOver1Lac = !empty($ahInfo['is_over_1lac']);
 $reqAmount = (float)($ahInfo['request_amount'] ?? 0);

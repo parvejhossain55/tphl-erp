@@ -32,11 +32,30 @@
 }
 
 /* ==========================================
-   MOBILE SIDEBAR Z-INDEX CORRECTION
+   MOBILE SIDEBAR & OFFCANVAS BACKDROP FIX
    ========================================== */
+.app__offcanvas-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    backdrop-filter: blur(2px) !important;
+    z-index: 1040 !important;
+    display: none !important;
+    cursor: pointer !important;
+    transition: opacity 0.25s ease-in-out !important;
+}
+
+.app__offcanvas-overlay.overlay-open {
+    display: block !important;
+}
+
 @media (max-width: 1199.98px) {
     .app-sidebar {
         z-index: 1045 !important;
+        box-shadow: 0 0 30px rgba(0, 0, 0, 0.4) !important;
     }
 }
 

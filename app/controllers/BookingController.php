@@ -254,7 +254,10 @@ class BookingController extends Controller
         //  Get assigned_by from leads table
         $leadId = (int)($_POST['lead_id'] ?? 0);
         $lead = $this->leadModel->find($leadId);
-        $salesById = $lead['assigned_id'] ?? ''; // fallback to current user if null
+        $salesById = (int)($lead['assigned_id'] ?? 0);
+        if ($salesById === 0) {
+            $salesById = (int)($_SESSION['user']['id'] ?? 0);
+        }
 
         // Check if sales_agent / sales_agent_email was explicitly submitted
         $submittedAgent = trim($_POST['sales_agent'] ?? $_POST['sales_agent_email'] ?? $_POST['sales_by_id'] ?? '');
@@ -598,7 +601,7 @@ class BookingController extends Controller
                     'source_id'      => $refundId,
                     'requested_days' => 0,
                     'requested_by'   => $userId,
-                    'approve_role'   => 'management',
+                    'approve_role'   => ($retentionAmount > 0) ? 'management' : 'accounts_retention',
                     'meta_data'      => null,
                     'request_amount' => $refundAmount,
                 ]);

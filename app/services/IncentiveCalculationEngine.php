@@ -137,15 +137,17 @@ class IncentiveCalculationEngine extends Model
         $flatIdStr = (string)$flatId;
         $projIdStr = (string)$projectId;
 
-        $sql = "SELECT sales_user_id, booking_value_target, flat_ids, project_ids 
-                FROM sales_targets 
-                WHERE DATE_FORMAT(month, '%Y-%m') = ? 
-                  AND sales_user_id != ?";
+        $sql = "SELECT st.sales_user_id, st.booking_value_target, st.flat_ids, st.project_ids, u.full_name as designated_name
+                FROM sales_targets st
+                JOIN users u ON st.sales_user_id = u.id
+                WHERE (DATE_FORMAT(st.month, '%Y-%m') = ? OR DATE_FORMAT(st.month, '%Y-%m') <= ?)
+                  AND st.sales_user_id != ?
+                ORDER BY st.month DESC";
 
         $stmt = $this->db->prepare($sql);
         if (!$stmt) return null;
 
-        $stmt->bind_param("si", $yearMonth, $excludeUserId);
+        $stmt->bind_param("ssi", $yearMonth, $yearMonth, $excludeUserId);
         $stmt->execute();
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
@@ -155,7 +157,10 @@ class IncentiveCalculationEngine extends Model
             if (!empty($r['flat_ids'])) {
                 $fIds = json_decode($r['flat_ids'], true) ?: [];
                 if (in_array($flatIdStr, array_map('strval', $fIds), true)) {
-                    return (int)$r['sales_user_id'];
+                    return [
+                        'user_id' => (int)$r['sales_user_id'],
+                        'full_name' => $r['designated_name'] ?? 'Assigned Agent'
+                    ];
                 }
             }
         }
@@ -165,7 +170,10 @@ class IncentiveCalculationEngine extends Model
             if (!empty($r['project_ids'])) {
                 $pIds = json_decode($r['project_ids'], true) ?: [];
                 if (in_array('all', $pIds, true) || in_array($projIdStr, array_map('strval', $pIds), true)) {
-                    return (int)$r['sales_user_id'];
+                    return [
+                        'user_id' => (int)$r['sales_user_id'],
+                        'full_name' => $r['designated_name'] ?? 'Assigned Agent'
+                    ];
                 }
             }
         }
@@ -196,6 +204,44 @@ class IncentiveCalculationEngine extends Model
         $stmt->execute();
         $targetRows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
+
+        // If no target specifically created for this month, inherit the latest active target on record
+        if (empty($targetRows)) {
+            $stmtPrior = $this->db->prepare("SELECT booking_value_target, category_id, category_ids, project_ids, flat_ids, from_date, to_date, month 
+                                             FROM sales_targets 
+                                             WHERE sales_user_id = ? AND DATE_FORMAT(month, '%Y-%m') <= ? 
+                                             ORDER BY month DESC, id DESC");
+            $stmtPrior->bind_param("is", $userId, $yearMonth);
+            $stmtPrior->execute();
+            $allPrior = $stmtPrior->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmtPrior->close();
+            if (!empty($allPrior)) {
+                $latestPriorMonth = $allPrior[0]["month"] ?? null;
+                foreach ($allPrior as $ap) {
+                    if ($ap["month"] === $latestPriorMonth) {
+                        $targetRows[] = $ap;
+                    }
+                }
+            } else {
+                // If no prior target, inherit the latest active target configured on record (e.g. set-sales-target)
+                $stmtAny = $this->db->prepare("SELECT booking_value_target, category_id, category_ids, project_ids, flat_ids, from_date, to_date, month 
+                                               FROM sales_targets 
+                                               WHERE sales_user_id = ? 
+                                               ORDER BY month DESC, id DESC");
+                $stmtAny->bind_param("i", $userId);
+                $stmtAny->execute();
+                $allAny = $stmtAny->get_result()->fetch_all(MYSQLI_ASSOC);
+                $stmtAny->close();
+                if (!empty($allAny)) {
+                    $latestAnyMonth = $allAny[0]["month"] ?? null;
+                    foreach ($allAny as $ap) {
+                        if ($ap["month"] === $latestAnyMonth) {
+                            $targetRows[] = $ap;
+                        }
+                    }
+                }
+            }
+        }
 
         $targetAmount = 0.00;
         $projIds = [];
@@ -264,7 +310,7 @@ class IncentiveCalculationEngine extends Model
                 JOIN projects p ON lb.project_id = p.id
                 JOIN flats f ON lb.flat_id = f.id
                 LEFT JOIN leads l ON lb.lead_id = l.id
-                WHERE lb.sales_by_id = ? 
+                WHERE (lb.sales_by_id = ? OR lb.created_by = ? OR l.assigned_id = ?) 
                   AND lb.booking_date BETWEEN ? AND ?
                   AND lb.deleted_at IS NULL
                   AND lb.booking_status NOT IN ('cancelled', 'refunded')
@@ -274,7 +320,7 @@ class IncentiveCalculationEngine extends Model
         $endDate = substr($end, 0, 10);
 
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("iss", $userId, $startDate, $endDate);
+        $stmt->bind_param("iiiss", $userId, $userId, $userId, $startDate, $endDate);
         $stmt->execute();
         $bookings = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
@@ -291,11 +337,13 @@ class IncentiveCalculationEngine extends Model
             $pId = (int)$b['project_id'];
             $landShare = (float)$b['land_share_value'];
 
-            // Check if flat is designated/assigned
+            // Check if flat is designated/assigned (all units in assigned project count as assigned)
             $isAssigned = false;
-            if (!empty($flatIds)) {
-                $isAssigned = in_array((string)$fId, array_map('strval', $flatIds), true);
-            } elseif ($hasAllProjects || (!empty($projIds) && in_array((string)$pId, array_map('strval', $projIds), true))) {
+            if ($hasAllProjects) {
+                $isAssigned = true;
+            } elseif (!empty($projIds) && in_array((string)$pId, array_map('strval', $projIds), true)) {
+                $isAssigned = true;
+            } elseif (!empty($flatIds) && in_array((string)$fId, array_map('strval', $flatIds), true)) {
                 $isAssigned = true;
             } elseif (empty($flatIds) && empty($projIds)) {
                 // If no specific restriction configured in target, treat as assigned
@@ -326,19 +374,17 @@ class IncentiveCalculationEngine extends Model
 
         // 5. Target Achievement & Minimum Qualification Check
         $effectiveTarget = ($targetAmount > 0) ? $targetAmount : $minEligibleSales;
-        $achievementPct = ($effectiveTarget > 0) ? ($totalAchievedLandShare / $effectiveTarget) * 100.0 : 0.00;
+        $achievementPct = ($targetAmount > 0) ? ($totalAchievedLandShare / $targetAmount) * 100.0 : 0.00;
 
         // Condition: Must achieve assigned target OR minimum eligible sales (BDT 25 Lakh) across total sales
         $isEligible = ($totalAchievedLandShare >= $minEligibleSales) || ($targetAmount > 0 && $assignedAchievedLandShare >= $targetAmount);
 
         // 6. Base Modality Rate determination based on Target Achievement Slab
-        // Base rate: 0.70%
-        // 200% - 299% achievement: 1.00%
-        // 300%+ achievement: 1.20%
+        // Slab rates (1.00% or 1.20%) ONLY apply if employee has an assigned target ($targetAmount > 0) and exceeds 200% or 300% of it
         $slabRate = (float)$settings['flat_base_rate']; // 0.70%
-        if ($achievementPct >= 300.0) {
+        if ($targetAmount > 0 && $achievementPct >= 300.0) {
             $slabRate = (float)$settings['slab_300_plus_rate']; // 1.20%
-        } elseif ($achievementPct >= 200.0) {
+        } elseif ($targetAmount > 0 && $achievementPct >= 200.0) {
             $slabRate = (float)$settings['slab_200_299_rate'];  // 1.00%
         }
 
@@ -374,7 +420,7 @@ class IncentiveCalculationEngine extends Model
             // If super achievement slab (1.00% or 1.20%) is hit, slab rate applies.
             // Otherwise, floor special gives 0.80%, general flat gives 0.70%.
             $unitRate = $slabRate;
-            if ($achievementPct < 200.0) {
+            if ($targetAmount <= 0 || $achievementPct < 200.0) {
                 $unitRate = $isFloorSpecial ? (float)$settings['floor_special_rate'] : (float)$settings['flat_base_rate'];
             }
 
@@ -427,7 +473,9 @@ class IncentiveCalculationEngine extends Model
                 // Policy: 70% to Seller (on hold until seller achieves own target), 30% to Designated Person
                 $sellerShare = round($fullIncentive * 0.70, 2);
                 $designatedShare = round($fullIncentive * 0.30, 2);
-                $designatedUserId = $this->getDesignatedSalesperson($b['flat_id'], $b['project_id'], $yearMonth, $userId);
+                $designatedInfo = $this->getDesignatedSalesperson($b['flat_id'], $b['project_id'], $yearMonth, $userId);
+                $designatedUserId = is_array($designatedInfo) ? ($designatedInfo['user_id'] ?? null) : $designatedInfo;
+                $designatedUserName = is_array($designatedInfo) ? ($designatedInfo['full_name'] ?? 'Unassigned / Open') : 'Unassigned / Open';
 
                 // Hold condition: 70% remains ON HOLD until seller achieves own assigned target/25L
                 $isOnHold = !$isEligible;
@@ -444,6 +492,7 @@ class IncentiveCalculationEngine extends Model
                     'seller_incentive' => $sellerShare,
                     'designated_incentive' => $designatedShare,
                     'designated_user_id' => $designatedUserId,
+                    'designated_user_name' => $designatedUserName,
                     'is_on_hold' => $isOnHold ? 1 : 0,
                     'status_note' => $isOnHold 
                         ? 'On Hold (70%): Achieve your own assigned target/25L to unlock' 
@@ -520,6 +569,16 @@ class IncentiveCalculationEngine extends Model
             }
         }
 
+        $targetOriginMonth = $yearMonth;
+        $isInherited = false;
+        if (!empty($targetRows)) {
+            $firstMonth = !empty($targetRows[0]['month']) ? date('Y-m', strtotime($targetRows[0]['month'])) : $yearMonth;
+            if ($firstMonth !== $yearMonth) {
+                $targetOriginMonth = $firstMonth;
+                $isInherited = true;
+            }
+        }
+
         return [
             'target_amount' => $targetAmount,
             'effective_target' => $effectiveTarget,
@@ -534,6 +593,9 @@ class IncentiveCalculationEngine extends Model
             'total_on_hold_incentive' => $totalOnHoldIncentive,
             'detailed_bookings' => $detailedBookings,
             'designated_credits' => $designatedCredits,
+            'target_origin_month' => $targetOriginMonth,
+            'is_inherited' => $isInherited,
+            'has_target' => ($targetAmount > 0 || !empty($targetRows)),
             'cycle_start' => $start,
             'cycle_end' => $end
         ];
@@ -597,21 +659,31 @@ class IncentiveCalculationEngine extends Model
         $totalTeamCollected = 0.00;
         $qualifiedSalesVolume = 0.00;
         $qualifiedMembersCount = 0;
+        $tlGainFromMembers = 0.00;
         $memberBreakdown = [];
 
         foreach ($members as $m) {
             $mUserId = (int)$m['user_id'];
+            $isSelf = ($mUserId === (int)$userId);
             $mStats = $this->getExecutiveMonthlyStats($mUserId, $yearMonth, $fromDate, $toDate);
 
-            $totalTeamTarget += (float)$mStats['effective_target'];
-            $totalTeamAchieved += (float)$mStats['total_achieved_land_share'];
+            $mEffectiveTarget = (float)$mStats['effective_target'];
+            $mTotalAchieved = (float)$mStats['total_achieved_land_share'];
 
-            $isMemberQualified = !empty($mStats['is_eligible']);
-            $qualifiedVolumeForMember = $isMemberQualified ? (float)$mStats['assigned_achieved'] : 0.00;
+            $totalTeamTarget += $mEffectiveTarget;
+            $totalTeamAchieved += $mTotalAchieved;
+
+            // Qualification rule: achieved >= 25 Lakh land share or met target
+            $isMemberQualified = ($mTotalAchieved >= 2500000.00 || !empty($mStats['is_eligible']));
+            $qualifiedVolumeForMember = $isMemberQualified ? $mTotalAchieved : 0.00;
+            $memberTlContribution = round(($qualifiedVolumeForMember * $tlRate) / 100.0, 2);
 
             if ($isMemberQualified && $qualifiedVolumeForMember > 0) {
                 $qualifiedSalesVolume += $qualifiedVolumeForMember;
                 $qualifiedMembersCount++;
+                if (!$isSelf) {
+                    $tlGainFromMembers += $memberTlContribution;
+                }
             }
 
             // Calculate money collected by this member for bookings in this cycle
@@ -621,7 +693,8 @@ class IncentiveCalculationEngine extends Model
                 SELECT IFNULL(SUM(lp.amount), 0.00) as collected
                 FROM lead_payments lp
                 JOIN lead_bookings lb ON lp.booking_id = lb.id
-                WHERE lb.sales_by_id = ?
+                LEFT JOIN leads l ON lb.lead_id = l.id
+                WHERE (lb.sales_by_id = ? OR lb.created_by = ? OR l.assigned_id = ?)
                   AND lb.booking_date BETWEEN ? AND ?
                   AND lp.verification_status = 'verified'
                   AND lp.payment_status IN ('paid', 'partially_paid')
@@ -629,7 +702,7 @@ class IncentiveCalculationEngine extends Model
             ");
             $mCollected = 0.00;
             if ($collStmt) {
-                $collStmt->bind_param("iss", $mUserId, $mStart, $mEnd);
+                $collStmt->bind_param("iiiss", $mUserId, $mUserId, $mUserId, $mStart, $mEnd);
                 $collStmt->execute();
                 $mCollected = (float)($collStmt->get_result()->fetch_assoc()['collected'] ?? 0.00);
                 $collStmt->close();
@@ -639,16 +712,20 @@ class IncentiveCalculationEngine extends Model
 
             $memberBreakdown[] = [
                 'user_id' => $mUserId,
+                'is_self' => $isSelf,
                 'full_name' => $m['full_name'],
                 'employee_id' => $m['employee_id'],
                 'designation' => $m['designation_name'] ?? 'Executive',
-                'target' => (float)$mStats['effective_target'],
-                'achieved_land_share' => (float)$mStats['total_achieved_land_share'],
+                'target' => $mEffectiveTarget,
+                'achieved_land_share' => $mTotalAchieved,
                 'assigned_achieved' => (float)$mStats['assigned_achieved'],
+                'unassigned_achieved' => (float)$mStats['unassigned_achieved'],
                 'achievement_pct' => (float)$mStats['achievement_pct'],
                 'collected_amount' => $mCollected,
                 'is_qualified' => $isMemberQualified,
-                'tl_contribution' => round(($qualifiedVolumeForMember * $tlRate) / 100.0, 2)
+                'earned_incentive' => (float)($mStats['total_earned_incentive'] ?? 0.00),
+                'tl_contribution' => $memberTlContribution,
+                'bookings_count' => count($mStats['detailed_bookings'] ?? [])
             ];
         }
 
@@ -683,6 +760,7 @@ class IncentiveCalculationEngine extends Model
             'total_members_count' => count($members),
             'tl_rate' => $tlRate,
             'incentive_earned' => $incentiveEarned,
+            'tl_gain_from_members' => $tlGainFromMembers,
             'member_breakdown' => $memberBreakdown,
             'month' => $yearMonth
         ];

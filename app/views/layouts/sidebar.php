@@ -30,6 +30,9 @@
             <img class="main-logo" src="<?= getImage('settings', getSetting('white_logo')) ?>" alt="logo">
             <img class="dark-logo" src="<?= getImage('settings', getSetting('dark_logo')) ?>" alt="logo">
         </a>
+        <button type="button" class="btn btn-sm btn-icon d-xl-none ms-auto text-muted sidebar-close-btn" onclick="$('.app-sidebar').removeClass('close_sidebar'); $('.app__offcanvas-overlay').removeClass('overlay-open');" title="Close Sidebar" style="font-size: 18px; border: none; background: transparent; padding: 4px 8px; cursor: pointer;">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
     </div>
 
     <?php
@@ -879,7 +882,7 @@
                             <a href="<?= $base_url ?>/incentive-management"
                                 class="sidebar__menu-item <?= isActive('incentive-management', $current_route) ?>">
                                 <div class="side-menu__icon"><i class="fa-solid fa-coins"></i></div>
-                                <span class="sidebar__menu-label">Sales Incentive Accounts</span>
+                                <span class="sidebar__menu-label">Sales Incentive</span>
                             </a>
                         </li>
                     <?php endif; ?>
@@ -974,75 +977,65 @@
                         </li>
 
 
-                        <!-- Incentives Module -->
-                        <li
-                            class="slide has-sub <?= isActive(['my-incentives', 'incentive-management', 'incentive-config', 'my-team-incentives'], $current_route) ? 'active' : '' ?>">
-                            <a href="javascript:void(0);"
-                                class="sidebar__menu-item <?= isActive(['my-incentives', 'incentive-management', 'incentive-config', 'my-team-incentives'], $current_route) ? 'menu-open active' : '' ?>">
-                                <div class="side-menu__icon"><i class="fa-solid fa-money-bill-trend-up"></i></div>
-                                <span class="sidebar__menu-label">Incentives</span>
-                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                            </a>
-                            <ul class="sidebar-menu child2" style="display:block;">
-                                <!-- My Incentives: Only for Sales Executives, Managers & Team Leaders (NOT Management) -->
-                                <?php if (!$isManagement && (in_array($_SESSION['user']['role_id'] ?? 0, [5, 8, 9, 15]) || (!empty($_SESSION['user']['is_team_leader']) && $_SESSION['user']['is_team_leader'] == 1))): ?>
-                                    <li class="slide child2">
-                                        <a href="<?= $base_url ?>/my-incentives"
-                                            class="sidebar__menu-item <?= isActive('my-incentives', $current_route) ?>">My
-                                            Incentives</a>
-                                    </li>
-                                <?php endif; ?>
+                        <!-- Sales Incentives: Single Clean Menu Links based on Role -->
+                        <?php if (!$isManagement && (in_array($_SESSION['user']['role_id'] ?? 0, [5, 8, 15]) || (!empty($_SESSION['user']['is_team_leader']) && $_SESSION['user']['is_team_leader'] == 1))): ?>
+                            <!-- My Incentive for Sales Executive, Manager, Team Leader -->
+                            <li class="slide <?= isActive('my-incentives', $current_route) ?>">
+                                <a href="<?= $base_url ?>/my-incentives"
+                                    class="sidebar__menu-item <?= isActive('my-incentives', $current_route) ?>">
+                                    <div class="side-menu__icon"><i class="fa-solid fa-hand-holding-dollar text-primary"></i></div>
+                                    <span class="sidebar__menu-label">My Incentive</span>
+                                </a>
+                            </li>
 
-                                <!-- Team Incentives:
-                                     For Management/Accounts: "All Team Incentives"
-                                     For Sales Managers/Team Leaders: "My Team Incentives" -->
-                                <?php if ($isManagement || in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 6, 9, 15, 30, 32, 33, 34, 35, 36]) || (!empty($_SESSION['user']['is_team_leader']) && $_SESSION['user']['is_team_leader'] == 1)): ?>
-                                    <li class="slide child2">
-                                        <a href="<?= $base_url ?>/my-team-incentives"
-                                            class="sidebar__menu-item <?= isActive('my-team-incentives', $current_route) ?>">
-                                            <?= ($isManagement || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 30, 32, 33, 35, 36])) ? 'All Team Incentives' : 'My Team Incentives' ?>
-                                        </a>
-                                    </li>
-                                <?php endif; ?>
+                            <?php if (!empty($_SESSION['user']['is_team_leader']) || in_array($_SESSION['user']['role_id'] ?? 0, [5, 15])): ?>
+                            <li class="slide <?= isActive('my-team-incentives', $current_route) ?>">
+                                <a href="<?= $base_url ?>/my-team-incentives"
+                                    class="sidebar__menu-item <?= isActive('my-team-incentives', $current_route) ?>">
+                                    <div class="side-menu__icon"><i class="fa-solid fa-users text-info"></i></div>
+                                    <span class="sidebar__menu-label">My Team Target</span>
+                                </a>
+                            </li>
+                            <?php endif; ?>
+                        <?php endif; ?>
 
-                                <!-- Team Targets: For Sales Managers (5), Sales Heads (9), and Team Leaders (NOT general Management) -->
-                                <?php if (!$isManagement && (in_array($_SESSION['user']['role_id'] ?? 0, [5, 9, 15]) || (!empty($_SESSION['user']['is_team_leader']) && $_SESSION['user']['is_team_leader'] == 1))): ?>
-                                    <li class="slide child2">
-                                        <a href="<?= $base_url ?>/sales-executive-teams"
-                                            class="sidebar__menu-item <?= isActive('sales-executive-teams', $current_route) ?>">My Team
-                                            Targets</a>
-                                    </li>
-                                <?php endif; ?>
+                        <!-- Sales Head (Role 9): My Team Target if has team -->
+                        <?php if (($_SESSION['user']['role_id'] ?? 0) == 9): ?>
+                            <li class="slide <?= isActive('my-team-incentives', $current_route) ?>">
+                                <a href="<?= $base_url ?>/my-team-incentives"
+                                    class="sidebar__menu-item <?= isActive('my-team-incentives', $current_route) ?>">
+                                    <div class="side-menu__icon"><i class="fa-solid fa-users text-info"></i></div>
+                                    <span class="sidebar__menu-label">My Team Target</span>
+                                </a>
+                            </li>
+                        <?php endif; ?>
 
-                                <!-- Visible ONLY to Management and Accounts -->
-                                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 30, 32, 33, 35, 36]) || $isManagement): ?>
-                                    <li class="slide child2">
-                                        <a href="<?= $base_url ?>/incentive-management"
-                                            class="sidebar__menu-item <?= isActive('incentive-management', $current_route) ?>">Company
-                                            Incentives & Accounts</a>
-                                    </li>
-                                <?php endif; ?>
+                        <!-- Sales Incentive for Management, Accounts, and Role 20 -->
+                        <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 20, 30, 32, 33, 34, 35, 36]) || $isManagement): ?>
+                            <li class="slide <?= isActive('incentive-management', $current_route) ?>">
+                                <a href="<?= $base_url ?>/incentive-management"
+                                    class="sidebar__menu-item <?= isActive('incentive-management', $current_route) ?>">
+                                    <div class="side-menu__icon"><i class="fa-solid fa-coins text-warning"></i></div>
+                                    <span class="sidebar__menu-label">Sales Incentive</span>
+                                    <?php if ($pendingIncentiveClaimsCount > 0): ?>
+                                        <span class="badge bg-warning text-dark rounded-pill ms-auto me-2"><?= $pendingIncentiveClaimsCount ?></span>
+                                    <?php endif; ?>
+                                </a>
+                            </li>
+                        <?php endif; ?>
 
-                                <!-- Settings for Management, Sales Manager and Sales Head -->
-                                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 6, 9, 33, 34, 35]) || $isManagement): ?>
-                                    <li class="slide child2">
-                                        <a href="<?= $base_url ?>/incentive-config"
-                                            class="sidebar__menu-item <?= isActive('incentive-config', $current_route) ?>">Settings</a>
-                                    </li>
-                                <?php endif; ?>
-                            </ul>
-                        </li>
-
-                        <?php if (!$isManagement): ?>
-                            <!-- Executive Team  -->
-                            <!--target set-sales-target show here for sales executiive team  -->
-                            <li class="slide ">
+                        <!-- Sales Incentive Target: Accessible to Management, Accounts, Role 20 (to set targets) and Sales Head (to view) -->
+                        <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 9, 20, 30, 32, 33, 34, 35, 36]) || $isManagement): ?>
+                            <li class="slide <?= isActive('sales-executive-teams', $current_route) ?>">
                                 <a href="<?= $base_url ?>/sales-executive-teams"
                                     class="sidebar__menu-item <?= isActive('sales-executive-teams', $current_route) ?>">
-                                    <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
+                                    <div class="side-menu__icon"><i class="fa-solid fa-bullseye text-primary"></i></div>
                                     <span class="sidebar__menu-label">Sales Incentive Target</span>
                                 </a>
                             </li>
+                        <?php endif; ?>
+
+                        <?php if (!$isManagement && !in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 9, 20, 30, 32, 33, 34, 35])): ?>
 
                             <li class="slide ">
                                 <a href="<?= $base_url ?>/contact-lists"
@@ -2568,7 +2561,7 @@
                         <a href="<?= $base_url ?>/incentive-management"
                             class="sidebar__menu-item <?= isActive('incentive-management', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-coins text-warning"></i></div>
-                            <span class="sidebar__menu-label">Sales Incentive Accounts</span>
+                            <span class="sidebar__menu-label">Sales Incentive</span>
                             <?php if ($pendingIncentiveClaimsCount > 0): ?>
                                 <span class="badge bg-warning text-dark rounded-pill ms-auto me-2"><?= $pendingIncentiveClaimsCount ?></span>
                             <?php endif; ?>
@@ -3443,12 +3436,12 @@
                     <?php endif; ?>
                     <!-- ====== END Site Operations ====== -->
 
-                    <?php if (hasPermission('Material Manage') || hasPermission('Estimator dashboard') || in_array((int) ($_SESSION['user']['role_id'] ?? 0), [17, 31])): ?>
+                    <?php if (hasPermission('Material Manage') || hasPermission('Project Material Report') || hasPermission('Estimator dashboard') || in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 17, 31])): ?>
                         <!-- Module 3: Materials & Inventory -->
                         <li
-                            class="slide has-sub <?= isActive(['con-materials', 'con-material-create', 'con-warehouses', 'con-warehouse-create', 'con-stocks'], $current_route) ? 'active' : '' ?>">
+                            class="slide has-sub <?= isActive(['con-materials', 'con-material-create', 'con-warehouses', 'con-warehouse-create', 'con-stocks', 'con-project-materials-report'], $current_route) ? 'active' : '' ?>">
                             <a href="javascript:void(0);"
-                                class="sidebar__menu-item <?= isActive(['con-materials', 'con-material-create', 'con-warehouses', 'con-warehouse-create', 'con-stocks'], $current_route) ? 'menu-open active' : '' ?>">
+                                class="sidebar__menu-item <?= isActive(['con-materials', 'con-material-create', 'con-warehouses', 'con-warehouse-create', 'con-stocks', 'con-project-materials-report'], $current_route) ? 'menu-open active' : '' ?>">
                                 <div class="side-menu__icon"><i class="fa-solid fa-boxes-stacked"></i></div>
                                 <span class="sidebar__menu-label">Materials & Inventory</span>
                                 <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -3480,6 +3473,12 @@
                                         class="sidebar__menu-item <?= isActive('con-stocks', $current_route) ?>">Stock
                                         Levels</a>
                                 </li>
+                                <?php if (hasPermission('Project Material Report') || hasPermission('Material Manage') || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3])): ?>
+                                    <li class="slide">
+                                        <a href="<?= $base_url ?>/con-project-materials-report"
+                                            class="sidebar__menu-item <?= isActive('con-project-materials-report', $current_route) ?>">Project Material Report</a>
+                                    </li>
+                                <?php endif; ?>
                             </ul>
                         </li>
                     <?php endif; ?>
@@ -3617,6 +3616,12 @@
                                         class="sidebar__menu-item <?= isActive('con-stocks', $current_route) ?>">Stock
                                         Levels</a>
                                 </li>
+                                <?php if (hasPermission('Project Material Report') || hasPermission('Material Manage') || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3])): ?>
+                                    <li class="slide">
+                                        <a href="<?= $base_url ?>/con-project-materials-report"
+                                            class="sidebar__menu-item <?= isActive('con-project-materials-report', $current_route) ?>">Project Material Report</a>
+                                    </li>
+                                <?php endif; ?>
                             </ul>
                         </li>
 
@@ -4266,4 +4271,4 @@
 
     </div>
 </div>
-<!-- <div class="app__offcanvas-overlay"></div> -->
+<div class="app__offcanvas-overlay"></div>

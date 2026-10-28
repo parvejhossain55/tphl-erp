@@ -18,8 +18,8 @@ class IncentiveModel extends Model
     public function getMySalesBookings($userId, $month = null)
     {
         $dateCondition = "";
-        $params = [$userId, $userId];
-        $types = "ii";
+        $params = [$userId, $userId, $userId];
+        $types = "iii";
 
         if (!empty($month)) {
             list($y, $m) = explode('-', $month);
@@ -86,7 +86,7 @@ class IncentiveModel extends Model
                 LEFT JOIN project_categories pc ON p.category_id = pc.id
                 LEFT JOIN flats f ON lb.flat_id = f.id
                 LEFT JOIN project_incentive_claims c ON (c.booking_id = lb.id AND c.is_external = 0)
-                WHERE (lb.sales_by_id = ? OR l.assigned_id = ?)
+                WHERE (lb.sales_by_id = ? OR lb.created_by = ? OR l.assigned_id = ?)
                   AND lb.deleted_at IS NULL
                   AND lb.booking_status NOT IN ('cancelled', 'refunded')
                   {$dateCondition}
@@ -154,9 +154,6 @@ class IncentiveModel extends Model
                     $statusRemarks = 'Duplicate flat: Incentive already claimed for this flat unit.';
                     $calculatedIncentive = 0.00;
                     $applicablePct = 0.00;
-                } elseif (!$bookingMoneyVerified) {
-                    $claimStatus = 'ineligible';
-                    $statusRemarks = 'Requires verified booking money.';
                 } elseif (!$stats['is_eligible']) {
                     $claimStatus = 'ineligible';
                     $statusRemarks = 'Target or minimum 25 Lakh sales not achieved.';
@@ -270,7 +267,7 @@ class IncentiveModel extends Model
                     FROM lead_payments lp
                     JOIN lead_bookings lb ON lp.booking_id = lb.id
                     LEFT JOIN leads l ON lb.lead_id = l.id
-                    WHERE (lb.sales_by_id = ? OR l.assigned_id = ?)
+                    WHERE (lb.sales_by_id = ? OR lb.created_by = ? OR l.assigned_id = ?)
                       AND lp.verification_status = 'verified'
                       AND lp.payment_status IN ('paid', 'partially_paid')
                       AND lb.deleted_at IS NULL";
@@ -278,7 +275,7 @@ class IncentiveModel extends Model
         $stmtColl = $this->db->prepare($sqlColl);
         $totalSalesCollected = 0.00;
         if ($stmtColl) {
-            $stmtColl->bind_param("ii", $userId, $userId);
+            $stmtColl->bind_param("iii", $userId, $userId, $userId);
             $stmtColl->execute();
             $rowColl = $stmtColl->get_result()->fetch_assoc();
             $totalSalesCollected = (float)($rowColl['total_sales_collected'] ?? 0.00);
@@ -376,12 +373,15 @@ class IncentiveModel extends Model
             ];
         }
 
-        // 3. Verify payment conditions
+                // 3. Payment conditions: Allow claim if booking money is submitted or verified
         $bMoney = $this->isPaymentVerified($bookingId, 'booking_money');
         $reg = $this->isPaymentVerified($bookingId, 'registration');
 
-        if (!$bMoney) {
-            return ['success' => false, 'message' => 'Claim ineligible: Verified Booking Money is required to submit an incentive claim.'];
+        $pCheck = $this->db->query("SELECT COUNT(*) AS total FROM lead_payments WHERE booking_id = {$bookingId} AND COALESCE(is_trashed, 0) = 0");
+        $hasPaymentSubmitted = ($pCheck && ($pCheck->fetch_assoc()['total'] ?? 0) > 0);
+
+        if (!$bMoney && !$hasPaymentSubmitted && (float)$booking['land_share_value'] < 2500000) {
+            return ['success' => false, 'message' => 'Claim ineligible: Booking payment must be submitted to submit an incentive claim.'];
         }
 
         // 4. Calculate incentive from Engine using Month Cycle
@@ -517,7 +517,9 @@ class IncentiveModel extends Model
                 FROM project_incentive_claims";
         
         if ($month) {
-            $sql .= " WHERE DATE_FORMAT(created_at, '%Y-%m') = '" . $this->db->real_escape_string($month) . "'";
+            list($cy, $cm) = explode('-', $month);
+            $cycle = $this->getCycleDateRange((int)$cy, (int)$cm);
+            $sql .= " WHERE created_at BETWEEN '{$cycle['start']}' AND '{$cycle['end']}'";
         }
 
         $res = $this->db->query($sql);
@@ -620,7 +622,7 @@ class IncentiveModel extends Model
     {
         $stats = [];
         
-        // Find ONLY users who have a target this month
+        // Find all users who have an active or inherited target on record
         $sql = "SELECT DISTINCT u.id, u.full_name, e.employee_id, d.name AS department, des.name AS designation, 
                         e.team_id, t.name as team_name, e.is_team_leader 
                 FROM users u
@@ -629,7 +631,7 @@ class IncentiveModel extends Model
                 LEFT JOIN departments d ON e.department_id = d.id
                 LEFT JOIN designations des ON e.designation_id = des.id
                 WHERE u.id IN (
-                    SELECT sales_user_id FROM sales_targets WHERE DATE_FORMAT(month, '%Y-%m') = ?
+                    SELECT sales_user_id FROM sales_targets WHERE DATE_FORMAT(month, '%Y-%m') <= ? AND booking_value_target > 0
                 )
                 ORDER BY e.team_id ASC, u.full_name ASC";
                 
@@ -638,6 +640,11 @@ class IncentiveModel extends Model
         $stmt->execute();
         $users = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
+
+        list($cy, $cm) = explode('-', $month);
+        $cycleRange = $this->getCycleDateRange($cy, $cm);
+        $cStart = substr($cycleRange['start'], 0, 10);
+        $cEnd   = substr($cycleRange['end'], 0, 10);
         
         foreach ($users as $u) {
             $userId = (int)$u['id'];
@@ -648,11 +655,55 @@ class IncentiveModel extends Model
             if (!empty($u['is_team_leader']) && !empty($u['team_id'])) {
                 $team = $this->engine->getTeamMonthlyStats($userId, $month, $u['team_id'], $fromDate, $toDate);
             }
+
+            // Cumulative all-time and cycle claims breakdown
+            $claimsQ = $this->db->query("
+                SELECT 
+                    COUNT(*) AS total_claims_count,
+                    IFNULL(SUM(incentive_amount), 0.00) AS total_claimed_amount,
+                    IFNULL(SUM(CASE WHEN claim_status IN ('approved', 'partially_paid', 'paid') THEN incentive_amount ELSE 0 END), 0.00) AS total_approved_amount,
+                    IFNULL(SUM(CASE WHEN claim_status = 'claimed' THEN incentive_amount ELSE 0 END), 0.00) AS pending_claim_amount,
+                    IFNULL(SUM(CASE WHEN claim_status = 'claimed' THEN 1 ELSE 0 END), 0) AS pending_claims_count
+                FROM project_incentive_claims
+                WHERE user_id = {$userId}
+            ");
+            $claimsSum = $claimsQ ? $claimsQ->fetch_assoc() : [];
+
+            $paidQ = $this->db->query("
+                SELECT IFNULL(SUM(payment_amount), 0.00) AS total_paid_amount
+                FROM project_incentive_payments
+                WHERE user_id = {$userId}
+            ");
+            $paidSum = $paidQ ? $paidQ->fetch_assoc() : [];
+            $totalPaid = (float)($paidSum['total_paid_amount'] ?? 0.00);
+            $totalApproved = (float)($claimsSum['total_approved_amount'] ?? 0.00);
+            $walletBalance = max(0.00, $totalApproved - $totalPaid);
+
+            // Cycle-specific claims
+            $cycleClaimsQ = $this->db->query("
+                SELECT 
+                    COUNT(*) AS cycle_claims_count,
+                    IFNULL(SUM(incentive_amount), 0.00) AS cycle_claimed_amount
+                FROM project_incentive_claims
+                WHERE user_id = {$userId}
+                  AND claimed_at BETWEEN '{$cStart} 00:00:00' AND '{$cEnd} 23:59:59'
+            ");
+            $cycleClaims = $cycleClaimsQ ? $cycleClaimsQ->fetch_assoc() : [];
             
             $stats[] = [
-                'user'       => $u,
-                'individual' => $ind,
-                'team'       => $team
+                'user'          => $u,
+                'individual'    => $ind,
+                'team'          => $team,
+                'claims_summary' => [
+                    'cycle_claims_count'    => (int)($cycleClaims['cycle_claims_count'] ?? 0),
+                    'cycle_claimed_amount'   => (float)($cycleClaims['cycle_claimed_amount'] ?? 0.00),
+                    'total_claims_count'    => (int)($claimsSum['total_claims_count'] ?? 0),
+                    'total_claimed_amount'  => (float)($claimsSum['total_claimed_amount'] ?? 0.00),
+                    'total_approved_amount' => $totalApproved,
+                    'total_paid_amount'     => $totalPaid,
+                    'pending_claim_amount'  => (float)($claimsSum['pending_claim_amount'] ?? 0.00),
+                    'wallet_balance'        => $walletBalance,
+                ]
             ];
         }
         

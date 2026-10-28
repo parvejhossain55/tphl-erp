@@ -1461,13 +1461,25 @@ $show_breadcrumb = true;
             <div class="card-footer bg-white py-3 border-top d-flex flex-wrap align-items-center justify-content-between gap-2">
                 <div class="text-muted fs-13" id="dueInfoText">
                     <?php 
-                        $startEntry = ($totalClients ?? 0) > 0 ? ((($currentPage ?? 1) - 1) * ($limit ?? 20)) + 1 : 0;
-                        $endEntry = min($totalClients ?? 0, ($currentPage ?? 1) * ($limit ?? 20));
+                        $isAllLimit = (($limit ?? '') === 'all' || (int)($limit ?? 20) >= 5000);
+                        if ($isAllLimit) {
+                            $startEntry = ($totalClients ?? 0) > 0 ? 1 : 0;
+                            $endEntry = $totalClients ?? 0;
+                            $infoText = "Showing all " . number_format($totalClients ?? 0) . " client bookings";
+                        } else {
+                            $numericLimit = (int)($limit ?? 20);
+                            if ($numericLimit <= 0) $numericLimit = 20;
+                            $startEntry = ($totalClients ?? 0) > 0 ? ((($currentPage ?? 1) - 1) * $numericLimit) + 1 : 0;
+                            $endEntry = min($totalClients ?? 0, ($currentPage ?? 1) * $numericLimit);
+                            $infoText = "Showing {$startEntry} to {$endEntry} of " . number_format($totalClients ?? 0) . " client bookings";
+                        }
                     ?>
-                    Showing <?= $startEntry ?> to <?= $endEntry ?> of <?= number_format($totalClients ?? 0) ?> client bookings
+                    <?= $infoText ?>
                 </div>
                 <div id="duePaginationContainer" class="no-print">
-                    <?= (new AccountClientController($GLOBALS['db'] ?? null))->generateAjaxPagination($currentPage ?? 1, $totalPages ?? 1, $totalClients ?? 0, $limit ?? 20, 'loadDueTrackingPage') ?>
+                    <?php if (!$isAllLimit): ?>
+                        <?= (new AccountClientController($GLOBALS['db'] ?? null))->generateAjaxPagination($currentPage ?? 1, $totalPages ?? 1, $totalClients ?? 0, (int)($limit ?? 20), 'loadDueTrackingPage') ?>
+                    <?php endif; ?>
                 </div>
             </div>
 

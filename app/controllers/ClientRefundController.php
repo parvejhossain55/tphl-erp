@@ -36,7 +36,19 @@ class ClientRefundController extends Controller
     /** Roles 1 (Admin), 3 (Super Admin), 9 (Sales Team Head), 20 (Admin & Operation head), 33 (Chief Officer) can approve */
     private function canApprove()
     {
-        return in_array($this->userRole, [1, 3, 9, 20, 33]);
+        $userRoleId = (int)($this->userRole ?? 0);
+        $userSecRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $userPriRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
+        $allUserRoles = array_filter([$userRoleId, $userSecRoleId, $userPriRoleId]);
+        $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+
+        if (count(array_intersect($allUserRoles, [1, 3, 9, 20, 32, 33])) > 0) {
+            return true;
+        }
+        if (strpos($sessionRoleName, 'admin') !== false || strpos($sessionRoleName, 'management') !== false || strpos($sessionRoleName, 'operation head') !== false) {
+            return true;
+        }
+        return false;
     }
 
     /** Roles 1 (Admin), 3 (Super Admin), 4 (Sales Exec), 5 (Sales Mgr), 6, 7 (Clients Experiment), 10, 30 (Accounts), 37 (Credit Recovery) can create refund requests */
@@ -56,14 +68,67 @@ class ClientRefundController extends Controller
             $filterUserId = $this->userId;
         }
 
-        $refunds = $this->model->getAll($filterUserId);
+        $filters = [
+            'search'     => trim($_GET['search'] ?? ''),
+            'project_id' => trim($_GET['project_id'] ?? 'all'),
+            'status'     => trim($_GET['status'] ?? 'all'),
+            'date_from'  => trim($_GET['date_from'] ?? ''),
+            'date_to'    => trim($_GET['date_to'] ?? ''),
+        ];
+
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $perPage = max(5, min(100, (int)($_GET['per_page'] ?? 15)));
+        $offset = ($page - 1) * $perPage;
+
+        // Check if AJAX request
+        $isAjax = isset($_GET['ajax']) || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
+
+        $paginated = $this->model->getFilteredRefunds($filterUserId, $filters, $perPage, $offset);
+        $refunds = $paginated['data'];
+        $totalRecords = $paginated['total'];
+        $totalPages = (int)ceil($totalRecords / $perPage);
+
+        $summaryStats = $this->model->getSummaryStats($filterUserId);
+
+        // Fetch active projects for filter dropdown
+        $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+
+        // Fetch company bank accounts for quick payouts
+        $companyBanks = $this->db->query("SELECT id, bank_name, account_name, account_number FROM company_bank_accounts WHERE status = 'active' ORDER BY is_default DESC, bank_name ASC")->fetch_all(MYSQLI_ASSOC);
+        $allBangladeshBanks = function_exists('getBangladeshBanks') ? getBangladeshBanks() : [];
+
+        if ($isAjax) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'success'       => true,
+                'data'          => $refunds,
+                'total'         => $totalRecords,
+                'page'          => $page,
+                'per_page'      => $perPage,
+                'total_pages'   => $totalPages,
+                'summary_stats' => $summaryStats,
+                'user_role'     => $this->userRole,
+                'user_id'       => $this->userId,
+                'base_url'      => $GLOBALS['base_url'],
+            ]);
+            exit;
+        }
 
         $this->view('accounts/refunds/refund-list', [
-            'current_route' => 'client-refunds',
-            'page_title'    => 'Client Refund Requests',
-            'refunds'       => $refunds,
-            'userRole'      => $this->userRole,
-            'canCreate'     => $this->canCreateRefund(),
+            'current_route'       => 'client-refunds',
+            'page_title'          => 'Client Refund Requests & Statement Report',
+            'refunds'             => $refunds,
+            'totalRecords'        => $totalRecords,
+            'page'                => $page,
+            'perPage'             => $perPage,
+            'totalPages'          => $totalPages,
+            'filters'             => $filters,
+            'summaryStats'        => $summaryStats,
+            'projects'            => $projects,
+            'companyBanks'        => $companyBanks,
+            'allBangladeshBanks'  => $allBangladeshBanks,
+            'userRole'            => $this->userRole,
+            'canCreate'           => $this->canCreateRefund(),
         ]);
     }
 
@@ -277,7 +342,7 @@ class ClientRefundController extends Controller
                     'source_id'      => $refundId,
                     'requested_days' => 0,
                     'requested_by'   => $this->userId,
-                    'approve_role'   => 'management',
+                    'approve_role'   => ($retentionAmount > 0) ? 'management' : 'accounts_retention',
                     'meta_data'      => null,
                     'request_amount' => $refundAmount,
                 ]);
@@ -355,16 +420,22 @@ class ClientRefundController extends Controller
         $arStmt->execute();
         $approvalReq = $arStmt->get_result()->fetch_assoc();
 
+        // Get company banks and Bangladesh banks for disbursement
+        $companyBanks = $this->db->query("SELECT id, bank_name, account_name, account_number FROM company_bank_accounts WHERE status = 'active' ORDER BY is_default DESC, bank_name ASC")->fetch_all(MYSQLI_ASSOC);
+        $allBangladeshBanks = function_exists('getBangladeshBanks') ? getBangladeshBanks() : [];
+
         $this->view('accounts/refunds/show-refund', [
-            'current_route'    => 'client-refunds',
-            'page_title'       => 'Refund Request Details',
-            'refund'           => $refund,
-            'payments'         => $payments,
-            'cashout_request'  => $cashoutRequest,
-            'cashout_payments' => $cashoutPayments ?? [],
-            'approval_request' => $approvalReq,
-            'canApprove'       => $this->canApprove(),
-            'userRole'         => $this->userRole,
+            'current_route'       => 'client-refunds',
+            'page_title'          => 'Refund Request Details',
+            'refund'              => $refund,
+            'payments'            => $payments,
+            'cashout_request'     => $cashoutRequest,
+            'cashout_payments'    => $cashoutPayments ?? [],
+            'approval_request'    => $approvalReq,
+            'companyBanks'        => $companyBanks,
+            'allBangladeshBanks'  => $allBangladeshBanks,
+            'canApprove'          => $this->canApprove(),
+            'userRole'            => $this->userRole,
         ]);
     }
 
@@ -376,24 +447,31 @@ class ClientRefundController extends Controller
     {
         if (!$this->canApprove()) {
             setError('You are not authorized to approve refund requests.');
-            header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+            $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
+        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
             exit;
         }
 
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+            $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
+        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
             exit;
         }
 
         $refund = $this->model->find($id);
         if (!$refund || $refund['status'] !== 'pending') {
             setError('Refund request is not in pending status.');
-            header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+            $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
+        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
             exit;
         }
 
         $totalPaid = (float)($refund['total_paid'] ?? 0);
-        if (isset($_POST['retention_amount']) && $_POST['retention_amount'] !== '') {
+        if (isset($_POST['retention_percent']) && $_POST['retention_percent'] !== '' && (!isset($_POST['retention_amount']) || $_POST['retention_amount'] === '')) {
+            $retPercent = max(0, min(100, (float)$_POST['retention_percent']));
+            $retentionAmount = round(($totalPaid * $retPercent) / 100, 2);
+            $approvedAmount  = max(0, $totalPaid - $retentionAmount);
+        } elseif (isset($_POST['retention_amount']) && $_POST['retention_amount'] !== '') {
             $retentionAmount = max(0, min($totalPaid, (float)$_POST['retention_amount']));
             $approvedAmount  = max(0, $totalPaid - $retentionAmount);
         } else {
@@ -426,14 +504,16 @@ class ClientRefundController extends Controller
                     $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'management' WHERE source_table = 'client_refund_requests' AND source_id = " . (int)$id);
                 }
                 setSuccess("Refund request verified & approved by Admin & Operation Head (Role 20). Forwarded to Management for sign-off.");
-                header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+                $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
+        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
                 exit;
             }
 
             if ($isMgmtUser) {
                 if ($opHeadStatus !== 'approved') {
                     setError("Access Denied: Refund requests exceeding ৳1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.");
-                    header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+                    $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
+        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
                     exit;
                 }
             }
@@ -442,7 +522,8 @@ class ClientRefundController extends Controller
         // Step 1: Approve refund (cancels booking, releases flat, cancels EMIs)
         if (!$this->model->approve($id, $this->userId, $approvedAmount)) {
             setError('Failed to approve refund request.');
-            header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+            $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
+        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
             exit;
         }
 
@@ -508,60 +589,100 @@ class ClientRefundController extends Controller
         }
 
         setSuccess('Refund approved! Cashout request created for ৳' . number_format($approvedAmount, 2) . ' (Retention: ৳' . number_format($retentionAmount, 2) . '). Booking cancelled, flat released.');
-        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+        $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
+        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
         exit;
     }
 
     // =========================================================================
-    // ADJUST RETENTION / REFUND AMOUNT (Management & Role 20 only)
+    // ADJUST / CUT-OFF RETENTION & REFUND AMOUNT (Accounts & Management)
     // Synchronously updates:
     // 1. client_refund_requests (retention_amount, refund_amount)
     // 2. cashout_requests (amount, approved_amount, due_amount)
     // 3. approval_requests (both cashout and client_refund requests)
+    // Supports both fixed amount (৳) and percentage (%) of Total Paid!
     // =========================================================================
     public function adjustRetention($id)
     {
-        if (!$this->canApprove()) {
-            setError('You are not authorized to adjust refund retention.');
-            header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+        // Allow Accounts (6, 7, 10, 30, 37) and Management (1, 3, 9, 20, 33)
+        if (!in_array($this->userRole, [1, 3, 6, 7, 9, 10, 20, 30, 33, 37])) {
+            setError('You are not authorized to set or adjust refund retention.');
+            $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
+        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
             exit;
         }
 
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+            $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
+        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
             exit;
         }
 
+        $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || isset($_POST['ajax']);
+
         $refund = $this->model->find($id);
         if (!$refund) {
+            if ($isAjax) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['success' => false, 'message' => 'Refund request not found.']);
+                exit;
+            }
             setError('Refund request not found.');
             header("Location: {$GLOBALS['base_url']}/client-refunds");
             exit;
         }
 
         if ($refund['status'] === 'refunded') {
+            if ($isAjax) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['success' => false, 'message' => 'This refund payment has already been disbursed and completed. Retention cannot be adjusted now.']);
+                exit;
+            }
             setError('This refund payment has already been disbursed and completed. Retention cannot be adjusted now.');
-            header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+            $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
+        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
             exit;
         }
 
         if ($refund['status'] === 'rejected') {
+            if ($isAjax) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['success' => false, 'message' => 'Cannot adjust a rejected refund request.']);
+                exit;
+            }
             setError('Cannot adjust a rejected refund request.');
-            header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+            $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
+        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
             exit;
         }
 
         $totalPaid = (float)$refund['total_paid'];
-        $retentionAmount = isset($_POST['retention_amount']) ? (float)$_POST['retention_amount'] : 0.0;
         
+        // Calculate retention amount from % or fixed amount
+        $retentionPercent = (isset($_POST['retention_percent']) && $_POST['retention_percent'] !== '') ? (float)$_POST['retention_percent'] : null;
+
+        if ($retentionPercent !== null && (!isset($_POST['retention_amount']) || $_POST['retention_amount'] === '')) {
+            $retentionPercent = max(0, min(100, $retentionPercent));
+            $retentionAmount  = round(($totalPaid * $retentionPercent) / 100, 2);
+        } else {
+            $retentionAmount = isset($_POST['retention_amount']) ? (float)$_POST['retention_amount'] : 0.0;
+        }
+
         // Validation
         if ($retentionAmount < 0 || $retentionAmount > $totalPaid) {
+            if ($isAjax) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['success' => false, 'message' => 'Retention amount must be between 0 and total paid (৳' . number_format($totalPaid, 2) . ').']);
+                exit;
+            }
             setError('Retention amount must be between 0 and total paid (৳' . number_format($totalPaid, 2) . ').');
-            header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+            $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
+        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
             exit;
         }
 
         $netRefundAmount = max(0, $totalPaid - $retentionAmount);
+        $retPercentCalc  = ($totalPaid > 0) ? round(($retentionAmount / $totalPaid) * 100, 2) : 0;
 
         // Check if cashout exists and has existing payments
         $totalPaidOut = 0.0;
@@ -576,8 +697,14 @@ class ClientRefundController extends Controller
             }
 
             if ($netRefundAmount < $totalPaidOut) {
+                if ($isAjax) {
+                    header('Content-Type: application/json; charset=utf-8');
+                    echo json_encode(['success' => false, 'message' => 'Cannot reduce refund amount below already disbursed amount (৳' . number_format($totalPaidOut, 2) . ').']);
+                    exit;
+                }
                 setError('Cannot reduce refund amount below already disbursed amount (৳' . number_format($totalPaidOut, 2) . ').');
-                header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+                $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
+        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
                 exit;
             }
         }
@@ -587,36 +714,98 @@ class ClientRefundController extends Controller
         $this->db->begin_transaction();
         try {
             // 1. Update client_refund_requests
-            $upRf = $this->db->prepare("UPDATE client_refund_requests SET retention_amount = ?, refund_amount = ? WHERE id = ?");
+            $upRf = $this->db->prepare("UPDATE client_refund_requests SET retention_amount = ?, refund_amount = ?, updated_at = NOW() WHERE id = ?");
             $upRf->bind_param("ddi", $retentionAmount, $netRefundAmount, $id);
             $upRf->execute();
 
             // 2. Update cashout_requests (if exists)
             if ($cashoutId) {
-                $upCashout = $this->db->prepare("UPDATE cashout_requests SET amount = ?, approved_amount = ?, due_amount = ? WHERE id = ?");
+                $upCashout = $this->db->prepare("UPDATE cashout_requests SET amount = ?, approved_amount = ?, due_amount = ?, updated_at = NOW() WHERE id = ?");
                 $upCashout->bind_param("dddi", $netRefundAmount, $netRefundAmount, $dueAmount, $cashoutId);
                 $upCashout->execute();
 
                 // 3. Update approval_requests for cashout
-                $upArCashout = $this->db->prepare("UPDATE approval_requests SET request_amount = ?, approved_amount = ? WHERE source_table = 'cashout_requests' AND source_id = ?");
+                $upArCashout = $this->db->prepare("UPDATE approval_requests SET request_amount = ?, approved_amount = ?, updated_at = NOW() WHERE source_table = 'cashout_requests' AND source_id = ?");
                 $upArCashout->bind_param("ddi", $netRefundAmount, $netRefundAmount, $cashoutId);
                 $upArCashout->execute();
             }
 
-            // 4. Update approval_requests for client_refund_requests
-            $upArRf = $this->db->prepare("UPDATE approval_requests SET request_amount = ?, approved_amount = ? WHERE source_table = 'client_refund_requests' AND source_id = ?");
-            $upArRf->bind_param("ddi", $netRefundAmount, $netRefundAmount, $id);
-            $upArRf->execute();
+            // 4. Update or create approval_requests for client_refund_requests
+            $chkAr = $this->db->query("SELECT id FROM approval_requests WHERE source_table = 'client_refund_requests' AND source_id = {$id} LIMIT 1");
+            if ($chkAr && $chkAr->num_rows > 0) {
+                $arId = (int)$chkAr->fetch_assoc()['id'];
+                $upArRf = $this->db->prepare("UPDATE approval_requests SET request_amount = ?, approved_amount = ?, approve_role = 'management', status = 'pending', op_head_status = 'pending', updated_at = NOW() WHERE id = ?");
+                $upArRf->bind_param("ddi", $netRefundAmount, $netRefundAmount, $arId);
+                $upArRf->execute();
+            } else {
+                $bData = $this->model->getBookingDetails((int)$refund['booking_id']);
+                $rfTitle = 'Client Refund — ' . ($bData['client_name'] ?? 'Client') . ' | ' . ($bData['flat_name'] ?? '') . ' | ' . ($bData['project_name'] ?? '');
+                $stmtAr = $this->db->prepare("
+                    INSERT INTO approval_requests (department, request_type, title, source_table, source_id, requested_days, requested_by, approve_role, request_amount, approved_amount, status, op_head_status, accounts_head_status, created_at, updated_at)
+                    VALUES ('accounts', 'client_refund', ?, 'client_refund_requests', ?, 0, ?, 'management', ?, ?, 'pending', 'pending', 'pending', NOW(), NOW())
+                ");
+                if ($stmtAr) {
+                    $reqBy = (int)($refund['requested_by'] ?: $this->userId);
+                    $stmtAr->bind_param('siidd', $rfTitle, $id, $reqBy, $netRefundAmount, $netRefundAmount);
+                    $stmtAr->execute();
+                    $stmtAr->close();
+                }
+            }
+
+            // If refund is already approved but cashout request was missing (e.g. legacy/direct approval), auto-create and link it now
+            if ($refund['status'] === 'approved' && !$cashoutId) {
+                $bData = $this->model->getBookingDetails((int)$refund['booking_id']);
+                $coTitle = 'Client Refund — ' . ($bData['client_name'] ?? 'Client') . ' | ' . ($bData['flat_name'] ?? '') . ' | ' . ($bData['project_name'] ?? '');
+                $cashoutData = [
+                    'requested_by'    => $refund['requested_by'] ?: $this->userId,
+                    'purpose_paid_to' => $coTitle,
+                    'amount'          => $netRefundAmount,
+                    'description'     => 'Auto-generated from Client Refund #' . $id . '. Reason: ' . ($refund['reason'] ?? 'N/A'),
+                    'payment_method'  => 'cash',
+                    'project_id'      => $refund['project_id'],
+                ];
+                $cashoutResult = $this->cashoutModel->createRequest($cashoutData);
+                if ($cashoutResult['success'] && !empty($cashoutResult['id'])) {
+                    $newCashoutId = (int)$cashoutResult['id'];
+                    $this->db->query("UPDATE client_refund_requests SET cashout_request_id = {$newCashoutId} WHERE id = {$id}");
+                    $this->db->query("UPDATE cashout_requests SET status = 'approved', approved_amount = {$netRefundAmount}, due_amount = {$netRefundAmount} WHERE id = {$newCashoutId}");
+                }
+            }
 
             $this->db->commit();
-            setSuccess("Retention amount successfully updated to ৳" . number_format($retentionAmount, 2) . " (Net Refund: ৳" . number_format($netRefundAmount, 2) . "). Synchronized across Refund, Cashout, and Approvals!");
+
+            // If AJAX request, return JSON
+            $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || isset($_POST['ajax']);
+            if ($isAjax) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode([
+                    'success'           => true,
+                    'message'           => "Retention cut-off set to ৳" . number_format($retentionAmount, 2) . " ({$retPercentCalc}%). Net Refund: ৳" . number_format($netRefundAmount, 2),
+                    'retention_amount'  => $retentionAmount,
+                    'refund_amount'     => $netRefundAmount,
+                    'retention_percent' => $retPercentCalc,
+                ]);
+                exit;
+            }
+
+            setSuccess("Retention cut-off successfully set to ৳" . number_format($retentionAmount, 2) . " ({$retPercentCalc}%). Net Refund to Client: ৳" . number_format($netRefundAmount, 2) . "!");
         } catch (\Exception $e) {
             $this->db->rollback();
             error_log("Refund retention adjustment failed: " . $e->getMessage());
+
+            if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['success' => false, 'message' => "Failed to adjust retention: " . $e->getMessage()]);
+                exit;
+            }
+
             setError("Failed to adjust retention: " . $e->getMessage());
         }
 
-        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+        $redirectTo = !empty($_GET['redirect']) && $_GET['redirect'] === 'client-refunds'
+            ? "{$GLOBALS['base_url']}/client-refunds"
+            : "{$GLOBALS['base_url']}/client-refund/{$id}";
+        header("Location: {$redirectTo}");
         exit;
     }
 
@@ -628,12 +817,14 @@ class ClientRefundController extends Controller
     {
         if (!$this->canApprove()) {
             setError('You are not authorized to reject refund requests.');
-            header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+            $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
+        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
             exit;
         }
 
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+            $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
+        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
             exit;
         }
 
@@ -652,7 +843,8 @@ class ClientRefundController extends Controller
             setError('Failed to reject refund request.');
         }
 
-        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+        $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
+        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
         exit;
     }
 
@@ -665,12 +857,14 @@ class ClientRefundController extends Controller
         // Authorized: Accounts (6, 10, 30) or Admin (1, 3)
         if (!in_array($this->userRole, [1, 3, 6, 10, 30])) {
             setError('You are not authorized to disburse refund payments.');
-            header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+            $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
+        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
             exit;
         }
 
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+            $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
+        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
             exit;
         }
 
@@ -683,7 +877,8 @@ class ClientRefundController extends Controller
 
         if ($refund['status'] !== 'approved') {
             setError('Refund request is not approved yet.');
-            header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+            $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
+        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
             exit;
         }
 
@@ -694,19 +889,30 @@ class ClientRefundController extends Controller
         $ahCheck = ApprovalRequest::getAccountsHeadApprovalInfo($this->db, 'client_refund_requests', (int)$id);
         if ($ahCheck && !empty($ahCheck['has_request']) && empty($ahCheck['is_accounts_head_approved'])) {
             setError("Payment cannot be disbursed. Approval from Accounts Head (Md. Mamunoor Rashid [1309]) is pending.");
-            header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+            $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
+        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
             exit;
         }
 
         $paymentMethod  = trim($_POST['payment_method'] ?? 'cash');
+        $companyBankId  = !empty($_POST['company_bank_id']) ? (int)$_POST['company_bank_id'] : (!empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null);
         $chequeNo       = trim($_POST['cheque_no'] ?? '');
         $paymentDate    = !empty($_POST['payment_date']) ? $_POST['payment_date'] : date('Y-m-d');
         $transactionRef = trim($_POST['transaction_ref'] ?? '');
-        $bankName       = trim($_POST['bank_name'] ?? '');
+        $clientBankName = trim($_POST['bank_name'] ?? '');
         $bankAccountNo  = trim($_POST['bank_account_no'] ?? '');
         $remarks        = trim($_POST['remarks'] ?? '');
         $refundAmount   = (float)$refund['refund_amount'];
         $bookingId      = (int)$refund['booking_id'];
+
+        // Get company bank name if provided
+        $companyBankName = '';
+        if ($companyBankId) {
+            $bRes = $this->db->query("SELECT CONCAT(bank_name, IF(account_name != '', CONCAT(' - ', account_name), ''), IF(account_number != '', CONCAT(' (', account_number, ')'), '')) AS label FROM company_bank_accounts WHERE id = {$companyBankId} LIMIT 1");
+            if ($bRes && ($bRow = $bRes->fetch_assoc())) {
+                $companyBankName = $bRow['label'];
+            }
+        }
 
         // Mandatory attachment / payment proof
         if (empty($_FILES['disbursement_proof']['name'])) {
@@ -754,25 +960,34 @@ class ClientRefundController extends Controller
 
             // 2. Insert negative payment entry in lead_payments to reduce cash-in balance
             $negAmount = -abs($refundAmount);
-            $fullRef = 'Refund Payout #' . $id . ($chequeNo !== '' ? ' (Cheque: ' . $chequeNo . ')' : ($transactionRef !== '' ? ' (Ref: ' . $transactionRef . ')' : ''));
+            $fullRef = 'Refund Payout #' . $id;
+            if ($companyBankName !== '') {
+                $fullRef .= ' [Co. Bank: ' . $companyBankName . ']';
+            }
+            if ($chequeNo !== '') {
+                $fullRef .= ' (Cheque: ' . $chequeNo . ')';
+            }
+            if ($transactionRef !== '') {
+                $fullRef .= ' (Ref: ' . $transactionRef . ')';
+            }
             if ($remarks !== '') {
                 $fullRef .= ' | ' . $remarks;
             }
 
             $payStmt = $this->db->prepare("INSERT INTO lead_payments 
-                (booking_id, amount, payment_method, cheque_no, payment_status, verification_status, verified_by, verified_at, payment_date, transaction_ref, attachment_image, created_by) 
-                VALUES (?, ?, ?, ?, 'paid', 'verified', ?, NOW(), ?, ?, ?, ?)");
-            $payStmt->bind_param("idssissis", $bookingId, $negAmount, $paymentMethod, $chequeNo, $this->userId, $paymentDate, $fullRef, $proofPath, $this->userId);
+                (booking_id, amount, payment_method, bank_id, bank_name, bank_account_no, cheque_no, payment_status, verification_status, verified_by, verified_at, payment_date, transaction_ref, attachment_image, created_by) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'paid', 'verified', ?, NOW(), ?, ?, ?, ?)");
+            $payStmt->bind_param("idsisssissssi", $bookingId, $negAmount, $paymentMethod, $companyBankId, $clientBankName, $bankAccountNo, $chequeNo, $this->userId, $paymentDate, $fullRef, $proofPath, $this->userId);
             $payStmt->execute();
 
             // 3. If linked cashout request exists, record in cashout_payments and set fully_paid
             if (!empty($refund['cashout_request_id'])) {
                 $cId = (int)$refund['cashout_request_id'];
                 $cpStmt = $this->db->prepare("INSERT INTO cashout_payments 
-                    (cashout_request_id, amount, payment_method, cheque_no, payment_date, transaction_ref, bank_name, bank_account_no, disbursement_proof, created_by, created_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+                    (cashout_request_id, amount, payment_method, bank_id, bank_name, bank_account_no, cheque_no, payment_date, transaction_ref, disbursement_proof, created_by, created_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
                 $proofJson = json_encode([$proofPath]);
-                $cpStmt->bind_param("idsssssssi", $cId, $refundAmount, $paymentMethod, $chequeNo, $paymentDate, $transactionRef, $bankName, $bankAccountNo, $proofJson, $this->userId);
+                $cpStmt->bind_param("idsissssssi", $cId, $refundAmount, $paymentMethod, $companyBankId, $clientBankName, $bankAccountNo, $chequeNo, $paymentDate, $transactionRef, $proofJson, $this->userId);
                 $cpStmt->execute();
 
                 $this->db->query("UPDATE cashout_requests SET status = 'fully_paid', due_amount = 0 WHERE id = {$cId}");
@@ -786,7 +1001,10 @@ class ClientRefundController extends Controller
             setError('Failed to disburse refund payment: ' . $e->getMessage());
         }
 
-        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+        $redirectTo = !empty($_GET['redirect']) && $_GET['redirect'] === 'client-refunds' 
+            ? "{$GLOBALS['base_url']}/client-refunds" 
+            : "{$GLOBALS['base_url']}/client-refund/{$id}";
+        header("Location: {$redirectTo}");
         exit;
     }
 

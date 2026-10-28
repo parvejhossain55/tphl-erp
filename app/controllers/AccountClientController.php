@@ -1603,7 +1603,8 @@ public function indexTwo($bookingId = null)
      */
     public function generateAjaxPagination($currentPage, $totalPages, $totalRecords, $perPage, $callbackFn = 'loadCashInPage')
     {
-        if ($totalPages <= 1 && $totalRecords <= $perPage) {
+        $perPage = (int)$perPage;
+        if ($perPage <= 0 || ($totalPages <= 1 && $totalRecords <= $perPage)) {
             return '';
         }
 
@@ -5268,7 +5269,7 @@ public function discountStatement($bookingId = null)
     }
 
     /**
-     * Update payment date strictly for booking_money and registration payments
+     * Update payment date strictly for booking_money, registration, emi, emi_due_settlement, dev charges, etc.
      */
     public function updatePaymentDate()
     {
@@ -5309,19 +5310,6 @@ public function discountStatement($bookingId = null)
             exit;
         }
 
-        // Strict restriction: Only allow editing date for booking_money and registration
-        if (!in_array($paymentType, ['booking_money', 'registration'])) {
-            $msg = "Permission denied: Only Booking Money and Registration payment dates can be edited.";
-            if ($isAjax) {
-                header('Content-Type: application/json');
-                echo json_encode(['success' => false, 'message' => $msg]);
-                exit;
-            }
-            setError($msg);
-            header("Location: {$redirectUrl}");
-            exit;
-        }
-
         // Validate date format YYYY-MM-DD
         $d = DateTime::createFromFormat('Y-m-d', $newDate);
         if (!$d || $d->format('Y-m-d') !== $newDate) {
@@ -5337,6 +5325,53 @@ public function discountStatement($bookingId = null)
         }
 
         $userId = (int)($_SESSION['user']['id'] ?? 1);
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+
+        // Permission: Accounts, Accounts Head, Accounts Executive, Management, Admin
+        $canEditDate = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36]) 
+            || (function_exists('isAccountsHead') && isAccountsHead()) 
+            || (function_exists('isAccountsExecutive') && isAccountsExecutive())
+            || strpos($userRoleName, 'account') !== false 
+            || strpos($userRoleName, 'admin') !== false
+            || strpos($userRoleName, 'management') !== false;
+
+        if (!$canEditDate) {
+            $msg = "Permission denied: You do not have permission to edit payment dates.";
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => $msg]);
+                exit;
+            }
+            setError($msg);
+            header("Location: {$redirectUrl}");
+            exit;
+        }
+
+        $allowedPaymentTypes = [
+            'booking_money',
+            'registration',
+            'emi',
+            'emi_due_settlement',
+            'development_charge',
+            'construction_fee',
+            'shop_service_charge',
+            'land_share',
+            'mutation_cost',
+            'others'
+        ];
+
+        if (!empty($paymentType) && !in_array($paymentType, $allowedPaymentTypes, true)) {
+            $msg = "Permission denied: Payment type '{$paymentType}' cannot be edited.";
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => $msg]);
+                exit;
+            }
+            setError($msg);
+            header("Location: {$redirectUrl}");
+            exit;
+        }
 
         // Virtual agreement record handling: 'booking-{id}'
         if (!empty($paymentId) && strpos((string)$paymentId, 'booking-') !== false) {
@@ -5344,7 +5379,9 @@ public function discountStatement($bookingId = null)
             if ($stmt) {
                 $stmt->bind_param('si', $newDate, $bookingId);
                 $stmt->execute();
-                $successMsg = "Booking agreement date updated to " . date('d M, Y', strtotime($newDate)) . " successfully!";
+                $stmt->close();
+                $formattedDate = date('d M, Y', strtotime($newDate));
+                $successMsg = "Booking agreement date updated to {$formattedDate} successfully!";
                 if ($isAjax) {
                     header('Content-Type: application/json');
                     echo json_encode(['success' => true, 'message' => $successMsg]);
@@ -5378,7 +5415,13 @@ public function discountStatement($bookingId = null)
         }
 
         // Fetch existing payment to confirm type and booking_id
-        $checkStmt = $this->db->prepare("SELECT id, booking_id, payment_type FROM lead_payments WHERE id = ? AND booking_id = ?");
+        $checkStmt = $this->db->prepare("
+            SELECT lp.id, lp.booking_id, lp.payment_type, lp.emi_no, lp.parent_payment_id,
+                   es.emi_no as schedule_emi_no
+            FROM lead_payments lp
+            LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
+            WHERE lp.id = ? AND lp.booking_id = ?
+        ");
         if (!$checkStmt) {
             $msg = "Database query error.";
             if ($isAjax) {
@@ -5394,8 +5437,9 @@ public function discountStatement($bookingId = null)
         $checkStmt->bind_param('ii', $numericPaymentId, $bookingId);
         $checkStmt->execute();
         $existing = $checkStmt->get_result()->fetch_assoc();
+        $checkStmt->close();
 
-        if (!$existing || !in_array($existing['payment_type'], ['booking_money', 'registration'])) {
+        if (!$existing || !in_array($existing['payment_type'], $allowedPaymentTypes, true)) {
             $msg = "Transaction not found or not eligible for date modification.";
             if ($isAjax) {
                 header('Content-Type: application/json');
@@ -5408,10 +5452,11 @@ public function discountStatement($bookingId = null)
         }
 
         // Update payment_date in lead_payments
-        $upStmt = $this->db->prepare("UPDATE lead_payments SET payment_date = ?, updated_by = ? WHERE id = ?");
+        $upStmt = $this->db->prepare("UPDATE lead_payments SET payment_date = ?, updated_by = ?, updated_at = NOW() WHERE id = ?");
         if ($upStmt) {
             $upStmt->bind_param('sii', $newDate, $userId, $numericPaymentId);
             $res = $upStmt->execute();
+            $upStmt->close();
 
             if ($res) {
                 // If it is booking_money, also sync booking_date in lead_bookings
@@ -5420,10 +5465,54 @@ public function discountStatement($bookingId = null)
                     if ($bStmt) {
                         $bStmt->bind_param('si', $newDate, $bookingId);
                         $bStmt->execute();
+                        $bStmt->close();
                     }
                 }
-                $typeLabel = $existing['payment_type'] === 'booking_money' ? 'Booking Money' : 'Registration Money';
-                $successMsg = "{$typeLabel} payment date updated to " . date('d M, Y', strtotime($newDate)) . " successfully!";
+
+                // If it is an EMI or EMI Due Settlement, also sync emi_schedules
+                if (in_array($existing['payment_type'], ['emi', 'emi_due_settlement'], true)) {
+                    $sStmt = $this->db->prepare("UPDATE emi_schedules SET due_date = ? WHERE lead_payment_id = ? AND lead_booking_id = ?");
+                    if ($sStmt) {
+                        $sStmt->bind_param('sii', $newDate, $numericPaymentId, $bookingId);
+                        $sStmt->execute();
+                        $affected = $sStmt->affected_rows;
+                        $sStmt->close();
+
+                        // Fallback: If not matched by lead_payment_id, update by emi_no if available
+                        $emiNo = !empty($existing['schedule_emi_no']) ? (int)$existing['schedule_emi_no'] : (int)($existing['emi_no'] ?? 0);
+                        if ($affected === 0 && $emiNo > 0) {
+                            $sStmt2 = $this->db->prepare("UPDATE emi_schedules SET due_date = ?, lead_payment_id = ? WHERE lead_booking_id = ? AND emi_no = ?");
+                            if ($sStmt2) {
+                                $sStmt2->bind_param('siii', $newDate, $numericPaymentId, $bookingId, $emiNo);
+                                $sStmt2->execute();
+                                $sStmt2->close();
+                            }
+                        }
+                    }
+                }
+
+                // Friendly label
+                $emiDisplayNo = !empty($existing['schedule_emi_no']) ? $existing['schedule_emi_no'] : ($existing['emi_no'] ?? null);
+                if ($existing['payment_type'] === 'emi') {
+                    $typeLabel = $emiDisplayNo ? ($emiDisplayNo . ' Installment') : 'EMI';
+                } elseif ($existing['payment_type'] === 'emi_due_settlement') {
+                    $typeLabel = 'EMI Due Settlement';
+                } elseif ($existing['payment_type'] === 'booking_money') {
+                    $typeLabel = 'Booking Money';
+                } elseif ($existing['payment_type'] === 'registration') {
+                    $typeLabel = 'Registration Money';
+                } elseif ($existing['payment_type'] === 'development_charge') {
+                    $typeLabel = 'Development Charge';
+                } elseif ($existing['payment_type'] === 'construction_fee') {
+                    $typeLabel = 'Construction Fee';
+                } elseif ($existing['payment_type'] === 'shop_service_charge') {
+                    $typeLabel = 'Shop Service Charge';
+                } else {
+                    $typeLabel = 'Payment';
+                }
+
+                $formattedDate = date('d M, Y', strtotime($newDate));
+                $successMsg = "{$typeLabel} payment date updated to {$formattedDate} successfully!";
                 if ($isAjax) {
                     header('Content-Type: application/json');
                     echo json_encode(['success' => true, 'message' => $successMsg]);

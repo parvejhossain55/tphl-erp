@@ -359,6 +359,7 @@ return [
     'con-materials-update-leadtimes-bulk' => ['controller' => 'Phase2\Con_MaterialController', 'method' => 'updateBulkLeadTimes'],
     'con-material-category-delete/(\d+)' => ['controller' => 'Phase2\Con_MaterialController', 'method' => 'deleteCategory'],
     'con-stocks' => ['controller' => 'Phase2\Con_MaterialController', 'method' => 'stocks'],
+    'con-project-materials-report' => ['controller' => 'Phase2\Con_MaterialController', 'method' => 'projectMaterialReport'],
 
     // =========================================================================
     // Controller: Phase2\WarehouseController

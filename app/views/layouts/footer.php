@@ -861,6 +861,38 @@ if (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id']
             });
         }
     });
+
+    // Responsive sidebar dismiss and overlay handler for tablet/mobile
+    document.addEventListener("DOMContentLoaded", function() {
+        function closeMobileSidebar() {
+            var sidebar = document.querySelector('.app-sidebar');
+            var overlay = document.querySelector('.app__offcanvas-overlay');
+            if (sidebar) {
+                sidebar.classList.remove('close_sidebar');
+            }
+            if (overlay) {
+                overlay.classList.remove('overlay-open');
+            }
+        }
+
+        var overlay = document.querySelector('.app__offcanvas-overlay');
+        if (overlay) {
+            overlay.addEventListener('click', closeMobileSidebar);
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeMobileSidebar();
+        });
+
+        if (window.innerWidth <= 1199) {
+            var menuLinks = document.querySelectorAll('.app-sidebar .sidebar__menu-item:not(.has-sub > a)');
+            menuLinks.forEach(function(link) {
+                link.addEventListener('click', function() {
+                    setTimeout(closeMobileSidebar, 150);
+                });
+            });
+        }
+    });
 </script>
 
         </body>
