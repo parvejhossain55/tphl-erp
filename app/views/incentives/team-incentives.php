@@ -157,6 +157,7 @@ $displayMonthName = date('F Y', strtotime(($selectedMonth ?? date('Y-m')) . '-01
                             <th class="text-center">Achievement %</th>
                             <th class="text-end">Money Collected</th>
                             <th class="text-center">Qualification</th>
+                            <th class="text-end">Member Incentive (৳)</th>
                             <th class="text-end">TL Commission (৳)</th>
                             <th class="text-center pe-4">Action</th>
                         </tr>
@@ -164,7 +165,7 @@ $displayMonthName = date('F Y', strtotime(($selectedMonth ?? date('Y-m')) . '-01
                     <tbody>
                         <?php if (empty($teamMetrics['member_breakdown'])): ?>
                             <tr>
-                                <td colspan="9" class="text-center py-4 text-muted">
+                                <td colspan="10" class="text-center py-4 text-muted">
                                     <i class="fa-regular fa-folder-open fs-2 mb-2"></i>
                                     <p class="mb-0">No team members found for this team.</p>
                                 </td>
@@ -210,12 +211,22 @@ $displayMonthName = date('F Y', strtotime(($selectedMonth ?? date('Y-m')) . '-01
                                         <?php endif; ?>
                                     </td>
                                     <td class="text-end">
+                                        <span class="fw-bold text-success">৳<?= number_format($mb['earned_incentive'] ?? 0, 2) ?></span>
+                                    </td>
+                                    <td class="text-end">
                                         <span class="fw-bold text-primary">৳<?= number_format($mb['tl_contribution'] ?? 0, 2) ?></span>
                                     </td>
                                     <td class="text-center pe-4">
-                                        <a href="<?= $GLOBALS['base_url'] ?>/set-sales-target/<?= $mb['user_id'] ?>" class="btn btn-outline-primary btn-sm py-1 px-2" title="Set/Edit Target">
-                                            <i class="fa-solid fa-pen-to-square me-1"></i> Target
-                                        </a>
+                                        <?php 
+                                            $canSetTargetAction = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 20, 30, 32, 33, 34, 35], true);
+                                        ?>
+                                        <?php if ($canSetTargetAction): ?>
+                                            <a href="<?= $GLOBALS['base_url'] ?>/set-sales-target/<?= $mb['user_id'] ?>" class="btn btn-outline-primary btn-sm py-1 px-2" title="Set/Edit Target">
+                                                <i class="fa-solid fa-pen-to-square me-1"></i> Target
+                                            </a>
+                                        <?php else: ?>
+                                            <span class="badge bg-light text-muted border">View Only</span>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>

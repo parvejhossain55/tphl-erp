@@ -1331,18 +1331,23 @@ if (!isset($discountApprovalReq)) {
                                 <tr data-payment-type="<?= htmlspecialchars($transaction['payment_type'] ?? '') ?>">
                                     <td>
                                         <span><?php echo $transaction['formatted_date']; ?></span>
-                                        <?php if (in_array($transaction['payment_type'] ?? '', ['booking_money', 'registration'])): ?>
+                                        <?php if ($canEditBookingInfo && !empty($transaction['id'])): ?>
+                                            <?php 
+                                                $viewPaymentDateYmd = !empty($transaction['payment_date']) ? date('Y-m-d', strtotime($transaction['payment_date'])) : '';
+                                                $viewLabel = $transaction['installment_label'] ?? 'Payment';
+                                                $viewDetails = $transaction['payment_details'] ?? ($transaction['payment_type'] ?? 'Payment');
+                                            ?>
                                             <button type="button" class="btn btn-link p-0 ms-1 text-primary btn-edit-payment-date"
                                                     style="text-decoration:none; vertical-align: middle;"
                                                     data-payment-id="<?= htmlspecialchars($transaction['id'] ?? '') ?>"
                                                     data-booking-id="<?= htmlspecialchars($bookingId ?? '') ?>"
-                                                    data-payment-type="<?= htmlspecialchars($transaction['payment_type'] ?? '') ?>"
-                                                    data-payment-label="<?= htmlspecialchars($transaction['installment_label'] ?? '') ?>"
-                                                    data-payment-details="<?= htmlspecialchars($transaction['payment_details'] ?? '') ?>"
+                                                    data-payment-type="<?= htmlspecialchars($transaction['payment_type'] ?? 'emi') ?>"
+                                                    data-payment-label="<?= htmlspecialchars($viewLabel) ?>"
+                                                    data-payment-details="<?= htmlspecialchars($viewDetails) ?>"
                                                     data-amount="<?= htmlspecialchars(number_format((float)($transaction['amount'] ?? 0), 2)) ?>"
-                                                    data-payment-date="<?= htmlspecialchars($transaction['payment_date'] ?? '') ?>"
+                                                    data-payment-date="<?= htmlspecialchars($viewPaymentDateYmd) ?>"
                                                     data-formatted-date="<?= htmlspecialchars($transaction['formatted_date'] ?? '') ?>"
-                                                    title="Edit Date">
+                                                    title="Edit <?= htmlspecialchars($viewLabel) ?> Date">
                                                 <i class="fa-solid fa-pen-to-square" style="font-size:12px;"></i>
                                             </button>
                                         <?php endif; ?>
@@ -1557,7 +1562,9 @@ if (!isset($discountApprovalReq)) {
 
                                             <?php
                                                 $pType = $transaction['payment_type'] ?? '';
-                                                $isEligibleDateEdit = in_array($pType, ['booking_money', 'registration']);
+                                                $isEligibleDateEdit = $canEditBookingInfo && !empty($transaction['id']);
+                                                $actionDateYmd = !empty($transaction['payment_date']) ? date('Y-m-d', strtotime($transaction['payment_date'])) : '';
+                                                $actionLabel = $transaction['installment_label'] ?? 'Payment';
                                             ?>
                                             <?php if ($isEligibleDateEdit): ?>
                                                 <button type="button"
@@ -1566,12 +1573,12 @@ if (!isset($discountApprovalReq)) {
                                                         data-payment-id="<?= htmlspecialchars($transaction['id'] ?? '') ?>"
                                                         data-booking-id="<?= htmlspecialchars($bookingId ?? '') ?>"
                                                         data-payment-type="<?= htmlspecialchars($pType) ?>"
-                                                        data-payment-label="<?= htmlspecialchars($transaction['installment_label'] ?? '') ?>"
+                                                        data-payment-label="<?= htmlspecialchars($actionLabel) ?>"
                                                         data-payment-details="<?= htmlspecialchars($transaction['payment_details'] ?? '') ?>"
                                                         data-amount="<?= htmlspecialchars(number_format((float)($transaction['amount'] ?? 0), 2)) ?>"
-                                                        data-payment-date="<?= htmlspecialchars($transaction['payment_date'] ?? '') ?>"
+                                                        data-payment-date="<?= htmlspecialchars($actionDateYmd) ?>"
                                                         data-formatted-date="<?= htmlspecialchars($transaction['formatted_date'] ?? '') ?>"
-                                                        title="Edit Payment Date (<?= $pType === 'booking_money' ? 'Booking' : 'Registration' ?>)">
+                                                        title="Edit Payment Date (<?= htmlspecialchars($actionLabel) ?>)">
                                                     <i class="fa-solid fa-calendar-days"></i>
                                                 </button>
                                             <?php endif; ?>

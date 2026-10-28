@@ -901,12 +901,16 @@ class SalesDashboardController extends Controller
             $selectedUserId
         );
 
+        $userIds = !empty($salesUsers) ? array_column($salesUsers, 'id') : [];
+        $latestTargets = !empty($userIds) ? $this->salesTargetModel->getLatestTargetsForUsers($userIds) : [];
+
         $roles = $this->roleModel->getAll();
 
         $this->view('sales-developments/sales-executive-teams', [
             "current_route" => "sales-executive-teams",
             "page_title" => "Sales Incentive Target",
             'salesUsers' => $salesUsers,
+            'latestTargets' => $latestTargets,
             'roles' => $roles,
             'teams' => $teams,
             'salesEmployees' => $salesEmployees,
@@ -921,6 +925,16 @@ class SalesDashboardController extends Controller
 
     public function salesTarget($id)
     {
+        $curRole = (int)($_SESSION['user']['role_id'] ?? 0);
+        $curSecRole = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $targetAllowed = [1, 3, 6, 20, 30, 32, 33, 34, 35];
+        if (!in_array($curRole, $targetAllowed, true) && !in_array($curSecRole, $targetAllowed, true)) {
+            $_SESSION['flash_error'] = "Access denied: Only Management, Accounts, Accounts Head, and Operation Head (Role 20) can set sales targets.";
+            $_SESSION['error'] = "Access denied: Only Management, Accounts, Accounts Head, and Operation Head (Role 20) can set sales targets.";
+            header("Location: " . $GLOBALS['base_url'] . "/sales-executive-teams");
+            exit;
+        }
+
         $user = $this->userModel->find($id);
         $targets = $this->salesTargetModel->getAllTargets($id);
         $projects = $this->db->query("
@@ -948,6 +962,16 @@ class SalesDashboardController extends Controller
     // Store / update target
     public function storeSalesTarget($id)
     {
+        $curRole = (int)($_SESSION['user']['role_id'] ?? 0);
+        $curSecRole = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $targetAllowed = [1, 3, 6, 20, 30, 32, 33, 34, 35];
+        if (!in_array($curRole, $targetAllowed, true) && !in_array($curSecRole, $targetAllowed, true)) {
+            $_SESSION['flash_error'] = "Access denied: You do not have permission to set sales targets.";
+            $_SESSION['error'] = "Access denied: You do not have permission to set sales targets.";
+            header("Location: " . $GLOBALS['base_url'] . "/sales-executive-teams");
+            exit;
+        }
+
         $monthInput = $_POST['month']; // e.g. 2026-05
         $month = date('Y-m-01', strtotime($monthInput));
 
@@ -987,9 +1011,7 @@ class SalesDashboardController extends Controller
         $siteVisitLeads = (int)($_POST['site_visit_leads_target'] ?? 0);
 
         if (empty($salesRole)) {
-            $_SESSION['error'] = "Sales Role is required!";
-            header("Location: " . $GLOBALS['base_url'] . "/set-sales-target/" . $id);
-            exit;
+            $salesRole = 'KAM';
         }
 
         $saved = $this->salesTargetModel->saveTarget(
@@ -1009,8 +1031,10 @@ class SalesDashboardController extends Controller
         );
 
         if ($saved) {
+            $_SESSION['flash_success'] = "Target saved successfully!";
             $_SESSION['success'] = "Target saved successfully!";
         } else {
+            $_SESSION['flash_error'] = "Failed to save target!";
             $_SESSION['error'] = "Failed to save target!";
         }
 
@@ -1020,6 +1044,16 @@ class SalesDashboardController extends Controller
 
     public function updateSalesTarget()
     {
+        $curRole = (int)($_SESSION['user']['role_id'] ?? 0);
+        $curSecRole = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $targetAllowed = [1, 3, 6, 20, 30, 32, 33, 34, 35];
+        if (!in_array($curRole, $targetAllowed, true) && !in_array($curSecRole, $targetAllowed, true)) {
+            $_SESSION['flash_error'] = "Access denied: You do not have permission to edit sales targets.";
+            $_SESSION['error'] = "Access denied: You do not have permission to edit sales targets.";
+            header("Location: " . $GLOBALS['base_url'] . "/sales-executive-teams");
+            exit;
+        }
+
         $id = (int)$_POST['id']; // hidden input
         $monthInput = $_POST['month'];
         $month = date('Y-m-01', strtotime($monthInput));
@@ -1062,9 +1096,7 @@ class SalesDashboardController extends Controller
         }
 
         if (empty($salesRole)) {
-            $_SESSION['error'] = "Sales Role is required!";
-            header("Location: " . $GLOBALS['base_url'] . "/set-sales-target/" . $userId);
-            exit;
+            $salesRole = 'KAM';
         }
 
         $sql = "
@@ -1087,6 +1119,7 @@ class SalesDashboardController extends Controller
         $stmt->bind_param("sssiidissssii", $month, $fromDate, $toDate, $siteVisit, $booking, $bookingValue, $categoryId, $categoryIdsJson, $projectIds, $salesRole, $flatIds, $siteVisitLeads, $id);
         $stmt->execute();
 
+        $_SESSION['flash_success'] = "Target updated successfully!";
         $_SESSION['success'] = "Target updated successfully!";
         header("Location: " . $GLOBALS['base_url'] . "/set-sales-target/" . $userId);
         exit;
@@ -1094,6 +1127,16 @@ class SalesDashboardController extends Controller
 
     public function deleteSalesTarget($id)
     {
+        $curRole = (int)($_SESSION['user']['role_id'] ?? 0);
+        $curSecRole = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $targetAllowed = [1, 3, 6, 20, 30, 32, 33, 34, 35];
+        if (!in_array($curRole, $targetAllowed, true) && !in_array($curSecRole, $targetAllowed, true)) {
+            $_SESSION['flash_error'] = "Access denied: You do not have permission to delete sales targets.";
+            $_SESSION['error'] = "Access denied: You do not have permission to delete sales targets.";
+            header("Location: " . $GLOBALS['base_url'] . "/sales-executive-teams");
+            exit;
+        }
+
         $id = (int)$id;
         $userId = (int)($_GET['user_id'] ?? 0);
         if ($id > 0) {

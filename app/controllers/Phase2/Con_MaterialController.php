@@ -347,6 +347,226 @@ class Con_MaterialController extends Controller
     }
 
     // =========================================================================
+    // Project-wise Material Report
+    // =========================================================================
+    public function projectMaterialReport()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        // Check permission
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        if (!hasPermission('Project Material Report') && !hasPermission('Material Manage') && !in_array($roleId, [1, 3])) {
+            if (!empty($_GET['ajax']) || isset($_GET['draw'])) {
+                header('Content-Type: application/json');
+                echo json_encode(['error' => 'Unauthorized access.']);
+                exit;
+            }
+            setError('You do not have permission to access the Project Material Report.');
+            header('Location: ' . $GLOBALS['base_url'] . '/con-dashboard');
+            exit;
+        }
+
+        $filters = [
+            'project_id'  => !empty($_GET['project_id']) ? (int)$_GET['project_id'] : null,
+            'material_id' => !empty($_GET['material_id']) ? (int)$_GET['material_id'] : null,
+            'category_id' => !empty($_GET['category_id']) ? (int)$_GET['category_id'] : null,
+            'start_date'  => !empty($_GET['start_date']) ? trim($_GET['start_date']) : null,
+            'end_date'    => !empty($_GET['end_date']) ? trim($_GET['end_date']) : null,
+        ];
+
+        // Handle AJAX DataTables server-side request
+        if (!empty($_GET['ajax']) || isset($_GET['draw'])) {
+            header('Content-Type: application/json');
+
+            $draw      = (int)($_GET['draw'] ?? 1);
+            $start     = max(0, (int)($_GET['start'] ?? 0));
+            $length    = (int)($_GET['length'] ?? 25);
+            if ($length < 1 || $length > 200) $length = 25;
+            $searchVal = trim($_GET['search']['value'] ?? '');
+            $orderCol  = (int)($_GET['order'][0]['column'] ?? 0);
+            $orderDir  = trim($_GET['order'][0]['dir'] ?? 'desc');
+
+            $recordsTotal    = $this->materialModel->getProjectMaterialReportCount([]);
+            $recordsFiltered = $this->materialModel->getProjectMaterialReportCount($filters, $searchVal);
+            $rows            = $this->materialModel->getProjectMaterialReportPaginated($filters, $length, $start, $searchVal, $orderCol, $orderDir);
+            $summaryStats    = $this->materialModel->getProjectMaterialSummaryStats($filters, $searchVal);
+
+            $formattedData = [];
+            $baseUrl = $GLOBALS['base_url'] ?? '';
+            foreach ($rows as $i => $row) {
+                $formattedData[] = $this->formatProjectMaterialRow($row, $start + $i + 1, $baseUrl);
+            }
+
+            $totalVal = (float)($summaryStats['total_order_value'] ?? 0);
+            $totalValLakh = ($totalVal >= 100000) ? ('&#2547;' . number_format($totalVal / 100000, 2) . 'L') : (($totalVal >= 1000) ? ('&#2547;' . number_format($totalVal / 1000, 2) . 'K') : ('&#2547;' . number_format($totalVal, 2)));
+
+            echo json_encode([
+                'draw'            => $draw,
+                'recordsTotal'    => $recordsTotal,
+                'recordsFiltered' => $recordsFiltered,
+                'data'            => $formattedData,
+                'summaryStats'    => [
+                    'totalOrders'               => (int)($summaryStats['total_orders'] ?? 0),
+                    'totalOrdersFormatted'      => number_format((int)($summaryStats['total_orders'] ?? 0)),
+                    'totalOrderValue'           => $totalVal,
+                    'totalOrderValueFormatted'  => '&#2547;' . number_format($totalVal, 2),
+                    'totalOrderValueLakh'       => $totalValLakh,
+                    'receivedCount'             => (int)($summaryStats['received_count'] ?? 0),
+                    'receivedCountFormatted'    => number_format((int)($summaryStats['received_count'] ?? 0)),
+                    'notReceivedCount'          => (int)($summaryStats['not_received_count'] ?? 0),
+                    'notReceivedCountFormatted' => number_format((int)($summaryStats['not_received_count'] ?? 0)),
+                ]
+            ]);
+            exit;
+        }
+
+        // Fast initial KPI statistics computation (~0.01s)
+        $summaryStats = $this->materialModel->getProjectMaterialSummaryStats($filters);
+        $totalOrders      = (int)($summaryStats['total_orders'] ?? 0);
+        $totalOrderValue  = (float)($summaryStats['total_order_value'] ?? 0);
+        $receivedCount    = (int)($summaryStats['received_count'] ?? 0);
+        $notReceivedCount = (int)($summaryStats['not_received_count'] ?? 0);
+
+        $projects     = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+        $categories   = $this->categoryModel->getAll();
+        $allMaterials = $this->db->query("SELECT DISTINCT m.id, m.name, m.unit FROM con_materials m JOIN purchase_order_items poi ON poi.material_id = m.id ORDER BY m.name ASC")->fetch_all(MYSQLI_ASSOC);
+
+        $this->view('phase2/materials/project-material-report', [
+            'current_route'     => 'con-project-materials-report',
+            'current_page'      => 'con-project-materials-report',
+            'page_title'        => 'Project-wise Material Report',
+            'projects'          => $projects,
+            'categories'        => $categories,
+            'allMaterials'      => $allMaterials,
+            'filters'           => $filters,
+            'totalOrders'       => $totalOrders,
+            'totalOrderValue'   => $totalOrderValue,
+            'receivedCount'     => $receivedCount,
+            'notReceivedCount'  => $notReceivedCount,
+        ]);
+    }
+
+    /**
+     * Format a single report row into clean HTML columns for DataTables
+     */
+    protected function formatProjectMaterialRow($row, $index, $baseUrl)
+    {
+        $isReceived = !empty($row['total_received_qty']) && (float)$row['total_received_qty'] > 0;
+        $orderQty   = (float)$row['order_quantity'];
+        $recvQty    = (float)($row['total_received_qty'] ?? 0);
+
+        // Col 0: Index
+        $colIndex = '<span class="text-muted fw-semibold small">' . $index . '</span>';
+
+        // Col 1: Project
+        $colProject = '<div class="fw-bold text-dark fs-6">' . htmlspecialchars($row['project_name']) . '</div>' .
+                      '<small class="text-muted"><i class="fas fa-building text-primary me-1"></i>Project #' . (int)$row['project_id'] . '</small>';
+
+        // Col 2: Material & Category
+        $colMaterial = '<div class="fw-bold text-primary">' . htmlspecialchars($row['material_name']) . '</div>' .
+                       '<div class="d-flex align-items-center gap-1 mt-1 flex-wrap">' .
+                           '<span class="badge bg-light text-dark border small">' . htmlspecialchars($row['category_name']) . '</span>' .
+                           '<span class="badge bg-secondary-subtle text-secondary small">' . htmlspecialchars($row['material_unit']) . '</span>' .
+                       '</div>';
+
+        // Col 3: CST Vendor
+        $colVendor = '<div class="fw-semibold text-dark"><i class="fas fa-store text-muted me-1"></i>' . htmlspecialchars($row['vendor_name']) . '</div>';
+        if (!empty($row['vendor_id'])) {
+            $colVendor .= '<small class="text-muted">Vendor ID: #' . (int)$row['vendor_id'] . '</small>';
+        }
+
+        // Col 4: PO & PR No
+        $colPoPr = '<div><a href="' . $baseUrl . '/con-purchase-order/' . (int)$row['po_id'] . '" target="_blank" class="badge bg-primary text-decoration-none">PO-' . (int)$row['po_id'] . '</a></div>' .
+                   '<div class="mt-1"><a href="' . $baseUrl . '/con-purchase-request/' . (int)$row['pr_id'] . '" target="_blank" class="badge bg-secondary text-decoration-none">PR-' . (int)$row['pr_id'] . '</a></div>';
+
+        // Col 5: Requester & Dates
+        $colRequester = '<div class="fw-semibold text-dark"><i class="fas fa-user-circle text-muted me-1"></i>' . htmlspecialchars($row['requester_name'] ?? 'System') . '</div>';
+        if (!empty($row['pr_created_at'])) {
+            $colRequester .= '<div class="text-muted small mt-1"><span>Requested: ' . date('d M Y', strtotime($row['pr_created_at'])) . '</span></div>';
+        }
+        if (!empty($row['pr_required_date'])) {
+            $colRequester .= '<div class="text-danger small fw-semibold">Required: ' . date('d M Y', strtotime($row['pr_required_date'])) . '</div>';
+        }
+
+        // Col 6: Order Qty
+        $formattedOrderQty = ((float)$orderQty == floor((float)$orderQty)) ? number_format((float)$orderQty) : rtrim(rtrim(number_format((float)$orderQty, 2), '0'), '.');
+        $colQty = '<div class="text-end fw-bold text-dark">' . $formattedOrderQty . '<div class="small text-muted fw-normal">' . htmlspecialchars($row['material_unit']) . '</div></div>';
+
+        // Col 7: Unit Price
+        $colUnitPrice = '<div class="text-end fw-semibold text-dark">&#2547;' . number_format((float)$row['unit_price'], 2) . '</div>';
+
+        // Col 8: Total Amount
+        $colTotal = '<div class="text-end fw-bold text-success">&#2547;' . number_format((float)$row['total_amount'], 2) . '</div>';
+
+        // Col 9: Approvals
+        $approvals = [];
+        if (!empty($row['pm_approved_at'])) {
+            $approvals[] = ['role' => 'PM', 'name' => $row['pm_approver_name'] ?? 'PM', 'date' => $row['pm_approved_at'], 'color' => 'bg-info'];
+        }
+        if (!empty($row['qc_approved_at'])) {
+            $approvals[] = ['role' => 'QC', 'name' => $row['qc_approver_name'] ?? 'QC', 'date' => $row['qc_approved_at'], 'color' => 'bg-primary'];
+        }
+        if (!empty($row['mgmt_approved_at'])) {
+            $approvals[] = ['role' => 'Mgmt', 'name' => $row['mgmt_approver_name'] ?? 'Management', 'date' => $row['mgmt_approved_at'], 'color' => 'bg-success'];
+        }
+        if (!empty($row['purchase_head_approved_at'])) {
+            $approvals[] = ['role' => 'Purchase Head', 'name' => $row['ph_approver_name'] ?? 'Purchase Head', 'date' => $row['purchase_head_approved_at'], 'color' => 'bg-secondary'];
+        }
+        if (!empty($row['op_head_approved_at'])) {
+            $approvals[] = ['role' => 'Op Head', 'name' => $row['op_approver_name'] ?? 'Operation Head', 'date' => $row['op_head_approved_at'], 'color' => 'bg-dark'];
+        }
+        if (!empty($row['se_approved_at'])) {
+            $approvals[] = ['role' => 'Site Eng.', 'name' => $row['se_approver_name'] ?? 'Site Engineer', 'date' => $row['se_approved_at'], 'color' => 'bg-teal'];
+        }
+
+        if (!empty($approvals)) {
+            $colApprovals = '<div class="d-flex flex-column gap-1">';
+            foreach ($approvals as $appr) {
+                $colApprovals .= '<div class="pm-approval-item"><span class="badge ' . $appr['color'] . ' px-1 py-0 me-1" style="font-size: 10px;">' . $appr['role'] . '</span><span class="fw-semibold text-dark small">' . htmlspecialchars($appr['name']) . '</span><span class="text-muted small ms-1">(' . date('d M Y', strtotime($appr['date'])) . ')</span></div>';
+            }
+            $colApprovals .= '</div>';
+        } else {
+            $colApprovals = '<span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>Pending Approval</span>';
+        }
+
+        // Col 10: Received info
+        if ($isReceived) {
+            $formattedRecvQty = ((float)$recvQty == floor((float)$recvQty)) ? number_format((float)$recvQty) : rtrim(rtrim(number_format((float)$recvQty, 2), '0'), '.');
+            $colReceived = '<div class="d-flex flex-column gap-1">' .
+                           '<div><span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Received: ' . $formattedRecvQty . ' ' . htmlspecialchars($row['material_unit']) . '</span>';
+            if ($recvQty < $orderQty) {
+                $colReceived .= ' <span class="badge bg-warning text-dark small">Partial</span>';
+            }
+            $colReceived .= '</div>' .
+                            '<div class="small fw-semibold text-dark mt-1"><i class="fas fa-user-check text-success me-1"></i>' . htmlspecialchars($row['receiver_names'] ?? 'Receiver') . '</div>';
+            if (!empty($row['receiver_emp_ids']) && $row['receiver_emp_ids'] !== 'N/A') {
+                $colReceived .= '<div class="small text-muted"><span>Employee ID: <strong>' . htmlspecialchars($row['receiver_emp_ids']) . '</strong></span></div>';
+            }
+            if (!empty($row['latest_received_date'])) {
+                $colReceived .= '<div class="small text-muted"><span>Date: ' . date('d M Y', strtotime($row['latest_received_date'])) . '</span></div>';
+            }
+            $colReceived .= '</div>';
+        } else {
+            $colReceived = '<span class="badge bg-secondary-subtle text-secondary border px-2 py-1"><i class="fas fa-times-circle me-1 text-muted"></i>Not received yet</span>';
+        }
+
+        return [
+            $colIndex,
+            $colProject,
+            $colMaterial,
+            $colVendor,
+            $colPoPr,
+            $colRequester,
+            $colQty,
+            $colUnitPrice,
+            $colTotal,
+            $colApprovals,
+            $colReceived
+        ];
+    }
+
+
+    // =========================================================================
     // CSV Import
     // =========================================================================
     public function importCsv()

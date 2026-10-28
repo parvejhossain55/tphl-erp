@@ -41,12 +41,18 @@ class IncentiveController extends Controller
     public function myIncentives()
     {
         $userId = (int)$_SESSION['user']['id'];
-        $month = $_GET['month'] ?? date('Y-m'); // Default current month (e.g. 2026-10)
+        $activeCycle = $this->incentiveModel->getCycleForDate(date('Y-m-d'));
+        $month = $_GET['month'] ?? $activeCycle;
 
         $walletSummary   = $this->incentiveModel->getWalletSummary($userId);
         $monthlyStats    = $this->engine->getExecutiveMonthlyStats($userId, $month);
         $mySalesBookings = $this->incentiveModel->getMySalesBookings($userId, $month);
         $payoutHistory   = $this->incentiveModel->getDisbursementLogs();
+
+        // Fetch all assigned targets for this user (history & current)
+        require_once __DIR__ . '/../models/SalesTarget.php';
+        $salesTargetModel = new \SalesTarget($this->db);
+        $myTargets = $salesTargetModel->getAllTargets($userId);
 
         // Calculate money collected by this user in this cycle
         $mStart = substr($monthlyStats['cycle_start'], 0, 10);
@@ -55,7 +61,8 @@ class IncentiveController extends Controller
             SELECT IFNULL(SUM(lp.amount), 0.00) as collected
             FROM lead_payments lp
             JOIN lead_bookings lb ON lp.booking_id = lb.id
-            WHERE lb.sales_by_id = ?
+            LEFT JOIN leads l ON lb.lead_id = l.id
+            WHERE (lb.sales_by_id = ? OR lb.created_by = ? OR l.assigned_id = ?)
               AND lb.booking_date BETWEEN ? AND ?
               AND lp.verification_status = 'verified'
               AND lp.payment_status IN ('paid', 'partially_paid')
@@ -63,10 +70,32 @@ class IncentiveController extends Controller
         ");
         $cycleCollected = 0.00;
         if ($collStmt) {
-            $collStmt->bind_param("iss", $userId, $mStart, $mEnd);
+            $collStmt->bind_param("iiiss", $userId, $userId, $userId, $mStart, $mEnd);
             $collStmt->execute();
             $cycleCollected = (float)($collStmt->get_result()->fetch_assoc()['collected'] ?? 0.00);
             $collStmt->close();
+        }
+
+        // Team Leader Metrics & Override (0.05%) check
+        $isTeamLeader = false;
+        $teamMetrics = null;
+        $tlEmpStmt = $this->db->prepare("
+            SELECT e.is_team_leader, e.team_id, t.name as team_name 
+            FROM employees e 
+            LEFT JOIN teams t ON e.team_id = t.id 
+            WHERE e.user_id = ?
+        ");
+        if ($tlEmpStmt) {
+            $tlEmpStmt->bind_param("i", $userId);
+            $tlEmpStmt->execute();
+            $empRow = $tlEmpStmt->get_result()->fetch_assoc();
+            $tlEmpStmt->close();
+            if (!empty($empRow['is_team_leader']) || !empty($empRow['team_id'])) {
+                $teamMetrics = $this->engine->getTeamMonthlyStats($userId, $month);
+                if (!empty($teamMetrics['eligible']) || !empty($empRow['is_team_leader'])) {
+                    $isTeamLeader = true;
+                }
+            }
         }
 
         $this->view("incentives/my-incentives", [
@@ -77,6 +106,9 @@ class IncentiveController extends Controller
             "cycleCollected"  => $cycleCollected,
             "walletSummary"   => $walletSummary,
             "mySalesBookings" => $mySalesBookings,
+            "myTargets"       => $myTargets,
+            "isTeamLeader"    => $isTeamLeader,
+            "teamMetrics"     => $teamMetrics,
             "payoutHistory"   => array_values($payoutHistory)
         ]);
     }
@@ -98,7 +130,8 @@ class IncentiveController extends Controller
             }
         }
 
-        $month = $_GET['month'] ?? date('Y-m'); // Default current month (e.g. 2026-10)
+        $activeCycle = $this->incentiveModel->getCycleForDate(date('Y-m-d'));
+        $month = $_GET['month'] ?? $activeCycle;
         $filterTeamId = isset($_GET['team_id']) && $_GET['team_id'] !== '' && $_GET['team_id'] !== 'all' ? (int)$_GET['team_id'] : null;
 
         $teamMetrics = $this->engine->getTeamMonthlyStats($userId, $month, $filterTeamId);
@@ -125,13 +158,14 @@ class IncentiveController extends Controller
     public function manageIncentives()
     {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        $allowedRoles = [1, 3, 6, 30, 32, 33, 35, 36];
+        $allowedRoles = [1, 3, 6, 20, 30, 32, 33, 34, 35, 36];
         if (!in_array($roleId, $allowedRoles)) {
             header("Location: {$GLOBALS['base_url']}/my-incentives");
             exit;
         }
 
-        $month = $_GET['month'] ?? date('Y-m');
+        $activeCycle = $this->incentiveModel->getCycleForDate(date('Y-m-d'));
+        $month = $_GET['month'] ?? $activeCycle;
         $fromDate = $_GET['from_date'] ?? null;
         $toDate = $_GET['to_date'] ?? null;
 
@@ -146,6 +180,66 @@ class IncentiveController extends Controller
         // Calculate dynamic real-time team stats and individual stats to show on the dashboard for this month
         $realTimeStats = $this->incentiveModel->getRealTimeIncentivesByMonth($month, $fromDate, $toDate);
 
+        // 1. Team Leader Overrides (0.05%) across all teams
+        $allTeamOverrides = [];
+        foreach ($realTimeStats as $st) {
+            if (!empty($st['team']) && !empty($st['team']['member_breakdown'])) {
+                $tlUser = $st['user'];
+                $teamData = $st['team'];
+                foreach ($teamData['member_breakdown'] as $mb) {
+                    if (empty($mb['is_self']) && $mb['achieved_land_share'] > 0) {
+                        $allTeamOverrides[] = [
+                            'team_name'          => $teamData['team_name'] ?? ($tlUser['team_name'] ?? 'Team'),
+                            'tl_name'            => $tlUser['full_name'],
+                            'tl_code'            => $tlUser['employee_id'],
+                            'tl_user_id'         => $tlUser['id'],
+                            'member_name'        => $mb['full_name'],
+                            'member_code'        => $mb['employee_id'],
+                            'member_designation' => $mb['designation'],
+                            'member_target'      => $mb['target'],
+                            'member_achieved'    => $mb['achieved_land_share'],
+                            'is_qualified'       => $mb['is_qualified'],
+                            'tl_rate'            => $teamData['tl_rate'] ?? 0.05,
+                            'tl_gain'            => $mb['tl_contribution']
+                        ];
+                    }
+                }
+            }
+        }
+
+        // 2. Cross-Project (70/30) Splits
+        $allCrossProjectSplits = [];
+        $seenBookingIds = [];
+        foreach ($realTimeStats as $st) {
+            $seller = $st['user'];
+            $ind = $st['individual'] ?? [];
+            if (!empty($ind['detailed_bookings'])) {
+                foreach ($ind['detailed_bookings'] as $b) {
+                    if (empty($b['is_assigned']) || (isset($b['rate_type']) && strpos($b['rate_type'], 'Outside') !== false)) {
+                        $bId = (int)$b['booking_id'];
+                        if (!isset($seenBookingIds[$bId])) {
+                            $seenBookingIds[$bId] = true;
+                            $allCrossProjectSplits[] = [
+                                'booking_id'           => $bId,
+                                'booking_date'         => $b['booking_date'] ?? '',
+                                'project_name'         => $b['project_name'] ?? '',
+                                'flat_name'            => $b['flat_name'] ?? '',
+                                'land_share_value'     => (float)($b['land_share_value'] ?? 0),
+                                'seller_id'            => $seller['id'],
+                                'seller_name'          => $seller['full_name'],
+                                'seller_code'          => $seller['employee_id'],
+                                'seller_share'         => (float)($b['seller_incentive'] ?? 0),
+                                'is_on_hold'           => !empty($b['is_on_hold']),
+                                'designated_user_id'   => $b['designated_user_id'] ?? null,
+                                'designated_user_name' => $b['designated_user_name'] ?? 'Unassigned / Open',
+                                'designated_share'     => (float)($b['designated_incentive'] ?? 0)
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+
         $this->view("incentives/manage-incentives", [
             "current_route"          => "incentive-management",
             "page_title"             => "Sales Incentive Accounts",
@@ -155,6 +249,8 @@ class IncentiveController extends Controller
             "companyMetrics"         => $companyMetrics,
             "salesClaimsQueue"       => $salesClaimsQueue,
             "realTimeStats"          => $realTimeStats,
+            "allTeamOverrides"       => $allTeamOverrides,
+            "allCrossProjectSplits"  => $allCrossProjectSplits,
             "nonSalesEmployees"      => $nonSalesEmployees,
             "availableProjectsFlats" => $availableProjectsFlats,
             "externalClaimsList"     => $externalClaimsList,
@@ -182,6 +278,15 @@ class IncentiveController extends Controller
         if ($bookingId <= 0) {
             echo json_encode(['success' => false, 'message' => 'Invalid booking ID']);
             exit;
+        }
+
+        // Prevent duplicate claims if already claimed or settled
+        $chkExist = $this->db->query("SELECT id, claim_status FROM project_incentive_claims WHERE booking_id = {$bookingId} AND is_external = 0 LIMIT 1");
+        if ($chkExist && $existRow = $chkExist->fetch_assoc()) {
+            if (in_array($existRow['claim_status'], ['claimed', 'approved', 'partially_paid', 'paid'])) {
+                echo json_encode(['success' => false, 'message' => 'This booking incentive has already been submitted (Status: ' . ucfirst($existRow['claim_status']) . '). It cannot be claimed again.']);
+                exit;
+            }
         }
 
         $result = $this->incentiveModel->claimIncentive($userId, $bookingId, $remarks);
@@ -251,49 +356,22 @@ class IncentiveController extends Controller
         $amount = (float)($claimRow['incentive_amount'] ?? 0);
         $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
         $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
-        $isOver1Lac = ($amount > 100000);
         $isOpHeadUser = (in_array($userRole, [20, 32], true) || str_contains($roleName, 'operation head'));
         $isMgmtUser = in_array($userRole, [1, 3], true);
 
-        // Fetch approval request record
-        $arCheck = $this->db->query("SELECT id, op_head_status FROM approval_requests WHERE source_table = 'project_incentive_claims' AND source_id = " . (int)$claimId . " ORDER BY id DESC LIMIT 1");
-        $arRow = $arCheck ? $arCheck->fetch_assoc() : null;
-        $opHeadStatus = strtolower($arRow['op_head_status'] ?? 'pending');
-
-        if ($isOver1Lac) {
-            if ($isOpHeadUser && !$isMgmtUser) {
-                $arId = (int)($arRow['id'] ?? 0);
-                $escNote = $this->db->real_escape_string('Verified and approved by Admin & Operation Head');
-                if (!class_exists('ApprovalRequest')) {
-                    require_once __DIR__ . '/../models/ApprovalRequest.php';
-                }
-                $approvalModel = new \ApprovalRequest($this->db);
-                if ($arId > 0) {
-                    $approvalModel->approveOperationHead($arId, $approvedBy, $escNote);
-                } else {
-                    $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$approvedBy}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'management' WHERE source_table = 'project_incentive_claims' AND source_id = " . (int)$claimId);
-                }
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Incentive claim verified & approved by Admin & Operation Head (Role 20). Forwarded to Management for sign-off.'
-                ]);
-                exit;
-            }
-
-            if ($isMgmtUser) {
-                if ($opHeadStatus !== 'approved') {
-                    echo json_encode([
-                        'success' => false,
-                        'message' => 'Access Denied: Incentive claims exceeding ৳1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.'
-                    ]);
-                    exit;
-                }
-            }
+        if (!$isOpHeadUser && !$isMgmtUser) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Access Denied: Only Admin & Operation Head (Role 20) or Management (Role 3) can approve incentive claims.'
+            ]);
+            exit;
         }
 
         $result = $this->incentiveModel->approveClaim($approvedBy, $claimId);
         if ($result && !empty($result['success'])) {
-            $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', approve_role = 'accounts_head', accounts_head_status = 'pending' WHERE source_table = 'project_incentive_claims' AND source_id = " . (int)$claimId);
+            $approverTitle = $isOpHeadUser ? 'Admin & Operation Head (Role 20)' : 'Management (Role ' . $userRole . ')';
+            $escNote = $this->db->real_escape_string('Approved by ' . $approverTitle);
+            $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$approvedBy}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'accounts_head', accounts_head_status = 'pending' WHERE source_table = 'project_incentive_claims' AND source_id = " . (int)$claimId);
         }
         echo json_encode($result);
         exit;

@@ -5,8 +5,10 @@ $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
 $isManagement = in_array($userRole, [1, 2, 5, 9, 15, 33]) || strpos($roleName, 'admin') !== false;
 // Accounts / Accounts Head / HR
 $isAccounts = in_array($userRole, [1, 2, 3, 6, 30, 33]) || strpos($roleName, 'account') !== false;
-$isAccountsHead = ($userRole === 30) || strpos($roleName, 'accounts head') !== false;
-$canApproveAh = $isAccountsHead || in_array($userRole, [1, 3]) || strpos($roleName, 'admin') !== false;
+$currentUserId = (int)($_SESSION['user']['id'] ?? 0);
+$isAccountsHead = ($userRole === 30) || ($currentUserId === 1309) || ($currentUserId === 247) || strpos($roleName, 'accounts head') !== false;
+// STRICT PERMISSION: Only designated Accounts Head or Super Admin (1) can trigger AH Approve (Role 3 Management is strictly excluded)
+$canApproveAh = $isAccountsHead || ($userRole === 1);
 ?>
 <div class="container-fluid py-4">
     <!-- Page Header -->
@@ -146,6 +148,16 @@ $canApproveAh = $isAccountsHead || in_array($userRole, [1, 3]) || strpos($roleNa
                         <i class="fa-solid fa-wallet me-2"></i>Employee Wallets & Payout Logs
                     </button>
                 </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-bold py-2 px-3 border-0 rounded-top-2 text-warning" id="team-overrides-tab" data-bs-toggle="tab" data-bs-target="#team-overrides" type="button" role="tab">
+                        <i class="fa-solid fa-people-arrows me-2 text-warning"></i>TL Overrides (0.05%)
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-bold py-2 px-3 border-0 rounded-top-2 text-info" id="cross-splits-tab" data-bs-toggle="tab" data-bs-target="#cross-splits" type="button" role="tab">
+                        <i class="fa-solid fa-arrows-split-up-and-left me-2 text-info"></i>Unassigned (70/30) Splits
+                    </button>
+                </li>
             </ul>
         </div>
 
@@ -165,10 +177,12 @@ $canApproveAh = $isAccountsHead || in_array($userRole, [1, 3]) || strpos($roleNa
                             <thead class="bg-light text-muted extra-small text-uppercase">
                                 <tr>
                                     <th class="ps-4">Employee</th>
-                                    <th>Individual Target & Achieve</th>
-                                    <th>Indiv. Incentive %</th>
-                                    <th>Team Target & Achieve</th>
-                                    <th>Team Incentive Earned</th>
+                                    <th>Land Share Target & Achieved</th>
+                                    <th>Cycle Status & Earned</th>
+                                    <th>Cycle Claims</th>
+                                    <th>Total Claimed</th>
+                                    <th>Disbursed (Paid)</th>
+                                    <th class="pe-4 text-end">Wallet Balance</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -180,6 +194,10 @@ $canApproveAh = $isAccountsHead || in_array($userRole, [1, 3]) || strpos($roleNa
                                         $ind = $stat['individual'];
                                         $team = $stat['team'];
                                     ?>
+                                    <?php 
+                                        $cSum = $stat['claims_summary'] ?? [];
+                                        $achievedTotal = $ind['assigned_achieved'] + $ind['unassigned_achieved'];
+                                    ?>
                                     <tr>
                                         <td class="ps-4">
                                             <div class="d-flex align-items-center">
@@ -188,63 +206,79 @@ $canApproveAh = $isAccountsHead || in_array($userRole, [1, 3]) || strpos($roleNa
                                                 </div>
                                                 <div>
                                                     <h6 class="mb-0 fw-bold text-dark"><?= htmlspecialchars($u['full_name']) ?></h6>
-                                                    <span class="text-muted extra-small d-block"><?= htmlspecialchars($u['designation'] ?? 'N/A') ?> | <?= htmlspecialchars($u['department'] ?? 'N/A') ?></span>
+                                                    <span class="text-muted extra-small d-block"><?= htmlspecialchars($u['designation'] ?? 'Sales Executive') ?></span>
                                                     <span class="badge bg-light text-dark border extra-small mt-1"><?= $u['employee_id'] ?></span>
+                                                    <?php if(!empty($u['team_name'])): ?>
+                                                        <span class="badge bg-info-subtle text-info extra-small mt-1"><i class="fa-solid fa-users me-1"></i><?= htmlspecialchars($u['team_name']) ?></span>
+                                                    <?php endif; ?>
                                                 </div>
                                             </div>
                                         </td>
                                         <td>
+                                            <?php if (!empty($ind['is_inherited'])): ?>
+                                                <span class="badge bg-secondary-subtle text-secondary border extra-small mb-1" title="Carried over from prior month because no new target was set for this month">
+                                                    <i class="fa-solid fa-clock-rotate-left me-1"></i>Inherited (<?= date('M Y', strtotime($ind['target_origin_month'])) ?>)
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="badge bg-success-subtle text-success border extra-small mb-1">
+                                                    <i class="fa-solid fa-check me-1"></i><?= date('M Y', strtotime($selected_month)) ?> Target
+                                                </span>
+                                            <?php endif; ?>
+
                                             <?php if($ind['target_amount'] > 0): ?>
                                                 <div class="small">Target: <strong class="text-dark">৳<?= number_format($ind['target_amount'], 2) ?></strong></div>
-                                                <div class="small">Achieved: <strong class="text-success">৳<?= number_format($ind['assigned_achieved'] + $ind['unassigned_achieved'], 2) ?></strong></div>
+                                                <div class="small">Achieved: <strong class="text-success">৳<?= number_format($achievedTotal, 2) ?></strong></div>
                                                 <div class="progress mt-1" style="height: 5px;">
-                                                    <div class="progress-bar bg-success" role="progressbar" style="width: <?= min(100, $ind['achievement_pct']) ?>%;" aria-valuenow="<?= $ind['achievement_pct'] ?>" aria-valuemin="0" aria-valuemax="100"></div>
+                                                    <div class="progress-bar bg-success" role="progressbar" style="width: <?= min(100, $ind['achievement_pct']) ?>%;"></div>
                                                 </div>
-                                                <div class="extra-small text-muted mt-1"><?= number_format($ind['achievement_pct'], 2) ?>% Achieved</div>
+                                                <div class="extra-small text-muted mt-1"><?= number_format($ind['achievement_pct'], 1) ?>% Achieved</div>
                                             <?php else: ?>
-                                                <span class="text-muted small">No Indv. Target</span>
+                                                <div class="small text-muted">No Explicit Target</div>
+                                                <div class="small">Achieved: <strong class="text-success">৳<?= number_format($achievedTotal, 2) ?></strong></div>
                                             <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <?php if($ind['target_amount'] > 0): ?>
-                                                <?php if(!empty($ind['is_eligible'])): ?>
-                                                    <span class="badge bg-success-subtle text-success fw-semibold mb-1">
-                                                        <i class="fa-solid fa-check me-1"></i>Qualified (≥ 25L)
-                                                    </span>
-                                                    <div class="small fw-bold text-success">Earned: ৳<?= number_format($ind['total_earned_incentive'], 2) ?></div>
-                                                <?php else: ?>
-                                                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle extra-small">
-                                                        <i class="fa-solid fa-circle-exclamation me-1"></i>Pending 25L Min
-                                                    </span>
-                                                    <div class="extra-small text-muted mt-1">Earned: ৳0.00</div>
-                                                <?php endif; ?>
-                                            <?php else: ?>
-                                                <span class="text-muted small">-</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <?php if(!empty($team['eligible']) && $team['team_target'] > 0): ?>
-                                                <div class="small">Target: <strong class="text-dark">৳<?= number_format($team['team_target'], 2) ?></strong></div>
-                                                <div class="small">Achieved: <strong class="text-success">৳<?= number_format($team['team_achieved'], 2) ?></strong></div>
-                                                <div class="progress mt-1" style="height: 5px;">
-                                                    <div class="progress-bar bg-success" role="progressbar" style="width: <?= min(100, $team['team_achievement_pct']) ?>%;"></div>
+
+                                            <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 20, 30, 32, 33, 34, 35], true) || !empty($isManagement)): ?>
+                                                <div class="mt-1">
+                                                    <a href="<?= $GLOBALS['base_url'] ?>/set-sales-target/<?= $u['id'] ?>" class="btn btn-xs btn-outline-primary border py-0 px-2" style="font-size: 11px;" title="Set or Edit Target for <?= htmlspecialchars($u['full_name']) ?>">
+                                                        <i class="fa-solid fa-pen-to-square me-1"></i>Set / Edit
+                                                    </a>
                                                 </div>
-                                                <div class="extra-small text-muted mt-1"><?= number_format($team['team_achievement_pct'], 1) ?>% Achieved (<?= htmlspecialchars($team['team_name'] ?? 'Team') ?>)</div>
-                                            <?php else: ?>
-                                                <span class="text-muted extra-small"><i class="fa-solid fa-user-group me-1"></i><?= htmlspecialchars($u['team_name'] ?? 'No Team') ?></span>
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <?php if(!empty($team['eligible']) && $team['team_target'] > 0): ?>
-                                                <?php if(($team['incentive_earned'] ?? 0) > 0): ?>
-                                                    <h6 class="text-success fw-bold mb-0">৳<?= number_format($team['incentive_earned'], 2) ?></h6>
-                                                    <span class="extra-small text-muted">0.05% of qualified sales</span>
-                                                <?php else: ?>
-                                                    <span class="text-muted small">৳0.00</span>
-                                                <?php endif; ?>
+                                            <?php if(!empty($ind['is_eligible'])): ?>
+                                                <span class="badge bg-success-subtle text-success fw-semibold mb-1">
+                                                    <i class="fa-solid fa-check me-1"></i>Target Filled Up (≥ 25L)
+                                                </span>
+                                                <div class="small fw-bold text-success">Earned: ৳<?= number_format($ind['total_earned_incentive'], 2) ?></div>
                                             <?php else: ?>
-                                                <span class="text-muted small">-</span>
+                                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle extra-small mb-1">
+                                                    <i class="fa-solid fa-clock me-1"></i>Pending 25L Min
+                                                </span>
+                                                <div class="extra-small text-muted">Earned: ৳0.00</div>
                                             <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if(($cSum['cycle_claims_count'] ?? 0) > 0): ?>
+                                                <span class="badge bg-primary text-white rounded-pill px-2 py-1 extra-small">
+                                                    <?= (int)$cSum['cycle_claims_count'] ?> Claims
+                                                </span>
+                                                <div class="small fw-bold text-primary mt-1">৳<?= number_format($cSum['cycle_claimed_amount'] ?? 0, 2) ?></div>
+                                            <?php else: ?>
+                                                <span class="text-muted extra-small">0 claims</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <div class="small fw-bold text-dark">৳<?= number_format($cSum['total_claimed_amount'] ?? 0, 2) ?></div>
+                                            <span class="text-muted extra-small"><?= (int)($cSum['total_claims_count'] ?? 0) ?> all-time</span>
+                                        </td>
+                                        <td>
+                                            <div class="small fw-bold text-success">৳<?= number_format($cSum['total_paid_amount'] ?? 0, 2) ?></div>
+                                            <span class="badge bg-success-subtle text-success extra-small">Disbursed</span>
+                                        </td>
+                                        <td class="pe-4 text-end">
+                                            <h6 class="fw-bold text-info mb-0">৳<?= number_format($cSum['wallet_balance'] ?? 0, 2) ?></h6>
+                                            <span class="text-muted extra-small">Pending Balance</span>
                                         </td>
                                     </tr>
                                     <?php endforeach; ?>
@@ -414,30 +448,17 @@ $canApproveAh = $isAccountsHead || in_array($userRole, [1, 3]) || strpos($roleNa
                                                     $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
                                                     $isOpHeadUserClaim = (in_array($userRoleId, [20, 32], true) || str_contains($userRoleName, 'operation head'));
                                                     $isMgmtUserClaim = in_array($userRoleId, [1, 3], true);
-                                                    $isMgmtLockedClaim = ($isOver1LacClaim && !$isOpHeadApprovedClaim && $isMgmtUserClaim && !$isOpHeadUserClaim);
+                                                    $canApproveThisClaim = ($isOpHeadUserClaim || $isMgmtUserClaim || $isManagement);
                                                     ?>
-                                                    <?php if ($isManagement || $isOpHeadUserClaim): ?>
-                                                        <?php if ($isMgmtLockedClaim): ?>
-                                                            <span class="badge bg-light text-muted border py-1 px-2" style="font-size:10px;" title="Claims exceeding ৳1,00,000 must be approved by Admin & Operation Head (Role 20) first">
-                                                                <i class="fa-solid fa-lock me-1 text-warning"></i>Locked (>1L)
-                                                            </span>
-                                                        <?php elseif ($isOver1LacClaim && !$isOpHeadApprovedClaim && $isOpHeadUserClaim): ?>
-                                                            <button class="btn btn-sm btn-success rounded-2 px-2 me-1 btn-approve-claim" data-id="<?= $claim['id'] ?>" title="Verify & Approve as Admin & Operation Head">
-                                                                <i class="fa-solid fa-check-double me-1"></i>Op Head Approve
-                                                            </button>
-                                                            <button class="btn btn-sm btn-outline-danger rounded-2 px-2 btn-reject-claim" data-id="<?= $claim['id'] ?>" title="Reject Claim">
-                                                                <i class="fa-solid fa-times"></i>
-                                                            </button>
-                                                        <?php else: ?>
-                                                            <button class="btn btn-sm btn-success rounded-2 px-2 me-1 btn-approve-claim" data-id="<?= $claim['id'] ?>" title="Approve Claim">
-                                                                <i class="fa-solid fa-check me-1"></i>Approve
-                                                            </button>
-                                                            <button class="btn btn-sm btn-outline-danger rounded-2 px-2 btn-reject-claim" data-id="<?= $claim['id'] ?>" title="Reject Claim">
-                                                                <i class="fa-solid fa-times"></i>
-                                                            </button>
-                                                        <?php endif; ?>
+                                                    <?php if ($canApproveThisClaim): ?>
+                                                        <button class="btn btn-sm btn-success rounded-2 px-2 me-1 btn-approve-claim" data-id="<?= $claim['id'] ?>" title="Approve Claim (Role 20 or Management 3)">
+                                                            <i class="fa-solid fa-check me-1"></i>Approve
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-danger rounded-2 px-2 btn-reject-claim" data-id="<?= $claim['id'] ?>" title="Reject Claim">
+                                                            <i class="fa-solid fa-times"></i>
+                                                        </button>
                                                     <?php else: ?>
-                                                        <span class="text-muted extra-small">Waiting for Mgmt Approval</span>
+                                                        <span class="text-muted extra-small">Waiting for Approval</span>
                                                     <?php endif; ?>
                                                 <?php elseif (in_array($claim['claim_status'], ['approved', 'partially_paid'])): ?>
                                                     <?php if (!$isAhApprovedClaim): ?>
@@ -702,6 +723,194 @@ $canApproveAh = $isAccountsHead || in_array($userRole, [1, 3]) || strpos($roleNa
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 5: Team Leader Overrides (0.05%) -->
+                <div class="tab-pane fade" id="team-overrides" role="tabpanel">
+                    <div class="p-3">
+                        <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                            <div>
+                                <h6 class="fw-bold text-dark mb-0">
+                                    <i class="fa-solid fa-people-arrows text-warning me-2"></i>Team Leader 0.05% Overrides From Member Sales
+                                </h6>
+                                <span class="text-muted extra-small">Tracks override incentives gained by Team Leaders when their team members achieve ≥ ৳25 Lakh in land share sales.</span>
+                            </div>
+                            <?php 
+                            $totalTlOverridesSum = 0.00;
+                            if (!empty($allTeamOverrides)) {
+                                foreach ($allTeamOverrides as $to) {
+                                    $totalTlOverridesSum += (float)($to['tl_gain'] ?? 0);
+                                }
+                            }
+                            ?>
+                            <span class="badge bg-warning-subtle text-dark border px-3 py-2 rounded-pill fw-bold fs-7">
+                                Total TL Overrides: ৳<?= number_format($totalTlOverridesSum, 2) ?>
+                            </span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="bg-light text-muted extra-small text-uppercase">
+                                    <tr>
+                                        <th class="ps-4">Sales Team</th>
+                                        <th>Team Leader</th>
+                                        <th>Team Member</th>
+                                        <th>Member Target</th>
+                                        <th>Achieved Land Share</th>
+                                        <th>Qualification Status</th>
+                                        <th>Override Rate</th>
+                                        <th class="pe-4 text-end">TL Incentive Gained</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (empty($allTeamOverrides)): ?>
+                                        <tr>
+                                            <td colspan="8" class="text-center py-4 text-muted">
+                                                <i class="fa-solid fa-people-carry-box mb-2 d-block fs-3 opacity-50"></i>
+                                                No team members have achieved qualifying land share sales in this cycle yet.
+                                            </td>
+                                        </tr>
+                                    <?php else: ?>
+                                        <?php foreach ($allTeamOverrides as $to): ?>
+                                            <tr>
+                                                <td class="ps-4">
+                                                    <span class="badge bg-primary-subtle text-primary border fw-semibold">
+                                                        <i class="fa-solid fa-users me-1"></i><?= htmlspecialchars($to['team_name']) ?>
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span class="fw-bold text-dark d-block"><?= htmlspecialchars($to['tl_name']) ?></span>
+                                                    <code class="extra-small text-muted">[<?= htmlspecialchars($to['tl_code']) ?>]</code>
+                                                </td>
+                                                <td>
+                                                    <span class="fw-semibold text-dark d-block"><?= htmlspecialchars($to['member_name']) ?></span>
+                                                    <code class="extra-small text-muted">[<?= htmlspecialchars($to['member_code']) ?>]</code>
+                                                    <span class="badge bg-light text-dark border extra-small ms-1"><?= htmlspecialchars($to['member_designation']) ?></span>
+                                                </td>
+                                                <td>
+                                                    <span class="text-muted small">৳<?= number_format($to['member_target'], 2) ?></span>
+                                                </td>
+                                                <td>
+                                                    <span class="fw-bold text-dark small">৳<?= number_format($to['member_achieved'], 2) ?></span>
+                                                </td>
+                                                <td>
+                                                    <?php if (!empty($to['is_qualified'])): ?>
+                                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                                                            <i class="fa-solid fa-circle-check me-1"></i>Qualified (≥ 25L)
+                                                        </span>
+                                                    <?php else: ?>
+                                                        <span class="badge bg-warning-subtle text-dark border border-warning-subtle px-2 py-1">
+                                                            <i class="fa-solid fa-clock me-1"></i>Pending 25L
+                                                        </span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-info-subtle text-info fw-bold"><?= $to['tl_rate'] ?? 0.05 ?>%</span>
+                                                </td>
+                                                <td class="pe-4 text-end">
+                                                    <?php if ($to['tl_gain'] > 0): ?>
+                                                        <span class="fw-bold text-success fs-6">+৳<?= number_format($to['tl_gain'], 2) ?></span>
+                                                    <?php else: ?>
+                                                        <span class="text-muted small">৳0.00</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 6: Unassigned (70/30) Splits -->
+                <div class="tab-pane fade" id="cross-splits" role="tabpanel">
+                    <div class="p-3">
+                        <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                            <div>
+                                <h6 class="fw-bold text-dark mb-0">
+                                    <i class="fa-solid fa-arrows-split-up-and-left text-info me-2"></i>Cross-Project Sales & Split Tracking (70% Seller / 30% Designated)
+                                </h6>
+                                <span class="text-muted extra-small">Sales of flats outside the selling agent's designated target. Tracks 70% seller share and 30% designated project holder credit.</span>
+                            </div>
+                            <?php 
+                            $totalCrossVolume = 0.00;
+                            if (!empty($allCrossProjectSplits)) {
+                                foreach ($allCrossProjectSplits as $cs) {
+                                    $totalCrossVolume += (float)($cs['land_share_value'] ?? 0);
+                                }
+                            }
+                            ?>
+                            <span class="badge bg-info-subtle text-info border px-3 py-2 rounded-pill fw-bold fs-7">
+                                Cross Sales Volume: ৳<?= number_format($totalCrossVolume, 2) ?>
+                            </span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="bg-light text-muted extra-small text-uppercase">
+                                    <tr>
+                                        <th class="ps-4">Booking Ref</th>
+                                        <th>Project & Flat</th>
+                                        <th>Land Share Base</th>
+                                        <th>Selling Agent (70% Share)</th>
+                                        <th>70% Status</th>
+                                        <th>Designated Agent (30% Share)</th>
+                                        <th class="pe-4 text-end">Total Split (100%)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (empty($allCrossProjectSplits)): ?>
+                                        <tr>
+                                            <td colspan="7" class="text-center py-4 text-muted">
+                                                <i class="fa-solid fa-map-location-dot mb-2 d-block fs-3 opacity-50"></i>
+                                                No outside/cross-project sales recorded in this cycle.
+                                            </td>
+                                        </tr>
+                                    <?php else: ?>
+                                        <?php foreach ($allCrossProjectSplits as $cs): ?>
+                                            <tr>
+                                                <td class="ps-4">
+                                                    <span class="badge bg-light text-dark border">BK-<?= str_pad($cs['booking_id'], 5, '0', STR_PAD_LEFT) ?></span>
+                                                    <div class="extra-small text-muted"><?= date('d M, Y', strtotime($cs['booking_date'])) ?></div>
+                                                </td>
+                                                <td>
+                                                    <span class="fw-bold text-dark d-block"><?= htmlspecialchars($cs['project_name']) ?></span>
+                                                    <span class="badge bg-primary-subtle text-primary extra-small"><?= htmlspecialchars($cs['flat_name']) ?></span>
+                                                </td>
+                                                <td>
+                                                    <span class="text-dark fw-semibold">৳<?= number_format($cs['land_share_value'], 2) ?></span>
+                                                </td>
+                                                <td>
+                                                    <span class="fw-bold text-dark d-block"><?= htmlspecialchars($cs['seller_name']) ?></span>
+                                                    <code class="extra-small text-muted">[<?= htmlspecialchars($cs['seller_code']) ?>]</code>
+                                                    <span class="fw-bold text-success d-block small">70%: ৳<?= number_format($cs['seller_share'], 2) ?></span>
+                                                </td>
+                                                <td>
+                                                    <?php if (!empty($cs['is_on_hold'])): ?>
+                                                        <span class="badge bg-warning-subtle text-dark border border-warning-subtle px-2 py-1" title="Seller has not achieved 25L min qualification">
+                                                            <i class="fa-solid fa-lock me-1 text-warning"></i>On Hold (Pending 25L)
+                                                        </span>
+                                                    <?php else: ?>
+                                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                                                            <i class="fa-solid fa-unlock me-1"></i>Unlocked (≥ 25L)
+                                                        </span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td>
+                                                    <span class="fw-semibold text-dark d-block">
+                                                        <i class="fa-solid fa-user-check me-1 text-primary"></i><?= htmlspecialchars($cs['designated_user_name'] ?? 'Unassigned / Open') ?>
+                                                    </span>
+                                                    <span class="fw-bold text-indigo small">30%: ৳<?= number_format($cs['designated_share'], 2) ?></span>
+                                                </td>
+                                                <td class="pe-4 text-end">
+                                                    <span class="fw-bold text-dark fs-6">৳<?= number_format(($cs['seller_share'] + $cs['designated_share']), 2) ?></span>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>

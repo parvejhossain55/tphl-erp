@@ -14,6 +14,20 @@ $show_breadcrumb = true;
                 <span class="badge bg-primary ms-2"><?= htmlspecialchars($teamName ?? 'No Team') ?></span>
             </h5>
         </div>
+        <?php if (!empty($_SESSION['flash_success']) || !empty($_SESSION['success'])): ?>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fa-solid fa-circle-check me-2"></i><?= htmlspecialchars($_SESSION['flash_success'] ?? $_SESSION['success']) ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            <?php unset($_SESSION['flash_success'], $_SESSION['success']); ?>
+        <?php endif; ?>
+        <?php if (!empty($_SESSION['flash_error']) || !empty($_SESSION['error'])): ?>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fa-solid fa-triangle-exclamation me-2"></i><?= htmlspecialchars($_SESSION['flash_error'] ?? $_SESSION['error']) ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            <?php unset($_SESSION['flash_error'], $_SESSION['error']); ?>
+        <?php endif; ?>
 
         <form action="<?= $GLOBALS['base_url'] ?>/save-sales-target/<?= $user['id'] ?>" method="POST">
 
@@ -63,8 +77,7 @@ $show_breadcrumb = true;
                     <div class="col-lg-6 mb-3">
                         <label>Sales Role <span>*</span></label>
                         <select name="sales_role" class="form-control select2" data-placeholder="-- Select Sales Role --">
-                            <option value="">-- Select Sales Role --</option>
-                            <option value="KAM" <?= (isset($target['sales_role']) && $target['sales_role'] === 'KAM') ? 'selected' : '' ?>>KAM</option>
+                            <option value="KAM" <?= (!isset($target['sales_role']) || $target['sales_role'] === 'KAM') ? 'selected' : '' ?>>KAM (Default)</option>
                             <option value="KAE" <?= (isset($target['sales_role']) && $target['sales_role'] === 'KAE') ? 'selected' : '' ?>>KAE</option>
                         </select>
                     </div>
@@ -117,7 +130,12 @@ $show_breadcrumb = true;
                     </div>
                     <!-- Land Share Target (Amount) -->
                     <div class="col-lg-6 mb-3">
-                        <label>Land Share Target (Amount) <span>*</span></label>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="mb-0">Land Share Target (Amount) <span>*</span></label>
+                            <a href="javascript:void(0)" class="text-primary extra-small fw-bold" onclick="autoCalculateLandShare('create')">
+                                <i class="fa-solid fa-calculator me-1"></i>Auto-sum from units
+                            </a>
+                        </div>
                         <input type="number"
                             name="booking_value_target"
                             id="booking_value_target"
@@ -125,6 +143,7 @@ $show_breadcrumb = true;
                             min="0"
                             step="0.01"
                             value="<?= $target['booking_value_target'] ?? 0 ?>" required>
+                        <small class="text-muted">You can enter any custom Land Share Target amount (e.g. ৳25,00,000). Custom amounts will be strictly preserved.</small>
                     </div>
 
                     <!-- Site Visit Target -->
@@ -196,7 +215,7 @@ $show_breadcrumb = true;
                         <th>Site Visit Target</th>
                         <th>Booking Target</th>
                         <th>Target Value</th>
-                        <th>Action</th>
+                        <th style="min-width: 140px;">Action</th>
                     </tr>
                 </thead>
                 <tbody id="targetTableBody">
@@ -242,8 +261,8 @@ $show_breadcrumb = true;
                                 </td>
                                 <td><?= $row['booking_target'] ?></td>
                                 <td><?= number_format($row['booking_value_target'], 2) ?></td>
-                                <td>
-                                    <div class="d-flex align-items-center">
+                                <td style="min-width: 140px;">
+                                    <div class="d-flex align-items-center gap-1">
                                         <button type="button"
                                             class="btn btn-sm btn-outline-primary rounded-2 px-2 py-1"
                                             data-bs-toggle="modal"
@@ -403,7 +422,12 @@ $show_breadcrumb = true;
 
                             <!-- Booking Value Target -->
                             <div class="col-lg-4 mb-3">
-                                <label>Land Share Target (Amount) <span>*</span></label>
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <label class="mb-0">Land Share Target <span>*</span></label>
+                                    <a href="javascript:void(0)" class="text-primary extra-small fw-bold" onclick="autoCalculateLandShare('edit')">
+                                        <i class="fa-solid fa-calculator me-1"></i>Sum units
+                                    </a>
+                                </div>
                                 <input type="number" name="booking_value_target" id="edit_target_booking_value" class="form-control" min="0" step="0.01" required>
                             </div>
 
@@ -589,8 +613,12 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('edit_target_site_visit').value = siteVisit ?? 0;
         document.getElementById('edit_target_site_visit_leads').value = button.getAttribute('data-site_visit_leads') ?? 0;
         document.getElementById('edit_target_booking').value = booking ?? 0;
-        document.getElementById('edit_target_booking_value').value = bookingValue ?? 0;
-        document.getElementById('edit_target_sales_role').value = salesRole || '';
+        const editValEl = document.getElementById('edit_target_booking_value');
+        if (editValEl) {
+            editValEl.value = bookingValue ?? 0;
+            editValEl.dataset.manualEdited = "true";
+        }
+        document.getElementById('edit_target_sales_role').value = salesRole || 'KAM';
 
         // Populate Categories in modal
         const catSelect = document.getElementById('edit_target_categories');
@@ -774,21 +802,48 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
 
+    // Global manual calculator if requested by user
+    window.autoCalculateLandShare = function(type) {
+        const flatSelectId = type === 'edit' ? '#edit_flat_select' : '#flat_select';
+        const valueInputId = type === 'edit' ? 'edit_target_booking_value' : 'booking_value_target';
+        const targetInputId = type === 'edit' ? 'edit_target_booking' : 'booking_target';
+        
+        const selectedFlats = $(flatSelectId).find(':selected');
+        let totalVal = 0;
+        selectedFlats.each(function() {
+            totalVal += parseFloat($(this).attr('data-price') || 0);
+        });
+        
+        const valEl = document.getElementById(valueInputId);
+        const tgtEl = document.getElementById(targetInputId);
+        if (valEl) {
+            valEl.value = totalVal.toFixed(2);
+            valEl.dataset.manualEdited = "true";
+        }
+        if (tgtEl && selectedFlats.length > 0) {
+            tgtEl.value = selectedFlats.length;
+        }
+    };
+
     function syncTotalsFromAPI(categorySelect, projectSelect, flatSelect, targetInput, valueInput) {
         if (!window.jQuery) return;
         const selectedFlats = $(flatSelect).find(':selected');
+        
+        // Always auto-fill unit count if units are selected
+        if (targetInput && selectedFlats.length > 0) {
+            targetInput.value = selectedFlats.length;
+        }
+
+        // Only auto-fill Land Share if not manually edited or currently 0/empty
+        const shouldUpdateValue = valueInput && (!valueInput.dataset.manualEdited || valueInput.value === '' || parseFloat(valueInput.value) === 0);
+        
         if (selectedFlats.length > 0) {
-            let totalValue = 0;
-            selectedFlats.each(function() {
-                totalValue += parseFloat($(this).attr('data-price') || 0);
-            });
-            if (valueInput) {
+            if (shouldUpdateValue) {
+                let totalValue = 0;
+                selectedFlats.each(function() {
+                    totalValue += parseFloat($(this).attr('data-price') || 0);
+                });
                 valueInput.value = totalValue.toFixed(2);
-                valueInput.readOnly = false;
-            }
-            if (targetInput) {
-                targetInput.value = selectedFlats.length;
-                targetInput.readOnly = false;
             }
             return;
         }
@@ -797,8 +852,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const projIds = $(projectSelect).val() || [];
         
         if (catIds.length === 0 && projIds.length === 0) {
-            if (valueInput) valueInput.readOnly = false;
-            if (targetInput) targetInput.readOnly = false;
             return;
         }
 
@@ -809,16 +862,24 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch(url)
         .then(res => res.json())
         .then(data => {
-            if (valueInput) {
+            if (shouldUpdateValue && valueInput) {
                 valueInput.value = data.value.toFixed(2);
-                valueInput.readOnly = false;
             }
-            if (targetInput) {
+            if (targetInput && (!targetInput.value || targetInput.value === '0')) {
                 targetInput.value = data.units;
-                targetInput.readOnly = false;
             }
         })
         .catch(err => console.error(err));
+    }
+
+    // Bind manual edit listeners
+    const bValEl = document.getElementById('booking_value_target');
+    if (bValEl) {
+        bValEl.addEventListener('input', function() { this.dataset.manualEdited = "true"; });
+    }
+    const eValEl = document.getElementById('edit_target_booking_value');
+    if (eValEl) {
+        eValEl.addEventListener('input', function() { this.dataset.manualEdited = "true"; });
     }
 
     $(flatSelect).on('change', function() {

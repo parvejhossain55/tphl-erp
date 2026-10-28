@@ -52,6 +52,162 @@ class ClientRefund extends Model
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
 
+    /**
+     * Get KPI summary statistics and project-wise breakdown
+     */
+    public function getSummaryStats($filterUserId = null)
+    {
+        $whereSql = "";
+        if ($filterUserId) {
+            $whereSql = " WHERE crr.requested_by = " . (int)$filterUserId;
+        }
+
+        // 1. Overall stats
+        $statsSql = "SELECT 
+                        COUNT(crr.id) AS total_requests,
+                        SUM(CASE WHEN crr.status = 'pending' THEN 1 ELSE 0 END) AS pending_count,
+                        SUM(CASE WHEN crr.status = 'approved' THEN 1 ELSE 0 END) AS approved_count,
+                        SUM(CASE WHEN crr.status = 'refunded' THEN 1 ELSE 0 END) AS refunded_count,
+                        SUM(CASE WHEN crr.status = 'rejected' THEN 1 ELSE 0 END) AS rejected_count,
+                        COALESCE(SUM(crr.total_paid), 0) AS total_verified_paid,
+                        COALESCE(SUM(crr.retention_amount), 0) AS total_retention,
+                        COALESCE(SUM(crr.refund_amount), 0) AS total_refund_amount,
+                        COALESCE(SUM(CASE WHEN crr.status = 'refunded' THEN crr.refund_amount ELSE 0 END), 0) AS total_refunded_paid
+                     FROM {$this->table} crr {$whereSql}";
+        
+        $statsRes = $this->db->query($statsSql);
+        $stats = $statsRes ? $statsRes->fetch_assoc() : [
+            'total_requests'      => 0,
+            'pending_count'       => 0,
+            'approved_count'      => 0,
+            'refunded_count'      => 0,
+            'rejected_count'      => 0,
+            'total_verified_paid' => 0,
+            'total_retention'     => 0,
+            'total_refund_amount' => 0,
+            'total_refunded_paid' => 0,
+        ];
+
+        // Ensure float formatting
+        $stats['total_requests']      = (int)($stats['total_requests'] ?? 0);
+        $stats['pending_count']       = (int)($stats['pending_count'] ?? 0);
+        $stats['approved_count']      = (int)($stats['approved_count'] ?? 0);
+        $stats['refunded_count']      = (int)($stats['refunded_count'] ?? 0);
+        $stats['rejected_count']      = (int)($stats['rejected_count'] ?? 0);
+        $stats['total_verified_paid'] = (float)($stats['total_verified_paid'] ?? 0);
+        $stats['total_retention']     = (float)($stats['total_retention'] ?? 0);
+        $stats['total_refund_amount'] = (float)($stats['total_refund_amount'] ?? 0);
+        $stats['total_refunded_paid'] = (float)($stats['total_refunded_paid'] ?? 0);
+
+        // 2. Project breakdown: kon project e koyta refund hoiche, koto retention and refund
+        $projSql = "SELECT 
+                        crr.project_id,
+                        COALESCE(p.name, 'Unassigned Project') AS project_name,
+                        COUNT(crr.id) AS total_refunds,
+                        SUM(CASE WHEN crr.status = 'pending' THEN 1 ELSE 0 END) AS pending_count,
+                        SUM(CASE WHEN crr.status = 'approved' THEN 1 ELSE 0 END) AS approved_count,
+                        SUM(CASE WHEN crr.status = 'refunded' THEN 1 ELSE 0 END) AS refunded_count,
+                        SUM(CASE WHEN crr.status = 'rejected' THEN 1 ELSE 0 END) AS rejected_count,
+                        COALESCE(SUM(crr.total_paid), 0) AS total_paid,
+                        COALESCE(SUM(crr.retention_amount), 0) AS total_retention,
+                        COALESCE(SUM(crr.refund_amount), 0) AS total_refund
+                    FROM {$this->table} crr
+                    LEFT JOIN projects p ON p.id = crr.project_id
+                    {$whereSql}
+                    GROUP BY crr.project_id, p.name
+                    ORDER BY total_refunds DESC, p.name ASC";
+
+        $projRes = $this->db->query($projSql);
+        $projectBreakdown = $projRes ? $projRes->fetch_all(MYSQLI_ASSOC) : [];
+
+        $stats['project_breakdown'] = $projectBreakdown;
+        return $stats;
+    }
+
+    /**
+     * Get filtered & paginated refund requests
+     */
+    public function getFilteredRefunds($filterUserId = null, $filters = [], $limit = 20, $offset = 0)
+    {
+        $where = [];
+
+        if ($filterUserId) {
+            $where[] = "crr.requested_by = " . (int)$filterUserId;
+        }
+
+        if (!empty($filters['project_id']) && $filters['project_id'] !== 'all') {
+            $where[] = "crr.project_id = " . (int)$filters['project_id'];
+        }
+
+        if (!empty($filters['status']) && $filters['status'] !== 'all') {
+            $statusEsc = $this->db->real_escape_string(trim($filters['status']));
+            $where[] = "crr.status = '{$statusEsc}'";
+        }
+
+        if (!empty($filters['date_from'])) {
+            $fromEsc = $this->db->real_escape_string(trim($filters['date_from']));
+            $where[] = "DATE(crr.created_at) >= '{$fromEsc}'";
+        }
+
+        if (!empty($filters['date_to'])) {
+            $toEsc = $this->db->real_escape_string(trim($filters['date_to']));
+            $where[] = "DATE(crr.created_at) <= '{$toEsc}'";
+        }
+
+        if (!empty($filters['search'])) {
+            $q = $this->db->real_escape_string(trim($filters['search']));
+            $where[] = "(l.full_name LIKE '%{$q}%' 
+                         OR l.phone LIKE '%{$q}%' 
+                         OR f.flat_name LIKE '%{$q}%' 
+                         OR p.name LIKE '%{$q}%' 
+                         OR crr.reason LIKE '%{$q}%' 
+                         OR crr.id = '{$q}')";
+        }
+
+        $whereClause = !empty($where) ? " WHERE " . implode(" AND ", $where) : "";
+
+        // Count query
+        $countSql = "SELECT COUNT(crr.id) AS total_count
+                     FROM {$this->table} crr
+                     LEFT JOIN leads    l ON l.id = crr.lead_id
+                     LEFT JOIN projects p ON p.id = crr.project_id
+                     LEFT JOIN flats    f ON f.id = crr.flat_id
+                     {$whereClause}";
+        $countRes = $this->db->query($countSql);
+        $total = $countRes ? (int)($countRes->fetch_assoc()['total_count'] ?? 0) : 0;
+
+        // Data query
+        $dataSql = "SELECT crr.*,
+                           l.full_name      AS client_name,
+                           l.phone          AS client_phone,
+                           p.name           AS project_name,
+                           f.flat_name,
+                           f.floor_no,
+                           u_req.full_name  AS requested_by_name,
+                           r_req.name       AS requested_by_role,
+                           u_app.full_name  AS approved_by_name,
+                           r_app.name       AS approved_by_role
+                    FROM {$this->table} crr
+                    LEFT JOIN leads    l     ON l.id  = crr.lead_id
+                    LEFT JOIN projects p     ON p.id  = crr.project_id
+                    LEFT JOIN flats    f     ON f.id  = crr.flat_id
+                    LEFT JOIN users    u_req ON u_req.id = crr.requested_by
+                    LEFT JOIN roles    r_req ON r_req.id = u_req.role_id
+                    LEFT JOIN users    u_app ON u_app.id = crr.approved_by
+                    LEFT JOIN roles    r_app ON r_app.id = u_app.role_id
+                    {$whereClause}
+                    ORDER BY crr.created_at DESC
+                    LIMIT " . (int)$limit . " OFFSET " . (int)$offset;
+
+        $dataRes = $this->db->query($dataSql);
+        $data = $dataRes ? $dataRes->fetch_all(MYSQLI_ASSOC) : [];
+
+        return [
+            'data'  => $data,
+            'total' => $total,
+        ];
+    }
+
     /** Find single refund with full relations */
     public function find($id)
     {

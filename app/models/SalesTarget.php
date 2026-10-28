@@ -83,6 +83,203 @@ class SalesTarget extends Model
         return $targets;
     }
 
+    /**
+     * Get the latest target details for an array of sales user IDs
+     * Batch queries categories, projects, and flats for optimal performance.
+     *
+     * @param array $userIds
+     * @return array Keyed by sales_user_id
+     */
+    public function getLatestTargetsForUsers(array $userIds): array
+    {
+        if (empty($userIds)) {
+            return [];
+        }
+
+        $userIdsClean = array_values(array_filter(array_map('intval', $userIds)));
+        if (empty($userIdsClean)) {
+            return [];
+        }
+
+        $inClause = implode(',', $userIdsClean);
+        $sql = "SELECT st.*, c.name as category_name 
+                FROM sales_targets st
+                LEFT JOIN project_categories c ON st.category_id = c.id
+                WHERE st.sales_user_id IN ($inClause)
+                ORDER BY st.month DESC, st.id DESC";
+
+        $res = $this->db->query($sql);
+        if (!$res) {
+            return [];
+        }
+
+        $allRows = $res->fetch_all(MYSQLI_ASSOC);
+        $latestByUser = [];
+        foreach ($allRows as $row) {
+            $uid = (int)$row['sales_user_id'];
+            if (!isset($latestByUser[$uid])) {
+                $latestByUser[$uid] = $row;
+            }
+        }
+
+        if (empty($latestByUser)) {
+            return [];
+        }
+
+        // Collect all IDs to batch fetch
+        $allCatIds = [];
+        $allProjIds = [];
+        $allFlatIds = [];
+
+        foreach ($latestByUser as $t) {
+            if (!empty($t['category_ids'])) {
+                $cIds = json_decode($t['category_ids'], true);
+                if (is_array($cIds)) {
+                    foreach ($cIds as $cid) {
+                        $allCatIds[] = (int)$cid;
+                    }
+                }
+            }
+            if (!empty($t['category_id'])) {
+                $allCatIds[] = (int)$t['category_id'];
+            }
+            if (!empty($t['project_ids'])) {
+                $pIds = json_decode($t['project_ids'], true);
+                if (is_array($pIds)) {
+                    foreach ($pIds as $pid) {
+                        $allProjIds[] = (int)$pid;
+                    }
+                }
+            }
+            if (!empty($t['flat_ids'])) {
+                $fIds = json_decode($t['flat_ids'], true);
+                if (is_array($fIds)) {
+                    foreach ($fIds as $fid) {
+                        $allFlatIds[] = (int)$fid;
+                    }
+                }
+            }
+        }
+
+        // Fetch categories map
+        $catMap = [];
+        if (!empty($allCatIds)) {
+            $cStr = implode(',', array_unique($allCatIds));
+            $cRes = $this->db->query("SELECT id, name FROM project_categories WHERE id IN ($cStr)");
+            if ($cRes) {
+                while ($c = $cRes->fetch_assoc()) {
+                    $catMap[$c['id']] = $c['name'];
+                }
+            }
+        }
+
+        // Fetch projects map
+        $projMap = [];
+        if (!empty($allProjIds)) {
+            $pStr = implode(',', array_unique($allProjIds));
+            $pRes = $this->db->query("SELECT id, name FROM projects WHERE id IN ($pStr)");
+            if ($pRes) {
+                while ($p = $pRes->fetch_assoc()) {
+                    $projMap[$p['id']] = $p['name'];
+                }
+            }
+        }
+
+        // Fetch flats map
+        $flatMap = [];
+        if (!empty($allFlatIds)) {
+            $fStr = implode(',', array_unique($allFlatIds));
+            $fRes = $this->db->query("SELECT f.id, f.flat_name, p.name as project_name FROM flats f JOIN projects p ON f.project_id = p.id WHERE f.id IN ($fStr)");
+            if ($fRes) {
+                while ($f = $fRes->fetch_assoc()) {
+                    $flatMap[$f['id']] = [
+                        'flat_name' => $f['flat_name'],
+                        'project_name' => $f['project_name'],
+                        'display' => $f['project_name'] . ' - ' . $f['flat_name']
+                    ];
+                }
+            }
+        }
+
+        // Enrich each target
+        foreach ($latestByUser as $uid => &$t) {
+            // Category names
+            $catNames = [];
+            if (!empty($t['category_ids'])) {
+                $cIds = json_decode($t['category_ids'], true);
+                if (is_array($cIds)) {
+                    foreach ($cIds as $cid) {
+                        if (isset($catMap[$cid])) {
+                            $catNames[] = $catMap[$cid];
+                        }
+                    }
+                }
+            }
+            if (empty($catNames) && !empty($t['category_id']) && isset($catMap[$t['category_id']])) {
+                $catNames[] = $catMap[$t['category_id']];
+            }
+            $t['category_names_display'] = !empty($catNames) ? implode(', ', $catNames) : '';
+
+            // Project names
+            $projNames = [];
+            $pIds = !empty($t['project_ids']) ? array_unique((array)json_decode($t['project_ids'], true)) : [];
+            if (is_array($pIds)) {
+                foreach ($pIds as $pid) {
+                    if (isset($projMap[$pid])) {
+                        $projNames[] = $projMap[$pid];
+                    }
+                }
+            }
+            $t['project_names_display'] = array_values(array_unique($projNames));
+
+            // Flat names
+            $flatNames = [];
+            $fIds = !empty($t['flat_ids']) ? array_unique((array)json_decode($t['flat_ids'], true)) : [];
+            if (is_array($fIds)) {
+                foreach ($fIds as $fid) {
+                    if (isset($flatMap[$fid])) {
+                        $flatNames[] = $flatMap[$fid]['display'];
+                    }
+                }
+            }
+            $t['flat_names_display'] = $flatNames;
+
+            // Projects and Units summary logic
+            if (!empty($projNames)) {
+                $t['projects_summary'] = implode(', ', $projNames);
+                if (!empty($flatNames)) {
+                    $t['units_summary'] = count($flatNames) . ' Unit' . (count($flatNames) > 1 ? 's' : '');
+                    $t['units_is_all'] = false;
+                } else {
+                    $t['units_summary'] = 'All Units';
+                    $t['units_is_all'] = true;
+                }
+            } else {
+                if (!empty($t['category_names_display'])) {
+                    $t['projects_summary'] = $t['category_names_display'] . ' (All Projects)';
+                } else {
+                    $t['projects_summary'] = 'All Projects';
+                }
+                $t['units_summary'] = 'All Units';
+                $t['units_is_all'] = true;
+            }
+
+            // Month display
+            $monthTime = strtotime($t['month'] ?? 'now');
+            $t['month_display'] = date('M Y', $monthTime);
+
+            // Period display
+            if (!empty($t['from_date']) && !empty($t['to_date'])) {
+                $t['period_display'] = date('d M', strtotime($t['from_date'])) . ' - ' . date('d M Y', strtotime($t['to_date']));
+            } else {
+                $t['period_display'] = date('M Y', $monthTime);
+            }
+        }
+        unset($t);
+
+        return $latestByUser;
+    }
+
 
     /**
      * Insert or update target with multiple categories, multiple projects and custom date range
