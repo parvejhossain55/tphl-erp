@@ -5565,7 +5565,7 @@ public function discountStatement($bookingId = null)
 
         $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
         $dueType = trim($_GET['due_type'] ?? 'all');
-        if (!in_array($dueType, ['all', 'land_share_due', 'land_share_cleared', 'registered', 'dev_charge_due', 'emi_due', 'overall_due', 'cleared'], true)) {
+        if (!in_array($dueType, ['all', 'land_share_due', 'land_share_cleared', 'registered', 'dev_charge_due', 'shop_service_due', 'emi_due', 'overall_due', 'cleared'], true)) {
             $dueType = 'all';
         }
 
@@ -5582,9 +5582,18 @@ public function discountStatement($bookingId = null)
         $sortBy = trim($_GET['sort_by'] ?? 'booking_id');
         $sortOrder = strtoupper(trim($_GET['sort_order'] ?? 'DESC')) === 'ASC' ? 'ASC' : 'DESC';
 
+        $rawLimit = strtolower(trim($_GET['limit'] ?? '20'));
+        $isAll = ($rawLimit === 'all' || (int)$rawLimit >= 5000);
         $page = max(1, (int)($_GET['page'] ?? 1));
-        $limit = min(100, max(5, (int)($_GET['limit'] ?? 20)));
-        $offset = ($page - 1) * $limit;
+
+        if ($isAll) {
+            $limit = null;
+            $page = 1;
+            $offset = 0;
+        } else {
+            $limit = min(500, max(5, (int)$rawLimit));
+            $offset = ($page - 1) * $limit;
+        }
 
         $filters = [
             'project_id' => $selectedProjectId,
@@ -5598,8 +5607,8 @@ public function discountStatement($bookingId = null)
         ];
 
         $totalClients = $this->clientModel->getClientWiseDueCount($filters);
-        $totalPages = $totalClients > 0 ? (int)ceil($totalClients / $limit) : 1;
-        if ($page > $totalPages && $totalPages > 0) {
+        $totalPages = ($isAll || $limit === null || $limit <= 0) ? 1 : (($totalClients > 0) ? (int)ceil($totalClients / $limit) : 1);
+        if (!$isAll && $page > $totalPages && $totalPages > 0) {
             $page = $totalPages;
             $offset = ($page - 1) * $limit;
         }
@@ -5610,10 +5619,11 @@ public function discountStatement($bookingId = null)
 
         if ($isAjax) {
             $tableHtml = $this->renderDueTrackingRowsHtml($clients);
-            $paginationHtml = $this->generateAjaxPagination($page, $totalPages, $totalClients, $limit, 'loadDueTrackingPage');
-            $startEntry = $totalClients > 0 ? (($page - 1) * $limit) + 1 : 0;
-            $endEntry = min($totalClients, $page * $limit);
-            $infoText = "Showing {$startEntry} to {$endEntry} of {$totalClients} client bookings";
+            $footerHtml = $this->renderDueTrackingFooterHtml($clients, $stats, $isAll);
+            $paginationHtml = $isAll ? '' : $this->generateAjaxPagination($page, $totalPages, $totalClients, $limit, 'loadDueTrackingPage');
+            $startEntry = $totalClients > 0 ? (($page - 1) * ($limit ?: $totalClients)) + 1 : 0;
+            $endEntry = $isAll ? $totalClients : min($totalClients, $page * $limit);
+            $infoText = $isAll ? "Showing all " . number_format($totalClients) . " client bookings" : "Showing {$startEntry} to {$endEntry} of " . number_format($totalClients) . " client bookings";
 
             header('Content-Type: application/json');
             echo json_encode([
@@ -5621,8 +5631,9 @@ public function discountStatement($bookingId = null)
                 'page' => $page,
                 'totalPages' => $totalPages,
                 'totalRecords' => $totalClients,
-                'limit' => $limit,
+                'limit' => $isAll ? 'all' : $limit,
                 'table_html' => $tableHtml,
+                'footer_html' => $footerHtml,
                 'pagination_html' => $paginationHtml,
                 'info_text' => $infoText,
                 'stats' => $stats,
@@ -5658,7 +5669,7 @@ public function discountStatement($bookingId = null)
             "totalClients"        => $totalClients,
             "totalPages"          => $totalPages,
             "currentPage"         => $page,
-            "limit"               => $limit,
+            "limit"               => $isAll ? 'all' : $limit,
             "search"              => $search,
             "dueType"             => $dueType,
             "stats"               => $stats,
@@ -5681,10 +5692,10 @@ public function discountStatement($bookingId = null)
      * @param array $clients
      * @return string
      */
-    public function renderDueTrackingRowsHtml(array $clients): string
+        public function renderDueTrackingRowsHtml(array $clients): string
     {
         if (empty($clients)) {
-            return '<tr><td colspan="11" class="text-center py-5 text-muted"><i class="fa-solid fa-folder-open fa-3x mb-3 text-secondary opacity-50 d-block"></i>No client due records found matching the criteria.</td></tr>';
+            return '<tr><td colspan="10" class="text-center py-5 text-muted"><i class="fa-solid fa-folder-open fa-3x mb-3 text-secondary opacity-50 d-block"></i>No client due records found matching the criteria.</td></tr>';
         }
 
         // Batch query followup counts for these bookings
@@ -5724,55 +5735,15 @@ public function discountStatement($bookingId = null)
             $devTarget = (float)($client['development_charges'] ?? 0);
             $devPaid = (float)($client['dev_charge_paid'] ?? 0);
             $devDue = (float)($client['dev_charge_due'] ?? 0);
-            if ($isShop) {
-                $devTarget += (float)($client['shop_service_charge_target'] ?? 0);
-                $devPaid += (float)($client['shop_service_charge_paid'] ?? 0);
-                $devDue += (float)($client['shop_service_charge_due'] ?? 0);
-            }
+
+            $shopTarget = (float)($client['shop_service_charge_target'] ?? 0);
+            $shopPaid = (float)($client['shop_service_charge_paid'] ?? 0);
+            $shopDue = (float)($client['shop_service_charge_due'] ?? 0);
 
             $consFee = (float)($client['construction_fee'] ?? 0);
             $emiPaid = (float)($client['emi_paid'] ?? 0);
             $remEmiDue = (float)($client['remaining_emi_due'] ?? 0);
             $overdueEmi = (float)($client['overdue_emi_amount'] ?? 0);
-
-            $regularEmiPaid = (float)($client['regular_emi_paid'] ?? 0);
-            $advanceEmiPaid = (float)($client['advance_emi_paid'] ?? 0);
-            $maxPaidDueDate = !empty($client['max_regular_paid_due_date']) ? $client['max_regular_paid_due_date'] : null;
-            $maxPaidEmiNo = (int)($client['max_regular_paid_emi_no'] ?? 0);
-            $regularCompletedEmi = (int)($client['regular_completed_emi_count'] ?? 0);
-            $advanceEmiCount = (int)($client['advance_emi_count'] ?? 0);
-            $advanceEmiNumbers = trim($client['advance_emi_numbers'] ?? '');
-            $maxAdvanceDueDate = !empty($client['max_advance_due_date']) ? $client['max_advance_due_date'] : null;
-            $lastRegularPaidAmount = (float)($client['last_regular_paid_amount'] ?? 0);
-            $lastRegularPaymentDate = !empty($client['last_regular_payment_date']) ? date('d M, Y', strtotime($client['last_regular_payment_date'])) : null;
-
-            // Format advance EMI display badge text
-            $advanceEmiBadgeText = '';
-            if ($advanceEmiPaid > 0) {
-                if (!empty($advanceEmiNumbers)) {
-                    $advNos = array_unique(array_filter(array_map('intval', explode(',', $advanceEmiNumbers))));
-                    sort($advNos);
-                    $advCount = count($advNos);
-                    $isConsecutive = true;
-                    for ($k = 0; $k < $advCount - 1; $k++) {
-                        if ($advNos[$k + 1] !== $advNos[$k] + 1) {
-                            $isConsecutive = false;
-                            break;
-                        }
-                    }
-                    if ($advCount === 1) {
-                        $advanceEmiBadgeText = "1 EMI (#{$advNos[0]})";
-                    } elseif ($isConsecutive && $advCount > 3) {
-                        $advanceEmiBadgeText = "{$advCount} EMIs (#{$advNos[0]} - #{$advNos[$advCount - 1]})";
-                    } else {
-                        $advanceEmiBadgeText = "{$advCount} EMIs (#" . implode(', #', $advNos) . ")";
-                    }
-                } elseif ($advanceEmiCount > 0) {
-                    $advanceEmiBadgeText = "{$advanceEmiCount} Advance " . ($advanceEmiCount > 1 ? 'EMIs' : 'EMI');
-                } else {
-                    $advanceEmiBadgeText = 'Advance Paid';
-                }
-            }
 
             $completedEmi = (int)($client['completed_emi_count'] ?? 0);
             $totalEmi = (int)($client['total_emi_no'] ?? 0);
@@ -5782,19 +5753,6 @@ public function discountStatement($bookingId = null)
             $bookingDate = !empty($client['booking_date']) ? date('d M, Y', strtotime($client['booking_date'])) : 'N/A';
             $lastPaymentDate = !empty($client['last_payment_date']) ? date('d M, Y', strtotime($client['last_payment_date'])) : null;
 
-            // Status badges
-            $landBadge = ($landDue <= 0)
-                ? '<span class="badge bg-success-subtle text-success fw-semibold"><i class="fa-solid fa-check me-1"></i>Cleared</span>'
-                : '<span class="badge bg-danger-subtle text-danger fw-bold fs-12">Tk. ' . number_format($landDue) . '</span>';
-
-            $devBadge = ($devDue <= 0)
-                ? '<span class="badge bg-success-subtle text-success fw-semibold"><i class="fa-solid fa-check me-1"></i>Cleared</span>'
-                : '<span class="badge bg-danger-subtle text-danger fw-bold fs-12">Tk. ' . number_format($devDue) . '</span>';
-
-            $overallBadge = ($overallDue <= 0)
-                ? '<span class="badge bg-success text-white fw-bold px-2 py-1"><i class="fa-solid fa-check-double me-1"></i>Fully Paid</span>'
-                : '<span class="fw-bold text-danger fs-14">Tk. ' . number_format($overallDue) . '</span>';
-
             $baseUrl = $GLOBALS['base_url'] ?? '';
             $ledgerUrl = "{$baseUrl}/clients-cash-in-history-view/{$bookingId}";
 
@@ -5803,20 +5761,20 @@ public function discountStatement($bookingId = null)
             // Col 1: ID & Date
             $html .= '<td class="text-center">';
             $html .= '<a href="' . $ledgerUrl . '" class="fw-bold text-primary text-decoration-none">#' . $bookingId . '</a>';
-            $html .= '<div class="extra-small text-muted">' . $bookingDate . '</div>';
+            $html .= '<div class="extra-small text-muted" style="font-size:10px;">' . $bookingDate . '</div>';
             $html .= '</td>';
 
-            // Col 2: Client
+            // Col 2: Client Info
             $html .= '<td>';
             $html .= '<div class="d-flex align-items-center">';
-            $html .= '<div class="avatar avatar-sm bg-primary-subtle text-primary rounded-circle me-2 d-flex align-items-center justify-content-center fw-bold" style="width:34px; height:34px; font-size:12px;">' . mb_substr($clientName, 0, 1) . '</div>';
+            $html .= '<div class="avatar avatar-sm bg-primary-subtle text-primary rounded-circle me-2 d-flex align-items-center justify-content-center fw-bold no-print" style="width:30px; height:30px; font-size:11px; flex-shrink:0;">' . mb_substr($clientName, 0, 1) . '</div>';
             $html .= '<div>';
-            $html .= '<a href="' . $ledgerUrl . '" class="fw-bold text-dark text-decoration-none d-block">' . $clientName . '</a>';
+            $html .= '<a href="' . $ledgerUrl . '" class="fw-bold text-dark text-decoration-none d-block fs-13">' . $clientName . '</a>';
             if (!empty($phone)) {
-                $html .= '<a href="tel:' . $phone . '" class="extra-small text-muted text-decoration-none me-2"><i class="fa-solid fa-phone me-1 text-secondary"></i>' . $phone . '</a>';
+                $html .= '<div class="extra-small text-muted" style="font-size:11px;"><i class="fa-solid fa-phone me-1 text-secondary"></i>' . $phone . '</div>';
             }
             if (!empty($salesAgent)) {
-                $html .= '<span class="extra-small text-muted d-block" title="Assigned Sales Agent"><i class="fa-solid fa-user-tie me-1 text-info"></i>' . $salesAgent . '</span>';
+                $html .= '<div class="extra-small text-muted" style="font-size:10px;" title="Assigned Sales Agent"><i class="fa-solid fa-user-tie me-1 text-info"></i>' . $salesAgent . '</div>';
             }
             $html .= '</div>';
             $html .= '</div>';
@@ -5824,7 +5782,7 @@ public function discountStatement($bookingId = null)
 
             // Col 3: Project & Unit
             $html .= '<td>';
-            $html .= '<span class="badge bg-light text-primary border border-primary-subtle mb-1 d-inline-block text-truncate" style="max-width: 170px;" title="' . $projectName . '">' . $projectName . '</span>';
+            $html .= '<span class="badge bg-light text-primary border border-primary-subtle mb-1 d-inline-block text-truncate" style="max-width: 155px; font-size:11px;" title="' . $projectName . '">' . $projectName . '</span>';
             $html .= '<div class="fw-semibold text-dark extra-small">';
             $html .= '<i class="fa-solid fa-building me-1 text-muted"></i>' . $unitName . (!empty($floorNo) ? ' (Fl ' . $floorNo . ')' : '');
             if ($isShop) {
@@ -5833,104 +5791,86 @@ public function discountStatement($bookingId = null)
             $html .= '</div>';
             $html .= '</td>';
 
-            // Col 4: Total Value & Paid
-            $html .= '<td class="text-end">';
-            $html .= '<div class="fw-bold text-dark">Tk. ' . number_format($totalPrice) . '</div>';
+            // Col 4: Flat Value (Tk.) - Clean, right-aligned, no "Tk."
+            $html .= '<td class="text-end" style="font-variant-numeric: tabular-nums;">';
+            $html .= '<div class="fw-bold text-dark fs-13">' . number_format($totalPrice) . '</div>';
             if ($discount > 0) {
-                $html .= '<div class="extra-small text-success" title="Booking Discount"><i class="fa-solid fa-tag me-1"></i>Disc: Tk. ' . number_format($discount) . '</div>';
+                $html .= '<div class="extra-small text-success" style="font-size:10px;" title="Discount"><i class="fa-solid fa-tag me-1"></i>Disc: ' . number_format($discount) . '</div>';
             }
-            $html .= '<div class="extra-small text-muted">Paid: Tk. ' . number_format($totalPaid) . '</div>';
+            $html .= '<div class="extra-small text-muted" style="font-size:10px;">Paid: ' . number_format($totalPaid) . '</div>';
             $html .= '</td>';
 
-            // Col 5: Land Share Due
-            $html .= '<td class="text-end">';
-            $html .= '<div class="mb-1">' . $landBadge . '</div>';
-            $html .= '<div class="extra-small text-muted" style="font-size:10px;" title="Booking + Registration Fee">';
-            $html .= 'Target: Tk. ' . number_format($landTarget) . '<br>Paid: Tk. ' . number_format($landPaid);
-            $html .= '</div>';
-            $html .= '</td>';
-
-            // Col 6: Development Charge Due
-            $html .= '<td class="text-end">';
-            $html .= '<div class="mb-1">' . $devBadge . '</div>';
+            // Col 5: Land Share Due (Tk.) - 3 Items: Due status, Target, Paid (No "Tk.", no heavy box)
+            $html .= '<td class="text-end" style="font-variant-numeric: tabular-nums;">';
+            if ($landDue <= 0) {
+                $html .= '<div class="text-success fw-semibold fs-12"><i class="fa-solid fa-check me-1"></i>Cleared</div>';
+            } else {
+                $html .= '<div class="fw-bold text-danger fs-13">' . number_format($landDue) . '</div>';
+            }
             $html .= '<div class="extra-small text-muted" style="font-size:10px;">';
-            $html .= 'Target: Tk. ' . number_format($devTarget) . '<br>Paid: Tk. ' . number_format($devPaid);
-            if ($isShop && (float)($client['shop_service_charge_target'] ?? 0) > 0) {
-                $html .= '<div class="extra-small text-info" style="font-size:9px;">(Shop Svc Charge)</div>';
-            }
+            $html .= 'Target: ' . number_format($landTarget) . '<br>Paid: ' . number_format($landPaid);
             $html .= '</div>';
             $html .= '</td>';
 
-            // Col 7: Regular EMI Paid
-            $html .= '<td class="text-end">';
-            $html .= '<div class="fw-bold ' . ($regularEmiPaid > 0 ? 'text-dark' : 'text-muted') . '">Tk. ' . number_format($regularEmiPaid) . '</div>';
-            if ($maxPaidDueDate) {
-                $monthYearStr = date('M Y', strtotime($maxPaidDueDate));
-                $html .= '<div class="extra-small mt-1">';
-                $html .= '<a href="javascript:void(0)" onclick="openEmiAnalyticsModal(\'regular\')" class="badge bg-primary-subtle text-primary border border-primary-subtle text-decoration-none" title="Regular installments paid up to ' . $monthYearStr . ' (Click to view breakdown)">';
-                $html .= '<i class="fa-solid fa-calendar-check me-1 text-primary"></i>Up to: ' . $monthYearStr . ' (#' . ($maxPaidEmiNo > 0 ? $maxPaidEmiNo : $regularCompletedEmi) . '/' . $totalEmi . ')';
-                $html .= '</a>';
-                $html .= '</div>';
+            // Col 6: Dev Charge Due (Tk.) - 3 Items: Due status, Target, Paid (No "Tk.", no heavy box)
+            $html .= '<td class="text-end" style="font-variant-numeric: tabular-nums;">';
+            if ($devDue <= 0) {
+                $html .= '<div class="text-success fw-semibold fs-12"><i class="fa-solid fa-check me-1"></i>Cleared</div>';
             } else {
-                $html .= '<div class="extra-small text-muted" style="font-size:10px;">0/' . $totalEmi . ' EMIs</div>';
+                $html .= '<div class="fw-bold text-danger fs-13">' . number_format($devDue) . '</div>';
             }
-            if ($lastRegularPaidAmount > 0 && $lastRegularPaymentDate) {
-                $html .= '<div class="extra-small text-muted" style="font-size:10px;" title="Last regular installment payment">';
-                $html .= '<i class="fa-solid fa-receipt me-1 text-secondary"></i>Last: Tk. ' . number_format($lastRegularPaidAmount) . ' <span class="text-secondary">(' . $lastRegularPaymentDate . ')</span>';
-                $html .= '</div>';
-            }
+            $html .= '<div class="extra-small text-muted" style="font-size:10px;">';
+            $html .= 'Target: ' . number_format($devTarget) . '<br>Paid: ' . number_format($devPaid);
+            $html .= '</div>';
             $html .= '</td>';
 
-            // Col 8: Advance EMI Paid
-            $html .= '<td class="text-end">';
-            if ($advanceEmiPaid > 0) {
-                $html .= '<div class="mb-1">';
-                $html .= '<a href="javascript:void(0)" onclick="openEmiAnalyticsModal(\'advance\')" class="badge bg-success-subtle text-success fw-bold fs-12 text-decoration-none" title="Paid in advance for future months: ' . htmlspecialchars($advanceEmiBadgeText) . ' (Click to view breakdown)">';
-                $html .= '<i class="fa-solid fa-forward me-1"></i>Tk. ' . number_format($advanceEmiPaid);
-                $html .= '</a>';
-                $html .= '</div>';
-                $html .= '<div class="extra-small text-success fw-semibold" style="font-size:10px;" title="Advance Installment Numbers">';
-                $html .= '<i class="fa-solid fa-layer-group me-1"></i>' . htmlspecialchars($advanceEmiBadgeText);
-                $html .= '</div>';
-                if ($maxAdvanceDueDate) {
-                    $html .= '<div class="extra-small text-muted" style="font-size:9px;">Due: ' . date('M Y', strtotime($maxAdvanceDueDate)) . '</div>';
+            // Col 7: Shop Svc Due (Tk.) - Clean, right-aligned (No "Tk.")
+            $html .= '<td class="text-end" style="font-variant-numeric: tabular-nums;">';
+            if (!$isShop) {
+                $html .= '<span class="text-muted extra-small" style="font-size:11px;">-</span>';
+            } else {
+                if ($shopDue <= 0) {
+                    $html .= '<div class="text-success fw-semibold fs-12"><i class="fa-solid fa-check me-1"></i>Cleared</div>';
+                } else {
+                    $html .= '<div class="fw-bold fs-13" style="color:#4f46e5;">' . number_format($shopDue) . '</div>';
                 }
-            } else {
-                $html .= '<div class="fw-semibold text-muted" style="font-size:13px;">Tk. 0</div>';
-                $html .= '<div class="extra-small text-muted" style="font-size:10px;">No advance</div>';
+                $html .= '<div class="extra-small text-muted" style="font-size:10px;">';
+                $html .= 'Target: ' . number_format($shopTarget) . '<br>Paid: ' . number_format($shopPaid);
+                $html .= '</div>';
             }
             $html .= '</td>';
 
-            // Col 9: Due EMI
-            $html .= '<td class="text-end">';
+            // Col 8: Due EMI (Tk.) - Clean, right-aligned (No "Tk.")
+            $html .= '<td class="text-end" style="font-variant-numeric: tabular-nums;">';
             if ($overdueEmi > 0) {
-                $html .= '<div class="mb-1">';
-                $html .= '<a href="javascript:void(0)" onclick="openEmiAnalyticsModal(\'due\')" class="badge bg-danger-subtle text-danger fw-bold fs-12 text-decoration-none" title="Overdue installments pending payment (Click to view breakdown)">';
-                $html .= '<i class="fa-solid fa-triangle-exclamation me-1"></i>Tk. ' . number_format($overdueEmi);
-                $html .= '</a>';
-                $html .= '</div>';
+                $html .= '<div class="fw-bold text-danger fs-13">' . number_format($overdueEmi) . '</div>';
+                $html .= '<div class="extra-small text-danger fw-semibold" style="font-size:10px;"><i class="fa-solid fa-triangle-exclamation me-1"></i>Overdue</div>';
             } elseif ($remEmiDue <= 0 && $completedEmi > 0) {
-                $html .= '<div class="mb-1"><span class="badge bg-success-subtle text-success fw-semibold"><i class="fa-solid fa-check me-1"></i>Cleared</span></div>';
+                $html .= '<div class="text-success fw-semibold fs-12"><i class="fa-solid fa-check me-1"></i>Cleared</div>';
             } else {
-                $html .= '<div class="mb-1"><span class="badge bg-light text-secondary border fw-semibold" style="font-size:11px;">Current</span></div>';
+                $html .= '<div class="text-secondary fw-semibold fs-12">Current</div>';
             }
-            $html .= '<div class="extra-small text-muted" style="font-size:10px;">Rem: Tk. ' . number_format($remEmiDue) . '</div>';
+            $html .= '<div class="extra-small text-muted" style="font-size:10px;">Rem: ' . number_format($remEmiDue) . '</div>';
             $pendingEmiCount = (int)($client['pending_emi_payment_count'] ?? 0);
             if ($pendingEmiCount > 0) {
-                $html .= '<div class="mt-1"><span class="badge bg-warning text-dark extra-small" style="font-size:9px;" title="' . $pendingEmiCount . ' EMI payment(s) awaiting verification"><i class="fa-solid fa-clock me-1"></i>+' . $pendingEmiCount . ' Pending</span></div>';
+                $html .= '<div class="extra-small text-warning" style="font-size:9px;" title="' . $pendingEmiCount . ' pending EMI payment(s)"><i class="fa-solid fa-clock me-1"></i>+' . $pendingEmiCount . ' Pending</div>';
             }
             $html .= '</td>';
 
-            // Col 10: Overall Due
-            $html .= '<td class="text-end">';
-            $html .= '<div class="mb-1">' . $overallBadge . '</div>';
+            // Col 9: Overall Due (Tk.) - Clean, right-aligned (No "Tk.")
+            $html .= '<td class="text-end" style="font-variant-numeric: tabular-nums;">';
+            if ($overallDue <= 0) {
+                $html .= '<div class="text-success fw-bold fs-13"><i class="fa-solid fa-check-double me-1"></i>Cleared</div>';
+            } else {
+                $html .= '<div class="fw-bold text-danger fs-14">' . number_format($overallDue) . '</div>';
+            }
             if ($lastPaymentDate) {
-                $html .= '<div class="extra-small text-muted" style="font-size:10px;"><i class="fa-solid fa-clock-rotate-left me-1"></i>' . $lastPaymentDate . '</div>';
+                $html .= '<div class="extra-small text-muted" style="font-size:10px;" title="Last Payment Date"><i class="fa-solid fa-clock-rotate-left me-1"></i>' . $lastPaymentDate . '</div>';
             }
             $html .= '</td>';
 
-            // Col 11: Action
-            $html .= '<td class="text-center">';
+            // Col 10: Action (Screen Only, hidden in print)
+            $html .= '<td class="text-center no-print">';
             $html .= '<div class="d-flex align-items-center justify-content-center gap-1">';
             $html .= '<a href="' . $ledgerUrl . '" class="btn btn-outline-primary btn-sm py-1 px-2" style="font-size:11px;" title="View Full Client Ledger & Cash In History"><i class="fa-solid fa-receipt me-1"></i>Ledger</a>';
             $html .= '<button type="button" class="btn btn-outline-secondary btn-sm py-1 px-2" style="font-size:11px;" onclick="openClientDueBreakdownModal(' . $bookingId . ')" title="Quick Due Breakdown Preview"><i class="fa-solid fa-eye"></i></button>';
@@ -5952,13 +5892,124 @@ public function discountStatement($bookingId = null)
         return $html;
     }
 
+
     /**
-     * Render Table Rows HTML for EMI Analytics Breakdown Modal
+     * Render Footer HTML for Client-wise Due Tracking Table (Summary Total Calculation Row)
      *
      * @param array $clients
-     * @param string $category
+     * @param array $stats
+     * @param bool $isAll
      * @return string
      */
+    public function renderDueTrackingFooterHtml(array $clients, array $stats = [], bool $isAll = false): string
+    {
+        if (empty($clients)) {
+            return '';
+        }
+
+        $recordCount = count($clients);
+        $totFlatValue = 0;
+        $totDiscount = 0;
+        $totPaid = 0;
+        $totLandDue = 0;
+        $totLandTarget = 0;
+        $totLandPaid = 0;
+        $totDevDue = 0;
+        $totDevTarget = 0;
+        $totDevPaid = 0;
+        $totShopDue = 0;
+        $totShopTarget = 0;
+        $totShopPaid = 0;
+        $totOverdueEmi = 0;
+        $totRemEmiDue = 0;
+        $totOverallDue = 0;
+
+        foreach ($clients as $c) {
+            $totFlatValue += (float)($c['total_price'] ?? 0);
+            $totDiscount  += (float)($c['discount_amount'] ?? 0);
+            $totPaid      += (float)($c['total_paid'] ?? 0);
+
+            $totLandDue   += (float)($c['land_share_due'] ?? 0);
+            $totLandTarget+= (float)($c['total_land_share'] ?? 0);
+            $totLandPaid  += (float)($c['land_share_paid'] ?? 0);
+
+            $totDevDue    += (float)($c['dev_charge_due'] ?? 0);
+            $totDevTarget += (float)($c['development_charges'] ?? 0);
+            $totDevPaid   += (float)($c['dev_charge_paid'] ?? 0);
+
+            $totShopDue   += (float)($c['shop_service_charge_due'] ?? 0);
+            $totShopTarget+= (float)($c['shop_service_charge_target'] ?? 0);
+            $totShopPaid  += (float)($c['shop_service_charge_paid'] ?? 0);
+
+            $totOverdueEmi+= (float)($c['overdue_emi_amount'] ?? 0);
+            $totRemEmiDue += (float)($c['remaining_emi_due'] ?? 0);
+
+            $totOverallDue+= (float)($c['overall_due'] ?? 0);
+        }
+
+        $label = $isAll ? 'GRAND TOTAL' : 'TOTAL';
+
+        $html = '<tr class="align-middle fw-bold" style="background-color: #f1f5f9; border-top: 2px solid #64748b; border-bottom: 2px solid #64748b;">';
+
+        // Col 1: Label
+        $html .= '<td class="text-center fw-bold fs-12 text-uppercase" style="color: #0f172a;">' . $label . '</td>';
+
+        // Col 2: Bookings count
+        $html .= '<td class="fw-bold fs-12 text-dark">';
+        $html .= number_format($recordCount) . ' Bookings';
+        $html .= '</td>';
+
+        // Col 3: Summary Note
+        $html .= '<td class="fw-semibold text-muted extra-small" style="font-size: 10px;">';
+        $html .= 'All Units';
+        $html .= '</td>';
+
+        // Col 4: Flat Value (Tk.)
+        $html .= '<td class="text-end fw-bold" style="font-variant-numeric: tabular-nums;">';
+        $html .= '<div class="text-dark fs-13">' . number_format($totFlatValue) . '</div>';
+        if ($totDiscount > 0) {
+            $html .= '<div class="extra-small text-success" style="font-size: 10px;">Disc: ' . number_format($totDiscount) . '</div>';
+        }
+        $html .= '<div class="extra-small text-muted" style="font-size: 10px;">Paid: ' . number_format($totPaid) . '</div>';
+        $html .= '</td>';
+
+        // Col 5: Land Share Due (Tk.)
+        $html .= '<td class="text-end fw-bold" style="font-variant-numeric: tabular-nums;">';
+        $html .= '<div class="' . ($totLandDue > 0 ? 'text-danger' : 'text-success') . ' fs-13">' . number_format($totLandDue) . '</div>';
+        $html .= '<div class="extra-small text-muted" style="font-size: 10px;">Target: ' . number_format($totLandTarget) . '<br>Paid: ' . number_format($totLandPaid) . '</div>';
+        $html .= '</td>';
+
+        // Col 6: Dev Charge Due (Tk.)
+        $html .= '<td class="text-end fw-bold" style="font-variant-numeric: tabular-nums;">';
+        $html .= '<div class="' . ($totDevDue > 0 ? 'text-danger' : 'text-success') . ' fs-13">' . number_format($totDevDue) . '</div>';
+        $html .= '<div class="extra-small text-muted" style="font-size: 10px;">Target: ' . number_format($totDevTarget) . '<br>Paid: ' . number_format($totDevPaid) . '</div>';
+        $html .= '</td>';
+
+        // Col 7: Shop Svc Due (Tk.)
+        $html .= '<td class="text-end fw-bold" style="font-variant-numeric: tabular-nums;">';
+        $html .= '<div class="fs-13" style="color: #4f46e5;">' . number_format($totShopDue) . '</div>';
+        $html .= '<div class="extra-small text-muted" style="font-size: 10px;">Target: ' . number_format($totShopTarget) . '<br>Paid: ' . number_format($totShopPaid) . '</div>';
+        $html .= '</td>';
+
+        // Col 8: Due EMI (Tk.)
+        $html .= '<td class="text-end fw-bold" style="font-variant-numeric: tabular-nums;">';
+        $html .= '<div class="' . ($totOverdueEmi > 0 ? 'text-danger' : 'text-success') . ' fs-13">' . number_format($totOverdueEmi) . '</div>';
+        $html .= '<div class="extra-small text-muted" style="font-size: 10px;">Rem: ' . number_format($totRemEmiDue) . '</div>';
+        $html .= '</td>';
+
+        // Col 9: Overall Due (Tk.)
+        $html .= '<td class="text-end fw-bold" style="font-variant-numeric: tabular-nums;">';
+        $html .= '<div class="' . ($totOverallDue > 0 ? 'text-danger' : 'text-success') . ' fs-14">' . number_format($totOverallDue) . '</div>';
+        $html .= '</td>';
+
+        // Col 10: Action (Hidden in print)
+        $html .= '<td class="no-print"></td>';
+
+        $html .= '</tr>';
+
+        return $html;
+    }
+
     public function renderEmiAnalyticsModalRowsHtml(array $clients, string $category = 'all'): string
     {
         if (empty($clients)) {
@@ -6163,12 +6214,21 @@ public function discountStatement($bookingId = null)
             session_start();
         }
 
+        if (ob_get_level()) {
+            ob_end_clean();
+        }
+
         $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
         $dueType = trim($_GET['due_type'] ?? 'all');
         $search = trim($_GET['search'] ?? '');
         $dateType = trim($_GET['date_type'] ?? '');
         $startDate = trim($_GET['start_date'] ?? '');
         $endDate = trim($_GET['end_date'] ?? '');
+        $sortBy = trim($_GET['sort_by'] ?? 'overall_due');
+        $sortOrder = strtoupper(trim($_GET['sort_order'] ?? 'DESC'));
+        if (!in_array($sortOrder, ['ASC', 'DESC'])) {
+            $sortOrder = 'DESC';
+        }
 
         $filters = [
             'project_id' => $selectedProjectId,
@@ -6177,12 +6237,12 @@ public function discountStatement($bookingId = null)
             'date_type'  => $dateType,
             'start_date' => $startDate,
             'end_date'   => $endDate,
-            'sort_by'    => 'overall_due',
-            'sort_order' => 'DESC'
+            'sort_by'    => $sortBy,
+            'sort_order' => $sortOrder
         ];
 
-        // Retrieve up to 5,000 records for CSV export
-        $clients = $this->clientModel->getClientWiseDueList($filters, 5000, 0);
+        // Retrieve up to 10,000 records for CSV export
+        $clients = $this->clientModel->getClientWiseDueList($filters, 10000, 0);
 
         $filename = "Client_Due_Tracking_" . date('Y_m_d_His') . ".csv";
 
@@ -6206,6 +6266,7 @@ public function discountStatement($bookingId = null)
             'Project Name',
             'Unit / Flat',
             'Floor',
+            'Unit Type',
             'Total Flat Value (BDT)',
             'Discount (BDT)',
             'Total Paid (BDT)',
@@ -6215,6 +6276,9 @@ public function discountStatement($bookingId = null)
             'Dev Charges Target (BDT)',
             'Dev Charges Paid (BDT)',
             'Dev Charges Due (BDT)',
+            'Shop Service Target (BDT)',
+            'Shop Service Paid (BDT)',
+            'Shop Service Due (BDT)',
             'Construction Target (BDT)',
             'Regular EMI Paid (BDT)',
             'Paid Up To',
@@ -6242,11 +6306,18 @@ public function discountStatement($bookingId = null)
             $devPaid = (float)$c['dev_charge_paid'];
             $devDue = (float)$c['dev_charge_due'];
 
+            $isShop = !empty($c['is_shop']) && (int)$c['is_shop'] === 1;
+            $unitType = $isShop ? 'Shop' : (!empty($c['unit_type']) ? ucfirst($c['unit_type']) : 'Residential');
+
+            $shopTarget = (float)($c['shop_service_charge_target'] ?? 0);
+            $shopPaid = (float)($c['shop_service_charge_paid'] ?? 0);
+            $shopDue = (float)($c['shop_service_charge_due'] ?? 0);
+
             $consFee = (float)$c['construction_fee'];
             $emiPaid = (float)$c['emi_paid'];
             $regularEmiPaid = (float)($c['regular_emi_paid'] ?? 0);
             $advanceEmiPaid = (float)($c['advance_emi_paid'] ?? 0);
-            $maxPaidDueDate = !empty($c['max_paid_due_date']) ? date('M Y', strtotime($c['max_paid_due_date'])) : 'N/A';
+            $maxPaidDueDate = !empty($c['max_regular_paid_due_date']) ? date('M Y', strtotime($c['max_regular_paid_due_date'])) : (!empty($c['max_paid_due_date']) ? date('M Y', strtotime($c['max_paid_due_date'])) : 'N/A');
             $remEmiDue = (float)$c['remaining_emi_due'];
             $overdueEmi = (float)$c['overdue_emi_amount'];
 
@@ -6267,6 +6338,7 @@ public function discountStatement($bookingId = null)
                 $c['project_name'] ?? '',
                 $c['unit_name'] ?? '',
                 $c['floor_no'] ?? '',
+                $unitType,
                 number_format($totalVal, 2, '.', ''),
                 number_format($discount, 2, '.', ''),
                 number_format($totalPaid, 2, '.', ''),
@@ -6276,6 +6348,9 @@ public function discountStatement($bookingId = null)
                 number_format($devTarget, 2, '.', ''),
                 number_format($devPaid, 2, '.', ''),
                 number_format($devDue, 2, '.', ''),
+                number_format($shopTarget, 2, '.', ''),
+                number_format($shopPaid, 2, '.', ''),
+                number_format($shopDue, 2, '.', ''),
                 number_format($consFee, 2, '.', ''),
                 number_format($regularEmiPaid, 2, '.', ''),
                 $maxPaidDueDate,
@@ -6729,7 +6804,7 @@ public function discountStatement($bookingId = null)
             "totalRecords"        => $totalRecords,
             "totalPages"          => $totalPages,
             "currentPage"         => $page,
-            "limit"               => $limit,
+            "limit"               => $isAll ? 'all' : $limit,
             "search"              => $search,
             "stats"               => $stats,
             "projects"            => $projects,
@@ -6807,7 +6882,7 @@ public function discountStatement($bookingId = null)
             "totalRecords"        => $totalRecords,
             "totalPages"          => $totalPages,
             "currentPage"         => $page,
-            "limit"               => $limit,
+            "limit"               => $isAll ? 'all' : $limit,
             "search"              => $search,
             "stats"               => $stats,
             "projects"            => $projects,

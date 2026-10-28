@@ -654,21 +654,269 @@ $show_breadcrumb = true;
     }
 
     @media print {
-        #sidebar, .main-header, .due-toolbar, .no-print {
-            display: none !important;
+        @page {
+            size: landscape;
+            margin: 5mm 6mm;
         }
-        .main-content {
+
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        /* 1. COMPLETELY HIDE UNIVERSAL PRINT PAD (Left/Right Green Borders, Watermark, Corporate Footer, Header) */
+        .universal-print-pad,
+        .universal-print-pad *,
+        .upp-left-border,
+        .upp-right-border,
+        .upp-header,
+        .upp-footer,
+        .upp-watermark,
+        .preloader,
+        .app__header__area,
+        .app__header-inner,
+        .app__header-left,
+        .app__header-right,
+        .breadcrumb-area,
+        .page__title-area,
+        .page-header,
+        .page-header-breadcrumb,
+        .breadcrumb,
+        .body__overlay {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+            min-height: 0 !important;
             margin: 0 !important;
             padding: 0 !important;
+            position: absolute !important;
+            visibility: hidden !important;
+            overflow: hidden !important;
         }
-        .card {
+
+        /* 2. HIDE NAVIGATION, SIDEBARS, SYSTEM FOOTERS, BREADCRUMBS, MODALS */
+        #sidebar,
+        .app-sidebar,
+        .sidebar,
+        .main-header,
+        .app-header,
+        .navbar,
+        .header-wrapper,
+        .footer,
+        .main-footer,
+        footer,
+        .modal,
+        .modal-backdrop,
+        .avatar,
+        button,
+        .btn {
+            display: none !important;
+        }
+
+        /* 3. HIDE PAGE CONTROLS, TOOLBARS, INPUTS, SELECTS, CARDS & PAGINATION */
+        .due-header-box,
+        .due-header-wrapper,
+        .due-summary-section,
+        .col-kpi-5,
+        .due-stat-card,
+        .emi-stat-card,
+        .due-project-card,
+        .due-main-card > .card-header,
+        .due-toolbar,
+        .due-toolbar *,
+        #dueTrackingFilterForm,
+        #dueTrackingFilterForm *,
+        .card-footer,
+        #duePaginationContainer,
+        #dueInfoText,
+        .no-print {
+            display: none !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: none !important;
+            overflow: hidden !important;
+        }
+
+        /* 4. SHOW ONLY CLEAN REPORT HEADER AT THE VERY TOP */
+        .print-only {
+            display: block !important;
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+            margin-bottom: 6px !important;
+            padding-bottom: 4px !important;
+        }
+
+        /* 5. HARD RESET ALL TOP MARGINS/PADDINGS (OVERRIDING print-pad.php's 150px/120px) */
+        html, body {
+            background: #ffffff !important;
+            color: #0f172a !important;
+            font-size: 8pt !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            min-height: 0 !important;
+        }
+
+        .page__full-wrapper,
+        .page__body-wrapper,
+        .app__slide-wrapper,
+        .main-content,
+        .content-wrapper,
+        .client-due-tracking-wrapper,
+        .due-main-card,
+        .col-12 {
+            margin: 0 !important;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            padding: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            position: static !important;
+            top: 0 !important;
+        }
+
+        .card, .due-main-card {
             border: none !important;
             box-shadow: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: transparent !important;
         }
+
+        .card-body,
+        .table-responsive {
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: visible !important;
+            min-height: auto !important;
+            display: block !important;
+            width: 100% !important;
+            border: none !important;
+        }
+
+        /* 6. CLEAN PRINT TABLE - 9 DATA COLUMNS (NO BORDERS OUTSIDE, CLEAN ROW LINES) */
+        table.table-due {
+            width: 100% !important;
+            min-width: 100% !important;
+            max-width: 100% !important;
+            table-layout: fixed !important;
+            border-collapse: collapse !important;
+            margin: 0 !important;
+            font-size: 7.5pt !important;
+            border: none !important;
+        }
+
+        table.table-due thead {
+            display: table-header-group !important;
+        }
+
+        table.table-due tr {
+            page-break-inside: avoid !important;
+        }
+
+        table.table-due th,
+        table.table-due td {
+            min-width: 0 !important;
+            padding: 4px 4px !important;
+            border-top: 1px solid #e2e8f0 !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+            border-left: none !important;
+            border-right: none !important;
+            word-wrap: break-word !important;
+            overflow-wrap: break-word !important;
+            white-space: normal !important;
+            line-height: 1.25 !important;
+            color: #0f172a !important;
+            box-sizing: border-box !important;
+        }
+
+        table.table-due th {
+            background-color: #f8fafc !important;
+            color: #334155 !important;
+            font-weight: 700 !important;
+            font-size: 7.5pt !important;
+            border-bottom: 2px solid #cbd5e1 !important;
+            border-top: none !important;
+        }
+
+        table.table-due td a {
+            text-decoration: none !important;
+            color: inherit !important;
+        }
+
+        table.table-due td .badge {
+            border: none !important;
+            padding: 0 !important;
+            font-size: 7.5pt !important;
+            font-weight: 600 !important;
+            white-space: normal !important;
+            word-break: break-word !important;
+            background: transparent !important;
+        }
+
+        /* 7. TOTAL FOOTER ROW IN PRINT */
+        table.table-due tfoot {
+            display: table-footer-group !important;
+            page-break-inside: avoid !important;
+        }
+        table.table-due tfoot tr {
+            page-break-inside: avoid !important;
+        }
+        table.table-due tfoot td {
+            background-color: #f1f5f9 !important;
+            font-weight: 700 !important;
+            border-top: 2px solid #475569 !important;
+            border-bottom: 2px solid #475569 !important;
+            border-left: none !important;
+            border-right: none !important;
+            padding: 5px 4px !important;
+            font-size: 8pt !important;
+            color: #0f172a !important;
+            line-height: 1.25 !important;
+        }
+
+        /* EXACT 9 COLUMNS PERCENTAGE WIDTHS IN PRINT (TOTAL 100%) */
+        table.table-due th:nth-child(1), table.table-due td:nth-child(1) { width: 8% !important; max-width: 8% !important; }    /* ID & Date */
+        table.table-due th:nth-child(2), table.table-due td:nth-child(2) { width: 16% !important; max-width: 16% !important; }  /* Client Info */
+        table.table-due th:nth-child(3), table.table-due td:nth-child(3) { width: 14% !important; max-width: 14% !important; }  /* Project & Unit */
+        table.table-due th:nth-child(4), table.table-due td:nth-child(4) { width: 10.5% !important; max-width: 10.5% !important; } /* Flat Value */
+        table.table-due th:nth-child(5), table.table-due td:nth-child(5) { width: 10.5% !important; max-width: 10.5% !important; } /* Land Share Due */
+        table.table-due th:nth-child(6), table.table-due td:nth-child(6) { width: 10% !important; max-width: 10% !important; }   /* Dev Charge Due */
+        table.table-due th:nth-child(7), table.table-due td:nth-child(7) { width: 9.5% !important; max-width: 9.5% !important; } /* Shop Svc Due */
+        table.table-due th:nth-child(8), table.table-due td:nth-child(8) { width: 10.5% !important; max-width: 10.5% !important; } /* Due EMI */
+        table.table-due th:nth-child(9), table.table-due td:nth-child(9) { width: 11% !important; max-width: 11% !important; }   /* Overall Due */
+        table.table-due th:nth-child(10), table.table-due td:nth-child(10) { display: none !important; width: 0 !important; }    /* Action Col Hidden */
     }
 </style>
 
 <div class="row client-due-tracking-wrapper">
+
+    <!-- ══ PRINT ONLY: OFFICIAL REPORT HEADER (Placed at the very top for zero gap) ══ -->
+    <div class="col-12 print-only d-none mb-2" style="margin-top: 0 !important; padding-top: 0 !important;">
+        <div class="d-flex align-items-center justify-content-between border-bottom pb-2">
+            <div class="d-flex align-items-center gap-3">
+                <img src="<?= $GLOBALS['base_url'] ?>/assets/images/logo.png" alt="Company Logo" style="height: 36px;" onerror="this.style.display='none'">
+                <div>
+                    <h3 class="mb-0 fw-bold" style="font-size: 14pt; color: #0f172a; letter-spacing: -0.3px;">THE PREMIUM HOMES LTD</h3>
+                    <div class="fw-semibold text-secondary" style="font-size: 9pt;">Client-wise Due Tracking &amp; Payment Report</div>
+                </div>
+            </div>
+            <div class="text-end" style="font-size: 8pt; color: #475569; line-height: 1.35;">
+                <div><strong>Print Date:</strong> <?= date('d M Y, h:i A') ?></div>
+                <div><strong>Filter:</strong> <span id="printFilterLabel"><?= htmlspecialchars(ucwords(str_replace('_', ' ', $dueType ?? 'all'))) ?></span></div>
+                <div><strong>Showing Records:</strong> <span id="printTotalRecords"><?= number_format($totalClients ?? 0) ?></span> Clients</div>
+            </div>
+        </div>
+    </div>
 
     <!-- ══ HEADER & ACTIONS ══ -->
     <div class="col-12 mb-3">
@@ -693,10 +941,10 @@ $show_breadcrumb = true;
                 <a href="<?= $GLOBALS['base_url'] ?>/client-wise-due-tracking-export?<?= http_build_query($_GET) ?>" id="exportDueCsvBtn" class="btn btn-sm btn-success fw-semibold">
                     <i class="fa-solid fa-file-excel me-1"></i> Export to CSV
                 </a>
-                <button type="button" class="btn btn-sm btn-outline-secondary fw-semibold" onclick="window.print()">
+                <button type="button" class="btn btn-sm btn-outline-secondary fw-semibold" onclick="printDueTrackingReport()">
                     <i class="fa-solid fa-print me-1"></i> Print Report
                 </button>
-                <button type="button" id="refreshDueBtn" class="btn btn-sm btn-outline-info fw-semibold" onclick="refreshDueTracking(true)" title="Refresh all data">
+                <button type="button" id="refreshDueBtn" class="btn btn-sm btn-outline-info fw-semibold" onclick="refreshDueTracking(true)" title="Reset all filters and reload">
                     <i class="fa-solid fa-rotate me-1"></i> Refresh
                 </button>
             </div>
@@ -1168,11 +1416,12 @@ $show_breadcrumb = true;
 
                     <!-- Per Page Limit & Reset -->
                     <div class="col-xxl-1 col-xl-1 col-lg-4 col-md-4 col-sm-6 d-flex align-items-center gap-1 justify-content-end">
-                        <select id="duePageLimit" class="form-select form-select-sm" onchange="loadDueTrackingPage(1);" style="height: 38px; border-radius: 8px; width: 80px;" title="Entries per page">
-                            <option value="10" <?= ((int)($limit ?? 20) === 10) ? 'selected' : '' ?>>10</option>
-                            <option value="20" <?= ((int)($limit ?? 20) === 20) ? 'selected' : '' ?>>20</option>
-                            <option value="50" <?= ((int)($limit ?? 20) === 50) ? 'selected' : '' ?>>50</option>
-                            <option value="100" <?= ((int)($limit ?? 20) === 100) ? 'selected' : '' ?>>100</option>
+                        <select id="duePageLimit" class="form-select form-select-sm" onchange="loadDueTrackingPage(1);" style="height: 38px; border-radius: 8px; width: 85px;" title="Entries per page">
+                            <option value="10" <?= ((string)($limit ?? 20) === '10') ? 'selected' : '' ?>>10</option>
+                            <option value="20" <?= ((string)($limit ?? 20) === '20') ? 'selected' : '' ?>>20</option>
+                            <option value="50" <?= ((string)($limit ?? 20) === '50') ? 'selected' : '' ?>>50</option>
+                            <option value="100" <?= ((string)($limit ?? 20) === '100') ? 'selected' : '' ?>>100</option>
+                            <option value="all" <?= (($limit ?? '') === 'all' || (int)($limit ?? 20) >= 5000) ? 'selected' : '' ?>>All</option>
                         </select>
                         <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetAllDueFilters()" title="Reset Filters" style="height: 38px; width: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
                             <i class="fa-solid fa-arrows-rotate"></i>
@@ -1188,21 +1437,23 @@ $show_breadcrumb = true;
                     <thead>
                         <tr>
                             <th class="text-center" style="width: 85px;">ID & Date</th>
-                            <th style="min-width: 190px;">Client Info</th>
-                            <th style="min-width: 170px;">Project & Unit</th>
-                            <th class="text-end" style="width: 140px;">Flat Value</th>
-                            <th class="text-end" style="width: 150px;">Land Share Due</th>
-                            <th class="text-end" style="width: 140px;">Dev Charge Due</th>
-                            <th class="text-end" style="min-width: 165px;">Regular EMI Paid</th>
-                            <th class="text-end" style="min-width: 140px;">Advance EMI Paid</th>
-                            <th class="text-end" style="min-width: 150px;">Due EMI</th>
-                            <th class="text-end" style="width: 140px;">Overall Due</th>
+                            <th style="min-width: 180px;">Client Info</th>
+                            <th style="min-width: 160px;">Project & Unit</th>
+                            <th class="text-end" style="width: 130px;">Flat Value (Tk.)</th>
+                            <th class="text-end" style="width: 140px;">Land Share Due (Tk.)</th>
+                            <th class="text-end" style="width: 140px;">Dev Charge Due (Tk.)</th>
+                            <th class="text-end" style="width: 135px;">Shop Svc Due (Tk.)</th>
+                            <th class="text-end" style="width: 140px;">Due EMI (Tk.)</th>
+                            <th class="text-end" style="width: 145px;">Overall Due (Tk.)</th>
                             <th class="text-center no-print" style="width: 110px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="dueTrackingTableBody">
                         <?= (new AccountClientController($GLOBALS['db'] ?? null))->renderDueTrackingRowsHtml($clients ?? []) ?>
                     </tbody>
+                    <tfoot id="dueTrackingTableFoot" style="border-top: 2px solid #64748b; background-color: #f1f5f9;">
+                        <?= (new AccountClientController($GLOBALS['db'] ?? null))->renderDueTrackingFooterHtml($clients ?? [], $stats ?? [], ($limit ?? 20) === 'all' || (int)($limit ?? 20) >= 5000) ?>
+                    </tfoot>
                 </table>
             </div>
 
@@ -1555,8 +1806,29 @@ $show_breadcrumb = true;
                             </tr>
                         </thead>
                         <tbody>
-                            <?php if (!empty($projectBreakdown)): $pIdx = 1; ?>
-                                <?php foreach ($projectBreakdown as $pRow): ?>
+                            <?php 
+                            $totPbProjects = count($projectBreakdown ?? []);
+                            $totPbClients = 0;
+                            $totPbRegClients = 0;
+                            $totPbValue = 0;
+                            $totPbPaid = 0;
+                            $totPbLandDue = 0;
+                            $totPbDevDue = 0;
+                            $totPbEmiDue = 0;
+                            $totPbOverallDue = 0;
+
+                            if (!empty($projectBreakdown)): 
+                                $pIdx = 1;
+                                foreach ($projectBreakdown as $pRow): 
+                                    $totPbClients += (int)($pRow['total_clients'] ?? 0);
+                                    $totPbRegClients += (int)($pRow['registered_clients_count'] ?? 0);
+                                    $totPbValue += (float)($pRow['total_project_value'] ?? 0);
+                                    $totPbPaid += (float)($pRow['total_paid'] ?? 0);
+                                    $totPbLandDue += (float)($pRow['land_share_due'] ?? 0);
+                                    $totPbDevDue += (float)($pRow['dev_charge_due'] ?? 0) + (float)($pRow['shop_service_charge_due'] ?? 0);
+                                    $totPbEmiDue += (float)($pRow['emi_due'] ?? 0);
+                                    $totPbOverallDue += (float)($pRow['overall_due'] ?? 0);
+                                ?>
                                     <tr>
                                         <td><?= $pIdx++ ?></td>
                                         <td>
@@ -1590,9 +1862,41 @@ $show_breadcrumb = true;
                                     </tr>
                                 <?php endforeach; ?>
                             <?php else: ?>
-                                <tr><td colspan="11" class="text-center py-4 text-muted">No project records found.</td></tr>
+                                <tr><td colspan="12" class="text-center py-4 text-muted">No project records found.</td></tr>
                             <?php endif; ?>
                         </tbody>
+                        <?php 
+                        $totPbRecovery = $totPbValue > 0 ? round(($totPbPaid / $totPbValue) * 100, 1) : 0;
+                        ?>
+                        <tfoot class="table-light fw-bold" style="border-top: 2px solid #64748b; background-color: #f1f5f9; position: sticky; bottom: 0; z-index: 2; box-shadow: 0 -2px 6px rgba(0,0,0,0.06);">
+                            <tr class="align-middle fw-bold">
+                                <td class="text-center fw-bold fs-12 text-uppercase" style="color: #0f172a;">TOTAL</td>
+                                <td>
+                                    <strong class="text-dark fs-13"><?= number_format($totPbProjects) ?> Projects</strong>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-primary rounded-pill fs-12"><?= number_format($totPbClients) ?></span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-success rounded-pill fs-12"><?= number_format($totPbRegClients) ?></span>
+                                </td>
+                                <td class="text-end fw-bold fs-13" style="font-variant-numeric: tabular-nums;">Tk. <?= number_format($totPbValue) ?></td>
+                                <td class="text-end text-success fw-bold fs-13" style="font-variant-numeric: tabular-nums;">Tk. <?= number_format($totPbPaid) ?></td>
+                                <td class="text-end text-danger fw-bold fs-13" style="font-variant-numeric: tabular-nums;">Tk. <?= number_format($totPbLandDue) ?></td>
+                                <td class="text-end text-danger fw-bold fs-13" style="font-variant-numeric: tabular-nums;">Tk. <?= number_format($totPbDevDue) ?></td>
+                                <td class="text-end text-danger fw-bold fs-13" style="font-variant-numeric: tabular-nums;">Tk. <?= number_format($totPbEmiDue) ?></td>
+                                <td class="text-end text-danger fw-bold fs-14" style="font-variant-numeric: tabular-nums;">Tk. <?= number_format($totPbOverallDue) ?></td>
+                                <td class="text-center">
+                                    <span class="badge bg-success text-white fs-12"><?= $totPbRecovery ?>%</span>
+                                </td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-xs btn-outline-secondary py-1 px-2 fw-semibold" 
+                                            onclick="selectProjectFilter(''); bootstrap.Modal.getInstance(document.getElementById('projectBreakdownModal')).hide();" title="Clear project filter">
+                                        All
+                                    </button>
+                                </td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
             </div>
@@ -1918,6 +2222,8 @@ $show_breadcrumb = true;
         document.querySelectorAll('.due-type-pill').forEach(btn => btn.classList.remove('active'));
         const activeBtn = Array.from(document.querySelectorAll('.due-type-pill')).find(b => b.getAttribute('onclick') === `setDueTypeFilter('${type}')`);
         if (activeBtn) activeBtn.classList.add('active');
+        const pfl = document.getElementById('printFilterLabel');
+        if (pfl) pfl.innerText = type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         loadDueTrackingPage(1);
     }
 
@@ -2037,7 +2343,7 @@ $show_breadcrumb = true;
     document.getElementById('dueEndDate')?.addEventListener('change', () => loadDueTrackingPage(1));
 
     // Core AJAX Page Loader
-    function loadDueTrackingPage(page = 1) {
+    function loadDueTrackingPage(page = 1, callback = null) {
         dueCurrentPage = page;
         const search = document.getElementById('dueSearchInput')?.value.trim() || '';
         const projectId = document.getElementById('dueProjectFilter')?.value || '';
@@ -2049,7 +2355,7 @@ $show_breadcrumb = true;
 
         const tbody = document.getElementById('dueTrackingTableBody');
         if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="11" class="text-center py-5 text-muted"><div class="spinner-border text-primary spinner-border-sm me-2" role="status"></div>Loading due records...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" class="text-center py-5 text-muted"><div class="spinner-border text-primary spinner-border-sm me-2" role="status"></div>Loading due records...</td></tr>';
         }
 
         const params = new URLSearchParams({
@@ -2082,12 +2388,17 @@ $show_breadcrumb = true;
         .then(data => {
             if (data.success) {
                 if (tbody) tbody.innerHTML = data.table_html;
+                const tfoot = document.getElementById('dueTrackingTableFoot');
+                if (data.footer_html && tfoot) tfoot.innerHTML = data.footer_html;
                 const pagination = document.getElementById('duePaginationContainer');
                 if (pagination) pagination.innerHTML = data.pagination_html;
                 const infoText = document.getElementById('dueInfoText');
                 if (infoText) infoText.innerText = data.info_text;
                 const totalCountSpan = document.getElementById('dueTotalCount');
                 if (totalCountSpan) totalCountSpan.innerText = Number(data.totalRecords).toLocaleString();
+                const printTotalRecords = document.getElementById('printTotalRecords');
+                if (printTotalRecords) printTotalRecords.innerText = Number(data.totalRecords).toLocaleString();
+                if (typeof callback === 'function') callback();
 
                 // Update Top KPI stats if returned
                 if (data.stats) {
@@ -2235,23 +2546,26 @@ $show_breadcrumb = true;
         });
     }
 
-    // Refresh data handler
-    function refreshDueTracking(force = false) {
-        const btn = document.getElementById('refreshDueBtn');
-        const icon = btn ? btn.querySelector('i') : null;
-        if (icon) icon.className = 'fa-solid fa-rotate fa-spin me-1';
-        if (btn) btn.disabled = true;
-
-        if (force === true) {
-            window.location.reload();
-            return;
+    // Print Due Tracking Report Handler (Handles loading all rows before printing)
+    function printDueTrackingReport() {
+        const limitSelect = document.getElementById('duePageLimit');
+        if (limitSelect && limitSelect.value !== 'all') {
+            if (confirm('Currently only ' + limitSelect.value + ' rows are loaded. Would you like to load ALL records before printing?')) {
+                limitSelect.value = 'all';
+                loadDueTrackingPage(1, function() {
+                    setTimeout(function() {
+                        window.print();
+                    }, 500);
+                });
+                return;
+            }
         }
+        window.print();
+    }
 
-        loadDueTrackingPage(dueCurrentPage);
-        setTimeout(() => {
-            if (icon) icon.className = 'fa-solid fa-rotate me-1';
-            if (btn) btn.disabled = false;
-        }, 600);
+    // Refresh data handler (Full clean reload of the route)
+    function refreshDueTracking(force = false) {
+        window.location.href = `${window.base_url || ''}/client-wise-due-tracking`;
     }
 
     // Open Quick Client Due Breakdown Modal
