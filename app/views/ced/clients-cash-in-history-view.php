@@ -2641,7 +2641,6 @@ if (!isset($discountApprovalReq)) {
                                 <option value="development_charge">Development Charge</option>
                                 <option value="shop_service_charge">Shop Service Charge</option>
                                 <option value="emi">EMI Payment</option>
-                                <option value="land_share">Land Share</option>
                                 <option value="booking_money">Booking Money</option>
                                 <option value="registration">Registration</option>
                                 <option value="mutation_cost">Mutation Cost</option>
@@ -2781,7 +2780,9 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.addEventListener('click', function() {
             document.getElementById('edit_unverified_payment_id').value = this.dataset.paymentId || '';
             document.getElementById('edit_unverified_booking_id').value = this.dataset.bookingId || '';
-            document.getElementById('edit_unverified_payment_type').value = this.dataset.paymentType || 'development_charge';
+            let editPaymentType = this.dataset.paymentType || 'development_charge';
+            if (editPaymentType === 'land_share') editPaymentType = 'registration';
+            document.getElementById('edit_unverified_payment_type').value = editPaymentType;
             document.getElementById('edit_unverified_amount').value = this.dataset.amount || '';
             document.getElementById('edit_unverified_payment_date').value = this.dataset.paymentDate || '';
             document.getElementById('edit_unverified_payment_method').value = this.dataset.paymentMethod || 'cash';

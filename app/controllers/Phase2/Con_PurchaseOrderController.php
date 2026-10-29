@@ -539,6 +539,9 @@ class Con_PurchaseOrderController extends Controller
             $siteSettings = $sQuery->fetch_assoc();
         }
 
+        $qtyLogs        = $this->poModel->getQtyLogs($id);
+        $canEditItemQty = false;
+
         $this->view('phase2/purchase-orders/print-purchase-order', [
             'page_title'          => 'Print Purchase Order #' . $id,
             'po'                  => $po,

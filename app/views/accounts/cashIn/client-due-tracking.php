@@ -983,17 +983,21 @@ $show_breadcrumb = true;
                         <i class="fa-solid fa-circle-exclamation"></i>
                     </span>
                 </div>
-                <h3 class="fw-bold text-danger mb-1" id="statOverallDue">
-                    Tk. <?= number_format($stats['overall_due'] ?? 0) ?>
+                <h3 class="fw-bold text-danger mb-1" id="statOverallDue" title="Net Outstanding Due after verified + unverified collections">
+                    Tk. <?= number_format($stats['overall_due_net'] ?? $stats['overall_due'] ?? 0) ?>
                 </h3>
                 <div class="d-flex align-items-center justify-content-between text-muted fs-12 mb-1">
                     <span>Target: <strong id="statTotalValueText">Tk. <?= formatDueCardAmount($stats['total_value'] ?? 0) ?></strong></span>
                     <span class="badge bg-danger-subtle text-danger stat-pill" id="statOverallDuePercentBadge">
-                        <?= ($stats['total_value'] ?? 0) > 0 ? round((($stats['overall_due'] ?? 0) / ($stats['total_value'] ?? 1)) * 100, 1) : 0 ?>% Due
+                        <?= ($stats['total_value'] ?? 0) > 0 ? round((($stats['overall_due_net'] ?? $stats['overall_due'] ?? 0) / ($stats['total_value'] ?? 1)) * 100, 1) : 0 ?>% Due
                     </span>
                 </div>
                 <div class="d-flex align-items-center justify-content-between text-muted fs-11 pt-1 border-top">
-                    <span>Paid: <strong class="text-success" id="statTotalPaidText">Tk. <?= formatDueCardAmount($stats['total_paid'] ?? 0) ?></strong></span>
+                    <span>Ver. Due: <strong class="text-danger" id="statOverallDueVerifiedText">Tk. <?= formatDueCardAmount($stats['overall_due_verified'] ?? 0) ?></strong></span>
+                    <span>Pending: <strong class="text-warning" id="statPendingPaidText">Tk. <?= formatDueCardAmount($stats['total_paid_unverified'] ?? 0) ?></strong></span>
+                </div>
+                <div class="d-flex align-items-center justify-content-between text-muted fs-11 pt-1 border-top">
+                    <span>Paid (Ver.): <strong class="text-success" id="statTotalPaidText">Tk. <?= formatDueCardAmount($stats['total_paid_verified'] ?? $stats['total_paid'] ?? 0) ?></strong></span>
                     <span class="badge bg-primary-subtle text-primary stat-pill">
                         Breakdown <i class="fa-solid fa-arrow-right ms-1"></i>
                     </span>
@@ -1507,13 +1511,25 @@ $show_breadcrumb = true;
             </div>
 
             <div class="modal-body p-4" style="background-color: #f8fafc;">
+                <!-- Mathematical Reconciliation Explanatory Banner -->
+                <div class="alert alert-light border shadow-sm rounded-3 py-2 px-3 mb-3">
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="fa-solid fa-calculator text-primary fs-5 mt-1"></i>
+                        <div class="extra-small text-dark flex-grow-1" style="font-size: 11px; line-height: 1.5;">
+                            <strong>Unified Financial Reconciliation Formula:</strong><br>
+                            &bull; <strong>Total Target (Flat Value):</strong> <code>Tk. <?= number_format($stats['total_value'] ?? 0) ?></code> &minus; <strong>Verified Paid:</strong> <code>Tk. <?= number_format($stats['total_paid_verified'] ?? 0) ?></code> = <strong>Verified Outstanding Due:</strong> <code class="text-danger fw-bold">Tk. <?= number_format($stats['overall_due_verified'] ?? 0) ?></code><br>
+                            &bull; <strong>Verified Due:</strong> <code>Tk. <?= number_format($stats['overall_due_verified'] ?? 0) ?></code> &minus; <strong>Unverified / Pending Paid:</strong> <code>Tk. <?= number_format($stats['total_paid_unverified'] ?? 0) ?></code> = <strong>Net Outstanding Due:</strong> <code class="text-success fw-bold">Tk. <?= number_format($stats['overall_due_net'] ?? $stats['overall_due'] ?? 0) ?></code>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 3 Top Master Cards -->
-                <div class="row  mb-4">
+                <div class="row mb-4">
                     <!-- Total Target (Booked Value) -->
                     <div class="col-md-4">
                         <div class="p-3 bg-white rounded-3 border border-start border-4 border-info shadow-sm h-100">
                             <div class="d-flex align-items-center justify-content-between text-muted fs-12 mb-1">
-                                <span class="text-uppercase fw-bold">Total Target (Booked Value)</span>
+                                <span class="text-uppercase fw-bold">Total Flat Value (Target)</span>
                                 <i class="fa-solid fa-bullseye text-info fs-6"></i>
                             </div>
                             <h4 class="fw-bold text-dark mb-1" id="mTotTarget">Tk. <?= formatDueCardAmount($stats['total_value'] ?? 0) ?></h4>
@@ -1526,13 +1542,14 @@ $show_breadcrumb = true;
                     <div class="col-md-4">
                         <div class="p-3 bg-white rounded-3 border border-start border-4 border-success shadow-sm h-100">
                             <div class="d-flex align-items-center justify-content-between text-muted fs-12 mb-1">
-                                <span class="text-uppercase fw-bold">Total Paid (Collected)</span>
+                                <span class="text-uppercase fw-bold">Total Collections (Combined)</span>
                                 <i class="fa-solid fa-circle-check text-success fs-6"></i>
                             </div>
-                            <h4 class="fw-bold text-success mb-1" id="mTotPaid">Tk. <?= formatDueCardAmount($stats['total_paid'] ?? 0) ?></h4>
-                            <div class="extra-small text-muted" id="mTotPaidFull">Exact: Tk. <?= number_format($stats['total_paid'] ?? 0) ?></div>
-                            <div class="extra-small text-success mt-1">
-                                <i class="fa-solid fa-chart-line me-1"></i><?= ($stats['total_value'] ?? 0) > 0 ? round((($stats['total_paid'] ?? 0) / ($stats['total_value'] ?? 1)) * 100, 1) : 0 ?>% Recovery Rate
+                            <h4 class="fw-bold text-success mb-1" id="mTotPaid">Tk. <?= formatDueCardAmount($stats['total_paid_all'] ?? $stats['total_paid'] ?? 0) ?></h4>
+                            <div class="extra-small text-muted" id="mTotPaidFull">Exact: Tk. <?= number_format($stats['total_paid_all'] ?? $stats['total_paid'] ?? 0) ?></div>
+                            <div class="extra-small text-muted mt-1 d-flex justify-content-between">
+                                <span class="text-success"><i class="fa-solid fa-check-double me-1"></i>Ver: Tk. <?= formatDueCardAmount($stats['total_paid_verified'] ?? 0) ?></span>
+                                <span class="text-warning"><i class="fa-solid fa-clock me-1"></i>Pending: Tk. <?= formatDueCardAmount($stats['total_paid_unverified'] ?? 0) ?></span>
                             </div>
                         </div>
                     </div>
@@ -1541,13 +1558,13 @@ $show_breadcrumb = true;
                     <div class="col-md-4">
                         <div class="p-3 bg-white rounded-3 border border-start border-4 border-danger shadow-sm h-100">
                             <div class="d-flex align-items-center justify-content-between text-muted fs-12 mb-1">
-                                <span class="text-uppercase fw-bold">Total Outstanding Due</span>
+                                <span class="text-uppercase fw-bold">Total Outstanding Due (Net)</span>
                                 <i class="fa-solid fa-circle-exclamation text-danger fs-6"></i>
                             </div>
-                            <h4 class="fw-bold text-danger mb-1" id="mTotDue">Tk. <?= formatDueCardAmount($stats['overall_due'] ?? 0) ?></h4>
-                            <div class="extra-small text-muted" id="mTotDueFull">Exact: Tk. <?= number_format($stats['overall_due'] ?? 0) ?></div>
+                            <h4 class="fw-bold text-danger mb-1" id="mTotDue">Tk. <?= formatDueCardAmount($stats['overall_due_net'] ?? $stats['overall_due'] ?? 0) ?></h4>
+                            <div class="extra-small text-muted" id="mTotDueFull">Exact Net: Tk. <?= number_format($stats['overall_due_net'] ?? $stats['overall_due'] ?? 0) ?></div>
                             <div class="extra-small text-danger mt-1">
-                                <i class="fa-solid fa-triangle-exclamation me-1"></i><?= ($stats['total_value'] ?? 0) > 0 ? round((($stats['overall_due'] ?? 0) / ($stats['total_value'] ?? 1)) * 100, 1) : 0 ?>% Remaining Due
+                                <i class="fa-solid fa-shield-halved me-1"></i>Verified Due: <strong>Tk. <?= formatDueCardAmount($stats['overall_due_verified'] ?? 0) ?></strong>
                             </div>
                         </div>
                     </div>

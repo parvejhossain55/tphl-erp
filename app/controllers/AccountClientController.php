@@ -1355,35 +1355,61 @@ public function indexTwo($bookingId = null)
             }
         }
 
-        // Totals
+        // Totals (with complete Verified vs Pending & Net vs Verified Due tracking)
         $grandTarget = 0;
         $grandPaid = 0;
+        $grandPaidVerified = 0;
+        $grandPaidUnverified = 0;
         $grandDue = 0;
+        $grandDueVerified = 0;
         $grandDiscount = 0;
         $grandEmiDiscount = 0;
+
         foreach ($clients as $c) {
             $grandDiscount += (float)($c['total_discount'] ?? 0);
             $grandEmiDiscount += (float)($c['total_bulk_emi_discount'] ?? 0);
+
+            $pVerified = (float)($c['total_paid_verified'] ?? 0);
+            $pUnverified = (float)($c['total_paid_unverified'] ?? 0);
+            $pAll = (float)($c['total_paid'] ?? 0);
+            $dNet = (float)($c['overall_due'] ?? 0);
+            $dVerified = (float)($c['overall_due_verified'] ?? ($dNet + $pUnverified));
+
             if ($paymentType === 'full_payment' || empty($paymentType)) {
                 $grandTarget += (float)($c['total_price_target'] ?? $c['total_agreement_value'] ?? 0);
-                $grandPaid += (float)($c['total_paid'] ?? 0);
-                $grandDue += (float)($c['overall_due'] ?? 0);
+                $grandPaid += $pAll;
+                $grandPaidVerified += $pVerified;
+                $grandPaidUnverified += $pUnverified;
+                $grandDue += $dNet;
+                $grandDueVerified += $dVerified;
             } elseif ($paymentType === 'land_share') {
                 $grandTarget += (float)($c['total_land_share_target'] ?? 0);
                 $grandPaid += (float)($c['land_share_paid'] ?? 0);
+                $grandPaidVerified += (float)($c['land_share_paid_verified'] ?? $c['land_share_paid'] ?? 0);
+                $grandPaidUnverified += (float)($c['land_share_paid_unverified'] ?? 0);
                 $grandDue += (float)($c['land_share_due'] ?? 0);
+                $grandDueVerified += (float)($c['land_share_due_verified'] ?? $c['land_share_due'] ?? 0);
             } elseif ($paymentType === 'development_charge') {
                 $grandTarget += (float)($c['total_dev_charge_target'] ?? 0);
                 $grandPaid += (float)($c['dev_charge_paid'] ?? 0);
+                $grandPaidVerified += (float)($c['dev_charge_paid_verified'] ?? $c['dev_charge_paid'] ?? 0);
+                $grandPaidUnverified += (float)($c['dev_charge_paid_unverified'] ?? 0);
                 $grandDue += (float)($c['dev_charge_due'] ?? 0);
+                $grandDueVerified += (float)($c['dev_charge_due_verified'] ?? $c['dev_charge_due'] ?? 0);
             } elseif ($paymentType === 'shop_service_charge') {
                 $grandTarget += (float)($c['total_shop_service_charge_target'] ?? 0);
                 $grandPaid += (float)($c['shop_service_charge_paid'] ?? 0);
+                $grandPaidVerified += (float)($c['shop_service_charge_paid_verified'] ?? $c['shop_service_charge_paid'] ?? 0);
+                $grandPaidUnverified += (float)($c['shop_service_charge_paid_unverified'] ?? 0);
                 $grandDue += (float)($c['shop_service_charge_due'] ?? 0);
+                $grandDueVerified += (float)($c['shop_service_charge_due_verified'] ?? $c['shop_service_charge_due'] ?? 0);
             } elseif ($paymentType === 'construction_fee') {
                 $grandTarget += (float)($c['total_construction_target'] ?? 0);
                 $grandPaid += (float)($c['construction_paid'] ?? 0);
+                $grandPaidVerified += (float)($c['construction_paid_verified'] ?? $c['construction_paid'] ?? 0);
+                $grandPaidUnverified += (float)($c['construction_paid_unverified'] ?? 0);
                 $grandDue += (float)($c['construction_due'] ?? 0);
+                $grandDueVerified += (float)($c['construction_due_verified'] ?? $c['construction_due'] ?? 0);
             }
         }
 
@@ -1398,7 +1424,10 @@ public function indexTwo($bookingId = null)
             'dateType' => $dateType,
             'grandTarget' => $grandTarget,
             'grandPaid' => $grandPaid,
+            'grandPaidVerified' => $grandPaidVerified,
+            'grandPaidUnverified' => $grandPaidUnverified,
             'grandDue' => $grandDue,
+            'grandDueVerified' => $grandDueVerified,
             'grandDiscount' => $grandDiscount,
             'grandEmiDiscount' => $grandEmiDiscount
         ];
@@ -2083,8 +2112,8 @@ public function addCedTransaction()
     $paymentType = $_POST['payment_type'] ?? '';
 
     // CED can only add development_charge, shop_service_charge, emi, emi_due_settlement, or land_share
-    if (!in_array($paymentType, ['development_charge', 'shop_service_charge', 'emi', 'emi_due_settlement', 'land_share'])) {
-        setError("CED can only add Development Charges, Shop Service Charges, EMI, EMI Settlement, or Land Share transactions.");
+    if (!in_array($paymentType, ['development_charge', 'shop_service_charge', 'emi', 'emi_due_settlement'])) {
+        setError("CED can only add Development Charges, Shop Service Charges, EMI, or EMI Settlement transactions.");
         header("Location: {$GLOBALS['base_url']}/ced-add-transaction-form?booking_id={$bookingId}");
         exit;
     }

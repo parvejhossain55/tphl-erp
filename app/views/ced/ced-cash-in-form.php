@@ -102,15 +102,6 @@ if (!empty($virtualEmiSchedule)) {
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
 
-                <?php if (!$isLandShareCompleted && !$isShop): ?>
-                    <div class="alert alert-warning mb-4 d-flex align-items-center">
-                        <div>
-                            <strong>Note:</strong>
-                            Land share payment is not completed yet (Remaining: TK.<?= number_format($paymentSummary['remaining_land_share'] ?? 0, 2) ?>). You can pay it by selecting 'Land Share' from the dropdown below.
-                        </div>
-                    </div>
-                <?php endif; ?>
-
                 <?php if ($hasOutstandingDues): ?>
                     <div class="alert alert-danger alert-dismissible fade show mb-4 d-flex align-items-center" role="alert">
                       
@@ -131,13 +122,6 @@ if (!empty($virtualEmiSchedule)) {
                             <label class="form-label">Payment Type: <span class="text-danger">*</span></label>
                             <select name="payment_type" class="form-control" id="paymentType" required>
                                 <option value="">-- Select Payment Type --</option>
-
-                                <!-- Land Share -->
-                                <?php if (!$isLandShareCompleted && !$isShop): ?>
-                                    <option value="land_share" data-details="false">
-                                        Land Share (Remaining: TK.<?= number_format($paymentSummary['remaining_land_share'] ?? 0, 2) ?>)
-                                    </option>
-                                <?php endif; ?>
 
                                 <!-- Shop: Development Charge (only if set on the shop unit) -->
                                 <?php if ($isShop && $shopDevTarget > 0): ?>
@@ -599,13 +583,6 @@ if (!empty($virtualEmiSchedule)) {
                     <?php endif; ?>
                     helpText = cedDevLabel + ' payment. Remaining: TK.' + cedRemainingDev.toLocaleString('en-IN', {minimumFractionDigits:2}) + '. Any surplus amount will automatically cascade to the next stage (<?= $isShop ? 'Shop Service Charge → EMI' : 'EMI' ?>).';
                     amountField.setAttribute('placeholder', 'Enter amount (Surplus cascades to EMI)');
-                    amountField.removeAttribute('max');
-                    amountField.removeAttribute('disabled');
-                    break;
-                case 'land_share':
-                    var cedRemainingLS = <?= json_encode((float)($paymentSummary['remaining_land_share'] ?? 0)) ?>;
-                    helpText = 'Land share payment. Remaining: TK.' + cedRemainingLS.toLocaleString('en-IN', {minimumFractionDigits:2}) + '. Any surplus amount will automatically cascade to Development Charge & EMI.';
-                    amountField.setAttribute('placeholder', 'Enter amount (Surplus cascades to Dev Charge & EMI)');
                     amountField.removeAttribute('max');
                     amountField.removeAttribute('disabled');
                     break;

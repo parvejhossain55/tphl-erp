@@ -701,8 +701,9 @@ class CollectionStatementController extends Controller
             SELECT 
                 COUNT(*) as total_sold_units,
                 COUNT(DISTINCT lb.lead_id) as total_sold_clients,
-                COALESCE(SUM(lb.agreement_value), 0) as total_sold_value
+                COALESCE(SUM(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0)), 0) as total_sold_value
             FROM lead_bookings lb
+            LEFT JOIN flats f ON lb.flat_id = f.id
             WHERE {$whereSold}
         ";
         $resSold = $this->db->query($sqlSold);
@@ -716,6 +717,8 @@ class CollectionStatementController extends Controller
         }
 
         $summary['pending_due'] = max(0, $summary['total_sold_value'] - $summary['total_amount']);
+        $summary['verified_due'] = max(0, $summary['total_sold_value'] - ($summary['verified_amount'] ?? 0));
+        $summary['verified_due_formatted'] = self::formatCurrencyTk($summary['verified_due']);
         $summary['collection_rate'] = $summary['total_sold_value'] > 0
             ? round(($summary['total_amount'] / $summary['total_sold_value']) * 100, 1)
             : 0;

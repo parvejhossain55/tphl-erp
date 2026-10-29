@@ -108,7 +108,7 @@ class FlatController extends Controller
 
             // Format service charge
             if (($flat['unit_type'] ?? 'residential') === 'commercial' && !empty($flat['shop_service_charge'])) {
-                $serviceCharge = '<span class="bd-badge bg-info ">' . (float)$flat['shop_service_charge'] . '%</span>';
+                $serviceCharge = format_bdt($flat['shop_service_charge']);
             } else {
                 $serviceCharge = '<span class="text-muted">—</span>';
             }

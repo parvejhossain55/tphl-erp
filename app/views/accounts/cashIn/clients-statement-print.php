@@ -441,12 +441,29 @@ if ($paymentType === 'land_share') {
             </div>
             <?php endif; ?>
             <div class="summary-card green">
-                <div class="summary-card-label">Total Paid</div>
-                <div class="summary-card-value">৳<?= number_format($grandPaid, 2) ?></div>
+                <div class="summary-card-label">Verified Paid</div>
+                <div class="summary-card-value">৳<?= number_format($grandPaidVerified ?? $grandPaid, 2) ?></div>
+            </div>
+            <?php if (($grandPaidUnverified ?? 0) > 0): ?>
+            <div class="summary-card amber">
+                <div class="summary-card-label">Unverified (Pending) Paid</div>
+                <div class="summary-card-value" style="color: #d97706;">৳<?= number_format($grandPaidUnverified, 2) ?></div>
+            </div>
+            <?php endif; ?>
+            <div class="summary-card" style="border-left-color: #0d6efd;">
+                <div class="summary-card-label">Total Collected (Combined)</div>
+                <div class="summary-card-value" style="color: #0d6efd;">৳<?= number_format($grandPaid, 2) ?></div>
             </div>
             <div class="summary-card red">
-                <div class="summary-card-label">Total Outstanding Due</div>
-                <div class="summary-card-value">৳<?= number_format($grandDue, 2) ?></div>
+                <div class="summary-card-label">Total Outstanding Due (Net)</div>
+                <div class="summary-card-value">
+                    ৳<?= number_format($grandDue, 2) ?>
+                    <?php if (($grandDueVerified ?? 0) > 0 && ($grandPaidUnverified ?? 0) > 0): ?>
+                        <div style="font-size: 8.5px; font-weight: normal; color: #991b1b; margin-top: 2px;">
+                            (Verified Due: ৳<?= number_format($grandDueVerified, 2) ?> | Net after pending: ৳<?= number_format($grandDue, 2) ?>)
+                        </div>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
 
@@ -599,8 +616,20 @@ if ($paymentType === 'land_share') {
                                 <div style="font-size: 8.5px; color: #d97706; font-weight: 600;">(<?= $footLabel ?>: ৳<?= number_format($footDiscount, 2) ?>)</div>
                             <?php endif; ?>
                         </td>
-                        <td class="text-end" style="color: #15803d;"><strong>৳<?= number_format($grandPaid, 2) ?></strong></td>
-                        <td class="text-end" style="color: #b91c1c;"><strong>৳<?= number_format($grandDue, 2) ?></strong></td>
+                        <td class="text-end" style="color: #15803d;">
+                            <strong>৳<?= number_format($grandPaid, 2) ?></strong>
+                            <div style="font-size: 8.5px; color: #166534; font-weight: 600;">(Ver: ৳<?= number_format($grandPaidVerified ?? $grandPaid, 2) ?>)</div>
+                            <?php if (($grandPaidUnverified ?? 0) > 0): ?>
+                                <div style="font-size: 8.5px; color: #d97706; font-weight: 600;">(Pending: ৳<?= number_format($grandPaidUnverified, 2) ?>)</div>
+                            <?php endif; ?>
+                        </td>
+                        <td class="text-end" style="color: #b91c1c;">
+                            <strong>৳<?= number_format($grandDue, 2) ?></strong>
+                            <div style="font-size: 8.5px; color: #b91c1c; font-weight: 600;">Net Due</div>
+                            <?php if (($grandDueVerified ?? 0) > 0 && ($grandPaidUnverified ?? 0) > 0): ?>
+                                <div style="font-size: 8px; color: #64748b; font-weight: normal;">(Ver: ৳<?= number_format($grandDueVerified, 2) ?>)</div>
+                            <?php endif; ?>
+                        </td>
                     <?php else: ?>
                         <td class="text-end" style="color: #15803d;"><strong>৳<?= number_format($grandPaid, 2) ?></strong></td>
                     <?php endif; ?>
