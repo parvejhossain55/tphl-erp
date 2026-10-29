@@ -595,7 +595,7 @@ $printMode   = $print_mode ?? ($_GET['print_mode'] ?? 'full');
             <div class="summary-card blue">
                 <div class="summary-card-label">Total Collection</div>
                 <div class="summary-card-value">৳<?= number_format($totalAmt, 2) ?></div>
-                <div class="summary-card-sub"><?= number_format($summary['total_count'] ?? count($transactions)) ?> transactions</div>
+                <div class="summary-card-sub"><?= number_format($summary['total_count'] ?? count($transactions)) ?> transactions<?php if (!empty($summary['total_sold_value'])): ?> · Sold: <?= $summary['total_sold_value_formatted'] ?> (<?= $summary['collection_rate'] ?>% Realized)<?php endif; ?></div>
             </div>
             <div class="summary-card cyan">
                 <div class="summary-card-label">Bank Collection</div>

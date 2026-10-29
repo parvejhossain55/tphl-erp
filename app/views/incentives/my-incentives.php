@@ -27,7 +27,8 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
     <!-- Filter Bar (Month Selector) -->
     <div class="card border-0 shadow-sm rounded-3 mb-4 bg-white">
         <div class="card-body p-3">
-            <form method="GET" action="<?= $base_url ?>/my-incentives" class="row g-2 align-items-end">
+            <form method="GET" action="<?= $base_url ?>/my-incentives" class="row g-2 align-items-end" id="myIncentivesFilterForm">
+                <input type="hidden" name="tab" id="filterActiveTabInput" value="">
                 <div class="col-md-3 col-sm-6">
                     <label class="form-label small fw-semibold text-muted mb-1">
                         <i class="fa-regular fa-calendar-days me-1 text-primary"></i>Cycle Month
@@ -342,6 +343,15 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                                                             <span class="badge bg-success text-white rounded-pill px-3 py-1 extra-small">
                                                                 <i class="fa-solid fa-shield-check me-1"></i>Paid & Settled
                                                             </span>
+                                                            <?php if (!empty($sale['is_received'])): ?>
+                                                                <div class="extra-small text-success fw-semibold mt-1">
+                                                                    <i class="fa-solid fa-circle-check me-1"></i>Received (<?= date('d M, h:i A', strtotime($sale['received_at'])) ?>)
+                                                                </div>
+                                                            <?php else: ?>
+                                                                <div class="extra-small text-warning fw-semibold mt-1">
+                                                                    <i class="fa-solid fa-clock me-1"></i>Please Confirm Receipt
+                                                                </div>
+                                                            <?php endif; ?>
                                                         <?php elseif (empty($sale['booking_completed'])): ?>
                                                             <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-1 extra-small" title="<?= htmlspecialchars($sale['remarks'] ?: 'Booking Money pending verification by Accounts') ?>">
                                                                 <i class="fa-solid fa-clock-rotate-left me-1"></i>Payment Verification Pending
@@ -381,9 +391,20 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                                                                 <i class="fa-solid fa-check me-1"></i>Approved
                                                             </button>
                                                         <?php elseif ($sale['claim_status'] === 'paid'): ?>
-                                                            <button class="btn btn-sm btn-outline-success rounded-2 disabled" disabled>
-                                                                <i class="fa-solid fa-circle-check me-1"></i>Disbursed
-                                                            </button>
+                                                            <?php if (!empty($sale['is_received'])): ?>
+                                                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-2 px-3 py-2 extra-small">
+                                                                    <i class="fa-solid fa-circle-check me-1"></i>Received (<?= date('d M, h:i A', strtotime($sale['received_at'])) ?>)
+                                                                </span>
+                                                            <?php else: ?>
+                                                                <button type="button" 
+                                                                        class="btn btn-sm btn-success rounded-2 px-3 shadow-sm btn-confirm-receipt" 
+                                                                        data-claim-id="<?= $sale['claim_id'] ?>" 
+                                                                        data-booking="<?= htmlspecialchars($sale['booking_no']) ?>" 
+                                                                        data-amount="৳<?= number_format($sale['calculated_incentive'], 2) ?>"
+                                                                        onclick="confirmIncentiveReceipt(this)">
+                                                                    <i class="fa-solid fa-hand-holding-dollar me-1"></i>Confirm Received
+                                                                </button>
+                                                            <?php endif; ?>
                                                         <?php elseif (empty($sale['booking_completed'])): ?>
                                                             <button class="btn btn-sm btn-light text-warning rounded-2 disabled" disabled title="Waiting for Accounts to verify booking payment before claiming">
                                                                 <i class="fa-solid fa-clock-rotate-left me-1"></i>Pending Verify
@@ -487,13 +508,14 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                                             <th>Payment Method</th>
                                             <th>Bank / Payment Details</th>
                                             <th>Transaction Ref</th>
-                                            <th class="pe-4 text-end">Disbursed Amount</th>
+                                            <th class="text-end">Disbursed Amount</th>
+                                            <th class="pe-4 text-center">Receipt Status</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <?php if (empty($payoutHistory)): ?>
                                             <tr>
-                                                <td colspan="6" class="text-center py-3 text-muted">No payout history recorded yet.</td>
+                                                <td colspan="7" class="text-center py-3 text-muted">No payout history recorded yet.</td>
                                             </tr>
                                         <?php else: ?>
                                             <?php foreach ($payoutHistory as $payout): ?>
@@ -514,8 +536,26 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                                                     <td>
                                                         <code class="text-dark bg-light px-2 py-1 rounded border"><?= htmlspecialchars($payout['transaction_ref']) ?></code>
                                                     </td>
-                                                    <td class="pe-4 text-end">
+                                                    <td class="text-end">
                                                         <span class="fw-bold text-success">৳<?= number_format($payout['payment_amount'], 2) ?></span>
+                                                    </td>
+                                                    <td class="pe-4 text-center">
+                                                        <?php if (!empty($payout['is_received'])): ?>
+                                                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-2 px-2 py-1 extra-small">
+                                                                <i class="fa-solid fa-check-circle me-1"></i>Received<br>
+                                                                <span style="font-size:0.65rem;"><?= date('d M, h:i A', strtotime($payout['received_at'])) ?></span>
+                                                            </span>
+                                                        <?php else: ?>
+                                                            <button type="button" 
+                                                                    class="btn btn-sm btn-success rounded-2 px-3 shadow-sm btn-confirm-receipt"
+                                                                    data-claim-id="<?= $payout['claim_id'] ?>" 
+                                                                    data-payment-id="<?= $payout['id'] ?>" 
+                                                                    data-booking="<?= htmlspecialchars($payout['disbursement_no']) ?>"
+                                                                    data-amount="৳<?= number_format($payout['payment_amount'], 2) ?>"
+                                                                    onclick="confirmIncentiveReceipt(this)">
+                                                                <i class="fa-solid fa-hand-holding-dollar me-1"></i>Confirm Received
+                                                            </button>
+                                                        <?php endif; ?>
                                                     </td>
                                                 </tr>
                                             <?php endforeach; ?>
@@ -748,7 +788,8 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                                     <th>Achieved Land Share</th>
                                     <th>25L Target Qualification</th>
                                     <th>Override Rate</th>
-                                    <th class="pe-4 text-end">TL Incentive Gained</th>
+                                    <th>TL Incentive Gained</th>
+                                    <th class="pe-4 text-end">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -795,11 +836,56 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                                         <td>
                                             <span class="badge bg-info-subtle text-info fw-bold">0.05%</span>
                                         </td>
-                                        <td class="pe-4 text-end">
+                                        <td>
                                             <?php if ($mb['tl_contribution'] > 0): ?>
                                                 <span class="fw-bold text-success fs-6">+৳<?= number_format($mb['tl_contribution'], 2) ?></span>
                                             <?php else: ?>
                                                 <span class="text-muted small">৳0.00</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="pe-4 text-end">
+                                            <?php if ($mb['tl_contribution'] > 0 && !empty($mb['is_qualified'])): ?>
+                                                <?php if (empty($mb['claim_status'])): ?>
+                                                    <button type="button" 
+                                                            class="btn btn-sm btn-success rounded-2 px-3 shadow-sm btn-claim-tl" 
+                                                            data-member-id="<?= $mb['user_id'] ?>" 
+                                                            data-member-name="<?= htmlspecialchars($mb['full_name']) ?>" 
+                                                            data-emp-code="<?= htmlspecialchars($mb['employee_id']) ?>" 
+                                                            data-achieved="<?= number_format($mb['achieved_land_share'], 2) ?>" 
+                                                            data-amount="<?= number_format($mb['tl_contribution'], 2) ?>" 
+                                                            data-month="<?= htmlspecialchars($selectedMonth) ?>"
+                                                            onclick="openClaimTlModal(this)">
+                                                        <i class="fa-solid fa-paper-plane me-1"></i>Claim Override
+                                                    </button>
+                                                <?php elseif ($mb['claim_status'] === 'claimed'): ?>
+                                                    <span class="badge bg-warning text-dark rounded-pill px-3 py-1 extra-small shadow-sm">
+                                                        <i class="fa-solid fa-clock me-1"></i>Claimed (Pending Mgmt)
+                                                    </span>
+                                                <?php elseif ($mb['claim_status'] === 'approved'): ?>
+                                                    <span class="badge bg-info text-white rounded-pill px-3 py-1 extra-small shadow-sm">
+                                                        <i class="fa-solid fa-check-double me-1"></i>Approved (Pending Payout)
+                                                    </span>
+                                                <?php elseif ($mb['claim_status'] === 'paid'): ?>
+                                                    <?php if (!empty($mb['is_received'])): ?>
+                                                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 extra-small shadow-sm">
+                                                            <i class="fa-solid fa-check-circle me-1"></i>Received (<?= date('d M, h:i A', strtotime($mb['received_at'])) ?>)
+                                                        </span>
+                                                    <?php else: ?>
+                                                        <button type="button" 
+                                                                class="btn btn-sm btn-success rounded-2 px-3 shadow-sm btn-confirm-receipt" 
+                                                                data-claim-id="<?= $mb['claim_id'] ?>" 
+                                                                data-amount="৳<?= number_format($mb['tl_contribution'], 2) ?>"
+                                                                onclick="confirmIncentiveReceipt(this)">
+                                                            <i class="fa-solid fa-hand-holding-dollar me-1"></i>Confirm Received
+                                                        </button>
+                                                    <?php endif; ?>
+                                                <?php endif; ?>
+                                            <?php elseif (!empty($mb['is_qualified'])): ?>
+                                                <span class="text-muted extra-small">No Sales</span>
+                                            <?php else: ?>
+                                                <span class="badge bg-light text-muted border rounded-pill px-2 py-1 extra-small">
+                                                    <i class="fa-solid fa-lock me-1"></i>Pending 25L
+                                                </span>
                                             <?php endif; ?>
                                         </td>
                                     </tr>
@@ -809,7 +895,7 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                                 if (!$hasOtherMembers):
                                 ?>
                                     <tr>
-                                        <td colspan="7" class="text-center py-4 text-muted">
+                                        <td colspan="8" class="text-center py-4 text-muted">
                                             <i class="fa-solid fa-user-group mb-2 d-block fs-3 opacity-50"></i>
                                             No team members assigned under this team yet.
                                         </td>
@@ -819,7 +905,7 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                             <?php if ($hasOtherMembers && ($teamMetrics['tl_gain_from_members'] ?? 0) > 0): ?>
                             <tfoot class="bg-light">
                                 <tr>
-                                    <th colspan="6" class="ps-4 text-end fw-bold text-dark">Total TL Override from Team Members:</th>
+                                    <th colspan="7" class="ps-4 text-end fw-bold text-dark">Total TL Override from Team Members:</th>
                                     <th class="pe-4 text-end fw-bold text-success fs-6">৳<?= number_format($teamMetrics['tl_gain_from_members'], 2) ?></th>
                                 </tr>
                             </tfoot>
@@ -877,13 +963,14 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                                     <th>Selling Sales Executive</th>
                                     <th>Total Land Share</th>
                                     <th>My 30% Designated Share</th>
-                                    <th class="pe-4 text-end">Status</th>
+                                    <th>Qualification</th>
+                                    <th class="pe-4 text-end">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php if (empty($monthlyStats['designated_credits'])): ?>
                                     <tr>
-                                        <td colspan="6" class="text-center py-4 text-muted">
+                                        <td colspan="7" class="text-center py-4 text-muted">
                                             <i class="fa-solid fa-handshake-slash mb-2 d-block fs-3 opacity-50"></i>
                                             No other agents have sold units in your assigned projects this cycle.
                                         </td>
@@ -909,13 +996,55 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                                                 <span class="fw-bold text-success fs-6">৳<?= number_format($dc['credit_amount'], 2) ?></span>
                                                 <div class="extra-small text-muted">30% designated share</div>
                                             </td>
-                                            <td class="pe-4 text-end">
+                                            <td>
                                                 <?php if (!empty($monthlyStats['is_eligible'])): ?>
                                                     <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
                                                         <i class="fa-solid fa-check-circle me-1"></i>Unlocked (≥ 25L)
                                                     </span>
                                                 <?php else: ?>
                                                     <span class="badge bg-warning-subtle text-dark border border-warning-subtle px-2 py-1">
+                                                        <i class="fa-solid fa-lock me-1"></i>On Hold (Achieve 25L)
+                                                    </span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="pe-4 text-end">
+                                                <?php if (!empty($dc['claim_status'])): ?>
+                                                    <?php if ($dc['claim_status'] === 'claimed'): ?>
+                                                        <span class="badge bg-warning text-dark rounded-pill px-3 py-1 extra-small shadow-sm">
+                                                            <i class="fa-solid fa-clock me-1"></i>Claimed (Pending Mgmt)
+                                                        </span>
+                                                    <?php elseif ($dc['claim_status'] === 'approved'): ?>
+                                                        <span class="badge bg-info text-white rounded-pill px-3 py-1 extra-small shadow-sm">
+                                                            <i class="fa-solid fa-check-double me-1"></i>Approved (Pending Payout)
+                                                        </span>
+                                                    <?php elseif ($dc['claim_status'] === 'paid'): ?>
+                                                        <?php if (!empty($dc['is_received'])): ?>
+                                                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 extra-small shadow-sm">
+                                                                <i class="fa-solid fa-check-circle me-1"></i>Received (<?= date('d M, h:i A', strtotime($dc['received_at'])) ?>)
+                                                            </span>
+                                                        <?php else: ?>
+                                                            <button type="button" 
+                                                                    class="btn btn-sm btn-success rounded-2 px-3 shadow-sm btn-confirm-receipt" 
+                                                                    data-claim-id="<?= $dc['claim_id'] ?>" 
+                                                                    data-amount="৳<?= number_format($dc['credit_amount'], 2) ?>"
+                                                                    onclick="confirmIncentiveReceipt(this)">
+                                                                <i class="fa-solid fa-hand-holding-dollar me-1"></i>Confirm Received
+                                                            </button>
+                                                        <?php endif; ?>
+                                                    <?php endif; ?>
+                                                <?php elseif (!empty($monthlyStats['is_eligible'])): ?>
+                                                    <button type="button" 
+                                                            class="btn btn-sm btn-success rounded-2 px-3 shadow-sm btn-claim-designated"
+                                                            data-booking-id="<?= $dc['booking_id'] ?>"
+                                                            data-booking-ref="BK-<?= str_pad($dc['booking_id'], 5, '0', STR_PAD_LEFT) ?>"
+                                                            data-project="<?= htmlspecialchars($dc['project_name']) ?> - <?= htmlspecialchars($dc['flat_name']) ?>"
+                                                            data-seller="<?= htmlspecialchars($dc['seller_name']) ?>"
+                                                            data-amount="<?= number_format($dc['credit_amount'], 2) ?>"
+                                                            onclick="openClaimDesignatedModal(this)">
+                                                        <i class="fa-solid fa-paper-plane me-1"></i>Claim 30% Share
+                                                    </button>
+                                                <?php else: ?>
+                                                    <span class="badge bg-light text-muted border rounded-pill px-2 py-1 extra-small">
                                                         <i class="fa-solid fa-lock me-1"></i>On Hold (Achieve 25L)
                                                     </span>
                                                 <?php endif; ?>
@@ -965,13 +1094,14 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                                     <th>Total Calculated</th>
                                     <th>My 70% Seller Share</th>
                                     <th>30% Designated Holder</th>
-                                    <th class="pe-4 text-end">Qualification Status</th>
+                                    <th>Qualification Status</th>
+                                    <th class="pe-4 text-end">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php if (empty($outsideBookings)): ?>
                                     <tr>
-                                        <td colspan="7" class="text-center py-4 text-muted">
+                                        <td colspan="8" class="text-center py-4 text-muted">
                                             <i class="fa-solid fa-clipboard-check mb-2 d-block fs-3 opacity-50"></i>
                                             All your booked flats this cycle are within your assigned projects.
                                         </td>
@@ -1004,7 +1134,7 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                                                 </span>
                                                 <div class="extra-small text-muted">30% share: ৳<?= number_format($obk['designated_incentive'], 2) ?></div>
                                             </td>
-                                            <td class="pe-4 text-end">
+                                            <td>
                                                 <?php if (!empty($obk['is_on_hold'])): ?>
                                                     <span class="badge bg-warning-subtle text-dark border border-warning-subtle px-2 py-1" title="Achieve your 25L qualification to release">
                                                         <i class="fa-solid fa-lock me-1 text-warning"></i>On Hold (Pending 25L)
@@ -1012,6 +1142,50 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                                                 <?php else: ?>
                                                     <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
                                                         <i class="fa-solid fa-unlock me-1"></i>Released & Eligible
+                                                    </span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="pe-4 text-end">
+                                                <?php if (!empty($obk['claim_status'])): ?>
+                                                    <?php if ($obk['claim_status'] === 'claimed'): ?>
+                                                        <span class="badge bg-warning text-dark rounded-pill px-3 py-1 extra-small shadow-sm">
+                                                            <i class="fa-solid fa-clock me-1"></i>Claimed (Pending Mgmt)
+                                                        </span>
+                                                    <?php elseif ($obk['claim_status'] === 'approved'): ?>
+                                                        <span class="badge bg-info text-white rounded-pill px-3 py-1 extra-small shadow-sm">
+                                                            <i class="fa-solid fa-check-double me-1"></i>Approved (Pending Payout)
+                                                        </span>
+                                                    <?php elseif ($obk['claim_status'] === 'paid'): ?>
+                                                        <?php if (!empty($obk['is_received'])): ?>
+                                                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 extra-small shadow-sm">
+                                                                <i class="fa-solid fa-check-circle me-1"></i>Received (<?= date('d M, h:i A', strtotime($obk['received_at'])) ?>)
+                                                            </span>
+                                                        <?php else: ?>
+                                                            <button type="button" 
+                                                                    class="btn btn-sm btn-success rounded-2 px-3 shadow-sm btn-confirm-receipt" 
+                                                                    data-claim-id="<?= $obk['claim_id'] ?>" 
+                                                                    data-amount="৳<?= number_format($obk['seller_incentive'], 2) ?>"
+                                                                    onclick="confirmIncentiveReceipt(this)">
+                                                                <i class="fa-solid fa-hand-holding-dollar me-1"></i>Confirm Received
+                                                            </button>
+                                                        <?php endif; ?>
+                                                    <?php endif; ?>
+                                                <?php elseif (empty($obk['is_on_hold'])): ?>
+                                                    <button type="button" 
+                                                            class="btn btn-sm btn-success rounded-2 px-3 shadow-sm btn-claim-modal" 
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#claimIncentiveModal"
+                                                            onclick="populateClaimModal(this)"
+                                                            data-id="<?= $obk['booking_id'] ?>"
+                                                            data-booking="BK-<?= str_pad($obk['booking_id'], 5, '0', STR_PAD_LEFT) ?>"
+                                                            data-project="<?= htmlspecialchars($obk['project_name']) ?> - <?= htmlspecialchars($obk['flat_name']) ?>"
+                                                            data-amount="<?= number_format($obk['seller_incentive'], 2) ?>"
+                                                            data-rate="<?= number_format($obk['applicable_rate'], 2) ?>">
+                                                        <i class="fa-solid fa-paper-plane me-1"></i>Claim 70% Share
+                                                    </button>
+                                                <?php else: ?>
+                                                    <span class="badge bg-light text-muted border rounded-pill px-2 py-1 extra-small">
+                                                        <i class="fa-solid fa-lock me-1"></i>On Hold (Achieve 25L)
                                                     </span>
                                                 <?php endif; ?>
                                             </td>
@@ -1111,6 +1285,121 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
     </div>
 </div>
 
+
+<!-- Modal: Claim Team Leader 0.05% Override -->
+<div id="claimTlOverrideModal" class="modal custom-modal fade" role="dialog" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+        <div class="modal-content border-0 shadow-lg">
+            <form id="submitTlClaimForm">
+                <input type="hidden" id="modalTlMemberId" name="member_user_id" value="">
+                <input type="hidden" id="modalTlMonth" name="month" value="">
+                <div class="modal-header bg-warning text-dark py-3">
+                    <h5 class="modal-title fw-bold text-dark mb-0">
+                        <i class="fa-solid fa-people-arrows me-2"></i>Claim Team Leader 0.05% Override
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 bg-white text-dark">
+                    <div class="alert alert-warning border-0 rounded-3 mb-3 d-flex align-items-center">
+                        <i class="fa-solid fa-circle-info fs-4 me-3 text-warning"></i>
+                        <div class="small">
+                            You are submitting a claim for <strong>0.05% Team Leader Override</strong> earned from your qualified team member's land share sales this cycle.
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-semibold mb-1">Qualifying Team Member</label>
+                        <input type="text" id="modalTlMemberName" class="form-control bg-light fw-bold text-dark" readonly>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label text-muted small fw-semibold mb-1">Achieved Land Share</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light">৳</span>
+                                <input type="text" id="modalTlAchieved" class="form-control bg-light fw-bold text-dark" readonly>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label text-muted small fw-semibold mb-1">TL Override (0.05%)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-success fw-bold">৳</span>
+                                <input type="text" id="modalTlAmount" class="form-control bg-light fw-bold text-success" readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-semibold mb-1">Claim Remarks / Notes (Optional)</label>
+                        <textarea class="form-control" name="remarks" id="modalTlRemarks" rows="2" placeholder="e.g. TL Override claim for qualified sales in current cycle"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top">
+                    <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal" data-dismiss="modal">Cancel</button>
+                    <button type="submit" id="btnSubmitTlClaim" class="btn btn-warning fw-bold px-4 shadow-sm text-dark">
+                        <i class="fa-solid fa-paper-plane me-1"></i>Confirm & Submit Claim
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Claim 30% Designated Project Share -->
+<div id="claimDesignatedModal" class="modal custom-modal fade" role="dialog" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+        <div class="modal-content border-0 shadow-lg">
+            <form id="submitDesignatedClaimForm">
+                <input type="hidden" id="modalDesBookingId" name="booking_id" value="">
+                <div class="modal-header bg-success text-white py-3">
+                    <h5 class="modal-title fw-bold text-white mb-0">
+                        <i class="fa-solid fa-hand-holding-dollar me-2"></i>Claim 30% Designated Project Share
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 bg-white text-dark">
+                    <div class="alert alert-success border-0 rounded-3 mb-3 d-flex align-items-center">
+                        <i class="fa-solid fa-circle-check fs-4 me-3 text-success"></i>
+                        <div class="small">
+                            Claiming your <strong>30% Designated Credit</strong> for an outside sales transaction completed within your designated project.
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-semibold mb-1">Booking & Project Details</label>
+                        <input type="text" id="modalDesProject" class="form-control bg-light fw-bold text-dark" readonly>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label text-muted small fw-semibold mb-1">Selling Agent</label>
+                            <input type="text" id="modalDesSeller" class="form-control bg-light text-dark" readonly>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label text-muted small fw-semibold mb-1">Your 30% Share</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-success fw-bold">৳</span>
+                                <input type="text" id="modalDesAmount" class="form-control bg-light fw-bold text-success" readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-semibold mb-1">Claim Remarks / Notes (Optional)</label>
+                        <textarea class="form-control" name="remarks" id="modalDesRemarks" rows="2" placeholder="e.g. 30% designated project holder share claim"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top">
+                    <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal" data-dismiss="modal">Cancel</button>
+                    <button type="submit" id="btnSubmitDesClaim" class="btn btn-success fw-bold px-4 shadow-sm text-white">
+                        <i class="fa-solid fa-paper-plane me-1"></i>Confirm & Submit Claim
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
 // Global function to instantly populate claim modal fields
 window.populateClaimModal = function(btn) {
@@ -1181,6 +1470,70 @@ window.viewTargetDetails = function(btn) {
             modalObj.show();
         } else if (typeof $ !== 'undefined') {
             $('#viewTargetDetailsModal').modal('show');
+        }
+    }
+};
+
+
+window.openClaimTlModal = function(btn) {
+    const memberId = btn.getAttribute('data-member-id');
+    const memberName = btn.getAttribute('data-member-name');
+    const empCode = btn.getAttribute('data-emp-code') || '';
+    const achieved = btn.getAttribute('data-achieved') || '0.00';
+    const amount = btn.getAttribute('data-amount') || '0.00';
+    const month = btn.getAttribute('data-month') || '';
+
+    const memberIdInput = document.getElementById('modalTlMemberId');
+    const monthInput = document.getElementById('modalTlMonth');
+    const nameInput = document.getElementById('modalTlMemberName');
+    const achievedInput = document.getElementById('modalTlAchieved');
+    const amountInput = document.getElementById('modalTlAmount');
+    const remarksInput = document.getElementById('modalTlRemarks');
+
+    if (memberIdInput) memberIdInput.value = memberId;
+    if (monthInput) monthInput.value = month;
+    if (nameInput) nameInput.value = memberName + (empCode ? ' [' + empCode + ']' : '');
+    if (achievedInput) achievedInput.value = achieved;
+    if (amountInput) amountInput.value = amount;
+    if (remarksInput) remarksInput.value = '';
+
+    const modalEl = document.getElementById('claimTlOverrideModal');
+    if (modalEl) {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            const modalObj = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            modalObj.show();
+        } else if (typeof $ !== 'undefined') {
+            $('#claimTlOverrideModal').modal('show');
+        }
+    }
+};
+
+window.openClaimDesignatedModal = function(btn) {
+    const bookingId = btn.getAttribute('data-booking-id');
+    const bookingRef = btn.getAttribute('data-booking-ref') || '';
+    const project = btn.getAttribute('data-project') || '';
+    const seller = btn.getAttribute('data-seller') || '';
+    const amount = btn.getAttribute('data-amount') || '0.00';
+
+    const bIdInput = document.getElementById('modalDesBookingId');
+    const projInput = document.getElementById('modalDesProject');
+    const sellerInput = document.getElementById('modalDesSeller');
+    const amountInput = document.getElementById('modalDesAmount');
+    const remarksInput = document.getElementById('modalDesRemarks');
+
+    if (bIdInput) bIdInput.value = bookingId;
+    if (projInput) projInput.value = bookingRef + ' - ' + project;
+    if (sellerInput) sellerInput.value = seller;
+    if (amountInput) amountInput.value = amount;
+    if (remarksInput) remarksInput.value = '';
+
+    const modalEl = document.getElementById('claimDesignatedModal');
+    if (modalEl) {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            const modalObj = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            modalObj.show();
+        } else if (typeof $ !== 'undefined') {
+            $('#claimDesignatedModal').modal('show');
         }
     }
 };
@@ -1294,5 +1647,320 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     }
+    // Move new modals to body
+    const tlModal = document.getElementById('claimTlOverrideModal');
+    if (tlModal && tlModal.parentNode !== document.body) {
+        document.body.appendChild(tlModal);
+    }
+    const desModal = document.getElementById('claimDesignatedModal');
+    if (desModal && desModal.parentNode !== document.body) {
+        document.body.appendChild(desModal);
+    }
+
+    // Submit TL Override Claim
+    const submitTlClaimForm = document.getElementById('submitTlClaimForm');
+    if (submitTlClaimForm) {
+        submitTlClaimForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnSubmitTlClaim');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Submitting...';
+            }
+
+            const formData = new FormData(this);
+            fetch('<?= $base_url ?>/incentives/claim-tl-override', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Confirm & Submit Claim';
+                }
+                if (data.success) {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'TL Override Claim Submitted!',
+                            text: data.message,
+                            timer: 2000,
+                            showConfirmButton: true
+                        }).then(() => {
+                            // Remember to open tab-team-gain after reload
+                            sessionStorage.setItem('my_incentives_active_tab', '#tab-team-gain');
+                            location.reload();
+                        });
+                    } else {
+                        alert(data.message);
+                        sessionStorage.setItem('my_incentives_active_tab', '#tab-team-gain');
+                        location.reload();
+                    }
+                } else {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Claim Failed',
+                            text: data.message
+                        });
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                }
+            })
+            .catch(err => {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Confirm & Submit Claim';
+                }
+                alert('An error occurred submitting the claim: ' + err);
+            });
+        });
+    }
+
+    // Submit 30% Designated Claim
+    const submitDesignatedClaimForm = document.getElementById('submitDesignatedClaimForm');
+    if (submitDesignatedClaimForm) {
+        submitDesignatedClaimForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnSubmitDesClaim');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Submitting...';
+            }
+
+            const formData = new FormData(this);
+            fetch('<?= $base_url ?>/incentives/claim-designated', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Confirm & Submit Claim';
+                }
+                if (data.success) {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Designated Share Claimed!',
+                            text: data.message,
+                            timer: 2000,
+                            showConfirmButton: true
+                        }).then(() => {
+                            sessionStorage.setItem('my_incentives_active_tab', '#tab-unassigned-split');
+                            location.reload();
+                        });
+                    } else {
+                        alert(data.message);
+                        sessionStorage.setItem('my_incentives_active_tab', '#tab-unassigned-split');
+                        location.reload();
+                    }
+                } else {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Claim Failed',
+                            text: data.message
+                        });
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                }
+            })
+            .catch(err => {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Confirm & Submit Claim';
+                }
+                alert('An error occurred submitting the claim: ' + err);
+            });
+        });
+    }
+
+    // =========================================================================
+    // Robust Tab Persistence across Page Reloads & Month Filtering
+    // =========================================================================
+    const tabStorageKey = 'my_incentives_active_tab';
+    const mainTabButtons = document.querySelectorAll('#incentiveMainTabs button[data-bs-toggle="tab"]');
+
+    function activateMyIncentiveTab(targetSelector) {
+        if (!targetSelector) return false;
+        // Support with or without hash prefix
+        if (!targetSelector.startsWith('#')) {
+            targetSelector = '#' + targetSelector;
+        }
+        const targetBtn = document.querySelector(`#incentiveMainTabs button[data-bs-target="${targetSelector}"]`);
+        const targetPane = document.querySelector(targetSelector);
+        if (!targetBtn || !targetPane) return false;
+
+        mainTabButtons.forEach(btn => {
+            btn.classList.remove('active');
+            btn.setAttribute('aria-selected', 'false');
+            btn.classList.add('bg-white', 'text-dark', 'border');
+        });
+        document.querySelectorAll('#incentiveMainTabsContent > .tab-pane').forEach(pane => {
+            pane.classList.remove('show', 'active');
+        });
+
+        targetBtn.classList.add('active');
+        targetBtn.classList.remove('bg-white', 'text-dark', 'border');
+        targetBtn.setAttribute('aria-selected', 'true');
+        targetPane.classList.add('show', 'active');
+
+        if (typeof bootstrap !== 'undefined' && bootstrap.Tab) {
+            try {
+                bootstrap.Tab.getOrCreateInstance(targetBtn).show();
+            } catch (e) {}
+        } else if (typeof $ !== 'undefined') {
+            $(targetBtn).tab('show');
+        }
+
+        // Keep hidden input updated for filter form
+        const filterInput = document.getElementById('filterActiveTabInput');
+        if (filterInput) filterInput.value = targetSelector.replace('#', '');
+
+        return true;
+    }
+
+    // Determine initial tab:
+    // 1. URL hash (#tab-team-gain)
+    // 2. URL param (?tab=tab-team-gain)
+    // 3. sessionStorage
+    const urlParams = new URLSearchParams(window.location.search);
+    let initialTab = window.location.hash;
+    if (!initialTab && urlParams.get('tab')) {
+        initialTab = urlParams.get('tab');
+        if (!initialTab.startsWith('#')) initialTab = '#' + initialTab;
+    }
+    if (!initialTab) {
+        initialTab = sessionStorage.getItem(tabStorageKey);
+    }
+    if (initialTab) {
+        activateMyIncentiveTab(initialTab);
+    }
+
+    // Save tab state whenever tab changes
+    mainTabButtons.forEach(btn => {
+        const saveTabState = function (el) {
+            const target = el.getAttribute('data-bs-target');
+            if (target) {
+                sessionStorage.setItem(tabStorageKey, target);
+                mainTabButtons.forEach(b => {
+                    if (b !== el) {
+                        b.classList.remove('active');
+                        b.classList.add('bg-white', 'text-dark', 'border');
+                    } else {
+                        b.classList.add('active');
+                        b.classList.remove('bg-white', 'text-dark', 'border');
+                    }
+                });
+                const filterInput = document.getElementById('filterActiveTabInput');
+                if (filterInput) filterInput.value = target.replace('#', '');
+                if (history.replaceState) {
+                    history.replaceState(null, null, window.location.pathname + window.location.search + target);
+                }
+            }
+        };
+        btn.addEventListener('click', function () { saveTabState(this); });
+        btn.addEventListener('shown.bs.tab', function (e) { saveTabState(e.target); });
+    });
+
+    // Update filter form on submit
+    const filterForm = document.getElementById('myIncentivesFilterForm');
+    if (filterForm) {
+        filterForm.addEventListener('submit', function () {
+            const curTab = sessionStorage.getItem(tabStorageKey) || '#tab-my-incentive';
+            const filterInput = document.getElementById('filterActiveTabInput');
+            if (filterInput) filterInput.value = curTab.replace('#', '');
+        });
+    }
 });
+
+// Confirm Incentive Payout Receipt by Employee
+function confirmIncentiveReceipt(btn) {
+    if (!btn) return;
+    const claimId = btn.getAttribute('data-claim-id') || 0;
+    const paymentId = btn.getAttribute('data-payment-id') || 0;
+    const amount = btn.getAttribute('data-amount') || '';
+    const booking = btn.getAttribute('data-booking') || '';
+
+    let promptText = 'Did you receive the incentive payout';
+    if (amount) promptText += ' of ' + amount;
+    if (booking) promptText += ' (' + booking + ')';
+    promptText += '? Once confirmed, Accounts & Management will see that you received this payout.';
+
+    const doSubmit = function() {
+        btn.disabled = true;
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Confirming...';
+
+        const formData = new FormData();
+        formData.append('claim_id', claimId);
+        formData.append('payment_id', paymentId);
+
+        fetch('<?= $base_url ?>/incentives/confirm-receipt', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Received Confirmed!',
+                        text: data.message || 'Incentive payout receipt confirmed.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    alert(data.message || 'Incentive receipt confirmed!');
+                    window.location.reload();
+                }
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Could not confirm receipt' });
+                } else {
+                    alert('Error: ' + (data.message || 'Could not confirm receipt'));
+                }
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+            alert('Network error while confirming receipt.');
+        });
+    };
+
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'Confirm Incentive Received?',
+            text: promptText,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#198754',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fa-solid fa-check-circle me-1"></i>Yes, I Received It',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                doSubmit();
+            }
+        });
+    } else {
+        if (confirm(promptText)) {
+            doSubmit();
+        }
+    }
+}
 </script>

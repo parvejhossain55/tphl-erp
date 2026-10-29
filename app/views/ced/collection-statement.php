@@ -312,13 +312,23 @@ $exportTrxUrl = $base_url . '/ced-collection-statement-export?' . http_build_que
                             <i class="fa-solid fa-vault"></i>
                         </div>
                         <div class="flex-grow-1 overflow-hidden">
-                            <div class="text-muted extra-small text-uppercase fw-bold" style="font-size: 10px;">Total Inflows</div>
-                            <div class="fw-bold text-dark fs-14 text-truncate" title="৳<?= number_format($summary['total_amount'] ?? 0, 2) ?>">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div class="text-muted extra-small text-uppercase fw-bold" style="font-size: 10px;">Total Inflows</div>
+                                <?php if (!empty($summary['total_sold_value'])): ?>
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle py-0 px-1" style="font-size: 9px; font-weight: 700;" title="Realized Collection: <?= $summary['collection_rate'] ?>% of Sold Value"><?= $summary['collection_rate'] ?>%</span>
+                                <?php endif; ?>
+                            </div>
+                            <div class="fw-bold text-dark fs-14 text-truncate" title="Collected: ৳<?= number_format($summary['total_amount'] ?? 0, 2) ?><?php if (!empty($summary['total_sold_value'])): ?> | Sold: <?= $summary['total_sold_value_formatted'] ?> | Due: <?= $summary['pending_due_formatted'] ?><?php endif; ?>">
                                 ৳<?= number_format($summary['total_amount'] ?? 0, 2) ?>
                             </div>
-                            <small class="text-muted extra-small d-block" style="font-size: 10px;">
-                                <?= number_format($summary['total_count'] ?? 0) ?> Trx (<?= $summary['active_collectors_count'] ?? 0 ?> Staff)
-                            </small>
+                            <div class="d-flex align-items-center justify-content-between text-muted extra-small" style="font-size: 10px; line-height: 1.2;">
+                                <span class="text-truncate"><?= number_format($summary['total_count'] ?? 0) ?> Trx</span>
+                                <?php if (!empty($summary['total_sold_value'])): ?>
+                                    <span class="text-truncate fw-semibold text-secondary ms-1" title="Total Sold: ৳<?= number_format($summary['total_sold_value'], 2) ?> (<?= number_format($summary['total_sold_units'] ?? 0) ?> units)">
+                                        Sold: <strong class="text-dark"><?= $summary['total_sold_value_formatted'] ?></strong>
+                                    </span>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -1,4 +1,5 @@
 <?php
+$base_url = $GLOBALS['base_url'] ?? '/TPHL-ERP';
 $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
 $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
 // Management / Operations (Super Admin, Admin, Sales Heads, Managers, Coordinators)
@@ -365,32 +366,59 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
 
                                             <!-- Verification Status -->
                                             <td class="text-center">
-                                                <?php if ($claim['booking_completed']): ?>
-                                                    <span class="badge bg-success-subtle text-success border border-success-subtle extra-small rounded-pill d-block mb-1">
-                                                        <i class="fa-solid fa-check me-1"></i>Booking Verified
+                                                <?php if ($claim['split_type'] === 'tl_override'): ?>
+                                                    <span class="badge bg-info-subtle text-info border border-info-subtle extra-small rounded-pill d-block mb-1" title="Team Leader Override on Member Achievement">
+                                                        <i class="fa-solid fa-users me-1"></i>Team Override
+                                                    </span>
+                                                    <span class="badge bg-success-subtle text-success border border-success-subtle extra-small rounded-pill d-block" title="Team Member achieved ≥25 Lakh target">
+                                                        <i class="fa-solid fa-award me-1"></i>Qualified (≥25L)
                                                     </span>
                                                 <?php else: ?>
-                                                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle extra-small rounded-pill d-block mb-1">
-                                                        <i class="fa-solid fa-clock me-1"></i>Booking Pending
-                                                    </span>
-                                                <?php endif; ?>
+                                                    <!-- Booking Money Status -->
+                                                    <?php if (($claim['booking_verification_status'] ?? '') === 'verified'): ?>
+                                                        <span class="badge bg-success-subtle text-success border border-success-subtle extra-small rounded-pill d-block mb-1" title="Booking Money verified by Accounts">
+                                                            <i class="fa-solid fa-check-circle me-1"></i>Booking Verified
+                                                        </span>
+                                                    <?php elseif (($claim['booking_verification_status'] ?? '') === 'pending'): ?>
+                                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle extra-small rounded-pill d-block mb-1" title="Booking Money submitted, pending Accounts verification">
+                                                            <i class="fa-solid fa-clock me-1"></i>Booking Unverified
+                                                        </span>
+                                                    <?php elseif (($claim['booking_verification_status'] ?? '') === 'rejected'): ?>
+                                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle extra-small rounded-pill d-block mb-1" title="Booking Money payment rejected">
+                                                            <i class="fa-solid fa-circle-xmark me-1"></i>Booking Rejected
+                                                        </span>
+                                                    <?php else: ?>
+                                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle extra-small rounded-pill d-block mb-1" title="Booking Money payment not submitted">
+                                                            <i class="fa-solid fa-circle-exclamation me-1"></i>Booking Incomplete
+                                                        </span>
+                                                    <?php endif; ?>
 
-                                                <?php if ($claim['registration_completed']): ?>
-                                                    <span class="badge bg-success-subtle text-success border border-success-subtle extra-small rounded-pill d-block">
-                                                        <i class="fa-solid fa-check me-1"></i>Registration Verified
-                                                    </span>
-                                                <?php else: ?>
-                                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle extra-small rounded-pill d-block">
-                                                        <i class="fa-solid fa-times me-1"></i>Reg Incomplete
-                                                    </span>
+                                                    <!-- Registration Status -->
+                                                    <?php if (($claim['reg_verification_status'] ?? '') === 'verified'): ?>
+                                                        <span class="badge bg-success-subtle text-success border border-success-subtle extra-small rounded-pill d-block" title="Registration Fee verified by Accounts">
+                                                            <i class="fa-solid fa-check-circle me-1"></i>Reg Verified
+                                                        </span>
+                                                    <?php elseif (($claim['reg_verification_status'] ?? '') === 'pending'): ?>
+                                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle extra-small rounded-pill d-block" title="Registration Fee submitted, pending Accounts verification">
+                                                            <i class="fa-solid fa-clock me-1"></i>Reg Unverified
+                                                        </span>
+                                                    <?php elseif (($claim['reg_verification_status'] ?? '') === 'rejected'): ?>
+                                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle extra-small rounded-pill d-block" title="Registration Fee payment rejected">
+                                                            <i class="fa-solid fa-circle-xmark me-1"></i>Reg Rejected
+                                                        </span>
+                                                    <?php else: ?>
+                                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle extra-small rounded-pill d-block" title="Registration payment not completed yet">
+                                                            <i class="fa-solid fa-minus-circle me-1"></i>Registration Incomplete
+                                                        </span>
+                                                    <?php endif; ?>
                                                 <?php endif; ?>
                                             </td>
 
                                             <!-- Claim Status -->
-                                            <td class="text-center">
+                                            <td class="text-center py-2">
                                                 <?php if ($claim['claim_status'] === 'not_claimed'): ?>
-                                                    <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1 extra-small border">
-                                                        <i class="fa-solid fa-hourglass-start me-1"></i>Not Claimed Yet
+                                                    <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-1 extra-small border">
+                                                        <i class="fa-solid fa-hourglass-start me-1"></i>Not Claimed
                                                     </span>
                                                 <?php elseif ($claim['claim_status'] === 'claimed'): ?>
                                                     <?php
@@ -398,41 +426,70 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                     $isOpHeadApprovedClaim = (!empty($ahInfoClaim['is_op_head_approved']) || ($ahInfoClaim['op_head_status'] ?? '') === 'approved');
                                                     ?>
                                                     <?php if ($isOver1LacClaim && !$isOpHeadApprovedClaim): ?>
-                                                        <span class="badge bg-warning text-dark rounded-pill px-3 py-1 extra-small">
+                                                        <span class="badge bg-warning text-dark rounded-pill px-2 py-1 extra-small">
                                                             <i class="fa-solid fa-hourglass-half me-1"></i>Pending Op Head (>1L)
                                                         </span>
                                                     <?php else: ?>
-                                                        <span class="badge bg-warning text-dark rounded-pill px-3 py-1 extra-small">
+                                                        <span class="badge bg-warning text-dark rounded-pill px-2 py-1 extra-small">
                                                             <i class="fa-solid fa-clock me-1"></i>Awaiting Mgmt Approval
                                                         </span>
                                                     <?php endif; ?>
                                                 <?php elseif ($claim['claim_status'] === 'approved'): ?>
                                                     <?php if (!$isAhApprovedClaim): ?>
-                                                        <span class="badge bg-warning text-dark rounded-pill px-3 py-1 extra-small">
-                                                            <i class="fa-solid fa-lock me-1"></i>Pending Accounts Head
+                                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2 py-1 extra-small fw-semibold">
+                                                            <i class="fa-solid fa-lock me-1"></i>Pending AH Approval
                                                         </span>
-                                                        <div class="extra-small text-muted mt-1">Md. Mamunoor Rashid [1309]</div>
                                                     <?php else: ?>
-                                                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 extra-small mb-1">
-                                                            <i class="fa-solid fa-check me-1"></i>AH Approved
-                                                        </span>
-                                                        <br>
-                                                        <span class="badge bg-info text-white rounded-pill px-3 py-1 extra-small">
+                                                        <span class="badge bg-info text-white rounded-pill px-2 py-1 extra-small">
                                                             <i class="fa-solid fa-thumbs-up me-1"></i>Ready to Disburse
                                                         </span>
                                                     <?php endif; ?>
                                                 <?php elseif ($claim['claim_status'] === 'partially_paid'): ?>
-                                                    <span class="badge bg-primary text-white rounded-pill px-3 py-1 extra-small">
-                                                        <i class="fa-solid fa-pie-chart me-1"></i>Partially Paid (Due: ৳<?= number_format($claim['due_amount']) ?>)
+                                                    <span class="badge bg-primary text-white rounded-pill px-2 py-1 extra-small">
+                                                        <i class="fa-solid fa-pie-chart me-1"></i>Partially Paid
                                                     </span>
                                                 <?php elseif ($claim['claim_status'] === 'paid'): ?>
-                                                    <span class="badge bg-success text-white rounded-pill px-3 py-1 extra-small">
+                                                    <span class="badge bg-success text-white rounded-pill px-2 py-1 extra-small">
                                                         <i class="fa-solid fa-check-circle me-1"></i>Paid & Settled
                                                     </span>
+                                                    <?php if (!empty($claim['is_received'])): ?>
+                                                        <div class="mt-1">
+                                                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill extra-small px-2 py-0" title="Employee confirmed payout receipt">
+                                                                <i class="fa-solid fa-hand-holding-dollar me-1"></i>Received by Employee
+                                                            </span>
+                                                            <div class="text-muted" style="font-size:0.64rem;"><?= date('d M, h:i A', strtotime($claim['received_at'])) ?></div>
+                                                        </div>
+                                                    <?php else: ?>
+                                                        <div class="mt-1">
+                                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill extra-small px-2 py-0" title="Payout disbursed by Accounts, awaiting employee receipt confirmation">
+                                                                <i class="fa-solid fa-clock me-1"></i>Awaiting Receipt
+                                                            </span>
+                                                        </div>
+                                                    <?php endif; ?>
                                                 <?php elseif ($claim['claim_status'] === 'rejected'): ?>
-                                                    <span class="badge bg-danger text-white rounded-pill px-3 py-1 extra-small">
+                                                    <span class="badge bg-danger text-white rounded-pill px-2 py-1 extra-small">
                                                         <i class="fa-solid fa-times-circle me-1"></i>Rejected
                                                     </span>
+                                                <?php endif; ?>
+
+                                                <!-- Compact Approval History Audit Trail -->
+                                                <?php if (!empty($claim['mgmt_approved_at']) || !empty($claim['ah_approved_at']) || (in_array($claim['claim_status'], ['approved', 'partially_paid']) && !$isAhApprovedClaim)): ?>
+                                                    <div class="mt-1 text-start px-2 py-1 rounded bg-light border border-light-subtle d-inline-block" style="font-size: 0.69rem; line-height: 1.3; min-width: 175px;">
+                                                        <?php if (!empty($claim['mgmt_approved_at'])): ?>
+                                                            <div class="text-nowrap text-success fw-semibold">
+                                                                <i class="fa-solid fa-circle-check text-success me-1"></i>Mgmt: <span class="text-dark"><?= htmlspecialchars($claim['mgmt_approver_name'] ?? 'Management') ?></span> <span class="text-muted" style="font-size:0.64rem;">(<?= date('d M, h:i A', strtotime($claim['mgmt_approved_at'])) ?>)</span>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                        <?php if (!empty($claim['ah_approved_at'])): ?>
+                                                            <div class="text-nowrap text-success fw-semibold">
+                                                                <i class="fa-solid fa-stamp text-success me-1"></i>AH: <span class="text-dark"><?= htmlspecialchars($claim['ah_approver_name'] ?? 'Md. Mamunoor Rashid') ?><?= !empty($claim['ah_approver_code']) ? ' [' . htmlspecialchars($claim['ah_approver_code']) . ']' : '' ?></span> <span class="text-muted" style="font-size:0.64rem;">(<?= date('d M, h:i A', strtotime($claim['ah_approved_at'])) ?>)</span>
+                                                            </div>
+                                                        <?php elseif (in_array($claim['claim_status'], ['approved', 'partially_paid']) && !$isAhApprovedClaim): ?>
+                                                            <div class="text-nowrap text-warning fw-semibold">
+                                                                <i class="fa-solid fa-lock text-warning me-1"></i>AH: <span class="text-dark">Md. Mamunoor Rashid [1309]</span> <span class="badge bg-warning text-dark py-0 px-1" style="font-size:0.60rem;">Pending</span>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                    </div>
                                                 <?php endif; ?>
                                             </td>
 
@@ -479,10 +536,14 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                                     data-bs-target="#disbursePaymentModal"
                                                                     data-toggle="modal"
                                                                     data-target="#disbursePaymentModal"
-                                                                    data-id="<?= $claim['id'] ?>"
-                                                                    data-recipient="<?= htmlspecialchars($claim['user_name']) ?> (<?= htmlspecialchars($claim['employee_id']) ?>)"
-                                                                    data-claim="<?= htmlspecialchars($claim['claim_code']) ?>"
-                                                                    data-amount="<?= $claim['due_amount'] > 0 ? $claim['due_amount'] : $claim['incentive_amount'] ?>">
+                                                                    onclick="window.populateDisburseModal(this)"
+                                                                    data-id="<?= (int)$claim['id'] ?>"
+                                                                    data-recipient="<?= htmlspecialchars(($claim['user_name'] ?? 'Sales Executive') . ' (' . ($claim['employee_id'] ?? '') . ')' . (!empty($claim['department']) ? ' - ' . $claim['department'] : ''), ENT_QUOTES) ?>"
+                                                                    data-claim="<?= htmlspecialchars(($claim['claim_code'] ?? '') . (!empty($claim['project_name']) ? ' | ' . $claim['project_name'] . ' (' . ($claim['flat_name'] ?? '') . ')' : ''), ENT_QUOTES) ?>"
+                                                                    data-amount="<?= number_format((float)(($claim['due_amount'] ?? 0) > 0 ? $claim['due_amount'] : $claim['incentive_amount']), 2, '.', '') ?>"
+                                                                    data-account-id="<?= (int)($claim['account_id'] ?? 0) ?>"
+                                                                    data-emp-bank="<?= htmlspecialchars($claim['emp_bank_name'] ?? '', ENT_QUOTES) ?>"
+                                                                    data-emp-account="<?= htmlspecialchars($claim['emp_account_number'] ?? '', ENT_QUOTES) ?>">
                                                                 <i class="fa-solid fa-money-bill-transfer me-1"></i>Disburse Payout
                                                             </button>
                                                         <?php else: ?>
@@ -490,7 +551,11 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                         <?php endif; ?>
                                                     <?php endif; ?>
                                                 <?php else: ?>
-                                                    <span class="text-muted extra-small">Settled / Closed</span>
+                                                    <?php if (!empty($claim['is_received'])): ?>
+                                                        <span class="badge bg-success-subtle text-success border border-success-subtle extra-small px-2 py-1"><i class="fa-solid fa-check-double me-1"></i>Receipt Confirmed</span>
+                                                    <?php else: ?>
+                                                        <span class="badge bg-light text-muted border extra-small px-2 py-1"><i class="fa-solid fa-clock me-1 text-warning"></i>Awaiting Receipt</span>
+                                                    <?php endif; ?>
                                                 <?php endif; ?>
                                             </td>
                                         </tr>
@@ -611,10 +676,14 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                                     data-bs-target="#disbursePaymentModal"
                                                                     data-toggle="modal"
                                                                     data-target="#disbursePaymentModal"
-                                                                    data-id="<?= $ext['id'] ?>"
-                                                                    data-recipient="<?= htmlspecialchars($ext['user_name']) ?> (<?= htmlspecialchars($ext['employee_id']) ?>)"
-                                                                    data-claim="<?= htmlspecialchars($ext['claim_code']) ?>"
-                                                                    data-amount="<?= $ext['incentive_amount'] ?>">
+                                                                    onclick="window.populateDisburseModal(this)"
+                                                                    data-id="<?= (int)$ext['id'] ?>"
+                                                                    data-recipient="<?= htmlspecialchars(($ext['user_name'] ?? 'External Member') . ' (' . ($ext['employee_id'] ?? '') . ')' . (!empty($ext['department']) ? ' - ' . $ext['department'] : ''), ENT_QUOTES) ?>"
+                                                                    data-claim="<?= htmlspecialchars(($ext['claim_code'] ?? '') . (!empty($ext['project_name']) ? ' | ' . $ext['project_name'] . ' (' . ($ext['flat_name'] ?? '') . ')' : ''), ENT_QUOTES) ?>"
+                                                                    data-amount="<?= number_format((float)(($ext['due_amount'] ?? 0) > 0 ? $ext['due_amount'] : $ext['incentive_amount']), 2, '.', '') ?>"
+                                                                    data-account-id="<?= (int)($ext['account_id'] ?? 0) ?>"
+                                                                    data-emp-bank="<?= htmlspecialchars($ext['emp_bank_name'] ?? '', ENT_QUOTES) ?>"
+                                                                    data-emp-account="<?= htmlspecialchars($ext['emp_account_number'] ?? '', ENT_QUOTES) ?>">
                                                                 <i class="fa-solid fa-money-bill-transfer me-1"></i>Pay Now
                                                             </button>
                                                         <?php else: ?>
@@ -693,12 +762,13 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                             <th>Recipient</th>
                                             <th>Method & Ref</th>
                                             <th class="text-end">Disbursed</th>
+                                            <th class="text-center">Receipt Status</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <?php if (empty($disbursementLogs)): ?>
                                             <tr>
-                                                <td colspan="4" class="text-center text-muted py-3">No disbursement logs found.</td>
+                                                <td colspan="5" class="text-center text-muted py-3">No disbursement logs found.</td>
                                             </tr>
                                         <?php else: ?>
                                             <?php foreach ($disbursementLogs as $log): ?>
@@ -713,9 +783,31 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                     <td>
                                                         <span class="badge bg-info-subtle text-info extra-small me-1"><?= htmlspecialchars($log['payment_method']) ?></span>
                                                         <code class="extra-small"><?= htmlspecialchars($log['transaction_ref']) ?></code>
+                                                        <?php if (!empty($log['company_bank_name']) || !empty($log['bank_name']) && $log['bank_name'] !== 'N/A'): ?>
+                                                            <div class="extra-small text-muted mt-1">
+                                                                <i class="fa-solid fa-building-columns me-1 text-primary"></i>From: <?= htmlspecialchars($log['company_bank_name'] ?: $log['bank_name']) ?>
+                                                                <?php if (!empty($log['to_bank_name'])): ?>
+                                                                    <br><i class="fa-solid fa-money-check me-1 text-success"></i>To: <?= htmlspecialchars($log['to_bank_name']) ?>
+                                                                <?php endif; ?>
+                                                            </div>
+                                                        <?php endif; ?>
                                                     </td>
                                                     <td class="text-end">
                                                         <span class="fw-bold text-success extra-small">৳<?= number_format($log['payment_amount'], 2) ?></span>
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <?php if (!empty($log['is_received'])): ?>
+                                                            <span class="badge bg-success-subtle text-success border border-success-subtle extra-small rounded-pill px-2 py-1">
+                                                                <i class="fa-solid fa-check-circle me-1"></i>Received
+                                                            </span>
+                                                            <div class="text-muted mt-1" style="font-size:0.65rem;">
+                                                                <?= date('d M, h:i A', strtotime($log['received_at'])) ?>
+                                                            </div>
+                                                        <?php else: ?>
+                                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle extra-small rounded-pill px-2 py-1" title="Awaiting employee receipt confirmation">
+                                                                <i class="fa-solid fa-clock me-1"></i>Awaiting Receipt
+                                                            </span>
+                                                        <?php endif; ?>
                                                     </td>
                                                 </tr>
                                             <?php endforeach; ?>
@@ -760,13 +852,15 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                         <th>Achieved Land Share</th>
                                         <th>Qualification Status</th>
                                         <th>Override Rate</th>
-                                        <th class="pe-4 text-end">TL Incentive Gained</th>
+                                        <th>TL Incentive Gained</th>
+                                        <th>Claim Status</th>
+                                        <th class="pe-4 text-end">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php if (empty($allTeamOverrides)): ?>
                                         <tr>
-                                            <td colspan="8" class="text-center py-4 text-muted">
+                                            <td colspan="10" class="text-center py-4 text-muted">
                                                 <i class="fa-solid fa-people-carry-box mb-2 d-block fs-3 opacity-50"></i>
                                                 No team members have achieved qualifying land share sales in this cycle yet.
                                             </td>
@@ -808,11 +902,96 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                 <td>
                                                     <span class="badge bg-info-subtle text-info fw-bold"><?= $to['tl_rate'] ?? 0.05 ?>%</span>
                                                 </td>
-                                                <td class="pe-4 text-end">
+                                                <td>
                                                     <?php if ($to['tl_gain'] > 0): ?>
                                                         <span class="fw-bold text-success fs-6">+৳<?= number_format($to['tl_gain'], 2) ?></span>
                                                     <?php else: ?>
                                                         <span class="text-muted small">৳0.00</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <?php
+                                                $toClaimStatus = $to['claim_status'] ?? null;
+                                                $toClaimId = (int)($to['claim_id'] ?? 0);
+                                                $toAppId = (int)($to['approval_request_id'] ?? 0);
+                                                $isAhApprovedTo = empty($toAppId) || ($to['accounts_head_status'] ?? '') === 'approved';
+                                                ?>
+                                                <td>
+                                                    <?php if (empty($toClaimStatus)): ?>
+                                                        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1 extra-small border">
+                                                            <i class="fa-solid fa-hourglass-start me-1"></i>Not Claimed Yet
+                                                        </span>
+                                                    <?php elseif ($toClaimStatus === 'claimed'): ?>
+                                                        <span class="badge bg-warning text-dark rounded-pill px-3 py-1 extra-small shadow-sm">
+                                                            <i class="fa-solid fa-clock me-1"></i>Pending Mgmt
+                                                        </span>
+                                                    <?php elseif ($toClaimStatus === 'approved'): ?>
+                                                        <?php if (!$isAhApprovedTo): ?>
+                                                            <span class="badge bg-warning text-dark rounded-pill px-3 py-1 extra-small">
+                                                                <i class="fa-solid fa-lock me-1"></i>Pending Accounts Head
+                                                            </span>
+                                                            <div class="extra-small text-muted mt-1">Md. Mamunoor Rashid [1309]</div>
+                                                        <?php else: ?>
+                                                            <span class="badge bg-info text-white rounded-pill px-3 py-1 extra-small">
+                                                                <i class="fa-solid fa-thumbs-up me-1"></i>Ready to Disburse
+                                                            </span>
+                                                        <?php endif; ?>
+                                                    <?php elseif ($toClaimStatus === 'paid'): ?>
+                                                        <span class="badge bg-success text-white rounded-pill px-3 py-1 extra-small">
+                                                            <i class="fa-solid fa-check-circle me-1"></i>Paid & Settled
+                                                        </span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td class="pe-4 text-end">
+                                                    <?php if (empty($toClaimStatus)): ?>
+                                                        <span class="text-muted extra-small">Awaiting TL Claim</span>
+                                                    <?php elseif ($toClaimStatus === 'claimed'): ?>
+                                                        <?php if ($canApproveThisClaim): ?>
+                                                            <button class="btn btn-sm btn-success rounded-2 px-2 me-1 btn-approve-claim" data-id="<?= $toClaimId ?>" title="Approve TL Override">
+                                                                <i class="fa-solid fa-check me-1"></i>Approve
+                                                            </button>
+                                                            <button class="btn btn-sm btn-outline-danger rounded-2 px-2 btn-reject-claim" data-id="<?= $toClaimId ?>" title="Reject Claim">
+                                                                <i class="fa-solid fa-times"></i>
+                                                            </button>
+                                                        <?php else: ?>
+                                                            <span class="text-muted extra-small">Waiting for Approval</span>
+                                                        <?php endif; ?>
+                                                    <?php elseif ($toClaimStatus === 'approved'): ?>
+                                                        <?php if (!$isAhApprovedTo): ?>
+                                                            <?php if ($canApproveAh && !empty($toAppId)): ?>
+                                                                <button type="button" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm" onclick="triggerAhApprove(<?= $toAppId ?>, 'TL 0.05% Override: <?= htmlspecialchars(addslashes($to['tl_name'] . ' from ' . $to['member_name']), ENT_QUOTES) ?>', '<?= number_format((float)$to['tl_gain'], 2) ?>')">
+                                                                    <i class="fa-solid fa-stamp me-1"></i>AH Approve
+                                                                </button>
+                                                            <?php else: ?>
+                                                                <span class="badge bg-light text-muted border py-1 px-2" style="font-size:10px;">
+                                                                    <i class="fa-solid fa-lock me-1 text-warning"></i>Awaiting AH (1309)
+                                                                </span>
+                                                            <?php endif; ?>
+                                                        <?php else: ?>
+                                                            <?php if ($isAccounts): ?>
+                                                                <button type="button" 
+                                                                        class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm btn-disburse-modal"
+                                                                        data-bs-toggle="modal"
+                                                                        data-bs-target="#disbursePaymentModal"
+                                                                        data-toggle="modal"
+                                                                        data-target="#disbursePaymentModal"
+                                                                        onclick="window.populateDisburseModal(this)"
+                                                                        data-id="<?= $toClaimId ?>"
+                                                                        data-recipient="<?= htmlspecialchars($to['tl_name'] . ' (' . $to['tl_code'] . ') - Sales', ENT_QUOTES) ?>"
+                                                                        data-claim="INC-TL-<?= str_pad($toClaimId, 3, '0', STR_PAD_LEFT) ?> | TL 0.05% Override (From <?= htmlspecialchars($to['member_name'], ENT_QUOTES) ?>)"
+                                                                        data-amount="<?= number_format((float)$to['tl_gain'], 2, '.', '') ?>"
+                                                                        data-account-id="0"
+                                                                        data-emp-bank=""
+                                                                        data-emp-account="">
+                                                                    <i class="fa-solid fa-money-bill-transfer me-1"></i>Disburse Payout
+                                                                </button>
+                                                            <?php else: ?>
+                                                                <span class="text-info extra-small fw-bold">Approved (Pending Payout)</span>
+                                                            <?php endif; ?>
+                                                        <?php endif; ?>
+                                                    <?php elseif ($toClaimStatus === 'paid'): ?>
+                                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 extra-small">
+                                                            <i class="fa-solid fa-check me-1"></i>Disbursed
+                                                        </span>
                                                     <?php endif; ?>
                                                 </td>
                                             </tr>
@@ -1058,7 +1237,7 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
 
                         <div class="col-md-6">
                             <label class="form-label text-dark fw-bold small">Payment Method <span class="text-danger">*</span></label>
-                            <select class="form-select" name="payment_method" required>
+                            <select class="form-select" name="payment_method" id="modalDisbursePaymentMethod" onchange="window.handleDisburseMethodChange()" required>
                                 <option value="Bank Transfer" selected>Bank Transfer</option>
                                 <option value="Cheque">Cheque</option>
                                 <option value="Cash">Cash</option>
@@ -1067,14 +1246,50 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                         </div>
                     </div>
 
+                    <div class="row mb-3" id="rowDisburseBankDetails">
+                        <!-- Company Bank (Paying From) -->
+                        <div class="col-md-6" id="colDisburseCompanyBank">
+                            <label class="form-label text-dark fw-bold small">
+                                <i class="fa-solid fa-building-columns me-1 text-primary"></i> Company Bank (Paying From) <span class="text-danger" id="reqStarCompanyBank">*</span>
+                            </label>
+                            <select name="company_bank_id" id="modalDisburseCompanyBank" class="form-select">
+                                <option value="">-- Select Company Bank Account --</option>
+                                <?php foreach (($companyBanks ?? []) as $cb): ?>
+                                    <option value="<?= $cb['id'] ?>" data-bank-name="<?= htmlspecialchars($cb['bank_name']) ?>" <?= !empty($cb['is_default']) ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($cb['bank_name'] . (!empty($cb['account_name']) ? ' - ' . $cb['account_name'] : '') . (!empty($cb['account_number']) ? ' (' . $cb['account_number'] . ')' : '')) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <!-- To Bank (Recipient Bank) -->
+                        <div class="col-md-6" id="colDisburseToBank">
+                            <label class="form-label text-dark fw-bold small" id="lblDisburseToBank">
+                                <i class="fa-solid fa-money-check me-1 text-success"></i> To Bank (Recipient Bank)
+                            </label>
+                            <input type="text" name="to_bank_name" id="modalDisburseToBank" class="form-control" placeholder="e.g. EBL / City Bank Ltd / Brac Bank" list="commonBankList">
+                            <datalist id="commonBankList">
+                                <option value="EBL">
+                                <option value="BRAC Bank PLC">
+                                <option value="City Bank Ltd">
+                                <option value="Dutch-Bangla Bank PLC">
+                                <option value="Eastern Bank PLC">
+                                <option value="Islami Bank Bangladesh">
+                                <option value="Pubali Bank">
+                                <option value="Mutual Trust Bank PLC">
+                                <option value="Standard Chartered">
+                            </datalist>
+                        </div>
+                    </div>
+
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label class="form-label text-dark fw-bold small">Bank / Provider Name</label>
-                            <input type="text" name="bank_name" class="form-control" placeholder="e.g. City Bank Ltd">
+                            <label class="form-label text-dark fw-bold small">Transaction / Cheque Ref</label>
+                            <input type="text" name="transaction_ref" id="modalDisburseTxnRef" class="form-control" placeholder="e.g. TXN-998812 / Cheque No">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label text-dark fw-bold small">Transaction / Cheque Ref</label>
-                            <input type="text" name="transaction_ref" class="form-control" placeholder="e.g. TXN-998812">
+                            <label class="form-label text-dark fw-bold small">Payment Date <span class="text-danger">*</span></label>
+                            <input type="date" name="payment_date" id="modalDisbursePaymentDate" class="form-control" value="<?= date('Y-m-d') ?>" required>
                         </div>
                     </div>
 
@@ -1095,6 +1310,113 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
 </div>
 
 <script>
+window.handleDisburseMethodChange = function () {
+    const methodSelect = document.getElementById('modalDisbursePaymentMethod');
+    if (!methodSelect) return;
+    const method = methodSelect.value;
+
+    const rowBank = document.getElementById('rowDisburseBankDetails');
+    const selectCompanyBank = document.getElementById('modalDisburseCompanyBank');
+    const inputToBank = document.getElementById('modalDisburseToBank');
+    const lblToBank = document.getElementById('lblDisburseToBank');
+    const reqStarCompanyBank = document.getElementById('reqStarCompanyBank');
+    const inputTxnRef = document.getElementById('modalDisburseTxnRef');
+
+    if (method === 'Cash') {
+        // HIDE Company Bank and To Bank completely for Cash payout
+        if (rowBank) rowBank.style.display = 'none';
+        if (selectCompanyBank) {
+            selectCompanyBank.value = '';
+            selectCompanyBank.required = false;
+        }
+        if (inputToBank) {
+            inputToBank.value = '';
+            inputToBank.required = false;
+        }
+        if (inputTxnRef) {
+            inputTxnRef.placeholder = 'e.g. Cash Voucher No / Memo (Optional)';
+        }
+    } else if (method === 'Mobile Banking') {
+        if (rowBank) rowBank.style.display = 'flex';
+        if (reqStarCompanyBank) reqStarCompanyBank.style.display = 'none';
+        if (selectCompanyBank) selectCompanyBank.required = false;
+        if (lblToBank) {
+            lblToBank.innerHTML = '<i class="fa-solid fa-mobile-screen-button me-1 text-info"></i> To Mobile Wallet / Provider';
+        }
+        if (inputToBank) {
+            inputToBank.placeholder = 'e.g. bKash / Nagad / Rocket (017xxxxxxxx)';
+        }
+        if (inputTxnRef) {
+            inputTxnRef.placeholder = 'e.g. TrxID / Ref #';
+        }
+    } else {
+        // Bank Transfer or Cheque
+        if (rowBank) rowBank.style.display = 'flex';
+        if (reqStarCompanyBank) reqStarCompanyBank.style.display = 'inline';
+        if (selectCompanyBank) selectCompanyBank.required = true;
+        if (lblToBank) {
+            lblToBank.innerHTML = '<i class="fa-solid fa-money-check me-1 text-success"></i> To Bank (Recipient Bank)';
+        }
+        if (inputToBank) {
+            inputToBank.placeholder = 'e.g. EBL / City Bank Ltd / Brac Bank';
+            if (!inputToBank.value && inputToBank.getAttribute('data-default-bank')) {
+                inputToBank.value = inputToBank.getAttribute('data-default-bank');
+            }
+        }
+        if (inputTxnRef) {
+            inputTxnRef.placeholder = method === 'Cheque' ? 'e.g. Cheque No / Leaf #' : 'e.g. TXN-998812 / Slip #';
+        }
+    }
+};
+
+window.populateDisburseModal = function (btn) {
+    if (!btn) return;
+    const id         = btn.getAttribute('data-id') || '';
+    const recipient  = btn.getAttribute('data-recipient') || '';
+    const claim      = btn.getAttribute('data-claim') || '';
+    const amount     = btn.getAttribute('data-amount') || '';
+    const accountId  = btn.getAttribute('data-account-id') || '';
+    const empBank    = btn.getAttribute('data-emp-bank') || '';
+    const empAccount = btn.getAttribute('data-emp-account') || '';
+
+    const elId        = document.getElementById('modalDisburseClaimId');
+    const elRecipient = document.getElementById('modalDisburseRecipient');
+    const elClaim     = document.getElementById('modalDisburseClaim');
+    const elAmount    = document.getElementById('modalDisburseAmount');
+    const elCoa       = document.getElementById('account_id_salesincentive') || document.querySelector('#disbursePaymentModal select[name="account_id"]');
+    const elToBank    = document.getElementById('modalDisburseToBank');
+    const elMethod    = document.getElementById('modalDisbursePaymentMethod');
+
+    if (elId) elId.value = id;
+    if (elRecipient) elRecipient.value = recipient;
+    if (elClaim) elClaim.value = claim;
+    if (elAmount) {
+        const numAmt = parseFloat(String(amount).replace(/,/g, ''));
+        elAmount.value = !isNaN(numAmt) ? numAmt.toFixed(2) : amount;
+    }
+    if (elToBank) {
+        let bankText = empBank;
+        if (empAccount) {
+            bankText += (bankText ? ' - A/C: ' : 'A/C: ') + empAccount;
+        }
+        elToBank.value = bankText;
+        elToBank.setAttribute('data-default-bank', bankText);
+    }
+    if (elCoa) {
+        if (accountId && parseInt(accountId, 10) > 0) {
+            elCoa.value = String(accountId);
+        } else {
+            elCoa.value = '';
+        }
+        if (typeof window.jQuery !== 'undefined' && window.jQuery(elCoa).hasClass('select2-hidden-accessible')) {
+            window.jQuery(elCoa).val(elCoa.value).trigger('change');
+        }
+    }
+
+    // Call method change handler to sync bank fields visibility
+    window.handleDisburseMethodChange();
+};
+
 document.addEventListener('DOMContentLoaded', function () {
     // --- Persistent Active Tab across Page Reloads & Actions ---
     const tabStorageKey = 'activeIncentiveManagementTab';
@@ -1170,28 +1492,87 @@ document.addEventListener('DOMContentLoaded', function () {
     if (projectFlatSelect) projectFlatSelect.addEventListener('change', updateCalculatedAmount);
     if (extIncentivePercent) extIncentivePercent.addEventListener('input', updateCalculatedAmount);
 
-    // Move modals to body as soon as shown to escape stacking context issues
-    $(document).on('show.bs.modal', '.modal', function () {
-        if (this.parentNode !== document.body) {
-            document.body.appendChild(this);
+    // Global function to populate Disbursement Modal reliably (works before/after jQuery & bypasses .app__slide-wrapper stopPropagation)
+    window.populateDisburseModal = function (btn) {
+        if (!btn) return;
+        const id         = btn.getAttribute('data-id') || '';
+        const recipient  = btn.getAttribute('data-recipient') || '';
+        const claim      = btn.getAttribute('data-claim') || '';
+        const amount     = btn.getAttribute('data-amount') || '';
+        const accountId  = btn.getAttribute('data-account-id') || '';
+        const empBank    = btn.getAttribute('data-emp-bank') || '';
+        const empAccount = btn.getAttribute('data-emp-account') || '';
+
+        const elId        = document.getElementById('modalDisburseClaimId');
+        const elRecipient = document.getElementById('modalDisburseRecipient');
+        const elClaim     = document.getElementById('modalDisburseClaim');
+        const elAmount    = document.getElementById('modalDisburseAmount');
+        const elCoa       = document.getElementById('account_id_salesincentive') || document.querySelector('#disbursePaymentModal select[name="account_id"]');
+        const elToBank    = document.getElementById('modalDisburseToBank');
+
+        if (elId) elId.value = id;
+        if (elRecipient) elRecipient.value = recipient;
+        if (elClaim) elClaim.value = claim;
+        if (elAmount) {
+            const numAmt = parseFloat(String(amount).replace(/,/g, ''));
+            elAmount.value = !isNaN(numAmt) ? numAmt.toFixed(2) : amount;
+        }
+        if (elToBank) {
+            let bankText = empBank;
+            if (empAccount) {
+                bankText += (bankText ? ' - A/C: ' : 'A/C: ') + empAccount;
+            }
+            elToBank.value = bankText;
+            elToBank.setAttribute('data-default-bank', bankText);
+        }
+        if (elCoa) {
+            if (accountId && parseInt(accountId, 10) > 0) {
+                elCoa.value = String(accountId);
+            } else {
+                elCoa.value = '';
+            }
+            if (typeof window.jQuery !== 'undefined' && window.jQuery(elCoa).hasClass('select2-hidden-accessible')) {
+                window.jQuery(elCoa).val(elCoa.value).trigger('change');
+            }
+        }
+
+        // Call method change handler to sync bank fields visibility
+        window.handleDisburseMethodChange();
+    };
+
+    // Move modals to body once on load to prevent stacking/backdrop clipping
+    ['disbursePaymentModal', 'assignExternalIncentiveModal'].forEach(function (modalId) {
+        const mEl = document.getElementById(modalId);
+        if (mEl && mEl.parentNode !== document.body) {
+            document.body.appendChild(mEl);
         }
     });
 
-    // Disburse modal trigger logic (100% identical pattern to my-incentives.php)
-    $(document).on('click', '.btn-disburse-modal', function (e) {
-        e.preventDefault();
-        const id = $(this).attr('data-id');
-        const recipient = $(this).attr('data-recipient');
-        const claim = $(this).attr('data-claim');
-        const amount = $(this).attr('data-amount');
-        
-        $('#modalDisburseClaimId').val(id || '');
-        $('#modalDisburseRecipient').val(recipient || '');
-        $('#modalDisburseClaim').val(claim || '');
-        $('#modalDisburseAmount').val(amount || '');
-
-        $('#disbursePaymentModal').modal('show');
+    // 1. Direct listener on every Disburse button
+    document.querySelectorAll('.btn-disburse-modal').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            window.populateDisburseModal(this);
+        });
     });
+
+    // 2. Capture-phase listener on document (runs before .app__slide-wrapper stopPropagation in main.js)
+    document.addEventListener('click', function (e) {
+        const btn = e.target && e.target.closest ? e.target.closest('.btn-disburse-modal') : null;
+        if (btn) {
+            window.populateDisburseModal(btn);
+        }
+    }, true);
+
+    // 3. Bootstrap 5 native show.bs.modal listener
+    const disburseModalEl = document.getElementById('disbursePaymentModal');
+    if (disburseModalEl) {
+        disburseModalEl.addEventListener('show.bs.modal', function (event) {
+            const btn = event.relatedTarget || document.querySelector('.btn-disburse-modal:focus');
+            if (btn && btn.classList && btn.classList.contains('btn-disburse-modal')) {
+                window.populateDisburseModal(btn);
+            }
+        });
+    }
 
     // Helper function for Swal alert
     function showSwalMsg(icon, title, message, reload = false) {

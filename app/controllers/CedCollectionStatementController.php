@@ -379,7 +379,7 @@ class CedCollectionStatementController extends Controller
         $today = date('Y-m-d');
 
         if ($pt === 'daily' || $pt === 'today') {
-            return [
+            $summary = [
                 'start_date' => $today,
                 'end_date'   => $today,
                 'label'      => 'Today (' . date('d M, Y') . ')'
@@ -389,7 +389,7 @@ class CedCollectionStatementController extends Controller
         if ($pt === 'weekly' || $pt === 'this_week') {
             $s = date('Y-m-d', strtotime('monday this week'));
             $e = date('Y-m-d', strtotime('sunday this week'));
-            return [
+            $summary = [
                 'start_date' => $s,
                 'end_date'   => $e,
                 'label'      => 'This Week (' . date('d M', strtotime($s)) . ' - ' . date('d M, Y', strtotime($e)) . ')'
@@ -397,7 +397,7 @@ class CedCollectionStatementController extends Controller
         }
 
         if ($pt === 'custom' && !empty($filters['start_date']) && !empty($filters['end_date'])) {
-            return [
+            $summary = [
                 'start_date' => $filters['start_date'],
                 'end_date'   => $filters['end_date'],
                 'label'      => date('d M, Y', strtotime($filters['start_date'])) . ' to ' . date('d M, Y', strtotime($filters['end_date']))
@@ -405,7 +405,7 @@ class CedCollectionStatementController extends Controller
         }
 
         if ($pt === 'all_time') {
-            return [
+            $summary = [
                 'start_date' => '2015-01-01',
                 'end_date'   => '2099-12-31',
                 'label'      => 'All Time'
@@ -414,7 +414,7 @@ class CedCollectionStatementController extends Controller
 
         if ($pt === 'yearly' || $filters['month'] === 'all') {
             $y = $filters['year'];
-            return [
+            $summary = [
                 'start_date' => "{$y}-01-01",
                 'end_date'   => "{$y}-12-31",
                 'label'      => "Whole Year {$y}"
@@ -517,6 +517,33 @@ class CedCollectionStatementController extends Controller
     /**
      * Fetch aggregated summary KPI totals
      */
+    public static function formatCurrencyTk($v): string
+    {
+        $v = (float) $v;
+        if ($v >= 10000000) {
+            return '৳' . number_format($v / 10000000, 2) . ' Cr';
+        }
+        if ($v >= 100000) {
+            return '৳' . number_format($v / 100000, 2) . ' L';
+        }
+        return '৳' . number_format($v, 2);
+    }
+
+    /**
+     * Helper to format amounts cleanly into Cr / L / BDT
+     */
+    public static function formatCurrencyTk($v): string
+    {
+        $v = (float) $v;
+        if ($v >= 10000000) {
+            return '৳' . number_format($v / 10000000, 2) . ' Cr';
+        }
+        if ($v >= 100000) {
+            return '৳' . number_format($v / 100000, 2) . ' L';
+        }
+        return '৳' . number_format($v, 2);
+    }
+
     protected function fetchSummary($startDate, $endDate, $filters)
     {
         $where = $this->buildLeadPaymentsConditions($startDate, $endDate, $filters);
@@ -553,8 +580,18 @@ class CedCollectionStatementController extends Controller
         ";
 
         $res = $this->db->query($sql);
+        $summary = [
+            'total_count' => 0, 'total_amount' => 0, 'dev_charge_amount' => 0, 'dev_charge_count' => 0,
+            'emi_amount' => 0, 'emi_count' => 0, 'settlement_amount' => 0, 'settlement_count' => 0,
+            'total_emi_amount' => 0, 'total_emi_count' => 0, 'booking_amount' => 0, 'booking_count' => 0,
+            'registration_amount' => 0, 'registration_count' => 0, 'cash_amount' => 0, 'cash_count' => 0,
+            'bank_amount' => 0, 'bank_count' => 0, 'cheque_amount' => 0, 'cheque_count' => 0,
+            'online_amount' => 0, 'online_count' => 0, 'verified_amount' => 0, 'pending_amount' => 0,
+            'active_collectors_count' => 0
+        ];
+
         if ($res && $row = $res->fetch_assoc()) {
-            return [
+            $summary = [
                 'total_count'             => (int)$row['total_count'],
                 'total_amount'            => (float)$row['total_amount'],
                 'dev_charge_amount'       => (float)$row['dev_charge_amount'],
@@ -583,15 +620,44 @@ class CedCollectionStatementController extends Controller
             ];
         }
 
-        return [
-            'total_count' => 0, 'total_amount' => 0, 'dev_charge_amount' => 0, 'dev_charge_count' => 0,
-            'emi_amount' => 0, 'emi_count' => 0, 'settlement_amount' => 0, 'settlement_count' => 0,
-            'total_emi_amount' => 0, 'total_emi_count' => 0, 'booking_amount' => 0, 'booking_count' => 0,
-            'registration_amount' => 0, 'registration_count' => 0, 'cash_amount' => 0, 'cash_count' => 0,
-            'bank_amount' => 0, 'bank_count' => 0, 'cheque_amount' => 0, 'cheque_count' => 0,
-            'online_amount' => 0, 'online_count' => 0, 'verified_amount' => 0, 'pending_amount' => 0,
-            'active_collectors_count' => 0
+        // Total Sold Value & Bookings (from active bookings in lead_bookings)
+        $condsSold = [
+            "lb.deleted_at IS NULL",
+            "lb.booking_status IN ('booked', 'completed')"
         ];
+        if (!empty($filters['project_id'])) {
+            $pId = (int)$filters['project_id'];
+            $condsSold[] = "lb.project_id = {$pId}";
+        }
+        $whereSold = implode(" AND ", $condsSold);
+        $sqlSold = "
+            SELECT 
+                COUNT(*) as total_sold_units,
+                COUNT(DISTINCT lb.lead_id) as total_sold_clients,
+                COALESCE(SUM(lb.agreement_value), 0) as total_sold_value
+            FROM lead_bookings lb
+            WHERE {$whereSold}
+        ";
+        $resSold = $this->db->query($sqlSold);
+        $summary['total_sold_units']   = 0;
+        $summary['total_sold_clients'] = 0;
+        $summary['total_sold_value']   = 0.0;
+        if ($resSold && $rowSold = $resSold->fetch_assoc()) {
+            $summary['total_sold_units']   = (int)$rowSold['total_sold_units'];
+            $summary['total_sold_clients'] = (int)$rowSold['total_sold_clients'];
+            $summary['total_sold_value']   = (float)$rowSold['total_sold_value'];
+        }
+
+        $summary['pending_due'] = max(0, $summary['total_sold_value'] - $summary['total_amount']);
+        $summary['collection_rate'] = $summary['total_sold_value'] > 0
+            ? round(($summary['total_amount'] / $summary['total_sold_value']) * 100, 1)
+            : 0;
+
+        $summary['total_sold_value_formatted'] = self::formatCurrencyTk($summary['total_sold_value']);
+        $summary['total_collection_formatted'] = self::formatCurrencyTk($summary['total_amount']);
+        $summary['pending_due_formatted']      = self::formatCurrencyTk($summary['pending_due']);
+
+        return $summary;
     }
 
     /**
@@ -889,7 +955,7 @@ class CedCollectionStatementController extends Controller
         // 1. Due Settlement
         if ($st === 'emi_due_settlement' || ($pt === 'emi' && !empty($st))) {
             if ($settledEmiNo) {
-                return [
+                $summary = [
                     'category'    => 'settlement',
                     'label'       => 'Due Settlement #' . $settledEmiNo,
                     'full_label'  => 'Due Settlement for ' . $getOrdinal($settledEmiNo) . ' Installment',
@@ -899,7 +965,7 @@ class CedCollectionStatementController extends Controller
                     'type_title'  => 'Settled ' . $getOrdinal($settledEmiNo) . ' Installment'
                 ];
             }
-            return [
+            $summary = [
                 'category'    => 'settlement',
                 'label'       => 'Due Settlement',
                 'full_label'  => 'EMI Due Settlement',
@@ -913,7 +979,7 @@ class CedCollectionStatementController extends Controller
         // 2. Advance EMI (partially_paid EMI)
         if ($pt === 'emi' && $ps === 'partially_paid') {
             if ($emiNo) {
-                return [
+                $summary = [
                     'category'    => 'advance_emi',
                     'label'       => 'Advance EMI #' . $emiNo,
                     'full_label'  => 'Advance ' . $getOrdinal($emiNo) . ' Installment',
@@ -923,7 +989,7 @@ class CedCollectionStatementController extends Controller
                     'type_title'  => 'Advance ' . $getOrdinal($emiNo) . ' Installment'
                 ];
             }
-            return [
+            $summary = [
                 'category'    => 'advance_emi',
                 'label'       => 'Advance EMI',
                 'full_label'  => 'Advance Installment',
@@ -937,7 +1003,7 @@ class CedCollectionStatementController extends Controller
         // 3. Regular EMI
         if ($pt === 'emi') {
             if ($emiNo) {
-                return [
+                $summary = [
                     'category'    => 'emi',
                     'label'       => 'EMI #' . $emiNo,
                     'full_label'  => $getOrdinal($emiNo) . ' Installment',
@@ -947,7 +1013,7 @@ class CedCollectionStatementController extends Controller
                     'type_title'  => $getOrdinal($emiNo) . ' Installment'
                 ];
             }
-            return [
+            $summary = [
                 'category'    => 'emi',
                 'label'       => 'EMI Payment',
                 'full_label'  => 'Monthly Installment',
@@ -960,7 +1026,7 @@ class CedCollectionStatementController extends Controller
 
         // 4. Development Charge
         if ($pt === 'development_charge') {
-            return [
+            $summary = [
                 'category'    => 'dev_charge',
                 'label'       => 'Dev Charge',
                 'full_label'  => 'Development Charge',
@@ -973,7 +1039,7 @@ class CedCollectionStatementController extends Controller
 
         // 5. Booking Money
         if ($pt === 'booking_money') {
-            return [
+            $summary = [
                 'category'    => 'booking',
                 'label'       => 'Booking Money',
                 'full_label'  => 'Booking Money',
@@ -986,7 +1052,7 @@ class CedCollectionStatementController extends Controller
 
         // 6. Registration
         if ($pt === 'registration') {
-            return [
+            $summary = [
                 'category'    => 'registration',
                 'label'       => 'Registration',
                 'full_label'  => 'Registration Money',
@@ -999,7 +1065,7 @@ class CedCollectionStatementController extends Controller
 
         // 7. Land Share
         if ($pt === 'land_share') {
-            return [
+            $summary = [
                 'category'    => 'land_share',
                 'label'       => 'Land Share',
                 'full_label'  => 'Land Share Collection',

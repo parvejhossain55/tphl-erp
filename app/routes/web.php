@@ -229,6 +229,9 @@ return [
     'incentives/save-settings' => ['controller' => 'IncentiveController', 'method' => 'saveSettings'],
     'incentives/save-slab' => ['controller' => 'IncentiveController', 'method' => 'saveSlab'],
     'incentives/save-hierarchy' => ['controller' => 'IncentiveController', 'method' => 'saveHierarchy'],
+    'incentives/claim-tl-override' => ['controller' => 'IncentiveController', 'method' => 'claimTlOverride'],
+    'incentives/claim-designated' => ['controller' => 'IncentiveController', 'method' => 'claimDesignatedIncentive'],
+    'incentives/confirm-receipt' => ['controller' => 'IncentiveController', 'method' => 'confirmReceipt'],
 
     // =========================================================================
     // Controller: ApprovalRequestController (All Approval Requests Dashboard)

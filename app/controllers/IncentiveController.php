@@ -47,7 +47,7 @@ class IncentiveController extends Controller
         $walletSummary   = $this->incentiveModel->getWalletSummary($userId);
         $monthlyStats    = $this->engine->getExecutiveMonthlyStats($userId, $month);
         $mySalesBookings = $this->incentiveModel->getMySalesBookings($userId, $month);
-        $payoutHistory   = $this->incentiveModel->getDisbursementLogs();
+        $payoutHistory   = $this->incentiveModel->getDisbursementLogs($userId);
 
         // Fetch all assigned targets for this user (history & current)
         require_once __DIR__ . '/../models/SalesTarget.php';
@@ -96,6 +96,87 @@ class IncentiveController extends Controller
                     $isTeamLeader = true;
                 }
             }
+        }
+
+        // Enrich TL override claim statuses
+        if (!empty($teamMetrics['member_breakdown'])) {
+            $cStart = $monthlyStats['cycle_start'];
+            $cEnd   = $monthlyStats['cycle_end'];
+            foreach ($teamMetrics['member_breakdown'] as &$mb) {
+                $memUid = (int)$mb['user_id'];
+                $chk = $this->db->query("
+                    SELECT id, claim_status, incentive_amount, claimed_at, is_received, received_at 
+                    FROM project_incentive_claims 
+                    WHERE user_id = {$userId} 
+                      AND original_sales_by = {$memUid} 
+                      AND split_type = 'tl_override' 
+                      AND (cycle_month = '{$month}' OR (created_at BETWEEN '{$cStart}' AND '{$cEnd}'))
+                      AND claim_status != 'rejected'
+                    LIMIT 1
+                ");
+                if ($chk && $cRow = $chk->fetch_assoc()) {
+                    $mb['claim_id'] = (int)$cRow['id'];
+                    $mb['claim_status'] = $cRow['claim_status'];
+                    $mb['is_received'] = (int)($cRow['is_received'] ?? 0);
+                    $mb['received_at'] = $cRow['received_at'] ?? null;
+                } else {
+                    $mb['claim_id'] = null;
+                    $mb['claim_status'] = null;
+                    $mb['is_received'] = 0;
+                    $mb['received_at'] = null;
+                }
+            }
+            unset($mb);
+        }
+
+        // Enrich 30% designated credits claim statuses
+        if (!empty($monthlyStats['designated_credits'])) {
+            foreach ($monthlyStats['designated_credits'] as &$dc) {
+                $bId = (int)$dc['booking_id'];
+                $chkDes = $this->db->query("
+                    SELECT id, claim_status, incentive_amount, is_received, received_at 
+                    FROM project_incentive_claims 
+                    WHERE booking_id = {$bId} AND user_id = {$userId} AND split_type = 'designated_30' AND claim_status != 'rejected'
+                    LIMIT 1
+                ");
+                if ($chkDes && $dRow = $chkDes->fetch_assoc()) {
+                    $dc['claim_id'] = (int)$dRow['id'];
+                    $dc['claim_status'] = $dRow['claim_status'];
+                    $dc['is_received'] = (int)($dRow['is_received'] ?? 0);
+                    $dc['received_at'] = $dRow['received_at'] ?? null;
+                } else {
+                    $dc['claim_id'] = null;
+                    $dc['claim_status'] = null;
+                    $dc['is_received'] = 0;
+                    $dc['received_at'] = null;
+                }
+            }
+            unset($dc);
+        }
+
+        // Enrich outside 70% bookings claim statuses
+        if (!empty($monthlyStats['detailed_bookings'])) {
+            foreach ($monthlyStats['detailed_bookings'] as &$dbk) {
+                $bId = (int)$dbk['booking_id'];
+                $chkOut = $this->db->query("
+                    SELECT id, claim_status, incentive_amount, is_received, received_at 
+                    FROM project_incentive_claims 
+                    WHERE booking_id = {$bId} AND user_id = {$userId} AND claim_status != 'rejected'
+                    LIMIT 1
+                ");
+                if ($chkOut && $oRow = $chkOut->fetch_assoc()) {
+                    $dbk['claim_id'] = (int)$oRow['id'];
+                    $dbk['claim_status'] = $oRow['claim_status'];
+                    $dbk['is_received'] = (int)($oRow['is_received'] ?? 0);
+                    $dbk['received_at'] = $oRow['received_at'] ?? null;
+                } else {
+                    $dbk['claim_id'] = null;
+                    $dbk['claim_status'] = null;
+                    $dbk['is_received'] = 0;
+                    $dbk['received_at'] = null;
+                }
+            }
+            unset($dbk);
         }
 
         $this->view("incentives/my-incentives", [
@@ -176,6 +257,8 @@ class IncentiveController extends Controller
         $externalClaimsList     = $this->incentiveModel->getExternalClaimsList();
         $employeeWallets        = $this->incentiveModel->getEmployeeWallets();
         $disbursementLogs       = $this->incentiveModel->getDisbursementLogs();
+        $companyBanksRes        = $this->db->query("SELECT id, bank_name, account_name, account_number, is_default FROM company_bank_accounts WHERE status = 'active' ORDER BY is_default DESC, bank_name ASC");
+        $companyBanks           = $companyBanksRes ? $companyBanksRes->fetch_all(MYSQLI_ASSOC) : [];
 
         // Calculate dynamic real-time team stats and individual stats to show on the dashboard for this month
         $realTimeStats = $this->incentiveModel->getRealTimeIncentivesByMonth($month, $fromDate, $toDate);
@@ -193,6 +276,7 @@ class IncentiveController extends Controller
                             'tl_name'            => $tlUser['full_name'],
                             'tl_code'            => $tlUser['employee_id'],
                             'tl_user_id'         => $tlUser['id'],
+                            'member_user_id'     => $mb['user_id'],
                             'member_name'        => $mb['full_name'],
                             'member_code'        => $mb['employee_id'],
                             'member_designation' => $mb['designation'],
@@ -206,6 +290,40 @@ class IncentiveController extends Controller
                 }
             }
         }
+
+        // Enrich TL Overrides with claim status for Management / Accounts
+        list($cYear, $cMonth) = explode('-', $month);
+        $activeCycle = $this->incentiveModel->getCycleDateRange($cYear, $cMonth);
+        foreach ($allTeamOverrides as &$to) {
+            $tlUid = (int)$to['tl_user_id'];
+            $memUid = (int)$to['member_user_id'];
+            $chk = $this->db->query("
+                SELECT c.id, c.claim_status, c.incentive_amount, c.created_at,
+                       ar.id as approval_request_id, ar.approve_role, ar.accounts_head_status
+                FROM project_incentive_claims c
+                LEFT JOIN approval_requests ar ON ar.source_table = 'project_incentive_claims' AND ar.source_id = c.id
+                WHERE c.user_id = {$tlUid} 
+                  AND c.original_sales_by = {$memUid} 
+                  AND c.split_type = 'tl_override'
+                  AND (c.cycle_month = '{$month}' OR (c.created_at BETWEEN '{$activeCycle['start']}' AND '{$activeCycle['end']}'))
+                  AND c.claim_status != 'rejected'
+                LIMIT 1
+            ");
+            if ($chk && $cRow = $chk->fetch_assoc()) {
+                $to['claim_id'] = (int)$cRow['id'];
+                $to['claim_status'] = $cRow['claim_status'];
+                $to['approval_request_id'] = $cRow['approval_request_id'];
+                $to['approve_role'] = $cRow['approve_role'];
+                $to['accounts_head_status'] = $cRow['accounts_head_status'];
+            } else {
+                $to['claim_id'] = null;
+                $to['claim_status'] = null;
+                $to['approval_request_id'] = null;
+                $to['approve_role'] = null;
+                $to['accounts_head_status'] = null;
+            }
+        }
+        unset($to);
 
         // 2. Cross-Project (70/30) Splits
         $allCrossProjectSplits = [];
@@ -256,6 +374,7 @@ class IncentiveController extends Controller
             "externalClaimsList"     => $externalClaimsList,
             "employeeWallets"        => $employeeWallets,
             "disbursementLogs"       => $disbursementLogs,
+            "companyBanks"           => $companyBanks,
             "coaList"                => getCOAExpenseList($this->db)
         ]);
     }
@@ -412,19 +531,41 @@ class IncentiveController extends Controller
             exit;
         }
 
-        $disbursedBy    = (int)$_SESSION['user']['id'];
-        $claimId        = (int)($_POST['claim_id'] ?? 0);
-        $paymentAmount  = (float)($_POST['payment_amount'] ?? 0);
-        $paymentMethod  = trim($_POST['payment_method'] ?? 'Bank Transfer');
-        $bankName       = trim($_POST['bank_name'] ?? '');
-        $transactionRef = trim($_POST['transaction_ref'] ?? '');
-        $paymentDate    = trim($_POST['payment_date'] ?? date('Y-m-d'));
-        $notes          = trim($_POST['notes'] ?? '');
-        $accountId      = !empty($_POST['account_id']) ? (int)$_POST['account_id'] : null;
+        $disbursedBy          = (int)$_SESSION['user']['id'];
+        $claimId              = (int)($_POST['claim_id'] ?? 0);
+        $paymentAmount        = (float)($_POST['payment_amount'] ?? 0);
+        $paymentMethod        = trim($_POST['payment_method'] ?? 'Bank Transfer');
+        $companyBankAccountId = !empty($_POST['company_bank_id']) ? (int)$_POST['company_bank_id'] : null;
+        $toBankName           = trim($_POST['to_bank_name'] ?? '');
+        $bankName             = trim($_POST['bank_name'] ?? '');
+        $transactionRef       = trim($_POST['transaction_ref'] ?? '');
+        $paymentDate          = trim($_POST['payment_date'] ?? date('Y-m-d'));
+        $notes                = trim($_POST['notes'] ?? '');
+        $accountId            = !empty($_POST['account_id']) ? (int)$_POST['account_id'] : null;
 
         if ($claimId <= 0 || $paymentAmount <= 0) {
             echo json_encode(['success' => false, 'message' => 'Invalid claim or payment amount']);
             exit;
+        }
+
+        // Auto-resolve company bank and to-bank names
+        if ($paymentMethod === 'Cash') {
+            $companyBankAccountId = null;
+            $toBankName = null;
+            $bankName = 'Cash';
+        } else {
+            $compBankTitle = '';
+            if ($companyBankAccountId > 0) {
+                $cbq = $this->db->query("SELECT bank_name, account_name, account_number FROM company_bank_accounts WHERE id = {$companyBankAccountId} LIMIT 1");
+                if ($cbq && $cbr = $cbq->fetch_assoc()) {
+                    $compBankTitle = $cbr['bank_name'] . (!empty($cbr['account_number']) ? ' (' . $cbr['account_number'] . ')' : '');
+                }
+            }
+            if (!empty($compBankTitle)) {
+                $bankName = $compBankTitle;
+            } elseif (empty($bankName)) {
+                $bankName = $toBankName;
+            }
         }
 
         if (!class_exists('ApprovalRequest')) {
@@ -439,7 +580,7 @@ class IncentiveController extends Controller
             exit;
         }
 
-        $result = $this->incentiveModel->disbursePayment($disbursedBy, $claimId, $paymentAmount, $paymentMethod, $bankName, $transactionRef, $paymentDate, $notes, $accountId);
+        $result = $this->incentiveModel->disbursePayment($disbursedBy, $claimId, $paymentAmount, $paymentMethod, $bankName, $transactionRef, $paymentDate, $notes, $accountId, $companyBankAccountId, $toBankName);
         echo json_encode($result);
         exit;
     }
@@ -558,6 +699,93 @@ class IncentiveController extends Controller
         }
         $_SESSION['success'] = "Hierarchy rates updated successfully.";
         header("Location: {$GLOBALS['base_url']}/incentive-config");
+        exit;
+    }
+
+
+    /**
+     * AJAX Endpoint: Claim Team Leader 0.05% Override
+     */
+    public function claimTlOverride()
+    {
+        header('Content-Type: application/json');
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+            exit;
+        }
+
+        $userId = (int)$_SESSION['user']['id'];
+        $memberUserId = (int)($_POST['member_user_id'] ?? 0);
+        $month = trim($_POST['month'] ?? '');
+        $remarks = trim($_POST['remarks'] ?? '');
+
+        if ($memberUserId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid team member ID']);
+            exit;
+        }
+
+        $result = $this->incentiveModel->claimTlOverride($userId, $memberUserId, $month, $remarks);
+        echo json_encode($result);
+        exit;
+    }
+
+    /**
+     * AJAX Endpoint: Claim 30% Designated Share
+     */
+    public function claimDesignatedIncentive()
+    {
+        header('Content-Type: application/json');
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+            exit;
+        }
+
+        $userId = (int)$_SESSION['user']['id'];
+        $bookingId = (int)($_POST['booking_id'] ?? 0);
+        $remarks = trim($_POST['remarks'] ?? '');
+
+        if ($bookingId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid booking ID']);
+            exit;
+        }
+
+        $result = $this->incentiveModel->claimDesignatedIncentive($userId, $bookingId, $remarks);
+        echo json_encode($result);
+        exit;
+    }
+
+    /**
+     * AJAX Endpoint: Confirm Receipt of Incentive Payout by Sales Person
+     */
+    public function confirmReceipt()
+    {
+        header('Content-Type: application/json');
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+            exit;
+        }
+
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (empty($_SESSION['user']['id'])) {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized session. Please login.']);
+            exit;
+        }
+
+        $userId = (int)$_SESSION['user']['id'];
+        $claimId = (int)($_POST['claim_id'] ?? 0);
+        $paymentId = (int)($_POST['payment_id'] ?? 0);
+        $note = trim($_POST['note'] ?? '');
+
+        if ($claimId <= 0 && $paymentId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Missing claim or payout reference.']);
+            exit;
+        }
+
+        $result = $this->incentiveModel->confirmReceipt($userId, $claimId, $paymentId, $note);
+        echo json_encode($result);
         exit;
     }
 }

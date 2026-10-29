@@ -337,15 +337,31 @@ $exportTrxUrl  = $base_url . '/collection-statement-export?' . http_build_query(
         <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-5 g-2 align-items-stretch" id="summaryCardsRow">
             <!-- 1. Total Collection -->
             <div class="col">
-                <div class="card__wrapper card_wrapper collection-stat-card c-total h-100" onclick="toggleCardAmountFull(this)" title="Click to view full amount: ৳<?= number_format($summary['total_amount'] ?? 0, 2) ?>" data-bs-toggle="tooltip" data-bs-placement="top">
+                <div class="card__wrapper card_wrapper collection-stat-card c-total h-100" onclick="toggleCardAmountFull(this)" 
+                     data-sold-amount="<?= $summary['total_sold_value_formatted'] ?? '' ?>" 
+                     data-due-amount="<?= $summary['pending_due_formatted'] ?? '' ?>" 
+                     data-rate="<?= $summary['collection_rate'] ?? 0 ?>%"
+                     title="Total Sold: <?= $summary['total_sold_value_formatted'] ?? '৳0' ?> | Collected: ৳<?= number_format($summary['total_amount'] ?? 0, 2) ?> | Due: <?= $summary['pending_due_formatted'] ?? '৳0' ?>" data-bs-toggle="tooltip" data-bs-placement="top">
                     <div class="d-flex align-items-center gap-2">
                         <div class="card-icon">
                             <i class="fa-solid fa-vault"></i>
                         </div>
                         <div class="flex-grow-1 overflow-hidden">
-                            <div class="text-muted extra-small text-uppercase fw-bold" style="font-size: 10px;">Total Collection</div>
-                            <div class="c-amount text-primary text-truncate" data-full-amount="৳<?= number_format($summary['total_amount'] ?? 0, 2) ?>" title="৳<?= number_format($summary['total_amount'] ?? 0, 2) ?>">৳<?= number_format($summary['total_amount'] ?? 0, 2) ?></div>
-                            <small class="text-muted extra-small text-truncate d-block" style="font-size: 10px;"><?= number_format($summary['total_count'] ?? 0) ?> Trx (Client + Mgmt)</small>
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div class="text-muted extra-small text-uppercase fw-bold" style="font-size: 10px;">Total Collection</div>
+                                <?php if (!empty($summary['total_sold_value'])): ?>
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle py-0 px-1" style="font-size: 9px; font-weight: 700;" title="Realized Collection: <?= $summary['collection_rate'] ?>% of Sold Value"><?= $summary['collection_rate'] ?>% Realized</span>
+                                <?php endif; ?>
+                            </div>
+                            <div class="c-amount text-primary text-truncate" data-full-amount="৳<?= number_format($summary['total_amount'] ?? 0, 2) ?>" title="Total Collected: ৳<?= number_format($summary['total_amount'] ?? 0, 2) ?> (<?= $summary['total_collection_formatted'] ?? '' ?>)">৳<?= number_format($summary['total_amount'] ?? 0, 2) ?></div>
+                            <div class="d-flex align-items-center justify-content-between text-muted extra-small" style="font-size: 10px; line-height: 1.2;">
+                                <span class="text-truncate"><?= number_format($summary['total_count'] ?? 0) ?> Trx</span>
+                                <?php if (!empty($summary['total_sold_value'])): ?>
+                                    <span class="text-truncate fw-semibold text-secondary ms-1" title="Total Sold Value: ৳<?= number_format($summary['total_sold_value'], 2) ?> (<?= number_format($summary['total_sold_units'] ?? 0) ?> units, <?= number_format($summary['total_sold_clients'] ?? 0) ?> clients)">
+                                        Sold: <strong class="text-dark"><?= $summary['total_sold_value_formatted'] ?></strong>
+                                    </span>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1096,13 +1112,34 @@ function toggleCardAmountFull(card) {
     const label = card.querySelector('.text-muted.extra-small')?.textContent || 'Collection Amount';
 
     if (typeof Swal !== 'undefined' && fullVal) {
+        const soldVal = card.getAttribute('data-sold-amount');
+        const dueVal = card.getAttribute('data-due-amount');
+        const rateVal = card.getAttribute('data-rate');
+        let extraHtml = '';
+        if (soldVal) {
+            extraHtml = `
+            <div class="mt-3 pt-2 border-top text-start small">
+                <div class="d-flex justify-content-between py-1 border-bottom">
+                    <span class="text-muted">Total Sold Value (Agreement):</span>
+                    <strong class="text-dark">${soldVal}</strong>
+                </div>
+                <div class="d-flex justify-content-between py-1 border-bottom">
+                    <span class="text-muted">Actual Realized Collection:</span>
+                    <strong class="text-success">${fullVal} (${rateVal} Realized)</strong>
+                </div>
+                <div class="d-flex justify-content-between py-1">
+                    <span class="text-muted">Uncollected Due Amount:</span>
+                    <strong class="text-danger">${dueVal}</strong>
+                </div>
+            </div>`;
+        }
         Swal.fire({
             title: label,
-            html: `<div class="fs-2 fw-bold text-success my-2">${fullVal}</div><div class="text-muted small">Total Filtered Collection Amount</div>`,
+            html: `<div class="fs-2 fw-bold text-success my-2">${fullVal}</div><div class="text-muted small">Total Filtered Collection Inflow</div>${extraHtml}`,
             icon: 'info',
             confirmButtonText: 'OK',
             confirmButtonColor: '#006837',
-            timer: 4000,
+            timer: 6000,
             timerProgressBar: true
         });
     } else if (typeof toastr !== 'undefined' && fullVal) {

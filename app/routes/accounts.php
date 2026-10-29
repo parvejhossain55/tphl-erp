@@ -107,6 +107,8 @@ return [
     'save-transfer-note' => ['controller' => 'AccountClientController', 'method' => 'saveTransferNote'],
     'verify-payment' => ['controller' => 'AccountClientController', 'method' => 'verifyPayment'],
     'account-client/bulkVerify' => ['controller' => 'AccountClientController', 'method' => 'bulkVerify'],
+    'account-client/bulkDelete' => ['controller' => 'AccountClientController', 'method' => 'bulkDelete'],
+    'bulk-delete-transactions' => ['controller' => 'AccountClientController', 'method' => 'bulkDelete'],
     'assign-handover' => ['controller' => 'AccountClientController', 'method' => 'assignHandover'],
     'get-banks' => ['controller' => 'AccountClientController', 'method' => 'getBanks'],
     'upload-transaction-proof' => ['controller' => 'AccountClientController', 'method' => 'uploadTransactionProof'],

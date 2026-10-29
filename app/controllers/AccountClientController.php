@@ -4519,6 +4519,77 @@ public function discountStatement($bookingId = null)
     }
 
     /**
+     * AJAX: Bulk delete or trash selected transactions for a booking
+     */
+    public function bulkDelete()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        header('Content-Type: application/json');
+
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $roleName   = strtolower($_SESSION['user']['role'] ?? ($_SESSION['user']['role_name'] ?? ''));
+        $isAccExec  = function_exists('isAccountsExecutive') ? isAccountsExecutive() : ($userRoleId === 36);
+        $isAccounts = in_array($userRoleId, [1, 3, 6, 30], true);
+        $isManagementUser = ($userRoleId === 1 || $userRoleId === 3 || str_contains($roleName, 'management') || str_contains($roleName, 'admin'));
+
+        if ((!$isAccounts && !$isManagementUser) || $isAccExec) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'You do not have permission to bulk delete transactions.']);
+            exit;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Invalid request method.']);
+            exit;
+        }
+
+        $paymentIds = $_POST['payment_ids'] ?? [];
+        $bookingId  = (int)($_POST['booking_id'] ?? 0);
+        $userId     = (int)($_SESSION['user']['id'] ?? ($_SESSION['user_id'] ?? 1));
+
+        if (empty($paymentIds) || !is_array($paymentIds) || !$bookingId) {
+            echo json_encode(['success' => false, 'message' => 'Invalid request: No payments selected or missing booking ID.']);
+            exit;
+        }
+
+        $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
+        if (!empty($clientDetails['is_shop']) && (int)$clientDetails['is_shop'] === 1) {
+            require_once dirname(__DIR__) . '/models/AccountShopClient.php';
+            $this->clientModel = new AccountShopClient($this->db);
+        }
+
+        $successCount = 0;
+        $failedCount = 0;
+        $errors = [];
+
+        foreach ($paymentIds as $pid) {
+            $paymentId = (int)$pid;
+            if (!$paymentId) continue;
+
+            // Always safely move to trash so it can be viewed and restored from Trash list
+            $res = $this->clientModel->trashTransaction($paymentId, $bookingId, $userId);
+            if (!empty($res['success'])) {
+                $successCount++;
+            } else {
+                $failedCount++;
+                $errors[] = "ID #{$paymentId}: " . ($res['message'] ?? 'Failed');
+            }
+        }
+
+        if ($successCount > 0) {
+            $msg = "{$successCount} transaction(s) moved to trash successfully.";
+            if ($failedCount > 0) {
+                $msg .= " ({$failedCount} failed)";
+            }
+            echo json_encode(['success' => true, 'message' => $msg, 'count' => $successCount]);
+        } else {
+            $errMsg = !empty($errors) ? implode('; ', array_slice($errors, 0, 3)) : 'Failed to move selected transactions to trash.';
+            echo json_encode(['success' => false, 'message' => $errMsg]);
+        }
+        exit;
+    }
+
+    /**
      * AJAX: Get all active banks for dynamic dropdown
      */
     public function getBanks()

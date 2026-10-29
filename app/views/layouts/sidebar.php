@@ -930,7 +930,7 @@
                         </ul>
                     </li>
 
-                    <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 7, 9, 15, 33, 34, 35])): ?>
+                    <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 6, 7, 9, 15, 30, 33, 34, 35, 36])): ?>
                         <!-- Flats Manage -->
                         <li class="slide has-sub <?= isActive(['create-flat', 'flat-lists'], $current_route) ? 'active' : '' ?>">
                             <a href="javascript:void(0);"
@@ -940,7 +940,7 @@
                                 <i class="fa-regular fa-angle-down side-menu__angle"></i>
                             </a>
                             <ul class="sidebar-menu child2" style="display:block;">
-                                <?php if (!$isManagement && ($_SESSION['user']['role_id'] ?? 0) != 7): ?>
+                                <?php if (!$isManagement && !in_array($_SESSION['user']['role_id'] ?? 0, [6, 7, 30, 36])): ?>
                                     <li class="slide child2">
                                         <a href="<?= $base_url ?>/create-flat"
                                             class="sidebar__menu-item <?= isActive('create-flat', $current_route) ?>">Add Flat</a>
@@ -1120,11 +1120,6 @@
                     </li>
 
                 <?php endif; ?>
-
-
-
-
-
 
                 <!-- For Sales head -->
                 <?php if (hasPermission("Add User")): ?>
@@ -2660,6 +2655,15 @@
                             </li>
                             <?php endif; ?>
                         </ul>
+                    </li>
+
+                    <!-- Flat List for Accounts -->
+                    <li class="slide <?= isActive('flat-lists', $current_route) ?>">
+                        <a href="<?= $base_url ?>/flat-lists"
+                            class="sidebar__menu-item <?= isActive('flat-lists', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-house"></i></div>
+                            <span class="sidebar__menu-label">Flat List</span>
+                        </a>
                     </li>
 
                     <?php if ((!$isManagement || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33])) && !$isSbAccExec): ?>
