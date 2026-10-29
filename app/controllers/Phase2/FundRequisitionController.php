@@ -699,7 +699,7 @@ class FundRequisitionController extends Controller {
             // --- Email Notification Start ---
             try {
                 require_once __DIR__ . '/../../core/MailServiceForPHPMailer.php';
-                $mailService = new \MailService();
+                $mailService = new \MailService($this->db);
                 $link = $GLOBALS['base_url'] . "/fund-requisitions/view/" . $newReqId;
 
                 $reqUserRes = $this->db->query("SELECT full_name FROM users WHERE id = {$requested_by}");
@@ -721,14 +721,15 @@ class FundRequisitionController extends Controller {
                         }
                     }
                 } else {
-                    $qcRes = $this->db->query("SELECT full_name, email FROM users WHERE role_id = 24");
+                    $qcRes = $this->db->query("SELECT full_name, email FROM users WHERE role_id = 24 AND email != '' AND email IS NOT NULL");
+                    $qcList = [];
                     if ($qcRes) {
                         while ($qc = $qcRes->fetch_assoc()) {
-                            if (!empty($qc['email'])) {
-                                $sent = $mailService->sendRequisitionNotification($qc['email'], $qc['full_name'], 'Pending QC & Internal Audit Head Approval', 'Fund Requisition', $reqDetails, $link);
-                                if ($sent) $emailSent = true;
-                            }
+                            $qcList[] = $qc;
                         }
+                    }
+                    if (!empty($qcList)) {
+                        $mailService->sendRequisitionNotificationBatch($qcList, 'Pending QC & Internal Audit Head Approval', 'Fund Requisition', $reqDetails, $link);
                     }
                 }
             } catch (\Throwable $t) {
@@ -805,7 +806,7 @@ class FundRequisitionController extends Controller {
 
             // --- Email Notification Start ---
             require_once __DIR__ . '/../../core/MailServiceForPHPMailer.php';
-            $mailService = new \MailService();
+            $mailService = new \MailService($this->db);
             $link = $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id;
 
             $reqUserRes = $this->db->query("SELECT full_name FROM users WHERE id = {$req['requested_by']}");
@@ -819,21 +820,22 @@ class FundRequisitionController extends Controller {
 
             $emailSent = false;
             if ($newDeptStatus === 'approved') {
-                $qcRes = $this->db->query("SELECT full_name, email FROM users WHERE role_id = 24");
+                $qcRes = $this->db->query("SELECT full_name, email FROM users WHERE role_id = 24 AND email != '' AND email IS NOT NULL");
+                $qcList = [];
                 if ($qcRes) {
                     while ($qc = $qcRes->fetch_assoc()) {
-                        if (!empty($qc['email'])) {
-                            $sent = $mailService->sendRequisitionNotification($qc['email'], $qc['full_name'], 'Pending QC & Internal Audit Head Approval', 'Fund Requisition', $reqDetails, $link);
-                            if ($sent) $emailSent = true;
-                        }
+                        $qcList[] = $qc;
                     }
+                }
+                if (!empty($qcList)) {
+                    $mailService->sendRequisitionNotificationBatch($qcList, 'Pending QC & Internal Audit Head Approval', 'Fund Requisition', $reqDetails, $link);
                 }
             } else if ($newDeptStatus === 'rejected') {
                 $reqEmailRes = $this->db->query("SELECT email FROM users WHERE id = {$req['requested_by']}");
                 if ($reqEmailRes && $reqEmailRes->num_rows > 0) {
                     $reqEmail = $reqEmailRes->fetch_assoc()['email'];
                     if (!empty($reqEmail)) {
-                        $emailSent = $mailService->sendRequisitionNotification($reqEmail, $requesterName, 'Rejected by Department Head', 'Fund Requisition', $reqDetails, $link);
+                        $mailService->sendRequisitionNotification($reqEmail, $requesterName, 'Rejected by Department Head', 'Fund Requisition', $reqDetails, $link);
                     }
                 }
             }
@@ -983,7 +985,7 @@ class FundRequisitionController extends Controller {
             $emailSent = false;
             try {
                 require_once __DIR__ . '/../../core/MailServiceForPHPMailer.php';
-                $mailService = new \MailService();
+                $mailService = new \MailService($this->db);
                 $link = $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id;
 
                 $reqUserRes = $this->db->query("SELECT full_name, email FROM users WHERE id = {$req['requested_by']}");
@@ -1205,7 +1207,7 @@ class FundRequisitionController extends Controller {
 
             // --- Email Notification Start ---
             require_once __DIR__ . '/../../core/MailServiceForPHPMailer.php';
-            $mailService = new \MailService();
+            $mailService = new \MailService($this->db);
             $link = $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id;
 
             $reqUserRes = $this->db->query("SELECT full_name, email FROM users WHERE id = {$frData['requested_by']}");
@@ -1219,22 +1221,22 @@ class FundRequisitionController extends Controller {
 
             $emailSent = false;
             if ($status === 'approved' || $status === 'partially_approved') {
-                $accRes = $this->db->query("SELECT full_name, email FROM users WHERE role_id IN (6, 30)");
+                $accRes = $this->db->query("SELECT full_name, email FROM users WHERE role_id IN (6, 30) AND email != '' AND email IS NOT NULL");
+                $accList = [];
                 if ($accRes) {
                     while ($acc = $accRes->fetch_assoc()) {
-                        if (!empty($acc['email'])) {
-                            $sent = $mailService->sendRequisitionNotification($acc['email'], $acc['full_name'], 'Pending Accounts Payout', 'Fund Requisition', $reqDetails, $link);
-                            if ($sent) $emailSent = true;
-                        }
+                        $accList[] = $acc;
                     }
                 }
+                if (!empty($accList)) {
+                    $mailService->sendRequisitionNotificationBatch($accList, 'Pending Accounts Payout', 'Fund Requisition', $reqDetails, $link);
+                }
                 if ($requesterInfo && !empty($requesterInfo['email'])) {
-                    $sent = $mailService->sendRequisitionNotification($requesterInfo['email'], $requesterInfo['full_name'], 'Approved by Management', 'Fund Requisition', $reqDetails, $link);
-                    if ($sent) $emailSent = true;
+                    $mailService->sendRequisitionNotification($requesterInfo['email'], $requesterInfo['full_name'], 'Approved by Management', 'Fund Requisition', $reqDetails, $link);
                 }
             } else if ($status === 'rejected') {
                 if ($requesterInfo && !empty($requesterInfo['email'])) {
-                    $emailSent = $mailService->sendRequisitionNotification($requesterInfo['email'], $requesterInfo['full_name'], 'Rejected by Management', 'Fund Requisition', $reqDetails, $link);
+                    $mailService->sendRequisitionNotification($requesterInfo['email'], $requesterInfo['full_name'], 'Rejected by Management', 'Fund Requisition', $reqDetails, $link);
                 }
             }
             // --- Email Notification End ---
@@ -1386,7 +1388,7 @@ class FundRequisitionController extends Controller {
 
             // --- Email Notification Start ---
             require_once __DIR__ . '/../../core/MailServiceForPHPMailer.php';
-            $mailService = new \MailService();
+            $mailService = new \MailService($this->db);
             $link = $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id;
 
             $reqUserRes = $this->db->query("SELECT full_name, email FROM users WHERE id = {$frData['requested_by']}");

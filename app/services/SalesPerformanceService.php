@@ -734,13 +734,25 @@ class SalesPerformanceService
         $projB = $projectId ? " AND b.project_id = " . $projectId : "";
         $dateSqlB = $isAllTime ? "" : " AND b.booking_date BETWEEN '$startD' AND '$endD'";
         $sql = "
-            SELECT b.id, b.lead_id, b.project_id, b.agreement_value, b.booking_date, b.uploaded_from,
+            SELECT b.id, b.lead_id, b.project_id, b.flat_id, b.agreement_value, b.booking_date, b.uploaded_from,
+                   f.price_value, f.land_share_value, f.booking_money, f.registration_money,
+                   COALESCE(
+                       NULLIF(f.land_share_value, 0),
+                       NULLIF(COALESCE(f.booking_money, 0) + COALESCE(f.registration_money, 0), 0),
+                       0
+                   ) AS calc_land_share,
+                   COALESCE(f.price_value, 0) AS calc_flat_val,
                    COALESCE(NULLIF(b.sales_by_id, 0), l.assigned_id) AS uid,
                    EXISTS (SELECT 1 FROM lead_payments p WHERE p.booking_id = b.id AND COALESCE(p.is_trashed,0) = 0
                            AND p.verification_status = 'verified') AS confirmed,
+                   (SELECT COALESCE(SUM(p.amount), 0) FROM lead_payments p WHERE p.booking_id = b.id AND COALESCE(p.is_trashed,0)=0 AND COALESCE(p.is_emi_discount,0)=0) AS b_cashin_amt,
+                   (SELECT COUNT(p.id) FROM lead_payments p WHERE p.booking_id = b.id AND COALESCE(p.is_trashed,0)=0 AND COALESCE(p.is_emi_discount,0)=0) AS b_cashin_cnt,
+                   (SELECT COALESCE(SUM(p.amount), 0) FROM lead_payments p WHERE p.booking_id = b.id AND COALESCE(p.is_trashed,0)=0 AND COALESCE(p.is_emi_discount,0)=0 AND p.verification_status = 'verified' AND p.payment_status IN ('paid','partially_paid')) AS b_verified_amt,
+                   (SELECT COUNT(p.id) FROM lead_payments p WHERE p.booking_id = b.id AND COALESCE(p.is_trashed,0)=0 AND COALESCE(p.is_emi_discount,0)=0 AND p.verification_status = 'verified' AND p.payment_status IN ('paid','partially_paid')) AS b_verified_cnt,
                    p.name AS project_name
             FROM lead_bookings b
             JOIN leads l ON l.id = b.lead_id
+            LEFT JOIN flats f ON f.id = b.flat_id
             LEFT JOIN projects p ON p.id = b.project_id
             WHERE b.deleted_at IS NULL AND b.booking_status IN ('booked','completed')
               $dateSqlB $projB
@@ -752,19 +764,36 @@ class SalesPerformanceService
             if (!$passes($uid)) {
                 continue;
             }
+            $landVal = (float) $r['calc_land_share'];
+            $flatVal = (float) $r['calc_flat_val'];
+            $cashinAmt = (float) $r['b_cashin_amt'];
+            $cashinCnt = (int) $r['b_cashin_cnt'];
+            $verAmt = (float) $r['b_verified_amt'];
+            $verCnt = (int) $r['b_verified_cnt'];
+
             $add($uid, 'bookings');
-            $add($uid, 'booking_value', (float) $r['agreement_value']);
+            $add($uid, 'booking_value', $landVal);
+            $add($uid, 'land_share_value', $landVal);
+            $add($uid, 'flat_value', $flatVal);
+            $add($uid, 'booking_cashin_total', $cashinAmt);
+            $add($uid, 'booking_cashin_count', $cashinCnt);
+            $add($uid, 'booking_cashin_verified', $verAmt);
+            $add($uid, 'booking_verified_trx_count', $verCnt);
+
             if ((int) $r['confirmed'] === 1) {
                 $add($uid, 'confirmed_sales');
-                $add($uid, 'confirmed_value', (float) $r['agreement_value']);
+                $add($uid, 'confirmed_value', $landVal);
             }
             $pid = (int) $r['project_id'];
             if (!isset($projectsAgg[$pid])) {
-                $projectsAgg[$pid] = ['id' => $pid, 'name' => $r['project_name'] ?: 'Unknown project', 'leads' => 0, 'bookings' => 0, 'confirmed' => 0, 'value' => 0.0];
+                $projectsAgg[$pid] = ['id' => $pid, 'name' => $r['project_name'] ?: 'Unknown project', 'leads' => 0, 'bookings' => 0, 'confirmed' => 0, 'value' => 0.0, 'flat_value' => 0.0, 'cashin' => 0.0, 'verified' => 0.0];
             }
             $projectsAgg[$pid]['bookings']++;
             $projectsAgg[$pid]['confirmed'] += (int) $r['confirmed'];
-            $projectsAgg[$pid]['value'] += (float) $r['agreement_value'];
+            $projectsAgg[$pid]['value'] += $landVal;
+            $projectsAgg[$pid]['flat_value'] = ($projectsAgg[$pid]['flat_value'] ?? 0.0) + $flatVal;
+            $projectsAgg[$pid]['cashin'] = ($projectsAgg[$pid]['cashin'] ?? 0.0) + $cashinAmt;
+            $projectsAgg[$pid]['verified'] = ($projectsAgg[$pid]['verified'] ?? 0.0) + $verAmt;
         }
 
         // Leads per project in cohort (for project table)
@@ -1056,6 +1085,7 @@ class SalesPerformanceService
             'follow_ups' => 0, 'leads_followed' => 0, 'visits_done' => 0, 'visits_planned' => 0,
             'bookings' => 0, 'booking_value' => 0.0, 'confirmed_sales' => 0, 'confirmed_value' => 0.0,
             'collection' => 0.0, 'collection_gross' => 0.0, 'collection_new' => 0.0, 'collection_prev' => 0.0, 'onboarded' => 0,
+            'flat_value' => 0.0, 'land_share_value' => 0.0, 'booking_cashin_total' => 0.0, 'booking_cashin_count' => 0, 'booking_cashin_verified' => 0.0, 'booking_verified_trx_count' => 0,
             'overdue' => 0, 'due_today' => 0, 'today_followups_total' => 0, 'today_followups_completed' => 0, 'today_followups_incomplete' => 0,
             'upcoming_visits' => 0, 'backlog_uncontacted' => 0,
             'target_bookings' => 0, 'target_visits' => 0, 'target_value' => 0.0,
@@ -1610,11 +1640,12 @@ class SalesPerformanceService
                 'description' => 'All bookings created within the selected period (by booking_date).',
                 'sql' => "SELECT b.id AS ref_id, b.lead_id, COALESCE(NULLIF(l.full_name,''), NULLIF(l.lead_name,''), CONCAT('Lead #', l.id)) AS lead_name,
                                  COALESCE(NULLIF(l.phone,''), l.phone_number) AS phone, COALESCE(NULLIF(b.sales_by_id, 0), l.assigned_id) AS owner_id, l.team_id AS lead_team_id,
-                                 CONCAT('Agreement: ৳', FORMAT(b.agreement_value, 0), ' · ', COALESCE(p.name, 'No project')) AS info,
+                                 CONCAT('Flat: ৳', FORMAT(COALESCE(f.price_value, 0), 0), ' · Land: ৳', FORMAT(COALESCE(NULLIF(f.land_share_value, 0), NULLIF(COALESCE(f.booking_money, 0) + COALESCE(f.registration_money, 0), 0), 0), 0), ' · Cash-in: ৳', FORMAT(COALESCE((SELECT SUM(amount) FROM lead_payments WHERE booking_id = b.id AND is_trashed = 0 AND COALESCE(is_emi_discount, 0) = 0), 0), 0), ' · ', COALESCE(p.name, '')) AS info,
                                  b.booking_date AS event_date,
                                  CASE WHEN EXISTS (SELECT 1 FROM lead_payments pay WHERE pay.booking_id = b.id AND COALESCE(pay.is_trashed,0)=0 AND pay.verification_status='verified') THEN 'Confirmed' ELSE 'Awaiting Verification' END AS status_badge
                           FROM lead_bookings b
                           JOIN leads l ON l.id = b.lead_id
+                          LEFT JOIN flats f ON f.id = b.flat_id
                           LEFT JOIN projects p ON p.id = b.project_id
                           WHERE b.deleted_at IS NULL AND b.booking_status IN ('booked','completed') $dateSqlB $projB $scopeB"
             ],

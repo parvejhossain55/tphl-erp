@@ -328,7 +328,7 @@ $receiptIdsParam = !empty($allInvoicePaymentIds) ? implode(',', $allInvoicePayme
 
 $rawPaymentId = (int)($payment['id'] ?? 0);
 $verificationToken = substr(hash('sha256', $rawPaymentId . '_' . ($payment['created_at'] ?? 'tphl') . '_TPHL_VERIFY_KEY_2026'), 0, 12);
-$verificationUrl = $protocol . $host . $GLOBALS['base_url'] . '/verify-receipt/' . $receiptIdsParam . '?token=' . $verificationToken;
+$verificationUrl = $protocol . $host . $GLOBALS['base_url'] . '/verify-receipt/' . $rawPaymentId . '?token=' . $verificationToken;
 
 $qrImageSrc = '';
 if (class_exists('TCPDF2DBarcode')) {

@@ -494,6 +494,30 @@ $jsData = [
     .sp-unassigned-box .desc { font-size: 11px; color: #b45309; margin-top: 1px; }
     .sp-unassigned-box .sp-count-chip { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; font-weight: 700; font-size: 12.5px; }
     .sp-kpi { background: var(--sp-card); border: 1px solid var(--sp-border); border-radius: var(--sp-radius); padding: 16px 18px; display: flex; flex-direction: column; justify-content: space-between; height: 100%; transition: transform .18s cubic-bezier(.16,1,.3,1), box-shadow .18s cubic-bezier(.16,1,.3,1), border-color .18s; }
+    .sp-kpi.sp-kpi-bookings { padding: 14px 12px; }
+    .sp-bk-metrics {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 3px 6px;
+        font-size: 9.5px;
+        line-height: 1.35;
+        margin-top: auto;
+        padding-top: 4px;
+        border-top: 1px dashed var(--sp-border);
+    }
+    .sp-bk-metrics .m-item {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-variant-numeric: tabular-nums;
+    }
+    .sp-bk-metrics .m-item.right {
+        text-align: right;
+    }
+    @media (max-width: 1440px) {
+        .sp-kpi.sp-kpi-bookings { padding: 12px 10px; }
+        .sp-bk-metrics { font-size: 9px; gap: 2px 4px; }
+    }
     .sp-kpi:hover { transform: translateY(-2px); border-color: #cfded7; box-shadow: 0 10px 24px -10px rgba(20,33,28,.18); }
     .sp-kpi .lbl { font-size: 12px; font-weight: 600; color: var(--sp-text); display: flex; align-items: center; gap: 7px; }
     .sp-kpi .lbl i { color: var(--sp-green); font-size: 13px; width: 14px; text-align: center; }
@@ -2034,13 +2058,22 @@ $jsData = [
                 <div class="val"><?= sp_n($o['uncontacted']) ?></div>
                 <div class="hint"><?= sp_pct($o['uncontacted'], $o['stage_1']) ?> need first contact <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;margin-left:2px"></i></div>
             </div>
-            <div class="sp-kpi click" data-gap="bookings" style="cursor:pointer" title="Total Sold Value: <?= sp_tk($o['booking_value']) ?> | Total Collection: <?= sp_tk($o['collection'] ?? 0) ?> (<?= sp_n($o['stage_5'] ?? 0) ?> unique clients) · Click to view Bookings">
+            <div class="sp-kpi sp-kpi-bookings click" data-gap="bookings" style="cursor:pointer" title="Total Flat Value: <?= sp_tk($o['flat_value'] ?? 0) ?> | Land Share Value: <?= sp_tk($o['land_share_value'] ?? $o['booking_value'] ?? 0) ?> | Cash-in: <?= sp_tk($o['booking_cashin_total'] ?? 0) ?> | Verified: <?= sp_tk($o['booking_cashin_verified'] ?? 0) ?> (<?= sp_n($o['booking_verified_trx_count'] ?? 0) ?> Trx) · Click to view Bookings">
                 <div class="lbl"><i class="fa-regular fa-calendar-check"></i> Bookings <span style="font-size:11px;font-weight:500;color:var(--sp-muted)">(<?= sp_n($o['stage_5'] ?? 0) ?> clients)</span></div>
                 <div class="val"><?= sp_n($o['bookings']) ?></div>
-                <div class="hint" style="line-height:1.35">
-                    <span><b>Sold:</b> <?= sp_tk($o['booking_value']) ?></span> · 
-                    <span style="color:var(--sp-green);font-weight:600" title="Verified: <?= sp_tk($o['collection'] ?? 0) ?><?= (!empty($o['collection_gross']) && $o['collection_gross'] > ($o['collection'] ?? 0)) ? ' | Total Inflow: ' . sp_tk($o['collection_gross']) : '' ?>"><b>Coll:</b> <?= sp_tk($o['collection'] ?? 0) ?><?php if (!empty($o['collection_gross']) && $o['collection_gross'] > ($o['collection'] ?? 0)): ?> <small class="text-muted" style="font-weight:normal;font-size:10px;" title="Total Gross Inflow including pending verification cheques">(Tot: <?= sp_tk($o['collection_gross']) ?>)</small><?php endif; ?></span>
-                    <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;margin-left:2px"></i>
+                <div class="sp-bk-metrics">
+                    <div class="m-item" title="Flat Value: <?= sp_tk($o['flat_value'] ?? 0) ?>">
+                        <span style="color:var(--sp-muted)">Flat:</span> <strong style="color:var(--sp-text)"><?= sp_tk($o['flat_value'] ?? 0) ?></strong>
+                    </div>
+                    <div class="m-item right" title="Land Share Value: <?= sp_tk($o['land_share_value'] ?? $o['booking_value'] ?? 0) ?>">
+                        <span style="color:#047857">Land:</span> <strong style="color:#047857"><?= sp_tk($o['land_share_value'] ?? $o['booking_value'] ?? 0) ?></strong>
+                    </div>
+                    <div class="m-item" title="Total Cash-in collected strictly against these bookings: <?= sp_tk($o['booking_cashin_total'] ?? 0) ?>">
+                        <span style="color:var(--sp-muted)">Cash-in:</span> <strong style="color:var(--sp-text)"><?= sp_tk($o['booking_cashin_total'] ?? 0) ?></strong>
+                    </div>
+                    <div class="m-item right" title="Accounts Verified: <?= sp_tk($o['booking_cashin_verified'] ?? 0) ?> (<?= sp_n($o['booking_verified_trx_count'] ?? 0) ?> Trx)">
+                        <span style="color:var(--sp-green)">Ver:</span> <strong style="color:var(--sp-green)"><?= sp_tk($o['booking_cashin_verified'] ?? 0) ?></strong><?php if (!empty($o['booking_verified_trx_count'])): ?> <span style="font-size:8.5px;color:var(--sp-muted)">(<?= sp_n($o['booking_verified_trx_count']) ?>)</span><?php endif; ?> <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:8px"></i>
+                    </div>
                 </div>
             </div>
             <div class="sp-kpi click" data-gap="confirmed_sales" style="cursor:pointer" title="Click to view Confirmed Sales">

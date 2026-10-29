@@ -7,6 +7,7 @@ use PHPMailer\PHPMailer\Exception;
 
 class MailService
 {
+    private $db = null;
     private $host = 'mail.dpremiumhomes.com';
     private $username = 'no-reply@dpremiumhomes.com';
     private $password = 'djcdawaxdbmdotlj';
@@ -14,8 +15,9 @@ class MailService
     private $secure = 'ssl';
     public $lastError = '';
 
-    public function __construct()
+    public function __construct($db = null)
     {
+        $this->db = $db;
         // Load configuration to handle local vs live server dynamically
         $config = require __DIR__ . '/../config/config.php';
         
@@ -336,132 +338,184 @@ class MailService
         }
     }
 
-    public function sendRequisitionNotification($toEmail, $toName, $actionType, $requisitionType, $requisitionDetails, $link)
+
+    public function getDb()
     {
-        $subject = "Action Required: {$requisitionType} - {$actionType}";
-        
-        $body = "
+        if ($this->db instanceof \mysqli) {
+            return $this->db;
+        }
+        if (isset($GLOBALS['db']) && $GLOBALS['db'] instanceof \mysqli) {
+            return $GLOBALS['db'];
+        }
+        try {
+            $config = require __DIR__ . '/../config/config.php';
+            $db = new \mysqli($config['db_host'], $config['db_user'], $config['db_pass'], $config['db_name']);
+            if (!$db->connect_error) {
+                $db->set_charset('utf8mb4');
+                $this->db = $db;
+                return $this->db;
+            }
+        } catch (\Throwable $t) {}
+        return null;
+    }
+
+    public function getBaseUrl(): string
+    {
+        $base = rtrim($GLOBALS['base_url'] ?? '/TPHL-ERP', '/');
+        if (str_starts_with($base, 'http')) {
+            return $base;
+        }
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host   = $_SERVER['HTTP_HOST'] ?? 'localhost:8080';
+        return $scheme . '://' . $host . $base;
+    }
+
+    public function triggerQueueProcessorAsync(): void
+    {
+        // 1. Non-blocking cURL call with 150ms timeout
+        try {
+            $url = $this->getBaseUrl() . '/process_email_queue.php';
+            $ch = curl_init($url);
+            if ($ch) {
+                curl_setopt($ch, CURLOPT_TIMEOUT_MS, 150);
+                curl_setopt($ch, CURLOPT_NOSIGNAL, 1);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+                curl_exec($ch);
+                curl_close($ch);
+            }
+        } catch (\Throwable $e) {}
+
+        // 2. On Windows / CLI, also trigger background detached process
+        if (DIRECTORY_SEPARATOR === '\\') {
+            try {
+                $script = realpath(__DIR__ . '/../../public/process_email_queue.php');
+                if ($script && file_exists($script)) {
+                    pclose(popen("start /B php " . escapeshellarg($script), "r"));
+                }
+            } catch (\Throwable $e) {}
+        }
+    }
+
+    public function buildRequisitionEmailBody($toName, $actionType, $requisitionType, $requisitionDetails, $link): string
+    {
+        $amtFormatted = number_format((float)($requisitionDetails['amount'] ?? 0), 2);
+        $title = htmlspecialchars($requisitionDetails['title'] ?? 'N/A');
+        $requesterName = htmlspecialchars($requisitionDetails['requester_name'] ?? 'N/A');
+        $noteHtml = '';
+        if (!empty($requisitionDetails['note'])) {
+            $noteText = htmlspecialchars($requisitionDetails['note']);
+            $noteHtml = "<tr>
+                <td style='padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;'>Approval Note</td>
+                <td style='padding: 8px; border: 1px solid #ddd;'>{$noteText}</td>
+            </tr>";
+        }
+
+        return "
         <div style='font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; padding: 20px; border-radius: 8px;'>
-            <h2 style='color: #10a34dff; border-bottom: 2px solid #0e6119ff; padding-bottom: 10px;'>{$requisitionType} Update</h2>
+            <h2 style='color: #10a34d; border-bottom: 2px solid #0e6119; padding-bottom: 10px;'>{$requisitionType} Update</h2>
             <p>Dear {$toName},</p>
             <p>A <strong>{$requisitionType}</strong> requires your attention. Current Status: <strong>{$actionType}</strong></p>
             
             <table style='width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 20px;'>
                 <tr>
                     <td style='padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold; width: 30%;'>Title/Purpose</td>
-                    <td style='padding: 8px; border: 1px solid #ddd;'>{$requisitionDetails['title']}</td>
+                    <td style='padding: 8px; border: 1px solid #ddd;'>{$title}</td>
                 </tr>
                 <tr>
                     <td style='padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;'>Requested By</td>
-                    <td style='padding: 8px; border: 1px solid #ddd;'>{$requisitionDetails['requester_name']}</td>
+                    <td style='padding: 8px; border: 1px solid #ddd;'>{$requesterName}</td>
                 </tr>
                 <tr>
                     <td style='padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;'>Amount</td>
-                    <td style='padding: 8px; border: 1px solid #ddd;'>৳" . number_format((float)$requisitionDetails['amount'], 2) . "</td>
+                    <td style='padding: 8px; border: 1px solid #ddd;'>৳ {$amtFormatted}</td>
                 </tr>
+                {$noteHtml}
             </table>
             
             <div style='text-align: center; margin-top: 30px;'>
-                <a href='{$link}' style='background-color: #03791dff; color: #ffffff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;'>View Requisition in ERP</a>
+                <a href='{$link}' style='background-color: #03791d; color: #ffffff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;'>View Requisition in ERP</a>
             </div>
             
-            <p style='margin-top: 30px; font-size: 12px; color: #807d7dff; text-align: center;'>
+            <p style='margin-top: 30px; font-size: 12px; color: #807d7d; text-align: center;'>
                 This is an automated notification from TPHL ERP. Please do not reply to this email.
             </p>
-        </div>
-        ";
+        </div>";
+    }
+
+    public function queueRequisitionNotification($toEmail, $toName, $actionType, $requisitionType, $requisitionDetails, $link, $triggerNow = true): bool
+    {
+        if (empty($toEmail) || !filter_var($toEmail, FILTER_VALIDATE_EMAIL)) {
+            return false;
+        }
+
+        $subject = "Action Required: {$requisitionType} - {$actionType}";
+        $body = $this->buildRequisitionEmailBody($toName, $actionType, $requisitionType, $requisitionDetails, $link);
+
+        $db = $this->getDb();
+        if ($db) {
+            $stmt = $db->prepare("INSERT INTO email_queue (to_email, subject, body, status) VALUES (?, ?, ?, 'pending')");
+            if ($stmt) {
+                $stmt->bind_param("sss", $toEmail, $subject, $body);
+                $res = $stmt->execute();
+                $stmt->close();
+
+                if ($res && $triggerNow) {
+                    $this->triggerQueueProcessorAsync();
+                }
+                return (bool)$res;
+            }
+        }
 
         return $this->sendGenericMail($toEmail, $subject, $body);
     }
 
-    /**
-     * Send notification to multiple recipients in a SINGLE SMTP connection to eliminate slow page loads
-     */
-    public function sendRequisitionNotificationBatch($recipients, $actionType, $requisitionType, $requisitionDetails, $link)
+    public function queueRequisitionNotificationBatch($recipients, $actionType, $requisitionType, $requisitionDetails, $link): bool
     {
         if (empty($recipients)) {
             return false;
         }
 
+        $db = $this->getDb();
         $subject = "Action Required: {$requisitionType} - {$actionType}";
-        
-        $body = "
-        <div style='font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; padding: 20px; border-radius: 8px;'>
-            <h2 style='color: #10a34dff; border-bottom: 2px solid #0e6119ff; padding-bottom: 10px;'>{$requisitionType} Update</h2>
-            <p>Dear Management,</p>
-            <p>A <strong>{$requisitionType}</strong> requires your attention. Current Status: <strong>{$actionType}</strong></p>
-            
-            <table style='width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 20px;'>
-                <tr>
-                    <td style='padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold; width: 30%;'>Title/Purpose</td>
-                    <td style='padding: 8px; border: 1px solid #ddd;'>{$requisitionDetails['title']}</td>
-                </tr>
-                <tr>
-                    <td style='padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;'>Requested By</td>
-                    <td style='padding: 8px; border: 1px solid #ddd;'>{$requisitionDetails['requester_name']}</td>
-                </tr>
-                <tr>
-                    <td style='padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;'>Amount</td>
-                    <td style='padding: 8px; border: 1px solid #ddd;'>৳" . number_format((float)$requisitionDetails['amount'], 2) . "</td>
-                </tr>
-            </table>
-            
-            <div style='text-align: center; margin-top: 30px;'>
-                <a href='{$link}' style='background-color: #03791dff; color: #ffffff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;'>View Requisition in ERP</a>
-            </div>
-            
-            <p style='margin-top: 30px; font-size: 12px; color: #807d7dff; text-align: center;'>
-                This is an automated notification from TPHL ERP. Please do not reply to this email.
-            </p>
-        </div>
-        ";
+        $queuedCount = 0;
 
-        $mail = new PHPMailer(true);
-        try {
-            $mail->isSMTP();
-            $mail->CharSet = 'UTF-8';
-            $mail->SMTPDebug = 0;
-            $mail->Timeout = 5;
-            $mail->Host       = $this->host;
-            $mail->SMTPAuth   = true;
-            $mail->Username   = $this->username;
-            $mail->Password   = $this->password;
-            $mail->SMTPSecure = isset($this->secure) ? $this->secure : 'ssl';
-            $mail->Port       = $this->port;
+        if ($db) {
+            $stmt = $db->prepare("INSERT INTO email_queue (to_email, subject, body, status) VALUES (?, ?, ?, 'pending')");
+            if ($stmt) {
+                foreach ($recipients as $item) {
+                    $email = trim(is_array($item) ? ($item['email'] ?? '') : $item);
+                    $name = is_array($item) ? ($item['full_name'] ?? 'User') : 'User';
+                    if (!empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                        $body = $this->buildRequisitionEmailBody($name, $actionType, $requisitionType, $requisitionDetails, $link);
+                        $stmt->bind_param("sss", $email, $subject, $body);
+                        $stmt->execute();
+                        $queuedCount++;
+                    }
+                }
+                $stmt->close();
 
-            $mail->setFrom('no-reply@dpremiumhomes.com', 'TPHL ERP');
-            
-            $primaryAdded = false;
-            foreach ($recipients as $item) {
-                $email = is_array($item) ? ($item['email'] ?? '') : $item;
-                $name = is_array($item) ? ($item['full_name'] ?? '') : '';
-                if (empty($email)) continue;
-
-                if (!$primaryAdded) {
-                    $mail->addAddress($email, $name);
-                    $primaryAdded = true;
-                } else {
-                    $mail->addBCC($email, $name);
+                if ($queuedCount > 0) {
+                    $this->triggerQueueProcessorAsync();
+                    return true;
                 }
             }
-
-            if (!$primaryAdded) {
-                return false;
-            }
-
-            $mail->isHTML(true);
-            $mail->Subject = $subject;
-            $mail->Body    = $body;
-            $mail->AltBody = strip_tags(str_replace(['<br>', '</p>'], ["\r\n", "\r\n\r\n"], $body));
-
-            $mail->send();
-            return true;
-        } catch (Exception $e) {
-            $this->lastError = $mail->ErrorInfo;
-            error_log("Mail Batch Error: " . $mail->ErrorInfo);
-            return false;
         }
+
+        return false;
     }
+
+    public function sendRequisitionNotification($toEmail, $toName, $actionType, $requisitionType, $requisitionDetails, $link)
+    {
+        return $this->queueRequisitionNotification($toEmail, $toName, $actionType, $requisitionType, $requisitionDetails, $link, true);
+    }
+
+    public function sendRequisitionNotificationBatch($recipients, $actionType, $requisitionType, $requisitionDetails, $link)
+    {
+        return $this->queueRequisitionNotificationBatch($recipients, $actionType, $requisitionType, $requisitionDetails, $link);
+    }
+
     public function sendPaymentSuccessMail($email, $data)
     {
         $mail = new PHPMailer(true);
