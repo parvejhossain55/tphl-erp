@@ -362,6 +362,12 @@ $exportTrxUrl  = $base_url . '/collection-statement-export?' . http_build_query(
                                     </span>
                                 <?php endif; ?>
                             </div>
+                            <?php if (empty($curVer) && !empty($summary['pending_amount'])): ?>
+                                <div class="d-flex align-items-center justify-content-between border-top pt-1 mt-1 text-muted" style="font-size: 9.5px;" title="Verified by Accounts: <?= $summary['verified_amount_formatted'] ?? '' ?> | Pending Verification: <?= $summary['pending_amount_formatted'] ?? '' ?>">
+                                    <span class="text-success fw-semibold" title="Confirmed / Verified Inflows"><i class="fa-solid fa-circle-check"></i> <?= $summary['verified_amount_formatted'] ?? '' ?> Ver</span>
+                                    <span class="text-warning fw-semibold" title="Inflows Pending Accounts Verification"><i class="fa-solid fa-clock"></i> <?= $summary['pending_amount_formatted'] ?? '' ?> Pend</span>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>

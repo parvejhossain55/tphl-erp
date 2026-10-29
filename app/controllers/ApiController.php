@@ -957,11 +957,11 @@ class ApiController extends Controller
         header('Content-Type: application/json');
 
         if (!$paymentId) {
-            $paymentId = $_GET['id'] ?? null;
+            $paymentId = $_GET['id'] ?? ($_GET['payment_id'] ?? null);
         }
-        $paymentId = (int)$paymentId;
 
-        if (!$paymentId) {
+        $rawIds = array_filter(array_map('trim', explode(',', (string)$paymentId)));
+        if (empty($rawIds)) {
             echo json_encode([
                 'status'  => 'error',
                 'message' => 'Invalid or missing receipt ID.'
@@ -971,9 +971,32 @@ class ApiController extends Controller
 
         require_once dirname(__DIR__) . '/models/AccountClient.php';
         $accountModel = new AccountClient();
-        $payment = $accountModel->getTransactionById($paymentId);
+        $payments = [];
 
-        if (!$payment) {
+        if (count($rawIds) === 1) {
+            $singlePay = $accountModel->getTransactionById((int)$rawIds[0]);
+            if ($singlePay && (empty($singlePay['is_trashed']) || $singlePay['is_trashed'] == 0)) {
+                if (!empty($singlePay['batch_id'])) {
+                    $batchPayments = $accountModel->getTransactionsByBatchId($singlePay['batch_id'], $singlePay['booking_id'] ?? null);
+                    if (count($batchPayments) > 1) {
+                        $payments = $batchPayments;
+                    } else {
+                        $payments = [$singlePay];
+                    }
+                } else {
+                    $payments = [$singlePay];
+                }
+            }
+        } else {
+            foreach ($rawIds as $pid) {
+                $pay = $accountModel->getTransactionById((int)$pid);
+                if ($pay && (empty($pay['is_trashed']) || $pay['is_trashed'] == 0)) {
+                    $payments[] = $pay;
+                }
+            }
+        }
+
+        if (empty($payments)) {
             echo json_encode([
                 'status'  => 'error',
                 'message' => 'Receipt not found.'
@@ -981,29 +1004,62 @@ class ApiController extends Controller
             exit;
         }
 
+        $actualPaidPayments = array_values(array_filter($payments, function($p) {
+            return empty($p['is_emi_discount']) || (int)$p['is_emi_discount'] === 0;
+        }));
+        $payment = !empty($actualPaidPayments) ? $actualPaidPayments[0] : $payments[0];
+
         $clientDetails = !empty($payment['booking_id']) 
             ? $accountModel->getClientByBookingId($payment['booking_id']) 
             : null;
 
-        $isVerified = isset($payment['verification_status']) && strtolower(trim($payment['verification_status'])) === 'verified';
-
-        // Payment Type Label
-        $paymentTypeRaw = strtolower($payment['payment_type'] ?? '');
-        if (!empty($payment['is_emi_discount']) && $payment['is_emi_discount'] == 1) {
-            $paymentTypeLabel = 'Apply Previous Discount';
-        } elseif ($paymentTypeRaw === 'emi') {
-            $paymentTypeLabel = !empty($payment['installment_label']) ? $payment['installment_label'] : 'EMI Installment';
-        } elseif ($paymentTypeRaw === 'booking_money') {
-            $paymentTypeLabel = 'Booking Money';
-        } elseif ($paymentTypeRaw === 'registration') {
-            $paymentTypeLabel = 'Registration Money';
-        } elseif ($paymentTypeRaw === 'development_charge') {
-            $paymentTypeLabel = 'Development Charge';
-        } else {
-            $paymentTypeLabel = ucwords(str_replace('_', ' ', $payment['payment_type'] ?? 'Payment'));
+        $hasAnyRejected = false;
+        $allVerified = true;
+        foreach ($payments as $p) {
+            $st = strtolower(trim($p['verification_status'] ?? 'pending'));
+            if ($st === 'rejected') $hasAnyRejected = true;
+            if ($st !== 'verified') $allVerified = false;
         }
+        $isVerified = $allVerified && !$hasAnyRejected;
 
-        $amount = (float)($payment['amount'] ?? 0);
+        // Payment Type Label & Items Breakdown
+        $purposeLabels = [];
+        $itemsData = [];
+        foreach ($payments as $p) {
+            $pTypeRaw = strtolower($p['payment_type'] ?? '');
+            if (!empty($p['is_emi_discount']) && $p['is_emi_discount'] == 1) {
+                $lbl = 'Apply Previous Discount';
+            } elseif ($pTypeRaw === 'emi') {
+                $lbl = !empty($p['installment_label']) ? $p['installment_label'] : 'EMI Installment';
+            } elseif ($pTypeRaw === 'booking_money') {
+                $lbl = 'Booking Money';
+            } elseif ($pTypeRaw === 'registration') {
+                $lbl = 'Registration Money';
+            } elseif ($pTypeRaw === 'development_charge') {
+                $lbl = 'Development Charge';
+            } elseif ($pTypeRaw === 'others') {
+                $otherPurpose = !empty($p['other_purpose']) ? ucwords($p['other_purpose']) : 'Extra Charges';
+                $lbl = 'Others (' . $otherPurpose . ')';
+            } else {
+                $lbl = ucwords(str_replace('_', ' ', $p['payment_type'] ?? 'Payment'));
+            }
+            if (!in_array($lbl, $purposeLabels)) {
+                $purposeLabels[] = $lbl;
+            }
+            $itemsData[] = [
+                'id' => (int)$p['id'],
+                'receipt_no' => '#REC-' . str_pad($p['id'], 6, '0', STR_PAD_LEFT),
+                'amount' => (float)($p['amount'] ?? 0),
+                'amount_formatted' => 'TK. ' . number_format((float)($p['amount'] ?? 0), 2),
+                'purpose' => $lbl,
+                'is_discount' => (!empty($p['is_emi_discount']) && (int)$p['is_emi_discount'] === 1)
+            ];
+        }
+        $paymentTypeLabel = !empty($purposeLabels) ? implode(' + ', $purposeLabels) : 'Payment';
+
+        $amount = !empty($actualPaidPayments)
+            ? array_sum(array_map(fn($p) => (float)($p['amount'] ?? 0), $actualPaidPayments))
+            : (float)($payment['amount'] ?? 0);
         $amountInWords = function_exists('amountInWords') ? amountInWords($amount) : (class_exists('FormatHelper') ? FormatHelper::amountInWords($amount) : '');
 
         $clientName = !empty($clientDetails['client_name']) ? $clientDetails['client_name'] : ($payment['client_name'] ?? 'N/A');
@@ -1063,6 +1119,8 @@ class ApiController extends Controller
             'data'   => [
                 'receipt_no'          => '#REC-' . str_pad($payment['id'], 6, '0', STR_PAD_LEFT),
                 'receipt_id'          => (int)$payment['id'],
+                'all_receipt_ids'     => array_map(fn($p) => (int)$p['id'], $payments),
+                'items'               => $itemsData,
                 'booking_id'          => (int)($payment['booking_id'] ?? 0),
                 'verification_status' => $payment['verification_status'] ?? 'pending',
                 'is_verified'         => $isVerified,

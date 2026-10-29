@@ -20,33 +20,66 @@ $companyEmail = function_exists('getSetting') ? getSetting('email', 'info@thepre
 $companyAddress = "Land View Commercial Center, 9th Floor, 28 Gulshan North C/A, Gulshan Circle-2, Dhaka";
 
 $hasPayment = !empty($payment) && is_array($payment);
-$isVerified = $hasPayment && isset($payment['verification_status']) && strtolower(trim($payment['verification_status'])) === 'verified';
-$isPending  = $hasPayment && !$isVerified && strtolower(trim($payment['verification_status'] ?? '')) !== 'rejected';
-$isRejected = $hasPayment && strtolower(trim($payment['verification_status'] ?? '')) === 'rejected';
+$paymentsList = !empty($payments) && is_array($payments) ? $payments : ($hasPayment ? [$payment] : []);
+$actualPaidList = array_values(array_filter($paymentsList, function($p) {
+    return empty($p['is_emi_discount']) || (int)$p['is_emi_discount'] === 0;
+}));
+
+$isVerified = false;
+$isPending  = false;
+$isRejected = false;
+if (!empty($paymentsList)) {
+    $hasAnyRejected = false;
+    $allVerified = true;
+    foreach ($paymentsList as $p) {
+        $st = strtolower(trim($p['verification_status'] ?? 'pending'));
+        if ($st === 'rejected') $hasAnyRejected = true;
+        if ($st !== 'verified') $allVerified = false;
+    }
+    if ($hasAnyRejected) {
+        $isRejected = true;
+    } elseif ($allVerified) {
+        $isVerified = true;
+    } else {
+        $isPending = true;
+    }
+}
 
 $receiptNo = $hasPayment ? '#REC-' . str_pad($payment['id'] ?? '0', 6, '0', STR_PAD_LEFT) : 'N/A';
 $paymentDateFormatted = $hasPayment ? date('d M, Y', strtotime($payment['payment_date'] ?? 'now')) : 'N/A';
-$amountPaid = $hasPayment ? (float)($payment['amount'] ?? 0) : 0;
+if (!empty($actualPaidList)) {
+    $amountPaid = array_sum(array_map(fn($p) => (float)($p['amount'] ?? 0), $actualPaidList));
+} else {
+    $isDiscountItem = !empty($payment['is_emi_discount']) && (int)$payment['is_emi_discount'] === 1;
+    $amountPaid = $isDiscountItem ? 0 : (float)($payment['amount'] ?? 0);
+}
 $amountInWords = function_exists('amountInWords') ? amountInWords($amountPaid) : (class_exists('FormatHelper') ? FormatHelper::amountInWords($amountPaid) : '');
 
 // Payment Type Label (e.g. 23rd Installment / Booking Money / etc.)
-$paymentTypeRaw = strtolower($payment['payment_type'] ?? '');
-if (!empty($payment['is_emi_discount']) && $payment['is_emi_discount'] == 1) {
-    $paymentTypeLabel = 'Apply Previous Discount';
-} elseif ($paymentTypeRaw === 'emi') {
-    $paymentTypeLabel = !empty($payment['installment_label']) ? $payment['installment_label'] : 'EMI Installment';
-} elseif ($paymentTypeRaw === 'booking_money') {
-    $paymentTypeLabel = 'Booking Money';
-} elseif ($paymentTypeRaw === 'registration') {
-    $paymentTypeLabel = 'Registration Money';
-} elseif ($paymentTypeRaw === 'development_charge') {
-    $paymentTypeLabel = 'Development Charge';
-} elseif ($paymentTypeRaw === 'others') {
-    $otherPurpose = !empty($payment['other_purpose']) ? ucwords($payment['other_purpose']) : 'Extra Charges';
-    $paymentTypeLabel = 'Others (' . $otherPurpose . ')';
-} else {
-    $paymentTypeLabel = ucwords(str_replace('_', ' ', $payment['payment_type'] ?? 'Payment'));
+$purposeLabels = [];
+foreach ($paymentsList as $p) {
+    $paymentTypeRaw = strtolower($p['payment_type'] ?? '');
+    if (!empty($p['is_emi_discount']) && $p['is_emi_discount'] == 1) {
+        $lbl = 'Apply Previous Discount';
+    } elseif ($paymentTypeRaw === 'emi') {
+        $lbl = !empty($p['installment_label']) ? $p['installment_label'] : 'EMI Installment';
+    } elseif ($paymentTypeRaw === 'booking_money') {
+        $lbl = 'Booking Money';
+    } elseif ($paymentTypeRaw === 'registration') {
+        $lbl = 'Registration Money';
+    } elseif ($paymentTypeRaw === 'development_charge') {
+        $lbl = 'Development Charge';
+    } elseif ($paymentTypeRaw === 'others') {
+        $otherPurpose = !empty($p['other_purpose']) ? ucwords($p['other_purpose']) : 'Extra Charges';
+        $lbl = 'Others (' . $otherPurpose . ')';
+    } else {
+        $lbl = ucwords(str_replace('_', ' ', $p['payment_type'] ?? 'Payment'));
+    }
+    if (!in_array($lbl, $purposeLabels)) {
+        $purposeLabels[] = $lbl;
+    }
 }
+$paymentTypeLabel = !empty($purposeLabels) ? implode(' + ', $purposeLabels) : 'Payment';
 
 // Client details
 $clientName = !empty($clientDetails['client_name']) ? $clientDetails['client_name'] : ($payment['client_name'] ?? 'N/A');
@@ -677,6 +710,36 @@ if ($paymentMethod === 'CASH') {
                         <?php endif; ?>
                     </div>
 
+                    <?php if (count($paymentsList) > 1): ?>
+                    <div style="background: #ffffff; border: 1.5px solid var(--slate-200); border-radius: 12px; padding: 14px 16px; margin-bottom: 20px;">
+                        <div style="font-size: 11px; font-weight: 800; color: var(--slate-700); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+                            <span><i class="fa-solid fa-layer-group" style="color:var(--primary); margin-right: 6px;"></i> Combined Payment Breakdown</span>
+                            <span style="font-size: 10.5px; background: #ecfdf5; color: #065f46; font-weight: 700; padding: 2px 8px; border-radius: 4px;"><?= count($paymentsList) ?> Items</span>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <?php foreach ($paymentsList as $item): 
+                                $iAmount = (float)($item['amount'] ?? 0);
+                                $iLabel = !empty($item['installment_label']) ? $item['installment_label'] : ucwords(str_replace('_', ' ', $item['payment_type'] ?? 'Payment'));
+                                $iIsDisc = !empty($item['is_emi_discount']) && (int)$item['is_emi_discount'] === 1;
+                            ?>
+                            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; padding: 6px 8px; background: var(--slate-50); border-radius: 6px; border: 1px solid var(--slate-200);">
+                                <div>
+                                    <span style="font-weight: 800; color: var(--primary);">#REC-<?= str_pad($item['id'], 6, '0', STR_PAD_LEFT) ?></span>
+                                    <span style="color: var(--slate-400); margin: 0 4px;">•</span>
+                                    <span style="font-weight: 700; color: var(--slate-800);"><?= htmlspecialchars($iLabel) ?></span>
+                                    <?php if ($iIsDisc): ?>
+                                        <span style="background: #e2e8f0; color: #475569; font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: 700; margin-left: 4px;">Discount</span>
+                                    <?php endif; ?>
+                                </div>
+                                <div style="font-weight: 900; color: <?= $iIsDisc ? '#64748b' : 'var(--slate-900)' ?>;">
+                                    TK. <?= number_format($iAmount, 2) ?>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
                     <!-- Client & Property Information -->
                     <div class="info-section-title">
                         <i class="fa-solid fa-building"></i> Client &amp; Property Information
@@ -717,11 +780,15 @@ if ($paymentMethod === 'CASH') {
                     </div>
 
                     <!-- Action Buttons -->
+                    <?php
+                    $allVerifyIds = !empty($actualPaidList) ? array_map(fn($p) => (int)$p['id'], $actualPaidList) : (!empty($paymentsList) ? array_map(fn($p) => (int)$p['id'], $paymentsList) : [(int)($payment['id'] ?? 0)]);
+                    $allVerifyIdsStr = implode(',', array_unique(array_filter($allVerifyIds)));
+                    ?>
                     <div class="action-group">
-                        <a href="<?= $GLOBALS['base_url'] ?>/download-receipt/<?= $payment['id'] ?>?token=<?= $verificationToken ?>" class="btn-full btn-primary-action">
+                        <a href="<?= $GLOBALS['base_url'] ?>/download-receipt/<?= $allVerifyIdsStr ?>?token=<?= $verificationToken ?>" class="btn-full btn-primary-action">
                             <i class="fa-solid fa-file-arrow-down"></i> Download Official Receipt (PDF)
                         </a>
-                        <a href="<?= $GLOBALS['base_url'] ?>/payment-invoice?payment_id=<?= $payment['id'] ?>&token=<?= $verificationToken ?>" target="_blank" class="btn-full btn-secondary-action" style="background:#ffffff; color:var(--primary); border:1.5px solid var(--primary-border); font-weight:700;">
+                        <a href="<?= $GLOBALS['base_url'] ?>/payment-invoice?payment_id=<?= $allVerifyIdsStr ?>&token=<?= $verificationToken ?>" target="_blank" class="btn-full btn-secondary-action" style="background:#ffffff; color:var(--primary); border:1.5px solid var(--primary-border); font-weight:700;">
                             <i class="fa-solid fa-print"></i> View &amp; Print Full Receipt
                         </a>
                         <a href="tel:<?= preg_replace('/[^0-9+]/', '', $companyPhone) ?>" class="btn-full btn-secondary-action">

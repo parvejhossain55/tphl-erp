@@ -793,15 +793,15 @@ class SalesPerformanceService
         $newBookingCond = $isAllTime ? "1=1" : "b.booking_date BETWEEN '$startD' AND '$endD'";
         $sql = "
             SELECT COALESCE(NULLIF(b.sales_by_id, 0), l.assigned_id) AS uid, 
-                   SUM(p.amount) AS amt,
-                   SUM(CASE WHEN $newBookingCond THEN p.amount ELSE 0 END) AS amt_new,
-                   SUM(CASE WHEN NOT ($newBookingCond) THEN p.amount ELSE 0 END) AS amt_prev
+                   SUM(CASE WHEN p.verification_status = 'verified' AND p.payment_status IN ('paid','partially_paid') THEN p.amount ELSE 0 END) AS amt,
+                   SUM(p.amount) AS amt_gross,
+                   SUM(CASE WHEN $newBookingCond AND p.verification_status = 'verified' AND p.payment_status IN ('paid','partially_paid') THEN p.amount ELSE 0 END) AS amt_new,
+                   SUM(CASE WHEN NOT ($newBookingCond) AND p.verification_status = 'verified' AND p.payment_status IN ('paid','partially_paid') THEN p.amount ELSE 0 END) AS amt_prev
             FROM lead_payments p
             JOIN lead_bookings b ON b.id = p.booking_id AND b.deleted_at IS NULL AND b.booking_status IN ('booked','completed')
             JOIN leads l ON l.id = b.lead_id
             WHERE COALESCE(p.is_trashed, 0) = 0
-              AND p.verification_status = 'verified'
-              AND p.payment_status IN ('paid','partially_paid')
+              AND COALESCE(p.is_emi_discount, 0) = 0
               $dateSqlP $projB
             GROUP BY uid
         ";
@@ -812,6 +812,7 @@ class SalesPerformanceService
                 continue;
             }
             $add($uid, 'collection', (float) $r['amt']);
+            $add($uid, 'collection_gross', (float) ($r['amt_gross'] ?? 0));
             $add($uid, 'collection_new', (float) ($r['amt_new'] ?? 0));
             $add($uid, 'collection_prev', (float) ($r['amt_prev'] ?? 0));
         }
@@ -1054,7 +1055,7 @@ class SalesPerformanceService
             'contacted_24h' => 0, 'response_samples' => 0,
             'follow_ups' => 0, 'leads_followed' => 0, 'visits_done' => 0, 'visits_planned' => 0,
             'bookings' => 0, 'booking_value' => 0.0, 'confirmed_sales' => 0, 'confirmed_value' => 0.0,
-            'collection' => 0.0, 'collection_new' => 0.0, 'collection_prev' => 0.0, 'onboarded' => 0,
+            'collection' => 0.0, 'collection_gross' => 0.0, 'collection_new' => 0.0, 'collection_prev' => 0.0, 'onboarded' => 0,
             'overdue' => 0, 'due_today' => 0, 'today_followups_total' => 0, 'today_followups_completed' => 0, 'today_followups_incomplete' => 0,
             'upcoming_visits' => 0, 'backlog_uncontacted' => 0,
             'target_bookings' => 0, 'target_visits' => 0, 'target_value' => 0.0,

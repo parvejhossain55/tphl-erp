@@ -723,6 +723,8 @@ class CollectionStatementController extends Controller
         $summary['total_sold_value_formatted'] = self::formatCurrencyTk($summary['total_sold_value']);
         $summary['total_collection_formatted'] = self::formatCurrencyTk($summary['total_amount']);
         $summary['pending_due_formatted']      = self::formatCurrencyTk($summary['pending_due']);
+        $summary['verified_amount_formatted']  = self::formatCurrencyTk($summary['verified_amount'] ?? 0);
+        $summary['pending_amount_formatted']   = self::formatCurrencyTk($summary['pending_amount'] ?? 0);
 
         return $summary;
     }

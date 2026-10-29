@@ -315,9 +315,20 @@ if (in_array($hostOnly, ['localhost', '127.0.0.1'])) {
     }
 }
 
+$allInvoicePaymentIds = [];
+if (!empty($actualPaidPayments)) {
+    $allInvoicePaymentIds = array_map(fn($p) => (int)($p['id'] ?? 0), $actualPaidPayments);
+} elseif (!empty($payments)) {
+    $allInvoicePaymentIds = array_map(fn($p) => (int)($p['id'] ?? 0), $payments);
+} elseif (!empty($payment['id'])) {
+    $allInvoicePaymentIds = [(int)$payment['id']];
+}
+$allInvoicePaymentIds = array_values(array_unique(array_filter($allInvoicePaymentIds)));
+$receiptIdsParam = !empty($allInvoicePaymentIds) ? implode(',', $allInvoicePaymentIds) : (string)((int)($payment['id'] ?? 0));
+
 $rawPaymentId = (int)($payment['id'] ?? 0);
 $verificationToken = substr(hash('sha256', $rawPaymentId . '_' . ($payment['created_at'] ?? 'tphl') . '_TPHL_VERIFY_KEY_2026'), 0, 12);
-$verificationUrl = $protocol . $host . $GLOBALS['base_url'] . '/verify-receipt/' . $rawPaymentId . '?token=' . $verificationToken;
+$verificationUrl = $protocol . $host . $GLOBALS['base_url'] . '/verify-receipt/' . $receiptIdsParam . '?token=' . $verificationToken;
 
 $qrImageSrc = '';
 if (class_exists('TCPDF2DBarcode')) {

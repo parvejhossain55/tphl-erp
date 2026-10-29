@@ -3373,6 +3373,14 @@ public function viewPaymentInvoice($paymentId = null)
         exit;
     }
 
+    // Auto-detect batch if single payment requested and it is part of a multi-payment batch
+    if (count($payments) === 1 && !empty($payments[0]['batch_id'])) {
+        $batchPayments = $this->clientModel->getTransactionsByBatchId($payments[0]['batch_id'], $payments[0]['booking_id'] ?? null);
+        if (count($batchPayments) > 1) {
+            $payments = $batchPayments;
+        }
+    }
+
     // Set $payment as the first one for header metadata compatibility
     $payment = $payments[0];
     $isBulk = count($payments) > 1;
@@ -3398,16 +3406,46 @@ public function verifyPublicReceipt($paymentId = null)
     }
 
     if (!$paymentId) {
-        $paymentId = $_GET['id'] ?? null;
+        $paymentId = $_GET['id'] ?? ($_GET['payment_id'] ?? null);
     }
-    $paymentId = (int)$paymentId;
 
-    $payment = null;
+    $rawIds = array_filter(array_map('trim', explode(',', (string)$paymentId)));
+    $payments = [];
     $clientDetails = null;
 
-    if ($paymentId > 0) {
-        $payment = $this->clientModel->getTransactionById($paymentId);
-        if ($payment && !empty($payment['booking_id'])) {
+    if (!empty($rawIds)) {
+        if (count($rawIds) === 1) {
+            $singlePay = $this->clientModel->getTransactionById((int)$rawIds[0]);
+            if ($singlePay && (empty($singlePay['is_trashed']) || $singlePay['is_trashed'] == 0)) {
+                if (!empty($singlePay['batch_id'])) {
+                    $batchPayments = $this->clientModel->getTransactionsByBatchId($singlePay['batch_id'], $singlePay['booking_id'] ?? null);
+                    if (count($batchPayments) > 1) {
+                        $payments = $batchPayments;
+                    } else {
+                        $payments = [$singlePay];
+                    }
+                } else {
+                    $payments = [$singlePay];
+                }
+            }
+        } else {
+            foreach ($rawIds as $pid) {
+                $pay = $this->clientModel->getTransactionById((int)$pid);
+                if ($pay && (empty($pay['is_trashed']) || $pay['is_trashed'] == 0)) {
+                    $payments[] = $pay;
+                }
+            }
+        }
+    }
+
+    $payment = null;
+    if (!empty($payments)) {
+        $actualPaidPayments = array_values(array_filter($payments, function($p) {
+            return empty($p['is_emi_discount']) || (int)$p['is_emi_discount'] === 0;
+        }));
+        $payment = !empty($actualPaidPayments) ? $actualPaidPayments[0] : $payments[0];
+
+        if (!empty($payment['booking_id'])) {
             $clientDetails = $this->clientModel->getClientByBookingId($payment['booking_id']);
         }
     }
@@ -3433,16 +3471,43 @@ public function downloadPublicReceiptPdf($paymentId = null)
     if (!$paymentId) {
         $paymentId = $_GET['id'] ?? ($_GET['payment_id'] ?? null);
     }
-    $paymentId = (int)$paymentId;
 
-    if ($paymentId <= 0) {
-        die("Invalid receipt requested.");
+    $rawIds = array_filter(array_map('trim', explode(',', (string)$paymentId)));
+    $payments = [];
+
+    if (!empty($rawIds)) {
+        if (count($rawIds) === 1) {
+            $singlePay = $this->clientModel->getTransactionById((int)$rawIds[0]);
+            if ($singlePay && (empty($singlePay['is_trashed']) || $singlePay['is_trashed'] == 0)) {
+                if (!empty($singlePay['batch_id'])) {
+                    $batchPayments = $this->clientModel->getTransactionsByBatchId($singlePay['batch_id'], $singlePay['booking_id'] ?? null);
+                    if (count($batchPayments) > 1) {
+                        $payments = $batchPayments;
+                    } else {
+                        $payments = [$singlePay];
+                    }
+                } else {
+                    $payments = [$singlePay];
+                }
+            }
+        } else {
+            foreach ($rawIds as $pid) {
+                $pay = $this->clientModel->getTransactionById((int)$pid);
+                if ($pay && (empty($pay['is_trashed']) || $pay['is_trashed'] == 0)) {
+                    $payments[] = $pay;
+                }
+            }
+        }
     }
 
-    $payment = $this->clientModel->getTransactionById($paymentId);
-    if (!$payment) {
+    if (empty($payments)) {
         die("Receipt record not found.");
     }
+
+    $actualPaidPayments = array_values(array_filter($payments, function($p) {
+        return empty($p['is_emi_discount']) || (int)$p['is_emi_discount'] === 0;
+    }));
+    $payment = !empty($actualPaidPayments) ? $actualPaidPayments[0] : $payments[0];
 
     $clientDetails = !empty($payment['booking_id']) 
         ? $this->clientModel->getClientByBookingId($payment['booking_id']) 
@@ -3510,7 +3575,9 @@ public function downloadPublicReceiptPdf($paymentId = null)
     $receiptNo = '#REC-' . str_pad($payment['id'], 6, '0', STR_PAD_LEFT);
     $paymentDateFormatted = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
     $isDiscountItem = !empty($payment['is_emi_discount']) && (int)$payment['is_emi_discount'] === 1;
-    $amountPaid = $isDiscountItem ? 0 : (float)($payment['amount'] ?? 0);
+    $amountPaid = !empty($actualPaidPayments)
+        ? array_sum(array_map(fn($p) => (float)($p['amount'] ?? 0), $actualPaidPayments))
+        : ($isDiscountItem ? 0 : (float)($payment['amount'] ?? 0));
     $amountInWords = function_exists('amountInWords') ? amountInWords($amountPaid) : (class_exists('FormatHelper') ? FormatHelper::amountInWords($amountPaid) : '');
 
     $clientName = !empty($clientDetails['client_name']) ? $clientDetails['client_name'] : ($payment['client_name'] ?? 'N/A');
@@ -3569,7 +3636,9 @@ public function downloadPublicReceiptPdf($paymentId = null)
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
     $token = substr(hash('sha256', $paymentId . '_' . ($payment['created_at'] ?? 'tphl') . '_TPHL_VERIFY_KEY_2026'), 0, 12);
-    $verificationUrl = $protocol . $host . $GLOBALS['base_url'] . '/verify-receipt/' . $paymentId . '?token=' . $token;
+    $allPdfIds = array_map(fn($p) => (int)$p['id'], !empty($actualPaidPayments) ? $actualPaidPayments : $payments);
+    $pdfIdsParam = implode(',', array_unique($allPdfIds));
+    $verificationUrl = $protocol . $host . $GLOBALS['base_url'] . '/verify-receipt/' . $pdfIdsParam . '?token=' . $token;
 
     $qrImageSrc = '';
     if (class_exists('TCPDF2DBarcode')) {

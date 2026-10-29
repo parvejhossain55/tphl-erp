@@ -2039,7 +2039,7 @@ $jsData = [
                 <div class="val"><?= sp_n($o['bookings']) ?></div>
                 <div class="hint" style="line-height:1.35">
                     <span><b>Sold:</b> <?= sp_tk($o['booking_value']) ?></span> · 
-                    <span style="color:var(--sp-green);font-weight:600"><b>Coll:</b> <?= sp_tk($o['collection'] ?? 0) ?></span>
+                    <span style="color:var(--sp-green);font-weight:600" title="Verified: <?= sp_tk($o['collection'] ?? 0) ?><?= (!empty($o['collection_gross']) && $o['collection_gross'] > ($o['collection'] ?? 0)) ? ' | Total Inflow: ' . sp_tk($o['collection_gross']) : '' ?>"><b>Coll:</b> <?= sp_tk($o['collection'] ?? 0) ?><?php if (!empty($o['collection_gross']) && $o['collection_gross'] > ($o['collection'] ?? 0)): ?> <small class="text-muted" style="font-weight:normal;font-size:10px;" title="Total Gross Inflow including pending verification cheques">(Tot: <?= sp_tk($o['collection_gross']) ?>)</small><?php endif; ?></span>
                     <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;margin-left:2px"></i>
                 </div>
             </div>
