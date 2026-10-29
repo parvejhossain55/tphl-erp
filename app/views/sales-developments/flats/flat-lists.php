@@ -174,6 +174,7 @@ unset($_SESSION['csv_import_skipped']); // clear after reading
             ajax: {
                 url: base_url + '/ajax-flat-lists',
                 type: 'GET',
+                cache: false,
                 data: function (d) {
                     d.project_id = projectId;
                     d.status = status;

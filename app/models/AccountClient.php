@@ -140,6 +140,8 @@ class AccountClient extends Model
             GROUP_CONCAT(DISTINCT CONCAT(p.name, '||', f.flat_name, '||', f.id) SEPARATOR ';;') AS project_flats_combined,
             p_stats.latest_verification_status,
             COALESCE(p_stats.total_pending_payments, 0) AS total_pending_payments,
+            COALESCE(p_stats.total_paid_verified, 0) AS total_paid_verified,
+            COALESCE(p_stats.total_paid_unverified, 0) AS total_paid_unverified,
             COALESCE(p_stats.total_paid, 0) AS total_paid,
             p_stats.last_payment_date,
             MAX(lb.id) AS booking_id,
@@ -175,6 +177,7 @@ class AccountClient extends Model
 
             -- Financial Breakdown Dues
             GREATEST(0, ROUND(COALESCE(SUM(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0)), 0) - COALESCE(SUM(lb.discount_amount), 0) - COALESCE(p_stats.total_paid, 0) - COALESCE(p_stats.total_bulk_emi_discount, 0))) AS overall_due,
+            GREATEST(0, ROUND(COALESCE(SUM(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0)), 0) - COALESCE(SUM(lb.discount_amount), 0) - COALESCE(p_stats.total_paid_verified, 0) - COALESCE(p_stats.emi_discount_verified, 0))) AS overall_due_verified,
             GREATEST(0, ROUND(GREATEST(0, COALESCE(SUM(COALESCE(f.land_share_value, 0)), 0) - COALESCE(SUM(lb.discount_amount), 0)) - COALESCE(p_stats.land_share_paid, 0))) AS land_share_due,
             GREATEST(0, ROUND(COALESCE(SUM(COALESCE(f.development_charges, 0)), 0) - COALESCE(p_stats.dev_charge_paid, 0))) AS dev_charge_due,
             GREATEST(0, ROUND(COALESCE(SUM(CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END), 0) - COALESCE(p_stats.shop_service_charge_paid, 0))) AS shop_service_charge_due,
@@ -190,9 +193,18 @@ class AccountClient extends Model
         LEFT JOIN (
             SELECT 
                 lb_sub.lead_id,
+                SUM(CASE WHEN (lp.payment_status IN ('paid','partially_paid')) 
+                              AND lp.verification_status = 'verified' 
+                              AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END) AS total_paid_verified,
+                SUM(CASE WHEN (lp.payment_status IN ('paid','partially_paid','pending')) 
+                              AND (lp.verification_status IS NULL OR lp.verification_status != 'verified') 
+                              AND lp.verification_status != 'rejected' 
+                              AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END) AS total_paid_unverified,
                 SUM(CASE WHEN (lp.payment_status IN ('paid','partially_paid','pending')) 
                               AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') 
                               AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END) AS total_paid,
+                SUM(CASE WHEN (lp.bulk_emi_discount > 0 OR COALESCE(lp.is_emi_discount, 0) = 1) AND lp.verification_status = 'verified' 
+                         THEN CASE WHEN COALESCE(lp.is_emi_discount, 0) = 1 THEN lp.amount ELSE lp.bulk_emi_discount END ELSE 0 END) AS emi_discount_verified,
                 SUM(CASE WHEN lp.payment_type IN ('booking_money', 'registration', 'land_share') 
                               AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
                               AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.amount ELSE 0 END) AS land_share_paid,
@@ -5819,70 +5831,90 @@ class AccountClient extends Model
             SELECT 
                 COUNT(*) AS total_clients,
                 COALESCE(SUM(calc.total_price), 0) AS total_value,
-                COALESCE(SUM(calc.total_paid), 0) AS total_paid,
-                COALESCE(SUM(calc.overall_due), 0) AS overall_due,
+                
+                -- Collections (Verified, Unverified/Pending, All)
+                COALESCE(SUM(calc.total_paid_verified), 0) AS total_paid_verified,
+                COALESCE(SUM(calc.total_paid_unverified), 0) AS total_paid_unverified,
+                COALESCE(SUM(calc.total_paid_all), 0) AS total_paid_all,
+                
+                -- Overall Dues (Verified & Net after unverified)
+                COALESCE(SUM(calc.overall_due_verified), 0) AS overall_due_verified,
+                COALESCE(SUM(calc.overall_due_net), 0) AS overall_due_net,
+                
+                -- Land Share
                 COALESCE(SUM(calc.total_land_share), 0) AS total_land_share_target,
-                COALESCE(SUM(calc.land_share_paid), 0) AS total_land_share_paid,
-                COALESCE(SUM(calc.land_share_due), 0) AS total_land_share_due,
+                COALESCE(SUM(calc.land_share_paid_verified), 0) AS total_land_share_paid_verified,
+                COALESCE(SUM(calc.land_share_paid_unverified), 0) AS total_land_share_paid_unverified,
+                COALESCE(SUM(calc.land_share_paid_all), 0) AS total_land_share_paid_all,
+                COALESCE(SUM(calc.land_share_due_net), 0) AS total_land_share_due_net,
+                COALESCE(SUM(calc.land_share_due_verified), 0) AS total_land_share_due_verified,
+
+                -- Dev Charges
                 COALESCE(SUM(calc.development_charges), 0) AS total_dev_charges_target,
-                COALESCE(SUM(calc.dev_charge_paid), 0) AS total_dev_charges_paid,
-                COALESCE(SUM(calc.dev_charge_due), 0) AS total_dev_charge_due,
+                COALESCE(SUM(calc.dev_charge_paid_verified), 0) AS total_dev_charges_paid_verified,
+                COALESCE(SUM(calc.dev_charge_paid_unverified), 0) AS total_dev_charges_paid_unverified,
+                COALESCE(SUM(calc.dev_charge_paid_all), 0) AS total_dev_charges_paid_all,
+                COALESCE(SUM(calc.dev_charge_due_net), 0) AS total_dev_charge_due_net,
+                COALESCE(SUM(calc.dev_charge_due_verified), 0) AS total_dev_charge_due_verified,
+
+                -- Shop Service
                 COALESCE(SUM(CASE WHEN calc.is_shop = 1 THEN calc.shop_service_charge ELSE 0 END), 0) AS total_shop_service_charge_target,
-                COALESCE(SUM(CASE WHEN calc.is_shop = 1 THEN calc.shop_service_charge_paid ELSE 0 END), 0) AS total_shop_service_charge_paid,
-                COALESCE(SUM(CASE WHEN calc.is_shop = 1 THEN calc.shop_service_charge_due ELSE 0 END), 0) AS total_shop_service_charge_due,
+                COALESCE(SUM(CASE WHEN calc.is_shop = 1 THEN calc.shop_service_charge_paid_verified ELSE 0 END), 0) AS total_shop_service_charge_paid_verified,
+                COALESCE(SUM(CASE WHEN calc.is_shop = 1 THEN calc.shop_service_charge_paid_unverified ELSE 0 END), 0) AS total_shop_service_charge_paid_unverified,
+                COALESCE(SUM(CASE WHEN calc.is_shop = 1 THEN calc.shop_service_charge_paid_all ELSE 0 END), 0) AS total_shop_service_charge_paid_all,
+                COALESCE(SUM(CASE WHEN calc.is_shop = 1 THEN calc.shop_service_charge_due_net ELSE 0 END), 0) AS total_shop_service_charge_due_net,
+                COALESCE(SUM(CASE WHEN calc.is_shop = 1 THEN calc.shop_service_charge_due_verified ELSE 0 END), 0) AS total_shop_service_charge_due_verified,
+
+                -- Construction / EMI
                 COALESCE(SUM(calc.construction_fee), 0) AS total_construction_target,
-                COALESCE(SUM(calc.emi_paid), 0) AS total_emi_paid,
-                COALESCE(SUM(calc.remaining_emi_due), 0) AS total_emi_due,
+                COALESCE(SUM(calc.emi_paid_verified), 0) AS total_emi_paid_verified,
+                COALESCE(SUM(calc.emi_paid_unverified), 0) AS total_emi_paid_unverified,
+                COALESCE(SUM(calc.emi_paid_all), 0) AS total_emi_paid_all,
+                COALESCE(SUM(calc.remaining_emi_due_net), 0) AS total_emi_due_net,
+                COALESCE(SUM(calc.remaining_emi_due_verified), 0) AS total_emi_due_verified,
+                
                 COALESCE(SUM(calc.overdue_emi_amount), 0) AS total_overdue_emi,
                 COALESCE(SUM(calc.pending_payment_count), 0) AS total_pending_payments
             FROM (
                 SELECT 
-                    raw_c.id,
-                    raw_c.is_shop,
-                    raw_c.total_price,
-                    raw_c.total_land_share,
-                    raw_c.land_share_paid,
-                    raw_c.development_charges,
-                    raw_c.dev_charge_paid,
-                    raw_c.shop_service_charge,
-                    raw_c.shop_service_charge_paid,
-                    raw_c.construction_fee,
-                    raw_c.total_paid,
-                    raw_c.emi_paid,
-                    raw_c.overdue_emi_amount,
-                    raw_c.pending_payment_count,
-                    raw_c.overall_due,
-                    
-                    -- Reconciled Dues
-                    CASE 
-                        WHEN raw_c.overall_due <= 0 THEN 0 
-                        ELSE LEAST(raw_c.raw_ls_due, raw_c.overall_due) 
-                    END AS land_share_due,
-                    
-                    CASE 
-                        WHEN raw_c.overall_due <= 0 THEN 0 
-                        ELSE LEAST(raw_c.raw_dev_due, GREATEST(0, raw_c.overall_due - LEAST(raw_c.raw_ls_due, raw_c.overall_due))) 
-                    END AS dev_charge_due,
-                    
-                    CASE 
-                        WHEN raw_c.overall_due <= 0 THEN 0 
-                        ELSE LEAST(raw_c.raw_shop_due, GREATEST(0, 
-                            raw_c.overall_due 
-                            - LEAST(raw_c.raw_ls_due, raw_c.overall_due)
-                            - LEAST(raw_c.raw_dev_due, GREATEST(0, raw_c.overall_due - LEAST(raw_c.raw_ls_due, raw_c.overall_due)))
-                        )) 
-                    END AS shop_service_charge_due,
-                    
+                    raw_c.*,
+                    -- Net Component Dues (after verified + unverified collections)
+                    CASE WHEN raw_c.overall_due_net <= 0 THEN 0 ELSE LEAST(raw_c.raw_ls_due_net, raw_c.overall_due_net) END AS land_share_due_net,
+                    CASE WHEN raw_c.overall_due_net <= 0 THEN 0 ELSE LEAST(raw_c.raw_dev_due_net, GREATEST(0, raw_c.overall_due_net - LEAST(raw_c.raw_ls_due_net, raw_c.overall_due_net))) END AS dev_charge_due_net,
+                    CASE WHEN raw_c.overall_due_net <= 0 THEN 0 ELSE LEAST(raw_c.raw_shop_due_net, GREATEST(0, 
+                        raw_c.overall_due_net 
+                        - LEAST(raw_c.raw_ls_due_net, raw_c.overall_due_net)
+                        - LEAST(raw_c.raw_dev_due_net, GREATEST(0, raw_c.overall_due_net - LEAST(raw_c.raw_ls_due_net, raw_c.overall_due_net)))
+                    )) END AS shop_service_charge_due_net,
                     GREATEST(0, 
-                        raw_c.overall_due
-                        - (CASE WHEN raw_c.overall_due <= 0 THEN 0 ELSE LEAST(raw_c.raw_ls_due, raw_c.overall_due) END)
-                        - (CASE WHEN raw_c.overall_due <= 0 THEN 0 ELSE LEAST(raw_c.raw_dev_due, GREATEST(0, raw_c.overall_due - LEAST(raw_c.raw_ls_due, raw_c.overall_due))) END)
-                        - (CASE WHEN raw_c.overall_due <= 0 THEN 0 ELSE LEAST(raw_c.raw_shop_due, GREATEST(0, 
-                            raw_c.overall_due 
-                            - LEAST(raw_c.raw_ls_due, raw_c.overall_due)
-                            - LEAST(raw_c.raw_dev_due, GREATEST(0, raw_c.overall_due - LEAST(raw_c.raw_ls_due, raw_c.overall_due)))
+                        raw_c.overall_due_net
+                        - (CASE WHEN raw_c.overall_due_net <= 0 THEN 0 ELSE LEAST(raw_c.raw_ls_due_net, raw_c.overall_due_net) END)
+                        - (CASE WHEN raw_c.overall_due_net <= 0 THEN 0 ELSE LEAST(raw_c.raw_dev_due_net, GREATEST(0, raw_c.overall_due_net - LEAST(raw_c.raw_ls_due_net, raw_c.overall_due_net))) END)
+                        - (CASE WHEN raw_c.overall_due_net <= 0 THEN 0 ELSE LEAST(raw_c.raw_shop_due_net, GREATEST(0, 
+                            raw_c.overall_due_net 
+                            - LEAST(raw_c.raw_ls_due_net, raw_c.overall_due_net)
+                            - LEAST(raw_c.raw_dev_due_net, GREATEST(0, raw_c.overall_due_net - LEAST(raw_c.raw_ls_due_net, raw_c.overall_due_net)))
                         )) END)
-                    ) AS remaining_emi_due
+                    ) AS remaining_emi_due_net,
+
+                    -- Verified Component Dues (strictly verified collections)
+                    CASE WHEN raw_c.overall_due_verified <= 0 THEN 0 ELSE LEAST(raw_c.raw_ls_due_verified, raw_c.overall_due_verified) END AS land_share_due_verified,
+                    CASE WHEN raw_c.overall_due_verified <= 0 THEN 0 ELSE LEAST(raw_c.raw_dev_due_verified, GREATEST(0, raw_c.overall_due_verified - LEAST(raw_c.raw_ls_due_verified, raw_c.overall_due_verified))) END AS dev_charge_due_verified,
+                    CASE WHEN raw_c.overall_due_verified <= 0 THEN 0 ELSE LEAST(raw_c.raw_shop_due_verified, GREATEST(0, 
+                        raw_c.overall_due_verified 
+                        - LEAST(raw_c.raw_ls_due_verified, raw_c.overall_due_verified)
+                        - LEAST(raw_c.raw_dev_due_verified, GREATEST(0, raw_c.overall_due_verified - LEAST(raw_c.raw_ls_due_verified, raw_c.overall_due_verified)))
+                    )) END AS shop_service_charge_due_verified,
+                    GREATEST(0, 
+                        raw_c.overall_due_verified
+                        - (CASE WHEN raw_c.overall_due_verified <= 0 THEN 0 ELSE LEAST(raw_c.raw_ls_due_verified, raw_c.overall_due_verified) END)
+                        - (CASE WHEN raw_c.overall_due_verified <= 0 THEN 0 ELSE LEAST(raw_c.raw_dev_due_verified, GREATEST(0, raw_c.overall_due_verified - LEAST(raw_c.raw_ls_due_verified, raw_c.overall_due_verified))) END)
+                        - (CASE WHEN raw_c.overall_due_verified <= 0 THEN 0 ELSE LEAST(raw_c.raw_shop_due_verified, GREATEST(0, 
+                            raw_c.overall_due_verified 
+                            - LEAST(raw_c.raw_ls_due_verified, raw_c.overall_due_verified)
+                            - LEAST(raw_c.raw_dev_due_verified, GREATEST(0, raw_c.overall_due_verified - LEAST(raw_c.raw_ls_due_verified, raw_c.overall_due_verified)))
+                        )) END)
+                    ) AS remaining_emi_due_verified
                 FROM (
                     SELECT 
                         lb.id,
@@ -5892,41 +5924,104 @@ class AccountClient extends Model
                         COALESCE(f.development_charges, 0) AS development_charges,
                         COALESCE(f.shop_service_charge, 0) AS shop_service_charge,
                         GREATEST(0, ROUND(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) - (COALESCE(f.land_share_value, 0) + COALESCE(f.development_charges, 0) + CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END))) AS construction_fee,
-                        COALESCE(p_agg.total_paid, 0) AS total_paid,
-                        COALESCE(p_agg.land_share_paid, 0) AS land_share_paid,
-                        COALESCE(p_agg.dev_charge_paid, 0) AS dev_charge_paid,
-                        COALESCE(p_agg.shop_service_charge_paid, 0) AS shop_service_charge_paid,
-                        COALESCE(p_agg.emi_paid, 0) AS emi_paid,
+                        
+                        -- Verified Collections
+                        COALESCE(p_agg.paid_verified, 0) AS total_paid_verified,
+                        COALESCE(p_agg.land_paid_verified, 0) AS land_share_paid_verified,
+                        COALESCE(p_agg.dev_paid_verified, 0) AS dev_charge_paid_verified,
+                        COALESCE(p_agg.shop_paid_verified, 0) AS shop_service_charge_paid_verified,
+                        COALESCE(p_agg.emi_paid_verified, 0) AS emi_paid_verified,
+                        
+                        -- Unverified Collections
+                        COALESCE(p_agg.paid_unverified, 0) AS total_paid_unverified,
+                        COALESCE(p_agg.land_paid_unverified, 0) AS land_share_paid_unverified,
+                        COALESCE(p_agg.dev_paid_unverified, 0) AS dev_charge_paid_unverified,
+                        COALESCE(p_agg.shop_paid_unverified, 0) AS shop_service_charge_paid_unverified,
+                        COALESCE(p_agg.emi_paid_unverified, 0) AS emi_paid_unverified,
+
+                        -- Combined Collections
+                        COALESCE(p_agg.paid_all, 0) AS total_paid_all,
+                        COALESCE(p_agg.land_paid_all, 0) AS land_share_paid_all,
+                        COALESCE(p_agg.dev_paid_all, 0) AS dev_charge_paid_all,
+                        COALESCE(p_agg.shop_paid_all, 0) AS shop_service_charge_paid_all,
+                        COALESCE(p_agg.emi_paid_all, 0) AS emi_paid_all,
+
                         COALESCE(p_agg.overdue_emi_amount, 0) AS overdue_emi_amount,
                         COALESCE(p_agg.pending_payment_count, 0) AS pending_payment_count,
-                        GREATEST(0, ROUND(GREATEST(0, COALESCE(f.land_share_value, 0) - COALESCE(lb.discount_amount, 0)) - COALESCE(p_agg.land_share_paid, 0))) AS raw_ls_due,
-                        GREATEST(0, ROUND(COALESCE(f.development_charges, 0) - COALESCE(p_agg.dev_charge_paid, 0))) AS raw_dev_due,
-                        GREATEST(0, ROUND(CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END - COALESCE(p_agg.shop_service_charge_paid, 0))) AS raw_shop_due,
-                        GREATEST(0, ROUND(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) - COALESCE(lb.discount_amount, 0) - COALESCE(p_agg.total_paid, 0) - COALESCE(p_agg.total_bulk_emi_discount, 0))) AS overall_due
+
+                        -- Raw Component Dues (Verified)
+                        GREATEST(0, ROUND(GREATEST(0, COALESCE(f.land_share_value, 0) - COALESCE(lb.discount_amount, 0)) - COALESCE(p_agg.land_paid_verified, 0))) AS raw_ls_due_verified,
+                        GREATEST(0, ROUND(COALESCE(f.development_charges, 0) - COALESCE(p_agg.dev_paid_verified, 0))) AS raw_dev_due_verified,
+                        GREATEST(0, ROUND(CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END - COALESCE(p_agg.shop_paid_verified, 0))) AS raw_shop_due_verified,
+                        GREATEST(0, ROUND(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) - COALESCE(lb.discount_amount, 0) - COALESCE(p_agg.paid_verified, 0) - COALESCE(p_agg.emi_discount_verified, 0))) AS overall_due_verified,
+
+                        -- Raw Component Dues (Net: after verified + unverified)
+                        GREATEST(0, ROUND(GREATEST(0, COALESCE(f.land_share_value, 0) - COALESCE(lb.discount_amount, 0)) - COALESCE(p_agg.land_paid_all, 0))) AS raw_ls_due_net,
+                        GREATEST(0, ROUND(COALESCE(f.development_charges, 0) - COALESCE(p_agg.dev_paid_all, 0))) AS raw_dev_due_net,
+                        GREATEST(0, ROUND(CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END - COALESCE(p_agg.shop_paid_all, 0))) AS raw_shop_due_net,
+                        GREATEST(0, ROUND(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) - COALESCE(lb.discount_amount, 0) - COALESCE(p_agg.paid_all, 0) - COALESCE(p_agg.emi_discount_all, 0))) AS overall_due_net
                     FROM lead_bookings lb
                     INNER JOIN leads l ON lb.lead_id = l.id
                     LEFT JOIN flats f ON lb.flat_id = f.id
                     LEFT JOIN (
                         SELECT 
                             lp.booking_id,
-                            SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS total_paid,
+                            -- Verified
+                            SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END) AS paid_verified,
                             SUM(CASE WHEN lp.payment_type IN ('booking_money', 'registration', 'land_share') 
                                           AND lp.payment_status IN ('paid', 'partially_paid') 
-                                          AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS land_share_paid,
+                                          AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS land_paid_verified,
                             SUM(CASE WHEN lp.payment_type = 'development_charge' 
                                           AND lp.payment_status IN ('paid', 'partially_paid') 
-                                          AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS dev_charge_paid,
+                                          AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS dev_paid_verified,
                             SUM(CASE WHEN lp.payment_type = 'shop_service_charge' 
                                           AND lp.payment_status IN ('paid', 'partially_paid') 
-                                          AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS shop_service_charge_paid,
+                                          AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS shop_paid_verified,
                             SUM(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') 
                                           AND lp.payment_status IN ('paid', 'partially_paid') 
                                           AND lp.verification_status = 'verified' 
-                                          AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END) AS emi_paid,
+                                          AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END) AS emi_paid_verified,
+                            SUM(CASE WHEN (lp.bulk_emi_discount > 0 OR COALESCE(lp.is_emi_discount, 0) = 1) AND lp.verification_status = 'verified' 
+                                     THEN CASE WHEN COALESCE(lp.is_emi_discount, 0) = 1 THEN lp.amount ELSE lp.bulk_emi_discount END ELSE 0 END) AS emi_discount_verified,
+
+                            -- Unverified
+                            SUM(CASE WHEN (lp.payment_status IN ('paid', 'partially_paid', 'pending')) AND (lp.verification_status IS NULL OR lp.verification_status != 'verified') AND lp.verification_status != 'rejected' AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END) AS paid_unverified,
+                            SUM(CASE WHEN lp.payment_type IN ('booking_money', 'registration', 'land_share') 
+                                          AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                                          AND (lp.verification_status IS NULL OR lp.verification_status != 'verified') AND lp.verification_status != 'rejected' THEN lp.amount ELSE 0 END) AS land_paid_unverified,
+                            SUM(CASE WHEN lp.payment_type = 'development_charge' 
+                                          AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                                          AND (lp.verification_status IS NULL OR lp.verification_status != 'verified') AND lp.verification_status != 'rejected' THEN lp.amount ELSE 0 END) AS dev_paid_unverified,
+                            SUM(CASE WHEN lp.payment_type = 'shop_service_charge' 
+                                          AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                                          AND (lp.verification_status IS NULL OR lp.verification_status != 'verified') AND lp.verification_status != 'rejected' THEN lp.amount ELSE 0 END) AS shop_paid_unverified,
+                            SUM(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') 
+                                          AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                                          AND (lp.verification_status IS NULL OR lp.verification_status != 'verified') AND lp.verification_status != 'rejected' 
+                                          AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END) AS emi_paid_unverified,
+                            SUM(CASE WHEN (lp.bulk_emi_discount > 0 OR COALESCE(lp.is_emi_discount, 0) = 1) AND (lp.verification_status IS NULL OR lp.verification_status != 'verified') AND lp.verification_status != 'rejected' 
+                                     THEN CASE WHEN COALESCE(lp.is_emi_discount, 0) = 1 THEN lp.amount ELSE lp.bulk_emi_discount END ELSE 0 END) AS emi_discount_unverified,
+
+                            -- Combined All
+                            SUM(CASE WHEN (lp.payment_status IN ('paid', 'partially_paid', 'pending')) AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END) AS paid_all,
+                            SUM(CASE WHEN lp.payment_type IN ('booking_money', 'registration', 'land_share') 
+                                          AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                                          AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.amount ELSE 0 END) AS land_paid_all,
+                            SUM(CASE WHEN lp.payment_type = 'development_charge' 
+                                          AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                                          AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.amount ELSE 0 END) AS dev_paid_all,
+                            SUM(CASE WHEN lp.payment_type = 'shop_service_charge' 
+                                          AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                                          AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.amount ELSE 0 END) AS shop_paid_all,
+                            SUM(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') 
+                                          AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                                          AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') 
+                                          AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END) AS emi_paid_all,
+                            SUM(CASE WHEN (lp.bulk_emi_discount > 0 OR COALESCE(lp.is_emi_discount, 0) = 1) AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') 
+                                     THEN CASE WHEN COALESCE(lp.is_emi_discount, 0) = 1 THEN lp.amount ELSE lp.bulk_emi_discount END ELSE 0 END) AS emi_discount_all,
+
                             SUM(CASE WHEN lp.payment_type = 'emi' AND lp.due_emi_amount > 0 AND lp.verification_status = 'verified' 
                                           AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement') THEN lp.due_emi_amount ELSE 0 END) AS overdue_emi_amount,
-                            SUM(CASE WHEN (lp.bulk_emi_discount > 0 OR COALESCE(lp.is_emi_discount, 0) = 1) AND lp.verification_status = 'verified' 
-                                     THEN CASE WHEN COALESCE(lp.is_emi_discount, 0) = 1 THEN lp.amount ELSE lp.bulk_emi_discount END ELSE 0 END) AS total_bulk_emi_discount,
                             SUM(CASE WHEN lp.verification_status = 'pending' THEN 1 ELSE 0 END) AS pending_payment_count
                         FROM lead_payments lp
                         WHERE lp.is_trashed = 0
@@ -5941,24 +6036,49 @@ class AccountClient extends Model
         if (!$stmt) {
             error_log("getClientDueTrackingStats prepare failed: " . $this->db->error);
             return [
-                'total_clients' => 0,
-                'total_value' => 0,
-                'total_paid' => 0,
-                'overall_due' => 0,
-                'total_land_share_target' => 0,
-                'total_land_share_paid' => 0,
-                'total_land_share_due' => 0,
-                'total_dev_charges_target' => 0,
-                'total_dev_charges_paid' => 0,
-                'total_dev_charge_due' => 0,
+                'total_clients'                    => 0,
+                'total_value'                      => 0,
+                'total_paid'                       => 0,
+                'total_paid_verified'              => 0,
+                'total_paid_unverified'            => 0,
+                'total_paid_all'                   => 0,
+                'overall_due'                      => 0,
+                'overall_due_net'                  => 0,
+                'overall_due_verified'             => 0,
+                'total_land_share_target'          => 0,
+                'total_land_share_paid'            => 0,
+                'total_land_share_paid_verified'   => 0,
+                'total_land_share_paid_unverified' => 0,
+                'total_land_share_paid_all'        => 0,
+                'total_land_share_due'             => 0,
+                'total_land_share_due_net'         => 0,
+                'total_land_share_due_verified'    => 0,
+                'total_dev_charges_target'         => 0,
+                'total_dev_charges_paid'           => 0,
+                'total_dev_charges_paid_verified'  => 0,
+                'total_dev_charges_paid_unverified'=> 0,
+                'total_dev_charges_paid_all'       => 0,
+                'total_dev_charge_due'             => 0,
+                'total_dev_charge_due_net'         => 0,
+                'total_dev_charge_due_verified'    => 0,
                 'total_shop_service_charge_target' => 0,
-                'total_shop_service_charge_paid' => 0,
-                'total_shop_service_charge_due' => 0,
-                'total_construction_target' => 0,
-                'total_emi_paid' => 0,
-                'total_emi_due' => 0,
-                'total_overdue_emi' => 0,
-                'total_pending_payments' => 0
+                'total_shop_service_charge_paid'   => 0,
+                'total_shop_service_charge_paid_verified' => 0,
+                'total_shop_service_charge_paid_unverified' => 0,
+                'total_shop_service_charge_paid_all' => 0,
+                'total_shop_service_charge_due'    => 0,
+                'total_shop_service_charge_due_net'=> 0,
+                'total_shop_service_charge_due_verified' => 0,
+                'total_construction_target'        => 0,
+                'total_emi_paid'                   => 0,
+                'total_emi_paid_verified'          => 0,
+                'total_emi_paid_unverified'        => 0,
+                'total_emi_paid_all'               => 0,
+                'total_emi_due'                    => 0,
+                'total_emi_due_net'                => 0,
+                'total_emi_due_verified'           => 0,
+                'total_overdue_emi'                => 0,
+                'total_pending_payments'           => 0
             ];
         }
 
@@ -5973,20 +6093,58 @@ class AccountClient extends Model
         return [
             'total_clients'                    => (int)($row['total_clients'] ?? 0),
             'total_value'                      => (float)($row['total_value'] ?? 0),
-            'total_paid'                       => (float)($row['total_paid'] ?? 0),
-            'overall_due'                      => (float)($row['overall_due'] ?? 0),
+            
+            // Collections
+            'total_paid'                       => (float)($row['total_paid_verified'] ?? 0), // legacy verified
+            'total_paid_verified'              => (float)($row['total_paid_verified'] ?? 0),
+            'total_paid_unverified'            => (float)($row['total_paid_unverified'] ?? 0),
+            'total_paid_all'                   => (float)($row['total_paid_all'] ?? 0),
+
+            // Dues
+            'overall_due'                      => (float)($row['overall_due_net'] ?? 0), // Default to Net Due (after verified + unverified)
+            'overall_due_net'                  => (float)($row['overall_due_net'] ?? 0),
+            'overall_due_verified'             => (float)($row['overall_due_verified'] ?? 0),
+
+            // Land Share
             'total_land_share_target'          => (float)($row['total_land_share_target'] ?? 0),
-            'total_land_share_paid'            => (float)($row['total_land_share_paid'] ?? 0),
-            'total_land_share_due'             => (float)($row['total_land_share_due'] ?? 0),
+            'total_land_share_paid'            => (float)($row['total_land_share_paid_verified'] ?? 0),
+            'total_land_share_paid_verified'   => (float)($row['total_land_share_paid_verified'] ?? 0),
+            'total_land_share_paid_unverified' => (float)($row['total_land_share_paid_unverified'] ?? 0),
+            'total_land_share_paid_all'        => (float)($row['total_land_share_paid_all'] ?? 0),
+            'total_land_share_due'             => (float)($row['total_land_share_due_net'] ?? 0),
+            'total_land_share_due_net'         => (float)($row['total_land_share_due_net'] ?? 0),
+            'total_land_share_due_verified'    => (float)($row['total_land_share_due_verified'] ?? 0),
+
+            // Dev Charges
             'total_dev_charges_target'         => (float)($row['total_dev_charges_target'] ?? 0),
-            'total_dev_charges_paid'           => (float)($row['total_dev_charges_paid'] ?? 0),
-            'total_dev_charge_due'             => (float)($row['total_dev_charge_due'] ?? 0),
+            'total_dev_charges_paid'           => (float)($row['total_dev_charges_paid_verified'] ?? 0),
+            'total_dev_charges_paid_verified'  => (float)($row['total_dev_charges_paid_verified'] ?? 0),
+            'total_dev_charges_paid_unverified'=> (float)($row['total_dev_charges_paid_unverified'] ?? 0),
+            'total_dev_charges_paid_all'       => (float)($row['total_dev_charges_paid_all'] ?? 0),
+            'total_dev_charge_due'             => (float)($row['total_dev_charge_due_net'] ?? 0),
+            'total_dev_charge_due_net'         => (float)($row['total_dev_charge_due_net'] ?? 0),
+            'total_dev_charge_due_verified'    => (float)($row['total_dev_charge_due_verified'] ?? 0),
+
+            // Shop Service
             'total_shop_service_charge_target' => (float)($row['total_shop_service_charge_target'] ?? 0),
-            'total_shop_service_charge_paid'   => (float)($row['total_shop_service_charge_paid'] ?? 0),
-            'total_shop_service_charge_due'    => (float)($row['total_shop_service_charge_due'] ?? 0),
+            'total_shop_service_charge_paid'   => (float)($row['total_shop_service_charge_paid_verified'] ?? 0),
+            'total_shop_service_charge_paid_verified' => (float)($row['total_shop_service_charge_paid_verified'] ?? 0),
+            'total_shop_service_charge_paid_unverified' => (float)($row['total_shop_service_charge_paid_unverified'] ?? 0),
+            'total_shop_service_charge_paid_all' => (float)($row['total_shop_service_charge_paid_all'] ?? 0),
+            'total_shop_service_charge_due'    => (float)($row['total_shop_service_charge_due_net'] ?? 0),
+            'total_shop_service_charge_due_net'=> (float)($row['total_shop_service_charge_due_net'] ?? 0),
+            'total_shop_service_charge_due_verified' => (float)($row['total_shop_service_charge_due_verified'] ?? 0),
+
+            // Construction / EMI
             'total_construction_target'        => (float)($row['total_construction_target'] ?? 0),
-            'total_emi_paid'                   => (float)($row['total_emi_paid'] ?? 0),
-            'total_emi_due'                    => (float)($row['total_emi_due'] ?? 0),
+            'total_emi_paid'                   => (float)($row['total_emi_paid_verified'] ?? 0),
+            'total_emi_paid_verified'          => (float)($row['total_emi_paid_verified'] ?? 0),
+            'total_emi_paid_unverified'        => (float)($row['total_emi_paid_unverified'] ?? 0),
+            'total_emi_paid_all'               => (float)($row['total_emi_paid_all'] ?? 0),
+            'total_emi_due'                    => (float)($row['total_emi_due_net'] ?? 0),
+            'total_emi_due_net'                => (float)($row['total_emi_due_net'] ?? 0),
+            'total_emi_due_verified'           => (float)($row['total_emi_due_verified'] ?? 0),
+
             'total_overdue_emi'                => (float)($row['total_overdue_emi'] ?? 0),
             'total_pending_payments'           => (int)($row['total_pending_payments'] ?? 0),
         ];

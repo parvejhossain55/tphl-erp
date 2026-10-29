@@ -514,20 +514,7 @@ class CedCollectionStatementController extends Controller
         ";
     }
 
-    /**
-     * Fetch aggregated summary KPI totals
-     */
-    public static function formatCurrencyTk($v): string
-    {
-        $v = (float) $v;
-        if ($v >= 10000000) {
-            return '৳' . number_format($v / 10000000, 2) . ' Cr';
-        }
-        if ($v >= 100000) {
-            return '৳' . number_format($v / 100000, 2) . ' L';
-        }
-        return '৳' . number_format($v, 2);
-    }
+
 
     /**
      * Helper to format amounts cleanly into Cr / L / BDT
