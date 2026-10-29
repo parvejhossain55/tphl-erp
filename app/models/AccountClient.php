@@ -3362,6 +3362,46 @@ class AccountClient extends Model
     }
 
     /**
+     * Get all transactions in a batch (e.g. split settlement + EMI payments)
+     */
+    public function getTransactionsByBatchId($batchId, $bookingId = null)
+    {
+        $batchId = trim((string)$batchId);
+        if ($batchId === '') {
+            return [];
+        }
+
+        $sql = "SELECT id FROM lead_payments WHERE batch_id = ? AND (is_trashed = 0 OR is_trashed IS NULL)";
+        $params = [$batchId];
+        $types = "s";
+        if (!empty($bookingId)) {
+            $sql .= " AND booking_id = ?";
+            $params[] = (int)$bookingId;
+            $types .= "i";
+        }
+        $sql .= " ORDER BY id ASC";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return [];
+        }
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $rows = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+        $stmt->close();
+
+        $transactions = [];
+        foreach ($rows as $r) {
+            $t = $this->getTransactionById($r['id']);
+            if ($t) {
+                $transactions[] = $t;
+            }
+        }
+        return $transactions;
+    }
+
+    /**
      * Get EMI schedule by payment ID
      */
     public function getEMIScheduleByPaymentId($paymentId)
