@@ -2034,10 +2034,14 @@ $jsData = [
                 <div class="val"><?= sp_n($o['uncontacted']) ?></div>
                 <div class="hint"><?= sp_pct($o['uncontacted'], $o['stage_1']) ?> need first contact <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;margin-left:2px"></i></div>
             </div>
-            <div class="sp-kpi click" data-gap="bookings" style="cursor:pointer" title="Click to view Bookings in this period">
-                <div class="lbl"><i class="fa-regular fa-calendar-check"></i> Bookings</div>
+            <div class="sp-kpi click" data-gap="bookings" style="cursor:pointer" title="Total Sold Value: <?= sp_tk($o['booking_value']) ?> | Total Collection: <?= sp_tk($o['collection'] ?? 0) ?> (<?= sp_n($o['stage_5'] ?? 0) ?> unique clients) · Click to view Bookings">
+                <div class="lbl"><i class="fa-regular fa-calendar-check"></i> Bookings <span style="font-size:11px;font-weight:500;color:var(--sp-muted)">(<?= sp_n($o['stage_5'] ?? 0) ?> clients)</span></div>
                 <div class="val"><?= sp_n($o['bookings']) ?></div>
-                <div class="hint"><?= sp_n($o['stage_5'] ?? 0) ?> unique clients · <?= sp_tk($o['booking_value']) ?> <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;margin-left:2px"></i></div>
+                <div class="hint" style="line-height:1.35">
+                    <span><b>Sold:</b> <?= sp_tk($o['booking_value']) ?></span> · 
+                    <span style="color:var(--sp-green);font-weight:600"><b>Coll:</b> <?= sp_tk($o['collection'] ?? 0) ?></span>
+                    <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px;margin-left:2px"></i>
+                </div>
             </div>
             <div class="sp-kpi click" data-gap="confirmed_sales" style="cursor:pointer" title="Click to view Confirmed Sales">
                 <div class="lbl"><i class="fa-regular fa-circle-check"></i> Confirmed Sales</div>
@@ -2312,10 +2316,10 @@ $jsData = [
                 <div class="val"><?= sp_n($o['confirmed_sales']) ?></div>
                 <div class="hint"><?= sp_n($teamConfirmedSum) ?> team · <?= sp_n($nonTeamConfirmed) ?> direct / other <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
             </div>
-            <div class="sp-kpi click" data-gap="bookings" style="cursor:pointer" title="Click to view all Bookings">
+            <div class="sp-kpi click" data-gap="bookings" style="cursor:pointer" title="Total Sold: <?= sp_tk($o['booking_value']) ?> | Click to view all Bookings">
                 <div class="lbl"><i class="fa-regular fa-calendar-check"></i> Total Bookings</div>
                 <div class="val"><?= sp_n($o['bookings']) ?></div>
-                <div class="hint"><?= sp_n($teamBookingsSum) ?> team · <?= sp_n($nonTeamBookings) ?> direct / other <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
+                <div class="hint">Sold: <b><?= sp_tk($o['booking_value']) ?></b> (<?= sp_n($teamBookingsSum) ?> team · <?= sp_n($nonTeamBookings) ?> other) <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
             </div>
             <div class="sp-kpi <?= $teamTarget ? '' : 'warn' ?>">
                 <div class="lbl"><i class="fa-regular fa-bullseye-arrow"></i> Booking Target</div>
@@ -2480,10 +2484,10 @@ $jsData = [
                 <div class="val"><?= sp_n($o['visits_done']) ?></div>
                 <div class="hint"><?= sp_n($totalExecVisits) ?> active execs · <?= sp_n(array_sum(array_column($ex, 'upcoming_visits'))) ?> upcoming <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
             </div>
-            <div class="sp-kpi click" data-gap="bookings" style="cursor:pointer" title="Click to view all Bookings">
+            <div class="sp-kpi click" data-gap="bookings" style="cursor:pointer" title="Total Sold: <?= sp_tk($o['booking_value']) ?> | Click to view all Bookings">
                 <div class="lbl"><i class="fa-regular fa-calendar-check"></i> Total Bookings</div>
                 <div class="val"><?= sp_n($o['bookings']) ?></div>
-                <div class="hint"><?= sp_n($totalExecBookings) ?> active · <?= sp_n($inactiveExecBookingsSum) ?> inactive · <?= sp_n($directExecBookings) ?> direct / co <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
+                <div class="hint">Sold: <b><?= sp_tk($o['booking_value']) ?></b> (<?= sp_n($totalExecBookings) ?> active · <?= sp_n($inactiveExecBookingsSum) ?> inact) <i class="fa-regular fa-arrow-up-right-from-square" style="font-size:9.5px"></i></div>
             </div>
             <div class="sp-kpi click" data-gap="confirmed_sales" style="cursor:pointer" title="Click to view all Confirmed Sales">
                 <div class="lbl"><i class="fa-regular fa-circle-check"></i> Confirmed Sales</div>

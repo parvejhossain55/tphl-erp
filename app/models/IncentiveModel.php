@@ -79,7 +79,10 @@ class IncentiveModel extends Model
                     c.claim_status,
                     c.claimed_at,
                     c.approved_at,
-                    c.remarks
+                    c.remarks,
+                    c.is_received,
+                    c.received_at,
+                    c.received_by
                 FROM lead_bookings lb
                 LEFT JOIN leads l ON lb.lead_id = l.id
                 LEFT JOIN projects p ON lb.project_id = p.id
@@ -190,9 +193,13 @@ class IncentiveModel extends Model
                 'claim_status'           => $claimStatus,
                 'is_on_hold'             => $isOnHold,
                 'already_claimed'        => $alreadyClaimed ? 1 : 0,
+                'claim_id'               => (int)($row['claim_id'] ?? 0),
                 'claimed_at'             => $row['claimed_at'],
                 'approved_at'            => $row['approved_at'],
-                'remarks'                => !empty($statusRemarks) ? $statusRemarks : ($row['remarks'] ?? '')
+                'remarks'                => !empty($statusRemarks) ? $statusRemarks : ($row['remarks'] ?? ''),
+                'is_received'            => (int)($row['is_received'] ?? 0),
+                'received_at'            => $row['received_at'] ?? null,
+                'received_by'            => $row['received_by'] ?? null
             ];
         }
 
@@ -337,7 +344,7 @@ class IncentiveModel extends Model
         // 1. Fetch booking details
         $sql = "SELECT 
                     lb.id, lb.project_id, lb.flat_id, lb.booking_date,
-                    p.name AS project_name,
+                    p.name AS  ,
                     p.building_type,
                     f.flat_name,
                     f.floor_no,
@@ -430,23 +437,25 @@ class IncentiveModel extends Model
         $chkStmt->close();
 
         $now = date('Y-m-d H:i:s');
+        $bComp = $bMoney ? 1 : 0;
+        $rComp = $reg ? 1 : 0;
         if ($existing) {
             $claimId = (int)$existing['id'];
             $updSql = "UPDATE project_incentive_claims 
                        SET flat_id = ?, claim_status = 'claimed', claimed_at = ?, remarks = ?, 
                            sale_amount = ?, land_share_value = ?, incentive_percentage = ?, incentive_amount = ?,
-                           split_type = ?, is_on_hold = ?
+                           split_type = ?, is_on_hold = ?, booking_completed = ?, registration_completed = ?
                        WHERE id = ?";
             $updStmt = $this->db->prepare($updSql);
-            $updStmt->bind_param("issddddsii", $flatId, $now, $remarks, $saleAmount, $landShareValue, $applicablePct, $incentiveAmount, $splitType, $isOnHold, $claimId);
+            $updStmt->bind_param("issddddsiiii", $flatId, $now, $remarks, $saleAmount, $landShareValue, $applicablePct, $incentiveAmount, $splitType, $isOnHold, $bComp, $rComp, $claimId);
             $updStmt->execute();
             $updStmt->close();
         } else {
             $insSql = "INSERT INTO project_incentive_claims 
                        (booking_id, project_id, flat_id, user_id, is_external, split_type, is_on_hold, sale_amount, land_share_value, incentive_percentage, incentive_amount, booking_completed, registration_completed, claim_status, claimed_at, remarks) 
-                       VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, 1, 1, 'claimed', ?, ?)";
+                       VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, 'claimed', ?, ?)";
             $insStmt = $this->db->prepare($insSql);
-            $insStmt->bind_param("iiiisdddddss", $bookingId, $booking['project_id'], $flatId, $userId, $splitType, $isOnHold, $saleAmount, $landShareValue, $applicablePct, $incentiveAmount, $now, $remarks);
+            $insStmt->bind_param("iiiisdddddiiss", $bookingId, $booking['project_id'], $flatId, $userId, $splitType, $isOnHold, $saleAmount, $landShareValue, $applicablePct, $incentiveAmount, $bComp, $rComp, $now, $remarks);
             $insStmt->execute();
             $claimId = $insStmt->insert_id;
             $insStmt->close();
@@ -463,10 +472,10 @@ class IncentiveModel extends Model
             if ($chkDes && $chkDes->num_rows == 0) {
                 $insDes = "INSERT INTO project_incentive_claims 
                            (booking_id, project_id, flat_id, user_id, is_external, split_type, is_on_hold, sale_amount, land_share_value, incentive_percentage, incentive_amount, booking_completed, registration_completed, claim_status, claimed_at, remarks)
-                           VALUES (?, ?, ?, ?, 0, 'designated_30', 0, ?, ?, ?, ?, 1, 1, 'claimed', ?, 'Designated agent 30% share')";
+                           VALUES (?, ?, ?, ?, 0, 'designated_30', 0, ?, ?, ?, ?, ?, ?, 'claimed', ?, 'Designated agent 30% share')";
                 $desStmt = $this->db->prepare($insDes);
                 if ($desStmt) {
-                    $desStmt->bind_param("iiiidddds", $bookingId, $booking['project_id'], $flatId, $desUserId, $saleAmount, $landShareValue, $desPct, $desIncentive, $now);
+                    $desStmt->bind_param("iiiiddddiis", $bookingId, $booking['project_id'], $flatId, $desUserId, $saleAmount, $landShareValue, $desPct, $desIncentive, $bComp, $rComp, $now);
                     $desStmt->execute();
                     $desStmt->close();
                 }
@@ -551,17 +560,61 @@ class IncentiveModel extends Model
                     IFNULL(e.employee_id, CONCAT('EMP-', u.id)) AS employee_id,
                     IFNULL(d.name, 'Sales') AS department,
                     IFNULL(des.name, 'Executive') AS designation,
-                    p.name AS project_name,
-                    f.flat_name,
-                    IFNULL(f.land_share_value, 0.00) AS land_share_value,
-                    (SELECT SUM(payment_amount) FROM project_incentive_payments WHERE claim_id = c.id) AS total_paid
+                    CASE 
+                        WHEN c.split_type = 'tl_override' THEN 'TL 0.05% Override'
+                        ELSE IFNULL(p.name, 'N/A')
+                    END AS project_name,
+                    CASE 
+                        WHEN c.split_type = 'tl_override' THEN CONCAT('From: ', IFNULL(u_orig.full_name, 'Team Member'))
+                        WHEN c.split_type = 'designated_30' THEN CONCAT(IFNULL(f.flat_name, 'N/A'), ' (30% Designated)')
+                        ELSE IFNULL(f.flat_name, 'N/A')
+                    END AS flat_name,
+                    COALESCE(c.land_share_value, f.land_share_value, 0.00) AS land_share_value,
+                    IFNULL(e.bank_name, '') AS emp_bank_name,
+                    IFNULL(e.account_number, '') AS emp_account_number,
+                    (SELECT SUM(payment_amount) FROM project_incentive_payments WHERE claim_id = c.id) AS total_paid,
+                    ar.id AS ar_id,
+                    ar.status AS ar_status,
+                    ar.accounts_head_status,
+                    ar.accounts_head_at,
+                    COALESCE(ar.op_head_at, ar.approved_at, c.approved_at) AS mgmt_approved_at,
+                    COALESCE(u_mgmt.full_name, 'Management') AS mgmt_approver_name,
+                    e_mgmt.employee_id AS mgmt_approver_code,
+                    COALESCE(r_mgmt.name, 'Management') AS mgmt_approver_role,
+                    u_ah.full_name AS ah_approver_name,
+                    e_ah.employee_id AS ah_approver_code,
+                    (
+                        SELECT lp.verification_status 
+                        FROM lead_payments lp 
+                        WHERE lp.booking_id = c.booking_id 
+                          AND lp.payment_type = 'booking_money' 
+                          AND COALESCE(lp.is_trashed, 0) = 0 
+                        ORDER BY CASE WHEN lp.verification_status = 'verified' THEN 1 WHEN lp.verification_status = 'pending' THEN 2 ELSE 3 END, lp.id DESC 
+                        LIMIT 1
+                    ) AS booking_verification_status,
+                    (
+                        SELECT lp.verification_status 
+                        FROM lead_payments lp 
+                        WHERE lp.booking_id = c.booking_id 
+                          AND lp.payment_type = 'registration' 
+                          AND COALESCE(lp.is_trashed, 0) = 0 
+                        ORDER BY CASE WHEN lp.verification_status = 'verified' THEN 1 WHEN lp.verification_status = 'pending' THEN 2 ELSE 3 END, lp.id DESC 
+                        LIMIT 1
+                    ) AS reg_verification_status
                 FROM project_incentive_claims c
                 LEFT JOIN users u ON c.user_id = u.id
+                LEFT JOIN users u_orig ON c.original_sales_by = u_orig.id
                 LEFT JOIN employees e ON u.id = e.user_id
                 LEFT JOIN departments d ON e.department_id = d.id
                 LEFT JOIN designations des ON e.designation_id = des.id
                 LEFT JOIN projects p ON c.project_id = p.id
                 LEFT JOIN flats f ON c.flat_id = f.id
+                LEFT JOIN approval_requests ar ON ar.source_table = 'project_incentive_claims' AND ar.source_id = c.id
+                LEFT JOIN users u_mgmt ON COALESCE(ar.op_head_by, ar.approved_by, c.approved_by) = u_mgmt.id
+                LEFT JOIN employees e_mgmt ON u_mgmt.id = e_mgmt.user_id
+                LEFT JOIN roles r_mgmt ON u_mgmt.role_id = r_mgmt.id
+                LEFT JOIN users u_ah ON ar.accounts_head_by = u_ah.id
+                LEFT JOIN employees e_ah ON u_ah.id = e_ah.user_id
                 WHERE c.is_external = 0";
 
         if ($month) {
@@ -584,30 +637,57 @@ class IncentiveModel extends Model
                 $claimId = (int)$row['id'];
                 $claimCode = 'INC-' . date('Y', strtotime($row['created_at'])) . '-' . str_pad($claimId, 3, '0', STR_PAD_LEFT);
 
+                $bVerifStatus = $row['booking_verification_status'] ?? null;
+                $rVerifStatus = $row['reg_verification_status'] ?? null;
+
+                $mgmtApprovedAt = !empty($row['mgmt_approved_at']) ? $row['mgmt_approved_at'] : null;
+                $mgmtApproverName = $mgmtApprovedAt ? ($row['mgmt_approver_name'] ?? 'Management') : null;
+                $mgmtApproverCode = $mgmtApprovedAt ? ($row['mgmt_approver_code'] ?? null) : null;
+                $mgmtApproverRole = $mgmtApprovedAt ? ($row['mgmt_approver_role'] ?? null) : null;
+
+                $ahApprovedAt = !empty($row['accounts_head_at']) ? $row['accounts_head_at'] : null;
+                $ahApproverName = $ahApprovedAt ? ($row['ah_approver_name'] ?? null) : null;
+                $ahApproverCode = $ahApprovedAt ? ($row['ah_approver_code'] ?? null) : null;
+
                 $queue[] = [
-                    'id'                    => $claimId,
-                    'claim_code'            => $claimCode,
-                    'user_id'               => (int)$row['user_id'],
-                    'user_name'             => $row['user_name'] ?? 'Sales Executive',
-                    'employee_id'           => $row['employee_id'] ?? ('EMP-' . $row['user_id']),
-                    'department'            => $row['department'] ?? 'Sales',
-                    'designation'           => $row['designation'] ?? 'Executive',
-                    'is_external'           => 0,
-                    'split_type'            => $row['split_type'] ?? 'direct',
-                    'is_on_hold'            => (int)($row['is_on_hold'] ?? 0),
-                    'project_name'          => $row['project_name'] ?? 'N/A',
-                    'flat_name'             => $row['flat_name'] ?? 'N/A',
-                    'sale_amount'           => (float)$row['sale_amount'],
-                    'land_share_value'      => (float)$row['land_share_value'],
-                    'incentive_percentage' => (float)$row['incentive_percentage'],
-                    'incentive_amount'      => $incAmt,
-                    'paid_amount'           => $paidAmt,
-                    'due_amount'            => $dueAmt,
-                    'booking_completed'     => (int)$row['booking_completed'],
-                    'registration_completed'=> (int)$row['registration_completed'],
-                    'claim_status'          => $row['claim_status'],
-                    'claimed_at'            => $row['claimed_at'] ?? $row['created_at'],
-                    'remarks'               => $row['remarks'] ?? ''
+                    'id'                        => $claimId,
+                    'claim_code'                => $claimCode,
+                    'user_id'                   => (int)$row['user_id'],
+                    'user_name'                 => $row['user_name'] ?? 'Sales Executive',
+                    'employee_id'               => $row['employee_id'] ?? ('EMP-' . $row['user_id']),
+                    'department'                => $row['department'] ?? 'Sales',
+                    'designation'               => $row['designation'] ?? 'Executive',
+                    'is_external'               => 0,
+                    'split_type'                => $row['split_type'] ?? 'direct',
+                    'is_on_hold'                => (int)($row['is_on_hold'] ?? 0),
+                    'project_name'              => $row['project_name'] ?? 'N/A',
+                    'flat_name'                 => $row['flat_name'] ?? 'N/A',
+                    'sale_amount'               => (float)$row['sale_amount'],
+                    'land_share_value'          => (float)$row['land_share_value'],
+                    'incentive_percentage'      => (float)$row['incentive_percentage'],
+                    'incentive_amount'          => $incAmt,
+                    'paid_amount'               => $paidAmt,
+                    'due_amount'                => $dueAmt,
+                    'booking_completed'         => ($bVerifStatus === 'verified') ? 1 : (int)($row['booking_completed'] ?? 0),
+                    'registration_completed'    => ($rVerifStatus === 'verified') ? 1 : (int)($row['registration_completed'] ?? 0),
+                    'booking_verification_status' => $bVerifStatus,
+                    'reg_verification_status'   => $rVerifStatus,
+                    'mgmt_approved_at'          => $mgmtApprovedAt,
+                    'mgmt_approver_name'        => $mgmtApproverName,
+                    'mgmt_approver_code'        => $mgmtApproverCode,
+                    'mgmt_approver_role'        => $mgmtApproverRole,
+                    'ah_approved_at'            => $ahApprovedAt,
+                    'ah_approver_name'          => $ahApproverName,
+                    'ah_approver_code'          => $ahApproverCode,
+                    'claim_status'              => $row['claim_status'],
+                    'claimed_at'                => $row['claimed_at'] ?? $row['created_at'],
+                    'remarks'                   => $row['remarks'] ?? '',
+                    'account_id'                => (int)($row['account_id'] ?? 0),
+                    'emp_bank_name'             => $row['emp_bank_name'] ?? '',
+                    'emp_account_number'        => $row['emp_account_number'] ?? '',
+                    'is_received'               => (int)($row['is_received'] ?? 0),
+                    'received_at'               => $row['received_at'] ?? null,
+                    'received_by'               => $row['received_by'] ?? null
                 ];
             }
         }
@@ -849,13 +929,23 @@ class IncentiveModel extends Model
                     u.full_name AS user_name,
                     e.employee_id,
                     d.name AS department,
-                    p.name AS project_name,
-                    f.flat_name,
-                    IFNULL(f.land_share_value, 0.00) AS land_share_value,
+                    CASE 
+                        WHEN c.split_type = 'tl_override' THEN 'TL 0.05% Override'
+                        ELSE IFNULL(p.name, 'N/A')
+                    END AS project_name,
+                    CASE 
+                        WHEN c.split_type = 'tl_override' THEN CONCAT('From: ', IFNULL(u_orig.full_name, 'Team Member'))
+                        WHEN c.split_type = 'designated_30' THEN CONCAT(IFNULL(f.flat_name, 'N/A'), ' (30% Designated)')
+                        ELSE IFNULL(f.flat_name, 'N/A')
+                    END AS flat_name,
+                    COALESCE(c.land_share_value, f.land_share_value, 0.00) AS land_share_value,
+                    IFNULL(e.bank_name, '') AS emp_bank_name,
+                    IFNULL(e.account_number, '') AS emp_account_number,
                     mgr.full_name AS assigned_by_name,
                     (SELECT SUM(payment_amount) FROM project_incentive_payments WHERE claim_id = c.id) AS total_paid
                 FROM project_incentive_claims c
                 LEFT JOIN users u ON c.user_id = u.id
+                LEFT JOIN users u_orig ON c.original_sales_by = u_orig.id
                 LEFT JOIN employees e ON u.id = e.user_id
                 LEFT JOIN departments d ON e.department_id = d.id
                 LEFT JOIN projects p ON c.project_id = p.id
@@ -887,8 +977,12 @@ class IncentiveModel extends Model
                     'paid_amount'           => $paidAmt,
                     'assigned_by_name'      => $row['assigned_by_name'] ?? 'Management',
                     'assigned_at'           => $row['created_at'],
+                    'due_amount'            => max(0.00, $incAmt - $paidAmt),
                     'claim_status'          => $row['claim_status'],
-                    'remarks'               => $row['remarks'] ?? ''
+                    'remarks'               => $row['remarks'] ?? '',
+                    'account_id'            => (int)($row['account_id'] ?? 0),
+                    'emp_bank_name'         => $row['emp_bank_name'] ?? '',
+                    'emp_account_number'    => $row['emp_account_number'] ?? ''
                 ];
             }
         }
@@ -1017,10 +1111,10 @@ class IncentiveModel extends Model
     {
         $claimId = (int)$claimId;
 
-        // Check if flat already has an approved claim
-        $q = $this->db->query("SELECT flat_id, booking_id FROM project_incentive_claims WHERE id = " . $claimId);
+        // Check if flat already has an approved claim (ignore splits and overrides)
+        $q = $this->db->query("SELECT flat_id, booking_id, split_type FROM project_incentive_claims WHERE id = " . $claimId);
         $claim = $q ? $q->fetch_assoc() : null;
-        if ($claim && !empty($claim['flat_id'])) {
+        if ($claim && !empty($claim['flat_id']) && !in_array($claim['split_type'], ['designated_30', 'seller_70', 'tl_override'])) {
             $flatId = (int)$claim['flat_id'];
             $dupClaim = $this->engine->getFlatClaimDetails($flatId, $claim['booking_id']);
             if ($dupClaim && in_array($dupClaim['claim_status'], ['approved', 'partially_paid', 'paid'])) {
@@ -1041,7 +1135,7 @@ class IncentiveModel extends Model
         }
 
         // Update approval_requests table
-        $sqlApp = "UPDATE approval_requests SET status = 'approved', approved_by = ?, approved_at = ? WHERE source_table = 'project_incentive_claims' AND source_id = ?";
+        $sqlApp = "UPDATE approval_requests SET status = 'approved', approve_role = 'accounts_head', accounts_head_status = COALESCE(NULLIF(accounts_head_status, ''), 'pending'), approved_by = ?, approved_at = ? WHERE source_table = 'project_incentive_claims' AND source_id = ?";
         $stmtApp = $this->db->prepare($sqlApp);
         if ($stmtApp) {
             $stmtApp->bind_param("isi", $approvedBy, $now, $claimId);
@@ -1080,7 +1174,7 @@ class IncentiveModel extends Model
     /**
      * Disburse Payment
      */
-    public function disbursePayment($disbursedBy, $claimId, $paymentAmount, $paymentMethod, $bankName, $transactionRef, $paymentDate, $notes, $accountId = null)
+    public function disbursePayment($disbursedBy, $claimId, $paymentAmount, $paymentMethod, $bankName, $transactionRef, $paymentDate, $notes, $accountId = null, $companyBankAccountId = null, $toBankName = null)
     {
         if ($accountId !== null) {
             $this->db->query("UPDATE project_incentive_claims SET account_id = " . (int)$accountId . " WHERE id = " . (int)$claimId);
@@ -1107,14 +1201,14 @@ class IncentiveModel extends Model
         $pAmount = (float)$paymentAmount;
 
         // Insert into project_incentive_payments
-        $insSql = "INSERT INTO project_incentive_payments (claim_id, user_id, payment_amount, payment_method, transaction_ref, payment_date, bank_name, disbursed_by, notes)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $insSql = "INSERT INTO project_incentive_payments (claim_id, user_id, payment_amount, payment_method, transaction_ref, payment_date, bank_name, company_bank_account_id, to_bank_name, disbursed_by, notes)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $insStmt = $this->db->prepare($insSql);
         if (!$insStmt) {
-            return ['success' => false, 'message' => 'DB insert payment error'];
+            return ['success' => false, 'message' => 'DB insert payment error: ' . $this->db->error];
         }
 
-        $insStmt->bind_param("iidssssis", $claimId, $userId, $pAmount, $paymentMethod, $transactionRef, $paymentDate, $bankName, $disbursedBy, $notes);
+        $insStmt->bind_param("iidssssisis", $claimId, $userId, $pAmount, $paymentMethod, $transactionRef, $paymentDate, $bankName, $companyBankAccountId, $toBankName, $disbursedBy, $notes);
         $insStmt->execute();
         $insStmt->close();
 
@@ -1135,6 +1229,10 @@ class IncentiveModel extends Model
         $updStmt->bind_param("si", $newStatus, $claimId);
         $updStmt->execute();
         $updStmt->close();
+
+        if ($newStatus === 'paid') {
+            $this->db->query("UPDATE approval_requests SET approve_role = 'completed' WHERE source_table = 'project_incentive_claims' AND source_id = " . (int)$claimId);
+        }
 
         return ['success' => true, 'message' => 'Payment disbursement recorded successfully into employee wallet!'];
     }
@@ -1188,17 +1286,28 @@ class IncentiveModel extends Model
     /**
      * Get All Disbursement Logs
      */
-    public function getDisbursementLogs()
+    public function getDisbursementLogs($userId = null)
     {
+        $whereSql = "";
+        if ($userId !== null) {
+            $uId = (int)$userId;
+            $whereSql = " WHERE p.user_id = {$uId} ";
+        }
+
         $sql = "SELECT 
                     p.*,
                     u.full_name AS recipient_name,
                     IFNULL(e.employee_id, CONCAT('EMP-', u.id)) AS employee_id,
-                    mgr.full_name AS disbursed_by_name
+                    mgr.full_name AS disbursed_by_name,
+                    cb.bank_name AS company_bank_name,
+                    cb.account_name AS company_account_name,
+                    cb.account_number AS company_account_number
                 FROM project_incentive_payments p
                 LEFT JOIN users u ON p.user_id = u.id
                 LEFT JOIN employees e ON u.id = e.user_id
                 LEFT JOIN users mgr ON p.disbursed_by = mgr.id
+                LEFT JOIN company_bank_accounts cb ON p.company_bank_account_id = cb.id
+                {$whereSql}
                 ORDER BY p.id DESC";
 
         $res = $this->db->query($sql);
@@ -1208,19 +1317,315 @@ class IncentiveModel extends Model
             while ($row = $res->fetch_assoc()) {
                 $logs[] = [
                     'id'              => (int)$row['id'],
+                    'claim_id'        => (int)$row['claim_id'],
                     'disbursement_no' => 'PAY-' . date('Y', strtotime($row['payment_date'])) . '-' . str_pad($row['id'], 3, '0', STR_PAD_LEFT),
                     'recipient_name'  => $row['recipient_name'] . ' (' . $row['employee_id'] . ')',
                     'payment_amount'  => (float)$row['payment_amount'],
                     'payment_method'  => $row['payment_method'],
                     'bank_name'       => $row['bank_name'] ?? 'N/A',
+                    'company_bank_name' => $row['company_bank_name'] ?? '',
+                    'to_bank_name'    => $row['to_bank_name'] ?? '',
                     'transaction_ref' => $row['transaction_ref'] ?? 'N/A',
                     'payment_date'    => $row['payment_date'],
                     'disbursed_by'    => $row['disbursed_by_name'] ?? 'Accounts Admin',
-                    'notes'           => $row['notes'] ?? ''
+                    'notes'           => $row['notes'] ?? '',
+                    'is_received'     => (int)($row['is_received'] ?? 0),
+                    'received_at'     => $row['received_at'] ?? null,
+                    'received_by'     => $row['received_by'] ?? null
                 ];
             }
         }
 
         return $logs;
+    }
+
+    /**
+     * Confirm receipt of incentive payout by Sales Person
+     */
+    public function confirmReceipt($userId, $claimId, $paymentId = null, $note = '')
+    {
+        $userId = (int)$userId;
+        $claimId = (int)$claimId;
+        $paymentId = $paymentId ? (int)$paymentId : null;
+        $now = date('Y-m-d H:i:s');
+
+        if ($claimId <= 0 && $paymentId <= 0) {
+            return ['success' => false, 'message' => 'Invalid claim or payout ID.'];
+        }
+
+        // If claimId provided
+        if ($claimId > 0) {
+            $chk = $this->db->query("SELECT id, user_id, claim_status, is_received FROM project_incentive_claims WHERE id = {$claimId}");
+            if (!$chk || $chk->num_rows == 0) {
+                return ['success' => false, 'message' => 'Incentive claim record not found.'];
+            }
+            $claim = $chk->fetch_assoc();
+            
+            // Check authorization: must be recipient or management
+            $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
+            if ((int)$claim['user_id'] !== $userId && !in_array($userRole, [1, 3, 20], true)) {
+                return ['success' => false, 'message' => 'Unauthorized: You can only confirm receipt for your own incentive payout.'];
+            }
+
+            if (!empty($claim['is_received'])) {
+                return ['success' => true, 'message' => 'This incentive payout has already been marked as received.'];
+            }
+
+            $this->db->query("UPDATE project_incentive_claims 
+                              SET is_received = 1, received_at = '{$now}', received_by = {$userId} 
+                              WHERE id = {$claimId}");
+
+            $this->db->query("UPDATE project_incentive_payments 
+                              SET is_received = 1, received_at = '{$now}', received_by = {$userId} 
+                              WHERE claim_id = {$claimId}");
+        }
+
+        // If paymentId provided
+        if ($paymentId > 0) {
+            $this->db->query("UPDATE project_incentive_payments 
+                              SET is_received = 1, received_at = '{$now}', received_by = {$userId} 
+                              WHERE id = {$paymentId}");
+
+            $pChk = $this->db->query("SELECT claim_id FROM project_incentive_payments WHERE id = {$paymentId}");
+            if ($pChk && $pRow = $pChk->fetch_assoc()) {
+                $pClaimId = (int)$pRow['claim_id'];
+                if ($pClaimId > 0) {
+                    $this->db->query("UPDATE project_incentive_claims 
+                                      SET is_received = 1, received_at = '{$now}', received_by = {$userId} 
+                                      WHERE id = {$pClaimId}");
+                }
+            }
+        }
+
+        return ['success' => true, 'message' => 'Thank you! Incentive payout receipt confirmed successfully.'];
+    }
+
+
+
+    /**
+     * Claim Team Leader 0.05% Override on Qualified Member Sales
+     */
+    public function claimTlOverride($userId, $memberUserId, $month = null, $remarks = '')
+    {
+        $userId = (int)$userId;
+        $memberUserId = (int)$memberUserId;
+        $month = $month ?: $this->getCycleForDate(date('Y-m-d'));
+        $remarks = trim($remarks);
+
+        if ($userId <= 0 || $memberUserId <= 0) {
+            return ['success' => false, 'message' => 'Invalid Team Leader or Member ID'];
+        }
+
+        // 1. Verify TL role & team affiliation
+        $chkTL = $this->db->query("
+            SELECT e.team_id, e.is_team_leader, u.role_id, t.name as team_name
+            FROM employees e
+            JOIN users u ON e.user_id = u.id
+            LEFT JOIN teams t ON e.team_id = t.id
+            WHERE e.user_id = {$userId}
+        ");
+        $tlRow = $chkTL ? $chkTL->fetch_assoc() : null;
+        if (!$tlRow) {
+            return ['success' => false, 'message' => 'Team leader employee record not found'];
+        }
+
+        $isSalesHead = in_array((int)$tlRow['role_id'], [1, 3, 9]);
+        $isTeamLeader = !empty($tlRow['is_team_leader']) || in_array((int)$tlRow['role_id'], [5, 6, 7]);
+        if (!$isSalesHead && !$isTeamLeader) {
+            return ['success' => false, 'message' => 'You are not authorized as a Team Leader.'];
+        }
+
+        // Verify member is in the same team
+        $chkMember = $this->db->query("
+            SELECT e.team_id, e.full_name, e.employee_id
+            FROM employees e
+            WHERE e.user_id = {$memberUserId} AND e.deleted_at IS NULL
+        ");
+        $memRow = $chkMember ? $chkMember->fetch_assoc() : null;
+        if (!$memRow) {
+            return ['success' => false, 'message' => 'Team member record not found'];
+        }
+
+        if (!$isSalesHead && (int)$memRow['team_id'] !== (int)$tlRow['team_id']) {
+            return ['success' => false, 'message' => 'This employee is not a member of your assigned sales team.'];
+        }
+
+        // 2. Fetch member performance for the cycle
+        $memStats = $this->engine->getExecutiveMonthlyStats($memberUserId, $month);
+        $achievedLandShare = (float)($memStats['total_achieved_land_share'] ?? 0.00);
+        $isQualified = ($achievedLandShare >= 2500000.00 || !empty($memStats['is_eligible']));
+
+        if (!$isQualified || $achievedLandShare <= 0) {
+            return ['success' => false, 'message' => 'Incentive ineligible: Team member must achieve at least ৳25 Lakh in land share sales to qualify for TL override.'];
+        }
+
+        // 3. Compute 0.05% override
+        $settings = $this->engine->getSettings();
+        $tlRate = (float)($settings['team_leader_rate'] ?? 0.05); // 0.05%
+        $overrideAmount = round(($achievedLandShare * $tlRate) / 100.0, 2);
+
+        if ($overrideAmount <= 0) {
+            return ['success' => false, 'message' => 'No override incentive earned for this member in this cycle.'];
+        }
+
+        // 4. Duplicate claim prevention
+        $cStart = $memStats['cycle_start'];
+        $cEnd = $memStats['cycle_end'];
+        $dupCheck = $this->db->query("
+            SELECT id, claim_status 
+            FROM project_incentive_claims 
+            WHERE user_id = {$userId} 
+              AND original_sales_by = {$memberUserId} 
+              AND split_type = 'tl_override' 
+              AND (cycle_month = '{$month}' OR (created_at BETWEEN '{$cStart}' AND '{$cEnd}'))
+              AND claim_status != 'rejected'
+            LIMIT 1
+        ");
+        if ($dupCheck && $existClaim = $dupCheck->fetch_assoc()) {
+            return ['success' => false, 'message' => 'This TL override incentive has already been claimed (Status: ' . ucfirst($existClaim['claim_status']) . '). It cannot be claimed again.'];
+        }
+
+        // 5. Insert claim record
+        $now = date('Y-m-d H:i:s');
+        $insSql = "INSERT INTO project_incentive_claims 
+                   (user_id, original_sales_by, claim_tier, split_type, is_external, sale_amount, land_share_value, incentive_percentage, incentive_amount, booking_completed, registration_completed, claim_status, cycle_month, claimed_at, remarks)
+                   VALUES (?, ?, 'team_lead', 'tl_override', 0, ?, ?, ?, ?, 1, 1, 'claimed', ?, ?, ?)";
+        $insStmt = $this->db->prepare($insSql);
+        if (!$insStmt) {
+            return ['success' => false, 'message' => 'Database prepare failed: ' . $this->db->error];
+        }
+        $insStmt->bind_param("iiddddsss", $userId, $memberUserId, $achievedLandShare, $achievedLandShare, $tlRate, $overrideAmount, $month, $now, $remarks);
+        if (!$insStmt->execute()) {
+            $err = $insStmt->error;
+            $insStmt->close();
+            return ['success' => false, 'message' => 'Failed to save claim: ' . $err];
+        }
+        $claimId = $insStmt->insert_id;
+        $insStmt->close();
+
+        // 6. Create Approval Request
+        $title = "TL 0.05% Override: {$memRow['full_name']} [{$memRow['employee_id']}] (Achieved: ৳" . number_format($achievedLandShare, 2) . " - {$month})";
+        $sqlReq = "INSERT INTO approval_requests 
+                   (department, request_type, title, source_table, source_id, request_amount, status, requested_by, approve_role, created_at)
+                   VALUES ('Sales', 'Incentive Claim', ?, 'project_incentive_claims', ?, ?, 'pending', ?, 'management', NOW())";
+        $stmtReq = $this->db->prepare($sqlReq);
+        if ($stmtReq) {
+            $stmtReq->bind_param("sidi", $title, $claimId, $overrideAmount, $userId);
+            $stmtReq->execute();
+            $stmtReq->close();
+        }
+
+        return [
+            'success' => true, 
+            'message' => 'TL Override claim (৳' . number_format($overrideAmount, 2) . ') submitted successfully! Sent to Management for approval.',
+            'claim_id' => $claimId
+        ];
+    }
+
+    /**
+     * Claim 30% Designated Project Incentive Share
+     */
+    public function claimDesignatedIncentive($userId, $bookingId, $remarks = '')
+    {
+        $userId = (int)$userId;
+        $bookingId = (int)$bookingId;
+        $remarks = trim($remarks);
+
+        if ($userId <= 0 || $bookingId <= 0) {
+            return ['success' => false, 'message' => 'Invalid user or booking ID'];
+        }
+
+        // 1. Fetch booking & flat details
+        $q = $this->db->query("
+            SELECT lb.*, p.name AS project_name, p.building_type, f.flat_name, f.floor_no, IFNULL(f.land_share_value, 0.00) as land_share_value, u.full_name AS seller_name
+            FROM lead_bookings lb
+            JOIN projects p ON lb.project_id = p.id
+            JOIN flats f ON lb.flat_id = f.id
+            JOIN users u ON lb.sales_by_id = u.id
+            WHERE lb.id = {$bookingId} AND lb.deleted_at IS NULL
+        ");
+        $booking = $q ? $q->fetch_assoc() : null;
+        if (!$booking) {
+            return ['success' => false, 'message' => 'Booking record not found'];
+        }
+
+        // 2. Check if user is eligible (>= 25L achieved in month cycle)
+        $month = $this->getCycleForDate($booking['booking_date']);
+        $userStats = $this->engine->getExecutiveMonthlyStats($userId, $month);
+        if (empty($userStats['is_eligible'])) {
+            return ['success' => false, 'message' => 'Incentive ineligible: You must achieve minimum ৳25 Lakh in land share sales to unlock designated project credits.'];
+        }
+
+        // 3. Verify that user was indeed the designated salesperson for this flat
+        $desInfo = $this->engine->getDesignatedSalesperson($booking['flat_id'], $booking['project_id'], $month, $booking['sales_by_id']);
+        $desUserId = is_array($desInfo) ? ($desInfo['user_id'] ?? null) : $desInfo;
+        if ((int)$desUserId !== $userId) {
+            return ['success' => false, 'message' => 'You are not the designated sales executive for this project/flat.'];
+        }
+
+        // 4. Calculate 30% designated share
+        $settings = $this->engine->getSettings();
+        $isFloorSpecial = $this->engine->isFloorSpecial($booking['floor_no'], $booking['building_type']);
+        $bRate = $isFloorSpecial ? (float)$settings['floor_special_rate'] : (float)$settings['flat_base_rate'];
+        $lsValue = (float)$booking['land_share_value'];
+        $designatedAmount = round(($lsValue * $bRate / 100.0) * 0.30, 2);
+        $desPct = $bRate * 0.30;
+
+        if ($designatedAmount <= 0) {
+            return ['success' => false, 'message' => 'Designated incentive amount is 0.'];
+        }
+
+        // 5. Prevent duplicate claims
+        $dupCheck = $this->db->query("
+            SELECT id, claim_status 
+            FROM project_incentive_claims 
+            WHERE booking_id = {$bookingId} AND user_id = {$userId} AND split_type = 'designated_30' AND claim_status != 'rejected'
+            LIMIT 1
+        ");
+        if ($dupCheck && $existClaim = $dupCheck->fetch_assoc()) {
+            return ['success' => false, 'message' => 'This 30% designated share has already been claimed (Status: ' . ucfirst($existClaim['claim_status']) . ').'];
+        }
+
+        // 6. Insert claim
+        $now = date('Y-m-d H:i:s');
+        $saleAmount = (float)$booking['flat_price'];
+        $bMoney = $this->isPaymentVerified($bookingId, 'booking_money');
+        $reg = $this->isPaymentVerified($bookingId, 'registration');
+        $bComp = $bMoney ? 1 : 0;
+        $rComp = $reg ? 1 : 0;
+        $insSql = "INSERT INTO project_incentive_claims 
+                   (booking_id, project_id, flat_id, user_id, is_external, split_type, is_on_hold, sale_amount, land_share_value, incentive_percentage, incentive_amount, booking_completed, registration_completed, claim_status, cycle_month, claimed_at, remarks)
+                   VALUES (?, ?, ?, ?, 0, 'designated_30', 0, ?, ?, ?, ?, ?, ?, 'claimed', ?, ?, ?)";
+        $insStmt = $this->db->prepare($insSql);
+        if (!$insStmt) {
+            return ['success' => false, 'message' => 'Database prepare failed: ' . $this->db->error];
+        }
+        $insStmt->bind_param("iiiiddddiisss", $bookingId, $booking['project_id'], $booking['flat_id'], $userId, $saleAmount, $lsValue, $desPct, $designatedAmount, $bComp, $rComp, $month, $now, $remarks);
+        if (!$insStmt->execute()) {
+            $err = $insStmt->error;
+            $insStmt->close();
+            return ['success' => false, 'message' => 'Failed to save claim: ' . $err];
+        }
+        $claimId = $insStmt->insert_id;
+        $insStmt->close();
+
+        // 7. Create approval request
+        $bkRef = 'BK-' . str_pad($bookingId, 5, '0', STR_PAD_LEFT);
+        $title = "30% Designated Sales Incentive: {$bkRef} ({$booking['project_name']} - {$booking['flat_name']})";
+        $sqlReq = "INSERT INTO approval_requests 
+                   (department, request_type, title, source_table, source_id, request_amount, status, requested_by, approve_role, created_at)
+                   VALUES ('Sales', 'Incentive Claim', ?, 'project_incentive_claims', ?, ?, 'pending', ?, 'management', NOW())";
+        $stmtReq = $this->db->prepare($sqlReq);
+        if ($stmtReq) {
+            $stmtReq->bind_param("sidi", $title, $claimId, $designatedAmount, $userId);
+            $stmtReq->execute();
+            $stmtReq->close();
+        }
+
+        return [
+            'success' => true, 
+            'message' => '30% Designated share claim (৳' . number_format($designatedAmount, 2) . ') submitted successfully! Sent to Management for approval.',
+            'claim_id' => $claimId
+        ];
     }
 }

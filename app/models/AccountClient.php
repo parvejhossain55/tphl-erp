@@ -5659,15 +5659,17 @@ class AccountClient extends Model
                 lp.*,
                 lb.id as booking_id,
                 l.full_name as client_name,
-                p.name as project_name,
-                f.flat_name as unit_name,
-                u.full_name as trashed_by_name
+                COALESCE(p.name, 'No Project') as project_name,
+                COALESCE(f.flat_name, 'N/A') as unit_name,
+                COALESCE(u.full_name, u.user_name, 'System') as trashed_by_name,
+                r.name as trashed_by_role
             FROM lead_payments lp
             JOIN lead_bookings lb ON lp.booking_id = lb.id
             JOIN leads l ON lb.lead_id = l.id
-            JOIN projects p ON lb.project_id = p.id
-            JOIN flats f ON lb.flat_id = f.id
+            LEFT JOIN projects p ON lb.project_id = p.id
+            LEFT JOIN flats f ON lb.flat_id = f.id
             LEFT JOIN users u ON lp.trashed_by = u.id
+            LEFT JOIN roles r ON u.role_id = r.id
             WHERE lp.is_trashed = 1
             ORDER BY lp.trashed_at DESC
         ";

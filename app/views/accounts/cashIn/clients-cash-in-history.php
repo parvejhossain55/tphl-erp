@@ -13,6 +13,9 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                     || strpos($userRoleName, 'account') !== false 
                     || strpos($userRoleName, 'admin') !== false;
 
+$isAccExec = function_exists('isAccountsExecutive') ? isAccountsExecutive() : ($userRoleId === 36);
+$canBulkDelete = (in_array($userRoleId, [1, 3, 6, 30]) || strpos($userRoleName, 'admin') !== false || strpos($userRoleName, 'management') !== false) && !$isAccExec;
+
 $bookingId = (int)($clientDetails['booking_id'] ?? ($_GET['booking_id'] ?? 0));
 
 $isClientsCommunicatedRole = (function_exists('isClientsCommunicated') && isClientsCommunicated())
@@ -704,6 +707,11 @@ window.openEditPaymentDateModal = function(target) {
                     <button type="button" class="btn" id="btnBulkReceipt" style="background-color: #6c5ffc; color: #fff;" disabled>
                         <i class="fa-solid fa-file-invoice me-1"></i> Generate Combined Receipt
                     </button>
+                    <?php if ($canBulkDelete): ?>
+                    <button type="button" class="btn btn-danger" id="btnBulkDelete" disabled>
+                        <i class="fa-solid fa-trash me-1"></i> Move Selected to Trash (<span id="bulkDeleteCount">0</span>)
+                    </button>
+                    <?php endif; ?>
 
                     <div class="ms-auto d-flex align-items-center">
                         <div class="form-check form-switch p-2 bg-light border rounded mb-0">
@@ -788,7 +796,9 @@ window.openEditPaymentDateModal = function(target) {
                                     data-verification-status="<?= $vs ?>"
                                     data-payment-type="<?= htmlspecialchars($transaction['payment_type'] ?? '') ?>">
                                     <td style="text-align: center;">
-                                        <input type="checkbox" class="form-check-input row-checkbox" value="<?= $transaction['id'] ?>">
+                                        <?php if (is_numeric($transaction['id'])): ?>
+                                            <input type="checkbox" class="form-check-input row-checkbox" value="<?= $transaction['id'] ?>">
+                                        <?php endif; ?>
                                     </td>
                                     <td>
                                         <span><?php echo $transaction['formatted_date']; ?></span>
@@ -2224,13 +2234,20 @@ window.openEditPaymentDateModal = function(target) {
             });
             
             bulkSelectedCount.textContent = checkedCount;
+            const bulkDeleteCount = document.getElementById('bulkDeleteCount');
+            if (bulkDeleteCount) {
+                bulkDeleteCount.textContent = checkedCount;
+            }
+            const btnBulkDelete = document.getElementById('btnBulkDelete');
             
             if (checkedCount > 0) {
                 btnBulkVerify.disabled = !allPending;
                 btnBulkReceipt.disabled = false;
+                if (btnBulkDelete) btnBulkDelete.disabled = false;
             } else {
                 btnBulkVerify.disabled = true;
                 btnBulkReceipt.disabled = true;
+                if (btnBulkDelete) btnBulkDelete.disabled = true;
             }
         }
         
@@ -2390,6 +2407,81 @@ window.openEditPaymentDateModal = function(target) {
                 // Open receipt in new tab
                 const idsParam = selectedIds.join(',');
                 window.open('<?= $GLOBALS['base_url'] ?>/payment-invoice?payment_id=' + idsParam, '_blank');
+            });
+        }
+        
+        // Bulk Delete Button Click
+        const btnBulkDelete = document.getElementById('btnBulkDelete');
+        if (btnBulkDelete) {
+            btnBulkDelete.addEventListener('click', function() {
+                const selectedIds = Array.from(rowCheckboxes)
+                                         .filter(cb => cb.checked && !isNaN(cb.value) && parseInt(cb.value, 10) > 0)
+                                         .map(cb => parseInt(cb.value, 10));
+
+                if (selectedIds.length === 0) {
+                    Swal.fire('No Selection', 'Please select at least one transaction to delete.', 'info');
+                    return;
+                }
+
+                const currentBookingId = <?= (int)($bookingId ?? ($clientDetails['booking_id'] ?? 0)) ?>;
+                if (!currentBookingId) {
+                    Swal.fire('Error', 'Missing booking ID.', 'error');
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Move ' + selectedIds.length + ' Transactions to Trash?',
+                    html: `Are you sure you want to move <b>${selectedIds.length}</b> selected transaction(s) to Trash?<br><br>
+                           <span class="text-muted small">They will be removed from the ledger and safely stored in the <b>Trash Client Payment</b> list (recording who moved them and when).</span>`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#e65100',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: '<i class="fa-solid fa-trash me-1"></i> Yes, Move to Trash',
+                    cancelButtonText: 'Cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.fire({
+                            title: 'Moving to Trash...',
+                            text: 'Please wait while transactions are being processed.',
+                            allowOutsideClick: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            }
+                        });
+
+                        $.ajax({
+                            url: '<?= $GLOBALS['base_url'] ?>/account-client/bulkDelete',
+                            type: 'POST',
+                            data: {
+                                payment_ids: selectedIds,
+                                booking_id: currentBookingId
+                            },
+                            dataType: 'json',
+                            success: function(res) {
+                                if (res.success) {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Moved to Trash!',
+                                        text: res.message,
+                                        confirmButtonColor: '#006837'
+                                    }).then(() => {
+                                        location.reload();
+                                    });
+                                } else {
+                                    Swal.fire('Failed', res.message || 'Could not move transactions to trash.', 'error');
+                                }
+                            },
+                            error: function(xhr) {
+                                let msg = 'Failed to connect to server.';
+                                if (xhr.responseJSON && xhr.responseJSON.message) {
+                                    msg = xhr.responseJSON.message;
+                                }
+                                Swal.fire('Error', msg, 'error');
+                            }
+                        });
+                    }
+                });
             });
         }
         

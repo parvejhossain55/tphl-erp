@@ -60,10 +60,14 @@
                                             <?= number_format($transaction['amount'], 2) ?>
                                         </td>
                                         <td>
-                                            <?= htmlspecialchars($transaction['trashed_by_name'] ?? 'System') ?>
+                                            <div class="fw-bold text-dark"><i class="fa-solid fa-user-xmark text-danger me-1"></i><?= htmlspecialchars($transaction['trashed_by_name'] ?? 'System') ?></div>
+                                            <?php if (!empty($transaction['trashed_by_role'])): ?>
+                                                <span class="badge bg-secondary-subtle text-secondary border py-0 px-1" style="font-size:10px;"><?= htmlspecialchars(trim($transaction['trashed_by_role'])) ?></span>
+                                            <?php endif; ?>
                                         </td>
                                         <td>
-                                            <?= date('d M, Y h:i A', strtotime($transaction['trashed_at'])) ?>
+                                            <div class="fw-semibold text-danger"><i class="fa-regular fa-clock me-1"></i><?= !empty($transaction['trashed_at']) ? date('d M, Y', strtotime($transaction['trashed_at'])) : '—' ?></div>
+                                            <small class="text-muted"><?= !empty($transaction['trashed_at']) ? date('h:i A', strtotime($transaction['trashed_at'])) : '' ?></small>
                                         </td>
                                         <td class="text-center">
                                             <button type="button" class="btn btn-sm btn-success" onclick="restoreTransaction(<?= $transaction['id'] ?>, <?= $transaction['booking_id'] ?>)" title="Restore">

@@ -508,6 +508,21 @@ class CollectionStatementController extends Controller
     /**
      * Fetch aggregated summary totals
      */
+    /**
+     * Helper to format amounts cleanly into Cr / L / BDT
+     */
+    public static function formatCurrencyTk($v): string
+    {
+        $v = (float) $v;
+        if ($v >= 10000000) {
+            return '৳' . number_format($v / 10000000, 2) . ' Cr';
+        }
+        if ($v >= 100000) {
+            return '৳' . number_format($v / 100000, 2) . ' L';
+        }
+        return '৳' . number_format($v, 2);
+    }
+
     protected function fetchSummary($startDate, $endDate, $filters)
     {
         $summary = [
@@ -671,6 +686,43 @@ class CollectionStatementController extends Controller
                 $summary['bank_breakdown'][$bName] = is_array($bData) ? ($bData['amount'] ?? 0) : (float)$bData;
             }
         }
+
+        // 3. Total Sold Value & Bookings (from active bookings in lead_bookings)
+        $condsSold = [
+            "lb.deleted_at IS NULL",
+            "lb.booking_status IN ('booked', 'completed')"
+        ];
+        if (!empty($filters['project_id'])) {
+            $pId = (int)$filters['project_id'];
+            $condsSold[] = "lb.project_id = {$pId}";
+        }
+        $whereSold = implode(" AND ", $condsSold);
+        $sqlSold = "
+            SELECT 
+                COUNT(*) as total_sold_units,
+                COUNT(DISTINCT lb.lead_id) as total_sold_clients,
+                COALESCE(SUM(lb.agreement_value), 0) as total_sold_value
+            FROM lead_bookings lb
+            WHERE {$whereSold}
+        ";
+        $resSold = $this->db->query($sqlSold);
+        $summary['total_sold_units']   = 0;
+        $summary['total_sold_clients'] = 0;
+        $summary['total_sold_value']   = 0.0;
+        if ($resSold && $rowSold = $resSold->fetch_assoc()) {
+            $summary['total_sold_units']   = (int)$rowSold['total_sold_units'];
+            $summary['total_sold_clients'] = (int)$rowSold['total_sold_clients'];
+            $summary['total_sold_value']   = (float)$rowSold['total_sold_value'];
+        }
+
+        $summary['pending_due'] = max(0, $summary['total_sold_value'] - $summary['total_amount']);
+        $summary['collection_rate'] = $summary['total_sold_value'] > 0
+            ? round(($summary['total_amount'] / $summary['total_sold_value']) * 100, 1)
+            : 0;
+
+        $summary['total_sold_value_formatted'] = self::formatCurrencyTk($summary['total_sold_value']);
+        $summary['total_collection_formatted'] = self::formatCurrencyTk($summary['total_amount']);
+        $summary['pending_due_formatted']      = self::formatCurrencyTk($summary['pending_due']);
 
         return $summary;
     }
