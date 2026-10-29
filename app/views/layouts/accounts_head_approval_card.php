@@ -29,6 +29,13 @@ if (!isset($ahInfo)) {
 // If no approval request found for this entity, only render modals/scripts, skip top card
 $renderCard = (!empty($ahInfo) && !empty($ahInfo['has_request']));
 
+if (empty($coaList)) {
+    $dbForCoa = $GLOBALS['db'] ?? ($this->db ?? (function_exists('db') ? db() : null));
+    if ($dbForCoa && function_exists('getCOAExpenseList')) {
+        $coaList = getCOAExpenseList($dbForCoa);
+    }
+}
+
 $currentUserId = (int)($_SESSION['user']['id'] ?? 0);
 $currentUserRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
 $currentRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
@@ -423,42 +430,76 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
         <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
             <div class="modal-header bg-success text-white py-2 px-3">
                 <h6 class="modal-title fw-bold fs-14 mb-0" id="modalAhApproveDirectLabel">
-                    <i class="fa-solid fa-stamp me-2"></i>Accounts Head Approval Verification
+                    <i class="fa-solid fa-stamp me-2"></i>Accounts Head Approval
                 </h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-3">
                 <input type="hidden" id="ahCardApproveReqId" value="">
                 
+                <!-- Requisition / Request Title & Approved Amount -->
+                <div class="mb-3 p-3 bg-light rounded-3 border">
+                    <div class="text-muted extra-small text-uppercase fw-bold mb-1">Requisition / Request Title</div>
+                    <div class="fw-bold text-dark fs-14" id="ahCardReqTitle">Sales Incentive Claim</div>
+                    <div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center">
+                        <span class="text-muted extra-small">Approved Amount:</span>
+                        <span class="fw-bold text-success fs-15" id="ahCardReqAmount">--</span>
+                    </div>
+                </div>
+
                 <!-- Designated Official Profile Card -->
-                <div class="d-flex align-items-center gap-3 p-3 bg-light rounded-3 mb-3 border">
-                    <div class="avatar bg-success text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 44px; height: 44px; flex-shrink: 0; font-size: 1.1rem;">
+                <div class="d-flex align-items-center gap-3 p-2 bg-info-subtle rounded-3 mb-3 border border-info-subtle">
+                    <div class="avatar bg-info text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 40px; height: 40px; flex-shrink: 0;">
                         <i class="fa-solid fa-user-check"></i>
                     </div>
                     <div>
-                        <div class="fw-bold text-dark fs-14"><?= htmlspecialchars($designatedName) ?> <span class="badge bg-success-subtle text-success border border-success-subtle ms-1"><?= htmlspecialchars($designatedEmpId) ?></span></div>
-                        <div class="text-muted extra-small"><?= htmlspecialchars($designatedDesig) ?></div>
-                        <div class="text-success extra-small fw-semibold mt-1"><i class="fa-solid fa-shield-check me-1"></i>Role 30 · Accounts Head Sign-off</div>
+                        <div class="text-muted extra-small text-uppercase fw-bold">Designated Approver:</div>
+                        <div class="fw-bold text-dark fs-13"><?= htmlspecialchars($designatedName) ?> <span class="badge bg-success text-white ms-1"><?= htmlspecialchars($designatedEmpId) ?></span> (<?= htmlspecialchars($designatedDesig) ?>)</div>
                     </div>
                 </div>
 
-                <div class="alert alert-info py-2 px-3 extra-small mb-3 d-flex align-items-center gap-2">
-                    <i class="fa-solid fa-circle-info fs-14 text-info"></i>
-                    <span>Once approved, Accounts (Role 6) and Accounts Head (Role 30) will be authorized to disburse payment.</span>
+                <!-- Chart of Accounts Category -->
+                <div class="mb-3">
+                    <label for="ahCardCoaId" class="form-label extra-small fw-bold text-muted text-uppercase">
+                        Chart of Accounts Category <span class="text-danger">(Required for posting)</span>
+                    </label>
+                    <select class="form-select form-select-sm" id="ahCardCoaId">
+                        <option value="">-- Select Expense / Asset Ledger --</option>
+                        <?php if(!empty($coaList)): ?>
+                            <?php 
+                                $currentGroup = '';
+                                foreach($coaList as $coa): 
+                                    $group = !empty($coa['parent_name']) ? $coa['parent_name'] : ($coa['account_type'] ?? 'Expense');
+                                    if($group !== $currentGroup):
+                                        if($currentGroup !== '') echo '</optgroup>';
+                                        echo '<optgroup label="'.htmlspecialchars($group).'">';
+                                        $currentGroup = $group;
+                                    endif;
+                            ?>
+                                <option value="<?= $coa['id'] ?>"><?= htmlspecialchars($coa['account_code'] . ' - ' . $coa['account_name']) ?></option>
+                            <?php endforeach; ?>
+                            <?php if($currentGroup !== '') echo '</optgroup>'; ?>
+                        <?php endif; ?>
+                    </select>
                 </div>
 
                 <div class="mb-3">
-                    <label for="ahCardApproveNote" class="form-label fw-semibold extra-small mb-1">Approval Note (Optional):</label>
-                    <textarea class="form-control form-control-sm" id="ahCardApproveNote" rows="3" placeholder="Enter approval note or instructions..."></textarea>
+                    <label for="ahCardApproveNote" class="form-label extra-small fw-bold text-muted text-uppercase">Approval / Rejection Note (Optional)</label>
+                    <textarea class="form-control form-control-sm" id="ahCardApproveNote" rows="2" placeholder="e.g. Verified and approved for payment disbursement."></textarea>
                 </div>
 
                 <div id="ahApproveMsg" class="d-none"></div>
             </div>
             <div class="modal-footer py-2 px-3 bg-light border-top-0 d-flex justify-content-between">
-                <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success btn-sm fw-bold px-3 shadow-sm" id="btnSubmitAhApprove" onclick="submitAhApproveAction()">
-                    <i class="fa-solid fa-check me-1"></i>Approve &amp; Authorize Payment
+                <button type="button" class="btn btn-outline-danger btn-sm px-3" onclick="submitAhRejectAction()">
+                    <i class="fa-solid fa-times me-1"></i>Reject Request
                 </button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary btn-sm px-4 fw-bold shadow-sm" id="btnSubmitAhApprove" onclick="submitAhApproveAction()">
+                        <i class="fa-solid fa-check me-1"></i>Approve as Accounts Head
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -672,12 +713,23 @@ window.submitOpHeadRejectAction = function() {
 };
 
 // --- Accounts Head Actions ---
-window.triggerAhApprove = function(reqId) {
+window.triggerAhApprove = function(reqId, title = '', amount = '') {
     if (!reqId) return;
     const reqInput = document.getElementById('ahCardApproveReqId');
     if (reqInput) reqInput.value = reqId;
+
+    const titleEl = document.getElementById('ahCardReqTitle');
+    if (titleEl) titleEl.innerText = title || ('Requisition / Approval Request #' + reqId);
+
+    const amountEl = document.getElementById('ahCardReqAmount');
+    if (amountEl) amountEl.innerText = amount ? ('৳ ' + amount) : '--';
+
     const noteArea = document.getElementById('ahCardApproveNote');
     if (noteArea) noteArea.value = 'Approved by Accounts Head (Md. Mamunoor Rashid [1309]). Proceed for payment.';
+
+    const coaSelect = document.getElementById('ahCardCoaId');
+    if (coaSelect) coaSelect.value = '';
+
     const msgEl = document.getElementById('ahApproveMsg');
     if (msgEl) { msgEl.className = 'd-none'; msgEl.innerHTML = ''; }
     
@@ -691,28 +743,20 @@ window.triggerAhApprove = function(reqId) {
 
 window.triggerAhReject = function(reqId) {
     if (!reqId) return;
-    const reqInput = document.getElementById('ahCardRejectReqId');
+    const reqInput = document.getElementById('ahCardRejectReqId') || document.getElementById('ahCardApproveReqId');
     if (reqInput) reqInput.value = reqId;
-    const noteArea = document.getElementById('ahCardRejectNote');
-    if (noteArea) noteArea.value = '';
-    const msgEl = document.getElementById('ahRejectMsg');
-    if (msgEl) { msgEl.className = 'd-none'; msgEl.innerHTML = ''; }
-    
-    const modalEl = document.getElementById('modalAhRejectDirect');
-    if (modalEl) {
-        let modal = bootstrap.Modal.getInstance(modalEl);
-        if (!modal) modal = new bootstrap.Modal(modalEl);
-        modal.show();
-    }
+    submitAhRejectAction();
 };
 
 window.submitAhApproveAction = function() {
     const reqId = document.getElementById('ahCardApproveReqId')?.value;
     const note = document.getElementById('ahCardApproveNote')?.value || 'Approved by Accounts Head';
+    const coaId = document.getElementById('ahCardCoaId')?.value || null;
     const btn = document.getElementById('btnSubmitAhApprove');
     const msgEl = document.getElementById('ahApproveMsg');
 
     if (!reqId) return;
+
     if (btn) {
         btn.disabled = true;
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Approving...';
@@ -723,7 +767,8 @@ window.submitAhApproveAction = function() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             approval_request_id: reqId,
-            note: note
+            note: note,
+            coa_id: coaId
         })
     })
     .then(res => res.json())
@@ -750,9 +795,15 @@ window.submitAhApproveAction = function() {
         } else {
             if (btn) {
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fa-solid fa-check me-1"></i>Approve & Authorize Payment';
+                btn.innerHTML = '<i class="fa-solid fa-check me-1"></i>Approve as Accounts Head';
             }
-            if (msgEl) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Approval Failed',
+                    text: data.message || 'Approval failed'
+                });
+            } else if (msgEl) {
                 msgEl.className = 'alert alert-danger py-2 px-3 extra-small mb-0';
                 msgEl.innerHTML = '<i class="fa-solid fa-circle-exclamation me-1"></i>' + (data.message || 'Approval failed');
             }
@@ -761,9 +812,15 @@ window.submitAhApproveAction = function() {
     .catch(err => {
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fa-solid fa-check me-1"></i>Approve & Authorize Payment';
+            btn.innerHTML = '<i class="fa-solid fa-check me-1"></i>Approve as Accounts Head';
         }
-        if (msgEl) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: err.toString()
+            });
+        } else if (msgEl) {
             msgEl.className = 'alert alert-danger py-2 px-3 extra-small mb-0';
             msgEl.innerHTML = '<i class="fa-solid fa-circle-exclamation me-1"></i>Error: ' + err;
         }
@@ -771,74 +828,87 @@ window.submitAhApproveAction = function() {
 };
 
 window.submitAhRejectAction = function() {
-    const reqId = document.getElementById('ahCardRejectReqId')?.value;
-    const note = document.getElementById('ahCardRejectNote')?.value?.trim();
-    const btn = document.getElementById('btnSubmitAhReject');
-    const msgEl = document.getElementById('ahRejectMsg');
+    const reqId = document.getElementById('ahCardApproveReqId')?.value || document.getElementById('ahCardRejectReqId')?.value;
+    const note = document.getElementById('ahCardApproveNote')?.value || document.getElementById('ahCardRejectNote')?.value || 'Rejected by Accounts Head';
 
     if (!reqId) return;
-    if (!note) {
-        if (msgEl) {
-            msgEl.className = 'alert alert-warning py-2 px-3 extra-small mb-0';
-            msgEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i>Please provide a rejection reason.';
-        }
-        return;
-    }
 
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Rejecting...';
-    }
+    const executeReject = () => {
+        const btn = document.getElementById('btnSubmitAhApprove');
+        if (btn) btn.disabled = true;
 
-    fetch('<?= $GLOBALS['base_url'] ?>/approval-requests/reject-accounts-head', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            approval_request_id: reqId,
-            note: note
+        fetch('<?= $GLOBALS['base_url'] ?>/approval-requests/reject-accounts-head', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                approval_request_id: reqId,
+                note: note
+            })
         })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            const modalEl = document.getElementById('modalAhRejectDirect');
-            if (modalEl) {
-                const modal = bootstrap.Modal.getInstance(modalEl);
-                if (modal) modal.hide();
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const modalEl = document.getElementById('modalAhApproveDirect');
+                if (modalEl) {
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                }
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Rejected!',
+                        text: data.message || 'Request rejected by Accounts Head.',
+                        timer: 1400,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    window.location.reload();
+                }
+            } else {
+                if (btn) btn.disabled = false;
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Rejection Failed',
+                        text: data.message || 'Rejection failed'
+                    });
+                } else {
+                    alert(data.message || 'Rejection failed');
+                }
             }
+        })
+        .catch(err => {
+            if (btn) btn.disabled = false;
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
-                    icon: 'success',
-                    title: 'Rejected!',
-                    text: data.message || 'Request rejected by Accounts Head.',
-                    timer: 1200,
-                    showConfirmButton: false
-                }).then(() => {
-                    window.location.reload();
+                    icon: 'error',
+                    title: 'Error',
+                    text: err.toString()
                 });
             } else {
-                window.location.reload();
+                alert('Error: ' + err);
             }
-        } else {
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fa-solid fa-ban me-1"></i>Reject Request';
+        });
+    };
+
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'Confirm Rejection',
+            text: 'Are you sure you want to REJECT this request as Accounts Head?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, Reject Request'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                executeReject();
             }
-            if (msgEl) {
-                msgEl.className = 'alert alert-danger py-2 px-3 extra-small mb-0';
-                msgEl.innerHTML = '<i class="fa-solid fa-circle-exclamation me-1"></i>' + (data.message || 'Rejection failed');
-            }
-        }
-    })
-    .catch(err => {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fa-solid fa-ban me-1"></i>Reject Request';
-        }
-        if (msgEl) {
-            msgEl.className = 'alert alert-danger py-2 px-3 extra-small mb-0';
-            msgEl.innerHTML = '<i class="fa-solid fa-circle-exclamation me-1"></i>Error: ' + err;
-        }
-    });
+        });
+    } else if (confirm('Are you sure you want to REJECT this request as Accounts Head?')) {
+        executeReject();
+    }
 };
 </script>

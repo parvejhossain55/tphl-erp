@@ -43,16 +43,21 @@ class LeadSynchronizer
                 PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES   => false,
+                PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4, time_zone = '+06:00'",
             ];
+
+            date_default_timezone_set('Asia/Dhaka');
 
             try {
                 $this->pdo = new PDO($dsn, $dbConf['username'], $dbConf['password'], $options);
+                $this->pdo->exec("SET time_zone = '+06:00'");
             } catch (PDOException $e) {
                 // If on local dev machine and configured credentials fail, attempt local root/tphl_db connection
                 if ($dbConf['username'] !== 'root' || $dbConf['database'] !== 'tphl_db') {
                     try {
                         $localDsn = 'mysql:host=127.0.0.1;port=3306;dbname=tphl_db;charset=utf8mb4';
                         $this->pdo = new PDO($localDsn, 'root', '', $options);
+                        $this->pdo->exec("SET time_zone = '+06:00'");
                     } catch (Throwable $t) {
                         throw $e;
                     }

@@ -5492,9 +5492,21 @@ public function discountStatement($bookingId = null)
                 }
 
                 // Friendly label
-                $emiDisplayNo = !empty($existing['schedule_emi_no']) ? $existing['schedule_emi_no'] : ($existing['emi_no'] ?? null);
+                $emiDisplayNo = !empty($existing['schedule_emi_no']) ? (int)$existing['schedule_emi_no'] : (!empty($existing['emi_no']) ? (int)$existing['emi_no'] : 0);
                 if ($existing['payment_type'] === 'emi') {
-                    $typeLabel = $emiDisplayNo ? ($emiDisplayNo . ' Installment') : 'EMI';
+                    if ($emiDisplayNo > 0) {
+                        $suffix = 'th';
+                        if (!in_array(($emiDisplayNo % 100), [11, 12, 13], true)) {
+                            switch ($emiDisplayNo % 10) {
+                                case 1: $suffix = 'st'; break;
+                                case 2: $suffix = 'nd'; break;
+                                case 3: $suffix = 'rd'; break;
+                            }
+                        }
+                        $typeLabel = $emiDisplayNo . $suffix . ' Installment';
+                    } else {
+                        $typeLabel = 'EMI';
+                    }
                 } elseif ($existing['payment_type'] === 'emi_due_settlement') {
                     $typeLabel = 'EMI Due Settlement';
                 } elseif ($existing['payment_type'] === 'booking_money') {
