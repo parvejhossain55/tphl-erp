@@ -543,7 +543,15 @@ class LeadController extends Controller
                     'has_agent'                   => $mHasAgent ? 1 : 0,
                     'follow_up_count'  => $followUpCounts[$lead['id']] ?? 0,
                     'booking_count'    => $bookingCounts[$lead['id']] ?? 0,
-                    'created_at'       => !empty($lead['created_at']) ? date('d M, Y, h:i A', strtotime($lead['created_at'])) : '',
+                    'created_at'       => (!empty($lead['created_at']) && $lead['created_at'] !== '0000-00-00 00:00:00') ? (function($raw, $appr) {
+                        $ts = strtotime($raw);
+                        $now = time();
+                        $aTs = (!empty($appr) && $appr !== '0000-00-00 00:00:00') ? strtotime($appr) : 0;
+                        if ($ts > $now + 60 || ($aTs > 0 && $ts > $aTs + 60)) {
+                            $ts -= (6 * 3600);
+                        }
+                        return date('d M, Y, h:i A', $ts);
+                    })($lead['created_at'], $lead['approved_at'] ?? null) : '',
                     'company'          => $lead['company'] ?? '',
                     'company_name'     => $lead['company_name'] ?? '',
                     'job_title'        => $lead['job_title'] ?? '',
@@ -583,7 +591,19 @@ class LeadController extends Controller
                 ' . ($start + $key + 1) . '
             ';
 
-            $row[] = $lead['created_at'] ? date('d M, Y, h:i A', strtotime($lead['created_at'])) : '';
+            $leadCreatedRaw = $lead['created_at'] ?? '';
+            $leadCreatedTs = (!empty($leadCreatedRaw) && $leadCreatedRaw !== '0000-00-00 00:00:00') ? strtotime($leadCreatedRaw) : 0;
+            if ($leadCreatedTs > 0) {
+                // Correct 6-hour timezone offset if created_at was shifted into future or after approval
+                $nowTs = time();
+                $approvedTs = (!empty($lead['approved_at']) && $lead['approved_at'] !== '0000-00-00 00:00:00') ? strtotime($lead['approved_at']) : 0;
+                if ($leadCreatedTs > $nowTs + 60 || ($approvedTs > 0 && $leadCreatedTs > $approvedTs + 60)) {
+                    $leadCreatedTs -= (6 * 3600);
+                }
+                $row[] = date('d M, Y, h:i A', $leadCreatedTs);
+            } else {
+                $row[] = '';
+            }
 
             $jobCompanyStr = '';
             $jt = !empty($lead['job_title']) ? $lead['job_title'] : (!empty($lead['designation']) ? $lead['designation'] : '');
@@ -1003,9 +1023,17 @@ class LeadController extends Controller
         $sl = 1;
         foreach ($leads as $lead) {
             $id = $lead['id'];
-            $createdDate = !empty($lead['created_at']) && $lead['created_at'] !== '0000-00-00 00:00:00'
-                ? date('d M, Y, h:i A', strtotime($lead['created_at']))
-                : '';
+            $createdTs = (!empty($lead['created_at']) && $lead['created_at'] !== '0000-00-00 00:00:00') ? strtotime($lead['created_at']) : 0;
+            if ($createdTs > 0) {
+                $nowTs = time();
+                $approvedTs = (!empty($lead['approved_at']) && $lead['approved_at'] !== '0000-00-00 00:00:00') ? strtotime($lead['approved_at']) : 0;
+                if ($createdTs > $nowTs + 60 || ($approvedTs > 0 && $createdTs > $approvedTs + 60)) {
+                    $createdTs -= (6 * 3600);
+                }
+                $createdDate = date('d M, Y, h:i A', $createdTs);
+            } else {
+                $createdDate = '';
+            }
 
             $name = $lead['full_name'] ?? '';
             $jobTitle = !empty($lead['job_title']) ? $lead['job_title'] : ($lead['designation'] ?? '');

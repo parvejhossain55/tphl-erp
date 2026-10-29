@@ -1153,7 +1153,7 @@
                 $upcomingCount = getFollowUpCount($userId, 'upcoming');
                 ?>
                 <!-- for sales executive  -->
-                <?php if (hasPermission("add Lead") && ($_SESSION['user']['role_id'] ?? 0) != 9): ?>
+                <?php if ((hasPermission("add Lead") || in_array($_SESSION['user']['role_id'] ?? 0, [5, 8])) && ($_SESSION['user']['role_id'] ?? 0) != 9): ?>
                     <ul class="sidebar-menu child2" style="display:block;">
                         <?php if (!$isManagement): ?>
                         <li class="slide">
@@ -1230,6 +1230,22 @@
                                 class="sidebar__menu-item <?= isActive('my-onboarding-projects', $current_route) ?>">My
                                 Onboarding Projects </a>
                         </li>
+
+                        <!-- Incentive Module for Sales Executives & Team Leaders -->
+                        <li class="slide <?= isActive('my-incentives', $current_route) ?>">
+                            <a href="<?= $base_url ?>/my-incentives"
+                                class="sidebar__menu-item <?= isActive('my-incentives', $current_route) ?>">
+                                <i class="fa-solid fa-hand-holding-dollar text-primary me-2"></i>My Incentive
+                            </a>
+                        </li>
+                        <?php if (!empty($_SESSION['user']['is_team_leader']) && $_SESSION['user']['is_team_leader'] == 1): ?>
+                        <li class="slide <?= isActive('my-team-incentives', $current_route) ?>">
+                            <a href="<?= $base_url ?>/my-team-incentives"
+                                class="sidebar__menu-item <?= isActive('my-team-incentives', $current_route) ?>">
+                                <i class="fa-solid fa-users text-info me-2"></i>My Team Target
+                            </a>
+                        </li>
+                        <?php endif; ?>
                     </ul>
                 <?php endif; ?>
                 <!-- for sales executive  -->

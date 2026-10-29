@@ -463,7 +463,7 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                 <?php elseif (in_array($claim['claim_status'], ['approved', 'partially_paid'])): ?>
                                                     <?php if (!$isAhApprovedClaim): ?>
                                                         <?php if ($canApproveAh && !empty($ahInfoClaim['approval_request_id'])): ?>
-                                                            <button type="button" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm" onclick="triggerAhApprove(<?= (int)$ahInfoClaim['approval_request_id'] ?>)">
+                                                            <button type="button" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm" onclick="triggerAhApprove(<?= (int)$ahInfoClaim['approval_request_id'] ?>, 'Sales Incentive Claim: <?= htmlspecialchars(addslashes(($claim['claim_code'] ?? '') . ' (' . ($claim['project_name'] ?? '') . ' - ' . ($claim['flat_name'] ?? '') . ')'), ENT_QUOTES) ?>', '<?= number_format((float)$claim['incentive_amount'], 2) ?>')">
                                                                 <i class="fa-solid fa-stamp me-1"></i>AH Approve
                                                             </button>
                                                         <?php else: ?>
@@ -595,7 +595,7 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                 <?php if ($ext['claim_status'] === 'approved'): ?>
                                                     <?php if (!$isAhApprovedExt): ?>
                                                         <?php if ($canApproveAh && !empty($ahInfoExt['approval_request_id'])): ?>
-                                                            <button type="button" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm" onclick="triggerAhApprove(<?= (int)$ahInfoExt['approval_request_id'] ?>)">
+                                                            <button type="button" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm" onclick="triggerAhApprove(<?= (int)$ahInfoExt['approval_request_id'] ?>, 'External Member Incentive: <?= htmlspecialchars(addslashes(($ext['claim_code'] ?? '') . ' (' . ($ext['project_name'] ?? '') . ' - ' . ($ext['flat_name'] ?? '') . ')'), ENT_QUOTES) ?>', '<?= number_format((float)$ext['incentive_amount'], 2) ?>')">
                                                                 <i class="fa-solid fa-stamp me-1"></i>AH Approve
                                                             </button>
                                                         <?php else: ?>
@@ -1096,6 +1096,59 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // --- Persistent Active Tab across Page Reloads & Actions ---
+    const tabStorageKey = 'activeIncentiveManagementTab';
+    const tabButtons = document.querySelectorAll('#incentiveTabs button[data-bs-toggle="tab"]');
+
+    function activateIncentiveTab(targetSelector) {
+        if (!targetSelector) return false;
+        const targetBtn = document.querySelector(`#incentiveTabs button[data-bs-target="${targetSelector}"]`);
+        const targetPane = document.querySelector(targetSelector);
+        if (!targetBtn || !targetPane) return false;
+
+        tabButtons.forEach(btn => {
+            btn.classList.remove('active');
+            btn.setAttribute('aria-selected', 'false');
+        });
+        document.querySelectorAll('#incentiveTabsContent > .tab-pane').forEach(pane => {
+            pane.classList.remove('show', 'active');
+        });
+
+        targetBtn.classList.add('active');
+        targetBtn.setAttribute('aria-selected', 'true');
+        targetPane.classList.add('show', 'active');
+
+        if (typeof bootstrap !== 'undefined' && bootstrap.Tab) {
+            try {
+                bootstrap.Tab.getOrCreateInstance(targetBtn).show();
+            } catch (e) {}
+        }
+        return true;
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    let initialTab = window.location.hash || sessionStorage.getItem(tabStorageKey);
+    if (!initialTab && urlParams.get('ref') === 'all_approvals') {
+        initialTab = '#sales-claims';
+    }
+    if (initialTab) {
+        activateIncentiveTab(initialTab);
+    }
+
+    tabButtons.forEach(btn => {
+        const saveTabState = function (el) {
+            const target = el.getAttribute('data-bs-target');
+            if (target) {
+                sessionStorage.setItem(tabStorageKey, target);
+                if (history.replaceState) {
+                    history.replaceState(null, null, window.location.pathname + window.location.search + target);
+                }
+            }
+        };
+        btn.addEventListener('click', function () { saveTabState(this); });
+        btn.addEventListener('shown.bs.tab', function (e) { saveTabState(e.target); });
+    });
+
     // Project Flat selection logic
     const projectFlatSelect = document.getElementById('projectFlatSelect');
     const extIncentivePercent = document.getElementById('extIncentivePercent');

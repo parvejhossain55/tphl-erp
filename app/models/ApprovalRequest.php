@@ -89,6 +89,7 @@ class ApprovalRequest extends Model
         (department, request_type, title, source_table, source_id, requested_days, requested_by, approve_role, meta_data, request_amount, attachment, status, approved_amount, approved_by, approved_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
+        $stmt = $this->db->prepare($sql);
         if (!$stmt) {
             die("Prepare failed: " . $this->db->error);
         }
@@ -519,6 +520,13 @@ class ApprovalRequest extends Model
         $res = $stmt->execute();
         $stmt->close();
 
+        // Also update source table status if applicable
+        $sourceTable = $req['source_table'] ?? '';
+        $sourceId = (int)($req['source_id'] ?? 0);
+        if ($sourceTable === 'project_incentive_claims' && $sourceId > 0) {
+            $this->db->query("UPDATE project_incentive_claims SET claim_status = 'approved', approved_by = {$userId}, approved_at = NOW() WHERE id = {$sourceId}");
+        }
+
         return $res;
     }
 
@@ -554,10 +562,17 @@ class ApprovalRequest extends Model
         $stmt->close();
 
         // Also update source table status if applicable
-        $sourceTable = $req['source_table'];
-        $sourceId = (int)$req['source_id'];
+        $sourceTable = $req['source_table'] ?? '';
+        $sourceId = (int)($req['source_id'] ?? 0);
         if ($sourceTable && $sourceId) {
-            $this->db->query("UPDATE {$sourceTable} SET status = 'rejected' WHERE id = {$sourceId}");
+            if ($sourceTable === 'project_incentive_claims') {
+                $this->db->query("UPDATE project_incentive_claims SET claim_status = 'rejected' WHERE id = {$sourceId}");
+            } else {
+                $colCheck = $this->db->query("SHOW COLUMNS FROM `{$sourceTable}` LIKE 'status'");
+                if ($colCheck && $colCheck->num_rows > 0) {
+                    $this->db->query("UPDATE `{$sourceTable}` SET status = 'rejected' WHERE id = {$sourceId}");
+                }
+            }
         }
 
         return $res;
@@ -1094,6 +1109,12 @@ class ApprovalRequest extends Model
                 WHERE id = ?";
         }
 
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            error_log("ApprovalRequest updateStatus prepare failed: " . $this->db->error . " | SQL: " . $sql);
+            return false;
+        }
+
         $stmt->bind_param(
             'sdiisi',
             $status,
@@ -1599,10 +1620,16 @@ class ApprovalRequest extends Model
     public function find($id)
     {
         $sql = "SELECT * FROM {$this->table} WHERE id = ?";
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return null;
+        }
         $stmt->bind_param('i', $id);
         $stmt->execute();
         $result = $stmt->get_result();
-        return $result->fetch_assoc(); // fetch_assoc() instead of fetch()
+        $row = $result ? $result->fetch_assoc() : null;
+        $stmt->close();
+        return $row;
     }
 
     public function getApprovalDashboardMetrics()
@@ -2271,6 +2298,7 @@ class ApprovalRequest extends Model
                 LEFT JOIN departments d_req ON e_req.department_id = d_req.id
                 WHERE {$whereClause}";
 
+        $stmt = $this->db->prepare($sql);
         if (!$stmt) {
             return 0;
         }
