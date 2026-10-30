@@ -282,6 +282,12 @@ if ($paymentType === 'land_share') {
             color: #b91c1c;
         }
 
+        .badge-none {
+            background: #f1f5f9;
+            color: #64748b;
+            border: 1px solid #cbd5e1;
+        }
+
         .unit-chip {
             display: inline-block;
             background: #e2e8f0;
@@ -501,32 +507,61 @@ if ($paymentType === 'land_share') {
                         $targetVal = 0;
                         $paidVal = 0;
                         $dueVal = 0;
-                        if ($paymentType === 'full_payment' || empty($paymentType)) {
-                            $targetVal = (float)($c['total_price_target'] ?? $c['total_agreement_value'] ?? 0);
-                            $paidVal = (float)($c['total_paid'] ?? 0);
-                            $dueVal = (float)($c['overall_due'] ?? 0);
+                        $targetLastPayment = null;
+                        $targetPendingCount = 0;
+                        $targetLatestVer = null;
+
+                        if ($paymentType === 'construction_fee') {
+                            $targetVal = (float)($c['total_construction_target'] ?? 0);
+                            $paidVal = (float)($c['construction_paid'] ?? 0);
+                            $dueVal = (float)($c['construction_due'] ?? 0);
+                            $targetLastPayment = !empty($c['construction_last_payment_date']) ? $c['construction_last_payment_date'] : null;
+                            $targetPendingCount = (int)($c['construction_pending_payments'] ?? 0);
+                            $targetLatestVer = $c['construction_latest_verification_status'] ?? null;
                         } elseif ($paymentType === 'land_share') {
                             $targetVal = (float)($c['total_land_share_target'] ?? 0);
                             $paidVal = (float)($c['land_share_paid'] ?? 0);
                             $dueVal = (float)($c['land_share_due'] ?? 0);
+                            $targetLastPayment = !empty($c['land_share_last_payment_date']) ? $c['land_share_last_payment_date'] : null;
+                            $targetPendingCount = (int)($c['land_share_pending_payments'] ?? 0);
+                            $targetLatestVer = $c['land_share_latest_verification_status'] ?? null;
                         } elseif ($paymentType === 'development_charge') {
                             $targetVal = (float)($c['total_dev_charge_target'] ?? 0);
                             $paidVal = (float)($c['dev_charge_paid'] ?? 0);
                             $dueVal = (float)($c['dev_charge_due'] ?? 0);
+                            $targetLastPayment = !empty($c['dev_charge_last_payment_date']) ? $c['dev_charge_last_payment_date'] : null;
+                            $targetPendingCount = (int)($c['dev_charge_pending_payments'] ?? 0);
+                            $targetLatestVer = $c['dev_charge_latest_verification_status'] ?? null;
                         } elseif ($paymentType === 'shop_service_charge') {
                             $targetVal = (float)($c['total_shop_service_charge_target'] ?? 0);
                             $paidVal = (float)($c['shop_service_charge_paid'] ?? 0);
                             $dueVal = (float)($c['shop_service_charge_due'] ?? 0);
-                        } elseif ($paymentType === 'construction_fee') {
-                            $targetVal = (float)($c['total_construction_target'] ?? 0);
-                            $paidVal = (float)($c['construction_paid'] ?? 0);
-                            $dueVal = (float)($c['construction_due'] ?? 0);
+                            $targetLastPayment = !empty($c['shop_service_charge_last_payment_date']) ? $c['shop_service_charge_last_payment_date'] : null;
+                            $targetPendingCount = (int)($c['shop_service_charge_pending_payments'] ?? 0);
+                            $targetLatestVer = $c['shop_service_charge_latest_verification_status'] ?? null;
+                        } else {
+                            $targetVal = (float)($c['total_price_target'] ?? $c['total_agreement_value'] ?? 0);
+                            $paidVal = (float)($c['total_paid'] ?? 0);
+                            $dueVal = (float)($c['overall_due'] ?? 0);
+                            $targetLastPayment = !empty($c['last_payment_date']) ? $c['last_payment_date'] : null;
+                            $targetPendingCount = (int)($c['total_pending_payments'] ?? 0);
+                            $targetLatestVer = $c['latest_verification_status'] ?? null;
                         }
 
-                        $ver = $c['latest_verification_status'] ?? 'pending';
-                        $statusClass = 'badge-pending';
-                        if ($ver === 'verified') $statusClass = 'badge-verified';
-                        elseif ($ver === 'rejected') $statusClass = 'badge-rejected';
+                        // Determine verification status badge
+                        if ($targetPendingCount > 0) {
+                            $ver = 'Pending';
+                            $statusClass = 'badge-pending';
+                        } elseif ($paidVal <= 0 && empty($targetLastPayment)) {
+                            $ver = 'No Payment';
+                            $statusClass = 'badge-none';
+                        } elseif ($targetLatestVer === 'rejected') {
+                            $ver = 'Rejected';
+                            $statusClass = 'badge-rejected';
+                        } else {
+                            $ver = 'Verified';
+                            $statusClass = 'badge-verified';
+                        }
                     ?>
                         <tr>
                             <td class="text-center"><?= $sl++ ?></td>
@@ -584,10 +619,10 @@ if ($paymentType === 'land_share') {
                                 <td class="text-end" style="color: #15803d; font-weight: 600;">৳<?= number_format($c['total_paid'] ?? 0, 2) ?></td>
                             <?php endif; ?>
                             <td class="text-center">
-                                <?= !empty($c['last_payment_date']) ? date('d M, Y', strtotime($c['last_payment_date'])) : '<span style="color:#94a3b8;">None</span>' ?>
+                                <?= !empty($targetLastPayment) ? date('d M, Y', strtotime($targetLastPayment)) : '<span style="color:#94a3b8;">None</span>' ?>
                             </td>
                             <td class="text-center">
-                                <span class="badge-status <?= $statusClass ?>"><?= ucfirst(htmlspecialchars($ver)) ?></span>
+                                <span class="badge-status <?= $statusClass ?>"><?= htmlspecialchars($ver) ?></span>
                             </td>
                         </tr>
                     <?php endforeach; ?>

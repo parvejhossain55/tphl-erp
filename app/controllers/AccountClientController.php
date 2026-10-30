@@ -1104,11 +1104,42 @@ public function indexTwo($bookingId = null)
         }
         $html = '';
         foreach ($clients as $client) {
-            $verStatus    = $client['latest_verification_status'] ?? '';
-            $totalPending = (int)($client['total_pending_payments'] ?? 0);
-            $isPending    = ($totalPending > 0);
-            $isRejected   = !$isPending && ($verStatus === 'rejected');
-            $isVerified   = !$isPending && ($verStatus === 'verified');
+            $typeLastPayment = null;
+            $typePendingCount = 0;
+            $typeLatestVer = null;
+            $typePaidAmt = 0;
+
+            if ($paymentType === 'construction_fee') {
+                $typeLastPayment  = $client['construction_last_payment_date'] ?? null;
+                $typePendingCount = (int)($client['construction_pending_payments'] ?? 0);
+                $typeLatestVer    = $client['construction_latest_verification_status'] ?? null;
+                $typePaidAmt      = (float)($client['construction_paid'] ?? 0);
+            } elseif ($paymentType === 'land_share') {
+                $typeLastPayment  = $client['land_share_last_payment_date'] ?? null;
+                $typePendingCount = (int)($client['land_share_pending_payments'] ?? 0);
+                $typeLatestVer    = $client['land_share_latest_verification_status'] ?? null;
+                $typePaidAmt      = (float)($client['land_share_paid'] ?? 0);
+            } elseif ($paymentType === 'development_charge') {
+                $typeLastPayment  = $client['dev_charge_last_payment_date'] ?? null;
+                $typePendingCount = (int)($client['dev_charge_pending_payments'] ?? 0);
+                $typeLatestVer    = $client['dev_charge_latest_verification_status'] ?? null;
+                $typePaidAmt      = (float)($client['dev_charge_paid'] ?? 0);
+            } elseif ($paymentType === 'shop_service_charge') {
+                $typeLastPayment  = $client['shop_service_charge_last_payment_date'] ?? null;
+                $typePendingCount = (int)($client['shop_service_charge_pending_payments'] ?? 0);
+                $typeLatestVer    = $client['shop_service_charge_latest_verification_status'] ?? null;
+                $typePaidAmt      = (float)($client['shop_service_charge_paid'] ?? 0);
+            } else {
+                $typeLastPayment  = $client['last_payment_date'] ?? null;
+                $typePendingCount = (int)($client['total_pending_payments'] ?? 0);
+                $typeLatestVer    = $client['latest_verification_status'] ?? null;
+                $typePaidAmt      = (float)($client['total_paid'] ?? 0);
+            }
+
+            $isPending    = ($typePendingCount > 0);
+            $isNoPayment  = ($typePaidAmt <= 0 && empty($typeLastPayment));
+            $isRejected   = !$isPending && !$isNoPayment && ($typeLatestVer === 'rejected');
+            $isVerified   = !$isPending && !$isNoPayment && ($typeLatestVer !== 'rejected');
 
             $rowClass     = $isPending ? 'table-pending-highlight' : ($isRejected ? 'table-danger' : '');
             $badgeClass   = $isVerified ? 'bg-success' : ($isRejected ? 'bg-danger' : ($isPending ? 'bg-warning text-dark' : 'bg-secondary'));
@@ -1261,8 +1292,8 @@ public function indexTwo($bookingId = null)
                 $html .= '<td>TK.' . number_format($client['total_paid'] ?? 0, 2) . '</td>';
             }
 
-            $html .= '<td>' . ($client['last_payment_date'] ? date('d M, Y', strtotime($client['last_payment_date'])) : 'No Payment') . '</td>';
-            $html .= '<td><span class="badge ' . $badgeClass . '"><i class="fa-light ' . $badgeIcon . ' me-1"></i>' . ucfirst($verStatus) . '</span></td>';
+            $html .= '<td>' . ($typeLastPayment ? date('d M, Y', strtotime($typeLastPayment)) : 'No Payment') . '</td>';
+            $html .= '<td><span class="badge ' . $badgeClass . '"><i class="fa-light ' . $badgeIcon . ' me-1"></i>' . $verText . '</span></td>';
             $html .= '<td><button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="openProfileModal(' . (int)$client['lead_id'] . ')" title="View Client Profile" style="font-size:12px;"><i class="fa-light fa-id-card me-1"></i>Profile</button></td>';
             $escapedName = htmlspecialchars(trim(preg_replace('/\s+/', ' ', $client['client_name'])), ENT_QUOTES);
             $stmtBtn = !empty($client['booking_id']) ? '<a href="' . $GLOBALS['base_url'] . '/client-statement/' . (int)$client['booking_id'] . '" target="_blank" class="table__icon" style="color: #4f46e5; border: 1px solid #c7d2fe; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px;" title="Print Client Statement"><i class="fa-solid fa-print"></i></a>' : '';
@@ -2071,20 +2102,56 @@ public function showCedTransactionForm($bookingId = null)
         ? $this->clientModel->getVirtualEmiSchedule($bookingId) 
         : [];
 
+    $registrationPaid = $this->clientModel->isRegistrationPaid($bookingId);
+
+    // Calculate pending/unverified registration & land_share payments for form logic
+    $pendingQuery = $this->db->prepare("
+        SELECT SUM(amount) as pending_amount 
+        FROM lead_payments 
+        WHERE booking_id = ? AND is_trashed = 0 AND verification_status != 'rejected' AND payment_type IN ('registration', 'land_share', 'mutation_cost')
+    ");
+    $pendingQuery->bind_param("i", $bookingId);
+    $pendingQuery->execute();
+    $pendingRes = $pendingQuery->get_result()->fetch_assoc();
+    $allRegistrationAndLandshare = (float)($pendingRes['pending_amount'] ?? 0);
+
+    $bookingMoneyTotal = (float)($paymentSummary['booking_money_total'] ?? $clientDetails['booking_money_total'] ?? 0);
+    $totalLandShare = (float)($paymentSummary['total_land_share'] ?? $clientDetails['total_land_share'] ?? 0);
+    $discountAmount = (float)($paymentSummary['discount_amount'] ?? $clientDetails['discount_amount'] ?? 0);
+    $agreementValue = (float)($paymentSummary['agreement_value'] ?? $clientDetails['agreement_value'] ?? 0);
+    $effectiveBookingTarget = ($agreementValue > 0) ? $agreementValue : 300000;
+
+    $formRemainingRegistration = max(0, $totalLandShare - $discountAmount - $effectiveBookingTarget - $allRegistrationAndLandshare);
+    $formRemainingBooking = max(0, $effectiveBookingTarget - $bookingMoneyTotal);
+
+    // Get management users for handover dropdown
+    $managementUsers = [];
+    $mgmtQuery = $this->db->query("SELECT id, full_name, email FROM users WHERE role_id IN (1, 3)");
+    if ($mgmtQuery) {
+        while ($row = $mgmtQuery->fetch_assoc()) {
+            $managementUsers[] = $row;
+        }
+    }
+
     $this->view("ced/ced-cash-in-form", [
-        "current_route"      => "ced-add-transaction-form",
-        "page_title"         => "CED Add Transaction - " . $clientDetails['client_name'],
-        "clientDetails"      => $clientDetails,
-        "bookingId"          => $bookingId,
-        "paymentSummary"     => $paymentSummary,
-        "outstandingDues"    => $outstandingDues,
-        "virtualEmiSchedule" => $virtualEmiSchedule,
-        "isShop"             => (!empty($clientDetails['is_shop']) && $clientDetails['is_shop'] == 1)
+        "current_route"               => "ced-add-transaction-form",
+        "page_title"                  => "CED Add Transaction - " . $clientDetails['client_name'],
+        "clientDetails"               => $clientDetails,
+        "bookingId"                   => $bookingId,
+        "paymentSummary"              => $paymentSummary,
+        "outstandingDues"             => $outstandingDues,
+        "virtualEmiSchedule"          => $virtualEmiSchedule,
+        "registrationPaid"            => $registrationPaid,
+        "managementUsers"             => $managementUsers,
+        "formRemainingRegistration"   => $formRemainingRegistration,
+        "formRemainingBooking"        => $formRemainingBooking,
+        "allRegistrationAndLandshare" => $allRegistrationAndLandshare,
+        "isShop"                      => (!empty($clientDetails['is_shop']) && $clientDetails['is_shop'] == 1)
     ]);
 }
 
 /**
- * CED: Process add-transaction POST (restricted to development_charge & emi)
+ * CED: Process add-transaction POST
  */
 public function addCedTransaction()
 {
@@ -2111,11 +2178,36 @@ public function addCedTransaction()
 
     $paymentType = $_POST['payment_type'] ?? '';
 
-    // CED can only add development_charge, shop_service_charge, emi, emi_due_settlement, or land_share
-    if (!in_array($paymentType, ['development_charge', 'shop_service_charge', 'emi', 'emi_due_settlement'])) {
-        setError("CED can only add Development Charges, Shop Service Charges, EMI, or EMI Settlement transactions.");
+    // Allow all standard payment types for CED just like Accounts
+    $allowedCedPaymentTypes = [
+        'booking_money',
+        'registration',
+        'mutation_cost',
+        'land_share',
+        'development_charge',
+        'shop_service_charge',
+        'emi',
+        'emi_due_settlement',
+        'others'
+    ];
+    if (!in_array($paymentType, $allowedCedPaymentTypes)) {
+        setError("Invalid payment type selected.");
         header("Location: {$GLOBALS['base_url']}/ced-add-transaction-form?booking_id={$bookingId}");
         exit;
+    }
+
+    if ($paymentType === 'others' && empty(trim($_POST['other_purpose'] ?? ''))) {
+        setError("Please specify the purpose for the 'Others' payment.");
+        header("Location: {$GLOBALS['base_url']}/ced-add-transaction-form?booking_id={$bookingId}");
+        exit;
+    }
+
+    // Update agreement_value in lead_bookings if total_booking_money is provided
+    if (isset($_POST['total_booking_money']) && is_numeric($_POST['total_booking_money']) && in_array($paymentType, ['booking_money', 'registration'])) {
+        $totalBookingMoney = (float)$_POST['total_booking_money'];
+        $updateStmt = $this->db->prepare("UPDATE lead_bookings SET agreement_value = ? WHERE id = ?");
+        $updateStmt->bind_param("di", $totalBookingMoney, $bookingId);
+        $updateStmt->execute();
     }
 
     // CHECK: EMI due settlement requires a parent payment ID
@@ -2221,6 +2313,7 @@ public function addCedTransaction()
         'waiver_reason'     => $waiverReason,
         'waiver_attachment' => $waiverAttachmentPath,
         'waiver_status'     => $waiverStatus,
+        'handover_to'       => !empty($_POST['handover_to']) ? (int)$_POST['handover_to'] : null,
         'created_by'        => $_SESSION['user']['id'] ?? 1
     ];
 
@@ -2461,7 +2554,7 @@ public function showAddTransactionForm($bookingId = null)
     $pendingQuery = $this->db->prepare("
         SELECT SUM(amount) as pending_amount 
         FROM lead_payments 
-        WHERE booking_id = ? AND is_trashed = 0 AND payment_type IN ('registration', 'land_share')
+        WHERE booking_id = ? AND is_trashed = 0 AND verification_status != 'rejected' AND payment_type IN ('registration', 'land_share', 'mutation_cost')
     ");
     $pendingQuery->bind_param("i", $bookingId);
     $pendingQuery->execute();
@@ -2471,7 +2564,8 @@ public function showAddTransactionForm($bookingId = null)
     $bookingMoneyTotal = (float)($clientDetails['booking_money_total'] ?? 0);
     $totalLandShare = (float)($clientDetails['total_land_share'] ?? 0);
     $discountAmount = (float)($clientDetails['discount_amount'] ?? 0);
-    $effectiveBookingTarget = (float)($clientDetails['effective_booking_target'] ?? 0);
+    $agreementValue = (float)($clientDetails['agreement_value'] ?? 0);
+    $effectiveBookingTarget = ($agreementValue > 0) ? $agreementValue : 300000;
 
     $formRemainingRegistration = max(0, $totalLandShare - $discountAmount - $effectiveBookingTarget - $allRegistrationAndLandshare);
     $formRemainingBooking = max(0, $effectiveBookingTarget - $bookingMoneyTotal);
@@ -2728,6 +2822,13 @@ public function addTransaction()
 
         // Get client details
         $clientDetails = $this->clientModel->getClientByBookingId($transaction['booking_id']);
+        $isShop = !empty($clientDetails['is_shop']) && $clientDetails['is_shop'] == 1;
+        if ($isShop) {
+            require_once dirname(__DIR__) . '/models/AccountShopClient.php';
+            $this->clientModel = new AccountShopClient($this->db);
+            $clientDetails = $this->clientModel->getClientByBookingId($transaction['booking_id']);
+        }
+        $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($transaction['booking_id']);
 
         // Get EMI schedule if payment type is EMI
         $emiSchedule = null;
@@ -2752,6 +2853,8 @@ public function addTransaction()
             "current_route" => "client-cash-in-edit-form",
             "page_title" => "Edit Transaction - " . $clientDetails['client_name'],
             "clientDetails" => $clientDetails,
+            "paymentSummary" => $paymentSummary,
+            "isShop" => $isShop,
             "transactionDetails" => $transaction,
             "emiSchedule" => $emiSchedule,
             "managementUsers" => $managementUsers
@@ -2792,6 +2895,14 @@ public function updateTransaction()
 
         error_log("Session User ID: " . ($_SESSION['user']['id'] ?? 'null'));
 
+        // Update agreement_value if total_booking_money is provided
+        if (isset($_POST['total_booking_money']) && is_numeric($_POST['total_booking_money']) && in_array($_POST['payment_type'] ?? '', ['booking_money', 'registration'])) {
+            $totalBookingMoney = (float)$_POST['total_booking_money'];
+            $updateStmt = $this->db->prepare("UPDATE lead_bookings SET agreement_value = ? WHERE id = ?");
+            $updateStmt->bind_param("di", $totalBookingMoney, $bookingId);
+            $updateStmt->execute();
+        }
+
         // Get the OLD transaction data to compare due amounts
         $oldTransaction = $this->clientModel->getTransactionById($paymentId);
         $oldEmiSchedule = null;
@@ -2799,7 +2910,7 @@ public function updateTransaction()
         
         if ($oldTransaction && $oldTransaction['payment_type'] === 'emi') {
             $oldEmiSchedule = $this->clientModel->getEMIScheduleByPaymentId($paymentId);
-            $oldDueAmount = (float)($oldEmiSchedule['due_emi_amount'] ?? 0);
+            $oldDueAmount = (float)($oldEmiSchedule['due_emi_amount'] ?? ($oldTransaction['due_emi_amount'] ?? 0));
         }
 
         error_log("Old Due Amount: " . $oldDueAmount);
@@ -2810,6 +2921,17 @@ public function updateTransaction()
             foreach ($_POST['existing_files'] as $ep) {
                 $ep = trim($ep);
                 if ($ep !== '') $mergedPaths[] = $ep;
+            }
+        } elseif (empty($_POST['existing_files_present']) && !empty($oldTransaction['attachment_paths'])) {
+            // Preserve existing attachments when submitted from modal without existing_files inputs
+            $decodedOld = is_string($oldTransaction['attachment_paths'])
+                ? json_decode($oldTransaction['attachment_paths'], true)
+                : $oldTransaction['attachment_paths'];
+            if (is_array($decodedOld)) {
+                foreach ($decodedOld as $ep) {
+                    $ep = trim((string)$ep);
+                    if ($ep !== '') $mergedPaths[] = $ep;
+                }
             }
         }
         // Append any newly uploaded files
@@ -2840,11 +2962,20 @@ public function updateTransaction()
             if ($bRow) { $bData = $bRow->fetch_assoc(); $bankName = $bData['label'] ?? ''; }
         }
 
+        $postedPaymentType = $_POST['payment_type'] ?? 'emi';
+        if ($postedPaymentType === 'others' && empty(trim($_POST['other_purpose'] ?? ''))) {
+            setError("Please specify the purpose for the 'Others' payment.");
+            $redirectFail = !empty($_POST['redirect_to']) ? "{$GLOBALS['base_url']}/" . ltrim($_POST['redirect_to'], '/') : "{$GLOBALS['base_url']}/clients-cash-in-history-view/{$bookingId}";
+            header("Location: {$redirectFail}");
+            exit;
+        }
+
         // Prepare transaction data
         $transactionData = [
             'payment_id'       => $paymentId,
             'booking_id'       => $bookingId,
-            'payment_type'     => $_POST['payment_type'] ?? 'emi',
+            'payment_type'     => $postedPaymentType,
+            'other_purpose'    => ($postedPaymentType === 'others') ? trim($_POST['other_purpose'] ?? '') : null,
             'amount'           => $_POST['amount'] ?? 0,
             'payment_method'   => $_POST['payment_method'] ?? 'cash',
             'payment_status'   => 'pending', // Always pending until verified
@@ -2884,8 +3015,8 @@ public function updateTransaction()
                 }
             }
 
-            // Calculate the additional payment made (if due amount decreased)
-            if ($oldDueAmount > 0 && $newDueAmount < $oldDueAmount) {
+            // Calculate the additional payment made (only if due amount decreased AND amount field wasn't already modified and not from quick modal)
+            if (empty($_POST['from_unverified_modal']) && $oldDueAmount > 0 && $newDueAmount < $oldDueAmount && abs((float)$transactionData['amount'] - (float)($oldTransaction['amount'] ?? 0)) < 0.01) {
                 $additionalPayment = $oldDueAmount - $newDueAmount;
                 error_log("Additional payment detected: " . $additionalPayment);
                 

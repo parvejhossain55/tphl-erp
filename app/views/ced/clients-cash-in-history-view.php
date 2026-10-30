@@ -1291,6 +1291,9 @@ if (!isset($discountApprovalReq)) {
                     <button type="button" class="btn btn-sm btn-outline-secondary payment-filter active" data-filter="all">All</button>
                     <button type="button" class="btn btn-sm btn-outline-primary payment-filter" data-filter="booking_money">Booking Money</button>
                     <button type="button" class="btn btn-sm btn-outline-info payment-filter" data-filter="registration">Registration</button>
+                    <?php if (!$isShop): ?>
+                    <button type="button" class="btn btn-sm btn-outline-secondary payment-filter" data-filter="mutation_cost">Mutation Cost</button>
+                    <?php endif; ?>
                     <button type="button" class="btn btn-sm btn-outline-success payment-filter" data-filter="land_share">Land Share</button>
                     <?php if ($isShop): ?>
                     <button type="button" class="btn btn-sm btn-outline-warning payment-filter" data-filter="shop_service_charge">Shop Svc Charge</button>
@@ -1298,6 +1301,7 @@ if (!isset($discountApprovalReq)) {
                     <button type="button" class="btn btn-sm btn-outline-warning payment-filter" data-filter="development_charge">Dev. Charge</button>
                     <button type="button" class="btn btn-sm btn-outline-danger payment-filter" data-filter="emi">EMI</button>
                     <button type="button" class="btn btn-sm btn-outline-dark payment-filter" data-filter="emi_due_settlement">EMI Settlement</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary payment-filter" data-filter="others">Others</button>
                 </div>
 
                 <div class="table__wrapper table-responsive">
@@ -1590,6 +1594,7 @@ if (!isset($discountApprovalReq)) {
                                                         data-payment-id="<?= htmlspecialchars($transaction['id']) ?>"
                                                         data-booking-id="<?= htmlspecialchars($bookingId) ?>"
                                                         data-payment-type="<?= htmlspecialchars($transaction['payment_type'] ?? '') ?>"
+                                                        data-other-purpose="<?= htmlspecialchars($transaction['other_purpose'] ?? '') ?>"
                                                         data-amount="<?= htmlspecialchars($transaction['amount'] ?? 0) ?>"
                                                         data-payment-date="<?= htmlspecialchars($transaction['payment_date'] ?? date('Y-m-d')) ?>"
                                                         data-payment-method="<?= htmlspecialchars($transaction['payment_method'] ?? 'cash') ?>"
@@ -1617,7 +1622,7 @@ if (!isset($discountApprovalReq)) {
                                             <?php endif; ?>
 
                                             <?php 
-                                                $isEditableByManagement = $isManagementUser && in_array($transaction['payment_type'] ?? '', ['development_charge', 'land_share', 'shop_service_charge', 'emi']);
+                                                $isEditableByManagement = $isManagementUser && in_array($transaction['payment_type'] ?? '', ['development_charge', 'land_share', 'shop_service_charge', 'emi', 'booking_money', 'registration', 'mutation_cost', 'others']);
                                             ?>
                                             <?php if ($hasId && $isEditableByManagement): ?>
                                                 <a href="<?= $GLOBALS['base_url'] ?>/edit-client-cash-in/<?= htmlspecialchars($transaction['id']) ?>"
@@ -2625,6 +2630,7 @@ if (!isset($discountApprovalReq)) {
                     <input type="hidden" name="payment_id" id="edit_unverified_payment_id">
                     <input type="hidden" name="booking_id" id="edit_unverified_booking_id" value="<?= htmlspecialchars($bookingId ?? '') ?>">
                     <input type="hidden" name="redirect_to" value="clients-cash-in-history-view/<?= htmlspecialchars($bookingId ?? '') ?>">
+                    <input type="hidden" name="from_unverified_modal" value="1">
 
                     <div class="alert alert-info py-2 px-3 mb-3 d-flex align-items-center gap-2" style="font-size: 13px;">
                         <i class="fa-solid fa-circle-info fs-5 text-primary"></i>
@@ -2633,18 +2639,29 @@ if (!isset($discountApprovalReq)) {
                         </div>
                     </div>
 
-                    <div class="row ">
+                    <div class="row gy-3">
                         <!-- Payment Type -->
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Payment Type <span class="text-danger">*</span></label>
                             <select name="payment_type" id="edit_unverified_payment_type" class="form-select" required>
-                                <option value="development_charge">Development Charge</option>
-                                <option value="shop_service_charge">Shop Service Charge</option>
-                                <option value="emi">EMI Payment</option>
                                 <option value="booking_money">Booking Money</option>
                                 <option value="registration">Registration</option>
+                                <?php if (!$isShop): ?>
                                 <option value="mutation_cost">Mutation Cost</option>
+                                <?php endif; ?>
+                                <option value="development_charge">Development Charge</option>
+                                <?php if ($isShop): ?>
+                                <option value="shop_service_charge">Shop Service Charge</option>
+                                <?php endif; ?>
+                                <option value="emi">EMI Payment</option>
+                                <option value="others">Others (Extra / Incidental Charges)</option>
                             </select>
+                        </div>
+
+                        <!-- Other Purpose (shown only when Others is selected) -->
+                        <div class="col-md-6" id="edit_unverified_other_purpose_group" style="display:none;">
+                            <label class="form-label fw-bold">Payment Purpose / Description <span class="text-danger">*</span></label>
+                            <input type="text" name="other_purpose" id="edit_unverified_other_purpose" class="form-control" placeholder="e.g. Utility Connection, Modification, Extra Work">
                         </div>
 
                         <!-- Amount -->
@@ -2667,7 +2684,8 @@ if (!isset($discountApprovalReq)) {
                             <label class="form-label fw-bold">Payment Method <span class="text-danger">*</span></label>
                             <select name="payment_method" id="edit_unverified_payment_method" class="form-select" required>
                                 <option value="cash">Cash</option>
-                                <option value="bank">Bank / Cheque</option>
+                                <option value="bank">Bank Transfer</option>
+                                <option value="cheque">Cheque</option>
                                 <option value="online">Online / MFS</option>
                             </select>
                         </div>
@@ -2750,8 +2768,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const chequeGroups = document.querySelectorAll('.edit-cheque-group');
         const onlineGroups = document.querySelectorAll('.edit-online-group');
         const dueGroup = document.querySelector('.edit-due-group');
+        const otherPurposeGroup = document.getElementById('edit_unverified_other_purpose_group');
+        const otherPurposeInput = document.getElementById('edit_unverified_other_purpose');
 
         if (method === 'bank') {
+            bankGroups.forEach(el => el.style.display = '');
+            chequeGroups.forEach(el => el.style.display = 'none');
+            onlineGroups.forEach(el => el.style.display = 'none');
+        } else if (method === 'cheque') {
             bankGroups.forEach(el => el.style.display = '');
             chequeGroups.forEach(el => el.style.display = '');
             onlineGroups.forEach(el => el.style.display = 'none');
@@ -2768,6 +2792,16 @@ document.addEventListener('DOMContentLoaded', function() {
         if (dueGroup) {
             dueGroup.style.display = (type === 'emi') ? '' : 'none';
         }
+
+        if (otherPurposeGroup) {
+            if (type === 'others') {
+                otherPurposeGroup.style.display = '';
+                if (otherPurposeInput) otherPurposeInput.setAttribute('required', 'required');
+            } else {
+                otherPurposeGroup.style.display = 'none';
+                if (otherPurposeInput) otherPurposeInput.removeAttribute('required');
+            }
+        }
     }
 
     const methodSelect = document.getElementById('edit_unverified_payment_method');
@@ -2783,6 +2817,8 @@ document.addEventListener('DOMContentLoaded', function() {
             let editPaymentType = this.dataset.paymentType || 'development_charge';
             if (editPaymentType === 'land_share') editPaymentType = 'registration';
             document.getElementById('edit_unverified_payment_type').value = editPaymentType;
+            const otherPurposeInput = document.getElementById('edit_unverified_other_purpose');
+            if (otherPurposeInput) otherPurposeInput.value = this.dataset.otherPurpose || '';
             document.getElementById('edit_unverified_amount').value = this.dataset.amount || '';
             document.getElementById('edit_unverified_payment_date').value = this.dataset.paymentDate || '';
             document.getElementById('edit_unverified_payment_method').value = this.dataset.paymentMethod || 'cash';

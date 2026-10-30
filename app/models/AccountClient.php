@@ -84,27 +84,65 @@ class AccountClient extends Model
                     $types .= 's';
                 }
             } elseif ($targetDateType === 'last_payment_date') {
-                $whereParts[] = "p_stats.last_payment_date IS NOT NULL";
+                $dateCol = "p_stats.last_payment_date";
+                if (!empty($paymentType) && $paymentType !== 'full_payment') {
+                    if ($paymentType === 'construction_fee') {
+                        $dateCol = "p_stats.emi_last_payment_date";
+                    } elseif ($paymentType === 'land_share') {
+                        $dateCol = "p_stats.land_share_last_payment_date";
+                    } elseif ($paymentType === 'development_charge') {
+                        $dateCol = "p_stats.dev_charge_last_payment_date";
+                    } elseif ($paymentType === 'shop_service_charge') {
+                        $dateCol = "p_stats.shop_service_charge_last_payment_date";
+                    }
+                }
+                $whereParts[] = "{$dateCol} IS NOT NULL";
                 if (!empty($startDate)) {
-                    $whereParts[] = "DATE(p_stats.last_payment_date) >= ?";
+                    $whereParts[] = "DATE({$dateCol}) >= ?";
                     $params[] = $startDate;
                     $types .= 's';
                 }
                 if (!empty($endDate)) {
-                    $whereParts[] = "DATE(p_stats.last_payment_date) <= ?";
+                    $whereParts[] = "DATE({$dateCol}) <= ?";
                     $params[] = $endDate;
                     $types .= 's';
                 }
             }
-        
         }
         
-        if ($verificationStatus === 'verified') {
-            $havingParts[] = "latest_verification_status = 'verified' AND total_pending_payments = 0";
-        } elseif ($verificationStatus === 'pending') {
-            $havingParts[] = "total_pending_payments > 0";
-        } elseif ($verificationStatus === 'rejected') {
-            $havingParts[] = "latest_verification_status = 'rejected' AND total_pending_payments = 0";
+        if (!empty($verificationStatus)) {
+            if (!empty($paymentType) && $paymentType !== 'full_payment') {
+                $targetPending = "total_pending_payments";
+                $targetVer = "latest_verification_status";
+                if ($paymentType === 'construction_fee') {
+                    $targetPending = "construction_pending_payments";
+                    $targetVer = "construction_latest_verification_status";
+                } elseif ($paymentType === 'land_share') {
+                    $targetPending = "land_share_pending_payments";
+                    $targetVer = "land_share_latest_verification_status";
+                } elseif ($paymentType === 'development_charge') {
+                    $targetPending = "dev_charge_pending_payments";
+                    $targetVer = "dev_charge_latest_verification_status";
+                } elseif ($paymentType === 'shop_service_charge') {
+                    $targetPending = "shop_service_charge_pending_payments";
+                    $targetVer = "shop_service_charge_latest_verification_status";
+                }
+                if ($verificationStatus === 'verified') {
+                    $havingParts[] = "{$targetVer} = 'verified' AND {$targetPending} = 0";
+                } elseif ($verificationStatus === 'pending') {
+                    $havingParts[] = "{$targetPending} > 0";
+                } elseif ($verificationStatus === 'rejected') {
+                    $havingParts[] = "{$targetVer} = 'rejected' AND {$targetPending} = 0";
+                }
+            } else {
+                if ($verificationStatus === 'verified') {
+                    $havingParts[] = "latest_verification_status = 'verified' AND total_pending_payments = 0";
+                } elseif ($verificationStatus === 'pending') {
+                    $havingParts[] = "total_pending_payments > 0";
+                } elseif ($verificationStatus === 'rejected') {
+                    $havingParts[] = "latest_verification_status = 'rejected' AND total_pending_payments = 0";
+                }
+            }
         }
 
         
@@ -171,9 +209,32 @@ class AccountClient extends Model
 
             -- Financial Breakdown Paid
             COALESCE(p_stats.land_share_paid, 0) AS land_share_paid,
+            COALESCE(p_stats.land_share_paid_verified, 0) AS land_share_paid_verified,
+            COALESCE(p_stats.land_share_paid_unverified, 0) AS land_share_paid_unverified,
+            p_stats.land_share_last_payment_date,
+            COALESCE(p_stats.land_share_pending_payments, 0) AS land_share_pending_payments,
+            p_stats.land_share_latest_verification_status,
+
             COALESCE(p_stats.dev_charge_paid, 0) AS dev_charge_paid,
+            COALESCE(p_stats.dev_charge_paid_verified, 0) AS dev_charge_paid_verified,
+            COALESCE(p_stats.dev_charge_paid_unverified, 0) AS dev_charge_paid_unverified,
+            p_stats.dev_charge_last_payment_date,
+            COALESCE(p_stats.dev_charge_pending_payments, 0) AS dev_charge_pending_payments,
+            p_stats.dev_charge_latest_verification_status,
+
             COALESCE(p_stats.shop_service_charge_paid, 0) AS shop_service_charge_paid,
+            COALESCE(p_stats.shop_service_charge_paid_verified, 0) AS shop_service_charge_paid_verified,
+            COALESCE(p_stats.shop_service_charge_paid_unverified, 0) AS shop_service_charge_paid_unverified,
+            p_stats.shop_service_charge_last_payment_date,
+            COALESCE(p_stats.shop_service_charge_pending_payments, 0) AS shop_service_charge_pending_payments,
+            p_stats.shop_service_charge_latest_verification_status,
+
             COALESCE(p_stats.emi_paid, 0) AS construction_paid,
+            COALESCE(p_stats.construction_paid_verified, 0) AS construction_paid_verified,
+            COALESCE(p_stats.construction_paid_unverified, 0) AS construction_paid_unverified,
+            p_stats.emi_last_payment_date AS construction_last_payment_date,
+            COALESCE(p_stats.emi_pending_payments, 0) AS construction_pending_payments,
+            p_stats.emi_latest_verification_status AS construction_latest_verification_status,
 
             -- Financial Breakdown Dues
             GREATEST(0, ROUND(COALESCE(SUM(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0)), 0) - COALESCE(SUM(lb.discount_amount), 0) - COALESCE(p_stats.total_paid, 0) - COALESCE(p_stats.total_bulk_emi_discount, 0))) AS overall_due,
@@ -222,7 +283,71 @@ class AccountClient extends Model
                          THEN CASE WHEN COALESCE(lp.is_emi_discount, 0) = 1 THEN lp.amount ELSE lp.bulk_emi_discount END ELSE 0 END) AS total_bulk_emi_discount,
                 MAX(CASE WHEN (lp.payment_status IN ('paid','partially_paid','pending')) AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.payment_date ELSE NULL END) AS last_payment_date,
                 SUM(CASE WHEN lp.verification_status = 'pending' THEN 1 ELSE 0 END) AS total_pending_payments,
-                SUBSTRING_INDEX(GROUP_CONCAT(lp.verification_status ORDER BY lp.created_at DESC SEPARATOR ','), ',', 1) AS latest_verification_status
+                SUBSTRING_INDEX(GROUP_CONCAT(lp.verification_status ORDER BY lp.created_at DESC SEPARATOR ','), ',', 1) AS latest_verification_status,
+
+                -- Land Share specific
+                SUM(CASE WHEN lp.payment_type IN ('booking_money', 'registration', 'land_share') 
+                              AND (lp.payment_status IN ('paid', 'partially_paid')) 
+                              AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS land_share_paid_verified,
+                SUM(CASE WHEN lp.payment_type IN ('booking_money', 'registration', 'land_share') 
+                              AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                              AND (lp.verification_status IS NULL OR lp.verification_status != 'verified') 
+                              AND lp.verification_status != 'rejected' THEN lp.amount ELSE 0 END) AS land_share_paid_unverified,
+                MAX(CASE WHEN lp.payment_type IN ('booking_money', 'registration', 'land_share') 
+                              AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                              AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.payment_date ELSE NULL END) AS land_share_last_payment_date,
+                SUM(CASE WHEN lp.payment_type IN ('booking_money', 'registration', 'land_share') 
+                              AND lp.verification_status = 'pending' THEN 1 ELSE 0 END) AS land_share_pending_payments,
+                SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN lp.payment_type IN ('booking_money', 'registration', 'land_share') THEN lp.verification_status ELSE NULL END ORDER BY lp.created_at DESC SEPARATOR ','), ',', 1) AS land_share_latest_verification_status,
+
+                -- Dev Charge specific
+                SUM(CASE WHEN lp.payment_type = 'development_charge' 
+                              AND (lp.payment_status IN ('paid', 'partially_paid')) 
+                              AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS dev_charge_paid_verified,
+                SUM(CASE WHEN lp.payment_type = 'development_charge' 
+                              AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                              AND (lp.verification_status IS NULL OR lp.verification_status != 'verified') 
+                              AND lp.verification_status != 'rejected' THEN lp.amount ELSE 0 END) AS dev_charge_paid_unverified,
+                MAX(CASE WHEN lp.payment_type = 'development_charge' 
+                              AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                              AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.payment_date ELSE NULL END) AS dev_charge_last_payment_date,
+                SUM(CASE WHEN lp.payment_type = 'development_charge' 
+                              AND lp.verification_status = 'pending' THEN 1 ELSE 0 END) AS dev_charge_pending_payments,
+                SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN lp.payment_type = 'development_charge' THEN lp.verification_status ELSE NULL END ORDER BY lp.created_at DESC SEPARATOR ','), ',', 1) AS dev_charge_latest_verification_status,
+
+                -- Shop Service Charge specific
+                SUM(CASE WHEN lp.payment_type = 'shop_service_charge' 
+                              AND (lp.payment_status IN ('paid', 'partially_paid')) 
+                              AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END) AS shop_service_charge_paid_verified,
+                SUM(CASE WHEN lp.payment_type = 'shop_service_charge' 
+                              AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                              AND (lp.verification_status IS NULL OR lp.verification_status != 'verified') 
+                              AND lp.verification_status != 'rejected' THEN lp.amount ELSE 0 END) AS shop_service_charge_paid_unverified,
+                MAX(CASE WHEN lp.payment_type = 'shop_service_charge' 
+                              AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                              AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.payment_date ELSE NULL END) AS shop_service_charge_last_payment_date,
+                SUM(CASE WHEN lp.payment_type = 'shop_service_charge' 
+                              AND lp.verification_status = 'pending' THEN 1 ELSE 0 END) AS shop_service_charge_pending_payments,
+                SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN lp.payment_type = 'shop_service_charge' THEN lp.verification_status ELSE NULL END ORDER BY lp.created_at DESC SEPARATOR ','), ',', 1) AS shop_service_charge_latest_verification_status,
+
+                -- Construction Fee / EMI specific
+                SUM(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') 
+                              AND (lp.payment_status IN ('paid', 'partially_paid')) 
+                              AND lp.verification_status = 'verified' 
+                              AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END) AS construction_paid_verified,
+                SUM(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') 
+                              AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                              AND (lp.verification_status IS NULL OR lp.verification_status != 'verified') 
+                              AND lp.verification_status != 'rejected' 
+                              AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END) AS construction_paid_unverified,
+                MAX(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') 
+                              AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                              AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') 
+                              AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.payment_date ELSE NULL END) AS emi_last_payment_date,
+                SUM(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') 
+                              AND lp.verification_status = 'pending' 
+                              AND COALESCE(lp.is_emi_discount, 0) = 0 THEN 1 ELSE 0 END) AS emi_pending_payments,
+                SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.verification_status ELSE NULL END ORDER BY lp.created_at DESC SEPARATOR ','), ',', 1) AS emi_latest_verification_status
             FROM lead_bookings lb_sub
             INNER JOIN lead_payments lp ON lp.booking_id = lb_sub.id
             WHERE lb_sub.deleted_at IS NULL
@@ -335,26 +460,65 @@ class AccountClient extends Model
                     $types .= 's';
                 }
             } elseif ($targetDateType === 'last_payment_date') {
-                $whereParts[] = "p_stats.last_payment_date IS NOT NULL";
+                $dateCol = "p_stats.last_payment_date";
+                if (!empty($paymentType) && $paymentType !== 'full_payment') {
+                    if ($paymentType === 'construction_fee') {
+                        $dateCol = "p_stats.emi_last_payment_date";
+                    } elseif ($paymentType === 'land_share') {
+                        $dateCol = "p_stats.land_share_last_payment_date";
+                    } elseif ($paymentType === 'development_charge') {
+                        $dateCol = "p_stats.dev_charge_last_payment_date";
+                    } elseif ($paymentType === 'shop_service_charge') {
+                        $dateCol = "p_stats.shop_service_charge_last_payment_date";
+                    }
+                }
+                $whereParts[] = "{$dateCol} IS NOT NULL";
                 if (!empty($startDate)) {
-                    $whereParts[] = "DATE(p_stats.last_payment_date) >= ?";
+                    $whereParts[] = "DATE({$dateCol}) >= ?";
                     $params[] = $startDate;
                     $types .= 's';
                 }
                 if (!empty($endDate)) {
-                    $whereParts[] = "DATE(p_stats.last_payment_date) <= ?";
+                    $whereParts[] = "DATE({$dateCol}) <= ?";
                     $params[] = $endDate;
                     $types .= 's';
                 }
             }
         }
 
-        if ($verificationStatus === 'verified') {
-            $havingParts[] = "latest_verification_status = 'verified' AND total_pending_payments = 0";
-        } elseif ($verificationStatus === 'pending') {
-            $havingParts[] = "total_pending_payments > 0";
-        } elseif ($verificationStatus === 'rejected') {
-            $havingParts[] = "latest_verification_status = 'rejected' AND total_pending_payments = 0";
+        if (!empty($verificationStatus)) {
+            if (!empty($paymentType) && $paymentType !== 'full_payment') {
+                $targetPending = "total_pending_payments";
+                $targetVer = "latest_verification_status";
+                if ($paymentType === 'construction_fee') {
+                    $targetPending = "construction_pending_payments";
+                    $targetVer = "construction_latest_verification_status";
+                } elseif ($paymentType === 'land_share') {
+                    $targetPending = "land_share_pending_payments";
+                    $targetVer = "land_share_latest_verification_status";
+                } elseif ($paymentType === 'development_charge') {
+                    $targetPending = "dev_charge_pending_payments";
+                    $targetVer = "dev_charge_latest_verification_status";
+                } elseif ($paymentType === 'shop_service_charge') {
+                    $targetPending = "shop_service_charge_pending_payments";
+                    $targetVer = "shop_service_charge_latest_verification_status";
+                }
+                if ($verificationStatus === 'verified') {
+                    $havingParts[] = "{$targetVer} = 'verified' AND {$targetPending} = 0";
+                } elseif ($verificationStatus === 'pending') {
+                    $havingParts[] = "{$targetPending} > 0";
+                } elseif ($verificationStatus === 'rejected') {
+                    $havingParts[] = "{$targetVer} = 'rejected' AND {$targetPending} = 0";
+                }
+            } else {
+                if ($verificationStatus === 'verified') {
+                    $havingParts[] = "latest_verification_status = 'verified' AND total_pending_payments = 0";
+                } elseif ($verificationStatus === 'pending') {
+                    $havingParts[] = "total_pending_payments > 0";
+                } elseif ($verificationStatus === 'rejected') {
+                    $havingParts[] = "latest_verification_status = 'rejected' AND total_pending_payments = 0";
+                }
+            }
         }
 
         if (!empty($paymentType)) {
@@ -389,9 +553,17 @@ class AccountClient extends Model
                     COALESCE(SUM(GREATEST(0, ROUND(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) - (COALESCE(f.land_share_value, 0) + COALESCE(f.development_charges, 0) + CASE WHEN COALESCE(f.is_shop, 0) = 1 THEN COALESCE(f.shop_service_charge, 0) ELSE 0 END)))), 0) AS total_construction_target,
                     COALESCE(p_stats.total_paid, 0) AS total_paid,
                     COALESCE(p_stats.land_share_paid, 0) AS land_share_paid,
+                    COALESCE(p_stats.land_share_pending_payments, 0) AS land_share_pending_payments,
+                    p_stats.land_share_latest_verification_status,
                     COALESCE(p_stats.dev_charge_paid, 0) AS dev_charge_paid,
+                    COALESCE(p_stats.dev_charge_pending_payments, 0) AS dev_charge_pending_payments,
+                    p_stats.dev_charge_latest_verification_status,
                     COALESCE(p_stats.shop_service_charge_paid, 0) AS shop_service_charge_paid,
-                    COALESCE(p_stats.emi_paid, 0) AS construction_paid
+                    COALESCE(p_stats.shop_service_charge_pending_payments, 0) AS shop_service_charge_pending_payments,
+                    p_stats.shop_service_charge_latest_verification_status,
+                    COALESCE(p_stats.emi_paid, 0) AS construction_paid,
+                    COALESCE(p_stats.emi_pending_payments, 0) AS construction_pending_payments,
+                    p_stats.emi_latest_verification_status AS construction_latest_verification_status
                 FROM leads l
                 INNER JOIN lead_bookings lb ON lb.lead_id = l.id
                     AND lb.deleted_at IS NULL
@@ -409,16 +581,46 @@ class AccountClient extends Model
                         SUM(CASE WHEN lp.payment_type IN ('booking_money', 'registration', 'land_share') 
                                       AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
                                       AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.amount ELSE 0 END) AS land_share_paid,
+                        MAX(CASE WHEN lp.payment_type IN ('booking_money', 'registration', 'land_share') 
+                                      AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                                      AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.payment_date ELSE NULL END) AS land_share_last_payment_date,
+                        SUM(CASE WHEN lp.payment_type IN ('booking_money', 'registration', 'land_share') 
+                                      AND lp.verification_status = 'pending' THEN 1 ELSE 0 END) AS land_share_pending_payments,
+                        SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN lp.payment_type IN ('booking_money', 'registration', 'land_share') THEN lp.verification_status ELSE NULL END ORDER BY lp.created_at DESC SEPARATOR ','), ',', 1) AS land_share_latest_verification_status,
+
                         SUM(CASE WHEN lp.payment_type = 'development_charge' 
                                       AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
                                       AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.amount ELSE 0 END) AS dev_charge_paid,
+                        MAX(CASE WHEN lp.payment_type = 'development_charge' 
+                                      AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                                      AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.payment_date ELSE NULL END) AS dev_charge_last_payment_date,
+                        SUM(CASE WHEN lp.payment_type = 'development_charge' 
+                                      AND lp.verification_status = 'pending' THEN 1 ELSE 0 END) AS dev_charge_pending_payments,
+                        SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN lp.payment_type = 'development_charge' THEN lp.verification_status ELSE NULL END ORDER BY lp.created_at DESC SEPARATOR ','), ',', 1) AS dev_charge_latest_verification_status,
+
                         SUM(CASE WHEN lp.payment_type = 'shop_service_charge' 
                                       AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
                                       AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.amount ELSE 0 END) AS shop_service_charge_paid,
+                        MAX(CASE WHEN lp.payment_type = 'shop_service_charge' 
+                                      AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                                      AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.payment_date ELSE NULL END) AS shop_service_charge_last_payment_date,
+                        SUM(CASE WHEN lp.payment_type = 'shop_service_charge' 
+                                      AND lp.verification_status = 'pending' THEN 1 ELSE 0 END) AS shop_service_charge_pending_payments,
+                        SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN lp.payment_type = 'shop_service_charge' THEN lp.verification_status ELSE NULL END ORDER BY lp.created_at DESC SEPARATOR ','), ',', 1) AS shop_service_charge_latest_verification_status,
+
                         SUM(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') 
                                       AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
                                       AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') 
                                       AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END) AS emi_paid,
+                        MAX(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') 
+                                      AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                                      AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') 
+                                      AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.payment_date ELSE NULL END) AS emi_last_payment_date,
+                        SUM(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') 
+                                      AND lp.verification_status = 'pending' 
+                                      AND COALESCE(lp.is_emi_discount, 0) = 0 THEN 1 ELSE 0 END) AS emi_pending_payments,
+                        SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.verification_status ELSE NULL END ORDER BY lp.created_at DESC SEPARATOR ','), ',', 1) AS emi_latest_verification_status,
+
                         MAX(CASE WHEN (lp.payment_status IN ('paid','partially_paid','pending')) AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.payment_date ELSE NULL END) AS last_payment_date,
                         SUM(CASE WHEN lp.verification_status = 'pending' THEN 1 ELSE 0 END) AS total_pending_payments,
                         SUBSTRING_INDEX(GROUP_CONCAT(lp.verification_status ORDER BY lp.created_at DESC SEPARATOR ','), ',', 1) AS latest_verification_status
@@ -1446,6 +1648,8 @@ class AccountClient extends Model
             $isRegistrationPaid = ($registrationPaid > 0);
 
             // Add calculated fields to response
+            $agreementValForTarget = (float) ($clientDetails['agreement_value'] ?? 0);
+            $clientDetails['effective_booking_target']             = ($agreementValForTarget > 0) ? $agreementValForTarget : 300000;
             $clientDetails['total_land_share_paid']                = $totalLandSharePaid;
             $clientDetails['landshare_paid']                       = $totalLandSharePaid;
             $clientDetails['total_land_share_paid_total']          = $totalLandSharePaidTotal;
@@ -3535,7 +3739,9 @@ class AccountClient extends Model
             $paymentsToInsert = [];
             
             // Calculate remaining targets
-            $bookingMoneyRemaining = max(0, $summary['effective_booking_target'] - $summary['booking_money_total']);
+            $agreementValForBooking = (float) ($summary['agreement_value'] ?? 0);
+            $bookingTargetForTx     = ($agreementValForBooking > 0) ? $agreementValForBooking : (float) ($summary['effective_booking_target'] ?? 300000);
+            $bookingMoneyRemaining  = max(0, $bookingTargetForTx - (float) ($summary['booking_money_total'] ?? 0));
             $landShareRemaining = max(0, $summary['remaining_land_share']);
             $isShop = !empty($clientDetails['is_shop']);
             // Development Charge (flats.development_charges) — applies to both flats and shops
@@ -4075,7 +4281,7 @@ class AccountClient extends Model
             }
 
             $isManagementRole = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33, 34, 35]) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'management') !== false || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'admin') !== false;
-            $isEditableByManagement = $isManagementRole && in_array($oldTransaction['payment_type'] ?? '', ['development_charge', 'land_share', 'shop_service_charge', 'emi']);
+            $isEditableByManagement = $isManagementRole && in_array($oldTransaction['payment_type'] ?? '', ['development_charge', 'land_share', 'shop_service_charge', 'emi', 'booking_money', 'registration', 'mutation_cost', 'others']);
 
             if (($oldTransaction['verification_status'] ?? '') === 'verified' && !$isEditableByManagement) {
                 throw new Exception("Verified transactions cannot be edited. Please contact Accounts.");
@@ -4106,9 +4312,11 @@ class AccountClient extends Model
             $stmt = $this->db->prepare("
                 UPDATE lead_payments SET
                     payment_type = ?,
+                    other_purpose = ?,
                     amount = ?,
                     land_share_amount = ?,
                     service_fee = ?,
+                    due_emi_amount = ?,
                     payment_method = ?,
                     payment_status = ?,
                     payment_date = ?,
@@ -4132,9 +4340,11 @@ class AccountClient extends Model
 
             // Extract to plain variables
             $u_paymentType  =         $transactionData['payment_type'];
+            $u_otherPurpose = ($u_paymentType === 'others' && !empty($transactionData['other_purpose'])) ? trim($transactionData['other_purpose']) : null;
             $u_amount       = (float) $finalAmount;
             $u_landShare    = (float) $landShareAmount;
             $u_serviceFee   = (float) $finalServiceFee;
+            $u_dueEmiAmt    = ($u_paymentType === 'emi' && isset($emiScheduleData['due_emi_amount'])) ? (float) $emiScheduleData['due_emi_amount'] : 0.0;
             $u_method       =         $transactionData['payment_method']   ?? 'cash';
             $u_status       =         $transactionData['payment_status']   ?? 'pending';
             $u_date         =         $transactionData['payment_date']     ?? date('Y-m-d');
@@ -4161,11 +4371,13 @@ class AccountClient extends Model
             }
 
             $stmt->bind_param(
-                "sdddsssssissssisii",
+                "ssddddsssssissssisii",
                 $u_paymentType,
+                $u_otherPurpose,
                 $u_amount,
                 $u_landShare,
                 $u_serviceFee,
+                $u_dueEmiAmt,
                 $u_method,
                 $u_status,
                 $u_date,

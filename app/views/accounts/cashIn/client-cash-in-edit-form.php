@@ -65,10 +65,17 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
                         $legacyPath2 = 'uploads/payments/' . $transaction['attachment_image2'];
                         if (!in_array($legacyPath2, $existingFiles)) $existingFiles[] = $legacyPath2;
                     }
+                    $refererUrl = $_SERVER['HTTP_REFERER'] ?? '';
+                    $cameFromCed = (strpos($refererUrl, 'clients-cash-in-history-view') !== false);
+                    $redirectTo = $cameFromCed
+                        ? "clients-cash-in-history-view/{$bookingId}"
+                        : "clients-cash-in-history?booking_id={$bookingId}";
                 ?>
                 <form action="<?= $GLOBALS['base_url'] ?>/update-transaction" method="post" id="transactionForm" enctype="multipart/form-data">
                     <input type="hidden" name="payment_id" value="<?= $transaction['id'] ?? '' ?>">
                     <input type="hidden" name="booking_id" value="<?= $bookingId ?>">
+                    <input type="hidden" name="existing_files_present" value="1">
+                    <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($redirectTo) ?>">
 
                     <div class="row gy-20">
                         <!-- Payment Type -->
@@ -90,6 +97,7 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
                                         <option value="registration" <?= in_array($transaction['payment_type'] ?? '', ['registration', 'land_share']) ? 'selected' : '' ?>>Registration</option>
                                         <option value="mutation_cost" <?= ($transaction['payment_type'] ?? '') === 'mutation_cost' ? 'selected' : '' ?>>Mutation Cost</option>
                                         <option value="development_charge" <?= ($transaction['payment_type'] ?? '') === 'development_charge' ? 'selected' : '' ?>>Development Charge</option>
+                                        <option value="shop_service_charge" <?= ($transaction['payment_type'] ?? '') === 'shop_service_charge' ? 'selected' : '' ?>>Shop Service Charge</option>
                                         <option value="emi" <?= ($transaction['payment_type'] ?? '') === 'emi' ? 'selected' : '' ?>>EMI</option>
                                         <option value="down_payment" <?= ($transaction['payment_type'] ?? '') === 'down_payment' ? 'selected' : '' ?>>Down Payment</option>
                                         <option value="others" <?= ($transaction['payment_type'] ?? '') === 'others' ? 'selected' : '' ?>>Others (Extra / Incidental Charges)</option>
@@ -351,7 +359,7 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
                                 <button type="submit" class="btn btn-primary me-3">
                                     <i class="fa-solid fa-save me-2"></i>Update Transaction
                                 </button>
-                                <a href="<?= $GLOBALS['base_url'] ?>/clients-cash-in-history?booking_id=<?= $bookingId ?>" class="btn btn-secondary">
+                                <a href="<?= $GLOBALS['base_url'] ?>/<?= htmlspecialchars($redirectTo) ?>" class="btn btn-secondary">
                                     <i class="fa-solid fa-times me-2"></i>Cancel
                                 </a>
                             </div>

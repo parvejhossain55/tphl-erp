@@ -707,10 +707,10 @@ $remainingCF          = max(0, $constructionFee - $emiPaidSoFar - $totalBulkDisc
             if (cfRemainAfter > 0) {
                 // Expected for this installment is capped at actual remaining CF
                 const expectedForThis = perEmiAmount > 0 ? Math.min(perEmiAmount, remainingCF) : 0;
-                due = expectedForThis > 0 && entered < expectedForThis ? (expectedForThis - entered).toFixed(2) : 0;
+                due = (expectedForThis > 0 && entered > 0 && entered < expectedForThis) ? (expectedForThis - entered) : 0;
             }
             if (dueEmiHidden)  dueEmiHidden.value  = due.toFixed(2);
-            if (dueEmiDisplay) dueEmiDisplay.value  = due > 0 ? 'TK. ' + due.toLocaleString('en-IN') : 'TK. 0.00';
+            if (dueEmiDisplay) dueEmiDisplay.value  = due > 0 ? 'TK. ' + due.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'TK. 0.00';
         }
 
         if (applyEmiDiscount && emiDiscountSection) {
