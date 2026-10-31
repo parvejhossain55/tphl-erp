@@ -292,8 +292,12 @@ if (!function_exists('getMyAssignedStatCardLink')) {
                 <div class="card-body d-flex justify-content-between align-items-center p-2 px-3">
                     <div>
                         <p class="stat-label mb-1" style="color: #6b21a8;"><i class="fa-solid fa-bookmark me-1"></i> Booked Leads</p>
-                        <h2 class="stat-value mb-1" style="font-size: 1.6rem; font-weight: 800; color: #6b21a8;"><?= $bookedLeadsCount ?? 0 ?></h2>
-                        <span class="card-hint" style="color: #6b21a8; font-size: 10px; margin-top: 0;">Click to view booked &rarr;</span>
+                        <h2 class="stat-value mb-1" style="font-size: 1.6rem; font-weight: 800; color: #6b21a8;"><?= number_format($totalBookingsCount ?? $bookedLeadsCount ?? 0) ?></h2>
+                        <?php if (!empty($bookedLeadsCount) && !empty($totalBookingsCount) && $bookedLeadsCount != $totalBookingsCount): ?>
+                            <div style="font-size: 11px; color: #6b21a8; font-weight: 600; margin-top: 1px;"><?= number_format($bookedLeadsCount) ?> Leads / Clients</div>
+                        <?php else: ?>
+                            <span class="card-hint" style="color: #6b21a8; font-size: 10px; margin-top: 0;">Click to view booked &rarr;</span>
+                        <?php endif; ?>
                     </div>
                     <div class="card__icon" style="color: #6b21a8; opacity: 0.15; font-size: 1.8rem;"><i class="fa-solid fa-bookmark"></i></div>
                 </div>

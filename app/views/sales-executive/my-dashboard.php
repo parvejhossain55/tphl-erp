@@ -266,30 +266,200 @@
 
 <div class="app__slide-wrapper">
 
+    <?php
+    $startFilterYear = 2025;
+    $endFilterYear = 2035;
+    $monthsList = [
+        1 => 'January',
+        2 => 'February',
+        3 => 'March',
+        4 => 'April',
+        5 => 'May',
+        6 => 'June',
+        7 => 'July',
+        8 => 'August',
+        9 => 'September',
+        10 => 'October',
+        11 => 'November',
+        12 => 'December'
+    ];
+
+    if (empty($titlePeriod)) {
+        if (isset($filterType) && $filterType === 'yearly') {
+            $titlePeriod = 'Year ' . ($selectedYear ?? date('Y'));
+        } else {
+            $titlePeriod = $monthsList[$selectedStartMonth] ?? date('F');
+            if ($selectedStartMonth !== $selectedEndMonth) {
+                $titlePeriod .= ' - ' . ($monthsList[$selectedEndMonth] ?? date('F'));
+            }
+            $titlePeriod .= ' ' . ($selectedYear ?? date('Y'));
+        }
+    }
+
+    $leadQueryDate = !empty($hasFilter) && !empty($fromDate) && !empty($toDate)
+        ? ('from_date=' . urlencode($fromDate) . '&to_date=' . urlencode($toDate) . '&date_type=lead_date')
+        : '';
+    ?>
+
     <!-- HEADER -->
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
             <h4 class="mb-0 fw-bold">Executive Dashboard</h4>
             <p class="mb-0 opacity-75 small text-muted">Summary & Performance Metrics</p>
         </div>
+        <?php if (!empty($hasFilter)): ?>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-primary px-3 py-2" style="font-size: 0.8rem; border-radius: 6px;">
+                    <i class="fa-solid fa-calendar-check me-1"></i> <?= htmlspecialchars($titlePeriod) ?>
+                </span>
+                <a href="<?= $GLOBALS['base_url'] ?>/my-dashboard?preset=all_time" class="btn btn-sm btn-outline-secondary" style="border-radius: 6px;">
+                    <i class="fa-solid fa-rotate-left me-1"></i> Reset
+                </a>
+            </div>
+        <?php endif; ?>
     </div>
 
+    <!-- TOP FILTER TOOLBAR -->
+    <div class="card__wrapper shadow-sm p-3 mb-3" style="border-radius: 12px; background: #ffffff;">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <!-- Preset Buttons Group -->
+            <div class="btn-group flex-wrap gap-1" role="group" aria-label="Dashboard Presets">
+                <a href="?preset=today"
+                    class="btn btn-sm <?= ($activePreset ?? '') === 'today' ? 'btn-primary text-white shadow-xs' : 'btn-outline-secondary' ?>"
+                    style="border-radius: 6px; font-weight: 600; font-size: 11.5px; padding: 5px 12px;">
+                    <i class="fa-solid fa-clock me-1"></i> Today
+                </a>
+
+                <a href="?preset=yesterday"
+                    class="btn btn-sm <?= ($activePreset ?? '') === 'yesterday' ? 'btn-primary text-white shadow-xs' : 'btn-outline-secondary' ?>"
+                    style="border-radius: 6px; font-weight: 600; font-size: 11.5px; padding: 5px 12px;">
+                    <i class="fa-solid fa-clock-rotate-left me-1"></i> Yesterday
+                </a>
+
+                <a href="?preset=this_month"
+                    class="btn btn-sm <?= ($activePreset ?? '') === 'this_month' ? 'btn-primary text-white shadow-xs' : 'btn-outline-secondary' ?>"
+                    style="border-radius: 6px; font-weight: 600; font-size: 11.5px; padding: 5px 12px;">
+                    <i class="fa-solid fa-calendar-days me-1"></i> This Month
+                </a>
+
+                <a href="<?= $GLOBALS['base_url'] ?>/my-dashboard?preset=all_time"
+                    class="btn btn-sm <?= empty($hasFilter) || ($activePreset ?? '') === 'all_time' ? 'btn-primary text-white shadow-xs' : 'btn-outline-secondary' ?>"
+                    style="border-radius: 6px; font-weight: 600; font-size: 11.5px; padding: 5px 12px;">
+                    <i class="fa-solid fa-infinity me-1"></i> All Time
+                </a>
+            </div>
+
+            <!-- Custom Date Range Form & Month/Year Toggle -->
+            <form action="<?= $GLOBALS['base_url'] ?>/my-dashboard" method="GET" class="d-flex flex-wrap gap-2 align-items-center m-0">
+                <input type="hidden" name="preset" value="custom">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="input-group input-group-sm" style="width: auto;">
+                        <span class="input-group-text bg-light text-muted" style="font-size: 11px;"><i class="fa-solid fa-calendar-day"></i></span>
+                        <input type="date" name="from_date" class="form-control form-control-sm" 
+                               value="<?= htmlspecialchars($fromDate ?? '') ?>" 
+                               required style="max-width: 140px; font-size: 11.5px;" title="From Date">
+                    </div>
+                    <span class="small text-muted fw-bold px-1">to</span>
+                    <div class="input-group input-group-sm" style="width: auto;">
+                        <span class="input-group-text bg-light text-muted" style="font-size: 11px;"><i class="fa-solid fa-calendar-day"></i></span>
+                        <input type="date" name="to_date" class="form-control form-control-sm" 
+                               value="<?= htmlspecialchars($toDate ?? '') ?>" 
+                               required style="max-width: 140px; font-size: 11.5px;" title="To Date">
+                    </div>
+                    <button type="submit" class="btn btn-sm btn-primary px-3" style="border-radius: 6px; font-weight: 600; height: 31px;">
+                        <i class="fa-solid fa-filter me-1"></i> Filter
+                    </button>
+                </div>
+
+                <div class="d-flex align-items-center gap-1">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleMonthYearCollapse" 
+                            style="border-radius: 6px; font-size: 11.5px; height: 31px;" title="Filter by Month/Year">
+                        <i class="fa-solid fa-sliders me-1"></i> Month / Year
+                    </button>
+                    <?php if (!empty($hasFilter)): ?>
+                        <a href="<?= $GLOBALS['base_url'] ?>/my-dashboard?preset=all_time" class="btn btn-sm btn-outline-danger" 
+                           style="border-radius: 6px; font-size: 11.5px; height: 31px;" title="Reset all filters">
+                            <i class="fa-solid fa-rotate-left me-1"></i> Reset
+                        </a>
+                    <?php endif; ?>
+                </div>
+            </form>
+        </div>
+
+        <!-- Collapsible Month / Year Filter Options -->
+        <div id="monthYearCollapseSection" style="display: <?= in_array($activePreset ?? '', ['monthly', 'yearly']) ? 'block' : 'none' ?>;" class="pt-2 border-top mt-2">
+            <form action="<?= $GLOBALS['base_url'] ?>/my-dashboard" method="GET" class="row g-2 align-items-end">
+                <div class="col-6 col-md-3">
+                    <label class="form-label small fw-bold text-muted mb-1" style="font-size: 11px;"><i class="fa-solid fa-layer-group me-1"></i> Filter Type</label>
+                    <select class="form-select form-select-sm" name="filter_type" id="filterTypeSelect" style="border-radius: 6px;">
+                        <option value="monthly" <?= ($filterType === 'monthly') ? 'selected' : '' ?>>Monthly</option>
+                        <option value="yearly" <?= ($filterType === 'yearly') ? 'selected' : '' ?>>Yearly</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-3" id="yearCol">
+                    <label class="form-label small fw-bold text-muted mb-1" style="font-size: 11px;"><i class="fa-solid fa-calendar me-1"></i> Year</label>
+                    <select class="form-select form-select-sm" name="year" style="border-radius: 6px;">
+                        <?php for ($y = $startFilterYear; $y <= $endFilterYear; $y++): ?>
+                            <option value="<?= $y ?>" <?= ($selectedYear == $y) ? 'selected' : '' ?>><?= $y ?></option>
+                        <?php endfor; ?>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2" id="startMonthCol">
+                    <label class="form-label small fw-bold text-muted mb-1" style="font-size: 11px;"><i class="fa-solid fa-calendar-day me-1"></i> Start Month</label>
+                    <select class="form-select form-select-sm" name="start_month" style="border-radius: 6px;">
+                        <?php foreach ($monthsList as $num => $name): ?>
+                            <option value="<?= $num ?>" <?= ($selectedStartMonth == $num) ? 'selected' : '' ?>><?= $name ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2" id="endMonthCol">
+                    <label class="form-label small fw-bold text-muted mb-1" style="font-size: 11px;"><i class="fa-solid fa-calendar-day me-1"></i> End Month</label>
+                    <select class="form-select form-select-sm" name="end_month" style="border-radius: 6px;">
+                        <?php foreach ($monthsList as $num => $name): ?>
+                            <option value="<?= $num ?>" <?= ($selectedEndMonth == $num) ? 'selected' : '' ?>><?= $name ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-12 col-md-2">
+                    <button type="submit" class="btn btn-primary btn-sm w-100" style="border-radius: 6px; height: 31px;">
+                        <i class="fa-solid fa-check me-1"></i> Apply
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Active Filter Badge / Feedback -->
+        <?php if (!empty($hasFilter)): ?>
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 pt-2 border-top mt-2">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="small text-muted fw-bold"><i class="fa-solid fa-filter me-1 text-primary"></i> Active Period:</span>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1" style="font-size: 12px; border-radius: 6px;">
+                        <i class="fa-solid fa-calendar-check me-1"></i> <?= htmlspecialchars($titlePeriod) ?>
+                    </span>
+                    <span class="small text-muted d-none d-md-inline">&bull; 16 metric cards & chart dynamically synchronized</span>
+                </div>
+                <a href="<?= $GLOBALS['base_url'] ?>/my-dashboard?preset=all_time" class="btn btn-sm btn-link text-decoration-none text-danger p-0" style="font-size: 11.5px;">
+                    <i class="fa-solid fa-circle-xmark me-1"></i> Clear Filter (All-Time)
+                </a>
+            </div>
+        <?php endif; ?>
+    </div>
 
     <!-- 16 CORE SERIAL METRICS CARDS -->
     <div class="row g-2 mb-3 align-items-stretch">
 
         <!-- 1. Total Leads Assigned -->
         <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
-            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads" class="stat-card-link">
+            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads<?= !empty($leadQueryDate) ? '?' . $leadQueryDate : '' ?>" class="stat-card-link">
                 <div class="stat-card accent-blue shadow-xs h-100">
                     <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
                     <div class="d-flex justify-content-between align-items-center w-100">
                         <div class="overflow-hidden pe-1 flex-grow-1">
-                            <span class="stat-label"><i class="fa-solid fa-users"></i> Total Leads Assigned</span>
+                            <span class="stat-label"><i class="fa-solid fa-users"></i> <?= !empty($hasFilter) ? 'Period Leads Assigned' : 'Total Leads Assigned' ?></span>
                             <div class="d-flex align-items-baseline gap-1 mt-1">
                                 <span class="stat-value"><?= number_format($totalLeadsAssigned ?? $getAllLeadsCount ?? 0) ?></span>
                             </div>
-                            <span class="card-hint">All assigned leads &rarr;</span>
+                            <span class="card-hint"><?= !empty($hasFilter) ? 'All-Time: ' . number_format($allTimeLeadsAssigned ?? 0) . ' &rarr;' : 'All assigned leads &rarr;' ?></span>
                         </div>
                         <div class="stat-icon-badge"><i class="fa-solid fa-users"></i></div>
                     </div>
@@ -299,19 +469,19 @@
 
         <!-- 2. Total Leads Contacted (with % Contacted) -->
         <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
-            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter_card=contacted" class="stat-card-link">
+            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter_card=contacted<?= !empty($leadQueryDate) ? '&' . $leadQueryDate : '' ?>" class="stat-card-link">
                 <div class="stat-card accent-green shadow-xs h-100">
                     <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
                     <div class="d-flex justify-content-between align-items-center w-100">
                         <div class="overflow-hidden pe-1 flex-grow-1">
-                            <span class="stat-label"><i class="fa-solid fa-phone-volume"></i> Total Leads Contacted</span>
+                            <span class="stat-label"><i class="fa-solid fa-phone-volume"></i> <?= !empty($hasFilter) ? 'Period Contacted' : 'Total Leads Contacted' ?></span>
                             <div class="d-flex align-items-baseline gap-1 mt-1">
                                 <span class="stat-value"><?= number_format($totalLeadsContacted ?? 0) ?></span>
                                 <span class="stat-pill-badge">
                                     <?= $totalContactedPct ?? 0 ?>%
                                 </span>
                             </div>
-                            <span class="card-hint">Contacted leads &rarr;</span>
+                            <span class="card-hint"><?= !empty($hasFilter) ? 'All-Time: ' . number_format($allTimeLeadsContacted ?? 0) . ' &rarr;' : 'Contacted leads &rarr;' ?></span>
                         </div>
                         <div class="stat-icon-badge"><i class="fa-solid fa-phone-volume"></i></div>
                     </div>
@@ -321,19 +491,19 @@
 
         <!-- 3. Total Not Contacted -->
         <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
-            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter_card=not_contacted" class="stat-card-link">
+            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter_card=not_contacted<?= !empty($leadQueryDate) ? '&' . $leadQueryDate : '' ?>" class="stat-card-link">
                 <div class="stat-card accent-amber shadow-xs h-100">
                     <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
                     <div class="d-flex justify-content-between align-items-center w-100">
                         <div class="overflow-hidden pe-1 flex-grow-1">
-                            <span class="stat-label"><i class="fa-solid fa-phone-slash"></i> Total Not Contacted</span>
+                            <span class="stat-label"><i class="fa-solid fa-phone-slash"></i> <?= !empty($hasFilter) ? 'Period Not Contacted' : 'Total Not Contacted' ?></span>
                             <div class="d-flex align-items-baseline gap-1 mt-1">
                                 <span class="stat-value"><?= number_format($totalNotContacted ?? 0) ?></span>
                                 <span class="stat-pill-badge">
                                     <?= round(100 - ($totalContactedPct ?? 0), 1) ?>%
                                 </span>
                             </div>
-                            <span class="card-hint">Pending initial contact &rarr;</span>
+                            <span class="card-hint"><?= !empty($hasFilter) ? 'All-Time: ' . number_format($allTimeNotContacted ?? 0) . ' &rarr;' : 'Pending initial contact &rarr;' ?></span>
                         </div>
                         <div class="stat-icon-badge"><i class="fa-solid fa-phone-slash"></i></div>
                     </div>
@@ -400,7 +570,7 @@
 
         <!-- 7. Total Follow-Up Complete -->
         <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
-            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter_card=contacted" class="stat-card-link">
+            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter_card=contacted<?= !empty($leadQueryDate) ? '&' . $leadQueryDate : '' ?>" class="stat-card-link">
                 <div class="stat-card accent-teal shadow-xs h-100">
                     <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
                     <div class="d-flex justify-content-between align-items-center w-100">
@@ -419,16 +589,16 @@
 
         <!-- 8. Total Follow-Up Missing -->
         <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
-            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter=missing_followup" class="stat-card-link">
+            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter=missing_followup<?= !empty($leadQueryDate) ? '&' . $leadQueryDate : '' ?>" class="stat-card-link">
                 <div class="stat-card accent-red shadow-xs h-100">
                     <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
                     <div class="d-flex justify-content-between align-items-center w-100">
                         <div class="overflow-hidden pe-1 flex-grow-1">
-                            <span class="stat-label"><i class="fa-solid fa-calendar-xmark"></i> Total Follow-Up Missing</span>
+                            <span class="stat-label"><i class="fa-solid fa-calendar-xmark"></i> <?= !empty($hasFilter) ? 'Period Follow-Up Missing' : 'Total Follow-Up Missing' ?></span>
                             <div class="d-flex align-items-baseline gap-1 mt-1">
                                 <span class="stat-value text-danger"><?= number_format($totalFollowUpMissing ?? $missingFollowUpCount ?? 0) ?></span>
                             </div>
-                            <span class="card-hint">Overdue follow-ups &rarr;</span>
+                            <span class="card-hint"><?= !empty($hasFilter) ? 'All-Time: ' . number_format($allTimeFollowUpMissing ?? 0) . ' &rarr;' : 'Overdue follow-ups &rarr;' ?></span>
                         </div>
                         <div class="stat-icon-badge"><i class="fa-solid fa-calendar-xmark"></i></div>
                     </div>
@@ -495,7 +665,7 @@
 
         <!-- 12. Total Sales / Booked (Units) -->
         <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
-            <a href="<?= $GLOBALS['base_url'] ?>/lead-bookings" class="stat-card-link">
+            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter_card=booked" class="stat-card-link">
                 <div class="stat-card accent-purple shadow-xs h-100">
                     <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
                     <div class="d-flex justify-content-between align-items-center w-100">
@@ -518,36 +688,39 @@
             <div class="stat-card accent-fuchsia shadow-xs h-100">
                 <div class="d-flex justify-content-between align-items-center w-100">
                     <div class="overflow-hidden pe-1 flex-grow-1">
-                        <span class="stat-label"><i class="fa-solid fa-bullseye"></i> Monthly Target</span>
+                        <span class="stat-label"><i class="fa-solid fa-bullseye"></i> Target</span>
                         <div class="d-flex align-items-baseline gap-1 mt-1">
                             <span class="stat-value"><?= number_format($monthlyBookingTarget ?? 0) ?></span>
                             <span class="stat-unit ms-1">Units</span>
                         </div>
-                        <span class="card-hint">From set-target (<?= date('M Y', mktime(0, 0, 0, $selectedStartMonth ?? (int)date('m'), 1, $selectedYear ?? (int)date('Y'))) ?>)</span>
+                        <span class="card-hint">From set-target (<?= htmlspecialchars($titlePeriod) ?>)</span>
                     </div>
                     <div class="stat-icon-badge"><i class="fa-solid fa-bullseye"></i></div>
                 </div>
             </div>
         </div>
 
-        <!-- 14. Current Month Booking -->
+        <!-- 14. Period / Current Month Booking -->
         <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
-            <a href="<?= $GLOBALS['base_url'] ?>/lead-bookings" class="stat-card-link">
+            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter_card=booked<?= !empty($leadQueryDate) ? '&' . $leadQueryDate : '' ?>" class="stat-card-link">
                 <div class="stat-card accent-violet shadow-xs h-100">
                     <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
                     <div class="d-flex justify-content-between align-items-center w-100">
                         <div class="overflow-hidden pe-1 flex-grow-1">
-                            <span class="stat-label"><i class="fa-solid fa-file-signature"></i> Current Month Booking</span>
+                            <span class="stat-label"><i class="fa-solid fa-file-signature"></i> <?= !empty($hasFilter) ? 'Period Booking' : 'Current Month Booking' ?></span>
                             <div class="d-flex align-items-baseline gap-1 mt-1">
                                 <span class="stat-value"><?= number_format($currentMonthBooking ?? $monthlyBookingComplete ?? 0) ?></span>
                                 <span class="stat-unit ms-1">Units</span>
+                                <?php if (!empty($currentMonthBookedLeads)): ?>
+                                    <span class="badge bg-light text-dark ms-1" style="font-size: 8.5px; border: 1px solid #e2e8f0;"><?= $currentMonthBookedLeads ?> Leads</span>
+                                <?php endif; ?>
                                 <?php if (!empty($monthlyBookingTarget) && (int)$monthlyBookingTarget > 0): ?>
                                     <span class="stat-pill-badge ms-auto">
                                         <?= $bookingAchievement ?? 0 ?>%
                                     </span>
                                 <?php endif; ?>
                             </div>
-                            <span class="card-hint">Booked in <?= date('M Y') ?> &rarr;</span>
+                            <span class="card-hint">Booked in <?= htmlspecialchars($titlePeriod) ?> &rarr;</span>
                         </div>
                         <div class="stat-icon-badge"><i class="fa-solid fa-file-signature"></i></div>
                     </div>
@@ -574,18 +747,21 @@
             </a>
         </div>
 
-        <!-- 16. This Month Visited -->
+        <!-- 16. Period / This Month Visited -->
         <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
-            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?last_action=visited" class="stat-card-link">
+            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?last_action=visited<?= !empty($leadQueryDate) ? '&' . $leadQueryDate : '' ?>" class="stat-card-link">
                 <div class="stat-card accent-tangerine shadow-xs h-100">
                     <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
                     <div class="d-flex justify-content-between align-items-center w-100">
                         <div class="overflow-hidden pe-1 flex-grow-1">
-                            <span class="stat-label"><i class="fa-solid fa-person-walking"></i> This Month Visited</span>
+                            <span class="stat-label"><i class="fa-solid fa-person-walking"></i> <?= !empty($hasFilter) ? 'Period Visited' : 'This Month Visited' ?></span>
                             <div class="d-flex align-items-baseline gap-1 mt-1">
                                 <span class="stat-value"><?= number_format($thisMonthVisited ?? $monthlyVisitComplete ?? 0) ?></span>
+                                <?php if (!empty($thisMonthVisitedLeads)): ?>
+                                    <span class="badge bg-light text-dark ms-1" style="font-size: 8.5px; border: 1px solid #e2e8f0;"><?= $thisMonthVisitedLeads ?> Leads</span>
+                                <?php endif; ?>
                             </div>
-                            <span class="card-hint">Visits in <?= date('F Y') ?> &rarr;</span>
+                            <span class="card-hint">Visits in <?= htmlspecialchars($titlePeriod) ?> &rarr;</span>
                         </div>
                         <div class="stat-icon-badge"><i class="fa-solid fa-person-walking"></i></div>
                     </div>
@@ -595,169 +771,17 @@
 
     </div>
 
-
-
-    <!-- Performance Chart -->
-    <div class="d-none row mt-4">
-        <div class="col-12">
-            <div class="chart-container">
-                <h3 class="chart-title">Weekly Performance</h3>
-                <canvas id="performanceChart"></canvas>
-            </div>
-        </div>
-    </div>
-
-    <!-- Info Box -->
-    <div class="row d-none ">
-        <div class="col-12">
-            <div class="info-box">
-                <p class="mb-0">
-                    <i class="bi bi-lightbulb"></i>
-                    <strong>Tips:</strong> This Week your Performance is Good
-                </p>
-            </div>
-        </div>
+    <!-- Monthly Performance Chart Section -->
+    <div class="card__wrapper shadow-sm p-3">
+        <h5>My Performance (<?= htmlspecialchars($titlePeriod) ?>)</h5>
+        <div id="monthlyPerformanceChart"></div>
     </div>
 
     <div class="mb-5"></div>
 
 </div>
-<!-- Filter Form -->
-<?php
-$startFilterYear = 2025;
-$endFilterYear = 2035;
-$monthsList = [
-    1 => 'January',
-    2 => 'February',
-    3 => 'March',
-    4 => 'April',
-    5 => 'May',
-    6 => 'June',
-    7 => 'July',
-    8 => 'August',
-    9 => 'September',
-    10 => 'October',
-    11 => 'November',
-    12 => 'December'
-];
-?>
-<form action="" method="get" class="mb-4">
-    <div class="row  align-items-end">
-        <!-- Filter Type -->
-        <div class="col-12 col-md-2" id="filterTypeCol">
-            <div class="card__wrapper p-3 h-100 border-0 shadow-sm" style="border-radius: 12px;">
-                <div class="from__input-box">
-                    <label class="form-label small fw-bold text-muted mb-2"><i class="fa-solid fa-filter me-1"></i>
-                        Filter Type</label>
-                    <select class="form-control form-select" name="filter_type" id="filterTypeSelect"
-                        style="border-radius: 8px;">
-                        <option value="monthly" <?= ($filterType === 'monthly') ? 'selected' : '' ?>>Monthly</option>
-                        <option value="yearly" <?= ($filterType === 'yearly') ? 'selected' : '' ?>>Yearly</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        <!-- Year Select -->
-        <div class="col-12 col-md-2" id="yearCol">
-            <div class="card__wrapper p-3 h-100 border-0 shadow-sm" style="border-radius: 12px;">
-                <div class="from__input-box">
-                    <label class="form-label small fw-bold text-muted mb-2"><i class="fa-solid fa-calendar me-1"></i>
-                        Year</label>
-                    <select class="form-control form-select" name="year" style="border-radius: 8px;">
-                        <?php for ($y = $startFilterYear; $y <= $endFilterYear; $y++): ?>
-                            <option value="<?= $y ?>" <?= ($selectedYear == $y) ? 'selected' : '' ?>><?= $y ?></option>
-                        <?php endfor; ?>
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        <!-- Start Month -->
-        <div class="col-12 col-md-2" id="startMonthCol">
-            <div class="card__wrapper p-3 h-100 border-0 shadow-sm" style="border-radius: 12px;">
-                <div class="from__input-box">
-                    <label class="form-label small fw-bold text-muted mb-2"><i
-                            class="fa-solid fa-calendar-day me-1"></i> Start Month</label>
-                    <select class="form-control form-select" name="start_month" style="border-radius: 8px;">
-                        <?php foreach ($monthsList as $num => $name): ?>
-                            <option value="<?= $num ?>" <?= ($selectedStartMonth == $num) ? 'selected' : '' ?>><?= $name ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        <!-- End Month -->
-        <div class="col-12 col-md-2" id="endMonthCol">
-            <div class="card__wrapper p-3 h-100 border-0 shadow-sm" style="border-radius: 12px;">
-                <div class="from__input-box">
-                    <label class="form-label small fw-bold text-muted mb-2"><i
-                            class="fa-solid fa-calendar-day me-1"></i> End Month</label>
-                    <select class="form-control form-select" name="end_month" style="border-radius: 8px;">
-                        <?php foreach ($monthsList as $num => $name): ?>
-                            <option value="<?= $num ?>" <?= ($selectedEndMonth == $num) ? 'selected' : '' ?>><?= $name ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="col-12 col-md-4" id="actionButtonsCol">
-            <div class="card__wrapper p-3 h-100 border-0 shadow-sm" style="border-radius: 12px;">
-                <div class="from__input-box">
-                    <label class="form-label small fw-bold text-muted mb-2 d-none d-md-block" style="visibility: hidden;">&nbsp;</label>
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary w-100" style="border-radius: 8px; height: 42px;">
-                            <i class="fa-solid fa-magnifying-glass me-1"></i> Search
-                        </button>
-                        <a href="<?= $GLOBALS['base_url'] ?>/my-dashboard"
-                            class="btn btn-secondary w-100 d-flex align-items-center justify-content-center"
-                            style="border-radius: 8px; height: 42px;">
-                            <i class="fa-solid fa-rotate-left me-1"></i> Reset
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</form>
-
-<div class="card__wrapper shadow-sm p-3">
-    <?php
-    $monthsList = [
-        1 => 'January',
-        2 => 'February',
-        3 => 'March',
-        4 => 'April',
-        5 => 'May',
-        6 => 'June',
-        7 => 'July',
-        8 => 'August',
-        9 => 'September',
-        10 => 'October',
-        11 => 'November',
-        12 => 'December'
-    ];
-    if (isset($filterType) && $filterType === 'yearly') {
-        $titlePeriod = 'Year ' . ($selectedYear ?? date('Y'));
-    } else {
-        $titlePeriod = $monthsList[$selectedStartMonth] ?? date('F');
-        if ($selectedStartMonth !== $selectedEndMonth) {
-            $titlePeriod .= ' - ' . ($monthsList[$selectedEndMonth] ?? date('F'));
-        }
-        $titlePeriod .= ' ' . ($selectedYear ?? date('Y'));
-    }
-    ?>
-    <h5>My Performance (<?= $titlePeriod ?>)</h5>
-    <div id="monthlyPerformanceChart"></div>
-</div>
 
 <!-- ApexCharts JS -->
-
 <script>
     document.addEventListener("DOMContentLoaded", function () {
 
@@ -778,13 +802,25 @@ $monthsList = [
                 } else {
                     startMonthCol.style.setProperty('display', 'block', 'important');
                     endMonthCol.style.setProperty('display', 'block', 'important');
-                    filterTypeCol.className = 'col-12 col-md-2';
-                    yearCol.className = 'col-12 col-md-2';
+                    filterTypeCol.className = 'col-6 col-md-2';
+                    yearCol.className = 'col-6 col-md-2';
                 }
             }
 
             filterTypeSelect.addEventListener('change', updateFilterUI);
             updateFilterUI();
+        }
+
+        const toggleBtn = document.getElementById('toggleMonthYearCollapse');
+        const collapseSection = document.getElementById('monthYearCollapseSection');
+        if (toggleBtn && collapseSection) {
+            toggleBtn.addEventListener('click', function () {
+                if (collapseSection.style.display === 'none' || collapseSection.style.display === '') {
+                    collapseSection.style.display = 'block';
+                } else {
+                    collapseSection.style.display = 'none';
+                }
+            });
         }
 
         const monthlyData = {
@@ -802,12 +838,12 @@ $monthsList = [
             totals: [
                 <?= $monthlySiteVisitTarget ?? 0 ?>,
                 <?= $monthlyBookingTarget ?? 0 ?>,
-                <?= $monthlyVisitComplete ?? 0 ?>,
-                <?= $monthlyBookingComplete ?? 0 ?>,
+                <?= $monthlyVisitComplete ?? $thisMonthVisited ?? 0 ?>,
+                <?= $monthlyBookingComplete ?? $currentMonthBooking ?? 0 ?>,
                 <?= $visitAchievement ?? 0 ?>,
                 <?= $bookingAchievement ?? 0 ?>,
                 <?= $dealsClosed ?? 0 ?>,
-                <?= $dealsWon ?? 0 ?>,
+                <?= $dealsWon ?? $dealsWin ?? 0 ?>,
                 <?= $dealsLost ?? 0 ?>
             ]
         };
@@ -913,132 +949,5 @@ $monthsList = [
             chartOptions
         );
         monthlyChart.render();
-
-
     });
-</script>
-
-
-
-
-
-
-<!-- Chart Configuration -->
-<script>
-    // Static performance data
-    const performanceData = {
-        labels: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Saturday', 'Sunday'],
-        datasets: [{
-            label: 'Task Completed',
-            data: [12, 15, 10, 18, 14, 8, 6],
-            borderColor: '#667eea',
-            backgroundColor: 'rgba(102, 126, 234, 0.1)',
-            borderWidth: 3,
-            tension: 0.4,
-            fill: true,
-            pointRadius: 5,
-            pointHoverRadius: 7,
-            pointBackgroundColor: '#667eea',
-            pointBorderColor: '#fff',
-            pointBorderWidth: 2
-        },
-        {
-            label: 'Lead Assigned',
-            data: [8, 10, 6, 12, 9, 5, 4],
-            borderColor: '#f5576c',
-            backgroundColor: 'rgba(245, 87, 108, 0.1)',
-            borderWidth: 3,
-            tension: 0.4,
-            fill: true,
-            pointRadius: 5,
-            pointHoverRadius: 7,
-            pointBackgroundColor: '#f5576c',
-            pointBorderColor: '#fff',
-            pointBorderWidth: 2
-        },
-        {
-            label: 'Conversion',
-            data: [5, 7, 4, 8, 6, 3, 2],
-            borderColor: '#00f2fe',
-            backgroundColor: 'rgba(0, 242, 254, 0.1)',
-            borderWidth: 3,
-            tension: 0.4,
-            fill: true,
-            pointRadius: 5,
-            pointHoverRadius: 7,
-            pointBackgroundColor: '#00f2fe',
-            pointBorderColor: '#fff',
-            pointBorderWidth: 2
-        }
-        ]
-    };
-
-    // Chart configuration
-    const config = {
-        type: 'line',
-        data: performanceData,
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            aspectRatio: 2.5,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        usePointStyle: true,
-                        padding: 20,
-                        font: {
-                            size: 13,
-                            weight: '500'
-                        }
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                    titleColor: '#2c3e50',
-                    bodyColor: '#2c3e50',
-                    borderColor: '#e5e7eb',
-                    borderWidth: 1,
-                    padding: 12,
-                    displayColors: true,
-                    boxPadding: 6,
-                    usePointStyle: true
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: {
-                        color: '#f1f3f5',
-                        drawBorder: false
-                    },
-                    ticks: {
-                        font: {
-                            size: 12
-                        },
-                        color: '#6c757d',
-                        padding: 10
-                    }
-                },
-                x: {
-                    grid: {
-                        display: false,
-                        drawBorder: false
-                    },
-                    ticks: {
-                        font: {
-                            size: 12
-                        },
-                        color: '#6c757d',
-                        padding: 10
-                    }
-                }
-            }
-        }
-    };
-
-    // Initialize chart
-    const ctx2 = document.getElementById('performanceChart').getContext('2d');
-    const performanceChart = new Chart(ctx2, config);
 </script>

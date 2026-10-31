@@ -582,34 +582,38 @@ class Lead extends Model
                         WHERE lb_sub.lead_id = l.id 
                           AND lb_sub.deleted_at IS NULL 
                           AND lb_sub.booking_status IN ('completed', 'booked') 
-                          AND DATE(lb_sub.booking_date) BETWEEN ? AND ?
+                          AND (DATE(lb_sub.booking_date) BETWEEN ? AND ? OR DATE(lb_sub.created_at) BETWEEN ? AND ?)
                     )";
                     $params[] = $from_date;
                     $params[] = $to_date;
-                    $types .= "ss";
+                    $params[] = $from_date;
+                    $params[] = $to_date;
+                    $types .= "ssss";
                 } elseif (!empty($from_date)) {
                     $sql .= " AND EXISTS (
                         SELECT 1 FROM lead_bookings lb_sub 
                         WHERE lb_sub.lead_id = l.id 
                           AND lb_sub.deleted_at IS NULL 
                           AND lb_sub.booking_status IN ('completed', 'booked') 
-                          AND DATE(lb_sub.booking_date) >= ?
+                          AND (DATE(lb_sub.booking_date) >= ? OR DATE(lb_sub.created_at) >= ?)
                     )";
                     $params[] = $from_date;
-                    $types .= "s";
+                    $params[] = $from_date;
+                    $types .= "ss";
                 } elseif (!empty($to_date)) {
                     $sql .= " AND EXISTS (
                         SELECT 1 FROM lead_bookings lb_sub 
                         WHERE lb_sub.lead_id = l.id 
                           AND lb_sub.deleted_at IS NULL 
                           AND lb_sub.booking_status IN ('completed', 'booked') 
-                          AND DATE(lb_sub.booking_date) <= ?
+                          AND (DATE(lb_sub.booking_date) <= ? OR DATE(lb_sub.created_at) <= ?)
                     )";
                     $params[] = $to_date;
-                    $types .= "s";
+                    $params[] = $to_date;
+                    $types .= "ss";
                 } elseif (!empty($year) || !empty($month)) {
-                    $ySub = !empty($year) ? " AND YEAR(lb_sub.booking_date) = " . (int)$year : "";
-                    $mSub = !empty($month) ? " AND MONTH(lb_sub.booking_date) = " . (int)$month : "";
+                    $ySub = !empty($year) ? " AND (YEAR(lb_sub.booking_date) = " . (int)$year . " OR YEAR(lb_sub.created_at) = " . (int)$year . ")" : "";
+                    $mSub = !empty($month) ? " AND (MONTH(lb_sub.booking_date) = " . (int)$month . " OR MONTH(lb_sub.created_at) = " . (int)$month . ")" : "";
                     $sql .= " AND EXISTS (
                         SELECT 1 FROM lead_bookings lb_sub 
                         WHERE lb_sub.lead_id = l.id 
@@ -893,30 +897,36 @@ class Lead extends Model
             $types .= "ii";
         }
 
-        // Date filter on booking_date
+        // Date filter on booking_date or created_at
         if (!empty($from_date) && !empty($to_date)) {
-            $sql .= " AND DATE(lb.booking_date) BETWEEN ? AND ?";
+            $sql .= " AND (DATE(lb.booking_date) BETWEEN ? AND ? OR DATE(lb.created_at) BETWEEN ? AND ?)";
             $params[] = $from_date;
+            $params[] = $to_date;
+            $params[] = $from_date;
+            $params[] = $to_date;
+            $types .= "ssss";
+        } elseif (!empty($from_date)) {
+            $sql .= " AND (DATE(lb.booking_date) >= ? OR DATE(lb.created_at) >= ?)";
+            $params[] = $from_date;
+            $params[] = $from_date;
+            $types .= "ss";
+        } elseif (!empty($to_date)) {
+            $sql .= " AND (DATE(lb.booking_date) <= ? OR DATE(lb.created_at) <= ?)";
+            $params[] = $to_date;
             $params[] = $to_date;
             $types .= "ss";
-        } elseif (!empty($from_date)) {
-            $sql .= " AND DATE(lb.booking_date) >= ?";
-            $params[] = $from_date;
-            $types .= "s";
-        } elseif (!empty($to_date)) {
-            $sql .= " AND DATE(lb.booking_date) <= ?";
-            $params[] = $to_date;
-            $types .= "s";
         } elseif (!empty($year) || !empty($month)) {
             if (!empty($year)) {
-                $sql .= " AND YEAR(lb.booking_date) = ?";
+                $sql .= " AND (YEAR(lb.booking_date) = ? OR YEAR(lb.created_at) = ?)";
                 $params[] = (int)$year;
-                $types .= "i";
+                $params[] = (int)$year;
+                $types .= "ii";
             }
             if (!empty($month)) {
-                $sql .= " AND MONTH(lb.booking_date) = ?";
+                $sql .= " AND (MONTH(lb.booking_date) = ? OR MONTH(lb.created_at) = ?)";
                 $params[] = (int)$month;
-                $types .= "i";
+                $params[] = (int)$month;
+                $types .= "ii";
             }
         }
 
@@ -1209,34 +1219,38 @@ class Lead extends Model
                         WHERE lb_sub.lead_id = l.id 
                           AND lb_sub.deleted_at IS NULL 
                           AND lb_sub.booking_status IN ('completed', 'booked') 
-                          AND DATE(lb_sub.booking_date) BETWEEN ? AND ?
+                          AND (DATE(lb_sub.booking_date) BETWEEN ? AND ? OR DATE(lb_sub.created_at) BETWEEN ? AND ?)
                     )";
                     $params[] = $from_date;
                     $params[] = $to_date;
-                    $types .= "ss";
+                    $params[] = $from_date;
+                    $params[] = $to_date;
+                    $types .= "ssss";
                 } elseif (!empty($from_date)) {
                     $sql .= " AND EXISTS (
                         SELECT 1 FROM lead_bookings lb_sub 
                         WHERE lb_sub.lead_id = l.id 
                           AND lb_sub.deleted_at IS NULL 
                           AND lb_sub.booking_status IN ('completed', 'booked') 
-                          AND DATE(lb_sub.booking_date) >= ?
+                          AND (DATE(lb_sub.booking_date) >= ? OR DATE(lb_sub.created_at) >= ?)
                     )";
                     $params[] = $from_date;
-                    $types .= "s";
+                    $params[] = $from_date;
+                    $types .= "ss";
                 } elseif (!empty($to_date)) {
                     $sql .= " AND EXISTS (
                         SELECT 1 FROM lead_bookings lb_sub 
                         WHERE lb_sub.lead_id = l.id 
                           AND lb_sub.deleted_at IS NULL 
                           AND lb_sub.booking_status IN ('completed', 'booked') 
-                          AND DATE(lb_sub.booking_date) <= ?
+                          AND (DATE(lb_sub.booking_date) <= ? OR DATE(lb_sub.created_at) <= ?)
                     )";
                     $params[] = $to_date;
-                    $types .= "s";
+                    $params[] = $to_date;
+                    $types .= "ss";
                 } elseif (!empty($year) || !empty($month)) {
-                    $ySub = !empty($year) ? " AND YEAR(lb_sub.booking_date) = " . (int)$year : "";
-                    $mSub = !empty($month) ? " AND MONTH(lb_sub.booking_date) = " . (int)$month : "";
+                    $ySub = !empty($year) ? " AND (YEAR(lb_sub.booking_date) = " . (int)$year . " OR YEAR(lb_sub.created_at) = " . (int)$year . ")" : "";
+                    $mSub = !empty($month) ? " AND (MONTH(lb_sub.booking_date) = " . (int)$month . " OR MONTH(lb_sub.created_at) = " . (int)$month . ")" : "";
                     $sql .= " AND EXISTS (
                         SELECT 1 FROM lead_bookings lb_sub 
                         WHERE lb_sub.lead_id = l.id 
@@ -1994,34 +2008,38 @@ class Lead extends Model
                         WHERE lb_sub.lead_id = leads.id 
                           AND lb_sub.deleted_at IS NULL 
                           AND lb_sub.booking_status IN ('completed', 'booked') 
-                          AND DATE(lb_sub.booking_date) BETWEEN ? AND ?
+                          AND (DATE(lb_sub.booking_date) BETWEEN ? AND ? OR DATE(lb_sub.created_at) BETWEEN ? AND ?)
                     )";
                     $params[] = $from_date;
                     $params[] = $to_date;
-                    $types .= "ss";
+                    $params[] = $from_date;
+                    $params[] = $to_date;
+                    $types .= "ssss";
                 } elseif (!empty($from_date)) {
                     $sql .= " AND EXISTS (
                         SELECT 1 FROM lead_bookings lb_sub 
                         WHERE lb_sub.lead_id = leads.id 
                           AND lb_sub.deleted_at IS NULL 
                           AND lb_sub.booking_status IN ('completed', 'booked') 
-                          AND DATE(lb_sub.booking_date) >= ?
+                          AND (DATE(lb_sub.booking_date) >= ? OR DATE(lb_sub.created_at) >= ?)
                     )";
                     $params[] = $from_date;
-                    $types .= "s";
+                    $params[] = $from_date;
+                    $types .= "ss";
                 } elseif (!empty($to_date)) {
                     $sql .= " AND EXISTS (
                         SELECT 1 FROM lead_bookings lb_sub 
                         WHERE lb_sub.lead_id = leads.id 
                           AND lb_sub.deleted_at IS NULL 
                           AND lb_sub.booking_status IN ('completed', 'booked') 
-                          AND DATE(lb_sub.booking_date) <= ?
+                          AND (DATE(lb_sub.booking_date) <= ? OR DATE(lb_sub.created_at) <= ?)
                     )";
                     $params[] = $to_date;
-                    $types .= "s";
+                    $params[] = $to_date;
+                    $types .= "ss";
                 } elseif (!empty($year) || !empty($month)) {
-                    $ySub = !empty($year) ? " AND YEAR(lb_sub.booking_date) = " . (int)$year : "";
-                    $mSub = !empty($month) ? " AND MONTH(lb_sub.booking_date) = " . (int)$month : "";
+                    $ySub = !empty($year) ? " AND (YEAR(lb_sub.booking_date) = " . (int)$year . " OR YEAR(lb_sub.created_at) = " . (int)$year . ")" : "";
+                    $mSub = !empty($month) ? " AND (MONTH(lb_sub.booking_date) = " . (int)$month . " OR MONTH(lb_sub.created_at) = " . (int)$month . ")" : "";
                     $sql .= " AND EXISTS (
                         SELECT 1 FROM lead_bookings lb_sub 
                         WHERE lb_sub.lead_id = leads.id 
@@ -2260,34 +2278,38 @@ class Lead extends Model
                         WHERE lb_sub.lead_id = leads.id 
                           AND lb_sub.deleted_at IS NULL 
                           AND lb_sub.booking_status IN ('completed', 'booked') 
-                          AND DATE(lb_sub.booking_date) BETWEEN ? AND ?
+                          AND (DATE(lb_sub.booking_date) BETWEEN ? AND ? OR DATE(lb_sub.created_at) BETWEEN ? AND ?)
                     )";
                     $params[] = $from_date;
                     $params[] = $to_date;
-                    $types .= "ss";
+                    $params[] = $from_date;
+                    $params[] = $to_date;
+                    $types .= "ssss";
                 } elseif (!empty($from_date)) {
                     $sql .= " AND EXISTS (
                         SELECT 1 FROM lead_bookings lb_sub 
                         WHERE lb_sub.lead_id = leads.id 
                           AND lb_sub.deleted_at IS NULL 
                           AND lb_sub.booking_status IN ('completed', 'booked') 
-                          AND DATE(lb_sub.booking_date) >= ?
+                          AND (DATE(lb_sub.booking_date) >= ? OR DATE(lb_sub.created_at) >= ?)
                     )";
                     $params[] = $from_date;
-                    $types .= "s";
+                    $params[] = $from_date;
+                    $types .= "ss";
                 } elseif (!empty($to_date)) {
                     $sql .= " AND EXISTS (
                         SELECT 1 FROM lead_bookings lb_sub 
                         WHERE lb_sub.lead_id = leads.id 
                           AND lb_sub.deleted_at IS NULL 
                           AND lb_sub.booking_status IN ('completed', 'booked') 
-                          AND DATE(lb_sub.booking_date) <= ?
+                          AND (DATE(lb_sub.booking_date) <= ? OR DATE(lb_sub.created_at) <= ?)
                     )";
                     $params[] = $to_date;
-                    $types .= "s";
+                    $params[] = $to_date;
+                    $types .= "ss";
                 } elseif (!empty($year) || !empty($month)) {
-                    $ySub = !empty($year) ? " AND YEAR(lb_sub.booking_date) = " . (int)$year : "";
-                    $mSub = !empty($month) ? " AND MONTH(lb_sub.booking_date) = " . (int)$month : "";
+                    $ySub = !empty($year) ? " AND (YEAR(lb_sub.booking_date) = " . (int)$year . " OR YEAR(lb_sub.created_at) = " . (int)$year . ")" : "";
+                    $mSub = !empty($month) ? " AND (MONTH(lb_sub.booking_date) = " . (int)$month . " OR MONTH(lb_sub.created_at) = " . (int)$month . ")" : "";
                     $sql .= " AND EXISTS (
                         SELECT 1 FROM lead_bookings lb_sub 
                         WHERE lb_sub.lead_id = leads.id 
@@ -2497,16 +2519,30 @@ class Lead extends Model
      * Get Executive Dashboard Serial Matrix Metrics
      * Computes the 16 core serial metrics for executive dashboard
      */
-    public function getExecutiveDashboardMetrics(int $userId, int $year = null, int $startMonth = null, int $endMonth = null): array
-    {
-        $year = $year ?: (int)date('Y');
-        $startMonth = $startMonth ?: (int)date('m');
-        $endMonth = $endMonth ?: $startMonth;
+    public function getExecutiveDashboardMetrics(
+        int $userId, 
+        int $year = null, 
+        int $startMonth = null, 
+        int $endMonth = null, 
+        bool $hasFilter = false,
+        string $customFromDate = null,
+        string $customToDate = null
+    ): array {
+        if (!empty($customFromDate) && !empty($customToDate)) {
+            $startDate = $customFromDate;
+            $endDate = $customToDate;
+            $year = (int)date('Y', strtotime($startDate));
+            $startMonth = (int)date('m', strtotime($startDate));
+            $endMonth = (int)date('m', strtotime($endDate));
+        } else {
+            $year = $year ?: (int)date('Y');
+            $startMonth = $startMonth ?: (int)date('m');
+            $endMonth = $endMonth ?: $startMonth;
+            $startDate = sprintf('%04d-%02d-01', $year, $startMonth);
+            $endDate = date('Y-m-t', strtotime(sprintf('%04d-%02d-01', $year, $endMonth)));
+        }
 
-        $startDate = sprintf('%04d-%02d-01', $year, $startMonth);
-        $endDate = date('Y-m-t', strtotime(sprintf('%04d-%02d-01', $year, $endMonth)));
-
-        // Dynamic column support to prevent live server column mismatch / strict mode errors
+        // Dynamic column support
         $hasAssignedAt       = $this->hasTableColumn('leads', 'assigned_at');
         $hasFirstContactedAt = $this->hasTableColumn('leads', 'first_contacted_at');
         $hasLastLeadAction   = $this->hasTableColumn('leads', 'last_lead_action');
@@ -2547,35 +2583,63 @@ class Lead extends Model
         $orConds[] = "EXISTS (SELECT 1 FROM lead_bookings lb WHERE lb.lead_id = leads.id {$bkDelCond})";
         $contactedCond = "(" . implode(" OR ", $orConds) . ")";
 
-        // 1. Total Leads Assigned
+        // 1. All-time Leads Assigned
         $sql1 = "SELECT COUNT(*) as c FROM leads WHERE assigned_id = ? {$leadsDelSql}";
-        $totalLeadsAssigned = 0;
+        $allTimeLeadsAssigned = 0;
         if ($stmt1 = $this->db->prepare($sql1)) {
             $stmt1->bind_param("i", $userId);
             $stmt1->execute();
-            $totalLeadsAssigned = (int)($stmt1->get_result()->fetch_assoc()['c'] ?? 0);
+            $allTimeLeadsAssigned = (int)($stmt1->get_result()->fetch_assoc()['c'] ?? 0);
             $stmt1->close();
-        } else {
-            error_log("Lead::getExecutiveDashboardMetrics sql1 prepare error: " . $this->db->error);
         }
 
-        // 2. Total Leads Contacted
+        // 2. All-time Leads Contacted
         $sql2 = "SELECT COUNT(*) as c FROM leads WHERE assigned_id = ? {$leadsDelSql} AND {$contactedCond}";
-        $totalLeadsContacted = 0;
+        $allTimeLeadsContacted = 0;
         if ($stmt2 = $this->db->prepare($sql2)) {
             $stmt2->bind_param("i", $userId);
             $stmt2->execute();
-            $totalLeadsContacted = (int)($stmt2->get_result()->fetch_assoc()['c'] ?? 0);
+            $allTimeLeadsContacted = (int)($stmt2->get_result()->fetch_assoc()['c'] ?? 0);
             $stmt2->close();
-        } else {
-            error_log("Lead::getExecutiveDashboardMetrics sql2 prepare error: " . $this->db->error);
         }
 
-        // 3. Total Contacted %
-        $totalContactedPct = ($totalLeadsAssigned > 0) ? round(($totalLeadsContacted / $totalLeadsAssigned) * 100, 1) : 0;
+        $allTimeContactedPct = ($allTimeLeadsAssigned > 0) ? round(($allTimeLeadsContacted / $allTimeLeadsAssigned) * 100, 1) : 0;
+        $allTimeNotContacted = max(0, $allTimeLeadsAssigned - $allTimeLeadsContacted);
 
-        // 4. Total Not Contacted
-        $totalNotContacted = max(0, $totalLeadsAssigned - $totalLeadsContacted);
+        // Period Metrics (Assigned within date range)
+        $sqlPeriodAssigned = "SELECT COUNT(*) as c FROM leads WHERE assigned_id = ? {$leadsDelSql} AND DATE(created_at) BETWEEN ? AND ?";
+        $periodLeadsAssigned = 0;
+        if ($stmtP1 = $this->db->prepare($sqlPeriodAssigned)) {
+            $stmtP1->bind_param("iss", $userId, $startDate, $endDate);
+            $stmtP1->execute();
+            $periodLeadsAssigned = (int)($stmtP1->get_result()->fetch_assoc()['c'] ?? 0);
+            $stmtP1->close();
+        }
+
+        $sqlPeriodContacted = "SELECT COUNT(*) as c FROM leads WHERE assigned_id = ? {$leadsDelSql} AND DATE(created_at) BETWEEN ? AND ? AND {$contactedCond}";
+        $periodLeadsContacted = 0;
+        if ($stmtP2 = $this->db->prepare($sqlPeriodContacted)) {
+            $stmtP2->bind_param("iss", $userId, $startDate, $endDate);
+            $stmtP2->execute();
+            $periodLeadsContacted = (int)($stmtP2->get_result()->fetch_assoc()['c'] ?? 0);
+            $stmtP2->close();
+        }
+
+        $periodNotContacted = max(0, $periodLeadsAssigned - $periodLeadsContacted);
+        $periodContactedPct = ($periodLeadsAssigned > 0) ? round(($periodLeadsContacted / $periodLeadsAssigned) * 100, 1) : 0;
+
+        // When filtered, active cards display period data for consistency with /my-all-assigned-leads
+        if ($hasFilter) {
+            $totalLeadsAssigned  = $periodLeadsAssigned;
+            $totalLeadsContacted = $periodLeadsContacted;
+            $totalNotContacted   = $periodNotContacted;
+            $totalContactedPct   = $periodContactedPct;
+        } else {
+            $totalLeadsAssigned  = $allTimeLeadsAssigned;
+            $totalLeadsContacted = $allTimeLeadsContacted;
+            $totalNotContacted   = $allTimeNotContacted;
+            $totalContactedPct   = $allTimeContactedPct;
+        }
 
         // 5. Today Leads Assigned
         $sql5 = "SELECT COUNT(*) as c FROM leads WHERE assigned_id = ? {$leadsDelSql} AND DATE({$assignedDateExprUnprefixed}) = CURDATE()";
@@ -2585,19 +2649,9 @@ class Lead extends Model
             $stmt5->execute();
             $todayLeadsAssigned = (int)($stmt5->get_result()->fetch_assoc()['c'] ?? 0);
             $stmt5->close();
-        } else {
-            error_log("Lead::getExecutiveDashboardMetrics sql5 prepare error: " . $this->db->error);
-            // Safe fallback to created_at
-            $sql5Fb = "SELECT COUNT(*) as c FROM leads WHERE assigned_id = ? AND DATE(created_at) = CURDATE()";
-            if ($stmt5Fb = $this->db->prepare($sql5Fb)) {
-                $stmt5Fb->bind_param("i", $userId);
-                $stmt5Fb->execute();
-                $todayLeadsAssigned = (int)($stmt5Fb->get_result()->fetch_assoc()['c'] ?? 0);
-                $stmt5Fb->close();
-            }
         }
 
-        // 6. Today Leads Contacted (today assigned leads that completed follow up or contacted)
+        // 6. Today Leads Contacted
         $firstContactCond = "";
         if ($hasCallStatus) {
             if ($hasFirstContactedAt) {
@@ -2637,8 +2691,6 @@ class Lead extends Model
             $stmt6->execute();
             $todayLeadsContacted = (int)($stmt6->get_result()->fetch_assoc()['c'] ?? 0);
             $stmt6->close();
-        } else {
-            error_log("Lead::getExecutiveDashboardMetrics sql6 prepare error: " . $this->db->error);
         }
 
         // 7. Today Not Contacted
@@ -2652,8 +2704,6 @@ class Lead extends Model
             $stmt8->execute();
             $totalFollowUpComplete = (int)($stmt8->get_result()->fetch_assoc()['c'] ?? 0);
             $stmt8->close();
-        } else {
-            error_log("Lead::getExecutiveDashboardMetrics sql8 prepare error: " . $this->db->error);
         }
 
         // 9. Total Follow Up Missing
@@ -2677,14 +2727,28 @@ class Lead extends Model
               AND lf.next_follow_up_date > '1000-01-01'
               AND DATE(lf.next_follow_up_date) < CURDATE()
         ";
-        $totalFollowUpMissing = 0;
+        $allTimeFollowUpMissing = 0;
         if ($stmt9 = $this->db->prepare($sql9)) {
             $stmt9->bind_param("i", $userId);
             $stmt9->execute();
-            $totalFollowUpMissing = (int)($stmt9->get_result()->fetch_assoc()['c'] ?? 0);
+            $allTimeFollowUpMissing = (int)($stmt9->get_result()->fetch_assoc()['c'] ?? 0);
             $stmt9->close();
+        }
+
+        $periodFollowUpMissing = 0;
+        if ($hasFilter) {
+            $sql9Period = $sql9 . " AND DATE(l.created_at) BETWEEN ? AND ?";
+            if ($stmt9P = $this->db->prepare($sql9Period)) {
+                $stmt9P->bind_param("iss", $userId, $startDate, $endDate);
+                $stmt9P->execute();
+                $periodFollowUpMissing = (int)($stmt9P->get_result()->fetch_assoc()['c'] ?? 0);
+                $stmt9P->close();
+                $totalFollowUpMissing = $periodFollowUpMissing;
+            } else {
+                $totalFollowUpMissing = $allTimeFollowUpMissing;
+            }
         } else {
-            error_log("Lead::getExecutiveDashboardMetrics sql9 prepare error: " . $this->db->error);
+            $totalFollowUpMissing = $allTimeFollowUpMissing;
         }
 
         // 10. Today Follow Ups (Scheduled for today)
@@ -2713,11 +2777,9 @@ class Lead extends Model
             $stmt10->execute();
             $todayFollowUps = (int)($stmt10->get_result()->fetch_assoc()['c'] ?? 0);
             $stmt10->close();
-        } else {
-            error_log("Lead::getExecutiveDashboardMetrics sql10 prepare error: " . $this->db->error);
         }
 
-        // 11. Today Follow Up Complete (of leads with next follow up today, how many had follow up created today)
+        // 11. Today Follow Up Complete
         $sql11 = "
             SELECT COUNT(DISTINCT l.id) as c
             FROM leads l
@@ -2742,33 +2804,34 @@ class Lead extends Model
             $stmt11->execute();
             $todayFollowUpComplete = (int)($stmt11->get_result()->fetch_assoc()['c'] ?? 0);
             $stmt11->close();
-        } else {
-            error_log("Lead::getExecutiveDashboardMetrics sql11 prepare error: " . $this->db->error);
         }
 
         // 12. Remaining Today Follow Up
         $remainingTodayFollowUp = max(0, $todayFollowUps - $todayFollowUpComplete);
 
-        // 13. Total Sales/Booked (units)
-        $sql13 = "SELECT COUNT(*) as c FROM lead_bookings WHERE (sales_by_id = ? OR created_by = ?) {$bkDelWhere} AND booking_status != 'cancelled'";
+        // 13. Total Sales/Booked (Synchronized with CRM lead ownership)
+        $sql13 = "SELECT COUNT(DISTINCT lb.id) as c 
+                  FROM lead_bookings lb 
+                  JOIN leads l ON l.id = lb.lead_id 
+                  WHERE lb.deleted_at IS NULL AND l.deleted_at IS NULL 
+                    AND (l.assigned_id = ? OR lb.sales_by_id = ? OR lb.created_by = ?) 
+                    AND lb.booking_status IN ('completed', 'booked')";
         $totalSalesBookedUnits = 0;
         if ($stmt13 = $this->db->prepare($sql13)) {
-            $stmt13->bind_param("ii", $userId, $userId);
+            $stmt13->bind_param("iii", $userId, $userId, $userId);
             $stmt13->execute();
             $totalSalesBookedUnits = (int)($stmt13->get_result()->fetch_assoc()['c'] ?? 0);
             $stmt13->close();
-        } else {
-            error_log("Lead::getExecutiveDashboardMetrics sql13 prepare error: " . $this->db->error);
         }
 
-        // 14. Monthly Target (from sales_targets)
+        // 14. Target (from sales_targets)
         $monthlyBookingTarget = 0;
         $monthlySiteVisitTarget = 0;
         try {
+            $targetStartMonth = date('Y-m-01', strtotime($startDate));
+            $targetEndMonth = date('Y-m-01', strtotime($endDate));
             $sql14 = "SELECT SUM(booking_target) as booking_target, SUM(site_visit_target) as site_visit_target FROM sales_targets WHERE sales_user_id = ? AND month BETWEEN ? AND ?";
             if ($stmt14 = $this->db->prepare($sql14)) {
-                $targetStartMonth = sprintf('%04d-%02d-01', $year, $startMonth);
-                $targetEndMonth = sprintf('%04d-%02d-01', $year, $endMonth);
                 $stmt14->bind_param("iss", $userId, $targetStartMonth, $targetEndMonth);
                 $stmt14->execute();
                 $targetRow = $stmt14->get_result()->fetch_assoc();
@@ -2780,21 +2843,33 @@ class Lead extends Model
             error_log("Lead::getExecutiveDashboardMetrics sales_targets error: " . $e->getMessage());
         }
 
-        // 15. Current Month Booking (from lead_bookings)
-        $sql15 = "SELECT COUNT(*) as c FROM lead_bookings WHERE (sales_by_id = ? OR created_by = ?) {$bkDelWhere} AND booking_status != 'cancelled' AND booking_date BETWEEN ? AND ?";
-        $currentMonthBooking = 0;
-        if ($stmt15 = $this->db->prepare($sql15)) {
-            $stmt15->bind_param("iiss", $userId, $userId, $startDate, $endDate);
-            $stmt15->execute();
-            $currentMonthBooking = (int)($stmt15->get_result()->fetch_assoc()['c'] ?? 0);
-            $stmt15->close();
+        // 15. Period / Current Month Booking (Synchronized with countBookingsWithFilter logic)
+        if ($hasFilter) {
+            $sql15 = "SELECT COUNT(DISTINCT lb.id) as total_bookings, COUNT(DISTINCT lb.lead_id) as booked_leads 
+                      FROM lead_bookings lb 
+                      JOIN leads l ON l.id = lb.lead_id 
+                      WHERE lb.deleted_at IS NULL AND l.deleted_at IS NULL 
+                        AND (l.assigned_id = ? OR lb.sales_by_id = ? OR lb.created_by = ?) 
+                        AND lb.booking_status IN ('completed', 'booked') 
+                        AND (DATE(lb.booking_date) BETWEEN ? AND ? OR DATE(lb.created_at) BETWEEN ? AND ?)";
+            $currentMonthBooking = 0;
+            $currentMonthBookedLeads = 0;
+            if ($stmt15 = $this->db->prepare($sql15)) {
+                $stmt15->bind_param("iiissss", $userId, $userId, $userId, $startDate, $endDate, $startDate, $endDate);
+                $stmt15->execute();
+                $bkRow15 = $stmt15->get_result()->fetch_assoc();
+                $currentMonthBooking = (int)($bkRow15['total_bookings'] ?? 0);
+                $currentMonthBookedLeads = (int)($bkRow15['booked_leads'] ?? 0);
+                $stmt15->close();
+            }
         } else {
-            error_log("Lead::getExecutiveDashboardMetrics sql15 prepare error: " . $this->db->error);
+            $currentMonthBooking = $totalSalesBookedUnits;
+            $currentMonthBookedLeads = $totalSalesBookedUnits;
         }
 
         $bookingAchievement = $monthlyBookingTarget > 0 ? round(($currentMonthBooking / $monthlyBookingTarget) * 100, 1) : 0;
 
-        // 16. Total Visited Complete
+        // 16. Total Visited Complete (All-time)
         $leadTypeCond = $hasLeadType ? "l.lead_type = 'Visited'" : "0=1";
         $lastActionCond = $hasLastLeadAction ? "l.last_lead_action = 'visited'" : "0=1";
 
@@ -2817,44 +2892,57 @@ class Lead extends Model
             $stmt16->execute();
             $totalVisitedComplete = (int)($stmt16->get_result()->fetch_assoc()['c'] ?? 0);
             $stmt16->close();
-        } else {
-            error_log("Lead::getExecutiveDashboardMetrics sql16 prepare error: " . $this->db->error);
         }
 
-        // 17. This Month Visited
-        $sql17 = "
-            SELECT COUNT(DISTINCT l.id) as c
-            FROM leads l
-            INNER JOIN lead_follow_ups lf ON lf.lead_id = l.id {$fuDelCond}
-            WHERE 1=1
-              {$lDelSql}
-              AND (l.assigned_id = ? OR lf.assigned_with = ? OR lf.created_by = ?)
-              AND (lf.lead_status = 'Visited' OR lf.follow_up_type = 'visit')
-              AND lf.status != 'canceled'
-              AND lf.follow_up_date BETWEEN ? AND ?
-        ";
-        $thisMonthVisited = 0;
-        if ($stmt17 = $this->db->prepare($sql17)) {
-            $stmt17->bind_param("iiiss", $userId, $userId, $userId, $startDate, $endDate);
-            $stmt17->execute();
-            $thisMonthVisited = (int)($stmt17->get_result()->fetch_assoc()['c'] ?? 0);
-            $stmt17->close();
+        // 17. Period / This Month Visited (Synchronized with follow_up_date & created_at fallback)
+        if ($hasFilter) {
+            $sql17 = "
+                SELECT COUNT(DISTINCT lf.id) as total_visits, COUNT(DISTINCT l.id) as visited_leads
+                FROM leads l
+                INNER JOIN lead_follow_ups lf ON lf.lead_id = l.id {$fuDelCond}
+                WHERE 1=1
+                  {$lDelSql}
+                  AND (l.assigned_id = ? OR lf.assigned_with = ? OR lf.created_by = ?)
+                  AND (lf.lead_status = 'Visited' OR LOWER(lf.follow_up_type) = 'visit')
+                  AND lf.status != 'canceled'
+                  AND (DATE(lf.follow_up_date) BETWEEN ? AND ? OR (lf.follow_up_date IS NULL AND DATE(lf.created_at) BETWEEN ? AND ?))
+            ";
+            $thisMonthVisited = 0;
+            $thisMonthVisitedLeads = 0;
+            if ($stmt17 = $this->db->prepare($sql17)) {
+                $stmt17->bind_param("iiissss", $userId, $userId, $userId, $startDate, $endDate, $startDate, $endDate);
+                $stmt17->execute();
+                $vRow17 = $stmt17->get_result()->fetch_assoc();
+                $thisMonthVisited = (int)($vRow17['total_visits'] ?? 0);
+                $thisMonthVisitedLeads = (int)($vRow17['visited_leads'] ?? 0);
+                $stmt17->close();
+            }
         } else {
-            error_log("Lead::getExecutiveDashboardMetrics sql17 prepare error: " . $this->db->error);
+            $thisMonthVisited = $totalVisitedComplete;
+            $thisMonthVisitedLeads = $totalVisitedComplete;
         }
 
         $visitAchievement = $monthlySiteVisitTarget > 0 ? round(($thisMonthVisited / $monthlySiteVisitTarget) * 100, 1) : 0;
 
         return [
             'totalLeadsAssigned'     => $totalLeadsAssigned,
+            'allTimeLeadsAssigned'   => $allTimeLeadsAssigned,
+            'periodLeadsAssigned'    => $periodLeadsAssigned,
             'totalLeadsContacted'    => $totalLeadsContacted,
+            'allTimeLeadsContacted'  => $allTimeLeadsContacted,
+            'periodLeadsContacted'   => $periodLeadsContacted,
             'totalContactedPct'      => $totalContactedPct,
+            'allTimeContactedPct'    => $allTimeContactedPct,
             'totalNotContacted'      => $totalNotContacted,
+            'allTimeNotContacted'    => $allTimeNotContacted,
+            'periodNotContacted'     => $periodNotContacted,
             'todayLeadsAssigned'     => $todayLeadsAssigned,
             'todayLeadsContacted'    => $todayLeadsContacted,
             'todayNotContacted'      => $todayNotContacted,
             'totalFollowUpComplete'  => $totalFollowUpComplete,
             'totalFollowUpMissing'   => $totalFollowUpMissing,
+            'allTimeFollowUpMissing' => $allTimeFollowUpMissing,
+            'periodFollowUpMissing'  => $periodFollowUpMissing,
             'todayFollowUps'         => $todayFollowUps,
             'todayFollowUpComplete'  => $todayFollowUpComplete,
             'remainingTodayFollowUp' => $remainingTodayFollowUp,
@@ -2862,14 +2950,19 @@ class Lead extends Model
             'monthlyBookingTarget'   => $monthlyBookingTarget,
             'monthlySiteVisitTarget' => $monthlySiteVisitTarget,
             'currentMonthBooking'    => $currentMonthBooking,
+            'currentMonthBookedLeads'=> $currentMonthBookedLeads,
             'bookingAchievement'     => $bookingAchievement,
             'totalVisitedComplete'   => $totalVisitedComplete,
             'thisMonthVisited'       => $thisMonthVisited,
+            'thisMonthVisitedLeads'  => $thisMonthVisitedLeads,
             'visitAchievement'       => $visitAchievement,
+            'hasFilter'              => $hasFilter,
+            'filterStartDate'        => $startDate,
+            'filterEndDate'          => $endDate,
         ];
     }
 
-    public function getSalesTeamKpiData(array $options = [])
+        public function getSalesTeamKpiData(array $options = [])
     {
         $search = trim($options['search'] ?? '');
         $executiveId = !empty($options['executive']) ? (int) $options['executive'] : null;
