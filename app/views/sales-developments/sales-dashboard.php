@@ -504,7 +504,6 @@ body.dark-mode {
         <!-- Top Header -->
         <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
             <div>
-                <div class="sd-header-eyebrow">TPHL / SALES INTELLIGENCE</div>
                 <div class="d-flex align-items-center gap-2">
                     <h1 class="sd-title">Sales dashboard</h1>
                     <span class="sd-badge-live"><i class="fa-solid fa-circle-dot me-1"></i> Live Data</span>

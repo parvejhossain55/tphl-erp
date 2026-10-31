@@ -213,23 +213,110 @@ class UserDashboardController extends Controller
         $missingFollowUpCount = $this->followUpModel->getMissingFollowUpCount($loggedUserId);
 
         $todayFollowUpComplete = $this->followUpModel->getTodayFollowUpCompleteCount($loggedUserId);
-        // executive target from user model
-        // Get targets
-        $filterType = $_GET['filter_type'] ?? 'monthly';
+
+        // Filter preset and date handling
+        $preset = $_GET['preset'] ?? $_GET['period'] ?? null;
+        $getFilterType = $_GET['filter_type'] ?? null;
+        $getFromDate = !empty($_GET['from_date']) ? trim($_GET['from_date']) : null;
+        $getToDate = !empty($_GET['to_date']) ? trim($_GET['to_date']) : null;
+
+        $monthsList = [
+            1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
+            5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August',
+            9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'
+        ];
+
         $selectedYear = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
         $selectedStartMonth = isset($_GET['start_month']) ? (int)$_GET['start_month'] : (int)date('m');
         $selectedEndMonth = isset($_GET['end_month']) ? (int)$_GET['end_month'] : (int)date('m');
+        $filterType = $getFilterType ?? 'monthly';
 
-        if ($filterType === 'yearly') {
-            $startMonth = 1;
-            $endMonth = 12;
+        $hasFilter = false;
+        $activePreset = 'all_time';
+        $fromDate = null;
+        $toDate = null;
+        $titlePeriod = 'All Time';
+
+        if ($preset === 'today' || $preset === 'daily') {
+            $hasFilter = true;
+            $activePreset = 'today';
+            $fromDate = date('Y-m-d');
+            $toDate = date('Y-m-d');
+            $titlePeriod = 'Today (' . date('d M, Y') . ')';
+        } elseif ($preset === 'yesterday') {
+            $hasFilter = true;
+            $activePreset = 'yesterday';
+            $yesterday = date('Y-m-d', strtotime('-1 day'));
+            $fromDate = $yesterday;
+            $toDate = $yesterday;
+            $titlePeriod = 'Yesterday (' . date('d M, Y', strtotime($yesterday)) . ')';
+        } elseif ($preset === 'this_month' || ($preset === 'monthly' && empty($getFilterType) && empty($getFromDate))) {
+            $hasFilter = true;
+            $activePreset = 'this_month';
+            $fromDate = date('Y-m-01');
+            $toDate = date('Y-m-t');
+            $titlePeriod = 'This Month (' . date('F Y') . ')';
+        } elseif ($preset === 'all_time' || $preset === 'all_over') {
+            $hasFilter = false;
+            $activePreset = 'all_time';
+            $fromDate = null;
+            $toDate = null;
+            $titlePeriod = 'All Time';
+        } elseif (!empty($getFromDate) && !empty($getToDate)) {
+            $hasFilter = true;
+            $fromDate = $getFromDate;
+            $toDate = $getToDate;
+            if ($fromDate === date('Y-m-d') && $toDate === date('Y-m-d')) {
+                $activePreset = 'today';
+                $titlePeriod = 'Today (' . date('d M, Y') . ')';
+            } elseif ($fromDate === date('Y-m-d', strtotime('-1 day')) && $toDate === date('Y-m-d', strtotime('-1 day'))) {
+                $activePreset = 'yesterday';
+                $titlePeriod = 'Yesterday (' . date('d M, Y', strtotime($fromDate)) . ')';
+            } elseif ($fromDate === date('Y-m-01') && $toDate === date('Y-m-t')) {
+                $activePreset = 'this_month';
+                $titlePeriod = 'This Month (' . date('F Y') . ')';
+            } else {
+                $activePreset = 'custom';
+                $titlePeriod = date('d M, Y', strtotime($fromDate)) . ' - ' . date('d M, Y', strtotime($toDate));
+            }
+        } elseif (isset($_GET['filter_type']) || (isset($_GET['start_month']) && isset($_GET['end_month']))) {
+            $hasFilter = true;
+            if ($filterType === 'yearly') {
+                $activePreset = 'yearly';
+                $startMonth = 1;
+                $endMonth = 12;
+                $fromDate = sprintf('%04d-01-01', $selectedYear);
+                $toDate = sprintf('%04d-12-31', $selectedYear);
+                $titlePeriod = 'Year ' . $selectedYear;
+            } else {
+                $activePreset = 'monthly';
+                $startMonth = $selectedStartMonth;
+                $endMonth = $selectedEndMonth;
+                $fromDate = sprintf('%04d-%02d-01', $selectedYear, $startMonth);
+                $toDate = date('Y-m-t', strtotime(sprintf('%04d-%02d-01', $selectedYear, $endMonth)));
+                $titlePeriod = $monthsList[$startMonth] ?? date('F');
+                if ($startMonth !== $endMonth) {
+                    $titlePeriod .= ' - ' . ($monthsList[$endMonth] ?? date('F'));
+                }
+                $titlePeriod .= ' ' . $selectedYear;
+            }
         } else {
-            $startMonth = $selectedStartMonth;
-            $endMonth = $selectedEndMonth;
+            // Default when loading /my-dashboard without parameters
+            $hasFilter = false;
+            $activePreset = 'all_time';
+            $fromDate = null;
+            $toDate = null;
+            $titlePeriod = 'All Time';
         }
 
-        // Fetch range stats
-        $stats = $this->salesTargetModel->getRangeStats($loggedUserId, $selectedYear, $startMonth, $endMonth);
+        // Fetch range stats & dashboard metrics
+        if ($hasFilter) {
+            $stats = $this->salesTargetModel->getRangeStats($loggedUserId, $selectedYear, $selectedStartMonth, $selectedEndMonth, $fromDate, $toDate);
+            $matrixMetrics = $this->leadModel->getExecutiveDashboardMetrics($loggedUserId, $selectedYear, $selectedStartMonth, $selectedEndMonth, true, $fromDate, $toDate);
+        } else {
+            $stats = $this->salesTargetModel->getRangeStats($loggedUserId, null, null, null, null, null);
+            $matrixMetrics = $this->leadModel->getExecutiveDashboardMetrics($loggedUserId, null, null, null, false, null, null);
+        }
 
         $monthlySiteVisitTarget = $stats['site_visit_target'];
         $monthlyBookingTarget = $stats['booking_target'];
@@ -244,12 +331,11 @@ class UserDashboardController extends Controller
         // Deals Closed & Won
         $dealsClosed = $stats['deals_closed'];
         $dealsClosedAll = $this->salesTargetModel->getDealsClosedAllTime($loggedUserId);
-        $dealsWin = $stats['deals_won'];
+        $dealsWon = $stats['deals_won'];
+        $dealsWin = $dealsWon;
         $dealsWinAll = $this->salesTargetModel->getDealsClosedAllTime($loggedUserId);
+        $dealsLost = $stats['deals_lost'];
         $dealsLostAll = $this->salesTargetModel->getAllDealsLost($loggedUserId);
-
-        // Fetch Executive Serial Matrix Metrics
-        $matrixMetrics = $this->leadModel->getExecutiveDashboardMetrics($loggedUserId, $selectedYear, $startMonth, $endMonth);
 
         $viewData = array_merge([
             "current_route"   => "my-dashboard",
@@ -271,14 +357,21 @@ class UserDashboardController extends Controller
             "bookingAchievement"    => $bookingAchievement,
             "dealsClosed"    => $dealsClosed,
             "dealsClosedAll"    => $dealsClosedAll,
-            "dealsWin"    => $dealsWin,
+            "dealsWon"       => $dealsWon,
+            "dealsWin"       => $dealsWin,
             "dealsWinAll"    => $dealsWinAll,
-            "dealsLostAll"    => $dealsLostAll,
+            "dealsLost"      => $dealsLost,
+            "dealsLostAll"   => $dealsLostAll,
             "monthlyVisitComplete"    => $monthlyVisitComplete,
             "selectedYear"            => $selectedYear,
             "selectedStartMonth"      => $selectedStartMonth,
             "selectedEndMonth"        => $selectedEndMonth,
             "filterType"              => $filterType,
+            "hasFilter"               => $hasFilter,
+            "activePreset"            => $activePreset,
+            "fromDate"                => $fromDate,
+            "toDate"                  => $toDate,
+            "titlePeriod"             => $titlePeriod,
             "matrixMetrics"           => $matrixMetrics,
         ], $matrixMetrics);
 
@@ -742,6 +835,7 @@ class UserDashboardController extends Controller
         $contactedLeadsCount    = (int)($summaryCards['contacted_leads'] ?? 0);
         $notContactedLeadsCount = (int)($summaryCards['not_contacted_leads'] ?? 0);
         $bookedLeadsCount       = (int)($summaryCards['booked_leads'] ?? 0);
+        $totalBookingsCount     = $this->leadModel->countBookingsWithFilter($year, $month, null, null, null, $userId, $from_date, $to_date, $filterProjectId, $filterCategoryId, $filterCountry, $date_type);
         $upcomingFollowUpsCount = (int)($summaryCards['upcoming_follow_ups'] ?? 0);
         $missingFollowUpCount   = (int)($summaryCards['missing_follow_ups'] ?? 0);
         $irrelevantLeadsCount   = (int)($summaryCards['irrelevant_leads'] ?? 0);
@@ -955,6 +1049,7 @@ class UserDashboardController extends Controller
             'notContactedLeadsCount' => $notContactedLeadsCount,
             'notCalledLeadsCount'    => $notContactedLeadsCount,
             'bookedLeadsCount'       => $bookedLeadsCount,
+            'totalBookingsCount'     => $totalBookingsCount,
             'upcomingFollowUpsCount' => $upcomingFollowUpsCount,
             'irrelevantLeadsCount'   => $irrelevantLeadsCount,
             'search'              => $search,

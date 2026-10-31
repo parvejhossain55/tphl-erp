@@ -1922,50 +1922,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const leads        = Array.from(selectedLeadsSet);
             if (!userId || leads.length === 0) { alert('Select leads and a user.'); return; }
             
-            // Check for duplicates via AJAX first
-            const fd = new FormData();
-            fd.append('lead_ids', leads.join(','));
-            
-            fetch(base_url + '/check-leads-duplicates', { method: 'POST', body: fd })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.has_duplicates) {
-                        let dupInfo = data.duplicates.map(d => 
-                            `• <strong>${d.current_lead_name}</strong> is already assigned to <strong>${d.original_assignee_name}</strong> (${d.original_team_name || 'No Team'})`
-                        ).join('<br>');
-                        
-                        Swal.fire({
-                            title: 'Duplicate Leads Detected',
-                            html: `<div class="text-start mb-3" style="font-size:0.85rem;">
-                                    Some of the selected leads are already assigned:<br><br>
-                                    ${dupInfo}<br><br>
-                                    Please choose how to assign them:<br><br>
-                                    • <strong>Split Assign:</strong> Assign duplicate leads back to their <strong>Existing Executive(s)</strong> (e.g. Shafia), and assign the remaining leads to the <strong>New Executive</strong>.<br><br>
-                                    • <strong>Assign All to New:</strong> Override and assign all selected leads (including duplicates) to the <strong>New Executive</strong>.
-                                   </div>`,
-                            icon: 'warning',
-                            showCancelButton: true,
-                            showDenyButton: true,
-                            confirmButtonText: 'Split Assign (Existing + Rest to New)',
-                            denyButtonText: 'Assign All to New',
-                            cancelButtonText: 'Cancel',
-                            confirmButtonColor: '#198754',
-                            denyButtonColor: '#0d6efd',
-                            cancelButtonColor: '#6c757d'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                submitAssignForm(userId, leads, assignedDate, 'existing');
-                            } else if (result.isDenied) {
-                                submitAssignForm(userId, leads, assignedDate, 'new');
-                            }
-                        });
-                    } else {
-                        submitAssignForm(userId, leads, assignedDate, 'new');
-                    }
-                })
-                .catch(() => {
-                    submitAssignForm(userId, leads, assignedDate, 'new');
-                });
+            // Direct assignment to selected user (no duplicate check popup / no split)
+            submitAssignForm(userId, leads, assignedDate, 'new');
         });
     }
 
@@ -1978,50 +1936,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const leads        = Array.from(selectedLeadsSet);
             if (!userId || leads.length === 0) { alert('Select leads and a user.'); return; }
             
-            // Check for duplicates via AJAX first
-            const fd = new FormData();
-            fd.append('lead_ids', leads.join(','));
-            
-            fetch(base_url + '/check-leads-duplicates', { method: 'POST', body: fd })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.has_duplicates) {
-                        let dupInfo = data.duplicates.map(d => 
-                            `• <strong>${d.current_lead_name}</strong> is already assigned to <strong>${d.original_assignee_name}</strong> (${d.original_team_name || 'No Team'})`
-                        ).join('<br>');
-                        
-                        Swal.fire({
-                            title: 'Duplicate Leads Detected',
-                            html: `<div class="text-start mb-3" style="font-size:0.85rem;">
-                                    Some of the selected leads are already assigned:<br><br>
-                                    ${dupInfo}<br><br>
-                                    Please choose how to assign them:<br><br>
-                                    • <strong>Split Assign:</strong> Assign duplicate leads back to their <strong>Existing Executive(s)</strong> (e.g. Shafia), and assign the remaining leads to the <strong>New Executive</strong>.<br><br>
-                                    • <strong>Assign All to New:</strong> Override and assign all selected leads (including duplicates) to the <strong>New Executive</strong>.
-                                   </div>`,
-                            icon: 'warning',
-                            showCancelButton: true,
-                            showDenyButton: true,
-                            confirmButtonText: 'Split Assign (Existing + Rest to New)',
-                            denyButtonText: 'Assign All to New',
-                            cancelButtonText: 'Cancel',
-                            confirmButtonColor: '#198754',
-                            denyButtonColor: '#0d6efd',
-                            cancelButtonColor: '#6c757d'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                submitAssignForm(userId, leads, assignedDate, 'existing');
-                            } else if (result.isDenied) {
-                                submitAssignForm(userId, leads, assignedDate, 'new');
-                            }
-                        });
-                    } else {
-                        submitAssignForm(userId, leads, assignedDate, 'new');
-                    }
-                })
-                .catch(() => {
-                    submitAssignForm(userId, leads, assignedDate, 'new');
-                });
+            // Direct assignment to selected user (no duplicate check popup / no split)
+            submitAssignForm(userId, leads, assignedDate, 'new');
         });
     }
 

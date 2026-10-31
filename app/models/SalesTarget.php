@@ -806,14 +806,30 @@ public function getExecutiveFullStats($executiveId = null, $startDate = null, $e
     return $result->fetch_all(MYSQLI_ASSOC);
 }
 
-    public function getRangeStats($userId, $year, $startMonth, $endMonth)
+    public function getRangeStats($userId, $year = null, $startMonth = null, $endMonth = null, $customFromDate = null, $customToDate = null)
     {
-        $cycleStart = $this->getCycleDateRange($year, $startMonth);
-        $cycleEnd = $this->getCycleDateRange($year, $endMonth);
-        $start = $cycleStart['start'];
-        $end = $cycleEnd['end'];
+        if (!empty($customFromDate) && !empty($customToDate)) {
+            $startDate = $customFromDate;
+            $endDate = $customToDate;
+            $targetStartMonth = date('Y-m-01', strtotime($startDate));
+            $targetEndMonth = date('Y-m-01', strtotime($endDate));
+        } elseif ($year === null && $startMonth === null) {
+            // All Time
+            $startDate = '1970-01-01';
+            $endDate = '2099-12-31';
+            $targetStartMonth = '1970-01-01';
+            $targetEndMonth = '2099-12-31';
+        } else {
+            $year = $year ?: (int)date('Y');
+            $startMonth = $startMonth ?: (int)date('m');
+            $endMonth = $endMonth ?: $startMonth;
+            $startDate = sprintf('%04d-%02d-01', $year, $startMonth);
+            $endDate = date('Y-m-t', strtotime(sprintf('%04d-%02d-01', $year, $endMonth)));
+            $targetStartMonth = sprintf('%04d-%02d-01', $year, $startMonth);
+            $targetEndMonth = sprintf('%04d-%02d-01', $year, $endMonth);
+        }
 
-        // 1. Targets (Targets are based on the 'month' column which acts as the cycle)
+        // 1. Targets (Targets are based on the 'month' column)
         $sql = "SELECT 
                     SUM(site_visit_target) AS site_visit_target,
                     SUM(booking_target) AS booking_target,
@@ -822,81 +838,83 @@ public function getExecutiveFullStats($executiveId = null, $startDate = null, $e
                 WHERE sales_user_id = ?
                   AND month BETWEEN ? AND ?";
         $stmt = $this->db->prepare($sql);
-        $targetStartMonth = sprintf('%04d-%02d-01', $year, $startMonth);
-        $targetEndMonth = sprintf('%04d-%02d-01', $year, $endMonth);
         $stmt->bind_param("iss", $userId, $targetStartMonth, $targetEndMonth);
         $stmt->execute();
         $target = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
-        // 2. Visits Completed
-        $sql = "SELECT COUNT(*) as completed 
-                FROM lead_follow_ups
-                WHERE assigned_with = ? 
-                  AND follow_up_type = 'visit' 
-                  AND status = 'completed'
-                  AND follow_up_date BETWEEN ? AND ?";
+        // 2. Visits Completed (Synchronized with lead_follow_ups lead_status & follow_up_type)
+        $sql = "SELECT COUNT(DISTINCT lf.id) as completed 
+                FROM lead_follow_ups lf
+                JOIN leads l ON l.id = lf.lead_id
+                WHERE lf.deleted_at IS NULL AND l.deleted_at IS NULL
+                  AND (lf.assigned_with = ? OR lf.created_by = ? OR l.assigned_id = ?)
+                  AND (lf.lead_status = 'Visited' OR LOWER(lf.follow_up_type) = 'visit')
+                  AND lf.status != 'canceled'
+                  AND (DATE(lf.follow_up_date) BETWEEN ? AND ? OR (lf.follow_up_date IS NULL AND DATE(lf.created_at) BETWEEN ? AND ?))";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("iss", $userId, $start, $end);
+        $stmt->bind_param("iiissss", $userId, $userId, $userId, $startDate, $endDate, $startDate, $endDate);
         $stmt->execute();
         $visits = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
-        // 3. Bookings Completed
-        $sql = "SELECT COUNT(*) AS total
-                FROM lead_bookings
-                WHERE sales_by_id = ?
-                  AND booking_status IN ('completed','booked')
-                  AND booking_date BETWEEN ? AND ?";
+        // 3. Bookings Completed (Synchronized with countBookingsWithFilter logic)
+        $sql = "SELECT COUNT(DISTINCT lb.id) AS total
+                FROM lead_bookings lb
+                JOIN leads l ON l.id = lb.lead_id
+                WHERE lb.deleted_at IS NULL AND l.deleted_at IS NULL
+                  AND (l.assigned_id = ? OR lb.sales_by_id = ?)
+                  AND lb.booking_status IN ('completed','booked')
+                  AND (DATE(lb.booking_date) BETWEEN ? AND ? OR DATE(lb.created_at) BETWEEN ? AND ?)";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("iss", $userId, $start, $end);
+        $stmt->bind_param("iissss", $userId, $userId, $startDate, $endDate, $startDate, $endDate);
         $stmt->execute();
         $bookings = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
-        // 4. Deals Closed
+        // 4. Deals Closed (Distinct unique leads visited in period)
         $sql = "SELECT COUNT(DISTINCT lf.lead_id) AS total
                 FROM lead_follow_ups lf
                 JOIN leads l ON l.id = lf.lead_id
-                WHERE lf.assigned_with = ?
-                  AND lf.follow_up_type = 'visit'
+                WHERE lf.deleted_at IS NULL AND l.deleted_at IS NULL
+                  AND (lf.assigned_with = ? OR lf.created_by = ? OR l.assigned_id = ?)
+                  AND (lf.lead_status = 'Visited' OR LOWER(lf.follow_up_type) = 'visit')
                   AND lf.status != 'canceled'
-                  AND lf.follow_up_date BETWEEN ? AND ?";
+                  AND (DATE(lf.follow_up_date) BETWEEN ? AND ? OR (lf.follow_up_date IS NULL AND DATE(lf.created_at) BETWEEN ? AND ?))";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("iss", $userId, $start, $end);
+        $stmt->bind_param("iiissss", $userId, $userId, $userId, $startDate, $endDate, $startDate, $endDate);
         $stmt->execute();
         $dealsClosed = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
-        // 5. Deals Won
-        $sql = "SELECT COUNT(*) AS total
-                FROM leads
-                WHERE last_lead_action = 'booked'
-                  AND assigned_id = ?
-                  AND updated_at BETWEEN ? AND ?";
+        // 5. Deals Won (Distinct unique leads booked in period)
+        $sql = "SELECT COUNT(DISTINCT lb.lead_id) AS total
+                FROM lead_bookings lb
+                JOIN leads l ON l.id = lb.lead_id
+                WHERE lb.deleted_at IS NULL AND l.deleted_at IS NULL
+                  AND (l.assigned_id = ? OR lb.sales_by_id = ?)
+                  AND lb.booking_status IN ('completed','booked')
+                  AND (DATE(lb.booking_date) BETWEEN ? AND ? OR DATE(lb.created_at) BETWEEN ? AND ?)";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("iss", $userId, $start, $end);
+        $stmt->bind_param("iissss", $userId, $userId, $startDate, $endDate, $startDate, $endDate);
         $stmt->execute();
         $dealsWon = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
-        // 6. Deals Lost
-        $sql = "SELECT COUNT(*) AS total
+        // 6. Deals Lost (Distinct leads canceled or marked irrelevant in period)
+        $sql = "SELECT COUNT(DISTINCT l.id) AS total
                 FROM leads l
-                LEFT JOIN lead_follow_ups lf ON lf.lead_id = l.id
-                WHERE l.assigned_id = ?
-                  AND l.updated_at BETWEEN ? AND ?
-                  AND (
-                       l.last_lead_action = 'canceled'
-                       OR (lf.follow_up_type = 'visit' AND lf.status = 'canceled')
-                  )";
+                WHERE l.deleted_at IS NULL
+                  AND l.assigned_id = ?
+                  AND DATE(l.created_at) BETWEEN ? AND ?
+                  AND (l.last_lead_action IN ('canceled', 'lost') OR l.lead_type = 'Irrelevant')";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("iss", $userId, $start, $end);
+        $stmt->bind_param("iss", $userId, $startDate, $endDate);
         $stmt->execute();
         $dealsLost = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
-        return [
+            return [
             'site_visit_target'    => (int)($target['site_visit_target'] ?? 0),
             'booking_target'       => (int)($target['booking_target'] ?? 0),
             'booking_value_target' => (float)($target['booking_value_target'] ?? 0.00),
