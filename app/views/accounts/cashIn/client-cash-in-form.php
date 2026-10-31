@@ -26,7 +26,10 @@ $perEmiAmount         = $paymentSummary['per_emi_amount']          ?? 0;
 $serviceChargeRate    = $paymentSummary['service_charge_per_emi']  ?? 0;
 $flatDevCharges       = $paymentSummary['flat_development_charges'] ?? 0;
 $devChargePaid        = $paymentSummary['development_charge_paid_total'] ?? 0;
-$totalEmiDue          = $paymentSummary['total_emi_due']           ?? 0;
+$totalEmiDue          = (float)($paymentSummary['total_emi_due'] ?? 0);
+if ($totalEmiDue <= 0 && !empty($outstandingDues)) {
+    $totalEmiDue = (float)array_sum(array_column($outstandingDues, 'due_emi_amount'));
+}
 $hasOutstandingDues   = count($outstandingDues) > 0;
 // isRegistrationPaid is now tied to is_land_share_completed (same gate)
 $isRegistrationPaid   = $paymentSummary['is_registration_paid']   ?? false;
@@ -34,6 +37,34 @@ $totalBulkDiscount    = (float)($paymentSummary['total_bulk_emi_discount'] ?? 0)
 $constructionFee      = (float)($paymentSummary['construction_fee'] ?? 0);
 $emiPaidSoFar         = (float)($paymentSummary['emi_paid_total'] ?? 0);
 $remainingCF          = max(0, $constructionFee - $emiPaidSoFar - $totalBulkDiscount);
+
+// Calculate ordinal suffix for EMI numbers
+$getOrdinal = function($num) {
+    if (!is_numeric($num) || $num <= 0) return '';
+    if (!in_array(($num % 100), [11, 12, 13])) {
+        switch ($num % 10) {
+            case 1:  return $num . 'st';
+            case 2:  return $num . 'nd';
+            case 3:  return $num . 'rd';
+        }
+    }
+    return $num . 'th';
+};
+
+$nextEmiNum = (int)($paymentSummary['next_emi_no'] ?? 0);
+if ($nextEmiNum <= 0) {
+    $nextEmiNum = ($paymentSummary['completed_emi'] ?? 0) + 1;
+}
+$nextEmiStr = $getOrdinal($nextEmiNum);
+
+$dueEmiStr = '';
+$dueNos = [];
+if (!empty($outstandingDues)) {
+    $dueNos = array_filter(array_column($outstandingDues, 'emi_no'));
+    if (!empty($dueNos)) {
+        $dueEmiStr = " (Due for " . implode(', ', array_map($getOrdinal, $dueNos)) . ")";
+    }
+}
 ?>
 
 <div class="row">
@@ -92,7 +123,7 @@ $remainingCF          = max(0, $constructionFee - $emiPaidSoFar - $totalBulkDisc
                         <i class=""></i>
                         <div>
                             <strong>Outstanding EMI Due: TK.<?= number_format($totalEmiDue, 2) ?></strong>
-                            — Select <em>"Settle EMI Due"</em> below to clear the balance.
+                            — Regular EMI payment will automatically settle dues and fill installments in order. Or select <em>"Advanced: Settle EMI Due"</em> to pay a specific due.
                         </div>
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
@@ -153,7 +184,7 @@ $remainingCF          = max(0, $constructionFee - $emiPaidSoFar - $totalBulkDisc
                                 <!-- EMI -->
                                 <?php if ($remainingCF > 0): ?>
                                     <option value="emi" data-details="true">
-                                        EMI (Construction Fee)<?php if ($perEmiAmount > 0): ?> — Suggested: TK.<?= number_format($perEmiAmount, 2) ?><?php endif; ?><?php if ($totalEmiDue > 0): ?> — Outstanding Due: TK.<?= number_format($totalEmiDue, 2) ?><?php endif; ?>
+                                        <?= !empty($nextEmiStr) ? $nextEmiStr . " " : "" ?>EMI (Construction Fee)<?php if ($perEmiAmount > 0): ?> — Suggested: TK.<?= number_format($perEmiAmount, 2) ?><?php endif; ?><?php if ($totalEmiDue > 0): ?> — Outstanding Due: TK.<?= number_format($totalEmiDue, 2) ?><?= $dueEmiStr ?><?php endif; ?>
                                     </option>
                                 <?php else: ?>
                                     <option value="emi" disabled>
@@ -164,7 +195,7 @@ $remainingCF          = max(0, $constructionFee - $emiPaidSoFar - $totalBulkDisc
                                 <!-- Settle EMI Due — Advanced fallback (only shown when outstanding dues exist) -->
                                 <?php if ($hasOutstandingDues && $remainingCF > 0): ?>
                                     <option value="emi_due_settlement" data-details="false">
-                                        ⚙ Advanced: Settle Specific EMI Due (Outstanding: TK.<?= number_format($totalEmiDue, 2) ?>)
+                                        ⚙ Advanced: Settle <?= !empty($dueNos) ? implode(', ', array_map($getOrdinal, $dueNos)) . ' ' : 'Specific ' ?>EMI Due (Outstanding: TK.<?= number_format($totalEmiDue, 2) ?>)
                                     </option>
                                 <?php endif; ?>
 
@@ -647,7 +678,8 @@ $remainingCF          = max(0, $constructionFee - $emiPaidSoFar - $totalBulkDisc
                     break;
 
                 case 'emi_due_settlement':
-                    helpText = 'Select an EMI above, then enter the amount to settle (≤ remaining due).';
+                    helpText = 'Enter payment amount (will auto-settle booking, land share, dev charges & EMI dues sequentially)';
+                    amountField.removeAttribute('max');
                     amountField.removeAttribute('disabled');
                     break;
 
@@ -806,7 +838,10 @@ $remainingCF          = max(0, $constructionFee - $emiPaidSoFar - $totalBulkDisc
                 emiFields.forEach(f => f.style.display = isEMI ? 'block' : 'none');
 
                 // Show/hide settle-due parent selector
-                settleDueFields.forEach(f => f.style.display = isSettleDue ? 'block' : 'none');
+                // Do not show yellow box — handled automatically by unified waterfall
+                settleDueFields.forEach(f => f.style.display = 'none');
+
+
 
                 // Reset due fields when not EMI
                 if (!isEMI) {
@@ -827,8 +862,8 @@ $remainingCF          = max(0, $constructionFee - $emiPaidSoFar - $totalBulkDisc
                 const selectedOption = this.options[this.selectedIndex];
                 const maxDue = parseFloat(selectedOption.dataset.due) || 0;
                 if (maxDue > 0) {
-                    amountField.setAttribute('max', maxDue);
-                    amountField.value = maxDue.toFixed(2);
+                    // amountField.removeAttribute('max'); // uncapped for waterfall
+                    // amountField.value preserved
                     if (amountHelp) amountHelp.textContent = 'Max: TK.' + maxDue.toFixed(2) + ' (remaining due for this EMI)';
                 } else {
                     amountField.removeAttribute('max');
@@ -974,28 +1009,7 @@ $remainingCF          = max(0, $constructionFee - $emiPaidSoFar - $totalBulkDisc
                     existingError.remove();
                 }
 
-                // Validation for EMI due settlement
-                if (paymentTypeValue === 'emi_due_settlement') {
-                    if (!parentPaymentIdSelect || !parentPaymentIdSelect.value) {
-                        e.preventDefault();
-                        alert('Please select the EMI you want to settle.');
-                        return false;
-                    }
-                    const maxDue = parseFloat(parentPaymentIdSelect.options[parentPaymentIdSelect.selectedIndex]?.dataset?.due) || 0;
-                    if (amount <= 0) {
-                        e.preventDefault();
-                        alert('Please enter a valid settlement amount.');
-                        amountField.focus();
-                        return false;
-                    }
-                    if (amount > maxDue + 0.01) {
-                        e.preventDefault();
-                        alert('Settlement amount (TK.' + amount.toFixed(2) + ') cannot exceed remaining due (TK.' + maxDue.toFixed(2) + ').');
-                        amountField.focus();
-                        return false;
-                    }
-                    return true;
-                }
+                // emi_due_settlement is handled by unified waterfall without manual parent requirement
 
                 // Validation for EMI
                 if (paymentTypeValue === 'emi' && amount <= 0) {

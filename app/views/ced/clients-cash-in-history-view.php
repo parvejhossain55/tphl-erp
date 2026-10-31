@@ -318,7 +318,7 @@ if (!isset($discountApprovalReq)) {
             <div class="card__body">
                 <h3 class="mb-2 card__icon">
                     <i class="fa-light fa-user-circle me-2"></i>
-                    <?= htmlspecialchars($clientDetails['client_name'] ?? 'N/A') ?>
+                    <?= htmlspecialchars(!empty(trim($clientDetails['client_name'] ?? '')) ? trim($clientDetails['client_name']) : 'N/A') ?>
                 </h3>
                 <div class="d-flex flex-wrap gap-3 align-items-center">
                     <span class="text-muted">
@@ -331,7 +331,10 @@ if (!isset($discountApprovalReq)) {
                     </span>
                     <span class="text-muted">
                         <i class="fa-light fa-phone mx-2"></i>
-                        <strong>Phone:</strong> <?= htmlspecialchars($clientDetails['phone'] ?? 'N/A') ?>
+                        <?php
+                        $histPhone = preg_replace('/^p:/i', '', trim(!empty($clientDetails['phone']) ? $clientDetails['phone'] : (!empty($clientDetails['phone_number']) ? $clientDetails['phone_number'] : '')));
+                        ?>
+                        <strong>Phone:</strong> <?= htmlspecialchars($histPhone !== '' ? $histPhone : 'N/A') ?>
                     </span>
                     <span class="text-muted">
                         <i class="fa-light fa-calendar-check mx-2"></i>
@@ -1636,8 +1639,8 @@ if (!isset($discountApprovalReq)) {
                                             <?php if ($isManagementUser && $hasId): ?>
                                                 <a href="<?= $GLOBALS['base_url'] ?>/delete-transaction?payment_id=<?= htmlspecialchars($transaction['id']) ?>&booking_id=<?= htmlspecialchars($bookingId) ?>"
                                                    class="table__icon text-white bg-danger border-0"
-                                                   onclick="return confirm('Are you sure you want to PERMANENTLY delete this transaction? This action cannot be undone.');"
-                                                   title="Permanently Delete Transaction">
+                                                   onclick="return confirm('Are you sure you want to move this transaction to trash? You can restore it later from Trash.');"
+                                                   title="Move Transaction to Trash">
                                                     <i class="fa-solid fa-trash"></i>
                                                 </a>
                                             <?php endif; ?>

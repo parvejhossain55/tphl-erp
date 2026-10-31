@@ -210,12 +210,12 @@ class AccountShopClient extends AccountClient
                      WHERE {$lpTrash}lp.booking_id = lb.id
                      AND lp.payment_type = 'emi'
                      AND lp.due_emi_amount > 0
-                     AND lp.verification_status = 'verified'
+                     AND lp.verification_status != 'rejected'
                      AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement')
                      AND NOT EXISTS (
                          SELECT 1 FROM lead_payments child
-                         WHERE child.parent_payment_id = lp.id
-                         AND child.payment_type = 'emi_due_settlement'
+                         WHERE child.is_trashed = 0 AND child.parent_payment_id = lp.id
+                         AND (child.payment_type = 'emi_due_settlement' OR child.settlement_type = 'emi_due_settlement')
                          AND child.verification_status IN ('pending', 'verified')
                      )),
                     0

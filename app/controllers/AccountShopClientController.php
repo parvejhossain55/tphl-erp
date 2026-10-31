@@ -65,12 +65,7 @@ class AccountShopClientController extends AccountClientController
             $paymentType = $_POST['payment_type'] ?? '';
             
             if ($paymentType === 'emi_due_settlement') {
-                $parentPaymentId = !empty($_POST['parent_payment_id']) ? (int)$_POST['parent_payment_id'] : 0;
-                if (!$parentPaymentId) {
-                    setError("EMI settlement requires selecting the original EMI payment.");
-                    header("Location: {$GLOBALS['base_url']}/shop-client-cash-in-form?booking_id={$bookingId}");
-                    exit;
-                }
+                $parentPaymentId = !empty($_POST['parent_payment_id']) ? (int)$_POST['parent_payment_id'] : null;
             }
 
             // Handle multi-file proof uploads
@@ -120,7 +115,7 @@ class AccountShopClientController extends AccountClientController
                 ];
             }
 
-            if ($transactionData['payment_type'] === 'emi_due_settlement' || $transactionData['payment_type'] === 'others') {
+            if ($transactionData['payment_type'] === 'others') {
                 $result = $this->clientModel->addTransaction($transactionData, null);
             } else {
                 $result = $this->clientModel->addTransactionWithEMI($transactionData, $emiScheduleData);
