@@ -837,8 +837,11 @@ $exportTrxUrl  = $base_url . '/collection-statement-export?' . http_build_query(
                                     </td>
                                     <td>
                                         <div class="fw-bold text-dark"><?= htmlspecialchars($t['client_name'] ?? 'N/A') ?></div>
-                                        <?php if (!empty($t['client_phone'])): ?>
-                                            <div class="text-muted extra-small"><i class="fa-solid fa-phone me-1" style="font-size: 10px;"></i><?= htmlspecialchars($t['client_phone']) ?></div>
+                                        <?php 
+                                        $csCleanPhone = preg_replace('/^p:/i', '', trim($t['client_phone'] ?? ''));
+                                        if (!empty($csCleanPhone)): 
+                                        ?>
+                                            <div class="text-muted extra-small"><i class="fa-solid fa-phone me-1" style="font-size: 10px;"></i><?= htmlspecialchars($csCleanPhone) ?></div>
                                         <?php endif; ?>
                                         <?php if ($t['source'] === 'management'): ?>
                                             <span class="badge bg-purple-subtle text-purple border px-1" style="font-size: 9.5px;">Management</span>

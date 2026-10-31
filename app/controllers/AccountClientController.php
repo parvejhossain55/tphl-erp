@@ -1160,14 +1160,17 @@ public function indexTwo($bookingId = null)
             }
 
             $html .= '<tr class="' . $rowClass . ' ' . ($clientHasConflict ? 'row-conflicted-unit' : '') . '" data-has-conflict="' . ($clientHasConflict ? '1' : '0') . '" ' . ($clientHasConflict ? 'style="background-color: #fff9f9;"' : '') . '>';
-            $html .= '<td class="col-sticky-name">' . htmlspecialchars($client['client_name']);
+            $clientNameVal = !empty(trim($client['client_name'] ?? '')) ? htmlspecialchars(trim($client['client_name'])) : '<span class="text-muted fst-italic">N/A</span>';
+            $html .= '<td class="col-sticky-name">' . $clientNameVal;
             if ($clientHasConflict) {
                 $html .= '<span class="badge bg-danger text-white ms-1" style="font-size: 10px;" title="This client has a double-booked unit"><i class="fa-solid fa-triangle-exclamation"></i> Conflict</span>';
             }
             $html .= '</td>';
 
             // Merged Phone & Email (Sticky)
-            $phoneVal = !empty($client['phone']) && $client['phone'] !== 'N/A' ? htmlspecialchars($client['phone']) : '';
+            $rawPhone = !empty($client['phone']) ? $client['phone'] : (!empty($client['phone_number']) ? $client['phone_number'] : '');
+            $cleanPhone = preg_replace('/^p:/i', '', trim($rawPhone));
+            $phoneVal = ($cleanPhone !== '' && $cleanPhone !== 'N/A') ? htmlspecialchars($cleanPhone) : '';
             $emailVal = !empty($client['email']) && $client['email'] !== 'N/A' ? htmlspecialchars($client['email']) : '';
             $html .= '<td class="col-sticky-contact">';
             $html .= '<div class="client-contact-cell">';
@@ -1479,10 +1482,13 @@ public function indexTwo($bookingId = null)
         $html = '';
         foreach ($clients as $client) {
             $html .= '<tr>';
-            $html .= '<td class="col-sticky-name">' . htmlspecialchars($client['client_name']) . '</td>';
+            $clientNameVal = !empty(trim($client['client_name'] ?? '')) ? htmlspecialchars(trim($client['client_name'])) : '<span class="text-muted fst-italic">N/A</span>';
+            $html .= '<td class="col-sticky-name">' . $clientNameVal . '</td>';
 
             // Merged Phone & Email (Sticky)
-            $phoneVal = !empty($client['phone']) && $client['phone'] !== 'N/A' ? htmlspecialchars($client['phone']) : '';
+            $rawPhone = !empty($client['phone']) ? $client['phone'] : (!empty($client['phone_number']) ? $client['phone_number'] : '');
+            $cleanPhone = preg_replace('/^p:/i', '', trim($rawPhone));
+            $phoneVal = ($cleanPhone !== '' && $cleanPhone !== 'N/A') ? htmlspecialchars($cleanPhone) : '';
             $emailVal = !empty($client['email']) && $client['email'] !== 'N/A' ? htmlspecialchars($client['email']) : '';
             $html .= '<td class="col-sticky-contact">';
             $html .= '<div class="client-contact-cell">';
@@ -2210,14 +2216,9 @@ public function addCedTransaction()
         $updateStmt->execute();
     }
 
-    // CHECK: EMI due settlement requires a parent payment ID
+    // EMI due settlement is now auto-settled via unified waterfall
     if ($paymentType === 'emi_due_settlement') {
-        $parentPaymentId = !empty($_POST['parent_payment_id']) ? (int)$_POST['parent_payment_id'] : 0;
-        if (!$parentPaymentId) {
-            setError("EMI settlement requires selecting the original EMI payment.");
-            header("Location: {$GLOBALS['base_url']}/ced-add-transaction-form?booking_id={$bookingId}");
-            exit;
-        }
+        $parentPaymentId = !empty($_POST['parent_payment_id']) ? (int)$_POST['parent_payment_id'] : null;
     }
 
     // Land Share must be completed (Disabled as requested)
@@ -2351,8 +2352,8 @@ public function addCedTransaction()
     }
 
     // Route to correct model method
-    if ($transactionData['payment_type'] === 'emi_due_settlement' || $transactionData['payment_type'] === 'others') {
-        // Use addTransaction (not WithEMI) so settlement_type & parent_payment_id or others are handled
+    if ($transactionData['payment_type'] === 'others') {
+        // Use addTransaction for 'others' (incidental charges outside flat price)
         $result = $this->clientModel->addTransaction($transactionData, null);
     } else {
         $result = $this->clientModel->addTransactionWithEMI($transactionData, $emiScheduleData);
@@ -2615,14 +2616,9 @@ public function addTransaction()
 
         $paymentType = $_POST['payment_type'] ?? '';
         
-        // CHECK: EMI due settlement requires a parent payment ID
+        // EMI due settlement is now auto-settled via unified waterfall
         if ($paymentType === 'emi_due_settlement') {
-            $parentPaymentId = !empty($_POST['parent_payment_id']) ? (int)$_POST['parent_payment_id'] : 0;
-            if (!$parentPaymentId) {
-                setError("EMI settlement requires selecting the original EMI payment.");
-                header("Location: {$GLOBALS['base_url']}/client-cash-in-form?booking_id={$bookingId}");
-                exit;
-            }
+            $parentPaymentId = !empty($_POST['parent_payment_id']) ? (int)$_POST['parent_payment_id'] : null;
         }
 
         // Handle multi-file proof uploads (before insert so paths are stored atomically)
@@ -2701,8 +2697,8 @@ public function addTransaction()
         }
 
         // Route to correct model method
-        if ($transactionData['payment_type'] === 'emi_due_settlement' || $transactionData['payment_type'] === 'others') {
-            // Use addTransaction (not WithEMI) so settlement_type & parent_payment_id or others are handled
+        if ($transactionData['payment_type'] === 'others') {
+            // Use addTransaction for 'others' (incidental charges outside flat price)
             $result = $this->clientModel->addTransaction($transactionData, null);
         } else {
             $result = $this->clientModel->addTransactionWithEMI($transactionData, $emiScheduleData);
@@ -3080,9 +3076,14 @@ public function updateTransaction()
         $isAccounts = in_array($roleId, [1, 3, 6, 30]);
         $isManagementUser = ($roleId === 1 || $roleId === 3 || strpos($roleName, 'management') !== false || strpos($roleName, 'admin') !== false);
         
-        $redirectUrl = ($isCED || $isManagementUser)
-            ? "{$GLOBALS['base_url']}/clients-cash-in-history-view/{$bookingId}"
-            : "{$GLOBALS['base_url']}/clients-cash-in-history?booking_id={$bookingId}";
+        $fromTrash = isset($_GET['from_trash']) ? (int) $_GET['from_trash'] : 0;
+        $userId    = (int) ($_SESSION['user']['id'] ?? ($_SESSION['user_id'] ?? 1));
+
+        $redirectUrl = $fromTrash
+            ? "{$GLOBALS['base_url']}/trash-client-payment-list"
+            : (($isCED || $isManagementUser)
+                ? "{$GLOBALS['base_url']}/clients-cash-in-history-view/{$bookingId}"
+                : "{$GLOBALS['base_url']}/clients-cash-in-history?booking_id={$bookingId}");
 
         if (!$paymentId || !$bookingId) {
             setError("Invalid request: missing payment or booking ID.");
@@ -3097,7 +3098,7 @@ public function updateTransaction()
         }
 
         // CED can only delete their own unverified entries
-        if ($isCED) {
+        if ($isCED && !$fromTrash) {
             $tx = $this->clientModel->getTransactionById($paymentId);
             if (!$tx) {
                 setError("Transaction not found.");
@@ -3111,7 +3112,13 @@ public function updateTransaction()
             }
         }
 
-        $result = $this->clientModel->deleteTransactionWithCleanup($paymentId, $bookingId);
+        if ($fromTrash === 1) {
+            // Delete permanently from trash list
+            $result = $this->clientModel->deleteTransactionWithCleanup($paymentId, $bookingId);
+        } else {
+            // Safe delete: Move to trash so it can be viewed and restored from Trash list
+            $result = $this->clientModel->trashTransaction($paymentId, $bookingId, $userId);
+        }
 
         if ($result['success']) {
             setSuccess($result['message']);

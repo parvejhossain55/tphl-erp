@@ -41,8 +41,8 @@ class AccountClient extends Model
 
         if (!empty($search)) {
             $searchTerm = '%' . trim($search) . '%';
-            $whereParts[] = "(l.full_name LIKE ? OR l.phone LIKE ? OR l.email LIKE ? OR l.company LIKE ? OR p.name LIKE ? OR f.flat_name LIKE ?)";
-            for ($i = 0; $i < 6; $i++) {
+            $whereParts[] = "(l.full_name LIKE ? OR l.lead_name LIKE ? OR l.phone LIKE ? OR l.phone_number LIKE ? OR l.alt_phone_number LIKE ? OR l.`2nd_owner_phone` LIKE ? OR l.email LIKE ? OR l.company LIKE ? OR p.name LIKE ? OR f.flat_name LIKE ?)";
+            for ($i = 0; $i < 10; $i++) {
                 $params[] = $searchTerm;
                 $types .= 's';
             }
@@ -167,8 +167,9 @@ class AccountClient extends Model
 
         $dataSql ="SELECT
             l.id AS lead_id,
-            l.full_name AS client_name,
-            l.phone,
+            COALESCE(NULLIF(TRIM(l.full_name), ''), NULLIF(TRIM(l.lead_name), ''), NULLIF(TRIM(l.lead_name_bn), '')) AS client_name,
+            COALESCE(NULLIF(TRIM(l.phone), ''), NULLIF(TRIM(l.phone_number), ''), NULLIF(TRIM(l.alt_phone_number), ''), NULLIF(TRIM(l.`2nd_owner_phone`), '')) AS phone,
+            l.phone_number,
             l.email,
             l.designation,
             l.company,
@@ -359,16 +360,27 @@ class AccountClient extends Model
             GROUP BY lb_sub.lead_id
         ) AS p_stats ON p_stats.lead_id = l.id
         LEFT JOIN (
-            SELECT lb_sub.lead_id, GROUP_CONCAT(DISTINCT u.full_name SEPARATOR ', ') AS agent_name
+            SELECT 
+                lb_sub.lead_id, 
+                GROUP_CONCAT(
+                    DISTINCT u.full_name 
+                    ORDER BY lb_sub.id DESC 
+                    SEPARATOR ', '
+                ) AS agent_name
             FROM lead_bookings lb_sub
-            INNER JOIN lead_payments lp ON lp.booking_id = lb_sub.id AND lp.payment_type = 'booking_money'
-            INNER JOIN users u ON u.id = lp.created_by
+            LEFT JOIN leads l_sub ON lb_sub.lead_id = l_sub.id
+            LEFT JOIN lead_payments lp_bm ON lp_bm.booking_id = lb_sub.id AND lp_bm.payment_type = 'booking_money' AND lp_bm.is_trashed = 0
+            LEFT JOIN users u ON COALESCE(
+                NULLIF(lb_sub.sales_by_id, 0), 
+                NULLIF(l_sub.assigned_id, 0), 
+                NULLIF(lb_sub.created_by, 0),
+                NULLIF(lp_bm.created_by, 0)
+            ) = u.id
             WHERE lb_sub.deleted_at IS NULL
                AND lb_sub.booking_status NOT IN ('refunded', 'cancelled')
                AND (lb_sub.landshare_status IS NULL OR lb_sub.landshare_status != 'cancelled')
                AND lb_sub.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
                {$projectSubFilter}
-
             GROUP BY lb_sub.lead_id
         ) AS agents ON agents.lead_id = l.id
         $whereClause
@@ -417,8 +429,8 @@ class AccountClient extends Model
 
         if (!empty($search)) {
             $searchTerm = '%' . trim($search) . '%';
-            $whereParts[] = "(l.full_name LIKE ? OR l.phone LIKE ? OR l.email LIKE ? OR l.company LIKE ? OR p.name LIKE ? OR f.flat_name LIKE ?)";
-            for ($i = 0; $i < 6; $i++) {
+            $whereParts[] = "(l.full_name LIKE ? OR l.lead_name LIKE ? OR l.phone LIKE ? OR l.phone_number LIKE ? OR l.alt_phone_number LIKE ? OR l.`2nd_owner_phone` LIKE ? OR l.email LIKE ? OR l.company LIKE ? OR p.name LIKE ? OR f.flat_name LIKE ?)";
+            for ($i = 0; $i < 10; $i++) {
                 $params[] = $searchTerm;
                 $types .= 's';
             }
@@ -739,8 +751,8 @@ class AccountClient extends Model
 
         if (!empty($search)) {
             $searchTerm = '%' . trim($search) . '%';
-            $whereParts[] = "(l.full_name LIKE ? OR l.phone LIKE ? OR p.name LIKE ? OR f.flat_name LIKE ?)";
-            for ($i = 0; $i < 4; $i++) {
+            $whereParts[] = "(l.full_name LIKE ? OR l.lead_name LIKE ? OR l.phone LIKE ? OR l.phone_number LIKE ? OR p.name LIKE ? OR f.flat_name LIKE ?)";
+            for ($i = 0; $i < 6; $i++) {
                 $params[] = $searchTerm;
                 $types .= "s";
             }
@@ -752,8 +764,9 @@ class AccountClient extends Model
             SELECT 
                 l.id AS lead_id,
                 lb.id AS booking_id,
-                l.full_name AS client_name,
-                l.phone,
+                COALESCE(NULLIF(TRIM(l.full_name), ''), NULLIF(TRIM(l.lead_name), '')) AS client_name,
+                COALESCE(NULLIF(TRIM(l.phone), ''), NULLIF(TRIM(l.phone_number), ''), NULLIF(TRIM(l.alt_phone_number), ''), NULLIF(TRIM(l.`2nd_owner_phone`), '')) AS phone,
+                l.phone_number,
                 l.email,
                 p.name AS project_name,
                 f.flat_name AS unit_name,
@@ -855,12 +868,14 @@ class AccountClient extends Model
 
         if (!empty($search)) {
             $search = '%' . $search . '%';
-            $whereClause .= " AND (l.full_name LIKE ? OR l.phone LIKE ? OR l.email LIKE ? OR p.name LIKE ?)";
+            $whereClause .= " AND (l.full_name LIKE ? OR l.lead_name LIKE ? OR l.phone LIKE ? OR l.phone_number LIKE ? OR l.email LIKE ? OR p.name LIKE ?)";
             $params[] = $search;
             $params[] = $search;
             $params[] = $search;
             $params[] = $search;
-            $types .= 'ssss';
+            $params[] = $search;
+            $params[] = $search;
+            $types .= 'ssssss';
         }
 
         $limitClause = "";
@@ -874,8 +889,9 @@ class AccountClient extends Model
         $sql = $this->db->prepare("
         SELECT
             l.id AS lead_id,
-            l.full_name AS client_name,
-            l.phone,
+            COALESCE(NULLIF(TRIM(l.full_name), ''), NULLIF(TRIM(l.lead_name), '')) AS client_name,
+            COALESCE(NULLIF(TRIM(l.phone), ''), NULLIF(TRIM(l.phone_number), ''), NULLIF(TRIM(l.alt_phone_number), ''), NULLIF(TRIM(l.`2nd_owner_phone`), '')) AS phone,
+            l.phone_number,
             l.email,
             l.designation,
             lb.id AS booking_id,
@@ -885,10 +901,13 @@ class AccountClient extends Model
             f.floor_no AS flat_floor_no,
             lb.agreement_value AS total_price,
             lb.agreement_value AS total_agreement_value,
-            (SELECT GROUP_CONCAT(DISTINCT u_agent.full_name SEPARATOR ', ')
-             FROM lead_payments lp_sub
-             INNER JOIN users u_agent ON u_agent.id = lp_sub.created_by
-             WHERE lp_sub.booking_id = lb.id AND lp_sub.payment_type = 'booking_money'
+            COALESCE(
+                (SELECT u.full_name FROM users u WHERE u.id = COALESCE(NULLIF(lb.sales_by_id, 0), NULLIF(l.assigned_id, 0), NULLIF(lb.created_by, 0)) LIMIT 1),
+                (SELECT GROUP_CONCAT(DISTINCT u_agent.full_name SEPARATOR ', ')
+                 FROM lead_payments lp_sub
+                 INNER JOIN users u_agent ON u_agent.id = lp_sub.created_by
+                 WHERE lp_sub.booking_id = lb.id AND lp_sub.payment_type = 'booking_money'
+                )
             ) AS agent_name,
             COALESCE(
                 (SELECT SUM(lp.amount)
@@ -947,12 +966,14 @@ class AccountClient extends Model
 
         if (!empty($search)) {
             $search = '%' . $search . '%';
-            $whereClause .= " AND (l.full_name LIKE ? OR l.phone LIKE ? OR l.email LIKE ? OR p.name LIKE ?)";
+            $whereClause .= " AND (l.full_name LIKE ? OR l.lead_name LIKE ? OR l.phone LIKE ? OR l.phone_number LIKE ? OR l.email LIKE ? OR p.name LIKE ?)";
             $params[] = $search;
             $params[] = $search;
             $params[] = $search;
             $params[] = $search;
-            $types .= 'ssss';
+            $params[] = $search;
+            $params[] = $search;
+            $types .= 'ssssss';
         }
 
         $sql = $this->db->prepare("
@@ -1333,8 +1354,8 @@ class AccountClient extends Model
                 {$sfBalCol}
                 {$pastAppCol}
                 l.id as lead_id,
-                l.full_name as client_name,
-                COALESCE(NULLIF(TRIM(l.phone), ''), TRIM(l.phone_number)) AS phone,
+                COALESCE(NULLIF(TRIM(l.full_name), ''), NULLIF(TRIM(l.lead_name), '')) as client_name,
+                COALESCE(NULLIF(TRIM(l.phone), ''), NULLIF(TRIM(l.phone_number), ''), NULLIF(TRIM(l.alt_phone_number), ''), NULLIF(TRIM(l.`2nd_owner_phone`), '')) AS phone,
                 l.phone_number,
                 l.email,
                 l.2nd_lead_owner_name,
@@ -1493,12 +1514,12 @@ class AccountClient extends Model
                      WHERE {$lpTrash}lp.booking_id = lb.id
                      AND lp.payment_type = 'emi'
                      AND lp.due_emi_amount > 0
-                     AND lp.verification_status = 'verified'
+                     AND lp.verification_status != 'rejected'
                      AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement')
                      AND NOT EXISTS (
                          SELECT 1 FROM lead_payments child
-                         WHERE child.parent_payment_id = lp.id
-                         AND child.payment_type = 'emi_due_settlement'
+                         WHERE child.is_trashed = 0 AND child.parent_payment_id = lp.id
+                         AND (child.payment_type = 'emi_due_settlement' OR child.settlement_type = 'emi_due_settlement')
                          AND child.verification_status IN ('pending', 'verified')
                      )),
                     0
@@ -1687,6 +1708,7 @@ class AccountClient extends Model
             $clientDetails['pending_emi_numbers']    = $emiStats['pending_emi_numbers'];
             $clientDetails['emi_updated_by']         = $emiStats['emi_updated_by'];
             $clientDetails['emi_updated_at']         = $emiStats['emi_updated_at'];
+            $clientDetails['next_emi_no']            = $emiStats['next_emi_no'] ?? $this->getNextAvailableEmiNo($bookingId);
             $clientDetails['emi_updated_by_name']    = $emiStats['emi_updated_by_name'];
         }
 
@@ -1755,13 +1777,16 @@ class AccountClient extends Model
             'emi_updated_by_name' => $totalEmiRow['emi_updated_by_name'] ?? null,
         ];
 
-        // Get paid EMI numbers
+        // Get paid EMI numbers (verified only if linked to payment, or legacy paid schedule)
         $paidEmiStmt = $this->db->prepare("
             SELECT DISTINCT es.emi_no
             FROM emi_schedules es
-            LEFT JOIN lead_payments lp ON lp.id = es.lead_payment_id AND lp.is_trashed = 0
+            LEFT JOIN lead_payments lp ON lp.id = es.lead_payment_id
             WHERE es.lead_booking_id = ? 
-              AND (es.status = 'paid' OR (lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified'))
+              AND (
+                  (lp.id IS NOT NULL AND lp.is_trashed = 0 AND lp.verification_status = 'verified' AND lp.payment_status IN ('paid','partially_paid'))
+                  OR (lp.id IS NULL AND es.status = 'paid')
+              )
             ORDER BY es.emi_no
         ");
         $paidEmiStmt->bind_param("i", $bookingId);
@@ -1777,6 +1802,7 @@ class AccountClient extends Model
 
         $stats['completed_emi'] = count($paidEmiNumbers);
         $stats['paid_emi_numbers'] = $paidEmiNumbers;
+        $stats['next_emi_no'] = $this->getNextAvailableEmiNo($bookingId);
 
         if ($totalEmi < $stats['completed_emi'] || $totalEmi <= 0) {
             $maxSchedStmt = $this->db->prepare("SELECT MAX(emi_no) as max_emi FROM emi_schedules WHERE lead_booking_id = ?");
@@ -2087,8 +2113,9 @@ class AccountClient extends Model
         $stmt = $this->db->prepare("
             SELECT 
                 l.id as lead_id,
-                l.full_name as client_name,
-                l.phone,
+                COALESCE(NULLIF(TRIM(l.full_name), ''), NULLIF(TRIM(l.lead_name), '')) as client_name,
+                COALESCE(NULLIF(TRIM(l.phone), ''), NULLIF(TRIM(l.phone_number), ''), NULLIF(TRIM(l.alt_phone_number), ''), NULLIF(TRIM(l.`2nd_owner_phone`), '')) AS phone,
+                l.phone_number,
                 l.email,
                 l.designation,
                 u.full_name as agent_name
@@ -2232,7 +2259,8 @@ class AccountClient extends Model
             'total_service_fee'                    => $clientDetails['total_service_fee'],
             'net_received'                         => $clientDetails['net_received'],
             'paid_emi_numbers'                     => $clientDetails['paid_emi_numbers'],
-            'pending_emi_numbers'                  => $clientDetails['pending_emi_numbers']
+            'pending_emi_numbers'                  => $clientDetails['pending_emi_numbers'],
+            'next_emi_no'                          => $clientDetails['next_emi_no'] ?? $this->getNextAvailableEmiNo($bookingId)
         ];
     }
 
@@ -2525,15 +2553,17 @@ class AccountClient extends Model
      * Finds the first gap in the non-rejected sequence (e.g., if #5 was rejected, returns 5).
      * If no gaps, returns COUNT(non-rejected) + 1.
      */
-    protected function getNextAvailableEmiNo($bookingId)
+    public function getNextAvailableEmiNo($bookingId)
     {
         $stmt = $this->db->prepare("
             SELECT es.emi_no 
             FROM emi_schedules es
-            INNER JOIN lead_payments lp ON lp.id = es.lead_payment_id
+            LEFT JOIN lead_payments lp ON lp.id = es.lead_payment_id
             WHERE es.lead_booking_id = ?
-            AND lp.verification_status != 'rejected'
-            AND lp.is_trashed = 0
+            AND (
+                (lp.id IS NOT NULL AND lp.verification_status != 'rejected' AND lp.is_trashed = 0)
+                OR (lp.id IS NULL AND es.status = 'paid')
+            )
             ORDER BY es.emi_no ASC
         ");
         $stmt->bind_param("i", $bookingId);
@@ -2741,11 +2771,11 @@ class AccountClient extends Model
               AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement')
               AND NOT EXISTS (
                   SELECT 1 FROM lead_payments child
-                  WHERE child.parent_payment_id = lp.id
+                  WHERE child.is_trashed = 0 AND child.parent_payment_id = lp.id
                   AND child.settlement_type = 'emi_due_settlement'
                   AND child.verification_status = 'pending'
               )
-            ORDER BY lp.payment_date ASC
+            ORDER BY COALESCE(NULLIF(es.emi_no, 0), 999999) ASC, lp.payment_date ASC
         ");
 
         if (!$stmt) {
@@ -3767,36 +3797,45 @@ class AccountClient extends Model
             }
             
             // Order: Booking → Land Share/Registration → Development Charge → Shop Service Charge (shops) → EMI
-            if ($paymentType === 'booking_money') {
-                if ($bookingMoneyRemaining > 0) {
+            // Stage 1: Booking Money
+            // Auto-settles Booking Money first if any remaining, even if user selected land_share, dev_charge, or emi!
+            if (in_array($paymentType, ['booking_money', 'land_share', 'registration', 'mutation_cost', 'development_charge', 'shop_service_charge', 'emi', 'emi_due_settlement'])) {
+                if ($bookingMoneyRemaining > 0 && $pool > 0) {
                     $payAmount = min($pool, $bookingMoneyRemaining);
                     $paymentsToInsert[] = ['type' => 'booking_money', 'amount' => $payAmount];
                     $pool -= $payAmount;
+                    $bookingMoneyRemaining -= $payAmount;
+                    $landShareRemaining = max(0, $landShareRemaining - $payAmount);
                 }
-                if ($pool > 0) $paymentType = $isShop ? 'registration' : 'land_share';
             }
             
-            if (in_array($paymentType, ['land_share', 'registration', 'mutation_cost'])) {
-                if ($landShareRemaining > 0) {
+            // Stage 2: Land Share / Registration
+            // Auto-settles Land Share next if any remaining, even if user selected development_charge or emi!
+            if (in_array($paymentType, ['booking_money', 'land_share', 'registration', 'mutation_cost', 'development_charge', 'shop_service_charge', 'emi', 'emi_due_settlement'])) {
+                if ($landShareRemaining > 0 && $pool > 0) {
+                    $targetLandType = in_array($paymentType, ['land_share', 'registration', 'mutation_cost']) ? $paymentType : ($isShop ? 'registration' : 'land_share');
                     $payAmount = min($pool, $landShareRemaining);
-                    $paymentsToInsert[] = ['type' => $paymentType, 'amount' => $payAmount];
+                    $paymentsToInsert[] = ['type' => $targetLandType, 'amount' => $payAmount];
                     $pool -= $payAmount;
+                    $landShareRemaining -= $payAmount;
                 }
-                if ($pool > 0) $paymentType = 'development_charge';
             }
             
-            if (in_array($paymentType, ['development_charge', 'shop_service_charge', 'emi'])) {
+            // Stage 3: Development Charge & Shop Service Charge
+            if (in_array($paymentType, ['booking_money', 'land_share', 'registration', 'mutation_cost', 'development_charge', 'shop_service_charge', 'emi', 'emi_due_settlement'])) {
                 // Stage: Development Charge
                 if ($flatDevRemaining > 0 && $pool > 0) {
                     $payAmount = min($pool, $flatDevRemaining);
                     $paymentsToInsert[] = ['type' => 'development_charge', 'amount' => $payAmount];
                     $pool -= $payAmount;
+                    $flatDevRemaining -= $payAmount;
                 }
                 // Stage: Shop Service Charge (shops only)
                 if ($isShop && $shopSvcRemaining > 0 && $pool > 0) {
                     $payAmount = min($pool, $shopSvcRemaining);
                     $paymentsToInsert[] = ['type' => 'shop_service_charge', 'amount' => $payAmount];
                     $pool -= $payAmount;
+                    $shopSvcRemaining -= $payAmount;
                 }
                 if ($pool > 0) $paymentType = 'emi';
             }
@@ -3976,255 +4015,266 @@ class AccountClient extends Model
                 $currentServiceFee = (!$isDiscountItem && $serviceChargeRate > 0) ? round($pool * ($serviceChargeRate / 100)) : 0;
                 $totalServiceFee += $currentServiceFee;
 
-                // ─── PHASE 1: Auto-settle outstanding dues (FIFO — oldest first) ───
-                $outstandingDues = $this->getOutstandingEmiDues($bookingId);
-
-                foreach ($outstandingDues as $due) {
-                    if ($pool <= 0) break;
-
-                    $dueAmount = (float) $due['due_emi_amount'];
-                    $settle = min($pool, $dueAmount);
-
-                    // Service fee for this settlement portion
-                    $settleSvcFee = (!$isDiscountItem && $serviceChargeRate > 0) ? round($settle * ($serviceChargeRate / 100)) : 0;
-
-                    // Create settlement audit record
-                    $settleStmt = $this->db->prepare("
-                        INSERT INTO lead_payments (
-                            booking_id, payment_type, amount, land_share_amount, service_fee,
-                            payment_method, payment_status, payment_date, transaction_ref,
-                            bank_id, bank_name, bank_account_no, cheque_no, online_type,
-                            attachment_paths, due_emi_amount, parent_payment_id, settlement_type, created_by,
-                            handover_to, handover_status, batch_id, is_emi_discount
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ");
-                    if (!$settleStmt) throw new Exception("Settlement prepare failed: " . $this->db->error);
-
-                    $stType = 'emi_due_settlement';
-                    $stPayType = 'emi'; // Use 'emi' for DB ENUM consistency; settlement tracked via settlement_type
-                    $stStatus = 'paid';
-                    $stLandShare = 0.0;
-                    $stDue = 0.0;
-                    $parentId = (int) $due['id'];
-
-                    $handoverToId = (!$isDiscountItem && !empty($transactionData['handover_to'])) ? (int) $transactionData['handover_to'] : null;
-                    $handoverStatus = $handoverToId ? 'pending' : null;
-
-                    $settleStmt->bind_param(
-                        "isdddssssisssssdisiissi",
-                        $bookingId, $stPayType, $settle, $stLandShare, $settleSvcFee,
-                        $currentPaymentMethod, $stStatus, $paymentDate, $transactionRef,
-                        $bankId, $bankName, $bankAccNo, $chequeNo, $onlineType,
-                        $attachmentPathsJson, $stDue, $parentId, $stType, $createdBy,
-                        $handoverToId, $handoverStatus, $batchId, $isDiscountItem
-                    );
-
-                    if (!$settleStmt->execute()) throw new Exception("Settlement insert failed: " . $settleStmt->error);
-                    
-                    $settlePaymentId = $this->db->insert_id;
-                    
-                    if (!empty($handoverToId)) {
-                        if (!class_exists('ApprovalRequest')) {
-                            require_once __DIR__ . '/ApprovalRequest.php';
-                        }
-                        $approvalModel = new ApprovalRequest($this->db);
-                        $approvalModel->create([
-                            'department' => 'Accounts',
-                            'request_type' => 'Cash In Handover',
-                            'title' => 'Handover Approval Request for Payment #' . $settlePaymentId,
-                            'source_table' => 'lead_payments',
-                            'source_id' => $settlePaymentId,
-                            'requested_days' => 0,
-                            'requested_by' => $createdBy,
-                            'approve_role' => 'management',
-                            'meta_data' => json_encode([
-                                'Amount' => $settle,
-                                'Payment Type' => 'EMI Settlement'
-                            ]),
-                            'request_amount' => $settle
-                        ]);
-                    }
-
-                    // Update parent's due_emi_amount in lead_payments
-                    $newDue = max(0, $dueAmount - $settle);
-                    $newParentStatus = ($newDue <= 0) ? 'paid' : 'partially_paid';
-                    $updStmt = $this->db->prepare("UPDATE lead_payments SET due_emi_amount = ?, payment_status = ? WHERE id = ?");
-                    $updStmt->bind_param('dsi', $newDue, $newParentStatus, $parentId);
-                    $updStmt->execute();
-
-                    // Also sync emi_schedules
-                    $schedSyncStmt = $this->db->prepare("UPDATE emi_schedules SET due_emi_amount = ?, status = ? WHERE lead_payment_id = ?");
-                    $schedSyncStmt->bind_param('dsi', $newDue, $newParentStatus, $parentId);
-                    $schedSyncStmt->execute();
-                    $schedSyncStmt->close();
-
-                    $pool -= $settle;
-                    $settledDues++;
-                    $settlementDetails[] = [
-                        'emi_no' => $due['emi_no'],
-                        'settled' => $settle,
-                        'remaining_due' => $newDue
-                    ];
-                }
-
-                // ─── PHASE 2: Allocate remaining pool to new installment(s) ───
-                $totalAllocated = 0;  // Track total EMI allocated in this transaction
+                // ─── Unified Sequential Installment & Due Settlement Loop (Ascending 1 -> 2 -> 3 ...) ───
+                $totalAllocated = 0;  // Track total EMI (new + settlements) allocated in this transaction
 
                 while ($pool > 0) {
-                    // How much goes to this installment
-                    $thisEmi = ($perEmiAmount > 0) ? min($pool, $perEmiAmount) : $pool;
+                    // Check next available empty installment slot
+                    $nextEmptyEmiNo = $this->getNextAvailableEmiNo($bookingId);
 
-                    // Calculate remaining CF after ALL installments so far (including this one)
-                    // If this payment fully covers the remaining CF, there's no real due
-                    $cfRemainingBeforeThis = max(0, $effectiveCF - $emiPaidSoFar - $totalAllocated);
-                    $cfRemainingAfterThis = max(0, $cfRemainingBeforeThis - $thisEmi);
-                    if ($cfRemainingAfterThis <= 0) {
-                        // Last installment — no due even if less than per EMI
-                        $thisDue = 0;
-                    } else {
-                        // Expected for this installment is capped at what's actually remaining
-                        $expectedForThis = ($perEmiAmount > 0) ? min($perEmiAmount, $cfRemainingBeforeThis) : 0;
-                        $thisDue = ($expectedForThis > 0 && $thisEmi < $expectedForThis)
-                                   ? max(0, round($expectedForThis - $thisEmi))
-                                   : 0;
-                    }
-                    $thisStatus = ($thisDue > 0) ? 'partially_paid' : 'paid';
+                    // Check lowest outstanding due
+                    $outstandingDues = $this->getOutstandingEmiDues($bookingId);
+                    $lowestDue = !empty($outstandingDues) ? $outstandingDues[0] : null;
+                    $lowestDueNo = ($lowestDue && isset($lowestDue['emi_no']) && (int)$lowestDue['emi_no'] > 0)
+                        ? (int)$lowestDue['emi_no']
+                        : null;
 
-                    // Service fee for this installment
-                    $thisSvcFee = (!$isDiscountItem && $serviceChargeRate > 0) ? round($thisEmi * ($serviceChargeRate / 100)) : 0;
-
-                    // Get next EMI number (fills gaps from rejected entries)
-                    $nextEmiNo = $this->getNextAvailableEmiNo($bookingId);
-
-                    // Insert lead_payments row for this installment
-                    $emiStmt = $this->db->prepare("
-                        INSERT INTO lead_payments (
-                            booking_id, payment_type, amount, land_share_amount, service_fee,
-                            payment_method, payment_status, payment_date, transaction_ref,
-                            bank_id, bank_name, bank_account_no, cheque_no, online_type,
-                            attachment_paths, due_emi_amount, bulk_emi_discount, bulk_pay_amount, created_by,
-                            handover_to, handover_status, bulk_parent_id, batch_id, is_emi_discount
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ");
-                    if (!$emiStmt) throw new Exception("EMI payment prepare failed: " . $this->db->error);
-
-                $emiPayType = 'emi';
-                $emiLandShare = 0.0;
-                // Attach discount + bulk pay amount only to the FIRST installment (for cash only)
-                $thisDiscount = (!$firstPaymentId && !$isDiscountItem && !$isEmiDiscount && $bulkEmiDiscount > 0) ? $bulkEmiDiscount : 0.0;
-                $thisBulkPayAmount = (!$firstPaymentId && !$isDiscountItem && $newInstallments === 0) ? $pProcess['amount'] : null;
-
-                $handoverToId = (!$isDiscountItem && !empty($transactionData['handover_to'])) ? (int) $transactionData['handover_to'] : null;
-                $handoverStatus = $handoverToId ? 'pending' : null;
-                $thisHandoverToId = $handoverToId;
-                $thisBulkParentId = ($firstPaymentId) ? $firstPaymentId : null;
-
-                $emiStmt->bind_param(
-                    "isdddssssisssssdddiisisi",
-                    $bookingId, $emiPayType, $thisEmi, $emiLandShare, $thisSvcFee,
-                    $currentPaymentMethod, $thisStatus, $paymentDate, $transactionRef,
-                    $bankId, $bankName, $bankAccNo, $chequeNo, $onlineType,
-                    $attachmentPathsJson, $thisDue, $thisDiscount, $thisBulkPayAmount, $createdBy,
-                    $thisHandoverToId, $handoverStatus, $thisBulkParentId, $batchId, $isDiscountItem
-                );
-
-                if (!$emiStmt->execute()) throw new Exception("EMI payment insert failed: " . $emiStmt->error);
-
-                $paymentId = $this->db->insert_id;
-                
-                if (!empty($handoverToId) && !$firstPaymentId) {
-                    if (!class_exists('ApprovalRequest')) {
-                        require_once __DIR__ . '/ApprovalRequest.php';
-                    }
-                    $approvalModel = new ApprovalRequest($this->db);
-                    $approvalModel->create([
-                        'department' => 'Accounts',
-                        'request_type' => 'Cash In Handover',
-                        'title' => 'Handover Approval Request for Payment #' . $paymentId,
-                        'source_table' => 'lead_payments',
-                        'source_id' => $paymentId,
-                        'requested_days' => 0,
-                        'requested_by' => $createdBy,
-                        'approve_role' => 'management',
-                        'meta_data' => json_encode([
-                            'Project' => $clientDetails['project_name'] ?? 'N/A',
-                            'Unit' => $clientDetails['unit_name'] ?? 'N/A',
-                            'Amount' => $pProcess['amount'], // Send the total bulk amount
-                            'Discount' => (!$isEmiDiscount ? $bulkEmiDiscount : 0),
-                            'Payment Type' => 'Bulk EMI'
-                        ]),
-                        'request_amount' => $pProcess['amount'] // Use total bulk amount
-                    ]);
-                }
-                if (!$firstPaymentId) {
-                    $firstPaymentId = $paymentId;
-
-                    // Update penalty & waiver details on the primary payment record
-                    $penaltyAmount = (float)($transactionData['penalty_amount'] ?? 0);
-                    $penaltyPaid   = (float)($transactionData['penalty_paid'] ?? 0);
-                    $penaltyWaived = (float)($transactionData['penalty_waived'] ?? 0);
-                    $waiverReason  = $transactionData['waiver_reason'] ?? null;
-                    $waiverAtt     = $transactionData['waiver_attachment'] ?? null;
-                    $waiverStatus  = $transactionData['waiver_status'] ?? 'none';
-
-                    if ($penaltyAmount > 0 || $penaltyWaived > 0) {
-                        $pUpd = $this->db->prepare("UPDATE lead_payments SET penalty_amount = ?, penalty_paid = ?, penalty_waived = ?, waiver_reason = ?, waiver_attachment = ?, waiver_status = ? WHERE id = ?");
-                        $pUpd->bind_param("dddsssi", $penaltyAmount, $penaltyPaid, $penaltyWaived, $waiverReason, $waiverAtt, $waiverStatus, $firstPaymentId);
-                        $pUpd->execute();
-                        $pUpd->close();
-                    }
-
-                    if ($waiverStatus === 'pending' && $penaltyWaived > 0) {
-                        if (!class_exists('ApprovalRequest')) {
-                            require_once __DIR__ . '/ApprovalRequest.php';
+                    // Settle due if it belongs to an earlier or current slot, or if there is no earlier empty gap
+                    $shouldSettleDue = false;
+                    if ($lowestDue !== null) {
+                        if ($lowestDueNo !== null) {
+                            $shouldSettleDue = ($lowestDueNo <= $nextEmptyEmiNo);
+                        } else {
+                            $shouldSettleDue = true;
                         }
-                        $approvalModel = new ApprovalRequest($this->db);
-                        $approvalModel->create([
-                            'department'     => 'CED',
-                            'request_type'   => 'Penalty Waiver Request',
-                            'title'          => 'Penalty Waiver Request for Client Payment #' . $firstPaymentId,
-                            'source_table'   => 'lead_payments',
-                            'source_id'      => $firstPaymentId,
-                            'requested_days' => 0,
-                            'requested_by'   => $createdBy,
-                            'approve_role'   => 'management',
-                            'meta_data'      => json_encode([
-                                'Project'          => $clientDetails['project_name'] ?? 'N/A',
-                                'Client Name'      => $clientDetails['client_name'] ?? 'N/A',
-                                'Penalty Amount'   => $penaltyAmount,
-                                'Waived Amount'    => $penaltyWaived,
-                                'Penalty Paid'     => $penaltyPaid,
-                                'Waiver Reason'    => $waiverReason,
-                                'Attachment Path'  => $waiverAtt
-                            ]),
-                            'request_amount' => $penaltyWaived
-                        ]);
                     }
-                }
 
-                // Insert emi_schedule row (applies to regular payments, discount items, and previous discounts)
-                $schedStmt = $this->db->prepare("
-                    INSERT INTO emi_schedules (
-                        lead_booking_id, emi_no, emi_amount, service_fee,
-                        due_emi_amount, due_date, status, lead_payment_id
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ");
-                if (!$schedStmt) throw new Exception("EMI schedule prepare failed: " . $this->db->error);
+                    if ($shouldSettleDue) {
+                        // Settle outstanding due on EMI #$lowestDueNo
+                        $dueAmount = (float) $lowestDue['due_emi_amount'];
+                        $settle = min($pool, $dueAmount);
 
-                $schedStatus = 'paid'; // schedule row always 'paid' (payment/discount was recorded)
+                        // Service fee for this settlement portion
+                        $settleSvcFee = (!$isDiscountItem && $serviceChargeRate > 0) ? round($settle * ($serviceChargeRate / 100)) : 0;
 
-                $schedStmt->bind_param(
-                    "iidddssi",
-                    $bookingId, $nextEmiNo, $thisEmi, $thisSvcFee,
-                    $thisDue, $paymentDate, $schedStatus, $paymentId
-                );
+                        // Create settlement audit record
+                        $settleStmt = $this->db->prepare("
+                            INSERT INTO lead_payments (
+                                booking_id, payment_type, amount, land_share_amount, service_fee,
+                                payment_method, payment_status, payment_date, transaction_ref,
+                                bank_id, bank_name, bank_account_no, cheque_no, online_type,
+                                attachment_paths, due_emi_amount, parent_payment_id, settlement_type, created_by,
+                                handover_to, handover_status, batch_id, is_emi_discount
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ");
+                        if (!$settleStmt) throw new Exception("Settlement prepare failed: " . $this->db->error);
 
-                if (!$schedStmt->execute()) throw new Exception("EMI schedule insert failed: " . $schedStmt->error);
+                        $stType = 'emi_due_settlement';
+                        $stPayType = 'emi'; // Use 'emi' for DB ENUM consistency; settlement tracked via settlement_type
+                        $stStatus = 'paid';
+                        $stLandShare = 0.0;
+                        $stDue = 0.0;
+                        $parentId = (int) $lowestDue['id'];
 
-                $pool -= $thisEmi;
-                $totalAllocated += $thisEmi;
-                $newInstallments++;
-            } // end while pool > 0
+                        $handoverToId = (!$isDiscountItem && !empty($transactionData['handover_to'])) ? (int) $transactionData['handover_to'] : null;
+                        $handoverStatus = $handoverToId ? 'pending' : null;
+
+                        $settleStmt->bind_param(
+                            "isdddssssisssssdisiissi",
+                            $bookingId, $stPayType, $settle, $stLandShare, $settleSvcFee,
+                            $currentPaymentMethod, $stStatus, $paymentDate, $transactionRef,
+                            $bankId, $bankName, $bankAccNo, $chequeNo, $onlineType,
+                            $attachmentPathsJson, $stDue, $parentId, $stType, $createdBy,
+                            $handoverToId, $handoverStatus, $batchId, $isDiscountItem
+                        );
+
+                        if (!$settleStmt->execute()) throw new Exception("Settlement insert failed: " . $settleStmt->error);
+                        
+                        $settlePaymentId = $this->db->insert_id;
+
+                        if (!empty($handoverToId)) {
+                            if (!class_exists('ApprovalRequest')) {
+                                require_once __DIR__ . '/ApprovalRequest.php';
+                            }
+                            $approvalModel = new ApprovalRequest($this->db);
+                            $approvalModel->create([
+                                'department' => 'Accounts',
+                                'request_type' => 'Cash In Handover',
+                                'title' => 'Handover Approval Request for Payment #' . $settlePaymentId,
+                                'source_table' => 'lead_payments',
+                                'source_id' => $settlePaymentId,
+                                'requested_days' => 0,
+                                'requested_by' => $createdBy,
+                                'approve_role' => 'management',
+                                'meta_data' => json_encode([
+                                    'Amount' => $settle,
+                                    'Payment Type' => 'EMI Settlement'
+                                ]),
+                                'request_amount' => $settle
+                            ]);
+                        }
+
+                        // Update parent's due_emi_amount in lead_payments
+                        $newDue = max(0, $dueAmount - $settle);
+                        $newParentStatus = ($newDue <= 0) ? 'paid' : 'partially_paid';
+                        $updStmt = $this->db->prepare("UPDATE lead_payments SET due_emi_amount = ?, payment_status = ? WHERE id = ?");
+                        $updStmt->bind_param('dsi', $newDue, $newParentStatus, $parentId);
+                        $updStmt->execute();
+
+                        // Also sync emi_schedules
+                        $schedSyncStmt = $this->db->prepare("UPDATE emi_schedules SET due_emi_amount = ?, status = ? WHERE lead_payment_id = ?");
+                        $schedSyncStmt->bind_param('dsi', $newDue, $newParentStatus, $parentId);
+                        $schedSyncStmt->execute();
+                        $schedSyncStmt->close();
+
+                        $pool -= $settle;
+                        $totalAllocated += $settle;
+                        $settledDues++;
+                        $settlementDetails[] = [
+                            'emi_no' => $lowestDue['emi_no'],
+                            'settled' => $settle,
+                            'remaining_due' => $newDue
+                        ];
+                    } else {
+                        // Allocate to next empty installment slot (#$nextEmptyEmiNo)
+                        $thisEmi = ($perEmiAmount > 0) ? min($pool, $perEmiAmount) : $pool;
+
+                        // Calculate remaining CF after ALL installments so far (including this one)
+                        $cfRemainingBeforeThis = max(0, $effectiveCF - $emiPaidSoFar - $totalAllocated);
+                        $cfRemainingAfterThis = max(0, $cfRemainingBeforeThis - $thisEmi);
+                        if ($cfRemainingAfterThis <= 0) {
+                            $thisDue = 0;
+                        } else {
+                            $expectedForThis = ($perEmiAmount > 0) ? min($perEmiAmount, $cfRemainingBeforeThis) : 0;
+                            $thisDue = ($expectedForThis > 0 && $thisEmi < $expectedForThis)
+                                       ? max(0, round($expectedForThis - $thisEmi))
+                                       : 0;
+                        }
+                        $thisStatus = ($thisDue > 0) ? 'partially_paid' : 'paid';
+
+                        // Service fee for this installment
+                        $thisSvcFee = (!$isDiscountItem && $serviceChargeRate > 0) ? round($thisEmi * ($serviceChargeRate / 100)) : 0;
+
+                        // Insert lead_payments row for this installment
+                        $emiStmt = $this->db->prepare("
+                            INSERT INTO lead_payments (
+                                booking_id, payment_type, amount, land_share_amount, service_fee,
+                                payment_method, payment_status, payment_date, transaction_ref,
+                                bank_id, bank_name, bank_account_no, cheque_no, online_type,
+                                attachment_paths, due_emi_amount, bulk_emi_discount, bulk_pay_amount, created_by,
+                                handover_to, handover_status, bulk_parent_id, batch_id, is_emi_discount
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ");
+                        if (!$emiStmt) throw new Exception("EMI payment prepare failed: " . $this->db->error);
+
+                        $emiPayType = 'emi';
+                        $emiLandShare = 0.0;
+                        // Attach discount + bulk pay amount only to the FIRST installment (for cash only)
+                        $thisDiscount = (!$firstPaymentId && !$isDiscountItem && !$isEmiDiscount && $bulkEmiDiscount > 0) ? $bulkEmiDiscount : 0.0;
+                        $thisBulkPayAmount = (!$firstPaymentId && !$isDiscountItem && $newInstallments === 0) ? $pProcess['amount'] : null;
+
+                        $handoverToId = (!$isDiscountItem && !empty($transactionData['handover_to'])) ? (int) $transactionData['handover_to'] : null;
+                        $handoverStatus = $handoverToId ? 'pending' : null;
+                        $thisHandoverToId = $handoverToId;
+                        $thisBulkParentId = ($firstPaymentId) ? $firstPaymentId : null;
+
+                        $emiStmt->bind_param(
+                            "isdddssssisssssdddiisisi",
+                            $bookingId, $emiPayType, $thisEmi, $emiLandShare, $thisSvcFee,
+                            $currentPaymentMethod, $thisStatus, $paymentDate, $transactionRef,
+                            $bankId, $bankName, $bankAccNo, $chequeNo, $onlineType,
+                            $attachmentPathsJson, $thisDue, $thisDiscount, $thisBulkPayAmount, $createdBy,
+                            $thisHandoverToId, $handoverStatus, $thisBulkParentId, $batchId, $isDiscountItem
+                        );
+
+                        if (!$emiStmt->execute()) throw new Exception("EMI payment insert failed: " . $emiStmt->error);
+
+                        $paymentId = $this->db->insert_id;
+                        
+                        if (!empty($handoverToId) && !$firstPaymentId) {
+                            if (!class_exists('ApprovalRequest')) {
+                                require_once __DIR__ . '/ApprovalRequest.php';
+                            }
+                            $approvalModel = new ApprovalRequest($this->db);
+                            $approvalModel->create([
+                                'department' => 'Accounts',
+                                'request_type' => 'Cash In Handover',
+                                'title' => 'Handover Approval Request for Payment #' . $paymentId,
+                                'source_table' => 'lead_payments',
+                                'source_id' => $paymentId,
+                                'requested_days' => 0,
+                                'requested_by' => $createdBy,
+                                'approve_role' => 'management',
+                                'meta_data' => json_encode([
+                                    'Project' => $clientDetails['project_name'] ?? 'N/A',
+                                    'Unit' => $clientDetails['unit_name'] ?? 'N/A',
+                                    'Amount' => $pProcess['amount'], // Send the total bulk amount
+                                    'Discount' => (!$isEmiDiscount ? $bulkEmiDiscount : 0),
+                                    'Payment Type' => 'Bulk EMI'
+                                ]),
+                                'request_amount' => $pProcess['amount'] // Use total bulk amount
+                            ]);
+                        }
+                        if (!$firstPaymentId) {
+                            $firstPaymentId = $paymentId;
+
+                            // Update penalty & waiver details on the primary payment record
+                            $penaltyAmount = (float)($transactionData['penalty_amount'] ?? 0);
+                            $penaltyPaid   = (float)($transactionData['penalty_paid'] ?? 0);
+                            $penaltyWaived = (float)($transactionData['penalty_waived'] ?? 0);
+                            $waiverReason  = $transactionData['waiver_reason'] ?? null;
+                            $waiverAtt     = $transactionData['waiver_attachment'] ?? null;
+                            $waiverStatus  = $transactionData['waiver_status'] ?? 'none';
+
+                            if ($penaltyAmount > 0 || $penaltyWaived > 0) {
+                                $pUpd = $this->db->prepare("UPDATE lead_payments SET penalty_amount = ?, penalty_paid = ?, penalty_waived = ?, waiver_reason = ?, waiver_attachment = ?, waiver_status = ? WHERE id = ?");
+                                $pUpd->bind_param("dddsssi", $penaltyAmount, $penaltyPaid, $penaltyWaived, $waiverReason, $waiverAtt, $waiverStatus, $firstPaymentId);
+                                $pUpd->execute();
+                                $pUpd->close();
+                            }
+
+                            if ($waiverStatus === 'pending' && $penaltyWaived > 0) {
+                                if (!class_exists('ApprovalRequest')) {
+                                    require_once __DIR__ . '/ApprovalRequest.php';
+                                }
+                                $approvalModel = new ApprovalRequest($this->db);
+                                $approvalModel->create([
+                                    'department'     => 'CED',
+                                    'request_type'   => 'Penalty Waiver Request',
+                                    'title'          => 'Penalty Waiver Request for Client Payment #' . $firstPaymentId,
+                                    'source_table'   => 'lead_payments',
+                                    'source_id'      => $firstPaymentId,
+                                    'requested_days' => 0,
+                                    'requested_by'   => $createdBy,
+                                    'approve_role'   => 'management',
+                                    'meta_data'      => json_encode([
+                                        'Project'          => $clientDetails['project_name'] ?? 'N/A',
+                                        'Client Name'      => $clientDetails['client_name'] ?? 'N/A',
+                                        'Penalty Amount'   => $penaltyAmount,
+                                        'Waived Amount'    => $penaltyWaived,
+                                        'Penalty Paid'     => $penaltyPaid,
+                                        'Waiver Reason'    => $waiverReason,
+                                        'Attachment Path'  => $waiverAtt
+                                    ]),
+                                    'request_amount' => $penaltyWaived
+                                ]);
+                            }
+                        }
+
+                        // Insert emi_schedule row
+                        $schedStmt = $this->db->prepare("
+                            INSERT INTO emi_schedules (
+                                lead_booking_id, emi_no, emi_amount, service_fee,
+                                due_emi_amount, due_date, status, lead_payment_id
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        ");
+                        if (!$schedStmt) throw new Exception("EMI schedule prepare failed: " . $this->db->error);
+
+                        $schedStatus = 'paid';
+
+                        $schedStmt->bind_param(
+                            "iidddssi",
+                            $bookingId, $nextEmptyEmiNo, $thisEmi, $thisSvcFee,
+                            $thisDue, $paymentDate, $schedStatus, $paymentId
+                        );
+
+                        if (!$schedStmt->execute()) throw new Exception("EMI schedule insert failed: " . $schedStmt->error);
+
+                        $pool -= $thisEmi;
+                        $totalAllocated += $thisEmi;
+                        $newInstallments++;
+                    }
+                } // end while pool > 0
             } // end foreach emiPaymentsToProcess
 
             $this->db->commit();
@@ -4583,18 +4633,21 @@ class AccountClient extends Model
                 lb.agreement_value,
                 lb.booking_status,
                 lb.landshare_status,
-                l.full_name as client_name,
-                l.phone as client_phone,
+                COALESCE(NULLIF(TRIM(l.full_name), ''), NULLIF(TRIM(l.lead_name), '')) as client_name,
+                COALESCE(NULLIF(TRIM(l.phone), ''), NULLIF(TRIM(l.phone_number), ''), NULLIF(TRIM(l.alt_phone_number), ''), NULLIF(TRIM(l.`2nd_owner_phone`), '')) as client_phone,
                 COALESCE(
                     (SELECT SUM(lp.amount)
                      FROM lead_payments lp
                      WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id
                      AND lp.payment_status IN ('paid','partially_paid')), 0
                 ) as total_paid,
-                (SELECT GROUP_CONCAT(DISTINCT u_agent.full_name SEPARATOR ', ')
-                 FROM lead_payments lp_sub
-                 INNER JOIN users u_agent ON u_agent.id = lp_sub.created_by
-                 WHERE lp_sub.booking_id = lb.id AND lp_sub.payment_type = 'booking_money'
+                COALESCE(
+                    (SELECT u.full_name FROM users u WHERE u.id = COALESCE(NULLIF(lb.sales_by_id, 0), NULLIF(l.assigned_id, 0), NULLIF(lb.created_by, 0)) LIMIT 1),
+                    (SELECT GROUP_CONCAT(DISTINCT u_agent.full_name SEPARATOR ', ')
+                     FROM lead_payments lp_sub
+                     INNER JOIN users u_agent ON u_agent.id = lp_sub.created_by
+                     WHERE lp_sub.booking_id = lb.id AND lp_sub.payment_type = 'booking_money'
+                    )
                 ) AS agent_name
             FROM flats f
             INNER JOIN lead_bookings lb ON lb.flat_id = f.id 
@@ -4672,8 +4725,9 @@ class AccountClient extends Model
                 f.flat_name,
                 f.floor_no,
                 l.id as lead_id,
-                l.full_name as client_name,
-                l.phone,
+                COALESCE(NULLIF(TRIM(l.full_name), ''), NULLIF(TRIM(l.lead_name), '')) as client_name,
+                COALESCE(NULLIF(TRIM(l.phone), ''), NULLIF(TRIM(l.phone_number), ''), NULLIF(TRIM(l.alt_phone_number), ''), NULLIF(TRIM(l.`2nd_owner_phone`), '')) as phone,
+                l.phone_number,
                 l.email,
                 lb.booking_date,
                 lb.agreement_value,
@@ -5880,18 +5934,53 @@ class AccountClient extends Model
      */
     public function trashTransaction($paymentId, $bookingId, $userId)
     {
-        $stmt = $this->db->prepare("UPDATE lead_payments SET is_trashed = 1, trashed_by = ?, trashed_at = NOW() WHERE id = ? AND booking_id = ?");
-        if (!$stmt) {
-            return ['success' => false, 'message' => 'Prepare failed: ' . $this->db->error];
-        }
-        $stmt->bind_param("iii", $userId, $paymentId, $bookingId);
-        if ($stmt->execute()) {
-            if ($stmt->affected_rows > 0) {
-                return ['success' => true, 'message' => 'Transaction moved to trash successfully.'];
+        $this->db->begin_transaction();
+        try {
+            $paymentId = (int)$paymentId;
+            $bookingId = (int)$bookingId;
+            $userId    = (int)$userId;
+
+            $chk = $this->db->prepare("SELECT id, payment_type, settlement_type, parent_payment_id, amount, verification_status FROM lead_payments WHERE id = ? AND booking_id = ?");
+            $chk->bind_param("ii", $paymentId, $bookingId);
+            $chk->execute();
+            $row = $chk->get_result()->fetch_assoc();
+            if (!$row) {
+                throw new Exception("Transaction not found or does not belong to this booking.");
             }
-            return ['success' => false, 'message' => 'Transaction not found or already trashed.'];
+
+            $paymentType = $row['payment_type'];
+            $settlementType = $row['settlement_type'] ?? null;
+            $isSettlement = ($paymentType === 'emi_due_settlement' || $settlementType === 'emi_due_settlement' || !empty($row['parent_payment_id']));
+
+            // If trashing a settlement, restore the parent EMI's outstanding due
+            if ($isSettlement && !empty($row['parent_payment_id']) && $row['verification_status'] !== 'rejected') {
+                $parentId = (int)$row['parent_payment_id'];
+                $settlementAmount = (float)$row['amount'];
+                $restoreStmt = $this->db->prepare("
+                    UPDATE lead_payments 
+                    SET due_emi_amount = due_emi_amount + ?, 
+                        payment_status = 'partially_paid'
+                    WHERE id = ? AND booking_id = ?
+                ");
+                $restoreStmt->bind_param("dii", $settlementAmount, $parentId, $bookingId);
+                $restoreStmt->execute();
+            }
+
+            $stmt = $this->db->prepare("UPDATE lead_payments SET is_trashed = 1, trashed_by = ?, trashed_at = NOW() WHERE id = ? AND booking_id = ?");
+            if (!$stmt) {
+                throw new Exception("Prepare failed: " . $this->db->error);
+            }
+            $stmt->bind_param("iii", $userId, $paymentId, $bookingId);
+            if (!$stmt->execute() || $stmt->affected_rows === 0) {
+                throw new Exception("Transaction not found or already trashed.");
+            }
+
+            $this->db->commit();
+            return ['success' => true, 'message' => 'Transaction moved to trash successfully.'];
+        } catch (Exception $e) {
+            $this->db->rollback();
+            return ['success' => false, 'message' => 'Failed to trash transaction: ' . $e->getMessage()];
         }
-        return ['success' => false, 'message' => 'Failed to trash transaction: ' . $stmt->error];
     }
 
     /**
@@ -5899,18 +5988,67 @@ class AccountClient extends Model
      */
     public function restoreTransaction($paymentId, $bookingId)
     {
-        $stmt = $this->db->prepare("UPDATE lead_payments SET is_trashed = 0, trashed_by = NULL, trashed_at = NULL WHERE id = ? AND booking_id = ?");
-        if (!$stmt) {
-            return ['success' => false, 'message' => 'Prepare failed: ' . $this->db->error];
-        }
-        $stmt->bind_param("ii", $paymentId, $bookingId);
-        if ($stmt->execute()) {
-            if ($stmt->affected_rows > 0) {
-                return ['success' => true, 'message' => 'Transaction restored successfully.'];
+        $this->db->begin_transaction();
+        try {
+            $paymentId = (int)$paymentId;
+            $bookingId = (int)$bookingId;
+
+            $stmt = $this->db->prepare("UPDATE lead_payments SET is_trashed = 0, trashed_by = NULL, trashed_at = NULL WHERE id = ? AND booking_id = ?");
+            if (!$stmt) {
+                throw new Exception("Prepare failed: " . $this->db->error);
             }
-            return ['success' => false, 'message' => 'Transaction not found or not trashed.'];
+            $stmt->bind_param("ii", $paymentId, $bookingId);
+            if (!$stmt->execute() || $stmt->affected_rows === 0) {
+                throw new Exception("Transaction not found or not trashed.");
+            }
+
+            // Check if this payment is an EMI schedule row and avoid duplicate emi_no
+            $schedStmt = $this->db->prepare("SELECT id, emi_no FROM emi_schedules WHERE lead_payment_id = ? AND lead_booking_id = ?");
+            if ($schedStmt) {
+                $schedStmt->bind_param("ii", $paymentId, $bookingId);
+                $schedStmt->execute();
+                $schedRes = $schedStmt->get_result();
+                $schedRow = $schedRes ? $schedRes->fetch_assoc() : null;
+
+                if ($schedRow) {
+                    $currentEmiNo = (int)$schedRow['emi_no'];
+                    $schedId = (int)$schedRow['id'];
+
+                    // Check if another active payment has taken this same emi_no
+                    $conflictStmt = $this->db->prepare("
+                        SELECT es.id 
+                        FROM emi_schedules es
+                        INNER JOIN lead_payments lp ON lp.id = es.lead_payment_id
+                        WHERE es.lead_booking_id = ? 
+                          AND es.emi_no = ? 
+                          AND es.id != ?
+                          AND lp.is_trashed = 0 
+                          AND lp.verification_status != 'rejected'
+                    ");
+                    if ($conflictStmt) {
+                        $conflictStmt->bind_param("iii", $bookingId, $currentEmiNo, $schedId);
+                        $conflictStmt->execute();
+                        $conflictRes = $conflictStmt->get_result();
+
+                        if ($conflictRes && $conflictRes->num_rows > 0) {
+                            // Slot occupied! Reassign restored EMI to the next available free number
+                            $newEmiNo = $this->getNextAvailableEmiNo($bookingId);
+                            $updSched = $this->db->prepare("UPDATE emi_schedules SET emi_no = ? WHERE id = ?");
+                            if ($updSched) {
+                                $updSched->bind_param("ii", $newEmiNo, $schedId);
+                                $updSched->execute();
+                            }
+                        }
+                    }
+                }
+            }
+
+            $this->db->commit();
+            return ['success' => true, 'message' => 'Transaction restored successfully.'];
+        } catch (Exception $e) {
+            $this->db->rollback();
+            return ['success' => false, 'message' => 'Failed to restore transaction: ' . $e->getMessage()];
         }
-        return ['success' => false, 'message' => 'Failed to restore transaction: ' . $stmt->error];
     }
 
     /**
@@ -6657,8 +6795,8 @@ class AccountClient extends Model
 
         if (!empty($search)) {
             $searchTerm = '%' . $search . '%';
-            $whereParts[] = "(l.full_name LIKE ? OR l.phone LIKE ? OR l.email LIKE ? OR p.name LIKE ? OR f.flat_name LIKE ? OR u.full_name LIKE ? OR CAST(lb.id AS CHAR) = ?)";
-            for ($i = 0; $i < 6; $i++) {
+            $whereParts[] = "(l.full_name LIKE ? OR l.lead_name LIKE ? OR l.phone LIKE ? OR l.phone_number LIKE ? OR l.email LIKE ? OR p.name LIKE ? OR f.flat_name LIKE ? OR u.full_name LIKE ? OR CAST(lb.id AS CHAR) = ?)";
+            for ($i = 0; $i < 8; $i++) {
                 $params[] = $searchTerm;
                 $types .= "s";
             }
@@ -6964,8 +7102,8 @@ class AccountClient extends Model
 
         if (!empty($search)) {
             $searchTerm = '%' . $search . '%';
-            $whereParts[] = "(l.full_name LIKE ? OR l.phone LIKE ? OR l.email LIKE ? OR p.name LIKE ? OR f.flat_name LIKE ? OR u.full_name LIKE ? OR CAST(lb.id AS CHAR) = ?)";
-            for ($i = 0; $i < 6; $i++) {
+            $whereParts[] = "(l.full_name LIKE ? OR l.lead_name LIKE ? OR l.phone LIKE ? OR l.phone_number LIKE ? OR l.email LIKE ? OR p.name LIKE ? OR f.flat_name LIKE ? OR u.full_name LIKE ? OR CAST(lb.id AS CHAR) = ?)";
+            for ($i = 0; $i < 8; $i++) {
                 $params[] = $searchTerm;
                 $types .= "s";
             }

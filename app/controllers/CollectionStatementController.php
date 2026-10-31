@@ -459,7 +459,7 @@ class CollectionStatementController extends Controller
 
         if (!empty($filters['search'])) {
             $s = $this->db->real_escape_string($filters['search']);
-            $conds[] = "(l.full_name LIKE '%{$s}%' OR l.phone LIKE '%{$s}%' OR p.name LIKE '%{$s}%' OR f.flat_name LIKE '%{$s}%' OR lp.transaction_ref LIKE '%{$s}%' OR lp.cheque_no LIKE '%{$s}%')";
+            $conds[] = "(l.full_name LIKE '%{$s}%' OR l.lead_name LIKE '%{$s}%' OR l.phone LIKE '%{$s}%' OR l.phone_number LIKE '%{$s}%' OR p.name LIKE '%{$s}%' OR f.flat_name LIKE '%{$s}%' OR lp.transaction_ref LIKE '%{$s}%' OR lp.cheque_no LIKE '%{$s}%')";
         }
 
         return implode(" AND ", $conds);
@@ -977,9 +977,9 @@ class CollectionStatementController extends Controller
                     COALESCE(u_v.full_name, e_v.full_name, '') AS verifier_name,
                     e_v.office_branch_id AS verifier_branch_id,
                     COALESCE(ob_v.name, e_v.office_branch, '') AS verifier_branch_name,
-                    l.full_name AS client_name,
-                    l.phone AS client_phone,
-                    l.phone AS phone,
+                    COALESCE(NULLIF(TRIM(l.full_name), ''), NULLIF(TRIM(l.lead_name), '')) AS client_name,
+                    COALESCE(NULLIF(TRIM(l.phone), ''), NULLIF(TRIM(l.phone_number), ''), NULLIF(TRIM(l.alt_phone_number), ''), NULLIF(TRIM(l.`2nd_owner_phone`), '')) AS client_phone,
+                    COALESCE(NULLIF(TRIM(l.phone), ''), NULLIF(TRIM(l.phone_number), ''), NULLIF(TRIM(l.alt_phone_number), ''), NULLIF(TRIM(l.`2nd_owner_phone`), '')) AS phone,
                     p.id AS project_id,
                     p.name AS project_name,
                     f.flat_name,

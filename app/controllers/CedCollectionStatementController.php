@@ -379,7 +379,7 @@ class CedCollectionStatementController extends Controller
         $today = date('Y-m-d');
 
         if ($pt === 'daily' || $pt === 'today') {
-            $summary = [
+            return [
                 'start_date' => $today,
                 'end_date'   => $today,
                 'label'      => 'Today (' . date('d M, Y') . ')'
@@ -389,23 +389,25 @@ class CedCollectionStatementController extends Controller
         if ($pt === 'weekly' || $pt === 'this_week') {
             $s = date('Y-m-d', strtotime('monday this week'));
             $e = date('Y-m-d', strtotime('sunday this week'));
-            $summary = [
+            return [
                 'start_date' => $s,
                 'end_date'   => $e,
                 'label'      => 'This Week (' . date('d M', strtotime($s)) . ' - ' . date('d M, Y', strtotime($e)) . ')'
             ];
         }
 
-        if ($pt === 'custom' && !empty($filters['start_date']) && !empty($filters['end_date'])) {
-            $summary = [
-                'start_date' => $filters['start_date'],
-                'end_date'   => $filters['end_date'],
-                'label'      => date('d M, Y', strtotime($filters['start_date'])) . ' to ' . date('d M, Y', strtotime($filters['end_date']))
+        if ($pt === 'custom' && (!empty($filters['start_date']) || !empty($filters['end_date']))) {
+            $s = !empty($filters['start_date']) ? $filters['start_date'] : '2015-01-01';
+            $e = !empty($filters['end_date'])   ? $filters['end_date']   : date('Y-m-d');
+            return [
+                'start_date' => $s,
+                'end_date'   => $e,
+                'label'      => date('d M, Y', strtotime($s)) . ' to ' . date('d M, Y', strtotime($e))
             ];
         }
 
         if ($pt === 'all_time') {
-            $summary = [
+            return [
                 'start_date' => '2015-01-01',
                 'end_date'   => '2099-12-31',
                 'label'      => 'All Time'
@@ -414,7 +416,7 @@ class CedCollectionStatementController extends Controller
 
         if ($pt === 'yearly' || $filters['month'] === 'all') {
             $y = $filters['year'];
-            $summary = [
+            return [
                 'start_date' => "{$y}-01-01",
                 'end_date'   => "{$y}-12-31",
                 'label'      => "Whole Year {$y}"
@@ -491,7 +493,7 @@ class CedCollectionStatementController extends Controller
 
         if (!empty($filters['search'])) {
             $s = $this->db->real_escape_string($filters['search']);
-            $conds[] = "(l.full_name LIKE '%{$s}%' OR l.phone LIKE '%{$s}%' OR p.name LIKE '%{$s}%' OR f.flat_name LIKE '%{$s}%' OR lp.transaction_ref LIKE '%{$s}%' OR lp.cheque_no LIKE '%{$s}%' OR u_cr.user_name LIKE '%{$s}%' OR e_cr.full_name LIKE '%{$s}%')";
+            $conds[] = "(l.full_name LIKE '%{$s}%' OR l.lead_name LIKE '%{$s}%' OR l.phone LIKE '%{$s}%' OR l.phone_number LIKE '%{$s}%' OR p.name LIKE '%{$s}%' OR f.flat_name LIKE '%{$s}%' OR lp.transaction_ref LIKE '%{$s}%' OR lp.cheque_no LIKE '%{$s}%' OR u_cr.user_name LIKE '%{$s}%' OR e_cr.full_name LIKE '%{$s}%')";
         }
 
         return implode(" AND ", $conds);
@@ -882,8 +884,8 @@ class CedCollectionStatementController extends Controller
                 COALESCE(parent_es.emi_no, p_parent.emi_no) AS settled_emi_no,
                 es.due_date AS emi_due_date,
                 parent_es.due_date AS settled_due_date,
-                l.full_name AS client_name,
-                l.phone AS client_phone,
+                COALESCE(NULLIF(TRIM(l.full_name), ''), NULLIF(TRIM(l.lead_name), '')) AS client_name,
+                COALESCE(NULLIF(TRIM(l.phone), ''), NULLIF(TRIM(l.phone_number), ''), NULLIF(TRIM(l.alt_phone_number), ''), NULLIF(TRIM(l.`2nd_owner_phone`), '')) AS client_phone,
                 p.id AS project_id,
                 p.name AS project_name,
                 f.flat_name,
