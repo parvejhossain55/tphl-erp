@@ -58,16 +58,32 @@ class SalesPerformanceController extends Controller
         }
         $preset = trim((string) ($_GET['preset'] ?? ''));
         $cycle = $_GET['cycle'] ?? '';
-        if (str_starts_with($cycle, 'preset:')) {
-            $preset = substr($cycle, 7);
+        $from = !empty($_GET['from']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['from']) ? $_GET['from'] : null;
+        $to = !empty($_GET['to']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['to']) ? $_GET['to'] : null;
+
+        // Custom range: if valid start and end dates exist, keep custom range as high priority
+        if ($from && $to) {
+            if ($preset === 'custom' || $cycle === 'custom' || (!str_starts_with($cycle, 'preset:') && empty($preset))) {
+                $preset = 'custom';
+                $cycle = 'custom';
+            } elseif (str_starts_with($cycle, 'preset:')) {
+                if ($preset === 'custom') {
+                    $cycle = 'custom';
+                } else {
+                    $preset = substr($cycle, 7);
+                }
+            }
+        } else {
+            if (str_starts_with($cycle, 'preset:')) {
+                $preset = substr($cycle, 7);
+            }
         }
+
         $year = $month = null;
         if (preg_match('/^(\d{4})-(\d{1,2})$/', $cycle, $m)) {
             $year = (int) $m[1];
             $month = (int) $m[2];
         }
-        $from = !empty($_GET['from']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['from']) ? $_GET['from'] : null;
-        $to = !empty($_GET['to']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['to']) ? $_GET['to'] : null;
 
         return [
             'tab' => $tab,

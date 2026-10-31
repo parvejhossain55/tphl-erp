@@ -457,7 +457,7 @@ class Lead extends Model
 
         // Determine if we should apply created_at date filter
         $applyCreatedDateFilter = true;
-        if (in_array($filter_card, ['total_booked', 'today_follow_up', 'pending_follow_ups'])) {
+        if (in_array($filter_card, ['total_booked', 'booked', 'today_follow_up', 'pending_follow_ups'])) {
             $applyCreatedDateFilter = false;
         }
 
@@ -575,7 +575,7 @@ class Lead extends Model
 
         // Quick Filter Card
         if (!empty($filter_card)) {
-            if ($filter_card === 'total_booked') {
+            if ($filter_card === 'total_booked' || $filter_card === 'booked') {
                 if (!empty($from_date) && !empty($to_date)) {
                     $sql .= " AND EXISTS (
                         SELECT 1 FROM lead_bookings lb_sub 
@@ -1085,7 +1085,7 @@ class Lead extends Model
 
         // Determine if we should apply created_at date filter
         $applyCreatedDateFilter = true;
-        if (in_array($filter_card, ['total_booked', 'today_follow_up', 'pending_follow_ups'])) {
+        if (in_array($filter_card, ['total_booked', 'booked', 'today_follow_up', 'pending_follow_ups'])) {
             $applyCreatedDateFilter = false;
         }
 
@@ -1202,7 +1202,7 @@ class Lead extends Model
 
         // Quick Filter Card
         if (!empty($filter_card)) {
-            if ($filter_card === 'total_booked') {
+            if ($filter_card === 'total_booked' || $filter_card === 'booked') {
                 if (!empty($from_date) && !empty($to_date)) {
                     $sql .= " AND EXISTS (
                         SELECT 1 FROM lead_bookings lb_sub 
@@ -1836,35 +1836,40 @@ class Lead extends Model
         $params = [$userId];
         $types  = "i";
 
-        $dateCol = ($date_type === 'assigned_date') 
+        $isAssignedDate = in_array($date_type, ['assigned_date', 'assigned_at']);
+        $dateCol = $isAssignedDate 
             ? "(CASE WHEN (leads.assigned_at IS NOT NULL AND leads.assigned_at > '1970-01-01 00:00:00') THEN leads.assigned_at ELSE leads.created_at END)" 
             : "leads.created_at";
 
-        if (!empty($from_date) && !empty($to_date)) {
-            $sql .= " AND DATE({$dateCol}) BETWEEN ? AND ?";
-            $params[] = $from_date;
-            $params[] = $to_date;
-            $types .= "ss";
-        } elseif (!empty($from_date)) {
-            $sql .= " AND DATE({$dateCol}) >= ?";
-            $params[] = $from_date;
-            $types .= "s";
-        } elseif (!empty($to_date)) {
-            $sql .= " AND DATE({$dateCol}) <= ?";
-            $params[] = $to_date;
-            $types .= "s";
-        }
+        $applyLeadDateFilter = !in_array($filter_card, ['booked', 'total_booked']);
 
-        if (!empty($year)) {
-            $sql .= " AND YEAR({$dateCol}) = ?";
-            $params[] = (int)$year;
-            $types .= "i";
-        }
+        if ($applyLeadDateFilter) {
+            if (!empty($from_date) && !empty($to_date)) {
+                $sql .= " AND DATE({$dateCol}) BETWEEN ? AND ?";
+                $params[] = $from_date;
+                $params[] = $to_date;
+                $types .= "ss";
+            } elseif (!empty($from_date)) {
+                $sql .= " AND DATE({$dateCol}) >= ?";
+                $params[] = $from_date;
+                $types .= "s";
+            } elseif (!empty($to_date)) {
+                $sql .= " AND DATE({$dateCol}) <= ?";
+                $params[] = $to_date;
+                $types .= "s";
+            }
 
-        if (!empty($month)) {
-            $sql .= " AND MONTH({$dateCol}) = ?";
-            $params[] = (int)$month;
-            $types .= "i";
+            if (!empty($year)) {
+                $sql .= " AND YEAR({$dateCol}) = ?";
+                $params[] = (int)$year;
+                $types .= "i";
+            }
+
+            if (!empty($month)) {
+                $sql .= " AND MONTH({$dateCol}) = ?";
+                $params[] = (int)$month;
+                $types .= "i";
+            }
         }
 
         if (!empty($assignedHours)) {
@@ -1982,8 +1987,51 @@ class Lead extends Model
                 $sql .= " AND " . $contactedCond;
             } elseif ($filter_card === 'not_called' || $filter_card === 'not_contacted') {
                 $sql .= " AND NOT " . $contactedCond;
-            } elseif ($filter_card === 'booked') {
-                $sql .= " AND LOWER(leads.last_lead_action) = 'booked'";
+            } elseif ($filter_card === 'booked' || $filter_card === 'total_booked') {
+                if (!empty($from_date) && !empty($to_date)) {
+                    $sql .= " AND EXISTS (
+                        SELECT 1 FROM lead_bookings lb_sub 
+                        WHERE lb_sub.lead_id = leads.id 
+                          AND lb_sub.deleted_at IS NULL 
+                          AND lb_sub.booking_status IN ('completed', 'booked') 
+                          AND DATE(lb_sub.booking_date) BETWEEN ? AND ?
+                    )";
+                    $params[] = $from_date;
+                    $params[] = $to_date;
+                    $types .= "ss";
+                } elseif (!empty($from_date)) {
+                    $sql .= " AND EXISTS (
+                        SELECT 1 FROM lead_bookings lb_sub 
+                        WHERE lb_sub.lead_id = leads.id 
+                          AND lb_sub.deleted_at IS NULL 
+                          AND lb_sub.booking_status IN ('completed', 'booked') 
+                          AND DATE(lb_sub.booking_date) >= ?
+                    )";
+                    $params[] = $from_date;
+                    $types .= "s";
+                } elseif (!empty($to_date)) {
+                    $sql .= " AND EXISTS (
+                        SELECT 1 FROM lead_bookings lb_sub 
+                        WHERE lb_sub.lead_id = leads.id 
+                          AND lb_sub.deleted_at IS NULL 
+                          AND lb_sub.booking_status IN ('completed', 'booked') 
+                          AND DATE(lb_sub.booking_date) <= ?
+                    )";
+                    $params[] = $to_date;
+                    $types .= "s";
+                } elseif (!empty($year) || !empty($month)) {
+                    $ySub = !empty($year) ? " AND YEAR(lb_sub.booking_date) = " . (int)$year : "";
+                    $mSub = !empty($month) ? " AND MONTH(lb_sub.booking_date) = " . (int)$month : "";
+                    $sql .= " AND EXISTS (
+                        SELECT 1 FROM lead_bookings lb_sub 
+                        WHERE lb_sub.lead_id = leads.id 
+                          AND lb_sub.deleted_at IS NULL 
+                          AND lb_sub.booking_status IN ('completed', 'booked')
+                          $ySub $mSub
+                    )";
+                } else {
+                    $sql .= " AND (LOWER(leads.last_lead_action) = 'booked' OR EXISTS (SELECT 1 FROM lead_bookings lb_sub WHERE lb_sub.lead_id = leads.id AND lb_sub.deleted_at IS NULL AND lb_sub.booking_status IN ('completed', 'booked')))";
+                }
             } elseif ($filter_card === 'upcoming_follow_ups') {
                 $sql .= " AND lf.next_follow_up_date IS NOT NULL AND DATE(lf.next_follow_up_date) >= CURDATE()";
             } elseif ($filter_card === 'irrelevant_leads' || $filter_card === 'irrelevant') {
@@ -2057,35 +2105,40 @@ class Lead extends Model
         $params = [$userId];
         $types  = "i";
 
-        $dateCol = ($date_type === 'assigned_date') 
+        $isAssignedDate = in_array($date_type, ['assigned_date', 'assigned_at']);
+        $dateCol = $isAssignedDate 
             ? "(CASE WHEN (leads.assigned_at IS NOT NULL AND leads.assigned_at > '1970-01-01 00:00:00') THEN leads.assigned_at ELSE leads.created_at END)" 
             : "leads.created_at";
 
-        if (!empty($from_date) && !empty($to_date)) {
-            $sql .= " AND DATE({$dateCol}) BETWEEN ? AND ?";
-            $params[] = $from_date;
-            $params[] = $to_date;
-            $types .= "ss";
-        } elseif (!empty($from_date)) {
-            $sql .= " AND DATE({$dateCol}) >= ?";
-            $params[] = $from_date;
-            $types .= "s";
-        } elseif (!empty($to_date)) {
-            $sql .= " AND DATE({$dateCol}) <= ?";
-            $params[] = $to_date;
-            $types .= "s";
-        }
+        $applyLeadDateFilter = !in_array($filter_card, ['booked', 'total_booked']);
 
-        if (!empty($year)) {
-            $sql .= " AND YEAR({$dateCol}) = ?";
-            $params[] = (int)$year;
-            $types .= "i";
-        }
+        if ($applyLeadDateFilter) {
+            if (!empty($from_date) && !empty($to_date)) {
+                $sql .= " AND DATE({$dateCol}) BETWEEN ? AND ?";
+                $params[] = $from_date;
+                $params[] = $to_date;
+                $types .= "ss";
+            } elseif (!empty($from_date)) {
+                $sql .= " AND DATE({$dateCol}) >= ?";
+                $params[] = $from_date;
+                $types .= "s";
+            } elseif (!empty($to_date)) {
+                $sql .= " AND DATE({$dateCol}) <= ?";
+                $params[] = $to_date;
+                $types .= "s";
+            }
 
-        if (!empty($month)) {
-            $sql .= " AND MONTH({$dateCol}) = ?";
-            $params[] = (int)$month;
-            $types .= "i";
+            if (!empty($year)) {
+                $sql .= " AND YEAR({$dateCol}) = ?";
+                $params[] = (int)$year;
+                $types .= "i";
+            }
+
+            if (!empty($month)) {
+                $sql .= " AND MONTH({$dateCol}) = ?";
+                $params[] = (int)$month;
+                $types .= "i";
+            }
         }
 
         if (!empty($assignedHours)) {
@@ -2200,8 +2253,51 @@ class Lead extends Model
                 $sql .= " AND " . $contactedCond;
             } elseif ($filter_card === 'not_called' || $filter_card === 'not_contacted') {
                 $sql .= " AND NOT " . $contactedCond;
-            } elseif ($filter_card === 'booked') {
-                $sql .= " AND LOWER(leads.last_lead_action) = 'booked'";
+            } elseif ($filter_card === 'booked' || $filter_card === 'total_booked') {
+                if (!empty($from_date) && !empty($to_date)) {
+                    $sql .= " AND EXISTS (
+                        SELECT 1 FROM lead_bookings lb_sub 
+                        WHERE lb_sub.lead_id = leads.id 
+                          AND lb_sub.deleted_at IS NULL 
+                          AND lb_sub.booking_status IN ('completed', 'booked') 
+                          AND DATE(lb_sub.booking_date) BETWEEN ? AND ?
+                    )";
+                    $params[] = $from_date;
+                    $params[] = $to_date;
+                    $types .= "ss";
+                } elseif (!empty($from_date)) {
+                    $sql .= " AND EXISTS (
+                        SELECT 1 FROM lead_bookings lb_sub 
+                        WHERE lb_sub.lead_id = leads.id 
+                          AND lb_sub.deleted_at IS NULL 
+                          AND lb_sub.booking_status IN ('completed', 'booked') 
+                          AND DATE(lb_sub.booking_date) >= ?
+                    )";
+                    $params[] = $from_date;
+                    $types .= "s";
+                } elseif (!empty($to_date)) {
+                    $sql .= " AND EXISTS (
+                        SELECT 1 FROM lead_bookings lb_sub 
+                        WHERE lb_sub.lead_id = leads.id 
+                          AND lb_sub.deleted_at IS NULL 
+                          AND lb_sub.booking_status IN ('completed', 'booked') 
+                          AND DATE(lb_sub.booking_date) <= ?
+                    )";
+                    $params[] = $to_date;
+                    $types .= "s";
+                } elseif (!empty($year) || !empty($month)) {
+                    $ySub = !empty($year) ? " AND YEAR(lb_sub.booking_date) = " . (int)$year : "";
+                    $mSub = !empty($month) ? " AND MONTH(lb_sub.booking_date) = " . (int)$month : "";
+                    $sql .= " AND EXISTS (
+                        SELECT 1 FROM lead_bookings lb_sub 
+                        WHERE lb_sub.lead_id = leads.id 
+                          AND lb_sub.deleted_at IS NULL 
+                          AND lb_sub.booking_status IN ('completed', 'booked')
+                          $ySub $mSub
+                    )";
+                } else {
+                    $sql .= " AND (LOWER(leads.last_lead_action) = 'booked' OR EXISTS (SELECT 1 FROM lead_bookings lb_sub WHERE lb_sub.lead_id = leads.id AND lb_sub.deleted_at IS NULL AND lb_sub.booking_status IN ('completed', 'booked')))";
+                }
             } elseif ($filter_card === 'upcoming_follow_ups') {
                 $sql .= " AND lf.next_follow_up_date IS NOT NULL AND DATE(lf.next_follow_up_date) >= CURDATE()";
             } elseif ($filter_card === 'irrelevant_leads' || $filter_card === 'irrelevant') {
@@ -2251,7 +2347,8 @@ class Lead extends Model
         $params = [$userId];
         $types  = "i";
 
-        $dateCol = ($date_type === 'assigned_date') 
+        $isAssignedDate = in_array($date_type, ['assigned_date', 'assigned_at']);
+        $dateCol = $isAssignedDate 
             ? "(CASE WHEN (leads.assigned_at IS NOT NULL AND leads.assigned_at > '1970-01-01 00:00:00') THEN leads.assigned_at ELSE leads.created_at END)" 
             : "leads.created_at";
 
@@ -2387,10 +2484,13 @@ class Lead extends Model
         if (!$stmt->execute()) return ['total_leads' => 0, 'contacted_leads' => 0, 'not_contacted_leads' => 0, 'booked_leads' => 0, 'upcoming_follow_ups' => 0, 'missing_follow_ups' => 0];
         
         $result = $stmt->get_result();
-        $row = $result->fetch_assoc();
+        $row = $result->fetch_assoc() ?: ['total_leads' => 0, 'contacted_leads' => 0, 'not_contacted_leads' => 0, 'booked_leads' => 0, 'upcoming_follow_ups' => 0, 'missing_follow_ups' => 0, 'irrelevant_leads' => 0];
         $stmt->close();
-        
-        return $row ?: ['total_leads' => 0, 'contacted_leads' => 0, 'not_contacted_leads' => 0, 'booked_leads' => 0, 'upcoming_follow_ups' => 0, 'missing_follow_ups' => 0];
+
+        // Consistent booked count: leads assigned to user with confirmed booking in the selected booking period (matching lead-lists)
+        $row['booked_leads'] = $this->getAllMyLeadsCount($userId, $year, $month, null, null, false, $search, null, 'booked', $projectId, $projectCategoryId, $country, $assignedHours, $from_date, $to_date, false, $date_type);
+
+        return $row;
     }
 
     /**

@@ -666,6 +666,16 @@ class UserDashboardController extends Controller
         $date_type            = $_GET['date_type'] ?? 'lead_date';
         $uncontacted          = isset($_GET['uncontacted']) ? true : false;
 
+        // Parameter normalization across lead-lists & my-all-assigned-leads
+        if ($filterCard === 'total_booked') {
+            $filterCard = 'booked';
+        }
+        if ($date_type === 'created_at') {
+            $date_type = 'lead_date';
+        } elseif ($date_type === 'assigned_at') {
+            $date_type = 'assigned_date';
+        }
+
         $onlyMissingFollowup = isset($_GET['filter']) && $_GET['filter'] === 'missing_followup';
 
         $filterProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
