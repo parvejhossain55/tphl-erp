@@ -51,13 +51,14 @@ return [
         'enabled' => true,
         'api_key' => $erpConfig['repibee_api_key'] ?? 'tphl_repibee_secret_key_2026_x89f2a',
     ],
-    
 
     // ------------------------------------------------------------------------
-    // 4. Project to Team Mapping (Round-Robin Distribution)
+    // 4. Project to Team Mapping (Round-Robin Distribution - November Setup)
     // ------------------------------------------------------------------------
     'projects' => [
-        // TPRC Projects (Equally distributed to Team Cannibal [7], Vhagar [12], Meraxes [13])
+        // ====================================================================
+        // ATI OFFICE (TPRC Projects) -> Teams: Cannibal [7], Vhagar [12], Meraxes [13]
+        // ====================================================================
         'tprc commercial' => [
             'name'       => 'TPRC Commercial',
             'project_id' => 66,
@@ -83,9 +84,39 @@ return [
             'project_id' => 12,
             'teams'      => [7, 12, 13],
         ],
+        'condominium' => [
+            'name'       => 'TPRC Crown Tower',
+            'project_id' => 12,
+            'teams'      => [7, 12, 13],
+        ],
+        'imperial tower' => [
+            'name'       => 'TPRC Imperial Tower',
+            'project_id' => 29,
+            'teams'      => [7, 12, 13],
+        ],
+        'tprc imperial' => [
+            'name'       => 'TPRC Imperial Tower',
+            'project_id' => 29,
+            'teams'      => [7, 12, 13],
+        ],
         'imperial' => [
             'name'       => 'TPRC Imperial Tower',
             'project_id' => 29,
+            'teams'      => [7, 12, 13],
+        ],
+        'majesty merge' => [
+            'name'       => 'TPRC Majesty Tower',
+            'project_id' => 28,
+            'teams'      => [7, 12, 13],
+        ],
+        'majesty tower' => [
+            'name'       => 'TPRC Majesty Tower',
+            'project_id' => 28,
+            'teams'      => [7, 12, 13],
+        ],
+        'tprc majesty' => [
+            'name'       => 'TPRC Majesty Tower',
+            'project_id' => 28,
             'teams'      => [7, 12, 13],
         ],
         'majesty' => [
@@ -94,35 +125,18 @@ return [
             'teams'      => [7, 12, 13],
         ],
 
-        // Ashulia Projects
-        'crown pavilion' => [
+        // ====================================================================
+        // ASHULIA OFFICE PROJECTS -> Teams: Saleh Rafi [4], Rakib Al Hasan [8],
+        // Feroz Ahmed [9], Munshi Aiman [17], Kawser [18], Ibrahim Khalil [19]
+        // ====================================================================
+        'the crown pavilion' => [
             'name'       => 'The Crown Pavilion',
             'project_id' => 9,
             'teams'      => [4, 8, 9, 17, 18, 19],
         ],
-        'velvet' => [
-            'name'       => 'The Premium Velvet Heights',
-            'project_id' => 51,
-            'teams'      => [4, 8, 9, 17, 18, 19],
-        ],
-        'velvet heights' => [
-            'name'       => 'The Premium Velvet Heights',
-            'project_id' => 51,
-            'teams'      => [4, 8, 9, 17, 18, 19],
-        ],
-        'maple' => [
-            'name'       => 'The Maple Heights',
-            'project_id' => 6,
-            'teams'      => [4, 8, 9, 17, 18, 19],
-        ],
-        'tpsc commercial' => [
-            'name'       => 'TPSC Commercial',
-            'project_id' => 62,
-            'teams'      => [4, 8, 9, 17, 18, 19],
-        ],
-        'tpsc' => [
-            'name'       => 'TPSC Commercial',
-            'project_id' => 62,
+        'crown pavilion' => [
+            'name'       => 'The Crown Pavilion',
+            'project_id' => 9,
             'teams'      => [4, 8, 9, 17, 18, 19],
         ],
         'amberleaf estate' => [
@@ -140,14 +154,34 @@ return [
             'project_id' => 63,
             'teams'      => [4, 8, 9, 17, 18, 19],
         ],
-        'legacy residence' => [
-            'name'       => 'The Legacy Residence',
-            'project_id' => 5,
+        'tpsc commercial' => [
+            'name'       => 'TPSC Commercial',
+            'project_id' => 62,
             'teams'      => [4, 8, 9, 17, 18, 19],
         ],
-        'legacy' => [
-            'name'       => 'The Legacy Residence',
-            'project_id' => 5,
+        'tpsc' => [
+            'name'       => 'TPSC Commercial',
+            'project_id' => 62,
+            'teams'      => [4, 8, 9, 17, 18, 19],
+        ],
+        'maple heights' => [
+            'name'       => 'The Maple Heights',
+            'project_id' => 6,
+            'teams'      => [4, 8, 9, 17, 18, 19],
+        ],
+        'maple' => [
+            'name'       => 'The Maple Heights',
+            'project_id' => 6,
+            'teams'      => [4, 8, 9, 17, 18, 19],
+        ],
+        'velvet heights' => [
+            'name'       => 'The Premium Velvet Heights',
+            'project_id' => 51,
+            'teams'      => [4, 8, 9, 17, 18, 19],
+        ],
+        'velvet' => [
+            'name'       => 'The Premium Velvet Heights',
+            'project_id' => 51,
             'teams'      => [4, 8, 9, 17, 18, 19],
         ],
         'skyline enclave' => [
@@ -160,10 +194,30 @@ return [
             'project_id' => 75,
             'teams'      => [4, 8, 9, 17, 18, 19],
         ],
-        'urban residence' => [
-            'name'       => 'The Premium Urban Residence',
-            'project_id' => 36,
-            'teams'      => [4],
+        'legacy residence' => [
+            'name'       => 'The Legacy Residence',
+            'project_id' => 5,
+            'teams'      => [8, 9, 19],
+        ],
+        'legacy' => [
+            'name'       => 'The Legacy Residence',
+            'project_id' => 5,
+            'teams'      => [8, 9, 19],
+        ],
+        'green paradise' => [
+            'name'       => 'The Premium Green Paradise',
+            'project_id' => 65,
+            'teams'      => [9, 17, 19],
+        ],
+        'paradise' => [
+            'name'       => 'The Premium Green Paradise',
+            'project_id' => 65,
+            'teams'      => [9, 17, 19],
+        ],
+        'glory garden' => [
+            'name'       => 'The Premium Glory Garden',
+            'project_id' => 48,
+            'teams'      => [4, 8, 9],
         ],
         'lake view terrace' => [
             'name'       => 'The Premium Lake View Terrace',
@@ -183,12 +237,27 @@ return [
         'skypoint villa' => [
             'name'       => 'The Premium Skypoint Villa',
             'project_id' => 27,
-            'teams'      => [8],
+            'teams'      => [8, 18],
         ],
         'skypoint' => [
             'name'       => 'The Premium Skypoint Villa',
             'project_id' => 27,
-            'teams'      => [8],
+            'teams'      => [8, 18],
+        ],
+        'sky point' => [
+            'name'       => 'The Premium Skypoint Villa',
+            'project_id' => 27,
+            'teams'      => [8, 18],
+        ],
+        'sky-point' => [
+            'name'       => 'The Premium Skypoint Villa',
+            'project_id' => 27,
+            'teams'      => [8, 18],
+        ],
+        'urban residence' => [
+            'name'       => 'The Premium Urban Residence',
+            'project_id' => 36,
+            'teams'      => [19],
         ],
         'luxoria residence' => [
             'name'       => 'The Premium Luxoria Residence',
@@ -200,77 +269,75 @@ return [
             'project_id' => 32,
             'teams'      => [9],
         ],
+        'luxaria' => [
+            'name'       => 'The Premium Luxoria Residence',
+            'project_id' => 32,
+            'teams'      => [9],
+        ],
+        'harmony residence' => [
+            'name'       => 'The Premium Harmony Residence',
+            'project_id' => 47,
+            'teams'      => [17],
+        ],
 
-        // Gulshan Team Allocations
+        // ====================================================================
+        // GULSHAN OFFICE PROJECTS -> Teams: Sadman Sakib [1], Shammi [10],
+        // Shafia [11], Rejwan [14], Fahad [15], General Team (Tanvir) [20]
+        // ====================================================================
         'the premium canvas of happiness' => [
             'name'       => 'The Premium Canvas of Happiness',
             'project_id' => 55,
-            'teams'      => [1, 10, 11, 14, 15, 20],
+            'teams'      => [1, 10, 11, 14, 15],
         ],
         'canvas of happiness' => [
             'name'       => 'The Premium Canvas of Happiness',
             'project_id' => 55,
-            'teams'      => [1, 10, 11, 14, 15, 20],
+            'teams'      => [1, 10, 11, 14, 15],
         ],
         'canvas' => [
             'name'       => 'The Premium Canvas of Happiness',
             'project_id' => 55,
-            'teams'      => [1, 10, 11, 14, 15, 20],
+            'teams'      => [1, 10, 11, 14, 15],
         ],
         'symphony of life' => [
             'name'       => 'The Premium Symphony Of Life',
             'project_id' => 76,
-            'teams'      => [1, 10, 11, 14, 15],
+            'teams'      => [1, 10, 11, 14, 20],
         ],
         'symphony' => [
             'name'       => 'The Premium Symphony Of Life',
             'project_id' => 76,
-            'teams'      => [1, 10, 11, 14, 15],
-        ],
-        'serenity' => [
-            'name'       => 'The Premium Serenity',
-            'project_id' => 61,
-            'teams'      => [14],
+            'teams'      => [1, 10, 11, 14, 20],
         ],
         'phoenix' => [
             'name'       => 'The Premium Phoenix',
             'project_id' => 71,
-            'teams'      => [15],
+            'teams'      => [10, 14, 15],
         ],
-        'florence' => [
-            'name'       => 'The Premium Florence',
-            'project_id' => 60,
-            'teams'      => [15],
-        ],
-        'bayanno' => [
-            'name'       => 'The Premium Bayanno',
-            'project_id' => 73,
-            'teams'      => [11],
-        ],
-        'novera heights' => [
-            'name'       => 'The Premium Novera Heights',
-            'project_id' => 72,
-            'teams'      => [1],
-        ],
-        'novera' => [
-            'name'       => 'The Premium Novera Heights',
-            'project_id' => 72,
-            'teams'      => [1],
+        'serenity' => [
+            'name'       => 'The Premium Serenity',
+            'project_id' => 61,
+            'teams'      => [14, 15],
         ],
         'the premium lumina' => [
             'name'       => 'The Premium Lumina',
             'project_id' => 67,
-            'teams'      => [1, 20],
+            'teams'      => [1, 14],
         ],
         'lumina' => [
             'name'       => 'The Premium Lumina',
             'project_id' => 67,
-            'teams'      => [1, 20],
+            'teams'      => [1, 14],
         ],
-        'novus' => [
-            'name'       => 'The Premium Novus',
-            'project_id' => 69,
-            'teams'      => [10],
+        'novera heights' => [
+            'name'       => 'The Premium Novera Heights',
+            'project_id' => 72,
+            'teams'      => [1, 10],
+        ],
+        'novera' => [
+            'name'       => 'The Premium Novera Heights',
+            'project_id' => 72,
+            'teams'      => [1, 10],
         ],
         'zenith heights' => [
             'name'       => 'The Premium Zenith Heights',
@@ -282,23 +349,15 @@ return [
             'project_id' => 70,
             'teams'      => [10],
         ],
+        'bayanno' => [
+            'name'       => 'The Premium Bayanno',
+            'project_id' => 73,
+            'teams'      => [11],
+        ],
 
-        // Additional / Common Projects
-        'twelfth heights' => [
-            'name'       => 'The Premium Twelfth Heights',
-            'project_id' => 20,
-            'teams'      => [3, 10],
-        ],
-        'velinor' => [
-            'name'       => 'The Premium Velinor',
-            'project_id' => 14,
-            'teams'      => [5, 6],
-        ],
-        'condominium' => [
-            'name'       => 'Condominium (TPRC)',
-            'project_id' => 12,
-            'teams'      => [7, 12, 13],
-        ],
+        // ====================================================================
+        // NATURE OFFICE -> Team: The Nature CXB [16]
+        // ====================================================================
         'the nature' => [
             'name'       => 'The Nature',
             'project_id' => 74,

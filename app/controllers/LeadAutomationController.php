@@ -78,6 +78,9 @@ class LeadAutomationController extends Controller
                     $pdo->exec("CREATE INDEX `idx_leads_is_brocure` ON `leads` (`is_brocure_leads`)");
                 } catch (Throwable $t) {}
             }
+
+            // 6. Ensure `lead_automation_project_rules` table exists and auto-seed from config if empty
+            $synchronizer->ensureSchema($pdo);
         } catch (Throwable $e) {
             error_log("LeadAutomation ensureSchema error: " . $e->getMessage());
         }
@@ -133,13 +136,17 @@ class LeadAutomationController extends Controller
     {
         $this->checkAccess();
 
-        $teams = $this->teamsModel->getAll();
+        $teams = array_values(array_filter($this->teamsModel->getAll(), fn($t) => (int)($t['status'] ?? 1) === 1));
         $sheetUrl = $this->automationConfig['google_sheet']['url'] ?? '';
 
         $projects = [];
         try {
-            $pStmt = $this->db->query("SELECT id, name FROM `projects` WHERE deleted_at IS NULL ORDER BY name ASC");
-            $projects = $pStmt ? $pStmt->fetchAll(PDO::FETCH_ASSOC) : [];
+            $pRes = $this->db->query("SELECT id, name FROM `projects` WHERE deleted_at IS NULL ORDER BY name ASC");
+            if ($pRes instanceof mysqli_result) {
+                $projects = $pRes->fetch_all(MYSQLI_ASSOC);
+            } elseif ($pRes) {
+                $projects = $pRes->fetchAll(PDO::FETCH_ASSOC);
+            }
         } catch (Throwable $t) {}
 
         $platformReport = $this->getAutomatedPlatformReport(['date_preset' => 'today']);
@@ -152,6 +159,23 @@ class LeadAutomationController extends Controller
             "sheet_url"      => $sheetUrl,
             "gemini_active"  => !empty($this->automationConfig['gemini']['enabled']) && !empty($this->automationConfig['gemini']['api_key']),
             "platformReport" => $platformReport,
+        ]);
+    }
+
+    /**
+     * Dedicated Page: Team & Project Setup for Lead Automation
+     */
+    public function teamProjectSetup()
+    {
+        $this->checkAccess();
+        $this->ensureSchema();
+
+        $teams = array_values(array_filter($this->teamsModel->getAll(), fn($t) => (int)($t['status'] ?? 1) === 1));
+
+        return $this->view("digital-marketing-team/team-project-setup", [
+            "current_route" => "lead-automation-upload",
+            "page_title"    => "Team & Project Setup · Lead Automation",
+            "teams"         => $teams,
         ]);
     }
 
@@ -492,6 +516,7 @@ class LeadAutomationController extends Controller
                             COALESCE(SUM(CASE WHEN l.distribute = 0 THEN 1 ELSE 0 END), 0) as pending_leads
                          FROM `teams` t
                          LEFT JOIN `leads` l ON l.team_id = t.id AND l.deleted_at IS NULL{$autoJoin}{$teamDateJoin}
+                         WHERE t.status = 1
                          GROUP BY t.id, t.name
                          ORDER BY t.id ASC";
             $teamsStmt = $pdo->prepare($teamsSql);
@@ -1219,6 +1244,7 @@ class LeadAutomationController extends Controller
             COALESCE(SUM(CASE WHEN l.distribute = 0 THEN 1 ELSE 0 END), 0) as pending_count
         FROM `teams` t
         LEFT JOIN `leads` l ON l.team_id = t.id AND {$whereSql}
+        WHERE t.status = 1
         GROUP BY t.id, t.name
         ORDER BY allocated_count DESC, t.name ASC";
 
@@ -1731,9 +1757,9 @@ class LeadAutomationController extends Controller
                 $projectsMap[(int)$pRow['id']] = $pRow['name'];
             }
 
-            // Project eligible teams from automation config
+            // Project eligible teams from dynamic automation rules (DB + config fallback)
             $projectTeamsMap = [];
-            foreach (($this->automationConfig['projects'] ?? []) as $kw => $pInfo) {
+            foreach ($synchronizer->getDynamicProjectsMap() as $kw => $pInfo) {
                 if (!empty($pInfo['project_id']) && !empty($pInfo['teams'])) {
                     $projectTeamsMap[(int)$pInfo['project_id']] = $pInfo['teams'];
                 }
@@ -1898,6 +1924,322 @@ class LeadAutomationController extends Controller
             echo json_encode([
                 'status'  => 'error',
                 'message' => 'Brochure Leads Sync Error: ' . $e->getMessage()
+            ]);
+        }
+        exit;
+    }
+
+    /**
+     * AJAX: Get all configured Team & Project Setup rules, all ERP projects, and all Sales Teams
+     */
+    public function ajaxGetProjectRules()
+    {
+        $this->checkAccess();
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-cache, no-store, must-revalidate');
+
+        try {
+            $synchronizer = new LeadSynchronizer($this->automationConfig);
+            $pdo = $synchronizer->getDb();
+            $synchronizer->ensureSchema($pdo);
+
+            // 1. Fetch all active sales teams
+            $teams = [];
+            $teamsMap = [];
+            try {
+                $tStmt = $pdo->query("SELECT id, name, status FROM `teams` WHERE `status` = 1 ORDER BY id ASC");
+                while ($tRow = $tStmt->fetch(PDO::FETCH_ASSOC)) {
+                    $tid = (int)$tRow['id'];
+                    $teams[] = [
+                        'id'     => $tid,
+                        'name'   => $tRow['name'],
+                        'status' => (int)($tRow['status'] ?? 1)
+                    ];
+                    $teamsMap[$tid] = $tRow['name'];
+                }
+            } catch (Throwable $t) {}
+
+            // 2. Fetch all non-deleted ERP projects
+            $allProjects = [];
+            $projectsById = [];
+            try {
+                $pStmt = $pdo->query("SELECT id, name, project_sale_status FROM `projects` WHERE deleted_at IS NULL ORDER BY (CASE WHEN project_sale_status = 'On Sale' THEN 0 ELSE 1 END), name ASC");
+                while ($pRow = $pStmt->fetch(PDO::FETCH_ASSOC)) {
+                    $pid = (int)$pRow['id'];
+                    $item = [
+                        'id'                  => $pid,
+                        'name'                => $pRow['name'],
+                        'project_sale_status' => $pRow['project_sale_status'] ?? 'On Sale',
+                    ];
+                    $allProjects[] = $item;
+                    $projectsById[$pid] = $item;
+                }
+            } catch (Throwable $t) {}
+
+            // 3. Fetch configured project rules
+            $rStmt = $pdo->query("
+                SELECT r.*, p.name AS db_project_name, p.project_sale_status
+                FROM `lead_automation_project_rules` r
+                LEFT JOIN `projects` p ON r.project_id = p.id
+                ORDER BY r.is_active DESC, (CASE WHEN p.project_sale_status = 'On Sale' THEN 0 ELSE 1 END), COALESCE(p.name, r.project_name) ASC
+            ");
+            $rawRules = $rStmt ? $rStmt->fetchAll(PDO::FETCH_ASSOC) : [];
+
+            $rules = [];
+            $configuredProjectIds = [];
+
+            foreach ($rawRules as $r) {
+                $pid = (int)$r['project_id'];
+                $configuredProjectIds[$pid] = true;
+
+                $teamIdsRaw = json_decode((string)($r['team_ids'] ?? '[]'), true);
+                if (!is_array($teamIdsRaw)) {
+                    $teamIdsRaw = array_filter(array_map('intval', explode(',', (string)($r['team_ids'] ?? ''))));
+                }
+                $teamIds = array_values(array_filter(array_map('intval', $teamIdsRaw), fn($id) => $id > 0 && isset($teamsMap[$id])));
+
+                $teamNames = [];
+                foreach ($teamIds as $tid) {
+                    $teamNames[] = $teamsMap[$tid];
+                }
+
+                $kwList = array_values(array_filter(array_map('trim', preg_split('/[,;\n]+/', (string)($r['keywords'] ?? '')))));
+
+                $rules[] = [
+                    'id'                  => (int)$r['id'],
+                    'project_id'          => $pid,
+                    'project_name'        => !empty($r['db_project_name']) ? $r['db_project_name'] : $r['project_name'],
+                    'project_sale_status' => $r['project_sale_status'] ?? 'On Sale',
+                    'keywords'            => implode(', ', $kwList),
+                    'keywords_list'       => $kwList,
+                    'team_ids'            => $teamIds,
+                    'team_names'          => $teamNames,
+                    'is_active'           => (int)($r['is_active'] ?? 1),
+                    'updated_at'          => $r['updated_at'] ?? $r['created_at'] ?? null,
+                ];
+            }
+
+            // 4. Identify On-Sale projects that are not yet configured in automation
+            $unconfiguredOnSale = [];
+            foreach ($allProjects as $proj) {
+                $pid = (int)$proj['id'];
+                $pNameLower = strtolower(trim($proj['name']));
+                if ($pNameLower === 'in progress' || str_contains($pNameLower, 'test project')) {
+                    continue;
+                }
+                if (($proj['project_sale_status'] ?? '') === 'On Sale' && !isset($configuredProjectIds[$pid])) {
+                    $unconfiguredOnSale[] = $proj;
+                }
+            }
+
+            echo json_encode([
+                'status' => 'success',
+                'data'   => [
+                    'rules'                => $rules,
+                    'all_projects'         => $allProjects,
+                    'unconfigured_on_sale' => $unconfiguredOnSale,
+                    'teams'                => $teams,
+                ]
+            ]);
+        } catch (Throwable $e) {
+            http_response_code(500);
+            echo json_encode([
+                'status'  => 'error',
+                'message' => $e->getMessage()
+            ]);
+        }
+        exit;
+    }
+
+    /**
+     * AJAX: Save (Add or Update) a Project & Team Setup Rule
+     */
+    public function ajaxSaveProjectRule()
+    {
+        $this->checkAccess();
+        header('Content-Type: application/json; charset=utf-8');
+
+        try {
+            $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+            $projectId = (int)($input['project_id'] ?? 0);
+            $keywordsRaw = trim((string)($input['keywords'] ?? ''));
+            $teamIdsInput = $input['team_ids'] ?? [];
+            $isActive = isset($input['is_active']) ? ((int)$input['is_active'] ? 1 : 0) : 1;
+            $rematchCommon = !empty($input['rematch_common']);
+
+            if ($projectId <= 0) {
+                throw new InvalidArgumentException("Please select a valid project.");
+            }
+
+            if (!is_array($teamIdsInput)) {
+                $teamIdsInput = array_filter(explode(',', (string)$teamIdsInput));
+            }
+            $teamIds = array_values(array_unique(array_filter(array_map('intval', $teamIdsInput), fn($id) => $id > 0)));
+
+            if (empty($teamIds)) {
+                throw new InvalidArgumentException("Please select at least one sales team for this project.");
+            }
+
+            $synchronizer = new LeadSynchronizer($this->automationConfig);
+            $pdo = $synchronizer->getDb();
+            $synchronizer->ensureSchema($pdo);
+
+            // Lookup project name from `projects` table
+            $pStmt = $pdo->prepare("SELECT id, name FROM `projects` WHERE id = ? LIMIT 1");
+            $pStmt->execute([$projectId]);
+            $projRow = $pStmt->fetch(PDO::FETCH_ASSOC);
+            $projectName = $projRow['name'] ?? trim((string)($input['project_name'] ?? "Project #{$projectId}"));
+
+            // Clean or auto-generate keywords if empty
+            $kwParts = preg_split('/[,;\n]+/', $keywordsRaw);
+            $cleanKeywords = [];
+            foreach ($kwParts as $kw) {
+                $k = strtolower(trim($kw));
+                if ($k !== '' && !in_array($k, $cleanKeywords, true)) {
+                    $cleanKeywords[] = $k;
+                }
+            }
+
+            if (empty($cleanKeywords)) {
+                $fullLower = strtolower(trim(preg_replace('/\s+/', ' ', $projectName)));
+                $shortLower = trim(preg_replace('/^(the\s+premium\s+|the\s+)/i', '', $fullLower));
+                if ($shortLower !== '' && $shortLower !== $fullLower) {
+                    $cleanKeywords[] = $shortLower;
+                }
+                $cleanKeywords[] = $fullLower;
+            }
+
+            $keywordsStr = implode(', ', $cleanKeywords);
+            $teamIdsJson = json_encode($teamIds);
+            $userId = isset($_SESSION['user']['id']) ? (int)$_SESSION['user']['id'] : null;
+
+            $upsertSql = "
+                INSERT INTO `lead_automation_project_rules`
+                    (`project_id`, `project_name`, `keywords`, `team_ids`, `is_active`, `updated_by`, `created_at`, `updated_at`)
+                VALUES
+                    (?, ?, ?, ?, ?, ?, NOW(), NOW())
+                ON DUPLICATE KEY UPDATE
+                    `project_name` = VALUES(`project_name`),
+                    `keywords`     = VALUES(`keywords`),
+                    `team_ids`     = VALUES(`team_ids`),
+                    `is_active`    = VALUES(`is_active`),
+                    `updated_by`   = VALUES(`updated_by`),
+                    `updated_at`   = NOW()
+            ";
+            $stmt = $pdo->prepare($upsertSql);
+            $stmt->execute([$projectId, $projectName, $keywordsStr, $teamIdsJson, $isActive, $userId]);
+
+            $synchronizer->clearProjectCache();
+
+            // Optionally re-match existing automated "Common" leads (project_id IS NULL OR project_id = 0)
+            $rematchedCount = 0;
+            if ($rematchCommon && $isActive === 1) {
+                $commonStmt = $pdo->query("SELECT id, campaign_name, team_id FROM `leads` WHERE deleted_at IS NULL AND is_automated = 1 AND (project_id IS NULL OR project_id = 0)");
+                $commonLeads = $commonStmt ? $commonStmt->fetchAll(PDO::FETCH_ASSOC) : [];
+                foreach ($commonLeads as $cLead) {
+                    $m = $synchronizer->matchProject((string)($cLead['campaign_name'] ?? ''));
+                    if (!empty($m['project_id']) && (int)$m['project_id'] === $projectId) {
+                        $existingTeam = (int)($cLead['team_id'] ?? 0);
+                        $newTeamId = $existingTeam > 0 ? $existingTeam : $synchronizer->resolveNextTeamId($projectId, $teamIds, $pdo);
+                        $uStmt = $pdo->prepare("UPDATE `leads` SET `project_id` = ?, `team_id` = ? WHERE `id` = ?");
+                        $uStmt->execute([$projectId, $newTeamId, (int)$cLead['id']]);
+                        $rematchedCount++;
+                    }
+                }
+            }
+
+            $extraMsg = $rematchedCount > 0 ? " Also auto-matched {$rematchedCount} Common lead(s) to {$projectName}!" : "";
+
+            echo json_encode([
+                'status'          => 'success',
+                'message'         => "Saved setup for \"{$projectName}\" with " . count($teamIds) . " team(s)!" . $extraMsg,
+                'rematched_count' => $rematchedCount
+            ]);
+        } catch (Throwable $e) {
+            http_response_code(400);
+            echo json_encode([
+                'status'  => 'error',
+                'message' => $e->getMessage()
+            ]);
+        }
+        exit;
+    }
+
+    /**
+     * AJAX: Toggle Active/Inactive status of a Project Rule
+     */
+    public function ajaxToggleProjectRule()
+    {
+        $this->checkAccess();
+        header('Content-Type: application/json; charset=utf-8');
+
+        try {
+            $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+            $projectId = (int)($input['project_id'] ?? 0);
+            $isActive = (int)($input['is_active'] ?? 0) ? 1 : 0;
+
+            if ($projectId <= 0) {
+                throw new InvalidArgumentException("Invalid project ID.");
+            }
+
+            $synchronizer = new LeadSynchronizer($this->automationConfig);
+            $pdo = $synchronizer->getDb();
+            $synchronizer->ensureSchema($pdo);
+
+            $userId = isset($_SESSION['user']['id']) ? (int)$_SESSION['user']['id'] : null;
+            $stmt = $pdo->prepare("UPDATE `lead_automation_project_rules` SET `is_active` = ?, `updated_by` = ?, `updated_at` = NOW() WHERE `project_id` = ?");
+            $stmt->execute([$isActive, $userId, $projectId]);
+
+            $synchronizer->clearProjectCache();
+
+            echo json_encode([
+                'status'  => 'success',
+                'message' => $isActive ? 'Project automation rule activated.' : 'Project automation rule paused.'
+            ]);
+        } catch (Throwable $e) {
+            http_response_code(400);
+            echo json_encode([
+                'status'  => 'error',
+                'message' => $e->getMessage()
+            ]);
+        }
+        exit;
+    }
+
+    /**
+     * AJAX: Delete a Project Rule
+     */
+    public function ajaxDeleteProjectRule()
+    {
+        $this->checkAccess();
+        header('Content-Type: application/json; charset=utf-8');
+
+        try {
+            $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+            $projectId = (int)($input['project_id'] ?? 0);
+
+            if ($projectId <= 0) {
+                throw new InvalidArgumentException("Invalid project ID.");
+            }
+
+            $synchronizer = new LeadSynchronizer($this->automationConfig);
+            $pdo = $synchronizer->getDb();
+            $synchronizer->ensureSchema($pdo);
+
+            $stmt = $pdo->prepare("DELETE FROM `lead_automation_project_rules` WHERE `project_id` = ?");
+            $stmt->execute([$projectId]);
+
+            $synchronizer->clearProjectCache();
+
+            echo json_encode([
+                'status'  => 'success',
+                'message' => 'Project automation setup removed.'
+            ]);
+        } catch (Throwable $e) {
+            http_response_code(400);
+            echo json_encode([
+                'status'  => 'error',
+                'message' => $e->getMessage()
             ]);
         }
         exit;
