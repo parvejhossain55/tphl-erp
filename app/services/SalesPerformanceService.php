@@ -66,6 +66,51 @@ class SalesPerformanceService
     {
         $tracker = new TrackerCalculationService($this->db);
 
+        // 0. Explicit Custom Date Range or when from & to are provided
+        if ($from && $to && strtotime($from) && strtotime($to) && strtotime($from) <= strtotime($to)) {
+            if ($preset === 'custom' || $cycle === 'custom' || (!str_starts_with((string) $cycle, 'preset:') && empty($preset))) {
+                $todayStr = date('Y-m-d');
+                $yesterdayStr = date('Y-m-d', strtotime('-1 day'));
+                $weeklyStr = date('Y-m-d', strtotime('-6 days'));
+
+                $cycleLabel = 'Custom Range';
+                $detectedPreset = 'custom';
+                $label = date('d M Y', strtotime($from)) . ' – ' . date('d M Y', strtotime($to));
+
+                if ($from === $todayStr && $to === $todayStr) {
+                    $cycleLabel = 'Daily (Today)';
+                    $detectedPreset = 'today';
+                    $label = 'Today (' . date('d M Y') . ')';
+                } elseif ($from === $yesterdayStr && $to === $yesterdayStr) {
+                    $cycleLabel = 'Yesterday';
+                    $detectedPreset = 'yesterday';
+                    $label = 'Yesterday (' . date('d M Y', strtotime($yesterdayStr)) . ')';
+                } elseif ($from === $weeklyStr && $to === $todayStr) {
+                    $cycleLabel = 'Weekly (Last 7 Days)';
+                    $detectedPreset = 'weekly';
+                    $label = 'Last 7 Days (' . date('d M', strtotime($weeklyStr)) . ' – ' . date('d M Y') . ')';
+                }
+
+                return [
+                    'type' => 'custom',
+                    'preset' => $detectedPreset,
+                    'is_all_time' => false,
+                    'is_yearly' => false,
+                    'is_custom' => true,
+                    'year' => (int) date('Y', strtotime($from)),
+                    'month' => (int) date('n', strtotime($from)),
+                    'start' => $from . ' 00:00:00',
+                    'end' => $to . ' 23:59:59',
+                    'start_date' => $from,
+                    'end_date' => $to,
+                    'label' => $label,
+                    'cycle_label' => $cycleLabel,
+                    'cycle_key' => $detectedPreset !== 'custom' ? ('preset:' . $detectedPreset) : 'custom',
+                    'target_month' => substr($from, 0, 7) . '-01',
+                ];
+            }
+        }
+
         // Normalize preset from cycle string if given as preset:xyz
         if ($cycle && str_starts_with($cycle, 'preset:')) {
             $preset = substr($cycle, 7);
@@ -284,6 +329,11 @@ class SalesPerformanceService
             'value' => 'preset:weekly',
             'label' => 'Last 7 Days (Weekly)',
             'type' => 'preset',
+        ];
+        $opts[] = [
+            'value' => 'custom',
+            'label' => 'Custom Date Range',
+            'type' => 'custom',
         ];
 
         // 1. All Time Option
@@ -941,10 +991,16 @@ class SalesPerformanceService
         }
 
         // -----------------------------------------------------------------
-        // 7. Targets (sales_targets for the cycle month)
+        // 7. Targets (sales_targets for the cycle month or multi-month range)
         // -----------------------------------------------------------------
-        $tm = $this->db->real_escape_string($period['target_month']);
-        $res = $this->db->query("SELECT sales_user_id, booking_target, site_visit_target, booking_value_target FROM sales_targets WHERE month = '$tm'");
+        $startMonth = substr($period['start_date'] ?? date('Y-m-d'), 0, 7) . '-01';
+        $endMonth = substr($period['end_date'] ?? date('Y-m-d'), 0, 7) . '-01';
+        if ($startMonth === $endMonth) {
+            $monthSql = "month = '" . $this->db->real_escape_string($startMonth) . "'";
+        } else {
+            $monthSql = "month BETWEEN '" . $this->db->real_escape_string($startMonth) . "' AND '" . $this->db->real_escape_string($endMonth) . "'";
+        }
+        $res = $this->db->query("SELECT sales_user_id, SUM(booking_target) AS booking_target, SUM(site_visit_target) AS site_visit_target, SUM(booking_value_target) AS booking_value_target FROM sales_targets WHERE $monthSql GROUP BY sales_user_id");
         while ($res && $r = $res->fetch_assoc()) {
             $uid = (int) $r['sales_user_id'];
             if (!$passes($uid)) {

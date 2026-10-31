@@ -57,6 +57,7 @@ $o = $data['overall'];
 $base = $GLOBALS['base_url'] . '/sales-performance';
 $qsBase = array_filter([
     'cycle' => $filters['cycle'] ?: null,
+    'preset' => $filters['preset'] ?: null,
     'from' => $filters['from'],
     'to' => $filters['to'],
     'project_id' => $filters['project_id'],
@@ -65,7 +66,9 @@ $qsBase = array_filter([
 ]);
 $tabUrl = fn($t) => $base . '?' . http_build_query(array_merge($qsBase, ['tab' => $t]));
 $exportUrl = $base . '?' . http_build_query(array_merge($qsBase, ['tab' => $tab, 'export' => 'csv']));
-$selectedCycle = $period['cycle_key'] ?? ($period['year'] . '-' . $period['month']);
+$selectedCycle = !empty($period['is_custom']) && !empty($period['preset']) && $period['preset'] === 'custom'
+    ? 'custom'
+    : ($period['cycle_key'] ?? ($period['year'] . '-' . $period['month']));
 
 $realTeams = array_values(array_filter($data['teams'], fn($t) => $t['is_real_team']));
 $otherBuckets = array_values(array_filter($data['teams'], fn($t) => !$t['is_real_team']));
@@ -109,6 +112,16 @@ if ($filters['executive_id']) {
     }
 } elseif ($filters['team_id'] && isset($teams[$filters['team_id']])) {
     $scopeLabel = $teams[$filters['team_id']]['name'];
+}
+
+$projectName = null;
+if (!empty($filters['project_id'])) {
+    foreach ($projects as $p) {
+        if ((int) $p['id'] === (int) $filters['project_id']) {
+            $projectName = $p['name'];
+            break;
+        }
+    }
 }
 
 $jsData = [
@@ -2022,7 +2035,7 @@ $jsData = [
         </div>
         <div class="sp-period-note">
             <span>Period: <b><?= sp_h($period['label']) ?></b><?= $period['is_custom'] ? ' (custom range)' : ($period['is_all_time'] ? ' (lifetime)' : ' · ' . sp_h($period['cycle_label'])) ?></span>
-            <span>Scope: <b><?= sp_h($scopeLabel) ?></b></span>
+            <span>Scope: <b><?= sp_h($scopeLabel) ?></b><?= $projectName ? ' · Project: <b>' . sp_h($projectName) . '</b>' : '' ?></span>
             <span>Updated: <b><?= date('d M Y, h:i A') ?></b></span>
         </div>
     </form>

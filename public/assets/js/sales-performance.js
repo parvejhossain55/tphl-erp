@@ -279,10 +279,17 @@
         const teamInput  = document.getElementById('spTeam');
         const execInput  = document.getElementById('spExec');
 
-        const cycleVal = (cycleInput && cycleInput.value !== undefined) ? cycleInput.value : (D.filters && D.filters.cycle || '');
+        let cycleVal = (cycleInput && cycleInput.value !== undefined) ? cycleInput.value : (D.filters && D.filters.cycle || '');
         const fromVal  = (fromInput && fromInput.value) ? fromInput.value : (D.filters && D.filters.from || '');
         const toVal    = (toInput && toInput.value) ? toInput.value : (D.filters && D.filters.to || '');
-        const presetVal= (presetInput && presetInput.value) ? presetInput.value : (D.filters && D.filters.preset || '');
+        let presetVal= (presetInput && presetInput.value) ? presetInput.value : (D.filters && D.filters.preset || '');
+
+        if (fromVal && toVal) {
+            if (presetVal === 'custom' || cycleVal === 'custom' || (!presetVal && (!cycleVal || cycleVal.startsWith('preset:')))) {
+                cycleVal = 'custom';
+                presetVal = 'custom';
+            }
+        }
         const projVal  = (projInput && projInput.value) ? projInput.value : (D.filters && D.filters.project_id || '');
         const teamVal  = (teamInput && teamInput.value) ? teamInput.value : (D.filters && D.filters.team_id || '');
         const execVal  = btn.dataset.execId || ((execInput && execInput.value) ? execInput.value : (D.filters && D.filters.executive_id || ''));
@@ -1658,13 +1665,14 @@
                     if (spFrom) spFrom.value = '';
                     if (spTo) spTo.value = '';
                     if (spCycle) {
-                        if (spCycle.value.startsWith('preset:')) {
-                            const opt = Array.from(spCycle.options).find(o => !o.value.startsWith('preset:') && o.value !== 'all' && !o.value.startsWith('year:'));
+                        if (spCycle.value.startsWith('preset:') || spCycle.value === 'custom') {
+                            const opt = Array.from(spCycle.options).find(o => !o.value.startsWith('preset:') && o.value !== 'custom' && o.value !== 'all' && !o.value.startsWith('year:'));
                             if (opt) spCycle.value = opt.value;
                         }
                     }
                     filterForm.submit();
                 } else if (p === 'custom') {
+                    if (spCycle) spCycle.value = 'custom';
                     if (spFrom) {
                         spFrom.focus();
                         spFrom.style.borderColor = 'var(--sp-green)';
@@ -1675,33 +1683,57 @@
         });
     }
 
+    // Sync date changes with Custom Range pill & cycle dropdown
+    function onCustomDateChange() {
+        if (spPreset) spPreset.value = 'custom';
+        if (spCycle) spCycle.value = 'custom';
+        presetPills.forEach(b => b.classList.toggle('active', b.dataset.preset === 'custom'));
+    }
+    if (spFrom) {
+        spFrom.addEventListener('change', onCustomDateChange);
+        spFrom.addEventListener('input', onCustomDateChange);
+    }
+    if (spTo) {
+        spTo.addEventListener('change', onCustomDateChange);
+        spTo.addEventListener('input', onCustomDateChange);
+    }
+
     if (spCycle) {
         spCycle.addEventListener('change', () => {
-            if (spCycle.value === 'preset:today') {
+            const val = spCycle.value;
+            if (val === 'preset:today') {
                 const today = fmtDate(new Date());
                 if (spFrom) spFrom.value = today;
                 if (spTo) spTo.value = today;
                 if (spPreset) spPreset.value = 'today';
+                presetPills.forEach(b => b.classList.toggle('active', b.dataset.preset === 'today'));
                 filterForm && filterForm.submit();
-            } else if (spCycle.value === 'preset:yesterday') {
+            } else if (val === 'preset:yesterday') {
                 const yest = fmtDate(new Date(Date.now() - 24 * 60 * 60 * 1000));
                 if (spFrom) spFrom.value = yest;
                 if (spTo) spTo.value = yest;
                 if (spPreset) spPreset.value = 'yesterday';
+                presetPills.forEach(b => b.classList.toggle('active', b.dataset.preset === 'yesterday'));
                 filterForm && filterForm.submit();
-            } else if (spCycle.value === 'preset:weekly') {
+            } else if (val === 'preset:weekly') {
                 const now = new Date();
                 const weekAgo = fmtDate(new Date(Date.now() - 6 * 24 * 60 * 60 * 1000));
                 if (spFrom) spFrom.value = weekAgo;
                 if (spTo) spTo.value = fmtDate(now);
                 if (spPreset) spPreset.value = 'weekly';
+                presetPills.forEach(b => b.classList.toggle('active', b.dataset.preset === 'weekly'));
                 filterForm && filterForm.submit();
-            } else if (!spCycle.value.startsWith('preset:')) {
-                if (spPreset && (spPreset.value === 'today' || spPreset.value === 'yesterday' || spPreset.value === 'weekly')) {
-                    spPreset.value = 'cycle';
-                    if (spFrom) spFrom.value = '';
-                    if (spTo) spTo.value = '';
-                }
+            } else if (val === 'custom') {
+                if (spPreset) spPreset.value = 'custom';
+                presetPills.forEach(b => b.classList.toggle('active', b.dataset.preset === 'custom'));
+                if (spFrom) spFrom.focus();
+            } else {
+                // Monthly cycle, yearly, or lifetime selected
+                if (spFrom) spFrom.value = '';
+                if (spTo) spTo.value = '';
+                if (spPreset) spPreset.value = 'cycle';
+                presetPills.forEach(b => b.classList.toggle('active', b.dataset.preset === 'cycle'));
+                filterForm && filterForm.submit();
             }
         });
     }
@@ -1709,13 +1741,24 @@
     // Custom range: require both dates
     const form = $('#spFilterForm');
     form && form.addEventListener('submit', (ev) => {
-        const f = $('#spFrom').value, t = $('#spTo').value;
-        if ((f && !t) || (!f && t)) {
-            ev.preventDefault();
-            alert('Please select both start and end dates for a custom range, or clear both to use the sales cycle.');
-        } else if (f && t && f > t) {
-            ev.preventDefault();
-            alert('Start date must be before end date.');
+        const f = $('#spFrom') ? $('#spFrom').value : '', t = $('#spTo') ? $('#spTo').value : '';
+        const cycleEl = $('#spCycle');
+        const isCustom = (cycleEl && cycleEl.value === 'custom') || (spPreset && spPreset.value === 'custom') || (f || t);
+
+        if (isCustom) {
+            if ((f && !t) || (!f && t)) {
+                ev.preventDefault();
+                alert('Please select both start and end dates for a custom range, or clear both to use the sales cycle.');
+                return;
+            } else if (f && t && f > t) {
+                ev.preventDefault();
+                alert('Start date must be before end date.');
+                return;
+            }
+            if (f && t) {
+                if (cycleEl) cycleEl.value = 'custom';
+                if (spPreset) spPreset.value = 'custom';
+            }
         }
         $$('select, input', form).forEach((el) => { if (!el.value && el.name !== 'tab') el.disabled = true; });
     });

@@ -37,7 +37,7 @@ if (empty($logoSrc)) {
     <title>Payment Receipt - <?= $receiptNo ?></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         /* CSS RESET & BOX SIZING */
@@ -48,11 +48,13 @@ if (empty($logoSrc)) {
         }
 
         body {
-            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             background-color: #f1f5f9;
             color: #0f172a;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+            font-variant-numeric: tabular-nums;
+            -webkit-font-smoothing: subpixel-antialiased;
+            -moz-osx-font-smoothing: auto;
             padding: 0;
             margin: 0;
         }
@@ -250,41 +252,42 @@ if (empty($logoSrc)) {
         }
 
         .brand-slogan {
-            font-size: 7.5px;
+            font-size: 8px;
             font-weight: 700;
             color: var(--theme-primary);
-            letter-spacing: 1.8px;
+            letter-spacing: 1.2px;
             margin-top: 2px;
             text-transform: uppercase;
         }
 
         .brand-domain {
-            font-size: 10.5px;
-            font-weight: 700;
-            color: var(--theme-primary);
-            margin-top: 4px;
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--theme-dark);
+            margin-top: 3px;
         }
 
         .brand-address {
-            font-size: 8.5px;
-            color: #475569;
-            line-height: 1.25;
-            margin-top: 1px;
-            max-width: 410px;
+            font-size: 9.5px;
+            color: #334155;
+            font-weight: 500;
+            line-height: 1.35;
+            margin-top: 2px;
+            max-width: 420px;
         }
 
         .brand-contact-row {
             display: flex;
             align-items: center;
             gap: 14px;
-            margin-top: 2px;
-            font-size: 8.5px;
-            color: #334155;
+            margin-top: 3px;
+            font-size: 9.5px;
+            color: #1e293b;
             font-weight: 600;
         }
         .brand-contact-row i {
             color: var(--theme-primary);
-            font-size: 8px;
+            font-size: 8.5px;
         }
 
         .receipt-meta-box {
@@ -312,7 +315,7 @@ if (empty($logoSrc)) {
         .copy-pill {
             background: var(--theme-deep);
             color: #ffffff;
-            font-size: 9px;
+            font-size: 9.5px;
             font-weight: 800;
             padding: 3px 12px;
             border-radius: 4px;
@@ -321,15 +324,15 @@ if (empty($logoSrc)) {
         }
 
         .receipt-no {
-            font-size: 13.5px;
+            font-size: 14px;
             font-weight: 800;
             color: #0f172a;
             margin-top: 3px;
         }
 
         .receipt-date {
-            font-size: 10.5px;
-            color: #475569;
+            font-size: 11px;
+            color: #334155;
             font-weight: 600;
             margin-top: 1px;
         }
@@ -390,7 +393,7 @@ if (empty($logoSrc)) {
         }
 
         .header-qr-label {
-            font-size: 7px;
+            font-size: 7.5px;
             font-weight: 800;
             color: var(--theme-primary);
             margin-top: 2px;
@@ -428,10 +431,10 @@ if (empty($logoSrc)) {
             color: #b45309;
         }
         .status-pending .sb-title {
-            color: #d97706;
+            color: #92400e;
         }
         .status-pending .sb-sub {
-            color: #92400e;
+            color: #78350f;
         }
 
         .status-verified {
@@ -453,21 +456,21 @@ if (empty($logoSrc)) {
         }
 
         .sb-tag {
-            font-size: 7.5px;
+            font-size: 8px;
             font-weight: 800;
             letter-spacing: 0.5px;
             text-transform: uppercase;
         }
 
         .sb-title {
-            font-size: 10px;
+            font-size: 10.5px;
             font-weight: 800;
-            line-height: 1.1;
+            line-height: 1.15;
         }
 
         .sb-sub {
-            font-size: 7.5px;
-            line-height: 1.1;
+            font-size: 8px;
+            line-height: 1.15;
             margin-top: 1px;
         }
 
@@ -496,18 +499,18 @@ if (empty($logoSrc)) {
         .head-icon-box {
             background: var(--theme-deep);
             color: #ffffff;
-            width: 17px;
-            height: 17px;
+            width: 18px;
+            height: 18px;
             border-radius: 3px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 8.5px;
+            font-size: 9px;
             flex-shrink: 0;
         }
 
         .head-title {
-            font-size: 9.5px;
+            font-size: 10px;
             font-weight: 800;
             color: #0f172a;
             letter-spacing: 0.5px;
@@ -518,16 +521,16 @@ if (empty($logoSrc)) {
             display: flex;
             align-items: baseline;
             margin-bottom: 3px;
-            font-size: 9.5px;
-            line-height: 1.25;
+            font-size: 10px;
+            line-height: 1.35;
         }
         .item-row:last-child {
             margin-bottom: 0;
         }
 
         .ir-label {
-            width: 78px;
-            color: #475569;
+            width: 82px;
+            color: #334155;
             font-weight: 600;
             flex-shrink: 0;
         }
@@ -535,6 +538,7 @@ if (empty($logoSrc)) {
         .ir-val {
             font-weight: 800;
             color: #0f172a;
+            font-size: 10.5px;
             word-break: break-word;
         }
 
@@ -565,17 +569,17 @@ if (empty($logoSrc)) {
         .amt-icon-box {
             background: var(--theme-deep);
             color: #ffffff;
-            width: 17px;
-            height: 17px;
+            width: 18px;
+            height: 18px;
             border-radius: 3px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 8.5px;
+            font-size: 9px;
         }
 
         .amt-paid-label {
-            font-size: 10px;
+            font-size: 10.5px;
             font-weight: 800;
             color: #0f172a;
             letter-spacing: 0.4px;
@@ -584,7 +588,7 @@ if (empty($logoSrc)) {
         .amt-method-pill {
             background: var(--theme-deep);
             color: #ffffff;
-            font-size: 8.5px;
+            font-size: 9px;
             font-weight: 800;
             padding: 2px 7px;
             border-radius: 3px;
@@ -600,7 +604,7 @@ if (empty($logoSrc)) {
         .words-pill {
             background: var(--theme-badge-bg);
             color: var(--theme-primary);
-            font-size: 7.5px;
+            font-size: 8px;
             font-weight: 800;
             padding: 1px 5px;
             border-radius: 3px;
@@ -609,7 +613,7 @@ if (empty($logoSrc)) {
         }
 
         .words-val {
-            font-size: 10px;
+            font-size: 10.5px;
             font-weight: 800;
             color: #0f172a;
         }
@@ -658,26 +662,27 @@ if (empty($logoSrc)) {
         }
 
         .proc-col {
-            font-size: 9px;
-            line-height: 1.25;
+            font-size: 9.5px;
+            line-height: 1.35;
         }
 
         .proc-lbl {
-            color: #64748b;
-            font-size: 8.5px;
-            font-weight: 600;
-            margin-bottom: 1px;
+            color: #334155;
+            font-size: 9.5px;
+            font-weight: 700;
+            margin-bottom: 2px;
         }
 
         .proc-main {
             font-weight: 800;
             color: #0f172a;
-            font-size: 9.5px;
+            font-size: 10.5px;
         }
 
         .proc-sub {
-            color: #475569;
-            font-size: 8px;
+            color: #334155;
+            font-size: 9px;
+            font-weight: 600;
         }
         .proc-sub.bold {
             font-weight: 800;
@@ -715,7 +720,7 @@ if (empty($logoSrc)) {
         }
 
         .v-title {
-            font-size: 9.5px;
+            font-size: 10px;
             font-weight: 800;
             color: #0f172a;
             letter-spacing: 0.5px;
@@ -731,25 +736,27 @@ if (empty($logoSrc)) {
         .v-meta-item {
             display: flex;
             flex-direction: column;
-            font-size: 8px;
+            font-size: 8.5px;
         }
 
         .vm-tag {
-            color: #64748b;
-            font-weight: 600;
+            color: #334155;
+            font-weight: 700;
         }
 
         .vm-txt {
             font-weight: 800;
             color: #0f172a;
-            font-size: 9.5px;
+            font-size: 10.5px;
         }
 
         .text-green {
-            color: var(--theme-primary) !important;
+            color: var(--theme-dark) !important;
+            font-weight: 800 !important;
         }
         .text-amber {
-            color: #d97706 !important;
+            color: #92400e !important;
+            font-weight: 800 !important;
         }
 
         /* VERIFICATION RIGHT (Authorized Signature) */
@@ -766,9 +773,9 @@ if (empty($logoSrc)) {
         }
 
         .sig-label {
-            font-size: 8px;
+            font-size: 8.5px;
             font-weight: 700;
-            color: #64748b;
+            color: #334155;
             margin-top: 3px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -803,8 +810,8 @@ if (empty($logoSrc)) {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            color: #64748b;
-            font-size: 8.5px;
+            color: #334155;
+            font-size: 9px;
             font-weight: 800;
             letter-spacing: 1px;
             text-transform: uppercase;
@@ -812,7 +819,7 @@ if (empty($logoSrc)) {
 
         .cut-badge-center i {
             font-size: 10px;
-            color: #475569;
+            color: #334155;
         }
 
         /* RESPONSIVE ON MOBILE */
@@ -874,7 +881,7 @@ if (empty($logoSrc)) {
         }
 
         #pdf-render-container .receipt-copy {
-            padding: 14px 22px 12px 22px !important;
+            padding: 12px 22px 10px 22px !important;
             width: 800px !important;
             box-sizing: border-box !important;
         }
@@ -910,11 +917,33 @@ if (empty($logoSrc)) {
             max-width: 250px !important;
         }
 
+        #pdf-render-container .brand-address {
+            font-size: 9.5px !important;
+            color: #1e293b !important;
+            line-height: 1.35 !important;
+        }
+
+        #pdf-render-container .brand-contact-row {
+            font-size: 9.5px !important;
+            color: #1e293b !important;
+        }
+
         #pdf-render-container .info-grid {
             display: grid !important;
             grid-template-columns: 1fr 1fr !important;
             gap: 12px !important;
             margin-bottom: 8px !important;
+        }
+
+        #pdf-render-container .ir-label {
+            color: #1e293b !important;
+            font-weight: 600 !important;
+        }
+
+        #pdf-render-container .ir-val {
+            font-weight: 800 !important;
+            color: #0f172a !important;
+            font-size: 10.5px !important;
         }
 
         #pdf-render-container .amount-card {
@@ -949,6 +978,29 @@ if (empty($logoSrc)) {
             grid-template-columns: 1.2fr 1fr 1.2fr 0.8fr !important;
         }
 
+        #pdf-render-container .proc-lbl {
+            font-size: 9.5px !important;
+            font-weight: 700 !important;
+            color: #1e293b !important;
+        }
+
+        #pdf-render-container .proc-main {
+            font-size: 10.5px !important;
+            font-weight: 800 !important;
+            color: #0f172a !important;
+        }
+
+        #pdf-render-container .proc-sub {
+            font-size: 9px !important;
+            font-weight: 600 !important;
+            color: #1e293b !important;
+        }
+
+        #pdf-render-container .proc-sub.bold {
+            font-weight: 800 !important;
+            color: #0f172a !important;
+        }
+
         #pdf-render-container .verification-bar {
             display: flex !important;
             flex-direction: row !important;
@@ -956,7 +1008,26 @@ if (empty($logoSrc)) {
             align-items: center !important;
             padding: 8px 14px !important;
             margin-top: 0 !important;
-        }[]
+        }
+
+        #pdf-render-container .vm-tag {
+            font-size: 8.5px !important;
+            font-weight: 700 !important;
+            color: #1e293b !important;
+        }
+
+        #pdf-render-container .vm-txt {
+            font-size: 10.5px !important;
+            font-weight: 800 !important;
+        }
+
+        #pdf-render-container .text-green {
+            color: #0b4022 !important;
+        }
+
+        #pdf-render-container .text-amber {
+            color: #92400e !important;
+        }
 
         #pdf-render-container .meta-status-wrap {
             display: flex !important;
@@ -980,7 +1051,8 @@ if (empty($logoSrc)) {
         }
 
         #pdf-render-container .header-qr-label {
-            font-size: 6.5px !important;
+            font-size: 7.5px !important;
+            font-weight: 800 !important;
         }
 
         #pdf-render-container .v-right-signature {
@@ -991,7 +1063,13 @@ if (empty($logoSrc)) {
         #pdf-render-container .sig-line {
             height: 32px !important;
             width: 130px !important;
-            border-bottom: 1.5px dashed #cbd5e1 !important;
+            border-bottom: 1.5px dashed #64748b !important;
+        }
+
+        #pdf-render-container .sig-label {
+            font-size: 8.5px !important;
+            font-weight: 700 !important;
+            color: #1e293b !important;
         }
 
         #pdf-render-container .perforated-cut-divider {
@@ -999,7 +1077,7 @@ if (empty($logoSrc)) {
             display: block !important;
         }
 
-        /* PRINT STYLES - NATURAL, TIGHT, COMPACT (EXACTLY LIKE INVOICE ON SCREEN) */
+        /* PRINT STYLES - NATURAL, TIGHT, CRISP */
         @media print {
             @page {
                 size: A4 portrait;
@@ -1011,8 +1089,11 @@ if (empty($logoSrc)) {
                 margin: 0 !important;
                 padding: 0 !important;
                 height: auto !important;
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
+                text-rendering: optimizeLegibility !important;
+                -webkit-font-smoothing: subpixel-antialiased !important;
             }
 
             .no-print, .top-action-bar {
@@ -1036,10 +1117,10 @@ if (empty($logoSrc)) {
                 page-break-inside: avoid !important;
             }
 
-            /* BOTH COPIES: CONTINUOUS NATURAL FLOW - ZERO INTERNAL GAP */
+            /* BOTH COPIES: CONTINUOUS NATURAL FLOW */
             .receipt-copy {
                 page-break-inside: avoid !important;
-                padding: 10px 18px 8px 18px !important;
+                padding: 8px 18px 6px 18px !important;
                 box-sizing: border-box !important;
                 height: auto !important;
                 min-height: 0 !important;
@@ -1050,7 +1131,7 @@ if (empty($logoSrc)) {
             }
 
             .copy-header {
-                margin-bottom: 7px !important;
+                margin-bottom: 6px !important;
             }
 
             .meta-status-wrap {
@@ -1070,76 +1151,151 @@ if (empty($logoSrc)) {
             }
 
             .header-qr-label {
-                font-size: 6.5px !important;
+                font-size: 7.5px !important;
+                font-weight: 800 !important;
+            }
+
+            .brand-address {
+                font-size: 9.5px !important;
+                color: #1e293b !important;
+                line-height: 1.35 !important;
+            }
+
+            .brand-contact-row {
+                font-size: 9.5px !important;
+                color: #1e293b !important;
             }
 
             .info-grid {
-                margin-bottom: 7px !important;
+                margin-bottom: 6px !important;
                 gap: 10px !important;
             }
 
             .info-card {
-                padding: 6px 12px !important;
+                padding: 5px 12px !important;
             }
 
             .item-row {
-                margin-top: 4px !important;
+                margin-top: 3px !important;
                 font-size: 10px !important;
             }
 
+            .ir-label {
+                color: #1e293b !important;
+                font-weight: 600 !important;
+            }
+
+            .ir-val {
+                color: #0f172a !important;
+                font-weight: 800 !important;
+            }
+
             .amount-card {
-                padding: 8px 14px !important;
-                margin-bottom: 7px !important;
+                padding: 6px 14px !important;
+                margin-bottom: 6px !important;
+            }
+
+            .amt-paid-label {
+                font-size: 10.5px !important;
+                font-weight: 800 !important;
+                color: #0f172a !important;
+            }
+
+            .words-val {
+                font-size: 10.5px !important;
+                font-weight: 800 !important;
+                color: #0f172a !important;
             }
 
             .amount-number-val {
                 font-size: 22px !important;
+                font-weight: 900 !important;
             }
 
             .processing-box {
-                padding: 7px 12px !important;
-                margin-bottom: 7px !important;
+                padding: 6px 12px !important;
+                margin-bottom: 6px !important;
             }
 
             .proc-lbl {
-                font-size: 8.5px !important;
+                font-size: 9.5px !important;
+                font-weight: 700 !important;
+                color: #1e293b !important;
             }
 
             .proc-main {
-                font-size: 10px !important;
+                font-size: 10.5px !important;
+                font-weight: 800 !important;
+                color: #0f172a !important;
+            }
+
+            .proc-sub {
+                font-size: 9px !important;
+                font-weight: 600 !important;
+                color: #1e293b !important;
+            }
+
+            .proc-sub.bold {
+                font-weight: 800 !important;
+                color: #0f172a !important;
             }
 
             .verification-bar {
-                padding: 7px 12px !important;
+                padding: 5px 12px !important;
                 margin-top: 0 !important;
             }
 
+            .vm-tag {
+                font-size: 8.5px !important;
+                font-weight: 700 !important;
+                color: #1e293b !important;
+            }
+
+            .vm-txt {
+                font-size: 10.5px !important;
+                font-weight: 800 !important;
+            }
+
+            .text-green {
+                color: #0b4022 !important;
+            }
+
+            .text-amber {
+                color: #92400e !important;
+            }
+
             .sig-line {
-                height: 32px !important;
+                height: 30px !important;
                 width: 130px !important;
-                border-bottom: 1.5px dashed #cbd5e1 !important;
+                border-bottom: 1.5px dashed #64748b !important;
+            }
+
+            .sig-label {
+                font-size: 8.5px !important;
+                font-weight: 700 !important;
+                color: #1e293b !important;
             }
 
             .perforated-cut-divider {
-                padding: 4px 18px !important;
-                margin: 4px 0 !important;
+                padding: 3px 18px !important;
+                margin: 3px 0 !important;
                 display: flex !important;
                 align-items: center !important;
                 page-break-inside: avoid !important;
             }
 
             .corner-accent-tl {
-                width: 60px !important;
-                height: 60px !important;
+                width: 58px !important;
+                height: 58px !important;
             }
 
             .corner-accent-br {
-                width: 60px !important;
-                height: 60px !important;
+                width: 58px !important;
+                height: 58px !important;
             }
 
             .company-brand-box {
-                margin-left: 30px !important;
+                margin-left: 28px !important;
                 margin-bottom: 3px !important;
             }
 
@@ -1521,12 +1677,24 @@ if (empty($logoSrc)) {
     <script>
         function printBothCopies() {
             document.body.classList.remove('print-customer-only');
-            window.print();
+            if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(function() {
+                    window.print();
+                });
+            } else {
+                window.print();
+            }
         }
 
         function printCustomerOnly() {
             document.body.classList.add('print-customer-only');
-            window.print();
+            if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(function() {
+                    window.print();
+                });
+            } else {
+                window.print();
+            }
             setTimeout(function() {
                 document.body.classList.remove('print-customer-only');
             }, 1000);
@@ -1540,67 +1708,74 @@ if (empty($logoSrc)) {
                 btn.disabled = true;
             }
 
-            const original = document.getElementById('receipt-content');
-            
-            // 1. Create a clean isolated capture container with fixed 800px width at (0, 0)
-            // This eliminates any screen-width / centering offset / scrolling cut-offs on all devices!
-            const container = document.createElement('div');
-            container.id = 'pdf-render-container';
-            container.style.position = 'fixed';
-            container.style.top = '0';
-            container.style.left = '0';
-            container.style.width = '800px';
-            container.style.maxWidth = '800px';
-            container.style.minWidth = '800px';
-            container.style.margin = '0';
-            container.style.padding = '0';
-            container.style.backgroundColor = '#ffffff';
-            container.style.zIndex = '-99999';
-            container.style.overflow = 'visible';
+            const runRender = function() {
+                const original = document.getElementById('receipt-content');
+                
+                // 1. Create a clean isolated capture container with fixed 800px width at (0, 0)
+                // This eliminates any screen-width / centering offset / scrolling cut-offs on all devices!
+                const container = document.createElement('div');
+                container.id = 'pdf-render-container';
+                container.style.position = 'fixed';
+                container.style.top = '0';
+                container.style.left = '0';
+                container.style.width = '800px';
+                container.style.maxWidth = '800px';
+                container.style.minWidth = '800px';
+                container.style.margin = '0';
+                container.style.padding = '0';
+                container.style.backgroundColor = '#ffffff';
+                container.style.zIndex = '-99999';
+                container.style.overflow = 'visible';
 
-            const clone = original.cloneNode(true);
-            clone.style.width = '800px';
-            clone.style.maxWidth = '800px';
-            clone.style.minWidth = '800px';
-            clone.style.margin = '0';
-            clone.style.borderRadius = '0';
-            clone.style.boxShadow = 'none';
-            clone.style.border = 'none';
+                const clone = original.cloneNode(true);
+                clone.style.width = '800px';
+                clone.style.maxWidth = '800px';
+                clone.style.minWidth = '800px';
+                clone.style.margin = '0';
+                clone.style.borderRadius = '0';
+                clone.style.boxShadow = 'none';
+                clone.style.border = 'none';
 
-            container.appendChild(clone);
-            document.body.appendChild(container);
+                container.appendChild(clone);
+                document.body.appendChild(container);
 
-            const opt = {
-                margin:       [3.5, 4, 3.5, 4],
-                filename:     'Payment-Receipt-<?= str_pad($payment['id'] ?? '0', 6, '0', STR_PAD_LEFT) ?>-<?= date('Ymd') ?>.pdf',
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { 
-                    scale: 2, 
-                    useCORS: true, 
-                    logging: false,
-                    letterRendering: true,
-                    scrollX: 0,
-                    scrollY: 0,
-                    width: 800,
-                    windowWidth: 800
-                },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                const opt = {
+                    margin:       [3.5, 4, 3.5, 4],
+                    filename:     'Payment-Receipt-<?= str_pad($payment['id'] ?? '0', 6, '0', STR_PAD_LEFT) ?>-<?= date('Ymd') ?>.pdf',
+                    image:        { type: 'jpeg', quality: 0.98 },
+                    html2canvas:  { 
+                        scale: 2.5, 
+                        useCORS: true, 
+                        logging: false,
+                        scrollX: 0,
+                        scrollY: 0,
+                        width: 800,
+                        windowWidth: 800
+                    },
+                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+
+                html2pdf().set(opt).from(clone).save().then(function() {
+                    if (container.parentNode) container.parentNode.removeChild(container);
+                    if (btn) {
+                        btn.innerHTML = originalBtnHtml;
+                        btn.disabled = false;
+                    }
+                }).catch(function(err) {
+                    console.error('PDF Generation Error:', err);
+                    if (container.parentNode) container.parentNode.removeChild(container);
+                    if (btn) {
+                        btn.innerHTML = originalBtnHtml;
+                        btn.disabled = false;
+                    }
+                });
             };
 
-            html2pdf().set(opt).from(clone).save().then(function() {
-                if (container.parentNode) container.parentNode.removeChild(container);
-                if (btn) {
-                    btn.innerHTML = originalBtnHtml;
-                    btn.disabled = false;
-                }
-            }).catch(function(err) {
-                console.error('PDF Generation Error:', err);
-                if (container.parentNode) container.parentNode.removeChild(container);
-                if (btn) {
-                    btn.innerHTML = originalBtnHtml;
-                    btn.disabled = false;
-                }
-            });
+            if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(runRender);
+            } else {
+                runRender();
+            }
         }
         
         <?php if (!empty($_GET['download']) && $_GET['download'] == '1'): ?>

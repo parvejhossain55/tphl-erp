@@ -106,10 +106,23 @@ class LeadController extends Controller
         if ($currentPage < 1) $currentPage = 1;
         $offset = ($currentPage - 1) * $limit;
 
+        // Normalize filter_card and date_type aliases across lead-lists & my-all-assigned-leads
+        if ($filter_card === 'booked') {
+            $filter_card = 'total_booked';
+        }
+        if ($date_type === 'lead_date') {
+            $date_type = 'created_at';
+        } elseif ($date_type === 'assigned_date') {
+            $date_type = 'assigned_at';
+        }
+
         // Get total count for pagination
         // Co-leader gets team-scoped data same as role_id=5 (Sales Manager)
         $effectiveRoleId = ($isCoLeader && !in_array((int)$userRoleId, [1, 3, 5, 9, 32, 33, 34, 35])) ? 5 : (int)$userRoleId;
         $leadCounts = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
+
+        // Period total leads: overall leads count in period regardless of active filter_card (so Total Leads card and Conversion Rate stay accurate)
+        $totalPeriodLeadsCount = empty($filter_card) ? $leadCounts : $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, null, $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
 
         // Fetch paginated records
         $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, $limit, $offset, null, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
@@ -149,7 +162,7 @@ class LeadController extends Controller
         $totalTodayPendingFollowUps = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'pending_follow_ups', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
         
         //  Conversion Rate
-        $conversionRate = $leadCounts > 0 ? ($totalBookedLeadsCount / $leadCounts) * 100 : 0;
+        $conversionRate = $totalPeriodLeadsCount > 0 ? ($totalBookedLeadsCount / $totalPeriodLeadsCount) * 100 : 0;
         
         $totalHotLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'hot_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
         $totalContactedLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'contacted_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
@@ -283,6 +296,7 @@ class LeadController extends Controller
             "bookingCount" => $bookingCount,
             "paymentCount" => $paymentCount,
             "leadCounts" => $leadCounts,
+            "totalPeriodLeadsCount" => $totalPeriodLeadsCount,
             "totalTodayFollowUps" => $totalTodayFollowUps,
             "assignedUsers" => $assignedUsers,
             "leadsPercentChange" => $leadsPercentChange,
@@ -1534,6 +1548,7 @@ class LeadController extends Controller
             "bookingCount" => $bookingCount,
             "paymentCount" => $paymentCount,
             "leadCounts" => $leadCounts,
+            "totalPeriodLeadsCount" => $totalPeriodLeadsCount,
             "totalTodayFollowUps" => $totalTodayFollowUps,
             "leads" => $leads,
             "projects" => $projects,

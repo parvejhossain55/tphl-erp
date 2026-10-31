@@ -94,7 +94,7 @@ $activeCard = $_GET['filter_card'] ?? '';
     <div class="col-6 col-md-6 col-lg-4 col-xl-2">
         <a href="<?= getStatCardLink('total_leads') ?>" class="card__wrapper stat-card text-decoration-none d-block h-100 <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>" style="cursor: pointer; <?= empty($activeCard) ? 'border: 2px solid #10b981 !important; background-color: #f0fdf4;' : '' ?>">
             <div class="stat-label">Total Leads</div>
-            <div class="stat-value"><?= $leadCounts ?></div>
+            <div class="stat-value"><?= $totalPeriodLeadsCount ?? $leadCounts ?></div>
             <div class="stat-change positive d-none">
                 <span class="<?= $leadsPercentChange >= 0 ? 'price-increase' : 'price-decrease' ?>">
                     <i class="fa-light <?= $leadsPercentChange >= 0 ? 'fa-arrow-up' : 'fa-arrow-down' ?>"></i>
