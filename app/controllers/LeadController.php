@@ -41,22 +41,7 @@ class LeadController extends Controller
             exit;
         }
 
-        // Role 9 (Sales Head), Roles 33, and 35 (Team CEO) must always see all sales members across all teams for assignment and filtering,
-        // even if they have a team_id assigned in users/employees table.
-        if (in_array((int)$userRoleId, [9, 33, 35])) {
-            $assignedUsers = $this->userModel->getAllRoleUser();
-        } elseif ((int)$userRoleId === 5 || $isCoLeader) {
-            if (!empty($userTeamId)) {
-                // team wise users for Sales Manager / Co-Leader
-                $assignedUsers = $this->userModel->getUsersByTeamAndRole($userTeamId);
-            } else {
-                // no team → global sales users
-                $assignedUsers = $this->userModel->getAllRoleUser();
-            }
-        } else {
-            // admin / others
-            $assignedUsers = $this->userModel->getAllRoleUser();
-        }
+        $allRoleUsers = $this->userModel->getAllRoleUser();
         $date = $_GET['date'] ?? null;
         $year  = $_GET['year']  ?? null;
         $month = $_GET['month'] ?? null;
@@ -91,6 +76,20 @@ class LeadController extends Controller
         } else {
             // If they have no team_id, let them see everything (e.g. Sales Manager with no team)
             $teamIdForQuery = !empty($userTeamId) ? (int)$userTeamId : $filterTeamId;
+        }
+
+        // When a team is selected or scoped, only display that team's current members (leader + executives) in executive filter
+        if (!empty($teamIdForQuery)) {
+            $assignedUsers = $this->userModel->getUsersByTeamAndRole($teamIdForQuery);
+            if (empty($assignedUsers)) {
+                $assignedUsers = $allRoleUsers;
+            }
+        } elseif (in_array((int)$userRoleId, [9, 33, 35]) || in_array((int)$userRoleId, [1, 3, 32, 34])) {
+            $assignedUsers = $allRoleUsers;
+        } elseif ((int)$userRoleId === 5 || $isCoLeader) {
+            $assignedUsers = !empty($userTeamId) ? $this->userModel->getUsersByTeamAndRole($userTeamId) : $allRoleUsers;
+        } else {
+            $assignedUsers = $allRoleUsers;
         }
 
         $owners = $this->userModel->getAll();
@@ -299,6 +298,7 @@ class LeadController extends Controller
             "totalPeriodLeadsCount" => $totalPeriodLeadsCount,
             "totalTodayFollowUps" => $totalTodayFollowUps,
             "assignedUsers" => $assignedUsers,
+            "allRoleUsers" => $allRoleUsers,
             "leadsPercentChange" => $leadsPercentChange,
             "totalBookingCount" => $totalBookingCount,
             "totalBookedLeadsCount" => $totalBookedLeadsCount,
@@ -1569,6 +1569,7 @@ class LeadController extends Controller
             "page_title"      => "Add lead",
             "show_breadcrumb" => true,
             "assignedUsers" => $assignedUsers,
+            "allRoleUsers" => $allRoleUsers,
             "sources" => $sources,
             "locations" => $locations,
             "projects" => $projects,

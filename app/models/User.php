@@ -292,7 +292,7 @@ public function getPaginatedWithSalesExecutive($limit, $offset, $search = '', $r
                 e.photo AS employee_photo,
                 e.make_user,
                 d.name AS designation_name,
-                IF(r.id IN (5,8,9), r.name, sr.name) AS role_name,
+                IF(r.id IN (5,8,9,35), r.name, sr.name) AS role_name,
                 t.name AS team_name
             FROM users u
             LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
@@ -325,7 +325,7 @@ public function getUsersByTeamAndRole($teamId)
                 e.photo AS employee_photo,
                 e.make_user,
                 d.name AS designation_name,
-                IF(r.id IN (5,8,9), r.name, sr.name) AS role_name,
+                IF(r.id IN (5,8,9,35), r.name, sr.name) AS role_name,
                 t.name AS team_name
             FROM users u
             LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
@@ -335,13 +335,14 @@ public function getUsersByTeamAndRole($teamId)
             LEFT JOIN roles sr ON sr.id = u.secondary_role_id
             WHERE u.team_id = ? 
             AND (
-                (r.id IN (5, 8) OR (r.id = 9 AND u.team_id IS NOT NULL))
+                (r.id IN (5, 8, 35) OR (r.id = 9 AND u.team_id IS NOT NULL))
                 OR 
-                (sr.id IN (5, 8) OR (sr.id = 9 AND u.team_id IS NOT NULL))
+                (sr.id IN (5, 8, 35) OR (sr.id = 9 AND u.team_id IS NOT NULL))
             )
             AND (e.employee_status IS NULL OR (e.deleted_at IS NULL AND LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
             AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))";
 
+    $sql .= " ORDER BY FIELD(u.role_id, 9, 35, 5, 8), u.full_name ASC";
     $stmt = $this->db->prepare($sql);
     $stmt->bind_param("i", $teamId);
     $stmt->execute();
@@ -779,7 +780,7 @@ public function getSalesTeams($roleId = null, $teamId = null, $userId = null)
                 e.photo AS employee_photo,
                 e.make_user,
                 d.name AS designation_name,
-                IF(r.id IN (5,8,9), r.name, sr.name) AS role_name,
+                IF(r.id IN (5,8,9,35), r.name, sr.name) AS role_name,
                 t.name AS team_name
             FROM users u
             LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
