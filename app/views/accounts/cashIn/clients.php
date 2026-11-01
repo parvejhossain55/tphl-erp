@@ -98,7 +98,10 @@ $show_breadcrumb = true;
                                 <div class="card__title-wrap">
                                     <h6 class="card__sub-title mb-1 text-muted extra-small text-uppercase fw-bold" style="font-size: 10px;">Total Collected</h6>
                                     <div class="amount-display text-primary" title="৳<?= number_format($collectionStats['total_collected'] ?? 0, 2) ?>">৳<?= number_format($collectionStats['total_collected'] ?? 0, 2) ?></div>
-                                    <small class="text-muted extra-small d-block text-truncate" style="font-size: 9.5px;"><i class="fa-solid fa-circle-info me-1 text-primary"></i>Verified + Unverified (View Breakdown)</small>
+                                    <div class="d-flex align-items-center gap-2 flex-wrap mt-1" style="font-size: 10px;">
+                                        <span class="text-success fw-bold"><i class="fa-solid fa-circle-check me-1"></i>Vfd: ৳<?= number_format($collectionStats['total_verified_collected'] ?? 0, 2) ?></span>
+                                        <span class="text-warning fw-bold"><i class="fa-solid fa-clock-rotate-left me-1"></i>Unv: ৳<?= number_format($collectionStats['total_unverified_collected'] ?? 0, 2) ?></span>
+                                    </div>
                                 </div>
                             </div>
                         </div>

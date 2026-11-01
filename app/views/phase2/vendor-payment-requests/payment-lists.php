@@ -129,7 +129,7 @@ $canApprove = $canApprove ?? false;
                             Keyword Search
                         </label>
                         <div class="input-group input-group-sm" style="height: 36px;">
-                            <input type="text" name="search" class="form-control" placeholder="Invoice #, PO #, Vendor..." 
+                            <input type="text" name="search" class="form-control" placeholder="Search Bill #, Invoice #, PO #, Vendor, Requester..." 
                                    value="<?= htmlspecialchars($filters['search'] ?? '') ?>" style="font-size: 12.5px;">
                             <button type="submit" class="btn btn-primary px-3 fw-semibold">
                                 Filter
@@ -162,7 +162,7 @@ $canApprove = $canApprove ?? false;
                 <table id="vprTable" class="table table-bordered table-hover align-middle text-nowrap">
                     <thead class="table-dark">
                         <tr>
-                            <th>Req ID</th>
+                            <th>Req ID &amp; Bill #</th>
                             <th>Type</th>
                             <th>Date</th>
                             <th>Project, PO & Category</th>
@@ -172,7 +172,7 @@ $canApprove = $canApprove ?? false;
                             <th class="text-end">Paid (৳)</th>
                             <th class="text-end">Due (৳)</th>
                             <th>Status</th>
-                            <th>Created By</th>
+                            <th>Submitted By</th>
                             <th>Approved By</th>
                             <th>Payment By (Accounts)</th>
                             <th class="text-center">Attachment</th>
@@ -208,9 +208,15 @@ $canApprove = $canApprove ?? false;
                                 ?>
                                 <tr>
                                     <td class="fw-bold">
-                                        <a href="<?= $base_url ?>/con-vendor-payment-show/<?= $req['id'] ?>" class="text-primary">
+                                        <a href="<?= $base_url ?>/con-vendor-payment-show/<?= $req['id'] ?>" class="text-primary fs-13">
                                             VPR-<?= $req['id'] ?>
                                         </a>
+                                        <?php if (!empty($req['invoice_number'])): ?>
+                                            <br>
+                                            <span class="badge bg-light text-dark border extra-small mt-1" style="font-size: 10.5px;" title="Vendor Bill / Invoice #">
+                                                <i class="bi bi-receipt me-1 text-primary"></i><?= htmlspecialchars($req['invoice_number']) ?>
+                                            </span>
+                                        <?php endif; ?>
                                     </td>
                                     <td><span class="badge <?= $ptClass ?>"><?= $pt ?></span></td>
                                     <td><?= !empty($req['created_at']) ? date('d M Y', strtotime($req['created_at'])) : '—' ?></td>
@@ -230,7 +236,14 @@ $canApprove = $canApprove ?? false;
                                         <?php endif; ?>
                                     </td>
                                     <td><span class="badge bg-secondary"><?= htmlspecialchars($req['vendor_name'] ?? '—') ?></span></td>
-                                    <td class="text-end">৳ <?= number_format((float)($req['invoice_amount'] ?? 0), 2) ?></td>
+                                    <td class="text-end">
+                                        <div class="fw-bold text-dark">৳ <?= number_format((float)($req['invoice_amount'] ?? 0), 2) ?></div>
+                                        <?php if (!empty($req['invoice_number'])): ?>
+                                            <small class="text-muted d-block" style="font-size: 10px;" title="Vendor Bill / Invoice #">
+                                                Bill: <span class="fw-semibold text-secondary"><?= htmlspecialchars($req['invoice_number']) ?></span>
+                                            </small>
+                                        <?php endif; ?>
+                                    </td>
                                     <td class="text-end fw-bold">৳ <?= number_format((float)($req['net_payable'] ?? 0), 2) ?></td>
                                     <td class="text-end fw-bold <?= $alreadyPaid > 0 ? 'text-success' : 'text-muted' ?>">
                                         <?= $alreadyPaid > 0 ? '৳ ' . number_format($alreadyPaid, 2) : '—' ?>
@@ -247,7 +260,17 @@ $canApprove = $canApprove ?? false;
                                     <td>
                                         <span class="badge bg-<?= $badge ?>"><?= $statusLabel ?></span>
                                     </td>
-                                    <td><small><?= htmlspecialchars($req['created_by_name'] ?? '—') ?></small></td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-1">
+                                            <i class="bi bi-person-circle text-secondary fs-13"></i>
+                                            <span class="fw-semibold text-dark fs-12"><?= htmlspecialchars($req['created_by_name'] ?? '—') ?></span>
+                                        </div>
+                                        <?php if (!empty($req['created_at'])): ?>
+                                            <div class="text-muted" style="font-size: 10px; margin-top: 2px;">
+                                                <i class="bi bi-clock me-1"></i><?= date('d M Y, h:i A', strtotime($req['created_at'])) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </td>
                                     <td>
                                         <div class="small" style="font-size: 11px; line-height: 1.35;">
                                             <div>

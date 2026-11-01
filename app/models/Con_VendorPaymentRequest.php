@@ -142,13 +142,19 @@ class Con_VendorPaymentRequest extends Model
 
         // 5. Keyword search filter
         if (!empty($filters['search'])) {
-            $kw = $this->db->real_escape_string(trim($filters['search']));
+            $rawKw = trim($filters['search']);
+            $kw = $this->db->real_escape_string($rawKw);
+            $cleanId = preg_replace('/[^0-9]/', '', $rawKw);
+            $idCond = !empty($cleanId) ? " OR pr.id = " . (int)$cleanId . " OR po.id = " . (int)$cleanId : "";
             $whereClauses[] = "(
-                pr.id LIKE '%{$kw}%' 
-                OR pr.invoice_number LIKE '%{$kw}%' 
-                OR v.name LIKE '%{$kw}%' 
-                OR p.name LIKE '%{$kw}%' 
+                pr.id LIKE '%{$kw}%'
+                {$idCond}
+                OR pr.invoice_number LIKE '%{$kw}%'
+                OR v.name LIKE '%{$kw}%'
+                OR v.company_name LIKE '%{$kw}%'
+                OR p.name LIKE '%{$kw}%'
                 OR po.id LIKE '%{$kw}%'
+                OR u.full_name LIKE '%{$kw}%'
             )";
         }
 
@@ -370,21 +376,27 @@ class Con_VendorPaymentRequest extends Model
             $projectId       = (int)($data['project_id'] ?? 0);
             $vendorId        = (int)($data['vendor_id'] ?? 0);
 
+            $invoiceNumber   = !empty($data['invoice_number']) ? trim($data['invoice_number']) : null;
+            if (empty($invoiceNumber) && $purchaseOrderId > 0) {
+                $invoiceNumber = 'INV-PO-' . $purchaseOrderId;
+            }
+
             // INSERT — matches actual table columns
             $attachmentPath = $data['payment_attachment'] ?? null;
             $stmt = $this->db->prepare(
                 "INSERT INTO {$this->table}
-                    (project_id, vendor_id, purchase_order_id, payment_type,
+                    (project_id, vendor_id, purchase_order_id, payment_type, invoice_number,
                      invoice_amount, penalty_amount, net_payable_amount, net_payable,
                      delivery_verified, payment_attachment, status, created_by)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Submitted', ?)"
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Submitted', ?)"
             );
             $stmt->bind_param(
-                'iiissddddsi',
+                'iiissddddssi',
                 $projectId,
                 $vendorId,
                 $purchaseOrderId,
                 $paymentType,
+                $invoiceNumber,
                 $invoiceAmt,
                 $penaltyAmt,
                 $netPayable,      // net_payable_amount

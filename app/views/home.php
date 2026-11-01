@@ -250,8 +250,11 @@ $hasTransactions = !empty($recentTransactions);
                                 </div>
                                 <div class="card__title-wrap">
                                     <h6 class="card__sub-title mb-1 text-muted extra-small text-uppercase fw-bold">Total Collected</h6>
-                                    <h5 class="fw-bold mb-0 text-primary">৳<?= number_format($collectionStats['total_collected'] ?? 0, 2) ?></h5>
-                                    <small class="text-muted extra-small d-block" style="font-size: 10px;"><i class="fa-solid fa-circle-info me-1 text-primary"></i>Verified + Unverified (View Breakdown)</small>
+                                    <h5 class="fw-bold mb-1 text-primary">৳<?= number_format($collectionStats['total_collected'] ?? 0, 2) ?></h5>
+                                    <div class="d-flex align-items-center gap-2 flex-wrap" style="font-size: 10.5px;">
+                                        <span class="text-success fw-bold"><i class="fa-solid fa-circle-check me-1"></i>Vfd: ৳<?= number_format($collectionStats['total_verified_collected'] ?? 0, 2) ?></span>
+                                        <span class="text-warning fw-bold"><i class="fa-solid fa-clock-rotate-left me-1"></i>Unv: ৳<?= number_format($collectionStats['total_unverified_collected'] ?? 0, 2) ?></span>
+                                    </div>
                                 </div>
                             </div>
                         </div>

@@ -414,6 +414,7 @@ class Lead extends Model
     public function countAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null, $search = null, $from_date = null, $to_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null, $date_type = 'created_at')
     {
         $sql = "SELECT COUNT(l.id) AS total_count FROM leads AS l 
+                LEFT JOIN users AS u ON l.assigned_id = u.id
                 LEFT JOIN employees AS emp ON emp.user_id = l.assigned_id
                 WHERE l.deleted_at IS NULL
                   /* employee_status filter removed */";
@@ -537,9 +538,9 @@ class Lead extends Model
         // Assigned filter
         if (isset($assigned) && $assigned !== '') {
             if ($assigned === 'assigned') {
-                $sql .= " AND l.assigned_id IS NOT NULL";
+                $sql .= " AND l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND u.id IS NOT NULL";
             } elseif ($assigned === 'unassigned') {
-                $sql .= " AND l.assigned_id IS NULL";
+                $sql .= " AND (l.assigned_id IS NULL OR l.assigned_id = 0 OR u.id IS NULL)";
             }
         }
         
@@ -734,9 +735,9 @@ class Lead extends Model
                                 AND lb_sub.deleted_at IS NULL
                           )";
             } elseif ($filter_card === 'assigned_leads') {
-                $sql .= " AND l.assigned_id IS NOT NULL AND l.assigned_id > 0";
+                $sql .= " AND l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND u.id IS NOT NULL";
             } elseif ($filter_card === 'not_assigned_leads') {
-                $sql .= " AND (l.assigned_id IS NULL OR l.assigned_id = 0)";
+                $sql .= " AND (l.assigned_id IS NULL OR l.assigned_id = 0 OR u.id IS NULL)";
             } elseif ($filter_card === 'has_follow_up') {
                 $sql .= " AND EXISTS (SELECT 1 FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.deleted_at IS NULL)";
             } elseif ($filter_card === 'irrelevant_leads' || $filter_card === 'irrelevant') {
@@ -1175,9 +1176,9 @@ class Lead extends Model
         // Assigned filter
         if (isset($assigned) && $assigned !== '') {
             if ($assigned === 'assigned') {
-                $sql .= " AND l.assigned_id IS NOT NULL";
+                $sql .= " AND l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND u.id IS NOT NULL";
             } elseif ($assigned === 'unassigned') {
-                $sql .= " AND l.assigned_id IS NULL";
+                $sql .= " AND (l.assigned_id IS NULL OR l.assigned_id = 0 OR u.id IS NULL)";
             }
         }
         // Assigned User filter
@@ -1371,9 +1372,9 @@ class Lead extends Model
                                 AND lb_sub.deleted_at IS NULL
                           )";
             } elseif ($filter_card === 'assigned_leads') {
-                $sql .= " AND l.assigned_id IS NOT NULL AND l.assigned_id > 0";
+                $sql .= " AND l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND u.id IS NOT NULL";
             } elseif ($filter_card === 'not_assigned_leads') {
-                $sql .= " AND (l.assigned_id IS NULL OR l.assigned_id = 0)";
+                $sql .= " AND (l.assigned_id IS NULL OR l.assigned_id = 0 OR u.id IS NULL)";
             } elseif ($filter_card === 'has_follow_up') {
                 $sql .= " AND EXISTS (SELECT 1 FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.deleted_at IS NULL)";
             } elseif ($filter_card === 'irrelevant_leads' || $filter_card === 'irrelevant') {

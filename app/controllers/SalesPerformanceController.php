@@ -10,8 +10,8 @@ class SalesPerformanceController extends Controller
     protected $db;
     protected SalesPerformanceService $service;
 
-    /** Management & Sales Leadership (Admin, Super Admin, Sales Team Head, Chief Officer, Management Viewer, SEAL CEO) */
-    public const ALLOWED_ROLE_IDS = [1, 3, 9, 33, 34, 35];
+    /** Management (Admin, Super Admin, Chief Officer, Management Viewer, SEAL CEO) */
+    public const ALLOWED_ROLE_IDS = [1, 3, 33, 34, 35];
 
     public function __construct($db)
     {
@@ -24,16 +24,15 @@ class SalesPerformanceController extends Controller
 
     public static function canAccess(): bool
     {
+        if (function_exists('hasPermission') && hasPermission('Sales Intelligence')) {
+            return true;
+        }
+
         $roleId = (int) ($_SESSION['user']['role_id'] ?? 0);
         $secRoleId = (int) ($_SESSION['user']['secondary_role_id'] ?? 0);
-        $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
-        return in_array($roleId, self::ALLOWED_ROLE_IDS, true)
-            || in_array($secRoleId, self::ALLOWED_ROLE_IDS, true)
-            || str_contains($roleName, 'chief')
-            || str_contains($roleName, 'ceo')
-            || str_contains($roleName, 'management')
-            || str_contains($roleName, 'sales team head')
-            || str_contains($roleName, 'sales head');
+
+        // Fallback for Admin / Super Admin (Roles 1 & 3)
+        return in_array($roleId, [1, 3], true) || in_array($secRoleId, [1, 3], true);
     }
 
     protected function guard(bool $json = false): void
@@ -47,7 +46,7 @@ class SalesPerformanceController extends Controller
             echo json_encode(['error' => 'Access denied']);
             exit;
         }
-        die('<div style="font-family:sans-serif;padding:40px;text-align:center"><h3>Access denied</h3><p>Sales Performance is available to Management, Chief Executive, and Sales Team Head roles only.</p></div>');
+        die('<div style="font-family:sans-serif;padding:40px;text-align:center"><h3>Access denied</h3><p>Sales Performance is available to Management and Chief Executive roles only.</p></div>');
     }
 
     protected function readFilters(): array

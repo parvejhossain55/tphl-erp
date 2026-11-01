@@ -388,11 +388,17 @@ class Con_VendorPaymentRequestController extends Controller
             $netPayable      = max(0, $invoiceAmt - $penaltyDeducted);
         }
 
+        $rawInvoiceNum = trim($_POST['invoice_number'] ?? '');
+        if (empty($rawInvoiceNum) && $poId > 0) {
+            $rawInvoiceNum = 'INV-PO-' . $poId;
+        }
+
         $data = [
             'project_id'        => (int)($_POST['project_id'] ?? 0),
             'vendor_id'         => $vendorId,
             'purchase_order_id' => $poId,          // int (0 = no PO)
             'payment_type'      => $paymentType,
+            'invoice_number'    => !empty($rawInvoiceNum) ? $rawInvoiceNum : null,
             'invoice_amount'    => $invoiceAmt,
             'penalty_deducted'  => $penaltyDeducted,
             'net_payable'       => $netPayable,

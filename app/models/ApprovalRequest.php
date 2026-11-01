@@ -2297,21 +2297,43 @@ class ApprovalRequest extends Model
                 $numericId = (int)$searchRaw;
             }
 
+            $searchLike = '%' . $searchRaw . '%';
             if ($numericId > 0) {
-                $where[] = "(ar.id = ? OR ar.source_id = ? OR ar.title LIKE ? OR u_req.full_name LIKE ?)";
+                $where[] = "(
+                    ar.id = ? 
+                    OR ar.source_id = ? 
+                    OR e_req.employee_id = ?
+                    OR u_req.employee_id = ?
+                    OR ar.title LIKE ? 
+                    OR ar.department LIKE ? 
+                    OR ar.request_type LIKE ? 
+                    OR u_req.full_name LIKE ?
+                )";
                 $params[] = $numericId;
                 $params[] = $numericId;
-                $searchLike = '%' . $searchRaw . '%';
+                $params[] = $numericId;
+                $params[] = $numericId;
                 $params[] = $searchLike;
                 $params[] = $searchLike;
-                $types .= "iiss";
+                $params[] = $searchLike;
+                $params[] = $searchLike;
+                $types .= "iiiissss";
             } else {
-                $where[] = "(ar.title LIKE ? OR ar.department LIKE ? OR u_req.full_name LIKE ?)";
-                $searchLike = '%' . $searchRaw . '%';
+                $where[] = "(
+                    ar.title LIKE ? 
+                    OR ar.department LIKE ? 
+                    OR ar.request_type LIKE ? 
+                    OR ar.source_table LIKE ?
+                    OR u_req.full_name LIKE ?
+                    OR e_req.employee_id LIKE ?
+                )";
                 $params[] = $searchLike;
                 $params[] = $searchLike;
                 $params[] = $searchLike;
-                $types .= "sss";
+                $params[] = $searchLike;
+                $params[] = $searchLike;
+                $params[] = $searchLike;
+                $types .= "ssssss";
             }
         }
 
