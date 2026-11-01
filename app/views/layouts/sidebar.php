@@ -732,8 +732,8 @@
                             </li>
                         <?php endif; ?>
 
-                        <?php if (class_exists('SalesPerformanceController') && SalesPerformanceController::canAccess()): ?>
-                            <!-- Sales Performance (Management / Chief Executive / Sales Team Head) -->
+                        <?php if (hasPermission('Sales Intelligence') || (class_exists('SalesPerformanceController') && SalesPerformanceController::canAccess())): ?>
+                            <!-- Sales Intelligence -->
                             <li class="slide <?= isActive('sales-performance', $current_route) ?>">
                                 <a href="<?= $base_url ?>/sales-performance"
                                     class="sidebar__menu-item <?= isActive('sales-performance', $current_route) ?>">

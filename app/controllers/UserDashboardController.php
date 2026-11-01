@@ -137,11 +137,12 @@ class UserDashboardController extends Controller
         $leadBookings = [];
         if (!empty($leadIds)) {
             $idsStr = implode(',', array_map('intval', $leadIds));
-            $fuQuery = $this->db->query("SELECT fu.*, l.full_name, p.name AS project_name, f.flat_name 
+            $fuQuery = $this->db->query("SELECT fu.*, l.full_name, p.name AS project_name, f.flat_name, u_fu.full_name AS follow_up_by_name 
                                          FROM lead_follow_ups fu 
                                          LEFT JOIN leads l ON fu.lead_id = l.id 
                                          LEFT JOIN projects p ON fu.project_id = p.id 
                                          LEFT JOIN flats f ON fu.flat_id = f.id 
+                                         LEFT JOIN users u_fu ON fu.created_by = u_fu.id 
                                          WHERE fu.lead_id IN ($idsStr) ORDER BY fu.follow_up_date DESC, fu.id DESC");
             if ($fuQuery) {
                 while($row = $fuQuery->fetch_assoc()) {
@@ -691,11 +692,12 @@ class UserDashboardController extends Controller
         $followUpHistories = [];
         if (!empty($leadIds)) {
             $idsStr = implode(',', array_map('intval', $leadIds));
-            $fuQuery = $this->db->query("SELECT fu.*, l.full_name, p.name AS project_name, f.flat_name 
+            $fuQuery = $this->db->query("SELECT fu.*, l.full_name, p.name AS project_name, f.flat_name, u_fu.full_name AS follow_up_by_name 
                                          FROM lead_follow_ups fu 
                                          LEFT JOIN leads l ON fu.lead_id = l.id 
                                          LEFT JOIN projects p ON fu.project_id = p.id 
                                          LEFT JOIN flats f ON fu.flat_id = f.id 
+                                         LEFT JOIN users u_fu ON fu.created_by = u_fu.id 
                                          WHERE fu.lead_id IN ($idsStr) ORDER BY fu.follow_up_date DESC, fu.id DESC");
             if ($fuQuery) {
                 while($row = $fuQuery->fetch_assoc()) {
@@ -723,18 +725,63 @@ class UserDashboardController extends Controller
             session_start();
         }
 
-        $userId = $_SESSION['user']['id'] ?? 0;
+        $loggedInUser   = $_SESSION['user'] ?? [];
+        $loggedInUserId = (int)($loggedInUser['id'] ?? 0);
+        $loggedInRoleId = (int)($loggedInUser['role_id'] ?? 0);
+
+        // Allow Admins, Heads, and Managers to view a specific user's onboarding projects if requested
+        $targetUserId = (!empty($_GET['user_id']) || !empty($_GET['assigned_user']))
+            ? (int)($_GET['user_id'] ?? $_GET['assigned_user'])
+            : $loggedInUserId;
+
+        if (!in_array($loggedInRoleId, [1, 3, 5, 9, 32, 33, 34, 35]) && $targetUserId !== $loggedInUserId) {
+            $targetUserId = $loggedInUserId;
+        }
+
+        $targetUserName = null;
+        if ($targetUserId !== $loggedInUserId && $targetUserId > 0) {
+            $targetUser = $this->userModel->getById($targetUserId);
+            $targetUserName = $targetUser['full_name'] ?? null;
+        }
 
         $year  = $_GET['year']  ?? null;
         $month = $_GET['month'] ?? null;
 
         $myOnboardProjects = $this->bookingModel
-            ->getAllMyOnboardProject($userId, $year, $month);
+            ->getAllMyOnboardProject($targetUserId, $year, $month);
+
+        // Compute summary metrics for header cards
+        $totalUnitsSold = count($myOnboardProjects);
+        $clientKeys = [];
+        $totalPriceValue = 0;
+        $totalBookingMoney = 0;
+        $totalPaidAmount = 0;
+
+        foreach ($myOnboardProjects as $p) {
+            $clientKey = !empty($p['lead_id']) 
+                ? 'lead_' . $p['lead_id'] 
+                : (!empty($p['phone']) ? 'phone_' . $p['phone'] : 'name_' . ($p['full_name'] ?? uniqid()));
+            $clientKeys[$clientKey] = true;
+
+            $totalPriceValue   += (float)($p['price_value'] ?? 0);
+            $totalBookingMoney += (float)($p['booking_money'] ?? 0);
+            $totalPaidAmount   += (float)($p['amount'] ?? 0);
+        }
+
+        $totalClients = count($clientKeys);
 
         $this->view('sales-executive/my-onboard-projects', [
-            'projects' => $myOnboardProjects,
-
-            'current_page' => 'my-onboarding-projects',
+            'projects'          => $myOnboardProjects,
+            'totalClients'      => $totalClients,
+            'totalUnitsSold'    => $totalUnitsSold,
+            'totalPriceValue'   => $totalPriceValue,
+            'totalBookingMoney' => $totalBookingMoney,
+            'totalPaidAmount'   => $totalPaidAmount,
+            'targetUserId'      => $targetUserId,
+            'targetUserName'    => $targetUserName,
+            'selectedYear'      => $year,
+            'selectedMonth'     => $month,
+            'current_page'      => 'my-onboarding-projects',
         ]);
     }
 

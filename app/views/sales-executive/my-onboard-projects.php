@@ -3,16 +3,115 @@ $page_title = "Leads Page";
 $page = 'My Onboarding Projects';
 $show_breadcrumb = true;
 ?>
+<!-- TOP SUMMARY METRIC CARDS -->
+<div class="row g-3 mb-3 align-items-stretch">
+    <!-- 1. Total Clients Card -->
+    <div class="col-6 col-md-3">
+        <div class="card__wrapper p-3 h-100 border-0 shadow-sm" style="border-radius: 12px; border-left: 4px solid #2563eb !important; background: #ffffff;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="overflow-hidden pe-1">
+                    <span class="text-uppercase fw-bold text-muted small" style="font-size: 11px; letter-spacing: 0.5px;">
+                        <i class="fa-solid fa-users me-1 text-primary"></i> Total Clients
+                    </span>
+                    <h3 class="fw-bold mb-0 mt-1" style="color: #0f172a; font-size: 1.6rem;">
+                        <?= number_format($totalClients ?? 0) ?>
+                    </h3>
+                    <span class="small text-muted" style="font-size: 11px;">Unique Onboarded Clients</span>
+                </div>
+                <div class="rounded-circle d-flex align-items-center justify-content-center bg-primary-subtle text-primary flex-shrink-0" style="width: 44px; height: 44px; font-size: 1.25rem;">
+                    <i class="fa-solid fa-user-check"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Total Units Sold Card -->
+    <div class="col-6 col-md-3">
+        <div class="card__wrapper p-3 h-100 border-0 shadow-sm" style="border-radius: 12px; border-left: 4px solid #7c3aed !important; background: #ffffff;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="overflow-hidden pe-1">
+                    <span class="text-uppercase fw-bold text-muted small" style="font-size: 11px; letter-spacing: 0.5px;">
+                        <i class="fa-solid fa-building-circle-check me-1" style="color: #7c3aed;"></i> Total Units Sold
+                    </span>
+                    <h3 class="fw-bold mb-0 mt-1" style="color: #0f172a; font-size: 1.6rem;">
+                        <?= number_format($totalUnitsSold ?? count($projects ?? [])) ?>
+                    </h3>
+                    <span class="small text-muted" style="font-size: 11px;">Total Booked Flats / Shares</span>
+                </div>
+                <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px; font-size: 1.25rem; background: #f3e8ff; color: #7c3aed;">
+                    <i class="fa-solid fa-hotel"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Total Sales Value Card -->
+    <div class="col-6 col-md-3">
+        <div class="card__wrapper p-3 h-100 border-0 shadow-sm" style="border-radius: 12px; border-left: 4px solid #059669 !important; background: #ffffff;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="overflow-hidden pe-1">
+                    <span class="text-uppercase fw-bold text-muted small" style="font-size: 11px; letter-spacing: 0.5px;">
+                        <i class="fa-solid fa-hand-holding-dollar me-1 text-success"></i> Total Value
+                    </span>
+                    <h3 class="fw-bold mb-0 mt-1" style="color: #0f172a; font-size: 1.35rem;">
+                        <?= format_bdt($totalPriceValue ?? 0) ?>
+                    </h3>
+                    <span class="small text-muted" style="font-size: 11px;">Combined Unit Prices</span>
+                </div>
+                <div class="rounded-circle d-flex align-items-center justify-content-center bg-success-subtle text-success flex-shrink-0" style="width: 44px; height: 44px; font-size: 1.25rem;">
+                    <i class="fa-solid fa-sack-dollar"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Total Collected Card -->
+    <div class="col-6 col-md-3">
+        <div class="card__wrapper p-3 h-100 border-0 shadow-sm" style="border-radius: 12px; border-left: 4px solid #0891b2 !important; background: #ffffff;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="overflow-hidden pe-1">
+                    <span class="text-uppercase fw-bold text-muted small" style="font-size: 11px; letter-spacing: 0.5px;">
+                        <i class="fa-solid fa-money-bill-trend-up me-1 text-info"></i> Total Collected
+                    </span>
+                    <h3 class="fw-bold mb-0 mt-1" style="color: #0f172a; font-size: 1.35rem;">
+                        <?= format_bdt($totalPaidAmount ?? 0) ?>
+                    </h3>
+                    <span class="small text-muted" style="font-size: 11px;">Booking + Reg Money Paid</span>
+                </div>
+                <div class="rounded-circle d-flex align-items-center justify-content-center bg-info-subtle text-info flex-shrink-0" style="width: 44px; height: 44px; font-size: 1.25rem;">
+                    <i class="fa-solid fa-receipt"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Informational Note Banner -->
+<div class="alert alert-light border shadow-xs d-flex align-items-center justify-content-between flex-wrap gap-2 py-2 px-3 mb-3" style="border-radius: 8px; font-size: 12.5px; background: #ffffff;">
+    <div class="text-muted d-flex align-items-center gap-2">
+        <i class="fa-solid fa-circle-info text-primary fs-6"></i>
+        <span><strong>ব্যাখ্যা:</strong> একজন ক্লায়েন্ট একাধিক ফ্ল্যাট/শেয়ার বুক করতে পারেন। <strong>Total Units Sold</strong> টেবিলে থাকা সর্বমোট বুকিং/ইউনিট সংখ্যা এবং <strong>Total Clients</strong> মোট ইউনিক ক্লায়েন্ট সংখ্যা নির্দেশ করে।</span>
+    </div>
+    <?php if (!empty($targetUserName)): ?>
+        <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1.5" style="border-radius: 6px; font-size: 12px;">
+            <i class="fa-solid fa-user-check me-1"></i> Executive: <strong><?= htmlspecialchars($targetUserName) ?></strong>
+        </span>
+    <?php endif; ?>
+</div>
+
 <!-- lead-select -->
-<div class="row  align-items-stretch">
+<div class="row align-items-stretch">
     <div class="desktop-only">
         <form action="" method="get">
-            <div class="row  mb-3 align-items-end">
+            <?php if (!empty($targetUserId) && $targetUserId != ($_SESSION['user']['id'] ?? 0)): ?>
+                <input type="hidden" name="assigned_user" value="<?= (int)$targetUserId ?>">
+            <?php endif; ?>
+            <div class="row mb-3 align-items-end">
 
                 <?php
                 $currentYear = date('Y');
                 $startYear   = $currentYear - 10;
-                $selectedYear = $slectedYear ?? '';
+                $selectedYear = $_GET['year'] ?? '';
                 ?>
                 <!-- Year Select -->
                 <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-12">
@@ -76,7 +175,7 @@ $show_breadcrumb = true;
                             <button type="submit" class="btn btn-secondary w-100 ">
                                 Search Client
                             </button>
-                            <a href="<?= $GLOBALS['base_url'] ?>/my-onboarding-projects" class="btn btn-success  w-100">
+                            <a href="<?= $GLOBALS['base_url'] ?>/my-onboarding-projects<?= (!empty($targetUserId) && $targetUserId != ($_SESSION['user']['id'] ?? 0)) ? '?assigned_user=' . (int)$targetUserId : '' ?>" class="btn btn-success w-100">
                                 Reset
                             </a>
                         </div>

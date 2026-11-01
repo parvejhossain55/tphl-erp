@@ -223,21 +223,24 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         ) AS lp_sum ON lp_sum.booking_id = lb.id
         WHERE lb.deleted_at IS NULL
           AND lb.booking_status IN ('booked', 'completed')
-          AND lb.sales_by_id = ?";
+          AND (l.deleted_at IS NULL OR l.id IS NULL)
+          AND (lb.sales_by_id = ? OR l.assigned_id = ?)";
 
-        $params = [$userId];
-        $types  = "i";
+        $params = [(int)$userId, (int)$userId];
+        $types  = "ii";
 
         if (!empty($year)) {
-            $sql .= " AND YEAR(lb.booking_date) = ?";
+            $sql .= " AND (YEAR(lb.booking_date) = ? OR (lb.booking_date IS NULL AND YEAR(lb.created_at) = ?))";
             $params[] = (int)$year;
-            $types   .= "i";
+            $params[] = (int)$year;
+            $types   .= "ii";
         }
 
         if (!empty($month)) {
-            $sql .= " AND MONTH(lb.booking_date) = ?";
+            $sql .= " AND (MONTH(lb.booking_date) = ? OR (lb.booking_date IS NULL AND MONTH(lb.created_at) = ?))";
             $params[] = (int)$month;
-            $types   .= "i";
+            $params[] = (int)$month;
+            $types   .= "ii";
         }
 
         $sql .= " ORDER BY lb.booking_date DESC, lb.id DESC";

@@ -127,6 +127,15 @@
                         </h6>
                         <div class="row">
                             <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">
+                                    <i class="bi bi-receipt me-1 text-primary"></i>Vendor Bill / Invoice # <span class="text-muted fw-normal small">(Optional)</span>
+                                </label>
+                                <input type="text" name="invoice_number" id="invoiceNumber" class="form-control" placeholder="e.g. INV-10293 or Bill #">
+                                <div class="text-muted small mt-1" style="font-size: 11px;">
+                                    Optional. If left blank, it will auto-assign from the selected Purchase Order.
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
                                 <label class="form-label fw-bold" id="invoiceLabel">Invoice Amount (৳) <span class="text-danger">*</span></label>
                                 <input type="number" step="0.01" name="invoice_amount" id="invoiceAmt"
                                        class="form-control form-control-lg text-end fw-bold"

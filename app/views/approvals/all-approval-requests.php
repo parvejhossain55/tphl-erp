@@ -296,10 +296,22 @@
             <form method="GET" action="<?= $base_url ?>/all-approval-requests" class="row align-items-center g-2">
                 <!-- Search Req # / Bill # -->
                 <div class="col-lg-3 col-md-6">
-                    <label class="form-label text-muted extra-small fw-bold text-uppercase mb-1">Search Req # / Bill #</label>
+                    <label class="form-label text-muted extra-small fw-bold text-uppercase mb-1">
+                        <i class="fa-solid fa-magnifying-glass text-primary me-1"></i>Search Req # / Bill #
+                    </label>
                     <div class="input-group input-group-sm">
-                        <input type="text" name="search" class="form-control form-control-sm" placeholder="e.g. REQ-947, CB-157..." value="<?= htmlspecialchars($filters['search'] ?? '') ?>">
-                        <button class="btn btn-primary" type="submit" title="Search"><i class="fa-solid fa-magnifying-glass"></i></button>
+                        <input type="text" name="search" id="topApprovalSearchInput" class="form-control form-control-sm" 
+                               placeholder="Search Req #, Bill #, Title, Requester..." 
+                               value="<?= htmlspecialchars($filters['search'] ?? '') ?>" autocomplete="off">
+                        <button class="btn btn-primary" type="submit" id="btnSubmitTopSearch" title="Search All Records in Database">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </button>
+                        <?php if (!empty($filters['search'])): ?>
+                            <a href="<?= $base_url ?>/all-approval-requests<?= !empty($filters['status']) ? '?status=' . urlencode($filters['status']) : '' ?><?= !empty($filters['department']) ? '&department=' . urlencode($filters['department']) : '' ?><?= !empty($filters['source_table']) ? '&source_table=' . urlencode($filters['source_table']) : '' ?>" 
+                               class="btn btn-outline-danger" title="Clear Search Filter">
+                                <i class="fa-solid fa-xmark"></i>
+                            </a>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -1419,12 +1431,27 @@
                 paging: false,
                 info: false,
                 order: [],
-                dom: '<"d-flex justify-content-between align-items-center p-3"f>rt',
+                dom: 'rt', // No search bar inside table card (removed "f")
                 language: {
                     search: "_INPUT_",
-                    searchPlaceholder: "Search loaded records..."
+                    zeroRecords: '<div class="text-center py-4 text-muted"><i class="fa-solid fa-magnifying-glass fs-4 d-block mb-2 text-secondary"></i>No matching approval records found.</div>'
                 }
             });
+
+            // Connect top general search bar to DataTables real-time filtering across all columns
+            const $topSearch = $('#topApprovalSearchInput');
+            if ($topSearch.length) {
+                // Initial client-side filter if search parameter was present on load
+                if ($topSearch.val()) {
+                    approvalTable.search($topSearch.val()).draw();
+                }
+
+                // Instant real-time filtering across ANY column key value as user types in top search bar!
+                $topSearch.on('input keyup search', function () {
+                    const query = $(this).val();
+                    approvalTable.search(query).draw();
+                });
+            }
 
             // Dynamically update top mini card counts when searching or filtering
             approvalTable.on('search.dt draw.dt', function () {

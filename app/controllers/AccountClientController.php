@@ -1372,7 +1372,7 @@ public function indexTwo($bookingId = null)
         if (empty($endDate)) $endDate = null;
 
         // Fetch matching clients (up to 1500 for printing)
-        $clients = $this->clientModel->getAllClients($selectedProjectId, $verificationStatus, $search, 1500, 0, $hasConflict, $dateType, $startDate, $endDate, $paymentType);
+        $clients = $this->clientModel->getAllClients($selectedProjectId, $verificationStatus, $search, null, 0, $hasConflict, $dateType, $startDate, $endDate, $paymentType);
 
         // Project Name
         $projectName = 'All Projects';

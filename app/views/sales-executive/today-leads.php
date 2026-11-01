@@ -735,13 +735,51 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                     $assignedRaw = (!empty($lead['assigned_at']) && $lead['assigned_at'] !== '0000-00-00 00:00:00' && $lead['assigned_at'] !== '0000-00-00')
                                         ? $lead['assigned_at']
                                         : (!empty($lead['updated_at']) && $lead['updated_at'] !== '0000-00-00 00:00:00' ? $lead['updated_at'] : $lead['created_at']);
+                                    $assignedTs = $assignedRaw ? strtotime($assignedRaw) : 0;
+                                    $todayDate = date('Y-m-d');
+
+                                    $leadId = (int)$lead['id'];
+                                    $myFollowUpCount = 0;
+                                    $prevFollowUpCount = 0;
+                                    $latestPrevStatus = '';
+                                    $prevAgentName = '';
+
+                                    if (!empty($followUpHistories[$leadId])) {
+                                        foreach ($followUpHistories[$leadId] as $fu) {
+                                            $fuBy = (int)($fu['created_by'] ?? 0);
+                                            $fuWith = (int)($fu['assigned_with'] ?? 0);
+                                            $fuCreatedTime = !empty($fu['created_at']) ? strtotime($fu['created_at']) : 0;
+                                            $fuDate = !empty($fu['follow_up_date']) ? $fu['follow_up_date'] : '';
+
+                                            $isMine = ($fuBy === $loggedUserId || $fuWith === $loggedUserId);
+                                            $isOnOrAfterAssign = ($assignedTs > 0 && $fuCreatedTime >= $assignedTs);
+                                            $isToday = ($fuDate === $todayDate || (!empty($fu['created_at']) && date('Y-m-d', $fuCreatedTime) === $todayDate));
+
+                                            if ($isMine && ($isOnOrAfterAssign || $isToday)) {
+                                                $myFollowUpCount++;
+                                            } else {
+                                                $prevFollowUpCount++;
+                                                if (empty($latestPrevStatus) && !empty($fu['lead_status'])) {
+                                                    $latestPrevStatus = $fu['lead_status'];
+                                                    $prevAgentName = $fu['follow_up_by_name'] ?? '';
+                                                }
+                                            }
+                                        }
+                                    }
+                                    $totalHistoryCount = !empty($followUpHistories[$leadId]) ? count($followUpHistories[$leadId]) : 0;
+                                    $hasPrevFollowUp = ($prevFollowUpCount > 0);
                                     ?>
                                     <td>
                                         <div class="fw-medium"><?= $assignedRaw ? date('d F, Y, h:i A', strtotime($assignedRaw)) : '' ?></div>
-                                        <div class="mt-1">
-                                            <span class="badge bg-secondary-subtle text-dark border px-2 py-1" style="font-size: 11px;">
+                                        <div class="mt-1 d-flex align-items-center gap-1 flex-wrap">
+                                            <span class="badge bg-secondary-subtle text-dark border px-2 py-0.5" style="font-size: 11px;">
                                                 <i class="bi bi-person-check me-1"></i><?= htmlspecialchars($lead['assigned_by_name'] ?? 'System') ?>
                                             </span>
+                                            <?php if ($hasPrevFollowUp): ?>
+                                                <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-1.5 py-0.5" style="font-size: 9px;" title="This lead has previous follow-ups from earlier assignment">
+                                                    <i class="bi bi-arrow-repeat me-1"></i>Re-assigned
+                                                </span>
+                                            <?php endif; ?>
                                         </div>
                                     </td>
                                     
@@ -836,19 +874,30 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                         </div>
                                     </td>
                                     <?php
-                                    $statusVal = $lead['lead_type'] ?? 'Pending';
+                                    $rawStatusVal = $lead['lead_type'] ?? 'Pending';
 
-                                    $class = '';
-                                    if ($statusVal == 'Prospect' || $statusVal == 'High Prospect') {
-                                        $class = 'bg-received';
-                                    } elseif ($statusVal == 'Not Interested' || $statusVal == "Don't Call Again" || $statusVal == 'Cold' || $statusVal == 'Refund') {
-                                        $class = 'bg-not-received';
-                                    } elseif ($statusVal == 'Warm') {
-                                        $class = 'bg-warning text-dark';
-                                    } elseif ($statusVal == 'Hot') {
-                                        $class = 'bg-danger text-white';
-                                    } elseif ($statusVal == 'Irrelevant') {
-                                        $class = 'bg-dark text-white';
+                                    if (!$isContacted) {
+                                        if ($hasPrevFollowUp) {
+                                            $statusVal = 'Pending Contact';
+                                            $class = 'bg-warning-subtle text-warning-emphasis border border-warning-subtle fw-semibold';
+                                        } else {
+                                            $statusVal = 'Pending';
+                                            $class = 'bg-secondary-subtle text-secondary';
+                                        }
+                                    } else {
+                                        $statusVal = $rawStatusVal;
+                                        $class = '';
+                                        if ($statusVal == 'Prospect' || $statusVal == 'High Prospect') {
+                                            $class = 'bg-received';
+                                        } elseif ($statusVal == 'Not Interested' || $statusVal == "Don't Call Again" || $statusVal == 'Cold' || $statusVal == 'Refund') {
+                                            $class = 'bg-not-received';
+                                        } elseif ($statusVal == 'Warm') {
+                                            $class = 'bg-warning text-dark';
+                                        } elseif ($statusVal == 'Hot') {
+                                            $class = 'bg-danger text-white';
+                                        } elseif ($statusVal == 'Irrelevant') {
+                                            $class = 'bg-dark text-white';
+                                        }
                                     }
                                     ?>
 
@@ -858,6 +907,13 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                             data-lead-id="<?= $lead['id'] ?>"
                                             value="<?= htmlspecialchars($statusVal) ?>"
                                             readonly style="cursor: default; pointer-events: none;">
+                                        <?php if (!$isContacted && $hasPrevFollowUp): ?>
+                                            <div class="prev-status-hint mt-1 text-center" style="line-height: 1.1;" title="Previous status before re-assignment">
+                                                <span class="badge bg-light text-muted border px-1.5 py-0.5" style="font-size: 10px; font-weight: normal;">
+                                                    <i class="bi bi-clock-history me-1 text-secondary"></i>Prev: <strong class="text-dark"><?= htmlspecialchars($latestPrevStatus ?: $rawStatusVal) ?></strong><?= !empty($prevAgentName) ? ' (' . htmlspecialchars(explode(' ', trim($prevAgentName))[0]) . ')' : '' ?>
+                                                </span>
+                                            </div>
+                                        <?php endif; ?>
                                     </td>
 
 
@@ -875,9 +931,9 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                                 data-bs-target="#createFollowUpModal"
                                                 data-lead-id="<?= $lead['id'] ?>">
                                                 Follow Up
-                                                <?php if (!empty($followUpCounts[$lead['id']])): ?>
-                                                    <span class="action-badge" style="">
-                                                        <?= $followUpCounts[$lead['id']] ?>
+                                                <?php if (!empty($myFollowUpCount)): ?>
+                                                    <span class="action-badge">
+                                                        <?= $myFollowUpCount ?>
                                                     </span>
                                                 <?php endif; ?>
                                             </button>
@@ -888,8 +944,9 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                                     data-bs-target="#followupHistoryModal"
                                                     data-lead-id="<?= $lead['id'] ?>"
                                                     data-history="<?= htmlspecialchars(json_encode($followUpHistories[$lead['id']] ?? []), ENT_QUOTES, 'UTF-8') ?>"
+                                                    title="<?= $totalHistoryCount > 0 ? $totalHistoryCount . ' follow-up logs found' : 'No history yet' ?>"
                                                     style="white-space:nowrap; padding: 0.25rem 0.5rem; color: #fff;">
-                                                <i class="bi bi-clock-history"></i> History
+                                                <i class="bi bi-clock-history me-1"></i>History<?php if ($totalHistoryCount > 0): ?> <span class="badge bg-white text-dark ms-1" style="font-size: 10px;"><?= $totalHistoryCount ?></span><?php endif; ?>
                                             </button>
 
                                             <!-- Delete Request -->
@@ -1121,10 +1178,46 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                         $mAssignedRaw = (!empty($lead['assigned_at']) && $lead['assigned_at'] !== '0000-00-00 00:00:00' && $lead['assigned_at'] !== '0000-00-00')
                             ? $lead['assigned_at']
                             : (!empty($lead['updated_at']) && $lead['updated_at'] !== '0000-00-00 00:00:00' ? $lead['updated_at'] : $lead['created_at']);
+                        $mAssignedTs = $mAssignedRaw ? strtotime($mAssignedRaw) : 0;
+                        $todayDate = date('Y-m-d');
+
+                        $mLeadId = (int)$lead['id'];
+                        $mMyFollowUpCount = 0;
+                        $mPrevFollowUpCount = 0;
+                        $mLatestPrevStatus = '';
+                        $mPrevAgentName = '';
+
+                        if (!empty($followUpHistories[$mLeadId])) {
+                            foreach ($followUpHistories[$mLeadId] as $fu) {
+                                $fuBy = (int)($fu['created_by'] ?? 0);
+                                $fuWith = (int)($fu['assigned_with'] ?? 0);
+                                $fuCreatedTime = !empty($fu['created_at']) ? strtotime($fu['created_at']) : 0;
+                                $fuDate = !empty($fu['follow_up_date']) ? $fu['follow_up_date'] : '';
+
+                                $isMine = ($fuBy === $loggedUserId || $fuWith === $loggedUserId);
+                                $isOnOrAfterAssign = ($mAssignedTs > 0 && $fuCreatedTime >= $mAssignedTs);
+                                $isToday = ($fuDate === $todayDate || (!empty($fu['created_at']) && date('Y-m-d', $fuCreatedTime) === $todayDate));
+
+                                if ($isMine && ($isOnOrAfterAssign || $isToday)) {
+                                    $mMyFollowUpCount++;
+                                } else {
+                                    $mPrevFollowUpCount++;
+                                    if (empty($mLatestPrevStatus) && !empty($fu['lead_status'])) {
+                                        $mLatestPrevStatus = $fu['lead_status'];
+                                        $mPrevAgentName = $fu['follow_up_by_name'] ?? '';
+                                    }
+                                }
+                            }
+                        }
+                        $mTotalHistoryCount = !empty($followUpHistories[$mLeadId]) ? count($followUpHistories[$mLeadId]) : 0;
+                        $mHasPrevFollowUp = ($mPrevFollowUpCount > 0);
                         ?>
                         <?php if ($mAssignedRaw): ?>
-                        <div class="text-muted small mt-1">
-                            <i class="bi bi-calendar-event me-1"></i>Assigned: <?= date('d M, Y, h:i A', strtotime($mAssignedRaw)) ?>
+                        <div class="text-muted small mt-1 d-flex align-items-center gap-1 flex-wrap">
+                            <span><i class="bi bi-calendar-event me-1"></i>Assigned: <?= date('d M, Y, h:i A', strtotime($mAssignedRaw)) ?></span>
+                            <?php if ($mHasPrevFollowUp): ?>
+                                <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-1.5 py-0.5" style="font-size: 9px;"><i class="bi bi-arrow-repeat me-1"></i>Re-assigned</span>
+                            <?php endif; ?>
                         </div>
                         <?php endif; ?>
                     </div>
@@ -1142,8 +1235,8 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                             data-bs-target="#createFollowUpModal"
                             data-lead-id="<?= $lead['id'] ?>">
                             <span>Follow Up</span>
-                            <?php if (!empty($followUpCounts[$lead['id']])): ?>
-                                <span class="action-badge badge bg-white text-dark rounded-circle" style="font-size: 10px; width: 18px; height: 18px;  align-items: center; justify-content: center;"><?= $followUpCounts[$lead['id']] ?></span>
+                            <?php if (!empty($mMyFollowUpCount)): ?>
+                                <span class="action-badge badge bg-white text-dark rounded-circle" style="font-size: 10px; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center;"><?= $mMyFollowUpCount ?></span>
                             <?php endif; ?>
                         </button>
 
@@ -1153,7 +1246,7 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                 data-lead-id="<?= $lead['id'] ?>"
                                 data-history="<?= htmlspecialchars(json_encode($followUpHistories[$lead['id']] ?? []), ENT_QUOTES, 'UTF-8') ?>"
                                 style="color: #fff;">
-                            <i class="bi bi-clock-history me-1"></i> History
+                            <i class="bi bi-clock-history me-1"></i> History<?php if (!empty($mTotalHistoryCount)): ?> <span class="badge bg-white text-dark ms-1" style="font-size: 10px;"><?= $mTotalHistoryCount ?></span><?php endif; ?>
                         </button>
 
                         <?php if (!empty($deleteRequests[$lead['id']])): ?>
@@ -1211,20 +1304,38 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                 <div class="mt-2">
                     <div class="info-label">Last Lead Status</div>
                     <?php
-                    $statusVal = $lead['lead_type'] ?? 'Pending';
-                    $statusClass = '';
-                    if (in_array($statusVal, ['Prospect', 'High Prospect'])) {
-                        $statusClass = 'bg-received';
-                    } elseif (in_array($statusVal, ['Not Interested', "Don't Call Again", 'Cold', 'Refund'])) {
-                        $statusClass = 'bg-not-received';
-                    } elseif ($statusVal === 'Irrelevant') {
-                        $statusClass = 'bg-dark text-white';
+                    $mRawStatusVal = $lead['lead_type'] ?? 'Pending';
+                    if (!$isContacted) {
+                        if ($mHasPrevFollowUp) {
+                            $mStatusVal = 'Pending Contact';
+                            $mStatusClass = 'bg-warning-subtle text-warning-emphasis border border-warning-subtle fw-semibold';
+                        } else {
+                            $mStatusVal = 'Pending';
+                            $mStatusClass = 'bg-secondary-subtle text-secondary';
+                        }
+                    } else {
+                        $mStatusVal = $mRawStatusVal;
+                        $mStatusClass = '';
+                        if (in_array($mStatusVal, ['Prospect', 'High Prospect'])) {
+                            $mStatusClass = 'bg-received';
+                        } elseif (in_array($mStatusVal, ['Not Interested', "Don't Call Again", 'Cold', 'Refund'])) {
+                            $mStatusClass = 'bg-not-received';
+                        } elseif ($mStatusVal === 'Irrelevant') {
+                            $mStatusClass = 'bg-dark text-white';
+                        }
                     }
                     ?>
                     <input type="text"
-                        class="<?= $statusClass ?> form-control form-control-sm select-form mt-1 text-center"
-                        value="<?= htmlspecialchars($statusVal) ?>"
+                        class="<?= $mStatusClass ?> form-control form-control-sm select-form mt-1 text-center"
+                        value="<?= htmlspecialchars($mStatusVal) ?>"
                         readonly style="cursor: default; pointer-events: none;">
+                    <?php if (!$isContacted && $mHasPrevFollowUp): ?>
+                        <div class="prev-status-hint mt-1 text-center" style="font-size: 10px;">
+                            <span class="badge bg-light text-muted border px-1.5 py-0.5">
+                                <i class="bi bi-clock-history me-1 text-secondary"></i>Prev: <strong class="text-dark"><?= htmlspecialchars($mLatestPrevStatus ?: $mRawStatusVal) ?></strong><?= !empty($mPrevAgentName) ? ' (' . htmlspecialchars(explode(' ', trim($mPrevAgentName))[0]) . ')' : '' ?>
+                            </span>
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <!-- Transfer Leads Badge & Transfer From -->
@@ -2589,12 +2700,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         </tr>`;
                     });
                     
-                    // Update the badge count on the main page silently
-                    let badge = $(`.create-followup-btn[data-lead-id="${leadId}"] .action-badge`);
-                    if(badge.length > 0) {
-                        badge.text(data.length);
-                    } else {
-                        $(`.create-followup-btn[data-lead-id="${leadId}"]`).append(`<span class="action-badge">${data.length}</span>`);
+                    // Update the History badge on the main page silently
+                    let histBadge = $(`.view-history-btn[data-lead-id="${leadId}"] .badge`);
+                    if(histBadge.length > 0) {
+                        histBadge.text(data.length);
+                    } else if (data.length > 0) {
+                        $(`.view-history-btn[data-lead-id="${leadId}"]`).append(`<span class="badge bg-white text-dark ms-1" style="font-size: 10px;">${data.length}</span>`);
                     }
                 } else {
                     html = '<tr><td colspan="14" class="text-center text-muted">No history found.</td></tr>';
@@ -2746,8 +2857,18 @@ document.addEventListener('DOMContentLoaded', function() {
                             else if (savedLeadStatus === 'Warm') bCls = 'bg-warning text-dark';
                             else if (savedLeadStatus === 'Irrelevant') bCls = 'bg-dark text-white';
                             else if (savedLeadStatus === 'Not Interested' || savedLeadStatus === "Don't Call Again" || savedLeadStatus === 'Cold' || savedLeadStatus === 'Refund') bCls = 'bg-not-received';
-                            inp.val(savedLeadStatus).removeClass('bg-received bg-not-received bg-warning text-dark bg-danger text-white bg-dark').addClass(bCls);
+                            inp.val(savedLeadStatus).removeClass('bg-received bg-not-received bg-warning text-dark bg-danger text-white bg-dark bg-warning-subtle text-warning-emphasis border border-warning-subtle fw-semibold').addClass(bCls);
+                            $(`#lead-${leadId} .prev-status-hint`).remove();
                         }
+                    }
+
+                    // Update my follow-up count badge on the Follow Up button
+                    let myBadge = $(`.create-followup-btn[data-lead-id="${leadId}"] .action-badge`);
+                    if (myBadge.length > 0) {
+                        let curCount = parseInt(myBadge.text().trim()) || 0;
+                        myBadge.text(curCount + 1);
+                    } else {
+                        $(`.create-followup-btn[data-lead-id="${leadId}"]`).append('<span class="action-badge">1</span>');
                     }
 
                     resetFormToCreateMode();
