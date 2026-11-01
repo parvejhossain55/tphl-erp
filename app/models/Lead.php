@@ -443,13 +443,21 @@ class Lead extends Model
         if (!empty($teamId)) {
             if (isset($_SESSION['user']['role_id']) && !in_array($_SESSION['user']['role_id'], [1, 3, 9, 32, 33, 34, 35])) {
                 $loggedInUserId = $_SESSION['user']['id'] ?? 0;
-                $sql .= " AND (l.team_id = ? OR l.assigned_id = ? OR l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?))";
+                $sql .= " AND (
+                    (l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND (l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?) OR l.assigned_id = ?))
+                    OR
+                    ((l.assigned_id IS NULL OR l.assigned_id = 0) AND l.team_id = ?)
+                )";
                 $params[] = $teamId;
                 $params[] = $loggedInUserId;
                 $params[] = $teamId;
                 $types .= "iii";
             } else {
-                $sql .= " AND (l.team_id = ? OR l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?))";
+                $sql .= " AND (
+                    (l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?))
+                    OR
+                    ((l.assigned_id IS NULL OR l.assigned_id = 0) AND l.team_id = ?)
+                )";
                 $params[] = $teamId;
                 $params[] = $teamId;
                 $types .= "ii";
@@ -705,7 +713,7 @@ class Lead extends Model
             } elseif ($filter_card === 'hot_leads') {
                 $sql .= " AND l.lead_type = 'Hot'";
             } elseif ($filter_card === 'contacted_leads') {
-                $sql .= " AND (
+                $sql .= " AND l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND (
                     l.last_lead_action IN ('contacted', 'follow up', 'booked', 'visited')
                     OR l.call_status IN ('called', 'received')
                     OR (l.communication_type IS NOT NULL AND l.communication_type != '' AND LOWER(l.communication_type) != 'not select')
@@ -721,7 +729,8 @@ class Lead extends Model
                     )
                 )";
             } elseif ($filter_card === 'not_contacted_leads') {
-                $sql .= " AND (l.last_lead_action IS NULL OR l.last_lead_action NOT IN ('contacted', 'follow up', 'booked', 'visited'))
+                $sql .= " AND l.assigned_id IS NOT NULL AND l.assigned_id > 0
+                          AND (l.last_lead_action IS NULL OR l.last_lead_action NOT IN ('contacted', 'follow up', 'booked', 'visited'))
                           AND (l.call_status IS NULL OR l.call_status NOT IN ('called', 'received'))
                           AND (l.communication_type IS NULL OR l.communication_type = '' OR LOWER(l.communication_type) = 'not select')
                           AND NOT EXISTS (
@@ -870,19 +879,29 @@ class Lead extends Model
         $params = [];
         $types  = "";
 
-        // Team filter: check lead team, assigned executive's team, or closing sales executive's team
+        // Team filter: check assigned executive's team, or closing sales executive's team, or unassigned lead's team
         if (!empty($teamId)) {
             $loggedInRole = $_SESSION['user']['role_id'] ?? 0;
             if (!in_array((int)$loggedInRole, [1, 3, 9, 32, 33, 34, 35])) {
                 $loggedInUserId = $_SESSION['user']['id'] ?? 0;
-                $sql .= " AND (l.team_id = ? OR l.assigned_id = ? OR l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?) OR lb.sales_by_id = ?)";
+                $sql .= " AND (
+                    (l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND (l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?) OR l.assigned_id = ?))
+                    OR ((l.assigned_id IS NULL OR l.assigned_id = 0) AND l.team_id = ?)
+                    OR lb.sales_by_id = ?
+                    OR lb.sales_by_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?)
+                )";
                 $params[] = $teamId;
                 $params[] = $loggedInUserId;
                 $params[] = $teamId;
                 $params[] = $loggedInUserId;
-                $types .= "iiii";
+                $params[] = $teamId;
+                $types .= "iiiii";
             } else {
-                $sql .= " AND (l.team_id = ? OR l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?) OR lb.sales_by_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?))";
+                $sql .= " AND (
+                    (l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?))
+                    OR ((l.assigned_id IS NULL OR l.assigned_id = 0) AND l.team_id = ?)
+                    OR lb.sales_by_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?)
+                )";
                 $params[] = $teamId;
                 $params[] = $teamId;
                 $params[] = $teamId;
@@ -1081,13 +1100,21 @@ class Lead extends Model
         if (!empty($teamId)) {
             if (isset($_SESSION['user']['role_id']) && !in_array($_SESSION['user']['role_id'], [1, 3, 9, 32, 33, 34, 35])) {
                 $loggedInUserId = $_SESSION['user']['id'] ?? 0;
-                $sql .= " AND (l.team_id = ? OR l.assigned_id = ? OR l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?))";
+                $sql .= " AND (
+                    (l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND (l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?) OR l.assigned_id = ?))
+                    OR
+                    ((l.assigned_id IS NULL OR l.assigned_id = 0) AND l.team_id = ?)
+                )";
                 $params[] = $teamId;
                 $params[] = $loggedInUserId;
                 $params[] = $teamId;
                 $types .= "iii";
             } else {
-                $sql .= " AND (l.team_id = ? OR l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?))";
+                $sql .= " AND (
+                    (l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?))
+                    OR
+                    ((l.assigned_id IS NULL OR l.assigned_id = 0) AND l.team_id = ?)
+                )";
                 $params[] = $teamId;
                 $params[] = $teamId;
                 $types .= "ii";
@@ -1342,7 +1369,7 @@ class Lead extends Model
             } elseif ($filter_card === 'hot_leads') {
                 $sql .= " AND l.lead_type = 'Hot'";
             } elseif ($filter_card === 'contacted_leads') {
-                $sql .= " AND (
+                $sql .= " AND l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND (
                     l.last_lead_action IN ('contacted', 'follow up', 'booked', 'visited')
                     OR l.call_status IN ('called', 'received')
                     OR (l.communication_type IS NOT NULL AND l.communication_type != '' AND LOWER(l.communication_type) != 'not select')
@@ -1358,7 +1385,8 @@ class Lead extends Model
                     )
                 )";
             } elseif ($filter_card === 'not_contacted_leads') {
-                $sql .= " AND (l.last_lead_action IS NULL OR l.last_lead_action NOT IN ('contacted', 'follow up', 'booked', 'visited'))
+                $sql .= " AND l.assigned_id IS NOT NULL AND l.assigned_id > 0
+                          AND (l.last_lead_action IS NULL OR l.last_lead_action NOT IN ('contacted', 'follow up', 'booked', 'visited'))
                           AND (l.call_status IS NULL OR l.call_status NOT IN ('called', 'received'))
                           AND (l.communication_type IS NULL OR l.communication_type = '' OR LOWER(l.communication_type) = 'not select')
                           AND NOT EXISTS (
