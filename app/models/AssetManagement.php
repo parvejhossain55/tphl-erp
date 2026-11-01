@@ -955,7 +955,10 @@ class AssetManagement
                         $conds[] = "(pea.dept_head_status IN ('approved', 'not_required') AND pea.it_head_status = 'pending')";
                     }
 
-                    if (!empty($filters['is_operations'])) {
+                    $roleId = (int)($filters['role_id'] ?? 0);
+                    $isOpHead = in_array($roleId, [20, 32], true) || !empty($filters['is_op_head']);
+
+                    if (!empty($filters['is_operations']) || $isOpHead) {
                         $conds[] = "(pea.dept_head_status IN ('approved', 'not_required') AND pea.it_head_status IN ('approved', 'not_required') AND pea.operations_status = 'pending')";
                     }
                     if (!empty($filters['is_purchase_head'])) {
@@ -965,11 +968,10 @@ class AssetManagement
                         $conds[] = "(pea.purchase_head_status = 'approved' AND pea.qc_audit_status = 'pending')";
                     }
                     if (!empty($filters['is_management'])) {
-                        $conds[] = "(pea.qc_audit_status = 'approved' AND pea.mgmt_status = 'pending')";
+                        $conds[] = "(pea.qc_audit_status = 'approved' AND pea.mgmt_status = 'pending' AND (pea.total_price <= 100000.01 OR ar.op_head_status = 'approved'))";
                     }
-                    $roleId = (int)($filters['role_id'] ?? 0);
-                    if ($roleId === 32) {
-                        $conds[] = "(pea.total_price <= 100000 AND pea.qc_audit_status = 'approved' AND pea.mgmt_status = 'pending')";
+                    if ($isOpHead) {
+                        $conds[] = "(pea.qc_audit_status = 'approved' AND pea.mgmt_status = 'pending' AND (pea.total_price <= 100000.01 OR ar.op_head_status IS NULL OR ar.op_head_status != 'approved'))";
                     }
                     if (!empty($filters['is_accounts'])) {
                         $conds[] = "(pea.mgmt_status = 'approved' AND pea.payment_status = 'unpaid')";

@@ -165,41 +165,54 @@
                                     </td>
                                     <!-- Req # & Date -->
                                     <td>
+                                        <?php
+                                        // Standardized Requisition / Bill ID for all modules
+                                        $displayReqCode = '';
+                                        if ($sourceTable === 'vendor_payment_requests' || $sourceTable === 'vendor_payments') {
+                                            $displayReqCode = 'VPR-' . (int)$req['source_id'];
+                                        } elseif ($sourceTable === 'contractor_bill_requests' || $sourceTable === 'contractor_bills') {
+                                            $displayReqCode = 'CB-' . (int)$req['source_id'];
+                                        } elseif ($sourceTable === 'fund_requisitions' || $sourceTable === 'operational_fund_requests') {
+                                            $displayReqCode = 'REQ-' . (int)$req['source_id'];
+                                        } elseif ($sourceTable === 'con_labor_requisitions' || $sourceTable === 'labor_requisitions') {
+                                            $displayReqCode = !empty($req['requisition_no']) ? htmlspecialchars($req['requisition_no']) : ('LR-' . (int)$req['source_id']);
+                                        } elseif ($sourceTable === 'project_other_costs') {
+                                            $displayReqCode = 'POC-' . (int)$req['source_id'];
+                                        } elseif ($sourceTable === 'project_extra_assets' || $sourceTable === 'purchase_requests') {
+                                            $displayReqCode = 'PR-' . (int)$req['source_id'];
+                                        } elseif ($sourceTable === 'land_fund_requisitions' || $sourceTable === 'con_land_requisitions') {
+                                            $displayReqCode = 'LFR-' . (int)$req['source_id'];
+                                        } elseif ($sourceTable === 'cashout_requests') {
+                                            $displayReqCode = 'CSH-' . (int)$req['source_id'];
+                                        } elseif ($sourceTable === 'expense_adjustments') {
+                                            $displayReqCode = 'ADJ-' . (int)$req['source_id'];
+                                        } elseif ($sourceTable === 'client_refund_requests') {
+                                            $displayReqCode = 'REF-' . (int)$req['source_id'];
+                                        } elseif ($sourceTable === 'payslips' || $sourceTable === 'salary_requests') {
+                                            $displayReqCode = 'PAY-' . (int)$req['source_id'];
+                                        } elseif ($sourceTable === 'project_incentive_claims') {
+                                            $displayReqCode = 'INC-' . (int)$req['source_id'];
+                                        } elseif ($sourceTable === 'advance_salaries') {
+                                            $displayReqCode = 'ADV-' . (int)$req['source_id'];
+                                        } elseif ($sourceTable === 'lead_bookings') {
+                                            $displayReqCode = 'BK-' . (int)$req['source_id'];
+                                        } elseif ($sourceTable === 'con_work_orders') {
+                                            $displayReqCode = 'WO-' . (int)$req['source_id'];
+                                        } else {
+                                            $displayReqCode = !empty($req['source_id']) ? ('#' . (int)$req['source_id']) : ('#REQ-' . str_pad($req['id'], 5, '0', STR_PAD_LEFT));
+                                        }
+                                        ?>
                                         <?php if (!empty($targetUrl)): ?>
                                             <a href="<?= $targetUrl ?>" class="text-decoration-none d-block">
-                                                <?php if ($sourceTable === 'vendor_payment_requests'): ?>
-                                                    <span class="fw-bold text-dark">VPR-<?= (int)$req['source_id'] ?></span>
-                                                    <?php if (!empty($req['po_number'])): ?>
-                                                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded px-1 ms-1 extra-small">PO-<?= htmlspecialchars($req['po_number']) ?></span>
-                                                    <?php endif; ?>
-                                                <?php elseif ($sourceTable === 'expense_adjustments'): ?>
-                                                    <span class="fw-bold text-dark">ADJ-<?= (int)$req['source_id'] ?></span>
-                                                <?php elseif (!empty($req['po_number'])): ?>
-                                                    <span class="fw-bold text-success">PO-
-                                                        <?= htmlspecialchars($req['po_number']) ?>
-                                                    </span>
-                                                <?php else: ?>
-                                                    <span class="fw-bold text-dark">#REQ-
-                                                        <?= str_pad($req['id'], 5, '0', STR_PAD_LEFT) ?>
-                                                    </span>
+                                                <span class="fw-bold text-dark"><?= $displayReqCode ?></span>
+                                                <?php if ($sourceTable === 'vendor_payment_requests' && !empty($req['po_number'])): ?>
+                                                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded px-1 ms-1 extra-small">PO-<?= htmlspecialchars($req['po_number']) ?></span>
                                                 <?php endif; ?>
                                             </a>
                                         <?php else: ?>
-                                            <?php if ($sourceTable === 'vendor_payment_requests'): ?>
-                                                <span class="fw-bold text-dark">VPR-<?= (int)$req['source_id'] ?></span>
-                                                <?php if (!empty($req['po_number'])): ?>
-                                                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded px-1 ms-1 extra-small">PO-<?= htmlspecialchars($req['po_number']) ?></span>
-                                                <?php endif; ?>
-                                            <?php elseif ($sourceTable === 'expense_adjustments'): ?>
-                                                <span class="fw-bold text-dark d-block">ADJ-<?= (int)$req['source_id'] ?></span>
-                                            <?php elseif (!empty($req['po_number'])): ?>
-                                                <span class="fw-bold text-success d-block">PO-
-                                                    <?= htmlspecialchars($req['po_number']) ?>
-                                                </span>
-                                            <?php else: ?>
-                                                <span class="fw-bold text-dark d-block">#REQ-
-                                                    <?= str_pad($req['id'], 5, '0', STR_PAD_LEFT) ?>
-                                                </span>
+                                            <span class="fw-bold text-dark d-block"><?= $displayReqCode ?></span>
+                                            <?php if ($sourceTable === 'vendor_payment_requests' && !empty($req['po_number'])): ?>
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded px-1 ms-1 extra-small">PO-<?= htmlspecialchars($req['po_number']) ?></span>
                                             <?php endif; ?>
                                         <?php endif; ?>
                                         <span class="text-muted extra-small">

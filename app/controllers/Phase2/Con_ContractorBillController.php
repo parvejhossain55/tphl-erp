@@ -153,9 +153,56 @@ class Con_ContractorBillController extends Controller
             }
         }
 
-        $selectedContractorId = !empty($_GET['contractor_id']) ? (int)$_GET['contractor_id'] : null;
+        $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') 
+                  || (isset($_GET['ajax']) && $_GET['ajax'] == '1');
 
-        $bills = $this->billModel->getAllWithRelations($filterUserId, $filterProjectIds, $selectedContractorId);
+        $search               = trim($_GET['search'] ?? '');
+        $selectedProjectId    = !empty($_GET['project_id']) ? (int)$_GET['project_id'] : null;
+        $selectedCreatorId    = !empty($_GET['created_by']) ? (int)$_GET['created_by'] : null;
+        $selectedContractorId = !empty($_GET['contractor_id']) ? (int)$_GET['contractor_id'] : null;
+        $status               = trim($_GET['status'] ?? 'All');
+
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $perPageParam = $_GET['per_page'] ?? 25;
+        if ($perPageParam === 'all' || $perPageParam === '-1') {
+            $limit = 0;
+            $perPage = 'all';
+        } else {
+            $limit = in_array((int)$perPageParam, [10, 25, 50, 100], true) ? (int)$perPageParam : 25;
+            $perPage = $limit;
+        }
+        $offset = ($limit > 0) ? ($page - 1) * $limit : 0;
+
+        $filters = [
+            'role_user_id'     => $filterUserId,
+            'role_project_ids' => $filterProjectIds,
+            'search'           => $search,
+            'project_id'       => $selectedProjectId,
+            'created_by'       => $selectedCreatorId,
+            'contractor_id'    => $selectedContractorId,
+            'status'           => $status
+        ];
+
+        $totalRecords = $this->billModel->getFilteredBillsCount($filters);
+        $totalPages   = ($limit > 0 && $totalRecords > 0) ? (int)ceil($totalRecords / $limit) : 1;
+        if ($page > $totalPages && $totalPages > 0) {
+            $page = $totalPages;
+            $offset = ($limit > 0) ? ($page - 1) * $limit : 0;
+        }
+
+        $bills        = $this->billModel->getFilteredBills($filters, $limit, $offset);
+        $statusCounts = $this->billModel->getStatusCounts($filterUserId, $filterProjectIds);
+
+        // Fetch distinct filter options (always populated with all valid options for filtering)
+        $projects = $this->billModel->getDistinctProjects();
+        if (empty($projects)) {
+            $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+        }
+
+        $creators = $this->billModel->getDistinctCreators();
+        if (empty($creators)) {
+            $creators = $this->db->query("SELECT DISTINCT u.id, u.full_name FROM users u JOIN contractor_bill_requests cbr ON cbr.created_by = u.id ORDER BY u.full_name ASC")->fetch_all(MYSQLI_ASSOC);
+        }
 
         // Fetch contractors with trade/expertise for search & filter
         $contractors = $this->db->query("
@@ -165,14 +212,122 @@ class Con_ContractorBillController extends Controller
             ORDER BY name ASC
         ")->fetch_all(MYSQLI_ASSOC);
 
+        $paginationHtml = $this->generateAjaxPagination($page, $totalPages, $totalRecords, $limit > 0 ? $limit : $totalRecords, 'loadBillsPage');
+
+        $startEntry = $totalRecords > 0 ? ($offset + 1) : 0;
+        $endEntry   = ($limit > 0) ? min($totalRecords, $offset + $limit) : $totalRecords;
+        $infoText   = "Showing {$startEntry} to {$endEntry} of {$totalRecords} entries";
+
+        if ($isAjax) {
+            ob_start();
+            $base_url = $GLOBALS['base_url'] ?? '/TPHL-ERP';
+            $userRole = $this->userRole;
+            include dirname(__DIR__, 2) . '/views/phase2/contractor-bills/partials/bill_rows.php';
+            $tableHtml = ob_get_clean();
+
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success'         => true,
+                'table_html'      => $tableHtml,
+                'pagination_html' => $paginationHtml,
+                'info_text'       => $infoText,
+                'total_records'   => $totalRecords,
+                'total_pages'     => $totalPages,
+                'current_page'    => $page,
+                'status_counts'   => $statusCounts
+            ]);
+            exit;
+        }
+
         $this->view('phase2/contractor-bills/bill-lists', [
             'current_route'        => 'con-contractor-bills',
             'page_title'           => 'Contractor Bill Requests',
             'bills'                => $bills,
             'userRole'             => $this->userRole,
             'contractors'          => $contractors,
+            'projects'             => $projects,
+            'creators'             => $creators,
+            'statusCounts'         => $statusCounts,
+            'filters'              => $filters,
+            'paginationHtml'       => $paginationHtml,
+            'infoText'             => $infoText,
+            'totalRecords'         => $totalRecords,
+            'totalPages'           => $totalPages,
+            'currentPage'          => $page,
+            'perPage'              => $perPage,
+            'offset'               => $offset,
             'selectedContractorId' => $selectedContractorId,
+            'selectedProjectId'    => $selectedProjectId,
+            'selectedCreatorId'    => $selectedCreatorId,
         ]);
+    }
+
+    /**
+     * Generate AJAX pagination HTML
+     */
+    public function generateAjaxPagination($currentPage, $totalPages, $totalRecords, $perPage, $callbackFn = 'loadBillsPage')
+    {
+        $perPage = (int)$perPage;
+        if ($perPage <= 0 || ($totalPages <= 1 && $totalRecords <= $perPage)) {
+            return '';
+        }
+
+        $startEntry = $totalRecords > 0 ? (($currentPage - 1) * $perPage) + 1 : 0;
+        $endEntry = min($totalRecords, $currentPage * $perPage);
+
+        $html = '<div class="d-flex flex-wrap justify-content-between align-items-center mt-3 gap-2 w-100">';
+        $html .= '<div class="text-muted fs-13 font-semibold pagination-info-text">';
+        $html .= "Showing <span class='text-dark fw-bold'>{$startEntry}</span> to <span class='text-dark fw-bold'>{$endEntry}</span> of <span class='text-dark fw-bold'>{$totalRecords}</span> entries";
+        $html .= '</div>';
+
+        $html .= '<nav aria-label="Page navigation">';
+        $html .= '<ul class="pagination pagination-sm mb-0 gap-1">';
+
+        // Previous button
+        if ($currentPage > 1) {
+            $prevPage = $currentPage - 1;
+            $html .= "<li class='page-item'><a class='page-link ajax-page-link rounded-2 px-2.5' href='javascript:void(0);' onclick='{$callbackFn}({$prevPage}); return false;' data-page='{$prevPage}'><i class='bi bi-chevron-left me-1'></i>Prev</a></li>";
+        } else {
+            $html .= "<li class='page-item disabled'><span class='page-link rounded-2 px-2.5 text-muted'><i class='bi bi-chevron-left me-1'></i>Prev</span></li>";
+        }
+
+        // Page range calculation
+        $pages = [];
+        if ($totalPages <= 7) {
+            for ($i = 1; $i <= $totalPages; $i++) $pages[] = $i;
+        } else {
+            if ($currentPage <= 4) {
+                $pages = [1, 2, 3, 4, 5, '...', $totalPages];
+            } elseif ($currentPage >= $totalPages - 3) {
+                $pages = [1, '...', $totalPages - 4, $totalPages - 3, $totalPages - 2, $totalPages - 1, $totalPages];
+            } else {
+                $pages = [1, '...', $currentPage - 1, $currentPage, $currentPage + 1, '...', $totalPages];
+            }
+        }
+
+        foreach ($pages as $p) {
+            if ($p === '...') {
+                $html .= "<li class='page-item disabled'><span class='page-link border-0 px-2'>...</span></li>";
+            } elseif ($p == $currentPage) {
+                $html .= "<li class='page-item active'><span class='page-link rounded-2 px-3 fw-bold bg-primary text-white border-primary'>{$p}</span></li>";
+            } else {
+                $html .= "<li class='page-item'><a class='page-link ajax-page-link rounded-2 px-3' href='javascript:void(0);' onclick='{$callbackFn}({$p}); return false;' data-page='{$p}'>{$p}</a></li>";
+            }
+        }
+
+        // Next button
+        if ($currentPage < $totalPages) {
+            $nextPage = $currentPage + 1;
+            $html .= "<li class='page-item'><a class='page-link ajax-page-link rounded-2 px-2.5' href='javascript:void(0);' onclick='{$callbackFn}({$nextPage}); return false;' data-page='{$nextPage}'>Next<i class='bi bi-chevron-right ms-1'></i></a></li>";
+        } else {
+            $html .= "<li class='page-item disabled'><span class='page-link rounded-2 px-2.5 text-muted'>Next<i class='bi bi-chevron-right ms-1'></i></span></li>";
+        }
+
+        $html .= '</ul>';
+        $html .= '</nav>';
+        $html .= '</div>';
+
+        return $html;
     }
 
     // =========================================================================
@@ -310,7 +465,7 @@ class Con_ContractorBillController extends Controller
             $this->approvalModel->create([
                 'department'    => 'construction',
                 'request_type'  => 'contractor_bill',
-                'title'         => 'Contractor Bill — ' . ($operator['name'] ?? '') . ' | ' . ($project['name'] ?? ''),
+                'title'         => 'Contractor Bill CB-' . $billId . ' — ' . ($operator['name'] ?? '') . ' | ' . ($project['name'] ?? ''),
                 'source_table'  => 'contractor_bill_requests',
                 'source_id'     => $billId,
                 'requested_days'=> 0,

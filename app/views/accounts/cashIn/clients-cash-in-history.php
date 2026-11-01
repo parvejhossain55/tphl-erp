@@ -314,6 +314,7 @@ window.openEditPaymentDateModal = function(target) {
                 </div>
             </div>
         </div>
+
         <!-- 10. Dev Charges Remaining -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
@@ -715,7 +716,7 @@ window.openEditPaymentDateModal = function(target) {
 
                     <div class="ms-auto d-flex align-items-center">
                         <div class="form-check form-switch p-2 bg-light border rounded mb-0">
-                            <input class="form-check-input ms-0 me-2" type="checkbox" id="globalSendSmsToggle" checked>
+                            <input class="form-check-input ms-0 me-2" type="checkbox" id="globalSendSmsToggle">
                             <label class="form-check-label fw-semibold text-primary" for="globalSendSmsToggle" style="cursor: pointer;">
                                 <i class="fa-solid fa-envelope me-1"></i> Send SMS on Verify
                             </label>
@@ -749,7 +750,7 @@ window.openEditPaymentDateModal = function(target) {
                         </div>
                         <div class="input-group input-group-sm" style="width: 250px;">
                             <span class="input-group-text bg-light"><i class="fa-light fa-search"></i></span>
-                            <input type="text" id="transactionSearchInput" class="form-control" placeholder="Search Trx ID / Ref...">
+                            <input type="text" id="transactionSearchInput" class="form-control" placeholder="Search Trx ID / Batch / Ref...">
                         </div>
                     </div>
                 </div>
@@ -779,7 +780,7 @@ window.openEditPaymentDateModal = function(target) {
                                 <th>Handover To</th>
                                 <th>Verification</th>
                                 <th>Verified By</th>
-                                <th>Note</th>
+                                <th style="white-space:nowrap;">Batch ID</th>
                                 <th style="white-space:nowrap;min-width:90px;">Document</th>
                                 <th>Added By</th>
                                 <th style="white-space:nowrap;">Actions</th>
@@ -1025,12 +1026,27 @@ window.openEditPaymentDateModal = function(target) {
                                         <?php endif; ?>
                                     </td>
 
-                                    <!-- NOTE COLUMN -->
-                                    <td>
+                                    <!-- BATCH ID COLUMN -->
+                                    <td style="white-space:nowrap;">
+                                        <?php 
+                                            $rawBatchId = trim((string)($transaction['batch_id'] ?? ''));
+                                            if (!empty($rawBatchId)): 
+                                        ?>
+                                            <span class="badge bg-light text-dark border font-monospace py-1 px-2" 
+                                                  style="font-size: 11px; cursor: pointer; letter-spacing: 0.3px;" 
+                                                  title="Batch ID: <?= htmlspecialchars($rawBatchId) ?> (Click to copy)" 
+                                                  onclick="navigator.clipboard.writeText('<?= htmlspecialchars($rawBatchId, ENT_QUOTES) ?>'); Swal.fire({toast:true, position:'top-end', icon:'success', title:'Batch ID copied!', showConfirmButton:false, timer:1500});">
+                                                <i class="fa-solid fa-layer-group text-primary me-1"></i><?= htmlspecialchars($rawBatchId) ?>
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="badge bg-light text-muted border py-1 px-2" style="font-size: 11px; font-weight: normal;">
+                                                Single / No Batch
+                                            </span>
+                                        <?php endif; ?>
+
                                         <?php 
                                             $hasNote = !empty($transaction['force_verify_note']) || !empty($transaction['handover_rejection_reason']) || !empty($transaction['rejection_reason']);
                                             if ($hasNote): 
-                                                // Prepare notes for display
                                                 $notesHtml = "";
                                                 if (!empty($transaction['rejection_reason'])) {
                                                     $notesHtml .= "<strong>Accounts Rejection:</strong><br>" . nl2br(htmlspecialchars($transaction['rejection_reason'])) . "<br><br>";
@@ -1042,13 +1058,11 @@ window.openEditPaymentDateModal = function(target) {
                                                     $notesHtml .= "<strong>Force Verify Note:</strong><br>" . nl2br(htmlspecialchars($transaction['force_verify_note']));
                                                 }
                                         ?>
-                                            <button type="button" class="btn btn-sm btn-outline-info py-0 px-2"
+                                            <button type="button" class="btn btn-sm btn-outline-info ms-1 py-0 px-1"
                                                 onclick="showTransactionNote(`<?= htmlspecialchars(addslashes($notesHtml), ENT_QUOTES) ?>`)"
-                                                title="View Notes">
+                                                title="View Notes" style="font-size: 11px; vertical-align: middle;">
                                                 <i class="fa-light fa-note-sticky"></i>
                                             </button>
-                                        <?php else: ?>
-                                            <span class="text-muted">—</span>
                                         <?php endif; ?>
                                     </td>
                                     <!-- DOCUMENT COLUMN — visible regardless of verification_status -->
@@ -2189,7 +2203,8 @@ window.openEditPaymentDateModal = function(target) {
             rows.forEach(function(row) {
                 var typeMatch = (filter === 'all' || row.getAttribute('data-payment-type') === filter);
                 var trxId = row.getAttribute('data-trx-id') || '';
-                var searchMatch = (searchTerm === '' || trxId.toLowerCase().includes(searchTerm));
+                var batchId = row.getAttribute('data-batch-id') || '';
+                var searchMatch = (searchTerm === '' || trxId.toLowerCase().includes(searchTerm) || batchId.toLowerCase().includes(searchTerm));
 
                 if (typeMatch && searchMatch) {
                     row.style.display = '';

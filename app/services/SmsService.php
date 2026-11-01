@@ -242,6 +242,142 @@ class SmsService
     }
 
     /**
+     * Send Trigger 2 (Batch Aware): Payment Verified SMS
+     * Only dispatches SMS when ALL payments sharing the same batch_id are verified.
+     * Prevents fragmented partial SMS and sends ONE consolidated SMS showing the total batch amount at a glance.
+     */
+    public function sendBatchPaymentVerifiedSmsIfComplete($paymentId, $isTestingMode = false)
+    {
+        if (!$this->db) {
+            return ['success' => false, 'message' => 'No DB connection'];
+        }
+
+        $paymentId = (int)$paymentId;
+        if ($paymentId <= 0) {
+            return ['success' => false, 'message' => 'Invalid payment ID'];
+        }
+
+        // 1. Fetch current payment details
+        $stmt = $this->db->prepare("
+            SELECT id, booking_id, batch_id, payment_type, amount, verification_status 
+            FROM lead_payments 
+            WHERE id = ?
+        ");
+        if (!$stmt) {
+            return ['success' => false, 'message' => 'Database error: ' . $this->db->error];
+        }
+        $stmt->bind_param("i", $paymentId);
+        $stmt->execute();
+        $payment = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$payment) {
+            return ['success' => false, 'message' => "Payment #{$paymentId} not found"];
+        }
+
+        $batchId   = trim((string)($payment['batch_id'] ?? ''));
+        $bookingId = (int)($payment['booking_id'] ?? 0);
+
+        // If no batch_id, this is a standalone single payment — send normal verified SMS
+        if ($batchId === '') {
+            return $this->sendPaymentVerifiedSms($paymentId, $isTestingMode);
+        }
+
+        // 2. Query all active (non-trashed) payments in this batch for this booking
+        $batchStmt = $this->db->prepare("
+            SELECT id, amount, payment_type, verification_status 
+            FROM lead_payments 
+            WHERE batch_id = ? AND booking_id = ? AND (is_trashed = 0 OR is_trashed IS NULL)
+            ORDER BY id ASC
+        ");
+        if (!$batchStmt) {
+            return ['success' => false, 'message' => 'Database error: ' . $this->db->error];
+        }
+        $batchStmt->bind_param("si", $batchId, $bookingId);
+        $batchStmt->execute();
+        $res = $batchStmt->get_result();
+
+        $allVerified   = true;
+        $totalAmount   = 0.0;
+        $paymentIds    = [];
+        $typeLabelsMap = [
+            'booking_money' => 'Booking Money',
+            'land_share'    => 'Land Share',
+            'dev_charge'    => 'Dev Charge',
+            'emi'           => 'EMI',
+            'down_payment'  => 'Down Payment',
+            'car_parking'   => 'Car Parking',
+            'service_fee'   => 'Service Fee',
+            'registration'  => 'Registration',
+            'utility'       => 'Utility',
+            'other'         => 'Other'
+        ];
+        $distinctTypes = [];
+
+        while ($row = $res->fetch_assoc()) {
+            $paymentIds[] = (int)$row['id'];
+            $totalAmount += (float)$row['amount'];
+
+            if ($row['verification_status'] !== 'verified') {
+                $allVerified = false;
+            }
+
+            $rawType = strtolower(trim((string)($row['payment_type'] ?? '')));
+            $label   = $typeLabelsMap[$rawType] ?? ucwords(str_replace('_', ' ', $rawType));
+            if (!empty($label) && !in_array($label, $distinctTypes, true)) {
+                $distinctTypes[] = $label;
+            }
+        }
+        $batchStmt->close();
+
+        // If batch has no records or something went wrong, fallback to single payment SMS
+        if (empty($paymentIds)) {
+            return $this->sendPaymentVerifiedSms($paymentId, $isTestingMode);
+        }
+
+        // 3. If NOT all payments in this batch are verified yet, defer SMS
+        if (!$allVerified) {
+            return [
+                'success'       => true,
+                'deferred'      => true,
+                'batch_id'      => $batchId,
+                'message'       => "Batch {$batchId} verification incomplete. SMS deferred until all transactions are verified."
+            ];
+        }
+
+        // 4. All payments are verified. Check if an SMS was ALREADY sent for any payment in this batch
+        $placeholders = implode(',', array_fill(0, count($paymentIds), '?'));
+        $checkSql = "
+            SELECT id FROM sms_logs 
+            WHERE sms_type = 'payment_verified' 
+              AND payment_id IN ($placeholders) 
+              AND status != 'failed' 
+            LIMIT 1
+        ";
+        $checkStmt = $this->db->prepare($checkSql);
+        if ($checkStmt) {
+            $typesStr = str_repeat('i', count($paymentIds));
+            $checkStmt->bind_param($typesStr, ...$paymentIds);
+            $checkStmt->execute();
+            $alreadyLogged = $checkStmt->get_result()->fetch_assoc();
+            $checkStmt->close();
+
+            if ($alreadyLogged) {
+                return [
+                    'success'      => true,
+                    'already_sent' => true,
+                    'batch_id'     => $batchId,
+                    'message'      => "Verification SMS already sent for batch {$batchId}."
+                ];
+            }
+        }
+
+        // 5. Send ONE consolidated SMS with the total batch amount
+        $combinedTypes = !empty($distinctTypes) ? implode(', ', $distinctTypes) : 'Payment';
+        return $this->sendPaymentVerifiedSms($paymentId, $isTestingMode, $totalAmount, $combinedTypes);
+    }
+
+    /**
      * Internal helper to query payment details
      */
     protected function getPaymentInfo($paymentId)

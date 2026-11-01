@@ -293,11 +293,19 @@
     <div class="card border-0 shadow-sm rounded-3" id="approvalRequestsTable">
         <!-- Filter Toolbar -->
         <div class="card-header bg-white py-3 border-bottom">
-            <form method="GET" action="<?= $base_url ?>/all-approval-requests" class="row align-items-center">
-                <!-- Search / Filter Title -->
+            <form method="GET" action="<?= $base_url ?>/all-approval-requests" class="row align-items-center g-2">
+                <!-- Search Req # / Bill # -->
                 <div class="col-lg-3 col-md-6">
-                    <label class="form-label text-muted extra-small fw-bold text-uppercase mb-1">Department
-                        Filter</label>
+                    <label class="form-label text-muted extra-small fw-bold text-uppercase mb-1">Search Req # / Bill #</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" name="search" class="form-control form-control-sm" placeholder="e.g. REQ-947, CB-157..." value="<?= htmlspecialchars($filters['search'] ?? '') ?>">
+                        <button class="btn btn-primary" type="submit" title="Search"><i class="fa-solid fa-magnifying-glass"></i></button>
+                    </div>
+                </div>
+
+                <!-- Department Filter -->
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label text-muted extra-small fw-bold text-uppercase mb-1">Department</label>
                     <select name="department" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="">All Departments</option>
                         <?php if (!empty($departmentsList)): ?>
@@ -314,10 +322,10 @@
                     <label class="form-label text-muted extra-small fw-bold text-uppercase mb-1">Approval Status</label>
                     <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="" <?= empty($filters['status']) || $filters['status'] === 'pending' || $filters['status'] === 'my_pending' ? 'selected' : '' ?>>My Actionable Pending (Default)</option>
-                        <option value="pending_accounts_head" <?= ($filters['status'] ?? '') === 'pending_accounts_head' ? 'selected' : '' ?>>Approved — Pending Accounts Head (অ্যাকাউন্টস হেড বাকি)</option>
-                        <option value="pending_payout" <?= ($filters['status'] ?? '') === 'pending_payout' ? 'selected' : '' ?>>Approved — Pending Accounts Payout (পেমেন্ট বাকি)</option>
-                        <option value="paid" <?= ($filters['status'] ?? '') === 'paid' ? 'selected' : '' ?>>Paid & Settled History (পরিশোধিত)</option>
-                        <option value="approved" <?= ($filters['status'] ?? '') === 'approved' ? 'selected' : '' ?>>All Approved & Paid (সকল অনুমোদিত ও পরিশোধিত)</option>
+                        <option value="pending_accounts_head" <?= ($filters['status'] ?? '') === 'pending_accounts_head' ? 'selected' : '' ?>>Approved — Pending Accounts Head</option>
+                        <option value="pending_payout" <?= ($filters['status'] ?? '') === 'pending_payout' ? 'selected' : '' ?>>Approved — Pending Accounts Payout</option>
+                        <option value="paid" <?= ($filters['status'] ?? '') === 'paid' ? 'selected' : '' ?>>Paid & Settled History</option>
+                        <option value="approved" <?= ($filters['status'] ?? '') === 'approved' ? 'selected' : '' ?>>All Approved & Paid</option>
                         <option value="rejected" <?= ($filters['status'] ?? '') === 'rejected' ? 'selected' : '' ?>>Rejected History</option>
                         <option value="all_pending" <?= ($filters['status'] ?? '') === 'all_pending' ? 'selected' : '' ?>>All Departments Pending (Audit)</option>
                         <option value="all" <?= ($filters['status'] ?? '') === 'all' ? 'selected' : '' ?>>All Company Requests (Complete Audit)</option>
@@ -325,20 +333,16 @@
                 </div>
 
                 <!-- Source Table / Module Filter -->
-                <div class="col-lg-4 col-md-6">
-                    <label class="form-label text-muted extra-small fw-bold text-uppercase mb-1">Module / Source
-                        Type</label>
+                <div class="col-lg-3 col-md-6">
+                    <label class="form-label text-muted extra-small fw-bold text-uppercase mb-1">Module / Source Type</label>
                     <select name="source_table" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="">All Approval Source Types</option>
                         <option value="fund_requisitions" <?= ($filters['source_table'] ?? '') === 'fund_requisitions' ? 'selected' : '' ?>>Fund Requisitions / Petty Cash</option>
                         <option value="project_incentive_claims" <?= ($filters['source_table'] ?? '') === 'project_incentive_claims' ? 'selected' : '' ?>>Sales Incentive Claims</option>
-                        <option value="vendor_payment_requests" <?= ($filters['source_table'] ?? '') === 'vendor_payment_requests' ? 'selected' : '' ?>>Vendor Payment Requests (Construction)
-                        </option>
-                        <option value="contractor_bill_requests" <?= ($filters['source_table'] ?? '') === 'contractor_bill_requests' ? 'selected' : '' ?>>Contractor Bills (Construction)
-                        </option>
+                        <option value="vendor_payment_requests" <?= ($filters['source_table'] ?? '') === 'vendor_payment_requests' ? 'selected' : '' ?>>Vendor Payment Requests (Construction)</option>
+                        <option value="contractor_bill_requests" <?= ($filters['source_table'] ?? '') === 'contractor_bill_requests' ? 'selected' : '' ?>>Contractor Bills (Construction)</option>
                         <option value="con_labor_requisitions" <?= ($filters['source_table'] ?? '') === 'con_labor_requisitions' ? 'selected' : '' ?>>Labor Bill by SE (Construction)</option>
-                        <option value="operational_fund_requests" <?= ($filters['source_table'] ?? '') === 'operational_fund_requests' ? 'selected' : '' ?>>Operational Fund / Requisitions
-                        </option>
+                        <option value="operational_fund_requests" <?= ($filters['source_table'] ?? '') === 'operational_fund_requests' ? 'selected' : '' ?>>Operational Fund / Requisitions</option>
                         <option value="cashout_requests" <?= ($filters['source_table'] ?? '') === 'cashout_requests' ? 'selected' : '' ?>>Cashout Requests (Accounts)</option>
                         <option value="advance_salaries" <?= ($filters['source_table'] ?? '') === 'advance_salaries' ? 'selected' : '' ?>>Advance Salary Requests (HR & Accounts)</option>
                         <option value="payslips" <?= ($filters['source_table'] ?? '') === 'payslips' ? 'selected' : '' ?>>Payslips & Salary (HR)</option>
@@ -353,9 +357,9 @@
                 </div>
 
                 <!-- Reset Filter Button -->
-                <div class="col-lg-2 col-md-6 text-end pt-3">
-                    <a href="<?= $base_url ?>/all-approval-requests" class="btn btn-sm btn-outline-secondary w-100">
-                        <i class="fa-solid fa-arrow-rotate-left me-1"></i> Reset Filters
+                <div class="col-lg-1 col-md-6 text-end">
+                    <a href="<?= $base_url ?>/all-approval-requests" class="btn btn-sm btn-outline-secondary w-100" title="Reset Filters">
+                        <i class="fa-solid fa-arrow-rotate-left"></i>
                     </a>
                 </div>
             </form>
@@ -588,41 +592,54 @@
                                     </td>
                                     <!-- Req # & Date -->
                                     <td>
+                                        <?php
+                                        // Standardized Requisition / Bill ID for all modules
+                                        $displayReqCode = '';
+                                        if ($sourceTable === 'vendor_payment_requests' || $sourceTable === 'vendor_payments') {
+                                            $displayReqCode = 'VPR-' . (int)$req['source_id'];
+                                        } elseif ($sourceTable === 'contractor_bill_requests' || $sourceTable === 'contractor_bills') {
+                                            $displayReqCode = 'CB-' . (int)$req['source_id'];
+                                        } elseif ($sourceTable === 'fund_requisitions' || $sourceTable === 'operational_fund_requests') {
+                                            $displayReqCode = 'REQ-' . (int)$req['source_id'];
+                                        } elseif ($sourceTable === 'con_labor_requisitions' || $sourceTable === 'labor_requisitions') {
+                                            $displayReqCode = !empty($req['requisition_no']) ? htmlspecialchars($req['requisition_no']) : ('LR-' . (int)$req['source_id']);
+                                        } elseif ($sourceTable === 'project_other_costs') {
+                                            $displayReqCode = 'POC-' . (int)$req['source_id'];
+                                        } elseif ($sourceTable === 'project_extra_assets' || $sourceTable === 'purchase_requests') {
+                                            $displayReqCode = 'PR-' . (int)$req['source_id'];
+                                        } elseif ($sourceTable === 'land_fund_requisitions' || $sourceTable === 'con_land_requisitions') {
+                                            $displayReqCode = 'LFR-' . (int)$req['source_id'];
+                                        } elseif ($sourceTable === 'cashout_requests') {
+                                            $displayReqCode = 'CSH-' . (int)$req['source_id'];
+                                        } elseif ($sourceTable === 'expense_adjustments') {
+                                            $displayReqCode = 'ADJ-' . (int)$req['source_id'];
+                                        } elseif ($sourceTable === 'client_refund_requests') {
+                                            $displayReqCode = 'REF-' . (int)$req['source_id'];
+                                        } elseif ($sourceTable === 'payslips' || $sourceTable === 'salary_requests') {
+                                            $displayReqCode = 'PAY-' . (int)$req['source_id'];
+                                        } elseif ($sourceTable === 'project_incentive_claims') {
+                                            $displayReqCode = 'INC-' . (int)$req['source_id'];
+                                        } elseif ($sourceTable === 'advance_salaries') {
+                                            $displayReqCode = 'ADV-' . (int)$req['source_id'];
+                                        } elseif ($sourceTable === 'lead_bookings') {
+                                            $displayReqCode = 'BK-' . (int)$req['source_id'];
+                                        } elseif ($sourceTable === 'con_work_orders') {
+                                            $displayReqCode = 'WO-' . (int)$req['source_id'];
+                                        } else {
+                                            $displayReqCode = !empty($req['source_id']) ? ('#' . (int)$req['source_id']) : ('#REQ-' . str_pad($req['id'], 5, '0', STR_PAD_LEFT));
+                                        }
+                                        ?>
                                         <?php if (!empty($targetUrl)): ?>
                                             <a href="<?= $targetUrl ?>" class="text-decoration-none d-block">
-                                                <?php if ($sourceTable === 'vendor_payment_requests'): ?>
-                                                    <span class="fw-bold text-dark">VPR-<?= (int)$req['source_id'] ?></span>
-                                                    <?php if (!empty($req['po_number'])): ?>
-                                                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded px-1 ms-1 extra-small">PO-<?= htmlspecialchars($req['po_number']) ?></span>
-                                                    <?php endif; ?>
-                                                <?php elseif ($sourceTable === 'expense_adjustments'): ?>
-                                                    <span class="fw-bold text-dark">ADJ-<?= (int)$req['source_id'] ?></span>
-                                                <?php elseif (!empty($req['po_number'])): ?>
-                                                    <span class="fw-bold text-success">PO-
-                                                        <?= htmlspecialchars($req['po_number']) ?>
-                                                    </span>
-                                                <?php else: ?>
-                                                    <span class="fw-bold text-dark">#REQ-
-                                                        <?= str_pad($req['id'], 5, '0', STR_PAD_LEFT) ?>
-                                                    </span>
+                                                <span class="fw-bold text-dark"><?= $displayReqCode ?></span>
+                                                <?php if ($sourceTable === 'vendor_payment_requests' && !empty($req['po_number'])): ?>
+                                                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded px-1 ms-1 extra-small">PO-<?= htmlspecialchars($req['po_number']) ?></span>
                                                 <?php endif; ?>
                                             </a>
                                         <?php else: ?>
-                                            <?php if ($sourceTable === 'vendor_payment_requests'): ?>
-                                                <span class="fw-bold text-dark">VPR-<?= (int)$req['source_id'] ?></span>
-                                                <?php if (!empty($req['po_number'])): ?>
-                                                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded px-1 ms-1 extra-small">PO-<?= htmlspecialchars($req['po_number']) ?></span>
-                                                <?php endif; ?>
-                                            <?php elseif ($sourceTable === 'expense_adjustments'): ?>
-                                                <span class="fw-bold text-dark d-block">ADJ-<?= (int)$req['source_id'] ?></span>
-                                            <?php elseif (!empty($req['po_number'])): ?>
-                                                <span class="fw-bold text-success d-block">PO-
-                                                    <?= htmlspecialchars($req['po_number']) ?>
-                                                </span>
-                                            <?php else: ?>
-                                                <span class="fw-bold text-dark d-block">#REQ-
-                                                    <?= str_pad($req['id'], 5, '0', STR_PAD_LEFT) ?>
-                                                </span>
+                                            <span class="fw-bold text-dark d-block"><?= $displayReqCode ?></span>
+                                            <?php if ($sourceTable === 'vendor_payment_requests' && !empty($req['po_number'])): ?>
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded px-1 ms-1 extra-small">PO-<?= htmlspecialchars($req['po_number']) ?></span>
                                             <?php endif; ?>
                                         <?php endif; ?>
                                         <span class="text-muted extra-small">
