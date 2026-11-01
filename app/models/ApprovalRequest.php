@@ -1742,7 +1742,8 @@ class ApprovalRequest extends Model
                     AND ({$prefix}op_head_status != 'approved' OR {$prefix}op_head_status IS NULL))";
         } elseif ($isManagement) {
             return "({$prefix}status IN ('pending', 'partially_approved', '') 
-                    AND (LOWER({$prefix}approve_role) IN ('management', 'operations') OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = ''))";
+                    AND (LOWER({$prefix}approve_role) IN ('management', 'operations') OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = '')
+                    AND ({$prefix}request_amount <= 100000.01 OR {$prefix}op_head_status = 'approved'))";
         } elseif ($isQc) {
             return "({$prefix}status IN ('pending', 'partially_approved', '') 
                     AND LOWER({$prefix}approve_role) IN ('qc', 'qc_head'))";
@@ -2091,6 +2092,7 @@ class ApprovalRequest extends Model
                     source_table,
                     request_amount,
                     approve_role,
+                    op_head_status,
                     status,
                     department,
                     requested_by
@@ -2124,22 +2126,25 @@ class ApprovalRequest extends Model
                 if ($isAccounts) {
                     if ($appRole === 'accounts') $isActionable = true;
                 } elseif ($isRole20) {
+                    $opDone = (strtolower($pRow['op_head_status'] ?? 'pending') === 'approved');
                     if (in_array($srcTbl, ['project_other_costs', 'expense_adjustments']) && in_array($appRole, ['management', ''])) {
                         $isActionable = true;
                     } elseif ($srcTbl === 'project_extra_assets') {
-                        if ($appRole === 'operations' && $userRoleId === 32) {
+                        if ($appRole === 'operations' && in_array($userRoleId, [20, 32], true)) {
                             $isActionable = true;
-                        } elseif (in_array($appRole, ['management', '']) && $amt <= 100000.01) {
+                        } elseif (in_array($appRole, ['management', '']) && ($amt <= 100000.01 || !$opDone)) {
                             $isActionable = true;
                         }
-                    } elseif (in_array($appRole, ['management', '']) && $amt <= 100000.01) {
+                    } elseif (in_array($appRole, ['management', '']) && ($amt <= 100000.01 || !$opDone)) {
                         $isActionable = true;
                     }
                 } elseif ($isFullManagement) {
-                    if ($srcTbl === 'project_other_costs' && in_array($appRole, ['management', ''])) {
-                        $isActionable = true;
-                    } elseif (in_array($appRole, ['management', ''])) {
-                        $isActionable = true;
+                    $isOver1L = ($amt > 100000.01);
+                    $opDone = (strtolower($pRow['op_head_status'] ?? 'pending') === 'approved');
+                    if (in_array($appRole, ['management', ''])) {
+                        if (!$isOver1L || $opDone) {
+                            $isActionable = true;
+                        }
                     }
                 } elseif ($isQC) {
                     if (in_array($appRole, ['qc', 'qc_head'])) $isActionable = true;
@@ -2280,6 +2285,33 @@ class ApprovalRequest extends Model
                 $where[] = "ar.source_table = ?";
                 $params[] = $filters['source_table'];
                 $types .= "s";
+            }
+        }
+
+        if (!empty($filters['search'])) {
+            $searchRaw = trim($filters['search']);
+            $numericId = 0;
+            if (preg_match('/(?:REQ|CB|VPR|LR|POC|PR|LFR|CSH|ADJ|REF|PAY|INC|ADV|BK|WO)[-#\s]*(\d+)/i', $searchRaw, $m)) {
+                $numericId = (int)$m[1];
+            } elseif (ctype_digit($searchRaw)) {
+                $numericId = (int)$searchRaw;
+            }
+
+            if ($numericId > 0) {
+                $where[] = "(ar.id = ? OR ar.source_id = ? OR ar.title LIKE ? OR u_req.full_name LIKE ?)";
+                $params[] = $numericId;
+                $params[] = $numericId;
+                $searchLike = '%' . $searchRaw . '%';
+                $params[] = $searchLike;
+                $params[] = $searchLike;
+                $types .= "iiss";
+            } else {
+                $where[] = "(ar.title LIKE ? OR ar.department LIKE ? OR u_req.full_name LIKE ?)";
+                $searchLike = '%' . $searchRaw . '%';
+                $params[] = $searchLike;
+                $params[] = $searchLike;
+                $params[] = $searchLike;
+                $types .= "sss";
             }
         }
 
@@ -2570,6 +2602,7 @@ class ApprovalRequest extends Model
                 }
             } else if ($sourceTable === 'con_labor_requisitions') {
                 $lrSql = "SELECT lr.status, lr.total_amount, lr.approved_amount, lr.qc_approved_amount, 
+                                 lr.requisition_no,
                                  lr.qc_approved_by, lr.qc_approved_at, lr.qc_note,
                                  u_qc.full_name AS qc_approver_name,
                                  e_qc.employee_id AS qc_approver_code,
@@ -2589,6 +2622,7 @@ class ApprovalRequest extends Model
                     $lrRow = $lrStmt->get_result()->fetch_assoc();
                     $lrStmt->close();
                     if ($lrRow) {
+                        $row['requisition_no'] = !empty($lrRow['requisition_no']) ? $lrRow['requisition_no'] : ('LR-' . $sourceId);
                         $row['qc_approved_amount'] = (float)($lrRow['qc_approved_amount'] ?? 0);
                         $row['qc_approved_by'] = $lrRow['qc_approved_by'] ?? null;
                         $row['qc_approved_at'] = $lrRow['qc_approved_at'] ?? null;
@@ -3812,7 +3846,7 @@ class ApprovalRequest extends Model
             SELECT pea.*, d.name AS dept_name
             FROM project_extra_assets pea
             LEFT JOIN departments d ON pea.department_id = d.id
-            LEFT JOIN approval_requests ar ON (ar.source_table = 'project_extra_assets' AND ar.source_id = pea.id)
+            LEFT JOIN approval_requests ar ON (ar.source_table IN ('project_extra_assets', 'purchase_requests') AND ar.source_id = pea.id)
             WHERE ar.id IS NULL
         ";
         $res = $this->db->query($sql);
@@ -3821,7 +3855,8 @@ class ApprovalRequest extends Model
                 $sourceId = (int) $row['id'];
                 $deptName = !empty($row['dept_name']) ? $row['dept_name'] : 'Procurement';
                 $requestType = 'Office Procurement';
-                $title = "Office Procurement: " . $row['item_name'] . " (Qty: " . $row['quantity'] . ")";
+                $cleanItem = !empty($row['item_name']) ? $row['item_name'] : 'Asset Request';
+                $title = mb_substr("Office Procurement: " . $cleanItem . " (Qty: " . ($row['quantity'] ?? 1) . ")", 0, 145);
                 $amount = (float) $row['total_price'];
                 $requestedBy = (int) $row['requested_by'];
                 
@@ -3881,7 +3916,7 @@ class ApprovalRequest extends Model
         // 2. Sync status for existing project_extra_assets
         $syncSql = "
             UPDATE approval_requests ar
-            INNER JOIN project_extra_assets pea ON (ar.source_table = 'project_extra_assets' AND ar.source_id = pea.id)
+            INNER JOIN project_extra_assets pea ON (ar.source_table IN ('project_extra_assets', 'purchase_requests') AND ar.source_id = pea.id)
             SET ar.status = CASE 
                     WHEN pea.payment_status = 'paid' OR pea.overall_status = 'purchased' THEN 'approved'
                     WHEN pea.mgmt_status = 'approved' THEN 'approved' 
@@ -4337,7 +4372,7 @@ class ApprovalRequest extends Model
                 $requestType = 'contractor_bill';
                 $contractorName = !empty($row['contractor_name']) ? $row['contractor_name'] : 'Contractor';
                 $projectName    = !empty($row['project_name']) ? $row['project_name'] : 'Project';
-                $title       = "Contractor Bill — {$contractorName} | {$projectName}";
+                $title       = "Contractor Bill CB-{$sourceId} — {$contractorName} | {$projectName}";
                 $billAmount  = (float) ($row['bill_amount'] ?? 0);
                 $approvedAmt = (isset($row['approved_amount']) && (float)$row['approved_amount'] > 0) ? (float)$row['approved_amount'] : $billAmount;
                 $requestedBy = (int) ($row['created_by'] ?? 1);

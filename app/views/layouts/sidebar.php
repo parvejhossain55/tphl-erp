@@ -334,8 +334,17 @@
                 $procRes = $db->query("SELECT COUNT(*) AS c FROM project_extra_assets WHERE dept_head_status IN ('approved', 'not_required') AND it_head_status = 'pending'");
                 if ($procRes) $sidebarPendingProcurementCount += (int)($procRes->fetch_assoc()['c'] ?? 0);
             }
-            if ($sidebarRoleId === 32) {
-                $procRes = $db->query("SELECT COUNT(*) AS c FROM project_extra_assets WHERE dept_head_status IN ('approved', 'not_required') AND it_head_status IN ('approved', 'not_required') AND operations_status = 'pending'");
+            if (in_array($sidebarRoleId, [20, 32], true)) {
+                $procRes = $db->query("
+                    SELECT COUNT(*) AS c 
+                    FROM project_extra_assets pea 
+                    LEFT JOIN approval_requests ar ON (ar.source_table IN ('project_extra_assets', 'purchase_requests') AND ar.source_id = pea.id)
+                    WHERE (
+                        (pea.dept_head_status IN ('approved', 'not_required') AND pea.it_head_status IN ('approved', 'not_required') AND pea.operations_status = 'pending')
+                        OR
+                        (pea.qc_audit_status = 'approved' AND pea.mgmt_status = 'pending' AND (pea.total_price <= 100000.01 OR ar.op_head_status IS NULL OR ar.op_head_status != 'approved'))
+                    )
+                ");
                 if ($procRes) $sidebarPendingProcurementCount += (int)($procRes->fetch_assoc()['c'] ?? 0);
             } elseif (in_array($sidebarRoleId, [17, 31])) {
                 $procRes = $db->query("SELECT COUNT(*) AS c FROM project_extra_assets WHERE operations_status = 'approved' AND purchase_head_status = 'pending'");
@@ -344,7 +353,15 @@
                 $procRes = $db->query("SELECT COUNT(*) AS c FROM project_extra_assets WHERE purchase_head_status = 'approved' AND qc_audit_status = 'pending'");
                 if ($procRes) $sidebarPendingProcurementCount += (int)($procRes->fetch_assoc()['c'] ?? 0);
             } elseif (in_array($sidebarRoleId, [1, 3])) {
-                $procRes = $db->query("SELECT COUNT(*) AS c FROM project_extra_assets WHERE overall_status IN ('pending', 'in_review')");
+                $procRes = $db->query("
+                    SELECT COUNT(*) AS c 
+                    FROM project_extra_assets pea 
+                    LEFT JOIN approval_requests ar ON (ar.source_table IN ('project_extra_assets', 'purchase_requests') AND ar.source_id = pea.id)
+                    WHERE (
+                        (pea.qc_audit_status = 'approved' AND pea.mgmt_status = 'pending' AND (pea.total_price <= 100000.01 OR ar.op_head_status = 'approved'))
+                        OR (pea.dept_head_status = 'pending')
+                    )
+                ");
                 if ($procRes) $sidebarPendingProcurementCount += (int)($procRes->fetch_assoc()['c'] ?? 0);
             } elseif (in_array($sidebarRoleId, [6, 30])) {
                 $procRes = $db->query("SELECT COUNT(*) AS c FROM project_extra_assets WHERE mgmt_status = 'approved' AND payment_status = 'unpaid'");

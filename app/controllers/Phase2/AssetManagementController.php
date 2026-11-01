@@ -390,7 +390,8 @@ class AssetManagementController extends Controller
 
         $isChiefOfficer = (in_array($roleId, [33, 34, 35], true) || in_array(strtolower(trim($_SESSION['user']['role_name'] ?? '')), ['chief officer', 'management viewer', 'seal ceo'], true));
         $isSuperAdmin   = in_array($roleId, [1, 3]) && !$isChiefOfficer; // Admin (1) and super Admin (3) ONLY. Role 2 is Employee!
-        $isOperations   = ($isSuperAdmin || (int)$roleId === 32) && !$isChiefOfficer;
+        $isOperations   = ($isSuperAdmin || in_array((int)$roleId, [20, 32], true)) && !$isChiefOfficer;
+        $isOpHead       = in_array((int)$roleId, [20, 32], true);
         $isPurchaseHead = ($isSuperAdmin || in_array($roleId, [17, 31])) && !$isChiefOfficer;
         $isQcAudit      = ($isSuperAdmin || in_array($roleId, [24, 25])) && !$isChiefOfficer;
         $isManagement   = $isSuperAdmin && !$isChiefOfficer;
@@ -412,6 +413,7 @@ class AssetManagementController extends Controller
             'is_admin'         => $isSuperAdmin,
             'is_global_viewer' => $isGlobalViewer,
             'is_operations'    => $isOperations,
+            'is_op_head'       => $isOpHead,
             'is_purchase_head' => $isPurchaseHead,
             'is_qc_audit'      => $isQcAudit,
             'is_management'    => $isManagement,
@@ -482,7 +484,9 @@ class AssetManagementController extends Controller
             $autoOpenRequest = $this->model->findExtraPurchase($viewId);
             if ($autoOpenRequest) {
                 $reqTotal = (float)($autoOpenRequest['total_price'] ?? 0);
-                $isRole20Eligible = (in_array($roleId, [20, 32]) && $reqTotal <= 100000);
+                $isOver1Lac = ($reqTotal > 100000);
+                $isOpHeadUser = (in_array((int)$roleId, [20, 32], true) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head') !== false || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'admin & operation') !== false);
+                $isOpHeadApproved = (!empty($autoOpenRequest['op_head_status']) && strtolower($autoOpenRequest['op_head_status']) === 'approved');
                 $isCreator = (int)$autoOpenRequest['requested_by'] === $userId;
                 $isReporterBoss = !empty($autoOpenRequest['requester_reporting_boss_id']) && (int)$autoOpenRequest['requester_reporting_boss_id'] === $userId;
 
@@ -501,8 +505,22 @@ class AssetManagementController extends Controller
                         $canApprove = true; $step = 'purchase_head';
                     } elseif ($isQcAudit && $autoOpenRequest['purchase_head_status'] === 'approved' && $autoOpenRequest['qc_audit_status'] === 'pending') {
                         $canApprove = true; $step = 'qc_audit';
-                    } elseif (($isManagement || $isRole20Eligible) && $autoOpenRequest['qc_audit_status'] === 'approved' && $autoOpenRequest['mgmt_status'] === 'pending') {
-                        $canApprove = true; $step = 'mgmt';
+                    } elseif ($autoOpenRequest['qc_audit_status'] === 'approved' && $autoOpenRequest['mgmt_status'] === 'pending') {
+                        if ($isOver1Lac) {
+                            if (!$isOpHeadApproved) {
+                                if ($isOpHeadUser) {
+                                    $canApprove = true; $step = 'mgmt';
+                                }
+                            } else {
+                                if ($isManagement) {
+                                    $canApprove = true; $step = 'mgmt';
+                                }
+                            }
+                        } else {
+                            if ($isManagement || $isOpHeadUser) {
+                                $canApprove = true; $step = 'mgmt';
+                            }
+                        }
                     }
                 }
                 $autoOpenRequest['can_approve'] = $canApprove;

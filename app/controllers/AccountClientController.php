@@ -4550,7 +4550,7 @@ public function discountStatement($bookingId = null)
                     if ($sendSms) {
                         require_once dirname(__DIR__) . '/services/SmsService.php';
                         $smsService = new SmsService($this->db);
-                        $smsService->sendPaymentVerifiedSms($paymentId);
+                        $smsService->sendBatchPaymentVerifiedSmsIfComplete($paymentId);
                     }
                 }
             }
@@ -4642,7 +4642,8 @@ public function discountStatement($bookingId = null)
         }
 
         $verifiedCount = 0;
-        $paymentsByBookingForSms = [];
+        $batchesForSms = []; // batch_id => sample_payment_id
+        $standaloneByBookingForSms = []; // booking_id => [total_amount, payment_id, types]
 
         require_once dirname(__DIR__) . '/controllers/PaymentBookingController.php';
         $paymentController = new PaymentBookingController($this->db);
@@ -4655,6 +4656,19 @@ public function discountStatement($bookingId = null)
             require_once dirname(__DIR__) . '/services/SmsService.php';
             $smsService = new SmsService($this->db);
         }
+
+        $typeLabelsMap = [
+            'booking_money' => 'Booking Money',
+            'land_share'    => 'Land Share',
+            'dev_charge'    => 'Dev Charge',
+            'emi'           => 'EMI',
+            'down_payment'  => 'Down Payment',
+            'car_parking'   => 'Car Parking',
+            'service_fee'   => 'Service Fee',
+            'registration'  => 'Registration',
+            'utility'       => 'Utility',
+            'other'         => 'Other'
+        ];
 
         $this->db->begin_transaction();
 
@@ -4719,33 +4733,47 @@ public function discountStatement($bookingId = null)
                         );
                     }
 
-                    // Collect data for bulk SMS
+                    // Collect data for bulk SMS (Batch-Aware)
                     if ($sendSms) {
-                        if (!isset($paymentsByBookingForSms[$bookingId])) {
-                            $paymentsByBookingForSms[$bookingId] = [
-                                'total_amount' => 0,
-                                'payment_id' => $paymentId,
-                                'types' => []
-                            ];
-                        }
-                        $paymentsByBookingForSms[$bookingId]['total_amount'] += (float)$paymentData['amount'];
-                        $typeStr = ucfirst(str_replace('_', ' ', $paymentData['payment_type']));
-                        if (!in_array($typeStr, $paymentsByBookingForSms[$bookingId]['types'])) {
-                            $paymentsByBookingForSms[$bookingId]['types'][] = $typeStr;
+                        $batchId = trim((string)($paymentData['batch_id'] ?? ''));
+                        if ($batchId !== '') {
+                            if (!isset($batchesForSms[$batchId])) {
+                                $batchesForSms[$batchId] = $paymentId;
+                            }
+                        } else {
+                            if (!isset($standaloneByBookingForSms[$bookingId])) {
+                                $standaloneByBookingForSms[$bookingId] = [
+                                    'total_amount' => 0.0,
+                                    'payment_id'   => $paymentId,
+                                    'types'        => []
+                                ];
+                            }
+                            $standaloneByBookingForSms[$bookingId]['total_amount'] += (float)$paymentData['amount'];
+                            $rawType = strtolower(trim((string)($paymentData['payment_type'] ?? '')));
+                            $label = $typeLabelsMap[$rawType] ?? ucwords(str_replace('_', ' ', $rawType));
+                            if (!empty($label) && !in_array($label, $standaloneByBookingForSms[$bookingId]['types'], true)) {
+                                $standaloneByBookingForSms[$bookingId]['types'][] = $label;
+                            }
                         }
                     }
                 }
             }
 
-            // 5. Send Grouped SMS
-            if ($sendSms && $smsService && !empty($paymentsByBookingForSms)) {
-                foreach ($paymentsByBookingForSms as $bId => $smsData) {
-                    $typesStr = implode(', ', $smsData['types']);
+            $this->db->commit();
+
+            // 5. Send SMS (Batch-Aware & Consolidated)
+            if ($sendSms && $smsService) {
+                // A) Dispatch batch SMS (only dispatches once ALL transactions in the batch are verified)
+                foreach ($batchesForSms as $bId => $samplePaymentId) {
+                    $smsService->sendBatchPaymentVerifiedSmsIfComplete($samplePaymentId, false);
+                }
+
+                // B) Dispatch standalone grouped SMS
+                foreach ($standaloneByBookingForSms as $bId => $smsData) {
+                    $typesStr = !empty($smsData['types']) ? implode(', ', $smsData['types']) : 'Payment';
                     $smsService->sendPaymentVerifiedSms($smsData['payment_id'], false, $smsData['total_amount'], $typesStr);
                 }
             }
-
-            $this->db->commit();
             echo json_encode(['success' => true, 'message' => "Successfully verified $verifiedCount transactions."]);
         } catch (Exception $e) {
             $this->db->rollback();

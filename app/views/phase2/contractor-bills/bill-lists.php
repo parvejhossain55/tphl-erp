@@ -1,29 +1,131 @@
 <?php
-$base_url   = $GLOBALS['base_url'];
-$page_title = $page_title ?? 'Contractor Bill Requests';
-
-$countAll        = count($bills ?? []);
-$countDraft      = 0;
-$countSubmitted  = 0;
-$countVerified   = 0;
-$countQcApproved = 0;
-$countApproved   = 0;
-$countRejected   = 0;
-$countPaid       = 0;
-
-foreach (($bills ?? []) as $b) {
-    match ($b['status'] ?? '') {
-        'draft'          => $countDraft++,
-        'submitted'      => $countSubmitted++,
-        'verified'       => $countVerified++,
-        'qc_approved'    => $countQcApproved++,
-        'approved'       => $countApproved++,
-        'rejected'       => $countRejected++,
-        'paid', 'partially_paid', 'fully_paid' => $countPaid++,
-        default          => null,
-    };
-}
+$base_url     = $base_url ?? ($GLOBALS['base_url'] ?? '/TPHL-ERP');
+$page_title   = $page_title ?? 'Contractor Bill Requests';
+$totalRecords = $totalRecords ?? count($bills ?? []);
+$projects     = $projects ?? [];
+$creators     = $creators ?? [];
+$contractors  = $contractors ?? [];
+$statusCounts = $statusCounts ?? [
+    'all'         => $totalRecords,
+    'draft'       => 0,
+    'submitted'   => 0,
+    'verified'    => 0,
+    'qc_approved' => 0,
+    'approved'    => 0,
+    'rejected'    => 0,
+    'paid'        => 0
+];
+$selectedStatus = $filters['status'] ?? 'All';
 ?>
+<style>
+/* Filter Toolbar Controls Alignment */
+.card-body .form-select-sm {
+    border: 1px solid #dfe3e8;
+    border-radius: 4px;
+    height: 31px;
+    padding: 2px 28px 2px 10px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: #333;
+    background-color: #fff;
+    cursor: pointer;
+}
+.card-body .form-select-sm:focus {
+    border-color: var(--clr-theme-primary);
+    box-shadow: 0 0 0 2px rgba(108, 95, 252, 0.12);
+}
+
+/* Select2 Searchable Dropdown Styling in Card Filter Bar */
+.card-body .select2-container {
+    width: 100% !important;
+}
+.card-body .select2-container--default .select2-selection--single {
+    height: 31px !important;
+    border: 1px solid #dfe3e8 !important;
+    border-radius: 4px !important;
+    background-color: #fff !important;
+    display: flex !important;
+    align-items: center !important;
+    position: relative !important;
+}
+.card-body .select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: #333 !important;
+    font-size: 12.5px !important;
+    font-weight: 500 !important;
+    line-height: 29px !important;
+    padding-left: 10px !important;
+    padding-right: 40px !important;
+    display: block !important;
+    width: 100% !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+}
+.card-body .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 29px !important;
+    right: 6px !important;
+    position: absolute !important;
+    top: 0 !important;
+}
+.card-body .select2-container--default .select2-selection--single .select2-selection__clear {
+    position: absolute !important;
+    right: 22px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    font-size: 15px !important;
+    color: #888 !important;
+    font-weight: bold !important;
+    cursor: pointer !important;
+}
+.card-body .select2-container--default .select2-selection--single .select2-selection__clear:hover {
+    color: #dc3545 !important;
+}
+.card-body .select2-container--default.select2-container--focus .select2-selection--single,
+.card-body .select2-container--default.select2-container--open .select2-selection--single {
+    border-color: #0d6efd !important;
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.15) !important;
+}
+
+/* Dropdown Menu & Search Input Box */
+.select2-dropdown {
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 6px !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+    font-size: 12.5px !important;
+    z-index: 10050 !important;
+}
+.select2-search--dropdown {
+    padding: 6px 8px !important;
+    background-color: #f8fafc !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+.select2-search--dropdown .select2-search__field {
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 4px !important;
+    padding: 5px 8px !important;
+    font-size: 12px !important;
+    outline: none !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+.select2-search--dropdown .select2-search__field:focus {
+    border-color: #0d6efd !important;
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.15) !important;
+}
+.select2-results__option {
+    padding: 6px 12px !important;
+    font-size: 12.5px !important;
+}
+.select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
+    background-color: #0d6efd !important;
+    color: #fff !important;
+}
+.select2-container--default .select2-results__option--selected {
+    background-color: #e7f1ff !important;
+    color: #0d6efd !important;
+    font-weight: 600 !important;
+}
+</style>
 <div class="container-fluid">
     <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
         <div class="d-flex align-items-center gap-2">
@@ -34,49 +136,48 @@ foreach (($bills ?? []) as $b) {
                 </a>
             <?php endif; ?>
         </div>
-      
     </div>
 
     <!-- Filter Toolbar: Tabs / Pills + Status Dropdown -->
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-        <div class="d-flex flex-wrap align-items-center gap-2">
-            <button type="button" class="btn btn-sm btn-outline-secondary bill-filter-pill active" data-status="All" onclick="filterBillTable('All', this)">
-                <i class="bi bi-grid-fill me-1"></i> All <span class="badge bg-secondary ms-1 rounded-pill"><?= $countAll ?></span>
+        <div class="d-flex flex-wrap align-items-center gap-2" id="statusPillsContainer">
+            <button type="button" class="btn btn-sm <?= (strtolower($selectedStatus) === 'all') ? 'btn-secondary active' : 'btn-outline-secondary' ?> bill-filter-pill" data-status="All" onclick="filterBillTable('All', this)">
+                <i class="bi bi-grid-fill me-1"></i> All <span class="badge bg-secondary ms-1 rounded-pill" id="pillCountAll"><?= $statusCounts['all'] ?></span>
             </button>
 
-            <button type="button" class="btn btn-sm btn-outline-warning bill-filter-pill" data-status="Draft" onclick="filterBillTable('Draft', this)">
+            <button type="button" class="btn btn-sm <?= (strtolower($selectedStatus) === 'draft') ? 'btn-warning active' : 'btn-outline-warning' ?> bill-filter-pill" data-status="Draft" onclick="filterBillTable('Draft', this)">
                 <i class="bi bi-pencil-fill me-1"></i> Draft 
-                <span class="badge bg-warning text-dark ms-1 rounded-pill"><?= $countDraft ?></span>
+                <span class="badge bg-warning text-dark ms-1 rounded-pill" id="pillCountDraft"><?= $statusCounts['draft'] ?></span>
             </button>
 
-            <button type="button" class="btn btn-sm btn-outline-info bill-filter-pill" data-status="Submitted" onclick="filterBillTable('Submitted', this)">
+            <button type="button" class="btn btn-sm <?= (strtolower($selectedStatus) === 'submitted') ? 'btn-info active' : 'btn-outline-info' ?> bill-filter-pill" data-status="Submitted" onclick="filterBillTable('Submitted', this)">
                 <i class="bi bi-hourglass-split me-1"></i> Submitted 
-                <span class="badge bg-info text-dark ms-1 rounded-pill"><?= $countSubmitted ?></span>
+                <span class="badge bg-info text-dark ms-1 rounded-pill" id="pillCountSubmitted"><?= $statusCounts['submitted'] ?></span>
             </button>
 
-            <button type="button" class="btn btn-sm btn-outline-primary bill-filter-pill" data-status="Verified" onclick="filterBillTable('Verified', this)">
+            <button type="button" class="btn btn-sm <?= (strtolower($selectedStatus) === 'verified') ? 'btn-primary active' : 'btn-outline-primary' ?> bill-filter-pill" data-status="Verified" onclick="filterBillTable('Verified', this)">
                 <i class="bi bi-check-circle me-1"></i> PM Verified 
-                <span class="badge bg-primary ms-1 rounded-pill"><?= $countVerified ?></span>
+                <span class="badge bg-primary ms-1 rounded-pill" id="pillCountVerified"><?= $statusCounts['verified'] ?></span>
             </button>
 
-            <button type="button" class="btn btn-sm btn-outline-secondary bill-filter-pill" data-status="Qc approved" onclick="filterBillTable('Qc approved', this)">
+            <button type="button" class="btn btn-sm <?= (in_array(strtolower($selectedStatus), ['qc approved', 'qc_approved'])) ? 'btn-secondary active' : 'btn-outline-secondary' ?> bill-filter-pill" data-status="Qc approved" onclick="filterBillTable('Qc approved', this)">
                 <i class="bi bi-shield-check me-1"></i> QC Approved 
-                <span class="badge bg-secondary ms-1 rounded-pill"><?= $countQcApproved ?></span>
+                <span class="badge bg-secondary ms-1 rounded-pill" id="pillCountQcApproved"><?= $statusCounts['qc_approved'] ?></span>
             </button>
 
-            <button type="button" class="btn btn-sm btn-outline-success bill-filter-pill" data-status="Approved" onclick="filterBillTable('Approved', this)">
+            <button type="button" class="btn btn-sm <?= (strtolower($selectedStatus) === 'approved') ? 'btn-success active' : 'btn-outline-success' ?> bill-filter-pill" data-status="Approved" onclick="filterBillTable('Approved', this)">
                 <i class="bi bi-check-circle-fill me-1"></i> Approved 
-                <span class="badge bg-success ms-1 rounded-pill"><?= $countApproved ?></span>
+                <span class="badge bg-success ms-1 rounded-pill" id="pillCountApproved"><?= $statusCounts['approved'] ?></span>
             </button>
 
-            <button type="button" class="btn btn-sm btn-outline-danger bill-filter-pill" data-status="Rejected" onclick="filterBillTable('Rejected', this)">
+            <button type="button" class="btn btn-sm <?= (strtolower($selectedStatus) === 'rejected') ? 'btn-danger active' : 'btn-outline-danger' ?> bill-filter-pill" data-status="Rejected" onclick="filterBillTable('Rejected', this)">
                 <i class="bi bi-x-circle-fill me-1"></i> Rejected 
-                <span class="badge bg-danger ms-1 rounded-pill"><?= $countRejected ?></span>
+                <span class="badge bg-danger ms-1 rounded-pill" id="pillCountRejected"><?= $statusCounts['rejected'] ?></span>
             </button>
 
-            <button type="button" class="btn btn-sm btn-outline-dark bill-filter-pill" data-status="Paid" onclick="filterBillTable('Paid', this)">
+            <button type="button" class="btn btn-sm <?= (strtolower($selectedStatus) === 'paid') ? 'btn-dark active' : 'btn-outline-dark' ?> bill-filter-pill" data-status="Paid" onclick="filterBillTable('Paid', this)">
                 <i class="bi bi-cash me-1"></i> Paid 
-                <span class="badge bg-dark ms-1 rounded-pill"><?= $countPaid ?></span>
+                <span class="badge bg-dark ms-1 rounded-pill" id="pillCountPaid"><?= $statusCounts['paid'] ?></span>
             </button>
         </div>
 
@@ -85,64 +186,116 @@ foreach (($bills ?? []) as $b) {
                 <i class="bi bi-funnel-fill me-1"></i>Status Filter:
             </label>
             <select id="billStatusFilterSelect" class="form-select form-select-sm shadow-xs" style="min-width: 175px; font-weight: 600;" onchange="onStatusSelectChange(this.value)">
-                <option value="All">All Statuses (<?= $countAll ?>)</option>
-                <option value="Draft">Draft (<?= $countDraft ?>)</option>
-                <option value="Submitted">Submitted (<?= $countSubmitted ?>)</option>
-                <option value="Verified">PM Verified (<?= $countVerified ?>)</option>
-                <option value="Qc approved">QC Approved (<?= $countQcApproved ?>)</option>
-                <option value="Approved">Approved (<?= $countApproved ?>)</option>
-                <option value="Rejected">Rejected (<?= $countRejected ?>)</option>
-                <option value="Paid">Paid (<?= $countPaid ?>)</option>
+                <option value="All" <?= (strtolower($selectedStatus) === 'all') ? 'selected' : '' ?>>All Statuses (<?= $statusCounts['all'] ?>)</option>
+                <option value="Draft" <?= (strtolower($selectedStatus) === 'draft') ? 'selected' : '' ?>>Draft (<?= $statusCounts['draft'] ?>)</option>
+                <option value="Submitted" <?= (strtolower($selectedStatus) === 'submitted') ? 'selected' : '' ?>>Submitted (<?= $statusCounts['submitted'] ?>)</option>
+                <option value="Verified" <?= (strtolower($selectedStatus) === 'verified') ? 'selected' : '' ?>>PM Verified (<?= $statusCounts['verified'] ?>)</option>
+                <option value="Qc approved" <?= (in_array(strtolower($selectedStatus), ['qc approved', 'qc_approved'])) ? 'selected' : '' ?>>QC Approved (<?= $statusCounts['qc_approved'] ?>)</option>
+                <option value="Approved" <?= (strtolower($selectedStatus) === 'approved') ? 'selected' : '' ?>>Approved (<?= $statusCounts['approved'] ?>)</option>
+                <option value="Rejected" <?= (strtolower($selectedStatus) === 'rejected') ? 'selected' : '' ?>>Rejected (<?= $statusCounts['rejected'] ?>)</option>
+                <option value="Paid" <?= (strtolower($selectedStatus) === 'paid') ? 'selected' : '' ?>>Paid (<?= $statusCounts['paid'] ?>)</option>
             </select>
         </div>
     </div>
 
-    <div class="card custom-card">
-        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <h6 class="card-title mb-0"><i class="bi bi-receipt me-2 text-primary"></i> All Contractor Bills</h6>
+    <!-- Card with Enhanced Filter Toolbar, Table & AJAX Pagination -->
+    <div class="card custom-card shadow-sm border">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2 py-2.5">
+            <h6 class="card-title mb-0 d-flex align-items-center">
+                <i class="bi bi-receipt me-2 text-primary fs-16"></i> 
+                <span>All Contractor Bills</span>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill ms-2" id="totalRecordsBadge"><?= $totalRecords ?></span>
+            </h6>
 
-            <!-- Search by Contractor & Trade / Expertise Filter -->
-            <form method="GET" action="<?= $base_url ?>/con-contractor-bills" class="d-flex align-items-center gap-2 mb-0 flex-wrap" id="contractorFilterForm">
-                <div class="d-flex align-items-center gap-2" style="min-width: 320px;">
-                    <label for="contractor_id" class="form-label mb-0 fw-semibold text-muted text-nowrap" style="font-size: 13px;">
-                        <i class="bi bi-funnel text-primary me-1"></i> Contractor / Trade:
-                    </label>
-                    <div style="min-width: 250px;">
-                        <select name="contractor_id" id="contractor_id" class="form-select form-select-sm select2" style="width: 100%;">
-                            <option value="">All Contractors & Trades</option>
-                            <?php if (!empty($contractors)): ?>
-                                <?php foreach ($contractors as $c): ?>
-                                    <?php
-                                        $tradeLabel = !empty($c['trade']) ? ucwords(str_replace('_', ' ', $c['trade'])) : (!empty($c['role']) ? $c['role'] : '');
-                                        $displayTxt = htmlspecialchars($c['name']) . (!empty($tradeLabel) ? ' (' . htmlspecialchars($tradeLabel) . ')' : '');
-                                        $isSelected = (!empty($selectedContractorId) && (int)$selectedContractorId === (int)$c['id']);
-                                    ?>
-                                    <option value="<?= $c['id'] ?>" <?= $isSelected ? 'selected' : '' ?>>
-                                        <?= $displayTxt ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </select>
+            <div class="d-flex align-items-center gap-2">
+                <label for="perPageSelect" class="form-label mb-0 text-muted small fw-semibold text-nowrap">Show:</label>
+                <select id="perPageSelect" class="form-select form-select-sm" style="width: 80px;" onchange="loadBillsPage(1)">
+                    <option value="10" <?= ($perPage == 10) ? 'selected' : '' ?>>10</option>
+                    <option value="25" <?= ($perPage == 25 || empty($perPage)) ? 'selected' : '' ?>>25</option>
+                    <option value="50" <?= ($perPage == 50) ? 'selected' : '' ?>>50</option>
+                    <option value="100" <?= ($perPage == 100) ? 'selected' : '' ?>>100</option>
+                    <option value="all" <?= ($perPage === 'all') ? 'selected' : '' ?>>All</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Filter Controls: Search, Project-wise, Creator (Submitted by), Contractor -->
+        <div class="card-body border-bottom bg-light bg-opacity-50 py-2.5 px-3">
+            <div class="row g-2 align-items-center">
+                <!-- 1. Universal Search (Bill #, Project, Contractor, Creator) -->
+                <div class="col-xl-4 col-lg-4 col-md-12">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-white text-muted border-end-0">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" id="billSearchInput" class="form-control border-start-0 ps-0" placeholder="Search Bill #, Project, Contractor, Creator..." value="<?= htmlspecialchars($filters['search'] ?? '') ?>">
+                        <button class="btn btn-outline-secondary bg-white border-start-0 border-end-0" type="button" id="clearSearchBtn" title="Clear Search" style="<?= empty($filters['search']) ? 'display: none;' : '' ?>" onclick="clearSearchInput()">
+                            <i class="bi bi-x-circle text-muted"></i>
+                        </button>
+                        <button class="btn btn-success" type="button" onclick="loadBillsPage(1)" title="Search">
+                            <i class="bi bi-search me-1"></i>Search
+                        </button>
                     </div>
                 </div>
 
-                <button type="submit" class="btn btn-sm btn-primary d-flex align-items-center gap-1">
-                    <i class="bi bi-search"></i> Search
-                </button>
+                <!-- 2. Project Wise Filter (Searchable Select2) -->
+                <div class="col-xl-4 col-lg-4 col-md-6">
+                    <select id="projectFilterSelect" class="form-select form-select-sm select2 shadow-xs" data-placeholder="All Projects (<?= count($projects ?? []) ?>)" style="width: 100%;">
+                        <option value="">All Projects (<?= count($projects ?? []) ?>)</option>
+                        <?php if (!empty($projects)): ?>
+                            <?php foreach ($projects as $p): ?>
+                                <option value="<?= $p['id'] ?>" <?= (!empty($selectedProjectId) && (int)$selectedProjectId === (int)$p['id']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($p['name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </select>
+                </div>
 
-                <?php if (!empty($selectedContractorId)): ?>
-                    <a href="<?= $base_url ?>/con-contractor-bills" class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1" title="Clear Filter">
-                        <i class="bi bi-x-circle"></i> Clear
-                    </a>
-                <?php endif; ?>
-            </form>
+                <!-- 3. Contractor / Trade Filter (Searchable Select2) -->
+                <div class="col-xl-3 col-lg-3 col-md-6">
+                    <select id="contractorFilterSelect" class="form-select form-select-sm select2 shadow-xs" data-placeholder="All Contractors & Trades (<?= count($contractors ?? []) ?>)" style="width: 100%;">
+                        <option value="">All Contractors & Trades (<?= count($contractors ?? []) ?>)</option>
+                        <?php if (!empty($contractors)): ?>
+                            <?php foreach ($contractors as $c): ?>
+                                <?php
+                                    $tradeLabel = !empty($c['trade']) ? ucwords(str_replace('_', ' ', $c['trade'])) : (!empty($c['role']) ? $c['role'] : '');
+                                    $displayTxt = htmlspecialchars($c['name']) . (!empty($tradeLabel) ? ' (' . htmlspecialchars($tradeLabel) . ')' : '');
+                                    $isSelected = (!empty($selectedContractorId) && (int)$selectedContractorId === (int)$c['id']);
+                                ?>
+                                <option value="<?= $c['id'] ?>" <?= $isSelected ? 'selected' : '' ?>>
+                                    <?= $displayTxt ?>
+                                </option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </select>
+                </div>
+
+                <!-- 4. Reset Button -->
+                <div class="col-xl-1 col-lg-1 col-md-12 d-flex justify-content-end">
+                    <button type="button" id="resetFiltersBtn" class="btn btn-sm btn-outline-danger w-100 d-flex align-items-center justify-content-center gap-1" onclick="resetAllFilters()" title="Reset All Filters">
+                        <i class="bi bi-arrow-counterclockwise"></i> <span>Reset</span>
+                    </button>
+                </div>
+            </div>
         </div>
-        <div class="card-body">
+
+        <!-- Table Container with Loading Overlay -->
+        <div class="card-body p-0 position-relative">
+            <div id="billTableLoadingOverlay" class="position-absolute top-0 start-0 w-100 h-100 bg-white bg-opacity-75 d-none align-items-center justify-content-center" style="z-index: 10; min-height: 220px;">
+                <div class="d-flex flex-column align-items-center gap-2">
+                    <div class="spinner-border text-primary" role="status" style="width: 2.2rem; height: 2.2rem;">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <small class="text-muted fw-semibold">Loading bills...</small>
+                </div>
+            </div>
+
             <div class="table-responsive">
-                <table id="billTable" class="table table-bordered table-hover text-nowrap">
+                <table id="billTable" class="table table-bordered table-hover text-nowrap mb-0 align-middle">
                     <thead class="table-dark">
                         <tr>
-                            <th>#</th>
+                            <th style="width: 80px;">Bill #</th>
                             <th>Project</th>
                             <th>Contractor</th>
                             <th>Bill Type</th>
@@ -152,282 +305,338 @@ foreach (($bills ?? []) as $b) {
                             <th>Submitted By</th>
                             <th>Approved By</th>
                             <th>Payment By</th>
-                            <th>Action</th>
+                            <th class="text-center" style="width: 100px;">Action</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <?php if (!empty($bills)): ?>
-                            <?php foreach ($bills as $i => $b): ?>
-                                <?php
-                                $statusMap = [
-                                    'draft'          => 'warning',
-                                    'submitted'      => 'info',
-                                    'verified'       => 'primary',
-                                    'qc_approved'    => 'secondary',
-                                    'approved'       => 'success',
-                                    'rejected'       => 'danger',
-                                    'paid'           => 'secondary',
-                                    'partially_paid' => 'info',
-                                    'fully_paid'     => 'secondary',
-                                ];
-                                $badge = $statusMap[$b['status']] ?? 'secondary';
-                                $statusLabel = str_replace('_', ' ', ucfirst($b['status']));
-                                ?>
-                                <tr>
-                                    <td><?= $i + 1 ?></td>
-                                    <td>
-                                        <?= htmlspecialchars($b['project_name'] ?? '-') ?>
-                                        <?php if (!empty($b['target_id'])): ?>
-                                            <br>
-                                            <small class="text-success fw-semibold">
-                                                <i class="bi bi-geo-alt me-1"></i><?= htmlspecialchars($b['target_phase_name'] ?? '') ?> 
-                                                <span class="text-muted">(Week <?= htmlspecialchars($b['target_week_number'] ?? '') ?>)</span>
-                                            </small>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <span class="fw-semibold text-dark"><?= htmlspecialchars($b['operator_name'] ?? '-') ?></span><br>
-                                        <?php if (!empty($b['operator_trade'])): ?>
-                                            <span class="badge bg-light text-primary border border-primary-subtle mt-1" style="font-size: 11px;">
-                                                <i class="bi bi-tools me-1"></i><?= htmlspecialchars(ucwords(str_replace('_', ' ', $b['operator_trade']))) ?>
-                                            </span>
-                                        <?php elseif (!empty($b['operator_role'])): ?>
-                                            <small class="text-muted"><?= htmlspecialchars($b['operator_role']) ?></small>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-<?= ($b['bill_type'] === 'Advance') ? 'warning' : (($b['bill_type'] === 'Retention') ? 'info' : 'primary') ?>-transparent">
-                                            <?= htmlspecialchars($b['bill_type'] ?? 'Progress') ?>
-                                        </span>
-                                    </td>
-                                    <td><?= date('d M Y', strtotime($b['bill_date'])) ?></td>
-                                    <td class="fw-semibold text-end">৳ <?= number_format($b['bill_amount'], 2) ?></td>
-                                    <td><span class="badge bg-<?= $badge ?>"><?= $statusLabel ?></span></td>
-                                    <td><?= htmlspecialchars($b['created_by_name'] ?? '-') ?></td>
-                                    <td>
-                                        <?php
-                                        $hasApprover = false;
-                                        ?>
-                                        <div class="d-flex flex-column gap-1" style="font-size: 11px; min-width: 140px;">
-                                            <?php if (!empty($b['verified_by_name'])): 
-                                                $hasApprover = true;
-                                                $pmDate = !empty($b['verified_at']) ? date('d M Y', strtotime($b['verified_at'])) : '';
-                                            ?>
-                                                <div class="p-1 rounded bg-light border border-info-subtle mb-1">
-                                                    <div class="d-flex align-items-center justify-content-between gap-1">
-                                                        <span class="badge bg-info text-white px-1" style="font-size: 8.5px; font-weight: 600;">PM</span>
-                                                        <span class="fw-semibold text-dark text-truncate" title="<?= htmlspecialchars($b['verified_by_name']) ?>"><?= htmlspecialchars($b['verified_by_name']) ?></span>
-                                                    </div>
-                                                    <div class="d-flex align-items-center justify-content-between text-muted mt-1" style="font-size: 9.5px;">
-                                                        <span class="text-truncate"><?= htmlspecialchars($b['verified_by_role'] ?? 'PM Head') ?></span>
-                                                        <?php if ($pmDate): ?>
-                                                            <span class="text-nowrap ms-1 text-primary fw-medium"><?= $pmDate ?></span>
-                                                        <?php endif; ?>
-                                                    </div>
-                                                </div>
-                                            <?php endif; ?>
-
-                                            <?php if (!empty($b['qc_approved_by_name'])): 
-                                                $hasApprover = true;
-                                                $qcDate = !empty($b['qc_approved_at']) ? date('d M Y', strtotime($b['qc_approved_at'])) : '';
-                                            ?>
-                                                <div class="p-1 rounded bg-light border border-primary-subtle mb-1">
-                                                    <div class="d-flex align-items-center justify-content-between gap-1">
-                                                        <span class="badge bg-primary text-white px-1" style="font-size: 8.5px; font-weight: 600;">QC</span>
-                                                        <span class="fw-semibold text-dark text-truncate" title="<?= htmlspecialchars($b['qc_approved_by_name']) ?>"><?= htmlspecialchars($b['qc_approved_by_name']) ?></span>
-                                                    </div>
-                                                    <div class="d-flex align-items-center justify-content-between text-muted mt-1" style="font-size: 9.5px;">
-                                                        <span class="text-truncate"><?= htmlspecialchars($b['qc_approved_by_role'] ?? 'QC & Audit') ?></span>
-                                                        <?php if ($qcDate): ?>
-                                                            <span class="text-nowrap ms-1 text-primary fw-medium"><?= $qcDate ?></span>
-                                                        <?php endif; ?>
-                                                    </div>
-                                                </div>
-                                            <?php endif; ?>
-
-                                            <?php if (!empty($b['approved_by_name'])): 
-                                                $hasApprover = true;
-                                                $mgmtDate = !empty($b['approved_at']) ? date('d M Y', strtotime($b['approved_at'])) : (!empty($b['updated_at']) && in_array($b['status'], ['approved', 'paid', 'partially_paid', 'fully_paid']) ? date('d M Y', strtotime($b['updated_at'])) : '');
-                                            ?>
-                                                <div class="p-1 rounded bg-light border border-success-subtle">
-                                                    <div class="d-flex align-items-center justify-content-between gap-1">
-                                                        <span class="badge bg-success text-white px-1" style="font-size: 8.5px; font-weight: 600;">Mgmt</span>
-                                                        <span class="fw-semibold text-success text-truncate" title="<?= htmlspecialchars($b['approved_by_name']) ?>"><?= htmlspecialchars($b['approved_by_name']) ?></span>
-                                                    </div>
-                                                    <div class="d-flex align-items-center justify-content-between text-muted mt-1" style="font-size: 9.5px;">
-                                                        <span class="text-truncate"><?= htmlspecialchars($b['approved_by_role'] ?? 'Management') ?></span>
-                                                        <?php if ($mgmtDate): ?>
-                                                            <span class="text-nowrap ms-1 text-success fw-medium"><?= $mgmtDate ?></span>
-                                                        <?php endif; ?>
-                                                    </div>
-                                                </div>
-                                            <?php endif; ?>
-
-                                            <?php if (!$hasApprover): ?>
-                                                <span class="text-muted">—</span>
-                                            <?php endif; ?>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <?php if (!empty($b['payment_by_name'])): ?>
-                                            <span class="text-primary fw-semibold"><?= htmlspecialchars($b['payment_by_name']) ?></span>
-                                        <?php else: ?>
-                                            <span class="text-muted">—</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <a href="<?= $base_url ?>/con-contractor-bill/<?= $b['id'] ?>" class="btn btn-sm btn-outline-primary" title="View">
-                                            <i class="bi bi-eye"></i>
-                                        </a>
-                                        <?php if (in_array($b['status'], ['paid', 'partially_paid', 'fully_paid']) || !empty($b['payment_date']) || !empty($b['payment_by_name'])): ?>
-                                            <a href="<?= $base_url ?>/expense-adjustments/create?parent_type=contractor&cashout_request_id=<?= $b['id'] ?>&project_id=<?= $b['project_id'] ?>" class="btn btn-sm btn-outline-warning" title="Settlement / Adjustment">
-                                                <i class="bi bi-sliders"></i>
-                                            </a>
-                                        <?php endif; ?>
-                                        <?php if (!in_array($b['status'], ['approved', 'paid', 'partially_paid', 'fully_paid'])): ?>
-                                            <?php if (hasPermission('Contractor Bill') || in_array($userRole ?? ($_SESSION['user']['role_id'] ?? 0), [1, 3, 33, 17, 23, 31])): ?>
-                                                <a href="<?= $base_url ?>/con-contractor-bill-edit/<?= $b['id'] ?>" class="btn btn-sm btn-outline-info" title="Edit">
-                                                    <i class="bi bi-pencil"></i>
-                                                </a>
-                                                <a href="<?= $base_url ?>/con-contractor-bill-delete/<?= $b['id'] ?>" class="btn btn-sm btn-outline-danger" title="Delete" onclick="return confirm('Are you sure you want to delete this bill?');">
-                                                    <i class="bi bi-trash"></i>
-                                                </a>
-                                            <?php endif; ?>
-                                        <?php endif; ?>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="11" class="text-center text-muted py-4">
-                                    No contractor bills found.
-                                    <?php if (hasPermission('Contractor Bill') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 17, 23, 31, 20, 32, 12])): ?>
-                                        <a href="<?= $base_url ?>/con-contractor-bill-create">Create one</a>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
-                        <?php endif; ?>
+                    <tbody id="billTableBody">
+                        <?php include __DIR__ . '/partials/bill_rows.php'; ?>
                     </tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- Pagination and Summary Footer -->
+        <div class="card-footer py-2.5 px-3 bg-white border-top">
+            <div id="billPaginationContainer">
+                <?= $paginationHtml ?>
             </div>
         </div>
     </div>
 </div>
 
 <style>
-.custom-card .card-header .select2-container--default .select2-selection--single {
+.custom-card .select2-container--default .select2-selection--single {
     height: 31px;
     border-color: #dee2e6;
     display: flex;
     align-items: center;
 }
-.custom-card .card-header .select2-container--default .select2-selection--single .select2-selection__rendered {
+.custom-card .select2-container--default .select2-selection--single .select2-selection__rendered {
     line-height: 31px;
     font-size: 13px;
     padding-left: 8px;
     color: #333;
 }
-.custom-card .card-header .select2-container--default .select2-selection--single .select2-selection__arrow {
+.custom-card .select2-container--default .select2-selection--single .select2-selection__arrow {
     height: 31px;
+}
+.bill-filter-pill.active {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.12);
+}
+#billTable th {
+    vertical-align: middle;
+    font-size: 13px;
+    font-weight: 600;
+}
+#billTable td {
+    vertical-align: middle;
+    font-size: 13px;
+}
+.pagination-sm .page-link {
+    font-size: 12.5px;
 }
 </style>
 
 <script>
-window.filterBillTable = function (status, btnElement) {
-    document.querySelectorAll('.bill-filter-pill').forEach(function (pill) {
-        pill.classList.remove('active');
-        if (pill.classList.contains('btn-secondary')) {
-            pill.classList.replace('btn-secondary', 'btn-outline-secondary');
-        } else if (pill.classList.contains('btn-danger')) {
-            pill.classList.replace('btn-danger', 'btn-outline-danger');
-        } else if (pill.classList.contains('btn-success')) {
-            pill.classList.replace('btn-success', 'btn-outline-success');
-        } else if (pill.classList.contains('btn-primary')) {
-            pill.classList.replace('btn-primary', 'btn-outline-primary');
-        } else if (pill.classList.contains('btn-info')) {
-            pill.classList.replace('btn-info', 'btn-outline-info');
-        } else if (pill.classList.contains('btn-dark')) {
-            pill.classList.replace('btn-dark', 'btn-outline-dark');
-        } else if (pill.classList.contains('btn-warning')) {
-            pill.classList.replace('btn-warning', 'btn-outline-warning');
-        }
-    });
+(function() {
+    let searchDebounceTimer = null;
+    let activeFetchController = null;
+    let currentStatus = "<?= htmlspecialchars($selectedStatus) ?>";
 
-    if (btnElement) {
-        btnElement.classList.add('active');
-        if (btnElement.classList.contains('btn-outline-secondary')) {
-            btnElement.classList.replace('btn-outline-secondary', 'btn-secondary');
-        } else if (btnElement.classList.contains('btn-outline-danger')) {
-            btnElement.classList.replace('btn-outline-danger', 'btn-danger');
-        } else if (btnElement.classList.contains('btn-outline-success')) {
-            btnElement.classList.replace('btn-outline-success', 'btn-success');
-        } else if (btnElement.classList.contains('btn-outline-primary')) {
-            btnElement.classList.replace('btn-outline-primary', 'btn-primary');
-        } else if (btnElement.classList.contains('btn-outline-info')) {
-            btnElement.classList.replace('btn-outline-info', 'btn-info');
-        } else if (btnElement.classList.contains('btn-outline-dark')) {
-            btnElement.classList.replace('btn-outline-dark', 'btn-dark');
-        } else if (btnElement.classList.contains('btn-outline-warning')) {
-            btnElement.classList.replace('btn-outline-warning', 'btn-warning');
-        }
-    }
+    // 1. Status Filter Pills Handling
+    window.filterBillTable = function(status, btnElement) {
+        currentStatus = status || 'All';
 
-    // Keep dropdown in sync
-    var sel = document.getElementById('billStatusFilterSelect');
-    if (sel && sel.value !== status) {
-        sel.value = status;
-    }
-
-    if (typeof jQuery !== 'undefined' && typeof jQuery.fn.DataTable !== 'undefined') {
-        var dt = jQuery('#billTable').DataTable();
-        if (!status || status === 'All') {
-            dt.column(6).search('').draw();
-        } else {
-            if (status === 'Paid') {
-                dt.column(6).search('Paid', true, false).draw();
-            } else {
-                var escaped = jQuery.fn.dataTable.util.escapeRegex(status);
-                dt.column(6).search('^' + escaped + '$', true, false).draw();
-            }
-        }
-    }
-};
-
-window.onStatusSelectChange = function (val) {
-    var matchingBtn = document.querySelector('.bill-filter-pill[data-status="' + val + '"]');
-    filterBillTable(val, matchingBtn);
-};
-
-$(document).ready(function () {
-    if (typeof $ !== 'undefined' && $.fn.select2) {
-        $('#contractor_id').select2({
-            placeholder: "Search by Contractor Name or Trade / Expertise...",
-            allowClear: true,
-            width: '100%'
+        // Update pills UI
+        document.querySelectorAll('.bill-filter-pill').forEach(function(pill) {
+            pill.classList.remove('active');
+            if (pill.classList.contains('btn-secondary')) pill.classList.replace('btn-secondary', 'btn-outline-secondary');
+            if (pill.classList.contains('btn-danger')) pill.classList.replace('btn-danger', 'btn-outline-danger');
+            if (pill.classList.contains('btn-success')) pill.classList.replace('btn-success', 'btn-outline-success');
+            if (pill.classList.contains('btn-primary')) pill.classList.replace('btn-primary', 'btn-outline-primary');
+            if (pill.classList.contains('btn-info')) pill.classList.replace('btn-info', 'btn-outline-info');
+            if (pill.classList.contains('btn-dark')) pill.classList.replace('btn-dark', 'btn-outline-dark');
+            if (pill.classList.contains('btn-warning')) pill.classList.replace('btn-warning', 'btn-outline-warning');
         });
-        $('#contractor_id').on('change select2:select select2:clear', function () {
-            $('#contractorFilterForm').submit();
-        });
-    }
 
-    if (typeof jQuery !== 'undefined' && typeof jQuery.fn.DataTable !== 'undefined') {
-        var table = $('#billTable').DataTable({ 
-            destroy: true,
-            responsive: true, 
-            pageLength: 25,
-            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
-            order: [[4, 'desc']],
-            language: {
-                search: "_INPUT_",
-                searchPlaceholder: "Quick filter in table...",
-                paginate: {
-                    first: '<i class="fa-solid fa-angles-left"></i>',
-                    previous: '<i class="fa-solid fa-angle-left"></i>',
-                    next: '<i class="fa-solid fa-angle-right"></i>',
-                    last: '<i class="fa-solid fa-angles-right"></i>'
+        if (btnElement) {
+            btnElement.classList.add('active');
+            if (btnElement.classList.contains('btn-outline-secondary')) btnElement.classList.replace('btn-outline-secondary', 'btn-secondary');
+            if (btnElement.classList.contains('btn-outline-danger')) btnElement.classList.replace('btn-outline-danger', 'btn-danger');
+            if (btnElement.classList.contains('btn-outline-success')) btnElement.classList.replace('btn-outline-success', 'btn-success');
+            if (btnElement.classList.contains('btn-outline-primary')) btnElement.classList.replace('btn-outline-primary', 'btn-primary');
+            if (btnElement.classList.contains('btn-outline-info')) btnElement.classList.replace('btn-outline-info', 'btn-info');
+            if (btnElement.classList.contains('btn-outline-dark')) btnElement.classList.replace('btn-outline-dark', 'btn-dark');
+            if (btnElement.classList.contains('btn-outline-warning')) btnElement.classList.replace('btn-outline-warning', 'btn-warning');
+        }
+
+        // Keep dropdown in sync
+        const statusSelect = document.getElementById('billStatusFilterSelect');
+        if (statusSelect && statusSelect.value !== currentStatus) {
+            statusSelect.value = currentStatus;
+        }
+
+        loadBillsPage(1);
+    };
+
+    window.onStatusSelectChange = function(val) {
+        const matchingBtn = document.querySelector('.bill-filter-pill[data-status="' + val + '"]');
+        filterBillTable(val, matchingBtn);
+    };
+
+    // 2. Clear Search input
+    window.clearSearchInput = function() {
+        const searchInput = document.getElementById('billSearchInput');
+        if (searchInput) {
+            searchInput.value = '';
+            document.getElementById('clearSearchBtn').style.display = 'none';
+            loadBillsPage(1);
+        }
+    };
+
+    // 3. Reset All Filters
+    window.resetAllFilters = function() {
+        const searchInput = document.getElementById('billSearchInput');
+        if (searchInput) searchInput.value = '';
+
+        const clearBtn = document.getElementById('clearSearchBtn');
+        if (clearBtn) clearBtn.style.display = 'none';
+
+        if (typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 === 'function') {
+            jQuery('#projectFilterSelect').val('').trigger('change.select2');
+            jQuery('#contractorFilterSelect').val('').trigger('change.select2');
+        }
+
+        const projSelect = document.getElementById('projectFilterSelect');
+        if (projSelect) {
+            projSelect.value = '';
+        }
+
+        const contractorSelect = document.getElementById('contractorFilterSelect');
+        if (contractorSelect) {
+            contractorSelect.value = '';
+        }
+
+        const perPageSelect = document.getElementById('perPageSelect');
+        if (perPageSelect) perPageSelect.value = '25';
+
+        const allPill = document.querySelector('.bill-filter-pill[data-status="All"]');
+        filterBillTable('All', allPill);
+    };
+
+    // 4. Main AJAX Pagination & Search function
+    window.loadBillsPage = function(page) {
+        page = page || 1;
+
+        const searchInput      = document.getElementById('billSearchInput');
+        const projectSelect    = document.getElementById('projectFilterSelect');
+        const contractorSelect = document.getElementById('contractorFilterSelect');
+        const perPageSelect    = document.getElementById('perPageSelect');
+        const loadingOverlay   = document.getElementById('billTableLoadingOverlay');
+
+        const searchValue      = searchInput ? searchInput.value.trim() : '';
+        const projectId        = projectSelect ? projectSelect.value : '';
+        const contractorId     = contractorSelect ? contractorSelect.value : '';
+        const perPage          = perPageSelect ? perPageSelect.value : '25';
+
+        // Toggle clear search button
+        const clearBtn = document.getElementById('clearSearchBtn');
+        if (clearBtn) {
+            clearBtn.style.display = searchValue !== '' ? 'inline-block' : 'none';
+        }
+
+        // Cancel previous request if still running
+        if (activeFetchController) {
+            activeFetchController.abort();
+        }
+        activeFetchController = new AbortController();
+
+        // Show loading overlay
+        if (loadingOverlay) {
+            loadingOverlay.classList.remove('d-none');
+            loadingOverlay.classList.add('d-flex');
+        }
+
+        // Build query params
+        const params = new URLSearchParams();
+        params.set('ajax', '1');
+        params.set('page', page);
+        params.set('per_page', perPage);
+        if (searchValue)   params.set('search', searchValue);
+        if (projectId)     params.set('project_id', projectId);
+        if (contractorId)  params.set('contractor_id', contractorId);
+        if (currentStatus && currentStatus !== 'All') params.set('status', currentStatus);
+
+        const url = (window.base_url || '<?= $base_url ?>') + '/con-contractor-bills?' + params.toString();
+
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            signal: activeFetchController.signal
+        })
+        .then(function(res) {
+            return res.json();
+        })
+        .then(function(data) {
+            if (data && data.success) {
+                // Update table body
+                const tbody = document.getElementById('billTableBody');
+                if (tbody) tbody.innerHTML = data.table_html;
+
+                // Update pagination
+                const pagContainer = document.getElementById('billPaginationContainer');
+                if (pagContainer) pagContainer.innerHTML = data.pagination_html;
+
+                // Update total count badge
+                const totalBadge = document.getElementById('totalRecordsBadge');
+                if (totalBadge) totalBadge.textContent = data.total_records;
+
+                // Update status counts on pills if provided
+                if (data.status_counts) {
+                    const sc = data.status_counts;
+                    if (document.getElementById('pillCountAll'))         document.getElementById('pillCountAll').textContent = sc.all ?? 0;
+                    if (document.getElementById('pillCountDraft'))       document.getElementById('pillCountDraft').textContent = sc.draft ?? 0;
+                    if (document.getElementById('pillCountSubmitted'))   document.getElementById('pillCountSubmitted').textContent = sc.submitted ?? 0;
+                    if (document.getElementById('pillCountVerified'))    document.getElementById('pillCountVerified').textContent = sc.verified ?? 0;
+                    if (document.getElementById('pillCountQcApproved'))  document.getElementById('pillCountQcApproved').textContent = sc.qc_approved ?? 0;
+                    if (document.getElementById('pillCountApproved'))    document.getElementById('pillCountApproved').textContent = sc.approved ?? 0;
+                    if (document.getElementById('pillCountRejected'))    document.getElementById('pillCountRejected').textContent = sc.rejected ?? 0;
+                    if (document.getElementById('pillCountPaid'))        document.getElementById('pillCountPaid').textContent = sc.paid ?? 0;
                 }
+
+                // Update browser URL state without page refresh
+                const stateParams = new URLSearchParams(params);
+                stateParams.delete('ajax');
+                const newUrl = window.location.pathname + (stateParams.toString() ? '?' + stateParams.toString() : '');
+                window.history.replaceState({ path: newUrl }, '', newUrl);
+            }
+        })
+        .catch(function(err) {
+            if (err.name !== 'AbortError') {
+                console.error("Error loading contractor bills:", err);
+            }
+        })
+        .finally(function() {
+            if (loadingOverlay) {
+                loadingOverlay.classList.remove('d-flex');
+                loadingOverlay.classList.add('d-none');
             }
         });
+    };
+
+    // 5. Safe Initializer for Select2 searchable dropdowns & DOM listeners
+    function initModuleScripts() {
+        // Initialize Select2 with search enabled for Project and Contractor dropdowns
+        if (typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 === 'function') {
+            const $proj = jQuery('#projectFilterSelect');
+            const $cont = jQuery('#contractorFilterSelect');
+
+            if (!$proj.hasClass('select2-hidden-accessible')) {
+                $proj.select2({
+                    width: '100%',
+                    placeholder: $proj.data('placeholder') || 'All Projects',
+                    allowClear: true,
+                    dropdownParent: jQuery('body')
+                });
+            }
+
+            if (!$cont.hasClass('select2-hidden-accessible')) {
+                $cont.select2({
+                    width: '100%',
+                    placeholder: $cont.data('placeholder') || 'All Contractors & Trades',
+                    allowClear: true,
+                    dropdownParent: jQuery('body')
+                });
+            }
+
+            // Bind change and select2:clear events to reload page 1
+            $proj.off('change.billFilter select2:clear.billFilter').on('change.billFilter select2:clear.billFilter', function() {
+                window.loadBillsPage(1);
+            });
+
+            $cont.off('change.billFilter select2:clear.billFilter').on('change.billFilter select2:clear.billFilter', function() {
+                window.loadBillsPage(1);
+            });
+
+            // Auto-focus search input inside Select2 dropdown when opened
+            jQuery(document).off('select2:open.billAutoSearch').on('select2:open.billAutoSearch', function() {
+                setTimeout(function() {
+                    const searchField = document.querySelector('.select2-container--open .select2-search__field');
+                    if (searchField) {
+                        searchField.focus();
+                    }
+                }, 10);
+            });
+        } else {
+            // Fallback native listener if Select2 is not yet initialized
+            const pSel = document.getElementById('projectFilterSelect');
+            if (pSel && !pSel.dataset.listenerBound) {
+                pSel.dataset.listenerBound = 'true';
+                pSel.addEventListener('change', function() {
+                    window.loadBillsPage(1);
+                });
+            }
+
+            const cSel = document.getElementById('contractorFilterSelect');
+            if (cSel && !cSel.dataset.listenerBound) {
+                cSel.dataset.listenerBound = 'true';
+                cSel.addEventListener('change', function() {
+                    window.loadBillsPage(1);
+                });
+            }
+        }
+
+        const searchInput = document.getElementById('billSearchInput');
+        if (searchInput && !searchInput.dataset.listenerBound) {
+            searchInput.dataset.listenerBound = 'true';
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchDebounceTimer);
+                searchDebounceTimer = setTimeout(function() {
+                    window.loadBillsPage(1);
+                }, 350);
+            });
+
+            searchInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    clearTimeout(searchDebounceTimer);
+                    window.loadBillsPage(1);
+                }
+            });
+        }
     }
-});
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initModuleScripts);
+    } else {
+        initModuleScripts();
+    }
+    // Also run on window load and jQuery ready to guarantee Select2 setup
+    window.addEventListener('load', initModuleScripts);
+    if (typeof jQuery !== 'undefined') {
+        jQuery(document).ready(initModuleScripts);
+    }
+})();
 </script>

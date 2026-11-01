@@ -394,7 +394,7 @@
             function initSelect2(parent = document) {
     if (!$.fn.select2) return;
 
-    $(parent).find('.select2').each(function () {
+    $(parent).find('select.select2').each(function () {
         if ($(this).hasClass('select2-hidden-accessible')) return;
 
         var hasEmptyOption = $(this).find('option[value=""]').length > 0;
@@ -414,7 +414,7 @@
     });
 
     // ✅ Fix scroll-to-top for team assignment dropdowns
-    $(parent).find('.select2-no-scroll').each(function () {
+    $(parent).find('select.select2-no-scroll').each(function () {
         if ($(this).hasClass('select2-hidden-accessible')) return;
 
         var hasEmptyOption = $(this).find('option[value=""]').length > 0;

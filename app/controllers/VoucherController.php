@@ -44,6 +44,7 @@ class VoucherController extends Controller
 
                 if (!$req) die("Not found");
 
+                $voucherData['voucher_no'] = 'CSH-' . $id;
                 $voucherData['paid_to'] = $req['purpose_paid_to'];
                 $voucherData['project'] = $req['project_name'] ?? 'Head Office / Operations';
                 $voucherData['purpose'] = 'Cashout Request - ' . ($req['remarks'] ?? 'General Cashout');
@@ -89,6 +90,7 @@ class VoucherController extends Controller
 
                 if (!$req) die("Not found");
 
+                $voucherData['voucher_no'] = 'REQ-' . $id;
                 $voucherData['paid_to'] = $req['full_name'];
                 $voucherData['project'] = $req['project_name'] ?? 'General Operations';
                 $voucherData['purpose'] = 'Petty Cash / Fund Requisition - ' . $req['purpose'];
@@ -134,6 +136,7 @@ class VoucherController extends Controller
 
                 if (!$req) die("Not found");
 
+                $voucherData['voucher_no'] = 'CB-' . $id;
                 $voucherData['paid_to'] = $req['contractor_name'];
                 $voucherData['project'] = $req['project_name'] ?? 'Construction Site';
                 $voucherData['purpose'] = 'Contractor Bill - ' . $req['work_description'];
@@ -149,6 +152,9 @@ class VoucherController extends Controller
                 $tStmt->execute();
                 $tRes = $tStmt->get_result();
                 while ($row = $tRes->fetch_assoc()) {
+                    if (empty($row['reference_number'])) {
+                        $row['reference_number'] = 'CB-' . $id;
+                    }
                     $row['description'] = $expenseDetails;
                     $voucherData['transactions'][] = $row;
                     $voucherData['amount'] += (float)$row['amount_paid'];
@@ -163,7 +169,7 @@ class VoucherController extends Controller
                         'payment_method' => 'Bank / Cash',
                         'transaction_date' => $req['updated_at'] ?? date('Y-m-d'),
                         'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '',
-                        'reference_number' => 'CB-' . str_pad($id, 4, '0', STR_PAD_LEFT),
+                        'reference_number' => 'CB-' . $id,
                         'description' => $expenseDetails
                     ];
                 }
@@ -180,6 +186,7 @@ class VoucherController extends Controller
 
                 if (!$req) die("Not found");
 
+                $voucherData['voucher_no'] = 'VPR-' . $id;
                 $voucherData['paid_to'] = $req['vendor_name'] ?? 'Vendor';
                 $voucherData['project'] = $req['project_name'] ?? 'Construction Site';
                 $voucherData['purpose'] = 'Vendor Payment - Invoice ' . ($req['invoice_number'] ?? 'N/A');
@@ -198,6 +205,9 @@ class VoucherController extends Controller
                 $tStmt->execute();
                 $tRes = $tStmt->get_result();
                 while ($row = $tRes->fetch_assoc()) {
+                    if (empty($row['reference_number'])) {
+                        $row['reference_number'] = 'CB-' . $id;
+                    }
                     $row['description'] = $expenseDetails;
                     $voucherData['transactions'][] = $row;
                     $voucherData['amount'] += (float)$row['amount_paid'];
@@ -228,6 +238,7 @@ class VoucherController extends Controller
 
                 if (!$req) die("Not found");
 
+                $voucherData['voucher_no'] = 'REQ-' . $id;
                 $voucherData['paid_to'] = $req['full_name'];
                 $voucherData['project'] = $req['project_name'] ?? 'Construction Site';
                 $voucherData['purpose'] = 'Operational Fund - ' . $req['purpose'];
@@ -240,6 +251,9 @@ class VoucherController extends Controller
                 $tStmt->execute();
                 $tRes = $tStmt->get_result();
                 while ($row = $tRes->fetch_assoc()) {
+                    if (empty($row['reference_number'])) {
+                        $row['reference_number'] = 'CB-' . $id;
+                    }
                     $row['description'] = $expenseDetails;
                     $voucherData['transactions'][] = $row;
                     $voucherData['amount'] += (float)$row['amount_paid'];
@@ -276,6 +290,7 @@ class VoucherController extends Controller
 
                 if (!$req) die("Not found");
 
+                $voucherData['voucher_no'] = 'ADV-' . $id;
                 $voucherData['paid_to'] = (!empty($req['employee_name']) ? $req['employee_name'] : 'Employee') . (!empty($req['emp_code']) ? ' (' . $req['emp_code'] . ')' : '');
                 $voucherData['project'] = !empty($req['dept_name']) ? $req['dept_name'] : 'Head Office / HR Payroll';
                 $voucherData['purpose'] = 'Advance Salary Request - ' . ($req['reason'] ?? 'Staff Advance');
@@ -317,6 +332,7 @@ class VoucherController extends Controller
 
                 if (!$req) die("Not found");
 
+                $voucherData['voucher_no'] = 'POC-' . $id;
                 $voucherData['paid_to'] = $req['requester_name'] ?? 'Site Operator';
                 $voucherData['project'] = $req['project_name'] ?? 'Construction Site';
                 $costTypeLabel = !empty($req['rcost_type']) 
@@ -360,6 +376,7 @@ class VoucherController extends Controller
 
                 if (!$req) die("Not found");
 
+                $voucherData['voucher_no'] = !empty($req['requisition_no']) ? $req['requisition_no'] : ('LR-' . $id);
                 $voucherData['paid_to'] = $req['se_name'] ?? 'Site Engineer / Labor Contractor';
                 $voucherData['project'] = $req['project_name'] ?? 'Construction Site';
                 $voucherData['purpose'] = 'Labor Bill by SE - ' . ($req['requisition_no'] ?? 'Requisition #' . $id);
@@ -420,6 +437,7 @@ class VoucherController extends Controller
 
                 if (!$req) die("Not found");
 
+                $voucherData['voucher_no'] = 'PAY-' . $id;
                 $voucherData['paid_to'] = (!empty($req['employee_name']) ? $req['employee_name'] : 'Employee') . (!empty($req['emp_code']) ? ' (' . $req['emp_code'] . ')' : '');
                 $voucherData['project'] = !empty($req['project_name']) ? $req['project_name'] : (!empty($req['dept_name']) ? $req['dept_name'] : 'Head Office');
                 $voucherData['purpose'] = 'Monthly Staff Salary - ' . ($req['payslip_month'] ?? date('M Y'));
@@ -462,6 +480,7 @@ class VoucherController extends Controller
 
                 if (!$req) die("Not found");
 
+                $voucherData['voucher_no'] = 'PR-' . $id;
                 $voucherData['paid_to'] = !empty($req['vendor_name']) ? $req['vendor_name'] : ($req['requester_name'] ?? 'Procurement Vendor');
                 $voucherData['project'] = $req['project_name'] ?? 'Head Office / Operations';
                 $voucherData['purpose'] = 'Office Procurement / Extra Asset - ' . ($req['item_name'] ?? 'Procurement');
@@ -500,6 +519,7 @@ class VoucherController extends Controller
 
                 if (!$req) die("Not found");
 
+                $voucherData['voucher_no'] = 'LFR-' . $id;
                 $voucherData['paid_to'] = $req['full_name'];
                 $voucherData['project'] = 'Land Acquisition';
                 $voucherData['purpose'] = 'Land Requisition (' . $req['requisition_type'] . ') - ' . $req['purpose'];
@@ -542,6 +562,7 @@ class VoucherController extends Controller
 
                 if (!$req) die("Not found");
 
+                $voucherData['voucher_no'] = 'REF-' . $id;
                 $voucherData['paid_to'] = $req['lead_name'] ?? 'Client / Buyer';
                 $voucherData['project'] = $req['project_name'] ?? 'Sales Project';
                 $voucherData['purpose'] = 'Client Refund Request (' . (!empty($req['booking_id']) ? 'Booking #' . $req['booking_id'] : '') . ') - ' . ($req['reason'] ?? 'Booking Refund');
@@ -583,6 +604,7 @@ class VoucherController extends Controller
 
                 if (!$req) die("Not found");
 
+                $voucherData['voucher_no'] = 'INC-' . $id;
                 $voucherData['paid_to'] = $req['exec_name'] ?? 'Sales Executive';
                 $voucherData['project'] = $req['project_name'] ?? 'Sales Department';
                 $voucherData['purpose'] = 'Sales Incentive Claim - ' . ($req['remarks'] ?? 'Incentive Claim');
@@ -633,7 +655,7 @@ class VoucherController extends Controller
 
                 if (!$req) die("Not found");
 
-                $voucherData['voucher_no'] = 'ADJ-' . str_pad($id, 4, '0', STR_PAD_LEFT);
+                $voucherData['voucher_no'] = 'ADJ-' . $id;
                 $voucherData['paid_to'] = $req['full_name'];
                 $voucherData['project'] = !empty($req['project_name']) ? $req['project_name'] : (!empty($req['office']) ? $req['office'] : 'Head Office / Operations');
                 $voucherData['purpose'] = 'Expense Adjustment - ' . $req['title'];

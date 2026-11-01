@@ -75,11 +75,13 @@ class ApprovalRequestController extends Controller
         }
         $department = $_GET['department'] ?? '';
         $sourceTable = $_GET['source_table'] ?? '';
+        $search = trim($_GET['search'] ?? $_GET['request_no'] ?? '');
 
         $filters = [
             'status'       => $status,
             'department'   => $department,
             'source_table' => $sourceTable,
+            'search'       => $search,
             'user_id'      => $userId,
             'role_id'      => $userRoleId,
             'role_name'    => $sessionRoleName

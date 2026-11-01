@@ -53,16 +53,21 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
 <!-- Header -->
 <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
     <div class="my-auto">
-        <h4 class="page-title fw-semibold fs-18 mb-0">Contractor Bill #<?= $bill['id'] ?></h4>
+        <h4 class="page-title fw-semibold fs-18 mb-0">Contractor Bill (CB-<?= $bill['id'] ?>)</h4>
         <nav>
             <ol class="breadcrumb mb-0">
                 <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
                 <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-contractor-bills">Contractor Bills</a></li>
-                <li class="breadcrumb-item active">#<?= $bill['id'] ?></li>
+                <li class="breadcrumb-item active">CB-<?= $bill['id'] ?></li>
             </ol>
         </nav>
     </div>
     <div class="d-flex gap-2 align-items-center flex-wrap">
+        <?php if (!in_array($status, ['rejected', 'draft'])): ?>
+            <a href="<?= $base_url ?>/print-debit-voucher?module=contractor_bill&id=<?= $bill['id'] ?>&is_approval=1" target="_blank" class="btn btn-outline-info btn-sm">
+                <i class="bi bi-file-earmark-check me-1"></i> Approval Voucher
+            </a>
+        <?php endif; ?>
         <?php if (!empty($payments) || $totalPaid > 0 || in_array($status, ['approved', 'partially_paid', 'fully_paid', 'paid'])): ?>
             <?php if (!empty($payments) || $totalPaid > 0): ?>
             <a href="<?= $base_url ?>/expense-adjustments/create?parent_type=contractor&cashout_request_id=<?= $bill['id'] ?>&project_id=<?= $bill['project_id'] ?>" class="btn btn-warning btn-sm">
@@ -70,7 +75,7 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
             </a>
             <?php endif; ?>
             <a href="<?= $base_url ?>/print-debit-voucher?module=contractor_bill&id=<?= $bill['id'] ?>" target="_blank" class="btn btn-primary btn-sm">
-                <i class="bi bi-printer me-1"></i> Debit Voucher
+                <i class="bi bi-printer me-1"></i> Payment Voucher
             </a>
         <?php endif; ?>
         <span class="badge bg-<?= $statusInfo['color'] ?> fs-6 px-3 py-2"><?= $statusInfo['label'] ?></span>
@@ -103,12 +108,17 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
         <div class="col-lg-8">
             <!-- Bill Details Card -->
             <div class="card custom-card mb-3">
-                <div class="card-header">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <h6 class="card-title mb-0"><i class="bi bi-receipt me-2"></i>Bill Details</h6>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-12 px-2 py-1 fw-bold">CB-<?= $bill['id'] ?></span>
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-6 text-muted">
+                        <div class="col-md-6 text-muted mb-2">
+                            <div class="info-label text-uppercase text-muted small fw-bold">Bill Number</div>
+                            <div class="info-value fw-bold text-primary fs-14">CB-<?= $bill['id'] ?></div>
+                        </div>
+                        <div class="col-md-6 text-muted mb-2">
                             <div class="info-label text-uppercase text-muted small fw-bold">Project</div>
                             <div class="info-value"><?= htmlspecialchars($bill['project_name'] ?? '—') ?></div>
                         </div>

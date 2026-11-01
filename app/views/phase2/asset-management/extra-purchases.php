@@ -989,7 +989,16 @@ function getNextStep(data) {
     return { text: 'Processing', color: 'info', icon: 'fa-clock' };
 }
 
-function getStepTitle(step) {
+function getStepTitle(step, data) {
+    if (step === 'mgmt') {
+        var isOver1L = data && (parseFloat(data.total_price) > 100000.01);
+        var opDone = data && (String(data.op_head_status).toLowerCase() === 'approved');
+        if (isOver1L) {
+            if (!opDone) return 'Admin & Operation Head Approval (Stage 1: > ৳1 Lakh)';
+            return 'Management Final Approval (Stage 2: > ৳1 Lakh)';
+        }
+        return 'Management / Operation Head Approval (Within ৳1 Lakh)';
+    }
     var titles = {
         'dept_head': 'Department Head / Reporting Boss Approval',
         'operations': 'Admin & Operation Approval (Role 32)',
@@ -1211,7 +1220,7 @@ function renderDetailModal(data) {
         <div class="mt-4 p-3 border border-success rounded-3 bg-light shadow-sm">
             <div class="d-flex align-items-center justify-content-between mb-2">
                 <span class="fw-bold fs-13 text-success">
-                    <i class="fa-solid fa-shield-check me-1"></i> Ready for Approval: ${getStepTitle(data.approval_step)}
+                    <i class="fa-solid fa-shield-check me-1"></i> Ready for Approval: ${getStepTitle(data.approval_step, data)}
                 </span>
                 <span class="badge bg-success-subtle text-success border border-success-subtle">Authorized Approver</span>
             </div>

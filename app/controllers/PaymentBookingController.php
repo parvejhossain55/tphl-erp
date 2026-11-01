@@ -421,7 +421,7 @@ class PaymentBookingController extends Controller
         // Trigger 2: Send Payment Verified SMS
         require_once dirname(__DIR__) . '/services/SmsService.php';
         $smsService = new SmsService($this->db);
-        $smsService->sendPaymentVerifiedSms($id);
+        $smsService->sendBatchPaymentVerifiedSmsIfComplete($id);
 
         setSuccess("Payment verified! Booking status: " . ucfirst($newBookingStatus));
         header("Location: " . $_SERVER['HTTP_REFERER']);
