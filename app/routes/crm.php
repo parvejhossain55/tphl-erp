@@ -64,6 +64,7 @@ return [
     // Controller: LeadAutomationController (Google Sheets & Gemini Automation)
     // =========================================================================
     'lead-automation-upload' => ['controller' => 'LeadAutomationController', 'method' => 'index'],
+    'lead-automation/team-project-setup' => ['controller' => 'LeadAutomationController', 'method' => 'teamProjectSetup'],
     'lead-automation/scrape' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxScrape'],
     'lead-automation/leads-ajax' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxListLeads'],
     'lead-automation/platform-stats' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxPlatformStats'],
@@ -73,6 +74,10 @@ return [
     'lead-automation/delete' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxDelete'],
     'lead-automation/cron' => ['controller' => 'LeadAutomationController', 'method' => 'syncCron'],
     'lead-automation/sync-brochure' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxSyncBrochureLeads'],
+    'lead-automation/project-rules' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxGetProjectRules'],
+    'lead-automation/project-rules/save' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxSaveProjectRule'],
+    'lead-automation/project-rules/toggle' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxToggleProjectRule'],
+    'lead-automation/project-rules/delete' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxDeleteProjectRule'],
     'api/v1/leads/brochure' => ['controller' => 'LeadAutomationController', 'method' => 'ajaxSyncBrochureLeads'],
     'api/v1/leads/repibee' => ['controller' => 'LeadAutomationController', 'method' => 'repibeeWebhook'],
     'api/leads/repibee' => ['controller' => 'LeadAutomationController', 'method' => 'repibeeWebhook'],

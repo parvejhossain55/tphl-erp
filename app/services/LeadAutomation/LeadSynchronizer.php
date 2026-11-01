@@ -11,6 +11,9 @@ class LeadSynchronizer
     private array $projectRotations = [];
     private array $logs = [];
     private ?int $userId = null;
+    private ?array $cachedProjectsMap = null;
+    private ?array $cachedDbProjects = null;
+    private ?array $cachedActiveTeamIds = null;
 
     public function __construct(array $config, $userId = null)
     {
@@ -216,7 +219,7 @@ class LeadSynchronizer
                     continue;
                 }
 
-                $tabResults = $this->processCsvContent($tabCsv);
+                $tabResults = $this->processCsvContent($tabCsv, false, $tabName);
 
                 $aggregated['total_rows'] += $tabResults['total_rows'];
                 $aggregated['inserted'] += $tabResults['inserted'];
@@ -253,7 +256,7 @@ class LeadSynchronizer
     /**
      * Process raw CSV string (used for live sync or local file tests)
      */
-    public function processCsvContent(string $rawContent, bool $dryRun = false): array
+    public function processCsvContent(string $rawContent, bool $dryRun = false, string $tabName = ''): array
     {
         // Clean UTF BOM and normalize line breaks
         $content = $this->cleanBomAndNormalize($rawContent);
@@ -309,7 +312,7 @@ class LeadSynchronizer
                     $modelName,
                     $geminiConf['timeout'] ?? 60
                 );
-                return $this->processWithGemini($gemini, $rawHeaders, $rawRows, $dryRun);
+                return $this->processWithGemini($gemini, $rawHeaders, $rawRows, $dryRun, $tabName);
             } catch (Exception $e) {
                 $this->log("Gemini AI Warning: " . $e->getMessage());
                 if (!($geminiConf['fallback_to_local'] ?? true)) {
@@ -359,7 +362,8 @@ class LeadSynchronizer
             }
 
             // Match Project and determine Team ID via Round-Robin
-            $projectMatch = $this->matchProject($leadData['campaign_name'] ?? '', $leadData['form_name'] ?? '');
+            $secondaryContext = trim(($leadData['form_name'] ?? '') . ' ' . ($leadData['adset_name'] ?? '') . ' ' . $tabName);
+            $projectMatch = $this->matchProject($leadData['campaign_name'] ?? '', $secondaryContext);
             if ($projectMatch['project_id'] === null && !($this->config['default_project']['allow_insert_if_unmatched'] ?? true)) {
                 $stats['unmatched_project']++;
                 $this->log("Row " . ($lineNum + 2) . ": Skipped because project could not be matched for campaign: " . $leadData['campaign_name']);
@@ -633,11 +637,107 @@ class LeadSynchronizer
     }
 
     /**
-     * Match project based on keywords in campaign_name (and optional secondary form/adset name)
+     * Load dynamic project keyword & team rules from DB table `lead_automation_project_rules`
+     * merged on top of config['projects'] fallback.
+     */
+    public function getDynamicProjectsMap(): array
+    {
+        if ($this->cachedProjectsMap !== null) {
+            return $this->cachedProjectsMap;
+        }
+
+        $projects = $this->config['projects'] ?? [];
+
+        try {
+            $pdo = $this->getDb();
+            $this->ensureSchema($pdo);
+
+            $stmt = $pdo->query("
+                SELECT r.project_id, r.project_name, r.keywords, r.team_ids, r.is_active, p.name AS db_project_name
+                FROM `lead_automation_project_rules` r
+                LEFT JOIN `projects` p ON r.project_id = p.id
+                ORDER BY r.id ASC
+            ");
+            $rows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+
+            if (!empty($rows)) {
+                // Rebuild projects map from database rules (preserving active rules)
+                $dbMap = [];
+                foreach ($rows as $row) {
+                    if ((int)($row['is_active'] ?? 1) !== 1) {
+                        continue;
+                    }
+                    $projId = (int)$row['project_id'];
+                    $projName = !empty($row['db_project_name']) ? $row['db_project_name'] : $row['project_name'];
+                    $teamsRaw = json_decode((string)($row['team_ids'] ?? '[]'), true);
+                    if (!is_array($teamsRaw)) {
+                        $teamsRaw = array_filter(array_map('intval', explode(',', (string)($row['team_ids'] ?? ''))));
+                    }
+                    $activeTeamsMap = $this->getActiveTeamIds($pdo);
+                    $teams = array_values(array_filter(array_map('intval', $teamsRaw), fn($id) => $id > 0 && (empty($activeTeamsMap) || isset($activeTeamsMap[$id]))));
+
+                    $kwParts = preg_split('/[,;\n]+/', (string)($row['keywords'] ?? ''));
+                    foreach ($kwParts as $kw) {
+                        $kwClean = strtolower(trim($kw));
+                        if ($kwClean !== '') {
+                            $dbMap[$kwClean] = [
+                                'name'       => $projName,
+                                'project_id' => $projId,
+                                'teams'      => $teams,
+                            ];
+                        }
+                    }
+                }
+                if (!empty($dbMap)) {
+                    $projects = $dbMap;
+                }
+            }
+        } catch (Throwable $e) {
+            // Fallback to config['projects'] silently
+        }
+
+        $this->cachedProjectsMap = $projects;
+        return $this->cachedProjectsMap;
+    }
+
+    /**
+     * Clear cached project rules after updates
+     */
+    /**
+     * Get map of active team IDs (status = 1) so inactive teams are strictly skipped
+     */
+    public function getActiveTeamIds(?PDO $pdo = null): array
+    {
+        if ($this->cachedActiveTeamIds !== null) {
+            return $this->cachedActiveTeamIds;
+        }
+        $activeMap = [];
+        try {
+            $pdo = $pdo ?: $this->getDb();
+            $stmt = $pdo->query("SELECT id FROM `teams` WHERE `status` = 1");
+            if ($stmt) {
+                while ($tid = $stmt->fetchColumn()) {
+                    $activeMap[(int)$tid] = true;
+                }
+            }
+        } catch (Throwable $t) {}
+        $this->cachedActiveTeamIds = $activeMap;
+        return $this->cachedActiveTeamIds;
+    }
+
+    public function clearProjectCache(): void
+    {
+        $this->cachedProjectsMap = null;
+        $this->cachedDbProjects = null;
+        $this->cachedActiveTeamIds = null;
+    }
+
+    /**
+     * Match project based on keywords in campaign_name (and optional secondary form/adset/tab name)
      */
     public function matchProject(string $campaignName, string $secondaryName = ''): array
     {
-        $projects = $this->config['projects'] ?? [];
+        $projects = $this->getDynamicProjectsMap();
 
         // 1. Sort keywords by length descending so longer/more specific phrases match first
         // (e.g. 'crown pavilion' matches before 'crown', 'tprc commercial' before 'commercial')
@@ -660,6 +760,7 @@ class LeadSynchronizer
 
         foreach ($projects as $keyword => $info) {
             $keywordLower = strtolower(trim($keyword));
+            if ($keywordLower === '') continue;
             if (
                 strpos($campaignLower, $keywordLower) !== false || 
                 strpos($rawLower, $keywordLower) !== false ||
@@ -674,6 +775,40 @@ class LeadSynchronizer
                 ];
             }
         }
+
+        // 3. Smart Database Fallback: Check against `projects` table directly in case a new project
+        // was onboarded in ERP (`projects` table) and matches the campaign name directly!
+        try {
+            if ($this->cachedDbProjects === null) {
+                $pdo = $this->getDb();
+                $pStmt = $pdo->query("SELECT id, name FROM `projects` WHERE deleted_at IS NULL ORDER BY LENGTH(name) DESC");
+                $this->cachedDbProjects = $pStmt ? $pStmt->fetchAll(PDO::FETCH_ASSOC) : [];
+            }
+            foreach ($this->cachedDbProjects as $dbProj) {
+                $pName = trim((string)($dbProj['name'] ?? ''));
+                if ($pName === '' || strtolower($pName) === 'in progress' || stripos($pName, 'test project') !== false || stripos($pName, 'common project') !== false) {
+                    continue;
+                }
+                $fullNorm = $normalize($pName);
+                // Also strip common prefixes "the premium " or "the " for core name matching (minimum 5 chars)
+                $shortNorm = preg_replace('/^(the\s+premium\s+|the\s+)/i', '', $fullNorm);
+                $candidates = array_unique(array_filter([$fullNorm, trim($shortNorm)], fn($s) => strlen($s) >= 5));
+
+                foreach ($candidates as $cand) {
+                    if (
+                        strpos($campaignLower, $cand) !== false ||
+                        (!empty($secLower) && strpos($secLower, $cand) !== false)
+                    ) {
+                        return [
+                            'matched_keyword' => $cand,
+                            'project_name'    => $pName,
+                            'project_id'      => (int)$dbProj['id'],
+                            'teams'           => []
+                        ];
+                    }
+                }
+            }
+        } catch (Throwable $t) {}
 
         // Fallback default project / common leads
         $default = $this->config['default_project'] ?? [];
@@ -691,6 +826,12 @@ class LeadSynchronizer
      */
     public function resolveNextTeamId(?int $projectId, array $teams, ?PDO $pdo = null): ?int
     {
+        if (!empty($teams)) {
+            $activeTeamsMap = $this->getActiveTeamIds($pdo);
+            if (!empty($activeTeamsMap)) {
+                $teams = array_values(array_filter(array_map('intval', $teams), fn($id) => isset($activeTeamsMap[$id])));
+            }
+        }
         if (empty($teams)) {
             return null;
         }
@@ -932,7 +1073,7 @@ class LeadSynchronizer
     /**
      * Process extracted leads through Gemini AI
      */
-    private function processWithGemini(GeminiService $gemini, array $headers, array $rawRows, bool $dryRun): array
+    private function processWithGemini(GeminiService $gemini, array $headers, array $rawRows, bool $dryRun, string $tabName = ''): array
     {
         $stats = [
             'total_rows'        => count($rawRows),
@@ -949,8 +1090,9 @@ class LeadSynchronizer
         $batchSize = 25;
         $chunks = array_chunk($rawRows, $batchSize);
 
+        $activeProjectsMap = $this->getDynamicProjectsMap();
         foreach ($chunks as $chunkIndex => $chunkRows) {
-            $parsedLeads = $gemini->parseLeadsWithGemini($headers, $chunkRows, $this->config['projects'] ?? []);
+            $parsedLeads = $gemini->parseLeadsWithGemini($headers, $chunkRows, $activeProjectsMap);
 
             foreach ($parsedLeads as $leadData) {
                 $rawPhone = $leadData['phone_number'] ?? '';
@@ -970,10 +1112,10 @@ class LeadSynchronizer
 
                 // Match Project: prioritize deterministic keyword matching with sorted length
                 $projectMatch = $this->matchProject($leadData['campaign_name'] ?? '', $leadData['form_name'] ?? '');
-                if ($projectMatch['project_id'] === null && !empty($leadData['matched_project_keyword']) && isset($this->config['projects'][$leadData['matched_project_keyword']])) {
+                if ($projectMatch['project_id'] === null && !empty($leadData['matched_project_keyword']) && isset($activeProjectsMap[$leadData['matched_project_keyword']])) {
                     $projectMatch = [
-                        'project_id' => $this->config['projects'][$leadData['matched_project_keyword']]['project_id'],
-                        'teams'      => $this->config['projects'][$leadData['matched_project_keyword']]['teams'] ?? []
+                        'project_id' => $activeProjectsMap[$leadData['matched_project_keyword']]['project_id'],
+                        'teams'      => $activeProjectsMap[$leadData['matched_project_keyword']]['teams'] ?? []
                     ];
                 }
 
@@ -1127,6 +1269,57 @@ class LeadSynchronizer
                 try {
                     $pdo->exec("CREATE INDEX `idx_leads_is_brocure` ON `leads` (`is_brocure_leads`)");
                 } catch (Throwable $t) {}
+            }
+
+            // 6. Ensure `lead_automation_project_rules` table exists and auto-seed from config if empty
+            $pdo->exec("
+                CREATE TABLE IF NOT EXISTS `lead_automation_project_rules` (
+                    `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    `project_id` INT NOT NULL,
+                    `project_name` VARCHAR(255) NOT NULL,
+                    `keywords` TEXT NOT NULL COMMENT 'Comma-separated matching keywords',
+                    `team_ids` TEXT NOT NULL COMMENT 'JSON array of assigned team IDs',
+                    `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+                    `updated_by` INT NULL,
+                    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    UNIQUE KEY `uq_lapr_project` (`project_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+            ");
+
+            $ruleCount = (int)$pdo->query("SELECT COUNT(*) FROM `lead_automation_project_rules`")->fetchColumn();
+            if ($ruleCount === 0 && !empty($this->config['projects'])) {
+                $grouped = [];
+                foreach ($this->config['projects'] as $kw => $info) {
+                    $pid = (int)($info['project_id'] ?? 0);
+                    if ($pid <= 0) continue;
+                    if (!isset($grouped[$pid])) {
+                        $grouped[$pid] = [
+                            'project_id'   => $pid,
+                            'project_name' => $info['name'] ?? "Project #{$pid}",
+                            'keywords'     => [],
+                            'teams'        => array_values(array_unique(array_map('intval', $info['teams'] ?? []))),
+                        ];
+                    }
+                    $kwClean = strtolower(trim((string)$kw));
+                    if ($kwClean !== '' && !in_array($kwClean, $grouped[$pid]['keywords'], true)) {
+                        $grouped[$pid]['keywords'][] = $kwClean;
+                    }
+                }
+
+                $insStmt = $pdo->prepare("
+                    INSERT IGNORE INTO `lead_automation_project_rules`
+                    (`project_id`, `project_name`, `keywords`, `team_ids`, `is_active`)
+                    VALUES (?, ?, ?, ?, 1)
+                ");
+                foreach ($grouped as $g) {
+                    $insStmt->execute([
+                        $g['project_id'],
+                        $g['project_name'],
+                        implode(', ', $g['keywords']),
+                        json_encode($g['teams']),
+                    ]);
+                }
             }
         } catch (Throwable $e) {
             $this->log("ensureSchema warning: " . $e->getMessage());

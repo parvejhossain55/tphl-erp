@@ -1179,12 +1179,16 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
             </span>
         </div>
 
-        <div class="d-flex align-items-center gap-2">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
             <?php if ($canViewLiveSheet && !empty($sheet_url)): ?>
-                <a href="<?= htmlspecialchars($sheet_url) ?>" target="_blank" class="btn btn-outline-success btn-sm py-1 px-2 d-inline-flex align-items-center gap-1" style="font-size: 12px; font-weight: 600;" title="Open Google Sheet in new tab">
+                <a href="<?= htmlspecialchars($sheet_url) ?>" target="_blank" class="btn btn-outline-success btn-sm py-1 px-2 d-inline-flex align-items-center gap-1" style="font-size: 12px; font-weight: 600; height: 32px;" title="Open Google Sheet in new tab">
                     <span>Live Sheet</span> <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 10px;"></i>
                 </a>
             <?php endif; ?>
+            <a href="<?= $GLOBALS['base_url'] ?>/lead-automation/team-project-setup" id="btnTeamProjectSetup" class="btn btn-dark btn-sm px-3 fw-bold d-inline-flex align-items-center gap-2 text-decoration-none" style="height: 32px; background: #0f172a; border-color: #0f172a; color: #ffffff;" title="Manage Project Keywords & Monthly Team Round-Robin Allocations">
+                <i class="fa-solid fa-sliders"></i>
+                <span>Team & Project Setup</span>
+            </a>
             <button id="btnScrape" class="btn btn-success btn-sm px-3 fw-bold d-inline-flex align-items-center gap-2" style="height: 32px;" onclick="triggerScrape()">
                 <span id="btnScrapeSpinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
                 <i id="btnScrapeIcon" class="fa-solid fa-cloud-arrow-down"></i>
@@ -3382,6 +3386,7 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
             setTimeout(() => toast.remove(), 300);
         }, 3500);
     }
+
 </script>
 
 <!-- accha jodi gemini api error dey or jodi limit sesh hoy or gemini api koro karone kaj  na kore tahole ki all tabs theke correct data chole asbe? -->
