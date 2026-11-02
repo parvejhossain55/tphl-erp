@@ -45,6 +45,16 @@ unset($_SESSION['booking_csv_import_skipped']); // clear after reading
     </div>
 </div>
 <?php endif; ?>
+<style>
+.badge.bg-received, .bg-received {
+    background-color: #10b981 !important;
+    color: #ffffff !important;
+}
+.badge.bg-not-received, .bg-not-received {
+    background-color: #ef4444 !important;
+    color: #ffffff !important;
+}
+</style>
 <!-- Stats Grid -->
 <?php
 // Find the selected executive's name for display
@@ -143,9 +153,9 @@ $activeCard = $_GET['filter_card'] ?? '';
         </div>
     </div>
     <div class="col-6 col-md-6 col-lg-4 col-xl-2">
-        <a href="<?= getStatCardLink('hot_leads') ?>" class="card__wrapper stat-card text-decoration-none d-block h-100 <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>" style="cursor: pointer; <?= $activeCard === 'hot_leads' ? 'border: 2px solid #10b981 !important; background-color: #f0fdf4;' : '' ?>">
-            <div class="stat-label">Hot Leads <?= !empty($filteredExecName) ? '<i class="fa-solid fa-filter ms-1 text-primary" style="font-size:9px;" title="Filtered"></i>' : '' ?></div>
-            <div class="stat-value"><?= $totalHotLeads ?></div>
+        <a href="<?= getStatCardLink('hot_leads') ?>" class="card__wrapper stat-card text-decoration-none d-block h-100 <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>" style="cursor: pointer; <?= in_array($activeCard, ['hot_leads', 'high_potential']) ? 'border: 2px solid #dc3545 !important; background-color: #fef2f2;' : '' ?>">
+            <div class="stat-label text-danger fw-semibold"><i class="fa-solid fa-fire me-1"></i>High Potential <?= !empty($filteredExecName) ? '<i class="fa-solid fa-filter ms-1 text-primary" style="font-size:9px;" title="Filtered"></i>' : '' ?></div>
+            <div class="stat-value text-danger"><?= $totalHotLeads ?></div>
             <div class="stat-change positive d-none">
                 <i class="bi bi-arrow-up"></i> 2.5%
             </div>
@@ -197,8 +207,8 @@ $activeCard = $_GET['filter_card'] ?? '';
         </a>
     </div>
     <div class="col-6 col-md-6 col-lg-4 col-xl-2">
-        <a href="<?= getStatCardLink('irrelevant_leads') ?>" class="card__wrapper stat-card text-decoration-none d-block h-100 <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>" style="cursor: pointer; <?= $activeCard === 'irrelevant_leads' ? 'border: 2px solid #10b981 !important; background-color: #f0fdf4;' : '' ?>">
-            <div class="stat-label">Irrelevant Leads <?= !empty($filteredExecName) ? '<i class="fa-solid fa-filter ms-1 text-primary" style="font-size:9px;" title="Filtered"></i>' : '' ?></div>
+        <a href="<?= getStatCardLink('irrelevant_leads') ?>" class="card__wrapper stat-card text-decoration-none d-block h-100 <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>" style="cursor: pointer; <?= in_array($activeCard, ['irrelevant_leads', 'invalid_lead']) ? 'border: 2px solid #10b981 !important; background-color: #f0fdf4;' : '' ?>">
+            <div class="stat-label">Invalid Leads <?= !empty($filteredExecName) ? '<i class="fa-solid fa-filter ms-1 text-primary" style="font-size:9px;" title="Filtered"></i>' : '' ?></div>
             <div class="stat-value text-secondary"><?= $totalIrrelevantLeads ?? 0 ?></div>
             <div class="stat-change negative d-none">
                 <i class="bi bi-arrow-down"></i>
@@ -409,7 +419,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                             <option value="visited" <?= ($selectedAction ?? '') == 'visited' ? 'selected' : '' ?>>Visited</option>
                             <option value="cancel" <?= ($selectedAction ?? '') == 'cancel' ? 'selected' : '' ?>>Cancel</option>
                             <option value="no_response" <?= ($selectedAction ?? '') == 'no_response' ? 'selected' : '' ?>>No Response</option>
-                            <option value="irrelevant" <?= ($selectedAction ?? '') == 'irrelevant' ? 'selected' : '' ?>>Irrelevant</option>
+                            <option value="irrelevant" <?= in_array($selectedAction ?? '', ['irrelevant', 'invalid_lead']) ? 'selected' : '' ?>>Invalid Lead</option>
                         </select>
                     </div>
 
@@ -717,7 +727,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                         <option value="visited" <?= ($_GET['last_action'] ?? '') == 'visited' ? 'selected' : '' ?>>Visited</option>
                         <option value="cancel" <?= ($_GET['last_action'] ?? '') == 'cancel' ? 'selected' : '' ?>>Cancel</option>
                         <option value="no_response" <?= ($_GET['last_action'] ?? '') == 'no_response' ? 'selected' : '' ?>>No Response</option>
-                        <option value="irrelevant" <?= ($_GET['last_action'] ?? '') == 'irrelevant' ? 'selected' : '' ?>>Irrelevant</option>
+                        <option value="irrelevant" <?= in_array($_GET['last_action'] ?? '', ['irrelevant', 'invalid_lead']) ? 'selected' : '' ?>>Invalid Lead</option>
                     </select>
 
                     <!-- Assigned / Unassigned -->
@@ -1285,9 +1295,9 @@ $activeCard = $_GET['filter_card'] ?? '';
                                 <option value="">Select Status</option>
                                 <?php
                                 $statuses = [
-                                    'No Response', 'Pending', 'Prospect', 'High Prospect', 
-                                    'Will Visit', 'Visited', 'Lead Transferred', 
-                                    'Not Interested', 'Don\'t Call Again', 'Cold', 'Hot', 'Warm', 'Irrelevant'
+                                    'No Response', 'Pending', 'Potential', 'High Potential', 
+                                    'Visit Scheduled', 'Visit Completed', 'Lead Transferred', 
+                                    'Not Interested', 'Don\'t Call Again', 'Invalid Lead'
                                 ];
                                 foreach($statuses as $st) {
                                     echo "<option value=\"$st\">$st</option>";
@@ -1519,10 +1529,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         let lsBadge = '<span class="text-muted">—</span>';
                         if (item.lead_status) {
                             let lsCls = 'bg-secondary text-white';
-                            if (item.lead_status === 'Prospect' || item.lead_status === 'High Prospect') lsCls = 'bg-success text-white';
-                            else if (item.lead_status === 'Hot') lsCls = 'bg-danger text-white';
-                            else if (item.lead_status === 'Warm') lsCls = 'bg-warning text-dark';
-                            else if (item.lead_status === 'Irrelevant') lsCls = 'bg-dark text-white';
+                            if (item.lead_status === 'High Potential' || item.lead_status === 'High Prospect' || item.lead_status === 'Hot') lsCls = 'bg-danger text-white';
+                            else if (item.lead_status === 'Potential' || item.lead_status === 'Prospect' || item.lead_status === 'Warm') lsCls = 'bg-success text-white';
+                            else if (item.lead_status === 'Visit Scheduled' || item.lead_status === 'Will Visit') lsCls = 'bg-info text-dark';
+                            else if (item.lead_status === 'Visit Completed' || item.lead_status === 'Visited') lsCls = 'bg-primary text-white';
+                            else if (item.lead_status === 'Invalid Lead' || item.lead_status === 'Irrelevant') lsCls = 'bg-dark text-white';
                             else if (item.lead_status === 'Cold' || item.lead_status === 'Not Interested' || item.lead_status === "Don't Call Again") lsCls = 'bg-secondary text-white';
                             lsBadge = `<span class="badge ${lsCls} px-2 py-1">${escapeHtml(item.lead_status)}</span>`;
                         }
@@ -1692,11 +1703,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         let badgeWrap = $(`.lead-status-badge-wrap[data-lead-id="${leadId}"]`);
                         if (badgeWrap.length > 0) {
                             let bCls = 'bg-secondary text-white';
-                            if (savedLeadStatus === 'Prospect' || savedLeadStatus === 'High Prospect') bCls = 'bg-success text-white';
-                            else if (savedLeadStatus === 'Hot') bCls = 'bg-danger text-white';
-                            else if (savedLeadStatus === 'Warm') bCls = 'bg-warning text-dark';
+                            if (savedLeadStatus === 'High Potential' || savedLeadStatus === 'High Prospect' || savedLeadStatus === 'Hot') bCls = 'bg-danger text-white';
+                            else if (savedLeadStatus === 'Potential' || savedLeadStatus === 'Prospect' || savedLeadStatus === 'Warm') bCls = 'bg-success text-white';
+                            else if (savedLeadStatus === 'Visit Scheduled' || savedLeadStatus === 'Will Visit') bCls = 'bg-info text-dark';
+                            else if (savedLeadStatus === 'Visit Completed' || savedLeadStatus === 'Visited') bCls = 'bg-primary text-white';
                             else if (savedLeadStatus === 'No Response') bCls = 'bg-warning text-dark';
-                            else if (savedLeadStatus === 'Irrelevant') bCls = 'bg-dark text-white';
+                            else if (savedLeadStatus === 'Invalid Lead' || savedLeadStatus === 'Irrelevant') bCls = 'bg-dark text-white';
                             else if (savedLeadStatus === 'Not Interested' || savedLeadStatus === "Don't Call Again" || savedLeadStatus === 'Cold' || savedLeadStatus === 'Refund') bCls = 'bg-secondary text-white';
                             badgeWrap.html(`<span class="badge ${bCls} px-2 py-1" style="font-size: 10px;">${escapeHtml(savedLeadStatus)}</span>`);
                         }

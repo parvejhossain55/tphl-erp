@@ -312,9 +312,15 @@ $selectedTeamId     = $_SESSION['old']['team_id']          ?? $leadData['team_id
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">Lead Type</label>
                         <select name="lead_type" class="form-select">
-                            <option value="Warm" <?= ($leadData['lead_type'] ?? '') === 'Warm' ? 'selected' : '' ?>>Warm</option>
-                            <option value="Hot" <?= ($leadData['lead_type'] ?? '') === 'Hot' ? 'selected' : '' ?>>Hot</option>
-                            <option value="Cold" <?= ($leadData['lead_type'] ?? '') === 'Cold' ? 'selected' : '' ?>>Cold</option>
+                            <option value="Potential" <?= in_array($leadData['lead_type'] ?? '', ['Potential', 'Prospect', 'Warm']) ? 'selected' : '' ?>>Potential</option>
+                            <option value="High Potential" <?= in_array($leadData['lead_type'] ?? '', ['High Potential', 'High Prospect', 'Hot']) ? 'selected' : '' ?>>High Potential</option>
+                            <option value="Visit Scheduled" <?= in_array($leadData['lead_type'] ?? '', ['Visit Scheduled', 'Will Visit']) ? 'selected' : '' ?>>Visit Scheduled</option>
+                            <option value="Visit Completed" <?= in_array($leadData['lead_type'] ?? '', ['Visit Completed', 'Visited']) ? 'selected' : '' ?>>Visit Completed</option>
+                            <option value="Not Interested" <?= in_array($leadData['lead_type'] ?? '', ['Not Interested', 'Cold']) ? 'selected' : '' ?>>Not Interested</option>
+                            <option value="No Response" <?= ($leadData['lead_type'] ?? '') === 'No Response' ? 'selected' : '' ?>>No Response</option>
+                            <option value="Pending" <?= ($leadData['lead_type'] ?? '') === 'Pending' ? 'selected' : '' ?>>Pending</option>
+                            <option value="Invalid Lead" <?= in_array($leadData['lead_type'] ?? '', ['Invalid Lead', 'Irrelevant']) ? 'selected' : '' ?>>Invalid Lead</option>
+                            <option value="Sold" <?= ($leadData['lead_type'] ?? '') === 'Sold' ? 'selected' : '' ?>>Sold</option>
                         </select>
                     </div>
 
@@ -322,7 +328,7 @@ $selectedTeamId     = $_SESSION['old']['team_id']          ?? $leadData['team_id
                         <label class="form-label fw-semibold">Lead Quality</label>
                         <select name="lead_quality" class="form-select">
                             <option value="Pending" <?= ($leadData['lead_quality'] ?? '') === 'Pending' ? 'selected' : '' ?>>Pending</option>
-                            <option value="Prospect" <?= ($leadData['lead_quality'] ?? '') === 'Prospect' ? 'selected' : '' ?>>Prospect</option>
+                            <option value="Potential" <?= in_array($leadData['lead_quality'] ?? '', ['Potential', 'Prospect']) ? 'selected' : '' ?>>Potential</option>
                             <option value="Not Interested" <?= ($leadData['lead_quality'] ?? '') === 'Not Interested' ? 'selected' : '' ?>>Not Interested</option>
                         </select>
                     </div>

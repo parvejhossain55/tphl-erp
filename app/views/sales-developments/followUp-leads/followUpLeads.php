@@ -112,9 +112,9 @@ $show_breadcrumb = true;
                             <option value="">Select Status</option>
                             <?php
                             $statuses = [
-                                'No Response', 'Pending', 'Prospect', 'High Prospect', 
-                                'Will Visit', 'Visited', 'Lead Transferred', 
-                                'Not Interested', 'Don\'t Call Again', 'Cold', 'Hot', 'Warm', 'Irrelevant'
+                                'No Response', 'Pending', 'Potential', 'High Potential', 
+                                'Visit Scheduled', 'Visit Completed', 'Lead Transferred', 
+                                'Not Interested', 'Don\'t Call Again', 'Invalid Lead'
                             ];
                             foreach($statuses as $st) {
                                 echo "<option value=\"$st\">$st</option>";
@@ -212,6 +212,7 @@ $show_breadcrumb = true;
                             <th>Follow Up Date</th>
                             <th>Follow Up Time</th>
                             <th>Type</th>
+                            <th>Lead Status</th>
                             <th>Discussion Note</th>
                             <th>Next Follow Up</th>
                             <th>Next Action</th>
@@ -232,6 +233,20 @@ $show_breadcrumb = true;
                                 <td><?= $fu['follow_up_date'] ? date('d F, Y', strtotime($fu['follow_up_date'])) : '' ?></td>
                                 <td><?= $fu['follow_up_time'] ?? '' ?></td>
                                 <td><?= ucfirst($fu['follow_up_type']) ?></td>
+                                <?php
+                                $fuLeadStatus = !empty($fu['lead_status']) ? $fu['lead_status'] : 'Pending';
+                                $fuBadgeClass = 'bg-secondary text-white';
+                                if (in_array($fuLeadStatus, ['High Potential', 'High Prospect', 'Hot'])) $fuBadgeClass = 'bg-danger text-white';
+                                elseif (in_array($fuLeadStatus, ['Potential', 'Prospect'])) $fuBadgeClass = 'bg-success text-white';
+                                elseif (in_array($fuLeadStatus, ['Visit Scheduled', 'Will Visit'])) $fuBadgeClass = 'bg-info text-dark';
+                                elseif (in_array($fuLeadStatus, ['Visit Completed', 'Visited'])) $fuBadgeClass = 'bg-primary text-white';
+                                elseif (in_array($fuLeadStatus, ['Not Interested', "Don't Call Again", 'Cold', 'Refund'])) $fuBadgeClass = 'bg-danger text-white';
+                                elseif ($fuLeadStatus === 'Warm') $fuBadgeClass = 'bg-warning text-dark';
+                                elseif (in_array($fuLeadStatus, ['Invalid Lead', 'Irrelevant'])) $fuBadgeClass = 'bg-dark text-white';
+                                elseif ($fuLeadStatus === 'No Response') $fuBadgeClass = 'bg-warning text-dark';
+                                elseif ($fuLeadStatus === 'Sold') $fuBadgeClass = 'bg-success text-white';
+                                ?>
+                                <td><span class="badge <?= $fuBadgeClass ?> px-2 py-1" style="font-size:11px;"><?= htmlspecialchars($fuLeadStatus) ?></span></td>
                                 <td><?= $fu['discussion_note'] ?? '' ?></td>
                                 <td><?= $fu['next_follow_up_date'] ?? '' ?></td>
                                 <td><?= $fu['next_action'] ?? '' ?></td>

@@ -18,7 +18,7 @@
                          <th>phone</th>
                          <th>Project</th>
                          <th>Flat</th>
-                         <th>Last Decussion Note</th>
+                         <th>Last Discussion Note</th>
                          <th>Next Action</th>
                          <th>Upcoming Follow Up Date</th>
                          <th>Action</th>
@@ -49,7 +49,7 @@
                          <?php endforeach; ?>
                      <?php else: ?>
                          <tr>
-                             <td colspan="9" class="text-center py-4">
+                             <td colspan="10" class="text-center py-4">
                                  <div class="text-muted">No follow-ups found</div>
                              </td>
                          </tr>

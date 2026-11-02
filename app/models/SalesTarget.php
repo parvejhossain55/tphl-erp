@@ -849,7 +849,7 @@ public function getExecutiveFullStats($executiveId = null, $startDate = null, $e
                 JOIN leads l ON l.id = lf.lead_id
                 WHERE lf.deleted_at IS NULL AND l.deleted_at IS NULL
                   AND (lf.assigned_with = ? OR lf.created_by = ? OR l.assigned_id = ?)
-                  AND (lf.lead_status = 'Visited' OR LOWER(lf.follow_up_type) = 'visit')
+                  AND (lf.lead_status IN ('Visit Completed', 'Visited') OR LOWER(lf.follow_up_type) = 'visit')
                   AND lf.status != 'canceled'
                   AND (DATE(lf.follow_up_date) BETWEEN ? AND ? OR (lf.follow_up_date IS NULL AND DATE(lf.created_at) BETWEEN ? AND ?))";
         $stmt = $this->db->prepare($sql);
@@ -878,7 +878,7 @@ public function getExecutiveFullStats($executiveId = null, $startDate = null, $e
                 JOIN leads l ON l.id = lf.lead_id
                 WHERE lf.deleted_at IS NULL AND l.deleted_at IS NULL
                   AND (lf.assigned_with = ? OR lf.created_by = ? OR l.assigned_id = ?)
-                  AND (lf.lead_status = 'Visited' OR LOWER(lf.follow_up_type) = 'visit')
+                  AND (lf.lead_status IN ('Visit Completed', 'Visited') OR LOWER(lf.follow_up_type) = 'visit')
                   AND lf.status != 'canceled'
                   AND (DATE(lf.follow_up_date) BETWEEN ? AND ? OR (lf.follow_up_date IS NULL AND DATE(lf.created_at) BETWEEN ? AND ?))";
         $stmt = $this->db->prepare($sql);
@@ -907,7 +907,7 @@ public function getExecutiveFullStats($executiveId = null, $startDate = null, $e
                 WHERE l.deleted_at IS NULL
                   AND l.assigned_id = ?
                   AND DATE(l.created_at) BETWEEN ? AND ?
-                  AND (l.last_lead_action IN ('canceled', 'lost') OR l.lead_type = 'Irrelevant')";
+                  AND (l.last_lead_action IN ('canceled', 'lost') OR l.lead_type IN ('Invalid Lead', 'Irrelevant'))";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param("iss", $userId, $startDate, $endDate);
         $stmt->execute();

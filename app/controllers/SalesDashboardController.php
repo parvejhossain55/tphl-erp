@@ -425,8 +425,8 @@ class SalesDashboardController extends Controller
             SELECT 
                 COUNT(l.id) AS received,
                 COUNT(CASE WHEN l.call_status IN ('called', 'received') OR l.lead_type NOT IN ('No Response', 'Pending') THEN l.id END) AS contacted,
-                COUNT(CASE WHEN l.lead_type IN ('Prospect', 'High Prospect', 'Will Visit', 'Visited', 'Sold', 'Hot', 'Warm') THEN l.id END) AS qualified,
-                COUNT(CASE WHEN l.lead_type = 'Visited' THEN l.id END) AS visited,
+                COUNT(CASE WHEN l.lead_type IN ('Potential', 'High Potential', 'Visit Scheduled', 'Visit Completed', 'Sold', 'Prospect', 'High Prospect', 'Will Visit', 'Visited', 'Hot', 'Warm') THEN l.id END) AS qualified,
+                COUNT(CASE WHEN l.lead_type IN ('Visit Completed', 'Visited') THEN l.id END) AS visited,
                 COUNT(CASE WHEN EXISTS (SELECT 1 FROM lead_bookings lb WHERE lb.lead_id = l.id AND lb.deleted_at IS NULL) THEN l.id END) AS booked,
                 COUNT(CASE WHEN EXISTS (SELECT 1 FROM lead_bookings lb JOIN lead_payments lp ON lp.booking_id = lb.id WHERE lb.lead_id = l.id AND lp.verification_status = 'verified') THEN l.id END) AS verified,
                 COUNT(CASE WHEN l.call_status = 'not_called' AND (l.lead_type IS NULL OR l.lead_type = 'Pending') THEN l.id END) AS not_contacted,

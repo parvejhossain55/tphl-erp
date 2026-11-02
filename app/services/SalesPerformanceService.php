@@ -28,8 +28,8 @@ class SalesPerformanceService
 
     public const SALES_ROLE_IDS = [5, 8, 9]; // Sales Manager, Sales Executive, Sales Team Head
 
-    public const QUALIFIED_STATUSES = ['Prospect', 'High Prospect', 'Hot', 'Warm', 'Will Visit', 'Visited', 'Sold'];
-    public const DROPPED_STATUSES = ['Not Interested', "Don't Call Again", 'Irrelevant', 'Refund'];
+    public const QUALIFIED_STATUSES = ['Potential', 'High Potential', 'Visit Scheduled', 'Visit Completed', 'Sold', 'Prospect', 'High Prospect', 'Hot', 'Warm', 'Will Visit', 'Visited'];
+    public const DROPPED_STATUSES = ['Not Interested', "Don't Call Again", 'Invalid Lead', 'Irrelevant', 'Refund'];
     public const TRANSFERRED_STATUSES = ['Lead Transferred', 'Project Transferred'];
     public const INVALID_CONTACT_TYPES = ['Number Off', 'Wrong Number', 'Invalid Number'];
 
@@ -629,8 +629,8 @@ class SalesPerformanceService
                        MIN(created_at) AS first_fu_at,
                        MAX(follow_up_type NOT IN ($invalid)) AS f_valid,
                        MAX(lead_status IN ($qual)) AS f_qual,
-                       MAX(next_action = 'site visit' OR lead_status IN ('Will Visit','Visited')) AS f_vsched,
-                       MAX(lead_status = 'Visited' OR follow_up_type IN ('visit','Face To Face')) AS f_vdone,
+                       MAX(next_action = 'site visit' OR lead_status IN ('Visit Scheduled', 'Visit Completed', 'Will Visit', 'Visited')) AS f_vsched,
+                       MAX(lead_status IN ('Visit Completed', 'Visited') OR follow_up_type IN ('visit','Face To Face')) AS f_vdone,
                        MAX(next_action = 'booking') AS f_nego,
                         MAX(lead_status = 'No Response' OR follow_up_type IN ('Number Off', 'Wrong Number', 'Invalid Number') OR LOWER(follow_up_type) LIKE '%wrong%' OR LOWER(follow_up_type) LIKE '%invalid%' OR LOWER(follow_up_type) LIKE '%number off%' OR LOWER(lead_status) LIKE '%no response%') AS f_no_resp
                 FROM lead_follow_ups
@@ -672,8 +672,8 @@ class SalesPerformanceService
 
             $leadType = (string) $r['lead_type'];
             $isBooked = ($r['last_lead_action'] === 'booked') || ((int) $r['booked'] === 1);
-            $isVisited = $isBooked || ($leadType === 'Visited') || ($r['last_lead_action'] === 'visited') || ((int) $r['f_vdone'] === 1);
-            $isWillVisit = $isVisited || in_array($leadType, ['Will Visit', 'Visited', 'Sold'], true) || ((int) $r['f_vsched'] === 1);
+            $isVisited = $isBooked || in_array($leadType, ['Visit Completed', 'Visited'], true) || ($r['last_lead_action'] === 'visited') || ((int) $r['f_vdone'] === 1);
+            $isWillVisit = $isVisited || in_array($leadType, ['Visit Scheduled', 'Visit Completed', 'Will Visit', 'Visited', 'Sold'], true) || ((int) $r['f_vsched'] === 1);
             $isContacted = $isWillVisit || !empty($r['first_contacted_at']) || ((int) $r['fu_count'] > 0)
                 || in_array($r['call_status'], ['called', 'received'], true)
                 || in_array(strtolower((string) $r['last_lead_action']), ['contacted', 'follow up', 'visited', 'booked'], true)
@@ -741,7 +741,7 @@ class SalesPerformanceService
             SELECT f.created_by AS uid,
                    COUNT(*) AS calls,
                    COUNT(DISTINCT f.lead_id) AS leads_followed,
-                   COUNT(DISTINCT CASE WHEN f.lead_status = 'Visited' OR f.follow_up_type IN ('visit','Face To Face') THEN f.lead_id END) AS visits_done,
+                   COUNT(DISTINCT CASE WHEN f.lead_status IN ('Visit Completed', 'Visited') OR f.follow_up_type IN ('visit','Face To Face') THEN f.lead_id END) AS visits_done,
                    COUNT(DISTINCT CASE WHEN f.next_action = 'site visit' THEN f.lead_id END) AS visits_planned
             FROM lead_follow_ups f
             JOIN leads l ON l.id = f.lead_id AND l.deleted_at IS NULL
@@ -1600,7 +1600,7 @@ class SalesPerformanceService
                                 {$firstContactCheck1}l.call_status IN ('called','received')
                                 OR LOWER(COALESCE(l.last_lead_action,'')) IN ('contacted','follow up','visited','booked')
                                 OR (l.communication_type IS NOT NULL AND LOWER(l.communication_type) NOT IN ('','not select'))
-                                OR l.lead_type IN ('Will Visit','Visited','Sold')
+                                OR l.lead_type IN ('Visit Scheduled', 'Visit Completed', 'Sold', 'Will Visit', 'Visited')
                                 OR EXISTS (SELECT 1 FROM lead_follow_ups f WHERE f.lead_id = l.id AND f.deleted_at IS NULL)
                                 OR EXISTS (SELECT 1 FROM lead_bookings b WHERE b.lead_id = l.id AND b.deleted_at IS NULL AND b.booking_status IN ('booked','completed'))
                             )"
@@ -1639,7 +1639,7 @@ class SalesPerformanceService
                                     {$firstContactCheck2}l2.call_status IN ('called','received')
                                     OR LOWER(COALESCE(l2.last_lead_action,'')) IN ('contacted','follow up','visited','booked')
                                     OR (l2.communication_type IS NOT NULL AND LOWER(l2.communication_type) NOT IN ('','not select'))
-                                    OR l2.lead_type IN ('Will Visit','Visited','Sold')
+                                    OR l2.lead_type IN ('Visit Scheduled', 'Visit Completed', 'Sold', 'Will Visit', 'Visited')
                                     OR EXISTS (SELECT 1 FROM lead_follow_ups f WHERE f.lead_id = l2.id AND f.deleted_at IS NULL)
                                     OR EXISTS (SELECT 1 FROM lead_bookings b WHERE b.lead_id = l2.id AND b.deleted_at IS NULL AND b.booking_status IN ('booked','completed'))
                                 )
@@ -1655,9 +1655,9 @@ class SalesPerformanceService
                           FROM leads l LEFT JOIN projects p ON p.id = l.project_id
                           WHERE l.deleted_at IS NULL $dateSqlL $projSqlL $scopeL
                             AND (
-                                l.lead_type IN ('Will Visit', 'Visited', 'Sold')
+                                l.lead_type IN ('Visit Scheduled', 'Visit Completed', 'Sold', 'Will Visit', 'Visited')
                                 OR LOWER(COALESCE(l.last_lead_action,'')) IN ('visited', 'booked')
-                                OR EXISTS (SELECT 1 FROM lead_follow_ups f WHERE f.lead_id = l.id AND f.deleted_at IS NULL AND (f.next_action = 'site visit' OR f.lead_status IN ('Will Visit','Visited')))
+                                OR EXISTS (SELECT 1 FROM lead_follow_ups f WHERE f.lead_id = l.id AND f.deleted_at IS NULL AND (f.next_action = 'site visit' OR f.lead_status IN ('Visit Scheduled', 'Visit Completed', 'Will Visit', 'Visited')))
                                 OR EXISTS (SELECT 1 FROM lead_bookings b WHERE b.lead_id = l.id AND b.deleted_at IS NULL AND b.booking_status IN ('booked','completed'))
                             )"
             ],
@@ -1671,9 +1671,9 @@ class SalesPerformanceService
                           FROM leads l LEFT JOIN projects p ON p.id = l.project_id
                           WHERE l.deleted_at IS NULL $dateSqlL $projSqlL $scopeL
                             AND (
-                                l.lead_type = 'Visited'
+                                l.lead_type IN ('Visit Completed', 'Visited')
                                 OR LOWER(COALESCE(l.last_lead_action,'')) IN ('visited', 'booked')
-                                OR EXISTS (SELECT 1 FROM lead_follow_ups f WHERE f.lead_id = l.id AND f.deleted_at IS NULL AND (f.lead_status = 'Visited' OR f.follow_up_type IN ('visit','Face To Face')))
+                                OR EXISTS (SELECT 1 FROM lead_follow_ups f WHERE f.lead_id = l.id AND f.deleted_at IS NULL AND (f.lead_status IN ('Visit Completed', 'Visited') OR f.follow_up_type IN ('visit','Face To Face')))
                                 OR EXISTS (SELECT 1 FROM lead_bookings b WHERE b.lead_id = l.id AND b.deleted_at IS NULL AND b.booking_status IN ('booked','completed'))
                             )"
             ],
@@ -1888,7 +1888,7 @@ class SalesPerformanceService
                                  f.created_at AS event_date, 'Visited' AS status_badge
                           FROM lead_follow_ups f
                           JOIN leads l ON l.id = f.lead_id AND l.deleted_at IS NULL
-                          WHERE f.deleted_at IS NULL AND (f.lead_status = 'Visited' OR f.follow_up_type IN ('visit','Face To Face'))
+                          WHERE f.deleted_at IS NULL AND (f.lead_status IN ('Visit Completed', 'Visited') OR f.follow_up_type IN ('visit','Face To Face'))
                             $dateSqlF $projF $scopeF"
             ],
         ];

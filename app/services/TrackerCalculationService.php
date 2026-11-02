@@ -470,10 +470,10 @@ class TrackerCalculationService
                 $statusLower = strtolower(trim($row['lead_status'] ?? ''));
                 $actionLower = strtolower(trim($row['next_action'] ?? ''));
 
-                if ($statusLower === 'visited' || $actionLower === 'visited') {
+                if (in_array($statusLower, ['visited', 'visit completed']) || in_array($actionLower, ['visited', 'visit completed'])) {
                     $leadLatestState[$uid][$lid]['is_visited'] = true;
                     $leadLatestState[$uid][$lid]['is_will_visit'] = false;
-                } elseif ($actionLower === 'site visit' || $actionLower === 'will visit' || $statusLower === 'will visit') {
+                } elseif (in_array($actionLower, ['site visit', 'will visit', 'visit scheduled']) || in_array($statusLower, ['will visit', 'visit scheduled'])) {
                     if (!$leadLatestState[$uid][$lid]['is_visited']) {
                         $leadLatestState[$uid][$lid]['is_will_visit'] = true;
                         $leadLatestState[$uid][$lid]['will_visit_date'] = $row['next_follow_up_date'];
@@ -483,8 +483,8 @@ class TrackerCalculationService
         }
 
         // Process latest states per distinct lead
-        $interestedStatuses = ['prospect', 'high prospect', 'future', 'cold', 'hot', 'warm'];
-        $notInterestedStatuses = ['not interested', "don't call again", 'refund'];
+        $interestedStatuses = ['potential', 'high potential', 'prospect', 'high prospect', 'future', 'cold', 'hot', 'warm', 'visit scheduled', 'visit completed', 'will visit', 'visited'];
+        $notInterestedStatuses = ['not interested', "don't call again", 'invalid lead', 'irrelevant', 'refund'];
 
         foreach ($leadLatestState as $uid => $leadsData) {
             if (!isset($employees[$uid])) continue;
@@ -570,7 +570,7 @@ class TrackerCalculationService
             SELECT assigned_id, COUNT(DISTINCT id) as cnt 
             FROM leads 
             WHERE assigned_id IN ($userIds)
-              AND (lead_type IN ('Hot', 'High Prospect') OR lead_quality = 'High Quality')
+              AND (lead_type IN ('High Potential', 'Hot', 'High Prospect') OR lead_quality = 'High Quality')
               AND deleted_at IS NULL
               AND (
                   (assigned_at IS NOT NULL AND assigned_at BETWEEN '$start' AND '$end')
@@ -1311,8 +1311,8 @@ class TrackerCalculationService
                 $statusLower = strtolower(trim($row['lead_status'] ?? ''));
                 $actionLower = strtolower(trim($row['next_action'] ?? ''));
 
-                $isVisited = ($statusLower === 'visited' || $actionLower === 'visited');
-                $isWillVisit = ($actionLower === 'site visit' || $actionLower === 'will visit' || $statusLower === 'will visit');
+                $isVisited = (in_array($statusLower, ['visited', 'visit completed']) || in_array($actionLower, ['visited', 'visit completed']));
+                $isWillVisit = (in_array($actionLower, ['site visit', 'will visit', 'visit scheduled']) || in_array($statusLower, ['will visit', 'visit scheduled']));
 
                 if ($isVisited) {
                     $leadLatestState[$uid][$lid]['is_visited'] = true;
@@ -1353,8 +1353,8 @@ class TrackerCalculationService
             }
         }
 
-        $interestedStatuses = ['prospect', 'high prospect', 'future', 'cold', 'hot', 'warm'];
-        $notInterestedStatuses = ['not interested', "don't call again", 'refund'];
+        $interestedStatuses = ['potential', 'high potential', 'prospect', 'high prospect', 'future', 'cold', 'hot', 'warm', 'visit scheduled', 'visit completed', 'will visit', 'visited'];
+        $notInterestedStatuses = ['not interested', "don't call again", 'invalid lead', 'irrelevant', 'refund'];
 
         foreach ($leadLatestState as $uid => $leadsData) {
             if (!isset($employees[$uid])) continue;

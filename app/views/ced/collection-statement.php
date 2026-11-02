@@ -203,6 +203,7 @@ $exportTrxUrl = $base_url . '/ced-collection-statement-export?' . http_build_que
                             <label class="form-label extra-small fw-bold text-muted mb-1 text-uppercase" style="font-size: 11px;">Department Scope</label>
                             <select name="team_scope" class="form-select form-select-sm">
                                 <option value="ced_only" <?= $curTeamScope === 'ced_only' ? 'selected' : '' ?>>CED Team Only (Default)</option>
+                                <option value="ced_mgmt" <?= $curTeamScope === 'ced_mgmt' ? 'selected' : '' ?>>CED &amp; Management</option>
                                 <option value="all" <?= $curTeamScope === 'all' ? 'selected' : '' ?>>All Creators / Staff</option>
                             </select>
                         </div>
@@ -542,6 +543,8 @@ $exportTrxUrl = $base_url . '/ced-collection-statement-export?' . http_build_que
                                                 <?= htmlspecialchars($row['collector_name']) ?>
                                                 <?php if (!empty($row['is_ced_member'])): ?>
                                                     <span class="badge bg-primary-subtle text-primary border border-primary-subtle badge-ced ms-1">CED</span>
+                                                <?php elseif (!empty($row['is_management'])): ?>
+                                                    <span class="badge bg-warning-subtle text-dark border border-warning-subtle ms-1" style="font-size: 10px;">Management</span>
                                                 <?php endif; ?>
                                             </div>
                                             <small class="text-muted extra-small">
@@ -793,10 +796,20 @@ $exportTrxUrl = $base_url . '/ced-collection-statement-export?' . http_build_que
                                         <span class="badge bg-success-subtle text-success border border-success-subtle badge-ced">
                                             <i class="fa-solid fa-check me-1"></i> Verified
                                         </span>
+                                        <?php if (!empty($t['verifier_name'])): ?>
+                                            <div class="extra-small text-muted mt-1" style="font-size: 10px;" title="Verified on <?= !empty($t['verified_at']) ? date('d M, Y h:i A', strtotime($t['verified_at'])) : '' ?>">
+                                                <i class="fa-solid fa-user-check text-success me-1"></i><?= htmlspecialchars($t['verifier_name']) ?>
+                                            </div>
+                                        <?php endif; ?>
                                     <?php elseif (($t['verification_status'] ?? '') === 'rejected'): ?>
                                         <span class="badge bg-danger-subtle text-danger border border-danger-subtle badge-ced">
                                             <i class="fa-solid fa-xmark me-1"></i> Rejected
                                         </span>
+                                        <?php if (!empty($t['verifier_name'])): ?>
+                                            <div class="extra-small text-muted mt-1" style="font-size: 10px;">
+                                                <?= htmlspecialchars($t['verifier_name']) ?>
+                                            </div>
+                                        <?php endif; ?>
                                     <?php else: ?>
                                         <span class="badge bg-warning-subtle text-warning border border-warning-subtle badge-ced">
                                             <i class="fa-solid fa-clock me-1"></i> Pending

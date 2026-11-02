@@ -118,9 +118,16 @@ $page = "create Lead"
                         <label class="form__input-title" for="leadType">Lead Type <span class="text-mute">(optional)</span></label>
                         <select name="lead_type" id="leadType" class="form-select">
                             <option value="">Select Lead</option>
-                            <option value="Hot">Hot</option>
-                            <option value="Warm">Warm</option>
-                            <option value="Cold">Cold</option>
+                            <option value="No Response">No Response</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Potential">Potential</option>
+                            <option value="High Potential">High Potential</option>
+                            <option value="Visit Scheduled">Visit Scheduled</option>
+                            <option value="Visit Completed">Visit Completed</option>
+                            <option value="Lead Transferred">Lead Transferred</option>
+                            <option value="Not Interested">Not Interested</option>
+                            <option value="Don't Call Again">Don't Call Again</option>
+                            <option value="Invalid Lead">Invalid Lead</option>
                         </select>
                     </div>
                 </div>
@@ -290,7 +297,7 @@ $page = "create Lead"
                     <select name="lead_quality" class="form-select">
                         <option value="">-- Select Quality --</option>
                         <option value="Not Interested">Not Interested</option>
-                        <option value="Prospect">Prospect</option>
+                        <option value="Potential">Potential</option>
                         <option value="Pending">Pending follow Up</option>
                     </select>
                 </div>

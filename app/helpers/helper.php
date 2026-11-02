@@ -486,6 +486,14 @@ function isSalesCoLeader(): bool
     return (int) ($_SESSION['user']['is_sales_co_leader'] ?? 0) === 1;
 }
 
+function isTeamLeader(): bool
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    return (int) ($_SESSION['user']['is_team_leader'] ?? 0) === 1;
+}
+
 
 function hasAllPermissions(array $requiredPermissions): bool
 {

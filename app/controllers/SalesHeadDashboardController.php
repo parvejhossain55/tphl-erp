@@ -40,7 +40,7 @@ class SalesHeadDashboardController extends Controller
         
         $filterTeamId = isset($_GET['team_id']) && $_GET['team_id'] !== '' ? (int)$_GET['team_id'] : null;
 
-        if (in_array($roleId, [1, 3, 9])) {
+        if (in_array((int)$roleId, [1, 3, 9, 32, 33, 34, 35])) {
             $teamId = $filterTeamId;
         } else {
             $teamId = !empty($sessionTeamId) ? (int)$sessionTeamId : $filterTeamId;
