@@ -87,8 +87,6 @@ $show_breadcrumb = true;
                             <option value="Phone Call">Phone Call</option>
                             <option value="WA Call">WA Call</option>
                             <option value="Imo Call">Imo Call</option>
-                            <option value="Messenger Call">Messenger Call</option>
-                            <option value="Messenger Conversesion">Messenger Conversesion</option>
                             <option value="WA Conversesion">WA Conversesion</option>
                             <option value="WhatsApp Message">WhatsApp Message</option>
                             <option value="Imo Message">Imo Message</option>
@@ -103,6 +101,8 @@ $show_breadcrumb = true;
                             <option value="meeting">Meeting (Legacy)</option>
                             <option value="whatsapp">WhatsApp (Legacy)</option>
                             <option value="Email">Email (Legacy)</option>
+                            <option value="Messenger Call">Messenger Call</option>
+                            <option value="Messenger Conversesion">Messenger Conversesion</option>
                         </select>
                     </div>
                     <!-- Lead Status -->
