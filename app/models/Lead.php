@@ -3165,7 +3165,7 @@ class Lead extends Model
             // Total money collected
             $moneySql = "SELECT SUM(lp.amount) AS total_money 
                      FROM lead_bookings lb
-                     JOIN lead_payments lp ON lp.booking_id = lb.id AND lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified'
+                     JOIN lead_payments lp ON lp.booking_id = lb.id AND lp.is_trashed = 0 AND lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' AND COALESCE(lp.is_emi_discount, 0) = 0
                      WHERE lb.sales_by_id = ? AND lb.booking_status IN ('completed', 'booked') AND lb.deleted_at IS NULL" .
                 ($year ? " AND YEAR(lb.booking_date) = ?" : "") .
                 ($month ? " AND MONTH(lb.booking_date) = ?" : "");
@@ -3198,7 +3198,7 @@ class Lead extends Model
                        COUNT(DISTINCT lb.id) AS total_bookings,
                        SUM(lp.amount) AS total_money
                        FROM lead_bookings lb
-                       JOIN lead_payments lp ON lp.booking_id = lb.id AND lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified'
+                       JOIN lead_payments lp ON lp.booking_id = lb.id AND lp.is_trashed = 0 AND lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' AND COALESCE(lp.is_emi_discount, 0) = 0
                        JOIN projects p ON lb.project_id = p.id
                        WHERE lb.deleted_at IS NULL AND lb.booking_status IN ('completed', 'booked') AND lb.sales_by_id = ?";
             $projectParams = [$userId];

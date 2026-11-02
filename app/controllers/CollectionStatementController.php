@@ -555,26 +555,29 @@ class CollectionStatementController extends Controller
         if ($filters['source'] === 'all' || $filters['source'] === 'client') {
             $whereLp = $this->buildLeadPaymentsConditions($startDate, $endDate, $filters);
             $joinsLp = $this->getLeadPaymentsJoins($filters);
+            $isFilterRejected = (!empty($filters['verification_status']) && $filters['verification_status'] === 'rejected');
+            $validCond = $isFilterRejected ? "1=1" : "(lp.verification_status IS NULL OR lp.verification_status != 'rejected')";
+
             $sqlLp = "
                 SELECT 
-                    COUNT(*) as total_count,
-                    COALESCE(SUM(lp.amount), 0) as total_amount,
-                    COALESCE(SUM(CASE WHEN lp.payment_method = 'bank' THEN lp.amount ELSE 0 END), 0) as bank_amount,
-                    COUNT(CASE WHEN lp.payment_method = 'bank' THEN 1 ELSE NULL END) as bank_count,
-                    COALESCE(SUM(CASE WHEN lp.payment_method = 'cash' THEN lp.amount ELSE 0 END), 0) as cash_amount,
-                    COUNT(CASE WHEN lp.payment_method = 'cash' THEN 1 ELSE NULL END) as cash_count,
-                    COALESCE(SUM(CASE WHEN lp.payment_method = 'cheque' THEN lp.amount ELSE 0 END), 0) as cheque_amount,
-                    COUNT(CASE WHEN lp.payment_method = 'cheque' THEN 1 ELSE NULL END) as cheque_count,
-                    COALESCE(SUM(CASE WHEN lp.payment_method = 'online' THEN lp.amount ELSE 0 END), 0) as online_amount,
-                    COUNT(CASE WHEN lp.payment_method = 'online' THEN 1 ELSE NULL END) as online_count,
+                    COUNT(CASE WHEN {$validCond} THEN 1 ELSE NULL END) as total_count,
+                    COALESCE(SUM(CASE WHEN {$validCond} THEN lp.amount ELSE 0 END), 0) as total_amount,
+                    COALESCE(SUM(CASE WHEN lp.payment_method = 'bank' AND {$validCond} THEN lp.amount ELSE 0 END), 0) as bank_amount,
+                    COUNT(CASE WHEN lp.payment_method = 'bank' AND {$validCond} THEN 1 ELSE NULL END) as bank_count,
+                    COALESCE(SUM(CASE WHEN lp.payment_method = 'cash' AND {$validCond} THEN lp.amount ELSE 0 END), 0) as cash_amount,
+                    COUNT(CASE WHEN lp.payment_method = 'cash' AND {$validCond} THEN 1 ELSE NULL END) as cash_count,
+                    COALESCE(SUM(CASE WHEN lp.payment_method = 'cheque' AND {$validCond} THEN lp.amount ELSE 0 END), 0) as cheque_amount,
+                    COUNT(CASE WHEN lp.payment_method = 'cheque' AND {$validCond} THEN 1 ELSE NULL END) as cheque_count,
+                    COALESCE(SUM(CASE WHEN lp.payment_method = 'online' AND {$validCond} THEN lp.amount ELSE 0 END), 0) as online_amount,
+                    COUNT(CASE WHEN lp.payment_method = 'online' AND {$validCond} THEN 1 ELSE NULL END) as online_count,
                     COALESCE(SUM(CASE WHEN lp.verification_status = 'verified' THEN lp.amount ELSE 0 END), 0) as verified_amount,
                     COALESCE(SUM(CASE WHEN lp.verification_status = 'pending' THEN lp.amount ELSE 0 END), 0) as pending_amount,
-                    COALESCE(SUM(CASE WHEN lp.payment_type = 'booking_money' THEN lp.amount ELSE 0 END), 0) as booking_money,
-                    COALESCE(SUM(CASE WHEN lp.payment_type = 'registration' THEN lp.amount ELSE 0 END), 0) as registration,
-                    COALESCE(SUM(CASE WHEN lp.payment_type = 'land_share' THEN lp.amount ELSE 0 END), 0) as land_share,
-                    COALESCE(SUM(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') THEN lp.amount ELSE 0 END), 0) as emi,
-                    COALESCE(SUM(CASE WHEN lp.payment_type = 'development_charge' THEN lp.amount ELSE 0 END), 0) as development_charge,
-                    COALESCE(SUM(CASE WHEN lp.payment_type = 'shop_service_charge' THEN lp.amount ELSE 0 END), 0) as shop_service_charge
+                    COALESCE(SUM(CASE WHEN lp.payment_type = 'booking_money' AND {$validCond} THEN lp.amount ELSE 0 END), 0) as booking_money,
+                    COALESCE(SUM(CASE WHEN lp.payment_type = 'registration' AND {$validCond} THEN lp.amount ELSE 0 END), 0) as registration,
+                    COALESCE(SUM(CASE WHEN lp.payment_type = 'land_share' AND {$validCond} THEN lp.amount ELSE 0 END), 0) as land_share,
+                    COALESCE(SUM(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') AND {$validCond} THEN lp.amount ELSE 0 END), 0) as emi,
+                    COALESCE(SUM(CASE WHEN lp.payment_type = 'development_charge' AND {$validCond} THEN lp.amount ELSE 0 END), 0) as development_charge,
+                    COALESCE(SUM(CASE WHEN lp.payment_type = 'shop_service_charge' AND {$validCond} THEN lp.amount ELSE 0 END), 0) as shop_service_charge
                 FROM lead_payments lp
                 {$joinsLp}
                 WHERE {$whereLp}
@@ -612,7 +615,7 @@ class CollectionStatementController extends Controller
                     COUNT(*) as bcount
                 FROM lead_payments lp
                 {$joinsLp}
-                WHERE {$whereLp} AND lp.payment_method IN ('bank', 'cheque')
+                WHERE {$whereLp} AND lp.payment_method IN ('bank', 'cheque') AND {$validCond}
                 GROUP BY bname
                 ORDER BY btotal DESC
             ";

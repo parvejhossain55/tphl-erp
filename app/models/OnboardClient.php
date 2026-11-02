@@ -18,13 +18,13 @@ class OnboardClient extends Model
                    oc.login_email,
                    GROUP_CONCAT(DISTINCT p.name SEPARATOR ', ') AS project_names,
                    GROUP_CONCAT(DISTINCT CONCAT(f.flat_name, ' (', f.sqft, ' sqft)') SEPARATOR ', ') AS flat_names,
-                   SUM(lp.amount) AS total_paid
+                   COALESCE(SUM(CASE WHEN lp.is_trashed = 0 AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END), 0) AS total_paid
             FROM onboard_clients AS oc
-            LEFT JOIN lead_bookings AS lb ON lb.lead_id = oc.lead_id
+            LEFT JOIN lead_bookings AS lb ON lb.lead_id = oc.lead_id AND lb.deleted_at IS NULL
             LEFT JOIN leads AS l ON l.id = oc.lead_id
             LEFT JOIN projects AS p ON lb.project_id = p.id
             LEFT JOIN flats AS f ON lb.flat_id = f.id
-            LEFT JOIN lead_payments AS lp ON lp.booking_id = lb.id
+            LEFT JOIN lead_payments AS lp ON lp.booking_id = lb.id AND lp.is_trashed = 0 AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') AND COALESCE(lp.is_emi_discount, 0) = 0
             WHERE 1=1";
 
         $params = [];

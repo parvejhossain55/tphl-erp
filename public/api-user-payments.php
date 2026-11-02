@@ -90,7 +90,7 @@ $rawInput = file_get_contents('php://input');
 $jsonBody = !empty($rawInput) ? json_decode($rawInput, true) : [];
 
 // Accept lead_id (supports lead_id or id)
-$leadId = (int)($_GET['lead_id'] ?? $_GET['id'] ?? $_POST['lead_id'] ?? $_POST['id'] ?? $jsonBody['lead_id'] ?? $jsonBody['id'] ?? 0);
+$leadId = (int)($_GET['lead_id'] ?? $_GET['user_id'] ?? $_GET['id'] ?? $_POST['lead_id'] ?? $_POST['user_id'] ?? $_POST['id'] ?? $jsonBody['lead_id'] ?? $jsonBody['user_id'] ?? $jsonBody['id'] ?? 0);
 $phone  = trim($_GET['phone'] ?? $_POST['phone'] ?? $jsonBody['phone'] ?? '');
 
 if ($leadId <= 0 && empty($phone)) {
@@ -258,7 +258,7 @@ try {
             if ($vStatus !== 'rejected') {
                 if ($isEmiDiscount) {
                     $bulkEmiDiscountFlat += $amt;
-                } else if ($vStatus === 'verified' || in_array($pStatus, ['paid', 'partially_paid'])) {
+                } else if ($vStatus === 'verified') {
                     $totalPaidFlat += $amt;
                 }
 
@@ -302,7 +302,7 @@ try {
         // 1. Total EMI Count
         $totalEmiNo = (int)($b['total_emi_no'] ?? 0);
         if ($totalEmiNo <= 0) {
-            $maxEmiStmt = $pdo->prepare("SELECT MAX(total_emi_no) as max_tot FROM lead_payments WHERE booking_id = ? AND total_emi_no IS NOT NULL");
+            $maxEmiStmt = $pdo->prepare("SELECT MAX(total_emi_no) as max_tot FROM lead_payments WHERE booking_id = ? AND is_trashed = 0 AND total_emi_no IS NOT NULL");
             $maxEmiStmt->execute([$bookingId]);
             $maxEmiRow = $maxEmiStmt->fetch();
             $totalEmiNo = (int)($maxEmiRow['max_tot'] ?? 0);
@@ -323,7 +323,7 @@ try {
             FROM emi_schedules es 
             LEFT JOIN lead_payments lp ON es.lead_payment_id = lp.id
             WHERE es.lead_booking_id = ? 
-              AND (es.status = 'paid' OR (lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified'))
+              AND (es.status = 'paid' OR (lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' AND lp.is_trashed = 0))
         ");
         $compEmiStmt->execute([$bookingId]);
         $completedEmiCount = (int)($compEmiStmt->fetch()['cnt'] ?? 0);
