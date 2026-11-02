@@ -5261,5 +5261,92 @@ class Lead extends Model
         }
         return $data;
     }
+
+    /**
+     * Automatically sync active (unbooked) leads to the user's new team_id when their team changes.
+     * Excludes soft-deleted leads and leads with booked/sold status.
+     *
+     * @param int|array $userIds User ID or array of User IDs
+     * @param int $newTeamId The new team_id to assign
+     * @return int Number of updated leads
+     */
+    public function syncActiveLeadsTeamByUser($userIds, int $newTeamId): int
+    {
+        if ($newTeamId <= 0) {
+            return 0;
+        }
+        if (!is_array($userIds)) {
+            $userIds = [(int)$userIds];
+        }
+        $userIds = array_values(array_filter(array_map('intval', $userIds), fn($id) => $id > 0));
+        if (empty($userIds)) {
+            return 0;
+        }
+        $inUsers = implode(',', $userIds);
+
+        $sql = "UPDATE leads l
+                SET l.team_id = ?
+                WHERE l.assigned_id IN ($inUsers)
+                  AND l.deleted_at IS NULL
+                  AND (l.last_lead_action IS NULL OR LOWER(l.last_lead_action) != 'booked')
+                  AND NOT EXISTS (
+                      SELECT 1 FROM lead_bookings lb 
+                      WHERE lb.lead_id = l.id 
+                        AND lb.deleted_at IS NULL 
+                        AND lb.booking_status IN ('booked', 'completed')
+                  )";
+
+        $stmt = $this->db->prepare($sql);
+        if ($stmt) {
+            $stmt->bind_param("i", $newTeamId);
+            $stmt->execute();
+            $affected = $stmt->affected_rows;
+            $stmt->close();
+            return max(0, $affected);
+        }
+        return 0;
+    }
+
+    /**
+     * Automatically sync active (unbooked) leads to the new team_id by employee IDs.
+     *
+     * @param array $employeeIds
+     * @param int $newTeamId
+     * @return int
+     */
+    public function syncActiveLeadsTeamByEmployeeIds(array $employeeIds, int $newTeamId): int
+    {
+        if ($newTeamId <= 0 || empty($employeeIds)) {
+            return 0;
+        }
+        $empIds = array_values(array_filter(array_map('intval', $employeeIds), fn($id) => $id > 0));
+        if (empty($empIds)) {
+            return 0;
+        }
+        $inEmps = implode(',', $empIds);
+
+        $sql = "UPDATE leads l
+                INNER JOIN employees e ON (l.assigned_id = e.user_id OR (e.user_id IS NULL AND l.assigned_id = e.id))
+                SET l.team_id = ?
+                WHERE e.id IN ($inEmps)
+                  AND l.deleted_at IS NULL
+                  AND (l.last_lead_action IS NULL OR LOWER(l.last_lead_action) != 'booked')
+                  AND NOT EXISTS (
+                      SELECT 1 FROM lead_bookings lb 
+                      WHERE lb.lead_id = l.id 
+                        AND lb.deleted_at IS NULL 
+                        AND lb.booking_status IN ('booked', 'completed')
+                  )";
+
+        $stmt = $this->db->prepare($sql);
+        if ($stmt) {
+            $stmt->bind_param("i", $newTeamId);
+            $stmt->execute();
+            $affected = $stmt->affected_rows;
+            $stmt->close();
+            return max(0, $affected);
+        }
+        return 0;
+    }
 }
 
