@@ -13,7 +13,7 @@ class TeamFollowUpComparisonService
     protected $db;
 
     public const SALES_ROLE_IDS = [5, 8, 9]; // Sales Manager, Sales Executive, Sales Team Head
-    public const CLOSED_LEAD_STATUSES = ['Sold', 'Refund', 'Not Interested', "Don't Call Again", 'Irrelevant', 'Lead Transferred', 'Project Transferred'];
+    public const CLOSED_LEAD_STATUSES = ['Sold', 'Refund', 'Not Interested', "Don't Call Again", 'Invalid Lead', 'Irrelevant', 'Lead Transferred', 'Project Transferred', 'Cold'];
 
     protected array $teams = [];
     protected array $users = [];

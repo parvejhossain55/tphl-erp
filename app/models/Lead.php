@@ -511,8 +511,8 @@ class Lead extends Model
 
         //  Last action filter
         if (!empty($lastAction)) {
-            if (strtolower($lastAction) === 'irrelevant') {
-                $sql .= " AND (l.lead_type = 'Irrelevant' OR EXISTS (SELECT 1 FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.lead_status = 'Irrelevant' AND lf_sub.deleted_at IS NULL))";
+            if (in_array(strtolower($lastAction), ['irrelevant', 'invalid_lead', 'invalid lead'])) {
+                $sql .= " AND (l.lead_type IN ('Invalid Lead', 'Irrelevant') OR EXISTS (SELECT 1 FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.lead_status IN ('Invalid Lead', 'Irrelevant') AND lf_sub.deleted_at IS NULL))";
             } elseif (in_array(strtolower($lastAction), ['no_response', 'no response'])) {
                 $sql .= " AND (
                     l.lead_type = 'No Response'
@@ -640,7 +640,7 @@ class Lead extends Model
                 }
             } elseif ($filter_card === 'today_follow_up') {
                 $sql .= " AND l.assigned_id > 0
-                          AND COALESCE(l.lead_type, '') NOT IN ('Not Interested', 'Don\'t Call Again', 'Irrelevant', 'Refund', 'Lead Transferred', 'Project Transferred', 'Sold')
+                          AND COALESCE(l.lead_type, '') NOT IN ('Not Interested', 'Don\'t Call Again', 'Invalid Lead', 'Irrelevant', 'Refund', 'Lead Transferred', 'Project Transferred', 'Sold')
                           AND NOT EXISTS (
                               SELECT 1 FROM lead_bookings b_sub 
                               WHERE b_sub.lead_id = l.id 
@@ -669,7 +669,7 @@ class Lead extends Model
                 }
             } elseif ($filter_card === 'pending_follow_ups') {
                 $sql .= " AND l.assigned_id > 0
-                          AND COALESCE(l.lead_type, '') NOT IN ('Not Interested', 'Don\'t Call Again', 'Irrelevant', 'Refund', 'Lead Transferred', 'Project Transferred', 'Sold')
+                          AND COALESCE(l.lead_type, '') NOT IN ('Not Interested', 'Don\'t Call Again', 'Invalid Lead', 'Irrelevant', 'Refund', 'Lead Transferred', 'Project Transferred', 'Sold')
                           AND NOT EXISTS (
                               SELECT 1 FROM lead_bookings b_sub 
                               WHERE b_sub.lead_id = l.id 
@@ -710,8 +710,8 @@ class Lead extends Model
                           AND done_sub.deleted_at IS NULL
                     )";
                 }
-            } elseif ($filter_card === 'hot_leads') {
-                $sql .= " AND l.lead_type = 'Hot'";
+            } elseif ($filter_card === 'hot_leads' || $filter_card === 'high_potential') {
+                $sql .= " AND (l.lead_type IN ('High Potential', 'Hot', 'High Prospect') OR EXISTS (SELECT 1 FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.lead_status IN ('High Potential', 'Hot', 'High Prospect') AND lf_sub.deleted_at IS NULL))";
             } elseif ($filter_card === 'contacted_leads') {
                 $sql .= " AND l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND (
                     l.last_lead_action IN ('contacted', 'follow up', 'booked', 'visited')
@@ -750,7 +750,7 @@ class Lead extends Model
             } elseif ($filter_card === 'has_follow_up') {
                 $sql .= " AND EXISTS (SELECT 1 FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.deleted_at IS NULL)";
             } elseif ($filter_card === 'irrelevant_leads' || $filter_card === 'irrelevant') {
-                $sql .= " AND (l.lead_type = 'Irrelevant' OR EXISTS (SELECT 1 FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.lead_status = 'Irrelevant' AND lf_sub.deleted_at IS NULL))";
+                $sql .= " AND (l.lead_type IN ('Invalid Lead', 'Irrelevant') OR EXISTS (SELECT 1 FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.lead_status IN ('Invalid Lead', 'Irrelevant') AND lf_sub.deleted_at IS NULL))";
             } elseif ($filter_card === 'no_response' || $filter_card === 'no_response_leads') {
                 $sql .= " AND (
                     l.lead_type = 'No Response'
@@ -1168,8 +1168,8 @@ class Lead extends Model
 
         //  Last action filter
         if (!empty($lastAction)) {
-            if (strtolower($lastAction) === 'irrelevant') {
-                $sql .= " AND (l.lead_type = 'Irrelevant' OR EXISTS (SELECT 1 FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.lead_status = 'Irrelevant' AND lf_sub.deleted_at IS NULL))";
+            if (in_array(strtolower($lastAction), ['irrelevant', 'invalid_lead', 'invalid lead'])) {
+                $sql .= " AND (l.lead_type IN ('Invalid Lead', 'Irrelevant') OR EXISTS (SELECT 1 FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.lead_status IN ('Invalid Lead', 'Irrelevant') AND lf_sub.deleted_at IS NULL))";
             } elseif (in_array(strtolower($lastAction), ['no_response', 'no response'])) {
                 $sql .= " AND (
                     l.lead_type = 'No Response'
@@ -1296,7 +1296,7 @@ class Lead extends Model
                 }
             } elseif ($filter_card === 'today_follow_up') {
                 $sql .= " AND l.assigned_id > 0
-                          AND COALESCE(l.lead_type, '') NOT IN ('Not Interested', 'Don\'t Call Again', 'Irrelevant', 'Refund', 'Lead Transferred', 'Project Transferred', 'Sold')
+                          AND COALESCE(l.lead_type, '') NOT IN ('Not Interested', 'Don\'t Call Again', 'Invalid Lead', 'Irrelevant', 'Refund', 'Lead Transferred', 'Project Transferred', 'Sold')
                           AND NOT EXISTS (
                               SELECT 1 FROM lead_bookings b_sub 
                               WHERE b_sub.lead_id = l.id 
@@ -1325,7 +1325,7 @@ class Lead extends Model
                 }
             } elseif ($filter_card === 'pending_follow_ups') {
                 $sql .= " AND l.assigned_id > 0
-                          AND COALESCE(l.lead_type, '') NOT IN ('Not Interested', 'Don\'t Call Again', 'Irrelevant', 'Refund', 'Lead Transferred', 'Project Transferred', 'Sold')
+                          AND COALESCE(l.lead_type, '') NOT IN ('Not Interested', 'Don\'t Call Again', 'Invalid Lead', 'Irrelevant', 'Refund', 'Lead Transferred', 'Project Transferred', 'Sold')
                           AND NOT EXISTS (
                               SELECT 1 FROM lead_bookings b_sub 
                               WHERE b_sub.lead_id = l.id 
@@ -1366,8 +1366,8 @@ class Lead extends Model
                           AND done_sub.deleted_at IS NULL
                     )";
                 }
-            } elseif ($filter_card === 'hot_leads') {
-                $sql .= " AND l.lead_type = 'Hot'";
+            } elseif ($filter_card === 'hot_leads' || $filter_card === 'high_potential') {
+                $sql .= " AND (l.lead_type IN ('High Potential', 'Hot', 'High Prospect') OR EXISTS (SELECT 1 FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.lead_status IN ('High Potential', 'Hot', 'High Prospect') AND lf_sub.deleted_at IS NULL))";
             } elseif ($filter_card === 'contacted_leads') {
                 $sql .= " AND l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND (
                     l.last_lead_action IN ('contacted', 'follow up', 'booked', 'visited')
@@ -1406,7 +1406,7 @@ class Lead extends Model
             } elseif ($filter_card === 'has_follow_up') {
                 $sql .= " AND EXISTS (SELECT 1 FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.deleted_at IS NULL)";
             } elseif ($filter_card === 'irrelevant_leads' || $filter_card === 'irrelevant') {
-                $sql .= " AND (l.lead_type = 'Irrelevant' OR EXISTS (SELECT 1 FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.lead_status = 'Irrelevant' AND lf_sub.deleted_at IS NULL))";
+                $sql .= " AND (l.lead_type IN ('Invalid Lead', 'Irrelevant') OR EXISTS (SELECT 1 FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.lead_status IN ('Invalid Lead', 'Irrelevant') AND lf_sub.deleted_at IS NULL))";
             } elseif ($filter_card === 'no_response' || $filter_card === 'no_response_leads') {
                 $sql .= " AND (
                     l.lead_type = 'No Response'
@@ -1580,7 +1580,7 @@ class Lead extends Model
     {
         $sql = "SELECT COUNT(DISTINCT l.id) AS total_hot FROM leads l
                 LEFT JOIN employees emp ON emp.user_id = l.assigned_id
-                WHERE l.deleted_at IS NULL AND l.status = 'active' AND l.last_lead_action != 'cancel' AND l.lead_type = 'Hot'
+                WHERE l.deleted_at IS NULL AND l.status = 'active' AND l.last_lead_action != 'cancel' AND l.lead_type IN ('High Potential', 'Hot', 'High Prospect')
                   /* employee_status filter removed */";
         if (!empty($assignedUserId)) {
             $sql .= " AND l.assigned_id = " . (int)$assignedUserId;
@@ -1943,6 +1943,18 @@ class Lead extends Model
         if (!empty($lead_status)) {
             if ($lead_status === 'Pending') {
                 $sql .= " AND (lf.lead_status = 'Pending' OR leads.lead_type = 'Pending' OR ((leads.lead_type IS NULL OR leads.lead_type = '') AND (lf.lead_status IS NULL OR lf.lead_status = '')) OR lf.status = 'pending')";
+            } elseif (in_array($lead_status, ['High Potential', 'Hot', 'High Prospect'])) {
+                $sql .= " AND (lf.lead_status IN ('High Potential', 'Hot', 'High Prospect') OR leads.lead_type IN ('High Potential', 'Hot', 'High Prospect'))";
+            } elseif (in_array($lead_status, ['Potential', 'Prospect', 'Warm'])) {
+                $sql .= " AND (lf.lead_status IN ('Potential', 'Prospect', 'Warm') OR leads.lead_type IN ('Potential', 'Prospect', 'Warm'))";
+            } elseif (in_array($lead_status, ['Visit Scheduled', 'Will Visit'])) {
+                $sql .= " AND (lf.lead_status IN ('Visit Scheduled', 'Will Visit') OR leads.lead_type IN ('Visit Scheduled', 'Will Visit'))";
+            } elseif (in_array($lead_status, ['Visit Completed', 'Visited'])) {
+                $sql .= " AND (lf.lead_status IN ('Visit Completed', 'Visited') OR leads.lead_type IN ('Visit Completed', 'Visited'))";
+            } elseif (in_array($lead_status, ['Invalid Lead', 'Irrelevant'])) {
+                $sql .= " AND (lf.lead_status IN ('Invalid Lead', 'Irrelevant') OR leads.lead_type IN ('Invalid Lead', 'Irrelevant'))";
+            } elseif (in_array($lead_status, ['Not Interested', 'Cold'])) {
+                $sql .= " AND (lf.lead_status IN ('Not Interested', 'Cold') OR leads.lead_type IN ('Not Interested', 'Cold'))";
             } else {
                 $sql .= " AND (lf.lead_status = ? OR leads.lead_type = ?)";
                 $params[] = $lead_status;
@@ -2086,7 +2098,7 @@ class Lead extends Model
             } elseif ($filter_card === 'upcoming_follow_ups') {
                 $sql .= " AND lf.next_follow_up_date IS NOT NULL AND DATE(lf.next_follow_up_date) >= CURDATE()";
             } elseif ($filter_card === 'irrelevant_leads' || $filter_card === 'irrelevant') {
-                $sql .= " AND (leads.lead_type = 'Irrelevant' OR lf.lead_status = 'Irrelevant')";
+                $sql .= " AND (leads.lead_type IN ('Invalid Lead', 'Irrelevant') OR lf.lead_status IN ('Invalid Lead', 'Irrelevant'))";
             }
         }
 
@@ -2220,6 +2232,18 @@ class Lead extends Model
         if (!empty($lead_status)) {
             if ($lead_status === 'Pending') {
                 $sql .= " AND (lf.lead_status = 'Pending' OR leads.lead_type = 'Pending' OR ((leads.lead_type IS NULL OR leads.lead_type = '') AND (lf.lead_status IS NULL OR lf.lead_status = '')) OR lf.status = 'pending')";
+            } elseif (in_array($lead_status, ['High Potential', 'Hot', 'High Prospect'])) {
+                $sql .= " AND (lf.lead_status IN ('High Potential', 'Hot', 'High Prospect') OR leads.lead_type IN ('High Potential', 'Hot', 'High Prospect'))";
+            } elseif (in_array($lead_status, ['Potential', 'Prospect', 'Warm'])) {
+                $sql .= " AND (lf.lead_status IN ('Potential', 'Prospect', 'Warm') OR leads.lead_type IN ('Potential', 'Prospect', 'Warm'))";
+            } elseif (in_array($lead_status, ['Visit Scheduled', 'Will Visit'])) {
+                $sql .= " AND (lf.lead_status IN ('Visit Scheduled', 'Will Visit') OR leads.lead_type IN ('Visit Scheduled', 'Will Visit'))";
+            } elseif (in_array($lead_status, ['Visit Completed', 'Visited'])) {
+                $sql .= " AND (lf.lead_status IN ('Visit Completed', 'Visited') OR leads.lead_type IN ('Visit Completed', 'Visited'))";
+            } elseif (in_array($lead_status, ['Invalid Lead', 'Irrelevant'])) {
+                $sql .= " AND (lf.lead_status IN ('Invalid Lead', 'Irrelevant') OR leads.lead_type IN ('Invalid Lead', 'Irrelevant'))";
+            } elseif (in_array($lead_status, ['Not Interested', 'Cold'])) {
+                $sql .= " AND (lf.lead_status IN ('Not Interested', 'Cold') OR leads.lead_type IN ('Not Interested', 'Cold'))";
             } else {
                 $sql .= " AND (lf.lead_status = ? OR leads.lead_type = ?)";
                 $params[] = $lead_status;
@@ -2360,7 +2384,7 @@ class Lead extends Model
             } elseif ($filter_card === 'upcoming_follow_ups') {
                 $sql .= " AND lf.next_follow_up_date IS NOT NULL AND DATE(lf.next_follow_up_date) >= CURDATE()";
             } elseif ($filter_card === 'irrelevant_leads' || $filter_card === 'irrelevant') {
-                $sql .= " AND (leads.lead_type = 'Irrelevant' OR lf.lead_status = 'Irrelevant')";
+                $sql .= " AND (leads.lead_type IN ('Invalid Lead', 'Irrelevant') OR lf.lead_status IN ('Invalid Lead', 'Irrelevant'))";
             }
         }
 
@@ -2388,7 +2412,7 @@ class Lead extends Model
             SUM(CASE WHEN LOWER(leads.last_lead_action) = 'booked' THEN 1 ELSE 0 END) as booked_leads,
             SUM(CASE WHEN lf.next_follow_up_date IS NOT NULL AND DATE(lf.next_follow_up_date) >= CURDATE() THEN 1 ELSE 0 END) as upcoming_follow_ups,
             SUM(CASE WHEN lf.next_follow_up_date IS NOT NULL AND lf.next_follow_up_date > '1000-01-01' AND DATE(lf.next_follow_up_date) <= CURDATE() AND lf.deleted_at IS NULL THEN 1 ELSE 0 END) as missing_follow_ups,
-            SUM(CASE WHEN (leads.lead_type = 'Irrelevant' OR lf.lead_status = 'Irrelevant') THEN 1 ELSE 0 END) as irrelevant_leads
+            SUM(CASE WHEN (leads.lead_type IN ('Invalid Lead', 'Irrelevant') OR lf.lead_status IN ('Invalid Lead', 'Irrelevant')) THEN 1 ELSE 0 END) as irrelevant_leads
         FROM leads
         LEFT JOIN (
             SELECT t1.*
@@ -2468,6 +2492,18 @@ class Lead extends Model
         if (!empty($lead_status)) {
             if ($lead_status === 'Pending') {
                 $sql .= " AND (lf.lead_status = 'Pending' OR leads.lead_type = 'Pending' OR ((leads.lead_type IS NULL OR leads.lead_type = '') AND (lf.lead_status IS NULL OR lf.lead_status = '')) OR lf.status = 'pending')";
+            } elseif (in_array($lead_status, ['High Potential', 'Hot', 'High Prospect'])) {
+                $sql .= " AND (lf.lead_status IN ('High Potential', 'Hot', 'High Prospect') OR leads.lead_type IN ('High Potential', 'Hot', 'High Prospect'))";
+            } elseif (in_array($lead_status, ['Potential', 'Prospect', 'Warm'])) {
+                $sql .= " AND (lf.lead_status IN ('Potential', 'Prospect', 'Warm') OR leads.lead_type IN ('Potential', 'Prospect', 'Warm'))";
+            } elseif (in_array($lead_status, ['Visit Scheduled', 'Will Visit'])) {
+                $sql .= " AND (lf.lead_status IN ('Visit Scheduled', 'Will Visit') OR leads.lead_type IN ('Visit Scheduled', 'Will Visit'))";
+            } elseif (in_array($lead_status, ['Visit Completed', 'Visited'])) {
+                $sql .= " AND (lf.lead_status IN ('Visit Completed', 'Visited') OR leads.lead_type IN ('Visit Completed', 'Visited'))";
+            } elseif (in_array($lead_status, ['Invalid Lead', 'Irrelevant'])) {
+                $sql .= " AND (lf.lead_status IN ('Invalid Lead', 'Irrelevant') OR leads.lead_type IN ('Invalid Lead', 'Irrelevant'))";
+            } elseif (in_array($lead_status, ['Not Interested', 'Cold'])) {
+                $sql .= " AND (lf.lead_status IN ('Not Interested', 'Cold') OR leads.lead_type IN ('Not Interested', 'Cold'))";
             } else {
                 $sql .= " AND (lf.lead_status = ? OR leads.lead_type = ?)";
                 $params[] = $lead_status;
@@ -2911,7 +2947,7 @@ class Lead extends Model
         $bookingAchievement = $monthlyBookingTarget > 0 ? round(($currentMonthBooking / $monthlyBookingTarget) * 100, 1) : 0;
 
         // 16. Total Visited Complete (All-time)
-        $leadTypeCond = $hasLeadType ? "l.lead_type = 'Visited'" : "0=1";
+        $leadTypeCond = $hasLeadType ? "l.lead_type IN ('Visit Completed', 'Visited')" : "0=1";
         $lastActionCond = $hasLastLeadAction ? "l.last_lead_action = 'visited'" : "0=1";
 
         $sql16 = "
@@ -2923,7 +2959,7 @@ class Lead extends Model
               AND (
                   (l.assigned_id = ? AND ({$leadTypeCond} OR {$lastActionCond}))
                   OR ((l.assigned_id = ? OR lf.assigned_with = ? OR lf.created_by = ?) 
-                      AND (lf.lead_status = 'Visited' OR lf.follow_up_type = 'visit') 
+                      AND (lf.lead_status IN ('Visit Completed', 'Visited') OR lf.follow_up_type = 'visit') 
                       AND lf.status != 'canceled')
               )
         ";
@@ -2944,7 +2980,7 @@ class Lead extends Model
                 WHERE 1=1
                   {$lDelSql}
                   AND (l.assigned_id = ? OR lf.assigned_with = ? OR lf.created_by = ?)
-                  AND (lf.lead_status = 'Visited' OR LOWER(lf.follow_up_type) = 'visit')
+                  AND (lf.lead_status IN ('Visit Completed', 'Visited') OR LOWER(lf.follow_up_type) = 'visit')
                   AND lf.status != 'canceled'
                   AND (DATE(lf.follow_up_date) BETWEEN ? AND ? OR (lf.follow_up_date IS NULL AND DATE(lf.created_at) BETWEEN ? AND ?))
             ";
@@ -3327,7 +3363,7 @@ class Lead extends Model
         $visibility = $data['visibility'] ?? 'public';
         $status = $data['status'] ?? 'active';
         $lead_quality = $data['lead_quality'] ?? 'Pending';
-        if (!in_array($lead_quality, ['Pending', 'Prospect', 'Not Interested'])) {
+        if (!in_array($lead_quality, ['Pending', 'Potential', 'Prospect', 'Not Interested'])) {
             $lead_quality = 'Pending';
         }
         $lead_type = (!empty($data['lead_type']) && trim((string)$data['lead_type']) !== '') ? trim((string)$data['lead_type']) : null;
@@ -3627,13 +3663,13 @@ class Lead extends Model
 
         // Lead Type (Enum-safe)
         $lead_type            = $nn('lead_type');
-        $validLeadTypes = ['No Response', 'Pending', 'Prospect', 'High Prospect', 'Will Visit', 'Visited', 'Sold', 'Lead Transferred', 'Project Transferred', 'Not Interested', "Don't Call Again", 'Refund', 'Future', 'Cold', 'Hot', 'Warm', 'Irrelevant'];
+        $validLeadTypes = ['No Response', 'Pending', 'Potential', 'High Potential', 'Visit Scheduled', 'Visit Completed', 'Sold', 'Lead Transferred', 'Project Transferred', 'Not Interested', "Don't Call Again", 'Refund', 'Future', 'Invalid Lead', 'Prospect', 'High Prospect', 'Will Visit', 'Visited', 'Cold', 'Hot', 'Warm', 'Irrelevant'];
         if (!empty($lead_type) && !in_array($lead_type, $validLeadTypes)) {
             $lead_type = null;
         }
 
         $lead_quality         = $nn('lead_quality');
-        if (!empty($lead_quality) && !in_array($lead_quality, ['Pending', 'Prospect', 'Not Interested'])) {
+        if (!empty($lead_quality) && !in_array($lead_quality, ['Pending', 'Potential', 'Prospect', 'Not Interested'])) {
             $lead_quality = 'Pending';
         }
         $visibility           = $nn('visibility') ?? 'public';

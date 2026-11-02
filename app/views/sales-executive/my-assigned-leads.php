@@ -129,6 +129,49 @@ foreach ($myAllleads as $lead) {
         white-space: nowrap;
     }
 
+    /* Lead Status Badges (under Action Select) */
+    .lead-status-badge-wrap .badge {
+        font-weight: 600;
+        font-size: 10px !important;
+        padding: 3px 8px !important;
+        border-radius: 4px;
+        display: inline-block;
+        letter-spacing: 0.2px;
+        line-height: 1.2;
+    }
+    .badge.bg-not-received, .bg-not-received, .lead-status-badge-wrap .bg-not-received {
+        background-color: #dc3545 !important;
+        color: #ffffff !important;
+    }
+    .badge.bg-received, .bg-received, .lead-status-badge-wrap .bg-received {
+        background-color: #198754 !important;
+        color: #ffffff !important;
+    }
+    .lead-status-badge-wrap .bg-danger, .badge.bg-danger {
+        background-color: #dc3545 !important;
+        color: #ffffff !important;
+    }
+    .lead-status-badge-wrap .bg-success, .badge.bg-success {
+        background-color: #198754 !important;
+        color: #ffffff !important;
+    }
+    .lead-status-badge-wrap .bg-warning, .badge.bg-warning {
+        background-color: #f59e0b !important;
+        color: #1e293b !important;
+    }
+    .lead-status-badge-wrap .bg-info, .badge.bg-info {
+        background-color: #0284c7 !important;
+        color: #ffffff !important;
+    }
+    .lead-status-badge-wrap .bg-secondary, .badge.bg-secondary {
+        background-color: #0d9488 !important;
+        color: #ffffff !important;
+    }
+    .lead-status-badge-wrap .bg-dark, .badge.bg-dark {
+        background-color: #334155 !important;
+        color: #ffffff !important;
+    }
+
     /* Mobile Improvements */
     @media (max-width: 768px) {
 
@@ -344,14 +387,14 @@ if (!function_exists('getMyAssignedStatCardLink')) {
     <!-- Irrelevant Leads Card -->
     <div class="col-6 col-md-4 col-xl mb-2">
         <a href="<?= getMyAssignedStatCardLink('irrelevant_leads') ?>" class="stat-card-link">
-            <div class="card__wrapper stat-card shadow-sm <?= (($filterCard ?? '') === 'irrelevant_leads' || ($selectedLeadStatus ?? '') === 'Irrelevant') ? 'border-secondary' : '' ?>" 
+            <div class="card__wrapper stat-card shadow-sm <?= (($filterCard ?? '') === 'irrelevant_leads' || ($filterCard ?? '') === 'invalid_lead' || in_array(($selectedLeadStatus ?? ''), ['Invalid Lead', 'Irrelevant'])) ? 'border-secondary' : '' ?>" 
                  style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border: 1.5px solid #cbd5e1 !important; min-height: 85px;">
                 <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right text-secondary"></i></span>
                 <div class="card-body d-flex justify-content-between align-items-center p-2 px-3">
                     <div>
-                        <p class="stat-label mb-1 text-secondary"><i class="fa-solid fa-ban me-1"></i> Irrelevant Leads</p>
+                        <p class="stat-label mb-1 text-secondary"><i class="fa-solid fa-ban me-1"></i> Invalid Leads</p>
                         <h2 class="stat-value text-secondary mb-1" style="font-size: 1.6rem; font-weight: 800;"><?= $irrelevantLeadsCount ?? 0 ?></h2>
-                        <span class="card-hint text-secondary" style="font-size: 10px; margin-top: 0;">Click to view irrelevant &rarr;</span>
+                        <span class="card-hint text-secondary" style="font-size: 10px; margin-top: 0;">Click to view invalid &rarr;</span>
                     </div>
                     <div class="card__icon text-secondary" style="opacity: 0.2; font-size: 1.8rem;"><i class="fa-solid fa-ban"></i></div>
                 </div>
@@ -606,10 +649,10 @@ $hasActiveFilters = !empty($search)
                         <option value="">Lead Status: All</option>
                         <?php
                         $statuses = [
-                            'No Response', 'Pending', 'Prospect', 'High Prospect', 
-                            'Will Visit', 'Visited', 'Sold', 'Lead Transferred', 
+                            'No Response', 'Pending', 'Potential', 'High Potential', 
+                            'Visit Scheduled', 'Visit Completed', 'Sold', 'Lead Transferred', 
                             'Project Transferred', 'Not Interested', 'Don\'t Call Again', 
-                            'Refund', 'Future', 'Cold', 'Hot', 'Warm', 'Irrelevant'
+                            'Refund', 'Future', 'Invalid Lead'
                         ];
                         foreach($statuses as $st) {
                             $selected = ($selectedLeadStatus ?? '') == $st ? 'selected' : '';
@@ -1032,23 +1075,25 @@ $hasActiveFilters = !empty($search)
                                         }
                                         
                                         $badgeClass = 'bg-secondary text-white';
-                                        if ($statusVal == 'Prospect' || $statusVal == 'High Prospect') {
-                                            $badgeClass = 'bg-received text-white';
-                                        } elseif ($statusVal == 'Not Interested' || $statusVal == "Don't Call Again" || $statusVal == 'Cold' || $statusVal == 'Refund') {
-                                            $badgeClass = 'bg-not-received text-white';
+                                        if (in_array($statusVal, ['High Potential', 'High Prospect', 'Hot'])) {
+                                            $badgeClass = 'bg-danger text-white';
+                                        } elseif (in_array($statusVal, ['Potential', 'Prospect'])) {
+                                            $badgeClass = 'bg-success text-white';
+                                        } elseif (in_array($statusVal, ['Visit Scheduled', 'Will Visit'])) {
+                                            $badgeClass = 'bg-info text-dark';
+                                        } elseif (in_array($statusVal, ['Visit Completed', 'Visited'])) {
+                                            $badgeClass = 'bg-primary text-white';
+                                        } elseif (in_array($statusVal, ['Not Interested', "Don't Call Again", 'Cold', 'Refund'])) {
+                                            $badgeClass = 'bg-danger text-white';
                                         } elseif ($statusVal == 'Warm') {
                                             $badgeClass = 'bg-warning text-dark';
-                                        } elseif ($statusVal == 'Hot') {
-                                            $badgeClass = 'bg-danger text-white';
-                                        } elseif ($statusVal == 'Irrelevant') {
+                                        } elseif (in_array($statusVal, ['Invalid Lead', 'Irrelevant'])) {
                                             $badgeClass = 'bg-dark text-white';
                                         } elseif ($statusVal == 'No Response') {
-                                            $badgeClass = 'bg-success text-white';
+                                            $badgeClass = 'bg-warning text-dark';
                                         } elseif ($statusVal == 'Lead Transferred' || $statusVal == 'Project Transferred') {
                                             $badgeClass = 'bg-dark text-white';
-                                        } elseif ($statusVal == 'Will Visit' || $statusVal == 'Visited') {
-                                            $badgeClass = 'bg-info text-dark';
-                                        } elseif ($statusVal == 'Sold') {
+                                        } elseif ($statusVal == 'Sold' || $statusVal == 'Completed') {
                                             $badgeClass = 'bg-success text-white';
                                         } elseif ($statusVal == 'Pending') {
                                             $badgeClass = 'bg-secondary text-white';
@@ -1306,10 +1351,10 @@ $hasActiveFilters = !empty($search)
                         <option value="">Lead Status: All</option>
                         <?php
                         $statuses = [
-                            'No Response', 'Pending', 'Prospect', 'High Prospect', 
-                            'Will Visit', 'Visited', 'Sold', 'Lead Transferred', 
+                            'No Response', 'Pending', 'Potential', 'High Potential', 
+                            'Visit Scheduled', 'Visit Completed', 'Sold', 'Lead Transferred', 
                             'Project Transferred', 'Not Interested', 'Don\'t Call Again', 
-                            'Refund', 'Future', 'Cold', 'Hot', 'Warm', 'Irrelevant'
+                            'Refund', 'Future', 'Invalid Lead'
                         ];
                         foreach($statuses as $st) {
                             $selected = ($selectedLeadStatus ?? '') == $st ? 'selected' : '';
@@ -1583,17 +1628,21 @@ $hasActiveFilters = !empty($search)
                     }
                     
                     $statusClass = 'bg-secondary text-white';
-                    if (in_array($mStatusVal, ['Prospect', 'High Prospect'])) {
-                        $statusClass = 'bg-received text-white';
+                    if (in_array($mStatusVal, ['High Potential', 'High Prospect', 'Hot'])) {
+                        $statusClass = 'bg-danger text-white';
+                    } elseif (in_array($mStatusVal, ['Potential', 'Prospect'])) {
+                        $statusClass = 'bg-success text-white';
+                    } elseif (in_array($mStatusVal, ['Visit Scheduled', 'Will Visit'])) {
+                        $statusClass = 'bg-info text-dark';
+                    } elseif (in_array($mStatusVal, ['Visit Completed', 'Visited'])) {
+                        $statusClass = 'bg-primary text-white';
                     } elseif (in_array($mStatusVal, ['Not Interested', "Don't Call Again", 'Cold', 'Refund'])) {
-                        $statusClass = 'bg-not-received text-white';
+                        $statusClass = 'bg-danger text-white';
                     } elseif ($mStatusVal === 'Warm') {
                         $statusClass = 'bg-warning text-dark';
-                    } elseif ($mStatusVal === 'Hot') {
-                        $statusClass = 'bg-danger text-white';
                     } elseif ($mStatusVal === 'No Response') {
-                        $statusClass = 'bg-success text-white';
-                    } elseif ($mStatusVal === 'Irrelevant') {
+                        $statusClass = 'bg-warning text-dark';
+                    } elseif (in_array($mStatusVal, ['Invalid Lead', 'Irrelevant'])) {
                         $statusClass = 'bg-dark text-white';
                     }
                     ?>
@@ -2546,9 +2595,9 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <option value="">Select Status</option>
                                 <?php
                                 $statuses = [
-                                    'No Response', 'Pending', 'Prospect', 'High Prospect', 
-                                    'Will Visit', 'Visited', 'Lead Transferred', 
-                                    'Not Interested', 'Don\'t Call Again', 'Cold', 'Hot', 'Warm', 'Irrelevant'
+                                    'No Response', 'Pending', 'Potential', 'High Potential', 
+                                    'Visit Scheduled', 'Visit Completed', 'Lead Transferred', 
+                                    'Not Interested', 'Don\'t Call Again', 'Invalid Lead'
                                 ];
                                 foreach($statuses as $st) {
                                     echo "<option value=\"$st\">$st</option>";
@@ -2780,10 +2829,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         let lsBadge = '<span class="text-muted">—</span>';
                         if (item.lead_status) {
                             let lsCls = 'bg-secondary text-white';
-                            if (item.lead_status === 'Prospect' || item.lead_status === 'High Prospect') lsCls = 'bg-success text-white';
-                            else if (item.lead_status === 'Hot') lsCls = 'bg-danger text-white';
-                            else if (item.lead_status === 'Warm') lsCls = 'bg-warning text-dark';
-                            else if (item.lead_status === 'Irrelevant') lsCls = 'bg-dark text-white';
+                            if (item.lead_status === 'High Potential' || item.lead_status === 'High Prospect' || item.lead_status === 'Hot') lsCls = 'bg-danger text-white';
+                            else if (item.lead_status === 'Potential' || item.lead_status === 'Prospect' || item.lead_status === 'Warm') lsCls = 'bg-success text-white';
+                            else if (item.lead_status === 'Visit Scheduled' || item.lead_status === 'Will Visit') lsCls = 'bg-info text-dark';
+                            else if (item.lead_status === 'Visit Completed' || item.lead_status === 'Visited') lsCls = 'bg-primary text-white';
+                            else if (item.lead_status === 'Invalid Lead' || item.lead_status === 'Irrelevant') lsCls = 'bg-dark text-white';
                             else if (item.lead_status === 'Cold' || item.lead_status === 'Not Interested' || item.lead_status === "Don't Call Again") lsCls = 'bg-secondary text-white';
                             lsBadge = `<span class="badge ${lsCls} px-2 py-1">${escapeHtml(item.lead_status)}</span>`;
                         }
@@ -2955,12 +3005,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     let badgeWrap = $(`.lead-status-badge-wrap[data-lead-id="${leadId}"]`);
                     if (badgeWrap.length > 0) {
                         let bCls = 'bg-secondary text-white';
-                        if (displayStatus === 'Prospect' || displayStatus === 'High Prospect') bCls = 'bg-received text-white';
-                        else if (displayStatus === 'Hot') bCls = 'bg-danger text-white';
+                        if (displayStatus === 'High Potential' || displayStatus === 'High Prospect' || displayStatus === 'Hot') bCls = 'bg-danger text-white';
+                        else if (displayStatus === 'Potential' || displayStatus === 'Prospect') bCls = 'bg-success text-white';
+                        else if (displayStatus === 'Visit Scheduled' || displayStatus === 'Will Visit') bCls = 'bg-info text-dark';
+                        else if (displayStatus === 'Visit Completed' || displayStatus === 'Visited') bCls = 'bg-primary text-white';
                         else if (displayStatus === 'Warm') bCls = 'bg-warning text-dark';
-                        else if (displayStatus === 'Irrelevant') bCls = 'bg-dark text-white';
-                        else if (displayStatus === 'No Response') bCls = 'bg-success text-white';
-                        else if (displayStatus === 'Not Interested' || displayStatus === "Don't Call Again" || displayStatus === 'Cold' || displayStatus === 'Refund') bCls = 'bg-not-received text-white';
+                        else if (displayStatus === 'Invalid Lead' || displayStatus === 'Irrelevant') bCls = 'bg-dark text-white';
+                        else if (displayStatus === 'No Response') bCls = 'bg-warning text-dark';
+                        else if (displayStatus === 'Not Interested' || displayStatus === "Don't Call Again" || displayStatus === 'Cold' || displayStatus === 'Refund') bCls = 'bg-danger text-white';
+                        else if (displayStatus === 'Sold' || displayStatus === 'Completed') bCls = 'bg-success text-white';
                         badgeWrap.html(`<span class="badge ${bCls} px-2 py-1" style="font-size: 10px;">${escapeHtml(displayStatus)}</span>`);
                     }
 

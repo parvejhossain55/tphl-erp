@@ -371,7 +371,7 @@ class FollowUp extends Model
     LEFT JOIN projects p ON f.project_id = p.id
     LEFT JOIN flats fl ON f.flat_id = fl.id
     LEFT JOIN users usr ON f.created_by = usr.id
-    LEFT JOIN employees emp ON f.assigned_with = emp.id
+    LEFT JOIN employees emp ON f.assigned_with = emp.user_id
     LEFT JOIN employees emp_creator ON usr.id = emp_creator.user_id
     WHERE DATE(f.next_follow_up_date) = '$today'
     AND f.deleted_at IS NULL

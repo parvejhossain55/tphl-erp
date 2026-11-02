@@ -453,10 +453,10 @@ class UserActivityLogController extends Controller
                     l.assigned_id,
                     COUNT(l.id) as assigned_leads_count,
                     GROUP_CONCAT(CONCAT('#', l.id, ' ', IFNULL(l.full_name, 'Unknown')) SEPARATOR ', ') as assigned_leads_names,
-                    SUM(CASE WHEN l.lead_type = 'Visited' THEN 1 ELSE 0 END) as visited_count,
-                    GROUP_CONCAT(CASE WHEN l.lead_type = 'Visited' THEN CONCAT('#', l.id, ' ', IFNULL(l.full_name, 'Unknown')) ELSE NULL END SEPARATOR ', ') as visited_names,
-                    SUM(CASE WHEN l.lead_type = 'Hot' THEN 1 ELSE 0 END) as hot_count,
-                    SUM(CASE WHEN l.lead_type = 'Cold' THEN 1 ELSE 0 END) as cold_count,
+                    SUM(CASE WHEN l.lead_type IN ('Visit Completed', 'Visited') THEN 1 ELSE 0 END) as visited_count,
+                    GROUP_CONCAT(CASE WHEN l.lead_type IN ('Visit Completed', 'Visited') THEN CONCAT('#', l.id, ' ', IFNULL(l.full_name, 'Unknown')) ELSE NULL END SEPARATOR ', ') as visited_names,
+                    SUM(CASE WHEN l.lead_type IN ('High Potential', 'High Prospect', 'Hot') THEN 1 ELSE 0 END) as hot_count,
+                    SUM(CASE WHEN l.lead_type IN ('Cold', 'Not Interested') THEN 1 ELSE 0 END) as cold_count,
                     MAX(l.updated_at) as last_status_update
                 FROM leads l
                 WHERE l.assigned_id IN ($sIdPlaceholders)
@@ -1169,7 +1169,7 @@ class UserActivityLogController extends Controller
                     <td><div class="card-label">Assigned Leads</div><div class="card-val">' . number_format($totals['total_assigned_leads']) . '</div></td>
                     <td><div class="card-label">Follow-ups Done</div><div class="card-val">' . number_format($totals['total_followups']) . '</div></td>
                     <td><div class="card-label">Visited</div><div class="card-val" style="color:#16a34a;">' . number_format($totals['total_visited']) . '</div></td>
-                    <td><div class="card-label">Hot Leads</div><div class="card-val" style="color:#dc2626;">' . number_format($totals['total_hot']) . '</div></td>
+                    <td><div class="card-label">High Potential</div><div class="card-val" style="color:#dc2626;">' . number_format($totals['total_hot']) . '</div></td>
                     <td><div class="card-label">No Follow-up</div><div class="card-val" style="color:#ea580c;">' . number_format($totals['total_no_followup']) . '</div></td>
                     <td><div class="card-label">Total Booked</div><div class="card-val" style="color:#1e40af;">' . number_format($totals['total_booked']) . '</div></td>
                     <td><div class="card-label">Land Share Value</div><div class="card-val" style="color:#047857;">Tk ' . number_format($totals['total_land_share_value'], 2) . '</div></td>

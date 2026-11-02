@@ -815,7 +815,7 @@ $printMode   = $print_mode ?? ($_GET['print_mode'] ?? 'full');
                         elseif ($t['payment_type'] === 'development_charge') $typeClass = 'type-dev';
                         elseif ($t['payment_type'] === 'shop_service_charge') $typeClass = 'type-shop';
 
-                        $typeLabel = $paymentTypeNames[$t['payment_type']] ?? ucwords(str_replace('_', ' ', $t['payment_type']));
+                        $typeLabel = $t['purpose_info']['label'] ?? ($paymentTypeNames[$t['payment_type']] ?? ucwords(str_replace('_', ' ', $t['payment_type'])));
                     ?>
                     <tr>
                         <td class="text-center"><?= $sl++ ?></td>

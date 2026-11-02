@@ -243,6 +243,7 @@ $printMode = $print_mode ?? 'collectors';
             </td>
             <td style="width: 40%; text-align: right; vertical-align: top;">
                 <div class="info-pill"><strong>Period:</strong> <?= htmlspecialchars($activePeriodLabel) ?></div>
+                <div class="info-pill"><strong>Scope:</strong> <?= ($filters['team_scope'] ?? '') === 'all' ? 'All Staff' : (($filters['team_scope'] ?? '') === 'ced_mgmt' ? 'CED &amp; Management' : 'CED Team Only') ?></div>
                 <div class="info-pill"><strong>Project:</strong> <?= htmlspecialchars($project_name ?? 'All Projects') ?></div>
                 <div class="info-pill"><strong>Printed On:</strong> <?= date('d M Y, h:i A') ?></div>
             </td>
@@ -362,6 +363,7 @@ $printMode = $print_mode ?? 'collectors';
                     <th class="text-end">Amount (BDT)</th>
                     <th>Collector (Staff)</th>
                     <th class="text-center">Status</th>
+                    <th>Verified By</th>
                 </tr>
             </thead>
             <tbody>
@@ -407,8 +409,27 @@ $printMode = $print_mode ?? 'collectors';
                         </td>
                         <td class="font-mono"><?= htmlspecialchars($t['transaction_ref'] ?? '-') ?></td>
                         <td class="text-end font-mono fw-bold">৳<?= number_format((float)$t['amount'], 2) ?></td>
-                        <td><?= htmlspecialchars($t['collector_name']) ?></td>
-                        <td class="text-center" style="text-transform: capitalize;"><?= htmlspecialchars($t['verification_status'] ?? 'pending') ?></td>
+                        <td>
+                            <strong><?= htmlspecialchars($t['collector_name']) ?></strong>
+                            <?php if (!empty($t['collector_role']) && $t['collector_role'] !== 'N/A'): ?>
+                                <div style="font-size: 9px; color: #64748b;"><?= htmlspecialchars($t['collector_role']) ?></div>
+                            <?php endif; ?>
+                        </td>
+                        <td class="text-center" style="text-transform: capitalize; font-weight: 600; color: <?= ($t['verification_status'] ?? '') === 'verified' ? '#16a34a' : (($t['verification_status'] ?? '') === 'rejected' ? '#dc2626' : '#d97706') ?>;">
+                            <?= htmlspecialchars($t['verification_status'] ?? 'pending') ?>
+                        </td>
+                        <td>
+                            <?php if (($t['verification_status'] ?? '') === 'verified' && !empty($t['verifier_name'])): ?>
+                                <strong><?= htmlspecialchars($t['verifier_name']) ?></strong>
+                                <?php if (!empty($t['verified_at'])): ?>
+                                    <div style="font-size: 8.5px; color: #64748b;"><?= date('d-m-Y h:i A', strtotime($t['verified_at'])) ?></div>
+                                <?php endif; ?>
+                            <?php elseif (($t['verification_status'] ?? '') === 'verified'): ?>
+                                <span style="color: #64748b;">System Verified</span>
+                            <?php else: ?>
+                                <span style="color: #94a3b8;">Pending</span>
+                            <?php endif; ?>
+                        </td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
@@ -416,7 +437,7 @@ $printMode = $print_mode ?? 'collectors';
                 <tr style="background: #f1f5f9; font-weight: 700;">
                     <td colspan="9" class="text-uppercase text-end">Total Register Amount:</td>
                     <td class="text-end font-mono fw-bold" style="color: #0284c7;">৳<?= number_format($tSum, 2) ?></td>
-                    <td colspan="2"></td>
+                    <td colspan="3"></td>
                 </tr>
             </tfoot>
         </table>

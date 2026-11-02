@@ -964,6 +964,10 @@ class CollectionStatementController extends Controller
                     lp.payment_date AS date,
                     lp.payment_date AS transaction_date,
                     lp.payment_type,
+                    lp.settlement_type,
+                    lp.other_purpose,
+                    COALESCE(es.emi_no, lp.emi_no) AS emi_no,
+                    COALESCE(parent_es.emi_no, p_parent.emi_no) AS settled_emi_no,
                     lp.amount,
                     lp.payment_method,
                     lp.bank_name,
@@ -972,6 +976,8 @@ class CollectionStatementController extends Controller
                     lp.transaction_ref AS money_receipt_no,
                     lp.payment_status,
                     lp.verification_status,
+                    lp.created_by,
+                    COALESCE(e_cr.full_name, u_cr.full_name, u_cr.user_name, CONCAT('User #', lp.created_by)) AS collector_name,
                     lp.verified_by,
                     lp.verified_at,
                     COALESCE(u_v.full_name, e_v.full_name, '') AS verifier_name,
@@ -990,6 +996,11 @@ class CollectionStatementController extends Controller
                 INNER JOIN leads l ON lb.lead_id = l.id
                 LEFT JOIN projects p ON lb.project_id = p.id
                 LEFT JOIN flats f ON lb.flat_id = f.id
+                LEFT JOIN lead_payments p_parent ON lp.parent_payment_id = p_parent.id
+                LEFT JOIN emi_schedules es ON (lp.id = es.lead_payment_id)
+                LEFT JOIN emi_schedules parent_es ON (p_parent.id = parent_es.lead_payment_id)
+                LEFT JOIN users u_cr ON lp.created_by = u_cr.id
+                LEFT JOIN employees e_cr ON (u_cr.employee_id = e_cr.id OR e_cr.user_id = u_cr.id)
                 LEFT JOIN users u_v ON lp.verified_by = u_v.id
                 LEFT JOIN employees e_v ON (e_v.user_id = u_v.id OR e_v.id = u_v.employee_id)
                 LEFT JOIN office_branches ob_v ON e_v.office_branch_id = ob_v.id
@@ -1009,6 +1020,10 @@ class CollectionStatementController extends Controller
                     mci.transaction_date AS date,
                     mci.transaction_date AS transaction_date,
                     'management' AS payment_type,
+                    '' AS settlement_type,
+                    '' AS other_purpose,
+                    NULL AS emi_no,
+                    NULL AS settled_emi_no,
                     mci.amount,
                     mci.payment_method,
                     mci.bank_name,
@@ -1017,6 +1032,8 @@ class CollectionStatementController extends Controller
                     mci.transaction_ref AS money_receipt_no,
                     mci.payment_status,
                     'verified' AS verification_status,
+                    mci.created_by AS created_by,
+                    COALESCE(u_m.full_name, mci.person_name, 'Management') AS collector_name,
                     mci.created_by AS verified_by,
                     mci.created_at AS verified_at,
                     COALESCE(u_m.full_name, mci.person_name, 'Management') AS verifier_name,
@@ -1048,14 +1065,16 @@ class CollectionStatementController extends Controller
         $res = $this->db->query($finalSql);
         $rows = [];
         if ($res) {
+            require_once __DIR__ . '/CedCollectionStatementController.php';
             while ($r = $res->fetch_assoc()) {
+                $r['purpose_info'] = CedCollectionStatementController::formatPaymentPurpose($r);
                 $rows[] = $r;
             }
         }
         return $rows;
     }
 
-    /**
+        /**
      * Get list of projects for dropdown (cached in session)
      */
     protected function fetchProjects()

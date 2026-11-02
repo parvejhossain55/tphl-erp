@@ -14,9 +14,16 @@ class CedCollectionStatementController extends Controller
 
         // Authorization Guard
         $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $userName = strtolower(trim($_SESSION['user']['user_name'] ?? ''));
         $isClientComm = function_exists('isCreditRecovery') ? isCreditRecovery() : in_array($userRoleId, [7, 37], true);
+        $isManagement = in_array($userRoleId, [1, 3, 33, 34, 35], true)
+            || strpos($roleName, 'management') !== false
+            || strpos($roleName, 'admin') !== false
+            || strpos($userName, 'management') !== false;
+
         $canAccess = hasPermission('CED Manage') 
-            || in_array($userRoleId, [1, 3, 33, 34, 35], true) 
+            || $isManagement 
             || $isClientComm 
             || $userRoleId === 7;
 
@@ -160,7 +167,6 @@ class CedCollectionStatementController extends Controller
             fputcsv($output, [
                 'SL',
                 'Collector / Executive Name',
-                'Role / Designation',
                 'Employee ID',
                 'Dev Charge Trx',
                 'Dev Charge Amount (BDT)',
@@ -185,7 +191,6 @@ class CedCollectionStatementController extends Controller
                 fputcsv($output, [
                     $sl++,
                     $r['collector_name'],
-                    $r['collector_role'],
                     $r['emp_code'] ?? 'N/A',
                     $r['dev_charge_count'],
                     number_format($r['dev_charge_amount'], 2, '.', ''),
@@ -211,7 +216,6 @@ class CedCollectionStatementController extends Controller
             fputcsv($output, [
                 '',
                 'GRAND TOTAL',
-                '',
                 '',
                 $grand['dev_charge_count'],
                 number_format($grand['dev_charge_amount'], 2, '.', ''),
@@ -260,9 +264,9 @@ class CedCollectionStatementController extends Controller
             'Receipt / Voucher Ref',
             'Amount (BDT)',
             'Collector / Created By',
-            'Collector Role',
             'Verification Status',
-            'Verified By'
+            'Verified By',
+            'Verified At'
         ]);
 
         $sl = 1;
@@ -297,9 +301,9 @@ class CedCollectionStatementController extends Controller
                 $t['transaction_ref'] ?? '',
                 number_format((float)$t['amount'], 2, '.', ''),
                 $t['collector_name'] ?? 'N/A',
-                $t['collector_role'] ?? 'N/A',
                 ucfirst($t['verification_status'] ?? 'pending'),
-                $t['verifier_name'] ?? 'N/A'
+                (($t['verification_status'] ?? '') === 'verified') ? (!empty($t['verifier_name']) ? $t['verifier_name'] : 'System Verified') : 'Pending',
+                (!empty($t['verified_at']) && ($t['verification_status'] ?? '') === 'verified') ? date('d-m-Y h:i A', strtotime($t['verified_at'])) : '-'
             ]);
         }
 
@@ -328,8 +332,8 @@ class CedCollectionStatementController extends Controller
         $endDate   = !empty($_GET['end_date'])   ? trim($_GET['end_date'])   : null;
 
         $collectorId = !empty($_GET['collector_id']) && is_numeric($_GET['collector_id']) ? (int)$_GET['collector_id'] : null;
-        $teamScope   = trim($_GET['team_scope'] ?? 'ced_only'); // 'ced_only' or 'all'
-        if (!in_array($teamScope, ['ced_only', 'all'], true)) {
+        $teamScope   = trim($_GET['team_scope'] ?? 'ced_only'); // 'ced_only', 'ced_mgmt', or 'all'
+        if (!in_array($teamScope, ['ced_only', 'ced_mgmt', 'all'], true)) {
             $teamScope = 'ced_only';
         }
 
@@ -452,9 +456,13 @@ class CedCollectionStatementController extends Controller
             "COALESCE(lp.is_emi_discount, 0) = 0"
         ];
 
-        // Team scope: CED Only vs All
-        if (!empty($filters['team_scope']) && $filters['team_scope'] === 'ced_only' && empty($filters['collector_id'])) {
-            $conds[] = "(u_cr.role_id IN (7, 37) OR r_cr.name LIKE '%client%' OR r_cr.name LIKE '%recovery%' OR d_cr.name LIKE '%client%' OR d_cr.name LIKE '%ced%')";
+        // Team scope: CED Only vs CED & Management vs All
+        if (!empty($filters['team_scope']) && empty($filters['collector_id'])) {
+            if ($filters['team_scope'] === 'ced_only') {
+                $conds[] = "(u_cr.role_id IN (7, 37) OR r_cr.name LIKE '%client%' OR r_cr.name LIKE '%recovery%' OR d_cr.name LIKE '%client%' OR d_cr.name LIKE '%ced%')";
+            } elseif ($filters['team_scope'] === 'ced_mgmt') {
+                $conds[] = "(u_cr.role_id IN (7, 37, 1, 3, 33, 34, 35) OR r_cr.name LIKE '%client%' OR r_cr.name LIKE '%recovery%' OR r_cr.name LIKE '%management%' OR r_cr.name LIKE '%admin%' OR d_cr.name LIKE '%client%' OR d_cr.name LIKE '%ced%' OR u_cr.user_name LIKE '%management%')";
+            }
         }
 
         if (!empty($filters['collector_id'])) {
@@ -687,7 +695,15 @@ class CedCollectionStatementController extends Controller
             FROM lead_payments lp
             {$joins}
             WHERE {$where}
-            GROUP BY lp.created_by
+            GROUP BY 
+                lp.created_by,
+                u_cr.full_name,
+                u_cr.user_name,
+                e_cr.full_name,
+                e_cr.employee_id,
+                r_cr.name,
+                r_cr.id,
+                d_cr.name
             ORDER BY total_amount DESC
         ";
 
@@ -736,6 +752,7 @@ class CedCollectionStatementController extends Controller
                 $r['cheque_amount']      = (float)$r['cheque_amount'];
                 $r['online_amount']      = (float)$r['online_amount'];
                 $r['is_ced_member']      = in_array((int)$r['role_id'], [7, 37], true) || stripos($r['collector_role'], 'client') !== false;
+                $r['is_management']      = in_array((int)$r['role_id'], [1, 3, 33, 34, 35], true) || stripos($r['collector_role'], 'admin') !== false || stripos($r['collector_role'], 'management') !== false || (isset($r['user_name']) && stripos($r['user_name'], 'management') !== false);
 
                 $grand['total_count']        += $r['total_count'];
                 $grand['total_amount']       += $r['total_amount'];
@@ -875,6 +892,8 @@ class CedCollectionStatementController extends Controller
                 lp.cheque_no,
                 lp.transaction_ref,
                 lp.verification_status,
+                lp.verified_by,
+                lp.verified_at,
                 lp.created_by,
                 lp.created_at,
                 cb.bank_name AS company_bank_name,
@@ -891,7 +910,8 @@ class CedCollectionStatementController extends Controller
                 f.flat_name,
                 COALESCE(e_cr.full_name, u_cr.full_name, u_cr.user_name, CONCAT('User #', lp.created_by)) AS collector_name,
                 COALESCE(r_cr.name, 'N/A') AS collector_role,
-                COALESCE(u_v.full_name, e_v.full_name, '') AS verifier_name
+                COALESCE(e_v.full_name, u_v.full_name, u_v.user_name, '') AS verifier_name,
+                COALESCE(r_v.name, '') AS verifier_role
             FROM lead_payments lp
             {$joins}
             LEFT JOIN company_bank_accounts cb ON cb.id = lp.bank_id
@@ -899,7 +919,8 @@ class CedCollectionStatementController extends Controller
             LEFT JOIN emi_schedules es ON (lp.id = es.lead_payment_id)
             LEFT JOIN emi_schedules parent_es ON (p_parent.id = parent_es.lead_payment_id)
             LEFT JOIN users u_v ON lp.verified_by = u_v.id
-            LEFT JOIN employees e_v ON (e_v.user_id = u_v.id OR e_v.id = u_v.employee_id)
+            LEFT JOIN employees e_v ON (u_v.employee_id = e_v.id OR e_v.user_id = u_v.id)
+            LEFT JOIN roles r_v ON u_v.role_id = r_v.id
             WHERE {$where}
             ORDER BY lp.payment_date DESC, lp.id DESC
             LIMIT {$limit} OFFSET {$offset}
@@ -944,19 +965,19 @@ class CedCollectionStatementController extends Controller
         // 1. Due Settlement
         if ($st === 'emi_due_settlement' || ($pt === 'emi' && !empty($st))) {
             if ($settledEmiNo) {
-                $summary = [
+                return [
                     'category'    => 'settlement',
-                    'label'       => 'Due Settlement #' . $settledEmiNo,
-                    'full_label'  => 'Due Settlement for ' . $getOrdinal($settledEmiNo) . ' Installment',
+                    'label'       => $getOrdinal($settledEmiNo) . ' Installment (Settlement)',
+                    'full_label'  => 'EMI Due Settlement for ' . $getOrdinal($settledEmiNo) . ' Installment',
                     'badge_class' => 'badge-subtle-settlement',
                     'icon'        => 'fa-solid fa-handshake',
                     'number'      => $settledEmiNo,
                     'type_title'  => 'Settled ' . $getOrdinal($settledEmiNo) . ' Installment'
                 ];
             }
-            $summary = [
+            return [
                 'category'    => 'settlement',
-                'label'       => 'Due Settlement',
+                'label'       => 'EMI Due Settlement',
                 'full_label'  => 'EMI Due Settlement',
                 'badge_class' => 'badge-subtle-settlement',
                 'icon'        => 'fa-solid fa-handshake',
@@ -968,9 +989,9 @@ class CedCollectionStatementController extends Controller
         // 2. Advance EMI (partially_paid EMI)
         if ($pt === 'emi' && $ps === 'partially_paid') {
             if ($emiNo) {
-                $summary = [
+                return [
                     'category'    => 'advance_emi',
-                    'label'       => 'Advance EMI #' . $emiNo,
+                    'label'       => 'Advance ' . $getOrdinal($emiNo) . ' Installment',
                     'full_label'  => 'Advance ' . $getOrdinal($emiNo) . ' Installment',
                     'badge_class' => 'badge-subtle-advance',
                     'icon'        => 'fa-solid fa-forward',
@@ -978,7 +999,7 @@ class CedCollectionStatementController extends Controller
                     'type_title'  => 'Advance ' . $getOrdinal($emiNo) . ' Installment'
                 ];
             }
-            $summary = [
+            return [
                 'category'    => 'advance_emi',
                 'label'       => 'Advance EMI',
                 'full_label'  => 'Advance Installment',
@@ -992,17 +1013,17 @@ class CedCollectionStatementController extends Controller
         // 3. Regular EMI
         if ($pt === 'emi') {
             if ($emiNo) {
-                $summary = [
+                return [
                     'category'    => 'emi',
-                    'label'       => 'EMI #' . $emiNo,
-                    'full_label'  => $getOrdinal($emiNo) . ' Installment',
+                    'label'       => $getOrdinal($emiNo) . ' Installment',
+                    'full_label'  => $getOrdinal($emiNo) . ' Monthly Installment',
                     'badge_class' => 'badge-subtle-emi',
                     'icon'        => 'fa-solid fa-calendar-check',
                     'number'      => $emiNo,
                     'type_title'  => $getOrdinal($emiNo) . ' Installment'
                 ];
             }
-            $summary = [
+            return [
                 'category'    => 'emi',
                 'label'       => 'EMI Payment',
                 'full_label'  => 'Monthly Installment',
@@ -1015,9 +1036,9 @@ class CedCollectionStatementController extends Controller
 
         // 4. Development Charge
         if ($pt === 'development_charge') {
-            $summary = [
+            return [
                 'category'    => 'dev_charge',
-                'label'       => 'Dev Charge',
+                'label'       => 'Development Charge',
                 'full_label'  => 'Development Charge',
                 'badge_class' => 'badge-subtle-dev',
                 'icon'        => 'fa-solid fa-helmet-safety',
@@ -1028,7 +1049,7 @@ class CedCollectionStatementController extends Controller
 
         // 5. Booking Money
         if ($pt === 'booking_money') {
-            $summary = [
+            return [
                 'category'    => 'booking',
                 'label'       => 'Booking Money',
                 'full_label'  => 'Booking Money',
@@ -1041,9 +1062,9 @@ class CedCollectionStatementController extends Controller
 
         // 6. Registration
         if ($pt === 'registration') {
-            $summary = [
+            return [
                 'category'    => 'registration',
-                'label'       => 'Registration',
+                'label'       => 'Registration Money',
                 'full_label'  => 'Registration Money',
                 'badge_class' => 'badge-subtle-registration',
                 'icon'        => 'fa-solid fa-id-card',
@@ -1054,7 +1075,7 @@ class CedCollectionStatementController extends Controller
 
         // 7. Land Share
         if ($pt === 'land_share') {
-            $summary = [
+            return [
                 'category'    => 'land_share',
                 'label'       => 'Land Share',
                 'full_label'  => 'Land Share Collection',
@@ -1062,6 +1083,33 @@ class CedCollectionStatementController extends Controller
                 'icon'        => 'fa-solid fa-map-location-dot',
                 'number'      => null,
                 'type_title'  => 'Land Share Collection'
+            ];
+        }
+
+        // 8. Shop Service Charge
+        if ($pt === 'shop_service_charge') {
+            return [
+                'category'    => 'shop_service_charge',
+                'label'       => 'Shop Service Charge',
+                'full_label'  => 'Shop Service Charge',
+                'badge_class' => 'badge-subtle-other',
+                'icon'        => 'fa-solid fa-store',
+                'number'      => null,
+                'type_title'  => 'Shop Service Charge'
+            ];
+        }
+
+        // 9. Others
+        if ($pt === 'others') {
+            $otherPurpose = !empty($t['other_purpose']) ? trim($t['other_purpose']) : '';
+            return [
+                'category'    => 'other',
+                'label'       => !empty($otherPurpose) ? 'Others (' . $otherPurpose . ')' : 'Others',
+                'full_label'  => !empty($otherPurpose) ? 'Other: ' . $otherPurpose : 'Other Payment',
+                'badge_class' => 'bg-light text-dark border',
+                'icon'        => 'fa-solid fa-circle-dollar-to-slot',
+                'number'      => null,
+                'type_title'  => 'Other Collection'
             ];
         }
 
@@ -1078,7 +1126,7 @@ class CedCollectionStatementController extends Controller
         ];
     }
 
-    /**
+        /**
      * Fetch list of CED collectors / executives for filter dropdown
      */
     protected function fetchCedCollectors()

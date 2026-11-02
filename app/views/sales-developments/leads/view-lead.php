@@ -416,7 +416,18 @@ $page = "View Lead";
                         <div class="info-row">
                             <div class="info-label">Lead Type & Quality</div>
                             <div class="info-value">
-                                <span class="badge bg-warning text-dark me-1"><?= htmlspecialchars($leadData['lead_type'] ?: 'Warm') ?></span>
+                                <?php
+                                $vLt = $leadData['lead_type'] ?: 'Pending';
+                                $vLtCls = 'bg-secondary text-white';
+                                if (in_array($vLt, ['High Potential', 'High Prospect', 'Hot'])) $vLtCls = 'bg-danger text-white';
+                                elseif (in_array($vLt, ['Potential', 'Prospect', 'Warm'])) $vLtCls = 'bg-warning text-dark';
+                                elseif (in_array($vLt, ['Visit Scheduled', 'Will Visit'])) $vLtCls = 'bg-info text-dark';
+                                elseif (in_array($vLt, ['Visit Completed', 'Visited'])) $vLtCls = 'bg-primary text-white';
+                                elseif (in_array($vLt, ['Not Interested', 'Cold'])) $vLtCls = 'bg-secondary text-white';
+                                elseif (in_array($vLt, ['Invalid Lead', 'Irrelevant'])) $vLtCls = 'bg-dark text-white';
+                                elseif ($vLt === 'Sold') $vLtCls = 'bg-purple text-white';
+                                ?>
+                                <span class="badge <?= $vLtCls ?> me-1"><?= htmlspecialchars($vLt) ?></span>
                                 <span class="badge bg-secondary"><?= htmlspecialchars($leadData['lead_quality'] ?: 'Pending') ?></span>
                             </div>
                         </div>

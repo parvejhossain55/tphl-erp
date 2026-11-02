@@ -3,7 +3,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="followUpModalEditLabel">Create Follow Up</h5>
+                <h5 class="modal-title" id="followUpModalEditLabel">Edit Follow Up</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form action="<?= $GLOBALS['base_url'] ?>/update-follow-up" method="POST">
@@ -97,9 +97,9 @@
                                 <option value="">Select Status</option>
                                 <?php
                                 $statuses = [
-                                    'No Response', 'Pending', 'Prospect', 'High Prospect', 
-                                    'Will Visit', 'Visited', 'Lead Transferred', 
-                                    'Not Interested', 'Don\'t Call Again', 'Cold', 'Hot', 'Warm', 'Irrelevant'
+                                    'No Response', 'Pending', 'Potential', 'High Potential', 
+                                    'Visit Scheduled', 'Visit Completed', 'Lead Transferred', 
+                                    'Not Interested', 'Don\'t Call Again', 'Invalid Lead'
                                 ];
                                 foreach($statuses as $st) {
                                     echo "<option value=\"$st\">$st</option>";

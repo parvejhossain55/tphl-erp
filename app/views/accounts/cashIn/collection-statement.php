@@ -856,8 +856,14 @@ $exportTrxUrl  = $base_url . '/collection-statement-export?' . http_build_query(
                                         <?php endif; ?>
                                     </td>
                                     <td>
-                                        <span class="badge bg-light text-dark border px-2 py-1" style="font-size: 11.5px; font-weight: 600;">
-                                            <?= ucwords(str_replace('_', ' ', $t['payment_type'] ?? '')) ?>
+                                        <?php 
+                                            $pInfo = $t['purpose_info'] ?? null;
+                                            $pLabel = $pInfo['label'] ?? ucwords(str_replace('_', ' ', $t['payment_type'] ?? ''));
+                                            $pClass = $pInfo['badge_class'] ?? 'bg-light text-dark border';
+                                            $pIcon  = $pInfo['icon'] ?? 'fa-solid fa-tag';
+                                        ?>
+                                        <span class="badge <?= $pClass ?> px-2 py-1" style="font-size: 11px; font-weight: 600;" title="<?= htmlspecialchars($pInfo['full_label'] ?? $pLabel) ?>">
+                                            <i class="<?= $pIcon ?> me-1" style="font-size: 9.5px;"></i><?= htmlspecialchars($pLabel) ?>
                                         </span>
                                     </td>
                                     <td>

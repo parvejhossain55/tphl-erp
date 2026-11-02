@@ -2096,15 +2096,15 @@ function getLeadStatusBadgeHtml(status) {
     const s = status.trim();
     let badgeStyle = 'background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;';
     
-    if (['Prospect', 'High Prospect', 'Sold'].includes(s)) {
-        badgeStyle = 'background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0;';
-    } else if (s === 'Hot') {
+    if (['High Potential', 'High Prospect', 'Hot'].includes(s)) {
         badgeStyle = 'background:#fef2f2; color:#b91c1c; border:1px solid #fecaca;';
-    } else if (['Warm', 'Will Visit', 'Visited'].includes(s)) {
+    } else if (['Potential', 'Prospect', 'Sold'].includes(s)) {
+        badgeStyle = 'background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0;';
+    } else if (['Visit Scheduled', 'Visit Completed', 'Warm', 'Will Visit', 'Visited'].includes(s)) {
         badgeStyle = 'background:#fffbeb; color:#92400e; border:1px solid #fde68a;';
     } else if (s === 'No Response') {
         badgeStyle = 'background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe;';
-    } else if (['Cold', 'Not Interested', "Don't Call Again"].includes(s)) {
+    } else if (['Invalid Lead', 'Irrelevant', 'Cold', 'Not Interested', "Don't Call Again"].includes(s)) {
         badgeStyle = 'background:#f8fafc; color:#64748b; border:1px solid #e2e8f0;';
     } else if (['Lead Transferred', 'Project Transferred'].includes(s)) {
         badgeStyle = 'background:#fdf4ff; color:#86198f; border:1px solid #f0abfc;';

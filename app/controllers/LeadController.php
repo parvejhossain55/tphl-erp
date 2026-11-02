@@ -33,9 +33,10 @@ class LeadController extends Controller
         $userTeamId = $_SESSION['user']['team_id'] ?? null;
         $userId     = $_SESSION['user']['id']      ?? null;
         $isCoLeader = isSalesCoLeader();
+        $isTeamLeader = isTeamLeader();
 
-        // Block Sales Executives (role 8) who are not co-leaders from accessing lead-lists
-        if ($userRoleId === 8 && !$isCoLeader) {
+        // Block Sales Executives (role 8) who are not co-leaders or team leaders from accessing lead-lists
+        if ($userRoleId === 8 && !$isCoLeader && !$isTeamLeader) {
             setError("You do not have permission to access the Lead List page.");
             header("Location: " . $GLOBALS['base_url'] . "/my-dashboard");
             exit;
@@ -86,7 +87,7 @@ class LeadController extends Controller
             }
         } elseif (in_array((int)$userRoleId, [9, 33, 35]) || in_array((int)$userRoleId, [1, 3, 32, 34])) {
             $assignedUsers = $allRoleUsers;
-        } elseif ((int)$userRoleId === 5 || $isCoLeader) {
+        } elseif ((int)$userRoleId === 5 || $isCoLeader || $isTeamLeader) {
             $assignedUsers = !empty($userTeamId) ? $this->userModel->getUsersByTeamAndRole($userTeamId) : $allRoleUsers;
         } else {
             $assignedUsers = $allRoleUsers;
@@ -116,8 +117,8 @@ class LeadController extends Controller
         }
 
         // Get total count for pagination
-        // Co-leader gets team-scoped data same as role_id=5 (Sales Manager)
-        $effectiveRoleId = ($isCoLeader && !in_array((int)$userRoleId, [1, 3, 5, 9, 32, 33, 34, 35])) ? 5 : (int)$userRoleId;
+        // Co-leader & Team Leader get team-scoped data same as role_id=5 (Sales Manager)
+        $effectiveRoleId = (($isCoLeader || $isTeamLeader) && !in_array((int)$userRoleId, [1, 3, 5, 9, 32, 33, 34, 35])) ? 5 : (int)$userRoleId;
         $leadCounts = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
 
         // Period total leads: overall leads count in period regardless of active filter_card (so Total Leads card and Conversion Rate stay accurate)
@@ -457,8 +458,8 @@ class LeadController extends Controller
             $teamIdForQuery = !empty($userTeamId) ? (int)$userTeamId : $filterTeamId;
         }
 
-        // Co-leader gets same team-scoped access as Sales Manager (role_id=5)
-        $effectiveRoleId = (isSalesCoLeader() && !in_array((int)$userRoleId, [1, 3, 5, 9, 32, 33, 34, 35])) ? 5 : (int)$userRoleId;
+        // Co-leader & Team Leader get same team-scoped access as Sales Manager (role_id=5)
+        $effectiveRoleId = ((isSalesCoLeader() || isTeamLeader()) && !in_array((int)$userRoleId, [1, 3, 5, 9, 32, 33, 34, 35])) ? 5 : (int)$userRoleId;
 
         $totalRecords = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
 
@@ -693,20 +694,28 @@ class LeadController extends Controller
 
             $last_action = $lead['last_lead_action'] ?? 'not_called';
             $base_url = $GLOBALS['base_url'];
-            $statusVal = !empty($lead['lead_type']) ? $lead['lead_type'] : (!empty($lead['last_follow_up_lead_status']) ? $lead['last_follow_up_lead_status'] : 'Pending');
+            $statusVal = !empty($lead['last_follow_up_lead_status']) ? $lead['last_follow_up_lead_status'] : (!empty($lead['lead_type']) ? $lead['lead_type'] : 'Pending');
             $badgeClass = 'bg-secondary text-white';
-            if ($statusVal == 'Prospect' || $statusVal == 'High Prospect') {
-                $badgeClass = 'bg-received';
-            } elseif ($statusVal == 'Not Interested' || $statusVal == "Don't Call Again" || $statusVal == 'Cold' || $statusVal == 'Refund') {
-                $badgeClass = 'bg-not-received';
+            if (in_array($statusVal, ['High Potential', 'High Prospect', 'Hot'])) {
+                $badgeClass = 'bg-danger text-white';
+            } elseif (in_array($statusVal, ['Potential', 'Prospect'])) {
+                $badgeClass = 'bg-success text-white';
+            } elseif (in_array($statusVal, ['Visit Scheduled', 'Will Visit'])) {
+                $badgeClass = 'bg-info text-dark';
+            } elseif (in_array($statusVal, ['Visit Completed', 'Visited'])) {
+                $badgeClass = 'bg-primary text-white';
+            } elseif (in_array($statusVal, ['Not Interested', "Don't Call Again", 'Cold', 'Refund'])) {
+                $badgeClass = 'bg-danger text-white';
             } elseif ($statusVal == 'Warm') {
                 $badgeClass = 'bg-warning text-dark';
-            } elseif ($statusVal == 'Hot') {
-                $badgeClass = 'bg-danger text-white';
-            } elseif ($statusVal == 'Irrelevant') {
+            } elseif (in_array($statusVal, ['Invalid Lead', 'Irrelevant'])) {
                 $badgeClass = 'bg-dark text-white';
             } elseif ($statusVal == 'No Response') {
                 $badgeClass = 'bg-warning text-dark';
+            } elseif ($statusVal == 'Sold') {
+                $badgeClass = 'bg-success text-white';
+            } elseif (in_array($statusVal, ['Lead Transferred', 'Project Transferred'])) {
+                $badgeClass = 'bg-dark text-white';
             }
 
             $extraBadges = '';

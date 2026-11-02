@@ -751,17 +751,17 @@ public function deleteBudget($id)
                 : '<span class="badge-not-contacted"><i class="bi bi-x-circle-fill"></i> Not Contacted</span>';
 
             $ltClass = match (strtolower($leadType)) {
-                'hot'         => 'lt-hot',
-                'warm'        => 'lt-warm',
-                'cold'        => 'lt-cold',
-                'prospect', 'high prospect' => 'lt-prospect',
-                'visited', 'will visit'     => 'lt-visited',
-                'sold'        => 'lt-sold',
+                'high potential', 'high prospect', 'hot' => 'lt-hot',
+                'potential', 'prospect', 'warm'          => 'lt-prospect',
+                'cold'                                   => 'lt-cold',
+                'visit completed', 'visited', 'visit scheduled', 'will visit' => 'lt-visited',
+                'sold'                                   => 'lt-sold',
+                'invalid lead', 'irrelevant'             => 'lt-not-interested',
                 'not interested', "don't call again", 'refund' => 'lt-not-interested',
-                'pending'     => 'lt-pending',
-                'future'      => 'lt-future',
-                'no response' => 'lt-no-response',
-                default       => 'lt-default',
+                'pending'                                => 'lt-pending',
+                'future'                                 => 'lt-future',
+                'no response'                            => 'lt-no-response',
+                default                                  => 'lt-default',
             };
             $ltBadge = !empty($leadType)
                 ? '<span class="lead-type-badge ' . $ltClass . '">' . htmlspecialchars($leadType) . '</span>'
