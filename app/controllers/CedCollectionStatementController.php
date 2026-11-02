@@ -546,31 +546,34 @@ class CedCollectionStatementController extends Controller
         $where = $this->buildLeadPaymentsConditions($startDate, $endDate, $filters);
         $joins = $this->getBaseJoins();
 
+        $isFilterRejected = (!empty($filters['verification_status']) && $filters['verification_status'] === 'rejected');
+        $validCond = $isFilterRejected ? "1=1" : "(lp.verification_status IS NULL OR lp.verification_status != 'rejected')";
+
         $sql = "
             SELECT 
-                COUNT(*) as total_count,
-                COALESCE(SUM(lp.amount), 0) as total_amount,
-                COALESCE(SUM(CASE WHEN lp.payment_type = 'development_charge' THEN lp.amount ELSE 0 END), 0) as dev_charge_amount,
-                COUNT(CASE WHEN lp.payment_type = 'development_charge' THEN 1 ELSE NULL END) as dev_charge_count,
-                COALESCE(SUM(CASE WHEN lp.payment_type = 'emi' AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement') THEN lp.amount ELSE 0 END), 0) as emi_amount,
-                COUNT(CASE WHEN lp.payment_type = 'emi' AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement') THEN 1 ELSE NULL END) as emi_count,
-                COALESCE(SUM(CASE WHEN lp.payment_type = 'emi' AND lp.settlement_type = 'emi_due_settlement' THEN lp.amount ELSE 0 END), 0) as settlement_amount,
-                COUNT(CASE WHEN lp.payment_type = 'emi' AND lp.settlement_type = 'emi_due_settlement' THEN 1 ELSE NULL END) as settlement_count,
-                COALESCE(SUM(CASE WHEN lp.payment_type = 'booking_money' THEN lp.amount ELSE 0 END), 0) as booking_amount,
-                COUNT(CASE WHEN lp.payment_type = 'booking_money' THEN 1 ELSE NULL END) as booking_count,
-                COALESCE(SUM(CASE WHEN lp.payment_type = 'registration' THEN lp.amount ELSE 0 END), 0) as registration_amount,
-                COUNT(CASE WHEN lp.payment_type = 'registration' THEN 1 ELSE NULL END) as registration_count,
-                COALESCE(SUM(CASE WHEN lp.payment_method = 'cash' THEN lp.amount ELSE 0 END), 0) as cash_amount,
-                COUNT(CASE WHEN lp.payment_method = 'cash' THEN 1 ELSE NULL END) as cash_count,
-                COALESCE(SUM(CASE WHEN lp.payment_method = 'bank' THEN lp.amount ELSE 0 END), 0) as bank_amount,
-                COUNT(CASE WHEN lp.payment_method = 'bank' THEN 1 ELSE NULL END) as bank_count,
-                COALESCE(SUM(CASE WHEN lp.payment_method = 'cheque' THEN lp.amount ELSE 0 END), 0) as cheque_amount,
-                COUNT(CASE WHEN lp.payment_method = 'cheque' THEN 1 ELSE NULL END) as cheque_count,
-                COALESCE(SUM(CASE WHEN lp.payment_method = 'online' THEN lp.amount ELSE 0 END), 0) as online_amount,
-                COUNT(CASE WHEN lp.payment_method = 'online' THEN 1 ELSE NULL END) as online_count,
+                COUNT(CASE WHEN {$validCond} THEN 1 ELSE NULL END) as total_count,
+                COALESCE(SUM(CASE WHEN {$validCond} THEN lp.amount ELSE 0 END), 0) as total_amount,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'development_charge' AND {$validCond} THEN lp.amount ELSE 0 END), 0) as dev_charge_amount,
+                COUNT(CASE WHEN lp.payment_type = 'development_charge' AND {$validCond} THEN 1 ELSE NULL END) as dev_charge_count,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'emi' AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement') AND {$validCond} THEN lp.amount ELSE 0 END), 0) as emi_amount,
+                COUNT(CASE WHEN lp.payment_type = 'emi' AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement') AND {$validCond} THEN 1 ELSE NULL END) as emi_count,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'emi' AND lp.settlement_type = 'emi_due_settlement' AND {$validCond} THEN lp.amount ELSE 0 END), 0) as settlement_amount,
+                COUNT(CASE WHEN lp.payment_type = 'emi' AND lp.settlement_type = 'emi_due_settlement' AND {$validCond} THEN 1 ELSE NULL END) as settlement_count,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'booking_money' AND {$validCond} THEN lp.amount ELSE 0 END), 0) as booking_amount,
+                COUNT(CASE WHEN lp.payment_type = 'booking_money' AND {$validCond} THEN 1 ELSE NULL END) as booking_count,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'registration' AND {$validCond} THEN lp.amount ELSE 0 END), 0) as registration_amount,
+                COUNT(CASE WHEN lp.payment_type = 'registration' AND {$validCond} THEN 1 ELSE NULL END) as registration_count,
+                COALESCE(SUM(CASE WHEN lp.payment_method = 'cash' AND {$validCond} THEN lp.amount ELSE 0 END), 0) as cash_amount,
+                COUNT(CASE WHEN lp.payment_method = 'cash' AND {$validCond} THEN 1 ELSE NULL END) as cash_count,
+                COALESCE(SUM(CASE WHEN lp.payment_method = 'bank' AND {$validCond} THEN lp.amount ELSE 0 END), 0) as bank_amount,
+                COUNT(CASE WHEN lp.payment_method = 'bank' AND {$validCond} THEN 1 ELSE NULL END) as bank_count,
+                COALESCE(SUM(CASE WHEN lp.payment_method = 'cheque' AND {$validCond} THEN lp.amount ELSE 0 END), 0) as cheque_amount,
+                COUNT(CASE WHEN lp.payment_method = 'cheque' AND {$validCond} THEN 1 ELSE NULL END) as cheque_count,
+                COALESCE(SUM(CASE WHEN lp.payment_method = 'online' AND {$validCond} THEN lp.amount ELSE 0 END), 0) as online_amount,
+                COUNT(CASE WHEN lp.payment_method = 'online' AND {$validCond} THEN 1 ELSE NULL END) as online_count,
                 COALESCE(SUM(CASE WHEN lp.verification_status = 'verified' THEN lp.amount ELSE 0 END), 0) as verified_amount,
                 COALESCE(SUM(CASE WHEN lp.verification_status = 'pending' THEN lp.amount ELSE 0 END), 0) as pending_amount,
-                COUNT(DISTINCT lp.created_by) as active_collectors_count
+                COUNT(DISTINCT CASE WHEN {$validCond} THEN lp.created_by ELSE NULL END) as active_collectors_count
             FROM lead_payments lp
             {$joins}
             WHERE {$where}
@@ -665,6 +668,9 @@ class CedCollectionStatementController extends Controller
         $where = $this->buildLeadPaymentsConditions($startDate, $endDate, $filters);
         $joins = $this->getBaseJoins();
 
+        $isFilterRejected = (!empty($filters['verification_status']) && $filters['verification_status'] === 'rejected');
+        $validCond = $isFilterRejected ? "1=1" : "(lp.verification_status IS NULL OR lp.verification_status != 'rejected')";
+
         $sql = " SELECT 
                 lp.created_by,
                 COALESCE(e_cr.full_name, u_cr.full_name, u_cr.user_name, CONCAT('User #', lp.created_by)) AS collector_name,
@@ -672,24 +678,24 @@ class CedCollectionStatementController extends Controller
                 COALESCE(r_cr.id, 0) AS role_id,
                 e_cr.employee_id AS emp_code,
                 d_cr.name AS dept_name,
-                COUNT(*) AS total_count,
-                COALESCE(SUM(lp.amount), 0) AS total_amount,
-                COALESCE(SUM(CASE WHEN lp.payment_type = 'development_charge' THEN lp.amount ELSE 0 END), 0) AS dev_charge_amount,
-                COUNT(CASE WHEN lp.payment_type = 'development_charge' THEN 1 ELSE NULL END) AS dev_charge_count,
-                COALESCE(SUM(CASE WHEN lp.payment_type = 'emi' AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement') THEN lp.amount ELSE 0 END), 0) AS emi_amount,
-                COUNT(CASE WHEN lp.payment_type = 'emi' AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement') THEN 1 ELSE NULL END) AS emi_count,
-                COALESCE(SUM(CASE WHEN lp.payment_type = 'emi' AND lp.settlement_type = 'emi_due_settlement' THEN lp.amount ELSE 0 END), 0) AS settlement_amount,
-                COUNT(CASE WHEN lp.payment_type = 'emi' AND lp.settlement_type = 'emi_due_settlement' THEN 1 ELSE NULL END) AS settlement_count,
-                COALESCE(SUM(CASE WHEN lp.payment_type = 'booking_money' THEN lp.amount ELSE 0 END), 0) AS booking_amount,
-                COUNT(CASE WHEN lp.payment_type = 'booking_money' THEN 1 ELSE NULL END) AS booking_count,
-                COALESCE(SUM(CASE WHEN lp.payment_type = 'registration' THEN lp.amount ELSE 0 END), 0) AS registration_amount,
-                COUNT(CASE WHEN lp.payment_type = 'registration' THEN 1 ELSE NULL END) AS registration_count,
-                COALESCE(SUM(CASE WHEN lp.payment_type NOT IN ('development_charge', 'emi', 'booking_money', 'registration') THEN lp.amount ELSE 0 END), 0) AS other_amount,
-                COUNT(CASE WHEN lp.payment_type NOT IN ('development_charge', 'emi', 'booking_money', 'registration') THEN 1 ELSE NULL END) AS other_count,
-                COALESCE(SUM(CASE WHEN lp.payment_method = 'cash' THEN lp.amount ELSE 0 END), 0) AS cash_amount,
-                COALESCE(SUM(CASE WHEN lp.payment_method = 'bank' THEN lp.amount ELSE 0 END), 0) AS bank_amount,
-                COALESCE(SUM(CASE WHEN lp.payment_method = 'cheque' THEN lp.amount ELSE 0 END), 0) AS cheque_amount,
-                COALESCE(SUM(CASE WHEN lp.payment_method = 'online' THEN lp.amount ELSE 0 END), 0) AS online_amount,
+                COUNT(CASE WHEN {$validCond} THEN 1 ELSE NULL END) AS total_count,
+                COALESCE(SUM(CASE WHEN {$validCond} THEN lp.amount ELSE 0 END), 0) AS total_amount,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'development_charge' AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS dev_charge_amount,
+                COUNT(CASE WHEN lp.payment_type = 'development_charge' AND {$validCond} THEN 1 ELSE NULL END) AS dev_charge_count,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'emi' AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement') AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS emi_amount,
+                COUNT(CASE WHEN lp.payment_type = 'emi' AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement') AND {$validCond} THEN 1 ELSE NULL END) AS emi_count,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'emi' AND lp.settlement_type = 'emi_due_settlement' AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS settlement_amount,
+                COUNT(CASE WHEN lp.payment_type = 'emi' AND lp.settlement_type = 'emi_due_settlement' AND {$validCond} THEN 1 ELSE NULL END) AS settlement_count,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'booking_money' AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS booking_amount,
+                COUNT(CASE WHEN lp.payment_type = 'booking_money' AND {$validCond} THEN 1 ELSE NULL END) AS booking_count,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'registration' AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS registration_amount,
+                COUNT(CASE WHEN lp.payment_type = 'registration' AND {$validCond} THEN 1 ELSE NULL END) AS registration_count,
+                COALESCE(SUM(CASE WHEN lp.payment_type NOT IN ('development_charge', 'emi', 'booking_money', 'registration') AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS other_amount,
+                COUNT(CASE WHEN lp.payment_type NOT IN ('development_charge', 'emi', 'booking_money', 'registration') AND {$validCond} THEN 1 ELSE NULL END) AS other_count,
+                COALESCE(SUM(CASE WHEN lp.payment_method = 'cash' AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS cash_amount,
+                COALESCE(SUM(CASE WHEN lp.payment_method = 'bank' AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS bank_amount,
+                COALESCE(SUM(CASE WHEN lp.payment_method = 'cheque' AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS cheque_amount,
+                COALESCE(SUM(CASE WHEN lp.payment_method = 'online' AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS online_amount,
                 COALESCE(SUM(CASE WHEN lp.verification_status = 'verified' THEN lp.amount ELSE 0 END), 0) AS verified_amount,
                 COALESCE(SUM(CASE WHEN lp.verification_status = 'pending' THEN lp.amount ELSE 0 END), 0) AS pending_amount
             FROM lead_payments lp
@@ -704,6 +710,7 @@ class CedCollectionStatementController extends Controller
                 r_cr.name,
                 r_cr.id,
                 d_cr.name
+            HAVING total_count > 0 OR total_amount > 0
             ORDER BY total_amount DESC
         ";
 
@@ -797,22 +804,26 @@ class CedCollectionStatementController extends Controller
         $where = $this->buildLeadPaymentsConditions($startDate, $endDate, $filters);
         $joins = $this->getBaseJoins();
 
+        $isFilterRejected = (!empty($filters['verification_status']) && $filters['verification_status'] === 'rejected');
+        $validCond = $isFilterRejected ? "1=1" : "(lp.verification_status IS NULL OR lp.verification_status != 'rejected')";
+
         $sql = "
             SELECT 
                 CASE 
                     WHEN lp.payment_type = 'emi' AND lp.settlement_type = 'emi_due_settlement' THEN 'emi_due_settlement'
                     ELSE lp.payment_type
                 END as ptype,
-                COUNT(*) as count,
-                COALESCE(SUM(lp.amount), 0) as total_amount,
-                COALESCE(SUM(CASE WHEN lp.payment_method = 'bank' THEN lp.amount ELSE 0 END), 0) as bank_amount,
-                COALESCE(SUM(CASE WHEN lp.payment_method = 'cash' THEN lp.amount ELSE 0 END), 0) as cash_amount,
-                COALESCE(SUM(CASE WHEN lp.payment_method = 'cheque' THEN lp.amount ELSE 0 END), 0) as cheque_amount,
-                COALESCE(SUM(CASE WHEN lp.payment_method = 'online' THEN lp.amount ELSE 0 END), 0) as online_amount
+                COUNT(CASE WHEN {$validCond} THEN 1 ELSE NULL END) as count,
+                COALESCE(SUM(CASE WHEN {$validCond} THEN lp.amount ELSE 0 END), 0) as total_amount,
+                COALESCE(SUM(CASE WHEN lp.payment_method = 'bank' AND {$validCond} THEN lp.amount ELSE 0 END), 0) as bank_amount,
+                COALESCE(SUM(CASE WHEN lp.payment_method = 'cash' AND {$validCond} THEN lp.amount ELSE 0 END), 0) as cash_amount,
+                COALESCE(SUM(CASE WHEN lp.payment_method = 'cheque' AND {$validCond} THEN lp.amount ELSE 0 END), 0) as cheque_amount,
+                COALESCE(SUM(CASE WHEN lp.payment_method = 'online' AND {$validCond} THEN lp.amount ELSE 0 END), 0) as online_amount
             FROM lead_payments lp
             {$joins}
             WHERE {$where}
             GROUP BY ptype
+            HAVING count > 0 OR total_amount > 0
             ORDER BY total_amount DESC
         ";
 
