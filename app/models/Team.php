@@ -129,6 +129,21 @@ class Team extends Model
 
             // Reset team_id in users (linked via employee_id)
             $this->db->query("UPDATE users SET team_id = 0 WHERE employee_id IN ($inRemove)");
+
+            // Reset active/unbooked leads belonging to this specific team for removed employees
+            $this->db->query("UPDATE leads l 
+                              INNER JOIN employees e ON (l.assigned_id = e.user_id OR (e.user_id IS NULL AND l.assigned_id = e.id))
+                              SET l.team_id = 0 
+                              WHERE e.id IN ($inRemove) 
+                                AND l.team_id = $teamId
+                                AND l.deleted_at IS NULL
+                                AND (l.last_lead_action IS NULL OR LOWER(l.last_lead_action) != 'booked')
+                                AND NOT EXISTS (
+                                    SELECT 1 FROM lead_bookings lb 
+                                    WHERE lb.lead_id = l.id 
+                                      AND lb.deleted_at IS NULL 
+                                      AND lb.booking_status IN ('booked', 'completed')
+                                )");
         }
 
         // 3. Assign selected employees to this team
@@ -145,6 +160,9 @@ class Team extends Model
 
             // Update users table (linked via employee_id)
             $this->db->query("UPDATE users SET team_id = $teamId WHERE employee_id IN ($inSelect)");
+
+            // Automatically sync active/unbooked leads assigned to these users to the new team_id
+            (new Lead($this->db))->syncActiveLeadsTeamByEmployeeIds($selectedEmployeeIds, $teamId);
         }
 
         // 4. Update is_team_leader in employees table for this team

@@ -541,6 +541,12 @@ class EmployeeController extends Controller
 
             $this->userModel->update($userData, $existingUserId);
             $this->db->query("UPDATE employees SET user_id = $existingUserId, make_user = 1 WHERE id = $id");
+
+            // Automatically sync active/unbooked leads assigned to this user to the new team_id
+            $newTeamId = (int)($employeeData['team_id'] ?? 0);
+            if ($newTeamId > 0) {
+                (new Lead($this->db))->syncActiveLeadsTeamByUser($existingUserId, $newTeamId);
+            }
         } elseif ($makeUser == 1 || $roleId > 0) {
             $userData = [
                 'full_name' => $employeeData['full_name'],
