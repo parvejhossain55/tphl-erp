@@ -2272,11 +2272,14 @@ class PayrollController extends Controller
         $year = (int) ($input['year'] ?? 0);
         $month = (int) ($input['month'] ?? 0);
 
-        // Strict fallback to project's attached database date if UI failed to convey valid timeframe
-        if ($year < 2000 || $month < 1 || $month > 12) {
-            $projRes = $this->db->query('SELECT date FROM payroll_projects WHERE id = ' . $projectId);
+        // Strict priority: resolve canonical timeframe from payroll_projects
+        if ($projectId > 0) {
+            $projRes = $this->db->query('SELECT date, is_custom_date, start_date, end_date FROM payroll_projects WHERE id = ' . $projectId);
             if ($projRes && $pRow = $projRes->fetch_assoc()) {
-                if (!empty($pRow['date'])) {
+                if (!empty($pRow['is_custom_date']) && !empty($pRow['start_date'])) {
+                    $year = (int) date('Y', strtotime($pRow['start_date']));
+                    $month = (int) date('m', strtotime($pRow['start_date']));
+                } elseif (!empty($pRow['date'])) {
                     $parts = explode('-', $pRow['date']);
                     if (count($parts) >= 2) {
                         $year = (int) $parts[0];
@@ -2284,25 +2287,36 @@ class PayrollController extends Controller
                     }
                 }
             }
-            if ($year < 2000)
-                $year = (int) date('Y');
-            if ($month < 1 || $month > 12)
-                $month = (int) date('m');
         }
+        if ($year < 2000)
+            $year = (int) date('Y');
+        if ($month < 1 || $month > 12)
+            $month = (int) date('m');
 
         $payslipMonth = sprintf('%04d-%02d-01', $year, $month);
+
+        // Pre-fetch employee designation mapping
+        $empDesgMap = [];
+        $edRes = $this->db->query('SELECT id, designation_id FROM employees');
+        if ($edRes) {
+            while ($ed = $edRes->fetch_assoc()) {
+                $empDesgMap[(int) $ed['id']] = !empty($ed['designation_id']) ? (int) $ed['designation_id'] : null;
+            }
+        }
 
         $this->db->begin_transaction();
         try {
             foreach ($input['rows'] as $row) {
                 $payslipId = (int) ($row['payslip_id'] ?? 0);
                 $employeeId = (int) $row['employee_id'];
+                $designationId = $empDesgMap[$employeeId] ?? null;
                 $netSalary = (float) $row['net_salary'];
                 $totalEarning = (float) $row['total_earning'];
                 $totalDeduction = (float) $row['total_deduction'];
                 $salaryHoldString = trim((string) ($row['salary_hold'] ?? ''));
                 $bankAmount = (float) ($row['bank_amount'] ?? 0);
                 $cashAmount = (float) ($row['cash_amount'] ?? 0);
+                $paymentMethod = ($cashAmount > 0 && $bankAmount <= 0) ? 'cash' : 'bank';
                 $lateUnpaidAbsentDays = (float) ($row['late_unpaid_absent_days'] ?? 0);
                 $remarks = trim((string) ($row['remarks'] ?? ''));
                 $attRemarks = trim((string) ($row['attendance_remarks'] ?? ''));
@@ -2326,9 +2340,9 @@ class PayrollController extends Controller
                 $tax = (float) ($row['tax'] ?? 0);
 
                 $existingStatus = 'draft';
-                $checkStmt = $this->db->prepare('SELECT id, status FROM payslips WHERE employee_id=? AND payroll_project_id=? AND payslip_month=?');
+                $checkStmt = $this->db->prepare('SELECT id, status FROM payslips WHERE employee_id=? AND payroll_project_id=?');
                 if ($checkStmt) {
-                    $checkStmt->bind_param('iis', $employeeId, $projectId, $payslipMonth);
+                    $checkStmt->bind_param('ii', $employeeId, $projectId);
                     $checkStmt->execute();
                     $checkRes = $checkStmt->get_result();
                     if ($checkRow = $checkRes->fetch_assoc()) {
@@ -2342,18 +2356,18 @@ class PayrollController extends Controller
                 $saveStatus = ($existingStatus === 'paid') ? 'paid' : 'draft';
 
                 if ($payslipId > 0) {
-                    $stmt = $this->db->prepare('UPDATE payslips SET status=?, total_earning=?, total_deduction=?, net_salary=?, salary_hold=?, bank_amount=?, cash_amount=?, late_unpaid_absent_days=?, remarks=?, attendance_remarks=?, is_excluded=?, recreation_allowance=?, conveyance_allowance=?, medical_allowance=?, house_rent_allowance=?, advance_salary=?, meal_count=?, subsidized_lunch=?, unpaid_absent_amount=?, arrears_deduction=?, others_deduction=?, punctuality_bonus=?, overtime=?, arrears_earning=?, duty_allowance=?, tax=? WHERE id=?');
+                    $stmt = $this->db->prepare('UPDATE payslips SET designation_id=?, payment_method=?, payslip_month=?, status=?, total_earning=?, total_deduction=?, net_salary=?, salary_hold=?, bank_amount=?, cash_amount=?, late_unpaid_absent_days=?, remarks=?, attendance_remarks=?, is_excluded=?, recreation_allowance=?, conveyance_allowance=?, medical_allowance=?, house_rent_allowance=?, advance_salary=?, meal_count=?, subsidized_lunch=?, unpaid_absent_amount=?, arrears_deduction=?, others_deduction=?, punctuality_bonus=?, overtime=?, arrears_earning=?, duty_allowance=?, tax=? WHERE id=?');
                     if ($stmt) {
-                        $stmt->bind_param('sdddsdddssidddddddddddddddi', $saveStatus, $totalEarning, $totalDeduction, $netSalary, $salaryHoldString, $bankAmount, $cashAmount, $lateUnpaidAbsentDays, $remarks, $attRemarks, $isExcluded, $recreation_allowance, $conveyance_allowance, $medical_allowance, $house_rent_allowance, $advance_salary, $meal_count, $subsidized_lunch, $unpaid_absent_amount, $arrears_deduction, $others_deduction, $punctuality_bonus, $overtime, $arrears_earning, $duty_allowance, $tax, $payslipId);
+                        $stmt->bind_param('isssdddsdddssidddddddddddddddi', $designationId, $paymentMethod, $payslipMonth, $saveStatus, $totalEarning, $totalDeduction, $netSalary, $salaryHoldString, $bankAmount, $cashAmount, $lateUnpaidAbsentDays, $remarks, $attRemarks, $isExcluded, $recreation_allowance, $conveyance_allowance, $medical_allowance, $house_rent_allowance, $advance_salary, $meal_count, $subsidized_lunch, $unpaid_absent_amount, $arrears_deduction, $others_deduction, $punctuality_bonus, $overtime, $arrears_earning, $duty_allowance, $tax, $payslipId);
                         $stmt->execute();
                         $stmt->close();
                     } else {
                         throw new Exception('Payslips update failed: ' . $this->db->error);
                     }
                 } else {
-                    $stmt = $this->db->prepare('INSERT INTO payslips (employee_id, payroll_project_id, payslip_month, status, total_earning, total_deduction, net_salary, salary_hold, bank_amount, cash_amount, late_unpaid_absent_days, remarks, attendance_remarks, is_excluded, recreation_allowance, conveyance_allowance, medical_allowance, house_rent_allowance, advance_salary, meal_count, subsidized_lunch, unpaid_absent_amount, arrears_deduction, others_deduction, punctuality_bonus, overtime, arrears_earning, duty_allowance, tax) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+                    $stmt = $this->db->prepare('INSERT INTO payslips (employee_id, payroll_project_id, designation_id, payment_method, payslip_month, status, total_earning, total_deduction, net_salary, salary_hold, bank_amount, cash_amount, late_unpaid_absent_days, remarks, attendance_remarks, is_excluded, recreation_allowance, conveyance_allowance, medical_allowance, house_rent_allowance, advance_salary, meal_count, subsidized_lunch, unpaid_absent_amount, arrears_deduction, others_deduction, punctuality_bonus, overtime, arrears_earning, duty_allowance, tax) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
                     if ($stmt) {
-                        $stmt->bind_param('iissdddsdddssiddddddddddddddd', $employeeId, $projectId, $payslipMonth, $saveStatus, $totalEarning, $totalDeduction, $netSalary, $salaryHoldString, $bankAmount, $cashAmount, $lateUnpaidAbsentDays, $remarks, $attRemarks, $isExcluded, $recreation_allowance, $conveyance_allowance, $medical_allowance, $house_rent_allowance, $advance_salary, $meal_count, $subsidized_lunch, $unpaid_absent_amount, $arrears_deduction, $others_deduction, $punctuality_bonus, $overtime, $arrears_earning, $duty_allowance, $tax);
+                        $stmt->bind_param('iiisssdddsdddssiddddddddddddddd', $employeeId, $projectId, $designationId, $paymentMethod, $payslipMonth, $saveStatus, $totalEarning, $totalDeduction, $netSalary, $salaryHoldString, $bankAmount, $cashAmount, $lateUnpaidAbsentDays, $remarks, $attRemarks, $isExcluded, $recreation_allowance, $conveyance_allowance, $medical_allowance, $house_rent_allowance, $advance_salary, $meal_count, $subsidized_lunch, $unpaid_absent_amount, $arrears_deduction, $others_deduction, $punctuality_bonus, $overtime, $arrears_earning, $duty_allowance, $tax);
                         $stmt->execute();
                         $payslipId = $stmt->insert_id;
                         $stmt->close();
@@ -2386,6 +2400,8 @@ class PayrollController extends Controller
                                         $itemLookupMap['advance'] = (int) $it['id'];
                                     elseif (strpos($lname, 'lunch') !== false || strpos($lname, 'meal') !== false)
                                         $itemLookupMap['lunch'] = (int) $it['id'];
+                                    elseif (strpos($lname, 'absent') !== false || strpos($lname, 'lwp') !== false)
+                                        $itemLookupMap['absent'] = (int) $it['id'];
                                     elseif (strpos($lname, 'punctuality') !== false)
                                         $itemLookupMap['punctuality'] = (int) $it['id'];
                                     elseif (strpos($lname, 'overtime') !== false)
@@ -2411,6 +2427,12 @@ class PayrollController extends Controller
                                     $itemLookupMap['lunch'] = (int) $this->db->insert_id;
                                 }
                             }
+                            if (!isset($itemLookupMap['absent'])) {
+                                $chkA = $this->db->query("SELECT id FROM payslip_items WHERE LOWER(name) LIKE '%absent%' OR LOWER(name) LIKE '%lwp%' LIMIT 1");
+                                if ($chkA && $ca = $chkA->fetch_assoc()) {
+                                    $itemLookupMap['absent'] = (int) $ca['id'];
+                                }
+                            }
                         }
 
                         if ($house_rent_allowance > 0 && isset($itemLookupMap['house_rent']))
@@ -2425,6 +2447,8 @@ class PayrollController extends Controller
                             $resolvedDetails[$itemLookupMap['advance']] = $advance_salary;
                         if ($subsidized_lunch > 0 && isset($itemLookupMap['lunch']))
                             $resolvedDetails[$itemLookupMap['lunch']] = $subsidized_lunch;
+                        if ($unpaid_absent_amount > 0 && isset($itemLookupMap['absent']))
+                            $resolvedDetails[$itemLookupMap['absent']] = $unpaid_absent_amount;
                         if ($punctuality_bonus > 0 && isset($itemLookupMap['punctuality']))
                             $resolvedDetails[$itemLookupMap['punctuality']] = $punctuality_bonus;
                         if ($overtime > 0 && isset($itemLookupMap['overtime']))

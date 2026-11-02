@@ -768,10 +768,7 @@ $hasActiveFilters = !empty($search)
                                 <th style="min-width: 180px;">Lead Name & Job title/Company</th>
                                 <th style="min-width: 160px;">Address & Phone</th>
                                 <th style="min-width: 110px;">Lead Uploaded</th>
-                                <th style="min-width: 130px;">Best Time to Contact</th>
-                                <th style="min-width: 115px;">Buying Plan</th>
-                                <th style="min-width: 95px;">Site Visit</th>
-                                <th style="min-width: 105px;">Apt Size</th>
+                                <th style="min-width: 175px;">Preferences & Requirements</th>
                                 <th style="min-width: 170px;">Project Campaign</th>
                                 <th style="min-width: 120px;">Status</th>
                                 <th style="min-width: 130px;">Next Follow-Up</th>
@@ -781,7 +778,7 @@ $hasActiveFilters = !empty($search)
                         <tbody>
                             <?php if (empty($myAllleads)): ?>
                                 <tr>
-                                    <td colspan="13" class="text-center text-muted py-5">
+                                    <td colspan="10" class="text-center text-muted py-5">
                                         <i class="bi bi-inbox fs-2 d-block mb-2 text-muted"></i>
                                         <span>No matching leads found.</span>
                                     </td>
@@ -887,65 +884,86 @@ $hasActiveFilters = !empty($search)
                                         </span>
                                     </td>
 
-                                    <!-- 7. Best Time to Contact -->
+                                    <!-- 6. Preferences & Requirements -->
                                     <td>
-                                        <div class="text-muted fs-12" style="white-space: nowrap;">
-                                            <i class="bi bi-clock me-1"></i><?= htmlspecialchars($lead['when_is_the_best_time_to_contact_you'] ?? '—') ?>
-                                        </div>
-                                    </td>
+                                        <?php
+                                        $prefItems = [];
 
-                                    <!-- Buying Plan -->
-                                    <td>
-                                        <?php 
-                                        $buyingPlan = trim($lead['when_are_you_planning_to_buy'] ?? '');
-                                        if (!empty($buyingPlan)):
-                                            $cleanBuyingPlan = ucwords(str_replace('_', ' ', $buyingPlan));
-                                        ?>
-                                            <span class="badge bg-light text-dark border" style="white-space: nowrap; font-size: 11px;">
-                                                <i class="bi bi-calendar3 me-1 text-primary"></i><?= htmlspecialchars($cleanBuyingPlan) ?>
-                                            </span>
-                                        <?php else: ?>
-                                            <span class="text-muted">—</span>
-                                        <?php endif; ?>
-                                    </td>
+                                        // Best Time to Contact
+                                        $rawTime = trim($lead['when_is_the_best_time_to_contact_you'] ?? $lead['preferred_contact_time'] ?? '');
+                                        if ($rawTime !== '' && $rawTime !== '-' && $rawTime !== '—') {
+                                            $cleanTime = ucfirst(str_replace('_', ' ', $rawTime));
+                                            $prefItems[] = [
+                                                'icon'  => 'bi-clock text-info me-1',
+                                                'class' => 'bg-light text-secondary border',
+                                                'text'  => truncateText($cleanTime, 24),
+                                                'title' => 'Best Time to Contact: ' . $cleanTime
+                                            ];
+                                        }
 
-                                    <!-- Site Visit -->
-                                    <td>
-                                        <?php 
-                                        $rawSiteVisit = trim($lead['would_you_like_to_schedule_a_site_visit'] ?? '');
-                                        $lowerSiteVisit = strtolower($rawSiteVisit);
-                                        if ($rawSiteVisit !== ''):
-                                            if (in_array($lowerSiteVisit, ['yes!', 'yes', '1', 'হ্যাঁ'])):
-                                        ?>
-                                                <span class="badge bg-success-subtle text-success border border-success px-2 py-1" style="font-size: 11px; white-space: nowrap;">
-                                                    <i class="bi bi-check-circle me-1"></i>Yes
-                                                </span>
-                                            <?php elseif (in_array($lowerSiteVisit, ['no!', 'no', '0', 'না'])): ?>
-                                                <span class="badge bg-secondary-subtle text-secondary border px-2 py-1" style="font-size: 11px; white-space: nowrap;">
-                                                    <i class="bi bi-x-circle me-1"></i>No
-                                                </span>
-                                            <?php else: 
-                                                $cleanVisit = str_replace('_', ' ', $rawSiteVisit);
-                                            ?>
-                                                <span class="badge bg-info-subtle text-info border border-info px-2 py-1" style="font-size: 11px; white-space: nowrap;" title="<?= htmlspecialchars($cleanVisit) ?>">
-                                                    <?= htmlspecialchars(truncateText($cleanVisit, 16)) ?>
-                                                </span>
-                                            <?php endif; ?>
-                                        <?php else: ?>
-                                            <span class="text-muted">—</span>
-                                        <?php endif; ?>
-                                    </td>
+                                        // Buying Plan
+                                        $rawPlan = trim($lead['when_are_you_planning_to_buy'] ?? '');
+                                        if ($rawPlan !== '' && $rawPlan !== '-' && $rawPlan !== '—') {
+                                            $cleanPlan = ucwords(str_replace('_', ' ', $rawPlan));
+                                            $prefItems[] = [
+                                                'icon'  => 'bi-calendar3 text-primary me-1',
+                                                'class' => 'bg-light text-dark border',
+                                                'text'  => 'Plan: ' . truncateText($cleanPlan, 20),
+                                                'title' => 'Buying Plan: ' . $cleanPlan
+                                            ];
+                                        }
 
-                                    <!-- Apt Size -->
-                                    <td>
-                                        <?php 
-                                        $aptSize = trim($lead['which_apartment_size_are_you_interested_in'] ?? $lead['pref_flat_size'] ?? '');
-                                        if (!empty($aptSize)):
-                                            $cleanAptSize = str_replace('_', ' ', $aptSize);
+                                        // Site Visit
+                                        $rawVisit = trim($lead['would_you_like_to_schedule_a_site_visit'] ?? '');
+                                        if ($rawVisit !== '' && $rawVisit !== '-' && $rawVisit !== '—') {
+                                            $lowerVisit = strtolower($rawVisit);
+                                            if (in_array($lowerVisit, ['yes!', 'yes', '1', 'হ্যাঁ'])) {
+                                                $prefItems[] = [
+                                                    'icon'  => 'bi-check-circle-fill text-success me-1',
+                                                    'class' => 'bg-success-subtle text-success border border-success-subtle',
+                                                    'text'  => 'Visit: Yes',
+                                                    'title' => 'Site Visit: Yes'
+                                                ];
+                                            } elseif (in_array($lowerVisit, ['no!', 'no', '0', 'না'])) {
+                                                $prefItems[] = [
+                                                    'icon'  => 'bi-x-circle text-muted me-1',
+                                                    'class' => 'bg-secondary-subtle text-muted border',
+                                                    'text'  => 'Visit: No',
+                                                    'title' => 'Site Visit: No'
+                                                ];
+                                            } else {
+                                                $cleanVisit = ucwords(str_replace('_', ' ', $rawVisit));
+                                                $prefItems[] = [
+                                                    'icon'  => 'bi-geo-alt text-info me-1',
+                                                    'class' => 'bg-info-subtle text-info border border-info-subtle',
+                                                    'text'  => 'Visit: ' . truncateText($cleanVisit, 15),
+                                                    'title' => 'Site Visit: ' . $cleanVisit
+                                                ];
+                                            }
+                                        }
+
+                                        // Apt Size
+                                        $rawSize = trim($lead['which_apartment_size_are_you_interested_in'] ?? $lead['pref_flat_size'] ?? '');
+                                        if ($rawSize !== '' && $rawSize !== '-' && $rawSize !== '—') {
+                                            $cleanSize = str_replace('_', ' ', $rawSize);
+                                            $prefItems[] = [
+                                                'icon'  => 'bi-aspect-ratio text-primary me-1',
+                                                'class' => 'bg-light text-primary border border-primary-subtle fw-semibold',
+                                                'text'  => truncateText($cleanSize, 18),
+                                                'title' => 'Apartment Size: ' . $cleanSize
+                                            ];
+                                        }
                                         ?>
-                                            <span class="badge bg-light text-primary border border-primary-subtle" style="white-space: nowrap; font-size: 11px; font-weight: 600;">
-                                                <i class="bi bi-aspect-ratio me-1"></i><?= htmlspecialchars($cleanAptSize) ?>
-                                            </span>
+                                        <?php if (!empty($prefItems)): ?>
+                                            <div class="d-flex flex-wrap gap-1 align-items-center" style="max-width: 220px;">
+                                                <?php foreach ($prefItems as $item): ?>
+                                                    <span class="badge <?= $item['class'] ?> px-2 py-1" 
+                                                          style="font-size: 11px; white-space: nowrap; line-height: 1.2;" 
+                                                          title="<?= htmlspecialchars($item['title'], ENT_QUOTES, 'UTF-8') ?>">
+                                                        <i class="bi <?= $item['icon'] ?>"></i><?= htmlspecialchars($item['text'], ENT_QUOTES, 'UTF-8') ?>
+                                                    </span>
+                                                <?php endforeach; ?>
+                                            </div>
                                         <?php else: ?>
                                             <span class="text-muted">—</span>
                                         <?php endif; ?>
@@ -984,18 +1002,56 @@ $hasActiveFilters = !empty($search)
                                     <td>
                                         <?php
                                         $last_action = $lead['last_lead_action'] ?? 'not_called';
-                                        $statusVal = !empty($lead['last_follow_up_lead_status']) ? $lead['last_follow_up_lead_status'] : ($lead['lead_type'] ?? 'Pending');
-                                        $badgeClass = 'bg-secondary';
+                                        
+                                        // Robust Lead Status Resolution
+                                        $statusVal = trim($lead['last_follow_up_lead_status'] ?? '');
+                                        
+                                        // Check follow-up history if latest follow-up had empty lead status
+                                        if (($statusVal === '' || $statusVal === '-' || $statusVal === '—') && !empty($followUpHistories[$lead['id']])) {
+                                            foreach ($followUpHistories[$lead['id']] as $fuItem) {
+                                                if (!empty($fuItem['lead_status']) && trim($fuItem['lead_status']) !== '' && trim($fuItem['lead_status']) !== '-') {
+                                                    $statusVal = trim($fuItem['lead_status']);
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        
+                                        // Check leads.lead_type
+                                        if ($statusVal === '' || $statusVal === '-' || $statusVal === '—') {
+                                            $statusVal = trim($lead['lead_type'] ?? '');
+                                        }
+                                        
+                                        // Check follow-up status (e.g. pending, completed)
+                                        if (($statusVal === '' || $statusVal === '-' || $statusVal === '—') && !empty($lead['last_follow_up_status'])) {
+                                            $statusVal = ucfirst(trim($lead['last_follow_up_status']));
+                                        }
+                                        
+                                        // Fallback default
+                                        if ($statusVal === '' || $statusVal === '-' || $statusVal === '—') {
+                                            $statusVal = 'Pending';
+                                        }
+                                        
+                                        $badgeClass = 'bg-secondary text-white';
                                         if ($statusVal == 'Prospect' || $statusVal == 'High Prospect') {
-                                            $badgeClass = 'bg-received';
+                                            $badgeClass = 'bg-received text-white';
                                         } elseif ($statusVal == 'Not Interested' || $statusVal == "Don't Call Again" || $statusVal == 'Cold' || $statusVal == 'Refund') {
-                                            $badgeClass = 'bg-not-received';
+                                            $badgeClass = 'bg-not-received text-white';
                                         } elseif ($statusVal == 'Warm') {
                                             $badgeClass = 'bg-warning text-dark';
                                         } elseif ($statusVal == 'Hot') {
                                             $badgeClass = 'bg-danger text-white';
                                         } elseif ($statusVal == 'Irrelevant') {
                                             $badgeClass = 'bg-dark text-white';
+                                        } elseif ($statusVal == 'No Response') {
+                                            $badgeClass = 'bg-success text-white';
+                                        } elseif ($statusVal == 'Lead Transferred' || $statusVal == 'Project Transferred') {
+                                            $badgeClass = 'bg-dark text-white';
+                                        } elseif ($statusVal == 'Will Visit' || $statusVal == 'Visited') {
+                                            $badgeClass = 'bg-info text-dark';
+                                        } elseif ($statusVal == 'Sold') {
+                                            $badgeClass = 'bg-success text-white';
+                                        } elseif ($statusVal == 'Pending') {
+                                            $badgeClass = 'bg-secondary text-white';
                                         }
                                         ?>
                                         <select name="last_lead_action" 
@@ -1360,24 +1416,33 @@ $hasActiveFilters = !empty($search)
                             <?= htmlspecialchars($jt) ?><?= ($jt !== '' && $co !== '') ? ' at ' : '' ?><strong><?= htmlspecialchars($co) ?></strong>
                         </div>
                         <?php endif; ?>
-                        <?php if (!empty($lead['when_is_the_best_time_to_contact_you'])): ?>
+                        <?php 
+                        $mobTime = trim($lead['when_is_the_best_time_to_contact_you'] ?? $lead['preferred_contact_time'] ?? '');
+                        if ($mobTime !== '' && $mobTime !== '-' && $mobTime !== '—'): 
+                        ?>
                         <div class="text-info small mt-1">
-                            <i class="bi bi-clock me-1"></i>Best Contact Time: <?= htmlspecialchars($lead['when_is_the_best_time_to_contact_you']) ?>
+                            <i class="bi bi-clock me-1"></i>Best Contact Time: <?= htmlspecialchars(ucfirst(str_replace('_', ' ', $mobTime))) ?>
                         </div>
                         <?php endif; ?>
-                        <?php if (!empty($lead['when_are_you_planning_to_buy'])): ?>
+                        <?php 
+                        $mobPlan = trim($lead['when_are_you_planning_to_buy'] ?? '');
+                        if ($mobPlan !== '' && $mobPlan !== '-' && $mobPlan !== '—'): 
+                        ?>
                         <div class="text-muted small mt-1">
-                            <i class="bi bi-calendar3 me-1 text-primary"></i>Plan: <span class="badge bg-light text-dark border"><?= htmlspecialchars(ucwords(str_replace('_', ' ', trim($lead['when_are_you_planning_to_buy'])))) ?></span>
+                            <i class="bi bi-calendar3 me-1 text-primary"></i>Plan: <span class="badge bg-light text-dark border"><?= htmlspecialchars(ucwords(str_replace('_', ' ', $mobPlan))) ?></span>
                         </div>
                         <?php endif; ?>
-                        <?php if (!empty($lead['would_you_like_to_schedule_a_site_visit'])): ?>
+                        <?php 
+                        $mobVisit = trim($lead['would_you_like_to_schedule_a_site_visit'] ?? '');
+                        if ($mobVisit !== '' && $mobVisit !== '-' && $mobVisit !== '—'): 
+                        ?>
                         <div class="text-muted small mt-1">
-                            <i class="bi bi-geo-alt me-1 text-success"></i>Visit: <span class="badge bg-light text-success border border-success-subtle"><?= htmlspecialchars(str_replace('_', ' ', trim($lead['would_you_like_to_schedule_a_site_visit']))) ?></span>
+                            <i class="bi bi-geo-alt me-1 text-success"></i>Visit: <span class="badge bg-light text-success border border-success-subtle"><?= htmlspecialchars(ucwords(str_replace('_', ' ', $mobVisit))) ?></span>
                         </div>
                         <?php endif; ?>
                         <?php 
                         $mobApt = trim($lead['which_apartment_size_are_you_interested_in'] ?? $lead['pref_flat_size'] ?? '');
-                        if (!empty($mobApt)): 
+                        if ($mobApt !== '' && $mobApt !== '-' && $mobApt !== '—'): 
                         ?>
                         <div class="text-muted small mt-1">
                             <i class="bi bi-aspect-ratio me-1 text-primary"></i>Size: <span class="badge bg-light text-primary border border-primary-subtle"><?= htmlspecialchars(str_replace('_', ' ', $mobApt)) ?></span>
@@ -1498,19 +1563,43 @@ $hasActiveFilters = !empty($search)
                 <div class="mt-2">
                     <div class="info-label">Last Lead Status</div>
                     <?php
-                    $statusVal = !empty($lead['last_follow_up_lead_status']) ? $lead['last_follow_up_lead_status'] : ($lead['lead_type'] ?? 'Pending');
-                    $statusClass = '';
-                    if (in_array($statusVal, ['Prospect', 'High Prospect'])) {
-                        $statusClass = 'bg-received';
-                    } elseif (in_array($statusVal, ['Not Interested', "Don't Call Again", 'Cold', 'Refund'])) {
-                        $statusClass = 'bg-not-received';
-                    } elseif ($statusVal === 'Irrelevant') {
+                    $mStatusVal = trim($lead['last_follow_up_lead_status'] ?? '');
+                    if (($mStatusVal === '' || $mStatusVal === '-' || $mStatusVal === '—') && !empty($followUpHistories[$lead['id']])) {
+                        foreach ($followUpHistories[$lead['id']] as $fuItem) {
+                            if (!empty($fuItem['lead_status']) && trim($fuItem['lead_status']) !== '' && trim($fuItem['lead_status']) !== '-') {
+                                $mStatusVal = trim($fuItem['lead_status']);
+                                break;
+                            }
+                        }
+                    }
+                    if ($mStatusVal === '' || $mStatusVal === '-' || $mStatusVal === '—') {
+                        $mStatusVal = trim($lead['lead_type'] ?? '');
+                    }
+                    if (($mStatusVal === '' || $mStatusVal === '-' || $mStatusVal === '—') && !empty($lead['last_follow_up_status'])) {
+                        $mStatusVal = ucfirst(trim($lead['last_follow_up_status']));
+                    }
+                    if ($mStatusVal === '' || $mStatusVal === '-' || $mStatusVal === '—') {
+                        $mStatusVal = 'Pending';
+                    }
+                    
+                    $statusClass = 'bg-secondary text-white';
+                    if (in_array($mStatusVal, ['Prospect', 'High Prospect'])) {
+                        $statusClass = 'bg-received text-white';
+                    } elseif (in_array($mStatusVal, ['Not Interested', "Don't Call Again", 'Cold', 'Refund'])) {
+                        $statusClass = 'bg-not-received text-white';
+                    } elseif ($mStatusVal === 'Warm') {
+                        $statusClass = 'bg-warning text-dark';
+                    } elseif ($mStatusVal === 'Hot') {
+                        $statusClass = 'bg-danger text-white';
+                    } elseif ($mStatusVal === 'No Response') {
+                        $statusClass = 'bg-success text-white';
+                    } elseif ($mStatusVal === 'Irrelevant') {
                         $statusClass = 'bg-dark text-white';
                     }
                     ?>
                     <input type="text"
                         class="<?= $statusClass ?> form-control form-control-sm select-form mt-1 text-center"
-                        value="<?= htmlspecialchars($statusVal) ?>"
+                        value="<?= htmlspecialchars($mStatusVal) ?>"
                         readonly style="cursor: default; pointer-events: none;">
                 </div>
 
@@ -2861,17 +2950,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     
                     let savedLeadStatus = $('#createModalLeadStatus').val();
-                    if (savedLeadStatus) {
-                        let badgeWrap = $(`.lead-status-badge-wrap[data-lead-id="${leadId}"]`);
-                        if (badgeWrap.length > 0) {
-                            let bCls = 'bg-secondary text-white';
-                            if (savedLeadStatus === 'Prospect' || savedLeadStatus === 'High Prospect') bCls = 'bg-received';
-                            else if (savedLeadStatus === 'Hot') bCls = 'bg-danger text-white';
-                            else if (savedLeadStatus === 'Warm') bCls = 'bg-warning text-dark';
-                            else if (savedLeadStatus === 'Irrelevant') bCls = 'bg-dark text-white';
-                            else if (savedLeadStatus === 'Not Interested' || savedLeadStatus === "Don't Call Again" || savedLeadStatus === 'Cold' || savedLeadStatus === 'Refund') bCls = 'bg-not-received';
-                            badgeWrap.html(`<span class="badge ${bCls} px-2 py-1" style="font-size: 10px;">${escapeHtml(savedLeadStatus)}</span>`);
-                        }
+                    let fuStatus = $('#createFollowUpForm select[name="status"]').val();
+                    let displayStatus = savedLeadStatus || (fuStatus ? fuStatus.charAt(0).toUpperCase() + fuStatus.slice(1) : 'Pending');
+                    let badgeWrap = $(`.lead-status-badge-wrap[data-lead-id="${leadId}"]`);
+                    if (badgeWrap.length > 0) {
+                        let bCls = 'bg-secondary text-white';
+                        if (displayStatus === 'Prospect' || displayStatus === 'High Prospect') bCls = 'bg-received text-white';
+                        else if (displayStatus === 'Hot') bCls = 'bg-danger text-white';
+                        else if (displayStatus === 'Warm') bCls = 'bg-warning text-dark';
+                        else if (displayStatus === 'Irrelevant') bCls = 'bg-dark text-white';
+                        else if (displayStatus === 'No Response') bCls = 'bg-success text-white';
+                        else if (displayStatus === 'Not Interested' || displayStatus === "Don't Call Again" || displayStatus === 'Cold' || displayStatus === 'Refund') bCls = 'bg-not-received text-white';
+                        badgeWrap.html(`<span class="badge ${bCls} px-2 py-1" style="font-size: 10px;">${escapeHtml(displayStatus)}</span>`);
                     }
 
                     resetFormToCreateMode();

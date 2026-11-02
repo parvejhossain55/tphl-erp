@@ -1941,10 +1941,14 @@ class Lead extends Model
             }
         }
         if (!empty($lead_status)) {
-            $sql .= " AND (lf.lead_status = ? OR leads.lead_type = ?)";
-            $params[] = $lead_status;
-            $params[] = $lead_status;
-            $types .= "ss";
+            if ($lead_status === 'Pending') {
+                $sql .= " AND (lf.lead_status = 'Pending' OR leads.lead_type = 'Pending' OR ((leads.lead_type IS NULL OR leads.lead_type = '') AND (lf.lead_status IS NULL OR lf.lead_status = '')) OR lf.status = 'pending')";
+            } else {
+                $sql .= " AND (lf.lead_status = ? OR leads.lead_type = ?)";
+                $params[] = $lead_status;
+                $params[] = $lead_status;
+                $types .= "ss";
+            }
         }
 
         if ($only_missing_followup) {
@@ -2214,10 +2218,14 @@ class Lead extends Model
             }
         }
         if (!empty($lead_status)) {
-            $sql .= " AND (lf.lead_status = ? OR leads.lead_type = ?)";
-            $params[] = $lead_status;
-            $params[] = $lead_status;
-            $types .= "ss";
+            if ($lead_status === 'Pending') {
+                $sql .= " AND (lf.lead_status = 'Pending' OR leads.lead_type = 'Pending' OR ((leads.lead_type IS NULL OR leads.lead_type = '') AND (lf.lead_status IS NULL OR lf.lead_status = '')) OR lf.status = 'pending')";
+            } else {
+                $sql .= " AND (lf.lead_status = ? OR leads.lead_type = ?)";
+                $params[] = $lead_status;
+                $params[] = $lead_status;
+                $types .= "ss";
+            }
         }
 
         if ($only_missing_followup) {
@@ -2458,10 +2466,14 @@ class Lead extends Model
             }
         }
         if (!empty($lead_status)) {
-            $sql .= " AND (lf.lead_status = ? OR leads.lead_type = ?)";
-            $params[] = $lead_status;
-            $params[] = $lead_status;
-            $types .= "ss";
+            if ($lead_status === 'Pending') {
+                $sql .= " AND (lf.lead_status = 'Pending' OR leads.lead_type = 'Pending' OR ((leads.lead_type IS NULL OR leads.lead_type = '') AND (lf.lead_status IS NULL OR lf.lead_status = '')) OR lf.status = 'pending')";
+            } else {
+                $sql .= " AND (lf.lead_status = ? OR leads.lead_type = ?)";
+                $params[] = $lead_status;
+                $params[] = $lead_status;
+                $types .= "ss";
+            }
         }
 
         if (!empty($projectId)) {

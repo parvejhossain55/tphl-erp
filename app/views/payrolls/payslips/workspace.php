@@ -181,8 +181,16 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                 if (isCustom) {
                     filterTypeSelect.value = 'custom';
                     applyFilterType('custom');
-                    if (fromDateInput) fromDateInput.value = selectedOpt.getAttribute('data-start');
+                    const startDateVal = selectedOpt.getAttribute('data-start');
+                    if (fromDateInput) fromDateInput.value = startDateVal;
                     if (toDateInput) toDateInput.value = selectedOpt.getAttribute('data-end');
+                    if (startDateVal) {
+                        const parts = startDateVal.split('-');
+                        if (parts.length >= 2) {
+                            if (yearSel)  yearSel.value  = parts[0];
+                            if (monthSel) monthSel.value = parts[1];
+                        }
+                    }
                 } else {
                     const dateVal = selectedOpt.getAttribute('data-date');
                     if (dateVal) {
@@ -842,7 +850,19 @@ $_selectedMonth = $selectedMonth   ?? date('m');
             });
         })();
 
-        // --- Tipsoi Auto-Fallback for Missing DB Data ---
+        // --- Tipsoi Auto-Fallback for Missing DB Data (Searches across all DataTables pages) ---
+        function findWorkspaceCalcRow(empId) {
+            if (typeof $ !== 'undefined' && $.fn.DataTable && $.fn.DataTable.isDataTable('#workspaceTable')) {
+                const nodes = $('#workspaceTable').DataTable().rows().nodes();
+                for (let i = 0; i < nodes.length; i++) {
+                    if (nodes[i].getAttribute('data-has-db') === 'false' && nodes[i].getAttribute('data-employee-id') == empId) {
+                        return nodes[i];
+                    }
+                }
+            }
+            return document.querySelector(`.calc-row[data-has-db="false"][data-employee-id="${empId}"]`);
+        }
+
         const missingRows = document.querySelectorAll('.calc-row[data-has-db="false"]');
         if (fromDateStr && toDateStr && missingRows.length > 0) {
             const params = new URLSearchParams({
@@ -869,51 +889,31 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                          });
 
                          if (localMatch) {
-                             const matchedRow = document.querySelector(`.calc-row[data-has-db="false"][data-employee-id="${localMatch.id}"]`);
-                             if (matchedRow) {
-                                 let present = 0;
-                                 let absent  = 0;
-                                 
-                                 Object.keys(attMap).forEach(timestamp => {
-                                     const dayAtt = attMap[timestamp];
-                                     if (dayAtt.isPresent) present++;
-                                     else if (!dayAtt.isOffday && !dayAtt.isHoliday && !dayAtt.isLeave) absent++;
-                                 });
+                              const matchedRow = findWorkspaceCalcRow(localMatch.id);
+                              if (matchedRow) {
+                                  let present = 0;
+                                  let absent  = 0;
+                                  
+                                  Object.keys(attMap).forEach(timestamp => {
+                                      const dayAtt = attMap[timestamp];
+                                      if (dayAtt.isPresent) present++;
+                                      else if (!dayAtt.isOffday && !dayAtt.isHoliday && !dayAtt.isLeave) absent++;
+                                  });
 
-                                 // Tipsoi updates absent days; meal count is strictly managed by Meal Tracker!
-                                 matchedRow.querySelector('.in-absent-days').value  = absent;
-                                 
-                                 const absentInput = matchedRow.querySelector('.in-absent-days');
-                                  if (absentInput) absentInput.dispatchEvent(new Event('input', { bubbles: true }));
-                             }
+                                  // Tipsoi updates absent days; meal count is strictly managed by Meal Tracker!
+                                  const absentInput = matchedRow.querySelector('.in-absent-days');
+                                  if (absentInput) {
+                                      absentInput.value  = absent;
+                                      absentInput.dispatchEvent(new Event('input', { bubbles: true }));
+                                  }
+                              }
                          }
                     });
+                } else if (res && !res.success) {
+                    console.warn("Tipsoi Background Sync warning:", res.message);
                 }
             })
             .catch(err => console.error("Tipsoi Background Sync failed:", err));
-        }
-
-
-
-        // Auto-sync Project Date
-        const projectSelect = document.getElementById('payrollProject');
-        if (projectSelect) {
-            projectSelect.addEventListener('change', function() {
-                const selectedOpt = this.options[this.selectedIndex];
-                if (selectedOpt && selectedOpt.value) {
-                    const dateVal = selectedOpt.getAttribute('data-date');
-                    if (dateVal) {
-                        const parts = dateVal.split('-');
-                        if (parts.length >= 2) {
-                            const yearSelect = document.getElementById('year');
-                            const monthSelect = document.getElementById('month');
-                            if (yearSelect) yearSelect.value = parts[0];
-                            if (monthSelect) monthSelect.value = parts[1];
-                        }
-                    }
-                }
-                setTimeout(() => this.form.submit(), 50);
-            });
         }
 
         // Dynamically rename 'Save Data' button if data is already saved
