@@ -623,7 +623,7 @@ if (!empty($virtualEmiSchedule)) {
                             <div class="from__input-box">
                                 <label class="form__input-title">
                                     <i class="fa-light fa-paperclip me-1"></i>Proof of Payment
-                                    <span class="text-muted small ms-1">(JPG, PNG, PDF — max 5 MB each)</span>
+                                    <span class="text-muted small ms-1">(JPG, PNG, WEBP, PDF — max 10 MB each)</span>
                                 </label>
                                 <input type="file" name="proof_files[]" id="proofFiles"
                                     class="form-control" multiple accept="image/*,application/pdf">

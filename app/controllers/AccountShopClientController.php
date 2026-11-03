@@ -69,23 +69,7 @@ class AccountShopClientController extends AccountClientController
             }
 
             // Handle multi-file proof uploads
-            $uploadedPaths = [];
-            if (!empty($_FILES['proof_files']['name'][0])) {
-                $uploadDir = dirname(dirname(__DIR__)) . '/public/uploads/transactions/';
-                if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-                $allowedTypes = ['image/jpeg','image/png','image/gif','image/webp','application/pdf'];
-                $maxSize = 5 * 1024 * 1024;
-                foreach ($_FILES['proof_files']['tmp_name'] as $idx => $tmpName) {
-                    if (!is_uploaded_file($tmpName)) continue;
-                    if (!in_array(mime_content_type($tmpName), $allowedTypes)) continue;
-                    if ($_FILES['proof_files']['size'][$idx] > $maxSize) continue;
-                    $ext = pathinfo(basename($_FILES['proof_files']['name'][$idx]), PATHINFO_EXTENSION);
-                    $name = 'proof_' . uniqid() . '.' . $ext;
-                    if (move_uploaded_file($tmpName, $uploadDir . $name)) {
-                        $uploadedPaths[] = 'uploads/transactions/' . $name;
-                    }
-                }
-            }
+            $uploadedPaths = !empty($_FILES['proof_files']) ? $this->handleProofFileUploads($_FILES['proof_files'], 'proof_') : [];
 
             $transactionData = [
                 'booking_id'       => $bookingId,

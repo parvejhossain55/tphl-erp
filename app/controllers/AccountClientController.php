@@ -10,6 +10,105 @@ class AccountClientController extends Controller
         $this->clientModel = new AccountClient($this->db);
     }
 
+    /**
+     * Resolve the active web public directory (handles public/, public_html/, or CLI fallback).
+     */
+    protected function getWebPublicDir(): string
+    {
+        $projectRoot = str_replace('\\', '/', dirname(dirname(__DIR__)));
+        if (!empty($_SERVER['SCRIPT_FILENAME']) && is_dir(dirname($_SERVER['SCRIPT_FILENAME']))) {
+            $scriptDir = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_FILENAME'])), '/');
+            if (basename($scriptDir) !== basename($projectRoot) || !is_dir($projectRoot . '/public')) {
+                return $scriptDir;
+            }
+        }
+        return $projectRoot . '/public';
+    }
+
+    /**
+     * Unified, safe multi-file upload handler for transaction proof documents (images + PDFs).
+     */
+    protected function handleProofFileUploads(array $filesField, string $prefix = 'proof_'): array
+    {
+        $uploadedPaths = [];
+        if (empty($filesField['name'][0])) {
+            return $uploadedPaths;
+        }
+
+        $uploadDir = $this->getWebPublicDir() . '/uploads/transactions/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+
+        $allowedMimes = [
+            'image/jpeg', 'image/jpg', 'image/pjpeg',
+            'image/png', 'image/x-png',
+            'image/gif',
+            'image/webp',
+            'application/pdf', 'application/x-pdf',
+        ];
+        $allowedExts = ['jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp', 'pdf'];
+        $mimeToExt = [
+            'image/jpeg'        => 'jpg',
+            'image/jpg'         => 'jpg',
+            'image/pjpeg'       => 'jpg',
+            'image/png'         => 'png',
+            'image/x-png'       => 'png',
+            'image/gif'         => 'gif',
+            'image/webp'        => 'webp',
+            'application/pdf'   => 'pdf',
+            'application/x-pdf' => 'pdf',
+        ];
+        $maxSize = 10 * 1024 * 1024; // 10 MB per file
+
+        foreach ($filesField['tmp_name'] as $idx => $tmpName) {
+            $err = $filesField['error'][$idx] ?? UPLOAD_ERR_NO_FILE;
+            if ($err !== UPLOAD_ERR_OK || empty($tmpName) || !is_uploaded_file($tmpName)) {
+                continue;
+            }
+            if (($filesField['size'][$idx] ?? 0) > $maxSize) {
+                continue;
+            }
+
+            $origName = basename((string)($filesField['name'][$idx] ?? ''));
+            $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+            if ($ext === 'jfif') {
+                $ext = 'jpg';
+            }
+
+            $mime = '';
+            if (function_exists('finfo_open')) {
+                $finfo = @finfo_open(FILEINFO_MIME_TYPE);
+                if ($finfo) {
+                    $mime = strtolower(trim((string)@finfo_file($finfo, $tmpName)));
+                    @finfo_close($finfo);
+                }
+            } elseif (function_exists('mime_content_type')) {
+                $mime = strtolower(trim((string)@mime_content_type($tmpName)));
+            }
+
+            $mimeValid = in_array($mime, $allowedMimes, true);
+            $extValid  = in_array($ext, $allowedExts, true);
+
+            if (!$mimeValid && !($mime === 'application/octet-stream' && $extValid)) {
+                continue;
+            }
+
+            if (!$extValid) {
+                $ext = $mimeToExt[$mime] ?? 'bin';
+                if ($ext === 'bin') continue;
+            }
+
+            $name = $prefix . uniqid() . '.' . $ext;
+            if (move_uploaded_file($tmpName, $uploadDir . $name)) {
+                @chmod($uploadDir . $name, 0644);
+                $uploadedPaths[] = 'uploads/transactions/' . $name;
+            }
+        }
+
+        return $uploadedPaths;
+    }
+
     public function index()
     {
         if (session_status() === PHP_SESSION_NONE) {
@@ -2234,35 +2333,23 @@ public function addCedTransaction()
 
 
     // Handle multi-file proof uploads
-    $uploadedPaths = [];
-    if (!empty($_FILES['proof_files']['name'][0])) {
-        $uploadDir = dirname(dirname(__DIR__)) . '/public/uploads/transactions/';
-        if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-        $allowedTypes = ['image/jpeg','image/png','image/gif','image/webp','application/pdf'];
-        $maxSize = 5 * 1024 * 1024;
-        foreach ($_FILES['proof_files']['tmp_name'] as $idx => $tmpName) {
-            if (!is_uploaded_file($tmpName)) continue;
-            if (!in_array(mime_content_type($tmpName), $allowedTypes)) continue;
-            if ($_FILES['proof_files']['size'][$idx] > $maxSize) continue;
-            $ext = pathinfo(basename($_FILES['proof_files']['name'][$idx]), PATHINFO_EXTENSION);
-            $name = 'proof_' . uniqid() . '.' . $ext;
-            if (move_uploaded_file($tmpName, $uploadDir . $name)) {
-                $uploadedPaths[] = 'uploads/transactions/' . $name;
-            }
-        }
-    }
+    $uploadedPaths = !empty($_FILES['proof_files']) ? $this->handleProofFileUploads($_FILES['proof_files'], 'proof_') : [];
 
     // Handle waiver proof upload
     $waiverAttachmentPath = null;
     if (!empty($_FILES['waiver_file']['name'])) {
-        $waiverDir = dirname(dirname(__DIR__)) . '/public/uploads/waivers/';
+        $waiverDir = $this->getWebPublicDir() . '/uploads/waivers/';
         if (!is_dir($waiverDir)) mkdir($waiverDir, 0755, true);
         $tmpName = $_FILES['waiver_file']['tmp_name'];
         if (is_uploaded_file($tmpName)) {
-            $ext = pathinfo(basename($_FILES['waiver_file']['name']), PATHINFO_EXTENSION);
-            $wName = 'waiver_' . uniqid() . '.' . $ext;
-            if (move_uploaded_file($tmpName, $waiverDir . $wName)) {
-                $waiverAttachmentPath = 'uploads/waivers/' . $wName;
+            $ext = strtolower(pathinfo(basename($_FILES['waiver_file']['name']), PATHINFO_EXTENSION));
+            if ($ext === 'jfif') $ext = 'jpg';
+            if (in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'], true)) {
+                $wName = 'waiver_' . uniqid() . '.' . $ext;
+                if (move_uploaded_file($tmpName, $waiverDir . $wName)) {
+                    @chmod($waiverDir . $wName, 0644);
+                    $waiverAttachmentPath = 'uploads/waivers/' . $wName;
+                }
             }
         }
     }
@@ -2622,23 +2709,7 @@ public function addTransaction()
         }
 
         // Handle multi-file proof uploads (before insert so paths are stored atomically)
-        $uploadedPaths = [];
-        if (!empty($_FILES['proof_files']['name'][0])) {
-            $uploadDir = dirname(dirname(__DIR__)) . '/public/uploads/transactions/';
-            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-            $allowedTypes = ['image/jpeg','image/png','image/gif','image/webp','application/pdf'];
-            $maxSize = 5 * 1024 * 1024;
-            foreach ($_FILES['proof_files']['tmp_name'] as $idx => $tmpName) {
-                if (!is_uploaded_file($tmpName)) continue;
-                if (!in_array(mime_content_type($tmpName), $allowedTypes)) continue;
-                if ($_FILES['proof_files']['size'][$idx] > $maxSize) continue;
-                $ext = pathinfo(basename($_FILES['proof_files']['name'][$idx]), PATHINFO_EXTENSION);
-                $name = 'proof_' . uniqid() . '.' . $ext;
-                if (move_uploaded_file($tmpName, $uploadDir . $name)) {
-                    $uploadedPaths[] = 'uploads/transactions/' . $name;
-                }
-            }
-        }
+        $uploadedPaths = !empty($_FILES['proof_files']) ? $this->handleProofFileUploads($_FILES['proof_files'], 'proof_') : [];
 
         $bankName = !empty($_POST['bank_name']) ? trim($_POST['bank_name']) : null;
         if (in_array($bankName, ['Other Bank', 'Other Country / Foreign Bank', 'Foreign Bank', 'Other Country Bank']) && !empty($_POST['custom_bank_name'])) {
@@ -2932,19 +3003,9 @@ public function updateTransaction()
         }
         // Append any newly uploaded files
         if (!empty($_FILES['proof_files']['name'][0])) {
-            $uploadDir    = dirname(dirname(__DIR__)) . '/public/uploads/transactions/';
-            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-            $allowedTypes = ['image/jpeg','image/png','image/gif','image/webp','application/pdf'];
-            $maxSize      = 5 * 1024 * 1024;
-            foreach ($_FILES['proof_files']['tmp_name'] as $idx => $tmpName) {
-                if (!is_uploaded_file($tmpName)) continue;
-                if (!in_array(mime_content_type($tmpName), $allowedTypes)) continue;
-                if ($_FILES['proof_files']['size'][$idx] > $maxSize) continue;
-                $ext  = pathinfo(basename($_FILES['proof_files']['name'][$idx]), PATHINFO_EXTENSION);
-                $name = 'proof_' . uniqid() . '.' . $ext;
-                if (move_uploaded_file($tmpName, $uploadDir . $name)) {
-                    $mergedPaths[] = 'uploads/transactions/' . $name;
-                }
+            $newlyUploaded = $this->handleProofFileUploads($_FILES['proof_files'], 'proof_');
+            foreach ($newlyUploaded as $np) {
+                $mergedPaths[] = $np;
             }
         }
 
@@ -4891,12 +4952,6 @@ public function discountStatement($bookingId = null)
             exit;
         }
 
-        $uploadDir = dirname(dirname(dirname(__DIR__))) . '/public/uploads/transactions/';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
-        }
-
-        $uploadedPaths = [];
         $files = $_FILES['proof_files'] ?? null;
 
         if (!$files || empty($files['name'][0])) {
@@ -4904,25 +4959,7 @@ public function discountStatement($bookingId = null)
             exit;
         }
 
-        $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
-        $maxSize      = 5 * 1024 * 1024; // 5 MB
-
-        foreach ($files['tmp_name'] as $idx => $tmpName) {
-            if (!is_uploaded_file($tmpName)) continue;
-
-            $mimeType = mime_content_type($tmpName);
-            if (!in_array($mimeType, $allowedTypes)) continue;
-            if ($files['size'][$idx] > $maxSize) continue;
-
-            $originalName = basename($files['name'][$idx]);
-            $safeExt      = pathinfo($originalName, PATHINFO_EXTENSION);
-            $uniqueName   = 'proof_' . $paymentId . '_' . uniqid() . '.' . $safeExt;
-            $destination  = $uploadDir . $uniqueName;
-
-            if (move_uploaded_file($tmpName, $destination)) {
-                $uploadedPaths[] = 'uploads/transactions/' . $uniqueName;
-            }
-        }
+        $uploadedPaths = $this->handleProofFileUploads($files, 'proof_' . $paymentId . '_');
 
         if (empty($uploadedPaths)) {
             echo json_encode(['success' => false, 'message' => 'No valid files uploaded']);
@@ -5032,6 +5069,107 @@ public function discountStatement($bookingId = null)
             'files'               => $files,
             'file_count'          => count($files),
         ]);
+        exit;
+    }
+
+    /**
+     * Stream a transaction / payment / waiver attachment inline or as a file download.
+     * Route: GET /view-transaction-file?file=uploads/transactions/proof_xxx.pdf[&download=1]
+     */
+    public function serveTransactionFile()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        $rawFile = trim((string)($_GET['file'] ?? ''));
+        $relPath = str_replace('\\', '/', rawurldecode($rawFile));
+        $relPath = ltrim($relPath, '/');
+        if (strpos($relPath, 'public/') === 0) {
+            $relPath = substr($relPath, strlen('public/'));
+        }
+        $relPath = ltrim($relPath, '/');
+
+        $allowedPrefixes = [
+            'uploads/transactions/',
+            'uploads/payments/',
+            'uploads/waivers/',
+        ];
+        $prefixOk = false;
+        foreach ($allowedPrefixes as $prefix) {
+            if (strpos($relPath, $prefix) === 0) {
+                $prefixOk = true;
+                break;
+            }
+        }
+
+        $ext = strtolower(pathinfo($relPath, PATHINFO_EXTENSION));
+        $allowedExts = ['pdf', 'jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp'];
+
+        if ($relPath === '' || strpos($relPath, '..') !== false || strpos($relPath, "\0") !== false || !$prefixOk || !in_array($ext, $allowedExts, true)) {
+            http_response_code(403);
+            header('Content-Type: text/plain; charset=utf-8');
+            echo 'Invalid or unauthorized file path.';
+            exit;
+        }
+
+        $projectRoot = str_replace('\\', '/', dirname(dirname(__DIR__)));
+        $webRoot     = $this->getWebPublicDir();
+        $parentRoot  = str_replace('\\', '/', dirname($projectRoot));
+
+        $candidates = array_values(array_unique([
+            $webRoot . '/' . $relPath,
+            $projectRoot . '/public/' . $relPath,
+            $projectRoot . '/' . $relPath,
+            $webRoot . '/public/' . $relPath,
+            $parentRoot . '/public/' . $relPath,
+        ]));
+
+        $foundPath = null;
+        foreach ($candidates as $candidate) {
+            if (is_file($candidate) && is_readable($candidate)) {
+                $foundPath = $candidate;
+                break;
+            }
+        }
+
+        if (!$foundPath) {
+            http_response_code(404);
+            header('Content-Type: text/html; charset=utf-8');
+            $baseUrl = htmlspecialchars($GLOBALS['base_url'] ?? '', ENT_QUOTES, 'UTF-8');
+            $safeBaseName = htmlspecialchars(basename($relPath), ENT_QUOTES, 'UTF-8');
+            echo "<!DOCTYPE html><html><head><title>File Not Found</title><link rel='stylesheet' href='{$baseUrl}/assets/css/vendor/bootstrap.min.css'></head><body class='bg-light d-flex align-items-center justify-content-center' style='min-height:80vh;'>";
+            echo "<div class='text-center p-4 bg-white rounded shadow-sm border' style='max-width:520px;'>";
+            echo "<h4 class='text-warning fw-bold mb-2'>Attached File Not Found</h4>";
+            echo "<p class='text-muted mb-3'>The requested file was not found on the server or has been removed.</p>";
+            echo "<div class='p-2 bg-light text-break rounded small text-secondary font-monospace mb-4'>{$safeBaseName}</div>";
+            echo "<a href='javascript:history.back()' class='btn btn-outline-primary btn-sm px-4'>&larr; Go Back</a>";
+            echo "</div></body></html>";
+            exit;
+        }
+
+        $mimeMap = [
+            'pdf'  => 'application/pdf',
+            'jpg'  => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'jfif' => 'image/jpeg',
+            'png'  => 'image/png',
+            'gif'  => 'image/gif',
+            'webp' => 'image/webp',
+        ];
+        $mime = $mimeMap[$ext] ?? 'application/octet-stream';
+        $safeDownloadName = preg_replace('/[^a-zA-Z0-9._-]/', '_', basename($foundPath));
+        $isDownload = !empty($_GET['download']) && $_GET['download'] !== '0';
+        $disposition = $isDownload ? 'attachment' : 'inline';
+
+        while (ob_get_level() > 0) {
+            @ob_end_clean();
+        }
+
+        header('Content-Type: ' . $mime);
+        header('Content-Disposition: ' . $disposition . '; filename="' . $safeDownloadName . '"');
+        header('Content-Length: ' . filesize($foundPath));
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: private, max-age=3600');
+        readfile($foundPath);
         exit;
     }
 

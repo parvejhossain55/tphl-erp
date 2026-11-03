@@ -469,17 +469,43 @@ class SalesTarget extends Model
     public function getAllDealsLost($userId)
     {
         $sql = "
-        SELECT COUNT(DISTINCT l.id) AS total
-        FROM leads l
-        LEFT JOIN lead_follow_ups lf ON lf.lead_id = l.id
-        WHERE l.assigned_id = ?
-          AND (
-               l.last_lead_action = 'canceled'
-               OR (lf.follow_up_type = 'visit' AND lf.status = 'canceled')
-          )
-    ";
+            SELECT COUNT(DISTINCT l.id) AS total
+            FROM leads l
+            JOIN lead_follow_ups lf_v ON lf_v.lead_id = l.id
+            WHERE l.deleted_at IS NULL
+              AND lf_v.deleted_at IS NULL
+              AND (l.assigned_id = ? OR lf_v.assigned_with = ? OR lf_v.created_by = ?)
+              AND (
+                  lf_v.lead_status IN ('Visit Scheduled', 'Visited', 'Visit Completed', 'Will Visit')
+                  OR LOWER(lf_v.follow_up_type) = 'visit'
+                  OR lf_v.next_action = 'site visit'
+                  OR l.lead_type IN ('Visit Scheduled', 'Visited', 'Visit Completed', 'Will Visit')
+              )
+              AND (
+                  l.last_lead_action IN ('canceled', 'cancel', 'lost')
+                  OR l.lead_type IN ('Invalid Lead', 'Irrelevant', 'Not Interested', 'Cancel', 'Refund')
+                  OR EXISTS (
+                      SELECT 1 FROM lead_follow_ups lf_c 
+                      WHERE lf_c.lead_id = l.id 
+                        AND lf_c.deleted_at IS NULL
+                        AND lf_c.id >= lf_v.id
+                        AND (
+                            lf_c.status = 'canceled'
+                            OR lf_c.lead_status IN ('Invalid Lead', 'Not Interested', 'Cancel', 'canceled', 'Irrelevant')
+                        )
+                  )
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM lead_bookings lb 
+                  WHERE lb.lead_id = l.id 
+                    AND lb.deleted_at IS NULL 
+                    AND lb.booking_status IN ('completed', 'booked')
+              )
+              AND l.last_lead_action != 'booked'
+              AND (l.lead_type IS NULL OR l.lead_type != 'Sold')
+        ";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("i", $userId);
+        $stmt->bind_param("iii", $userId, $userId, $userId);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
         return (int)($result['total'] ?? 0);
@@ -901,15 +927,47 @@ public function getExecutiveFullStats($executiveId = null, $startDate = null, $e
         $dealsWon = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
-        // 6. Deals Lost (Distinct leads canceled or marked irrelevant in period)
+        // 6. Deals Lost (Qualified leads that reached Visit stage but subsequently canceled/lost/invalid)
         $sql = "SELECT COUNT(DISTINCT l.id) AS total
                 FROM leads l
+                JOIN lead_follow_ups lf_v ON lf_v.lead_id = l.id
                 WHERE l.deleted_at IS NULL
-                  AND l.assigned_id = ?
-                  AND DATE(l.created_at) BETWEEN ? AND ?
-                  AND (l.last_lead_action IN ('canceled', 'lost') OR l.lead_type IN ('Invalid Lead', 'Irrelevant'))";
+                  AND lf_v.deleted_at IS NULL
+                  AND (l.assigned_id = ? OR lf_v.assigned_with = ? OR lf_v.created_by = ?)
+                  AND (
+                      lf_v.lead_status IN ('Visit Scheduled', 'Visited', 'Visit Completed', 'Will Visit')
+                      OR LOWER(lf_v.follow_up_type) = 'visit'
+                      OR lf_v.next_action = 'site visit'
+                      OR l.lead_type IN ('Visit Scheduled', 'Visited', 'Visit Completed', 'Will Visit')
+                  )
+                  AND (
+                      l.last_lead_action IN ('canceled', 'cancel', 'lost')
+                      OR l.lead_type IN ('Invalid Lead', 'Irrelevant', 'Not Interested', 'Cancel', 'Refund')
+                      OR EXISTS (
+                          SELECT 1 FROM lead_follow_ups lf_c 
+                          WHERE lf_c.lead_id = l.id 
+                            AND lf_c.deleted_at IS NULL
+                            AND lf_c.id >= lf_v.id
+                            AND (
+                                lf_c.status = 'canceled'
+                                OR lf_c.lead_status IN ('Invalid Lead', 'Not Interested', 'Cancel', 'canceled', 'Irrelevant')
+                            )
+                      )
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM lead_bookings lb 
+                      WHERE lb.lead_id = l.id 
+                        AND lb.deleted_at IS NULL 
+                        AND lb.booking_status IN ('completed', 'booked')
+                  )
+                  AND l.last_lead_action != 'booked'
+                  AND (l.lead_type IS NULL OR l.lead_type != 'Sold')
+                  AND (
+                      DATE(COALESCE(lf_v.follow_up_date, lf_v.created_at, l.created_at)) BETWEEN ? AND ?
+                      OR DATE(COALESCE(l.updated_at, l.created_at)) BETWEEN ? AND ?
+                  )";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("iss", $userId, $startDate, $endDate);
+        $stmt->bind_param("iiissss", $userId, $userId, $userId, $startDate, $endDate, $startDate, $endDate);
         $stmt->execute();
         $dealsLost = $stmt->get_result()->fetch_assoc();
         $stmt->close();

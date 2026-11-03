@@ -272,9 +272,9 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
                                 <div class="d-flex flex-wrap gap-2 mt-1" id="existingFilePreviews">
                                     <?php foreach ($existingFiles as $idx => $filePath): ?>
                                         <?php
-                                            $fileUrl = ($GLOBALS['base_url'] ?? '') . '/public/' . $filePath;
+                                            $fileUrl = ($GLOBALS['base_url'] ?? '') . '/view-transaction-file?file=' . rawurlencode($filePath);
                                             $ext     = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
-                                            $isImage = in_array($ext, ['jpg','jpeg','png','gif','webp']);
+                                            $isImage = in_array($ext, ['jpg','jpeg','jfif','png','gif','webp']);
                                             $isPDF   = ($ext === 'pdf');
                                             $fname   = basename($filePath);
                                         ?>
@@ -287,7 +287,7 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
                                                     <img src="<?= htmlspecialchars($fileUrl) ?>"
                                                          style="width:74px;height:56px;object-fit:cover;border-radius:4px;"
                                                          alt="<?= htmlspecialchars($fname) ?>"
-                                                         onerror="this.onerror=null; this.src='<?= $GLOBALS['base_url'] ?>/public/assets/img/no-image.png'">
+                                                         onerror="this.style.display='none'; this.insertAdjacentHTML('afterend', '<div class=\'d-flex flex-column align-items-center justify-content-center bg-light rounded\' style=\'width:74px;height:56px;\'><i class=\'fa-light fa-image-slash text-muted\' style=\'font-size:1.5rem;\'></i></div>');">
                                                 </a>
                                             <?php elseif ($isPDF): ?>
                                                 <a href="<?= htmlspecialchars($fileUrl) ?>" target="_blank" class="text-danger">
@@ -338,7 +338,7 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
                                 <label class="form__input-title">
                                     <i class="fa-light fa-upload me-1"></i>
                                     <?= !empty($existingFiles) ? 'Add / Replace Documents' : 'Proof of Payment' ?>
-                                    <span class="text-muted small ms-1">(JPG, PNG, PDF — max 5 MB each)</span>
+                                    <span class="text-muted small ms-1">(JPG, PNG, WEBP, PDF — max 10 MB each)</span>
                                 </label>
                                 <input type="file" name="proof_files[]" id="proofFiles"
                                        class="form-control" multiple accept="image/*,application/pdf">

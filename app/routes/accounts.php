@@ -113,6 +113,7 @@ return [
     'get-banks' => ['controller' => 'AccountClientController', 'method' => 'getBanks'],
     'upload-transaction-proof' => ['controller' => 'AccountClientController', 'method' => 'uploadTransactionProof'],
     'get-transaction-attachments' => ['controller' => 'AccountClientController', 'method' => 'getTransactionAttachments'],
+    'view-transaction-file' => ['controller' => 'AccountClientController', 'method' => 'serveTransactionFile'],
     'ced-payment-tracking' => ['controller' => 'AccountClientController', 'method' => 'cedPaymentTracking'],
     'ced-add-transaction-form' => ['controller' => 'AccountClientController', 'method' => 'showCedTransactionForm'],
     'ced-add-transaction-form/(\d+)' => ['controller' => 'AccountClientController', 'method' => 'showCedTransactionForm'],
