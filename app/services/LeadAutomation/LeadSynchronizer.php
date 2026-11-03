@@ -14,6 +14,8 @@ class LeadSynchronizer
     private ?array $cachedProjectsMap = null;
     private ?array $cachedDbProjects = null;
     private ?array $cachedActiveTeamIds = null;
+    private bool $schemaEnsured = false;
+    private ?array $existingLeadsCache = null;
 
     public function __construct(array $config, $userId = null)
     {
@@ -53,14 +55,14 @@ class LeadSynchronizer
 
             try {
                 $this->pdo = new PDO($dsn, $dbConf['username'], $dbConf['password'], $options);
-                $this->pdo->exec("SET time_zone = '+06:00'");
+                $this->pdo->exec("SET NAMES utf8mb4, time_zone = '+06:00'");
             } catch (PDOException $e) {
                 // If on local dev machine and configured credentials fail, attempt local root/tphl_db connection
-                if ($dbConf['username'] !== 'root' || $dbConf['database'] !== 'tphl_db') {
+                if (DIRECTORY_SEPARATOR === '\\' && ($dbConf['username'] !== 'root' || $dbConf['database'] !== 'tphl_db')) {
                     try {
                         $localDsn = 'mysql:host=127.0.0.1;port=3306;dbname=tphl_db;charset=utf8mb4';
                         $this->pdo = new PDO($localDsn, 'root', '', $options);
-                        $this->pdo->exec("SET time_zone = '+06:00'");
+                        $this->pdo->exec("SET NAMES utf8mb4, time_zone = '+06:00'");
                     } catch (Throwable $t) {
                         throw $e;
                     }
@@ -78,6 +80,8 @@ class LeadSynchronizer
      */
     public function runSync(?string $customSheetUrl = null): array
     {
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(300);
         $startTime = microtime(true);
         $this->log("=======================================================");
         $this->log("Starting Lead Synchronization at " . date('Y-m-d H:i:s'));
@@ -150,6 +154,186 @@ class LeadSynchronizer
     /**
      * Download entire Google Sheet workbook and synchronize all worksheet tabs
      */
+    private function extractTabsCsvFromXlsx(string $xlsxPath): array
+    {
+        try {
+            $files = [];
+            if (class_exists('ZipArchive')) {
+                $zip = new ZipArchive();
+                if ($zip->open($xlsxPath) === true) {
+                    for ($i = 0; $i < $zip->numFiles; $i++) {
+                        $name = $zip->getNameIndex($i);
+                        if (
+                            $name === 'xl/workbook.xml' ||
+                            $name === 'xl/sharedStrings.xml' ||
+                            $name === 'xl/_rels/workbook.xml.rels' ||
+                            str_starts_with($name, 'xl/worksheets/')
+                        ) {
+                            $files[$name] = $zip->getFromIndex($i);
+                        }
+                    }
+                    $zip->close();
+                }
+            }
+
+            if (empty($files['xl/workbook.xml']) && class_exists('PharData')) {
+                $tmpDir = str_replace('\\', '/', sys_get_temp_dir()) . '/tphl_xlsx_' . uniqid();
+                $tmpZip = $tmpDir . '.zip';
+                @mkdir($tmpDir, 0755, true);
+                @copy($xlsxPath, $tmpZip);
+                try {
+                    $phar = new PharData($tmpZip);
+                    $phar->extractTo($tmpDir, null, true);
+                } catch (Throwable $pt) {
+                    @shell_exec(sprintf('tar -xf %s -C %s', escapeshellarg($tmpZip), escapeshellarg($tmpDir)));
+                }
+                @unlink($tmpZip);
+                foreach (['xl/workbook.xml', 'xl/sharedStrings.xml', 'xl/_rels/workbook.xml.rels'] as $rel) {
+                    if (file_exists($tmpDir . '/' . $rel)) {
+                        $files[$rel] = file_get_contents($tmpDir . '/' . $rel);
+                    }
+                }
+                foreach (glob($tmpDir . '/xl/worksheets/*.xml') ?: [] as $wf) {
+                    $files['xl/worksheets/' . basename($wf)] = file_get_contents($wf);
+                }
+            }
+
+            if (empty($files['xl/workbook.xml'])) {
+                return [];
+            }
+
+            $sharedStrings = [];
+            if (!empty($files['xl/sharedStrings.xml'])) {
+                $ssXml = @simplexml_load_string($files['xl/sharedStrings.xml']);
+                if ($ssXml && isset($ssXml->si)) {
+                    foreach ($ssXml->si as $si) {
+                        if (isset($si->t)) {
+                            $sharedStrings[] = (string)$si->t;
+                        } elseif (isset($si->r)) {
+                            $txt = '';
+                            foreach ($si->r as $run) {
+                                $txt .= (string)($run->t ?? '');
+                            }
+                            $sharedStrings[] = $txt;
+                        } else {
+                            $sharedStrings[] = '';
+                        }
+                    }
+                }
+            }
+
+            $relsMap = [];
+            if (!empty($files['xl/_rels/workbook.xml.rels'])) {
+                $relsXml = @simplexml_load_string($files['xl/_rels/workbook.xml.rels']);
+                if ($relsXml) {
+                    foreach ($relsXml->Relationship as $rel) {
+                        $id = (string)$rel['Id'];
+                        $target = ltrim((string)$rel['Target'], '/');
+                        if (!str_starts_with($target, 'xl/')) {
+                            $target = 'xl/' . $target;
+                        }
+                        $relsMap[$id] = $target;
+                    }
+                }
+            }
+
+            $colLettersToIndex = static function (string $cellRef): int {
+                if (!preg_match('/^([A-Z]+)/i', $cellRef, $m)) {
+                    return 0;
+                }
+                $letters = strtoupper($m[1]);
+                $index = 0;
+                $len = strlen($letters);
+                for ($i = 0; $i < $len; $i++) {
+                    $index = $index * 26 + (ord($letters[$i]) - 64);
+                }
+                return $index - 1;
+            };
+
+            $wbXml = @simplexml_load_string($files['xl/workbook.xml']);
+            if (!$wbXml || !isset($wbXml->sheets->sheet)) {
+                return [];
+            }
+
+            $tabs = [];
+            $sheetIdx = 1;
+            foreach ($wbXml->sheets->sheet as $sheetNode) {
+                $tabName = (string)$sheetNode['name'];
+                $rNs = $sheetNode->attributes('http://schemas.openxmlformats.org/officeDocument/2006/relationships');
+                $rId = isset($rNs['id']) ? (string)$rNs['id'] : '';
+                $targetPath = $relsMap[$rId] ?? "xl/worksheets/sheet{$sheetIdx}.xml";
+                $sheetIdx++;
+
+                if (empty($files[$targetPath])) {
+                    $tabs[] = ['title' => $tabName, 'row_count' => 0, 'csv' => ''];
+                    continue;
+                }
+
+                $sXml = @simplexml_load_string($files[$targetPath]);
+                if (!$sXml || !isset($sXml->sheetData->row)) {
+                    $tabs[] = ['title' => $tabName, 'row_count' => 0, 'csv' => ''];
+                    continue;
+                }
+
+                $rows = [];
+                $maxCol = 0;
+                foreach ($sXml->sheetData->row as $rowNode) {
+                    $rowCells = [];
+                    foreach ($rowNode->c as $c) {
+                        $colIdx = $colLettersToIndex((string)$c['r']);
+                        if ($colIdx > $maxCol) {
+                            $maxCol = $colIdx;
+                        }
+                        $type = (string)$c['t'];
+                        if ($type === 's') {
+                            $sIdx = (int)$c->v;
+                            $val = $sharedStrings[$sIdx] ?? '';
+                        } elseif ($type === 'inlineStr') {
+                            $val = (string)($c->is->t ?? '');
+                        } else {
+                            $val = isset($c->v) ? (string)$c->v : '';
+                            if ($val !== '' && preg_match('/^\d+(?:\.\d+)?E\+?\d+$/i', $val)) {
+                                $val = sprintf('%.0f', (float)$val);
+                            }
+                        }
+                        $rowCells[$colIdx] = $val;
+                    }
+                    if (!empty($rowCells)) {
+                        $denseRow = [];
+                        for ($ci = 0; $ci <= $maxCol; $ci++) {
+                            $denseRow[$ci] = $rowCells[$ci] ?? '';
+                        }
+                        $rows[] = $denseRow;
+                    }
+                }
+
+                if (empty($rows)) {
+                    $tabs[] = ['title' => $tabName, 'row_count' => 0, 'csv' => ''];
+                    continue;
+                }
+
+                $fp = fopen('php://temp', 'r+');
+                foreach ($rows as $rLine) {
+                    fputcsv($fp, $rLine);
+                }
+                rewind($fp);
+                $csvStr = (string)stream_get_contents($fp);
+                fclose($fp);
+
+                $tabs[] = [
+                    'title'     => $tabName,
+                    'row_count' => count($rows),
+                    'csv'       => $csvStr,
+                ];
+            }
+
+            return $tabs;
+        } catch (Throwable $t) {
+            $this->log("Fast XLSX XML reader fallback note: " . $t->getMessage());
+            return [];
+        }
+    }
+
     private function syncAllTabsFromGoogleSheet(string $sheetId): array
     {
         if (!class_exists('\PhpOffice\PhpSpreadsheet\Reader\Xlsx') && file_exists(__DIR__ . '/../../../vendor/autoload.php')) {
@@ -172,6 +356,58 @@ class LeadSynchronizer
         file_put_contents($tmpFile, $xlsxContent);
 
         try {
+            $this->ensureSchema();
+
+            $aggregated = [
+                'total_rows'        => 0,
+                'inserted'          => 0,
+                'skipped_duplicate' => 0,
+                'unmatched_project' => 0,
+                'errors'            => 0,
+                'details'           => [],
+                'tabs_synced'       => []
+            ];
+
+            // Fast, low-memory native XLSX XML extraction (< 8 MB RAM, never touches php://output)
+            $extractedTabs = $this->extractTabsCsvFromXlsx($tmpFile);
+            if (!empty($extractedTabs)) {
+                $sheetCount = count($extractedTabs);
+                $this->log(sprintf("Discovered %d tab(s) in Google Sheet workbook (Fast XML Reader).", $sheetCount));
+                foreach ($extractedTabs as $idx => $tabInfo) {
+                    $tabName = $tabInfo['title'];
+                    $rowCount = $tabInfo['row_count'];
+                    $tabCsv = $tabInfo['csv'];
+                    $this->log(sprintf("Processing Tab [%d/%d] '%s' (Rows: %d)...", $idx + 1, $sheetCount, $tabName, $rowCount));
+                    if ($rowCount < 2 || empty(trim($tabCsv))) {
+                        $this->log(" -> Tab '{$tabName}' has no lead rows. Skipping.");
+                        $aggregated['tabs_synced'][] = ['tab' => $tabName, 'rows' => 0, 'inserted' => 0];
+                        continue;
+                    }
+                    $tabResults = $this->processCsvContent($tabCsv, false, $tabName);
+                    $aggregated['total_rows'] += $tabResults['total_rows'];
+                    $aggregated['inserted'] += $tabResults['inserted'];
+                    $aggregated['skipped_duplicate'] += $tabResults['skipped_duplicate'];
+                    $aggregated['unmatched_project'] += $tabResults['unmatched_project'];
+                    $aggregated['errors'] += $tabResults['errors'];
+                    if (!empty($tabResults['details']) && count($aggregated['details']) < 200) {
+                        $aggregated['details'] = array_merge($aggregated['details'], $tabResults['details']);
+                    }
+                    $aggregated['tabs_synced'][] = [
+                        'tab'      => $tabName,
+                        'rows'     => $tabResults['total_rows'],
+                        'inserted' => $tabResults['inserted']
+                    ];
+                    $this->log(sprintf(
+                        " -> Tab '%s' completed: %d rows processed, %d new leads inserted, %d duplicates skipped.",
+                        $tabName,
+                        $tabResults['total_rows'],
+                        $tabResults['inserted'],
+                        $tabResults['skipped_duplicate']
+                    ));
+                }
+                return $aggregated;
+            }
+
             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
             $reader->setReadDataOnly(true);
             $spreadsheet = $reader->load($tmpFile);
@@ -208,12 +444,23 @@ class LeadSynchronizer
                 }
 
                 // Export current sheet to CSV format
+                // Convert sheet rows in memory without ever touching php://output
+                $rowsArray = $sheet->toArray(null, false, false, false);
+                $fp = fopen('php://temp', 'r+');
+                foreach ($rowsArray as $rLine) {
+                    fputcsv($fp, $rLine);
+                }
+                rewind($fp);
+                $tabCsv = (string)stream_get_contents($fp);
+                fclose($fp);
+                if (false) {
                 $csvWriter = new \PhpOffice\PhpSpreadsheet\Writer\Csv($spreadsheet);
                 $csvWriter->setSheetIndex($i);
                 $csvWriter->setUseBOM(true);
                 ob_start();
                 $csvWriter->save('php://output');
                 $tabCsv = ob_get_clean();
+                }
 
                 if (empty(trim($tabCsv))) {
                     continue;
@@ -510,30 +757,41 @@ class LeadSynchronizer
             'platform'      => ['platform', 'source'],
             'which_apartment_size_are_you_interested_in' => [
                 'which_apartment_size_are_you_interested_in',
+                'which_apartment_size_are_you_interested_in?',
+                'what_apartment_size_are_you_interested_in',
+                'what_size_of_apartment_are_you_interested_in',
+                'which_size_are_you_interested_in',
                 'আপনি_কোন_সাইজের_কমার্শিয়াল_শপ_খুঁজছেন?',
                 'আপনি_কোন_সাইজের_কমার্শিয়াল_শপ_খুজছেন?',
-                'apartment_size', 'flat_size', 'shop_size'
+                'আপনি_কোন_সাইজের_অ্যাপার্টমেন্ট_খুঁজছেন?',
+                'আপনি_কোন_সাইজের_অ্যাপার্টমেন্ট_নিতে_আগ্রহী?',
+                'আপনি_কোন_সাইজের_ফ্ল্যাট_খুঁজছেন?',
+                'apartment_size', 'flat_size', 'shop_size', 'unit_size', 'preferred_size', 'property_size'
             ],
             'which_floor_are_you_for_shop' => [
                 'which_floor_are_you_for_shop',
+                'which_floor_are_you_for_shop?',
                 'আপনি_কোন_ফ্লোরে_শপ_নিতে_আগ্রহী?',
-                'floor', 'floor_for_shop'
+                'floor', 'floor_for_shop', 'preferred_floor'
             ],
             'when_are_you_planning_to_buy' => [
                 'when_are_you_planning_to_buy',
+                'when_are_you_planning_to_buy?',
                 'তুমি_কখন_কেনার_পরিকল্পনা_করছো?',
                 'আপনি_কখন_কেনার_পরিকল্পনা_করছেন?',
                 'planning_to_buy'
             ],
             'would_you_like_to_schedule_a_site_visit' => [
                 'would_you_like_to_schedule_a_site_visit',
+                'would_you_like_to_schedule_a_site_visit?',
                 'আপনি_কি_সাইট_ভিজিটের_সময়_নির্ধারণ_করতে_চান?',
                 'site_visit'
             ],
             'when_is_the_best_time_to_contact_you' => [
                 'when_is_the_best_time_to_contact_you',
+                'when_is_the_best_time_to_contact_you?',
                 'আপনার_সাথে_যোগাযোগ_করার_সবচেয়ে_ভালো_সময়_কখন?',
-                'contact_time'
+                'contact_time', 'best_time_to_contact'
             ],
             'full_name' => [
                 'full_name', 'client_name', 'lead_name', 'customer_name', 'name'
@@ -558,17 +816,17 @@ class LeadSynchronizer
             ],
         ];
 
-        // 1. Pass 1: EXACT MATCH (Highest accuracy)
+        // 1. Pass 1: EXACT MATCH (Highest accuracy, stripping trailing ? or :)
         foreach ($headers as $index => $rawColName) {
             $colName = trim((string)$rawColName);
-            $cleanCol = strtolower(str_replace([' ', '-', '–'], '_', $colName));
+            $cleanCol = rtrim(mb_strtolower(str_replace([' ', '-', '–'], '_', $colName), 'UTF-8'), '?:.,؟');
 
             foreach ($exactFieldAliases as $dbField => $aliases) {
                 if (isset($map[$dbField])) {
                     continue;
                 }
                 foreach ($aliases as $alias) {
-                    $cleanAlias = strtolower(str_replace([' ', '-', '–'], '_', $alias));
+                    $cleanAlias = rtrim(mb_strtolower(str_replace([' ', '-', '–'], '_', $alias), 'UTF-8'), '?:.,؟');
                     if ($cleanCol === $cleanAlias || $colName === $alias) {
                         $map[$dbField] = $index;
                         break;
@@ -579,18 +837,21 @@ class LeadSynchronizer
 
         // 2. Pass 2: FUZZY / SUBSTRING MATCH for any remaining unmapped fields
         $fuzzyFieldAliases = [
-            'which_apartment_size_are_you_interested_in' => ['সাইজ', 'apartment_size'],
-            'which_floor_are_you_for_shop'               => ['ফ্লোর', 'floor'],
-            'when_are_you_planning_to_buy'               => ['কেনার_পরিকল্পনা', 'planning'],
-            'would_you_like_to_schedule_a_site_visit'   => ['সাইট_ভিজিট', 'site_visit'],
-            'when_is_the_best_time_to_contact_you'       => ['যোগাযোগ', 'best_time'],
+            'which_apartment_size_are_you_interested_in' => [
+                'which_apartment_size', 'what_apartment_size', 'apartment_size', 'flat_size', 'shop_size', 'unit_size', 'preferred_size',
+                'সাইজ', 'স্কয়ার', 'স্কয়ার', 'বর্গফুট', 'কাঠা', 'অ্যাপার্টমেন্ট', 'ফ্ল্যাট', 'কমার্শিয়াল_শপ', 'কমার্শিয়াল_শপ', 'sft', 'sqft', 'sq_ft'
+            ],
+            'which_floor_are_you_for_shop'               => ['which_floor', 'ফ্লোর', 'floor'],
+            'when_are_you_planning_to_buy'               => ['when_are_you_planning', 'কেনার_পরিকল্পনা', 'planning'],
+            'would_you_like_to_schedule_a_site_visit'   => ['schedule_a_site_visit', 'সাইট_ভিজিট', 'site_visit'],
+            'when_is_the_best_time_to_contact_you'       => ['best_time_to_contact', 'যোগাযোগ', 'best_time'],
             'campaign_name'                              => ['campaign', 'adset_name'],
             'phone_number'                               => ['phone', 'mobile'],
         ];
 
         foreach ($headers as $index => $rawColName) {
             $colName = trim((string)$rawColName);
-            $cleanCol = strtolower(str_replace([' ', '-', '–'], '_', $colName));
+            $cleanCol = rtrim(mb_strtolower(str_replace([' ', '-', '–'], '_', $colName), 'UTF-8'), '?:.,؟');
 
             // Skip ad_name/form_name from accidentally matching full_name/campaign_name
             if (in_array($cleanCol, ['ad_name', 'form_name', 'adset_name', 'id', 'form_id', 'ad_id', 'campaign_id'], true)) {
@@ -602,7 +863,7 @@ class LeadSynchronizer
                     continue;
                 }
                 foreach ($keywords as $kw) {
-                    if (strpos($cleanCol, $kw) !== false || strpos($colName, $kw) !== false) {
+                    if (mb_strpos($cleanCol, $kw, 0, 'UTF-8') !== false || mb_strpos($colName, $kw, 0, 'UTF-8') !== false) {
                         $map[$dbField] = $index;
                         break;
                     }
@@ -612,7 +873,6 @@ class LeadSynchronizer
 
         return $map;
     }
-
     /**
      * Extract normalized field values from a CSV row
      */
@@ -747,7 +1007,8 @@ class LeadSynchronizer
 
         // 2. Normalize text: convert " ll ", "||", "–", "-" and collapse multiple spaces
         $normalize = function (string $text) {
-            $clean = preg_replace('/\s+ll\s+/i', ' ', $text);
+            $clean = str_replace(['’', '‘', '`'], "'", $text);
+            $clean = preg_replace('/\s+ll\s+/i', ' ', $clean);
             $clean = preg_replace('/[|\-_–]+/', ' ', $clean);
             $clean = preg_replace('/\s+/', ' ', $clean);
             return strtolower(trim($clean));
@@ -886,37 +1147,112 @@ class LeadSynchronizer
         $cleanPhone = preg_replace('/^p:/i', '', trim($phone));
         $campaign = trim($leadData['campaign_name'] ?? '');
 
+        $phone = $leadData['phone_number'] ?? '';
+        $cleanPhone = preg_replace('/^p:/i', '', trim($phone));
+        $campaign = trim($leadData['campaign_name'] ?? '');
+        $campLower = mb_strtolower($campaign, 'UTF-8');
+        $email = mb_strtolower(trim((string)($leadData['email'] ?? '')), 'UTF-8');
+
+        // Build in-memory existing leads cache once per sync run (avoids 2,800+ individual SELECT queries!)
+        if ($this->existingLeadsCache === null) {
+            $this->existingLeadsCache = ['phone' => [], 'email' => []];
+            try {
+                $cStmt = $pdo->query("
+                    SELECT id, phone_number, email, campaign_name,
+                           which_apartment_size_are_you_interested_in,
+                           which_floor_are_you_for_shop,
+                           when_are_you_planning_to_buy,
+                           would_you_like_to_schedule_a_site_visit,
+                           when_is_the_best_time_to_contact_you
+                    FROM leads
+                    WHERE deleted_at IS NULL
+                ");
+                while ($r = $cStmt->fetch(PDO::FETCH_ASSOC)) {
+                    $rCamp = mb_strtolower(trim((string)($r['campaign_name'] ?? '')), 'UTF-8');
+                    $rPhone = preg_replace('/^p:/i', '', trim((string)($r['phone_number'] ?? '')));
+                    if ($rPhone !== '') {
+                        $this->existingLeadsCache['phone'][$rPhone . '|' . $rCamp] = $r;
+                    }
+                    $rEmail = mb_strtolower(trim((string)($r['email'] ?? '')), 'UTF-8');
+                    if ($rEmail !== '') {
+                        $this->existingLeadsCache['email'][$rEmail . '|' . $rCamp] = $r;
+                    }
+                }
+            } catch (Throwable $t) {
+                $this->existingLeadsCache = null;
+            }
+        }
+
+        $existingRow = null;
+        if ($this->existingLeadsCache !== null) {
+            if ($cleanPhone !== '') {
+                $existingRow = $this->existingLeadsCache['phone'][$cleanPhone . '|' . $campLower] ?? null;
+            } elseif ($email !== '') {
+                $existingRow = $this->existingLeadsCache['email'][$email . '|' . $campLower] ?? null;
+            }
+        } elseif (false) {
+
         if (empty($cleanPhone)) {
             // Fallback: check by email if phone is not provided
             $email = trim($leadData['email'] ?? '');
             if (!empty($email)) {
                 if (empty($campaign)) {
-                    $stmt = $pdo->prepare("SELECT id FROM leads WHERE email = ? AND (campaign_name = '' OR campaign_name IS NULL) LIMIT 1");
+                    $stmt = $pdo->prepare("SELECT id, which_apartment_size_are_you_interested_in, which_floor_are_you_for_shop, when_are_you_planning_to_buy, would_you_like_to_schedule_a_site_visit, when_is_the_best_time_to_contact_you FROM leads WHERE email = ? AND (campaign_name = '' OR campaign_name IS NULL) AND deleted_at IS NULL LIMIT 1");
                     $stmt->execute([$email]);
                 } else {
-                    $stmt = $pdo->prepare("SELECT id FROM leads WHERE email = ? AND campaign_name = ? LIMIT 1");
+                    $stmt = $pdo->prepare("SELECT id, which_apartment_size_are_you_interested_in, which_floor_are_you_for_shop, when_are_you_planning_to_buy, would_you_like_to_schedule_a_site_visit, when_is_the_best_time_to_contact_you FROM leads WHERE email = ? AND campaign_name = ? AND deleted_at IS NULL LIMIT 1");
                     $stmt->execute([$email, $campaign]);
                 }
-                return (bool)$stmt->fetchColumn();
+                $existingRow = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
             }
+        } else {
+            // Mode: 'phone_campaign'
+            $prefixedPhone = 'p:' . $cleanPhone;
+            if (empty($campaign)) {
+                $stmt = $pdo->prepare("SELECT id, which_apartment_size_are_you_interested_in, which_floor_are_you_for_shop, when_are_you_planning_to_buy, would_you_like_to_schedule_a_site_visit, when_is_the_best_time_to_contact_you FROM leads WHERE (phone_number = ? OR phone_number = ?) AND (campaign_name = '' OR campaign_name IS NULL) AND deleted_at IS NULL LIMIT 1");
+                $stmt->execute([$cleanPhone, $prefixedPhone]);
+            } else {
+                $stmt = $pdo->prepare("SELECT id, which_apartment_size_are_you_interested_in, which_floor_are_you_for_shop, when_are_you_planning_to_buy, would_you_like_to_schedule_a_site_visit, when_is_the_best_time_to_contact_you FROM leads WHERE (phone_number = ? OR phone_number = ?) AND campaign_name = ? AND deleted_at IS NULL LIMIT 1");
+                $stmt->execute([$cleanPhone, $prefixedPhone, $campaign]);
+            }
+            $existingRow = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        }
+
+        }
+        if (!$existingRow) {
             return false;
         }
 
-        // Mode: 'phone_campaign'
-        // Checks if the same customer (phone) has already been inserted for THIS specific campaign.
-        // If the customer fills a form for another project/campaign, it WILL be inserted as a fresh lead.
-        $prefixedPhone = 'p:' . $cleanPhone;
-
-        if (empty($campaign)) {
-            $stmt = $pdo->prepare("SELECT id FROM leads WHERE (phone_number = ? OR phone_number = ?) AND (campaign_name = '' OR campaign_name IS NULL) LIMIT 1");
-            $stmt->execute([$cleanPhone, $prefixedPhone]);
-        } else {
-            $stmt = $pdo->prepare("SELECT id FROM leads WHERE (phone_number = ? OR phone_number = ?) AND campaign_name = ? LIMIT 1");
-            $stmt->execute([$cleanPhone, $prefixedPhone, $campaign]);
+        // If the existing lead in `leads` is missing `which_apartment_size_are_you_interested_in` (or other question columns)
+        // and the Google Sheet row has values for them, auto-backfill those columns on the existing lead!
+        $backfillFields = [
+            'which_apartment_size_are_you_interested_in',
+            'which_floor_are_you_for_shop',
+            'when_are_you_planning_to_buy',
+            'would_you_like_to_schedule_a_site_visit',
+            'when_is_the_best_time_to_contact_you',
+        ];
+        $updates = [];
+        $updateParams = [];
+        foreach ($backfillFields as $bf) {
+            $newVal = trim((string)($leadData[$bf] ?? ''));
+            $oldVal = trim((string)($existingRow[$bf] ?? ''));
+            if ($newVal !== '' && $oldVal === '') {
+                $updates[] = "`{$bf}` = ?";
+                $updateParams[] = $newVal;
+            }
         }
-        return (bool)$stmt->fetchColumn();
-    }
 
+        if (!empty($updates)) {
+            $updateParams[] = (int)$existingRow['id'];
+            try {
+                $upStmt = $pdo->prepare("UPDATE `leads` SET " . implode(', ', $updates) . " WHERE `id` = ?");
+                $upStmt->execute($updateParams);
+            } catch (Throwable $t) {}
+        }
+
+        return true;
+    }
     /**
      * Insert lead record into database
      */
@@ -1031,7 +1367,30 @@ class LeadSynchronizer
             ':created_at'                               => !empty($lead['created_at']) ? $lead['created_at'] : date('Y-m-d H:i:s'),
         ]);
 
-        return (int)$pdo->lastInsertId();
+        $newId = (int)$pdo->lastInsertId();
+        if ($this->existingLeadsCache !== null && $newId > 0) {
+            $rCamp = mb_strtolower(trim((string)($lead['campaign_name'] ?? '')), 'UTF-8');
+            $rPhone = preg_replace('/^p:/i', '', trim((string)($lead['phone_number'] ?? '')));
+            $cachedEntry = [
+                'id'                                         => $newId,
+                'phone_number'                               => $rPhone,
+                'email'                                      => $lead['email'] ?? '',
+                'campaign_name'                              => $lead['campaign_name'] ?? '',
+                'which_apartment_size_are_you_interested_in' => $lead['which_apartment_size_are_you_interested_in'] ?? null,
+                'which_floor_are_you_for_shop'               => $lead['which_floor_are_you_for_shop'] ?? null,
+                'when_are_you_planning_to_buy'               => $lead['when_are_you_planning_to_buy'] ?? null,
+                'would_you_like_to_schedule_a_site_visit'   => $lead['would_you_like_to_schedule_a_site_visit'] ?? null,
+                'when_is_the_best_time_to_contact_you'       => $lead['when_is_the_best_time_to_contact_you'] ?? null,
+            ];
+            if ($rPhone !== '') {
+                $this->existingLeadsCache['phone'][$rPhone . '|' . $rCamp] = $cachedEntry;
+            }
+            $rEmail = mb_strtolower(trim((string)($lead['email'] ?? '')), 'UTF-8');
+            if ($rEmail !== '') {
+                $this->existingLeadsCache['email'][$rEmail . '|' . $rCamp] = $cachedEntry;
+            }
+        }
+        return $newId;
     }
 
     /**
@@ -1215,6 +1574,10 @@ class LeadSynchronizer
      */
     public function ensureSchema(?PDO $pdo = null): void
     {
+        if ($this->schemaEnsured) {
+            return;
+        }
+        $this->schemaEnsured = true;
         if (!$pdo) {
             $pdo = $this->getDb();
         }
@@ -1260,6 +1623,31 @@ class LeadSynchronizer
                 try {
                     $pdo->exec("CREATE INDEX `idx_leads_is_repibee` ON `leads` (`is_repibee`)");
                 } catch (Throwable $t) {}
+            }
+
+            // 4b. Ensure `which_apartment_size_are_you_interested_in` and the 4 custom question columns exist in `leads` on Live DB
+            // and strictly support numbers, strings, and Bangla Unicode text (TEXT utf8mb4)
+            $questionCols = [
+                'which_apartment_size_are_you_interested_in',
+                'which_floor_are_you_for_shop',
+                'when_are_you_planning_to_buy',
+                'would_you_like_to_schedule_a_site_visit',
+                'when_is_the_best_time_to_contact_you',
+            ];
+            foreach ($questionCols as $qCol) {
+                $qCheck = $pdo->query("SHOW FULL COLUMNS FROM `leads` LIKE '{$qCol}'")->fetch(PDO::FETCH_ASSOC);
+                if (empty($qCheck)) {
+                    $pdo->exec("ALTER TABLE `leads` ADD COLUMN `{$qCol}` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL");
+                } else {
+                    $colType = strtolower((string)($qCheck['Type'] ?? ''));
+                    $colCollation = strtolower((string)($qCheck['Collation'] ?? ''));
+                    if (
+                        (!str_contains($colType, 'text') && !str_contains($colType, 'varchar')) ||
+                        ($colCollation !== '' && !str_starts_with($colCollation, 'utf8mb4'))
+                    ) {
+                        $pdo->exec("ALTER TABLE `leads` MODIFY COLUMN `{$qCol}` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL");
+                    }
+                }
             }
 
             // 5. Ensure is_brocure_leads column exists
@@ -1320,6 +1708,82 @@ class LeadSynchronizer
                         json_encode($g['teams']),
                     ]);
                 }
+            }
+
+            // 7. Ensure `whatsapp_leads_logs` table exists for staging incoming Replibee/WhatsApp webhook leads
+            $pdo->exec("
+                CREATE TABLE IF NOT EXISTS `whatsapp_leads_logs` (
+                    `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    `full_name` VARCHAR(255) NULL,
+                    `phone_number` VARCHAR(100) NULL,
+                    `email` VARCHAR(255) NULL,
+                    `campaign_name` VARCHAR(255) NULL,
+                    `project_interest` VARCHAR(255) NULL,
+                    `source_page` VARCHAR(255) NULL,
+                    `city` VARCHAR(150) NULL,
+                    `country` VARCHAR(150) NULL DEFAULT 'Bangladesh',
+                    `address` TEXT NULL,
+                    `which_apartment_size_are_you_interested_in` TEXT NULL,
+                    `which_floor_are_you_for_shop` TEXT NULL,
+                    `when_are_you_planning_to_buy` TEXT NULL,
+                    `would_you_like_to_schedule_a_site_visit` TEXT NULL,
+                    `when_is_the_best_time_to_contact_you` TEXT NULL,
+                    `qa_json` TEXT NULL COMMENT 'Extracted Q&A pairs from automation_data/custom_fields',
+                    `raw_payload` LONGTEXT NULL COMMENT 'Full raw webhook JSON item',
+                    `sync_status` VARCHAR(40) NOT NULL DEFAULT 'pending' COMMENT 'pending, synced, duplicate_skipped, invalid',
+                    `sync_note` VARCHAR(255) NULL,
+                    `synced_lead_id` INT NULL,
+                    `matched_project_id` INT NULL,
+                    `assigned_team_id` INT NULL,
+                    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `synced_at` DATETIME NULL,
+                    KEY `idx_wal_sync_status` (`sync_status`),
+                    KEY `idx_wal_phone` (`phone_number`),
+                    KEY `idx_wal_created_at` (`created_at`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+            ");
+
+            // Ensure `repibee_uuid` and `ingest_source` columns exist on `whatsapp_leads_logs`
+            try {
+                $uuidCol = $pdo->query("SHOW COLUMNS FROM `whatsapp_leads_logs` LIKE 'repibee_uuid'")->fetchAll();
+                if (empty($uuidCol)) {
+                    $pdo->exec("ALTER TABLE `whatsapp_leads_logs` ADD COLUMN `repibee_uuid` VARCHAR(100) NULL AFTER `id`, ADD KEY `idx_wal_repibee_uuid` (`repibee_uuid`)");
+                }
+                $srcCol = $pdo->query("SHOW COLUMNS FROM `whatsapp_leads_logs` LIKE 'ingest_source'")->fetchAll();
+                if (empty($srcCol)) {
+                    $pdo->exec("ALTER TABLE `whatsapp_leads_logs` ADD COLUMN `ingest_source` VARCHAR(30) NOT NULL DEFAULT 'webhook' AFTER `repibee_uuid`");
+                }
+            } catch (Throwable $t) {}
+
+            // Backfill existing Replibee leads (is_repibee = 1) into whatsapp_leads_logs if table is completely empty
+            $waLogCount = (int)$pdo->query("SELECT COUNT(*) FROM `whatsapp_leads_logs`")->fetchColumn();
+            if ($waLogCount === 0) {
+                $pdo->exec("
+                    INSERT INTO `whatsapp_leads_logs` (
+                        `full_name`, `phone_number`, `email`, `campaign_name`, `project_interest`, `source_page`,
+                        `city`, `country`, `address`,
+                        `which_apartment_size_are_you_interested_in`,
+                        `which_floor_are_you_for_shop`,
+                        `when_are_you_planning_to_buy`,
+                        `would_you_like_to_schedule_a_site_visit`,
+                        `when_is_the_best_time_to_contact_you`,
+                        `sync_status`, `sync_note`, `synced_lead_id`, `matched_project_id`, `assigned_team_id`,
+                        `created_at`, `synced_at`
+                    )
+                    SELECT
+                        `full_name`, `phone_number`, `email`, `campaign_name`, `campaign_name`, 'Replibee Webhook',
+                        `city`, COALESCE(`country`, 'Bangladesh'), `address`,
+                        `which_apartment_size_are_you_interested_in`,
+                        `which_floor_are_you_for_shop`,
+                        `when_are_you_planning_to_buy`,
+                        `would_you_like_to_schedule_a_site_visit`,
+                        `when_is_the_best_time_to_contact_you`,
+                        'synced', CONCAT('Synced into Leads (#LD-', `id`, ')'), `id`, `project_id`, `team_id`,
+                        COALESCE(`created_at`, NOW()), COALESCE(`created_at`, NOW())
+                    FROM `leads`
+                    WHERE `is_repibee` = 1 AND `deleted_at` IS NULL
+                    ORDER BY `id` ASC
+                ");
             }
         } catch (Throwable $e) {
             $this->log("ensureSchema warning: " . $e->getMessage());
