@@ -312,6 +312,7 @@ $selectedTeamId     = $_SESSION['old']['team_id']          ?? $leadData['team_id
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">Lead Type</label>
                         <select name="lead_type" class="form-select">
+                            <option value="Qualification in Progress" <?= ($leadData['lead_type'] ?? '') === 'Qualification in Progress' ? 'selected' : '' ?>>Qualification in Progress</option>
                             <option value="Potential" <?= in_array($leadData['lead_type'] ?? '', ['Potential', 'Prospect', 'Warm']) ? 'selected' : '' ?>>Potential</option>
                             <option value="High Potential" <?= in_array($leadData['lead_type'] ?? '', ['High Potential', 'High Prospect', 'Hot']) ? 'selected' : '' ?>>High Potential</option>
                             <option value="Visit Scheduled" <?= in_array($leadData['lead_type'] ?? '', ['Visit Scheduled', 'Will Visit']) ? 'selected' : '' ?>>Visit Scheduled</option>

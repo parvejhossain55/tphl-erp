@@ -83,7 +83,7 @@ if (!function_exists('getStatCardLink')) {
 }
 $activeCard = $_GET['filter_card'] ?? '';
 ?>
-<?php if (!empty($filteredExecName) || in_array($activeCard, ['no_response', 'no_response_leads'])): ?>
+<?php if (!empty($filteredExecName) || in_array($activeCard, ['no_response', 'no_response_leads', 'potential_leads', 'potential', 'visit_scheduled', 'visit_scheduled_leads', 'visited_leads', 'visited', 'visit_completed'])): ?>
 <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
     <?php if (!empty($filteredExecName)): ?>
     <span class="badge rounded-pill text-bg-primary" style="font-size:0.8rem; padding:6px 14px;">
@@ -96,6 +96,21 @@ $activeCard = $_GET['filter_card'] ?? '';
     <span class="badge rounded-pill text-bg-warning d-inline-flex align-items-center gap-1" style="font-size:0.8rem; padding:6px 14px; background-color: #fef3c7 !important; color: #92400e !important; border: 1px solid #fde68a;">
         <i class="fa-solid fa-phone-slash me-1"></i> Card Filter: <strong>No Response Leads</strong>
         <a href="<?= getStatCardLink('total_leads') ?>" class="ms-2 text-decoration-none fw-bold" style="color: #92400e;" title="Clear card filter">&times;</a>
+    </span>
+    <?php elseif (in_array($activeCard, ['potential_leads', 'potential'])): ?>
+    <span class="badge rounded-pill text-bg-success d-inline-flex align-items-center gap-1" style="font-size:0.8rem; padding:6px 14px; background-color: #dcfce7 !important; color: #166534 !important; border: 1px solid #bbf7d0;">
+        <i class="fa-solid fa-star me-1"></i> Card Filter: <strong>Potential Leads</strong>
+        <a href="<?= getStatCardLink('total_leads') ?>" class="ms-2 text-decoration-none fw-bold" style="color: #166534;" title="Clear card filter">&times;</a>
+    </span>
+    <?php elseif (in_array($activeCard, ['visit_scheduled', 'visit_scheduled_leads'])): ?>
+    <span class="badge rounded-pill text-bg-info d-inline-flex align-items-center gap-1" style="font-size:0.8rem; padding:6px 14px; background-color: #e0f2fe !important; color: #0369a1 !important; border: 1px solid #bae6fd;">
+        <i class="fa-solid fa-calendar-check me-1"></i> Card Filter: <strong>Visit Scheduled Leads</strong>
+        <a href="<?= getStatCardLink('total_leads') ?>" class="ms-2 text-decoration-none fw-bold" style="color: #0369a1;" title="Clear card filter">&times;</a>
+    </span>
+    <?php elseif (in_array($activeCard, ['visited_leads', 'visited', 'visit_completed'])): ?>
+    <span class="badge rounded-pill text-bg-primary d-inline-flex align-items-center gap-1" style="font-size:0.8rem; padding:6px 14px; background-color: #ede9fe !important; color: #6b21a8 !important; border: 1px solid #ddd6fe;">
+        <i class="fa-solid fa-building-circle-check me-1"></i> Card Filter: <strong>Visited Leads</strong>
+        <a href="<?= getStatCardLink('total_leads') ?>" class="ms-2 text-decoration-none fw-bold" style="color: #6b21a8;" title="Clear card filter">&times;</a>
     </span>
     <?php endif; ?>
 </div>
@@ -221,6 +236,33 @@ $activeCard = $_GET['filter_card'] ?? '';
             <div class="stat-value text-danger"><?= $totalDeleteRequests ?? 0 ?></div>
             <div class="stat-change negative d-none">
                 <i class="bi bi-arrow-down"></i>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-6 col-lg-4 col-xl-2">
+        <a href="<?= getStatCardLink('potential_leads') ?>" class="card__wrapper stat-card text-decoration-none d-block h-100 <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>" style="cursor: pointer; <?= in_array($activeCard, ['potential_leads', 'potential']) ? 'border: 2px solid #10b981 !important; background-color: #f0fdf4;' : '' ?>" title="Leads with last follow-up status Potential">
+            <div class="stat-label text-success fw-semibold"><i class="fa-solid fa-star me-1"></i>Potential <?= !empty($filteredExecName) ? '<i class="fa-solid fa-filter ms-1 text-primary" style="font-size:9px;" title="Filtered"></i>' : '' ?></div>
+            <div class="stat-value text-success"><?= number_format($totalPotentialLeads ?? 0) ?></div>
+            <div class="stat-change positive d-none">
+                <i class="bi bi-arrow-up"></i>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-6 col-lg-4 col-xl-2">
+        <a href="<?= getStatCardLink('visit_scheduled') ?>" class="card__wrapper stat-card text-decoration-none d-block h-100 <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>" style="cursor: pointer; <?= in_array($activeCard, ['visit_scheduled', 'visit_scheduled_leads']) ? 'border: 2px solid #0284c7 !important; background-color: #f0f9ff;' : '' ?>" title="Leads with last follow-up status Visit Scheduled">
+            <div class="stat-label text-info fw-semibold"><i class="fa-solid fa-calendar-check me-1"></i>Visit Scheduled <?= !empty($filteredExecName) ? '<i class="fa-solid fa-filter ms-1 text-primary" style="font-size:9px;" title="Filtered"></i>' : '' ?></div>
+            <div class="stat-value text-info"><?= number_format($totalVisitScheduledLeads ?? 0) ?></div>
+            <div class="stat-change positive d-none">
+                <i class="bi bi-arrow-up"></i>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-6 col-lg-4 col-xl-2">
+        <a href="<?= getStatCardLink('visited_leads') ?>" class="card__wrapper stat-card text-decoration-none d-block h-100 <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>" style="cursor: pointer; <?= in_array($activeCard, ['visited_leads', 'visited', 'visit_completed']) ? 'border: 2px solid #6366f1 !important; background-color: #eef2ff;' : '' ?>" title="Leads with last follow-up status Visited">
+            <div class="stat-label text-primary fw-semibold"><i class="fa-solid fa-building-circle-check me-1"></i>Visited <?= !empty($filteredExecName) ? '<i class="fa-solid fa-filter ms-1 text-primary" style="font-size:9px;" title="Filtered"></i>' : '' ?></div>
+            <div class="stat-value text-primary"><?= number_format($totalVisitedLeads ?? 0) ?></div>
+            <div class="stat-change positive d-none">
+                <i class="bi bi-arrow-up"></i>
             </div>
         </a>
     </div>
@@ -1295,7 +1337,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                                 <option value="">Select Status</option>
                                 <?php
                                 $statuses = [
-                                    'No Response', 'Pending', 'Potential', 'High Potential', 
+                                    'No Response', 'Pending', 'Qualification in Progress', 'Potential', 'High Potential', 
                                     'Visit Scheduled', 'Visit Completed', 'Lead Transferred', 
                                     'Not Interested', 'Invalid Lead'
                                 ];
@@ -1530,6 +1572,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (item.lead_status) {
                             let lsCls = 'bg-secondary text-white';
                             if (item.lead_status === 'High Potential' || item.lead_status === 'High Prospect' || item.lead_status === 'Hot') lsCls = 'bg-danger text-white';
+                            else if (item.lead_status === 'Qualification in Progress') lsCls = 'bg-info text-white';
                             else if (item.lead_status === 'Potential' || item.lead_status === 'Prospect' || item.lead_status === 'Warm') lsCls = 'bg-success text-white';
                             else if (item.lead_status === 'Visit Scheduled' || item.lead_status === 'Will Visit') lsCls = 'bg-info text-dark';
                             else if (item.lead_status === 'Visit Completed' || item.lead_status === 'Visited') lsCls = 'bg-primary text-white';
@@ -1704,6 +1747,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (badgeWrap.length > 0) {
                             let bCls = 'bg-secondary text-white';
                             if (savedLeadStatus === 'High Potential' || savedLeadStatus === 'High Prospect' || savedLeadStatus === 'Hot') bCls = 'bg-danger text-white';
+                            else if (savedLeadStatus === 'Qualification in Progress') bCls = 'bg-info text-white';
                             else if (savedLeadStatus === 'Potential' || savedLeadStatus === 'Prospect' || savedLeadStatus === 'Warm') bCls = 'bg-success text-white';
                             else if (savedLeadStatus === 'Visit Scheduled' || savedLeadStatus === 'Will Visit') bCls = 'bg-info text-dark';
                             else if (savedLeadStatus === 'Visit Completed' || savedLeadStatus === 'Visited') bCls = 'bg-primary text-white';

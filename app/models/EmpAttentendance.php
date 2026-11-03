@@ -30,8 +30,6 @@ class EmpAttentendance extends Model
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
-
-
    public function create($data)
 {
     $punchIn  = !empty($data['punch_in_time']) ? $data['punch_in_time'] : null;

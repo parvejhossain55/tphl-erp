@@ -167,22 +167,18 @@ class ApiController extends Controller
 
         $bookingsToProcess = [];
         $processedBookingIds = [];
+        $matchingLeadIds = [];
+        $leadRows = [];
         $erpClient = null;
 
         // A0. Match by user_id or lead_id
         if ($userId > 0) {
             $res = $this->db->query("SELECT * FROM leads WHERE id = {$userId} LIMIT 1");
             if ($res && $res->num_rows > 0) {
-                $erpClient = $res->fetch_assoc();
-                $bRes = $this->db->query("SELECT * FROM lead_bookings WHERE lead_id = " . (int)$erpClient['id'] . " AND booking_status NOT IN ('cancelled', 'refunded') AND (landshare_status IS NULL OR landshare_status != 'cancelled') AND deleted_at IS NULL");
-                if ($bRes) {
-                    while ($b = $bRes->fetch_assoc()) {
-                        if (!in_array($b['id'], $processedBookingIds)) {
-                            $bookingsToProcess[] = $b;
-                            $processedBookingIds[] = $b['id'];
-                        }
-                    }
-                }
+                $row = $res->fetch_assoc();
+                $matchingLeadIds[] = (int)$row['id'];
+                $leadRows[] = $row;
+                $erpClient = $row;
             } else {
                 // Check if user_id was an onboard_clients record ID
                 $ocRes = $this->db->query("SELECT * FROM onboard_clients WHERE id = {$userId} OR lead_id = {$userId} LIMIT 1");
@@ -192,16 +188,10 @@ class ApiController extends Controller
                     if ($targetLeadId > 0) {
                         $res = $this->db->query("SELECT * FROM leads WHERE id = {$targetLeadId} LIMIT 1");
                         if ($res && $res->num_rows > 0) {
-                            $erpClient = $res->fetch_assoc();
-                            $bRes = $this->db->query("SELECT * FROM lead_bookings WHERE lead_id = {$targetLeadId} AND booking_status NOT IN ('cancelled', 'refunded') AND (landshare_status IS NULL OR landshare_status != 'cancelled') AND deleted_at IS NULL");
-                            if ($bRes) {
-                                while ($b = $bRes->fetch_assoc()) {
-                                    if (!in_array($b['id'], $processedBookingIds)) {
-                                        $bookingsToProcess[] = $b;
-                                        $processedBookingIds[] = $b['id'];
-                                    }
-                                }
-                            }
+                            $row = $res->fetch_assoc();
+                            $matchingLeadIds[] = (int)$row['id'];
+                            $leadRows[] = $row;
+                            $erpClient = $row;
                         }
                     }
                 }
@@ -210,20 +200,48 @@ class ApiController extends Controller
 
         // A. Match by phone
         if ($phone) {
-            $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
-            $cleanPhone = $this->db->real_escape_string($cleanPhone);
+            $cleanDigits = preg_replace('/[^0-9]/', '', $phone);
+            $searchSuffix = strlen($cleanDigits) >= 8 ? substr($cleanDigits, -8) : $cleanDigits;
+            $searchEscaped = $this->db->real_escape_string($searchSuffix);
             
-            $res = $this->db->query("SELECT * FROM leads WHERE phone LIKE '%$cleanPhone%' OR phone_number LIKE '%$cleanPhone%' LIMIT 1");
+            $res = $this->db->query("SELECT * FROM leads WHERE phone LIKE '%$searchEscaped%' OR phone_number LIKE '%$searchEscaped%' ORDER BY id DESC");
             if ($res && $res->num_rows > 0) {
-                $erpClient = $res->fetch_assoc();
-                
-                $bRes = $this->db->query("SELECT * FROM lead_bookings WHERE lead_id = " . (int)$erpClient['id'] . " AND booking_status NOT IN ('cancelled', 'refunded') AND (landshare_status IS NULL OR landshare_status != 'cancelled') AND deleted_at IS NULL");
-                if ($bRes) {
-                    while ($b = $bRes->fetch_assoc()) {
-                        if (!in_array($b['id'], $processedBookingIds)) {
-                            $bookingsToProcess[] = $b;
-                            $processedBookingIds[] = $b['id'];
-                        }
+                while ($row = $res->fetch_assoc()) {
+                    if (!in_array((int)$row['id'], $matchingLeadIds)) {
+                        $matchingLeadIds[] = (int)$row['id'];
+                        $leadRows[] = $row;
+                    }
+                }
+            }
+        }
+
+        // Prioritize lead that actually has active bookings
+        if (!empty($matchingLeadIds)) {
+            $idsStr = implode(',', $matchingLeadIds);
+            $bLeadRes = $this->db->query("SELECT lead_id FROM lead_bookings WHERE lead_id IN ($idsStr) AND booking_status NOT IN ('cancelled', 'refunded') AND (landshare_status IS NULL OR landshare_status != 'cancelled') AND deleted_at IS NULL ORDER BY id DESC LIMIT 1");
+            if ($bLeadRes && $bLeadRes->num_rows > 0) {
+                $bestLeadId = (int)$bLeadRes->fetch_assoc()['lead_id'];
+                foreach ($leadRows as $lr) {
+                    if ((int)$lr['id'] === $bestLeadId) {
+                        $erpClient = $lr;
+                        break;
+                    }
+                }
+            }
+        }
+        if (!$erpClient && !empty($leadRows)) {
+            $erpClient = $leadRows[0];
+        }
+
+        // Fetch active bookings for matching leads
+        if (!empty($matchingLeadIds)) {
+            $idsStr = implode(',', $matchingLeadIds);
+            $bRes = $this->db->query("SELECT * FROM lead_bookings WHERE lead_id IN ($idsStr) AND booking_status NOT IN ('cancelled', 'refunded') AND (landshare_status IS NULL OR landshare_status != 'cancelled') AND deleted_at IS NULL");
+            if ($bRes) {
+                while ($b = $bRes->fetch_assoc()) {
+                    if (!in_array($b['id'], $processedBookingIds)) {
+                        $bookingsToProcess[] = $b;
+                        $processedBookingIds[] = $b['id'];
                     }
                 }
             }
@@ -251,7 +269,13 @@ class ApiController extends Controller
                 }
                 
                 if ($matchedFlat) {
-                    $leadClause = $erpClient ? " AND lead_id = " . (int)$erpClient['id'] : "";
+                    $leadClause = "";
+                    if (!empty($matchingLeadIds)) {
+                        $leadClause = " AND lead_id IN (" . implode(',', $matchingLeadIds) . ")";
+                    } elseif ($erpClient) {
+                        $leadClause = " AND lead_id = " . (int)$erpClient['id'];
+                    }
+
                     $bRes = $this->db->query("SELECT * FROM lead_bookings WHERE project_id = " . (int)$erpProject['id'] . " AND flat_id = " . (int)$matchedFlat['id'] . " $leadClause AND booking_status NOT IN ('cancelled', 'refunded') AND (landshare_status IS NULL OR landshare_status != 'cancelled') AND deleted_at IS NULL ORDER BY id DESC LIMIT 1");
                     if ($bRes && $bRes->num_rows > 0) {
                         $booking = $bRes->fetch_assoc();

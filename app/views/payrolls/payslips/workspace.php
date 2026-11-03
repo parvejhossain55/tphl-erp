@@ -2,12 +2,12 @@
 $page = "Payroll Workplace";
 $show_breadcrumb = true;
 
-$_filterType    = $filterType      ?? ($_GET['filter_type'] ?? 'monthly');
-$_fromDate      = $selectedFromDate ?? ($_GET['from_date'] ?? date('Y-m-01'));
-$_toDate        = $selectedToDate  ?? ($_GET['to_date'] ?? date('Y-m-t'));
-$_selectedYear  = $selectedYear    ?? ($_GET['year'] ?? date('Y'));
-$_selectedMonth = $selectedMonth   ?? ($_GET['month'] ?? date('m'));
-$_selectedProject = $selectedProject ?? ($_GET['payroll_project_id'] ?? '');
+$_filterType      = !empty($filterType) ? $filterType : (!empty($_GET['filter_type']) ? $_GET['filter_type'] : 'monthly');
+$_fromDate        = !empty($selectedFromDate) ? $selectedFromDate : (!empty($_GET['from_date']) ? $_GET['from_date'] : date('Y-m-01'));
+$_toDate          = !empty($selectedToDate) ? $selectedToDate : (!empty($_GET['to_date']) ? $_GET['to_date'] : date('Y-m-t'));
+$_selectedYear    = !empty($selectedYear) ? $selectedYear : (!empty($_GET['year']) ? $_GET['year'] : date('Y'));
+$_selectedMonth   = !empty($selectedMonth) ? $selectedMonth : (!empty($_GET['month']) ? $_GET['month'] : date('m'));
+$_selectedProject = !empty($selectedProject) ? $selectedProject : ($_GET['payroll_project_id'] ?? '');
 ?>
 
 <!-- Filter Section -->
@@ -489,12 +489,19 @@ $_selectedProject = $selectedProject ?? ($_GET['payroll_project_id'] ?? '');
 
                                 // Attendance deductions
                                 $hasAttOverride = isset($p['att_late_unpaid_absent_days']) && $p['att_late_unpaid_absent_days'] !== null;
-                                if ($hasAttOverride) {
-                                    // Authoritative attendance from /payroll-attendance-report
-                                    $unpaidAbsentsDays = (float) $p['att_late_unpaid_absent_days'];
-                                    $unpaidAbsentsAmount = round($unpaidAbsentsDays * $daily, 2);
-                                } elseif ($isExisting) {
-                                    // Saved in workspace payslip draft
+
+                                // Determine whether Attendance Report has newer saved data than Workplace draft
+                                $attIsNewer = false;
+                                if ($hasAttOverride && $isExisting) {
+                                    $attTime = !empty($p['att_updated_at']) ? strtotime($p['att_updated_at']) : 0;
+                                    $payslipTime = !empty($p['updated_at']) ? strtotime($p['updated_at']) : (!empty($p['created_at']) ? strtotime($p['created_at']) : 0);
+                                    if ($attTime > $payslipTime) {
+                                        $attIsNewer = true;
+                                    }
+                                }
+
+                                if ($isExisting && !$attIsNewer) {
+                                    // Workplace has been saved and is authoritative
                                     $unpaidAbsentsDays = (float) ($p['saved_late_unpaid_absent_days'] ?? $p['late_unpaid_absent_days'] ?? 0);
                                     if ($unpaidAbsentsDays <= 0) {
                                         $unpaidAbsentsAmount = 0.00;
@@ -503,6 +510,10 @@ $_selectedProject = $selectedProject ?? ($_GET['payroll_project_id'] ?? '');
                                             ? (float)$p['saved_unpaid_absent_amount']
                                             : round($unpaidAbsentsDays * $daily, 2);
                                     }
+                                } elseif ($hasAttOverride) {
+                                    // Authoritative attendance from /payroll-attendance-report
+                                    $unpaidAbsentsDays = (float) $p['att_late_unpaid_absent_days'];
+                                    $unpaidAbsentsAmount = round($unpaidAbsentsDays * $daily, 2);
                                 } else {
                                     // Tipsoi / fallback
                                     $unpaidAbsentsDays = isset($p['tipsoi_absent']) ? (float) $p['tipsoi_absent'] : 0;
@@ -569,7 +580,7 @@ $_selectedProject = $selectedProject ?? ($_GET['payroll_project_id'] ?? '');
                                     $cash = $netSalary;
                                 }
                                 ?>
-                                        <tr class="calc-row" data-payslip-id="<?= $p['id'] ?? 0 ?>" data-employee-id="<?= $p['real_emp_id_fk'] ?? $p['id'] ?? 0 ?>" data-employee-office-id="<?= htmlspecialchars($p['emp_id']) ?>" data-joining-date="<?= !empty($p['joining_date']) ? date('Y-m-d', strtotime($p['joining_date'])) : '' ?>" data-resignation-date="<?= !empty($p['deleted_at']) ? date('Y-m-d', strtotime($p['deleted_at'])) : '' ?>" data-effective-days="<?= $empEffectiveDays ?>" data-non-working-days="<?= $nonWorkingCycleDays ?>" data-has-db="<?= ($hasAttOverride || isset($p['tipsoi_present'])) ? 'true' : 'false' ?>">
+                                        <tr class="calc-row" data-payslip-id="<?= $p['id'] ?? 0 ?>" data-employee-id="<?= $p['real_emp_id_fk'] ?? $p['id'] ?? 0 ?>" data-employee-office-id="<?= htmlspecialchars($p['emp_id']) ?>" data-joining-date="<?= !empty($p['joining_date']) ? date('Y-m-d', strtotime($p['joining_date'])) : '' ?>" data-resignation-date="<?= !empty($p['deleted_at']) ? date('Y-m-d', strtotime($p['deleted_at'])) : '' ?>" data-effective-days="<?= $empEffectiveDays ?>" data-non-working-days="<?= $nonWorkingCycleDays ?>" data-has-db="<?= ($hasAttOverride || ($isExisting && !$attIsNewer) || isset($p['tipsoi_present'])) ? 'true' : 'false' ?>">
                                             <?php $excludedState = (isset($p['is_excluded']) && $p['is_excluded'] == 1) ? "" : "checked"; ?>
                                             <td class="text-center"><input type="checkbox" autocomplete="off" class="form-check-input emp-checkbox" <?= $excludedState ?> style="cursor:pointer;"></td>
                                             <td><?= $sl++ ?></td>
@@ -757,7 +768,7 @@ $_selectedProject = $selectedProject ?? ($_GET['payroll_project_id'] ?? '');
                     let gross = parseFloat(row.querySelector('.cell-gross').dataset.val) || 0;
                     const effDaysCell = row.querySelector('.cell-effective-days');
                     const effectiveDays = effDaysCell ? (parseFloat(effDaysCell.dataset.val || effDaysCell.textContent) || 30) : 30;
-                    const totalCycleDays = 30;
+                    const totalCycleDays = <?= (int) ($cycleTotalDays ?? 30) ?>;
 
                     let effectiveGross = gross;
                     if (effectiveDays < totalCycleDays && daily > 0) {
@@ -967,7 +978,14 @@ $_selectedProject = $selectedProject ?? ($_GET['payroll_project_id'] ?? '');
         })();
 
         // --- Tipsoi Auto-Fallback for Missing DB Data (High-performance Map lookup & AbortController) ---
-        const missingRows = document.querySelectorAll('.calc-row[data-has-db="false"]');
+        let allRows = [];
+        if (typeof $ !== 'undefined' && $.fn.DataTable && $.fn.DataTable.isDataTable('#payrollTable')) {
+            allRows = Array.from($('#payrollTable').DataTable().rows().nodes());
+        }
+        if (!allRows.length) {
+            allRows = Array.from(document.querySelectorAll('.calc-row'));
+        }
+        const missingRows = allRows.filter(r => r.getAttribute('data-has-db') === 'false');
         if (fromDateStr && toDateStr && missingRows.length > 0) {
             const empRowMap = new Map();
             missingRows.forEach(r => {
@@ -979,9 +997,13 @@ $_selectedProject = $selectedProject ?? ($_GET['payroll_project_id'] ?? '');
                 from_date: fromDateStr,
                 to_date:   toDateStr
             });
+            const projSelect = document.getElementById('payrollProject');
+            if (projSelect && projSelect.value) {
+                params.set('payroll_project_id', projSelect.value);
+            }
 
             const abortCtrl = new AbortController();
-            const abortTimeout = setTimeout(() => abortCtrl.abort(), 8000); // 8-second safety timeout
+            const abortTimeout = setTimeout(() => abortCtrl.abort(), 20000); // 20-second safety timeout
 
             fetch(`<?= $GLOBALS['base_url'] ?>/api/hrm/attendance?` + params.toString(), { signal: abortCtrl.signal })
             .then(r => r.json())
@@ -994,7 +1016,8 @@ $_selectedProject = $selectedProject ?? ($_GET['payroll_project_id'] ?? '');
 
                     rawData.forEach(emp => {
                          const attMap = emp.attendance || {};
-                         const officeId = String(emp.employeeOfficeId || emp.employeeId).toLowerCase().trim();
+                         const summ = emp.summary || {};
+                         const officeId = String(emp.employeeOfficeId || emp.employeeId || '').toLowerCase().trim();
                          const nameNormalized = String(emp.employeeName || '').toLowerCase().trim();
 
                          const localMatch = localEmployees.find(le => {
@@ -1009,18 +1032,23 @@ $_selectedProject = $selectedProject ?? ($_GET['payroll_project_id'] ?? '');
                                   let present = 0;
                                   let absent  = 0;
                                   
-                                  Object.keys(attMap).forEach(timestamp => {
-                                      const dayAtt = attMap[timestamp];
-                                      if (dayAtt.isPresent) present++;
-                                      else if (!dayAtt.isOffday && !dayAtt.isHoliday && !dayAtt.isLeave) absent++;
-                                  });
+                                  if (summ.totalAbsent !== undefined) {
+                                      absent = parseInt(summ.totalAbsent, 10) || 0;
+                                      present = parseInt(summ.totalPresent, 10) || 0;
+                                  } else {
+                                      Object.keys(attMap).forEach(timestamp => {
+                                          const dayAtt = attMap[timestamp];
+                                          if (dayAtt.isPresent) present++;
+                                          else if (!dayAtt.isOffday && !dayAtt.isHoliday && !dayAtt.isLeave) absent++;
+                                      });
+                                  }
 
                                   let finalLate = 0;
-                                  if (emp.summary && emp.summary.totalLateEntry !== undefined) {
-                                      finalLate = parseInt(emp.summary.totalLateEntry, 10) || 0;
+                                  if (summ.totalLateEntry !== undefined) {
+                                      finalLate = parseInt(summ.totalLateEntry, 10) || 0;
                                   }
                                   let lateDeduction = Math.floor(finalLate / 3);
-                                  let totalAbsentDays = absent + lateDeduction;
+                                  let totalAbsentDays = parseFloat((absent + lateDeduction).toFixed(2));
 
                                   const absentInput = matchedRow.querySelector('.in-absent-days');
                                   const unpaidInp   = matchedRow.querySelector('.in-deduct.in-unpaid');

@@ -97,7 +97,7 @@
                                 <option value="">Select Status</option>
                                 <?php
                                 $statuses = [
-                                    'No Response', 'Pending', 'Potential', 'High Potential', 
+                                    'No Response', 'Pending', 'Qualification in Progress', 'Potential', 'High Potential', 
                                     'Visit Scheduled', 'Visit Completed', 'Lead Transferred', 
                                     'Not Interested', 'Invalid Lead'
                                 ];

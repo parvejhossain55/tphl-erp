@@ -483,7 +483,7 @@ class TrackerCalculationService
         }
 
         // Process latest states per distinct lead
-        $interestedStatuses = ['potential', 'high potential', 'prospect', 'high prospect', 'future', 'cold', 'hot', 'warm', 'visit scheduled', 'visit completed', 'will visit', 'visited'];
+        $interestedStatuses = ['potential', 'high potential', 'qualification in progress', 'prospect', 'high prospect', 'future', 'cold', 'hot', 'warm', 'visit scheduled', 'visit completed', 'will visit', 'visited'];
         $notInterestedStatuses = ['not interested', "don't call again", 'invalid lead', 'irrelevant', 'refund'];
 
         foreach ($leadLatestState as $uid => $leadsData) {
@@ -1353,7 +1353,7 @@ class TrackerCalculationService
             }
         }
 
-        $interestedStatuses = ['potential', 'high potential', 'prospect', 'high prospect', 'future', 'cold', 'hot', 'warm', 'visit scheduled', 'visit completed', 'will visit', 'visited'];
+        $interestedStatuses = ['potential', 'high potential', 'qualification in progress', 'prospect', 'high prospect', 'future', 'cold', 'hot', 'warm', 'visit scheduled', 'visit completed', 'will visit', 'visited'];
         $notInterestedStatuses = ['not interested', "don't call again", 'invalid lead', 'irrelevant', 'refund'];
 
         foreach ($leadLatestState as $uid => $leadsData) {

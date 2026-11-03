@@ -569,7 +569,7 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                         <option value="">Lead Status: All</option>
                         <?php
                         $statuses = [
-                            'No Response', 'Pending', 'Potential', 'High Potential', 
+                            'No Response', 'Pending', 'Qualification in Progress', 'Potential', 'High Potential', 
                             'Visit Scheduled', 'Visit Completed', 'Sold', 'Lead Transferred', 
                             'Project Transferred', 'Not Interested', 
                             'Refund', 'Future', 'Invalid Lead'
@@ -899,6 +899,8 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                         $class = 'bg-secondary text-white';
                                         if (in_array($statusVal, ['High Potential', 'High Prospect', 'Hot'])) {
                                             $class = 'bg-danger text-white';
+                                        } elseif ($statusVal === 'Qualification in Progress') {
+                                            $class = 'bg-info text-white';
                                         } elseif (in_array($statusVal, ['Potential', 'Prospect'])) {
                                             $class = 'bg-success text-white';
                                         } elseif (in_array($statusVal, ['Visit Scheduled', 'Will Visit'])) {
@@ -1336,6 +1338,8 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                         $mStatusClass = 'bg-secondary text-white';
                         if (in_array($mStatusVal, ['High Potential', 'High Prospect', 'Hot'])) {
                             $mStatusClass = 'bg-danger text-white';
+                        } elseif ($mStatusVal === 'Qualification in Progress') {
+                            $mStatusClass = 'bg-info text-white';
                         } elseif (in_array($mStatusVal, ['Potential', 'Prospect', 'Warm'])) {
                             $mStatusClass = 'bg-success text-white';
                         } elseif (in_array($mStatusVal, ['Visit Scheduled', 'Will Visit'])) {
@@ -2461,7 +2465,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <option value="">Select Status</option>
                                 <?php
                                 $statuses = [
-                                    'No Response', 'Pending', 'Potential', 'High Potential', 
+                                    'No Response', 'Pending', 'Qualification in Progress', 'Potential', 'High Potential', 
                                     'Visit Scheduled', 'Visit Completed', 'Lead Transferred', 
                                     'Not Interested', 'Invalid Lead'
                                 ];
@@ -2698,6 +2702,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (item.lead_status) {
                             let lsCls = 'bg-secondary text-white';
                             if (item.lead_status === 'High Potential' || item.lead_status === 'High Prospect' || item.lead_status === 'Hot') lsCls = 'bg-danger text-white';
+                            else if (item.lead_status === 'Qualification in Progress') lsCls = 'bg-info text-white';
                             else if (item.lead_status === 'Potential' || item.lead_status === 'Prospect' || item.lead_status === 'Warm') lsCls = 'bg-success text-white';
                             else if (item.lead_status === 'Visit Scheduled' || item.lead_status === 'Will Visit') lsCls = 'bg-info text-dark';
                             else if (item.lead_status === 'Visit Completed' || item.lead_status === 'Visited') lsCls = 'bg-primary text-white';
@@ -2882,6 +2887,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (inp.length > 0) {
                             let bCls = 'bg-secondary text-white';
                             if (savedLeadStatus === 'High Potential' || savedLeadStatus === 'High Prospect' || savedLeadStatus === 'Hot') bCls = 'bg-danger text-white';
+                            else if (savedLeadStatus === 'Qualification in Progress') bCls = 'bg-info text-white';
                             else if (savedLeadStatus === 'Potential' || savedLeadStatus === 'Prospect') bCls = 'bg-success text-white';
                             else if (savedLeadStatus === 'Visit Scheduled' || savedLeadStatus === 'Will Visit') bCls = 'bg-info text-dark';
                             else if (savedLeadStatus === 'Visit Completed' || savedLeadStatus === 'Visited') bCls = 'bg-primary text-white';

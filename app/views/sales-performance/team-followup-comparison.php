@@ -2098,6 +2098,8 @@ function getLeadStatusBadgeHtml(status) {
     
     if (['High Potential', 'High Prospect', 'Hot'].includes(s)) {
         badgeStyle = 'background:#fef2f2; color:#b91c1c; border:1px solid #fecaca;';
+    } else if (s === 'Qualification in Progress') {
+        badgeStyle = 'background:#f0fdfa; color:#0f766e; border:1px solid #99f6e4;';
     } else if (['Potential', 'Prospect', 'Sold'].includes(s)) {
         badgeStyle = 'background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0;';
     } else if (['Visit Scheduled', 'Visit Completed', 'Warm', 'Will Visit', 'Visited'].includes(s)) {

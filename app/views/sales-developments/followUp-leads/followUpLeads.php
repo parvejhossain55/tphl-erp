@@ -112,7 +112,7 @@ $show_breadcrumb = true;
                             <option value="">Select Status</option>
                             <?php
                             $statuses = [
-                                'No Response', 'Pending', 'Potential', 'High Potential', 
+                                'No Response', 'Pending', 'Qualification in Progress', 'Potential', 'High Potential', 
                                 'Visit Scheduled', 'Visit Completed', 'Lead Transferred', 
                                 'Not Interested', 'Invalid Lead'
                             ];
@@ -237,6 +237,7 @@ $show_breadcrumb = true;
                                 $fuLeadStatus = !empty($fu['lead_status']) ? $fu['lead_status'] : 'Pending';
                                 $fuBadgeClass = 'bg-secondary text-white';
                                 if (in_array($fuLeadStatus, ['High Potential', 'High Prospect', 'Hot'])) $fuBadgeClass = 'bg-danger text-white';
+                                elseif ($fuLeadStatus === 'Qualification in Progress') $fuBadgeClass = 'bg-info text-white';
                                 elseif (in_array($fuLeadStatus, ['Potential', 'Prospect'])) $fuBadgeClass = 'bg-success text-white';
                                 elseif (in_array($fuLeadStatus, ['Visit Scheduled', 'Will Visit'])) $fuBadgeClass = 'bg-info text-dark';
                                 elseif (in_array($fuLeadStatus, ['Visit Completed', 'Visited'])) $fuBadgeClass = 'bg-primary text-white';

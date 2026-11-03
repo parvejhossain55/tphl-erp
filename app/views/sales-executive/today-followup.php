@@ -310,7 +310,7 @@
                                 <option value="">Select Status</option>
                                 <?php
                                 $statuses = [
-                                    'No Response', 'Pending', 'Potential', 'High Potential', 
+                                    'No Response', 'Pending', 'Qualification in Progress', 'Potential', 'High Potential', 
                                     'Visit Scheduled', 'Visit Completed', 'Lead Transferred', 
                                     'Not Interested', 'Invalid Lead'
                                 ];
@@ -530,6 +530,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (item.lead_status) {
                             let lsCls = 'bg-secondary text-white';
                             if (item.lead_status === 'High Potential' || item.lead_status === 'High Prospect' || item.lead_status === 'Hot') lsCls = 'bg-danger text-white';
+                            else if (item.lead_status === 'Qualification in Progress') lsCls = 'bg-info text-white';
                             else if (item.lead_status === 'Potential' || item.lead_status === 'Prospect' || item.lead_status === 'Warm') lsCls = 'bg-success text-white';
                             else if (item.lead_status === 'Visit Scheduled' || item.lead_status === 'Will Visit') lsCls = 'bg-info text-dark';
                             else if (item.lead_status === 'Visit Completed' || item.lead_status === 'Visited') lsCls = 'bg-primary text-white';

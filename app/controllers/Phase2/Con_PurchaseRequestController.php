@@ -1215,17 +1215,13 @@ class Con_PurchaseRequestController extends Controller
             exit;
         }
 
-        if (in_array($pr['status'], ['Approved', 'PO Issued'])) {
-            // Check if PO is already generated and approved
-            $poCheck = $this->db->query("SELECT status FROM purchase_orders WHERE request_id = {$id} ORDER BY id DESC LIMIT 1");
-            if ($poCheck && $poCheck->num_rows > 0) {
-                $poStatus = $poCheck->fetch_assoc()['status'];
-                if (in_array($poStatus, ['Approved', 'Purchase Head Approved', 'Fully Received', 'Partially Received'])) {
-                    setError('Purchase Order is already approved or processed. You cannot delete this Purchase Request anymore.');
-                    header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
-                    exit;
-                }
-            }
+        // Prevent deleting a Purchase Request if any non-cancelled PO exists
+        $poCheck = $this->db->query("SELECT id, status FROM purchase_orders WHERE request_id = {$id} AND status != 'Cancelled' LIMIT 1");
+        if ($poCheck && $poCheck->num_rows > 0) {
+            $existingPo = $poCheck->fetch_assoc();
+            setError("Purchase Order (PO-{$existingPo['id']}) already exists with status '{$existingPo['status']}'. You cannot delete this Purchase Request.");
+            header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
+            exit;
         }
 
         $isCreator = (int)($pr['created_by'] ?? 0) === $userId;
