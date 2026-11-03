@@ -16,7 +16,7 @@ unset($_SESSION['booking_csv_import_skipped']); // clear after reading
     <div class="d-flex align-items-center gap-2 mb-3">
         <i class="bi bi-exclamation-triangle-fill text-warning fs-5"></i>
         <h6 class="mb-0 fw-semibold text-warning">
-            <?= count($bookingCsvSkipped) ?> row(s) were <u>not imported</u> from the Booking CSV
+            <?= count($bookingCsvSkipped) ?>row(s) were <u>not imported</u>from the Booking CSV
         </h6>
     </div>
     <div class="table-responsive" style="max-height:320px; overflow-y:auto;">
@@ -566,7 +566,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                 </div>
             </form>
         </div>
-        <?php if ((isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 5, 9, 33, 35])) || isSalesCoLeader()): ?>
+        <?php if (($isManagementOrSalesHead ?? false) || (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 5, 9, 20, 32, 33, 34, 35])) || isSalesCoLeader()): ?>
             <div class="col-md-6">
                 <div id="assignCard"
                     class="card__wrapper shadow-sm p-3 my-2"
@@ -578,15 +578,21 @@ $activeCard = $_GET['filter_card'] ?? '';
 
                         <select id="assignUserSelect"
                             class="form-select form-select-sm select2"
-                            style="min-width:200px; width:100%;">
+                            style="min-width:200px; width:100%;"
+                            data-placeholder="Select User">
 
                             <option value=""></option> <!-- important for placeholder -->
 
-                            <?php foreach ($assignedUsers as $user): ?>
+                            <?php 
+                            $assignList = !empty($bulkAssignUsers) ? $bulkAssignUsers : (($isManagementOrSalesHead ?? false) ? ($allRoleUsers ?? []) : $assignedUsers);
+                            foreach ($assignList as $user): 
+                                $userRole = $user['role_name'] ?? '';
+                                $userTeam = !empty($user['team_name']) ? ' (' . $user['team_name'] . ')' : '';
+                            ?>
                                 <option value="<?= $user['id'] ?>">
-                                    <?= htmlspecialchars($user['full_name']) ?> - <?= htmlspecialchars($user['role_name']) ?>
+                                    <?= htmlspecialchars($user['full_name']) ?><?= !empty($userRole) ? ' - ' . htmlspecialchars($userRole) : '' ?><?= htmlspecialchars($userTeam) ?>
                                 </option>
-                            <?php endforeach ?>
+                            <?php endforeach; ?>
                         </select>
 
                         <!--  NEW DATE INPUT -->
@@ -823,7 +829,7 @@ $activeCard = $_GET['filter_card'] ?? '';
             </form>
         </div>
 
-        <?php if ((isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 5, 9, 33, 35])) || isSalesCoLeader()): ?>
+        <?php if (($isManagementOrSalesHead ?? false) || (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 5, 9, 20, 32, 33, 34, 35])) || isSalesCoLeader()): ?>
         <!-- Mobile Assign Card (sticky bottom) -->
         <div class="mobile-only mb-2" id="assignCardMobile"
             style="display:none; position:sticky; bottom:0; z-index:1000; background:#fff; padding:10px; border-top:1px solid #ccc;">
@@ -832,13 +838,19 @@ $activeCard = $_GET['filter_card'] ?? '';
 
                 <!-- User Select -->
                 <select id="assignUserSelectMobile"
-                    class="form-select form-select-sm select2">
+                    class="form-select form-select-sm select2"
+                    data-placeholder="Select User">
                     <option value="">Select User</option>
-                    <?php foreach ($assignedUsers as $user): ?>
+                    <?php 
+                    $assignList = !empty($bulkAssignUsers) ? $bulkAssignUsers : (($isManagementOrSalesHead ?? false) ? ($allRoleUsers ?? []) : $assignedUsers);
+                    foreach ($assignList as $user): 
+                        $userRole = $user['role_name'] ?? '';
+                        $userTeam = !empty($user['team_name']) ? ' (' . $user['team_name'] . ')' : '';
+                    ?>
                         <option value="<?= $user['id'] ?>">
-                            <?= htmlspecialchars($user['full_name']) ?> - <?= htmlspecialchars($user['role_name']) ?>
+                            <?= htmlspecialchars($user['full_name']) ?><?= !empty($userRole) ? ' - ' . htmlspecialchars($userRole) : '' ?><?= htmlspecialchars($userTeam) ?>
                         </option>
-                    <?php endforeach ?>
+                    <?php endforeach; ?>
                 </select>
 
                 <!--  Assigned Date -->

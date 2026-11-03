@@ -827,12 +827,10 @@
             labels: [
                 'Site Visit Target',
                 'Booking Target',
-                'Visit Completed',
-                'Booking Completed',
+                'Visit Complete',
+                'Booking Complete',
                 'Visit %',
                 'Booking %',
-                'Deals Closed',
-                'Deals Won',
                 'Deals Lost'
             ],
             totals: [
@@ -842,13 +840,11 @@
                 <?= $monthlyBookingComplete ?? $currentMonthBooking ?? 0 ?>,
                 <?= $visitAchievement ?? 0 ?>,
                 <?= $bookingAchievement ?? 0 ?>,
-                <?= $dealsClosed ?? 0 ?>,
-                <?= $dealsWon ?? $dealsWin ?? 0 ?>,
                 <?= $dealsLost ?? 0 ?>
             ]
         };
 
-        const colors = ['#4e73df', '#8e7eff', '#36b9cc', '#f6c23e', '#e74a3b', '#7b61ff', '#808594', '#a796e0', '#fd7e14'];
+        const colors = ['#4e73df', '#8e7eff', '#36b9cc', '#f6c23e', '#e74a3b', '#7b61ff', '#fd7e14'];
 
         const chartOptions = {
             chart: {

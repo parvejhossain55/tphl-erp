@@ -1832,24 +1832,25 @@ window.openEditPaymentDateModal = function(target) {
                     } else {
                         html += `<div class="row">`;
                         data.files.forEach((filePath, idx) => {
-                            const fullUrl  = BASE_URL + '/public/' + filePath;
-                            const ext      = filePath.split('.').pop().toLowerCase();
-                            const isImage  = ['jpg','jpeg','png','gif','webp'].includes(ext);
-                            const isPDF    = ext === 'pdf';
-                            const fileName = filePath.split('/').pop();
+                            const viewUrl     = BASE_URL + '/view-transaction-file?file=' + encodeURIComponent(filePath);
+                            const downloadUrl = viewUrl + '&download=1';
+                            const ext         = filePath.split('.').pop().toLowerCase();
+                            const isImage     = ['jpg','jpeg','jfif','png','gif','webp'].includes(ext);
+                            const isPDF       = ext === 'pdf';
+                            const fileName    = filePath.split('/').pop();
                             if (isImage) {
                                 html += `
                                 <div class="col-md-4 col-sm-6">
                                     <div class="card h-100">
-                                        <a href="${fullUrl}" target="_blank">
-                                            <img src="${fullUrl}" class="card-img-top"
+                                        <a href="${viewUrl}" target="_blank">
+                                            <img src="${viewUrl}" class="card-img-top"
                                                  style="height:200px;object-fit:contain;background:#f8f9fa;padding:8px;"
                                                  alt="Document ${idx+1}"
-                                                 onerror="this.onerror=null; this.src='${BASE_URL}/public/assets/img/no-image.png'">
+                                                 onerror="this.style.display='none'; this.insertAdjacentHTML('afterend', '<div class=\'d-flex flex-column align-items-center justify-content-center bg-light text-muted\' style=\'height:200px;\'><i class=\'fa-light fa-image-slash mb-2\' style=\'font-size:2.5rem;\'></i><small>File not found on server</small></div>');">
                                         </a>
                                         <div class="card-body p-2 d-flex justify-content-between align-items-center">
                                             <small class="text-muted text-truncate" style="max-width:70%" title="${fileName}">${fileName}</small>
-                                            <a href="${fullUrl}" target="_blank" download class="btn btn-sm btn-outline-secondary">
+                                            <a href="${downloadUrl}" class="btn btn-sm btn-outline-secondary" title="Download">
                                                 <i class="fa-light fa-download"></i>
                                             </a>
                                         </div>
@@ -1862,10 +1863,10 @@ window.openEditPaymentDateModal = function(target) {
                                         <i class="fa-light fa-file-pdf" style="font-size:3rem;color:#dc3545"></i>
                                         <p class="mt-2 mb-2 text-truncate" title="${fileName}"><strong>${fileName}</strong></p>
                                         <div class="d-flex gap-2 justify-content-center">
-                                            <a href="${fullUrl}" target="_blank" class="btn btn-sm btn-outline-danger">
+                                            <a href="${viewUrl}" target="_blank" class="btn btn-sm btn-outline-danger">
                                                 <i class="fa-light fa-eye me-1"></i>View PDF
                                             </a>
-                                            <a href="${fullUrl}" download class="btn btn-sm btn-outline-secondary">
+                                            <a href="${downloadUrl}" class="btn btn-sm btn-outline-secondary" title="Download PDF">
                                                 <i class="fa-light fa-download"></i>
                                             </a>
                                         </div>
@@ -1877,7 +1878,7 @@ window.openEditPaymentDateModal = function(target) {
                                     <div class="card h-100 text-center p-3">
                                         <i class="fa-light fa-file" style="font-size:3rem;color:#6c757d"></i>
                                         <p class="mt-2 mb-2 text-truncate" title="${fileName}">${fileName}</p>
-                                        <a href="${fullUrl}" download class="btn btn-sm btn-outline-secondary">
+                                        <a href="${downloadUrl}" class="btn btn-sm btn-outline-secondary">
                                             <i class="fa-light fa-download me-1"></i>Download
                                         </a>
                                     </div>

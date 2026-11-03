@@ -93,6 +93,19 @@ class LeadController extends Controller
             $assignedUsers = $allRoleUsers;
         }
 
+        // Bulk Assign Users: Management & Sales Team Head can assign leads to any sales member across all teams
+        $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $userSecondaryRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $isSalesTeamHead = ((int)$userRoleId === 9 || $userSecondaryRoleId === 9 || strpos($userRoleName, 'team head') !== false || strpos($userRoleName, 'sales team head') !== false);
+        $isManagementRole = in_array((int)$userRoleId, [1, 3, 20, 32, 33, 34, 35], true)
+            || in_array($userSecondaryRoleId, [1, 3, 20, 32, 33, 34, 35], true)
+            || strpos($userRoleName, 'admin') !== false
+            || strpos($userRoleName, 'management') !== false
+            || strpos($userRoleName, 'chief') !== false
+            || strpos($userRoleName, 'ceo') !== false;
+        $isManagementOrSalesHead = ($isSalesTeamHead || $isManagementRole);
+        $bulkAssignUsers = $isManagementOrSalesHead ? $allRoleUsers : $assignedUsers;
+
         $owners = $this->userModel->getAll();
 
         $bookingCount = $this->leadBookedModel->getBookingCountByLead();
@@ -337,6 +350,8 @@ class LeadController extends Controller
             "selectedCategory" => $filterCategoryId,
             "selectedCountry" => $filterCountry,
             "teamMembers" => $assignedUsers,
+            "bulkAssignUsers" => $bulkAssignUsers,
+            "isManagementOrSalesHead" => $isManagementOrSalesHead,
             "transferableUsers" => $this->userModel->getSalesTransferableUsers(),
         ]);
     }

@@ -303,6 +303,7 @@ public function getPaginatedWithSalesExecutive($limit, $offset, $search = '', $r
            WHERE (r.id IN (5,8,9) OR sr.id IN (5,8,9))
              AND (e.employee_status IS NULL OR (e.deleted_at IS NULL AND LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
              AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
+           ORDER BY u.full_name ASC
     "); // Sales Manager = 5, Sales Executive = 8,sales Team head = 9
         if (!$sql->execute()) {
             return []; // Error handle koro

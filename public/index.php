@@ -201,13 +201,21 @@ if (!$matched) {
     if (strpos($route, 'public/uploads/') === 0 || strpos($route, 'uploads/') === 0) {
         // Fallback: Check if file physically exists and serve it via PHP
         // This helps when Live Server (Nginx or Apache) DocumentRoot is misconfigured
-        $cleanPath = str_replace('public/uploads/', 'uploads/', $route);
-        $absolutePath = __DIR__ . '/' . $cleanPath;
-        
-        // URL decode the path in case the file on disk has spaces
-        $absolutePath = urldecode($absolutePath);
+        $cleanPath = ltrim(urldecode(str_replace('public/uploads/', 'uploads/', $route)), '/');
+        $candidatePaths = [
+            __DIR__ . '/' . $cleanPath,
+            $root . '/public/' . $cleanPath,
+            $root . '/' . $cleanPath,
+        ];
+        $absolutePath = '';
+        foreach ($candidatePaths as $cp) {
+            if (strpos($cleanPath, '..') === false && file_exists($cp) && is_file($cp)) {
+                $absolutePath = $cp;
+                break;
+            }
+        }
 
-        if (file_exists($absolutePath) && is_file($absolutePath)) {
+        if ($absolutePath !== '') {
             $mime = 'application/octet-stream';
             if (function_exists('mime_content_type')) {
                 $mime = mime_content_type($absolutePath);
