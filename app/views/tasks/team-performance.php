@@ -246,7 +246,17 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+.workload-item:hover {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+    transform: translateX(3px);
 }
 .workload-avatar {
     width: 28px;
@@ -697,20 +707,30 @@
         <!-- Right: Workload Balance -->
         <div class="team-chart-card d-flex flex-column justify-content-between">
             <div>
-                <h5 class="team-chart-title">Workload Balance</h5>
-                <p class="team-chart-subtitle mb-4">Open tasks per team member</p>
+                <div class="d-flex align-items-center justify-content-between mb-1">
+                    <h5 class="team-chart-title mb-0">Workload Balance</h5>
+                    <span class="badge bg-light text-secondary border px-2 py-1 rounded-pill" style="font-size: 10.5px; cursor: pointer;" onclick="openWorkloadFormulaInfo()" title="Click to view calculation formula">
+                        <i class="bi bi-info-circle me-1 text-success"></i> How it works
+                    </span>
+                </div>
+                <p class="team-chart-subtitle mb-3">Open tasks per team member <span class="text-success small fw-semibold ms-1">(Click member to view)</span></p>
 
                 <!-- Workload List -->
                 <div class="workload-list">
                     <?php if (!empty($workloadBars)): ?>
                         <?php foreach ($workloadBars as $wb): ?>
-                            <div class="workload-item">
+                            <div class="workload-item" 
+                                 onclick="openWorkloadBreakdown(<?= htmlspecialchars(json_encode($wb), ENT_QUOTES, 'UTF-8') ?>)" 
+                                 title="Click to view workload calculation & open tasks for <?= htmlspecialchars($wb['full_name'] ?? $wb['name']) ?>">
                                 <div class="workload-avatar"><?= $wb['initials'] ?></div>
-                                <div class="workload-name" title="<?= htmlspecialchars($wb['name']) ?>"><?= htmlspecialchars($wb['name']) ?></div>
+                                <div class="workload-name" title="<?= htmlspecialchars($wb['full_name'] ?? $wb['name']) ?>"><?= htmlspecialchars($wb['name']) ?></div>
                                 <div class="workload-bar-wrap">
                                     <div class="workload-bar-fill" style="width: <?= $wb['bar_pct'] ?>%;"></div>
                                 </div>
-                                <div class="workload-count"><?= str_pad($wb['open_tasks'], 2, '0', STR_PAD_LEFT) ?></div>
+                                <div class="workload-count d-flex align-items-center gap-1 justify-content-end">
+                                    <span><?= str_pad($wb['open_tasks'], 2, '0', STR_PAD_LEFT) ?></span>
+                                    <i class="bi bi-chevron-right text-muted" style="font-size: 11px;"></i>
+                                </div>
                             </div>
                         <?php endforeach; ?>
                     <?php else: ?>
@@ -1059,6 +1079,95 @@
 </div>
 
 <!-- ========================================================================
+     Modal: Workload Balance Breakdown (Calculation Details)
+     ======================================================================== -->
+<div class="modal fade" id="modalWorkloadBreakdown" tabindex="-1" aria-labelledby="modalWorkloadBreakdownLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom pb-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="workload-avatar shadow-sm" id="wbModalAvatar" style="width: 46px; height: 46px; font-size: 17px; background: #e8f5e9; color: #166534; border: 2px solid #bbf7d0;"></div>
+                    <div>
+                        <div class="team-header-tag mb-0" style="color: #059669;">WORKLOAD CALCULATION BREAKDOWN</div>
+                        <h5 class="modal-title fw-bold text-dark mb-0" id="wbModalMemberName">Member Name</h5>
+                        <div class="text-muted" style="font-size: 12px;" id="wbModalDesignation">Designation</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Calculation Formula Banner -->
+                <div class="p-3 rounded-3 mb-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
+                        <span class="fw-bold text-dark" style="font-size: 13px;">
+                            <i class="bi bi-calculator me-1 text-success"></i> Workload Formula & Count Summary:
+                        </span>
+                        <span class="badge bg-success-subtle text-success px-2.5 py-1 rounded-pill fw-semibold" style="font-size: 11px;">
+                            Open Tasks = In Progress + Overdue
+                        </span>
+                    </div>
+
+                    <div class="row g-2 text-center mt-1">
+                        <div class="col-sm-4 col-12">
+                            <div class="p-2.5 rounded bg-white border h-100">
+                                <div class="text-muted text-uppercase fw-bold" style="font-size: 10px; letter-spacing: 0.5px;">In Progress Tasks</div>
+                                <div class="fw-bold text-warning-emphasis fs-4 my-1" id="wbModalInProgress">0</div>
+                                <div class="text-muted" style="font-size: 11px;">Status pending, &lt;100%</div>
+                            </div>
+                        </div>
+                        <div class="col-sm-4 col-12">
+                            <div class="p-2.5 rounded bg-white border h-100">
+                                <div class="text-muted text-uppercase fw-bold" style="font-size: 10px; letter-spacing: 0.5px;">Overdue Tasks</div>
+                                <div class="fw-bold text-danger fs-4 my-1" id="wbModalOverdue">0</div>
+                                <div class="text-muted" style="font-size: 11px;">Deadline passed, &lt;100%</div>
+                            </div>
+                        </div>
+                        <div class="col-sm-4 col-12">
+                            <div class="p-2.5 rounded bg-white border h-100" style="border-color: #10b981 !important; background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%) !important;">
+                                <div class="text-success text-uppercase fw-bold" style="font-size: 10px; letter-spacing: 0.5px;">Total Open Workload</div>
+                                <div class="fw-bold text-success fs-4 my-1" id="wbModalTotalOpen">0</div>
+                                <div class="text-success small fw-semibold" style="font-size: 11px;">Counted in Workload Balance</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-2.5 pt-2 border-top d-flex align-items-center justify-content-between text-muted small" style="font-size: 11.5px;">
+                        <span><i class="bi bi-check-circle me-1 text-success"></i> Completed tasks (<strong id="wbModalCompleted">0</strong>) are excluded from active workload.</span>
+                        <span>Total Assigned: <strong id="wbModalTotal">0</strong></span>
+                    </div>
+                </div>
+
+                <!-- Tasks Listing Header & Filter Tabs -->
+                <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
+                    <h6 class="fw-bold text-dark mb-0" style="font-size: 13.5px;">
+                        <i class="bi bi-list-task me-1 text-primary"></i> Detailed Task Breakdown
+                    </h6>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-secondary active py-0.5 px-2.5" id="wbFilterBtnOpen" onclick="filterWbModalTasks('open')">Open Tasks (<span id="wbTabOpenCount">0</span>)</button>
+                        <button type="button" class="btn btn-outline-secondary py-0.5 px-2.5" id="wbFilterBtnAll" onclick="filterWbModalTasks('all')">All Tasks (<span id="wbTabAllCount">0</span>)</button>
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div id="wbModalLoading" class="text-center py-4 text-muted">
+                    <div class="spinner-border spinner-border-sm text-success me-2" role="status"></div>
+                    Loading task details...
+                </div>
+
+                <!-- Tasks List -->
+                <div id="wbModalTasksList" style="display: none; max-height: 360px; overflow-y: auto;"></div>
+            </div>
+            <div class="modal-footer border-top bg-light py-2 px-4 d-flex justify-content-between align-items-center">
+                <span class="text-muted small">
+                    <i class="bi bi-info-circle me-1 text-primary"></i> Click any task's "Update" button to modify its progress.
+                </span>
+                <button type="button" class="btn btn-secondary btn-sm rounded-pill px-3" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================
      Right Offcanvas: Specific Member's Todo Tasks
      ======================================================================== -->
 <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasMemberTasks" aria-labelledby="offcanvasMemberTasksLabel" style="width: 580px; max-width: 95vw;">
@@ -1154,6 +1263,151 @@ function changeDeliveryTime(event, period) {
 
 let currentMemberEmpId = 0;
 let currentMemberEmpName = '';
+
+let currentWbMember = null;
+let currentWbTasks = [];
+let currentWbFilter = 'open';
+
+function openWorkloadFormulaInfo() {
+    alert("Workload Balance Calculation Formula:\n\n1. In Progress Tasks: Status is pending/in-progress with <100% progress and deadline has not passed.\n2. Overdue Tasks: Deadline has passed and task is <100% progress.\n\nTotal Open Tasks = In Progress + Overdue.\n\nCompleted tasks (100%) are excluded from the workload count.");
+}
+
+function openWorkloadBreakdown(wb) {
+    if (!wb) return;
+    currentWbMember = wb;
+    currentMemberEmpId = wb.employee_id;
+    currentMemberEmpName = wb.full_name || wb.name;
+
+    document.getElementById('wbModalAvatar').textContent = wb.initials || 'TM';
+    document.getElementById('wbModalMemberName').textContent = wb.full_name || wb.name;
+    document.getElementById('wbModalDesignation').textContent = wb.designation || 'Team Member';
+    document.getElementById('wbModalInProgress').textContent = wb.in_progress || 0;
+    document.getElementById('wbModalOverdue').textContent = wb.overdue || 0;
+    document.getElementById('wbModalTotalOpen').textContent = wb.open_tasks || 0;
+    document.getElementById('wbModalCompleted').textContent = wb.completed || 0;
+    document.getElementById('wbModalTotal').textContent = wb.total || 0;
+
+    const modalEl = document.getElementById('modalWorkloadBreakdown');
+    const bsModal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+    bsModal.show();
+
+    const loading = document.getElementById('wbModalLoading');
+    const list = document.getElementById('wbModalTasksList');
+    loading.style.display = 'block';
+    list.style.display = 'none';
+
+    fetch('<?= $GLOBALS['base_url'] ?>/team-performance/member/' + wb.employee_id + '<?= $projectFilter > 0 ? "?project_id=" . $projectFilter : "" ?>')
+        .then(res => res.json())
+        .then(data => {
+            loading.style.display = 'none';
+            list.style.display = 'block';
+
+            if (data.success && data.tasks) {
+                currentWbTasks = data.tasks;
+                renderWbModalTasks();
+            } else {
+                list.innerHTML = '<div class="text-center py-4 text-muted small">No task details found for this member.</div>';
+            }
+        })
+        .catch(err => {
+            loading.style.display = 'none';
+            list.style.display = 'block';
+            list.innerHTML = '<div class="alert alert-danger small mb-0">Failed to load member tasks.</div>';
+        });
+}
+
+function filterWbModalTasks(filterType) {
+    currentWbFilter = filterType;
+    document.getElementById('wbFilterBtnOpen').classList.toggle('active', filterType === 'open');
+    document.getElementById('wbFilterBtnAll').classList.toggle('active', filterType === 'all');
+    renderWbModalTasks();
+}
+
+function renderWbModalTasks() {
+    const list = document.getElementById('wbModalTasksList');
+    if (!list) return;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    let openCount = 0;
+    let allCount = currentWbTasks.length;
+
+    const taskItems = currentWbTasks.map(t => {
+        const isComp = (t.status === 'completed' || t.progress >= 100);
+        const isOverdue = !isComp && t.due_date_raw && t.due_date_raw < todayStr;
+        const isOpen = !isComp;
+        if (isOpen) openCount++;
+
+        return { ...t, isComp, isOverdue, isOpen };
+    });
+
+    document.getElementById('wbTabOpenCount').textContent = openCount;
+    document.getElementById('wbTabAllCount').textContent = allCount;
+
+    const filtered = taskItems.filter(t => currentWbFilter === 'all' ? true : t.isOpen);
+
+    if (filtered.length === 0) {
+        list.innerHTML = `
+            <div class="text-center py-4 text-muted">
+                <i class="bi bi-check-circle text-success fs-2 opacity-50 mb-1 d-block"></i>
+                <div class="fw-semibold">No ${currentWbFilter === 'open' ? 'open' : ''} tasks found</div>
+                <div class="small text-muted">${currentWbFilter === 'open' ? 'All assigned tasks for this member have been completed!' : 'No tasks recorded.'}</div>
+            </div>
+        `;
+        return;
+    }
+
+    let html = '<div class="list-group list-group-flush">';
+    filtered.forEach(t => {
+        const isTeam = t.is_team_project == 1;
+        const taskJson = JSON.stringify(t).replace(/"/g, '&quot;');
+
+        let statusBadge = '';
+        if (t.isComp) {
+            statusBadge = '<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5" style="font-size: 10.5px;"><i class="bi bi-check-circle-fill me-1"></i>Completed</span>';
+        } else if (t.isOverdue) {
+            statusBadge = '<span class="badge bg-danger text-white px-2 py-0.5" style="font-size: 10.5px;"><i class="bi bi-exclamation-triangle-fill me-1"></i>Overdue</span>';
+        } else {
+            statusBadge = '<span class="badge bg-warning-subtle text-dark border border-warning-subtle px-2 py-0.5" style="font-size: 10.5px;"><i class="bi bi-hourglass-split me-1"></i>In Progress</span>';
+        }
+
+        const prioBadge = t.priority === 1 ? '<span class="badge bg-danger-subtle text-danger py-0 px-1.5" style="font-size: 10px;">Urgent</span>' :
+                         (t.priority === 2 ? '<span class="badge bg-warning-subtle text-dark py-0 px-1.5" style="font-size: 10px;">High</span>' : '');
+
+        html += `
+            <div class="list-group-item px-2 py-2.5 border-bottom rounded mb-1" style="background: ${t.isOverdue ? '#fff5f5' : '#ffffff'};">
+                <div class="d-flex align-items-center justify-content-between mb-1 gap-2">
+                    <div class="d-flex align-items-center gap-1.5 flex-grow-1 text-truncate">
+                        ${prioBadge}
+                        <span class="fw-bold text-dark text-truncate" style="font-size: 13.5px; ${t.isComp ? 'text-decoration: line-through; opacity: 0.7;' : ''}">${t.title}</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                        ${statusBadge}
+                        <button type="button" class="btn btn-sm btn-light border py-0 px-2 rounded-pill ms-1 text-success fw-semibold" style="font-size: 11px;" onclick="editMemberTaskProgress(${taskJson})" title="Update task progress">
+                            <i class="bi bi-sliders me-1"></i> Update
+                        </button>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center justify-content-between text-muted" style="font-size: 11.5px;">
+                    <span>
+                        ${isTeam ? '<span class="badge bg-success-subtle text-success py-0 px-1 me-1"><i class="bi bi-people-fill me-1"></i>Team</span>' : '<i class="bi bi-folder2 text-secondary me-1"></i>'}
+                        ${t.project_name}
+                    </span>
+                    <span class="${t.isOverdue ? 'text-danger fw-bold' : ''}">
+                        <i class="bi bi-calendar3 me-1"></i> Due: ${t.due_date}
+                    </span>
+                </div>
+                <div class="d-flex align-items-center gap-2 mt-1.5">
+                    <div class="progress flex-grow-1" style="height: 6px; background: #e2e8f0; border-radius: 4px; cursor: pointer;" onclick="editMemberTaskProgress(${taskJson})" title="Click to update progress">
+                        <div class="progress-bar ${t.isComp ? 'bg-success' : (t.isOverdue ? 'bg-danger' : (t.progress >= 50 ? 'bg-success' : (t.progress > 0 ? 'bg-warning' : 'bg-secondary')))}" style="width: ${t.progress}%;"></div>
+                    </div>
+                    <span class="fw-bold text-dark" style="font-size: 11px; min-width: 32px; text-align: right;">${t.progress}%</span>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    list.innerHTML = html;
+}
 
 function openMemberTasksOffcanvas(empId, empName) {
     currentMemberEmpId = empId;
