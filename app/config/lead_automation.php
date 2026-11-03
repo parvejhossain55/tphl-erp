@@ -45,11 +45,14 @@ return [
     ],
 
     // ------------------------------------------------------------------------
-    // 3.1. Repibee WhatsApp Integration Configuration
+    // 3.1. Repibee WhatsApp Integration Configuration (Webhook + Merchant REST API)
     // ------------------------------------------------------------------------
     'repibee' => [
-        'enabled' => true,
-        'api_key' => $erpConfig['repibee_api_key'] ?? 'tphl_repibee_secret_key_2026_x89f2a',
+        'enabled'           => true,
+        'api_key'           => $erpConfig['repibee_api_key'] ?? 'tphl_repibee_secret_key_2026_x89f2a',
+        'merchant_api_url'  => $erpConfig['repibee_merchant_api_url'] ?? 'https://replibee.com/api/v1/merchant/leads',
+        'merchant_api_key'  => $erpConfig['repibee_merchant_api_key'] ?? 'api_0w3ZBwi1KacHoVFcMgqih7WojRJoFRnf',
+        'merchant_brand_id' => $erpConfig['repibee_brand_id'] ?? 'bac2dabb2f9bec01bb3b2efa55ff9266',
     ],
 
     // ------------------------------------------------------------------------

@@ -1181,27 +1181,42 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
 
         <div class="d-flex align-items-center gap-2 flex-wrap">
             <?php if ($canViewLiveSheet && !empty($sheet_url)): ?>
-                <a href="<?= htmlspecialchars($sheet_url) ?>" target="_blank" class="btn btn-outline-success btn-sm py-1 px-2 d-inline-flex align-items-center gap-1" style="font-size: 12px; font-weight: 600; height: 32px;" title="Open Google Sheet in new tab">
+                <a href="<?= htmlspecialchars($sheet_url) ?>" target="_blank" class="btn btn-outline-success btn-sm d-inline-flex align-items-center gap-1" style="font-size: 12px; font-weight: 600; height: 32px; padding: 0 10px; white-space: nowrap;" title="Open Google Sheet in new tab">
                     <span>Live Sheet</span> <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 10px;"></i>
                 </a>
             <?php endif; ?>
-            <a href="<?= $GLOBALS['base_url'] ?>/lead-automation/team-project-setup" id="btnTeamProjectSetup" class="btn btn-dark btn-sm px-3 fw-bold d-inline-flex align-items-center gap-2 text-decoration-none" style="height: 32px; background: #0f172a; border-color: #0f172a; color: #ffffff;" title="Manage Project Keywords & Monthly Team Round-Robin Allocations">
-                <i class="fa-solid fa-sliders"></i>
+            <a href="<?= $GLOBALS['base_url'] ?>/lead-automation/team-project-setup" id="btnTeamProjectSetup" class="btn btn-dark btn-sm fw-bold d-inline-flex align-items-center gap-1 text-decoration-none" style="height: 32px; padding: 0 11px; font-size: 12px; background: #0f172a; border-color: #0f172a; color: #ffffff; white-space: nowrap;" title="Manage Project Keywords & Monthly Team Round-Robin Allocations">
+                <i class="fa-solid fa-sliders" style="font-size: 11px;"></i>
                 <span>Team & Project Setup</span>
             </a>
-            <button id="btnScrape" class="btn btn-success btn-sm px-3 fw-bold d-inline-flex align-items-center gap-2" style="height: 32px;" onclick="triggerScrape()">
+            <button id="btnScrape" class="btn btn-success btn-sm fw-bold d-inline-flex align-items-center gap-1" style="height: 32px; padding: 0 11px; font-size: 12px; white-space: nowrap;" onclick="triggerScrape()">
                 <span id="btnScrapeSpinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
-                <i id="btnScrapeIcon" class="fa-solid fa-cloud-arrow-down"></i>
+                <i id="btnScrapeIcon" class="fa-solid fa-cloud-arrow-down" style="font-size: 11px;"></i>
                 <span>Sync Google Sheet</span>
             </button>
-            <button id="btnSyncBrochure" class="btn btn-primary btn-sm px-3 fw-bold d-inline-flex align-items-center gap-2" style="height: 32px; background: #2563eb; border-color: #2563eb;" onclick="triggerBrochureSync()" title="Sync Brochure leads from live website API">
+            <button id="btnSyncBrochure" class="btn btn-primary btn-sm fw-bold d-inline-flex align-items-center gap-1" style="height: 32px; padding: 0 11px; font-size: 12px; background: #2563eb; border-color: #2563eb; white-space: nowrap;" onclick="triggerBrochureSync()" title="Sync Brochure leads from live website API">
                 <span id="btnBrochureSpinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
-                <i id="btnBrochureIcon" class="fa-solid fa-file-arrow-down"></i>
+                <i id="btnBrochureIcon" class="fa-solid fa-file-arrow-down" style="font-size: 11px;"></i>
                 <span>Sync Brochure Leads</span>
+            </button>
+            <button id="btnSyncWhatsApp" class="btn btn-sm fw-bold d-inline-flex align-items-center gap-1 text-white" style="height: 32px; padding: 0 11px; font-size: 12px; background: #0d9488; border-color: #0d9488; white-space: nowrap;" onclick="triggerWhatsAppSync()" title="Fetch pending leads from whatsapp_leads_logs, skip duplicates smartly & sync into Leads table">
+                <span id="btnWhatsAppSpinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
+                <i id="btnWhatsAppIcon" class="fa-solid fa-arrows-rotate" style="font-size: 11px;"></i>
+                <span>Sync WhatsApp Leads</span>
+            </button>
+            <?php
+                $waPendingInit = (int)($whatsappLogsStats['pending'] ?? 0);
+                $waTotalInit   = (int)($whatsappLogsStats['total'] ?? 0);
+            ?>
+            <button id="btnOpenWhatsAppDrawer" class="btn btn-sm fw-bold d-inline-flex align-items-center gap-1" style="height: 32px; padding: 0 11px; font-size: 12px; background: #ecfdf5; border: 1px solid #10b981; color: #065f46; white-space: nowrap;" onclick="openWhatsAppLeadsDrawer()" title="Open WhatsApp Leads Staging Log Sidebar">
+                <i class="fa-brands fa-whatsapp" style="font-size: 14px; color: #16a34a;"></i>
+                <span>WhatsApp Leads</span>
+                <span id="waDrawerBtnBadge" class="badge rounded-pill" style="font-size: 10px; padding: 2px 7px; background: <?= $waPendingInit > 0 ? '#d97706' : '#10b981' ?>; color: #fff;">
+                    <?= $waPendingInit > 0 ? ($waPendingInit . ' pending') : $waTotalInit ?>
+                </span>
             </button>
         </div>
     </div>
-
     <!-- =========================================================================
          REPORTING PERIOD QUICK PILLS
          ========================================================================= -->
@@ -1835,6 +1850,504 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
     </div>
 </div>
 
+<!-- =========================================================================
+     RIGHT-TO-LEFT SLIDING SIDEBAR (50vw): WHATSAPP LEADS LOGS
+     ========================================================================= -->
+<style>
+    .wa-drawer-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.48);
+        backdrop-filter: blur(2px);
+        z-index: 1055;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.25s ease, visibility 0.25s ease;
+    }
+    .wa-drawer-backdrop.open {
+        opacity: 1;
+        visibility: visible;
+    }
+    .wa-leads-drawer {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 50vw;
+        min-width: 600px;
+        max-width: 100vw;
+        height: 100vh;
+        background: #f8fafc;
+        box-shadow: -12px 0 40px rgba(15, 23, 42, 0.22);
+        z-index: 1060;
+        display: flex;
+        flex-direction: column;
+        transform: translateX(102%);
+        transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+        border-left: 1px solid #e2e8f0;
+        font-family: inherit;
+    }
+    .wa-leads-drawer.open {
+        transform: translateX(0);
+    }
+    @media (max-width: 991px) {
+        .wa-leads-drawer {
+            width: 100vw;
+            min-width: 100vw;
+        }
+    }
+    .wa-drawer-header {
+        background: #ffffff;
+        padding: 14px 18px;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-shrink: 0;
+    }
+    .wa-drawer-title-wrap {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+    }
+    .wa-drawer-icon-box {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+        border: 1px solid #a7f3d0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #059669;
+        font-size: 19px;
+        flex-shrink: 0;
+    }
+    .wa-drawer-title-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: nowrap;
+    }
+    .wa-drawer-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0;
+        white-space: nowrap;
+    }
+    .wa-drawer-subtitle {
+        font-size: 11.5px;
+        color: #64748b;
+        margin-top: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .wa-drawer-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+    .wa-hdr-btn {
+        height: 32px;
+        padding: 0 11px;
+        font-size: 12px;
+        font-weight: 600;
+        border-radius: 7px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        white-space: nowrap;
+        flex-shrink: 0;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .wa-hdr-btn-sim {
+        background: #f0fdf4;
+        border: 1px solid #86efac;
+        color: #15803d;
+    }
+    .wa-hdr-btn-sim:hover {
+        background: #dcfce7;
+        border-color: #4ade80;
+    }
+    .wa-hdr-btn-sync {
+        background: #0d9488;
+        border: 1px solid #0d9488;
+        color: #ffffff;
+    }
+    .wa-hdr-btn-sync:hover {
+        background: #0f766e;
+        border-color: #0f766e;
+    }
+    .wa-hdr-btn-icon {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        border-radius: 7px;
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        color: #475569;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .wa-hdr-btn-icon:hover {
+        background: #f1f5f9;
+        color: #0f172a;
+        border-color: #94a3b8;
+    }
+    .wa-drawer-kpi-bar {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        padding: 12px 18px;
+        background: #ffffff;
+        border-bottom: 1px solid #e2e8f0;
+        flex-shrink: 0;
+    }
+    .wa-kpi-box {
+        border: 1px solid #e2e8f0;
+        border-radius: 9px;
+        padding: 9px 12px;
+        cursor: pointer;
+        background: #f8fafc;
+        transition: all 0.15s ease;
+        user-select: none;
+    }
+    .wa-kpi-box:hover {
+        border-color: #cbd5e1;
+        background: #f1f5f9;
+    }
+    .wa-kpi-box.active {
+        border-color: #0d9488;
+        background: #f0fdfa;
+        box-shadow: 0 0 0 1px #0d9488;
+    }
+    .wa-kpi-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 4px;
+        white-space: nowrap;
+    }
+    .wa-kpi-num {
+        font-size: 19px;
+        font-weight: 700;
+        color: #0f172a;
+        line-height: 1.25;
+        margin-top: 3px;
+    }
+    .wa-drawer-filters {
+        padding: 10px 18px;
+        background: #f1f5f9;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: nowrap;
+        flex-shrink: 0;
+    }
+    @media (max-width: 768px) {
+        .wa-drawer-filters {
+            flex-wrap: wrap;
+        }
+    }
+    .wa-filter-select {
+        height: 32px;
+        font-size: 12px;
+        border-radius: 7px;
+        border: 1px solid #cbd5e1;
+        background-color: #ffffff;
+        color: #1e293b;
+        padding: 0 26px 0 10px;
+        flex-shrink: 0;
+    }
+    .wa-search-wrap {
+        position: relative;
+        flex: 1 1 auto;
+        min-width: 150px;
+    }
+    .wa-search-icon {
+        position: absolute;
+        left: 11px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 12px;
+        color: #94a3b8;
+        pointer-events: none;
+        z-index: 2;
+    }
+    .wa-search-input {
+        width: 100%;
+        height: 32px;
+        font-size: 12px;
+        border-radius: 7px;
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        color: #0f172a;
+        padding: 0 10px 0 32px !important;
+        outline: none;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .wa-search-input:focus {
+        border-color: #0d9488;
+        box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.12);
+    }
+    .wa-reset-btn {
+        height: 32px;
+        padding: 0 12px;
+        font-size: 12px;
+        font-weight: 600;
+        border-radius: 7px;
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        color: #475569;
+        white-space: nowrap;
+        flex-shrink: 0;
+        cursor: pointer;
+    }
+    .wa-reset-btn:hover {
+        background: #e2e8f0;
+        color: #0f172a;
+    }
+    .wa-drawer-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 14px 18px;
+    }
+    .wa-log-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 13px 16px;
+        margin-bottom: 10px;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .wa-log-card:hover {
+        border-color: #cbd5e1;
+        box-shadow: 0 3px 10px rgba(15, 23, 42, 0.05);
+    }
+    .wa-log-card.status-pending {
+        border-left: 4px solid #f59e0b;
+    }
+    .wa-log-card.status-synced {
+        border-left: 4px solid #10b981;
+    }
+    .wa-log-card.status-duplicate_skipped {
+        border-left: 4px solid #6366f1;
+    }
+    .wa-log-card.status-invalid {
+        border-left: 4px solid #ef4444;
+    }
+    .wa-status-badge {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 9px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        white-space: nowrap;
+    }
+    .wa-status-pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
+    .wa-status-synced {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    .wa-status-duplicate_skipped {
+        background: #e0e7ff;
+        color: #3730a3;
+    }
+    .wa-status-invalid {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    .wa-detail-drawer-panel {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px dashed #e2e8f0;
+        font-size: 12px;
+    }
+    .wa-detail-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px 14px;
+        background: #f8fafc;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid #f1f5f9;
+    }
+    .wa-detail-item-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        color: #64748b;
+        font-weight: 600;
+    }
+    .wa-detail-item-val {
+        font-size: 12px;
+        color: #0f172a;
+        font-weight: 500;
+        word-break: break-word;
+    }
+    .wa-drawer-footer {
+        background: #ffffff;
+        border-top: 1px solid #e2e8f0;
+        padding: 10px 18px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-shrink: 0;
+        font-size: 12px;
+    }
+</style>
+
+<div id="whatsappDrawerBackdrop" class="wa-drawer-backdrop" onclick="closeWhatsAppLeadsDrawer()"></div>
+
+<aside id="whatsappLeadsDrawer" class="wa-leads-drawer" aria-hidden="true">
+    <!-- Drawer Header -->
+    <div class="wa-drawer-header">
+        <div class="wa-drawer-title-wrap">
+            <div class="wa-drawer-icon-box">
+                <i class="fa-brands fa-whatsapp"></i>
+            </div>
+            <div style="min-width: 0;">
+                <div class="wa-drawer-title-row">
+                    <h6 class="wa-drawer-title">WhatsApp Leads Log</h6>
+                    <span class="badge bg-light text-secondary border" style="font-size: 10px; font-weight: 600; padding: 2px 6px;">whatsapp_leads_logs</span>
+                </div>
+                <div class="wa-drawer-subtitle">Webhook + REST API Backup leads land here first · Inspect & sync to Leads</div>
+            </div>
+        </div>
+        <div class="wa-drawer-actions">
+            <?php if (in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1', 'localhost:8080'], true) || str_starts_with($_SERVER['HTTP_HOST'] ?? '', 'localhost') || str_starts_with($_SERVER['HTTP_HOST'] ?? '', '127.0.0.1')): ?>
+            <button type="button" id="btnSimulateWaWebhook" class="wa-hdr-btn wa-hdr-btn-sim" onclick="simulateWhatsAppWebhook()" title="Local Dev Only: Simulate 2 incoming Replibee WhatsApp webhook leads into whatsapp_leads_logs">
+                <i class="fa-solid fa-flask" style="font-size: 11px;"></i>
+                <span>+ Test Lead</span>
+            </button>
+            <?php endif; ?>
+            <button type="button" id="btnPullReplibeeApi" class="wa-hdr-btn wa-hdr-btn-sim" onclick="pullReplibeeApiToLogs()" title="Backup Plan: Pull recent leads from Replibee Merchant REST API into whatsapp_leads_logs (with duplicate check)">
+                <span id="btnPullApiSpinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
+                <i id="btnPullApiIcon" class="fa-solid fa-cloud-arrow-down" style="font-size: 11px;"></i>
+                <span>Pull REST API</span>
+            </button>
+            <button type="button" id="btnDrawerSyncWhatsApp" class="wa-hdr-btn wa-hdr-btn-sync" onclick="triggerWhatsAppSync()">
+                <span id="btnDrawerWaSpinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
+                <i id="btnDrawerWaIcon" class="fa-solid fa-arrows-rotate" style="font-size: 11px;"></i>
+                <span>Sync Pending</span>
+            </button>
+            <button type="button" class="wa-hdr-btn-icon" onclick="loadWhatsAppLogs()" title="Refresh logs">
+                <i class="fa-solid fa-rotate-right" style="font-size: 12px;"></i>
+            </button>
+            <button type="button" class="wa-hdr-btn-icon" onclick="closeWhatsAppLeadsDrawer()" title="Close sidebar">
+                <i class="fa-solid fa-xmark" style="font-size: 14px;"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Drawer KPI Summary Strip -->
+    <div class="wa-drawer-kpi-bar">
+        <div class="wa-kpi-box active" id="waKpiCardAll" onclick="setWaDrawerStatusFilter('all')">
+            <div class="wa-kpi-label">
+                <span>All Logs</span>
+                <i class="fa-solid fa-layer-group text-secondary"></i>
+            </div>
+            <div class="wa-kpi-num" id="waKpiTotal">0</div>
+        </div>
+        <div class="wa-kpi-box" id="waKpiCardPending" onclick="setWaDrawerStatusFilter('pending')">
+            <div class="wa-kpi-label">
+                <span>Pending Sync</span>
+                <i class="fa-regular fa-clock text-warning"></i>
+            </div>
+            <div class="wa-kpi-num text-warning" id="waKpiPending">0</div>
+        </div>
+        <div class="wa-kpi-box" id="waKpiCardSynced" onclick="setWaDrawerStatusFilter('synced')">
+            <div class="wa-kpi-label">
+                <span>Synced</span>
+                <i class="fa-solid fa-circle-check text-success"></i>
+            </div>
+            <div class="wa-kpi-num text-success" id="waKpiSynced">0</div>
+        </div>
+        <div class="wa-kpi-box" id="waKpiCardSkipped" onclick="setWaDrawerStatusFilter('duplicate_skipped')">
+            <div class="wa-kpi-label">
+                <span>Duplicates Skipped</span>
+                <i class="fa-solid fa-clone text-primary"></i>
+            </div>
+            <div class="wa-kpi-num" style="color: #4f46e5;" id="waKpiSkipped">0</div>
+        </div>
+    </div>
+
+    <!-- Drawer Filter Toolbar -->
+    <div class="wa-drawer-filters">
+        <select id="waFilterStatus" class="form-select form-select-sm wa-filter-select" style="width: 148px;" onchange="onWaDrawerFilterChange()">
+            <option value="all">All Statuses</option>
+            <option value="pending">⏳ Pending Sync</option>
+            <option value="synced">✅ Synced to Leads</option>
+            <option value="duplicate_skipped">🔁 Duplicate Skipped</option>
+            <option value="invalid">⚠️ Invalid / Empty</option>
+        </select>
+
+        <select id="waFilterDate" class="form-select form-select-sm wa-filter-select" style="width: 130px;" onchange="onWaDatePresetChange(this.value)">
+            <option value="all">All Time</option>
+            <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="7days">Last 7 Days</option>
+            <option value="custom">Custom Date</option>
+        </select>
+
+        <div id="waCustomDateWrap" class="d-none align-items-center gap-1" style="flex-shrink: 0;">
+            <input type="date" id="waStartDate" class="form-control form-control-sm" style="width: 118px; height: 32px; font-size: 11px;" onchange="onWaDrawerFilterChange()">
+            <span class="text-muted small">to</span>
+            <input type="date" id="waEndDate" class="form-control form-control-sm" style="width: 118px; height: 32px; font-size: 11px;" onchange="onWaDrawerFilterChange()">
+        </div>
+
+        <div class="wa-search-wrap">
+            <i class="fa-solid fa-magnifying-glass wa-search-icon"></i>
+            <input type="text" id="waSearchInput" class="wa-search-input" placeholder="Search name, phone, project, Q&A..." oninput="debounceWaSearch()">
+        </div>
+
+        <button type="button" class="wa-reset-btn" onclick="resetWaDrawerFilters()">
+            Reset
+        </button>
+    </div>
+
+    <!-- Drawer Scrollable Leads List -->
+    <div class="wa-drawer-body" id="waDrawerLeadsContainer">
+        <div class="text-center text-muted py-5">
+            <div class="spinner-border spinner-border-sm text-success me-2" role="status"></div>
+            <span>Loading WhatsApp leads logs...</span>
+        </div>
+    </div>
+
+    <!-- Drawer Footer Pagination -->
+    <div class="wa-drawer-footer">
+        <div class="text-muted" id="waDrawerPaginationSummary">Showing 0 leads</div>
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" style="height: 26px; font-size: 11px;" id="btnWaPrevPage" onclick="changeWaDrawerPage(-1)" disabled>
+                <i class="fa-solid fa-chevron-left" style="font-size: 10px;"></i> Prev
+            </button>
+            <span class="fw-semibold text-dark" id="waDrawerPageLabel">Page 1 of 1</span>
+            <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" style="height: 26px; font-size: 11px;" id="btnWaNextPage" onclick="changeWaDrawerPage(1)" disabled>
+                Next <i class="fa-solid fa-chevron-right" style="font-size: 10px;"></i>
+            </button>
+        </div>
+    </div>
+</aside>
 <!-- Toast Container -->
 <div id="toastContainer"></div>
 
@@ -2393,6 +2906,536 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
         }
     }
 
+    // =========================================================================
+    // WHATSAPP LEADS STAGING LOGS DRAWER & SYNC FUNCTIONS
+    // =========================================================================
+    let waDrawerPage = 1;
+    let waDrawerLimit = 50;
+    let waDrawerTotalPages = 1;
+    let waSearchTimer = null;
+    let waLogsCache = {};
+
+    function openWhatsAppLeadsDrawer() {
+        const drawer = document.getElementById('whatsappLeadsDrawer');
+        const backdrop = document.getElementById('whatsappDrawerBackdrop');
+        if (drawer && backdrop) {
+            drawer.classList.add('open');
+            backdrop.classList.add('open');
+            drawer.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+            loadWhatsAppLogs();
+        }
+    }
+
+    function closeWhatsAppLeadsDrawer() {
+        const drawer = document.getElementById('whatsappLeadsDrawer');
+        const backdrop = document.getElementById('whatsappDrawerBackdrop');
+        if (drawer && backdrop) {
+            drawer.classList.remove('open');
+            backdrop.classList.remove('open');
+            drawer.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+        }
+    }
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            const drawer = document.getElementById('whatsappLeadsDrawer');
+            if (drawer && drawer.classList.contains('open')) {
+                closeWhatsAppLeadsDrawer();
+            }
+        }
+    });
+
+    function setWaDrawerStatusFilter(status) {
+        const sel = document.getElementById('waFilterStatus');
+        if (sel) sel.value = status;
+        waDrawerPage = 1;
+        highlightWaKpiBox(status);
+        loadWhatsAppLogs();
+    }
+
+    function highlightWaKpiBox(status) {
+        document.querySelectorAll('.wa-kpi-box').forEach(b => b.classList.remove('active'));
+        if (status === 'pending') document.getElementById('waKpiCardPending')?.classList.add('active');
+        else if (status === 'synced') document.getElementById('waKpiCardSynced')?.classList.add('active');
+        else if (status === 'duplicate_skipped') document.getElementById('waKpiCardSkipped')?.classList.add('active');
+        else document.getElementById('waKpiCardAll')?.classList.add('active');
+    }
+
+    function onWaDatePresetChange(val) {
+        const wrap = document.getElementById('waCustomDateWrap');
+        if (val === 'custom') {
+            if (wrap) {
+                wrap.classList.remove('d-none');
+                wrap.classList.add('d-inline-flex');
+            }
+            const s = document.getElementById('waStartDate')?.value || '';
+            const e = document.getElementById('waEndDate')?.value || '';
+            if (!s && !e) return;
+        } else if (wrap) {
+            wrap.classList.remove('d-inline-flex');
+            wrap.classList.add('d-none');
+        }
+        waDrawerPage = 1;
+        loadWhatsAppLogs();
+    }
+
+    function onWaDrawerFilterChange() {
+        const st = document.getElementById('waFilterStatus')?.value || 'all';
+        highlightWaKpiBox(st);
+        waDrawerPage = 1;
+        loadWhatsAppLogs();
+    }
+
+    function debounceWaSearch() {
+        clearTimeout(waSearchTimer);
+        waSearchTimer = setTimeout(() => {
+            waDrawerPage = 1;
+            loadWhatsAppLogs();
+        }, 300);
+    }
+
+    function resetWaDrawerFilters() {
+        if (document.getElementById('waFilterStatus')) document.getElementById('waFilterStatus').value = 'all';
+        if (document.getElementById('waFilterDate')) document.getElementById('waFilterDate').value = 'all';
+        if (document.getElementById('waStartDate')) document.getElementById('waStartDate').value = '';
+        if (document.getElementById('waEndDate')) document.getElementById('waEndDate').value = '';
+        if (document.getElementById('waSearchInput')) document.getElementById('waSearchInput').value = '';
+        const wrap = document.getElementById('waCustomDateWrap');
+        if (wrap) {
+            wrap.classList.remove('d-inline-flex');
+            wrap.classList.add('d-none');
+        }
+        highlightWaKpiBox('all');
+        waDrawerPage = 1;
+        loadWhatsAppLogs();
+    }
+
+    function changeWaDrawerPage(dir) {
+        const next = waDrawerPage + dir;
+        if (next < 1 || next > waDrawerTotalPages) return;
+        waDrawerPage = next;
+        loadWhatsAppLogs();
+    }
+
+    function updateWaTopButtonBadge(globalPending, globalTotal) {
+        const badge = document.getElementById('waDrawerBtnBadge');
+        if (!badge) return;
+        const p = parseInt(globalPending || 0);
+        const t = parseInt(globalTotal || 0);
+        if (p > 0) {
+            badge.style.background = '#d97706';
+            badge.innerText = `${p} pending`;
+        } else {
+            badge.style.background = '#10b981';
+            badge.innerText = `${t}`;
+        }
+    }
+
+    async function loadWhatsAppLogs() {
+        const container = document.getElementById('waDrawerLeadsContainer');
+        if (!container) return;
+
+        const syncStatus = document.getElementById('waFilterStatus')?.value || 'all';
+        const dateFilter = document.getElementById('waFilterDate')?.value || 'all';
+        const startDate  = document.getElementById('waStartDate')?.value || '';
+        const endDate    = document.getElementById('waEndDate')?.value || '';
+        const search     = document.getElementById('waSearchInput')?.value.trim() || '';
+
+        container.innerHTML = `
+            <div class="text-center text-muted py-5">
+                <div class="spinner-border spinner-border-sm text-success me-2" role="status"></div>
+                <span>Fetching WhatsApp leads from staging logs...</span>
+            </div>
+        `;
+
+        const params = new URLSearchParams({
+            sync_status : syncStatus,
+            date_filter : dateFilter,
+            start_date  : startDate,
+            end_date    : endDate,
+            search      : search,
+            page        : waDrawerPage,
+            limit       : waDrawerLimit,
+            _t          : Date.now()
+        });
+
+        try {
+            const response = await fetch(`${baseUrl}/lead-automation/whatsapp-logs?${params.toString()}`, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            });
+            const res = await response.json();
+
+            if (res.status !== 'success') {
+                container.innerHTML = `<div class="alert alert-danger m-2 small">${escapeHtml(res.message || 'Failed to load logs')}</div>`;
+                return;
+            }
+
+            const stats = res.stats || {};
+            if (document.getElementById('waKpiTotal')) document.getElementById('waKpiTotal').innerText = parseInt(stats.total || 0).toLocaleString();
+            if (document.getElementById('waKpiPending')) document.getElementById('waKpiPending').innerText = parseInt(stats.pending || 0).toLocaleString();
+            if (document.getElementById('waKpiSynced')) document.getElementById('waKpiSynced').innerText = parseInt(stats.synced || 0).toLocaleString();
+            if (document.getElementById('waKpiSkipped')) document.getElementById('waKpiSkipped').innerText = parseInt(stats.duplicate_skipped || 0).toLocaleString();
+
+            updateWaTopButtonBadge(stats.global_pending, stats.global_total);
+
+            const pag = res.pagination || {};
+            waDrawerTotalPages = Math.max(1, parseInt(pag.pages || 1));
+            const totalFiltered = parseInt(pag.total || 0);
+
+            if (document.getElementById('waDrawerPaginationSummary')) {
+                document.getElementById('waDrawerPaginationSummary').innerText = `Showing ${(res.logs || []).length} of ${totalFiltered} lead log(s)`;
+            }
+            if (document.getElementById('waDrawerPageLabel')) {
+                document.getElementById('waDrawerPageLabel').innerText = `Page ${waDrawerPage} of ${waDrawerTotalPages}`;
+            }
+            if (document.getElementById('btnWaPrevPage')) {
+                document.getElementById('btnWaPrevPage').disabled = (waDrawerPage <= 1);
+            }
+            if (document.getElementById('btnWaNextPage')) {
+                document.getElementById('btnWaNextPage').disabled = (waDrawerPage >= waDrawerTotalPages);
+            }
+
+            renderWhatsAppLogsList(res.logs || []);
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger m-2 small">Network error loading WhatsApp logs: ${escapeHtml(err.message)}</div>`;
+        }
+    }
+
+    function renderWhatsAppLogsList(logs) {
+        const container = document.getElementById('waDrawerLeadsContainer');
+        if (!container) return;
+
+        if (!logs || logs.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-5 my-3 bg-white rounded-3 border">
+                    <i class="fa-brands fa-whatsapp text-muted mb-2" style="font-size: 32px; opacity: 0.45;"></i>
+                    <div class="fw-bold text-dark" style="font-size: 14px;">No WhatsApp Leads Found</div>
+                    <div class="text-muted small mt-1">No webhook logs match the current filter criteria.</div>
+                </div>
+            `;
+            return;
+        }
+
+        waLogsCache = {};
+        logs.forEach(item => { waLogsCache[item.id] = item; });
+
+        container.innerHTML = logs.map(item => {
+            const st = item.sync_status || 'pending';
+            let statusBadge = '';
+            if (st === 'pending') {
+                statusBadge = `<span class="wa-status-badge wa-status-pending"><i class="fa-regular fa-clock"></i> Pending Sync</span>`;
+            } else if (st === 'synced') {
+                statusBadge = `<span class="wa-status-badge wa-status-synced"><i class="fa-solid fa-check"></i> Synced${item.synced_lead_id ? ' · #LD-' + item.synced_lead_id : ''}</span>`;
+            } else if (st === 'duplicate_skipped') {
+                statusBadge = `<span class="wa-status-badge wa-status-duplicate_skipped"><i class="fa-solid fa-clone"></i> Duplicate Skipped</span>`;
+            } else {
+                statusBadge = `<span class="wa-status-badge wa-status-invalid"><i class="fa-solid fa-triangle-exclamation"></i> Invalid</span>`;
+            }
+
+            const phoneStr = item.phone_number || 'No Phone';
+            const cleanWaDigits = phoneStr.replace(/[^0-9]/g, '');
+            const waChatNumber = cleanWaDigits.startsWith('01') ? ('88' + cleanWaDigits) : cleanWaDigits;
+
+            const projectBadge = item.project_name
+                ? `<span class="badge bg-emerald-subtle text-success border border-success-subtle" style="font-size: 11px; background: #ecfdf5; color: #047857;">${escapeHtml(item.project_name)}</span>`
+                : `<span class="badge bg-light text-secondary border" style="font-size: 11px;">Common (Unmatched)</span>`;
+
+            const teamBadge = item.team_name
+                ? `<span class="badge bg-light text-dark border" style="font-size: 11px;"><i class="fa-solid fa-users text-muted me-1"></i>${escapeHtml(item.team_name)}</span>`
+                : '';
+
+            let actionBtn = '';
+            if (st === 'pending') {
+                actionBtn = `
+                    <button type="button" class="btn btn-sm fw-bold text-white py-0 px-2" style="background: #0d9488; font-size: 11px; height: 26px;" onclick="syncSingleWhatsAppLog(${item.id}, false)">
+                        <i class="fa-solid fa-cloud-arrow-up me-1"></i>Sync Now
+                    </button>
+                `;
+            } else if (st === 'duplicate_skipped') {
+                actionBtn = `
+                    <button type="button" class="btn btn-outline-primary btn-sm fw-semibold py-0 px-2" style="font-size: 11px; height: 26px;" onclick="syncSingleWhatsAppLog(${item.id}, true)" title="Force insert into Leads table even though phone/project matched an existing lead">
+                        <i class="fa-solid fa-bolt me-1"></i>Force Sync
+                    </button>
+                `;
+            }
+
+            const qaList = Array.isArray(item.qa_parsed) ? item.qa_parsed : [];
+            const qaHtml = qaList.length > 0
+                ? `<div class="mt-2 p-2 rounded bg-white border">
+                        <div class="wa-detail-item-label mb-1"><i class="fa-solid fa-comments text-success me-1"></i>Chatbot Q&A Responses (${qaList.length})</div>
+                        ${qaList.map(qa => `
+                            <div class="d-flex justify-content-between gap-2 py-1 border-bottom" style="font-size: 11.5px;">
+                                <span class="text-muted">${escapeHtml(qa.question || '')}</span>
+                                <span class="fw-semibold text-dark text-end">${escapeHtml(qa.answer || '')}</span>
+                            </div>
+                        `).join('')}
+                   </div>`
+                : '';
+
+            return `
+                <div class="wa-log-card status-${escapeHtml(st)}" id="waLogCard-${item.id}">
+                    <div class="d-flex align-items-start justify-content-between gap-2 flex-wrap">
+                        <div>
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span class="text-muted fw-bold" style="font-size: 11px;">#WL-${item.id}</span>
+                                ${item.ingest_source === 'rest_api'
+                                    ? '<span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25" style="font-size: 10px; font-weight: 600;"><i class="fa-solid fa-cloud-arrow-down me-1"></i>REST API</span>'
+                                    : '<span class="badge bg-secondary bg-opacity-10 text-secondary border" style="font-size: 10px; font-weight: 600;"><i class="fa-solid fa-satellite-dish me-1"></i>Webhook</span>'}
+                                <span class="fw-bold text-dark" style="font-size: 14px;">${escapeHtml(item.full_name || 'WhatsApp Lead')}</span>
+                                ${statusBadge}
+                            </div>
+                            <div class="d-flex align-items-center gap-3 mt-1 flex-wrap" style="font-size: 12px;">
+                                <span class="fw-semibold text-dark">
+                                    <i class="fa-solid fa-phone text-success me-1" style="font-size: 11px;"></i>${escapeHtml(phoneStr)}
+                                </span>
+                                ${cleanWaDigits.length >= 10 ? `
+                                    <a href="https://wa.me/${waChatNumber}" target="_blank" class="text-success text-decoration-none small fw-semibold" title="Chat on WhatsApp">
+                                        <i class="fa-brands fa-whatsapp"></i> Chat
+                                    </a>
+                                ` : ''}
+                                ${item.email ? `<span class="text-muted"><i class="fa-regular fa-envelope me-1"></i>${escapeHtml(item.email)}</span>` : ''}
+                                ${item.city ? `<span class="text-muted"><i class="fa-solid fa-location-dot me-1"></i>${escapeHtml(item.city)}</span>` : ''}
+                            </div>
+                        </div>
+
+                        <div class="text-end">
+                            <div class="text-muted" style="font-size: 11px;">
+                                <i class="fa-regular fa-calendar me-1"></i>${formatDate(item.created_at)} · ${formatTime(item.created_at)}
+                            </div>
+                            <div class="d-flex align-items-center justify-content-end gap-1 mt-1">
+                                ${actionBtn}
+                                <button type="button" class="btn btn-light border btn-sm py-0 px-2 text-dark" style="font-size: 11px; height: 26px;" onclick="toggleWaLogDetails(${item.id})">
+                                    <i class="fa-solid fa-circle-info text-secondary me-1"></i>Details
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex align-items-center justify-content-between gap-2 mt-2 pt-2 border-top flex-wrap" style="font-size: 11.5px;">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <span class="text-muted">Campaign: <strong class="text-dark">${escapeHtml(item.campaign_name || 'N/A')}</strong></span>
+                            ${projectBadge}
+                            ${teamBadge}
+                        </div>
+                        ${item.sync_note ? `<div class="text-muted small"><em>${escapeHtml(item.sync_note)}</em></div>` : ''}
+                    </div>
+
+                    <!-- Expandable Full Details Panel -->
+                    <div id="waLogDetails-${item.id}" class="wa-detail-drawer-panel d-none">
+                        <div class="wa-detail-grid">
+                            <div>
+                                <div class="wa-detail-item-label">Campaign Name</div>
+                                <div class="wa-detail-item-val">${escapeHtml(item.campaign_name || '—')}</div>
+                            </div>
+                            <div>
+                                <div class="wa-detail-item-label">Project Interest / Source Page</div>
+                                <div class="wa-detail-item-val">${escapeHtml(item.project_interest || '—')} (${escapeHtml(item.source_page || 'Webhook')})</div>
+                            </div>
+                            <div>
+                                <div class="wa-detail-item-label">Apartment / Shop Size</div>
+                                <div class="wa-detail-item-val">${escapeHtml(item.which_apartment_size_are_you_interested_in || '—')}</div>
+                            </div>
+                            <div>
+                                <div class="wa-detail-item-label">Preferred Floor</div>
+                                <div class="wa-detail-item-val">${escapeHtml(item.which_floor_are_you_for_shop || '—')}</div>
+                            </div>
+                            <div>
+                                <div class="wa-detail-item-label">When Planning to Buy</div>
+                                <div class="wa-detail-item-val">${escapeHtml(item.when_are_you_planning_to_buy || '—')}</div>
+                            </div>
+                            <div>
+                                <div class="wa-detail-item-label">Schedule Site Visit</div>
+                                <div class="wa-detail-item-val">${escapeHtml(item.would_you_like_to_schedule_a_site_visit || '—')}</div>
+                            </div>
+                            <div>
+                                <div class="wa-detail-item-label">Best Time to Contact</div>
+                                <div class="wa-detail-item-val">${escapeHtml(item.when_is_the_best_time_to_contact_you || '—')}</div>
+                            </div>
+                            <div>
+                                <div class="wa-detail-item-label">Address / Location</div>
+                                <div class="wa-detail-item-val">${escapeHtml(item.address || item.city || '—')}</div>
+                            </div>
+                        </div>
+                        ${qaHtml}
+                        ${item.raw_payload ? `
+                            <div class="mt-2">
+                                <a href="javascript:void(0)" class="text-secondary text-decoration-none" style="font-size: 11px;" onclick="document.getElementById('waRawJson-${item.id}').classList.toggle('d-none')">
+                                    <i class="fa-solid fa-code me-1"></i>Toggle Raw Webhook JSON Payload
+                                </a>
+                                <pre id="waRawJson-${item.id}" class="d-none mt-1 p-2 rounded bg-dark text-light mb-0" style="font-size: 10.5px; max-height: 180px; overflow: auto;">${escapeHtml(item.raw_payload)}</pre>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function toggleWaLogDetails(logId) {
+        const el = document.getElementById(`waLogDetails-${logId}`);
+        if (el) el.classList.toggle('d-none');
+    }
+
+    async function triggerWhatsAppSync() {
+        const btnTop = document.getElementById('btnSyncWhatsApp');
+        const spinTop = document.getElementById('btnWhatsAppSpinner');
+        const iconTop = document.getElementById('btnWhatsAppIcon');
+
+        const btnDrawer = document.getElementById('btnDrawerSyncWhatsApp');
+        const spinDrawer = document.getElementById('btnDrawerWaSpinner');
+        const iconDrawer = document.getElementById('btnDrawerWaIcon');
+
+        if (btnTop) btnTop.disabled = true;
+        if (spinTop) spinTop.classList.remove('d-none');
+        if (iconTop) iconTop.classList.add('d-none');
+
+        if (btnDrawer) btnDrawer.disabled = true;
+        if (spinDrawer) spinDrawer.classList.remove('d-none');
+        if (iconDrawer) iconDrawer.classList.add('d-none');
+
+        try {
+            const response = await fetch(`${baseUrl}/lead-automation/sync-whatsapp`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({})
+            });
+
+            const res = await response.json();
+
+            if (res.status === 'success') {
+                showLeadToast(res.message, 'success');
+                updateWaTopButtonBadge(res.global_pending, res.global_total);
+                loadPlatformStats();
+                loadLeads();
+                const drawer = document.getElementById('whatsappLeadsDrawer');
+                if (drawer && drawer.classList.contains('open')) {
+                    loadWhatsAppLogs();
+                }
+            } else {
+                showLeadToast('WhatsApp Sync Failed: ' + (res.message || 'Unknown error'), 'error');
+            }
+        } catch (err) {
+            showLeadToast('Network error while syncing WhatsApp leads: ' + err.message, 'error');
+        } finally {
+            if (btnTop) btnTop.disabled = false;
+            if (spinTop) spinTop.classList.add('d-none');
+            if (iconTop) iconTop.classList.remove('d-none');
+
+            if (btnDrawer) btnDrawer.disabled = false;
+            if (spinDrawer) spinDrawer.classList.add('d-none');
+            if (iconDrawer) iconDrawer.classList.remove('d-none');
+        }
+    }
+
+    async function pullReplibeeApiToLogs() {
+        const btn = document.getElementById('btnPullReplibeeApi');
+        const spin = document.getElementById('btnPullApiSpinner');
+        const icon = document.getElementById('btnPullApiIcon');
+        const dateFilterEl = document.getElementById('waFilterDate');
+        const selectedDateFilter = (dateFilterEl && dateFilterEl.value && dateFilterEl.value !== 'all') ? dateFilterEl.value : 'today';
+
+        if (btn) btn.disabled = true;
+        if (spin) spin.classList.remove('d-none');
+        if (icon) icon.classList.add('d-none');
+
+        try {
+            const response = await fetch(`${baseUrl}/lead-automation/fetch-whatsapp-api`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    date_filter: selectedDateFilter
+                })
+            });
+            const res = await response.json();
+            if (res.status === 'success') {
+                showLeadToast(res.message, 'success');
+                updateWaTopButtonBadge(res.global_pending, res.global_total);
+                loadWhatsAppLogs();
+            } else {
+                showLeadToast(res.message || 'Replibee REST API pull failed', 'error');
+            }
+        } catch (err) {
+            showLeadToast('Network error while pulling Replibee REST API: ' + err.message, 'error');
+        } finally {
+            if (btn) btn.disabled = false;
+            if (spin) spin.classList.add('d-none');
+            if (icon) icon.classList.remove('d-none');
+        }
+    }
+
+    async function simulateWhatsAppWebhook() {
+        const btn = document.getElementById('btnSimulateWaWebhook');
+        if (btn) btn.disabled = true;
+        try {
+            const response = await fetch(`${baseUrl}/lead-automation/simulate-whatsapp-webhook`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            });
+            const res = await response.json();
+            if (res.status === 'success') {
+                showLeadToast(res.message, 'success');
+                updateWaTopButtonBadge(res.global_pending, res.global_total);
+                loadWhatsAppLogs();
+            } else {
+                showLeadToast(res.message || 'Simulation error', 'error');
+            }
+        } catch (err) {
+            showLeadToast('Network error: ' + err.message, 'error');
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
+
+    async function syncSingleWhatsAppLog(logId, forceDuplicate = false) {
+        if (forceDuplicate && !confirm(`Force sync log #WL-${logId} into Leads table even though it matched an existing duplicate lead?`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`${baseUrl}/lead-automation/sync-whatsapp`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    log_ids: [logId],
+                    force_duplicate: forceDuplicate
+                })
+            });
+
+            const res = await response.json();
+            if (res.status === 'success') {
+                showLeadToast(res.message, 'success');
+                updateWaTopButtonBadge(res.global_pending, res.global_total);
+                loadWhatsAppLogs();
+                loadPlatformStats();
+                loadLeads();
+            } else {
+                showLeadToast('Sync Failed: ' + (res.message || 'Unknown error'), 'error');
+            }
+        } catch (err) {
+            showLeadToast('Network error: ' + err.message, 'error');
+        }
+    }
     function setTabFilter(status) {
         currentTabStatus = status;
         currentPage = 1;
@@ -2689,6 +3732,13 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
                     <td>
                         <div class="fw-semibold ${isProjectUnassigned ? 'text-secondary' : 'text-dark'}">${escapeHtml(projectName)}</div>
                         <div class="text-muted small">${escapeHtml(lead.city || 'Dhaka')}</div>
+                        ${lead.which_apartment_size_are_you_interested_in ? `
+                            <div class="mt-1">
+                                <span class="badge bg-light text-dark border" style="font-size: 10.5px; font-weight: 600;" title="Interested Apartment / Shop Size">
+                                    <i class="fa-solid fa-ruler-combined text-success me-1"></i>${escapeHtml(lead.which_apartment_size_are_you_interested_in)}
+                                </span>
+                            </div>
+                        ` : ''}
                     </td>
                     <td>
                         <div class="fw-semibold text-dark text-truncate" style="max-width: 200px;" title="${escapeHtml(lead.campaign_name || '')}">
