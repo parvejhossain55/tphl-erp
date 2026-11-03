@@ -96,25 +96,24 @@ $_selectedProject = !empty($selectedProject) ? $selectedProject : ($_GET['payrol
                     </div>
                 </div>
 
-                <!-- Meal Project (Tracker) -->
-                <div class="col-xl-2 col-md-4">
-                    <label class="form-label fw-semibold text-muted mb-1" for="mealProject">Meal Project</label>
-                    <select class="form-select w-100" name="meal_project_id" id="mealProject">
-                        <?php if (!empty($activeMealProject) && empty($_GET['meal_project_id'])): ?>
-                            <option value="">Auto: <?= htmlspecialchars($activeMealProject['name']) ?></option>
+                <input type="hidden" name="meal_project_id" id="mealProjectInput" value="<?= htmlspecialchars($selectedMealProjectId ?? '') ?>">
+
+                <!-- Linked Meal Tracker (Auto-linked) -->
+                <div class="col-xl-3 col-md-4">
+                    <label class="form-label fw-semibold text-muted mb-1"><i class="fa-solid fa-utensils me-1 text-primary"></i> Linked Meal Tracker</label>
+                    <div class="d-flex align-items-center" style="height: 38px;">
+                        <?php if (!empty($activeMealProject)): ?>
+                            <div class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 text-truncate w-100 fs-13 text-start d-flex align-items-center justify-content-between" title="Auto-linked Meal Project: <?= htmlspecialchars($activeMealProject['name']) ?> (<?= date('d M', strtotime($activeMealProject['from_date'])) ?> - <?= date('d M Y', strtotime($activeMealProject['to_date'])) ?>)">
+                                <span class="text-truncate fw-semibold"><i class="fa-solid fa-circle-check me-1"></i> <?= htmlspecialchars($activeMealProject['name']) ?></span>
+                                <span class="badge bg-success text-white ms-2" style="font-size: 10px;">Linked</span>
+                            </div>
                         <?php else: ?>
-                            <option value="">Select Meal Project</option>
+                            <div class="badge bg-light text-muted border px-3 py-2 text-truncate w-100 fs-13 text-start d-flex align-items-center justify-content-between" title="No Meal Tracker matched for this cycle">
+                                <span class="text-truncate"><i class="fa-solid fa-circle-info me-1"></i> No Meal Tracker Linked</span>
+                                <span class="badge bg-secondary text-white ms-2" style="font-size: 10px;">None</span>
+                            </div>
                         <?php endif; ?>
-                        <?php if (!empty($meal_projects)): ?>
-                            <?php foreach ($meal_projects as $mp): ?>
-                                <option value="<?= htmlspecialchars($mp['id']) ?>"
-                                    data-standard="<?= htmlspecialchars($mp['standard_meal_amount'] ?? '120') ?>"
-                                    <?= (!empty($selectedMealProjectId) && $selectedMealProjectId == $mp['id']) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($mp['name']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </select>
+                    </div>
                 </div>
 
                 <!-- Search Button -->
@@ -208,13 +207,6 @@ $_selectedProject = !empty($selectedProject) ? $selectedProject : ($_GET['payrol
             setTimeout(() => document.getElementById('workspaceFilterForm').submit(), 50);
         });
     }
-
-    const mealProjectSelect = document.getElementById('mealProject');
-    if (mealProjectSelect) {
-        mealProjectSelect.addEventListener('change', function () {
-            setTimeout(() => document.getElementById('workspaceFilterForm').submit(), 50);
-        });
-    }
 })();
 </script>
 
@@ -263,22 +255,6 @@ $_selectedProject = !empty($selectedProject) ? $selectedProject : ($_GET['payrol
                             <label class="form-label" style="font-weight: 600;">End Date <span class="text-danger">*</span></label>
                             <input type="date" name="end_date" id="createProjectEnd" class="form-control">
                         </div>
-                    </div>
-
-                    <!-- Link Meal Project (Optional) -->
-                    <div class="form__group mb-3">
-                        <label class="form-label" style="font-weight: 600;">Link Meal Project <span class="text-muted">(Optional)</span></label>
-                        <select name="meal_project_id" class="form-select">
-                            <option value="">-- None / Standalone --</option>
-                            <?php if (!empty($meal_projects)): ?>
-                                <?php foreach ($meal_projects as $mp): ?>
-                                    <option value="<?= htmlspecialchars($mp['id']) ?>" <?= (!empty($activeMealProject) && $activeMealProject['id'] == $mp['id']) ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($mp['name']) ?> (<?= date('d M', strtotime($mp['from_date'])) ?> - <?= date('d M Y', strtotime($mp['to_date'])) ?>)
-                                    </option>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </select>
-                        <small class="text-muted">Link an already created Meal Tracker cycle with this payroll project.</small>
                     </div>
 
                     <script>

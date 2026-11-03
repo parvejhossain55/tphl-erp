@@ -1811,17 +1811,6 @@ class LeadController extends Controller
             exit;
         }
 
-        if ($lead['last_lead_action'] === 'booked') {
-            if ($isAjax) {
-                header('Content-Type: application/json');
-                echo json_encode(['success' => false, 'message' => 'Action cannot be changed because this lead is already booked.']);
-                exit;
-            }
-            setError("Action cannot be changed because this lead is already booked.");
-            header("Location: " . $_SERVER['HTTP_REFERER']);
-            exit;
-        }
-
         //  Update the lead action
         try {
             $stmtUpdate = $this->db->prepare("UPDATE leads SET last_lead_action = ? WHERE id = ?");

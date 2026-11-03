@@ -837,8 +837,13 @@ public function getExecutiveFullStats($executiveId = null, $startDate = null, $e
         if (!empty($customFromDate) && !empty($customToDate)) {
             $startDate = $customFromDate;
             $endDate = $customToDate;
-            $targetStartMonth = date('Y-m-01', strtotime($startDate));
-            $targetEndMonth = date('Y-m-01', strtotime($endDate));
+            if (date('j', strtotime($startDate)) == 26 && date('j', strtotime($endDate)) == 25) {
+                $targetStartMonth = date('Y-m-01', strtotime($endDate));
+                $targetEndMonth = date('Y-m-01', strtotime($endDate));
+            } else {
+                $targetStartMonth = !empty($year) && !empty($startMonth) ? sprintf('%04d-%02d-01', $year, $startMonth) : date('Y-m-01', strtotime($startDate));
+                $targetEndMonth = !empty($year) && !empty($endMonth) ? sprintf('%04d-%02d-01', $year, $endMonth) : date('Y-m-01', strtotime($endDate));
+            }
         } elseif ($year === null && $startMonth === null) {
             // All Time
             $startDate = '1970-01-01';

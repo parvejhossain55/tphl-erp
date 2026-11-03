@@ -217,6 +217,22 @@ class MealTrackerController extends Controller
             }
         }
 
+        // Auto-link matching Payroll Project by date range if not specified
+        if (empty($payrollProjectId) && !empty($fromDate) && !empty($toDate)) {
+            $escFD = $this->db->real_escape_string($fromDate);
+            $escTD = $this->db->real_escape_string($toDate);
+            $pMatch = $this->db->query("
+                SELECT id FROM payroll_projects 
+                WHERE (start_date = '$escFD' AND end_date = '$escTD')
+                   OR (is_custom_date = 0 AND date = SUBSTRING('$escFD', 1, 7))
+                   OR (start_date <= '$escTD' AND end_date >= '$escFD')
+                ORDER BY (start_date = '$escFD' AND end_date = '$escTD') DESC, id DESC LIMIT 1
+            ");
+            if ($pMatch && $pRow = $pMatch->fetch_assoc()) {
+                $payrollProjectId = (int)$pRow['id'];
+            }
+        }
+
         $newId = $this->mealProjectModel->create([
             'name' => $name,
             'standard_meal_amount' => $standardAmount > 0 ? $standardAmount : 120.00,

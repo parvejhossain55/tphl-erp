@@ -312,7 +312,7 @@
                 <span class="badge bg-primary px-3 py-2" style="font-size: 0.8rem; border-radius: 6px;">
                     <i class="fa-solid fa-calendar-check me-1"></i> <?= htmlspecialchars($titlePeriod) ?>
                 </span>
-                <a href="<?= $GLOBALS['base_url'] ?>/my-dashboard?preset=all_time" class="btn btn-sm btn-outline-secondary" style="border-radius: 6px;">
+                <a href="<?= $GLOBALS['base_url'] ?>/my-dashboard" class="btn btn-sm btn-outline-secondary" style="border-radius: 6px;">
                     <i class="fa-solid fa-rotate-left me-1"></i> Reset
                 </a>
             </div>
@@ -343,7 +343,7 @@
                 </a>
 
                 <a href="<?= $GLOBALS['base_url'] ?>/my-dashboard?preset=all_time"
-                    class="btn btn-sm <?= empty($hasFilter) || ($activePreset ?? '') === 'all_time' ? 'btn-primary text-white shadow-xs' : 'btn-outline-secondary' ?>"
+                    class="btn btn-sm <?= ($activePreset ?? '') === 'all_time' ? 'btn-primary text-white shadow-xs' : 'btn-outline-secondary' ?>"
                     style="border-radius: 6px; font-weight: 600; font-size: 11.5px; padding: 5px 12px;">
                     <i class="fa-solid fa-infinity me-1"></i> All Time
                 </a>
@@ -377,7 +377,7 @@
                         <i class="fa-solid fa-sliders me-1"></i> Month / Year
                     </button>
                     <?php if (!empty($hasFilter)): ?>
-                        <a href="<?= $GLOBALS['base_url'] ?>/my-dashboard?preset=all_time" class="btn btn-sm btn-outline-danger" 
+                        <a href="<?= $GLOBALS['base_url'] ?>/my-dashboard" class="btn btn-sm btn-outline-danger" 
                            style="border-radius: 6px; font-size: 11.5px; height: 31px;" title="Reset all filters">
                             <i class="fa-solid fa-rotate-left me-1"></i> Reset
                         </a>
@@ -702,7 +702,7 @@
 
         <!-- 14. Period / Current Month Booking -->
         <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
-            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter_card=booked<?= !empty($leadQueryDate) ? '&' . $leadQueryDate : '' ?>" class="stat-card-link">
+            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter_card=booked<?= !empty($leadQueryDate) ? '&' . $leadQueryDate : (!empty($cycleBkStart) ? '&from_date=' . $cycleBkStart . '&to_date=' . $cycleBkEnd . '&date_type=lead_date' : '') ?>" class="stat-card-link">
                 <div class="stat-card accent-violet shadow-xs h-100">
                     <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
                     <div class="d-flex justify-content-between align-items-center w-100">
@@ -720,7 +720,7 @@
                                     </span>
                                 <?php endif; ?>
                             </div>
-                            <span class="card-hint">Booked in <?= htmlspecialchars($titlePeriod) ?> &rarr;</span>
+                            <span class="card-hint"><?= !empty($hasFilter) ? 'Booked in ' . htmlspecialchars($titlePeriod) : 'Booked in Current Month (' . (!empty($cycleBkStart) ? date('d M', strtotime($cycleBkStart)) . ' - ' . date('d M', strtotime($cycleBkEnd)) : '') . ')' ?> &rarr;</span>
                         </div>
                         <div class="stat-icon-badge"><i class="fa-solid fa-file-signature"></i></div>
                     </div>
@@ -749,7 +749,7 @@
 
         <!-- 16. Period / This Month Visited -->
         <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
-            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?last_action=visited<?= !empty($leadQueryDate) ? '&' . $leadQueryDate : '' ?>" class="stat-card-link">
+            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?last_action=visited<?= !empty($leadQueryDate) ? '&' . $leadQueryDate : (!empty($cycleBkStart) ? '&from_date=' . $cycleBkStart . '&to_date=' . $cycleBkEnd . '&date_type=lead_date' : '') ?>" class="stat-card-link">
                 <div class="stat-card accent-tangerine shadow-xs h-100">
                     <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
                     <div class="d-flex justify-content-between align-items-center w-100">
@@ -761,7 +761,7 @@
                                     <span class="badge bg-light text-dark ms-1" style="font-size: 8.5px; border: 1px solid #e2e8f0;"><?= $thisMonthVisitedLeads ?> Leads</span>
                                 <?php endif; ?>
                             </div>
-                            <span class="card-hint">Visits in <?= htmlspecialchars($titlePeriod) ?> &rarr;</span>
+                            <span class="card-hint"><?= !empty($hasFilter) ? 'Visits in ' . htmlspecialchars($titlePeriod) : 'Visits in Current Month (' . (!empty($cycleBkStart) ? date('d M', strtotime($cycleBkStart)) . ' - ' . date('d M', strtotime($cycleBkEnd)) : '') . ')' ?> &rarr;</span>
                         </div>
                         <div class="stat-icon-badge"><i class="fa-solid fa-person-walking"></i></div>
                     </div>
