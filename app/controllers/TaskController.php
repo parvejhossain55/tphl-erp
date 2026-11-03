@@ -1791,9 +1791,17 @@ class TaskController extends Controller
             $first = $parts[0] ?? $tw['full_name'];
             $inits = strtoupper(substr($first, 0, 1) . (isset($parts[1]) ? substr($parts[1], 0, 1) : ''));
             $workloadBars[] = [
+                'employee_id' => (int)($tw['employee_id'] ?? 0),
+                'user_id' => (int)($tw['user_id'] ?? 0),
+                'full_name' => $tw['full_name'] ?? $first,
+                'designation' => $tw['designation'] ?? 'Team Member',
                 'name' => $first,
                 'initials' => $inits,
                 'open_tasks' => $op,
+                'in_progress' => (int)($tw['in_progress'] ?? 0),
+                'overdue' => (int)($tw['overdue'] ?? 0),
+                'completed' => (int)($tw['completed'] ?? 0),
+                'total' => (int)($tw['total'] ?? 0),
                 'bar_pct' => $op > 0 ? round(($op / $maxOpen) * 100) : 0
             ];
         }
