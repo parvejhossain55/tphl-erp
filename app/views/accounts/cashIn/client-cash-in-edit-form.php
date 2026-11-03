@@ -338,7 +338,7 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
                                 <label class="form__input-title">
                                     <i class="fa-light fa-upload me-1"></i>
                                     <?= !empty($existingFiles) ? 'Add / Replace Documents' : 'Proof of Payment' ?>
-                                    <span class="text-muted small ms-1">(JPG, PNG, WEBP, PDF — max 10 MB each)</span>
+                                    <span class="text-muted small ms-1">(JPG, PNG, WEBP, PDF — max 20 MB each)</span>
                                 </label>
                                 <input type="file" name="proof_files[]" id="proofFiles"
                                        class="form-control" multiple accept="image/*,application/pdf">
