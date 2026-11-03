@@ -2744,7 +2744,7 @@ if (!isset($discountApprovalReq)) {
                         <div class="col-12">
                             <label class="form-label fw-bold">Upload New Document / Proof (Optional)</label>
                             <input type="file" name="proof_files[]" class="form-control" multiple accept="image/*,application/pdf">
-                            <small class="text-muted">Max 5MB per file (JPG, PNG, PDF).</small>
+                            <small class="text-muted">Max 20MB per file (JPG, PNG, WEBP, PDF).</small>
                         </div>
                     </div>
                 </div>

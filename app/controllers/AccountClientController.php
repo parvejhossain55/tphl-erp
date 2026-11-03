@@ -11,16 +11,16 @@ class AccountClientController extends Controller
     }
 
     /**
-     * Resolve the active web public directory (handles public/, public_html/, or CLI fallback).
+     * Resolve the active web public directory (prefers projectRoot/public when present).
      */
     protected function getWebPublicDir(): string
     {
         $projectRoot = str_replace('\\', '/', dirname(dirname(__DIR__)));
+        if (is_dir($projectRoot . '/public')) {
+            return $projectRoot . '/public';
+        }
         if (!empty($_SERVER['SCRIPT_FILENAME']) && is_dir(dirname($_SERVER['SCRIPT_FILENAME']))) {
-            $scriptDir = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_FILENAME'])), '/');
-            if (basename($scriptDir) !== basename($projectRoot) || !is_dir($projectRoot . '/public')) {
-                return $scriptDir;
-            }
+            return rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_FILENAME'])), '/');
         }
         return $projectRoot . '/public';
     }
@@ -28,24 +28,51 @@ class AccountClientController extends Controller
     /**
      * Unified, safe multi-file upload handler for transaction proof documents (images + PDFs).
      */
-    protected function handleProofFileUploads(array $filesField, string $prefix = 'proof_'): array
+    protected function handleProofFileUploads(array $filesField, string $prefix = 'proof_', array &$errors = []): array
     {
         $uploadedPaths = [];
-        if (empty($filesField['name'][0])) {
+        if (empty($filesField['name']) || !is_array($filesField['name'])) {
             return $uploadedPaths;
         }
 
-        $uploadDir = $this->getWebPublicDir() . '/uploads/transactions/';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
+        $hasSelectedFile = false;
+        foreach ($filesField['name'] as $idx => $rawName) {
+            $err = $filesField['error'][$idx] ?? UPLOAD_ERR_NO_FILE;
+            if ($err !== UPLOAD_ERR_NO_FILE && trim((string)$rawName) !== '') {
+                $hasSelectedFile = true;
+                break;
+            }
+        }
+        if (!$hasSelectedFile) {
+            return $uploadedPaths;
         }
 
-        $allowedMimes = [
+        $uploadDir = rtrim($this->getWebPublicDir(), '/') . '/uploads/transactions/';
+        if (!is_dir($uploadDir)) {
+            @mkdir($uploadDir, 0755, true);
+        }
+        if (!is_dir($uploadDir)) {
+            $errors[] = 'Server upload directory could not be created (public/uploads/transactions).';
+            error_log('[handleProofFileUploads] Failed to create directory: ' . $uploadDir);
+            return $uploadedPaths;
+        }
+        if (!is_writable($uploadDir)) {
+            @chmod($uploadDir, 0755);
+        }
+
+        $allowedImageMimes = [
             'image/jpeg', 'image/jpg', 'image/pjpeg',
             'image/png', 'image/x-png',
             'image/gif',
             'image/webp',
-            'application/pdf', 'application/x-pdf',
+        ];
+        $allowedPdfMimes = [
+            'application/pdf', 'application/x-pdf', 'application/acrobat',
+            'applications/vnd.pdf', 'text/pdf', 'text/x-pdf',
+        ];
+        $blockedMimes = [
+            'text/x-php', 'application/x-php', 'application/x-httpd-php',
+            'text/html', 'application/x-executable', 'application/x-sh',
         ];
         $allowedExts = ['jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp', 'pdf'];
         $mimeToExt = [
@@ -59,21 +86,47 @@ class AccountClientController extends Controller
             'application/pdf'   => 'pdf',
             'application/x-pdf' => 'pdf',
         ];
-        $maxSize = 10 * 1024 * 1024; // 10 MB per file
+        $maxSize = 20 * 1024 * 1024; // 20 MB per file
 
-        foreach ($filesField['tmp_name'] as $idx => $tmpName) {
+        foreach ($filesField['name'] as $idx => $rawName) {
+            $origName = basename(trim((string)$rawName));
             $err = $filesField['error'][$idx] ?? UPLOAD_ERR_NO_FILE;
-            if ($err !== UPLOAD_ERR_OK || empty($tmpName) || !is_uploaded_file($tmpName)) {
-                continue;
-            }
-            if (($filesField['size'][$idx] ?? 0) > $maxSize) {
+            if ($err === UPLOAD_ERR_NO_FILE || $origName === '') {
                 continue;
             }
 
-            $origName = basename((string)($filesField['name'][$idx] ?? ''));
+            if ($err === UPLOAD_ERR_INI_SIZE || $err === UPLOAD_ERR_FORM_SIZE) {
+                $iniMax = ini_get('upload_max_filesize') ?: '2M';
+                $errors[] = "File '{$origName}' exceeds server upload limit ({$iniMax}).";
+                error_log("[handleProofFileUploads] Size limit exceeded for {$origName} (err={$err}, upload_max_filesize={$iniMax})");
+                continue;
+            }
+            if ($err !== UPLOAD_ERR_OK) {
+                $errors[] = "File '{$origName}' failed to upload (error code {$err}).";
+                error_log("[handleProofFileUploads] Upload error {$err} for {$origName}");
+                continue;
+            }
+
+            $tmpName = $filesField['tmp_name'][$idx] ?? '';
+            if (empty($tmpName) || !is_uploaded_file($tmpName)) {
+                $errors[] = "Temporary upload file missing for '{$origName}'.";
+                continue;
+            }
+
+            if (($filesField['size'][$idx] ?? 0) > $maxSize) {
+                $errors[] = "File '{$origName}' exceeds maximum allowed size of 20 MB.";
+                continue;
+            }
+
             $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
             if ($ext === 'jfif') {
                 $ext = 'jpg';
+            }
+
+            $head = (string)@file_get_contents($tmpName, false, null, 0, 1024);
+            if (stripos($head, '<?php') !== false || stripos($head, '<?=') !== false) {
+                $errors[] = "File '{$origName}' contains disallowed script content.";
+                continue;
             }
 
             $mime = '';
@@ -87,22 +140,56 @@ class AccountClientController extends Controller
                 $mime = strtolower(trim((string)@mime_content_type($tmpName)));
             }
 
-            $mimeValid = in_array($mime, $allowedMimes, true);
-            $extValid  = in_array($ext, $allowedExts, true);
+            if ($mime !== '' && in_array($mime, $blockedMimes, true)) {
+                $errors[] = "File '{$origName}' has an unsupported file type ({$mime}).";
+                continue;
+            }
 
-            if (!$mimeValid && !($mime === 'application/octet-stream' && $extValid)) {
+            $hasPdfMagic = (strpos($head, '%PDF-') !== false);
+            $extValid    = in_array($ext, $allowedExts, true);
+            $isPdfValid  = ($ext === 'pdf' && ($hasPdfMagic || in_array($mime, $allowedPdfMimes, true) || $mime === '' || $mime === 'application/octet-stream'))
+                           || in_array($mime, $allowedPdfMimes, true);
+            $isImgValid  = in_array($mime, $allowedImageMimes, true)
+                           || (in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true) && ($mime === '' || $mime === 'application/octet-stream' || @getimagesize($tmpName) !== false));
+
+            if (!$isPdfValid && !$isImgValid) {
+                $errors[] = "File '{$origName}' must be a valid JPG, PNG, GIF, WEBP image or PDF.";
+                error_log("[handleProofFileUploads] Rejected {$origName} (ext={$ext}, mime={$mime})");
                 continue;
             }
 
             if (!$extValid) {
-                $ext = $mimeToExt[$mime] ?? 'bin';
-                if ($ext === 'bin') continue;
+                $ext = $hasPdfMagic ? 'pdf' : ($mimeToExt[$mime] ?? '');
+                if ($ext === '') {
+                    $errors[] = "Could not determine safe file extension for '{$origName}'.";
+                    continue;
+                }
             }
 
             $name = $prefix . uniqid() . '.' . $ext;
-            if (move_uploaded_file($tmpName, $uploadDir . $name)) {
-                @chmod($uploadDir . $name, 0644);
+            $destPath = $uploadDir . $name;
+            if (@move_uploaded_file($tmpName, $destPath)) {
+                @chmod($destPath, 0644);
                 $uploadedPaths[] = 'uploads/transactions/' . $name;
+
+                // Mirror between VPS Staging & Production uploads if both coexist on the same server
+                foreach (['/var/www/html/TPHL-ERP/public/uploads', '/var/www/staging/TPHL-ERP/public/uploads'] as $vpsUploadsBase) {
+                    if (@is_dir($vpsUploadsBase) && @is_writable($vpsUploadsBase)) {
+                        $mirrorDir = $vpsUploadsBase . '/transactions/';
+                        if (rtrim(str_replace('\\', '/', $mirrorDir), '/') !== rtrim(str_replace('\\', '/', $uploadDir), '/')) {
+                            if (!@is_dir($mirrorDir)) {
+                                @mkdir($mirrorDir, 0755, true);
+                            }
+                            if (@is_dir($mirrorDir) && @is_writable($mirrorDir)) {
+                                @copy($destPath, $mirrorDir . $name);
+                                @chmod($mirrorDir . $name, 0644);
+                            }
+                        }
+                    }
+                }
+            } else {
+                $errors[] = "Server could not save '{$origName}' (check permissions on public/uploads/transactions).";
+                error_log('[handleProofFileUploads] move_uploaded_file failed for ' . $destPath);
             }
         }
 
@@ -2333,7 +2420,13 @@ public function addCedTransaction()
 
 
     // Handle multi-file proof uploads
-    $uploadedPaths = !empty($_FILES['proof_files']) ? $this->handleProofFileUploads($_FILES['proof_files'], 'proof_') : [];
+    $cedUploadErrors = [];
+    $uploadedPaths = !empty($_FILES['proof_files']) ? $this->handleProofFileUploads($_FILES['proof_files'], 'proof_', $cedUploadErrors) : [];
+    if (!empty($cedUploadErrors)) {
+        setError('Document upload failed: ' . implode(' ', $cedUploadErrors));
+        header("Location: {$GLOBALS['base_url']}/ced-add-transaction-form?booking_id={$bookingId}");
+        exit;
+    }
 
     // Handle waiver proof upload
     $waiverAttachmentPath = null;
@@ -2709,7 +2802,13 @@ public function addTransaction()
         }
 
         // Handle multi-file proof uploads (before insert so paths are stored atomically)
-        $uploadedPaths = !empty($_FILES['proof_files']) ? $this->handleProofFileUploads($_FILES['proof_files'], 'proof_') : [];
+        $accUploadErrors = [];
+        $uploadedPaths = !empty($_FILES['proof_files']) ? $this->handleProofFileUploads($_FILES['proof_files'], 'proof_', $accUploadErrors) : [];
+        if (!empty($accUploadErrors)) {
+            setError('Document upload failed: ' . implode(' ', $accUploadErrors));
+            header("Location: {$GLOBALS['base_url']}/client-cash-in-form?booking_id={$bookingId}");
+            exit;
+        }
 
         $bankName = !empty($_POST['bank_name']) ? trim($_POST['bank_name']) : null;
         if (in_array($bankName, ['Other Bank', 'Other Country / Foreign Bank', 'Foreign Bank', 'Other Country Bank']) && !empty($_POST['custom_bank_name'])) {
@@ -3002,8 +3101,17 @@ public function updateTransaction()
             }
         }
         // Append any newly uploaded files
-        if (!empty($_FILES['proof_files']['name'][0])) {
-            $newlyUploaded = $this->handleProofFileUploads($_FILES['proof_files'], 'proof_');
+        if (!empty($_FILES['proof_files']['name']) && is_array($_FILES['proof_files']['name'])) {
+            $updUploadErrors = [];
+            $newlyUploaded = $this->handleProofFileUploads($_FILES['proof_files'], 'proof_', $updUploadErrors);
+            if (!empty($updUploadErrors)) {
+                setError('Document upload failed: ' . implode(' ', $updUploadErrors));
+                $editBackUrl = !empty($_POST['from_unverified_modal'])
+                    ? (!empty($_POST['redirect_to']) ? "{$GLOBALS['base_url']}/" . ltrim($_POST['redirect_to'], '/') : "{$GLOBALS['base_url']}/clients-cash-in-history-view/{$bookingId}")
+                    : "{$GLOBALS['base_url']}/edit-client-cash-in/{$paymentId}";
+                header("Location: {$editBackUrl}");
+                exit;
+            }
             foreach ($newlyUploaded as $np) {
                 $mergedPaths[] = $np;
             }
@@ -4959,10 +5067,12 @@ public function discountStatement($bookingId = null)
             exit;
         }
 
-        $uploadedPaths = $this->handleProofFileUploads($files, 'proof_' . $paymentId . '_');
+        $ajaxUploadErrors = [];
+        $uploadedPaths = $this->handleProofFileUploads($files, 'proof_' . $paymentId . '_', $ajaxUploadErrors);
 
         if (empty($uploadedPaths)) {
-            echo json_encode(['success' => false, 'message' => 'No valid files uploaded']);
+            $errMsg = !empty($ajaxUploadErrors) ? implode(' ', $ajaxUploadErrors) : 'No valid files uploaded';
+            echo json_encode(['success' => false, 'message' => $errMsg]);
             exit;
         }
 
@@ -5111,24 +5221,34 @@ public function discountStatement($bookingId = null)
             exit;
         }
 
-        $projectRoot = str_replace('\\', '/', dirname(dirname(__DIR__)));
-        $webRoot     = $this->getWebPublicDir();
-        $parentRoot  = str_replace('\\', '/', dirname($projectRoot));
+        $projectRoot   = str_replace('\\', '/', dirname(dirname(__DIR__)));
+        $webRoot       = $this->getWebPublicDir();
+        $parentRoot    = str_replace('\\', '/', dirname($projectRoot));
+        $subUploadPath = preg_replace('#^uploads/#', '', $relPath);
 
         $candidates = array_values(array_unique([
             $webRoot . '/' . $relPath,
             $projectRoot . '/public/' . $relPath,
             $projectRoot . '/' . $relPath,
             $webRoot . '/public/' . $relPath,
+            $webRoot . '/uploads/' . $relPath,
             $parentRoot . '/public/' . $relPath,
+            '/var/www/html/TPHL-ERP/public/' . $relPath,
+            '/var/www/html/TPHL-ERP/' . $relPath,
+            '/var/www/staging/TPHL-ERP/public/' . $relPath,
+            '/var/www/staging/TPHL-ERP/' . $relPath,
+            '/var/www/html/uploads_backup_temp/' . $subUploadPath,
         ]));
 
         $foundPath = null;
         foreach ($candidates as $candidate) {
-            if (is_file($candidate) && is_readable($candidate)) {
+            if (@is_file($candidate) && @is_readable($candidate)) {
                 $foundPath = $candidate;
                 break;
             }
+        }
+        if (!$foundPath) {
+            error_log('[serveTransactionFile] File missing across all candidate paths: ' . $relPath);
         }
 
         if (!$foundPath) {

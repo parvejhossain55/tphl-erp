@@ -69,7 +69,14 @@ class AccountShopClientController extends AccountClientController
             }
 
             // Handle multi-file proof uploads
-            $uploadedPaths = !empty($_FILES['proof_files']) ? $this->handleProofFileUploads($_FILES['proof_files'], 'proof_') : [];
+            $shopUploadErrors = [];
+            $uploadedPaths = !empty($_FILES['proof_files']) ? $this->handleProofFileUploads($_FILES['proof_files'], 'proof_', $shopUploadErrors) : [];
+            if (!empty($shopUploadErrors)) {
+                setError('Document upload failed: ' . implode(' ', $shopUploadErrors));
+                $backUrl = !empty($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : "{$GLOBALS['base_url']}/clients-cash-in-history?booking_id={$bookingId}";
+                header("Location: {$backUrl}");
+                exit;
+            }
 
             $transactionData = [
                 'booking_id'       => $bookingId,

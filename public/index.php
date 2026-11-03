@@ -202,14 +202,20 @@ if (!$matched) {
         // Fallback: Check if file physically exists and serve it via PHP
         // This helps when Live Server (Nginx or Apache) DocumentRoot is misconfigured
         $cleanPath = ltrim(urldecode(str_replace('public/uploads/', 'uploads/', $route)), '/');
+        $subUploadPath = preg_replace('#^uploads/#', '', $cleanPath);
         $candidatePaths = [
             __DIR__ . '/' . $cleanPath,
             $root . '/public/' . $cleanPath,
             $root . '/' . $cleanPath,
+            __DIR__ . '/public/' . $cleanPath,
+            __DIR__ . '/uploads/' . $cleanPath,
+            '/var/www/html/TPHL-ERP/public/' . $cleanPath,
+            '/var/www/staging/TPHL-ERP/public/' . $cleanPath,
+            '/var/www/html/uploads_backup_temp/' . $subUploadPath,
         ];
         $absolutePath = '';
         foreach ($candidatePaths as $cp) {
-            if (strpos($cleanPath, '..') === false && file_exists($cp) && is_file($cp)) {
+            if (strpos($cleanPath, '..') === false && @is_file($cp) && @is_readable($cp)) {
                 $absolutePath = $cp;
                 break;
             }
@@ -226,7 +232,7 @@ if (!$matched) {
             } else {
                 // simple extension fallback
                 $ext = strtolower(pathinfo($absolutePath, PATHINFO_EXTENSION));
-                $mimes = ['pdf'=>'application/pdf','jpg'=>'image/jpeg','jpeg'=>'image/jpeg','png'=>'image/png','gif'=>'image/gif'];
+                $mimes = ['pdf'=>'application/pdf','jpg'=>'image/jpeg','jpeg'=>'image/jpeg','jfif'=>'image/jpeg','png'=>'image/png','gif'=>'image/gif','webp'=>'image/webp'];
                 if (isset($mimes[$ext])) $mime = $mimes[$ext];
             }
             if (!$mime) $mime = 'application/octet-stream';
