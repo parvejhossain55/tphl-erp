@@ -126,7 +126,6 @@ $page = "create Lead"
                             <option value="Visit Completed">Visit Completed</option>
                             <option value="Lead Transferred">Lead Transferred</option>
                             <option value="Not Interested">Not Interested</option>
-                            <option value="Don't Call Again">Don't Call Again</option>
                             <option value="Invalid Lead">Invalid Lead</option>
                         </select>
                     </div>

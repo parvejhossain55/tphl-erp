@@ -23,8 +23,6 @@ class EmpAttentendance extends Model
     WHERE a.attendance_date = ?
       AND a.deleted_at IS NULL
     ORDER BY e.full_name ASC";
-
-
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param("s", $date);
         $stmt->execute();
@@ -206,9 +204,6 @@ class EmpAttentendance extends Model
         }
     }
 
-
-
-
     public function getTodaySummary($date = null)
     {
         $date = $date ?? date('Y-m-d');
@@ -232,10 +227,6 @@ LEFT JOIN emp_attendances a
 LEFT JOIN emp_weekly_day_off wdo
     ON wdo.employee_id = emp.id
 ";
-
-
-
-
 
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param("ss", $date, $date);

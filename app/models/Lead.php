@@ -1953,7 +1953,7 @@ class Lead extends Model
                 $sql .= " AND (lf.lead_status IN ('Visit Completed', 'Visited') OR leads.lead_type IN ('Visit Completed', 'Visited'))";
             } elseif (in_array($lead_status, ['Invalid Lead', 'Irrelevant'])) {
                 $sql .= " AND (lf.lead_status IN ('Invalid Lead', 'Irrelevant') OR leads.lead_type IN ('Invalid Lead', 'Irrelevant'))";
-            } elseif (in_array($lead_status, ['Not Interested', 'Cold'])) {
+            } elseif (in_array($lead_status, ['Not Interested', 'Cold', "Don't Call Again"])) {
                 $sql .= " AND (lf.lead_status IN ('Not Interested', 'Cold') OR leads.lead_type IN ('Not Interested', 'Cold'))";
             } else {
                 $sql .= " AND (lf.lead_status = ? OR leads.lead_type = ?)";
@@ -2242,7 +2242,7 @@ class Lead extends Model
                 $sql .= " AND (lf.lead_status IN ('Visit Completed', 'Visited') OR leads.lead_type IN ('Visit Completed', 'Visited'))";
             } elseif (in_array($lead_status, ['Invalid Lead', 'Irrelevant'])) {
                 $sql .= " AND (lf.lead_status IN ('Invalid Lead', 'Irrelevant') OR leads.lead_type IN ('Invalid Lead', 'Irrelevant'))";
-            } elseif (in_array($lead_status, ['Not Interested', 'Cold'])) {
+            } elseif (in_array($lead_status, ['Not Interested', 'Cold', "Don't Call Again"])) {
                 $sql .= " AND (lf.lead_status IN ('Not Interested', 'Cold') OR leads.lead_type IN ('Not Interested', 'Cold'))";
             } else {
                 $sql .= " AND (lf.lead_status = ? OR leads.lead_type = ?)";
@@ -2502,7 +2502,7 @@ class Lead extends Model
                 $sql .= " AND (lf.lead_status IN ('Visit Completed', 'Visited') OR leads.lead_type IN ('Visit Completed', 'Visited'))";
             } elseif (in_array($lead_status, ['Invalid Lead', 'Irrelevant'])) {
                 $sql .= " AND (lf.lead_status IN ('Invalid Lead', 'Irrelevant') OR leads.lead_type IN ('Invalid Lead', 'Irrelevant'))";
-            } elseif (in_array($lead_status, ['Not Interested', 'Cold'])) {
+            } elseif (in_array($lead_status, ['Not Interested', 'Cold', "Don't Call Again"])) {
                 $sql .= " AND (lf.lead_status IN ('Not Interested', 'Cold') OR leads.lead_type IN ('Not Interested', 'Cold'))";
             } else {
                 $sql .= " AND (lf.lead_status = ? OR leads.lead_type = ?)";
@@ -3663,7 +3663,7 @@ class Lead extends Model
 
         // Lead Type (Enum-safe)
         $lead_type            = $nn('lead_type');
-        $validLeadTypes = ['No Response', 'Pending', 'Potential', 'High Potential', 'Visit Scheduled', 'Visit Completed', 'Sold', 'Lead Transferred', 'Project Transferred', 'Not Interested', "Don't Call Again", 'Refund', 'Future', 'Invalid Lead', 'Prospect', 'High Prospect', 'Will Visit', 'Visited', 'Cold', 'Hot', 'Warm', 'Irrelevant'];
+        $validLeadTypes = ['No Response', 'Pending', 'Potential', 'High Potential', 'Visit Scheduled', 'Visit Completed', 'Sold', 'Lead Transferred', 'Project Transferred', 'Not Interested', 'Refund', 'Future', 'Invalid Lead', 'Prospect', 'High Prospect', 'Will Visit', 'Visited', 'Cold', 'Hot', 'Warm', 'Irrelevant'];
         if (!empty($lead_type) && !in_array($lead_type, $validLeadTypes)) {
             $lead_type = null;
         }

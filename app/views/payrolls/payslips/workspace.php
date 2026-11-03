@@ -2,11 +2,12 @@
 $page = "Payroll Workplace";
 $show_breadcrumb = true;
 
-$_filterType    = $filterType      ?? 'monthly';
-$_fromDate      = $selectedFromDate ?? date('Y-m-01');
-$_toDate        = $selectedToDate  ?? date('Y-m-t');
-$_selectedYear  = $selectedYear    ?? date('Y');
-$_selectedMonth = $selectedMonth   ?? date('m');
+$_filterType    = $filterType      ?? ($_GET['filter_type'] ?? 'monthly');
+$_fromDate      = $selectedFromDate ?? ($_GET['from_date'] ?? date('Y-m-01'));
+$_toDate        = $selectedToDate  ?? ($_GET['to_date'] ?? date('Y-m-t'));
+$_selectedYear  = $selectedYear    ?? ($_GET['year'] ?? date('Y'));
+$_selectedMonth = $selectedMonth   ?? ($_GET['month'] ?? date('m'));
+$_selectedProject = $selectedProject ?? ($_GET['payroll_project_id'] ?? '');
 ?>
 
 <!-- Filter Section -->
@@ -74,7 +75,7 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                     <label class="form-label fw-semibold text-muted mb-1" for="payrollProject">Payroll Project</label>
                     <div class="d-flex align-items-center gap-2">
                         <select class="form-select w-100" name="payroll_project_id" id="payrollProject">
-                            <option value="">Select Project (Optional)</option>
+                            <option value="">Select Payroll Project</option>
                             <?php if (!empty($payroll_projects)): ?>
                                 <?php foreach ($payroll_projects as $proj): ?>
                                     <option value="<?= htmlspecialchars($proj['id']) ?>"
@@ -82,7 +83,7 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                                         data-iscustom="<?= htmlspecialchars($proj['is_custom_date'] ?? '0') ?>"
                                         data-start="<?= htmlspecialchars($proj['start_date'] ?? '') ?>"
                                         data-end="<?= htmlspecialchars($proj['end_date'] ?? '') ?>"
-                                        <?= (isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] == $proj['id']) ? 'selected' : '' ?>>
+                                        <?= (!empty($_selectedProject) && (int)$_selectedProject == (int)$proj['id']) ? 'selected' : '' ?>>
                                         <?= htmlspecialchars($proj['name']) ?>
                                     </option>
                                 <?php endforeach; ?>
@@ -444,30 +445,74 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                         $sl = 1;
                         if (!empty($payslips)):
                             foreach ($payslips as $p):
+                                $isExisting = !empty($p['id']);
+                                $empIdFk = (int)($p['real_emp_id_fk'] ?? $p['id'] ?? 0);
                                 $gross = (float) $p['emp_gross'];
                                 $basic = (float) $p['emp_basic'];
                                 $daily = $gross / 30;
-                                $netSalary = (float) $p['net_salary'];
-                                $hasBankDetails = !empty(trim($p['account_number'] ?? ''));
-                                $paymentMethod = $hasBankDetails ? 'bank' : 'cash';
-                                // If split was intentionally saved, preserve it; otherwise allocate based on bank details
-                                if ($hasBankDetails) {
-                                    if (isset($p['bank_amount']) && (float)$p['bank_amount'] > 0 && isset($p['cash_amount']) && (float)$p['cash_amount'] > 0) {
-                                        $bank = (float)$p['bank_amount'];
-                                        $cash = (float)$p['cash_amount'];
-                                    } else {
-                                        $bank = $netSalary;
-                                        $cash = 0;
-                                    }
+
+                                // Calculate employee effective days within active payroll cycle
+                                $cycleStartTs = strtotime($_fromDate);
+                                $cycleEndTs   = strtotime($_toDate);
+                                $cycleTotalDays = max(1, (int) round(($cycleEndTs - $cycleStartTs) / 86400) + 1);
+
+                                $empJoinTs = !empty($p['joining_date']) ? strtotime($p['joining_date']) : $cycleStartTs;
+                                $empResignTs = !empty($p['deleted_at']) ? strtotime(substr($p['deleted_at'], 0, 10)) : $cycleEndTs;
+
+                                $effectiveStartTs = max($cycleStartTs, $empJoinTs);
+                                $effectiveEndTs   = min($cycleEndTs, $empResignTs);
+
+                                if ($effectiveStartTs > $effectiveEndTs) {
+                                    $empEffectiveDays = 0;
                                 } else {
-                                    $bank = 0;
-                                    $cash = $netSalary;
+                                    $empEffectiveDays = (int) round(($effectiveEndTs - $effectiveStartTs) / 86400) + 1;
+                                    $empEffectiveDays = min($cycleTotalDays, max(0, $empEffectiveDays));
                                 }
 
-                                $isExisting = !empty($p['id']);
+                                $nonWorkingCycleDays = max(0, $cycleTotalDays - $empEffectiveDays);
+
+                                $effectiveGross = ($empEffectiveDays < $cycleTotalDays && $daily > 0)
+                                    ? round($empEffectiveDays * $daily, 2)
+                                    : $gross;
+
+                                // Base salary allowances
+                                $recAllow = ($isExisting && isset($p['recreation_allowance']) && $p['recreation_allowance'] > 0) ? (float)$p['recreation_allowance'] : round($basic * $itemPercents['recreation'], 2);
+                                $convAllow = ($isExisting && isset($p['conveyance_allowance']) && $p['conveyance_allowance'] > 0) ? (float)$p['conveyance_allowance'] : round($basic * $itemPercents['conveyance'], 2);
+                                $medAllow = ($isExisting && isset($p['medical_allowance']) && $p['medical_allowance'] > 0) ? (float)$p['medical_allowance'] : round($basic * $itemPercents['medical'], 2);
+                                $hrAllow = ($isExisting && isset($p['house_rent_allowance']) && $p['house_rent_allowance'] > 0) ? (float)$p['house_rent_allowance'] : round($basic * $itemPercents['houserent'], 2);
+
+                                // Additional earnings
+                                $punctBonus = $isExisting ? (float)($p['punctuality_bonus'] ?? 0) : 0;
+                                $overtime = $isExisting ? (float)($p['overtime'] ?? 0) : 0;
+                                $arrearsEarning = $isExisting ? (float)($p['arrears_earning'] ?? 0) : 0;
+                                $dutyAllow = $isExisting ? (float)($p['duty_allowance'] ?? 0) : 0;
+
+                                // Attendance deductions
+                                $hasAttOverride = isset($p['att_late_unpaid_absent_days']) && $p['att_late_unpaid_absent_days'] !== null;
+                                if ($hasAttOverride) {
+                                    // Authoritative attendance from /payroll-attendance-report
+                                    $unpaidAbsentsDays = (float) $p['att_late_unpaid_absent_days'];
+                                    $unpaidAbsentsAmount = round($unpaidAbsentsDays * $daily, 2);
+                                } elseif ($isExisting) {
+                                    // Saved in workspace payslip draft
+                                    $unpaidAbsentsDays = (float) ($p['saved_late_unpaid_absent_days'] ?? $p['late_unpaid_absent_days'] ?? 0);
+                                    if ($unpaidAbsentsDays <= 0) {
+                                        $unpaidAbsentsAmount = 0.00;
+                                    } else {
+                                        $unpaidAbsentsAmount = (isset($p['saved_unpaid_absent_amount']) && (float)$p['saved_unpaid_absent_amount'] > 0)
+                                            ? (float)$p['saved_unpaid_absent_amount']
+                                            : round($unpaidAbsentsDays * $daily, 2);
+                                    }
+                                } else {
+                                    // Tipsoi / fallback
+                                    $unpaidAbsentsDays = isset($p['tipsoi_absent']) ? (float) $p['tipsoi_absent'] : 0;
+                                    $unpaidAbsentsAmount = round($unpaidAbsentsDays * $daily, 2);
+                                }
+
+                                // Advance salary
                                 $advanceSalary = $isExisting ? (float)($p['advance_salary'] ?? 0) : 0;
 
-                                $empIdFk = (int)($p['real_emp_id_fk'] ?? $p['id'] ?? 0);
+                                // Meal tracking and deduction
                                 $isMealDeductible = isset($p['is_meal_deduction']) ? (int)$p['is_meal_deduction'] : 1;
                                 $mealPct = isset($p['per_meal_percentage']) ? (float)$p['per_meal_percentage'] : 0.00;
                                 $standardMealRate = isset($activeMealProject['standard_meal_amount']) && $activeMealProject['standard_meal_amount'] > 0 
@@ -479,40 +524,52 @@ $_selectedMonth = $selectedMonth   ?? date('m');
 
                                 $mealCount = 0;
                                 if ($isMealDeductible == 1) {
-                                    if ($isExisting && isset($p['meal_count'])) {
+                                    if (!empty($activeMealProject)) {
+                                        // Authoritative meal tracking from Meal Workspace (meal_records)
+                                        $mealCount = isset($mealCountsByEmp[$empIdFk]) ? (float)$mealCountsByEmp[$empIdFk] : 0;
+                                    } elseif ($isExisting && isset($p['meal_count'])) {
                                         $mealCount = (float)$p['meal_count'];
-                                    } elseif (isset($mealCountsByEmp[$empIdFk])) {
-                                        $mealCount = (float)$mealCountsByEmp[$empIdFk];
                                     }
                                 }
 
                                 $subsidizeLunch = 0;
                                 if ($isMealDeductible == 1) {
-                                    if ($isExisting && isset($p['subsidized_lunch']) && $p['subsidized_lunch'] > 0) {
+                                    if (!empty($activeMealProject)) {
+                                        $subsidizeLunch = round($mealCount * $effectiveMealRate, 2);
+                                    } elseif ($isExisting && isset($p['subsidized_lunch']) && (float)$p['subsidized_lunch'] > 0) {
                                         $subsidizeLunch = (float)$p['subsidized_lunch'];
                                     } else {
                                         $subsidizeLunch = round($mealCount * $effectiveMealRate, 2);
                                     }
                                 }
 
-                                $unpaidAbsentsDays = isset($p['late_unpaid_absent_days']) ? (float)$p['late_unpaid_absent_days'] : (isset($p['tipsoi_absent']) ? (float) $p['tipsoi_absent'] : 0);
-                                $unpaidAbsentsAmount = ($isExisting && isset($p['unpaid_absent_amount']) && (float)$p['unpaid_absent_amount'] > 0)
-                                    ? (float)$p['unpaid_absent_amount']
-                                    : round($unpaidAbsentsDays * $daily, 2);
-                                $punctBonus = $isExisting ? (float)($p['punctuality_bonus'] ?? 0) : 0;
-                                $overtime = $isExisting ? (float)($p['overtime'] ?? 0) : 0;
-                                $arrearsEarning = $isExisting ? (float)($p['arrears_earning'] ?? 0) : 0;
-                                $dutyAllow = $isExisting ? (float)($p['duty_allowance'] ?? 0) : 0;
-                                $tax = $isExisting ? (float)($p['tax'] ?? 0) : 0;
+                                // Additional deductions
                                 $arrearsDeduction = $isExisting ? (float)($p['arrears_deduction'] ?? 0) : 0;
                                 $othersDeduction = $isExisting ? (float)($p['others_deduction'] ?? 0) : 0;
+                                $tax = $isExisting ? (float)($p['tax'] ?? 0) : 0;
 
-                                $recAllow = ($isExisting && isset($p['recreation_allowance']) && $p['recreation_allowance'] > 0) ? (float)$p['recreation_allowance'] : round($basic * $itemPercents['recreation'], 2);
-                                $convAllow = ($isExisting && isset($p['conveyance_allowance']) && $p['conveyance_allowance'] > 0) ? (float)$p['conveyance_allowance'] : round($basic * $itemPercents['conveyance'], 2);
-                                $medAllow = ($isExisting && isset($p['medical_allowance']) && $p['medical_allowance'] > 0) ? (float)$p['medical_allowance'] : round($basic * $itemPercents['medical'], 2);
-                                $hrAllow = ($isExisting && isset($p['house_rent_allowance']) && $p['house_rent_allowance'] > 0) ? (float)$p['house_rent_allowance'] : round($basic * $itemPercents['houserent'], 2);
+                                // Net salary calculation (prorated gross + additions - deductions)
+                                $totalEarnings = $effectiveGross + $arrearsEarning + $dutyAllow + $punctBonus + $overtime;
+                                $totalDeductions = $advanceSalary + $subsidizeLunch + $unpaidAbsentsAmount + $arrearsDeduction + $othersDeduction + $tax;
+                                $netSalary = max(0, round($totalEarnings - $totalDeductions, 2));
+
+                                // Bank / cash allocation
+                                $hasBankDetails = !empty(trim($p['account_number'] ?? ''));
+                                $paymentMethod = $hasBankDetails ? 'bank' : 'cash';
+                                if ($hasBankDetails) {
+                                    if ($isExisting && isset($p['bank_amount']) && (float)$p['bank_amount'] > 0 && isset($p['cash_amount']) && (float)$p['cash_amount'] > 0) {
+                                        $bank = (float)$p['bank_amount'];
+                                        $cash = max(0, round($netSalary - $bank, 2));
+                                    } else {
+                                        $bank = $netSalary;
+                                        $cash = 0;
+                                    }
+                                } else {
+                                    $bank = 0;
+                                    $cash = $netSalary;
+                                }
                                 ?>
-                                        <tr class="calc-row" data-payslip-id="<?= $p['id'] ?? 0 ?>" data-employee-id="<?= $p['real_emp_id_fk'] ?? $p['id'] ?? 0 ?>" data-employee-office-id="<?= htmlspecialchars($p['emp_id']) ?>" data-has-db="<?= isset($p['tipsoi_present']) ? 'true' : 'false' ?>">
+                                        <tr class="calc-row" data-payslip-id="<?= $p['id'] ?? 0 ?>" data-employee-id="<?= $p['real_emp_id_fk'] ?? $p['id'] ?? 0 ?>" data-employee-office-id="<?= htmlspecialchars($p['emp_id']) ?>" data-joining-date="<?= !empty($p['joining_date']) ? date('Y-m-d', strtotime($p['joining_date'])) : '' ?>" data-resignation-date="<?= !empty($p['deleted_at']) ? date('Y-m-d', strtotime($p['deleted_at'])) : '' ?>" data-effective-days="<?= $empEffectiveDays ?>" data-non-working-days="<?= $nonWorkingCycleDays ?>" data-has-db="<?= ($hasAttOverride || isset($p['tipsoi_present'])) ? 'true' : 'false' ?>">
                                             <?php $excludedState = (isset($p['is_excluded']) && $p['is_excluded'] == 1) ? "" : "checked"; ?>
                                             <td class="text-center"><input type="checkbox" autocomplete="off" class="form-check-input emp-checkbox" <?= $excludedState ?> style="cursor:pointer;"></td>
                                             <td><?= $sl++ ?></td>
@@ -558,7 +615,7 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                                             </td>
                                             <td><?= !empty($p['deleted_at']) ? date('d-M-Y', strtotime($p['deleted_at'])) : '&nbsp;' ?>
                                             </td>
-                                            <td class="cell-effective-days text-center">30</td>
+                                            <td class="cell-effective-days text-center" data-val="<?= $empEffectiveDays ?>"><?= $empEffectiveDays ?></td>
                                             <td class="cell-net fw-bold text-primary text-nowrap"
                                                 data-payment-method="<?= $paymentMethod ?>">
                                                 <?= number_format($netSalary, 2) ?>
@@ -675,20 +732,39 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                         }
                     }
 
-                    const absentDays = parseFloat(row.querySelector('.in-absent-days').value) || 0;
+                    const absentInp = row.querySelector('.in-absent-days');
                     const unpaidInp = row.querySelector('.in-unpaid');
+
                     if (e && e.target.classList.contains('in-absent-days')) {
+                        const absentDays = parseFloat(absentInp.value) || 0;
                         unpaidInp.value = (absentDays * daily).toFixed(2);
+                    } else if (e && e.target.classList.contains('in-unpaid')) {
+                        const unpaidAmt = parseFloat(unpaidInp.value) || 0;
+                        if (unpaidAmt <= 0) {
+                            absentInp.value = 0;
+                            unpaidInp.value = "0.00";
+                        } else if (daily > 0) {
+                            absentInp.value = (unpaidAmt / daily).toFixed(2);
+                        }
                     } else if (!e) {
-                        if (absentDays > 0 && (!unpaidInp.value || parseFloat(unpaidInp.value) === 0)) {
-                            unpaidInp.value = (absentDays * daily).toFixed(2);
+                        const absentDays = parseFloat(absentInp.value) || 0;
+                        if (absentDays <= 0) {
+                            unpaidInp.value = "0.00";
                         }
                     }
 
-                    // Use existing gross salary from database
+                    // Calculate effective gross salary based on actual effective days
                     let gross = parseFloat(row.querySelector('.cell-gross').dataset.val) || 0;
-                    
-                    let totalEarning = gross;
+                    const effDaysCell = row.querySelector('.cell-effective-days');
+                    const effectiveDays = effDaysCell ? (parseFloat(effDaysCell.dataset.val || effDaysCell.textContent) || 30) : 30;
+                    const totalCycleDays = 30;
+
+                    let effectiveGross = gross;
+                    if (effectiveDays < totalCycleDays && daily > 0) {
+                        effectiveGross = Math.round(effectiveDays * daily * 100) / 100;
+                    }
+
+                    let totalEarning = effectiveGross;
                     row.querySelectorAll('.in-earning').forEach(inp => {
                         if (!inp.classList.contains('in-basic-allowance')) {
                             totalEarning += (parseFloat(inp.value) || 0);
@@ -728,16 +804,27 @@ $_selectedMonth = $selectedMonth   ?? date('m');
 
                     let dispBank = parseFloat(bankInput.value) || 0;
                     row.querySelector('.cell-amount').textContent = dispBank.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                    calculateFooterTotals();
+                    if (e !== null) {
+                        debouncedCalculateFooterTotals();
+                    }
                 }
 
                 inputs.forEach(input => {
                     input.addEventListener('input', recalcRow);
                 });
 
-                // Initial calculation check on row
+                // Initial calculation check on row (deferred footer totals)
                 recalcRow(null);
             });
+
+            // Single initial calculation of footer totals for all rows
+            calculateFooterTotals();
+        }
+
+        let footerTotalsDebounceTimer = null;
+        function debouncedCalculateFooterTotals() {
+            clearTimeout(footerTotalsDebounceTimer);
+            footerTotalsDebounceTimer = setTimeout(calculateFooterTotals, 60);
         }
 
         attachCalculations();
@@ -839,43 +926,71 @@ $_selectedMonth = $selectedMonth   ?? date('m');
         const fromDateStr = "<?= $selectedFromDate ?? date('Y-m-01') ?>";
         const toDateStr   = "<?= $selectedToDate   ?? date('Y-m-t')  ?>";
 
-        // Calculate effective days in the range and update "Actual Effective Days" cells
+        // Calculate effective days per employee in the range and update "Actual Effective Days" cells
         (function () {
-            const from = new Date(fromDateStr);
-            const to   = new Date(toDateStr);
-            const diffMs   = to - from;
-            const effectiveDays = Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1; // inclusive
-            document.querySelectorAll('.cell-effective-days').forEach(cell => {
-                cell.textContent = effectiveDays;
+            const cycleFrom = new Date(fromDateStr);
+            const cycleTo   = new Date(toDateStr);
+            const totalCycleDays = Math.round((cycleTo - cycleFrom) / (1000 * 60 * 60 * 24)) + 1;
+
+            document.querySelectorAll('#workspaceTable tbody tr.calc-row').forEach(row => {
+                const cell = row.querySelector('.cell-effective-days');
+                if (!cell) return;
+
+                const joinStr = row.getAttribute('data-joining-date') || '';
+                const resignStr = row.getAttribute('data-resignation-date') || '';
+
+                let empStart = cycleFrom;
+                if (joinStr) {
+                    const jDate = new Date(joinStr);
+                    if (!isNaN(jDate) && jDate > cycleFrom) {
+                        empStart = jDate;
+                    }
+                }
+
+                let empEnd = cycleTo;
+                if (resignStr) {
+                    const rDate = new Date(resignStr);
+                    if (!isNaN(rDate) && rDate < cycleTo) {
+                        empEnd = rDate;
+                    }
+                }
+
+                let effDays = 0;
+                if (empStart <= empEnd) {
+                    effDays = Math.round((empEnd - empStart) / (1000 * 60 * 60 * 24)) + 1;
+                    effDays = Math.max(0, Math.min(totalCycleDays, effDays));
+                }
+
+                cell.textContent = effDays;
+                cell.setAttribute('data-val', effDays);
             });
         })();
 
-        // --- Tipsoi Auto-Fallback for Missing DB Data (Searches across all DataTables pages) ---
-        function findWorkspaceCalcRow(empId) {
-            if (typeof $ !== 'undefined' && $.fn.DataTable && $.fn.DataTable.isDataTable('#workspaceTable')) {
-                const nodes = $('#workspaceTable').DataTable().rows().nodes();
-                for (let i = 0; i < nodes.length; i++) {
-                    if (nodes[i].getAttribute('data-has-db') === 'false' && nodes[i].getAttribute('data-employee-id') == empId) {
-                        return nodes[i];
-                    }
-                }
-            }
-            return document.querySelector(`.calc-row[data-has-db="false"][data-employee-id="${empId}"]`);
-        }
-
+        // --- Tipsoi Auto-Fallback for Missing DB Data (High-performance Map lookup & AbortController) ---
         const missingRows = document.querySelectorAll('.calc-row[data-has-db="false"]');
         if (fromDateStr && toDateStr && missingRows.length > 0) {
+            const empRowMap = new Map();
+            missingRows.forEach(r => {
+                const eid = r.getAttribute('data-employee-id');
+                if (eid) empRowMap.set(String(eid), r);
+            });
+
             const params = new URLSearchParams({
                 from_date: fromDateStr,
                 to_date:   toDateStr
             });
 
-            fetch(`<?= $GLOBALS['base_url'] ?>/api/hrm/attendance?` + params.toString())
+            const abortCtrl = new AbortController();
+            const abortTimeout = setTimeout(() => abortCtrl.abort(), 8000); // 8-second safety timeout
+
+            fetch(`<?= $GLOBALS['base_url'] ?>/api/hrm/attendance?` + params.toString(), { signal: abortCtrl.signal })
             .then(r => r.json())
             .then(res => {
+                clearTimeout(abortTimeout);
                 if (res.success && res.data) {
                     const rawData = res.data;
                     const localEmployees = res.local_employees || [];
+                    let hasAnyUpdate = false;
 
                     rawData.forEach(emp => {
                          const attMap = emp.attendance || {};
@@ -889,7 +1004,7 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                          });
 
                          if (localMatch) {
-                              const matchedRow = findWorkspaceCalcRow(localMatch.id);
+                              const matchedRow = empRowMap.get(String(localMatch.id));
                               if (matchedRow) {
                                   let present = 0;
                                   let absent  = 0;
@@ -900,20 +1015,42 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                                       else if (!dayAtt.isOffday && !dayAtt.isHoliday && !dayAtt.isLeave) absent++;
                                   });
 
-                                  // Tipsoi updates absent days; meal count is strictly managed by Meal Tracker!
+                                  let finalLate = 0;
+                                  if (emp.summary && emp.summary.totalLateEntry !== undefined) {
+                                      finalLate = parseInt(emp.summary.totalLateEntry, 10) || 0;
+                                  }
+                                  let lateDeduction = Math.floor(finalLate / 3);
+                                  let totalAbsentDays = absent + lateDeduction;
+
                                   const absentInput = matchedRow.querySelector('.in-absent-days');
+                                  const unpaidInp   = matchedRow.querySelector('.in-deduct.in-unpaid');
+                                  const dailyVal    = parseFloat(matchedRow.querySelector('.cell-daily').dataset.val) || 0;
+
                                   if (absentInput) {
-                                      absentInput.value  = absent;
+                                      absentInput.value = totalAbsentDays;
+                                      if (unpaidInp) {
+                                          unpaidInp.value = (totalAbsentDays * dailyVal).toFixed(2);
+                                      }
                                       absentInput.dispatchEvent(new Event('input', { bubbles: true }));
+                                      hasAnyUpdate = true;
                                   }
                               }
                          }
                     });
+
+                    if (hasAnyUpdate) {
+                        calculateFooterTotals();
+                    }
                 } else if (res && !res.success) {
                     console.warn("Tipsoi Background Sync warning:", res.message);
                 }
             })
-            .catch(err => console.error("Tipsoi Background Sync failed:", err));
+            .catch(err => {
+                clearTimeout(abortTimeout);
+                if (err.name !== 'AbortError') {
+                    console.warn("Tipsoi Background Sync warning:", err);
+                }
+            });
         }
 
         // Dynamically rename 'Save Data' button if data is already saved
