@@ -2987,8 +2987,13 @@ class Lead extends Model
         $monthlyBookingTarget = 0;
         $monthlySiteVisitTarget = 0;
         try {
-            $targetStartMonth = date('Y-m-01', strtotime($startDate));
-            $targetEndMonth = date('Y-m-01', strtotime($endDate));
+            if (!empty($startDate) && !empty($endDate) && date('j', strtotime($startDate)) == 26 && date('j', strtotime($endDate)) == 25) {
+                $targetStartMonth = date('Y-m-01', strtotime($endDate));
+                $targetEndMonth = date('Y-m-01', strtotime($endDate));
+            } else {
+                $targetStartMonth = !empty($startDate) ? date('Y-m-01', strtotime($startDate)) : sprintf('%04d-%02d-01', $year, $startMonth);
+                $targetEndMonth = !empty($endDate) ? date('Y-m-01', strtotime($endDate)) : sprintf('%04d-%02d-01', $year, $endMonth);
+            }
             $sql14 = "SELECT SUM(booking_target) as booking_target, SUM(site_visit_target) as site_visit_target FROM sales_targets WHERE sales_user_id = ? AND month BETWEEN ? AND ?";
             if ($stmt14 = $this->db->prepare($sql14)) {
                 $stmt14->bind_param("iss", $userId, $targetStartMonth, $targetEndMonth);
@@ -3002,28 +3007,43 @@ class Lead extends Model
             error_log("Lead::getExecutiveDashboardMetrics sales_targets error: " . $e->getMessage());
         }
 
-        // 15. Period / Current Month Booking (Synchronized with countBookingsWithFilter logic)
-        if ($hasFilter) {
-            $sql15 = "SELECT COUNT(DISTINCT lb.id) as total_bookings, COUNT(DISTINCT lb.lead_id) as booked_leads 
-                      FROM lead_bookings lb 
-                      JOIN leads l ON l.id = lb.lead_id 
-                      WHERE lb.deleted_at IS NULL AND l.deleted_at IS NULL 
-                        AND (l.assigned_id = ? OR lb.sales_by_id = ? OR lb.created_by = ?) 
-                        AND lb.booking_status IN ('completed', 'booked') 
-                        AND (DATE(lb.booking_date) BETWEEN ? AND ? OR DATE(lb.created_at) BETWEEN ? AND ?)";
-            $currentMonthBooking = 0;
-            $currentMonthBookedLeads = 0;
-            if ($stmt15 = $this->db->prepare($sql15)) {
-                $stmt15->bind_param("iiissss", $userId, $userId, $userId, $startDate, $endDate, $startDate, $endDate);
-                $stmt15->execute();
-                $bkRow15 = $stmt15->get_result()->fetch_assoc();
-                $currentMonthBooking = (int)($bkRow15['total_bookings'] ?? 0);
-                $currentMonthBookedLeads = (int)($bkRow15['booked_leads'] ?? 0);
-                $stmt15->close();
-            }
+        // 15. Period / Current Month Booking (Synchronized with 26th-to-25th reporting cycle)
+        $curDay = (int)date('j');
+        $curYear = (int)date('Y');
+        $curMonth = (int)date('n');
+        if ($curDay >= 26) {
+            $cMonth = $curMonth + 1;
+            $cYear = $curYear;
+            if ($cMonth > 12) { $cMonth = 1; $cYear++; }
         } else {
-            $currentMonthBooking = $totalSalesBookedUnits;
-            $currentMonthBookedLeads = $totalSalesBookedUnits;
+            $cMonth = $curMonth;
+            $cYear = $curYear;
+        }
+        $pMonth = $cMonth - 1;
+        $pYear = $cYear;
+        if ($pMonth < 1) { $pMonth = 12; $pYear--; }
+        $cycleBkStart = sprintf('%04d-%02d-26', $pYear, $pMonth);
+        $cycleBkEnd   = sprintf('%04d-%02d-25', $cYear, $cMonth);
+
+        $bkStart = $hasFilter ? $startDate : $cycleBkStart;
+        $bkEnd   = $hasFilter ? $endDate : $cycleBkEnd;
+
+        $sql15 = "SELECT COUNT(DISTINCT lb.id) as total_bookings, COUNT(DISTINCT lb.lead_id) as booked_leads 
+                  FROM lead_bookings lb 
+                  JOIN leads l ON l.id = lb.lead_id 
+                  WHERE lb.deleted_at IS NULL AND l.deleted_at IS NULL 
+                    AND (l.assigned_id = ? OR lb.sales_by_id = ? OR lb.created_by = ?) 
+                    AND lb.booking_status IN ('completed', 'booked') 
+                    AND (DATE(lb.booking_date) BETWEEN ? AND ? OR (lb.booking_date IS NULL AND DATE(lb.created_at) BETWEEN ? AND ?))";
+        $currentMonthBooking = 0;
+        $currentMonthBookedLeads = 0;
+        if ($stmt15 = $this->db->prepare($sql15)) {
+            $stmt15->bind_param("iiissss", $userId, $userId, $userId, $bkStart, $bkEnd, $bkStart, $bkEnd);
+            $stmt15->execute();
+            $bkRow15 = $stmt15->get_result()->fetch_assoc();
+            $currentMonthBooking = (int)($bkRow15['total_bookings'] ?? 0);
+            $currentMonthBookedLeads = (int)($bkRow15['booked_leads'] ?? 0);
+            $stmt15->close();
         }
 
         $bookingAchievement = $monthlyBookingTarget > 0 ? round(($currentMonthBooking / $monthlyBookingTarget) * 100, 1) : 0;
@@ -3053,32 +3073,29 @@ class Lead extends Model
             $stmt16->close();
         }
 
-        // 17. Period / This Month Visited (Synchronized with follow_up_date & created_at fallback)
-        if ($hasFilter) {
-            $sql17 = "
-                SELECT COUNT(DISTINCT lf.id) as total_visits, COUNT(DISTINCT l.id) as visited_leads
-                FROM leads l
-                INNER JOIN lead_follow_ups lf ON lf.lead_id = l.id {$fuDelCond}
-                WHERE 1=1
-                  {$lDelSql}
-                  AND (l.assigned_id = ? OR lf.assigned_with = ? OR lf.created_by = ?)
-                  AND (lf.lead_status IN ('Visit Completed', 'Visited') OR LOWER(lf.follow_up_type) = 'visit')
-                  AND lf.status != 'canceled'
-                  AND (DATE(lf.follow_up_date) BETWEEN ? AND ? OR (lf.follow_up_date IS NULL AND DATE(lf.created_at) BETWEEN ? AND ?))
-            ";
-            $thisMonthVisited = 0;
-            $thisMonthVisitedLeads = 0;
-            if ($stmt17 = $this->db->prepare($sql17)) {
-                $stmt17->bind_param("iiissss", $userId, $userId, $userId, $startDate, $endDate, $startDate, $endDate);
-                $stmt17->execute();
-                $vRow17 = $stmt17->get_result()->fetch_assoc();
-                $thisMonthVisited = (int)($vRow17['total_visits'] ?? 0);
-                $thisMonthVisitedLeads = (int)($vRow17['visited_leads'] ?? 0);
-                $stmt17->close();
-            }
-        } else {
-            $thisMonthVisited = $totalVisitedComplete;
-            $thisMonthVisitedLeads = $totalVisitedComplete;
+        // 17. Period / This Month Visited (Synchronized with 26th-to-25th reporting cycle)
+        $vStart = $hasFilter ? $startDate : $cycleBkStart;
+        $vEnd   = $hasFilter ? $endDate : $cycleBkEnd;
+        $sql17 = "
+            SELECT COUNT(DISTINCT lf.id) as total_visits, COUNT(DISTINCT l.id) as visited_leads
+            FROM leads l
+            INNER JOIN lead_follow_ups lf ON lf.lead_id = l.id {$fuDelCond}
+            WHERE 1=1
+              {$lDelSql}
+              AND (l.assigned_id = ? OR lf.assigned_with = ? OR lf.created_by = ?)
+              AND (lf.lead_status IN ('Visit Completed', 'Visited') OR LOWER(lf.follow_up_type) = 'visit')
+              AND lf.status != 'canceled'
+              AND (DATE(lf.follow_up_date) BETWEEN ? AND ? OR (lf.follow_up_date IS NULL AND DATE(lf.created_at) BETWEEN ? AND ?))
+        ";
+        $thisMonthVisited = 0;
+        $thisMonthVisitedLeads = 0;
+        if ($stmt17 = $this->db->prepare($sql17)) {
+            $stmt17->bind_param("iiissss", $userId, $userId, $userId, $vStart, $vEnd, $vStart, $vEnd);
+            $stmt17->execute();
+            $vRow17 = $stmt17->get_result()->fetch_assoc();
+            $thisMonthVisited = (int)($vRow17['total_visits'] ?? 0);
+            $thisMonthVisitedLeads = (int)($vRow17['visited_leads'] ?? 0);
+            $stmt17->close();
         }
 
         $visitAchievement = $monthlySiteVisitTarget > 0 ? round(($thisMonthVisited / $monthlySiteVisitTarget) * 100, 1) : 0;
@@ -3115,6 +3132,8 @@ class Lead extends Model
             'thisMonthVisited'       => $thisMonthVisited,
             'thisMonthVisitedLeads'  => $thisMonthVisitedLeads,
             'visitAchievement'       => $visitAchievement,
+            'cycleBkStart'           => $cycleBkStart,
+            'cycleBkEnd'             => $cycleBkEnd,
             'hasFilter'              => $hasFilter,
             'filterStartDate'        => $startDate,
             'filterEndDate'          => $endDate,

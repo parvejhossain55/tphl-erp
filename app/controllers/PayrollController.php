@@ -1595,21 +1595,12 @@ class PayrollController extends Controller
             }
         }
 
-        // Determine active/selected meal project
+        // Determine active/selected meal project automatically by project link or date range
         $selectedMealProjectId = isset($_GET['meal_project_id']) && $_GET['meal_project_id'] !== '' && $_GET['meal_project_id'] !== 'undefined' ? (int) $_GET['meal_project_id'] : 0;
         $activeMealProject = null;
 
-        if ($selectedMealProjectId > 0) {
-            foreach ($meal_projects as $mp) {
-                if ((int) $mp['id'] === $selectedMealProjectId) {
-                    $activeMealProject = $mp;
-                    break;
-                }
-            }
-        }
-
-        // Priority 2: Check if any meal project is explicitly linked to selected payroll_project_id
-        if (!$activeMealProject && $selectedProject) {
+        // Priority 1: Check if any meal project is explicitly linked to selected payroll_project_id
+        if ($selectedProject) {
             foreach ($meal_projects as $mp) {
                 if (!empty($mp['payroll_project_id']) && (int) $mp['payroll_project_id'] === (int) $selectedProject) {
                     $activeMealProject = $mp;
@@ -1619,8 +1610,19 @@ class PayrollController extends Controller
             }
         }
 
-        // Priority 3: Smart auto-detect based on timeframe overlap (e.g. august-sept-2026 for September)
-        if (!$activeMealProject) {
+        // Priority 2: Exact timeframe match with targetStartDate and targetEndDate
+        if (!$activeMealProject && !empty($targetStartDate) && !empty($targetEndDate)) {
+            foreach ($meal_projects as $mp) {
+                if ($mp['from_date'] === $targetStartDate && $mp['to_date'] === $targetEndDate) {
+                    $activeMealProject = $mp;
+                    $selectedMealProjectId = (int) $mp['id'];
+                    break;
+                }
+            }
+        }
+
+        // Priority 3: Smart auto-detect based on timeframe overlap (e.g. Sep 26 - Oct 25)
+        if (!$activeMealProject && !empty($targetStartDate) && !empty($targetEndDate)) {
             foreach ($meal_projects as $mp) {
                 if ($mp['from_date'] <= $targetEndDate && $mp['to_date'] >= $targetStartDate) {
                     $activeMealProject = $mp;
@@ -1630,10 +1632,26 @@ class PayrollController extends Controller
             }
         }
 
-        // Fallback: pick the latest meal project if exists
-        if (!$activeMealProject && !empty($meal_projects)) {
+        // Priority 4: If explicit GET param was passed
+        if (!$activeMealProject && $selectedMealProjectId > 0) {
+            foreach ($meal_projects as $mp) {
+                if ((int) $mp['id'] === $selectedMealProjectId) {
+                    $activeMealProject = $mp;
+                    break;
+                }
+            }
+        }
+
+        // Fallback: only if no specific date range was requested, pick the latest meal project if exists
+        if (!$activeMealProject && empty($targetStartDate) && empty($targetEndDate) && !empty($meal_projects)) {
             $activeMealProject = $meal_projects[0];
             $selectedMealProjectId = (int) $activeMealProject['id'];
+        }
+
+        // Auto-save the link in DB if not yet set
+        if ($selectedProject && !empty($activeMealProject['id']) && empty($activeMealProject['payroll_project_id'])) {
+            $matchedMid = (int) $activeMealProject['id'];
+            $this->db->query("UPDATE meal_projects SET payroll_project_id = " . (int)$selectedProject . " WHERE id = $matchedMid");
         }
 
         // Pre-fetch tracked meal counts from meal_records for this active meal project
@@ -1786,7 +1804,26 @@ class PayrollController extends Controller
 
             if ($stmt->execute()) {
                 $newProjId = $stmt->insert_id;
+
+                // Auto-link matching Meal Project based on date range or manual input
                 $meal_project_id = !empty($_POST['meal_project_id']) ? (int) $_POST['meal_project_id'] : 0;
+                if ($meal_project_id <= 0 && $newProjId > 0) {
+                    $checkStart = $is_custom ? $start_date : ($date . '-01');
+                    $checkEnd   = $is_custom ? $end_date : date('Y-m-t', strtotime($checkStart));
+                    $escCS = $this->db->real_escape_string($checkStart);
+                    $escCE = $this->db->real_escape_string($checkEnd);
+
+                    $mMatch = $this->db->query("
+                        SELECT id FROM meal_projects 
+                        WHERE (from_date = '$escCS' AND to_date = '$escCE')
+                           OR (from_date <= '$escCE' AND to_date >= '$escCS')
+                        ORDER BY (from_date = '$escCS' AND to_date = '$escCE') DESC, id DESC LIMIT 1
+                    ");
+                    if ($mMatch && $mRow = $mMatch->fetch_assoc()) {
+                        $meal_project_id = (int) $mRow['id'];
+                    }
+                }
+
                 if ($meal_project_id > 0 && $newProjId > 0) {
                     $this->db->query("UPDATE meal_projects SET payroll_project_id = $newProjId WHERE id = $meal_project_id");
                 }

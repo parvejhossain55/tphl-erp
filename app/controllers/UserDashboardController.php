@@ -227,16 +227,34 @@ class UserDashboardController extends Controller
             9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'
         ];
 
-        $selectedYear = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
-        $selectedStartMonth = isset($_GET['start_month']) ? (int)$_GET['start_month'] : (int)date('m');
-        $selectedEndMonth = isset($_GET['end_month']) ? (int)$_GET['end_month'] : (int)date('m');
+        // Standard reporting cycle: 26th of previous month to 25th of current month
+        $curDay = (int)date('j');
+        $curYear = (int)date('Y');
+        $curMonth = (int)date('n');
+        if ($curDay >= 26) {
+            $cycleMonth = $curMonth + 1;
+            $cycleYear = $curYear;
+            if ($cycleMonth > 12) { $cycleMonth = 1; $cycleYear++; }
+        } else {
+            $cycleMonth = $curMonth;
+            $cycleYear = $curYear;
+        }
+        $prevMonth = $cycleMonth - 1;
+        $prevYear = $cycleYear;
+        if ($prevMonth < 1) { $prevMonth = 12; $prevYear--; }
+        $defaultCycleStart = sprintf('%04d-%02d-26', $prevYear, $prevMonth);
+        $defaultCycleEnd   = sprintf('%04d-%02d-25', $cycleYear, $cycleMonth);
+
+        $selectedYear = isset($_GET['year']) ? (int)$_GET['year'] : $cycleYear;
+        $selectedStartMonth = isset($_GET['start_month']) ? (int)$_GET['start_month'] : $cycleMonth;
+        $selectedEndMonth = isset($_GET['end_month']) ? (int)$_GET['end_month'] : $cycleMonth;
         $filterType = $getFilterType ?? 'monthly';
 
-        $hasFilter = false;
-        $activePreset = 'all_time';
-        $fromDate = null;
-        $toDate = null;
-        $titlePeriod = 'All Time';
+        $hasFilter = true;
+        $activePreset = 'this_month';
+        $fromDate = $defaultCycleStart;
+        $toDate = $defaultCycleEnd;
+        $titlePeriod = 'This Month (' . date('d M', strtotime($fromDate)) . ' - ' . date('d M, Y', strtotime($toDate)) . ')';
 
         if ($preset === 'today' || $preset === 'daily') {
             $hasFilter = true;
@@ -254,9 +272,12 @@ class UserDashboardController extends Controller
         } elseif ($preset === 'this_month' || ($preset === 'monthly' && empty($getFilterType) && empty($getFromDate))) {
             $hasFilter = true;
             $activePreset = 'this_month';
-            $fromDate = date('Y-m-01');
-            $toDate = date('Y-m-t');
-            $titlePeriod = 'This Month (' . date('F Y') . ')';
+            $fromDate = $defaultCycleStart;
+            $toDate = $defaultCycleEnd;
+            $selectedYear = $cycleYear;
+            $selectedStartMonth = $cycleMonth;
+            $selectedEndMonth = $cycleMonth;
+            $titlePeriod = 'This Month (' . date('d M', strtotime($fromDate)) . ' - ' . date('d M, Y', strtotime($toDate)) . ')';
         } elseif ($preset === 'all_time' || $preset === 'all_over') {
             $hasFilter = false;
             $activePreset = 'all_time';
@@ -273,9 +294,12 @@ class UserDashboardController extends Controller
             } elseif ($fromDate === date('Y-m-d', strtotime('-1 day')) && $toDate === date('Y-m-d', strtotime('-1 day'))) {
                 $activePreset = 'yesterday';
                 $titlePeriod = 'Yesterday (' . date('d M, Y', strtotime($fromDate)) . ')';
-            } elseif ($fromDate === date('Y-m-01') && $toDate === date('Y-m-t')) {
+            } elseif ($fromDate === $defaultCycleStart && $toDate === $defaultCycleEnd) {
                 $activePreset = 'this_month';
-                $titlePeriod = 'This Month (' . date('F Y') . ')';
+                $selectedYear = $cycleYear;
+                $selectedStartMonth = $cycleMonth;
+                $selectedEndMonth = $cycleMonth;
+                $titlePeriod = 'This Month (' . date('d M', strtotime($fromDate)) . ' - ' . date('d M, Y', strtotime($toDate)) . ')';
             } else {
                 $activePreset = 'custom';
                 $titlePeriod = date('d M, Y', strtotime($fromDate)) . ' - ' . date('d M, Y', strtotime($toDate));
@@ -293,21 +317,26 @@ class UserDashboardController extends Controller
                 $activePreset = 'monthly';
                 $startMonth = $selectedStartMonth;
                 $endMonth = $selectedEndMonth;
-                $fromDate = sprintf('%04d-%02d-01', $selectedYear, $startMonth);
-                $toDate = date('Y-m-t', strtotime(sprintf('%04d-%02d-01', $selectedYear, $endMonth)));
-                $titlePeriod = $monthsList[$startMonth] ?? date('F');
-                if ($startMonth !== $endMonth) {
-                    $titlePeriod .= ' - ' . ($monthsList[$endMonth] ?? date('F'));
+                $cycleStart = (new SalesTarget($this->db))->getCycleDateRange($selectedYear, $startMonth);
+                $cycleEnd = (new SalesTarget($this->db))->getCycleDateRange($selectedYear, $endMonth);
+                $fromDate = date('Y-m-d', strtotime($cycleStart['start']));
+                $toDate = date('Y-m-d', strtotime($cycleEnd['end']));
+                if ($startMonth === $endMonth) {
+                    $titlePeriod = ($monthsList[$startMonth] ?? date('F')) . ' ' . $selectedYear . ' (' . date('d M', strtotime($fromDate)) . ' - ' . date('d M, Y', strtotime($toDate)) . ')';
+                } else {
+                    $titlePeriod = ($monthsList[$startMonth] ?? '') . ' - ' . ($monthsList[$endMonth] ?? '') . ' ' . $selectedYear;
                 }
-                $titlePeriod .= ' ' . $selectedYear;
             }
         } else {
-            // Default when loading /my-dashboard without parameters
-            $hasFilter = false;
-            $activePreset = 'all_time';
-            $fromDate = null;
-            $toDate = null;
-            $titlePeriod = 'All Time';
+            // Default when loading /my-dashboard without parameters: 26th of previous month to 25th of current month
+            $hasFilter = true;
+            $activePreset = 'this_month';
+            $fromDate = $defaultCycleStart;
+            $toDate = $defaultCycleEnd;
+            $selectedYear = $cycleYear;
+            $selectedStartMonth = $cycleMonth;
+            $selectedEndMonth = $cycleMonth;
+            $titlePeriod = 'This Month (' . date('d M', strtotime($fromDate)) . ' - ' . date('d M, Y', strtotime($toDate)) . ')';
         }
 
         // Fetch range stats & dashboard metrics
@@ -373,6 +402,8 @@ class UserDashboardController extends Controller
             "fromDate"                => $fromDate,
             "toDate"                  => $toDate,
             "titlePeriod"             => $titlePeriod,
+            "cycleBkStart"            => $defaultCycleStart,
+            "cycleBkEnd"              => $defaultCycleEnd,
             "matrixMetrics"           => $matrixMetrics,
         ], $matrixMetrics);
 
