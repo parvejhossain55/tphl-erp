@@ -651,7 +651,7 @@ $hasActiveFilters = !empty($search)
                         $statuses = [
                             'No Response', 'Pending', 'Potential', 'High Potential', 
                             'Visit Scheduled', 'Visit Completed', 'Sold', 'Lead Transferred', 
-                            'Project Transferred', 'Not Interested', 'Don\'t Call Again', 
+                            'Project Transferred', 'Not Interested', 
                             'Refund', 'Future', 'Invalid Lead'
                         ];
                         foreach($statuses as $st) {
@@ -1353,7 +1353,7 @@ $hasActiveFilters = !empty($search)
                         $statuses = [
                             'No Response', 'Pending', 'Potential', 'High Potential', 
                             'Visit Scheduled', 'Visit Completed', 'Sold', 'Lead Transferred', 
-                            'Project Transferred', 'Not Interested', 'Don\'t Call Again', 
+                            'Project Transferred', 'Not Interested', 
                             'Refund', 'Future', 'Invalid Lead'
                         ];
                         foreach($statuses as $st) {
@@ -2597,7 +2597,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 $statuses = [
                                     'No Response', 'Pending', 'Potential', 'High Potential', 
                                     'Visit Scheduled', 'Visit Completed', 'Lead Transferred', 
-                                    'Not Interested', 'Don\'t Call Again', 'Invalid Lead'
+                                    'Not Interested', 'Invalid Lead'
                                 ];
                                 foreach($statuses as $st) {
                                     echo "<option value=\"$st\">$st</option>";

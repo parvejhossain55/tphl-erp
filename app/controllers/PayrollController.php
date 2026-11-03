@@ -1440,21 +1440,84 @@ class PayrollController extends Controller
         // If project selected, fetch project date to ensure year/month/effective dates are synchronized with the project
         $targetStartDate = '';
         $targetEndDate = '';
+        $filterType = 'monthly';
         if ($selectedProject) {
             $projQuery = $this->db->query('SELECT * FROM payroll_projects WHERE id = ' . (int) $selectedProject);
             if ($projQuery && $projData = $projQuery->fetch_assoc()) {
                 if (!empty($projData['is_custom_date']) && !empty($projData['start_date']) && !empty($projData['end_date'])) {
+                    $filterType = 'custom';
                     $targetStartDate = $projData['start_date'];
                     $targetEndDate = $projData['end_date'];
                     $selectedYear = date('Y', strtotime($targetStartDate));
                     $selectedMonth = date('m', strtotime($targetStartDate));
                 } elseif (!empty($projData['date'])) {
+                    $filterType = 'monthly';
                     $parts = explode('-', $projData['date']);
                     if (count($parts) >= 2) {
                         $selectedYear = $parts[0];
                         $selectedMonth = $parts[1];
                         $targetStartDate = sprintf('%04d-%02d-01', (int) $selectedYear, (int) $selectedMonth);
                         $targetEndDate = date('Y-m-t', strtotime($targetStartDate));
+                    }
+                }
+            }
+        } elseif (isset($_GET['filter_type']) && $_GET['filter_type'] === 'custom') {
+            $filterType = 'custom';
+            $targetStartDate = $_GET['from_date'] ?? date('Y-m-01');
+            $targetEndDate = $_GET['to_date'] ?? date('Y-m-t');
+            $selectedYear = date('Y', strtotime($targetStartDate));
+            $selectedMonth = date('m', strtotime($targetStartDate));
+        }
+
+        // Auto-detect matching Payroll Project if not explicitly provided
+        if (empty($selectedProject)) {
+            // Priority A: Check if specified meal_project is explicitly linked to a payroll project
+            $selectedMealPid = isset($_GET['meal_project_id']) && $_GET['meal_project_id'] !== '' && $_GET['meal_project_id'] !== 'undefined' ? (int) $_GET['meal_project_id'] : 0;
+            if ($selectedMealPid > 0) {
+                $mpChk = $this->db->query('SELECT payroll_project_id FROM meal_projects WHERE id = ' . $selectedMealPid);
+                if ($mpChk && $mpR = $mpChk->fetch_assoc()) {
+                    if (!empty($mpR['payroll_project_id'])) {
+                        $selectedProject = (int) $mpR['payroll_project_id'];
+                    }
+                }
+            }
+
+            // Priority B: Match payroll_projects by exact or overlapping custom date range
+            if (empty($selectedProject) && !empty($targetStartDate) && !empty($targetEndDate)) {
+                $escStart = $this->db->real_escape_string($targetStartDate);
+                $escEnd   = $this->db->real_escape_string($targetEndDate);
+                $projMatch = $this->db->query("
+                    SELECT id, name, is_custom_date, start_date, end_date, date 
+                    FROM payroll_projects 
+                    WHERE (start_date = '$escStart' AND end_date = '$escEnd')
+                       OR (is_custom_date = 1 AND start_date <= '$escEnd' AND end_date >= '$escStart')
+                    ORDER BY (start_date = '$escStart' AND end_date = '$escEnd') DESC, id DESC 
+                    LIMIT 1
+                ");
+                if ($projMatch && $pMatch = $projMatch->fetch_assoc()) {
+                    $selectedProject = (int) $pMatch['id'];
+                }
+            }
+
+            // Priority C: Match payroll_projects by monthly date code (YYYY-MM)
+            if (empty($selectedProject) && $filterType === 'monthly' && !empty($selectedYear) && !empty($selectedMonth)) {
+                $mCode = sprintf('%04d-%02d', (int) $selectedYear, (int) $selectedMonth);
+                $projMatchMonth = $this->db->query("SELECT id FROM payroll_projects WHERE date = '$mCode' ORDER BY id DESC LIMIT 1");
+                if ($projMatchMonth && $pmRow = $projMatchMonth->fetch_assoc()) {
+                    $selectedProject = (int) $pmRow['id'];
+                }
+            }
+
+            // If project was auto-detected, ensure authoritative project metadata is synchronized
+            if (!empty($selectedProject)) {
+                $projQuery = $this->db->query('SELECT * FROM payroll_projects WHERE id = ' . (int) $selectedProject);
+                if ($projQuery && $projData = $projQuery->fetch_assoc()) {
+                    if (!empty($projData['is_custom_date']) && !empty($projData['start_date']) && !empty($projData['end_date'])) {
+                        $filterType = 'custom';
+                        $targetStartDate = $projData['start_date'];
+                        $targetEndDate = $projData['end_date'];
+                        $selectedYear = date('Y', strtotime($targetStartDate));
+                        $selectedMonth = date('m', strtotime($targetStartDate));
                     }
                 }
             }
@@ -1494,14 +1557,19 @@ class PayrollController extends Controller
                e.deleted_at,
                e.per_meal_amount, e.is_meal_deduction, e.per_meal_percentage,
                dept.name as department_name, desg.name as designation_name,
-               override_att.tipsoi_present, override_att.tipsoi_absent, override_att.tipsoi_leave, override_att.tipsoi_late, override_att.late_unpaid_absent_days
+               p.late_unpaid_absent_days as saved_late_unpaid_absent_days,
+               p.unpaid_absent_amount as saved_unpaid_absent_amount,
+               override_att.tipsoi_present, override_att.tipsoi_absent, override_att.tipsoi_leave, override_att.tipsoi_late,
+               override_att.late_unpaid_absent_days as att_late_unpaid_absent_days,
+               override_att.deduction as att_deduction,
+               override_att.final_late as att_final_late
         FROM employees e
         LEFT JOIN departments dept ON e.department_id = dept.id
         LEFT JOIN designations desg ON e.designation_id = desg.id
         LEFT JOIN payslips p ON e.id = p.employee_id 
-            ' . ($selectedProject ? ' AND p.payroll_project_id = ' . (int) $selectedProject : " AND YEAR(p.payslip_month) = '$selectedYear' AND MONTH(p.payslip_month) = '$selectedMonth'") . '
+            ' . ($selectedProject ? ' AND p.payroll_project_id = ' . (int) $selectedProject : ' AND p.payroll_project_id = 0') . '
         LEFT JOIN (
-            SELECT employee_id, present as tipsoi_present, absent as tipsoi_absent, leave_days as tipsoi_leave, late as tipsoi_late, late_unpaid_absent_days 
+            SELECT employee_id, present as tipsoi_present, absent as tipsoi_absent, leave_days as tipsoi_leave, late as tipsoi_late, deduction, final_late, late_unpaid_absent_days 
             FROM attendance_monthly_update
             WHERE payroll_project_id = ' . ((int) $selectedProject ?: '0') . "
         ) override_att ON e.id = override_att.employee_id
@@ -1513,6 +1581,7 @@ class PayrollController extends Controller
                   AND (e.deleted_at IS NULL OR e.deleted_at >= '$escapedTargetStart')
               )
           )
+        GROUP BY e.id
         ORDER BY e.employee_id ASC 
     ";
 
@@ -1657,6 +1726,8 @@ class PayrollController extends Controller
             'page_title' => 'Payroll Workplace',
             'payslips' => $payslips,
             'items' => $items,
+            'selectedProject' => $selectedProject,
+            'filterType' => $filterType,
             'selectedYear' => $selectedYear,
             'selectedMonth' => $selectedMonth,
             'payroll_projects' => $payroll_projects,
@@ -3144,21 +3215,22 @@ class PayrollController extends Controller
 
         $payrollProjectId = isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] !== '' ? (int) $_GET['payroll_project_id'] : null;
 
-        // Auto-synchronize dates from selected project if not explicitly customized
+        // Auto-synchronize dates from selected project (project dates take authoritative precedence)
         if ($payrollProjectId) {
             foreach ($payroll_projects as $prj) {
                 if ($prj['id'] == $payrollProjectId) {
-                    if (empty($_GET['from_date']) && empty($_GET['month'])) {
-                        if (!empty($prj['is_custom_date']) && !empty($prj['start_date']) && !empty($prj['end_date'])) {
-                            $filterType = 'custom';
-                            $fromDate = $prj['start_date'];
-                            $toDate = $prj['end_date'];
-                        } elseif (!empty($prj['date'])) {
-                            $parts = explode('-', $prj['date']);
-                            if (count($parts) >= 2) {
-                                $_GET['year'] = $parts[0];
-                                $_GET['month'] = $parts[1];
-                            }
+                    if (!empty($prj['is_custom_date']) && !empty($prj['start_date']) && !empty($prj['end_date'])) {
+                        $filterType = 'custom';
+                        $fromDate = $prj['start_date'];
+                        $toDate = $prj['end_date'];
+                    } elseif (!empty($prj['date'])) {
+                        $filterType = 'monthly';
+                        $parts = explode('-', $prj['date']);
+                        if (count($parts) >= 2) {
+                            $currentYear = $parts[0];
+                            $currentMonth = $parts[1];
+                            $_GET['year'] = $parts[0];
+                            $_GET['month'] = $parts[1];
                         }
                     }
                     break;
@@ -3211,10 +3283,6 @@ class PayrollController extends Controller
 
         $employees = [];
         foreach ($localEmployees as $localMatch) {
-            if ($payrollProjectId && $hasProjectRecords && !isset($projectEmployeeIds[$localMatch['real_emp_id_fk']])) {
-                continue;
-            }
-
             $employees[] = [
                 'employee_id' => $localMatch['employee_id'],
                 'full_name' => $localMatch['full_name'] ?? '-',
@@ -3327,10 +3395,6 @@ class PayrollController extends Controller
 
         $employees = [];
         foreach ($localEmployees as $localMatch) {
-            if ($payrollProjectId && $hasProjectRecords && !isset($projectEmployeeIds[$localMatch['real_emp_id_fk']])) {
-                continue;
-            }
-
             $employees[] = [
                 'employee_id' => $localMatch['employee_id'],
                 'full_name' => $localMatch['full_name'] ?? '-',

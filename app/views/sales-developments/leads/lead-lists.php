@@ -1297,7 +1297,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                                 $statuses = [
                                     'No Response', 'Pending', 'Potential', 'High Potential', 
                                     'Visit Scheduled', 'Visit Completed', 'Lead Transferred', 
-                                    'Not Interested', 'Don\'t Call Again', 'Invalid Lead'
+                                    'Not Interested', 'Invalid Lead'
                                 ];
                                 foreach($statuses as $st) {
                                     echo "<option value=\"$st\">$st</option>";

@@ -202,7 +202,7 @@ document.addEventListener("DOMContentLoaded", function () {
             var dateVal = selectedOpt.getAttribute('data-date');
 
             if (isCustom === '1' && startDate && endDate) {
-                $('#filterType').val('custom');
+                $('#filterType').val('custom').trigger('change.select2');
                 $('#fromDate').val(startDate);
                 $('#toDate').val(endDate);
                 document.getElementById('monthlyContainer').style.display = 'none';
@@ -210,9 +210,9 @@ document.addEventListener("DOMContentLoaded", function () {
             } else if (dateVal) {
                 var parts = dateVal.split('-');
                 if (parts.length >= 2) {
-                    $('#filterYear').val(parts[0]);
-                    $('#filterMonth').val(parts[1]);
-                    $('#filterType').val('monthly');
+                    $('#filterYear').val(parts[0]).trigger('change.select2');
+                    $('#filterMonth').val(parts[1]).trigger('change.select2');
+                    $('#filterType').val('monthly').trigger('change.select2');
                     document.getElementById('monthlyContainer').style.display = 'block';
                     document.getElementById('customContainer').style.display = 'none';
                 }
