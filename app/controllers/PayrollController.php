@@ -1433,14 +1433,16 @@ class PayrollController extends Controller
         $currentMonth = date('m');
 
         // GET param use, fallback to current month/year
-        $selectedYear = isset($_GET['year']) && $_GET['year'] !== 'undefined' ? $_GET['year'] : '';
-        $selectedMonth = isset($_GET['month']) && $_GET['month'] !== 'undefined' ? $_GET['month'] : '';
+        $selectedYear = isset($_GET['year']) && $_GET['year'] !== 'undefined' && $_GET['year'] !== '' ? $_GET['year'] : $currentYear;
+        $selectedMonth = isset($_GET['month']) && $_GET['month'] !== 'undefined' && $_GET['month'] !== '' ? str_pad($_GET['month'], 2, '0', STR_PAD_LEFT) : $currentMonth;
         $selectedProject = isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] !== 'undefined' ? $_GET['payroll_project_id'] : '';
 
+        // If custom date range supplied in GET, initialize them upfront
+        $targetStartDate = (!empty($_GET['from_date']) && $_GET['from_date'] !== 'undefined') ? $_GET['from_date'] : '';
+        $targetEndDate = (!empty($_GET['to_date']) && $_GET['to_date'] !== 'undefined') ? $_GET['to_date'] : '';
+        $filterType = (isset($_GET['filter_type']) && $_GET['filter_type'] === 'custom') || (!empty($targetStartDate) && !empty($targetEndDate)) ? 'custom' : 'monthly';
+
         // If project selected, fetch project date to ensure year/month/effective dates are synchronized with the project
-        $targetStartDate = '';
-        $targetEndDate = '';
-        $filterType = 'monthly';
         if ($selectedProject) {
             $projQuery = $this->db->query('SELECT * FROM payroll_projects WHERE id = ' . (int) $selectedProject);
             if ($projQuery && $projData = $projQuery->fetch_assoc()) {
@@ -1461,12 +1463,6 @@ class PayrollController extends Controller
                     }
                 }
             }
-        } elseif (isset($_GET['filter_type']) && $_GET['filter_type'] === 'custom') {
-            $filterType = 'custom';
-            $targetStartDate = $_GET['from_date'] ?? date('Y-m-01');
-            $targetEndDate = $_GET['to_date'] ?? date('Y-m-t');
-            $selectedYear = date('Y', strtotime($targetStartDate));
-            $selectedMonth = date('m', strtotime($targetStartDate));
         }
 
         // Auto-detect matching Payroll Project if not explicitly provided
@@ -1474,10 +1470,15 @@ class PayrollController extends Controller
             // Priority A: Check if specified meal_project is explicitly linked to a payroll project
             $selectedMealPid = isset($_GET['meal_project_id']) && $_GET['meal_project_id'] !== '' && $_GET['meal_project_id'] !== 'undefined' ? (int) $_GET['meal_project_id'] : 0;
             if ($selectedMealPid > 0) {
-                $mpChk = $this->db->query('SELECT payroll_project_id FROM meal_projects WHERE id = ' . $selectedMealPid);
+                $mpChk = $this->db->query('SELECT payroll_project_id, from_date, to_date FROM meal_projects WHERE id = ' . $selectedMealPid);
                 if ($mpChk && $mpR = $mpChk->fetch_assoc()) {
                     if (!empty($mpR['payroll_project_id'])) {
                         $selectedProject = (int) $mpR['payroll_project_id'];
+                    }
+                    if (empty($targetStartDate) && !empty($mpR['from_date']) && !empty($mpR['to_date'])) {
+                        $targetStartDate = $mpR['from_date'];
+                        $targetEndDate   = $mpR['to_date'];
+                        $filterType      = 'custom';
                     }
                 }
             }
@@ -1529,7 +1530,7 @@ class PayrollController extends Controller
         if (empty($selectedMonth)) {
             $selectedMonth = $currentMonth;
         }
-        if (empty($targetStartDate)) {
+        if (empty($targetStartDate) || empty($targetEndDate)) {
             $targetStartDate = sprintf('%04d-%02d-01', (int) $selectedYear, (int) $selectedMonth);
             $targetEndDate = date('Y-m-t', strtotime($targetStartDate));
         }
@@ -1562,14 +1563,15 @@ class PayrollController extends Controller
                override_att.tipsoi_present, override_att.tipsoi_absent, override_att.tipsoi_leave, override_att.tipsoi_late,
                override_att.late_unpaid_absent_days as att_late_unpaid_absent_days,
                override_att.deduction as att_deduction,
-               override_att.final_late as att_final_late
+               override_att.final_late as att_final_late,
+               override_att.update_at as att_updated_at
         FROM employees e
         LEFT JOIN departments dept ON e.department_id = dept.id
         LEFT JOIN designations desg ON e.designation_id = desg.id
         LEFT JOIN payslips p ON e.id = p.employee_id 
             ' . ($selectedProject ? ' AND p.payroll_project_id = ' . (int) $selectedProject : ' AND p.payroll_project_id = 0') . '
         LEFT JOIN (
-            SELECT employee_id, present as tipsoi_present, absent as tipsoi_absent, leave_days as tipsoi_leave, late as tipsoi_late, deduction, final_late, late_unpaid_absent_days 
+            SELECT employee_id, present as tipsoi_present, absent as tipsoi_absent, leave_days as tipsoi_leave, late as tipsoi_late, deduction, final_late, late_unpaid_absent_days, update_at 
             FROM attendance_monthly_update
             WHERE payroll_project_id = ' . ((int) $selectedProject ?: '0') . "
         ) override_att ON e.id = override_att.employee_id
@@ -1581,7 +1583,6 @@ class PayrollController extends Controller
                   AND (e.deleted_at IS NULL OR e.deleted_at >= '$escapedTargetStart')
               )
           )
-        GROUP BY e.id
         ORDER BY e.employee_id ASC 
     ";
 
@@ -1736,7 +1737,8 @@ class PayrollController extends Controller
             'selectedMealProjectId' => $selectedMealProjectId,
             'mealCountsByEmp' => $mealCountsByEmp,
             'selectedFromDate' => $targetStartDate,
-            'selectedToDate' => $targetEndDate
+            'selectedToDate' => $targetEndDate,
+            'cycleTotalDays' => max(1, (int) round((strtotime($targetEndDate) - strtotime($targetStartDate)) / 86400) + 1)
         ]);
     }
 

@@ -120,6 +120,7 @@ $page = "create Lead"
                             <option value="">Select Lead</option>
                             <option value="No Response">No Response</option>
                             <option value="Pending">Pending</option>
+                            <option value="Qualification in Progress">Qualification in Progress</option>
                             <option value="Potential">Potential</option>
                             <option value="High Potential">High Potential</option>
                             <option value="Visit Scheduled">Visit Scheduled</option>

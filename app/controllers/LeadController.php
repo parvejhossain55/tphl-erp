@@ -172,6 +172,9 @@ class LeadController extends Controller
         $totalNotAssignedLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'not_assigned_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
         $totalIrrelevantLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'irrelevant_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
         $totalDeleteRequests = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'delete_requests', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
+        $totalPotentialLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'potential_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
+        $totalVisitScheduledLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'visit_scheduled', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
+        $totalVisitedLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'visited_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
         // ── Duplicate Leads Detection ─────────────────────────────────────────
         // My team leads assigned to me whose phone/email also appears in OTHER assigned_ids
         $dupGroups  = [];
@@ -313,6 +316,9 @@ class LeadController extends Controller
             "totalNotAssignedLeads" => $totalNotAssignedLeads,
             "totalIrrelevantLeads" => $totalIrrelevantLeads,
             "totalDeleteRequests" => $totalDeleteRequests,
+            "totalPotentialLeads" => $totalPotentialLeads,
+            "totalVisitScheduledLeads" => $totalVisitScheduledLeads,
+            "totalVisitedLeads" => $totalVisitedLeads,
             "date_type" => $date_type,
             "selectedAction" => $lastAction,
             "selectedAssigned" => $assigned,
@@ -698,6 +704,8 @@ class LeadController extends Controller
             $badgeClass = 'bg-secondary text-white';
             if (in_array($statusVal, ['High Potential', 'High Prospect', 'Hot'])) {
                 $badgeClass = 'bg-danger text-white';
+            } elseif ($statusVal === 'Qualification in Progress') {
+                $badgeClass = 'bg-info text-white';
             } elseif (in_array($statusVal, ['Potential', 'Prospect'])) {
                 $badgeClass = 'bg-success text-white';
             } elseif (in_array($statusVal, ['Visit Scheduled', 'Will Visit'])) {

@@ -14,7 +14,7 @@ class Con_PurchaseOrder extends Model
 
     public function getAll()
     {
-        $sql = "SELECT po.*, pr.project_id, pr.is_urgent AS pr_is_urgent, pr.urgent_reason AS pr_urgent_reason, pr.required_date AS pr_required_date, p.name AS project_name,
+        $sql = "SELECT po.*, COALESCE(pr.project_id, vpr.project_id) AS project_id, pr.is_urgent AS pr_is_urgent, pr.urgent_reason AS pr_urgent_reason, pr.required_date AS pr_required_date, p.name AS project_name,
                        u.full_name AS created_by_name,
                        u.role_id AS creator_role_id,
                        v.name AS vendor_name,
@@ -50,10 +50,7 @@ class Con_PurchaseOrder extends Model
                             WHERE pri.request_id = po.request_id)
                        ) AS category_names
                 FROM {$this->table} po
-                JOIN purchase_requests pr ON pr.id = po.request_id
-                LEFT JOIN projects p ON p.id = pr.project_id
-                LEFT JOIN users u ON u.id = po.created_by
-                LEFT JOIN vendors v ON v.id = po.vendor_id
+                LEFT JOIN purchase_requests pr ON pr.id = po.request_id
                 LEFT JOIN (
                     SELECT v1.* 
                     FROM vendor_payment_requests v1
@@ -63,6 +60,9 @@ class Con_PurchaseOrder extends Model
                         GROUP BY purchase_order_id
                     ) v2 ON v1.id = v2.max_id
                 ) vpr ON vpr.purchase_order_id = po.id
+                LEFT JOIN projects p ON p.id = COALESCE(pr.project_id, vpr.project_id)
+                LEFT JOIN users u ON u.id = po.created_by
+                LEFT JOIN vendors v ON v.id = po.vendor_id
                 LEFT JOIN (
                     SELECT ref_id, SUM(amount_paid) AS total_paid 
                     FROM con_financial_transactions 
@@ -76,7 +76,7 @@ class Con_PurchaseOrder extends Model
 
     public function find($id)
     {
-        $sql = "SELECT po.*, pr.project_id, pr.notes AS pr_notes, p.name AS project_name,
+        $sql = "SELECT po.*, COALESCE(pr.project_id, vpr.project_id) AS project_id, pr.notes AS pr_notes, p.name AS project_name,
                     pr.required_date AS pr_required_date,
                     pr.is_urgent AS pr_is_urgent,
                     pr.urgent_reason AS pr_urgent_reason,
@@ -91,8 +91,17 @@ class Con_PurchaseOrder extends Model
                     ph_u.full_name AS ph_approver_name,
                     op_u.full_name AS op_approver_name
              FROM {$this->table} po
-             JOIN purchase_requests pr ON pr.id = po.request_id
-             LEFT JOIN projects p ON p.id = pr.project_id
+             LEFT JOIN purchase_requests pr ON pr.id = po.request_id
+             LEFT JOIN (
+                 SELECT v1.purchase_order_id, v1.project_id
+                 FROM vendor_payment_requests v1
+                 INNER JOIN (
+                     SELECT purchase_order_id, MAX(id) AS max_id
+                     FROM vendor_payment_requests
+                     GROUP BY purchase_order_id
+                 ) v2 ON v1.id = v2.max_id
+             ) vpr ON vpr.purchase_order_id = po.id
+             LEFT JOIN projects p ON p.id = COALESCE(pr.project_id, vpr.project_id)
              LEFT JOIN users u ON u.id = po.created_by
              LEFT JOIN vendors v ON v.id = po.vendor_id
              LEFT JOIN users apv ON apv.id = po.approved_by_pm
@@ -411,7 +420,7 @@ class Con_PurchaseOrder extends Model
         $stmt = $this->db->prepare("
             SELECT pr.bom_id, pr.project_id, p.name AS project_name
             FROM purchase_orders po
-            JOIN purchase_requests pr ON pr.id = po.request_id
+            LEFT JOIN purchase_requests pr ON pr.id = po.request_id
             LEFT JOIN projects p ON p.id = pr.project_id
             WHERE po.id = ?
             LIMIT 1");

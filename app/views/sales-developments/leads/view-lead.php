@@ -420,6 +420,7 @@ $page = "View Lead";
                                 $vLt = $leadData['lead_type'] ?: 'Pending';
                                 $vLtCls = 'bg-secondary text-white';
                                 if (in_array($vLt, ['High Potential', 'High Prospect', 'Hot'])) $vLtCls = 'bg-danger text-white';
+                                elseif ($vLt === 'Qualification in Progress') $vLtCls = 'bg-info text-white';
                                 elseif (in_array($vLt, ['Potential', 'Prospect', 'Warm'])) $vLtCls = 'bg-warning text-dark';
                                 elseif (in_array($vLt, ['Visit Scheduled', 'Will Visit'])) $vLtCls = 'bg-info text-dark';
                                 elseif (in_array($vLt, ['Visit Completed', 'Visited'])) $vLtCls = 'bg-primary text-white';

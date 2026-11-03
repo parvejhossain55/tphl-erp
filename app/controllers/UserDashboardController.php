@@ -886,6 +886,7 @@ class UserDashboardController extends Controller
         $upcomingFollowUpsCount = (int)($summaryCards['upcoming_follow_ups'] ?? 0);
         $missingFollowUpCount   = (int)($summaryCards['missing_follow_ups'] ?? 0);
         $irrelevantLeadsCount   = (int)($summaryCards['irrelevant_leads'] ?? 0);
+        $noResponseLeadsCount   = (int)($summaryCards['no_response_leads'] ?? 0);
 
         // ── Duplicate Leads Detection (Optimized JOIN Query) ───────────────────
         $duplicateGroups = [];
@@ -1099,6 +1100,7 @@ class UserDashboardController extends Controller
             'totalBookingsCount'     => $totalBookingsCount,
             'upcomingFollowUpsCount' => $upcomingFollowUpsCount,
             'irrelevantLeadsCount'   => $irrelevantLeadsCount,
+            'noResponseLeadsCount'   => $noResponseLeadsCount,
             'search'              => $search,
             'followup_date'       => $followup_date,
             'filterCard'          => $filterCard,

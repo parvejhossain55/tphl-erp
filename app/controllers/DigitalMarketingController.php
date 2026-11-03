@@ -752,6 +752,7 @@ public function deleteBudget($id)
 
             $ltClass = match (strtolower($leadType)) {
                 'high potential', 'high prospect', 'hot' => 'lt-hot',
+                'qualification in progress'              => 'lt-pending',
                 'potential', 'prospect', 'warm'          => 'lt-prospect',
                 'cold'                                   => 'lt-cold',
                 'visit completed', 'visited', 'visit scheduled', 'will visit' => 'lt-visited',
