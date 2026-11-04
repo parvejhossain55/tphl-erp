@@ -2020,16 +2020,23 @@
                 }
 
                 $isMealEnrolled = false;
+                $hasMealAccess = false;
                 if ($userMealEmpId > 0) {
-                    if (!isset($_SESSION['user']['is_meal_deduction'])) {
-                        $chkMeal = $db->query("SELECT is_meal_deduction FROM employees WHERE id = {$userMealEmpId} AND deleted_at IS NULL LIMIT 1");
-                        if ($chkMeal && $rowM = $chkMeal->fetch_assoc()) {
-                            $_SESSION['user']['is_meal_deduction'] = (int)$rowM['is_meal_deduction'];
-                        } else {
-                            $_SESSION['user']['is_meal_deduction'] = 0;
-                        }
+                    // Always read fresh status from DB
+                    $chkMeal = $db->query("SELECT is_meal_deduction FROM employees WHERE id = {$userMealEmpId} AND deleted_at IS NULL LIMIT 1");
+                    if ($chkMeal && $rowM = $chkMeal->fetch_assoc()) {
+                        $_SESSION['user']['is_meal_deduction'] = (int)$rowM['is_meal_deduction'];
+                    } else {
+                        $_SESSION['user']['is_meal_deduction'] = 0;
                     }
                     $isMealEnrolled = ((int)($_SESSION['user']['is_meal_deduction'] ?? 0) === 1);
+
+                    // Check if employee has any meal history in meal_records
+                    $chkHist = $db->query("SELECT id FROM meal_records WHERE employee_id = {$userMealEmpId} AND is_consumed = 1 LIMIT 1");
+                    $hasMealHistory = ($chkHist && $chkHist->num_rows > 0);
+                    $_SESSION['user']['has_meal_history'] = $hasMealHistory ? 1 : 0;
+
+                    $hasMealAccess = ($isMealEnrolled || $hasMealHistory);
                 }
                 ?>
                 <?php if ($canAccessMealTracker): ?>
@@ -2052,7 +2059,7 @@
                                 <a href="<?= $base_url ?>/meal-tracker-history"
                                     class="sidebar__menu-item <?= isActive('meal-tracker-history', $current_route) ?>">Meal History</a>
                             </li>
-                            <?php if ($isMealEnrolled): ?>
+                            <?php if ($hasMealAccess): ?>
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/my-meal-tracker"
                                         class="sidebar__menu-item <?= isActive('my-meal-tracker', $current_route) ?>">My Meal Tracker</a>
@@ -2060,7 +2067,7 @@
                             <?php endif; ?>
                         </ul>
                     </li>
-                <?php elseif ($isMealEnrolled): ?>
+                <?php elseif ($hasMealAccess): ?>
                     <!-- Dedicated menu for enrolled employee -->
                     <li class="sidebar__menu-category ">
                         <span class="category-name">Meal Service</span>

@@ -293,16 +293,112 @@
     background-color: #4b5563 !important;
 }
 
-[bd-theme="bd-theme-dark"] .table {
-    color: var(--clr-text-body, #f9fafb) !important;
-    border-color: var(--clr-border-1, #374151) !important;
+/* =========================================================================
+   GLOBAL TABLE STYLES IN DARK MODE (Header, Footer, Rows & DataTables)
+   ========================================================================= */
+[bd-theme="bd-theme-dark"] .table,
+[bd-theme="bd-theme-dark"] table {
+    color: var(--clr-text-body, #e2e8f0) !important;
+    border-color: #334155 !important;
 }
 
-[bd-theme="bd-theme-dark"] .table td,
-[bd-theme="bd-theme-dark"] .table th {
+/* Base table body cells */
+[bd-theme="bd-theme-dark"] .table tbody td,
+[bd-theme="bd-theme-dark"] .table tbody th {
     background-color: transparent !important;
-    color: var(--clr-text-body, #f9fafb) !important;
-    border-color: var(--clr-border-1, #374151) !important;
+    color: #cbd5e1 !important;
+    border-color: #334155 !important;
+}
+
+/* TOP ROW: Table Headers (thead) */
+[bd-theme="bd-theme-dark"] table thead,
+[bd-theme="bd-theme-dark"] .table thead,
+[bd-theme="bd-theme-dark"] .table thead tr,
+[bd-theme="bd-theme-dark"] .table thead th,
+[bd-theme="bd-theme-dark"] .table thead td,
+[bd-theme="bd-theme-dark"] .table > thead > tr > th,
+[bd-theme="bd-theme-dark"] .table__title th,
+[bd-theme="bd-theme-dark"] table.dataTable thead th,
+[bd-theme="bd-theme-dark"] table.dataTable thead td,
+[bd-theme="bd-theme-dark"] .dataTables_scrollHead,
+[bd-theme="bd-theme-dark"] .dataTables_scrollHead table,
+[bd-theme="bd-theme-dark"] .dataTables_scrollHeadInner,
+[bd-theme="bd-theme-dark"] .table-light,
+[bd-theme="bd-theme-dark"] .table-light th,
+[bd-theme="bd-theme-dark"] thead.table-light th,
+[bd-theme="bd-theme-dark"] thead.bg-light th,
+[bd-theme="bd-theme-dark"] thead .bg-light {
+    background-color: #1e293b !important;
+    color: #f1f5f9 !important;
+    border-color: #334155 !important;
+    font-weight: 600;
+}
+
+[bd-theme="bd-theme-dark"] .table thead th a,
+[bd-theme="bd-theme-dark"] .table thead th span:not(.badge),
+[bd-theme="bd-theme-dark"] .table thead th i {
+    color: #f1f5f9 !important;
+}
+
+/* BOTTOM ROW: Table Footers (tfoot / Totals) */
+[bd-theme="bd-theme-dark"] table tfoot,
+[bd-theme="bd-theme-dark"] .table tfoot,
+[bd-theme="bd-theme-dark"] .table tfoot tr,
+[bd-theme="bd-theme-dark"] .table tfoot th,
+[bd-theme="bd-theme-dark"] .table tfoot td,
+[bd-theme="bd-theme-dark"] table.dataTable tfoot th,
+[bd-theme="bd-theme-dark"] table.dataTable tfoot td,
+[bd-theme="bd-theme-dark"] .dataTables_scrollFoot,
+[bd-theme="bd-theme-dark"] .dataTables_scrollFoot table,
+[bd-theme="bd-theme-dark"] .dataTables_scrollFootInner,
+[bd-theme="bd-theme-dark"] tfoot.table-light,
+[bd-theme="bd-theme-dark"] tfoot.table-light td,
+[bd-theme="bd-theme-dark"] tfoot.table-light th,
+[bd-theme="bd-theme-dark"] tfoot .bg-light,
+[bd-theme="bd-theme-dark"] .totals,
+[bd-theme="bd-theme-dark"] .table-footer {
+    background-color: #1e293b !important;
+    color: #f8fafc !important;
+    border-top: 2px solid #475569 !important;
+    border-color: #334155 !important;
+    font-weight: 700;
+}
+
+[bd-theme="bd-theme-dark"] .table tfoot .text-success { color: #34d399 !important; }
+[bd-theme="bd-theme-dark"] .table tfoot .text-danger  { color: #f87171 !important; }
+[bd-theme="bd-theme-dark"] .table tfoot .text-primary { color: #38bdf8 !important; }
+[bd-theme="bd-theme-dark"] .table tfoot .text-warning { color: #fbbf24 !important; }
+[bd-theme="bd-theme-dark"] .table tfoot .text-muted   { color: #94a3b8 !important; }
+[bd-theme="bd-theme-dark"] .table tfoot .text-dark    { color: #f8fafc !important; }
+
+/* Neutralize hardcoded light inline pastel styles on thead/tfoot in dark mode */
+[bd-theme="bd-theme-dark"] thead[style*="background"],
+[bd-theme="bd-theme-dark"] thead tr[style*="background"],
+[bd-theme="bd-theme-dark"] tfoot[style*="background"],
+[bd-theme="bd-theme-dark"] tfoot tr[style*="background"] {
+    background-color: #1e293b !important;
+    background: #1e293b !important;
+    color: #f8fafc !important;
+}
+
+[bd-theme="bd-theme-dark"] thead[style*="background"] th,
+[bd-theme="bd-theme-dark"] thead tr[style*="background"] th,
+[bd-theme="bd-theme-dark"] tfoot[style*="background"] td,
+[bd-theme="bd-theme-dark"] tfoot tr[style*="background"] td {
+    background-color: #1e293b !important;
+    color: #f8fafc !important;
+}
+
+/* Workspace table specific footer dark highlight */
+[bd-theme="bd-theme-dark"] .workspace-footer-row,
+[bd-theme="bd-theme-dark"] #workspaceTable tfoot tr {
+    background-color: #132f38 !important;
+    color: #5eead4 !important;
+}
+[bd-theme="bd-theme-dark"] #workspaceTable tfoot td {
+    background-color: transparent !important;
+    color: #5eead4 !important;
+    border-color: #1e4b56 !important;
 }
 
 [bd-theme="bd-theme-dark"] .table-striped tbody tr:nth-of-type(odd) {
@@ -311,12 +407,6 @@
 
 [bd-theme="bd-theme-dark"] .table-hover tbody tr:hover td {
     background-color: rgba(255, 255, 255, 0.04) !important;
-}
-
-[bd-theme="bd-theme-dark"] .table-light,
-[bd-theme="bd-theme-dark"] .table-light th {
-    background-color: rgba(255, 255, 255, 0.05) !important;
-    color: var(--clr-text-body, #f9fafb) !important;
 }
 
 [bd-theme="bd-theme-dark"] .form-control,
@@ -560,5 +650,11 @@ textarea {
         height: 480px !important;
     }
 }
+
+/* SweetAlert2 z-index fix: Ensure SweetAlert2 is always above Bootstrap modals (.modal has z-index: 99999) */
+.swal2-container {
+    z-index: 1000005 !important;
+}
+
 
 

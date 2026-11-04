@@ -131,6 +131,28 @@ public function store()
         'next_follow_up_plan_notes' => $_POST['next_follow_up_plan_notes'] ?? null,
     ];
 
+    // Validation: If lead_status is 'No Response', next_follow_up_date is mandatory up to 4 attempts
+    $leadId = (int)$followUpData['lead_id'];
+    $leadStatus = trim($followUpData['lead_status'] ?? '');
+    $nextFollowUpDate = !empty($followUpData['next_follow_up_date']) ? trim($followUpData['next_follow_up_date']) : null;
+    $isAjax = !empty($_POST['is_ajax']);
+
+    if (strcasecmp($leadStatus, 'No Response') === 0) {
+        $nrCount = $this->followUpModel->getNoResponseCountByLead($leadId);
+        if ($nrCount < 4 && empty($nextFollowUpDate)) {
+            $attemptNo = $nrCount + 1;
+            $msg = "Next Follow Up Date is mandatory for 'No Response' (Attempt {$attemptNo} of 4)!";
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => $msg]);
+                exit;
+            }
+            setError($msg);
+            header("Location: " . ($_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/follow-up-leads/{$leadId}"));
+            exit;
+        }
+    }
+
     $currentUserId = $_SESSION['user']['id'] ?? 0;
 
     // Handle User-level Transfer (transfer_to_user_id takes priority)
@@ -361,6 +383,25 @@ public function store()
             'lead_status' => $_POST['lead_status'] ?? null,
             'next_follow_up_plan_notes' => $_POST['next_follow_up_plan_notes'] ?? null,
         ];
+
+        // Validation: If lead_status is 'No Response', next_follow_up_date is mandatory up to 4 attempts
+        $leadStatus = trim($followUpData['lead_status'] ?? '');
+        $nextFollowUpDate = !empty($followUpData['next_follow_up_date']) ? trim($followUpData['next_follow_up_date']) : null;
+        if (strcasecmp($leadStatus, 'No Response') === 0) {
+            $nrCount = $this->followUpModel->getNoResponseCountByLead($leadId, $followUpId);
+            if ($nrCount < 4 && empty($nextFollowUpDate)) {
+                $attemptNo = $nrCount + 1;
+                $msg = "Next Follow Up Date is mandatory for 'No Response' (Attempt {$attemptNo} of 4)!";
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['status' => 'error', 'message' => $msg]);
+                    exit;
+                }
+                setError($msg);
+                header("Location: " . ($_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/my-assigned-leads"));
+                exit;
+            }
+        }
 
         // Update Lead Transferred if provided
         if (($followUpData['lead_status'] ?? '') === 'Lead Transferred' && !empty($_POST['team_id'])) {

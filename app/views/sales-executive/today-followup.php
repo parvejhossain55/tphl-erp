@@ -363,8 +363,9 @@
 
                         <!-- Next Follow Up Date -->
                         <div class="col-lg-6">
-                            <label class="form__input-title">Next Follow Up Date</label>
-                            <input type="date" name="next_follow_up_date" class="form-control">
+                            <label class="form__input-title" id="createModalNextDateLabel">Next Follow Up Date</label>
+                            <input type="date" name="next_follow_up_date" id="createModalNextDateInput" class="form-control">
+                            <div id="createModalNextDateHint" class="form-text small" style="display:none;"></div>
                         </div>
 
                         <!-- Next Action -->
@@ -486,6 +487,43 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    function syncNoResponseNextDateRequirement() {
+        let leadStatus = String($('#createModalLeadStatus').val() || '').trim().toLowerCase();
+        let isEditMode = Boolean($('#createFollowUpEditId').val());
+        let editId = $('#createFollowUpEditId').val();
+
+        let noResponseCount = 0;
+        if (Array.isArray(modalHistoryData)) {
+            noResponseCount = modalHistoryData.filter(function(item) {
+                if (isEditMode && editId && Number(item.id) === Number(editId)) {
+                    return false;
+                }
+                return String(item.lead_status || '').trim().toLowerCase() === 'no response';
+            }).length;
+        }
+
+        let labelEl = $('#createModalNextDateLabel');
+        let inputEl = $('#createModalNextDateInput');
+        let hintEl = $('#createModalNextDateHint');
+
+        if (leadStatus === 'no response') {
+            if (noResponseCount < 4) {
+                let attempt = noResponseCount + 1;
+                labelEl.html(`Next Follow Up Date <span class="text-danger fw-bold">*</span> <span class="badge bg-danger text-white ms-1" style="font-size: 10px;"><i class="fa-solid fa-asterisk me-1" style="font-size:7px;"></i>Required (${attempt}/4)</span>`);
+                inputEl.prop('required', true);
+                hintEl.show().html(`<span class="text-danger fw-semibold" style="font-size:11px;"><i class="fa-solid fa-circle-exclamation me-1"></i>Next follow-up date is mandatory for "No Response" (Attempt ${attempt} of 4).</span>`);
+            } else {
+                labelEl.html(`Next Follow Up Date <span class="badge bg-secondary text-white ms-1" style="font-size: 10px;"><i class="fa-solid fa-circle-check me-1"></i>Optional (${noResponseCount} completed)</span>`);
+                inputEl.prop('required', false);
+                hintEl.show().html(`<span class="text-muted" style="font-size:11px;"><i class="fa-solid fa-circle-info me-1"></i>4 "No Response" follow-ups completed. Next date is now optional.</span>`);
+            }
+        } else {
+            labelEl.html('Next Follow Up Date');
+            inputEl.prop('required', false);
+            hintEl.hide().html('');
+        }
+    }
+
     function resetFormToCreateMode() {
         $('#createFollowUpForm').attr('action', '<?= $GLOBALS['base_url'] ?>/store-follow-up');
         $('#createFollowUpEditId').val('');
@@ -502,6 +540,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if ($('#createFollowUpProjectSelect').hasClass('select2-hidden-accessible')) {
             $('#createFollowUpProjectSelect').trigger('change.select2');
         }
+        syncNoResponseNextDateRequirement();
     }
 
     function loadModalHistory(leadId) {
@@ -573,6 +612,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     html = '<tr><td colspan="14" class="text-center text-muted">No history found.</td></tr>';
                 }
                 tbody.html(html);
+                syncNoResponseNextDateRequirement();
             })
             .catch(err => {
                 console.error("Failed to load history", err);
@@ -596,8 +636,9 @@ document.addEventListener('DOMContentLoaded', function() {
         loadFlatsForProject(projectId, null);
     });
 
-    // Handle Lead Transferred toggle
+    // Handle Lead Transferred toggle & No Response requirement
     $('#createModalLeadStatus').on('change', function() {
+        syncNoResponseNextDateRequirement();
         if (this.value === 'Lead Transferred') {
             $('#createModalReassignTeamDiv').show();
             $('#createModalReassignTeamId').prop('required', false);
@@ -653,6 +694,7 @@ document.addEventListener('DOMContentLoaded', function() {
         $('#createFollowUpForm select[name="next_action"]').val(item.next_action || '');
         $('#createFollowUpForm textarea[name="next_follow_up_plan_notes"]').val(item.next_follow_up_plan_notes || '');
 
+        syncNoResponseNextDateRequirement();
         // Scroll to form top inside modal
         $('#createFollowUpModal .modal-body').animate({ scrollTop: 0 }, 300);
     });
@@ -670,6 +712,36 @@ document.addEventListener('DOMContentLoaded', function() {
         let isEditMode = Boolean($('#createFollowUpEditId').val());
         let originalHtml = submitBtn.html();
         let leadId = $('#createFollowUpLeadId').val();
+
+        // Enforce Next Follow Up Date for "No Response" up to 4 attempts
+        let leadStatusVal = String($('#createModalLeadStatus').val() || '').trim().toLowerCase();
+        if (leadStatusVal === 'no response') {
+            let editIdVal = $('#createFollowUpEditId').val();
+            let countNR = 0;
+            if (Array.isArray(modalHistoryData)) {
+                countNR = modalHistoryData.filter(function(item) {
+                    if (isEditMode && editIdVal && Number(item.id) === Number(editIdVal)) return false;
+                    return String(item.lead_status || '').trim().toLowerCase() === 'no response';
+                }).length;
+            }
+            let nextDateVal = String($('#createModalNextDateInput').val() || '').trim();
+            if (countNR < 4 && !nextDateVal) {
+                let attemptNo = countNR + 1;
+                let errMsg = `Next Follow Up Date is mandatory for "No Response" (Attempt ${attemptNo} of 4)!`;
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Date Required',
+                        text: errMsg,
+                        confirmButtonColor: '#0d6efd'
+                    });
+                } else {
+                    alert(errMsg);
+                }
+                $('#createModalNextDateInput').focus();
+                return false;
+            }
+        }
         
         submitBtn.prop('disabled', true).html(isEditMode ? '<i class="fa-solid fa-spinner fa-spin me-1"></i> Updating...' : '<i class="fa-solid fa-spinner fa-spin me-1"></i> Saving...');
         

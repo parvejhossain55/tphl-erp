@@ -1642,6 +1642,18 @@ class PayrollController extends Controller
             }
         }
 
+        // Priority 5: Auto-provision matching Meal Project if not found for target dates
+        if (!$activeMealProject && !empty($targetStartDate) && !empty($targetEndDate)) {
+            require_once dirname(__DIR__) . '/models/MealProject.php';
+            $mProjModel = new MealProject($this->db);
+            $projName = !empty($selectedProjectData['name']) ? $selectedProjectData['name'] : null;
+            $activeMealProject = $mProjModel->getOrCreateCycleForRange($targetStartDate, $targetEndDate, $projName, $selectedProject, true);
+            if ($activeMealProject) {
+                $selectedMealProjectId = (int)$activeMealProject['id'];
+                $meal_projects = $mProjModel->getAll();
+            }
+        }
+
         // Fallback: only if no specific date range was requested, pick the latest meal project if exists
         if (!$activeMealProject && empty($targetStartDate) && empty($targetEndDate) && !empty($meal_projects)) {
             $activeMealProject = $meal_projects[0];
@@ -1702,29 +1714,33 @@ class PayrollController extends Controller
             }
             $monthStr = $selectedYear && $selectedMonth ? $selectedYear . '-' . str_pad($selectedMonth, 2, '0', STR_PAD_LEFT) : date('Y-m');
 
+            // Batch pre-fetch all payslip_details in ONE single query (High performance: avoids 200+ N+1 queries)
+            $allPayslipDetails = [];
+            if ($selectedProject) {
+                $pdRes = $this->db->query("
+                    SELECT pd.payslip_id, pd.payslip_item_id, pd.amount 
+                    FROM payslip_details pd
+                    JOIN payslips p ON pd.payslip_id = p.id
+                    WHERE p.payroll_project_id = " . (int)$selectedProject
+                );
+                if ($pdRes) {
+                    while ($pdRow = $pdRes->fetch_assoc()) {
+                        $allPayslipDetails[(int)$pdRow['payslip_id']][(int)$pdRow['payslip_item_id']] = (float)$pdRow['amount'];
+                    }
+                }
+            }
+
             while ($row = $res->fetch_assoc()) {
                 $pid = (int) $row['id'];
                 $empId = (int) $row['real_emp_id_fk'];
 
                 $details = [];
                 if ($pid > 0) {
-                    $detQuery = "
-                        SELECT payslip_item_id, amount 
-                        FROM payslip_details 
-                        WHERE payslip_id = $pid
-                    ";
-                    $detRes = $this->db->query($detQuery);
-                    if ($detRes) {
-                        while ($drow = $detRes->fetch_assoc()) {
-                            $details[$drow['payslip_item_id']] = (float) $drow['amount'];
-                        }
-                    }
+                    $details = $allPayslipDetails[$pid] ?? [];
                 } else {
                     // Fallback to configured defaults if payslip is not yet saved
                     if (isset($configuredItems[$empId])) {
-                        foreach ($configuredItems[$empId] as $itemid => $amt) {
-                            $details[$itemid] = $amt;
-                        }
+                        $details = $configuredItems[$empId];
                     }
 
                     if ($advanceSalaryItemId) {
@@ -1805,22 +1821,26 @@ class PayrollController extends Controller
             if ($stmt->execute()) {
                 $newProjId = $stmt->insert_id;
 
-                // Auto-link matching Meal Project based on date range or manual input
+                // Auto-link or auto-create matching Meal Project based on date range
                 $meal_project_id = !empty($_POST['meal_project_id']) ? (int) $_POST['meal_project_id'] : 0;
-                if ($meal_project_id <= 0 && $newProjId > 0) {
-                    $checkStart = $is_custom ? $start_date : ($date . '-01');
-                    $checkEnd   = $is_custom ? $end_date : date('Y-m-t', strtotime($checkStart));
-                    $escCS = $this->db->real_escape_string($checkStart);
-                    $escCE = $this->db->real_escape_string($checkEnd);
+                $checkStart = $is_custom ? $start_date : '';
+                $checkEnd   = $is_custom ? $end_date : '';
 
-                    $mMatch = $this->db->query("
-                        SELECT id FROM meal_projects 
-                        WHERE (from_date = '$escCS' AND to_date = '$escCE')
-                           OR (from_date <= '$escCE' AND to_date >= '$escCS')
-                        ORDER BY (from_date = '$escCS' AND to_date = '$escCE') DESC, id DESC LIMIT 1
-                    ");
-                    if ($mMatch && $mRow = $mMatch->fetch_assoc()) {
-                        $meal_project_id = (int) $mRow['id'];
+                if (!$is_custom && !empty($date)) {
+                    $mParts = explode('-', $date);
+                    if (count($mParts) === 2) {
+                        $cRange = $this->getCycleDateRange((int)$mParts[0], (int)$mParts[1]);
+                        $checkStart = date('Y-m-d', strtotime($cRange['start']));
+                        $checkEnd   = date('Y-m-d', strtotime($cRange['end']));
+                    }
+                }
+
+                if ($newProjId > 0 && !empty($checkStart) && !empty($checkEnd)) {
+                    require_once dirname(__DIR__) . '/models/MealProject.php';
+                    $mProjModel = new MealProject($this->db);
+                    $autoMeal = $mProjModel->getOrCreateCycleForRange($checkStart, $checkEnd, $name, $newProjId, true);
+                    if ($autoMeal) {
+                        $meal_project_id = (int)$autoMeal['id'];
                     }
                 }
 
@@ -1835,7 +1855,128 @@ class PayrollController extends Controller
         }
     }
 
-    public function salaryHold()
+    /**
+     * Delete Payroll Project and cleanly cascade-delete all its associated records across related tables
+     * Accessible by Management / Admin / HR roles
+     */
+    public function deletePayrollProject()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $isManagement = in_array($roleId, [1, 3, 4, 20, 30, 33, 35]) 
+                     || strpos($roleName, 'admin') !== false 
+                     || strpos($roleName, 'management') !== false 
+                     || strpos($roleName, 'hr') !== false;
+
+        $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') 
+                  || (isset($_SERVER['CONTENT_TYPE']) && strpos($_SERVER['CONTENT_TYPE'], 'application/json') !== false)
+                  || (isset($_POST['is_ajax']) && $_POST['is_ajax'] == '1');
+
+        if (!$isManagement) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Unauthorized: Only Management or Admin can delete Payroll Projects.']);
+                exit;
+            }
+            if (function_exists('setError')) setError('Unauthorized action: Only Management or Admin can delete Payroll Projects.');
+            header("Location: {$GLOBALS['base_url']}/payroll-workspace");
+            exit;
+        }
+
+        $projectId = (int)($_POST['project_id'] ?? ($_GET['id'] ?? 0));
+        if (!$projectId) {
+            $rawInput = file_get_contents('php://input');
+            $input = json_decode($rawInput, true) ?? [];
+            if (!empty($input['project_id'])) {
+                $projectId = (int)$input['project_id'];
+                $isAjax = true;
+            }
+        }
+
+        if (!$projectId) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Valid Payroll Project ID is required.']);
+                exit;
+            }
+            if (function_exists('setError')) setError('Valid Payroll Project ID is required.');
+            header("Location: {$GLOBALS['base_url']}/payroll-workspace");
+            exit;
+        }
+
+        $pRes = $this->db->query("SELECT id, name FROM payroll_projects WHERE id = {$projectId} LIMIT 1");
+        if (!$pRes || !($project = $pRes->fetch_assoc())) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Payroll project not found.']);
+                exit;
+            }
+            if (function_exists('setError')) setError('Payroll project not found.');
+            header("Location: {$GLOBALS['base_url']}/payroll-workspace");
+            exit;
+        }
+
+        $projectName = $project['name'];
+
+        $this->db->begin_transaction();
+        try {
+            // 1. Unlink advance deductions so advance salaries are preserved
+            $this->db->query("
+                UPDATE advance_salaries 
+                SET deducted_payslip_id = NULL 
+                WHERE deducted_payslip_id IN (
+                    SELECT id FROM payslips WHERE payroll_project_id = {$projectId}
+                )
+            ");
+
+            // 2. Delete payslip details
+            $this->db->query("
+                DELETE pd FROM payslip_details pd 
+                INNER JOIN payslips p ON pd.payslip_id = p.id 
+                WHERE p.payroll_project_id = {$projectId}
+            ");
+
+            // 3. Delete payslips
+            $this->db->query("DELETE FROM payslips WHERE payroll_project_id = {$projectId}");
+
+            // 4. Delete attendance monthly overrides
+            $this->db->query("DELETE FROM attendance_monthly_update WHERE payroll_project_id = {$projectId}");
+
+            // 5. Unlink meal projects (preserving meal tracker records)
+            $this->db->query("UPDATE meal_projects SET payroll_project_id = NULL WHERE payroll_project_id = {$projectId}");
+
+            // 6. Delete payroll project
+            $this->db->query("DELETE FROM payroll_projects WHERE id = {$projectId}");
+
+            $this->db->commit();
+
+            $msg = "Payroll Project '{$projectName}' and all related data (payslips, calculations, attendance records) have been successfully deleted.";
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'message' => $msg]);
+                exit;
+            }
+            if (function_exists('setSuccess')) setSuccess($msg);
+            header("Location: {$GLOBALS['base_url']}/payroll-workspace");
+            exit;
+        } catch (\Throwable $e) {
+            $this->db->rollback();
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Error deleting payroll project: ' . $e->getMessage()]);
+                exit;
+            }
+            if (function_exists('setError')) setError('Error deleting payroll project: ' . $e->getMessage());
+            header("Location: {$GLOBALS['base_url']}/payroll-workspace");
+            exit;
+        }
+    }
+
+        public function salaryHold()
     {
         return $this->salaryHoldPage();
     }

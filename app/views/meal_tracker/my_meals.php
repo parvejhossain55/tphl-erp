@@ -69,8 +69,8 @@ $base_url = $GLOBALS['base_url'] ?? '';
 }
 </style>
 
-<?php if (empty($is_enrolled)): ?>
-    <!-- Notice for Unenrolled Employee -->
+<?php if (empty($is_enrolled) && empty($has_meal_history)): ?>
+    <!-- Notice for Unenrolled Employee who NEVER had meal service -->
     <div class="card__wrapper p-5 text-center mb-4">
         <div class="mb-3">
             <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 72px; height: 72px; background: rgba(245, 158, 11, 0.15); color: #d97706;">
@@ -102,9 +102,15 @@ $base_url = $GLOBALS['base_url'] ?? '';
                 <div>
                     <div class="d-flex align-items-center gap-2 flex-wrap">
                         <h4 class="fw-bold mb-0"><?= htmlspecialchars($employee['full_name'] ?? 'My Meal Tracker') ?></h4>
-                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
-                            <i class="fa-solid fa-circle-check me-1"></i> Meal Service Active
-                        </span>
+                        <?php if (!empty($is_enrolled)): ?>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                                <i class="fa-solid fa-circle-check me-1"></i> Meal Service Active
+                            </span>
+                        <?php else: ?>
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">
+                                <i class="fa-solid fa-power-off me-1"></i> Meal Service Inactive (Turned OFF)
+                            </span>
+                        <?php endif; ?>
                     </div>
                     <div class="text-muted small mt-1">
                         <span><strong>ID:</strong> <?= htmlspecialchars($employee['employee_id'] ?? 'N/A') ?></span>
@@ -169,6 +175,22 @@ $base_url = $GLOBALS['base_url'] ?? '';
             </div>
         <?php endif; ?>
     </div>
+
+    <?php if (empty($is_enrolled)): ?>
+        <!-- Banner for employees who turned off meal service but have history -->
+        <div class="alert alert-warning py-2 px-3 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-2 shadow-sm">
+            <div class="d-flex align-items-center gap-2">
+                <i class="fa-solid fa-triangle-exclamation text-warning fs-5"></i>
+                <div>
+                    <strong class="text-dark">Meal Service is currently turned OFF.</strong>
+                    <span class="text-muted small ms-1">Meals tracked before your turn-off date remain saved and will be deducted in payroll. Today and future dates will not be counted. To re-enable meal service, please contact HR / Admin.</span>
+                </div>
+            </div>
+            <span class="badge bg-secondary-subtle text-danger border border-danger-subtle px-3 py-2 fw-semibold">
+                <i class="fa-solid fa-circle-xmark me-1"></i> Service Disabled
+            </span>
+        </div>
+    <?php endif; ?>
 
     <!-- Summary Stat Cards -->
     <div class="row  mb-4">

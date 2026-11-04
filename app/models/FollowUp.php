@@ -29,6 +29,26 @@ class FollowUp extends Model
         return $result->fetch_all(MYSQLI_ASSOC);
     }
 
+    /**
+     * Count existing 'No Response' follow-ups for a lead
+     */
+    public function getNoResponseCountByLead(int $leadId, ?int $excludeFollowUpId = null): int
+    {
+        $sql = "SELECT COUNT(*) AS c FROM lead_follow_ups WHERE lead_id = ? AND lead_status = 'No Response' AND deleted_at IS NULL";
+        if ($excludeFollowUpId !== null) {
+            $sql .= " AND id != " . (int)$excludeFollowUpId;
+        }
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return 0;
+        }
+        $stmt->bind_param("i", $leadId);
+        $stmt->execute();
+        $res = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return (int)($res['c'] ?? 0);
+    }
+
     // Create a new follow-up
     public function create($data)
     {
@@ -56,7 +76,7 @@ class FollowUp extends Model
         $status = in_array($data['status'] ?? '', $allowedStatuses) ? $data['status'] : 'pending';
 
         $allowedNextActions = ['site visit', 'booking', 'call_back', 'take_time'];
-        $next_action = in_array($data['next_action'], $allowedNextActions) ? $data['next_action'] : null;
+        $next_action = in_array($data['next_action'] ?? '', $allowedNextActions) ? $data['next_action'] : null;
 
         $follow_up_type = $data['follow_up_type'] ?? null;
         if ($follow_up_type === 'email') {
@@ -105,7 +125,7 @@ class FollowUp extends Model
         // LEAD STATUS AUTO UPDATE
         // ==============================
         $leadAction = null;
-        if ($data['follow_up_type'] === 'visit' && $data['status'] === 'completed') {
+        if (($data['follow_up_type'] ?? '') === 'visit' && ($data['status'] ?? '') === 'completed') {
             $leadAction = 'visited';
         } elseif ($data['status'] === 'pending') {
             $leadAction = 'follow up';

@@ -891,8 +891,14 @@ WHERE e.id = ?
     /**
      * Get active employees for Meal Tracker filtered by branch and is_meal_deduction = 1
      */
-    public function getActiveMealEmployeesByBranch($branchId)
+    public function getActiveMealEmployeesByBranch($branchId, $projectId = null)
     {
+        $projectClause = "";
+        if ($projectId) {
+            $pId = (int)$projectId;
+            $projectClause = " OR e.id IN (SELECT DISTINCT mr.employee_id FROM meal_records mr WHERE mr.meal_project_id = {$pId})";
+        }
+
         $sql = "SELECT e.id, e.employee_id, e.full_name, e.department_id, e.designation_id, 
                        e.per_meal_amount, e.is_meal_deduction, e.per_meal_percentage,
                        e.office_branch_id,
@@ -902,7 +908,7 @@ WHERE e.id = ?
                 LEFT JOIN designations des ON e.designation_id = des.id
                 WHERE e.employee_status = 'active'
                   AND e.deleted_at IS NULL
-                  AND e.is_meal_deduction = 1
+                  AND (e.is_meal_deduction = 1 {$projectClause})
                   AND e.office_branch_id = ?
                 ORDER BY CAST(e.employee_id AS UNSIGNED) ASC, e.employee_id ASC";
 
