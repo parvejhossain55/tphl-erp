@@ -127,8 +127,9 @@
 
                         <!-- Next Follow Up Date -->
                         <div class="col-lg-6">
-                            <label class="form-label">Next Follow Up Date</label>
-                            <input type="date" name="next_follow_up_date" class="form-control">
+                            <label class="form-label" id="editModalNextDateLabel">Next Follow Up Date</label>
+                            <input type="date" name="next_follow_up_date" id="editModalNextDateInput" class="form-control">
+                            <div id="editModalNextDateHint" class="form-text small" style="display:none;"></div>
                         </div>
 
                         <!-- Next Action -->

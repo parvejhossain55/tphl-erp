@@ -64,6 +64,9 @@ class MealTrackerController extends Controller
     {
         $this->checkAccess();
 
+        // Auto-provision current 26th-to-25th cycle if not yet created
+        $this->mealProjectModel->getOrCreateCycleForDate(date('Y-m-d'));
+
         // Fetch all meal projects
         $mealProjects = $this->mealProjectModel->getAll();
 
@@ -122,7 +125,7 @@ class MealTrackerController extends Controller
         $guestRecords = [];
 
         if ($selectedBranchId) {
-            $employees = $this->employeeModel->getActiveMealEmployeesByBranch($selectedBranchId);
+            $employees = $this->employeeModel->getActiveMealEmployeesByBranch($selectedBranchId, $selectedProjectId);
             if ($selectedProjectId && $activeProject) {
                 // Auto-sync attendance if no consumed records exist yet, or today has not been recorded
                 $hasConsumed = $this->mealRecordModel->hasConsumedRecords($selectedProjectId);
@@ -389,7 +392,7 @@ class MealTrackerController extends Controller
             exit;
         }
 
-        $employees = $this->employeeModel->getActiveMealEmployeesByBranch($branchId);
+        $employees = $this->employeeModel->getActiveMealEmployeesByBranch($branchId, $projectId);
         $records = $this->mealRecordModel->getRecordsByProjectAndBranch($projectId, $branchId);
         $guestRecords = $this->mealRecordModel->getGuestRecordsByProjectAndBranch($projectId, $branchId);
         $optOuts = $this->mealRecordModel->getOptOutsByDateRange($project['from_date'], $project['to_date']);
@@ -607,6 +610,9 @@ class MealTrackerController extends Controller
         $input = json_decode($rawInput, true) ?? [];
         $action = trim($input['action'] ?? '');
         $date = date('Y-m-d');
+
+        // Ensure current cycle project exists for today's date
+        $this->mealProjectModel->getOrCreateCycleForDate($date);
         $reason = trim($input['reason'] ?? '');
 
         if (!in_array($action, ['opt_out', 'opt_in'])) {
@@ -637,6 +643,116 @@ class MealTrackerController extends Controller
     /**
      * AJAX POST: Sync Attendance with Meal Records (Admin / HR)
      */
+    /**
+     * AJAX POST: Toggle All-Time Meal Service (is_meal_deduction in employees table)
+     */
+    public function toggleAllTimeMeal()
+    {
+        header('Content-Type: application/json');
+
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (!isset($_SESSION['user']['id'])) {
+            echo json_encode(['success' => false, 'message' => 'Please login first.']);
+            exit;
+        }
+
+        $empId = (int)($_SESSION['user']['employee_db_id'] ?? 0);
+        if (!$empId) {
+            $userId = (int)$_SESSION['user']['id'];
+            $res = $this->db->query("SELECT id FROM employees WHERE user_id = $userId AND deleted_at IS NULL LIMIT 1");
+            if ($res && $row = $res->fetch_assoc()) {
+                $empId = (int)$row['id'];
+                $_SESSION['user']['employee_db_id'] = $empId;
+            }
+        }
+
+        if (!$empId) {
+            echo json_encode(['success' => false, 'message' => 'No employee profile linked to your user account.']);
+            exit;
+        }
+
+        // Strict 11:00 AM Cutoff Check (Only Admin/HR can modify after 11:00 AM)
+        date_default_timezone_set('Asia/Dhaka');
+        $isTestMode = isset($_GET['test_meal']) || isset($_GET['preview_meal']) || isset($_GET['test_modal']);
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $isAdminOrHr = in_array($userRoleId, [1, 3, 4]) 
+                    || strpos($userRoleName, 'admin') !== false 
+                    || strpos($userRoleName, 'hr') !== false;
+
+        if (!$isAdminOrHr && !$isTestMode && date('H:i') >= '11:00') {
+            echo json_encode([
+                'success' => false,
+                'message' => "Today's meal cutoff time (11:00 AM) has passed. Status cannot be modified after 11:00 AM."
+            ]);
+            exit;
+        }
+
+        $rawInput = file_get_contents('php://input');
+        $input = json_decode($rawInput, true) ?? [];
+        $action = trim($input['action'] ?? ''); // 'enable', 'disable', 'toggle', 'on', 'off'
+
+        $eRes = $this->db->query("SELECT id, is_meal_deduction, full_name, office_branch_id FROM employees WHERE id = {$empId} AND deleted_at IS NULL LIMIT 1");
+        if (!$eRes || !($emp = $eRes->fetch_assoc())) {
+            echo json_encode(['success' => false, 'message' => 'Employee profile not found.']);
+            exit;
+        }
+
+        $currentStatus = (int)($emp['is_meal_deduction'] ?? 0);
+        if ($action === 'enable' || $action === 'on' || $action === 'opt_in') {
+            $newStatus = 1;
+        } elseif ($action === 'disable' || $action === 'off' || $action === 'opt_out') {
+            $newStatus = 0;
+        } else {
+            $newStatus = ($currentStatus === 1) ? 0 : 1;
+        }
+
+        $stmt = $this->db->prepare("UPDATE employees SET is_meal_deduction = ?, updated_at = NOW() WHERE id = ?");
+        if ($stmt) {
+            $stmt->bind_param("ii", $newStatus, $empId);
+            $stmt->execute();
+            $stmt->close();
+        }
+
+        $_SESSION['user']['is_meal_deduction'] = $newStatus;
+
+        // When disabling, set today and future dates to 0 (no meal) while preserving all prior tracked meals
+        if ($newStatus === 0) {
+            $today = date('Y-m-d');
+            $this->db->query("
+                UPDATE meal_records 
+                SET is_consumed = 0, updated_at = NOW() 
+                WHERE employee_id = {$empId} AND meal_date >= '{$today}'
+            ");
+        }
+
+        // When enabling, automatically sync attendance for active meal project if one exists
+        if ($newStatus === 1) {
+            $today = date('Y-m-d');
+            $pRes = $this->db->query("SELECT id FROM meal_projects WHERE '$today' BETWEEN from_date AND to_date ORDER BY id DESC LIMIT 1");
+            if ($pRes && $pRow = $pRes->fetch_assoc()) {
+                $activeProjId = (int)$pRow['id'];
+                $branchId = (int)($emp['office_branch_id'] ?? 1);
+                $this->mealRecordModel->syncAttendanceWithMealRecords($activeProjId, $branchId);
+            }
+        }
+
+        $msg = ($newStatus === 1) 
+            ? "Meal service turned ON successfully. Meals will be auto-counted based on attendance."
+            : "Meal service turned OFF successfully.";
+
+        echo json_encode([
+            'success' => true,
+            'is_meal_deduction' => $newStatus,
+            'status_text' => ($newStatus === 1) ? 'ON' : 'OFF',
+            'message' => $msg
+        ]);
+        exit;
+    }
+
     public function syncAttendance()
     {
         $this->checkAccess(true);
@@ -716,15 +832,26 @@ class MealTrackerController extends Controller
 
         $isEnrolled = ($employee && (int)($employee['is_meal_deduction'] ?? 0) === 1);
 
-        // If not enrolled or no employee profile, show friendly notice
-        if (!$employee || !$isEnrolled) {
+        // Check if employee has any meal history in meal_records
+        $hasMealHistory = false;
+        if ($empId > 0) {
+            $chkHist = $this->db->query("SELECT id FROM meal_records WHERE employee_id = {$empId} AND is_consumed = 1 LIMIT 1");
+            $hasMealHistory = ($chkHist && $chkHist->num_rows > 0);
+        }
+
+        // If no employee profile OR (not enrolled and has zero meal history), show friendly notice
+        if (!$employee || (!$isEnrolled && !$hasMealHistory)) {
             return $this->view('meal_tracker/my_meals', [
                 'current_route' => 'my-meal-tracker',
                 'page_title' => 'My Meal Tracker',
                 'employee' => $employee,
-                'is_enrolled' => false
+                'is_enrolled' => false,
+                'has_meal_history' => false
             ]);
         }
+
+        // Auto-provision current 26th-to-25th cycle if not yet created
+        $this->mealProjectModel->getOrCreateCycleForDate(date('Y-m-d'));
 
         // Fetch all meal projects (cycles)
         $mealProjects = $this->mealProjectModel->getAll();
@@ -793,6 +920,71 @@ class MealTrackerController extends Controller
             $optOuts = $this->mealRecordModel->getEmployeeOptOutsInRange($empId, $activeProject['from_date'], $activeProject['to_date']);
             $attendances = $this->mealRecordModel->getEmployeeAttendancesInRange($empId, $activeProject['from_date'], $activeProject['to_date']);
 
+            // If attendances are not in local DB, fetch from Tipsoi API to show Attendance Context
+            try {
+                $apiServicePath = dirname(__DIR__) . '/services/ExternalApiService.php';
+                if (file_exists($apiServicePath)) {
+                    require_once $apiServicePath;
+                    $apiService = new ExternalApiService($this->db);
+                    $fromTime = strtotime($activeProject['from_date'] . ' 00:00:00') * 1000;
+                    $toTime   = strtotime($activeProject['to_date'] . ' 23:59:59') * 1000;
+                    $tipsoiLogs = $apiService->getAttendanceLogs($fromTime, $toTime);
+                    if (!empty($tipsoiLogs)) {
+                        $empCode = strtolower(trim($employee['employee_id'] ?? ''));
+                        $empName = strtolower(trim($employee['full_name'] ?? ''));
+                        foreach ($tipsoiLogs as $tLog) {
+                            $tCode = strtolower(trim($tLog['employeeOfficeId'] ?? $tLog['employeeId'] ?? ''));
+                            $tName = strtolower(trim($tLog['employeeName'] ?? ''));
+                            if (($empCode !== '' && $tCode === $empCode) || ($empName !== '' && $tName === $empName)) {
+                                if (!empty($tLog['attendance'])) {
+                                    foreach ($tLog['attendance'] as $ts => $dayAtt) {
+                                        $rawD = $dayAtt['date'] ?? '';
+                                        $dStr = null;
+                                        if (preg_match('/^(\d{2})\.(\d{2})\.(\d{4})/', $rawD, $m)) {
+                                            $dStr = "{$m[3]}-{$m[2]}-{$m[1]}";
+                                        } else if (is_numeric($ts)) {
+                                            $sec = $ts > 9999999999 ? (int)($ts / 1000) : (int)$ts;
+                                            $dtObj = new DateTime("@$sec");
+                                            $dtObj->setTimezone(new DateTimeZone('Asia/Dhaka'));
+                                            $dStr = $dtObj->format('Y-m-d');
+                                        }
+                                        if ($dStr && !isset($attendances[$dStr])) {
+                                            $isPres = !empty($dayAtt['isPresent']) || (!empty($dayAtt['firstLoggedTime']) && trim($dayAtt['firstLoggedTime']) !== '-');
+                                            $isOff = !empty($dayAtt['isOffday']) || !empty($dayAtt['isHoliday']);
+                                            $isLate = !empty($dayAtt['isLate']);
+                                            $statusTxt = $isOff ? 'Off Day' : ($isLate ? 'Late' : ($isPres ? 'Present' : 'Absent'));
+                                            $punchIn = ($dayAtt['firstLoggedTime'] && trim($dayAtt['firstLoggedTime']) !== '-') ? $dayAtt['firstLoggedTime'] : null;
+                                            $punchOut = ($dayAtt['lastLoggedTime'] && trim($dayAtt['lastLoggedTime']) !== '-') ? $dayAtt['lastLoggedTime'] : null;
+
+                                            $attendances[$dStr] = [
+                                                'attendance_date' => $dStr,
+                                                'today_status' => $statusTxt,
+                                                'punch_in_time' => $punchIn,
+                                                'punch_out_time' => $punchOut
+                                            ];
+                                        }
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+            } catch (\Throwable $te) {
+                // Ignore API error
+            }
+
+            // If employee has 0 consumed records in this project, auto-sync this branch from attendance
+            $empConsumedCnt = 0;
+            foreach ($records as $r) {
+                if (!empty($r['is_consumed'])) $empConsumedCnt++;
+            }
+            if ($empConsumedCnt === 0 && !empty($activeProject['id'])) {
+                $bId = (int)($employee['office_branch_id'] ?? 1);
+                $this->mealRecordModel->syncAttendanceWithMealRecords($activeProject['id'], $bId);
+                $records = $this->mealRecordModel->getEmployeeDetailedRecords($empId, $activeProject['id']);
+            }
+
             foreach ($dates as $d) {
                 $isConsumed = isset($records[$d]) ? (int)$records[$d]['is_consumed'] : null;
                 $updatedAt = $records[$d]['updated_at'] ?? null;
@@ -823,7 +1015,8 @@ class MealTrackerController extends Controller
             'current_route' => 'my-meal-tracker',
             'page_title' => 'My Meal Tracker',
             'employee' => $employee,
-            'is_enrolled' => true,
+            'is_enrolled' => $isEnrolled,
+            'has_meal_history' => $hasMealHistory,
             'mealProjects' => $mealProjects,
             'activeProject' => $activeProject,
             'selectedProjectId' => $selectedProjectId,

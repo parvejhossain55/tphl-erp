@@ -1,4 +1,12 @@
 <?php
+$leadNoResponseCount = 0;
+if (!empty($followUpLeads) && is_array($followUpLeads)) {
+    foreach ($followUpLeads as $fu) {
+        if (strcasecmp($fu['lead_status'] ?? '', 'No Response') === 0) {
+            $leadNoResponseCount++;
+        }
+    }
+}
 $page_title = "Follow Ups Page";
 $page = 'Follow Ups';
 $show_breadcrumb = true;
@@ -164,8 +172,9 @@ $show_breadcrumb = true;
 
                     <!-- Next Follow Up Date -->
                     <div class="col-lg-6">
-                        <label class="form__input-title">Next Follow Up Date</label>
-                        <input type="date" name="next_follow_up_date" class="form-control">
+                        <label class="form__input-title" id="standaloneNextDateLabel">Next Follow Up Date</label>
+                        <input type="date" name="next_follow_up_date" id="standaloneNextDateInput" class="form-control">
+                        <div id="standaloneNextDateHint" class="form-text small" style="display:none;"></div>
                     </div>
 
                     <!-- Next Action -->
@@ -333,6 +342,74 @@ $show_breadcrumb = true;
         else flatSel.innerHTML = '<option value="">Select Flat</option>';
     });
 
+    const leadNoResponseCount = <?= (int)$leadNoResponseCount ?>;
+    const createLeadStatusEl = document.getElementById('create_lead_status');
+    const standaloneNextDateLabel = document.getElementById('standaloneNextDateLabel');
+    const standaloneNextDateInput = document.getElementById('standaloneNextDateInput');
+    const standaloneNextDateHint = document.getElementById('standaloneNextDateHint');
+
+    function syncStandaloneNextDateRequirement() {
+        if (!createLeadStatusEl || !standaloneNextDateLabel || !standaloneNextDateInput) return;
+        const val = String(createLeadStatusEl.value || '').trim().toLowerCase();
+        if (val === 'no response') {
+            if (leadNoResponseCount < 4) {
+                const attempt = leadNoResponseCount + 1;
+                standaloneNextDateLabel.innerHTML = `Next Follow Up Date <span class="text-danger fw-bold">*</span> <span class="badge bg-danger text-white ms-1" style="font-size: 10px;"><i class="fa-solid fa-asterisk me-1" style="font-size:7px;"></i>Required (${attempt}/4)</span>`;
+                standaloneNextDateInput.required = true;
+                if (standaloneNextDateHint) {
+                    standaloneNextDateHint.style.display = 'block';
+                    standaloneNextDateHint.innerHTML = `<span class="text-danger fw-semibold" style="font-size:11px;"><i class="fa-solid fa-circle-exclamation me-1"></i>Next follow-up date is mandatory for "No Response" (Attempt ${attempt} of 4).</span>`;
+                }
+            } else {
+                standaloneNextDateLabel.innerHTML = `Next Follow Up Date <span class="badge bg-secondary text-white ms-1" style="font-size: 10px;"><i class="fa-solid fa-circle-check me-1"></i>Optional (${leadNoResponseCount} done)</span>`;
+                standaloneNextDateInput.required = false;
+                if (standaloneNextDateHint) {
+                    standaloneNextDateHint.style.display = 'block';
+                    standaloneNextDateHint.innerHTML = `<span class="text-muted" style="font-size:11px;"><i class="fa-solid fa-circle-info me-1"></i>4 "No Response" follow-ups completed. Next date is now optional.</span>`;
+                }
+            }
+        } else {
+            standaloneNextDateLabel.innerHTML = 'Next Follow Up Date';
+            standaloneNextDateInput.required = false;
+            if (standaloneNextDateHint) {
+                standaloneNextDateHint.style.display = 'none';
+                standaloneNextDateHint.innerHTML = '';
+            }
+        }
+    }
+
+    if (createLeadStatusEl) {
+        createLeadStatusEl.addEventListener('change', syncStandaloneNextDateRequirement);
+        syncStandaloneNextDateRequirement();
+    }
+
+    const createForm = document.querySelector('form[action*="store-follow-up"]');
+    if (createForm) {
+        createForm.addEventListener('submit', function(e) {
+            const val = String(createLeadStatusEl ? createLeadStatusEl.value : '').trim().toLowerCase();
+            if (val === 'no response' && leadNoResponseCount < 4) {
+                const dateVal = String(standaloneNextDateInput ? standaloneNextDateInput.value : '').trim();
+                if (!dateVal) {
+                    e.preventDefault();
+                    const attempt = leadNoResponseCount + 1;
+                    const msg = `Next Follow Up Date is mandatory for "No Response" (Attempt ${attempt} of 4)!`;
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Date Required',
+                            text: msg,
+                            confirmButtonColor: '#0d6efd'
+                        });
+                    } else {
+                        alert(msg);
+                    }
+                    if (standaloneNextDateInput) standaloneNextDateInput.focus();
+                    return false;
+                }
+            }
+        });
+    }
+
     // Lead Transferred toggle logic
     document.getElementById('create_lead_status').addEventListener('change', function() {
         const reassignDiv = document.getElementById('reassign_team_div');
@@ -380,6 +457,74 @@ $show_breadcrumb = true;
             }
             if (modal.querySelector('textarea[name="next_follow_up_plan_notes"]')) {
                 modal.querySelector('textarea[name="next_follow_up_plan_notes"]').value = this.dataset.planNotes;
+            }
+
+            // Sync No Response for edit modal
+            const editModalLeadStatusEl = modal.querySelector('select[name="lead_status"]');
+            const editModalNextDateLabel = document.getElementById('editModalNextDateLabel');
+            const editModalNextDateInput = document.getElementById('editModalNextDateInput');
+            const editModalNextDateHint = document.getElementById('editModalNextDateHint');
+
+            function syncEditModalRequirement() {
+                if (!editModalLeadStatusEl || !editModalNextDateLabel || !editModalNextDateInput) return;
+                const val = String(editModalLeadStatusEl.value || '').trim().toLowerCase();
+                if (val === 'no response') {
+                    if (leadNoResponseCount < 4) {
+                        const attempt = leadNoResponseCount + 1;
+                        editModalNextDateLabel.innerHTML = `Next Follow Up Date <span class="text-danger fw-bold">*</span> <span class="badge bg-danger text-white ms-1" style="font-size: 10px;"><i class="fa-solid fa-asterisk me-1" style="font-size:7px;"></i>Required (${attempt}/4)</span>`;
+                        editModalNextDateInput.required = true;
+                        if (editModalNextDateHint) {
+                            editModalNextDateHint.style.display = 'block';
+                            editModalNextDateHint.innerHTML = `<span class="text-danger fw-semibold" style="font-size:11px;"><i class="fa-solid fa-circle-exclamation me-1"></i>Next follow-up date is mandatory for "No Response" (Attempt ${attempt} of 4).</span>`;
+                        }
+                    } else {
+                        editModalNextDateLabel.innerHTML = `Next Follow Up Date <span class="badge bg-secondary text-white ms-1" style="font-size: 10px;"><i class="fa-solid fa-circle-check me-1"></i>Optional (${leadNoResponseCount} done)</span>`;
+                        editModalNextDateInput.required = false;
+                        if (editModalNextDateHint) {
+                            editModalNextDateHint.style.display = 'block';
+                            editModalNextDateHint.innerHTML = `<span class="text-muted" style="font-size:11px;"><i class="fa-solid fa-circle-info me-1"></i>4 "No Response" follow-ups completed. Next date is now optional.</span>`;
+                        }
+                    }
+                } else {
+                    editModalNextDateLabel.innerHTML = 'Next Follow Up Date';
+                    editModalNextDateInput.required = false;
+                    if (editModalNextDateHint) {
+                        editModalNextDateHint.style.display = 'none';
+                        editModalNextDateHint.innerHTML = '';
+                    }
+                }
+            }
+
+            if (editModalLeadStatusEl) {
+                editModalLeadStatusEl.onchange = syncEditModalRequirement;
+                syncEditModalRequirement();
+            }
+
+            const editForm = modal.querySelector('form');
+            if (editForm) {
+                editForm.onsubmit = function(e) {
+                    const val = String(editModalLeadStatusEl ? editModalLeadStatusEl.value : '').trim().toLowerCase();
+                    if (val === 'no response' && leadNoResponseCount < 4) {
+                        const dateVal = String(editModalNextDateInput ? editModalNextDateInput.value : '').trim();
+                        if (!dateVal) {
+                            e.preventDefault();
+                            const attempt = leadNoResponseCount + 1;
+                            const msg = `Next Follow Up Date is mandatory for "No Response" (Attempt ${attempt} of 4)!`;
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Date Required',
+                                    text: msg,
+                                    confirmButtonColor: '#0d6efd'
+                                });
+                            } else {
+                                alert(msg);
+                            }
+                            if (editModalNextDateInput) editModalNextDateInput.focus();
+                            return false;
+                        }
+                    }
+                };
             }
         });
     });

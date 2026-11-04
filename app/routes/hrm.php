@@ -362,6 +362,7 @@ return [
     // Payroll Workspace
     'payroll-workspace' => ['controller' => 'PayrollController', 'method' => 'workspace'],
     'payroll-project-store' => ['controller' => 'PayrollController', 'method' => 'storePayrollProject'],
+    'delete-payroll-project' => ['controller' => 'PayrollController', 'method' => 'deletePayrollProject'],
     'save-workspace-payslips' => ['controller' => 'PayrollController', 'method' => 'saveWorkspacePayslips'],
     'payroll-workspace-pdf' => ['controller' => 'PayrollController', 'method' => 'exportWorkspacePDF'],
 
@@ -412,6 +413,7 @@ return [
     'meal-tracker-history' => ['controller' => 'MealTrackerController', 'method' => 'history'],
     'api/employee/today-meal-status' => ['controller' => 'MealTrackerController', 'method' => 'getTodayMealStatus'],
     'api/employee/toggle-today-meal' => ['controller' => 'MealTrackerController', 'method' => 'toggleTodayMeal'],
+    'api/employee/toggle-all-time-meal' => ['controller' => 'MealTrackerController', 'method' => 'toggleAllTimeMeal'],
     'api/meal-tracker/sync-attendance' => ['controller' => 'MealTrackerController', 'method' => 'syncAttendance'],
     'my-meal-tracker' => ['controller' => 'MealTrackerController', 'method' => 'myMeals'],
     'meal-project-delete' => ['controller' => 'MealTrackerController', 'method' => 'deleteProject'],

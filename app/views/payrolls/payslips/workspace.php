@@ -1,5 +1,10 @@
 <?php
 $page = "Payroll Workplace";
+?>
+<style>
+.swal2-container { z-index: 1000005 !important; }
+</style>
+<?php
 $show_breadcrumb = true;
 
 $_filterType      = !empty($filterType) ? $filterType : (!empty($_GET['filter_type']) ? $_GET['filter_type'] : 'monthly');
@@ -8,7 +13,155 @@ $_toDate          = !empty($selectedToDate) ? $selectedToDate : (!empty($_GET['t
 $_selectedYear    = !empty($selectedYear) ? $selectedYear : (!empty($_GET['year']) ? $_GET['year'] : date('Y'));
 $_selectedMonth   = !empty($selectedMonth) ? $selectedMonth : (!empty($_GET['month']) ? $_GET['month'] : date('m'));
 $_selectedProject = !empty($selectedProject) ? $selectedProject : ($_GET['payroll_project_id'] ?? '');
+
+$currentRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+$currentRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+$isManagement = in_array($currentRoleId, [1, 3, 4, 20, 30, 33, 35]) 
+             || strpos($currentRoleName, 'admin') !== false 
+             || strpos($currentRoleName, 'management') !== false 
+             || strpos($currentRoleName, 'hr') !== false;
+
+$selectedProjectObj = null;
+if (!empty($payroll_projects) && !empty($_selectedProject)) {
+    foreach ($payroll_projects as $pObj) {
+        if ((int)$pObj['id'] === (int)$_selectedProject) {
+            $selectedProjectObj = $pObj;
+            break;
+        }
+    }
+}
+$selectedProjectName = $selectedProjectObj['name'] ?? '';
 ?>
+
+<script>
+// Global Vanilla JS functions for Payroll Project deletion (defined upfront before buttons render)
+window.confirmDeletePayrollProject = function(projId, projName) {
+    projId = parseInt(projId, 10);
+    if (!projId) return;
+    projName = projName || 'this project';
+
+    var manageModalEl = document.getElementById('manageProjectsModal');
+    var wasModalOpen = false;
+    if (manageModalEl && (manageModalEl.classList.contains('show') || (typeof $ !== 'undefined' && $(manageModalEl).is(':visible')))) {
+        wasModalOpen = true;
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            var modalInst = bootstrap.Modal.getInstance(manageModalEl);
+            if (modalInst) {
+                modalInst.hide();
+            } else {
+                manageModalEl.classList.remove('show');
+                manageModalEl.style.display = 'none';
+            }
+        } else if (typeof $ !== 'undefined') {
+            $(manageModalEl).modal('hide');
+        } else {
+            manageModalEl.classList.remove('show');
+            manageModalEl.style.display = 'none';
+        }
+    }
+
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'Delete Payroll Project?',
+            html: 'Are you sure you want to delete <strong>"' + projName + '"</strong>?<br><br>' +
+                   '<span class="text-danger fw-semibold"><i class="fa-solid fa-triangle-exclamation me-1"></i> Warning:</span> ' +
+                   'All saved workplace calculations, payslips, and attendance overrides linked to this project will be deleted permanently. ' +
+                   '<br><small class="text-muted">(Meal Tracker records will remain safe and unlinked.)</small>',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: '<i class="fa-solid fa-trash-can me-1"></i> Yes, Delete Project',
+            cancelButtonText: 'Cancel'
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                window.executeDeleteProject(projId);
+            } else if (wasModalOpen && manageModalEl) {
+                setTimeout(function() {
+                    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                        var modalInst = bootstrap.Modal.getOrCreateInstance(manageModalEl);
+                        modalInst.show();
+                    } else if (typeof $ !== 'undefined') {
+                        $(manageModalEl).modal('show');
+                    } else {
+                        manageModalEl.classList.add('show');
+                        manageModalEl.style.display = 'block';
+                    }
+                }, 200);
+            }
+        });
+    } else {
+        if (confirm('Are you sure you want to delete "' + projName + '"?\n\nWarning: All saved workplace calculations, payslips, and attendance overrides linked to this project will be deleted permanently.')) {
+            window.executeDeleteProject(projId);
+        } else if (wasModalOpen && manageModalEl) {
+            if (typeof $ !== 'undefined') $(manageModalEl).modal('show');
+        }
+    }
+};
+
+window.executeDeleteProject = function(projId) {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'Deleting...',
+            text: 'Deleting project and clearing related records...',
+            allowOutsideClick: false,
+            didOpen: function() {
+                Swal.showLoading();
+            }
+        });
+    }
+
+    var baseUrl = '<?= $GLOBALS['base_url'] ?? '' ?>';
+    var postUrl = baseUrl ? (baseUrl + '/delete-payroll-project') : '/delete-payroll-project';
+
+    var formData = new FormData();
+    formData.append('project_id', projId);
+    formData.append('is_ajax', '1');
+
+    fetch(postUrl, {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: formData
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+        if (res && res.success) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Deleted!',
+                    text: res.message || 'Payroll project deleted successfully.',
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(function() {
+                    window.location.href = baseUrl + '/payroll-workspace';
+                });
+            } else {
+                alert(res.message || 'Payroll project deleted successfully.');
+                window.location.href = baseUrl + '/payroll-workspace';
+            }
+        } else {
+            var errMsg = (res && res.message) || 'Failed to delete payroll project.';
+            if (typeof Swal !== 'undefined') {
+                Swal.fire('Error', errMsg, 'error');
+            } else {
+                alert('Error: ' + errMsg);
+            }
+        }
+    })
+    .catch(function(err) {
+        console.error('Delete project error:', err);
+        if (typeof Swal !== 'undefined') {
+            Swal.fire('Error', 'Connection failed or server error occurred.', 'error');
+        } else {
+            alert('Connection failed or server error occurred.');
+        }
+    });
+};
+</script>
+
 
 <!-- Filter Section -->
 <div class="row mb-3">
@@ -93,6 +246,21 @@ $_selectedProject = !empty($selectedProject) ? $selectedProject : ($_GET['payrol
                             data-bs-target="#createProjectModal" style="height: 38px;">
                             <i class="fa-solid fa-plus me-1"></i> Create
                         </button>
+                        <?php if ($isManagement): ?>
+                            <button type="button" class="btn btn-outline-secondary text-nowrap" data-bs-toggle="modal"
+                                data-bs-target="#manageProjectsModal" style="height: 38px;" title="Manage & Delete Payroll Projects">
+                                <i class="fa-solid fa-folder-tree me-1"></i> Manage
+                            </button>
+                            <?php if (!empty($_selectedProject) && !empty($selectedProjectName)): ?>
+                                <button type="button" class="btn btn-outline-danger text-nowrap btn-delete-payroll-proj"
+                                    data-id="<?= (int)$_selectedProject ?>"
+                                    data-name="<?= htmlspecialchars($selectedProjectName, ENT_QUOTES) ?>"
+                                    onclick="confirmDeletePayrollProject(<?= (int)$_selectedProject ?>, '<?= htmlspecialchars(addslashes($selectedProjectName), ENT_QUOTES) ?>')"
+                                    style="height: 38px;" title="Delete this Payroll Project">
+                                    <i class="fa-solid fa-trash-can me-1"></i> Delete
+                                </button>
+                            <?php endif; ?>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -210,8 +378,6 @@ $_selectedProject = !empty($selectedProject) ? $selectedProject : ($_GET['payrol
 })();
 </script>
 
-
-
 <!-- Create Project Modal -->
 <div class="modal fade" id="createProjectModal" tabindex="-1" aria-labelledby="createProjectModalLabel"
     aria-hidden="true">
@@ -257,6 +423,17 @@ $_selectedProject = !empty($selectedProject) ? $selectedProject : ($_GET['payrol
                         </div>
                     </div>
 
+                    <!-- Linked Meal Tracker Cycle Preview -->
+                    <div class="p-3 mb-3 rounded border bg-light d-flex align-items-start gap-2" id="createMealCyclePreviewBox">
+                        <i class="fa-solid fa-utensils text-success fs-5 mt-1"></i>
+                        <div>
+                            <div class="fw-bold text-dark small" id="createMealCycleTitle">Linked Meal Cycle: (Calculating...)</div>
+                            <div class="text-muted" style="font-size: 12px;" id="createMealCycleDesc">
+                                <i class="fa-solid fa-arrows-rotate text-primary me-1"></i> Matching Meal Project will be auto-linked or auto-created in Meal Tracker with live attendance synced.
+                            </div>
+                        </div>
+                    </div>
+
                     <script>
                         document.addEventListener("DOMContentLoaded", function() {
                             const pType = document.getElementById('createProjectType');
@@ -265,6 +442,61 @@ $_selectedProject = !empty($selectedProject) ? $selectedProject : ($_GET['payrol
                             const pDate = document.getElementById('createProjectDate');
                             const pStart = document.getElementById('createProjectStart');
                             const pEnd = document.getElementById('createProjectEnd');
+                            const mTitle = document.getElementById('createMealCycleTitle');
+                            const mDesc = document.getElementById('createMealCycleDesc');
+
+                            // Default to current year-month
+                            if (!pDate.value) {
+                                const now = new Date();
+                                const y = now.getFullYear();
+                                const m = String(now.getMonth() + 1).padStart(2, '0');
+                                pDate.value = `${y}-${m}`;
+                            }
+
+                            function calculateCycleRange(year, month) {
+                                let prevM = month - 1;
+                                let prevY = year;
+                                if (prevM === 0) {
+                                    prevM = 12;
+                                    prevY = year - 1;
+                                }
+                                const pad = (n) => String(n).padStart(2, '0');
+                                return {
+                                    start: `${prevY}-${pad(prevM)}-26`,
+                                    end: `${year}-${pad(month)}-25`
+                                };
+                            }
+
+                            function formatDateDisplay(dStr) {
+                                if (!dStr) return '';
+                                const d = new Date(dStr);
+                                if (isNaN(d.getTime())) return dStr;
+                                return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                            }
+
+                            function updateMealCyclePreview() {
+                                let start = '', end = '';
+                                if (pType.value === 'monthly') {
+                                    const val = pDate.value;
+                                    if (val) {
+                                        const parts = val.split('-');
+                                        const cycle = calculateCycleRange(parseInt(parts[0], 10), parseInt(parts[1], 10));
+                                        start = cycle.start;
+                                        end = cycle.end;
+                                    }
+                                } else {
+                                    start = pStart.value;
+                                    end = pEnd.value;
+                                }
+
+                                if (start && end) {
+                                    mTitle.innerHTML = '<span class="text-success fw-bold"><i class="fa-solid fa-circle-check me-1"></i> Linked Meal Cycle:</span> ' + formatDateDisplay(start) + ' to ' + formatDateDisplay(end);
+                                    mDesc.innerHTML = 'Meal Tracker will auto-sync attendance records for <strong class="text-dark">' + start + '</strong> to <strong class="text-dark">' + end + '</strong>.';
+                                } else {
+                                    mTitle.innerHTML = '<span class="text-warning fw-semibold"><i class="fa-solid fa-calendar-day me-1"></i> Linked Meal Cycle:</span> Select from/to dates';
+                                    mDesc.textContent = 'Meal Project will automatically match or be created for the selected date range.';
+                                }
+                            }
 
                             pType.addEventListener('change', function() {
                                 if(this.value === 'monthly') {
@@ -279,9 +511,26 @@ $_selectedProject = !empty($selectedProject) ? $selectedProject : ($_GET['payrol
                                     pDate.required = false;
                                     pStart.required = true;
                                     pEnd.required = true;
+
+                                    // Pre-fill custom start and end from monthly cycle if empty
+                                    if (!pStart.value || !pEnd.value) {
+                                        const val = pDate.value || '<?= date("Y-m") ?>';
+                                        const parts = val.split('-');
+                                        const cycle = calculateCycleRange(parseInt(parts[0], 10), parseInt(parts[1], 10));
+                                        if (!pStart.value) pStart.value = cycle.start;
+                                        if (!pEnd.value) pEnd.value = cycle.end;
+                                    }
                                 }
+                                updateMealCyclePreview();
                             });
-                            
+
+                            pDate.addEventListener('change', updateMealCyclePreview);
+                            pDate.addEventListener('input', updateMealCyclePreview);
+                            pStart.addEventListener('change', updateMealCyclePreview);
+                            pStart.addEventListener('input', updateMealCyclePreview);
+                            pEnd.addEventListener('change', updateMealCyclePreview);
+                            pEnd.addEventListener('input', updateMealCyclePreview);
+
                             // Initialize
                             pType.dispatchEvent(new Event('change'));
                         });
@@ -300,6 +549,85 @@ $_selectedProject = !empty($selectedProject) ? $selectedProject : ($_GET['payrol
     </div>
 </div>
 
+<?php if ($isManagement): ?>
+<!-- Manage Payroll Projects Modal -->
+<div class="modal fade" id="manageProjectsModal" tabindex="-1" aria-labelledby="manageProjectsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0">
+            <div class="modal-header text-white" style="background: linear-gradient(135deg, #0f766e, #115e59);">
+                <h5 class="modal-title text-white" id="manageProjectsModalLabel">
+                    <i class="fa-solid fa-folder-tree me-2"></i>Manage Payroll Projects
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <p class="text-muted small mb-0">List of all payroll projects. Deleting a project will remove all its saved workspace calculations, payslips, and attendance overrides, while unlinking meal tracker records.</p>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Project Name</th>
+                                <th>Type</th>
+                                <th>Cycle Date Range</th>
+                                <th class="text-center" style="width: 110px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (!empty($payroll_projects)): ?>
+                                <?php $projSl = 1; foreach ($payroll_projects as $proj): ?>
+                                    <?php 
+                                    $isCust = !empty($proj['is_custom_date']);
+                                    $dateRangeText = ($isCust && !empty($proj['start_date']) && !empty($proj['end_date']))
+                                        ? date('d M Y', strtotime($proj['start_date'])) . ' - ' . date('d M Y', strtotime($proj['end_date']))
+                                        : (!empty($proj['date']) ? date('F Y', strtotime($proj['date'] . '-01')) : 'N/A');
+                                    ?>
+                                    <tr>
+                                        <td><?= $projSl++ ?></td>
+                                        <td>
+                                            <strong><?= htmlspecialchars($proj['name']) ?></strong>
+                                            <?php if ((int)$proj['id'] === (int)$_selectedProject): ?>
+                                                <span class="badge bg-primary-subtle text-primary ms-1">Active</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if ($isCust): ?>
+                                                <span class="badge bg-info-subtle text-info">Custom Range</span>
+                                            <?php else: ?>
+                                                <span class="badge bg-secondary-subtle text-secondary">Monthly</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="small text-muted"><?= htmlspecialchars($dateRangeText) ?></td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-sm btn-outline-danger btn-delete-payroll-proj"
+                                                    data-id="<?= (int)$proj['id'] ?>"
+                                                    data-name="<?= htmlspecialchars($proj['name'], ENT_QUOTES) ?>"
+                                                    onclick="confirmDeletePayrollProject(<?= (int)$proj['id'] ?>, '<?= htmlspecialchars(addslashes($proj['name']), ENT_QUOTES) ?>')"
+                                                    title="Delete this project">
+                                                <i class="fa-solid fa-trash-can me-1"></i> Delete
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-3">No payroll projects found.</td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <!-- Workspace Table -->
 <div class="row">
     <div class="col-xxl-12">
@@ -310,6 +638,10 @@ $_selectedProject = !empty($selectedProject) ? $selectedProject : ($_GET['payrol
                     <i class="fa-solid fa-file-invoice-dollar text-primary me-2"></i>Payroll Workplace
                 </h4>
                 <div>
+                    <button type="button" class="btn btn-outline-primary fw-semibold shadow-sm me-2"
+                        id="btnSyncTipsoiAttendance" onclick="syncTipsoiAttendance(this)" title="Fetch and sync live attendance from Tipsoi for unsynced employees">
+                        <i class="fa-solid fa-arrows-rotate me-1"></i> Sync Tipsoi
+                    </button>
                     <button type="button" class="btn btn-info fw-semibold shadow-sm me-2 text-white"
                         style="background-color: #0f766e; border-color: #0f766e;"
                         onclick="saveWorkspaceData(this)">
@@ -332,6 +664,17 @@ $_selectedProject = !empty($selectedProject) ? $selectedProject : ($_GET['payrol
             </div>
             
 
+
+            <!-- Tipsoi Attendance Notice Banner (Non-blocking) -->
+            <div class="alert alert-info d-flex align-items-center justify-content-between p-3 mb-3 border-0 shadow-sm d-none" id="tipsoiNoticeBanner" style="border-radius: 10px; background: #e0f2fe; color: #0369a1;">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-circle-info fs-5 text-info"></i>
+                    <span><strong>Tipsoi Attendance:</strong> Some employees have not been synced yet from Tipsoi for this project cycle.</span>
+                </div>
+                <button type="button" class="btn btn-sm btn-primary fw-semibold" onclick="syncTipsoiAttendance(this)">
+                    <i class="fa-solid fa-arrows-rotate me-1"></i> Sync Now
+                </button>
+            </div>
 
             <div class="table__wrapper" style="overflow: visible;">
                 <table id="workspaceTable" class="table no-border-table mb-20">
@@ -452,10 +795,10 @@ $_selectedProject = !empty($selectedProject) ? $selectedProject : ($_GET['payrol
                                     : $gross;
 
                                 // Base salary allowances
-                                $recAllow = ($isExisting && isset($p['recreation_allowance']) && $p['recreation_allowance'] > 0) ? (float)$p['recreation_allowance'] : round($basic * $itemPercents['recreation'], 2);
-                                $convAllow = ($isExisting && isset($p['conveyance_allowance']) && $p['conveyance_allowance'] > 0) ? (float)$p['conveyance_allowance'] : round($basic * $itemPercents['conveyance'], 2);
-                                $medAllow = ($isExisting && isset($p['medical_allowance']) && $p['medical_allowance'] > 0) ? (float)$p['medical_allowance'] : round($basic * $itemPercents['medical'], 2);
-                                $hrAllow = ($isExisting && isset($p['house_rent_allowance']) && $p['house_rent_allowance'] > 0) ? (float)$p['house_rent_allowance'] : round($basic * $itemPercents['houserent'], 2);
+                                $recAllow = ($isExisting && isset($p['recreation_allowance'])) ? (float)$p['recreation_allowance'] : round($basic * $itemPercents['recreation'], 2);
+                                $convAllow = ($isExisting && isset($p['conveyance_allowance'])) ? (float)$p['conveyance_allowance'] : round($basic * $itemPercents['conveyance'], 2);
+                                $medAllow = ($isExisting && isset($p['medical_allowance'])) ? (float)$p['medical_allowance'] : round($basic * $itemPercents['medical'], 2);
+                                $hrAllow = ($isExisting && isset($p['house_rent_allowance'])) ? (float)$p['house_rent_allowance'] : round($basic * $itemPercents['houserent'], 2);
 
                                 // Additional earnings
                                 $punctBonus = $isExisting ? (float)($p['punctuality_bonus'] ?? 0) : 0;
@@ -505,29 +848,23 @@ $_selectedProject = !empty($selectedProject) ? $selectedProject : ($_GET['payrol
                                 $standardMealRate = isset($activeMealProject['standard_meal_amount']) && $activeMealProject['standard_meal_amount'] > 0 
                                     ? (float)$activeMealProject['standard_meal_amount'] 
                                     : 120.00;
-                                $effectiveMealRate = ($isMealDeductible == 1) 
-                                    ? max(0, round($standardMealRate * (1 - ($mealPct / 100)), 2))
-                                    : 0.00;
+                                $effectiveMealRate = max(0, round($standardMealRate * (1 - ($mealPct / 100)), 2));
 
                                 $mealCount = 0;
-                                if ($isMealDeductible == 1) {
-                                    if (!empty($activeMealProject)) {
-                                        // Authoritative meal tracking from Meal Workspace (meal_records)
-                                        $mealCount = isset($mealCountsByEmp[$empIdFk]) ? (float)$mealCountsByEmp[$empIdFk] : 0;
-                                    } elseif ($isExisting && isset($p['meal_count'])) {
-                                        $mealCount = (float)$p['meal_count'];
-                                    }
+                                if ($isExisting && isset($p['meal_count'])) {
+                                    // Workplace has been saved/updated: manual edit is authoritative
+                                    $mealCount = (float)$p['meal_count'];
+                                } elseif (!empty($activeMealProject)) {
+                                    // Initial sync from Meal Tracker (meal_records)
+                                    $mealCount = isset($mealCountsByEmp[$empIdFk]) ? (float)$mealCountsByEmp[$empIdFk] : 0;
                                 }
 
                                 $subsidizeLunch = 0;
-                                if ($isMealDeductible == 1) {
-                                    if (!empty($activeMealProject)) {
-                                        $subsidizeLunch = round($mealCount * $effectiveMealRate, 2);
-                                    } elseif ($isExisting && isset($p['subsidized_lunch']) && (float)$p['subsidized_lunch'] > 0) {
-                                        $subsidizeLunch = (float)$p['subsidized_lunch'];
-                                    } else {
-                                        $subsidizeLunch = round($mealCount * $effectiveMealRate, 2);
-                                    }
+                                if ($isExisting && isset($p['subsidized_lunch'])) {
+                                    // Workplace has been saved/updated: manual edit is authoritative
+                                    $subsidizeLunch = (float)$p['subsidized_lunch'];
+                                } elseif ($mealCount > 0) {
+                                    $subsidizeLunch = round($mealCount * $effectiveMealRate, 2);
                                 }
 
                                 // Additional deductions
@@ -625,7 +962,7 @@ $_selectedProject = !empty($selectedProject) ? $selectedProject : ($_GET['payrol
                                 <?php endforeach; endif; ?>
                     </tbody>
                     <tfoot>
-    <tr class="fw-bold" style="background-color: #e6f2f1; color: #0f766e;">
+    <tr class="fw-bold workspace-footer-row" style="background-color: #e6f2f1; color: #0f766e;">
         <td></td>
         <td></td>
         <td></td>
@@ -834,6 +1171,12 @@ $_selectedProject = !empty($selectedProject) ? $selectedProject : ($_GET['payrol
                     .dataTables_scrollHead table {
                         background-color: #fff !important;
                     }
+                    [bd-theme="bd-theme-dark"] .dataTables_scrollHead,
+                    [bd-theme="bd-theme-dark"] .dataTables_scrollHead table,
+                    [bd-theme="bd-theme-dark"] .dataTables_scrollHeadInner {
+                        background-color: #1e293b !important;
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4) !important;
+                    }
                 `;
                 document.head.appendChild(style);
                 
@@ -901,13 +1244,7 @@ $_selectedProject = !empty($selectedProject) ? $selectedProject : ($_GET['payrol
     }
 
 
-        // Forcibly recalculate all rows on initial render so Net Salary and Net Payable are mapped
-        document.querySelectorAll('.calc-row').forEach(row => {
-            const firstInput = row.querySelector('input');
-            if (firstInput) {
-                firstInput.dispatchEvent(new Event('input'));
-            }
-        });
+// Removed redundant initial dispatchEvent loop for 10x faster rendering
 
         // --- Date range from PHP (works for both Monthly and Custom Range modes) ---
         const fromDateStr = "<?= $selectedFromDate ?? date('Y-m-01') ?>";
@@ -953,108 +1290,112 @@ $_selectedProject = !empty($selectedProject) ? $selectedProject : ($_GET['payrol
             });
         })();
 
-        // --- Tipsoi Auto-Fallback for Missing DB Data (High-performance Map lookup & AbortController) ---
-        let allRows = [];
-        if (typeof $ !== 'undefined' && $.fn.DataTable && $.fn.DataTable.isDataTable('#payrollTable')) {
-            allRows = Array.from($('#payrollTable').DataTable().rows().nodes());
-        }
-        if (!allRows.length) {
-            allRows = Array.from(document.querySelectorAll('.calc-row'));
-        }
-        const missingRows = allRows.filter(r => r.getAttribute('data-has-db') === 'false');
-        if (fromDateStr && toDateStr && missingRows.length > 0) {
-            const empRowMap = new Map();
-            missingRows.forEach(r => {
-                const eid = r.getAttribute('data-employee-id');
-                if (eid) empRowMap.set(String(eid), r);
-            });
+        // --- Tipsoi Attendance Sync (Fast & On-Demand, no 8.6MB auto-freeze on load) ---
+        window.syncTipsoiAttendance = function(btn) {
+            var $btn = $(btn);
+            var origHtml = $btn.html();
+            $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status"></span> Syncing...');
 
-            const params = new URLSearchParams({
+            var params = new URLSearchParams({
                 from_date: fromDateStr,
                 to_date:   toDateStr
             });
-            const projSelect = document.getElementById('payrollProject');
+            var projSelect = document.getElementById('payrollProject');
             if (projSelect && projSelect.value) {
                 params.set('payroll_project_id', projSelect.value);
             }
 
-            const abortCtrl = new AbortController();
-            const abortTimeout = setTimeout(() => abortCtrl.abort(), 20000); // 20-second safety timeout
-
-            fetch(`<?= $GLOBALS['base_url'] ?>/api/hrm/attendance?` + params.toString(), { signal: abortCtrl.signal })
+            fetch(`<?= $GLOBALS['base_url'] ?>/api/hrm/attendance?` + params.toString())
             .then(r => r.json())
             .then(res => {
-                clearTimeout(abortTimeout);
+                $btn.prop('disabled', false).html(origHtml);
                 if (res.success && res.data) {
-                    const rawData = res.data;
-                    const localEmployees = res.local_employees || [];
-                    let hasAnyUpdate = false;
+                    var rawData = res.data;
+                    var localEmployees = res.local_employees || [];
+                    var updateCount = 0;
 
-                    rawData.forEach(emp => {
-                         const attMap = emp.attendance || {};
-                         const summ = emp.summary || {};
-                         const officeId = String(emp.employeeOfficeId || emp.employeeId || '').toLowerCase().trim();
-                         const nameNormalized = String(emp.employeeName || '').toLowerCase().trim();
-
-                         const localMatch = localEmployees.find(le => {
-                            const leId = String(le.employee_id || '').toLowerCase().trim();
-                            const leName = String(le.full_name || '').toLowerCase().trim();
-                            return (officeId && leId === officeId) || (nameNormalized && leName === nameNormalized);
-                         });
-
-                         if (localMatch) {
-                              const matchedRow = empRowMap.get(String(localMatch.id));
-                              if (matchedRow) {
-                                  let present = 0;
-                                  let absent  = 0;
-                                  
-                                  if (summ.totalAbsent !== undefined) {
-                                      absent = parseInt(summ.totalAbsent, 10) || 0;
-                                      present = parseInt(summ.totalPresent, 10) || 0;
-                                  } else {
-                                      Object.keys(attMap).forEach(timestamp => {
-                                          const dayAtt = attMap[timestamp];
-                                          if (dayAtt.isPresent) present++;
-                                          else if (!dayAtt.isOffday && !dayAtt.isHoliday && !dayAtt.isLeave) absent++;
-                                      });
-                                  }
-
-                                  let finalLate = 0;
-                                  if (summ.totalLateEntry !== undefined) {
-                                      finalLate = parseInt(summ.totalLateEntry, 10) || 0;
-                                  }
-                                  let lateDeduction = Math.floor(finalLate / 3);
-                                  let totalAbsentDays = parseFloat((absent + lateDeduction).toFixed(2));
-
-                                  const absentInput = matchedRow.querySelector('.in-absent-days');
-                                  const unpaidInp   = matchedRow.querySelector('.in-deduct.in-unpaid');
-                                  const dailyVal    = parseFloat(matchedRow.querySelector('.cell-daily').dataset.val) || 0;
-
-                                  if (absentInput) {
-                                      absentInput.value = totalAbsentDays;
-                                      if (unpaidInp) {
-                                          unpaidInp.value = (totalAbsentDays * dailyVal).toFixed(2);
-                                      }
-                                      absentInput.dispatchEvent(new Event('input', { bubbles: true }));
-                                      hasAnyUpdate = true;
-                                  }
-                              }
-                         }
+                    var allRows = Array.from(document.querySelectorAll('.calc-row'));
+                    var empRowMap = new Map();
+                    allRows.forEach(r => {
+                        var eid = r.getAttribute('data-employee-id');
+                        if (eid) empRowMap.set(String(eid), r);
                     });
 
-                    if (hasAnyUpdate) {
-                        calculateFooterTotals();
+                    rawData.forEach(emp => {
+                        var attMap = emp.attendance || {};
+                        var summ = emp.summary || {};
+                        var officeId = String(emp.employeeOfficeId || emp.employeeId || '').toLowerCase().trim();
+                        var nameNormalized = String(emp.employeeName || '').toLowerCase().trim();
+
+                        var localMatch = localEmployees.find(le => {
+                            var leId = String(le.employee_id || '').toLowerCase().trim();
+                            var leName = String(le.full_name || '').toLowerCase().trim();
+                            return (officeId && leId === officeId) || (nameNormalized && leName === nameNormalized);
+                        });
+
+                        if (localMatch) {
+                            var matchedRow = empRowMap.get(String(localMatch.id));
+                            if (matchedRow) {
+                                var present = 0, absent = 0;
+                                if (summ.totalAbsent !== undefined) {
+                                    absent = parseInt(summ.totalAbsent, 10) || 0;
+                                    present = parseInt(summ.totalPresent, 10) || 0;
+                                } else {
+                                    Object.keys(attMap).forEach(ts => {
+                                        var dayAtt = attMap[ts];
+                                        if (dayAtt.isPresent) present++;
+                                        else if (!dayAtt.isOffday && !dayAtt.isHoliday && !dayAtt.isLeave) absent++;
+                                    });
+                                }
+
+                                var finalLate = parseInt(summ.totalLateEntry, 10) || 0;
+                                var lateDeduction = Math.floor(finalLate / 3);
+                                var totalAbsentDays = parseFloat((absent + lateDeduction).toFixed(2));
+
+                                var absentInput = matchedRow.querySelector('.in-absent-days');
+                                var unpaidInp = matchedRow.querySelector('.in-deduct.in-unpaid');
+                                var dailyVal = parseFloat(matchedRow.querySelector('.cell-daily').dataset.val) || 0;
+
+                                if (absentInput) {
+                                    absentInput.value = totalAbsentDays;
+                                    if (unpaidInp) {
+                                        unpaidInp.value = (totalAbsentDays * dailyVal).toFixed(2);
+                                    }
+                                    absentInput.dispatchEvent(new Event('input', { bubbles: true }));
+                                    matchedRow.setAttribute('data-has-db', 'true');
+                                    updateCount++;
+                                }
+                            }
+                        }
+                    });
+
+                    calculateFooterTotals();
+                    $('#tipsoiNoticeBanner').slideUp();
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            toast: true,
+                            position: 'top-end',
+                            icon: 'success',
+                            title: 'Synced attendance for ' + updateCount + ' employees from Tipsoi!',
+                            showConfirmButton: false,
+                            timer: 3000
+                        });
                     }
-                } else if (res && !res.success) {
-                    console.warn("Tipsoi Background Sync warning:", res.message);
+                } else {
+                    alert(res.message || 'Failed to sync Tipsoi attendance.');
                 }
             })
             .catch(err => {
-                clearTimeout(abortTimeout);
-                if (err.name !== 'AbortError') {
-                    console.warn("Tipsoi Background Sync warning:", err);
-                }
+                $btn.prop('disabled', false).html(origHtml);
+                alert('Tipsoi sync error: ' + err.message);
             });
+        };
+
+        // Check if attendance is missing and surface banner if needed (non-blocking)
+        var allRows = Array.from(document.querySelectorAll('.calc-row'));
+        var missingCount = allRows.filter(r => r.getAttribute('data-has-db') === 'false').length;
+        if (missingCount > 0) {
+            $('#tipsoiNoticeBanner').removeClass('d-none');
         }
 
         // Dynamically rename 'Save Data' button if data is already saved
@@ -1075,11 +1416,12 @@ $_selectedProject = !empty($selectedProject) ? $selectedProject : ($_GET['payrol
         // --- DataTables with CSV and PDF ---
         if (typeof $ !== 'undefined' && $.fn.DataTable) {
             var table = $('#workspaceTable').DataTable({
-                lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
-                pageLength: 10,
+                deferRender: true,
                 autoWidth: false,
-                responsive: true,
+                responsive: false,
                 scrollX: true,
+                lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
+                pageLength: 25,
                 
                 language: {
                     search: "",
@@ -1361,75 +1703,84 @@ $_selectedProject = !empty($selectedProject) ? $selectedProject : ($_GET['payrol
                 });
             };
         }
-    });
 
-    $(document).on('click', '.btn-salary-hold', function() {
-        var btn = $(this);
-        var hiddenInput = btn.siblings('.in-salary-hold-string');
-        if (hiddenInput.val() === 'Hold') {
-            hiddenInput.val('');
-            btn.text('Unhold').removeClass('btn-danger').addClass('btn-success');
-        } else {
-            hiddenInput.val('Hold');
-            btn.text('Hold').removeClass('btn-success').addClass('btn-danger');
-        }
-    });
-    // --- Database-driven Employee Selection ---
-    function updateMasterCheckbox() {
-        let allChecked = true;
-        let totalCount = 0;
-        var nodes = [];
-        if ($.fn.DataTable && $.fn.DataTable.isDataTable('#workspaceTable')) {
-            nodes = $('#workspaceTable').DataTable().rows().nodes();
-        } else {
-            nodes = document.querySelectorAll('.calc-row');
-        }
-        $(nodes).each(function() {
-            if ($(this).find('.emp-checkbox').length > 0) {
-                totalCount++;
-                if (!$(this).find('.emp-checkbox').is(':checked')) {
-                    allChecked = false;
-                }
+        // Clean event listeners wrapped inside DOMContentLoaded (safe with footer jQuery)
+        $(document).on('click', '.btn-salary-hold', function() {
+            var btn = $(this);
+            var hiddenInput = btn.siblings('.in-salary-hold-string');
+            if (hiddenInput.val() === 'Hold') {
+                hiddenInput.val('');
+                btn.text('Unhold').removeClass('btn-danger').addClass('btn-success');
+            } else {
+                hiddenInput.val('Hold');
+                btn.text('Hold').removeClass('btn-success').addClass('btn-danger');
             }
         });
-        $('#selectAllEmployees').prop('checked', allChecked && totalCount > 0);
-    }
-    
-    $(document).ready(function() {
+
+        // --- Database-driven Employee Selection ---
+        function updateMasterCheckbox() {
+            let allChecked = true;
+            let totalCount = 0;
+            var nodes = [];
+            if ($.fn.DataTable && $.fn.DataTable.isDataTable('#workspaceTable')) {
+                nodes = $('#workspaceTable').DataTable().rows().nodes();
+            } else {
+                nodes = document.querySelectorAll('.calc-row');
+            }
+            $(nodes).each(function() {
+                if ($(this).find('.emp-checkbox').length > 0) {
+                    totalCount++;
+                    if (!$(this).find('.emp-checkbox').is(':checked')) {
+                        allChecked = false;
+                    }
+                }
+            });
+            $('#selectAllEmployees').prop('checked', allChecked && totalCount > 0);
+        }
+        
         setTimeout(function() {
             updateMasterCheckbox();
             calculateFooterTotals();
         }, 200);
+
         if ($.fn.DataTable) {
             $('#workspaceTable').on('draw.dt', function() {
                 updateMasterCheckbox();
                 calculateFooterTotals();
             });
         }
-    });
 
-    $(document).on('change', '#selectAllEmployees', function() {
-        var isChecked = $(this).is(':checked');
-        var nodes = [];
-        if ($.fn.DataTable && $.fn.DataTable.isDataTable('#workspaceTable')) {
-            nodes = $('#workspaceTable').DataTable().rows().nodes();
-        } else {
-            nodes = document.querySelectorAll('.calc-row');
-        }
-        $(nodes).each(function() {
-            $(this).find('.emp-checkbox').prop('checked', isChecked);
+        $(document).on('change', '#selectAllEmployees', function() {
+            var isChecked = $(this).is(':checked');
+            var nodes = [];
+            if ($.fn.DataTable && $.fn.DataTable.isDataTable('#workspaceTable')) {
+                nodes = $('#workspaceTable').DataTable().rows().nodes();
+            } else {
+                nodes = document.querySelectorAll('.calc-row');
+            }
+            $(nodes).each(function() {
+                $(this).find('.emp-checkbox').prop('checked', isChecked);
+            });
+            calculateFooterTotals();
         });
-        calculateFooterTotals();
-    });
-    
-    $(document).on('change', '.emp-checkbox', function() {
-        if (!$(this).is(':checked')) {
-            $('#selectAllEmployees').prop('checked', false);
-        } else {
-            updateMasterCheckbox();
-        }
-        calculateFooterTotals();
-    });
+        
+        $(document).on('change', '.emp-checkbox', function() {
+            if (!$(this).is(':checked')) {
+                $('#selectAllEmployees').prop('checked', false);
+            } else {
+                updateMasterCheckbox();
+            }
+            calculateFooterTotals();
+        });
 
+        // Delegated click listener for delete buttons
+        $(document).on('click', '.btn-delete-payroll-proj', function(e) {
+            e.preventDefault();
+            var id = $(this).attr('data-id') || $(this).data('id');
+            var name = $(this).attr('data-name') || $(this).data('name');
+            window.confirmDeletePayrollProject(id, name);
+        });
+
+    }); // End of DOMContentLoaded
 </script>
 

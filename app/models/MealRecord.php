@@ -467,20 +467,12 @@ class MealRecord extends Model
             }
 
             if (!$projId) {
-                // Auto-provision standard monthly meal project if none exists for this month
-                $monthName = date('F Y', strtotime($date));
-                $startDate = date('Y-m-01', strtotime($date));
-                $endDate   = date('Y-m-t', strtotime($date));
-                $projName  = $monthName . " Meal Project";
-                $stdRate   = 60.00;
-
-                $insStmt = $this->db->prepare("INSERT INTO meal_projects (name, from_date, to_date, standard_meal_amount, status, created_at) VALUES (?, ?, ?, ?, 'open', NOW())");
-                if ($insStmt) {
-                    $insStmt->bind_param("sssd", $projName, $startDate, $endDate, $stdRate);
-                    if ($insStmt->execute()) {
-                        $projId = (int)$this->db->insert_id;
-                    }
-                    $insStmt->close();
+                // Auto-provision standard 26th-to-25th meal project if none exists
+                require_once __DIR__ . '/MealProject.php';
+                $mpModel = new MealProject($this->db);
+                $autoProj = $mpModel->getOrCreateCycleForDate($date, false);
+                if ($autoProj) {
+                    $projId = (int)$autoProj['id'];
                 }
             }
 
@@ -737,8 +729,9 @@ class MealRecord extends Model
             INSERT INTO meal_records (meal_project_id, employee_id, office_branch_id, meal_date, is_consumed, is_manual, updated_at)
             VALUES (?, ?, ?, ?, ?, 0, NOW())
             ON DUPLICATE KEY UPDATE
-                is_consumed = IF(meal_records.is_manual = 1, meal_records.is_consumed, VALUES(is_consumed)),
-                updated_at = IF(meal_records.is_manual = 1, meal_records.updated_at, NOW())
+                is_consumed = VALUES(is_consumed),
+                is_manual = 0,
+                updated_at = NOW()
         ";
         $uStmt = $this->db->prepare($upsertSql);
         if (!$uStmt) {
@@ -811,20 +804,12 @@ class MealRecord extends Model
         $pStmt->close();
 
         if (!$project) {
-            // Auto-provision standard monthly meal project if none exists for this month
-            $monthName = date('F Y', strtotime($attendanceDate));
-            $startDate = date('Y-m-01', strtotime($attendanceDate));
-            $endDate   = date('Y-m-t', strtotime($attendanceDate));
-            $projName  = $monthName . " Meal Project";
-            $stdRate   = 60.00;
-
-            $insStmt = $this->db->prepare("INSERT INTO meal_projects (name, from_date, to_date, standard_meal_amount, status, created_at) VALUES (?, ?, ?, ?, 'open', NOW())");
-            if ($insStmt) {
-                $insStmt->bind_param("sssd", $projName, $startDate, $endDate, $stdRate);
-                if ($insStmt->execute()) {
-                    $project = ['id' => $this->db->insert_id];
-                }
-                $insStmt->close();
+            // Auto-provision standard 26th-to-25th meal project if none exists
+            require_once __DIR__ . '/MealProject.php';
+            $mpModel = new MealProject($this->db);
+            $autoProj = $mpModel->getOrCreateCycleForDate($attendanceDate, false);
+            if ($autoProj) {
+                $project = $autoProj;
             }
         }
 
@@ -848,8 +833,9 @@ class MealRecord extends Model
             INSERT INTO meal_records (meal_project_id, employee_id, office_branch_id, meal_date, is_consumed, is_manual, updated_at)
             VALUES (?, ?, ?, ?, ?, 0, NOW())
             ON DUPLICATE KEY UPDATE
-                is_consumed = IF(meal_records.is_manual = 1, meal_records.is_consumed, VALUES(is_consumed)),
-                updated_at = IF(meal_records.is_manual = 1, meal_records.updated_at, NOW())
+                is_consumed = VALUES(is_consumed),
+                is_manual = 0,
+                updated_at = NOW()
         ";
         $uStmt = $this->db->prepare($upsertSql);
         if ($uStmt) {
