@@ -16,6 +16,7 @@ class LeadSynchronizer
     private ?array $cachedActiveTeamIds = null;
     private bool $schemaEnsured = false;
     private ?array $existingLeadsCache = null;
+    private ?string $forcedPlatform = null;
 
     public function __construct(array $config, $userId = null)
     {
@@ -78,10 +79,12 @@ class LeadSynchronizer
     /**
      * Run full synchronization from Google Sheets (Auto Multi-Tab Support)
      */
-    public function runSync(?string $customSheetUrl = null): array
+    public function runSync(?string $customSheetUrl = null, ?string $forcePlatform = null): array
     {
         @ini_set('memory_limit', '512M');
         @set_time_limit(300);
+        $this->forcedPlatform = ($forcePlatform !== null && trim($forcePlatform) !== '') ? trim($forcePlatform) : null;
+        $this->existingLeadsCache = null;
         $startTime = microtime(true);
         $this->log("=======================================================");
         $this->log("Starting Lead Synchronization at " . date('Y-m-d H:i:s'));
@@ -167,7 +170,7 @@ class LeadSynchronizer
                             $name === 'xl/workbook.xml' ||
                             $name === 'xl/sharedStrings.xml' ||
                             $name === 'xl/_rels/workbook.xml.rels' ||
-                            str_starts_with($name, 'xl/worksheets/')
+                            strpos($name, 'xl/worksheets/') === 0
                         ) {
                             $files[$name] = $zip->getFromIndex($i);
                         }
@@ -229,7 +232,7 @@ class LeadSynchronizer
                     foreach ($relsXml->Relationship as $rel) {
                         $id = (string)$rel['Id'];
                         $target = ltrim((string)$rel['Target'], '/');
-                        if (!str_starts_with($target, 'xl/')) {
+                        if (strpos($target, 'xl/') !== 0) {
                             $target = 'xl/' . $target;
                         }
                         $relsMap[$id] = $target;
@@ -443,8 +446,7 @@ class LeadSynchronizer
                     continue;
                 }
 
-                // Export current sheet to CSV format
-                // Convert sheet rows in memory without ever touching php://output
+                // Export current sheet to CSV format in memory without ever touching php://output
                 $rowsArray = $sheet->toArray(null, false, false, false);
                 $fp = fopen('php://temp', 'r+');
                 foreach ($rowsArray as $rLine) {
@@ -453,14 +455,6 @@ class LeadSynchronizer
                 rewind($fp);
                 $tabCsv = (string)stream_get_contents($fp);
                 fclose($fp);
-                if (false) {
-                $csvWriter = new \PhpOffice\PhpSpreadsheet\Writer\Csv($spreadsheet);
-                $csvWriter->setSheetIndex($i);
-                $csvWriter->setUseBOM(true);
-                ob_start();
-                $csvWriter->save('php://output');
-                $tabCsv = ob_get_clean();
-                }
 
                 if (empty(trim($tabCsv))) {
                     continue;
@@ -751,7 +745,7 @@ class LeadSynchronizer
 
         // Exact match aliases first (strictly prioritized)
         $exactFieldAliases = [
-            'campaign_name' => ['campaign_name', 'campaign'],
+            'campaign_name' => ['campaign_name', 'campaign', 'project_name', 'interested_project', 'প্রজেক্ট', 'প্রজেক্টের_নাম'],
             'form_name'     => ['form_name', 'form'],
             'adset_name'    => ['adset_name', 'adset'],
             'platform'      => ['platform', 'source'],
@@ -761,6 +755,8 @@ class LeadSynchronizer
                 'what_apartment_size_are_you_interested_in',
                 'what_size_of_apartment_are_you_interested_in',
                 'which_size_are_you_interested_in',
+                'আপনি_কোন_আকারের_ফ্ল্যাট_নিতে_আগ্রহী?',
+                'আপনি_কোন_আকারের_ফ্ল্যাট_নিতে_আগ্রহী',
                 'আপনি_কোন_সাইজের_কমার্শিয়াল_শপ_খুঁজছেন?',
                 'আপনি_কোন_সাইজের_কমার্শিয়াল_শপ_খুজছেন?',
                 'আপনি_কোন_সাইজের_অ্যাপার্টমেন্ট_খুঁজছেন?',
@@ -794,27 +790,29 @@ class LeadSynchronizer
                 'contact_time', 'best_time_to_contact'
             ],
             'full_name' => [
-                'full_name', 'client_name', 'lead_name', 'customer_name', 'name'
+                'full_name', 'client_name', 'lead_name', 'customer_name', 'name', 'আপনার_নাম', 'নাম'
             ],
             'job_title' => [
-                'job_title', 'designation', 'occupation', 'profession'
+                'job_title', 'designation', 'occupation', 'profession', 'পেশা'
             ],
             'company_name' => [
-                'company_name', 'company', 'organization'
+                'company_name', 'company', 'organization', 'প্রতিষ্ঠানের_নাম'
             ],
             'phone_number' => [
-                'phone_number', 'phone', 'mobile', 'contact_number'
+                'phone_number', 'phone', 'mobile', 'contact_number', 'মোবাইল_নাম্বার', 'ফোন_নাম্বার', 'মোবাইল', 'ফোন'
             ],
             'email' => [
-                'email', 'email_address'
+                'email', 'email_address', 'ইমেইল'
             ],
             'city' => [
-                'city', 'state', 'location'
+                'city', 'state', 'location', 'ঠিকানা', 'শহর'
             ],
             'country' => [
-                'country'
+                'country', 'দেশ'
             ],
         ];
+
+        $map['__multi'] = [];
 
         // 1. Pass 1: EXACT MATCH (Highest accuracy, stripping trailing ? or :)
         foreach ($headers as $index => $rawColName) {
@@ -822,20 +820,22 @@ class LeadSynchronizer
             $cleanCol = rtrim(mb_strtolower(str_replace([' ', '-', '–'], '_', $colName), 'UTF-8'), '?:.,؟');
 
             foreach ($exactFieldAliases as $dbField => $aliases) {
-                if (isset($map[$dbField])) {
-                    continue;
-                }
                 foreach ($aliases as $alias) {
                     $cleanAlias = rtrim(mb_strtolower(str_replace([' ', '-', '–'], '_', $alias), 'UTF-8'), '?:.,؟');
                     if ($cleanCol === $cleanAlias || $colName === $alias) {
-                        $map[$dbField] = $index;
+                        if (!isset($map[$dbField])) {
+                            $map[$dbField] = $index;
+                        }
+                        if (!isset($map['__multi'][$dbField]) || !in_array($index, $map['__multi'][$dbField], true)) {
+                            $map['__multi'][$dbField][] = $index;
+                        }
                         break;
                     }
                 }
             }
         }
 
-        // 2. Pass 2: FUZZY / SUBSTRING MATCH for any remaining unmapped fields
+        // 2. Pass 2: FUZZY / SUBSTRING MATCH for any remaining unmapped or multi-column fields
         $fuzzyFieldAliases = [
             'which_apartment_size_are_you_interested_in' => [
                 'which_apartment_size', 'what_apartment_size', 'apartment_size', 'flat_size', 'shop_size', 'unit_size', 'preferred_size',
@@ -846,7 +846,8 @@ class LeadSynchronizer
             'would_you_like_to_schedule_a_site_visit'   => ['schedule_a_site_visit', 'সাইট_ভিজিট', 'site_visit'],
             'when_is_the_best_time_to_contact_you'       => ['best_time_to_contact', 'যোগাযোগ', 'best_time'],
             'campaign_name'                              => ['campaign', 'adset_name'],
-            'phone_number'                               => ['phone', 'mobile'],
+            'phone_number'                               => ['phone', 'mobile', 'মোবাইল', 'ফোন'],
+            'full_name'                                  => ['full_name', 'আপনার_নাম'],
         ];
 
         foreach ($headers as $index => $rawColName) {
@@ -859,12 +860,14 @@ class LeadSynchronizer
             }
 
             foreach ($fuzzyFieldAliases as $dbField => $keywords) {
-                if (isset($map[$dbField])) {
-                    continue;
-                }
                 foreach ($keywords as $kw) {
                     if (mb_strpos($cleanCol, $kw, 0, 'UTF-8') !== false || mb_strpos($colName, $kw, 0, 'UTF-8') !== false) {
-                        $map[$dbField] = $index;
+                        if (!isset($map[$dbField])) {
+                            $map[$dbField] = $index;
+                        }
+                        if (!isset($map['__multi'][$dbField]) || !in_array($index, $map['__multi'][$dbField], true)) {
+                            $map['__multi'][$dbField][] = $index;
+                        }
                         break;
                     }
                 }
@@ -880,17 +883,35 @@ class LeadSynchronizer
     {
         $data = [];
         $defaults = $this->config['lead_defaults'] ?? [];
+        $multiMap = $headerMap['__multi'] ?? [];
 
         foreach ($headerMap as $field => $index) {
-            $data[$field] = isset($row[$index]) ? trim($row[$index]) : null;
+            if ($field === '__multi' || !is_int($index)) {
+                continue;
+            }
+            $val = isset($row[$index]) ? trim((string)$row[$index]) : '';
+            if ($val === '' && !empty($multiMap[$field]) && is_array($multiMap[$field])) {
+                foreach ($multiMap[$field] as $altIdx) {
+                    $altVal = isset($row[$altIdx]) ? trim((string)$row[$altIdx]) : '';
+                    if ($altVal !== '') {
+                        $val = $altVal;
+                        break;
+                    }
+                }
+            }
+            $data[$field] = ($val !== '') ? $val : null;
         }
 
-        // Fill missing values with defaults
-        $data['platform'] = !empty($data['platform']) ? $data['platform'] : 'fb';
+        // Fill missing values with defaults (or forced platform when syncing from Google Form Sheet)
+        if ($this->forcedPlatform !== null && $this->forcedPlatform !== '') {
+            $data['platform'] = $this->forcedPlatform;
+        } else {
+            $data['platform'] = !empty($data['platform']) ? $data['platform'] : 'fb';
+        }
         $data['country']  = !empty($data['country']) ? $data['country'] : ($defaults['default_country'] ?? 'Bangladesh');
 
         if (empty($data['campaign_name'])) {
-            $data['campaign_name'] = !empty($data['form_name']) ? $data['form_name'] : (!empty($data['adset_name']) ? $data['adset_name'] : 'Common Lead Form');
+            $data['campaign_name'] = !empty($data['form_name']) ? $data['form_name'] : (!empty($data['adset_name']) ? $data['adset_name'] : ($this->forcedPlatform === 'google_form' ? 'Google Form Lead' : 'Common Lead Form'));
         }
 
         return $data;
@@ -1060,11 +1081,18 @@ class LeadSynchronizer
                         strpos($campaignLower, $cand) !== false ||
                         (!empty($secLower) && strpos($secLower, $cand) !== false)
                     ) {
+                        $fallbackTeams = [];
+                        foreach ($projects as $pRule) {
+                            if ((int)($pRule['project_id'] ?? 0) === (int)$dbProj['id'] && !empty($pRule['teams'])) {
+                                $fallbackTeams = $pRule['teams'];
+                                break;
+                            }
+                        }
                         return [
                             'matched_keyword' => $cand,
                             'project_name'    => $pName,
                             'project_id'      => (int)$dbProj['id'],
-                            'teams'           => []
+                            'teams'           => $fallbackTeams
                         ];
                     }
                 }
@@ -1079,6 +1107,78 @@ class LeadSynchronizer
             'project_id'      => $default['project_id'] ?? null,
             'teams'           => !empty($default['team_id']) ? [$default['team_id']] : []
         ];
+    }
+
+    /**
+     * Re-match automated leads that currently have no project (Common: project_id IS NULL OR 0)
+     * against current active project keyword rules and assign round-robin teams where needed.
+     */
+    public function rematchUnassignedCommonLeads(?PDO $pdo = null): int
+    {
+        $rematched = 0;
+        try {
+            $pdo = $pdo ?: $this->getDb();
+            $stmt = $pdo->query("
+                SELECT DISTINCT campaign_name
+                FROM `leads`
+                WHERE deleted_at IS NULL
+                  AND is_automated = 1
+                  AND (project_id IS NULL OR project_id = 0)
+                  AND campaign_name IS NOT NULL
+                  AND TRIM(campaign_name) != ''
+            ");
+            $distinctCampaigns = $stmt ? $stmt->fetchAll(PDO::FETCH_COLUMN) : [];
+            if (empty($distinctCampaigns)) {
+                return 0;
+            }
+
+            $fetchRowsStmt = $pdo->prepare("
+                SELECT id, team_id
+                FROM `leads`
+                WHERE deleted_at IS NULL
+                  AND is_automated = 1
+                  AND (project_id IS NULL OR project_id = 0)
+                  AND campaign_name = ?
+                ORDER BY id ASC
+            ");
+            $updateProjectOnlyStmt = $pdo->prepare("UPDATE `leads` SET `project_id` = ? WHERE `id` = ?");
+            $updateProjectAndTeamStmt = $pdo->prepare("UPDATE `leads` SET `project_id` = ?, `team_id` = ? WHERE `id` = ?");
+
+            foreach ($distinctCampaigns as $campName) {
+                $campStr = trim((string)$campName);
+                if ($campStr === '') {
+                    continue;
+                }
+                $match = $this->matchProject($campStr);
+                $matchedPid = !empty($match['project_id']) ? (int)$match['project_id'] : 0;
+                if ($matchedPid <= 0) {
+                    continue;
+                }
+
+                $eligibleTeams = $match['teams'] ?? [];
+                $fetchRowsStmt->execute([$campName]);
+                $rows = $fetchRowsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($rows as $r) {
+                    $lid = (int)$r['id'];
+                    $curTeam = (int)($r['team_id'] ?? 0);
+                    if ($curTeam > 0) {
+                        $updateProjectOnlyStmt->execute([$matchedPid, $lid]);
+                    } else {
+                        $nextTeam = $this->resolveNextTeamId($matchedPid, $eligibleTeams, $pdo);
+                        if ($nextTeam !== null && $nextTeam > 0) {
+                            $updateProjectAndTeamStmt->execute([$matchedPid, $nextTeam, $lid]);
+                        } else {
+                            $updateProjectOnlyStmt->execute([$matchedPid, $lid]);
+                        }
+                    }
+                    $rematched++;
+                }
+            }
+        } catch (Throwable $t) {
+            // Silently ignore if schema/query not ready
+        }
+        return $rematched;
     }
 
     /**
@@ -1155,10 +1255,10 @@ class LeadSynchronizer
 
         // Build in-memory existing leads cache once per sync run (avoids 2,800+ individual SELECT queries!)
         if ($this->existingLeadsCache === null) {
-            $this->existingLeadsCache = ['phone' => [], 'email' => []];
+            $this->existingLeadsCache = ['phone' => [], 'email' => [], 'phone_gf' => [], 'email_gf' => []];
             try {
                 $cStmt = $pdo->query("
-                    SELECT id, phone_number, email, campaign_name,
+                    SELECT id, phone_number, email, campaign_name, platform,
                            which_apartment_size_are_you_interested_in,
                            which_floor_are_you_for_shop,
                            when_are_you_planning_to_buy,
@@ -1170,12 +1270,20 @@ class LeadSynchronizer
                 while ($r = $cStmt->fetch(PDO::FETCH_ASSOC)) {
                     $rCamp = mb_strtolower(trim((string)($r['campaign_name'] ?? '')), 'UTF-8');
                     $rPhone = preg_replace('/^p:/i', '', trim((string)($r['phone_number'] ?? '')));
+                    $rPlat = strtolower(trim((string)($r['platform'] ?? '')));
+                    $isGf = (strpos($rPlat, 'google') !== false || $rPlat === 'gf');
                     if ($rPhone !== '') {
                         $this->existingLeadsCache['phone'][$rPhone . '|' . $rCamp] = $r;
+                        if ($isGf) {
+                            $this->existingLeadsCache['phone_gf'][$rPhone . '|' . $rCamp] = $r;
+                        }
                     }
                     $rEmail = mb_strtolower(trim((string)($r['email'] ?? '')), 'UTF-8');
                     if ($rEmail !== '') {
                         $this->existingLeadsCache['email'][$rEmail . '|' . $rCamp] = $r;
+                        if ($isGf) {
+                            $this->existingLeadsCache['email_gf'][$rEmail . '|' . $rCamp] = $r;
+                        }
                     }
                 }
             } catch (Throwable $t) {
@@ -1185,12 +1293,14 @@ class LeadSynchronizer
 
         $existingRow = null;
         if ($this->existingLeadsCache !== null) {
+            $phoneBucket = ($this->forcedPlatform === 'google_form') ? 'phone_gf' : 'phone';
+            $emailBucket = ($this->forcedPlatform === 'google_form') ? 'email_gf' : 'email';
             if ($cleanPhone !== '') {
-                $existingRow = $this->existingLeadsCache['phone'][$cleanPhone . '|' . $campLower] ?? null;
+                $existingRow = $this->existingLeadsCache[$phoneBucket][$cleanPhone . '|' . $campLower] ?? null;
             } elseif ($email !== '') {
-                $existingRow = $this->existingLeadsCache['email'][$email . '|' . $campLower] ?? null;
+                $existingRow = $this->existingLeadsCache[$emailBucket][$email . '|' . $campLower] ?? null;
             }
-        } elseif (false) {
+        } else {
 
         if (empty($cleanPhone)) {
             // Fallback: check by email if phone is not provided
@@ -1382,12 +1492,20 @@ class LeadSynchronizer
                 'would_you_like_to_schedule_a_site_visit'   => $lead['would_you_like_to_schedule_a_site_visit'] ?? null,
                 'when_is_the_best_time_to_contact_you'       => $lead['when_is_the_best_time_to_contact_you'] ?? null,
             ];
+            $rPlat = strtolower(trim((string)($lead['platform'] ?? '')));
+            $isGf = (strpos($rPlat, 'google') !== false || $rPlat === 'gf');
             if ($rPhone !== '') {
                 $this->existingLeadsCache['phone'][$rPhone . '|' . $rCamp] = $cachedEntry;
+                if ($isGf) {
+                    $this->existingLeadsCache['phone_gf'][$rPhone . '|' . $rCamp] = $cachedEntry;
+                }
             }
             $rEmail = mb_strtolower(trim((string)($lead['email'] ?? '')), 'UTF-8');
             if ($rEmail !== '') {
                 $this->existingLeadsCache['email'][$rEmail . '|' . $rCamp] = $cachedEntry;
+                if ($isGf) {
+                    $this->existingLeadsCache['email_gf'][$rEmail . '|' . $rCamp] = $cachedEntry;
+                }
             }
         }
         return $newId;
@@ -1457,6 +1575,9 @@ class LeadSynchronizer
                 $rawPhone = $leadData['phone_number'] ?? '';
                 $cleanPhone = preg_replace('/^p:/i', '', trim($rawPhone));
                 $leadData['phone_number'] = $cleanPhone;
+                if ($this->forcedPlatform !== null && $this->forcedPlatform !== '') {
+                    $leadData['platform'] = $this->forcedPlatform;
+                }
 
                 // Skip Meta / Facebook automated test leads or dummy rows
                 $fullName = (string)($leadData['full_name'] ?? '');

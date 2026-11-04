@@ -40,8 +40,9 @@ return [
     // 3. Google Sheets Configuration
     // ------------------------------------------------------------------------
     'google_sheet' => [
-        'url'     => 'https://docs.google.com/spreadsheets/d/1Smg3B14dEanyrCf0qRc3wAdgLHi0x-9cDjNINvcMNlY/edit',
-        'timeout' => 60,
+        'url'             => 'https://docs.google.com/spreadsheets/d/1Smg3B14dEanyrCf0qRc3wAdgLHi0x-9cDjNINvcMNlY/edit',
+        'google_form_url' => 'https://docs.google.com/spreadsheets/d/131gO92xw6tsPlRVzU6sU2TTLbXTz9hpdGR9y5skW3As/edit?usp=sharing',
+        'timeout'         => 60,
     ],
 
     // ------------------------------------------------------------------------

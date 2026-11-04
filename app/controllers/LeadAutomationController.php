@@ -138,6 +138,7 @@ class LeadAutomationController extends Controller
 
         $teams = array_values(array_filter($this->teamsModel->getAll(), fn($t) => (int)($t['status'] ?? 1) === 1));
         $sheetUrl = $this->automationConfig['google_sheet']['url'] ?? '';
+        $googleFormSheetUrl = $this->automationConfig['google_sheet']['google_form_url'] ?? 'https://docs.google.com/spreadsheets/d/131gO92xw6tsPlRVzU6sU2TTLbXTz9hpdGR9y5skW3As/edit?usp=sharing';
 
         $projects = [];
         try {
@@ -178,9 +179,10 @@ class LeadAutomationController extends Controller
             "current_route"     => "lead-automation-upload",
             "page_title"        => "Lead Automation Upload & Distribution",
             "teams"             => $teams,
-            "projects"          => $projects,
-            "sheet_url"         => $sheetUrl,
-            "gemini_active"     => !empty($this->automationConfig['gemini']['enabled']) && !empty($this->automationConfig['gemini']['api_key']),
+            "projects"              => $projects,
+            "sheet_url"             => $sheetUrl,
+            "google_form_sheet_url" => $googleFormSheetUrl,
+            "gemini_active"         => !empty($this->automationConfig['gemini']['enabled']) && !empty($this->automationConfig['gemini']['api_key']),
             "platformReport"    => $platformReport,
             "whatsappLogsStats" => $whatsappLogsStats,
         ]);
@@ -244,18 +246,66 @@ class LeadAutomationController extends Controller
                 'data'    => $result
             ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
             exit;
+        } catch (Throwable $e) {
+            while (ob_get_level() > 0) {
+                @ob_end_clean();
+            }
+            header('Content-Type: application/json; charset=utf-8');
+            http_response_code(500);
+            echo json_encode([
+                'status'  => 'error',
+                'message' => $e->getMessage()
+            ]);
+        }
+        exit;
+    }
 
+    /**
+     * AJAX: Trigger Google Form Leads Sync from Google Form Sheet
+     */
+    public function ajaxSyncGoogleFormLeads()
+    {
+        $this->checkAccess();
+        header('Content-Type: application/json; charset=utf-8');
+
+        @set_time_limit(300);
+        @ini_set('max_execution_time', '300');
+        @ini_set('memory_limit', '512M');
+        ob_start();
+
+        try {
+            $input = json_decode(file_get_contents('php://input'), true) ?? [];
+            $sheetUrl = trim((string)($_POST['sheet_url'] ?? ($input['sheet_url'] ?? '')));
+            if ($sheetUrl === '') {
+                $sheetUrl = $this->automationConfig['google_sheet']['google_form_url'] ?? 'https://docs.google.com/spreadsheets/d/131gO92xw6tsPlRVzU6sU2TTLbXTz9hpdGR9y5skW3As/edit?usp=sharing';
+            }
+
+            $currentUserId = isset($_SESSION['user']['id']) ? (int)$_SESSION['user']['id'] : null;
+            $synchronizer = new LeadSynchronizer($this->automationConfig, $currentUserId);
+            $result = $synchronizer->runSync($sheetUrl, 'google_form');
+
+            $tabCount = count($result['tabs_synced'] ?? []);
+            $tabSuffix = $tabCount > 1 ? sprintf(" across %d sheet tabs", $tabCount) : "";
+            while (ob_get_level() > 0) {
+                @ob_end_clean();
+            }
+            header('Content-Type: application/json; charset=utf-8');
             echo json_encode([
                 'status'  => 'success',
                 'message' => sprintf(
-                    "Sync finished%s! %d new leads added (Pending distribution), %d duplicates skipped.",
+                    "Google Form Sync finished%s! %d new leads added (Pending distribution), %d duplicates skipped.",
                     $tabSuffix,
                     $result['inserted'] ?? 0,
                     $result['skipped_duplicate'] ?? 0
                 ),
                 'data'    => $result
-            ]);
+            ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+            exit;
         } catch (Throwable $e) {
+            while (ob_get_level() > 0) {
+                @ob_end_clean();
+            }
+            header('Content-Type: application/json; charset=utf-8');
             http_response_code(500);
             echo json_encode([
                 'status'  => 'error',
@@ -363,47 +413,35 @@ class LeadAutomationController extends Controller
 
             // Project filter
             $projectParam = trim((string)($_GET['project_id'] ?? ''));
+            $commonProjectWhereSql = "(l.project_id IS NULL OR l.project_id = 0 OR NOT EXISTS (SELECT 1 FROM `projects` pr WHERE pr.id = l.project_id AND pr.deleted_at IS NULL))";
             if ($projectParam === 'common' || $projectParam === '0') {
-                $where[] = "(l.project_id IS NULL OR l.project_id = 0)";
+                $where[] = $commonProjectWhereSql;
             } elseif (is_numeric($projectParam) && (int)$projectParam > 0) {
                 $where[] = "l.project_id = ?";
                 $params[] = (int)$projectParam;
             }
 
-            // Platform filter
+            // Platform filter (strictly mutually exclusive via getPlatformCaseSql)
             $platformParam = strtolower(trim((string)($_GET['platform'] ?? '')));
+            $casePlatformSql = $this->getPlatformCaseSql('l');
+            $platformFilterSql = '';
             if ($platformParam === 'facebook' || $platformParam === 'facebook_form') {
-                $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('facebook', 'fb', 'fb(lead form)', 'lead form', 'leadform', 'leadfrom', 'meta form', 'meta inform') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%fb%' OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%facebook%' OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%lead form%' OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%leadform%')";
+                $platformFilterSql = "({$casePlatformSql}) = 'facebook_form'";
             } elseif ($platformParam === 'whatsapp') {
-                $where[] = "(l.is_repibee = 1 OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('whatsapp', 'wa', 'whats app', 'whatsappp', 'whataapp', 'whatsapp lead', 'whstsapp') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%whatsapp%' OR LOWER(TRIM(COALESCE(l.platform, ''))) = 'wa')";
+                $platformFilterSql = "({$casePlatformSql}) = 'whatsapp'";
             } elseif ($platformParam === 'replibee') {
-                $where[] = "l.is_repibee = 1";
+                $platformFilterSql = "COALESCE(l.is_repibee, 0) = 1";
             } elseif ($platformParam === 'meta_inbox') {
-                $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('meta inbox', 'meta') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%inbox%')";
+                $platformFilterSql = "({$casePlatformSql}) = 'meta_inbox'";
             } elseif ($platformParam === 'google_form') {
-                $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('google form', 'google', 'googleform') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%google%')";
+                $platformFilterSql = "({$casePlatformSql}) = 'google_form'";
             } elseif ($platformParam === 'brochure' || $platformParam === 'brochure_leads') {
-                $where[] = "(l.is_brocure_leads = 1 OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('brochure leads', 'brocure leads', 'brochure lead', 'brocure lead', 'brochure') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brochure%' OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brocure%')";
+                $platformFilterSql = "({$casePlatformSql}) = 'brochure'";
             } elseif ($platformParam === 'others') {
-                $where[] = "(NOT (
-                    LOWER(TRIM(COALESCE(l.platform, ''))) IN ('facebook', 'fb', 'fb(lead form)', 'lead form', 'leadform', 'leadfrom', 'meta form', 'meta inform')
-                    OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%fb%'
-                    OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%facebook%'
-                    OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%lead form%'
-                    OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%leadform%'
-                    OR l.is_repibee = 1
-                    OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('whatsapp', 'wa', 'whats app', 'whatsappp', 'whataapp', 'whatsapp lead', 'whstsapp')
-                    OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%whatsapp%'
-                    OR LOWER(TRIM(COALESCE(l.platform, ''))) = 'wa'
-                    OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('meta inbox', 'meta')
-                    OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%inbox%'
-                    OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('google form', 'google', 'googleform')
-                    OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%google%'
-                    OR l.is_brocure_leads = 1
-                    OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('brochure leads', 'brocure leads', 'brochure lead', 'brocure lead', 'brochure')
-                    OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brochure%'
-                    OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brocure%'
-                ))";
+                $platformFilterSql = "({$casePlatformSql}) = 'others'";
+            }
+            if ($platformFilterSql !== '') {
+                $where[] = $platformFilterSql;
             }
 
             // Search by Name, Phone, Campaign, Team Name, Project Name, ID, or "unassigned" keyword
@@ -519,27 +557,53 @@ class LeadAutomationController extends Controller
             $countStmt->execute($params);
             $totalCount = (int)$countStmt->fetchColumn();
 
-            // Date condition for stats queries (table name leads without alias `l.`)
-            $autoWhere = $hasAutomatedCol ? " AND is_automated = 1" : "";
-            $statsDateSql = "";
+            // Build shared filter SQL for stats & team allocation cards (date + project + platform)
+            $sharedSubWhere = ["l.deleted_at IS NULL"];
+            $sharedSubParams = [];
+            if ($hasAutomatedCol) {
+                $sharedSubWhere[] = "l.is_automated = 1";
+            }
             if (!empty($dateConditionSql)) {
-                $statsDateSql = " AND " . str_replace('l.created_at', 'created_at', $dateConditionSql);
+                $sharedSubWhere[] = $dateConditionSql;
+                $sharedSubParams = array_merge($sharedSubParams, $dateParams);
+            }
+            if ($projectParam === 'common' || $projectParam === '0') {
+                $sharedSubWhere[] = $commonProjectWhereSql;
+            } elseif (is_numeric($projectParam) && (int)$projectParam > 0) {
+                $sharedSubWhere[] = "l.project_id = ?";
+                $sharedSubParams[] = (int)$projectParam;
+            }
+            if ($platformFilterSql !== '') {
+                $sharedSubWhere[] = $platformFilterSql;
             }
 
-            // Stats scoped to the chosen date filter (e.g. today, yesterday, weekly, custom)
+            // Stats scoped to the chosen date + project + platform + team filters
+            $statsWhereArr = $sharedSubWhere;
+            $statsParamsArr = $sharedSubParams;
+            if ($teamParam === 'unassigned') {
+                $statsWhereArr[] = "(l.team_id IS NULL OR l.team_id = 0)";
+            } elseif ($teamParam === 'assigned') {
+                $statsWhereArr[] = "(l.team_id IS NOT NULL AND l.team_id > 0)";
+            } elseif (is_numeric($teamParam) && (int)$teamParam > 0) {
+                $statsWhereArr[] = "l.team_id = ?";
+                $statsParamsArr[] = (int)$teamParam;
+            }
+            $statsWhereSql = implode(" AND ", $statsWhereArr);
+
             $statsSql = "SELECT 
                             COALESCE(COUNT(*), 0) as total_leads,
-                            COALESCE(SUM(CASE WHEN distribute = 0 THEN 1 ELSE 0 END), 0) as pending_leads,
-                            COALESCE(SUM(CASE WHEN distribute = 1 THEN 1 ELSE 0 END), 0) as approved_leads,
-                            COALESCE(SUM(CASE WHEN (team_id IS NULL OR team_id = 0) THEN 1 ELSE 0 END), 0) as unassigned_leads,
-                            COALESCE(SUM(CASE WHEN (team_id IS NOT NULL AND team_id > 0) THEN 1 ELSE 0 END), 0) as assigned_leads
-                         FROM `leads` 
-                         WHERE deleted_at IS NULL{$autoWhere}{$statsDateSql}";
+                            COALESCE(SUM(CASE WHEN l.distribute = 0 THEN 1 ELSE 0 END), 0) as pending_leads,
+                            COALESCE(SUM(CASE WHEN l.distribute = 1 THEN 1 ELSE 0 END), 0) as approved_leads,
+                            COALESCE(SUM(CASE WHEN (l.team_id IS NULL OR l.team_id = 0) THEN 1 ELSE 0 END), 0) as unassigned_leads,
+                            COALESCE(SUM(CASE WHEN (l.team_id IS NOT NULL AND l.team_id > 0) THEN 1 ELSE 0 END), 0) as assigned_leads
+                         FROM `leads` l
+                         WHERE {$statsWhereSql}";
             $statsStmt = $pdo->prepare($statsSql);
-            $statsStmt->execute($dateParams);
+            $statsStmt->execute($statsParamsArr);
             $stats = $statsStmt->fetch(PDO::FETCH_ASSOC);
 
             // All-time totals for reference
+            $autoWhere = $hasAutomatedCol ? " AND is_automated = 1" : "";
             $allTimeSql = "SELECT 
                                 COALESCE(COUNT(*), 0) as total_leads,
                                 COALESCE(SUM(CASE WHEN distribute = 0 THEN 1 ELSE 0 END), 0) as pending_leads,
@@ -548,31 +612,31 @@ class LeadAutomationController extends Controller
                            WHERE deleted_at IS NULL{$autoWhere}";
             $allTimeStats = $pdo->query($allTimeSql)->fetch(PDO::FETCH_ASSOC);
 
-            // Fetch Teams with count of automated leads for the chosen date filter
-            $autoJoin = $hasAutomatedCol ? " AND l.is_automated = 1" : "";
-            $teamDateJoin = !empty($dateConditionSql) ? " AND {$dateConditionSql}" : "";
+            // Fetch Teams with count of automated leads for the chosen date + project + platform filters
+            $teamJoinCondSql = implode(" AND ", $sharedSubWhere);
             $teamsSql = "SELECT 
                             t.id, 
                             t.name, 
                             COALESCE(COUNT(l.id), 0) as total_leads,
                             COALESCE(SUM(CASE WHEN l.distribute = 0 THEN 1 ELSE 0 END), 0) as pending_leads
                          FROM `teams` t
-                         LEFT JOIN `leads` l ON l.team_id = t.id AND l.deleted_at IS NULL{$autoJoin}{$teamDateJoin}
+                         LEFT JOIN `leads` l ON l.team_id = t.id AND {$teamJoinCondSql}
                          WHERE t.status = 1
                          GROUP BY t.id, t.name
                          ORDER BY t.id ASC";
             $teamsStmt = $pdo->prepare($teamsSql);
-            $teamsStmt->execute($dateParams);
+            $teamsStmt->execute($sharedSubParams);
             $teams = $teamsStmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // Check unassigned leads scoped to date filter
+            // Check unassigned leads scoped to date + project + platform filters
+            $unassignedWhereSql = implode(" AND ", array_merge($sharedSubWhere, ["(l.team_id IS NULL OR l.team_id = 0)"]));
             $unassignedStatsSql = "SELECT 
                                      COALESCE(COUNT(*), 0) as total_unassigned,
-                                     COALESCE(SUM(CASE WHEN distribute = 0 THEN 1 ELSE 0 END), 0) as pending_unassigned
-                                   FROM `leads` 
-                                   WHERE deleted_at IS NULL AND (team_id IS NULL OR team_id = 0){$autoWhere}{$statsDateSql}";
+                                     COALESCE(SUM(CASE WHEN l.distribute = 0 THEN 1 ELSE 0 END), 0) as pending_unassigned
+                                   FROM `leads` l
+                                   WHERE {$unassignedWhereSql}";
             $unassignedStmt = $pdo->prepare($unassignedStatsSql);
-            $unassignedStmt->execute($dateParams);
+            $unassignedStmt->execute($sharedSubParams);
             $unassignedStats = $unassignedStmt->fetch(PDO::FETCH_ASSOC);
 
             echo json_encode([
@@ -912,17 +976,45 @@ class LeadAutomationController extends Controller
                 $stmt->execute($leadIds);
             } catch (Throwable $t) {}
 
-            // 10. leads table
+            // 10. Reset any linked WhatsApp staging logs (`whatsapp_leads_logs`) back to 'pending' so deleted leads become sync-able again
+            $requeuedWaCount = 0;
+            try {
+                $waResetStmt = $pdo->prepare("
+                    UPDATE `whatsapp_leads_logs`
+                    SET `sync_status`      = 'pending',
+                        `synced_lead_id`   = NULL,
+                        `assigned_team_id` = NULL,
+                        `synced_at`        = NULL,
+                        `sync_note`        = 'Lead deleted from system · Ready to re-sync'
+                    WHERE `synced_lead_id` IN ({$placeholders})
+                ");
+                $waResetStmt->execute($leadIds);
+                $requeuedWaCount = $waResetStmt->rowCount();
+            } catch (Throwable $t) {}
+
+            // 11. leads table
             $delStmt = $pdo->prepare("DELETE FROM `leads` WHERE id IN ({$placeholders})");
             $delStmt->execute($leadIds);
             $deletedCount = $delStmt->rowCount();
 
             $pdo->commit();
 
+            $waGlobalPending = 0;
+            $waGlobalTotal = 0;
+            try {
+                $waGlobalPending = (int)$pdo->query("SELECT COUNT(*) FROM `whatsapp_leads_logs` WHERE `sync_status` = 'pending'")->fetchColumn();
+                $waGlobalTotal   = (int)$pdo->query("SELECT COUNT(*) FROM `whatsapp_leads_logs`")->fetchColumn();
+            } catch (Throwable $t) {}
+
+            $extraWaMsg = $requeuedWaCount > 0 ? " ({$requeuedWaCount} WhatsApp lead(s) moved back to Pending Sync)" : "";
+
             echo json_encode([
-                'status'  => 'success',
-                'message' => "Successfully permanently deleted {$deletedCount} lead(s) from database and team lists.",
-                'count'   => $deletedCount
+                'status'            => 'success',
+                'message'           => "Successfully permanently deleted {$deletedCount} lead(s) from database and team lists.{$extraWaMsg}",
+                'count'             => $deletedCount,
+                'requeued_wa_count' => $requeuedWaCount,
+                'wa_global_pending' => $waGlobalPending,
+                'wa_global_total'   => $waGlobalTotal,
             ]);
         } catch (Throwable $e) {
             if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
@@ -1009,6 +1101,38 @@ class LeadAutomationController extends Controller
     }
 
     /**
+     * Unified mutually-exclusive SQL CASE expression for platform classification
+     */
+    private function getPlatformCaseSql(string $alias = 'l'): string
+    {
+        return "CASE
+            WHEN LOWER(TRIM(COALESCE({$alias}.platform, ''))) IN ('meta inbox', 'meta') 
+                 OR LOWER(TRIM(COALESCE({$alias}.platform, ''))) LIKE '%inbox%' 
+                 THEN 'meta_inbox'
+            WHEN {$alias}.is_repibee = 1
+                 OR LOWER(TRIM(COALESCE({$alias}.platform, ''))) IN ('whatsapp', 'wa', 'whats app', 'whatsappp', 'whataapp', 'whatsapp lead', 'whstsapp') 
+                 OR LOWER(TRIM(COALESCE({$alias}.platform, ''))) LIKE '%whatsapp%' 
+                 OR LOWER(TRIM(COALESCE({$alias}.platform, ''))) = 'wa'
+                 THEN 'whatsapp'
+            WHEN LOWER(TRIM(COALESCE({$alias}.platform, ''))) IN ('google form', 'google', 'googleform', 'google_form', 'gf') 
+                 OR LOWER(TRIM(COALESCE({$alias}.platform, ''))) LIKE '%google%' 
+                 THEN 'google_form'
+            WHEN {$alias}.is_brocure_leads = 1
+                 OR LOWER(TRIM(COALESCE({$alias}.platform, ''))) IN ('brochure leads', 'brocure leads', 'brochure lead', 'brocure lead', 'brochure') 
+                 OR LOWER(TRIM(COALESCE({$alias}.platform, ''))) LIKE '%brochure%' 
+                 OR LOWER(TRIM(COALESCE({$alias}.platform, ''))) LIKE '%brocure%' 
+                 THEN 'brochure'
+            WHEN LOWER(TRIM(COALESCE({$alias}.platform, ''))) IN ('facebook', 'fb', 'fb(lead form)', 'lead form', 'leadform', 'leadfrom', 'meta form', 'meta inform') 
+                 OR LOWER(TRIM(COALESCE({$alias}.platform, ''))) LIKE '%fb%' 
+                 OR LOWER(TRIM(COALESCE({$alias}.platform, ''))) LIKE '%facebook%' 
+                 OR LOWER(TRIM(COALESCE({$alias}.platform, ''))) LIKE '%lead form%' 
+                 OR LOWER(TRIM(COALESCE({$alias}.platform, ''))) LIKE '%leadform%' 
+                 THEN 'facebook_form'
+            ELSE 'others'
+        END";
+    }
+
+    /**
      * Compute automated leads platform report & team ranking
      */
     public function getAutomatedPlatformReport(array $filters = []): array
@@ -1016,6 +1140,8 @@ class LeadAutomationController extends Controller
         try {
             $synchronizer = new LeadSynchronizer($this->automationConfig);
             $pdo = $synchronizer->getDb();
+            // Auto-rematch any unassigned "Common" leads whose campaign names now match an active project rule
+            $synchronizer->rematchUnassignedCommonLeads($pdo);
         } catch (Throwable $e) {
             $pdo = $this->db;
         }
@@ -1101,44 +1227,33 @@ class LeadAutomationController extends Controller
             $daysCount = 0;
         }
 
-        // Project filter
+        // Project filter (consistent with Daily platform breakdown table grouping)
         $projectFilter = trim((string)($filters['project_id'] ?? ''));
+        $commonProjectWhereSql = "(l.project_id IS NULL OR l.project_id = 0 OR NOT EXISTS (SELECT 1 FROM `projects` pr WHERE pr.id = l.project_id AND pr.deleted_at IS NULL))";
         if ($projectFilter === 'common' || $projectFilter === '0') {
-            $where[] = "(l.project_id IS NULL OR l.project_id = 0)";
+            $where[] = $commonProjectWhereSql;
         } elseif (is_numeric($projectFilter) && (int)$projectFilter > 0) {
             $where[] = "l.project_id = ?";
             $params[] = (int)$projectFilter;
         }
 
-        // Platform filter
+        // Platform filter (using unified mutually-exclusive CASE expression)
+        $casePlatform = $this->getPlatformCaseSql('l');
         $platformFilter = strtolower(trim((string)($filters['platform'] ?? '')));
         if ($platformFilter === 'facebook' || $platformFilter === 'facebook_form') {
-            $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('facebook', 'fb', 'fb(lead form)', 'lead form', 'leadform', 'leadfrom', 'meta form', 'meta inform') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%fb%' OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%facebook%' OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%lead form%' OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%leadform%')";
+            $where[] = "({$casePlatform}) = 'facebook_form'";
         } elseif ($platformFilter === 'whatsapp') {
-            $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('whatsapp', 'wa', 'whats app', 'whatsappp', 'whataapp', 'whatsapp lead', 'whstsapp') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%whatsapp%' OR LOWER(TRIM(COALESCE(l.platform, ''))) = 'wa')";
+            $where[] = "({$casePlatform}) = 'whatsapp'";
+        } elseif ($platformFilter === 'replibee') {
+            $where[] = "l.is_repibee = 1";
         } elseif ($platformFilter === 'meta_inbox') {
-            $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('meta inbox', 'meta') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%inbox%')";
+            $where[] = "({$casePlatform}) = 'meta_inbox'";
         } elseif ($platformFilter === 'google_form') {
-            $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('google form', 'google', 'googleform') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%google%')";
+            $where[] = "({$casePlatform}) = 'google_form'";
         } elseif ($platformFilter === 'brochure' || $platformFilter === 'brochure_leads') {
-            $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('brochure leads', 'brocure leads', 'brochure lead', 'brocure lead', 'brochure') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brochure%')";
+            $where[] = "({$casePlatform}) = 'brochure'";
         } elseif ($platformFilter === 'others') {
-            $where[] = "(NOT (
-                LOWER(TRIM(COALESCE(l.platform, ''))) IN ('facebook', 'fb', 'fb(lead form)', 'lead form', 'leadform', 'leadfrom', 'meta form', 'meta inform')
-                OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%fb%'
-                OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%facebook%'
-                OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%lead form%'
-                OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%leadform%'
-                OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('whatsapp', 'wa', 'whats app', 'whatsappp', 'whataapp', 'whatsapp lead', 'whstsapp')
-                OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%whatsapp%'
-                OR LOWER(TRIM(COALESCE(l.platform, ''))) = 'wa'
-                OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('meta inbox', 'meta')
-                OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%inbox%'
-                OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('google form', 'google', 'googleform')
-                OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%google%'
-                OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('brochure leads', 'brocure leads', 'brochure lead', 'brocure lead', 'brochure')
-                OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brochure%'
-            ))";
+            $where[] = "({$casePlatform}) = 'others'";
         }
 
         // Team filter
@@ -1165,32 +1280,6 @@ class LeadAutomationController extends Controller
         }
 
         $whereSql = implode(" AND ", $where);
-
-        // CASE expression for platform grouping
-        $casePlatform = "CASE
-            WHEN LOWER(TRIM(COALESCE(l.platform, ''))) IN ('meta inbox', 'meta') 
-                 OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%inbox%' 
-                 THEN 'meta_inbox'
-            WHEN LOWER(TRIM(COALESCE(l.platform, ''))) IN ('whatsapp', 'wa', 'whats app', 'whatsappp', 'whataapp', 'whatsapp lead', 'whstsapp') 
-                 OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%whatsapp%' 
-                 OR LOWER(TRIM(COALESCE(l.platform, ''))) = 'wa'
-                 THEN 'whatsapp'
-            WHEN LOWER(TRIM(COALESCE(l.platform, ''))) IN ('google form', 'google', 'googleform') 
-                 OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%google%' 
-                 THEN 'google_form'
-            WHEN l.is_brocure_leads = 1
-                 OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('brochure leads', 'brocure leads', 'brochure lead', 'brocure lead', 'brochure') 
-                 OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brochure%' 
-                 OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brocure%' 
-                 THEN 'brochure'
-            WHEN LOWER(TRIM(COALESCE(l.platform, ''))) IN ('facebook', 'fb', 'fb(lead form)', 'lead form', 'leadform', 'leadfrom', 'meta form', 'meta inform') 
-                 OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%fb%' 
-                 OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%facebook%' 
-                 OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%lead form%' 
-                 OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%leadform%' 
-                 THEN 'facebook_form'
-            ELSE 'others'
-        END";
 
         // 1. KPI & Platform summary query
         $kpiSql = "SELECT 
@@ -1232,10 +1321,10 @@ class LeadAutomationController extends Controller
         $brPct = $totalReceived > 0 ? round(($brCount / $totalReceived) * 100, 1) : 0.0;
         $othersPct = $totalReceived > 0 ? round(($othersCount / $totalReceived) * 100, 1) : 0.0;
 
-        // 2. Project-wise breakdown table
+        // 2. Project-wise breakdown table (consolidating NULL, 0, or orphaned/deleted projects into a single Common row)
         $projSql = "SELECT 
-            CASE WHEN l.project_id IS NULL OR l.project_id = 0 THEN 0 ELSE l.project_id END as project_id,
-            CASE WHEN l.project_id IS NULL OR l.project_id = 0 THEN 'Common' ELSE COALESCE(p.name, 'Common') END as project_name,
+            CASE WHEN l.project_id IS NULL OR l.project_id = 0 OR p.id IS NULL THEN 0 ELSE p.id END as project_id,
+            CASE WHEN l.project_id IS NULL OR l.project_id = 0 OR p.id IS NULL THEN 'Common' ELSE p.name END as project_name,
             COUNT(l.id) as total,
             COALESCE(SUM(CASE WHEN {$casePlatform} = 'facebook_form' THEN 1 ELSE 0 END), 0) as fb_count,
             COALESCE(SUM(CASE WHEN {$casePlatform} = 'whatsapp' THEN 1 ELSE 0 END), 0) as wa_count,
@@ -1244,11 +1333,11 @@ class LeadAutomationController extends Controller
             COALESCE(SUM(CASE WHEN {$casePlatform} = 'brochure' THEN 1 ELSE 0 END), 0) as br_count,
             COALESCE(SUM(CASE WHEN {$casePlatform} = 'others' THEN 1 ELSE 0 END), 0) as others_count
         FROM `leads` l
-        LEFT JOIN `projects` p ON l.project_id = p.id
+        LEFT JOIN `projects` p ON l.project_id = p.id AND p.deleted_at IS NULL
         WHERE {$whereSql}
         GROUP BY 
-            CASE WHEN l.project_id IS NULL OR l.project_id = 0 THEN 0 ELSE l.project_id END,
-            CASE WHEN l.project_id IS NULL OR l.project_id = 0 THEN 'Common' ELSE COALESCE(p.name, 'Common') END
+            CASE WHEN l.project_id IS NULL OR l.project_id = 0 OR p.id IS NULL THEN 0 ELSE p.id END,
+            CASE WHEN l.project_id IS NULL OR l.project_id = 0 OR p.id IS NULL THEN 'Common' ELSE p.name END
         ORDER BY (CASE WHEN project_name = 'Common' THEN 0 ELSE 1 END), total DESC";
 
         $projStmt = $pdo->prepare($projSql);
@@ -2244,6 +2333,22 @@ class LeadAutomationController extends Controller
             $pdo = $synchronizer->getDb();
             $synchronizer->ensureSchema($pdo);
 
+            // Auto-revert any 'synced' or 'duplicate_skipped' logs whose linked lead was deleted from `leads` back to 'pending'
+            try {
+                $pdo->exec("
+                    UPDATE `whatsapp_leads_logs` w
+                    LEFT JOIN `leads` l ON w.synced_lead_id = l.id AND l.deleted_at IS NULL
+                    SET w.sync_status      = 'pending',
+                        w.synced_lead_id   = NULL,
+                        w.assigned_team_id = NULL,
+                        w.synced_at        = NULL,
+                        w.sync_note        = 'Lead deleted from system · Ready to re-sync'
+                    WHERE w.sync_status IN ('synced', 'duplicate_skipped')
+                      AND w.synced_lead_id IS NOT NULL
+                      AND l.id IS NULL
+                ");
+            } catch (Throwable $t) {}
+
             $statusFilter = strtolower(trim((string)($_GET['sync_status'] ?? 'all')));
             $dateFilter   = strtolower(trim((string)($_GET['date_filter'] ?? 'all')));
             $startDate    = trim((string)($_GET['start_date'] ?? ''));
@@ -2411,6 +2516,22 @@ class LeadAutomationController extends Controller
             $synchronizer = new LeadSynchronizer($this->automationConfig, $currentUserId);
             $pdo = $synchronizer->getDb();
             $synchronizer->ensureSchema($pdo);
+
+            // Auto-revert any 'synced' or 'duplicate_skipped' logs whose linked lead was deleted from `leads` back to 'pending'
+            try {
+                $pdo->exec("
+                    UPDATE `whatsapp_leads_logs` w
+                    LEFT JOIN `leads` l ON w.synced_lead_id = l.id AND l.deleted_at IS NULL
+                    SET w.sync_status      = 'pending',
+                        w.synced_lead_id   = NULL,
+                        w.assigned_team_id = NULL,
+                        w.synced_at        = NULL,
+                        w.sync_note        = 'Lead deleted from system · Ready to re-sync'
+                    WHERE w.sync_status IN ('synced', 'duplicate_skipped')
+                      AND w.synced_lead_id IS NOT NULL
+                      AND l.id IS NULL
+                ");
+            } catch (Throwable $t) {}
 
             $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
             $specificLogIds = !empty($input['log_ids']) && is_array($input['log_ids'])
@@ -3211,7 +3332,7 @@ class LeadAutomationController extends Controller
             foreach ($allProjects as $proj) {
                 $pid = (int)$proj['id'];
                 $pNameLower = strtolower(trim($proj['name']));
-                if ($pNameLower === 'in progress' || str_contains($pNameLower, 'test project')) {
+                if ($pNameLower === 'in progress' || strpos($pNameLower, 'test project') !== false) {
                     continue;
                 }
                 if (($proj['project_sale_status'] ?? '') === 'On Sale' && !isset($configuredProjectIds[$pid])) {
@@ -3318,24 +3439,13 @@ class LeadAutomationController extends Controller
 
             $synchronizer->clearProjectCache();
 
-            // Optionally re-match existing automated "Common" leads (project_id IS NULL OR project_id = 0)
+            // Re-match existing automated "Common" leads (project_id IS NULL OR project_id = 0)
             $rematchedCount = 0;
-            if ($rematchCommon && $isActive === 1) {
-                $commonStmt = $pdo->query("SELECT id, campaign_name, team_id FROM `leads` WHERE deleted_at IS NULL AND is_automated = 1 AND (project_id IS NULL OR project_id = 0)");
-                $commonLeads = $commonStmt ? $commonStmt->fetchAll(PDO::FETCH_ASSOC) : [];
-                foreach ($commonLeads as $cLead) {
-                    $m = $synchronizer->matchProject((string)($cLead['campaign_name'] ?? ''));
-                    if (!empty($m['project_id']) && (int)$m['project_id'] === $projectId) {
-                        $existingTeam = (int)($cLead['team_id'] ?? 0);
-                        $newTeamId = $existingTeam > 0 ? $existingTeam : $synchronizer->resolveNextTeamId($projectId, $teamIds, $pdo);
-                        $uStmt = $pdo->prepare("UPDATE `leads` SET `project_id` = ?, `team_id` = ? WHERE `id` = ?");
-                        $uStmt->execute([$projectId, $newTeamId, (int)$cLead['id']]);
-                        $rematchedCount++;
-                    }
-                }
+            if ($isActive === 1) {
+                $rematchedCount = $synchronizer->rematchUnassignedCommonLeads($pdo);
             }
 
-            $extraMsg = $rematchedCount > 0 ? " Also auto-matched {$rematchedCount} Common lead(s) to {$projectName}!" : "";
+            $extraMsg = $rematchedCount > 0 ? " Also auto-matched {$rematchedCount} Common lead(s)!" : "";
 
             echo json_encode([
                 'status'          => 'success',
@@ -3378,6 +3488,9 @@ class LeadAutomationController extends Controller
             $stmt->execute([$isActive, $userId, $projectId]);
 
             $synchronizer->clearProjectCache();
+            if ($isActive === 1) {
+                $synchronizer->rematchUnassignedCommonLeads($pdo);
+            }
 
             echo json_encode([
                 'status'  => 'success',
