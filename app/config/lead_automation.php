@@ -40,16 +40,20 @@ return [
     // 3. Google Sheets Configuration
     // ------------------------------------------------------------------------
     'google_sheet' => [
-        'url'     => 'https://docs.google.com/spreadsheets/d/1Smg3B14dEanyrCf0qRc3wAdgLHi0x-9cDjNINvcMNlY/edit',
-        'timeout' => 60,
+        'url'             => 'https://docs.google.com/spreadsheets/d/1Smg3B14dEanyrCf0qRc3wAdgLHi0x-9cDjNINvcMNlY/edit',
+        'google_form_url' => 'https://docs.google.com/spreadsheets/d/131gO92xw6tsPlRVzU6sU2TTLbXTz9hpdGR9y5skW3As/edit?usp=sharing',
+        'timeout'         => 60,
     ],
 
     // ------------------------------------------------------------------------
-    // 3.1. Repibee WhatsApp Integration Configuration
+    // 3.1. Repibee WhatsApp Integration Configuration (Webhook + Merchant REST API)
     // ------------------------------------------------------------------------
     'repibee' => [
-        'enabled' => true,
-        'api_key' => $erpConfig['repibee_api_key'] ?? 'tphl_repibee_secret_key_2026_x89f2a',
+        'enabled'           => true,
+        'api_key'           => $erpConfig['repibee_api_key'] ?? 'tphl_repibee_secret_key_2026_x89f2a',
+        'merchant_api_url'  => $erpConfig['repibee_merchant_api_url'] ?? 'https://replibee.com/api/v1/merchant/leads',
+        'merchant_api_key'  => $erpConfig['repibee_merchant_api_key'] ?? 'api_0w3ZBwi1KacHoVFcMgqih7WojRJoFRnf',
+        'merchant_brand_id' => $erpConfig['repibee_brand_id'] ?? 'bac2dabb2f9bec01bb3b2efa55ff9266',
     ],
 
     // ------------------------------------------------------------------------

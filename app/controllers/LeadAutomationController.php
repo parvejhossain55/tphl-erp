@@ -138,6 +138,7 @@ class LeadAutomationController extends Controller
 
         $teams = array_values(array_filter($this->teamsModel->getAll(), fn($t) => (int)($t['status'] ?? 1) === 1));
         $sheetUrl = $this->automationConfig['google_sheet']['url'] ?? '';
+        $googleFormSheetUrl = $this->automationConfig['google_sheet']['google_form_url'] ?? 'https://docs.google.com/spreadsheets/d/131gO92xw6tsPlRVzU6sU2TTLbXTz9hpdGR9y5skW3As/edit?usp=sharing';
 
         $projects = [];
         try {
@@ -151,14 +152,39 @@ class LeadAutomationController extends Controller
 
         $platformReport = $this->getAutomatedPlatformReport(['date_preset' => 'today']);
 
+        $whatsappLogsStats = ['total' => 0, 'pending' => 0, 'synced' => 0, 'duplicate_skipped' => 0];
+        try {
+            $syncHelper = new LeadSynchronizer($this->automationConfig);
+            $pdo = $syncHelper->getDb();
+            $syncHelper->ensureSchema($pdo);
+            $wStmt = $pdo->query("
+                SELECT
+                    COUNT(*) AS total,
+                    SUM(CASE WHEN sync_status = 'pending' THEN 1 ELSE 0 END) AS pending,
+                    SUM(CASE WHEN sync_status = 'synced' THEN 1 ELSE 0 END) AS synced,
+                    SUM(CASE WHEN sync_status = 'duplicate_skipped' THEN 1 ELSE 0 END) AS duplicate_skipped
+                FROM `whatsapp_leads_logs`
+            ");
+            if ($wStmt && ($wRow = $wStmt->fetch(PDO::FETCH_ASSOC))) {
+                $whatsappLogsStats = [
+                    'total'             => (int)($wRow['total'] ?? 0),
+                    'pending'           => (int)($wRow['pending'] ?? 0),
+                    'synced'            => (int)($wRow['synced'] ?? 0),
+                    'duplicate_skipped' => (int)($wRow['duplicate_skipped'] ?? 0),
+                ];
+            }
+        } catch (Throwable $t) {}
+
         return $this->view("digital-marketing-team/lead-automation", [
-            "current_route"  => "lead-automation-upload",
-            "page_title"     => "Lead Automation Upload & Distribution",
-            "teams"          => $teams,
-            "projects"       => $projects,
-            "sheet_url"      => $sheetUrl,
-            "gemini_active"  => !empty($this->automationConfig['gemini']['enabled']) && !empty($this->automationConfig['gemini']['api_key']),
-            "platformReport" => $platformReport,
+            "current_route"     => "lead-automation-upload",
+            "page_title"        => "Lead Automation Upload & Distribution",
+            "teams"             => $teams,
+            "projects"              => $projects,
+            "sheet_url"             => $sheetUrl,
+            "google_form_sheet_url" => $googleFormSheetUrl,
+            "gemini_active"         => !empty($this->automationConfig['gemini']['enabled']) && !empty($this->automationConfig['gemini']['api_key']),
+            "platformReport"    => $platformReport,
+            "whatsappLogsStats" => $whatsappLogsStats,
         ]);
     }
 
@@ -188,7 +214,10 @@ class LeadAutomationController extends Controller
         header('Content-Type: application/json; charset=utf-8');
 
         @set_time_limit(300);
+        @set_time_limit(300);
         @ini_set('max_execution_time', '300');
+        @ini_set('memory_limit', '512M');
+        ob_start();
 
         try {
             $sheetUrl = trim($_POST['sheet_url'] ?? '');
@@ -202,7 +231,10 @@ class LeadAutomationController extends Controller
 
             $tabCount = count($result['tabs_synced'] ?? []);
             $tabSuffix = $tabCount > 1 ? sprintf(" across %d sheet tabs", $tabCount) : "";
-
+            while (ob_get_level() > 0) {
+                @ob_end_clean();
+            }
+            header('Content-Type: application/json; charset=utf-8');
             echo json_encode([
                 'status'  => 'success',
                 'message' => sprintf(
@@ -212,8 +244,68 @@ class LeadAutomationController extends Controller
                     $result['skipped_duplicate'] ?? 0
                 ),
                 'data'    => $result
-            ]);
+            ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+            exit;
         } catch (Throwable $e) {
+            while (ob_get_level() > 0) {
+                @ob_end_clean();
+            }
+            header('Content-Type: application/json; charset=utf-8');
+            http_response_code(500);
+            echo json_encode([
+                'status'  => 'error',
+                'message' => $e->getMessage()
+            ]);
+        }
+        exit;
+    }
+
+    /**
+     * AJAX: Trigger Google Form Leads Sync from Google Form Sheet
+     */
+    public function ajaxSyncGoogleFormLeads()
+    {
+        $this->checkAccess();
+        header('Content-Type: application/json; charset=utf-8');
+
+        @set_time_limit(300);
+        @ini_set('max_execution_time', '300');
+        @ini_set('memory_limit', '512M');
+        ob_start();
+
+        try {
+            $input = json_decode(file_get_contents('php://input'), true) ?? [];
+            $sheetUrl = trim((string)($_POST['sheet_url'] ?? ($input['sheet_url'] ?? '')));
+            if ($sheetUrl === '') {
+                $sheetUrl = $this->automationConfig['google_sheet']['google_form_url'] ?? 'https://docs.google.com/spreadsheets/d/131gO92xw6tsPlRVzU6sU2TTLbXTz9hpdGR9y5skW3As/edit?usp=sharing';
+            }
+
+            $currentUserId = isset($_SESSION['user']['id']) ? (int)$_SESSION['user']['id'] : null;
+            $synchronizer = new LeadSynchronizer($this->automationConfig, $currentUserId);
+            $result = $synchronizer->runSync($sheetUrl, 'google_form');
+
+            $tabCount = count($result['tabs_synced'] ?? []);
+            $tabSuffix = $tabCount > 1 ? sprintf(" across %d sheet tabs", $tabCount) : "";
+            while (ob_get_level() > 0) {
+                @ob_end_clean();
+            }
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'status'  => 'success',
+                'message' => sprintf(
+                    "Google Form Sync finished%s! %d new leads added (Pending distribution), %d duplicates skipped.",
+                    $tabSuffix,
+                    $result['inserted'] ?? 0,
+                    $result['skipped_duplicate'] ?? 0
+                ),
+                'data'    => $result
+            ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+            exit;
+        } catch (Throwable $e) {
+            while (ob_get_level() > 0) {
+                @ob_end_clean();
+            }
+            header('Content-Type: application/json; charset=utf-8');
             http_response_code(500);
             echo json_encode([
                 'status'  => 'error',
@@ -321,47 +413,35 @@ class LeadAutomationController extends Controller
 
             // Project filter
             $projectParam = trim((string)($_GET['project_id'] ?? ''));
+            $commonProjectWhereSql = "(l.project_id IS NULL OR l.project_id = 0 OR NOT EXISTS (SELECT 1 FROM `projects` pr WHERE pr.id = l.project_id AND pr.deleted_at IS NULL))";
             if ($projectParam === 'common' || $projectParam === '0') {
-                $where[] = "(l.project_id IS NULL OR l.project_id = 0)";
+                $where[] = $commonProjectWhereSql;
             } elseif (is_numeric($projectParam) && (int)$projectParam > 0) {
                 $where[] = "l.project_id = ?";
                 $params[] = (int)$projectParam;
             }
 
-            // Platform filter
+            // Platform filter (strictly mutually exclusive via getPlatformCaseSql)
             $platformParam = strtolower(trim((string)($_GET['platform'] ?? '')));
+            $casePlatformSql = $this->getPlatformCaseSql('l');
+            $platformFilterSql = '';
             if ($platformParam === 'facebook' || $platformParam === 'facebook_form') {
-                $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('facebook', 'fb', 'fb(lead form)', 'lead form', 'leadform', 'leadfrom', 'meta form', 'meta inform') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%fb%' OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%facebook%' OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%lead form%' OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%leadform%')";
+                $platformFilterSql = "({$casePlatformSql}) = 'facebook_form'";
             } elseif ($platformParam === 'whatsapp') {
-                $where[] = "(l.is_repibee = 1 OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('whatsapp', 'wa', 'whats app', 'whatsappp', 'whataapp', 'whatsapp lead', 'whstsapp') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%whatsapp%' OR LOWER(TRIM(COALESCE(l.platform, ''))) = 'wa')";
+                $platformFilterSql = "({$casePlatformSql}) = 'whatsapp'";
             } elseif ($platformParam === 'replibee') {
-                $where[] = "l.is_repibee = 1";
+                $platformFilterSql = "COALESCE(l.is_repibee, 0) = 1";
             } elseif ($platformParam === 'meta_inbox') {
-                $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('meta inbox', 'meta') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%inbox%')";
+                $platformFilterSql = "({$casePlatformSql}) = 'meta_inbox'";
             } elseif ($platformParam === 'google_form') {
-                $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('google form', 'google', 'googleform') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%google%')";
+                $platformFilterSql = "({$casePlatformSql}) = 'google_form'";
             } elseif ($platformParam === 'brochure' || $platformParam === 'brochure_leads') {
-                $where[] = "(l.is_brocure_leads = 1 OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('brochure leads', 'brocure leads', 'brochure lead', 'brocure lead', 'brochure') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brochure%' OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brocure%')";
+                $platformFilterSql = "({$casePlatformSql}) = 'brochure'";
             } elseif ($platformParam === 'others') {
-                $where[] = "(NOT (
-                    LOWER(TRIM(COALESCE(l.platform, ''))) IN ('facebook', 'fb', 'fb(lead form)', 'lead form', 'leadform', 'leadfrom', 'meta form', 'meta inform')
-                    OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%fb%'
-                    OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%facebook%'
-                    OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%lead form%'
-                    OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%leadform%'
-                    OR l.is_repibee = 1
-                    OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('whatsapp', 'wa', 'whats app', 'whatsappp', 'whataapp', 'whatsapp lead', 'whstsapp')
-                    OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%whatsapp%'
-                    OR LOWER(TRIM(COALESCE(l.platform, ''))) = 'wa'
-                    OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('meta inbox', 'meta')
-                    OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%inbox%'
-                    OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('google form', 'google', 'googleform')
-                    OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%google%'
-                    OR l.is_brocure_leads = 1
-                    OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('brochure leads', 'brocure leads', 'brochure lead', 'brocure lead', 'brochure')
-                    OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brochure%'
-                    OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brocure%'
-                ))";
+                $platformFilterSql = "({$casePlatformSql}) = 'others'";
+            }
+            if ($platformFilterSql !== '') {
+                $where[] = $platformFilterSql;
             }
 
             // Search by Name, Phone, Campaign, Team Name, Project Name, ID, or "unassigned" keyword
@@ -477,27 +557,53 @@ class LeadAutomationController extends Controller
             $countStmt->execute($params);
             $totalCount = (int)$countStmt->fetchColumn();
 
-            // Date condition for stats queries (table name leads without alias `l.`)
-            $autoWhere = $hasAutomatedCol ? " AND is_automated = 1" : "";
-            $statsDateSql = "";
+            // Build shared filter SQL for stats & team allocation cards (date + project + platform)
+            $sharedSubWhere = ["l.deleted_at IS NULL"];
+            $sharedSubParams = [];
+            if ($hasAutomatedCol) {
+                $sharedSubWhere[] = "l.is_automated = 1";
+            }
             if (!empty($dateConditionSql)) {
-                $statsDateSql = " AND " . str_replace('l.created_at', 'created_at', $dateConditionSql);
+                $sharedSubWhere[] = $dateConditionSql;
+                $sharedSubParams = array_merge($sharedSubParams, $dateParams);
+            }
+            if ($projectParam === 'common' || $projectParam === '0') {
+                $sharedSubWhere[] = $commonProjectWhereSql;
+            } elseif (is_numeric($projectParam) && (int)$projectParam > 0) {
+                $sharedSubWhere[] = "l.project_id = ?";
+                $sharedSubParams[] = (int)$projectParam;
+            }
+            if ($platformFilterSql !== '') {
+                $sharedSubWhere[] = $platformFilterSql;
             }
 
-            // Stats scoped to the chosen date filter (e.g. today, yesterday, weekly, custom)
+            // Stats scoped to the chosen date + project + platform + team filters
+            $statsWhereArr = $sharedSubWhere;
+            $statsParamsArr = $sharedSubParams;
+            if ($teamParam === 'unassigned') {
+                $statsWhereArr[] = "(l.team_id IS NULL OR l.team_id = 0)";
+            } elseif ($teamParam === 'assigned') {
+                $statsWhereArr[] = "(l.team_id IS NOT NULL AND l.team_id > 0)";
+            } elseif (is_numeric($teamParam) && (int)$teamParam > 0) {
+                $statsWhereArr[] = "l.team_id = ?";
+                $statsParamsArr[] = (int)$teamParam;
+            }
+            $statsWhereSql = implode(" AND ", $statsWhereArr);
+
             $statsSql = "SELECT 
                             COALESCE(COUNT(*), 0) as total_leads,
-                            COALESCE(SUM(CASE WHEN distribute = 0 THEN 1 ELSE 0 END), 0) as pending_leads,
-                            COALESCE(SUM(CASE WHEN distribute = 1 THEN 1 ELSE 0 END), 0) as approved_leads,
-                            COALESCE(SUM(CASE WHEN (team_id IS NULL OR team_id = 0) THEN 1 ELSE 0 END), 0) as unassigned_leads,
-                            COALESCE(SUM(CASE WHEN (team_id IS NOT NULL AND team_id > 0) THEN 1 ELSE 0 END), 0) as assigned_leads
-                         FROM `leads` 
-                         WHERE deleted_at IS NULL{$autoWhere}{$statsDateSql}";
+                            COALESCE(SUM(CASE WHEN l.distribute = 0 THEN 1 ELSE 0 END), 0) as pending_leads,
+                            COALESCE(SUM(CASE WHEN l.distribute = 1 THEN 1 ELSE 0 END), 0) as approved_leads,
+                            COALESCE(SUM(CASE WHEN (l.team_id IS NULL OR l.team_id = 0) THEN 1 ELSE 0 END), 0) as unassigned_leads,
+                            COALESCE(SUM(CASE WHEN (l.team_id IS NOT NULL AND l.team_id > 0) THEN 1 ELSE 0 END), 0) as assigned_leads
+                         FROM `leads` l
+                         WHERE {$statsWhereSql}";
             $statsStmt = $pdo->prepare($statsSql);
-            $statsStmt->execute($dateParams);
+            $statsStmt->execute($statsParamsArr);
             $stats = $statsStmt->fetch(PDO::FETCH_ASSOC);
 
             // All-time totals for reference
+            $autoWhere = $hasAutomatedCol ? " AND is_automated = 1" : "";
             $allTimeSql = "SELECT 
                                 COALESCE(COUNT(*), 0) as total_leads,
                                 COALESCE(SUM(CASE WHEN distribute = 0 THEN 1 ELSE 0 END), 0) as pending_leads,
@@ -506,31 +612,31 @@ class LeadAutomationController extends Controller
                            WHERE deleted_at IS NULL{$autoWhere}";
             $allTimeStats = $pdo->query($allTimeSql)->fetch(PDO::FETCH_ASSOC);
 
-            // Fetch Teams with count of automated leads for the chosen date filter
-            $autoJoin = $hasAutomatedCol ? " AND l.is_automated = 1" : "";
-            $teamDateJoin = !empty($dateConditionSql) ? " AND {$dateConditionSql}" : "";
+            // Fetch Teams with count of automated leads for the chosen date + project + platform filters
+            $teamJoinCondSql = implode(" AND ", $sharedSubWhere);
             $teamsSql = "SELECT 
                             t.id, 
                             t.name, 
                             COALESCE(COUNT(l.id), 0) as total_leads,
                             COALESCE(SUM(CASE WHEN l.distribute = 0 THEN 1 ELSE 0 END), 0) as pending_leads
                          FROM `teams` t
-                         LEFT JOIN `leads` l ON l.team_id = t.id AND l.deleted_at IS NULL{$autoJoin}{$teamDateJoin}
+                         LEFT JOIN `leads` l ON l.team_id = t.id AND {$teamJoinCondSql}
                          WHERE t.status = 1
                          GROUP BY t.id, t.name
                          ORDER BY t.id ASC";
             $teamsStmt = $pdo->prepare($teamsSql);
-            $teamsStmt->execute($dateParams);
+            $teamsStmt->execute($sharedSubParams);
             $teams = $teamsStmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // Check unassigned leads scoped to date filter
+            // Check unassigned leads scoped to date + project + platform filters
+            $unassignedWhereSql = implode(" AND ", array_merge($sharedSubWhere, ["(l.team_id IS NULL OR l.team_id = 0)"]));
             $unassignedStatsSql = "SELECT 
                                      COALESCE(COUNT(*), 0) as total_unassigned,
-                                     COALESCE(SUM(CASE WHEN distribute = 0 THEN 1 ELSE 0 END), 0) as pending_unassigned
-                                   FROM `leads` 
-                                   WHERE deleted_at IS NULL AND (team_id IS NULL OR team_id = 0){$autoWhere}{$statsDateSql}";
+                                     COALESCE(SUM(CASE WHEN l.distribute = 0 THEN 1 ELSE 0 END), 0) as pending_unassigned
+                                   FROM `leads` l
+                                   WHERE {$unassignedWhereSql}";
             $unassignedStmt = $pdo->prepare($unassignedStatsSql);
-            $unassignedStmt->execute($dateParams);
+            $unassignedStmt->execute($sharedSubParams);
             $unassignedStats = $unassignedStmt->fetch(PDO::FETCH_ASSOC);
 
             echo json_encode([
@@ -870,17 +976,45 @@ class LeadAutomationController extends Controller
                 $stmt->execute($leadIds);
             } catch (Throwable $t) {}
 
-            // 10. leads table
+            // 10. Reset any linked WhatsApp staging logs (`whatsapp_leads_logs`) back to 'pending' so deleted leads become sync-able again
+            $requeuedWaCount = 0;
+            try {
+                $waResetStmt = $pdo->prepare("
+                    UPDATE `whatsapp_leads_logs`
+                    SET `sync_status`      = 'pending',
+                        `synced_lead_id`   = NULL,
+                        `assigned_team_id` = NULL,
+                        `synced_at`        = NULL,
+                        `sync_note`        = 'Lead deleted from system · Ready to re-sync'
+                    WHERE `synced_lead_id` IN ({$placeholders})
+                ");
+                $waResetStmt->execute($leadIds);
+                $requeuedWaCount = $waResetStmt->rowCount();
+            } catch (Throwable $t) {}
+
+            // 11. leads table
             $delStmt = $pdo->prepare("DELETE FROM `leads` WHERE id IN ({$placeholders})");
             $delStmt->execute($leadIds);
             $deletedCount = $delStmt->rowCount();
 
             $pdo->commit();
 
+            $waGlobalPending = 0;
+            $waGlobalTotal = 0;
+            try {
+                $waGlobalPending = (int)$pdo->query("SELECT COUNT(*) FROM `whatsapp_leads_logs` WHERE `sync_status` = 'pending'")->fetchColumn();
+                $waGlobalTotal   = (int)$pdo->query("SELECT COUNT(*) FROM `whatsapp_leads_logs`")->fetchColumn();
+            } catch (Throwable $t) {}
+
+            $extraWaMsg = $requeuedWaCount > 0 ? " ({$requeuedWaCount} WhatsApp lead(s) moved back to Pending Sync)" : "";
+
             echo json_encode([
-                'status'  => 'success',
-                'message' => "Successfully permanently deleted {$deletedCount} lead(s) from database and team lists.",
-                'count'   => $deletedCount
+                'status'            => 'success',
+                'message'           => "Successfully permanently deleted {$deletedCount} lead(s) from database and team lists.{$extraWaMsg}",
+                'count'             => $deletedCount,
+                'requeued_wa_count' => $requeuedWaCount,
+                'wa_global_pending' => $waGlobalPending,
+                'wa_global_total'   => $waGlobalTotal,
             ]);
         } catch (Throwable $e) {
             if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
@@ -967,6 +1101,38 @@ class LeadAutomationController extends Controller
     }
 
     /**
+     * Unified mutually-exclusive SQL CASE expression for platform classification
+     */
+    private function getPlatformCaseSql(string $alias = 'l'): string
+    {
+        return "CASE
+            WHEN LOWER(TRIM(COALESCE({$alias}.platform, ''))) IN ('meta inbox', 'meta') 
+                 OR LOWER(TRIM(COALESCE({$alias}.platform, ''))) LIKE '%inbox%' 
+                 THEN 'meta_inbox'
+            WHEN {$alias}.is_repibee = 1
+                 OR LOWER(TRIM(COALESCE({$alias}.platform, ''))) IN ('whatsapp', 'wa', 'whats app', 'whatsappp', 'whataapp', 'whatsapp lead', 'whstsapp') 
+                 OR LOWER(TRIM(COALESCE({$alias}.platform, ''))) LIKE '%whatsapp%' 
+                 OR LOWER(TRIM(COALESCE({$alias}.platform, ''))) = 'wa'
+                 THEN 'whatsapp'
+            WHEN LOWER(TRIM(COALESCE({$alias}.platform, ''))) IN ('google form', 'google', 'googleform', 'google_form', 'gf') 
+                 OR LOWER(TRIM(COALESCE({$alias}.platform, ''))) LIKE '%google%' 
+                 THEN 'google_form'
+            WHEN {$alias}.is_brocure_leads = 1
+                 OR LOWER(TRIM(COALESCE({$alias}.platform, ''))) IN ('brochure leads', 'brocure leads', 'brochure lead', 'brocure lead', 'brochure') 
+                 OR LOWER(TRIM(COALESCE({$alias}.platform, ''))) LIKE '%brochure%' 
+                 OR LOWER(TRIM(COALESCE({$alias}.platform, ''))) LIKE '%brocure%' 
+                 THEN 'brochure'
+            WHEN LOWER(TRIM(COALESCE({$alias}.platform, ''))) IN ('facebook', 'fb', 'fb(lead form)', 'lead form', 'leadform', 'leadfrom', 'meta form', 'meta inform') 
+                 OR LOWER(TRIM(COALESCE({$alias}.platform, ''))) LIKE '%fb%' 
+                 OR LOWER(TRIM(COALESCE({$alias}.platform, ''))) LIKE '%facebook%' 
+                 OR LOWER(TRIM(COALESCE({$alias}.platform, ''))) LIKE '%lead form%' 
+                 OR LOWER(TRIM(COALESCE({$alias}.platform, ''))) LIKE '%leadform%' 
+                 THEN 'facebook_form'
+            ELSE 'others'
+        END";
+    }
+
+    /**
      * Compute automated leads platform report & team ranking
      */
     public function getAutomatedPlatformReport(array $filters = []): array
@@ -974,6 +1140,8 @@ class LeadAutomationController extends Controller
         try {
             $synchronizer = new LeadSynchronizer($this->automationConfig);
             $pdo = $synchronizer->getDb();
+            // Auto-rematch any unassigned "Common" leads whose campaign names now match an active project rule
+            $synchronizer->rematchUnassignedCommonLeads($pdo);
         } catch (Throwable $e) {
             $pdo = $this->db;
         }
@@ -1059,44 +1227,33 @@ class LeadAutomationController extends Controller
             $daysCount = 0;
         }
 
-        // Project filter
+        // Project filter (consistent with Daily platform breakdown table grouping)
         $projectFilter = trim((string)($filters['project_id'] ?? ''));
+        $commonProjectWhereSql = "(l.project_id IS NULL OR l.project_id = 0 OR NOT EXISTS (SELECT 1 FROM `projects` pr WHERE pr.id = l.project_id AND pr.deleted_at IS NULL))";
         if ($projectFilter === 'common' || $projectFilter === '0') {
-            $where[] = "(l.project_id IS NULL OR l.project_id = 0)";
+            $where[] = $commonProjectWhereSql;
         } elseif (is_numeric($projectFilter) && (int)$projectFilter > 0) {
             $where[] = "l.project_id = ?";
             $params[] = (int)$projectFilter;
         }
 
-        // Platform filter
+        // Platform filter (using unified mutually-exclusive CASE expression)
+        $casePlatform = $this->getPlatformCaseSql('l');
         $platformFilter = strtolower(trim((string)($filters['platform'] ?? '')));
         if ($platformFilter === 'facebook' || $platformFilter === 'facebook_form') {
-            $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('facebook', 'fb', 'fb(lead form)', 'lead form', 'leadform', 'leadfrom', 'meta form', 'meta inform') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%fb%' OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%facebook%' OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%lead form%' OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%leadform%')";
+            $where[] = "({$casePlatform}) = 'facebook_form'";
         } elseif ($platformFilter === 'whatsapp') {
-            $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('whatsapp', 'wa', 'whats app', 'whatsappp', 'whataapp', 'whatsapp lead', 'whstsapp') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%whatsapp%' OR LOWER(TRIM(COALESCE(l.platform, ''))) = 'wa')";
+            $where[] = "({$casePlatform}) = 'whatsapp'";
+        } elseif ($platformFilter === 'replibee') {
+            $where[] = "l.is_repibee = 1";
         } elseif ($platformFilter === 'meta_inbox') {
-            $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('meta inbox', 'meta') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%inbox%')";
+            $where[] = "({$casePlatform}) = 'meta_inbox'";
         } elseif ($platformFilter === 'google_form') {
-            $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('google form', 'google', 'googleform') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%google%')";
+            $where[] = "({$casePlatform}) = 'google_form'";
         } elseif ($platformFilter === 'brochure' || $platformFilter === 'brochure_leads') {
-            $where[] = "(LOWER(TRIM(COALESCE(l.platform, ''))) IN ('brochure leads', 'brocure leads', 'brochure lead', 'brocure lead', 'brochure') OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brochure%')";
+            $where[] = "({$casePlatform}) = 'brochure'";
         } elseif ($platformFilter === 'others') {
-            $where[] = "(NOT (
-                LOWER(TRIM(COALESCE(l.platform, ''))) IN ('facebook', 'fb', 'fb(lead form)', 'lead form', 'leadform', 'leadfrom', 'meta form', 'meta inform')
-                OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%fb%'
-                OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%facebook%'
-                OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%lead form%'
-                OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%leadform%'
-                OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('whatsapp', 'wa', 'whats app', 'whatsappp', 'whataapp', 'whatsapp lead', 'whstsapp')
-                OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%whatsapp%'
-                OR LOWER(TRIM(COALESCE(l.platform, ''))) = 'wa'
-                OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('meta inbox', 'meta')
-                OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%inbox%'
-                OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('google form', 'google', 'googleform')
-                OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%google%'
-                OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('brochure leads', 'brocure leads', 'brochure lead', 'brocure lead', 'brochure')
-                OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brochure%'
-            ))";
+            $where[] = "({$casePlatform}) = 'others'";
         }
 
         // Team filter
@@ -1123,32 +1280,6 @@ class LeadAutomationController extends Controller
         }
 
         $whereSql = implode(" AND ", $where);
-
-        // CASE expression for platform grouping
-        $casePlatform = "CASE
-            WHEN LOWER(TRIM(COALESCE(l.platform, ''))) IN ('meta inbox', 'meta') 
-                 OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%inbox%' 
-                 THEN 'meta_inbox'
-            WHEN LOWER(TRIM(COALESCE(l.platform, ''))) IN ('whatsapp', 'wa', 'whats app', 'whatsappp', 'whataapp', 'whatsapp lead', 'whstsapp') 
-                 OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%whatsapp%' 
-                 OR LOWER(TRIM(COALESCE(l.platform, ''))) = 'wa'
-                 THEN 'whatsapp'
-            WHEN LOWER(TRIM(COALESCE(l.platform, ''))) IN ('google form', 'google', 'googleform') 
-                 OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%google%' 
-                 THEN 'google_form'
-            WHEN l.is_brocure_leads = 1
-                 OR LOWER(TRIM(COALESCE(l.platform, ''))) IN ('brochure leads', 'brocure leads', 'brochure lead', 'brocure lead', 'brochure') 
-                 OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brochure%' 
-                 OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%brocure%' 
-                 THEN 'brochure'
-            WHEN LOWER(TRIM(COALESCE(l.platform, ''))) IN ('facebook', 'fb', 'fb(lead form)', 'lead form', 'leadform', 'leadfrom', 'meta form', 'meta inform') 
-                 OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%fb%' 
-                 OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%facebook%' 
-                 OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%lead form%' 
-                 OR LOWER(TRIM(COALESCE(l.platform, ''))) LIKE '%leadform%' 
-                 THEN 'facebook_form'
-            ELSE 'others'
-        END";
 
         // 1. KPI & Platform summary query
         $kpiSql = "SELECT 
@@ -1190,10 +1321,10 @@ class LeadAutomationController extends Controller
         $brPct = $totalReceived > 0 ? round(($brCount / $totalReceived) * 100, 1) : 0.0;
         $othersPct = $totalReceived > 0 ? round(($othersCount / $totalReceived) * 100, 1) : 0.0;
 
-        // 2. Project-wise breakdown table
+        // 2. Project-wise breakdown table (consolidating NULL, 0, or orphaned/deleted projects into a single Common row)
         $projSql = "SELECT 
-            CASE WHEN l.project_id IS NULL OR l.project_id = 0 THEN 0 ELSE l.project_id END as project_id,
-            CASE WHEN l.project_id IS NULL OR l.project_id = 0 THEN 'Common' ELSE COALESCE(p.name, 'Common') END as project_name,
+            CASE WHEN l.project_id IS NULL OR l.project_id = 0 OR p.id IS NULL THEN 0 ELSE p.id END as project_id,
+            CASE WHEN l.project_id IS NULL OR l.project_id = 0 OR p.id IS NULL THEN 'Common' ELSE p.name END as project_name,
             COUNT(l.id) as total,
             COALESCE(SUM(CASE WHEN {$casePlatform} = 'facebook_form' THEN 1 ELSE 0 END), 0) as fb_count,
             COALESCE(SUM(CASE WHEN {$casePlatform} = 'whatsapp' THEN 1 ELSE 0 END), 0) as wa_count,
@@ -1202,11 +1333,11 @@ class LeadAutomationController extends Controller
             COALESCE(SUM(CASE WHEN {$casePlatform} = 'brochure' THEN 1 ELSE 0 END), 0) as br_count,
             COALESCE(SUM(CASE WHEN {$casePlatform} = 'others' THEN 1 ELSE 0 END), 0) as others_count
         FROM `leads` l
-        LEFT JOIN `projects` p ON l.project_id = p.id
+        LEFT JOIN `projects` p ON l.project_id = p.id AND p.deleted_at IS NULL
         WHERE {$whereSql}
         GROUP BY 
-            CASE WHEN l.project_id IS NULL OR l.project_id = 0 THEN 0 ELSE l.project_id END,
-            CASE WHEN l.project_id IS NULL OR l.project_id = 0 THEN 'Common' ELSE COALESCE(p.name, 'Common') END
+            CASE WHEN l.project_id IS NULL OR l.project_id = 0 OR p.id IS NULL THEN 0 ELSE p.id END,
+            CASE WHEN l.project_id IS NULL OR l.project_id = 0 OR p.id IS NULL THEN 'Common' ELSE p.name END
         ORDER BY (CASE WHEN project_name = 'Common' THEN 0 ELSE 1 END), total DESC";
 
         $projStmt = $pdo->prepare($projSql);
@@ -1313,8 +1444,28 @@ class LeadAutomationController extends Controller
     }
 
     /**
+     * Normalize Bangladesh / International Phone Number for reliable duplicate detection
+     */
+    private function normalizeWhatsAppPhone(?string $rawPhone): string
+    {
+        $p = trim((string)$rawPhone);
+        if ($p === '') {
+            return '';
+        }
+        $p = preg_replace('/^p:/i', '', $p);
+        $p = preg_replace('/[\s\-\(\)\.]+/', '', $p);
+        $p = preg_replace('/^\+?88(?=01[3-9]\d{8}$)/', '', $p);
+        if (preg_match('/^[1-9]\d{9}$/', $p)) {
+            $p = '0' . $p;
+        }
+        return $p;
+    }
+
+    /**
      * API Endpoint: Repibee WhatsApp Lead Ingestion Webhook / Receiver
-     * Accepts POST requests from Repibee (single lead or batch array)
+     * Stores all incoming Replibee/WhatsApp webhook leads into `whatsapp_leads_logs` staging table first
+     * so zero leads are lost. Digital Marketing team can inspect them in the WhatsApp Leads sidebar
+     * and sync them into the main `leads` table via "Sync WhatsApp Leads".
      */
     public function repibeeWebhook()
     {
@@ -1420,7 +1571,7 @@ class LeadAutomationController extends Controller
         if (isset($payload['leads']) && is_array($payload['leads'])) {
             $leadsToProcess = $payload['leads'];
         } elseif (isset($payload['data']) && is_array($payload['data'])) {
-            $leadsToProcess = [$payload['data']];
+            $leadsToProcess = isset($payload['data'][0]) && is_array($payload['data'][0]) ? $payload['data'] : [$payload['data']];
         } else {
             $leadsToProcess = [$payload];
         }
@@ -1428,230 +1579,1387 @@ class LeadAutomationController extends Controller
         $currentUserId = isset($_SESSION['user']['id']) ? (int)$_SESSION['user']['id'] : null;
         $synchronizer = new LeadSynchronizer($this->automationConfig, $currentUserId);
         $pdo = $synchronizer->getDb();
+        $synchronizer->ensureSchema($pdo);
 
-        $synchronizer->log(sprintf("[Replibee Webhook] Inbound request received with %d item(s).", count($leadsToProcess)));
+        $synchronizer->log(sprintf("[Replibee Webhook] Inbound request received with %d item(s) -> storing in whatsapp_leads_logs.", count($leadsToProcess)));
 
-        $insertedCount = 0;
-        $skippedDuplicateCount = 0;
+        $loggedCount = 0;
+        $invalidCount = 0;
         $errorsCount = 0;
         $processedResults = [];
+        $webhookDupIndex = $this->buildWhatsAppLogsDuplicateIndex($pdo);
 
+        $insertLogStmt = $pdo->prepare("
+            INSERT INTO `whatsapp_leads_logs` (
+                `full_name`, `phone_number`, `email`, `campaign_name`, `project_interest`, `source_page`,
+                `city`, `country`, `address`,
+                `which_apartment_size_are_you_interested_in`,
+                `which_floor_are_you_for_shop`,
+                `when_are_you_planning_to_buy`,
+                `would_you_like_to_schedule_a_site_visit`,
+                `when_is_the_best_time_to_contact_you`,
+                `qa_json`, `raw_payload`,
+                `sync_status`, `sync_note`, `matched_project_id`, `created_at`
+            ) VALUES (
+                :full_name, :phone_number, :email, :campaign_name, :project_interest, :source_page,
+                :city, :country, :address,
+                :which_apartment_size_are_you_interested_in,
+                :which_floor_are_you_for_shop,
+                :when_are_you_planning_to_buy,
+                :would_you_like_to_schedule_a_site_visit,
+                :when_is_the_best_time_to_contact_you,
+                :qa_json, :raw_payload,
+                :sync_status, :sync_note, :matched_project_id, NOW()
+            )
+        ");
+
+        $duplicateSkippedCount = 0;
         foreach ($leadsToProcess as $idx => $item) {
             if (!is_array($item)) continue;
 
-            // Unpack Replibee nested data shape
-            $contact        = is_array($item['contact'] ?? null) ? $item['contact'] : [];
-            $source         = is_array($item['source'] ?? null) ? $item['source'] : [];
-            $location       = is_array($item['location'] ?? null) ? $item['location'] : [];
-            $interest       = is_array($item['interest'] ?? null) ? $item['interest'] : [];
-            $automationData = is_array($item['automation_data'] ?? null) ? $item['automation_data'] : [];
-            $customFields   = is_array($item['custom_fields'] ?? null) ? $item['custom_fields'] : [];
-
-            // Contact extraction
-            $fullName = trim((string)($contact['name'] ?? $item['full_name'] ?? $item['name'] ?? $item['client_name'] ?? ''));
-            $phone = trim((string)($contact['phone'] ?? $item['phone_number'] ?? $item['phone'] ?? $item['mobile'] ?? ''));
-            $cleanPhone = preg_replace('/^p:/i', '', $phone);
-            $cleanPhone = preg_replace('/[\s\-\(\)]/', '', $cleanPhone);
-
-            if (empty($cleanPhone) && empty($fullName)) {
-                $errorsCount++;
-                $synchronizer->log("[Replibee Webhook] Skipped invalid payload: Missing both phone_number and full_name.");
-                $processedResults[] = [
-                    'index'   => $idx,
-                    'status'  => 'error',
-                    'message' => 'Missing phone_number and full_name.'
-                ];
-                continue;
-            }
-
-            // Campaign name & interest products resolution
-            $interestProducts = '';
-            if (!empty($interest['products'])) {
-                $interestProducts = is_array($interest['products']) ? implode(', ', $interest['products']) : (string)$interest['products'];
-            }
-
-            $campaign = trim((string)(
-                $source['page'] ?? 
-                $source['source'] ?? 
-                $item['campaign_name'] ?? 
-                $interest['brand_name'] ?? 
-                (!empty($interestProducts) ? $interestProducts : '') ?:
-                $item['campaign'] ?? 
-                'WhatsApp Lead'
-            ));
-
-            // Platform is always whatsapp
-            $platform = 'whatsapp';
-
-            // Custom questions extraction
-            $whichApartmentSize = $item['which_apartment_size_are_you_interested_in'] ?? null;
-            $whichFloorForShop  = $item['which_floor_are_you_for_shop'] ?? null;
-            $whenPlanningToBuy  = $item['when_are_you_planning_to_buy'] ?? null;
-            $siteVisit          = $item['would_you_like_to_schedule_a_site_visit'] ?? null;
-            $bestTimeContact    = $item['when_is_the_best_time_to_contact_you'] ?? null;
-
-            // Map Replibee automation_data questions & answers
-            if (!empty($automationData)) {
-                foreach ($automationData as $step) {
-                    if (is_array($step)) {
-                        foreach ($step as $qa) {
-                            if (!is_array($qa)) continue;
-                            $q = strtolower(trim((string)($qa['question'] ?? '')));
-                            $a = trim((string)($qa['answer'] ?? ''));
-                            if (empty($a)) continue;
-
-                            if ((str_contains($q, 'সাইজ') || str_contains($q, 'size') || str_contains($q, 'apartment') || str_contains($q, 'shop')) && empty($whichApartmentSize)) {
-                                $whichApartmentSize = $a;
-                            } elseif ((str_contains($q, 'ফ্লোর') || str_contains($q, 'floor')) && empty($whichFloorForShop)) {
-                                $whichFloorForShop = $a;
-                            } elseif ((str_contains($q, 'কেনার') || str_contains($q, 'পরিকল্পনা') || str_contains($q, 'planning') || str_contains($q, 'buy')) && empty($whenPlanningToBuy)) {
-                                $whenPlanningToBuy = $a;
-                            } elseif ((str_contains($q, 'ভিজিট') || str_contains($q, 'visit')) && empty($siteVisit)) {
-                                $siteVisit = $a;
-                            } elseif ((str_contains($q, 'যোগাযোগ') || str_contains($q, 'সময়') || str_contains($q, 'contact') || str_contains($q, 'time')) && empty($bestTimeContact)) {
-                                $bestTimeContact = $a;
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Map custom_fields if present
-            if (!empty($customFields)) {
-                foreach ($customFields as $k => $v) {
-                    $kLower = strtolower($k);
-                    $vVal = is_string($v) ? trim($v) : (is_scalar($v) ? (string)$v : json_encode($v));
-                    if (empty($vVal)) continue;
-
-                    if ((str_contains($kLower, 'size') || str_contains($kLower, 'apartment')) && empty($whichApartmentSize)) {
-                        $whichApartmentSize = $vVal;
-                    } elseif (str_contains($kLower, 'floor') && empty($whichFloorForShop)) {
-                        $whichFloorForShop = $vVal;
-                    } elseif (str_contains($kLower, 'planning') && empty($whenPlanningToBuy)) {
-                        $whenPlanningToBuy = $vVal;
-                    } elseif (str_contains($kLower, 'visit') && empty($siteVisit)) {
-                        $siteVisit = $vVal;
-                    } elseif (str_contains($kLower, 'contact') && empty($bestTimeContact)) {
-                        $bestTimeContact = $vVal;
-                    }
-                }
-            }
-
-            $leadData = [
-                'campaign_name'                            => $campaign,
-                'platform'                                 => $platform,
-                'which_apartment_size_are_you_interested_in' => $whichApartmentSize,
-                'which_floor_are_you_for_shop'             => $whichFloorForShop,
-                'when_are_you_planning_to_buy'             => $whenPlanningToBuy,
-                'would_you_like_to_schedule_a_site_visit' => $siteVisit,
-                'when_is_the_best_time_to_contact_you'     => $bestTimeContact,
-                'full_name'                                => $fullName,
-                'job_title'                                => $contact['job_title'] ?? $item['job_title'] ?? null,
-                'company_name'                             => $contact['company_name'] ?? $item['company_name'] ?? null,
-                'phone_number'                             => $cleanPhone,
-                'email'                                    => !empty($contact['email']) ? trim($contact['email']) : (!empty($item['email']) ? trim($item['email']) : null),
-                'city'                                     => $location['city'] ?? $location['area'] ?? $item['city'] ?? null,
-                'country'                                  => $location['country'] ?? $item['country'] ?? 'Bangladesh',
-                'address'                                  => $location['address'] ?? $item['address'] ?? null,
-                'is_repibee'                               => 1,
-            ];
-
-            // Duplicate Check
-            $prefixedPhone = 'p:' . $cleanPhone;
-            $dupCheckStmt = $pdo->prepare("
-                SELECT id FROM `leads` 
-                WHERE (phone_number = ? OR phone_number = ? OR phone = ?) 
-                  AND (campaign_name = ? OR campaign_name IS NULL OR campaign_name = '')
-                  AND deleted_at IS NULL 
-                LIMIT 1
-            ");
-            $dupCheckStmt->execute([$cleanPhone, $prefixedPhone, $cleanPhone, $campaign]);
-            $existingId = $dupCheckStmt->fetchColumn();
-
-            if ($existingId) {
-                $skippedDuplicateCount++;
-                $synchronizer->log(sprintf(
-                    "[Replibee Webhook] SKIPPED DUPLICATE: Name='%s', Phone='%s', Campaign='%s' matched existing Lead ID=%d",
-                    $fullName,
-                    $cleanPhone,
-                    $campaign,
-                    (int)$existingId
-                ));
-                $processedResults[] = [
-                    'index'        => $idx,
-                    'status'       => 'skipped',
-                    'message'      => 'Duplicate lead already exists in system.',
-                    'phone_number' => $cleanPhone,
-                    'lead_id'      => (int)$existingId
-                ];
-                continue;
-            }
-
-            // Project & Team assignment via project mapper
-            $secondaryMatch = trim($interestProducts . ' ' . ($interest['brand_name'] ?? '') . ' ' . ($interest['model'] ?? '') . ' ' . ($source['source'] ?? '') . ' ' . ($source['page'] ?? ''));
-            $projectMatch = $synchronizer->matchProject($campaign, $secondaryMatch);
-            $projectId = $projectMatch['project_id'] ?? null;
-            $teamId = $synchronizer->resolveNextTeamId($projectId, $projectMatch['teams'] ?? [], $pdo);
-
-            $leadData['project_id'] = $projectId;
-            $leadData['team_id'] = $teamId;
-
+            // Use unified duplicate-checked ingestion into `whatsapp_leads_logs`
             try {
-                // Insert into DB using LeadSynchronizer
-                $insertId = $synchronizer->insertLeadIntoDatabase($leadData, $pdo);
-                $insertedCount++;
-                $synchronizer->log(sprintf(
-                    "[Replibee Webhook] INSERTED NEW LEAD: Lead ID=%d, Name='%s', Phone='%s', Campaign='%s', Team ID=%d, Project ID=%d",
-                    $insertId,
-                    $fullName,
-                    $cleanPhone,
-                    $campaign,
-                    (int)($leadData['team_id'] ?? 0),
-                    (int)($leadData['project_id'] ?? 0)
-                ));
+                $ingestRes = $this->ingestReplibeeItemToLogs($item, $pdo, $synchronizer, 'webhook', $webhookDupIndex);
+                if ($ingestRes['action'] === 'inserted') {
+                    $loggedCount++;
+                } elseif ($ingestRes['action'] === 'invalid_logged') {
+                    $invalidCount++;
+                } elseif ($ingestRes['action'] === 'duplicate_in_logs') {
+                    $duplicateSkippedCount++;
+                }
                 $processedResults[] = [
-                    'index'            => $idx,
-                    'status'           => 'success',
-                    'lead_id'          => $insertId,
-                    'full_name'        => $fullName,
-                    'phone_number'     => $cleanPhone,
-                    'assigned_team_id' => $leadData['team_id'],
-                    'project_id'       => $leadData['project_id'],
-                    'is_repibee'       => 1
+                    'index'              => $idx,
+                    'status'             => $ingestRes['action'] === 'duplicate_in_logs' ? 'duplicate_skipped_in_logs' : ($ingestRes['action'] === 'invalid_logged' ? 'invalid_logged' : 'logged_pending_sync'),
+                    'log_id'             => $ingestRes['log_id'],
+                    'full_name'          => $ingestRes['full_name'],
+                    'phone_number'       => $ingestRes['phone_number'],
+                    'campaign_name'      => $ingestRes['campaign_name'],
+                    'matched_project_id' => $ingestRes['matched_project_id'],
                 ];
             } catch (Throwable $e) {
                 $errorsCount++;
-                $synchronizer->log(sprintf(
-                    "[Replibee Webhook] DB INSERT ERROR: Name='%s', Phone='%s', Error=%s",
-                    $fullName,
-                    $cleanPhone,
-                    $e->getMessage()
-                ));
                 $processedResults[] = [
                     'index'   => $idx,
                     'status'  => 'error',
-                    'message' => 'DB Insert Error: ' . $e->getMessage()
+                    'message' => 'Log Insert Error: ' . $e->getMessage(),
                 ];
             }
         }
 
         $synchronizer->log(sprintf(
-            "[Replibee Webhook] Finished: Processed %d lead(s) -> %d inserted, %d duplicates skipped, %d errors.",
+            "[Replibee Webhook] Finished: %d item(s) -> %d logged as pending, %d duplicate skipped, %d invalid, %d errors.",
             count($leadsToProcess),
-            $insertedCount,
-            $skippedDuplicateCount,
+            $loggedCount,
+            $duplicateSkippedCount,
+            $invalidCount,
             $errorsCount
         ));
 
-        http_response_code($insertedCount > 0 ? 200 : ($errorsCount > 0 ? 400 : 200));
+        http_response_code($errorsCount > 0 && $loggedCount === 0 && $duplicateSkippedCount === 0 ? 400 : 200);
         echo json_encode([
-            'status'            => $insertedCount > 0 ? 'success' : ($skippedDuplicateCount > 0 ? 'skipped' : 'error'),
-            'message'           => sprintf("Processed %d lead(s): %d inserted, %d duplicates skipped, %d errors.", count($leadsToProcess), $insertedCount, $skippedDuplicateCount, $errorsCount),
-            'inserted_count'    => $insertedCount,
-            'skipped_duplicate' => $skippedDuplicateCount,
-            'errors_count'      => $errorsCount,
-            'results'           => count($processedResults) === 1 ? $processedResults[0] : $processedResults
+            'status'                  => ($loggedCount > 0 || $duplicateSkippedCount > 0 || $invalidCount > 0) ? 'success' : 'error',
+            'message'                 => sprintf("Logged %d WhatsApp lead(s) to staging table (`whatsapp_leads_logs`) ready for sync (%d duplicate skipped).", $loggedCount, $duplicateSkippedCount),
+            'logged_count'            => $loggedCount,
+            'duplicate_skipped_count' => $duplicateSkippedCount,
+            'invalid_count'           => $invalidCount,
+            'errors_count'            => $errorsCount,
+            'results'                 => count($processedResults) === 1 ? $processedResults[0] : $processedResults
         ]);
+        exit;
+    }
+
+    /**
+     * Build an in-memory duplicate index of `whatsapp_leads_logs` so both Webhook and REST API Backup
+     * never insert duplicate leads into `whatsapp_leads_logs`.
+     */
+    private function buildWhatsAppLogsDuplicateIndex(PDO $pdo): array
+    {
+        $index = [
+            'by_uuid'           => [],
+            'by_phone_project'  => [],
+            'by_phone_campaign' => [],
+            'by_email_project'  => [],
+        ];
+
+        try {
+            $stmt = $pdo->query("
+                SELECT
+                    id, repibee_uuid, phone_number, email, campaign_name, matched_project_id,
+                    which_apartment_size_are_you_interested_in,
+                    which_floor_are_you_for_shop,
+                    when_are_you_planning_to_buy,
+                    would_you_like_to_schedule_a_site_visit,
+                    when_is_the_best_time_to_contact_you,
+                    qa_json
+                FROM `whatsapp_leads_logs`
+                ORDER BY id ASC
+            ");
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $uuid = trim((string)($row['repibee_uuid'] ?? ''));
+                if ($uuid !== '') {
+                    $index['by_uuid'][$uuid] = $row;
+                }
+
+                $normP = $this->normalizeWhatsAppPhone($row['phone_number'] ?? '');
+                $pId   = (int)($row['matched_project_id'] ?? 0);
+                $camp  = strtolower(trim((string)($row['campaign_name'] ?? '')));
+
+                if ($normP !== '') {
+                    if ($pId > 0) {
+                        $index['by_phone_project'][$normP . '_' . $pId] = $row;
+                    }
+                    if ($camp !== '') {
+                        $index['by_phone_campaign'][$normP . '_' . $camp] = $row;
+                    }
+                }
+
+                $em = strtolower(trim((string)($row['email'] ?? '')));
+                if ($em !== '' && !in_array($em, ['1@gmail.com', 'a@b.com', 't@t.com', 'test@test.com'], true)) {
+                    if ($pId > 0) {
+                        $index['by_email_project'][$em . '_' . $pId] = $row;
+                    }
+                }
+            }
+        } catch (Throwable $t) {}
+
+        return $index;
+    }
+
+    /**
+     * Shared Replibee Lead Ingestion into `whatsapp_leads_logs` (used by both Webhook & REST API Backup).
+     * Performs duplicate check against `whatsapp_leads_logs` before inserting, and enriches existing log rows
+     * if new chatbot answers (`which_apartment_size_are_you_interested_in`, Q&A) arrived later.
+     */
+    private function ingestReplibeeItemToLogs(
+        array $item,
+        PDO $pdo,
+        LeadSynchronizer $synchronizer,
+        string $ingestSource,
+        array &$dupIndex
+    ): array {
+        $contact        = is_array($item['contact'] ?? null) ? $item['contact'] : [];
+        $source         = is_array($item['source'] ?? null) ? $item['source'] : [];
+        $location       = is_array($item['location'] ?? null) ? $item['location'] : [];
+        $interest       = is_array($item['interest'] ?? null) ? $item['interest'] : [];
+        $automationData = is_array($item['automation_data'] ?? null) ? $item['automation_data'] : [];
+        $customFields   = is_array($item['custom_fields'] ?? null) ? $item['custom_fields'] : [];
+        $timestamps     = is_array($item['timestamps'] ?? null) ? $item['timestamps'] : [];
+
+        // Extract unique Replibee lead UUID / ID
+        $repibeeUuid = trim((string)($item['uuid'] ?? $item['id'] ?? $source['conversation_hash_id'] ?? ''));
+
+        // Primary contact extraction
+        $fullName = trim((string)($contact['name'] ?? $item['full_name'] ?? $item['name'] ?? $item['client_name'] ?? $item['customer_name'] ?? ''));
+        $phone    = trim((string)($contact['phone'] ?? $contact['mobile'] ?? $contact['whatsapp'] ?? $item['phone_number'] ?? $item['phone'] ?? $item['mobile'] ?? $item['whatsapp'] ?? ''));
+        $email    = trim((string)($contact['email'] ?? $item['email'] ?? ''));
+
+        // Custom questions & chatbot Q&A extraction
+        $whichApartmentSize   = $item['which_apartment_size_are_you_interested_in'] ?? null;
+        $whichFloorForShop    = $item['which_floor_are_you_for_shop'] ?? null;
+        $whenPlanningToBuy    = $item['when_are_you_planning_to_buy'] ?? null;
+        $siteVisit            = $item['would_you_like_to_schedule_a_site_visit'] ?? null;
+        $bestTimeContact      = $item['when_is_the_best_time_to_contact_you'] ?? null;
+        $chatbotProjectAnswer = '';
+        $qaPairs              = [];
+
+        if (!empty($automationData)) {
+            foreach ($automationData as $step) {
+                $stepItems = (is_array($step) && isset($step['question'])) ? [$step] : (is_array($step) ? $step : []);
+                foreach ($stepItems as $qa) {
+                    if (!is_array($qa)) continue;
+                    $qRaw = trim((string)($qa['question'] ?? $qa['label'] ?? $qa['key'] ?? ''));
+                    $a    = trim((string)($qa['answer'] ?? $qa['value'] ?? ''));
+                    if ($a === '') continue;
+
+                    if ($qRaw !== '') {
+                        $qaPairs[] = ['question' => $qRaw, 'answer' => $a];
+                    }
+                    $q = mb_strtolower($qRaw, 'UTF-8');
+
+                    if ($phone === '') {
+                        if (
+                            str_contains($q, 'ফোন') || str_contains($q, 'নাম্বার') || str_contains($q, 'মোবাইল') ||
+                            str_contains($q, 'নম্বর') || str_contains($q, 'phone') || str_contains($q, 'mobile') ||
+                            str_contains($q, 'number') || str_contains($q, 'whatsapp')
+                        ) {
+                            $phone = $a;
+                        } elseif (preg_match('/(?:\+?88)?01[3-9][\d\s\-]{8,11}/', $a, $mPhone)) {
+                            $phone = $mPhone[0];
+                        }
+                    }
+
+                    if ($fullName === '' && (str_contains($q, 'নাম') || str_contains($q, 'name')) && !str_contains($q, 'project') && !str_contains($q, 'প্রজেক্ট')) {
+                        $fullName = $a;
+                    }
+
+                    if ($email === '' && (str_contains($q, 'ইমেইল') || str_contains($q, 'email') || filter_var($a, FILTER_VALIDATE_EMAIL))) {
+                        if (filter_var($a, FILTER_VALIDATE_EMAIL)) {
+                            $email = $a;
+                        }
+                    }
+
+                    if ($chatbotProjectAnswer === '' && (str_contains($q, 'প্রজেক্ট') || str_contains($q, 'প্রোজেক্ট') || str_contains($q, 'project') || str_contains($q, 'property') || str_contains($q, 'লোকেশন') || str_contains($q, 'location'))) {
+                        $chatbotProjectAnswer = $a;
+                    }
+
+                    if ((str_contains($q, 'সাইজ') || str_contains($q, 'size') || str_contains($q, 'apartment') || str_contains($q, 'shop') || str_contains($q, 'স্কয়ার') || str_contains($q, 'sft')) && empty($whichApartmentSize)) {
+                        $whichApartmentSize = $a;
+                    } elseif ((str_contains($q, 'ফ্লোর') || str_contains($q, 'floor')) && empty($whichFloorForShop)) {
+                        $whichFloorForShop = $a;
+                    } elseif ((str_contains($q, 'কেনার') || str_contains($q, 'পরিকল্পনা') || str_contains($q, 'planning') || str_contains($q, 'buy')) && empty($whenPlanningToBuy)) {
+                        $whenPlanningToBuy = $a;
+                    } elseif ((str_contains($q, 'ভিজিট') || str_contains($q, 'visit')) && empty($siteVisit)) {
+                        $siteVisit = $a;
+                    } elseif ((str_contains($q, 'যোগাযোগ') || str_contains($q, 'সময়') || str_contains($q, 'contact') || str_contains($q, 'time')) && empty($bestTimeContact)) {
+                        $bestTimeContact = $a;
+                    }
+                }
+            }
+        }
+
+        if (!empty($customFields)) {
+            foreach ($customFields as $k => $v) {
+                $kStr = trim((string)$k);
+                $kLower = mb_strtolower($kStr, 'UTF-8');
+                $vVal = is_string($v) ? trim($v) : (is_scalar($v) ? (string)$v : json_encode($v, JSON_UNESCAPED_UNICODE));
+                if ($vVal === '') continue;
+
+                $qaPairs[] = ['question' => $kStr, 'answer' => $vVal];
+
+                if ($phone === '' && (str_contains($kLower, 'phone') || str_contains($kLower, 'mobile') || str_contains($kLower, 'number') || str_contains($kLower, 'whatsapp') || preg_match('/^(?:\+?88)?01[3-9]\d{8}$/', $vVal))) {
+                    $phone = $vVal;
+                }
+                if ($fullName === '' && (str_contains($kLower, 'name') || str_contains($kLower, 'নাম')) && !str_contains($kLower, 'project')) {
+                    $fullName = $vVal;
+                }
+                if ($chatbotProjectAnswer === '' && (str_contains($kLower, 'project') || str_contains($kLower, 'property') || str_contains($kLower, 'campaign'))) {
+                    $chatbotProjectAnswer = $vVal;
+                }
+
+                if ((str_contains($kLower, 'size') || str_contains($kLower, 'apartment')) && empty($whichApartmentSize)) {
+                    $whichApartmentSize = $vVal;
+                } elseif (str_contains($kLower, 'floor') && empty($whichFloorForShop)) {
+                    $whichFloorForShop = $vVal;
+                } elseif (str_contains($kLower, 'planning') && empty($whenPlanningToBuy)) {
+                    $whenPlanningToBuy = $vVal;
+                } elseif (str_contains($kLower, 'visit') && empty($siteVisit)) {
+                    $siteVisit = $vVal;
+                } elseif (str_contains($kLower, 'contact') && empty($bestTimeContact)) {
+                    $bestTimeContact = $vVal;
+                }
+            }
+        }
+
+        $cleanPhone = $this->normalizeWhatsAppPhone($phone);
+
+        // Campaign name & interest products resolution
+        $interestProducts = '';
+        if (!empty($interest['products'])) {
+            $interestProducts = is_array($interest['products']) ? implode(', ', $interest['products']) : trim((string)$interest['products']);
+        }
+        $brandName  = trim((string)($interest['brand_name'] ?? $interest['model'] ?? ''));
+        $sourcePage = trim((string)($source['page'] ?? $source['social_profile_name'] ?? $source['source'] ?? 'Replibee WhatsApp'));
+        // Clean phone suffix from page name (e.g. "The Nature at Cox’s Bazar (+880 1341-663333)" -> "The Nature at Cox’s Bazar")
+        $cleanPageTitle = trim((string)preg_replace('/\s*\(\+?\d[\d\s\-]+\)\s*$/u', '', $sourcePage));
+        $cleanPageTitle = trim((string)preg_replace('/^WhatsApp\s*[·\-\|]\s*/iu', '', $cleanPageTitle));
+
+        $projectInterestParts = array_values(array_unique(array_filter([
+            $interestProducts,
+            $brandName,
+            $chatbotProjectAnswer,
+            trim((string)($item['project_name'] ?? $item['project'] ?? '')),
+            trim((string)($item['campaign_name'] ?? $item['campaign'] ?? '')),
+        ], fn($v) => $v !== '')));
+        $projectInterest = !empty($projectInterestParts) ? implode(' | ', $projectInterestParts) : null;
+
+        $campaign = '';
+        foreach ([
+            $item['campaign_name'] ?? '',
+            $interestProducts,
+            $brandName,
+            $chatbotProjectAnswer,
+            $item['project_name'] ?? '',
+            $item['campaign'] ?? '',
+            $source['campaign'] ?? '',
+            $cleanPageTitle,
+            $sourcePage,
+        ] as $candCamp) {
+            $candCamp = trim((string)$candCamp);
+            if ($candCamp !== '') {
+                $campaign = $candCamp;
+                break;
+            }
+        }
+        if ($campaign === '') {
+            $campaign = 'WhatsApp Lead';
+        }
+
+        // Match project for preview & accurate project-level duplicate detection
+        $secondaryContext = trim(implode(' ', array_filter([
+            $projectInterest ?? '',
+            $cleanPageTitle,
+            $sourcePage,
+            implode(' ', array_map(fn($p) => $p['answer'] ?? '', $qaPairs))
+        ])));
+        $projectMatch = $synchronizer->matchProject($campaign, $secondaryContext);
+        $matchedProjectId = !empty($projectMatch['project_id']) ? (int)$projectMatch['project_id'] : null;
+
+        if (!empty($projectMatch['project_name']) && $matchedProjectId !== null) {
+            $campLowerCheck = strtolower($campaign);
+            if ($campLowerCheck === '' || $campLowerCheck === 'whatsapp lead' || $campLowerCheck === 'the premium homes ltd' || $campLowerCheck === 'the premium homes ltd.') {
+                $campaign = $projectMatch['project_name'] . ' (WhatsApp)';
+            }
+        }
+        $campLower = strtolower($campaign);
+        $emailLower = strtolower($email);
+
+        // Parse created_at timestamp (convert to Asia/Dhaka +06:00 if ISO timestamp provided)
+        $rawCreatedAt = trim((string)($timestamps['created_at'] ?? $item['created_at'] ?? ''));
+        $createdAtLocal = date('Y-m-d H:i:s');
+        if ($rawCreatedAt !== '') {
+            $ts = strtotime($rawCreatedAt);
+            if ($ts !== false && $ts > 0) {
+                $dtObj = new DateTime('@' . $ts);
+                $dtObj->setTimezone(new DateTimeZone('Asia/Dhaka'));
+                $createdAtLocal = $dtObj->format('Y-m-d H:i:s');
+            }
+        }
+
+        // DUPLICATE CHECK AGAINST `whatsapp_leads_logs`
+        $existingLog = null;
+        if ($repibeeUuid !== '' && isset($dupIndex['by_uuid'][$repibeeUuid])) {
+            $existingLog = $dupIndex['by_uuid'][$repibeeUuid];
+        }
+        if ($existingLog === null && $cleanPhone !== '') {
+            if ($matchedProjectId !== null && $matchedProjectId > 0 && isset($dupIndex['by_phone_project'][$cleanPhone . '_' . $matchedProjectId])) {
+                $existingLog = $dupIndex['by_phone_project'][$cleanPhone . '_' . $matchedProjectId];
+            } elseif (($matchedProjectId === null || $matchedProjectId === 0) && $campLower !== '' && isset($dupIndex['by_phone_campaign'][$cleanPhone . '_' . $campLower])) {
+                $existingLog = $dupIndex['by_phone_campaign'][$cleanPhone . '_' . $campLower];
+            }
+        }
+        if ($existingLog === null && $emailLower !== '' && !in_array($emailLower, ['1@gmail.com', 'a@b.com', 't@t.com', 'test@test.com'], true)) {
+            if ($matchedProjectId !== null && $matchedProjectId > 0 && isset($dupIndex['by_email_project'][$emailLower . '_' . $matchedProjectId])) {
+                $existingLog = $dupIndex['by_email_project'][$emailLower . '_' . $matchedProjectId];
+            }
+        }
+
+        if ($existingLog !== null) {
+            $existingLogId = (int)$existingLog['id'];
+            $enrichUpdates = [];
+            $enrichParams  = [];
+
+            if ($repibeeUuid !== '' && empty($existingLog['repibee_uuid'])) {
+                $enrichUpdates[] = "`repibee_uuid` = ?";
+                $enrichParams[]  = $repibeeUuid;
+                $existingLog['repibee_uuid'] = $repibeeUuid;
+            }
+            $qMap = [
+                'which_apartment_size_are_you_interested_in' => $whichApartmentSize,
+                'which_floor_are_you_for_shop'               => $whichFloorForShop,
+                'when_are_you_planning_to_buy'               => $whenPlanningToBuy,
+                'would_you_like_to_schedule_a_site_visit'   => $siteVisit,
+                'when_is_the_best_time_to_contact_you'       => $bestTimeContact,
+            ];
+            foreach ($qMap as $col => $newVal) {
+                $newValStr = trim((string)($newVal ?? ''));
+                $oldValStr = trim((string)($existingLog[$col] ?? ''));
+                if ($newValStr !== '' && $oldValStr === '') {
+                    $enrichUpdates[] = "`{$col}` = ?";
+                    $enrichParams[]  = $newValStr;
+                    $existingLog[$col] = $newValStr;
+                }
+            }
+            if (!empty($qaPairs) && empty($existingLog['qa_json'])) {
+                $qaJsonStr = json_encode($qaPairs, JSON_UNESCAPED_UNICODE);
+                $enrichUpdates[] = "`qa_json` = ?";
+                $enrichParams[]  = $qaJsonStr;
+                $existingLog['qa_json'] = $qaJsonStr;
+            }
+
+            $wasEnriched = false;
+            if (!empty($enrichUpdates)) {
+                $enrichParams[] = $existingLogId;
+                try {
+                    $uStmt = $pdo->prepare("UPDATE `whatsapp_leads_logs` SET " . implode(', ', $enrichUpdates) . " WHERE `id` = ?");
+                    $uStmt->execute($enrichParams);
+                    $wasEnriched = true;
+                } catch (Throwable $t) {}
+            }
+
+            return [
+                'action'             => 'duplicate_in_logs',
+                'enriched'           => $wasEnriched,
+                'log_id'             => $existingLogId,
+                'full_name'          => $fullName,
+                'phone_number'       => $cleanPhone,
+                'campaign_name'      => $campaign,
+                'matched_project_id' => $matchedProjectId,
+            ];
+        }
+
+        // Not in `whatsapp_leads_logs` -> Insert new staging log row
+        $isInvalid  = ($cleanPhone === '' && $fullName === '' && $email === '');
+        $syncStatus = $isInvalid ? 'invalid' : 'pending';
+        $sourceLabel = ($ingestSource === 'rest_api') ? 'Replibee REST API Backup' : 'Replibee Webhook';
+        $syncNote   = $isInvalid
+            ? "Missing phone_number, full_name, and email in {$sourceLabel}."
+            : "Received via {$sourceLabel} · Ready to sync";
+
+        $insertLogStmt = $pdo->prepare("
+            INSERT INTO `whatsapp_leads_logs` (
+                `repibee_uuid`, `ingest_source`,
+                `full_name`, `phone_number`, `email`, `campaign_name`, `project_interest`, `source_page`,
+                `city`, `country`, `address`,
+                `which_apartment_size_are_you_interested_in`,
+                `which_floor_are_you_for_shop`,
+                `when_are_you_planning_to_buy`,
+                `would_you_like_to_schedule_a_site_visit`,
+                `when_is_the_best_time_to_contact_you`,
+                `qa_json`, `raw_payload`,
+                `sync_status`, `sync_note`, `matched_project_id`, `created_at`
+            ) VALUES (
+                :repibee_uuid, :ingest_source,
+                :full_name, :phone_number, :email, :campaign_name, :project_interest, :source_page,
+                :city, :country, :address,
+                :which_apartment_size_are_you_interested_in,
+                :which_floor_are_you_for_shop,
+                :when_are_you_planning_to_buy,
+                :would_you_like_to_schedule_a_site_visit,
+                :when_is_the_best_time_to_contact_you,
+                :qa_json, :raw_payload,
+                :sync_status, :sync_note, :matched_project_id, :created_at
+            )
+        ");
+
+        $qaJsonVal = !empty($qaPairs) ? json_encode($qaPairs, JSON_UNESCAPED_UNICODE) : null;
+        $insertLogStmt->execute([
+            ':repibee_uuid'                              => $repibeeUuid !== '' ? $repibeeUuid : null,
+            ':ingest_source'                             => $ingestSource,
+            ':full_name'                                => $fullName !== '' ? $fullName : 'WhatsApp Lead',
+            ':phone_number'                             => $cleanPhone !== '' ? $cleanPhone : ($phone !== '' ? $phone : null),
+            ':email'                                    => $email !== '' ? $email : null,
+            ':campaign_name'                            => $campaign,
+            ':project_interest'                         => $projectInterest ?? $campaign,
+            ':source_page'                              => $sourcePage,
+            ':city'                                     => $location['city'] ?? $location['area'] ?? $item['city'] ?? null,
+            ':country'                                  => $location['country'] ?? $item['country'] ?? 'Bangladesh',
+            ':address'                                  => $location['address'] ?? $item['address'] ?? null,
+            ':which_apartment_size_are_you_interested_in' => $whichApartmentSize,
+            ':which_floor_are_you_for_shop'             => $whichFloorForShop,
+            ':when_are_you_planning_to_buy'             => $whenPlanningToBuy,
+            ':would_you_like_to_schedule_a_site_visit' => $siteVisit,
+            ':when_is_the_best_time_to_contact_you'     => $bestTimeContact,
+            ':qa_json'                                  => $qaJsonVal,
+            ':raw_payload'                              => json_encode($item, JSON_UNESCAPED_UNICODE),
+            ':sync_status'                              => $syncStatus,
+            ':sync_note'                                => $syncNote,
+            ':matched_project_id'                       => $matchedProjectId,
+            ':created_at'                               => $createdAtLocal,
+        ]);
+
+        $logId = (int)$pdo->lastInsertId();
+
+        // Update in-memory duplicate index so duplicates within the same batch are caught
+        $newRowRef = [
+            'id'                                         => $logId,
+            'repibee_uuid'                               => $repibeeUuid,
+            'phone_number'                               => $cleanPhone,
+            'email'                                      => $emailLower,
+            'campaign_name'                              => $campaign,
+            'matched_project_id'                         => $matchedProjectId,
+            'which_apartment_size_are_you_interested_in' => $whichApartmentSize,
+            'which_floor_are_you_for_shop'               => $whichFloorForShop,
+            'when_are_you_planning_to_buy'               => $whenPlanningToBuy,
+            'would_you_like_to_schedule_a_site_visit'   => $siteVisit,
+            'when_is_the_best_time_to_contact_you'       => $bestTimeContact,
+            'qa_json'                                    => $qaJsonVal,
+        ];
+        if ($repibeeUuid !== '') {
+            $dupIndex['by_uuid'][$repibeeUuid] = $newRowRef;
+        }
+        if ($cleanPhone !== '') {
+            if ($matchedProjectId !== null && $matchedProjectId > 0) {
+                $dupIndex['by_phone_project'][$cleanPhone . '_' . $matchedProjectId] = $newRowRef;
+            }
+            if ($campLower !== '') {
+                $dupIndex['by_phone_campaign'][$cleanPhone . '_' . $campLower] = $newRowRef;
+            }
+        }
+        if ($emailLower !== '' && !in_array($emailLower, ['1@gmail.com', 'a@b.com', 't@t.com', 'test@test.com'], true)) {
+            if ($matchedProjectId !== null && $matchedProjectId > 0) {
+                $dupIndex['by_email_project'][$emailLower . '_' . $matchedProjectId] = $newRowRef;
+            }
+        }
+
+        return [
+            'action'             => $isInvalid ? 'invalid_logged' : 'inserted',
+            'log_id'             => $logId,
+            'full_name'          => $fullName,
+            'phone_number'       => $cleanPhone,
+            'campaign_name'      => $campaign,
+            'matched_project_id' => $matchedProjectId,
+        ];
+    }
+
+    /**
+     * Pull leads from Replibee Merchant REST API (`GET https://replibee.com/api/v1/merchant/leads`)
+     * and store any missing leads into `whatsapp_leads_logs` with duplicate checking.
+     */
+    private function pullReplibeeLeadsFromRestApi(
+        PDO $pdo,
+        LeadSynchronizer $synchronizer,
+        string $dateFilter = 'today',
+        int $maxPages = 3
+    ): array {
+        $repibeeConfig = $this->automationConfig['repibee'] ?? [];
+        $baseUrl       = trim((string)($repibeeConfig['merchant_api_url'] ?? 'https://replibee.com/api/v1/merchant/leads'));
+        $apiKey        = trim((string)($repibeeConfig['merchant_api_key'] ?? ''));
+        $brandId       = trim((string)($repibeeConfig['merchant_brand_id'] ?? ''));
+
+        $stats = [
+            'fetched_from_api' => 0,
+            'newly_logged'     => 0,
+            'already_in_logs'  => 0,
+            'enriched_logs'    => 0,
+            'invalid_logged'   => 0,
+            'skipped_old_date' => 0,
+            'api_error'        => null,
+        ];
+
+        if ($apiKey === '' || $brandId === '') {
+            $stats['api_error'] = 'Missing Replibee merchant_api_key or merchant_brand_id in config.';
+            return $stats;
+        }
+
+        $tzDhaka = new DateTimeZone('Asia/Dhaka');
+        $nowDhaka = new DateTime('now', $tzDhaka);
+        $todayStr = $nowDhaka->format('Y-m-d');
+        $yesterdayStr = (clone $nowDhaka)->modify('-1 day')->format('Y-m-d');
+        $sevenDaysStr = (clone $nowDhaka)->modify('-6 days')->format('Y-m-d');
+        $thirtyDaysStr = (clone $nowDhaka)->modify('-30 days')->format('Y-m-d');
+
+        $dateFilter = strtolower(trim($dateFilter));
+        if ($dateFilter === 'today') {
+            $cutoffStart = $todayStr;
+            $cutoffEnd   = $todayStr;
+        } elseif ($dateFilter === 'yesterday') {
+            $cutoffStart = $yesterdayStr;
+            $cutoffEnd   = $yesterdayStr;
+        } elseif ($dateFilter === '7days' || $dateFilter === 'this_week') {
+            $cutoffStart = $sevenDaysStr;
+            $cutoffEnd   = $todayStr;
+        } else {
+            // 'all' or 'recent' -> pull up to last 30 days within $maxPages
+            $cutoffStart = $thirtyDaysStr;
+            $cutoffEnd   = $todayStr;
+        }
+
+        $dupIndex = $this->buildWhatsAppLogsDuplicateIndex($pdo);
+
+        for ($page = 1; $page <= $maxPages; $page++) {
+            $sep = str_contains($baseUrl, '?') ? '&' : '?';
+            $url = $baseUrl . $sep . 'per_page=100&page=' . $page;
+
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_TIMEOUT        => 25,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_HTTPHEADER     => [
+                    'Accept: application/json',
+                    'X-API-Key: ' . $apiKey,
+                    'X-Brand-Id: ' . $brandId,
+                    'User-Agent: TPHL-ERP-LeadSync/1.0',
+                ],
+            ]);
+            $rawResponse = curl_exec($ch);
+            $httpCode    = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlErr     = curl_error($ch);
+            curl_close($ch);
+
+            if ($rawResponse === false || $httpCode !== 200) {
+                $errBody = is_string($rawResponse) ? substr($rawResponse, 0, 200) : '';
+                $stats['api_error'] = $curlErr ?: "Replibee API returned HTTP {$httpCode}: {$errBody}";
+                $synchronizer->log("[Replibee REST API] Pull warning on page {$page}: " . $stats['api_error']);
+                break;
+            }
+
+            $decoded = json_decode($rawResponse, true);
+            $items   = is_array($decoded['data'] ?? null) ? $decoded['data'] : [];
+            if (empty($items)) {
+                break;
+            }
+
+            $olderItemsOnPage = 0;
+            foreach ($items as $item) {
+                if (!is_array($item)) continue;
+                $stats['fetched_from_api']++;
+
+                // Check lead created_at date in Asia/Dhaka timezone
+                $rawCreated = trim((string)($item['timestamps']['created_at'] ?? $item['created_at'] ?? ''));
+                $itemDateStr = $todayStr;
+                if ($rawCreated !== '') {
+                    $ts = strtotime($rawCreated);
+                    if ($ts !== false && $ts > 0) {
+                        $dt = new DateTime('@' . $ts);
+                        $dt->setTimezone($tzDhaka);
+                        $itemDateStr = $dt->format('Y-m-d');
+                    }
+                }
+
+                if ($itemDateStr > $cutoffEnd) {
+                    continue;
+                }
+                if ($itemDateStr < $cutoffStart) {
+                    $stats['skipped_old_date']++;
+                    $olderItemsOnPage++;
+                    continue;
+                }
+
+                $res = $this->ingestReplibeeItemToLogs($item, $pdo, $synchronizer, 'rest_api', $dupIndex);
+                if ($res['action'] === 'inserted') {
+                    $stats['newly_logged']++;
+                } elseif ($res['action'] === 'invalid_logged') {
+                    $stats['invalid_logged']++;
+                } elseif ($res['action'] === 'duplicate_in_logs') {
+                    $stats['already_in_logs']++;
+                    if (!empty($res['enriched'])) {
+                        $stats['enriched_logs']++;
+                    }
+                }
+            }
+
+            $lastPage = (int)($decoded['meta']['last_page'] ?? 1);
+            // Replibee returns leads newest-first; if we already hit leads older than cutoffStart, stop paging
+            if ($page >= $lastPage || $olderItemsOnPage >= 15) {
+                break;
+            }
+        }
+
+        $synchronizer->log(sprintf(
+            "[Replibee REST API Backup] Pull (%s): %d fetched -> %d newly logged to whatsapp_leads_logs, %d already in logs (%d enriched), %d older skipped.",
+            $dateFilter,
+            $stats['fetched_from_api'],
+            $stats['newly_logged'],
+            $stats['already_in_logs'],
+            $stats['enriched_logs'],
+            $stats['skipped_old_date']
+        ));
+
+        return $stats;
+    }
+
+    /**
+     * AJAX/API: Pull leads from Replibee Merchant REST API into `whatsapp_leads_logs` with duplicate checking
+     */
+    public function ajaxFetchReplibeeApiLogs()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $isCronOrApi = (!empty($_GET['api_key']) || !empty($_SERVER['HTTP_X_API_KEY']));
+        if (!$isCronOrApi && empty($_SESSION['user_id'])) {
+            $this->checkAccess();
+        }
+
+        header('Content-Type: application/json; charset=utf-8');
+        set_time_limit(120);
+
+        try {
+            $currentUserId = isset($_SESSION['user']['id']) ? (int)$_SESSION['user']['id'] : null;
+            $synchronizer  = new LeadSynchronizer($this->automationConfig, $currentUserId);
+            $pdo           = $synchronizer->getDb();
+            $synchronizer->ensureSchema($pdo);
+
+            $input      = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+            $dateFilter = strtolower(trim((string)($input['date_filter'] ?? $_GET['date_filter'] ?? 'today')));
+            if ($dateFilter === '' || $dateFilter === 'custom') {
+                $dateFilter = '7days';
+            }
+            $maxPages = max(1, min(10, (int)($input['max_pages'] ?? $_GET['max_pages'] ?? ($dateFilter === 'today' ? 2 : 4))));
+
+            $apiStats = $this->pullReplibeeLeadsFromRestApi($pdo, $synchronizer, $dateFilter, $maxPages);
+
+            $globalPending = (int)$pdo->query("SELECT COUNT(*) FROM `whatsapp_leads_logs` WHERE `sync_status` = 'pending'")->fetchColumn();
+            $globalTotal   = (int)$pdo->query("SELECT COUNT(*) FROM `whatsapp_leads_logs`")->fetchColumn();
+
+            if (!empty($apiStats['api_error']) && $apiStats['fetched_from_api'] === 0) {
+                http_response_code(502);
+                echo json_encode([
+                    'status'         => 'error',
+                    'message'        => 'Replibee REST API Error: ' . $apiStats['api_error'],
+                    'api_stats'      => $apiStats,
+                    'global_pending' => $globalPending,
+                    'global_total'   => $globalTotal,
+                ]);
+                exit;
+            }
+
+            $enrichMsg = $apiStats['enriched_logs'] > 0 ? " ({$apiStats['enriched_logs']} existing log(s) enriched with new Q&A)" : "";
+            echo json_encode([
+                'status'         => 'success',
+                'message'        => sprintf(
+                    "Replibee REST API Pull Completed! %d new lead(s) added to staging logs, %d duplicate(s) already in logs skipped%s.",
+                    $apiStats['newly_logged'],
+                    $apiStats['already_in_logs'],
+                    $enrichMsg
+                ),
+                'api_stats'      => $apiStats,
+                'global_pending' => $globalPending,
+                'global_total'   => $globalTotal,
+            ]);
+        } catch (Throwable $e) {
+            http_response_code(500);
+            echo json_encode([
+                'status'  => 'error',
+                'message' => 'Replibee REST API Pull Failed: ' . $e->getMessage(),
+            ]);
+        }
+        exit;
+    }
+
+    /**
+     * AJAX: Fetch WhatsApp / Replibee Leads from `whatsapp_leads_logs` for the 50vw Right-to-Left Drawer
+     */
+    public function ajaxGetWhatsAppLogs()
+    {
+        $this->checkAccess();
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-cache, no-store, must-revalidate');
+
+        try {
+            $synchronizer = new LeadSynchronizer($this->automationConfig);
+            $pdo = $synchronizer->getDb();
+            $synchronizer->ensureSchema($pdo);
+
+            // Auto-revert any 'synced' or 'duplicate_skipped' logs whose linked lead was deleted from `leads` back to 'pending'
+            try {
+                $pdo->exec("
+                    UPDATE `whatsapp_leads_logs` w
+                    LEFT JOIN `leads` l ON w.synced_lead_id = l.id AND l.deleted_at IS NULL
+                    SET w.sync_status      = 'pending',
+                        w.synced_lead_id   = NULL,
+                        w.assigned_team_id = NULL,
+                        w.synced_at        = NULL,
+                        w.sync_note        = 'Lead deleted from system · Ready to re-sync'
+                    WHERE w.sync_status IN ('synced', 'duplicate_skipped')
+                      AND w.synced_lead_id IS NOT NULL
+                      AND l.id IS NULL
+                ");
+            } catch (Throwable $t) {}
+
+            $statusFilter = strtolower(trim((string)($_GET['sync_status'] ?? 'all')));
+            $dateFilter   = strtolower(trim((string)($_GET['date_filter'] ?? 'all')));
+            $startDate    = trim((string)($_GET['start_date'] ?? ''));
+            $endDate      = trim((string)($_GET['end_date'] ?? ''));
+            $search       = trim((string)($_GET['search'] ?? ''));
+            $page         = max(1, (int)($_GET['page'] ?? 1));
+            $limitRaw     = $_GET['limit'] ?? 50;
+            $limit        = ($limitRaw === 'all') ? 2000 : max(10, min(500, (int)$limitRaw));
+            $offset       = ($page - 1) * $limit;
+
+            // Build Date WHERE clause (shared between KPI summary and list)
+            $dateWhere = [];
+            $dateParams = [];
+            $today = date('Y-m-d');
+            $yesterday = date('Y-m-d', strtotime('-1 day'));
+            $sevenDaysAgo = date('Y-m-d', strtotime('-6 days'));
+
+            if ($dateFilter === 'today') {
+                $dateWhere[] = "DATE(w.created_at) = ?";
+                $dateParams[] = $today;
+            } elseif ($dateFilter === 'yesterday') {
+                $dateWhere[] = "DATE(w.created_at) = ?";
+                $dateParams[] = $yesterday;
+            } elseif ($dateFilter === '7days' || $dateFilter === 'this_week') {
+                $dateWhere[] = "DATE(w.created_at) BETWEEN ? AND ?";
+                $dateParams[] = $sevenDaysAgo;
+                $dateParams[] = $today;
+            } elseif ($dateFilter === 'custom') {
+                if ($startDate !== '' && $endDate !== '') {
+                    $dateWhere[] = "DATE(w.created_at) BETWEEN ? AND ?";
+                    $dateParams[] = $startDate;
+                    $dateParams[] = $endDate;
+                } elseif ($startDate !== '') {
+                    $dateWhere[] = "DATE(w.created_at) >= ?";
+                    $dateParams[] = $startDate;
+                } elseif ($endDate !== '') {
+                    $dateWhere[] = "DATE(w.created_at) <= ?";
+                    $dateParams[] = $endDate;
+                }
+            }
+
+            $dateSql = !empty($dateWhere) ? ('WHERE ' . implode(' AND ', $dateWhere)) : '';
+
+            // 1. KPI counts for the selected date filter
+            $kpiSql = "
+                SELECT
+                    COUNT(*) AS total,
+                    SUM(CASE WHEN w.sync_status = 'pending' THEN 1 ELSE 0 END) AS pending,
+                    SUM(CASE WHEN w.sync_status = 'synced' THEN 1 ELSE 0 END) AS synced,
+                    SUM(CASE WHEN w.sync_status = 'duplicate_skipped' THEN 1 ELSE 0 END) AS duplicate_skipped,
+                    SUM(CASE WHEN w.sync_status = 'invalid' THEN 1 ELSE 0 END) AS invalid
+                FROM `whatsapp_leads_logs` w
+                {$dateSql}
+            ";
+            $kpiStmt = $pdo->prepare($kpiSql);
+            $kpiStmt->execute($dateParams);
+            $kpiRow = $kpiStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+            // Also get global all-time pending count for the top button badge
+            $globalPending = (int)$pdo->query("SELECT COUNT(*) FROM `whatsapp_leads_logs` WHERE `sync_status` = 'pending'")->fetchColumn();
+            $globalTotal   = (int)$pdo->query("SELECT COUNT(*) FROM `whatsapp_leads_logs`")->fetchColumn();
+
+            // 2. Build full list WHERE clause
+            $listWhere = $dateWhere;
+            $listParams = $dateParams;
+
+            if ($statusFilter !== '' && $statusFilter !== 'all') {
+                $listWhere[] = "w.sync_status = ?";
+                $listParams[] = $statusFilter;
+            }
+
+            if ($search !== '') {
+                $like = '%' . $search . '%';
+                $listWhere[] = "(w.full_name LIKE ? OR w.phone_number LIKE ? OR w.email LIKE ? OR w.campaign_name LIKE ? OR w.project_interest LIKE ? OR w.source_page LIKE ? OR w.qa_json LIKE ?)";
+                array_push($listParams, $like, $like, $like, $like, $like, $like, $like);
+            }
+
+            $whereSql = !empty($listWhere) ? ('WHERE ' . implode(' AND ', $listWhere)) : '';
+
+            $countStmt = $pdo->prepare("SELECT COUNT(*) FROM `whatsapp_leads_logs` w {$whereSql}");
+            $countStmt->execute($listParams);
+            $filteredTotal = (int)$countStmt->fetchColumn();
+
+            $sql = "
+                SELECT
+                    w.*,
+                    COALESCE(p.name, p2.name) AS project_name,
+                    COALESCE(t.name, t2.name) AS team_name,
+                    l.distribute AS lead_distribute
+                FROM `whatsapp_leads_logs` w
+                LEFT JOIN `leads` l ON w.synced_lead_id = l.id AND l.deleted_at IS NULL
+                LEFT JOIN `projects` p ON l.project_id = p.id
+                LEFT JOIN `projects` p2 ON w.matched_project_id = p2.id
+                LEFT JOIN `teams` t ON l.team_id = t.id
+                LEFT JOIN `teams` t2 ON w.assigned_team_id = t2.id
+                {$whereSql}
+                ORDER BY
+                    (CASE WHEN w.sync_status = 'pending' THEN 0 ELSE 1 END) ASC,
+                    w.id DESC
+                LIMIT {$limit} OFFSET {$offset}
+            ";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($listParams);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            foreach ($rows as &$r) {
+                $r['id'] = (int)$r['id'];
+                $r['synced_lead_id'] = !empty($r['synced_lead_id']) ? (int)$r['synced_lead_id'] : null;
+                $r['matched_project_id'] = !empty($r['matched_project_id']) ? (int)$r['matched_project_id'] : null;
+                $r['assigned_team_id'] = !empty($r['assigned_team_id']) ? (int)$r['assigned_team_id'] : null;
+                $r['qa_parsed'] = !empty($r['qa_json']) ? (json_decode($r['qa_json'], true) ?: []) : [];
+            }
+            unset($r);
+
+            echo json_encode([
+                'status' => 'success',
+                'stats'  => [
+                    'total'             => (int)($kpiRow['total'] ?? 0),
+                    'pending'           => (int)($kpiRow['pending'] ?? 0),
+                    'synced'            => (int)($kpiRow['synced'] ?? 0),
+                    'duplicate_skipped' => (int)($kpiRow['duplicate_skipped'] ?? 0),
+                    'invalid'           => (int)($kpiRow['invalid'] ?? 0),
+                    'global_pending'    => $globalPending,
+                    'global_total'      => $globalTotal,
+                ],
+                'pagination' => [
+                    'total' => $filteredTotal,
+                    'page'  => $page,
+                    'limit' => $limit,
+                    'pages' => $limit > 0 ? (int)ceil($filteredTotal / $limit) : 1,
+                ],
+                'logs' => $rows,
+            ]);
+        } catch (Throwable $e) {
+            http_response_code(500);
+            echo json_encode([
+                'status'  => 'error',
+                'message' => 'Failed to load WhatsApp logs: ' . $e->getMessage()
+            ]);
+        }
+        exit;
+    }
+
+    /**
+     * AJAX/API: Sync WhatsApp Leads from `whatsapp_leads_logs` staging table into the main `leads` table
+     * Performs smart duplicate detection (by normalized phone + project/campaign), matches project via dynamic rules,
+     * assigns active sales team via Round-Robin, and updates `whatsapp_leads_logs.sync_status`.
+     */
+    public function ajaxSyncWhatsAppLeads()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $isCronOrApi = (!empty($_GET['api_key']) || !empty($_SERVER['HTTP_X_API_KEY']));
+        if (!$isCronOrApi && empty($_SESSION['user_id'])) {
+            $this->checkAccess();
+        }
+
+        header('Content-Type: application/json; charset=utf-8');
+        set_time_limit(180);
+
+        try {
+            $currentUserId = isset($_SESSION['user']['id']) ? (int)$_SESSION['user']['id'] : null;
+            $synchronizer = new LeadSynchronizer($this->automationConfig, $currentUserId);
+            $pdo = $synchronizer->getDb();
+            $synchronizer->ensureSchema($pdo);
+
+            // Auto-revert any 'synced' or 'duplicate_skipped' logs whose linked lead was deleted from `leads` back to 'pending'
+            try {
+                $pdo->exec("
+                    UPDATE `whatsapp_leads_logs` w
+                    LEFT JOIN `leads` l ON w.synced_lead_id = l.id AND l.deleted_at IS NULL
+                    SET w.sync_status      = 'pending',
+                        w.synced_lead_id   = NULL,
+                        w.assigned_team_id = NULL,
+                        w.synced_at        = NULL,
+                        w.sync_note        = 'Lead deleted from system · Ready to re-sync'
+                    WHERE w.sync_status IN ('synced', 'duplicate_skipped')
+                      AND w.synced_lead_id IS NOT NULL
+                      AND l.id IS NULL
+                ");
+            } catch (Throwable $t) {}
+
+            $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+            $specificLogIds = !empty($input['log_ids']) && is_array($input['log_ids'])
+                ? array_values(array_filter(array_map('intval', $input['log_ids']), fn($id) => $id > 0))
+                : [];
+            $forceDuplicate = !empty($input['force_duplicate']);
+            $retrySkipped   = !empty($input['retry_skipped']);
+
+            // 0. Backup Plan: Automatically pull Today's leads from Replibee REST API into `whatsapp_leads_logs`
+            // (with duplicate check) before syncing to `leads`, unless syncing specific row IDs or skip_api_pull=1.
+            $apiPullStats = null;
+            if (empty($specificLogIds) && empty($input['skip_api_pull'])) {
+                try {
+                    $apiPullDateFilter = strtolower(trim((string)($input['api_date_filter'] ?? 'today')));
+                    $apiPullStats = $this->pullReplibeeLeadsFromRestApi($pdo, $synchronizer, $apiPullDateFilter ?: 'today', 2);
+                } catch (Throwable $apiEx) {
+                    $synchronizer->log("[WhatsApp Leads Sync] REST API backup pull warning: " . $apiEx->getMessage());
+                }
+            }
+
+            // 1. Fetch candidate log rows from `whatsapp_leads_logs`
+            if (!empty($specificLogIds)) {
+                $placeholders = implode(',', array_fill(0, count($specificLogIds), '?'));
+                $logStmt = $pdo->prepare("SELECT * FROM `whatsapp_leads_logs` WHERE `id` IN ({$placeholders}) ORDER BY `id` ASC");
+                $logStmt->execute($specificLogIds);
+            } elseif ($retrySkipped) {
+                $logStmt = $pdo->query("SELECT * FROM `whatsapp_leads_logs` WHERE `sync_status` IN ('pending', 'duplicate_skipped') ORDER BY `id` ASC");
+            } else {
+                $logStmt = $pdo->query("SELECT * FROM `whatsapp_leads_logs` WHERE `sync_status` = 'pending' ORDER BY `id` ASC");
+            }
+            $logsToSync = $logStmt ? $logStmt->fetchAll(PDO::FETCH_ASSOC) : [];
+
+            $totalCandidate = count($logsToSync);
+            if ($totalCandidate === 0) {
+                $globalPending = (int)$pdo->query("SELECT COUNT(*) FROM `whatsapp_leads_logs` WHERE `sync_status` = 'pending'")->fetchColumn();
+                $globalTotal   = (int)$pdo->query("SELECT COUNT(*) FROM `whatsapp_leads_logs`")->fetchColumn();
+                echo json_encode([
+                    'status'             => 'success',
+                    'message'            => 'No pending WhatsApp leads in logs table to sync. All caught up!',
+                    'inserted_count'     => 0,
+                    'skipped_duplicates' => 0,
+                    'invalid_count'      => 0,
+                    'total_processed'    => 0,
+                    'global_pending'     => $globalPending,
+                    'global_total'       => $globalTotal,
+                'api_pull_stats'     => $apiPullStats,
+                ]);
+                exit;
+            }
+
+            // 2. Pre-index existing non-deleted leads in `leads` for fast, accurate duplicate checking
+            // Rule: A lead is duplicate ONLY if the same customer (normalized phone or valid email)
+            // already exists for the SAME project_id (when project_id > 0) OR the SAME non-empty campaign_name (when project_id is null/0).
+            // Never match blank phones or NULL campaign_name!
+            $existingPhoneByProject  = [];
+            $existingPhoneByCampaign = [];
+            $existingEmailByProject  = [];
+
+            $dupStmt = $pdo->query("SELECT id, project_id, campaign_name, phone_number, phone, email FROM `leads` WHERE deleted_at IS NULL");
+            while ($row = $dupStmt->fetch(PDO::FETCH_ASSOC)) {
+                $leadId = (int)$row['id'];
+                $pId = (int)($row['project_id'] ?? 0);
+                $campLower = strtolower(trim((string)($row['campaign_name'] ?? '')));
+
+                foreach (['phone_number', 'phone'] as $f) {
+                    $normP = $this->normalizeWhatsAppPhone($row[$f] ?? '');
+                    if ($normP !== '') {
+                        if ($pId > 0) {
+                            $existingPhoneByProject[$normP . '_' . $pId] = $leadId;
+                        }
+                        if ($campLower !== '') {
+                            $existingPhoneByCampaign[$normP . '_' . $campLower] = $leadId;
+                        }
+                    }
+                }
+
+                $em = strtolower(trim((string)($row['email'] ?? '')));
+                if ($em !== '' && !in_array($em, ['1@gmail.com', 'a@b.com', 't@t.com', 'test@test.com'], true)) {
+                    if ($pId > 0) {
+                        $existingEmailByProject[$em . '_' . $pId] = $leadId;
+                    }
+                }
+            }
+
+            $insertedCount = 0;
+            $skippedDuplicates = 0;
+            $invalidCount = 0;
+
+            $updateLogStmt = $pdo->prepare("
+                UPDATE `whatsapp_leads_logs`
+                SET
+                    `phone_number`       = :phone_number,
+                    `campaign_name`      = :campaign_name,
+                    `sync_status`        = :sync_status,
+                    `sync_note`          = :sync_note,
+                    `synced_lead_id`     = :synced_lead_id,
+                    `matched_project_id` = :matched_project_id,
+                    `assigned_team_id`   = :assigned_team_id,
+                    `synced_at`          = NOW()
+                WHERE `id` = :id
+            ");
+
+            foreach ($logsToSync as $logRow) {
+                $logId = (int)$logRow['id'];
+
+                // If already synced and not explicitly forced, skip re-inserting
+                if (($logRow['sync_status'] ?? '') === 'synced' && !empty($logRow['synced_lead_id']) && !$forceDuplicate) {
+                    continue;
+                }
+
+                $fullName = trim((string)($logRow['full_name'] ?? ''));
+                $rawPhone = trim((string)($logRow['phone_number'] ?? ''));
+                $normPhone = $this->normalizeWhatsAppPhone($rawPhone);
+                $email = strtolower(trim((string)($logRow['email'] ?? '')));
+                $campaign = trim((string)($logRow['campaign_name'] ?? ''));
+                $projectInterest = trim((string)($logRow['project_interest'] ?? ''));
+                $sourcePage = trim((string)($logRow['source_page'] ?? ''));
+
+                // If phone or project was inside qa_json/raw_payload and not extracted earlier, try extracting now
+                if ($normPhone === '' && !empty($logRow['raw_payload'])) {
+                    if (preg_match('/(?:\+?88)?01[3-9]\d{8}/', (string)$logRow['raw_payload'], $m)) {
+                        $normPhone = $this->normalizeWhatsAppPhone($m[0]);
+                    }
+                }
+
+                if ($normPhone === '' && $email === '' && ($fullName === '' || $fullName === 'WhatsApp Lead')) {
+                    $invalidCount++;
+                    $updateLogStmt->execute([
+                        ':phone_number'       => $rawPhone ?: null,
+                        ':campaign_name'      => $campaign ?: 'WhatsApp Lead',
+                        ':sync_status'        => 'invalid',
+                        ':sync_note'          => 'Skipped: Missing valid phone number and customer name.',
+                        ':synced_lead_id'     => null,
+                        ':matched_project_id' => $logRow['matched_project_id'] ?: null,
+                        ':assigned_team_id'   => null,
+                        ':id'                 => $logId,
+                    ]);
+                    continue;
+                }
+
+                // Match Project & Eligible Active Teams via LeadSynchronizer
+                $secondaryText = trim($projectInterest . ' ' . $sourcePage . ' ' . ($logRow['qa_json'] ?? ''));
+                $projectMatch = $synchronizer->matchProject($campaign, $secondaryText);
+                $projectId = !empty($projectMatch['project_id']) ? (int)$projectMatch['project_id'] : null;
+
+                // If campaign was generic ("The Premium Homes Ltd" or "WhatsApp Lead") and a project matched, enrich campaign_name
+                if (!empty($projectMatch['project_name']) && $projectId !== null) {
+                    $campLowerCheck = strtolower($campaign);
+                    if ($campLowerCheck === '' || $campLowerCheck === 'whatsapp lead' || $campLowerCheck === 'the premium homes ltd' || $campLowerCheck === 'the premium homes ltd.') {
+                        $campaign = $projectMatch['project_name'] . ' (WhatsApp)';
+                    }
+                }
+                if ($campaign === '') {
+                    $campaign = 'WhatsApp Lead';
+                }
+                $campLower = strtolower($campaign);
+
+                // Smart Duplicate Check (unless user explicitly clicked Force Sync on this row)
+                $duplicateLeadId = null;
+                if (!$forceDuplicate) {
+                    if ($normPhone !== '') {
+                        if ($projectId !== null && $projectId > 0 && isset($existingPhoneByProject[$normPhone . '_' . $projectId])) {
+                            $duplicateLeadId = $existingPhoneByProject[$normPhone . '_' . $projectId];
+                        } elseif (($projectId === null || $projectId === 0) && $campLower !== '' && isset($existingPhoneByCampaign[$normPhone . '_' . $campLower])) {
+                            $duplicateLeadId = $existingPhoneByCampaign[$normPhone . '_' . $campLower];
+                        }
+                    }
+
+                    if ($duplicateLeadId === null && $email !== '' && !in_array($email, ['1@gmail.com', 'a@b.com', 't@t.com', 'test@test.com'], true)) {
+                        if ($projectId !== null && $projectId > 0 && isset($existingEmailByProject[$email . '_' . $projectId])) {
+                            $duplicateLeadId = $existingEmailByProject[$email . '_' . $projectId];
+                        }
+                    }
+                }
+
+                if ($duplicateLeadId !== null) {
+                    // Backfill `which_apartment_size_are_you_interested_in` on existing lead if missing
+                    $aptSizeVal = trim((string)($logRow['which_apartment_size_are_you_interested_in'] ?? ''));
+                    if ($aptSizeVal !== '') {
+                        try {
+                            $bfStmt = $pdo->prepare("
+                                UPDATE `leads`
+                                SET `which_apartment_size_are_you_interested_in` = ?
+                                WHERE `id` = ? AND (`which_apartment_size_are_you_interested_in` IS NULL OR `which_apartment_size_are_you_interested_in` = '')
+                            ");
+                            $bfStmt->execute([$aptSizeVal, $duplicateLeadId]);
+                        } catch (Throwable $t) {}
+                    }
+                    $skippedDuplicates++;
+                    $updateLogStmt->execute([
+                        ':phone_number'       => $normPhone !== '' ? $normPhone : ($rawPhone ?: null),
+                        ':campaign_name'      => $campaign,
+                        ':sync_status'        => 'duplicate_skipped',
+                        ':sync_note'          => "Duplicate skipped · Exists in Lead #LD-{$duplicateLeadId}",
+                        ':synced_lead_id'     => $duplicateLeadId,
+                        ':matched_project_id' => $projectId,
+                        ':assigned_team_id'   => null,
+                        ':id'                 => $logId,
+                    ]);
+                    continue;
+                }
+
+                // Resolve active Sales Team via Round-Robin
+                $eligibleTeams = $projectMatch['teams'] ?? [];
+                $teamId = $synchronizer->resolveNextTeamId($projectId, $eligibleTeams, $pdo);
+
+                $leadData = [
+                    'campaign_name'                            => $campaign,
+                    'platform'                                 => 'whatsapp',
+                    'which_apartment_size_are_you_interested_in' => $logRow['which_apartment_size_are_you_interested_in'] ?? null,
+                    'which_floor_are_you_for_shop'             => $logRow['which_floor_are_you_for_shop'] ?? null,
+                    'when_are_you_planning_to_buy'             => $logRow['when_are_you_planning_to_buy'] ?? null,
+                    'would_you_like_to_schedule_a_site_visit' => $logRow['would_you_like_to_schedule_a_site_visit'] ?? null,
+                    'when_is_the_best_time_to_contact_you'     => $logRow['when_is_the_best_time_to_contact_you'] ?? null,
+                    'full_name'                                => $fullName !== '' ? $fullName : 'WhatsApp Lead',
+                    'phone_number'                             => $normPhone !== '' ? $normPhone : ($rawPhone ?: null),
+                    'email'                                    => $email !== '' ? $email : null,
+                    'city'                                     => $logRow['city'] ?? null,
+                    'country'                                  => $logRow['country'] ?? 'Bangladesh',
+                    'address'                                  => $logRow['address'] ?? null,
+                    'project_id'                               => $projectId,
+                    'team_id'                                  => $teamId,
+                    'distribute'                               => 0,
+                    'is_automated'                             => 1,
+                    'is_repibee'                               => 1,
+                    'is_brocure_leads'                         => 0,
+                    'created_by'                               => $currentUserId,
+                    'created_at'                               => date('Y-m-d H:i:s'),
+                ];
+
+                $insertId = $synchronizer->insertLeadIntoDatabase($leadData, $pdo);
+                $insertedCount++;
+
+                // Update in-memory duplicate maps so duplicates within the same batch are also caught
+                if ($normPhone !== '') {
+                    if ($projectId !== null && $projectId > 0) {
+                        $existingPhoneByProject[$normPhone . '_' . $projectId] = $insertId;
+                    }
+                    if ($campLower !== '') {
+                        $existingPhoneByCampaign[$normPhone . '_' . $campLower] = $insertId;
+                    }
+                }
+                if ($email !== '' && $projectId !== null && $projectId > 0) {
+                    $existingEmailByProject[$email . '_' . $projectId] = $insertId;
+                }
+
+                $updateLogStmt->execute([
+                    ':phone_number'       => $normPhone !== '' ? $normPhone : ($rawPhone ?: null),
+                    ':campaign_name'      => $campaign,
+                    ':sync_status'        => 'synced',
+                    ':sync_note'          => "Synced to Lead #LD-{$insertId}",
+                    ':synced_lead_id'     => $insertId,
+                    ':matched_project_id' => $projectId,
+                    ':assigned_team_id'   => $teamId,
+                    ':id'                 => $logId,
+                ]);
+            }
+
+            $synchronizer->log(sprintf(
+                "[WhatsApp Leads Sync] Completed: %d processed -> %d newly inserted, %d duplicates skipped, %d invalid.",
+                $totalCandidate,
+                $insertedCount,
+                $skippedDuplicates,
+                $invalidCount
+            ));
+
+            $globalPending = (int)$pdo->query("SELECT COUNT(*) FROM `whatsapp_leads_logs` WHERE `sync_status` = 'pending'")->fetchColumn();
+            $globalTotal   = (int)$pdo->query("SELECT COUNT(*) FROM `whatsapp_leads_logs`")->fetchColumn();
+
+            echo json_encode([
+                'status'             => 'success',
+                'message'            => sprintf(
+                    "WhatsApp Leads Sync Completed! Processed %d log(s): %d newly inserted into Leads, %d duplicates skipped%s.",
+                    $totalCandidate,
+                    $insertedCount,
+                    $skippedDuplicates,
+                    $invalidCount > 0 ? ", {$invalidCount} invalid" : ""
+                ),
+                'inserted_count'     => $insertedCount,
+                'skipped_duplicates' => $skippedDuplicates,
+                'invalid_count'      => $invalidCount,
+                'total_processed'    => $totalCandidate,
+                'global_pending'     => $globalPending,
+                'global_total'       => $globalTotal,
+                'api_pull_stats'     => $apiPullStats,
+            ]);
+        } catch (Throwable $e) {
+            http_response_code(500);
+            echo json_encode([
+                'status'  => 'error',
+                'message' => 'WhatsApp Leads Sync Error: ' . $e->getMessage()
+            ]);
+        }
+        exit;
+    }
+    /**
+     * AJAX (Local Testing Helper): Simulate realistic incoming Replibee WhatsApp Webhook leads
+     * Inserts sample pending webhook leads into `whatsapp_leads_logs` so the user can test
+     * the Drawer inspection, Filtering, Duplicate Skipping, and Sync to `leads` locally in 1 click.
+     */
+    public function ajaxSimulateWhatsAppWebhook()
+    {
+        $this->checkAccess();
+        header('Content-Type: application/json; charset=utf-8');
+
+        try {
+            $synchronizer = new LeadSynchronizer($this->automationConfig);
+            $pdo = $synchronizer->getDb();
+            $synchronizer->ensureSchema($pdo);
+
+            $randSuffix = rand(100, 999);
+            $samplePayloads = [
+                [
+                    'full_name'        => 'Tanvir Hasan (Test WA)',
+                    'phone_number'     => '01711' . rand(100000, 999999),
+                    'email'            => 'tanvir.test' . $randSuffix . '@gmail.com',
+                    'campaign_name'    => 'The Premium Crown Tower || WhatsApp Bot',
+                    'project_interest' => 'The Premium Crown Tower | Ati Condominium',
+                    'source_page'      => 'The Premium Homes Ltd (WhatsApp)',
+                    'city'             => 'Mohammadpur, Dhaka',
+                    'country'          => 'Bangladesh',
+                    'address'          => 'Bosila Road, Mohammadpur',
+                    'apt_size'         => '1550 Sq.Ft (3 Bed)',
+                    'floor'            => '6th Floor',
+                    'plan_buy'         => 'Within 1-2 Months',
+                    'site_visit'       => 'Yes, this Friday afternoon',
+                    'best_time'        => 'Evening (6 PM - 9 PM)',
+                    'qa'               => [
+                        ['question' => 'আপনি কোন প্রজেক্টে আগ্রহী?', 'answer' => 'The Premium Crown Tower'],
+                        ['question' => 'কত স্কয়ার ফিটের অ্যাপার্টমেন্ট খুঁজছেন?', 'answer' => '1550 Sq.Ft (3 Bed)'],
+                        ['question' => 'আপনি কি সাইট ভিজিট করতে চান?', 'answer' => 'Yes, this Friday afternoon'],
+                        ['question' => 'যোগাযোগের উপযুক্ত সময় কোনটি?', 'answer' => 'Evening (6 PM - 9 PM)'],
+                    ],
+                ],
+                [
+                    'full_name'        => 'Farzana Rahman (Test WA)',
+                    'phone_number'     => '01819' . rand(100000, 999999),
+                    'email'            => 'farzana.wa' . $randSuffix . '@gmail.com',
+                    'campaign_name'    => 'The Premium Canvas of Happiness || Bashundhara',
+                    'project_interest' => 'The Premium Canvas of Happiness',
+                    'source_page'      => 'The Premium Homes Ltd (WhatsApp)',
+                    'city'             => 'Bashundhara R/A, Dhaka',
+                    'country'          => 'Bangladesh',
+                    'address'          => 'Block I, Bashundhara R/A',
+                    'apt_size'         => '2150 Sq.Ft',
+                    'floor'            => '8th Floor',
+                    'plan_buy'         => 'Immediate / Ready to Book',
+                    'site_visit'       => 'Yes, Saturday 11 AM',
+                    'best_time'        => 'Morning (10 AM - 1 PM)',
+                    'qa'               => [
+                        ['question' => 'Preferred Project', 'answer' => 'The Premium Canvas of Happiness'],
+                        ['question' => 'Apartment Size', 'answer' => '2150 Sq.Ft'],
+                        ['question' => 'Site Visit Schedule', 'answer' => 'Yes, Saturday 11 AM'],
+                    ],
+                ],
+            ];
+
+            $insStmt = $pdo->prepare("
+                INSERT INTO `whatsapp_leads_logs` (
+                    `full_name`, `phone_number`, `email`, `campaign_name`, `project_interest`, `source_page`,
+                    `city`, `country`, `address`,
+                    `which_apartment_size_are_you_interested_in`,
+                    `which_floor_are_you_for_shop`,
+                    `when_are_you_planning_to_buy`,
+                    `would_you_like_to_schedule_a_site_visit`,
+                    `when_is_the_best_time_to_contact_you`,
+                    `qa_json`, `raw_payload`,
+                    `sync_status`, `sync_note`, `matched_project_id`, `created_at`
+                ) VALUES (
+                    :full_name, :phone_number, :email, :campaign_name, :project_interest, :source_page,
+                    :city, :country, :address,
+                    :apt_size, :floor, :plan_buy, :site_visit, :best_time,
+                    :qa_json, :raw_payload,
+                    'pending', 'Simulated Replibee Webhook · Ready to sync', :matched_project_id, NOW()
+                )
+            ");
+
+            $insertedIds = [];
+            foreach ($samplePayloads as $sp) {
+                $m = $synchronizer->matchProject($sp['campaign_name'], $sp['project_interest']);
+                $rawPayload = [
+                    'event'   => 'lead.created',
+                    'source'  => ['page' => $sp['source_page'], 'platform' => 'whatsapp'],
+                    'contact' => ['name' => $sp['full_name'], 'phone' => $sp['phone_number'], 'email' => $sp['email']],
+                    'interest' => ['products' => [$sp['project_interest']]],
+                    'location' => ['city' => $sp['city'], 'country' => $sp['country'], 'address' => $sp['address']],
+                    'automation_data' => [$sp['qa']],
+                ];
+
+                $insStmt->execute([
+                    ':full_name'          => $sp['full_name'],
+                    ':phone_number'       => $sp['phone_number'],
+                    ':email'              => $sp['email'],
+                    ':campaign_name'      => $sp['campaign_name'],
+                    ':project_interest'   => $sp['project_interest'],
+                    ':source_page'        => $sp['source_page'],
+                    ':city'               => $sp['city'],
+                    ':country'            => $sp['country'],
+                    ':address'            => $sp['address'],
+                    ':apt_size'           => $sp['apt_size'],
+                    ':floor'              => $sp['floor'],
+                    ':plan_buy'           => $sp['plan_buy'],
+                    ':site_visit'         => $sp['site_visit'],
+                    ':best_time'          => $sp['best_time'],
+                    ':qa_json'            => json_encode($sp['qa'], JSON_UNESCAPED_UNICODE),
+                    ':raw_payload'        => json_encode($rawPayload, JSON_UNESCAPED_UNICODE),
+                    ':matched_project_id' => $m['project_id'] ?? null,
+                ]);
+                $insertedIds[] = (int)$pdo->lastInsertId();
+            }
+
+            $globalPending = (int)$pdo->query("SELECT COUNT(*) FROM `whatsapp_leads_logs` WHERE `sync_status` = 'pending'")->fetchColumn();
+            $globalTotal   = (int)$pdo->query("SELECT COUNT(*) FROM `whatsapp_leads_logs`")->fetchColumn();
+
+            echo json_encode([
+                'status'         => 'success',
+                'message'        => 'Simulated 2 incoming Replibee WhatsApp webhook leads into whatsapp_leads_logs (Pending Sync)!',
+                'inserted_ids'   => $insertedIds,
+                'global_pending' => $globalPending,
+                'global_total'   => $globalTotal,
+            ]);
+        } catch (Throwable $e) {
+            http_response_code(500);
+            echo json_encode([
+                'status'  => 'error',
+                'message' => 'Simulation failed: ' . $e->getMessage()
+            ]);
+        }
         exit;
     }
 
@@ -2024,7 +3332,7 @@ class LeadAutomationController extends Controller
             foreach ($allProjects as $proj) {
                 $pid = (int)$proj['id'];
                 $pNameLower = strtolower(trim($proj['name']));
-                if ($pNameLower === 'in progress' || str_contains($pNameLower, 'test project')) {
+                if ($pNameLower === 'in progress' || strpos($pNameLower, 'test project') !== false) {
                     continue;
                 }
                 if (($proj['project_sale_status'] ?? '') === 'On Sale' && !isset($configuredProjectIds[$pid])) {
@@ -2131,24 +3439,13 @@ class LeadAutomationController extends Controller
 
             $synchronizer->clearProjectCache();
 
-            // Optionally re-match existing automated "Common" leads (project_id IS NULL OR project_id = 0)
+            // Re-match existing automated "Common" leads (project_id IS NULL OR project_id = 0)
             $rematchedCount = 0;
-            if ($rematchCommon && $isActive === 1) {
-                $commonStmt = $pdo->query("SELECT id, campaign_name, team_id FROM `leads` WHERE deleted_at IS NULL AND is_automated = 1 AND (project_id IS NULL OR project_id = 0)");
-                $commonLeads = $commonStmt ? $commonStmt->fetchAll(PDO::FETCH_ASSOC) : [];
-                foreach ($commonLeads as $cLead) {
-                    $m = $synchronizer->matchProject((string)($cLead['campaign_name'] ?? ''));
-                    if (!empty($m['project_id']) && (int)$m['project_id'] === $projectId) {
-                        $existingTeam = (int)($cLead['team_id'] ?? 0);
-                        $newTeamId = $existingTeam > 0 ? $existingTeam : $synchronizer->resolveNextTeamId($projectId, $teamIds, $pdo);
-                        $uStmt = $pdo->prepare("UPDATE `leads` SET `project_id` = ?, `team_id` = ? WHERE `id` = ?");
-                        $uStmt->execute([$projectId, $newTeamId, (int)$cLead['id']]);
-                        $rematchedCount++;
-                    }
-                }
+            if ($isActive === 1) {
+                $rematchedCount = $synchronizer->rematchUnassignedCommonLeads($pdo);
             }
 
-            $extraMsg = $rematchedCount > 0 ? " Also auto-matched {$rematchedCount} Common lead(s) to {$projectName}!" : "";
+            $extraMsg = $rematchedCount > 0 ? " Also auto-matched {$rematchedCount} Common lead(s)!" : "";
 
             echo json_encode([
                 'status'          => 'success',
@@ -2191,6 +3488,9 @@ class LeadAutomationController extends Controller
             $stmt->execute([$isActive, $userId, $projectId]);
 
             $synchronizer->clearProjectCache();
+            if ($isActive === 1) {
+                $synchronizer->rematchUnassignedCommonLeads($pdo);
+            }
 
             echo json_encode([
                 'status'  => 'success',

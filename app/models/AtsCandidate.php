@@ -3,10 +3,61 @@
 class AtsCandidate extends Model
 {
     protected $table = 'ats_candidates';
+    private static bool $schemaChecked = false;
 
     public function __construct($db = null)
     {
         parent::__construct($db);
+        $this->ensureSchemaUpdated();
+    }
+
+    /**
+     * Ensure new columns and hired VARCHAR(50) exist on ats_candidates
+     */
+    private function ensureSchemaUpdated(): void
+    {
+        if (self::$schemaChecked || !$this->db) {
+            return;
+        }
+        self::$schemaChecked = true;
+
+        $res = $this->db->query("SHOW COLUMNS FROM `{$this->table}`");
+        if (!$res) {
+            return;
+        }
+
+        $cols = [];
+        $hiredType = '';
+        while ($row = $res->fetch_assoc()) {
+            $cols[$row['Field']] = true;
+            if ($row['Field'] === 'hired') {
+                $hiredType = strtolower($row['Type'] ?? '');
+            }
+        }
+
+        $alterParts = [];
+        if (strpos($hiredType, 'enum') !== false) {
+            $alterParts[] = "MODIFY COLUMN `hired` VARCHAR(50) DEFAULT 'Decision Pending'";
+        }
+        if (!isset($cols['current_salary'])) {
+            $alterParts[] = "ADD COLUMN `current_salary` DECIMAL(12,2) DEFAULT NULL AFTER `cv_drive_link`";
+        }
+        if (!isset($cols['expected_salary'])) {
+            $alterParts[] = "ADD COLUMN `expected_salary` DECIMAL(12,2) DEFAULT NULL AFTER `current_salary`";
+        }
+        if (!isset($cols['bottom_line_salary'])) {
+            $alterParts[] = "ADD COLUMN `bottom_line_salary` DECIMAL(12,2) DEFAULT NULL AFTER `expected_salary`";
+        }
+        if (!isset($cols['notice_period'])) {
+            $alterParts[] = "ADD COLUMN `notice_period` VARCHAR(30) DEFAULT NULL COMMENT 'Yes, Immediate Joiner' AFTER `bottom_line_salary`";
+        }
+        if (!isset($cols['notice_period_days'])) {
+            $alterParts[] = "ADD COLUMN `notice_period_days` INT DEFAULT NULL COMMENT 'Notice period time in days' AFTER `notice_period`";
+        }
+
+        if (!empty($alterParts)) {
+            $this->db->query("ALTER TABLE `{$this->table}` " . implode(", ", $alterParts));
+        }
     }
 
     /**
@@ -326,6 +377,7 @@ class AtsCandidate extends Model
                 interview_call_date, interview_date, interview_time, interview_location,
                 email_sent, sms_sent, interview_attendance,
                 cv_source, cv_file_path, cv_drive_link,
+                current_salary, expected_salary, bottom_line_salary, notice_period, notice_period_days,
                 hired, joining_date, onboarding_salary, entry_mode, created_by
             ) VALUES (
                 ?, ?, ?, ?, ?, ?,
@@ -333,6 +385,7 @@ class AtsCandidate extends Model
                 ?, ?, ?, ?,
                 ?, ?, ?,
                 ?, ?, ?,
+                ?, ?, ?, ?, ?,
                 ?, ?, ?, ?, ?
             )
         ");
@@ -364,20 +417,37 @@ class AtsCandidate extends Model
         $cvSource = in_array($data['cv_source'] ?? '', ['file', 'drive_link']) ? $data['cv_source'] : 'file';
         $cvFilePath = !empty($data['cv_file_path']) ? $data['cv_file_path'] : null;
         $cvDriveLink = !empty($data['cv_drive_link']) ? $data['cv_drive_link'] : null;
+
+        $currentSalary = (isset($data['current_salary']) && $data['current_salary'] !== '' && $data['current_salary'] !== null) ? (float) $data['current_salary'] : null;
+        $expectedSalary = (isset($data['expected_salary']) && $data['expected_salary'] !== '' && $data['expected_salary'] !== null) ? (float) $data['expected_salary'] : null;
+        $bottomLineSalary = (isset($data['bottom_line_salary']) && $data['bottom_line_salary'] !== '' && $data['bottom_line_salary'] !== null) ? (float) $data['bottom_line_salary'] : null;
+        $noticePeriod = in_array($data['notice_period'] ?? '', ['Yes', 'Immediate Joiner'], true) ? $data['notice_period'] : null;
+        $noticePeriodDays = (isset($data['notice_period_days']) && $data['notice_period_days'] !== '' && $data['notice_period_days'] !== null) ? (int) $data['notice_period_days'] : null;
         
-        $hired = in_array($data['hired'] ?? '', ['yes', 'no']) ? $data['hired'] : 'pending';
+        $allowedHired = [
+            'Decision Pending',
+            'Not Selected',
+            'Job Offered - Pending',
+            'Job Offered - Accepted',
+            'Job Offered - Rejected',
+            'Joined',
+            'Absent on Joining Day',
+            'pending', 'yes', 'no'
+        ];
+        $hired = in_array($data['hired'] ?? '', $allowedHired, true) ? $data['hired'] : 'Decision Pending';
         $joiningDate = !empty($data['joining_date']) ? $data['joining_date'] : null;
         $onboardingSalary = !empty($data['onboarding_salary']) ? (float) $data['onboarding_salary'] : null;
         $entryMode = in_array($data['entry_mode'] ?? '', ['single', 'csv', 'ai']) ? $data['entry_mode'] : 'single';
         $createdBy = !empty($data['created_by']) ? (int) $data['created_by'] : null;
 
         $stmt->bind_param(
-            "sssssssssssssiissssssdsi",
+            "sssssssssssssiissssdddsissdsi",
             $name, $phone, $email, $position, $department, $source,
             $invitationStatus, $referredBy, $remarks,
             $interviewCallDate, $interviewDate, $interviewTime, $interviewLocation,
             $emailSent, $smsSent, $interviewAttendance,
             $cvSource, $cvFilePath, $cvDriveLink,
+            $currentSalary, $expectedSalary, $bottomLineSalary, $noticePeriod, $noticePeriodDays,
             $hired, $joiningDate, $onboardingSalary, $entryMode, $createdBy
         );
 
@@ -401,6 +471,7 @@ class AtsCandidate extends Model
                 interview_call_date = ?, interview_date = ?, interview_time = ?, interview_location = ?,
                 email_sent = ?, sms_sent = ?, interview_attendance = ?,
                 cv_source = ?, cv_file_path = COALESCE(?, cv_file_path), cv_drive_link = ?,
+                current_salary = ?, expected_salary = ?, bottom_line_salary = ?, notice_period = ?, notice_period_days = ?,
                 hired = ?, joining_date = ?, onboarding_salary = ?
             WHERE id = ?
         ");
@@ -432,18 +503,35 @@ class AtsCandidate extends Model
         $cvSource = in_array($data['cv_source'] ?? '', ['file', 'drive_link']) ? $data['cv_source'] : 'file';
         $cvFilePath = !empty($data['cv_file_path']) ? $data['cv_file_path'] : null;
         $cvDriveLink = !empty($data['cv_drive_link']) ? $data['cv_drive_link'] : null;
+
+        $currentSalary = (isset($data['current_salary']) && $data['current_salary'] !== '' && $data['current_salary'] !== null) ? (float) $data['current_salary'] : null;
+        $expectedSalary = (isset($data['expected_salary']) && $data['expected_salary'] !== '' && $data['expected_salary'] !== null) ? (float) $data['expected_salary'] : null;
+        $bottomLineSalary = (isset($data['bottom_line_salary']) && $data['bottom_line_salary'] !== '' && $data['bottom_line_salary'] !== null) ? (float) $data['bottom_line_salary'] : null;
+        $noticePeriod = in_array($data['notice_period'] ?? '', ['Yes', 'Immediate Joiner'], true) ? $data['notice_period'] : null;
+        $noticePeriodDays = (isset($data['notice_period_days']) && $data['notice_period_days'] !== '' && $data['notice_period_days'] !== null) ? (int) $data['notice_period_days'] : null;
         
-        $hired = in_array($data['hired'] ?? '', ['yes', 'no']) ? $data['hired'] : 'pending';
+        $allowedHired = [
+            'Decision Pending',
+            'Not Selected',
+            'Job Offered - Pending',
+            'Job Offered - Accepted',
+            'Job Offered - Rejected',
+            'Joined',
+            'Absent on Joining Day',
+            'pending', 'yes', 'no'
+        ];
+        $hired = in_array($data['hired'] ?? '', $allowedHired, true) ? $data['hired'] : 'Decision Pending';
         $joiningDate = !empty($data['joining_date']) ? $data['joining_date'] : null;
         $onboardingSalary = !empty($data['onboarding_salary']) ? (float) $data['onboarding_salary'] : null;
 
         $stmt->bind_param(
-            "sssssssssssssiissssssdi",
+            "sssssssssssssiissssdddsissdi",
             $name, $phone, $email, $position, $department, $source,
             $invitationStatus, $referredBy, $remarks,
             $interviewCallDate, $interviewDate, $interviewTime, $interviewLocation,
             $emailSent, $smsSent, $interviewAttendance,
             $cvSource, $cvFilePath, $cvDriveLink,
+            $currentSalary, $expectedSalary, $bottomLineSalary, $noticePeriod, $noticePeriodDays,
             $hired, $joiningDate, $onboardingSalary, $id
         );
 
@@ -464,6 +552,8 @@ class AtsCandidate extends Model
             'invitation_status', 'interview_attendance', 'hired', 
             'interview_date', 'interview_time', 'interview_location',
             'interview_call_date', 'email_sent', 'sms_sent', 'remarks',
+            'current_salary', 'expected_salary', 'bottom_line_salary',
+            'notice_period', 'notice_period_days',
             'joining_date', 'onboarding_salary',
             'cv_source', 'cv_file_path', 'cv_drive_link'
         ];
@@ -474,6 +564,8 @@ class AtsCandidate extends Model
         $nullableFields = [
             'interview_date', 'interview_time', 'interview_location',
             'interview_call_date', 'joining_date', 'onboarding_salary',
+            'current_salary', 'expected_salary', 'bottom_line_salary',
+            'notice_period', 'notice_period_days',
             'remarks'
         ];
         if (in_array($fieldName, $nullableFields) && ($fieldValue === '' || $fieldValue === null)) {
@@ -580,7 +672,17 @@ class AtsCandidate extends Model
             $types .= "s";
         }
 
-        if (isset($updates['hired']) && in_array($updates['hired'], ['pending', 'yes', 'no'])) {
+        $allowedHired = [
+            'Decision Pending',
+            'Not Selected',
+            'Job Offered - Pending',
+            'Job Offered - Accepted',
+            'Job Offered - Rejected',
+            'Joined',
+            'Absent on Joining Day',
+            'pending', 'yes', 'no'
+        ];
+        if (isset($updates['hired']) && in_array($updates['hired'], $allowedHired, true)) {
             $setClauses[] = "hired = ?";
             $params[] = $updates['hired'];
             $types .= "s";
