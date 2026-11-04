@@ -534,6 +534,7 @@ $renderPaginationBar = function($position = 'bottom') use ($total, $currentPage,
                         <?php 
                         $hireItems = [
                             ['value' => 'Decision Pending', 'label' => 'Decision Pending'],
+                            ['value' => 'Not Selected', 'label' => 'Not Selected'],
                             ['value' => 'Job Offered - Pending', 'label' => 'Job Offered - Pending'],
                             ['value' => 'Job Offered - Accepted', 'label' => 'Job Offered - Accepted'],
                             ['value' => 'Job Offered - Rejected', 'label' => 'Job Offered - Rejected'],
@@ -818,13 +819,15 @@ $renderPaginationBar = function($position = 'bottom') use ($total, $currentPage,
                                     $hiredVal = $c['hired'] ?? 'Decision Pending';
                                     if ($hiredVal === 'pending' || $hiredVal === '') $hiredVal = 'Decision Pending';
                                     elseif ($hiredVal === 'yes') $hiredVal = 'Joined';
-                                    elseif ($hiredVal === 'no') $hiredVal = 'Job Offered - Rejected';
+                                    elseif ($hiredVal === 'no') $hiredVal = 'Not Selected';
 
                                     $hiredBgClass = '';
                                     if (in_array($hiredVal, ['Joined', 'Job Offered - Accepted'], true)) {
                                         $hiredBgClass = 'bg-success text-white';
                                     } elseif (in_array($hiredVal, ['Job Offered - Rejected', 'Absent on Joining Day'], true)) {
                                         $hiredBgClass = 'bg-danger text-white';
+                                    } elseif ($hiredVal === 'Not Selected') {
+                                        $hiredBgClass = 'bg-secondary text-white';
                                     } elseif ($hiredVal === 'Job Offered - Pending') {
                                         $hiredBgClass = 'bg-warning text-dark';
                                     }
@@ -833,6 +836,7 @@ $renderPaginationBar = function($position = 'bottom') use ($total, $currentPage,
                                             onchange="quickUpdateField(<?= $c['id'] ?>, 'hired', this.value, this)"
                                             style="font-size: 0.78rem; font-weight: 500;">
                                         <option value="Decision Pending" <?= ($hiredVal === 'Decision Pending') ? 'selected' : '' ?>>Decision Pending</option>
+                                        <option value="Not Selected" <?= ($hiredVal === 'Not Selected') ? 'selected' : '' ?>>Not Selected</option>
                                         <option value="Job Offered - Pending" <?= ($hiredVal === 'Job Offered - Pending') ? 'selected' : '' ?>>Job Offered - Pending</option>
                                         <option value="Job Offered - Accepted" <?= ($hiredVal === 'Job Offered - Accepted') ? 'selected' : '' ?>>Job Offered - Accepted</option>
                                         <option value="Job Offered - Rejected" <?= ($hiredVal === 'Job Offered - Rejected') ? 'selected' : '' ?>>Job Offered - Rejected</option>
@@ -1150,6 +1154,7 @@ $renderPaginationBar = function($position = 'bottom') use ($total, $currentPage,
                                 <label class="form-label small fw-semibold">Final Selection (Hired)</label>
                                 <select name="hired" id="cHired" class="form-select form-select-sm">
                                     <option value="Decision Pending" selected>Decision Pending</option>
+                                    <option value="Not Selected">Not Selected</option>
                                     <option value="Job Offered - Pending">Job Offered - Pending</option>
                                     <option value="Job Offered - Accepted">Job Offered - Accepted</option>
                                     <option value="Job Offered - Rejected">Job Offered - Rejected</option>
@@ -1288,6 +1293,7 @@ $renderPaginationBar = function($position = 'bottom') use ($total, $currentPage,
                     <label class="form-label small fw-semibold">Select Final Decision</label>
                     <select id="bulkHiredValue" class="form-select">
                         <option value="Decision Pending">Decision Pending</option>
+                        <option value="Not Selected">Not Selected</option>
                         <option value="Job Offered - Pending">Job Offered - Pending</option>
                         <option value="Job Offered - Accepted">Job Offered - Accepted</option>
                         <option value="Job Offered - Rejected">Job Offered - Rejected</option>
@@ -1688,7 +1694,7 @@ function openEditModal(id) {
             document.getElementById('cNoticePeriod').value = c.notice_period || '';
             document.getElementById('cNoticePeriodDays').value = (c.notice_period_days !== null && c.notice_period_days !== undefined) ? c.notice_period_days : '';
 
-            const legacyHiredMap = { 'pending': 'Decision Pending', 'yes': 'Joined', 'no': 'Job Offered - Rejected' };
+            const legacyHiredMap = { 'pending': 'Decision Pending', 'yes': 'Joined', 'no': 'Not Selected' };
             document.getElementById('cHired').value = legacyHiredMap[c.hired] || c.hired || 'Decision Pending';
             document.getElementById('cJoiningDate').value = c.joining_date || '';
             document.getElementById('cSalary').value = c.onboarding_salary || '';
@@ -1763,6 +1769,7 @@ function quickUpdateField(id, field, value, element = null) {
                 element.classList.remove('bg-success', 'bg-danger', 'bg-warning', 'bg-secondary', 'text-white', 'text-dark');
                 if (value === 'Joined' || value === 'Job Offered - Accepted') element.classList.add('bg-success', 'text-white');
                 else if (value === 'Job Offered - Rejected' || value === 'Absent on Joining Day') element.classList.add('bg-danger', 'text-white');
+                else if (value === 'Not Selected') element.classList.add('bg-secondary', 'text-white');
                 else if (value === 'Job Offered - Pending') element.classList.add('bg-warning', 'text-dark');
             }
             // Flash toast notification safely
