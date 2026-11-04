@@ -533,9 +533,12 @@ $renderPaginationBar = function($position = 'bottom') use ($total, $currentPage,
                         </label>
                         <?php 
                         $hireItems = [
-                            ['value' => 'pending', 'label' => 'Pending'],
-                            ['value' => 'yes', 'label' => 'Hired / Selected'],
-                            ['value' => 'no', 'label' => 'Not Selected'],
+                            ['value' => 'Decision Pending', 'label' => 'Decision Pending'],
+                            ['value' => 'Job Offered - Pending', 'label' => 'Job Offered - Pending'],
+                            ['value' => 'Job Offered - Accepted', 'label' => 'Job Offered - Accepted'],
+                            ['value' => 'Job Offered - Rejected', 'label' => 'Job Offered - Rejected'],
+                            ['value' => 'Joined', 'label' => 'Joined'],
+                            ['value' => 'Absent on Joining Day', 'label' => 'Absent on Joining Day'],
                         ];
                         $renderMultiDropdown('hire_st', 'hired', 'All Decisions', $hireItems, $filters['hired'], false); 
                         ?>
@@ -811,14 +814,32 @@ $renderPaginationBar = function($position = 'bottom') use ($total, $currentPage,
 
                                 <!-- Hired Status -->
                                 <td>
-                                    <select class="form-select form-select-sm py-1 <?= ($c['hired'] === 'yes') ? 'bg-success text-white' : (($c['hired'] === 'no') ? 'bg-secondary text-white' : '') ?>" 
+                                    <?php
+                                    $hiredVal = $c['hired'] ?? 'Decision Pending';
+                                    if ($hiredVal === 'pending' || $hiredVal === '') $hiredVal = 'Decision Pending';
+                                    elseif ($hiredVal === 'yes') $hiredVal = 'Joined';
+                                    elseif ($hiredVal === 'no') $hiredVal = 'Job Offered - Rejected';
+
+                                    $hiredBgClass = '';
+                                    if (in_array($hiredVal, ['Joined', 'Job Offered - Accepted'], true)) {
+                                        $hiredBgClass = 'bg-success text-white';
+                                    } elseif (in_array($hiredVal, ['Job Offered - Rejected', 'Absent on Joining Day'], true)) {
+                                        $hiredBgClass = 'bg-danger text-white';
+                                    } elseif ($hiredVal === 'Job Offered - Pending') {
+                                        $hiredBgClass = 'bg-warning text-dark';
+                                    }
+                                    ?>
+                                    <select class="form-select form-select-sm py-1 <?= $hiredBgClass ?>" 
                                             onchange="quickUpdateField(<?= $c['id'] ?>, 'hired', this.value, this)"
                                             style="font-size: 0.78rem; font-weight: 500;">
-                                        <option value="pending" <?= ($c['hired'] === 'pending') ? 'selected' : '' ?>>Pending</option>
-                                        <option value="yes" <?= ($c['hired'] === 'yes') ? 'selected' : '' ?>>Hired</option>
-                                        <option value="no" <?= ($c['hired'] === 'no') ? 'selected' : '' ?>>Not Selected</option>
+                                        <option value="Decision Pending" <?= ($hiredVal === 'Decision Pending') ? 'selected' : '' ?>>Decision Pending</option>
+                                        <option value="Job Offered - Pending" <?= ($hiredVal === 'Job Offered - Pending') ? 'selected' : '' ?>>Job Offered - Pending</option>
+                                        <option value="Job Offered - Accepted" <?= ($hiredVal === 'Job Offered - Accepted') ? 'selected' : '' ?>>Job Offered - Accepted</option>
+                                        <option value="Job Offered - Rejected" <?= ($hiredVal === 'Job Offered - Rejected') ? 'selected' : '' ?>>Job Offered - Rejected</option>
+                                        <option value="Joined" <?= ($hiredVal === 'Joined') ? 'selected' : '' ?>>Joined</option>
+                                        <option value="Absent on Joining Day" <?= ($hiredVal === 'Absent on Joining Day') ? 'selected' : '' ?>>Absent on Joining Day</option>
                                     </select>
-                                    <?php if ($c['hired'] === 'yes' && !empty($c['onboarding_salary'])): ?>
+                                    <?php if (in_array($hiredVal, ['Joined', 'Job Offered - Accepted'], true) && !empty($c['onboarding_salary'])): ?>
                                         <div class="text-success fw-bold mt-1" style="font-size: 0.7rem;">
                                             ৳ <?= number_format($c['onboarding_salary'], 0) ?>
                                         </div>
@@ -1088,22 +1109,64 @@ $renderPaginationBar = function($position = 'bottom') use ($total, $currentPage,
                         <span class="badge px-3 py-1 mb-2 fw-semibold rounded-pill" style="background: rgba(245, 158, 11, 0.15); color: #b45309; font-size: 0.78rem;">
                             <i class="fa-solid fa-handshake me-1"></i> 5. Hiring & Onboarding Decision
                         </span>
-                        <div class="row">
+                        <div class="row g-2">
                             <div class="col-md-4">
-                                <label class="form-label small fw-semibold">Final Selection (Hired)</label>
-                                <select name="hired" id="cHired" class="form-select form-select-sm">
-                                    <option value="pending">Decision Pending</option>
-                                    <option value="yes">Yes - Selected / Hired</option>
-                                    <option value="no">No - Not Selected</option>
+                                <label class="form-label small fw-semibold">Current/Last Salary (BDT)</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text">৳</span>
+                                    <input type="number" min="0" step="0.01" name="current_salary" id="cCurrentSalary" class="form-control form-control-sm" placeholder="e.g. 25000">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Expected Salary (BDT)</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text">৳</span>
+                                    <input type="number" min="0" step="0.01" name="expected_salary" id="cExpectedSalary" class="form-control form-control-sm" placeholder="e.g. 35000">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Negotiated Bottom-line Salary (BDT)</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text">৳</span>
+                                    <input type="number" min="0" step="0.01" name="bottom_line_salary" id="cBottomLineSalary" class="form-control form-control-sm" placeholder="e.g. 30000">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Notice Period</label>
+                                <select name="notice_period" id="cNoticePeriod" class="form-select form-select-sm">
+                                    <option value="" selected>-- Select Notice Period --</option>
+                                    <option value="Yes">Yes</option>
+                                    <option value="Immediate Joiner">Immediate Joiner</option>
                                 </select>
                             </div>
                             <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Notice Period Time (Days)</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="number" min="0" step="1" name="notice_period_days" id="cNoticePeriodDays" class="form-control form-control-sm" placeholder="e.g. 30">
+                                    <span class="input-group-text">Days</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Final Selection (Hired)</label>
+                                <select name="hired" id="cHired" class="form-select form-select-sm">
+                                    <option value="Decision Pending" selected>Decision Pending</option>
+                                    <option value="Job Offered - Pending">Job Offered - Pending</option>
+                                    <option value="Job Offered - Accepted">Job Offered - Accepted</option>
+                                    <option value="Job Offered - Rejected">Job Offered - Rejected</option>
+                                    <option value="Joined">Joined</option>
+                                    <option value="Absent on Joining Day">Absent on Joining Day</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
                                 <label class="form-label small fw-semibold">Expected Joining Date</label>
                                 <input type="date" name="joining_date" id="cJoiningDate" class="form-control form-control-sm">
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label class="form-label small fw-semibold">Onboarding Salary (BDT)</label>
-                                <input type="number" step="0.01" name="onboarding_salary" id="cSalary" class="form-control form-control-sm" placeholder="e.g. 35000">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text">৳</span>
+                                    <input type="number" min="0" step="0.01" name="onboarding_salary" id="cSalary" class="form-control form-control-sm" placeholder="e.g. 35000">
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1224,9 +1287,12 @@ $renderPaginationBar = function($position = 'bottom') use ($total, $currentPage,
                 <div id="bulkHiredSection" class="d-none">
                     <label class="form-label small fw-semibold">Select Final Decision</label>
                     <select id="bulkHiredValue" class="form-select">
-                        <option value="yes">Hired / Selected</option>
-                        <option value="no">Not Selected</option>
-                        <option value="pending">Pending</option>
+                        <option value="Decision Pending">Decision Pending</option>
+                        <option value="Job Offered - Pending">Job Offered - Pending</option>
+                        <option value="Job Offered - Accepted">Job Offered - Accepted</option>
+                        <option value="Job Offered - Rejected">Job Offered - Rejected</option>
+                        <option value="Joined">Joined</option>
+                        <option value="Absent on Joining Day">Absent on Joining Day</option>
                     </select>
                 </div>
 
@@ -1616,7 +1682,14 @@ function openEditModal(id) {
                 document.getElementById('existingCvNotice').classList.add('d-none');
             }
 
-            document.getElementById('cHired').value = c.hired || 'pending';
+            document.getElementById('cCurrentSalary').value = (c.current_salary !== null && c.current_salary !== undefined) ? c.current_salary : '';
+            document.getElementById('cExpectedSalary').value = (c.expected_salary !== null && c.expected_salary !== undefined) ? c.expected_salary : '';
+            document.getElementById('cBottomLineSalary').value = (c.bottom_line_salary !== null && c.bottom_line_salary !== undefined) ? c.bottom_line_salary : '';
+            document.getElementById('cNoticePeriod').value = c.notice_period || '';
+            document.getElementById('cNoticePeriodDays').value = (c.notice_period_days !== null && c.notice_period_days !== undefined) ? c.notice_period_days : '';
+
+            const legacyHiredMap = { 'pending': 'Decision Pending', 'yes': 'Joined', 'no': 'Job Offered - Rejected' };
+            document.getElementById('cHired').value = legacyHiredMap[c.hired] || c.hired || 'Decision Pending';
             document.getElementById('cJoiningDate').value = c.joining_date || '';
             document.getElementById('cSalary').value = c.onboarding_salary || '';
 
@@ -1687,9 +1760,10 @@ function quickUpdateField(id, field, value, element = null) {
                 if (value === 'absent') element.classList.add('bg-danger', 'text-white');
             }
             if (element && field === 'hired') {
-                element.classList.remove('bg-success', 'bg-secondary', 'text-white');
-                if (value === 'yes') element.classList.add('bg-success', 'text-white');
-                if (value === 'no') element.classList.add('bg-secondary', 'text-white');
+                element.classList.remove('bg-success', 'bg-danger', 'bg-warning', 'bg-secondary', 'text-white', 'text-dark');
+                if (value === 'Joined' || value === 'Job Offered - Accepted') element.classList.add('bg-success', 'text-white');
+                else if (value === 'Job Offered - Rejected' || value === 'Absent on Joining Day') element.classList.add('bg-danger', 'text-white');
+                else if (value === 'Job Offered - Pending') element.classList.add('bg-warning', 'text-dark');
             }
             // Flash toast notification safely
             atsShowToast('Updated successfully!');
