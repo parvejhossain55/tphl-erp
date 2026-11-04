@@ -426,6 +426,7 @@ class AtsCandidate extends Model
         
         $allowedHired = [
             'Decision Pending',
+            'Not Selected',
             'Job Offered - Pending',
             'Job Offered - Accepted',
             'Job Offered - Rejected',
@@ -511,6 +512,7 @@ class AtsCandidate extends Model
         
         $allowedHired = [
             'Decision Pending',
+            'Not Selected',
             'Job Offered - Pending',
             'Job Offered - Accepted',
             'Job Offered - Rejected',
@@ -672,6 +674,7 @@ class AtsCandidate extends Model
 
         $allowedHired = [
             'Decision Pending',
+            'Not Selected',
             'Job Offered - Pending',
             'Job Offered - Accepted',
             'Job Offered - Rejected',
