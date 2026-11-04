@@ -1185,6 +1185,11 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
                     <span>Live Sheet</span> <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 10px;"></i>
                 </a>
             <?php endif; ?>
+            <?php if ($canViewLiveSheet && !empty($google_form_sheet_url)): ?>
+                <a href="<?= htmlspecialchars($google_form_sheet_url) ?>" target="_blank" class="btn btn-sm d-inline-flex align-items-center gap-1 text-decoration-none" style="font-size: 12px; font-weight: 600; height: 32px; padding: 0 10px; white-space: nowrap; background: #fffbeb; border: 1px solid #f59e0b; color: #b45309;" title="Open Google Form Leads Sheet in new tab">
+                    <span>Form Sheet</span> <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 10px;"></i>
+                </a>
+            <?php endif; ?>
             <a href="<?= $GLOBALS['base_url'] ?>/lead-automation/team-project-setup" id="btnTeamProjectSetup" class="btn btn-dark btn-sm fw-bold d-inline-flex align-items-center gap-1 text-decoration-none" style="height: 32px; padding: 0 11px; font-size: 12px; background: #0f172a; border-color: #0f172a; color: #ffffff; white-space: nowrap;" title="Manage Project Keywords & Monthly Team Round-Robin Allocations">
                 <i class="fa-solid fa-sliders" style="font-size: 11px;"></i>
                 <span>Team & Project Setup</span>
@@ -1193,6 +1198,11 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
                 <span id="btnScrapeSpinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
                 <i id="btnScrapeIcon" class="fa-solid fa-cloud-arrow-down" style="font-size: 11px;"></i>
                 <span>Sync Google Sheet</span>
+            </button>
+            <button id="btnSyncGoogleForm" class="btn btn-sm fw-bold d-inline-flex align-items-center gap-1 text-white" style="height: 32px; padding: 0 11px; font-size: 12px; background: #d97706; border-color: #d97706; white-space: nowrap;" onclick="triggerGoogleFormSync()" title="Sync Google Form Leads from Google Sheet">
+                <span id="btnGoogleFormSpinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
+                <i id="btnGoogleFormIcon" class="fa-solid fa-file-lines" style="font-size: 11px;"></i>
+                <span>Sync Google Form</span>
             </button>
             <button id="btnSyncBrochure" class="btn btn-primary btn-sm fw-bold d-inline-flex align-items-center gap-1" style="height: 32px; padding: 0 11px; font-size: 12px; background: #2563eb; border-color: #2563eb; white-space: nowrap;" onclick="triggerBrochureSync()" title="Sync Brochure leads from live website API">
                 <span id="btnBrochureSpinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
@@ -1653,6 +1663,31 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
                     </div>
                 </div>
 
+                <!-- Project Filter Dropdown (Synced Globally Across Page) -->
+                <div style="width: 165px;">
+                    <select id="queueProjectFilter" class="form-select form-select-sm" onchange="onQueueProjectChange(this.value)" title="Filter entire page by Project">
+                        <option value="">All Projects</option>
+                        <option value="common">Common (No Project)</option>
+                        <?php foreach ($projects as $proj): ?>
+                            <option value="<?= $proj['id'] ?>"><?= htmlspecialchars($proj['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <!-- Platform Filter Dropdown (Synced Globally Across Page) -->
+                <div style="width: 150px;">
+                    <select id="queuePlatformFilter" class="form-select form-select-sm" onchange="onQueuePlatformChange(this.value)" title="Filter entire page by Platform">
+                        <option value="">All Platforms</option>
+                        <option value="facebook">Facebook form</option>
+                        <option value="whatsapp">WhatsApp (All)</option>
+                        <option value="replibee">WhatsApp (Replibee Bot)</option>
+                        <option value="meta_inbox">Meta inbox</option>
+                        <option value="google_form">Google form</option>
+                        <option value="brochure">Brochure leads</option>
+                        <option value="others">Others</option>
+                    </select>
+                </div>
+
                 <!-- Date Range Filter Dropdown (Today, Yesterday, Weekly, Custom Range) -->
                 <div style="width: 145px;">
                     <select id="dateFilterSelect" class="form-select form-select-sm" onchange="onDateFilterChange(this.value)" title="Filter leads by date of arrival">
@@ -1873,8 +1908,7 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
         top: 0;
         right: 0;
         bottom: 0;
-        width: 50vw;
-        min-width: 600px;
+        width: clamp(480px, 50vw, 860px);
         max-width: 100vw;
         height: 100vh;
         background: #f8fafc;
@@ -1898,50 +1932,72 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
     }
     .wa-drawer-header {
         background: #ffffff;
-        padding: 14px 18px;
+        padding: 10px 14px;
         border-bottom: 1px solid #e2e8f0;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 12px;
+        gap: 8px;
+        flex-wrap: wrap;
         flex-shrink: 0;
     }
     .wa-drawer-title-wrap {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
+        flex: 1 1 180px;
         min-width: 0;
+        overflow: hidden;
     }
     .wa-drawer-icon-box {
-        width: 38px;
-        height: 38px;
-        border-radius: 10px;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
         background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
         border: 1px solid #a7f3d0;
         display: flex;
         align-items: center;
         justify-content: center;
         color: #059669;
-        font-size: 19px;
+        font-size: 16px;
         flex-shrink: 0;
     }
     .wa-drawer-title-row {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         flex-wrap: nowrap;
+        min-width: 0;
     }
     .wa-drawer-title {
-        font-size: 15px;
+        font-size: clamp(13px, 1.05vw, 14.5px);
         font-weight: 700;
         color: #0f172a;
         margin: 0;
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .wa-drawer-db-pill {
+        font-size: 9.5px;
+        font-weight: 600;
+        padding: 1px 5px;
+        background: #f1f5f9;
+        color: #475569;
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    @media (max-width: 1440px) {
+        .wa-drawer-db-pill {
+            display: none !important;
+        }
     }
     .wa-drawer-subtitle {
-        font-size: 11.5px;
+        font-size: 10.5px;
         color: #64748b;
-        margin-top: 2px;
+        margin-top: 1px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -1949,19 +2005,20 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
     .wa-drawer-actions {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 5px;
         flex-shrink: 0;
+        flex-wrap: wrap;
     }
     .wa-hdr-btn {
-        height: 32px;
-        padding: 0 11px;
-        font-size: 12px;
+        height: 27px;
+        padding: 0 9px;
+        font-size: 11px;
         font-weight: 600;
-        border-radius: 7px;
+        border-radius: 6px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 6px;
+        gap: 5px;
         white-space: nowrap;
         flex-shrink: 0;
         cursor: pointer;
@@ -1986,10 +2043,10 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
         border-color: #0f766e;
     }
     .wa-hdr-btn-icon {
-        width: 32px;
-        height: 32px;
+        width: 27px;
+        height: 27px;
         padding: 0;
-        border-radius: 7px;
+        border-radius: 6px;
         background: #ffffff;
         border: 1px solid #cbd5e1;
         color: #475569;
@@ -2007,21 +2064,27 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
     }
     .wa-drawer-kpi-bar {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 10px;
-        padding: 12px 18px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+        padding: 8px 14px;
         background: #ffffff;
         border-bottom: 1px solid #e2e8f0;
         flex-shrink: 0;
     }
+    @media (max-width: 576px) {
+        .wa-drawer-kpi-bar {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
     .wa-kpi-box {
         border: 1px solid #e2e8f0;
-        border-radius: 9px;
-        padding: 9px 12px;
+        border-radius: 7px;
+        padding: 6px 10px;
         cursor: pointer;
         background: #f8fafc;
         transition: all 0.15s ease;
         user-select: none;
+        min-width: 0;
     }
     .wa-kpi-box:hover {
         border-color: #cbd5e1;
@@ -2033,7 +2096,7 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
         box-shadow: 0 0 0 1px #0d9488;
     }
     .wa-kpi-label {
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 600;
         color: #64748b;
         display: flex;
@@ -2041,63 +2104,60 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
         justify-content: space-between;
         gap: 4px;
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     .wa-kpi-num {
-        font-size: 19px;
+        font-size: clamp(14px, 1.25vw, 17px);
         font-weight: 700;
         color: #0f172a;
-        line-height: 1.25;
-        margin-top: 3px;
+        line-height: 1.2;
+        margin-top: 2px;
     }
     .wa-drawer-filters {
-        padding: 10px 18px;
+        padding: 8px 14px;
         background: #f1f5f9;
         border-bottom: 1px solid #e2e8f0;
         display: flex;
         align-items: center;
-        gap: 8px;
-        flex-wrap: nowrap;
+        gap: 6px;
+        flex-wrap: wrap;
         flex-shrink: 0;
     }
-    @media (max-width: 768px) {
-        .wa-drawer-filters {
-            flex-wrap: wrap;
-        }
-    }
     .wa-filter-select {
-        height: 32px;
-        font-size: 12px;
-        border-radius: 7px;
+        height: 28px;
+        font-size: 11px;
+        border-radius: 6px;
         border: 1px solid #cbd5e1;
         background-color: #ffffff;
         color: #1e293b;
-        padding: 0 26px 0 10px;
-        flex-shrink: 0;
+        padding: 0 22px 0 8px;
+        flex: 0 1 auto;
     }
     .wa-search-wrap {
         position: relative;
-        flex: 1 1 auto;
-        min-width: 150px;
+        flex: 1 1 140px;
+        min-width: 120px;
     }
     .wa-search-icon {
         position: absolute;
-        left: 11px;
+        left: 9px;
         top: 50%;
         transform: translateY(-50%);
-        font-size: 12px;
+        font-size: 11px;
         color: #94a3b8;
         pointer-events: none;
         z-index: 2;
     }
     .wa-search-input {
         width: 100%;
-        height: 32px;
-        font-size: 12px;
-        border-radius: 7px;
+        height: 28px;
+        font-size: 11px;
+        border-radius: 6px;
         border: 1px solid #cbd5e1;
         background: #ffffff;
         color: #0f172a;
-        padding: 0 10px 0 32px !important;
+        padding: 0 8px 0 26px !important;
         outline: none;
         transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
@@ -2106,11 +2166,11 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
         box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.12);
     }
     .wa-reset-btn {
-        height: 32px;
-        padding: 0 12px;
-        font-size: 12px;
+        height: 28px;
+        padding: 0 10px;
+        font-size: 11px;
         font-weight: 600;
-        border-radius: 7px;
+        border-radius: 6px;
         border: 1px solid #cbd5e1;
         background: #ffffff;
         color: #475569;
@@ -2125,40 +2185,68 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
     .wa-drawer-body {
         flex: 1;
         overflow-y: auto;
-        padding: 14px 18px;
+        padding: 10px 14px;
     }
     .wa-log-card {
         background: #ffffff;
         border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        padding: 13px 16px;
-        margin-bottom: 10px;
+        border-radius: 8px;
+        padding: 9px 12px;
+        margin-bottom: 7px;
         transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
     .wa-log-card:hover {
         border-color: #cbd5e1;
-        box-shadow: 0 3px 10px rgba(15, 23, 42, 0.05);
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
     }
     .wa-log-card.status-pending {
-        border-left: 4px solid #f59e0b;
+        border-left: 3.5px solid #f59e0b;
     }
     .wa-log-card.status-synced {
-        border-left: 4px solid #10b981;
+        border-left: 3.5px solid #10b981;
     }
     .wa-log-card.status-duplicate_skipped {
-        border-left: 4px solid #6366f1;
+        border-left: 3.5px solid #6366f1;
     }
     .wa-log-card.status-invalid {
-        border-left: 4px solid #ef4444;
+        border-left: 3.5px solid #ef4444;
+    }
+    .wa-log-top-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 8px;
+        flex-wrap: nowrap;
+    }
+    .wa-log-left {
+        flex: 1 1 0%;
+        min-width: 0;
+    }
+    .wa-log-right {
+        flex: 0 0 auto;
+        text-align: right;
+        white-space: nowrap;
+    }
+    @media (max-width: 480px) {
+        .wa-log-top-row {
+            flex-wrap: wrap;
+        }
+        .wa-log-right {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 4px;
+        }
     }
     .wa-status-badge {
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 600;
-        padding: 2px 9px;
+        padding: 1px 7px;
         border-radius: 999px;
         display: inline-flex;
         align-items: center;
-        gap: 4px;
+        gap: 3px;
         white-space: nowrap;
     }
     .wa-status-pending {
@@ -2178,29 +2266,29 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
         color: #991b1b;
     }
     .wa-detail-drawer-panel {
-        margin-top: 10px;
-        padding-top: 10px;
+        margin-top: 8px;
+        padding-top: 8px;
         border-top: 1px dashed #e2e8f0;
-        font-size: 12px;
+        font-size: 11px;
     }
     .wa-detail-grid {
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 8px 14px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 6px 12px;
         background: #f8fafc;
-        padding: 10px 12px;
-        border-radius: 8px;
+        padding: 8px 10px;
+        border-radius: 7px;
         border: 1px solid #f1f5f9;
     }
     .wa-detail-item-label {
-        font-size: 10px;
+        font-size: 9.5px;
         text-transform: uppercase;
-        letter-spacing: 0.4px;
+        letter-spacing: 0.35px;
         color: #64748b;
         font-weight: 600;
     }
     .wa-detail-item-val {
-        font-size: 12px;
+        font-size: 11px;
         color: #0f172a;
         font-weight: 500;
         word-break: break-word;
@@ -2208,12 +2296,12 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
     .wa-drawer-footer {
         background: #ffffff;
         border-top: 1px solid #e2e8f0;
-        padding: 10px 18px;
+        padding: 8px 14px;
         display: flex;
         align-items: center;
         justify-content: space-between;
         flex-shrink: 0;
-        font-size: 12px;
+        font-size: 11px;
     }
 </style>
 
@@ -2226,16 +2314,16 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
             <div class="wa-drawer-icon-box">
                 <i class="fa-brands fa-whatsapp"></i>
             </div>
-            <div style="min-width: 0;">
+            <div style="min-width: 0; flex: 1 1 0%;">
                 <div class="wa-drawer-title-row">
                     <h6 class="wa-drawer-title">WhatsApp Leads Log</h6>
-                    <span class="badge bg-light text-secondary border" style="font-size: 10px; font-weight: 600; padding: 2px 6px;">whatsapp_leads_logs</span>
+                    <span class="wa-drawer-db-pill">whatsapp_leads_logs</span>
                 </div>
-                <div class="wa-drawer-subtitle">Webhook + REST API Backup leads land here first · Inspect & sync to Leads</div>
+                <div class="wa-drawer-subtitle">Webhook + REST API Backup · Inspect & sync to Leads</div>
             </div>
         </div>
         <div class="wa-drawer-actions">
-            <?php if (in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1', 'localhost:8080'], true) || str_starts_with($_SERVER['HTTP_HOST'] ?? '', 'localhost') || str_starts_with($_SERVER['HTTP_HOST'] ?? '', '127.0.0.1')): ?>
+            <?php if (in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1', 'localhost:8080'], true) || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') === 0 || strpos($_SERVER['HTTP_HOST'] ?? '', '127.0.0.1') === 0): ?>
             <button type="button" id="btnSimulateWaWebhook" class="wa-hdr-btn wa-hdr-btn-sim" onclick="simulateWhatsAppWebhook()" title="Local Dev Only: Simulate 2 incoming Replibee WhatsApp webhook leads into whatsapp_leads_logs">
                 <i class="fa-solid fa-flask" style="font-size: 11px;"></i>
                 <span>+ Test Lead</span>
@@ -2294,7 +2382,7 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
 
     <!-- Drawer Filter Toolbar -->
     <div class="wa-drawer-filters">
-        <select id="waFilterStatus" class="form-select form-select-sm wa-filter-select" style="width: 148px;" onchange="onWaDrawerFilterChange()">
+        <select id="waFilterStatus" class="form-select form-select-sm wa-filter-select" style="width: 130px;" onchange="onWaDrawerFilterChange()">
             <option value="all">All Statuses</option>
             <option value="pending">⏳ Pending Sync</option>
             <option value="synced">✅ Synced to Leads</option>
@@ -2302,7 +2390,7 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
             <option value="invalid">⚠️ Invalid / Empty</option>
         </select>
 
-        <select id="waFilterDate" class="form-select form-select-sm wa-filter-select" style="width: 130px;" onchange="onWaDatePresetChange(this.value)">
+        <select id="waFilterDate" class="form-select form-select-sm wa-filter-select" style="width: 112px;" onchange="onWaDatePresetChange(this.value)">
             <option value="all">All Time</option>
             <option value="today">Today</option>
             <option value="yesterday">Yesterday</option>
@@ -2311,9 +2399,9 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
         </select>
 
         <div id="waCustomDateWrap" class="d-none align-items-center gap-1" style="flex-shrink: 0;">
-            <input type="date" id="waStartDate" class="form-control form-control-sm" style="width: 118px; height: 32px; font-size: 11px;" onchange="onWaDrawerFilterChange()">
+            <input type="date" id="waStartDate" class="form-control form-control-sm" style="width: 110px; height: 28px; font-size: 10.5px;" onchange="onWaDrawerFilterChange()">
             <span class="text-muted small">to</span>
-            <input type="date" id="waEndDate" class="form-control form-control-sm" style="width: 118px; height: 32px; font-size: 11px;" onchange="onWaDrawerFilterChange()">
+            <input type="date" id="waEndDate" class="form-control form-control-sm" style="width: 110px; height: 28px; font-size: 10.5px;" onchange="onWaDrawerFilterChange()">
         </div>
 
         <div class="wa-search-wrap">
@@ -2453,7 +2541,7 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
     }
 
     function onFilterChange() {
-        // Can auto-apply or user can click Apply Filters
+        applyPlatformFilters();
     }
 
     function applyPlatformFilters() {
@@ -2471,14 +2559,41 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
         currentPlatform = platformFilters.platform;
         currentTeamId = platformFilters.team_id;
 
-        // Sync table dropdowns
+        // Sync status dropdown with Queue tabs & team filter if applicable
+        if (platformFilters.status === 'pending') {
+            currentTabStatus = '0';
+        } else if (platformFilters.status === 'approved') {
+            currentTabStatus = '1';
+        } else if (platformFilters.status === 'needs_assignment' && !currentTeamId) {
+            currentTeamId = 'unassigned';
+            platformFilters.team_id = 'unassigned';
+            if (tSel) tSel.value = 'unassigned';
+        } else if (platformFilters.status === 'assigned' && !currentTeamId) {
+            currentTeamId = 'assigned';
+            platformFilters.team_id = 'assigned';
+            if (tSel) tSel.value = 'assigned';
+        }
+
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        if (currentTabStatus === '') document.getElementById('tabAll')?.classList.add('active');
+        else if (currentTabStatus === '0') document.getElementById('tabPending')?.classList.add('active');
+        else if (currentTabStatus === '1') document.getElementById('tabApproved')?.classList.add('active');
+
+        // Sync Lead Queue toolbar dropdowns
         const tableTeamDropdown = document.getElementById('teamFilterDropdown');
         if (tableTeamDropdown) tableTeamDropdown.value = currentTeamId;
+        const queueProjDropdown = document.getElementById('queueProjectFilter');
+        if (queueProjDropdown) queueProjDropdown.value = currentProjectId;
+        const queuePlatDropdown = document.getElementById('queuePlatformFilter');
+        if (queuePlatDropdown) queuePlatDropdown.value = currentPlatform;
 
         // Highlight selected platform card if single platform is picked
         highlightActivePlatformCard(platformFilters.platform);
+        updateApproveAllButtonLabel();
 
         currentPage = 1;
+        selectedLeadIds.clear();
+        updateSelectionUi();
         loadPlatformStats();
         loadLeads();
     }
@@ -2489,6 +2604,8 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
         if (document.getElementById('filterTeamSelect')) document.getElementById('filterTeamSelect').value = '';
         if (document.getElementById('filterStatusSelect')) document.getElementById('filterStatusSelect').value = '';
         if (document.getElementById('teamFilterDropdown')) document.getElementById('teamFilterDropdown').value = '';
+        if (document.getElementById('queueProjectFilter')) document.getElementById('queueProjectFilter').value = '';
+        if (document.getElementById('queuePlatformFilter')) document.getElementById('queuePlatformFilter').value = '';
 
         platformFilters.project_id = '';
         platformFilters.platform = '';
@@ -2500,6 +2617,7 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
         currentTeamId = '';
 
         highlightActivePlatformCard('');
+        updateApproveAllButtonLabel();
         selectPeriodPreset('today');
     }
 
@@ -2870,6 +2988,49 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
         }
     }
 
+    // Trigger Sync from Google Form Sheet
+    async function triggerGoogleFormSync() {
+        const btn = document.getElementById('btnSyncGoogleForm');
+        const spinner = document.getElementById('btnGoogleFormSpinner');
+        const icon = document.getElementById('btnGoogleFormIcon');
+
+        if (btn) btn.disabled = true;
+        if (spinner) spinner.classList.remove('d-none');
+        if (icon) icon.classList.add('d-none');
+
+        showLeadToast('Connecting to Google Form Sheet & syncing leads...', 'info');
+
+        try {
+            const formData = new FormData();
+            formData.append('sheet_url', '<?= addslashes($google_form_sheet_url ?? "https://docs.google.com/spreadsheets/d/131gO92xw6tsPlRVzU6sU2TTLbXTz9hpdGR9y5skW3As/edit?usp=sharing") ?>');
+
+            const response = await fetch(`${baseUrl}/lead-automation/sync-google-form`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: formData
+            });
+
+            const res = await response.json();
+
+            if (res.status === 'success') {
+                showLeadToast(res.message, 'success');
+                loadPlatformStats();
+                loadLeads();
+            } else {
+                showLeadToast('Google Form Sync Failed: ' + (res.message || 'Unknown error'), 'error');
+            }
+        } catch (err) {
+            showLeadToast('Network error while syncing Google Form leads: ' + err.message, 'error');
+        } finally {
+            if (btn) btn.disabled = false;
+            if (spinner) spinner.classList.add('d-none');
+            if (icon) icon.classList.remove('d-none');
+        }
+    }
+
     async function triggerBrochureSync() {
         const btn = document.getElementById('btnSyncBrochure');
         const spinner = document.getElementById('btnBrochureSpinner');
@@ -3142,23 +3303,23 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
             const waChatNumber = cleanWaDigits.startsWith('01') ? ('88' + cleanWaDigits) : cleanWaDigits;
 
             const projectBadge = item.project_name
-                ? `<span class="badge bg-emerald-subtle text-success border border-success-subtle" style="font-size: 11px; background: #ecfdf5; color: #047857;">${escapeHtml(item.project_name)}</span>`
-                : `<span class="badge bg-light text-secondary border" style="font-size: 11px;">Common (Unmatched)</span>`;
+                ? `<span class="badge" style="font-size: 10px; font-weight: 600; padding: 2px 6px; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;">${escapeHtml(item.project_name)}</span>`
+                : `<span class="badge" style="font-size: 10px; font-weight: 600; padding: 2px 6px; background: #f8fafc; color: #475569; border: 1px solid #e2e8f0;">Common (Unmatched)</span>`;
 
             const teamBadge = item.team_name
-                ? `<span class="badge bg-light text-dark border" style="font-size: 11px;"><i class="fa-solid fa-users text-muted me-1"></i>${escapeHtml(item.team_name)}</span>`
+                ? `<span class="badge" style="font-size: 10px; font-weight: 600; padding: 2px 6px; background: #f8fafc; color: #1e293b; border: 1px solid #e2e8f0;"><i class="fa-solid fa-users text-muted me-1"></i>${escapeHtml(item.team_name)}</span>`
                 : '';
 
             let actionBtn = '';
             if (st === 'pending') {
                 actionBtn = `
-                    <button type="button" class="btn btn-sm fw-bold text-white py-0 px-2" style="background: #0d9488; font-size: 11px; height: 26px;" onclick="syncSingleWhatsAppLog(${item.id}, false)">
+                    <button type="button" class="btn btn-sm fw-bold text-white py-0 px-2" style="background: #0d9488; font-size: 10px; height: 22px; line-height: 20px; border-radius: 5px;" onclick="syncSingleWhatsAppLog(${item.id}, false)">
                         <i class="fa-solid fa-cloud-arrow-up me-1"></i>Sync Now
                     </button>
                 `;
             } else if (st === 'duplicate_skipped') {
                 actionBtn = `
-                    <button type="button" class="btn btn-outline-primary btn-sm fw-semibold py-0 px-2" style="font-size: 11px; height: 26px;" onclick="syncSingleWhatsAppLog(${item.id}, true)" title="Force insert into Leads table even though phone/project matched an existing lead">
+                    <button type="button" class="btn btn-outline-primary btn-sm fw-semibold py-0 px-2" style="font-size: 10px; height: 22px; line-height: 20px; border-radius: 5px;" onclick="syncSingleWhatsAppLog(${item.id}, true)" title="Force insert into Leads table even though phone/project matched an existing lead">
                         <i class="fa-solid fa-bolt me-1"></i>Force Sync
                     </button>
                 `;
@@ -3169,7 +3330,7 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
                 ? `<div class="mt-2 p-2 rounded bg-white border">
                         <div class="wa-detail-item-label mb-1"><i class="fa-solid fa-comments text-success me-1"></i>Chatbot Q&A Responses (${qaList.length})</div>
                         ${qaList.map(qa => `
-                            <div class="d-flex justify-content-between gap-2 py-1 border-bottom" style="font-size: 11.5px;">
+                            <div class="d-flex justify-content-between gap-2 py-1 border-bottom" style="font-size: 11px;">
                                 <span class="text-muted">${escapeHtml(qa.question || '')}</span>
                                 <span class="fw-semibold text-dark text-end">${escapeHtml(qa.answer || '')}</span>
                             </div>
@@ -3179,50 +3340,49 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
 
             return `
                 <div class="wa-log-card status-${escapeHtml(st)}" id="waLogCard-${item.id}">
-                    <div class="d-flex align-items-start justify-content-between gap-2 flex-wrap">
-                        <div>
-                            <div class="d-flex align-items-center gap-2 flex-wrap">
-                                <span class="text-muted fw-bold" style="font-size: 11px;">#WL-${item.id}</span>
+                    <div class="wa-log-top-row">
+                        <div class="wa-log-left">
+                            <div class="d-flex align-items-center gap-1 flex-wrap">
+                                <span class="text-muted fw-bold" style="font-size: 10.5px;">#WL-${item.id}</span>
                                 ${item.ingest_source === 'rest_api'
-                                    ? '<span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25" style="font-size: 10px; font-weight: 600;"><i class="fa-solid fa-cloud-arrow-down me-1"></i>REST API</span>'
-                                    : '<span class="badge bg-secondary bg-opacity-10 text-secondary border" style="font-size: 10px; font-weight: 600;"><i class="fa-solid fa-satellite-dish me-1"></i>Webhook</span>'}
-                                <span class="fw-bold text-dark" style="font-size: 14px;">${escapeHtml(item.full_name || 'WhatsApp Lead')}</span>
+                                    ? '<span class="badge" style="font-size: 9.5px; font-weight: 600; padding: 1.5px 5px; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;"><i class="fa-solid fa-cloud-arrow-down me-1"></i>REST API</span>'
+                                    : '<span class="badge" style="font-size: 9.5px; font-weight: 600; padding: 1.5px 5px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;"><i class="fa-solid fa-satellite-dish me-1"></i>Webhook</span>'}
+                                <span class="fw-bold text-dark" style="font-size: 12.5px; line-height: 1.25;">${escapeHtml(item.full_name || 'WhatsApp Lead')}</span>
                                 ${statusBadge}
                             </div>
-                            <div class="d-flex align-items-center gap-3 mt-1 flex-wrap" style="font-size: 12px;">
+                            <div class="d-flex align-items-center gap-2 mt-1 flex-wrap" style="font-size: 11px;">
                                 <span class="fw-semibold text-dark">
-                                    <i class="fa-solid fa-phone text-success me-1" style="font-size: 11px;"></i>${escapeHtml(phoneStr)}
+                                    <i class="fa-solid fa-phone text-success me-1" style="font-size: 10px;"></i>${escapeHtml(phoneStr)}
                                 </span>
                                 ${cleanWaDigits.length >= 10 ? `
-                                    <a href="https://wa.me/${waChatNumber}" target="_blank" class="text-success text-decoration-none small fw-semibold" title="Chat on WhatsApp">
+                                    <a href="https://wa.me/${waChatNumber}" target="_blank" class="text-success text-decoration-none fw-semibold" style="font-size: 10.5px;" title="Chat on WhatsApp">
                                         <i class="fa-brands fa-whatsapp"></i> Chat
                                     </a>
                                 ` : ''}
-                                ${item.email ? `<span class="text-muted"><i class="fa-regular fa-envelope me-1"></i>${escapeHtml(item.email)}</span>` : ''}
-                                ${item.city ? `<span class="text-muted"><i class="fa-solid fa-location-dot me-1"></i>${escapeHtml(item.city)}</span>` : ''}
+                                ${item.city ? `<span class="text-muted" style="font-size: 10.5px;"><i class="fa-solid fa-location-dot me-1"></i>${escapeHtml(item.city)}</span>` : ''}
                             </div>
                         </div>
 
-                        <div class="text-end">
-                            <div class="text-muted" style="font-size: 11px;">
+                        <div class="wa-log-right">
+                            <div class="text-muted" style="font-size: 10px; line-height: 1.2;">
                                 <i class="fa-regular fa-calendar me-1"></i>${formatDate(item.created_at)} · ${formatTime(item.created_at)}
                             </div>
                             <div class="d-flex align-items-center justify-content-end gap-1 mt-1">
                                 ${actionBtn}
-                                <button type="button" class="btn btn-light border btn-sm py-0 px-2 text-dark" style="font-size: 11px; height: 26px;" onclick="toggleWaLogDetails(${item.id})">
+                                <button type="button" class="btn btn-light border btn-sm py-0 px-2 text-dark" style="font-size: 10px; height: 22px; line-height: 20px; border-radius: 5px;" onclick="toggleWaLogDetails(${item.id})">
                                     <i class="fa-solid fa-circle-info text-secondary me-1"></i>Details
                                 </button>
                             </div>
                         </div>
                     </div>
 
-                    <div class="d-flex align-items-center justify-content-between gap-2 mt-2 pt-2 border-top flex-wrap" style="font-size: 11.5px;">
-                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <div class="d-flex align-items-center justify-content-between gap-2 mt-1 pt-1 border-top flex-wrap" style="font-size: 10.5px;">
+                        <div class="d-flex align-items-center gap-1 flex-wrap">
                             <span class="text-muted">Campaign: <strong class="text-dark">${escapeHtml(item.campaign_name || 'N/A')}</strong></span>
                             ${projectBadge}
                             ${teamBadge}
                         </div>
-                        ${item.sync_note ? `<div class="text-muted small"><em>${escapeHtml(item.sync_note)}</em></div>` : ''}
+                        ${item.sync_note ? `<div class="text-muted" style="font-size: 10px;"><em>${escapeHtml(item.sync_note)}</em></div>` : ''}
                     </div>
 
                     <!-- Expandable Full Details Panel -->
@@ -3444,29 +3604,63 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
         if (status === '') document.getElementById('tabAll').classList.add('active');
         else if (status === '0') document.getElementById('tabPending').classList.add('active');
         else if (status === '1') document.getElementById('tabApproved').classList.add('active');
+
         updateTeamActionButtons();
         updateSelectionUi();
         loadLeads();
     }
 
     function filterByTeam(teamId) {
+        // Toggle off if clicking the already active team card
+        if (String(currentTeamId) === String(teamId)) {
+            teamId = '';
+        }
         currentTeamId = teamId;
+        platformFilters.team_id = teamId;
         currentPage = 1;
         selectedLeadIds.clear();
-        document.getElementById('teamFilterDropdown').value = teamId;
+        if (document.getElementById('teamFilterDropdown')) document.getElementById('teamFilterDropdown').value = teamId;
+        if (document.getElementById('filterTeamSelect')) document.getElementById('filterTeamSelect').value = teamId;
         updateApproveAllButtonLabel();
         updateTeamActionButtons();
         updateSelectionUi();
+        loadPlatformStats();
         loadLeads();
     }
 
     function onTeamDropdownChange(teamId) {
         currentTeamId = teamId;
+        platformFilters.team_id = teamId;
         currentPage = 1;
         selectedLeadIds.clear();
+        if (document.getElementById('filterTeamSelect')) document.getElementById('filterTeamSelect').value = teamId;
         updateApproveAllButtonLabel();
         updateTeamActionButtons();
         updateSelectionUi();
+        loadPlatformStats();
+        loadLeads();
+    }
+
+    function onQueueProjectChange(projectId) {
+        currentProjectId = projectId;
+        platformFilters.project_id = projectId;
+        currentPage = 1;
+        selectedLeadIds.clear();
+        if (document.getElementById('filterProjectSelect')) document.getElementById('filterProjectSelect').value = projectId;
+        updateSelectionUi();
+        loadPlatformStats();
+        loadLeads();
+    }
+
+    function onQueuePlatformChange(platformVal) {
+        currentPlatform = platformVal;
+        platformFilters.platform = platformVal;
+        currentPage = 1;
+        selectedLeadIds.clear();
+        if (document.getElementById('filterPlatformSelect')) document.getElementById('filterPlatformSelect').value = platformVal;
+        highlightActivePlatformCard(platformVal);
+        updateSelectionUi();
+        loadPlatformStats();
         loadLeads();
     }
 
@@ -3618,6 +3812,21 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
 
             if (result.status === 'success') {
                 const data = result.data;
+                const pendingCount = parseInt(data.stats?.pending_leads || 0);
+                const allSyncedCount = parseInt(data.stats?.total_leads || 0);
+
+                // Auto-fallback: if viewing "Pending Approval" tab with 0 pending leads while leads exist (already approved),
+                // automatically switch to "All Synced Leads" so clicking a project/team/filter never shows an empty table
+                if (currentTabStatus === '0' && pendingCount === 0 && allSyncedCount > 0 && (!data.leads || data.leads.length === 0)) {
+                    currentTabStatus = '';
+                    currentPage = 1;
+                    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                    const tabAllBtn = document.getElementById('tabAll');
+                    if (tabAllBtn) tabAllBtn.classList.add('active');
+                    updateTeamActionButtons();
+                    return loadLeads();
+                }
+
                 totalCount = data.total_count || 0;
                 renderStats(data.stats, data.teams);
                 renderTeamCards(data.teams, data.unassigned_stats);
@@ -4264,7 +4473,11 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
             const res = await response.json();
             if (res.status === 'success') {
                 showLeadToast(res.message || `Lead #LD-${id} permanently deleted.`, 'success');
+                if (typeof res.wa_global_pending !== 'undefined') {
+                    updateWaTopButtonBadge(res.wa_global_pending, res.wa_global_total);
+                }
                 selectedLeadIds.delete(parseInt(id));
+                loadPlatformStats();
                 loadLeads();
             } else {
                 showLeadToast(res.message || 'Delete failed', 'error');
@@ -4314,7 +4527,11 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
             const res = await response.json();
             if (res.status === 'success') {
                 showLeadToast(res.message || `Successfully deleted ${count} lead(s)!`, 'success');
+                if (typeof res.wa_global_pending !== 'undefined') {
+                    updateWaTopButtonBadge(res.wa_global_pending, res.wa_global_total);
+                }
                 selectedLeadIds.clear();
+                loadPlatformStats();
                 loadLeads();
             } else {
                 showLeadToast(res.message || 'Bulk delete failed', 'error');
@@ -4363,7 +4580,11 @@ $canDeleteLeads = ($isManagementUser || $isHeadOfDM) && !$isDMExecutive;
             const res = await response.json();
             if (res.status === 'success') {
                 showLeadToast(res.message || `Deleted all approved leads for ${teamName}!`, 'success');
+                if (typeof res.wa_global_pending !== 'undefined') {
+                    updateWaTopButtonBadge(res.wa_global_pending, res.wa_global_total);
+                }
                 selectedLeadIds.clear();
+                loadPlatformStats();
                 loadLeads();
             } else {
                 showLeadToast(res.message || 'Team purge failed', 'error');
