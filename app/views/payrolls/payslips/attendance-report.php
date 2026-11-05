@@ -448,8 +448,8 @@ document.addEventListener("DOMContentLoaded", function () {
         if (filterType.value === 'monthly') {
             const m = filterMonthInput.value;
             const y = filterYearInput.value;
-            const dateStrFrom = new Date(y, m - 1, 1).toISOString().substring(0, 10);
-            const dateStrTo = new Date(y, m, 0).toISOString().substring(0, 10);
+            const dateStrFrom = `${y}-${String(parseInt(m, 10)).padStart(2, '0')}-01`;
+            const dateStrTo = `${y}-${String(parseInt(m, 10)).padStart(2, '0')}-${String(new Date(y, parseInt(m, 10), 0).getDate()).padStart(2, '0')}`;
             activeFromDate = dateStrFrom;
             activeToDate = dateStrTo;
         } else {

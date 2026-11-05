@@ -814,7 +814,7 @@ window.executeDeleteProject = function(projId) {
                                 if ($hasAttOverride && $isExisting) {
                                     $attTime = !empty($p['att_updated_at']) ? strtotime($p['att_updated_at']) : 0;
                                     $payslipTime = !empty($p['updated_at']) ? strtotime($p['updated_at']) : (!empty($p['created_at']) ? strtotime($p['created_at']) : 0);
-                                    if ($attTime > $payslipTime) {
+                                    if ($attTime >= $payslipTime) {
                                         $attIsNewer = true;
                                     }
                                 }
@@ -1305,9 +1305,10 @@ window.executeDeleteProject = function(projId) {
                 params.set('payroll_project_id', projSelect.value);
             }
 
-            fetch(`<?= $GLOBALS['base_url'] ?>/api/hrm/attendance?` + params.toString())
-            .then(r => r.json())
-            .then(res => {
+            var overridePromise = (projSelect && projSelect.value) ? fetch(`<?= $GLOBALS['base_url'] ?>/api/payroll/attendance-overrides?project_id=` + encodeURIComponent(projSelect.value)).then(r => r.json()).catch(() => ({ success: false, overrides: {} })) : Promise.resolve({ success: false, overrides: {} });
+            Promise.all([fetch(`<?= $GLOBALS['base_url'] ?>/api/hrm/attendance?` + params.toString()).then(r => r.json()), overridePromise])
+            .then(([res, overrideRes]) => {
+                var dbOverrides = (overrideRes && overrideRes.success && overrideRes.overrides) ? overrideRes.overrides : {};
                 $btn.prop('disabled', false).html(origHtml);
                 if (res.success && res.data) {
                     var rawData = res.data;
@@ -1350,7 +1351,8 @@ window.executeDeleteProject = function(projId) {
 
                                 var finalLate = parseInt(summ.totalLateEntry, 10) || 0;
                                 var lateDeduction = Math.floor(finalLate / 3);
-                                var totalAbsentDays = parseFloat((absent + lateDeduction).toFixed(2));
+                                var empOverride = dbOverrides[localMatch.id] || dbOverrides[String(localMatch.id)] || null;
+                                var totalAbsentDays = (empOverride && empOverride.late_unpaid_absent_days !== undefined && empOverride.late_unpaid_absent_days !== null) ? parseFloat(parseFloat(empOverride.late_unpaid_absent_days).toFixed(2)) : parseFloat((absent + lateDeduction).toFixed(2));
 
                                 var absentInput = matchedRow.querySelector('.in-absent-days');
                                 var unpaidInp = matchedRow.querySelector('.in-deduct.in-unpaid');
@@ -1369,6 +1371,7 @@ window.executeDeleteProject = function(projId) {
                         }
                     });
 
+                    Object.keys(dbOverrides).forEach(eid => { var row = empRowMap.get(String(eid)); var ov = dbOverrides[eid]; if (row && ov && ov.late_unpaid_absent_days !== undefined && ov.late_unpaid_absent_days !== null) { var absInp = row.querySelector('.in-absent-days'); var unpInp = row.querySelector('.in-deduct.in-unpaid'); var dVal = parseFloat(row.querySelector('.cell-daily').dataset.val) || 0; var tDays = parseFloat(parseFloat(ov.late_unpaid_absent_days).toFixed(2)); if (absInp && parseFloat(absInp.value) !== tDays) { absInp.value = tDays; if (unpInp) unpInp.value = (tDays * dVal).toFixed(2); absInp.dispatchEvent(new Event('input', { bubbles: true })); row.setAttribute('data-has-db', 'true'); updateCount++; } } });
                     calculateFooterTotals();
                     $('#tipsoiNoticeBanner').slideUp();
                     if (typeof Swal !== 'undefined') {
