@@ -2607,7 +2607,7 @@ class PayrollController extends Controller
                 $saveStatus = ($existingStatus === 'paid') ? 'paid' : 'draft';
 
                 if ($payslipId > 0) {
-                    $stmt = $this->db->prepare('UPDATE payslips SET designation_id=?, payment_method=?, payslip_month=?, status=?, total_earning=?, total_deduction=?, net_salary=?, salary_hold=?, bank_amount=?, cash_amount=?, late_unpaid_absent_days=?, remarks=?, attendance_remarks=?, is_excluded=?, recreation_allowance=?, conveyance_allowance=?, medical_allowance=?, house_rent_allowance=?, advance_salary=?, meal_count=?, subsidized_lunch=?, unpaid_absent_amount=?, arrears_deduction=?, others_deduction=?, punctuality_bonus=?, overtime=?, arrears_earning=?, duty_allowance=?, tax=? WHERE id=?');
+                    $stmt = $this->db->prepare('UPDATE payslips SET designation_id=?, payment_method=?, payslip_month=?, status=?, total_earning=?, total_deduction=?, net_salary=?, salary_hold=?, bank_amount=?, cash_amount=?, late_unpaid_absent_days=?, remarks=?, attendance_remarks=?, is_excluded=?, recreation_allowance=?, conveyance_allowance=?, medical_allowance=?, house_rent_allowance=?, advance_salary=?, meal_count=?, subsidized_lunch=?, unpaid_absent_amount=?, arrears_deduction=?, others_deduction=?, punctuality_bonus=?, overtime=?, arrears_earning=?, duty_allowance=?, tax=?, updated_at=NOW() WHERE id=?');
                     if ($stmt) {
                         $stmt->bind_param('isssdddsdddssidddddddddddddddi', $designationId, $paymentMethod, $payslipMonth, $saveStatus, $totalEarning, $totalDeduction, $netSalary, $salaryHoldString, $bankAmount, $cashAmount, $lateUnpaidAbsentDays, $remarks, $attRemarks, $isExcluded, $recreation_allowance, $conveyance_allowance, $medical_allowance, $house_rent_allowance, $advance_salary, $meal_count, $subsidized_lunch, $unpaid_absent_amount, $arrears_deduction, $others_deduction, $punctuality_bonus, $overtime, $arrears_earning, $duty_allowance, $tax, $payslipId);
                         $stmt->execute();
@@ -2819,7 +2819,8 @@ class PayrollController extends Controller
                 approved_lates = VALUES(approved_lates),
                 final_late = VALUES(final_late),
                 deduction = VALUES(deduction),
-                late_unpaid_absent_days = VALUES(late_unpaid_absent_days)
+                late_unpaid_absent_days = VALUES(late_unpaid_absent_days),
+                update_at = NOW()
             ');
 
             if (!$stmt) {
