@@ -478,6 +478,12 @@ class AssetManagementController extends Controller
             $bankAccounts = $bRes->fetch_all(MYSQLI_ASSOC);
         }
 
+        $vendors = [];
+        $vRes = $this->db->query("SELECT id, name, company_name FROM vendors WHERE LOWER(status) = 'active' ORDER BY name ASC");
+        if ($vRes) {
+            $vendors = $vRes->fetch_all(MYSQLI_ASSOC);
+        }
+
         $autoOpenRequest = null;
         $viewId = (int)($_GET['view'] ?? $_GET['id'] ?? 0);
         if ($viewId > 0) {
@@ -542,7 +548,8 @@ class AssetManagementController extends Controller
             'activeTab'        => $activeTab,
             'pendingCount'     => $pendingCount,
             'autoOpenRequest'  => $autoOpenRequest,
-            'coaList'          => getCOAExpenseList($this->db)
+            'coaList'          => getCOAExpenseList($this->db),
+            'vendors'          => $vendors
         ];
         $this->view('phase2/asset-management/extra-purchases', $data);
     }

@@ -210,6 +210,9 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                             <?php if (!empty($r['category_name'])): ?>
                                                 <br><small class="text-muted fs-10"><?= htmlspecialchars($r['category_name']) ?></small>
                                             <?php endif; ?>
+                                            <?php if (!empty($r['vendor_name'])): ?>
+                                                <br><small class="text-secondary fs-10"><i class="fa-solid fa-store me-1 text-warning"></i><?= htmlspecialchars($r['vendor_name']) ?></small>
+                                            <?php endif; ?>
                                         </td>
                                         <td class="text-center"><?= $r['quantity'] ?></td>
                                         <td class="text-end fw-semibold">
@@ -549,7 +552,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                         <?= htmlspecialchars($dept['name']) ?>
                                     </option>
                                 <?php endforeach; ?>
-                            </select>
+
                         </div>
                         <div class="col-md-12 mt-2">
                             <?= renderCOADropdown($coaList ?? [], null, 'account_id', false, 'officeproc') ?>
@@ -561,7 +564,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                 <?php foreach ($officeBranches ?? [] as $b): ?>
                                     <option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['name']) ?></option>
                                 <?php endforeach; ?>
-                            </select>
+
                             <input type="hidden" name="asset_location" id="new_request_asset_location" value="">
                         </div>
                         <div class="col-md-6">
@@ -571,7 +574,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                 <?php foreach ($users ?? [] as $u): ?>
                                     <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
                                 <?php endforeach; ?>
-                            </select>
+
                         </div>
                         <div class="col-md-6">
                             <label class="form-label mb-1">Item Category <span class="text-danger">*</span></label>
@@ -580,14 +583,40 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                 <?php foreach ($categories ?? [] as $cat): ?>
                                     <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['name']) ?></option>
                                 <?php endforeach; ?>
-                            </select>
+
                         </div>
                         <div class="col-md-6">
                             <label class="form-label mb-1">Request Type <span class="text-danger">*</span></label>
                             <select name="request_type" class="form-select" required>
                                 <option value="Purchase">Purchase</option>
                                 <option value="Servicing">Servicing</option>
+
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label mb-1"><i class="fa-solid fa-store me-1 text-primary"></i>Vendor <span class="text-muted fs-11">(Optional)</span></label>
+                            <select name="vendor_id" id="new_request_vendor_id" class="form-select select2-vendor" style="width: 100%;">
+                                <option value="">-- Optional: Select Vendor --</option>
+                                <?php foreach ($vendors ?? [] as $vnd): ?>
+                                    <option value="<?= $vnd['id'] ?>">
+                                        <?= htmlspecialchars($vnd['name']) ?><?= (!empty($vnd['company_name']) && $vnd['company_name'] !== $vnd['name']) ? ' (' . htmlspecialchars($vnd['company_name']) . ')' : '' ?>
+                                    </option>
+                                <?php endforeach; ?>
                             </select>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label mb-1"><i class="fa-solid fa-store me-1 text-primary"></i>Vendor <span class="text-muted fs-11">(Optional)</span></label>
+                            <select name="vendor_id" id="new_request_vendor_id" class="form-select select2-vendor" style="width: 100%;">
+                                <option value="">-- Optional: Select Vendor --</option>
+                                <?php foreach ($vendors ?? [] as $vnd): ?>
+                                    <option value="<?= $vnd['id'] ?>">
+                                        <?= htmlspecialchars($vnd['name']) ?><?= (!empty($vnd['company_name']) && $vnd['company_name'] !== $vnd['name']) ? ' (' . htmlspecialchars($vnd['company_name']) . ')' : '' ?>
+                                    </option>
+                                <?php endforeach; ?>
+
+                        </div>
+
+
+
                         </div>
                         <div class="col-md-12">
                             <label class="form-label">Item Name <span class="text-danger">*</span></label>
@@ -1076,6 +1105,10 @@ function renderDetailModal(data) {
                     <div class="detail-label">Assign To</div>
                     <div class="detail-value"><i class="fa-solid fa-user-check text-success me-1 fs-11"></i>${data.assigned_to_name || '—'}</div>
                 </div>
+                <div class="col-md-4 mt-2">
+                    <div class="detail-label">Vendor</div>
+                    <div class="detail-value"><i class="fa-solid fa-store text-warning me-1 fs-11"></i>${data.vendor_name || '—'}</div>
+                </div>
                 <div class="col-md-8 mt-2">
                     <div class="detail-label">Item</div>
                     <div class="detail-value">
@@ -1414,6 +1447,12 @@ document.addEventListener("DOMContentLoaded", function() {
                 jQuery('#new_request_assigned_to').select2({
                     dropdownParent: jQuery('#newRequestModal'),
                     placeholder: "-- Optional: Assign to Person --",
+                    allowClear: true,
+                    width: '100%'
+                });
+                jQuery('#new_request_vendor_id').select2({
+                    dropdownParent: jQuery('#newRequestModal'),
+                    placeholder: "-- Optional: Select Vendor --",
                     allowClear: true,
                     width: '100%'
                 });

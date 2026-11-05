@@ -411,12 +411,17 @@ class ApprovalRequestController extends Controller
             exit;
         }
 
+        $reqBefore = $this->approvalModel->find($reqId);
+        $reqAmt = (float)($reqBefore['request_amount'] ?? 0);
         $res = $this->approvalModel->approveAccountsHead($reqId, $userId, $note, $coaId);
         ob_clean();
         if ($res) {
+            $succMsg = ($reqAmt > 10000.01)
+                ? 'Approved by Accounts Head successfully. Forwarded to Management for final sign-off.'
+                : 'Approved by Accounts Head successfully. Payment can now be disbursed.';
             echo json_encode([
                 'success' => true, 
-                'message' => 'Approved by Accounts Head successfully. Payment can now be disbursed.',
+                'message' => $succMsg,
                 'accounts_head_name' => $_SESSION['user']['full_name'] ?? 'Accounts Head',
                 'accounts_head_code' => $_SESSION['user']['employee_id'] ?? '',
                 'approved_at' => date('d M, Y h:i A')

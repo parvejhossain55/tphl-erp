@@ -890,8 +890,14 @@ class ApprovalRequest extends Model
         $isAhApproved = ($ahStatus === 'approved');
         $isAhRejected = ($ahStatus === 'rejected');
 
-        // NEW ORDER: Accounts Head stage is pending as soon as Op Head approves (BEFORE Management for > 10k)
-        $isPendingAh = $isOpHeadApproved && !$isAhApproved && !in_array($reqStatus, ['rejected', 'cancelled']);
+        // NEW ORDER: Accounts Head stage is pending:
+        // For > 10k: as soon as Op Head approves (BEFORE Management)
+        // For <= 10k: as soon as Op Head OR Management approves, OR approve_role is accounts_head
+        if ($isOver1Lac) {
+            $isPendingAh = $isOpHeadApproved && !$isAhApproved && !in_array($reqStatus, ['rejected', 'cancelled']);
+        } else {
+            $isPendingAh = ($isOpHeadApproved || $isMgmtApproved || strtolower($row['approve_role'] ?? '') === 'accounts_head') && !$isAhApproved && !in_array($reqStatus, ['rejected', 'cancelled']);
+        }
 
         // Management can approve:
         // For > 10k: ONLY when BOTH Op Head AND Accounts Head have approved!
@@ -921,7 +927,7 @@ class ApprovalRequest extends Model
             'is_pending_accounts_head'  => $isPendingAh,
             'is_accounts_head_approved' => $isAhApproved,
             'is_accounts_head_rejected' => $isAhRejected,
-            'can_disburse_payment'      => $isAhApproved,
+            'can_disburse_payment'      => $isOver1Lac ? ($isAhApproved && $isMgmtApproved) : $isAhApproved,
             'designated_name'           => $defAhName,
             'designated_emp_id'         => $defAhCode,
             'designated_designation'    => $defAhDesig,
@@ -1763,8 +1769,13 @@ class ApprovalRequest extends Model
         if ($isAccountsHead) {
             return "(
                 LOWER({$prefix}approve_role) != 'completed' AND (
-                    ({$prefix}status = 'approved' AND ({$prefix}accounts_head_status = 'pending' OR {$prefix}accounts_head_status IS NULL OR LOWER({$prefix}approve_role) = 'accounts_head'))
-                    OR ({$prefix}status = 'partially_approved' AND {$prefix}source_table = 'fund_requisitions' AND ({$prefix}accounts_head_status = 'pending' OR {$prefix}accounts_head_status IS NULL OR {$prefix}accounts_head_status = ''))
+                    ({$prefix}status IN ('pending', 'partially_approved', '') AND ({$prefix}accounts_head_status != 'approved' OR {$prefix}accounts_head_status IS NULL) AND (
+                        LOWER({$prefix}approve_role) = 'accounts_head'
+                        OR ({$prefix}request_amount > 10000.01 AND {$prefix}op_head_status = 'approved')
+                        OR ({$prefix}request_amount <= 10000.01 AND ({$prefix}op_head_status = 'approved' OR {$prefix}status = 'approved' OR LOWER({$prefix}approve_role) IN ('management', 'operations', 'accounts_head', '')))
+                    ))
+                    OR ({$prefix}status = 'approved' AND ({$prefix}accounts_head_status != 'approved' OR {$prefix}accounts_head_status IS NULL OR LOWER({$prefix}approve_role) = 'accounts_head'))
+                    OR ({$prefix}status = 'partially_approved' AND {$prefix}source_table = 'fund_requisitions' AND ({$prefix}accounts_head_status != 'approved' OR {$prefix}accounts_head_status IS NULL))
                     OR ({$prefix}accounts_head_status = 'approved' AND (LOWER({$prefix}approve_role) = 'accounts' OR {$prefix}source_table IN ('project_incentive_claims', 'vendor_payment_requests', 'contractor_bill_requests', 'con_labor_requisitions', 'fund_requisitions', 'project_other_costs', 'project_extra_assets', 'expense_adjustments', 'land_fund_requisitions', 'con_land_requisitions')))
                 )
             )";
@@ -1778,12 +1789,12 @@ class ApprovalRequest extends Model
             )";
         } elseif ($isSiteOperator && !$isManagement) {
             return "({$prefix}status IN ('pending', 'partially_approved', '') 
-                    AND (LOWER({$prefix}approve_role) IN ('management', 'operations') OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = '') 
+                    AND (LOWER({$prefix}approve_role) IN ('management', 'operations', 'accounts_head') OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = '') 
                     AND ({$prefix}op_head_status != 'approved' OR {$prefix}op_head_status IS NULL))";
         } elseif ($isManagement) {
             return "({$prefix}status IN ('pending', 'partially_approved', '') 
                     AND (LOWER({$prefix}approve_role) IN ('management', 'operations') OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = '')
-                    AND ({$prefix}request_amount <= 10000.01 OR {$prefix}op_head_status = 'approved'))";
+                    AND ({$prefix}request_amount <= 10000.01 OR ({$prefix}op_head_status = 'approved' AND {$prefix}accounts_head_status = 'approved')))";
         } elseif ($isQc) {
             return "({$prefix}status IN ('pending', 'partially_approved', '') 
                     AND LOWER({$prefix}approve_role) IN ('qc', 'qc_head'))";
@@ -2120,7 +2131,8 @@ class ApprovalRequest extends Model
 
         $isFullManagement = !$isChiefOfficer && (in_array($userRoleId, [1, 3, 38], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management', 'board of director', 'board of directors'], true));
         $isRole20 = in_array($userRoleId, [20, 32], true) || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false;
-        $isAccounts = in_array($userRoleId, [6, 30], true) || strpos($sessionRoleName, 'account') !== false;
+        $isAccountsHead = ($userRoleId === 30) || strpos($sessionRoleName, 'accounts head') !== false;
+        $isAccounts = ($userRoleId === 6) || (strpos($sessionRoleName, 'account') !== false && !$isAccountsHead);
         $isHR = ($userRoleId === 4) || strpos($sessionRoleName, 'hr') !== false;
         $isQC = in_array($userRoleId, [13, 24, 25], true) || strpos($sessionRoleName, 'qc') !== false || strpos($sessionRoleName, 'audit') !== false;
         $isPurchase = in_array($userRoleId, [17, 23, 31], true) || strpos($sessionRoleName, 'purchase') !== false;
@@ -2133,6 +2145,7 @@ class ApprovalRequest extends Model
                     request_amount,
                     approve_role,
                     op_head_status,
+                    accounts_head_status,
                     status,
                     department,
                     requested_by
@@ -2181,10 +2194,26 @@ class ApprovalRequest extends Model
                 } elseif ($isFullManagement) {
                     $isOver1L = ($amt > 10000.01);
                     $opDone = (strtolower($pRow['op_head_status'] ?? 'pending') === 'approved');
+                    $ahDone = (strtolower($pRow['accounts_head_status'] ?? 'pending') === 'approved');
                     if (in_array($appRole, ['management', ''])) {
-                        if (!$isOver1L || $opDone) {
+                        if (!$isOver1L || ($opDone && $ahDone)) {
                             $isActionable = true;
                         }
+                    }
+                } elseif ($isAccountsHead) {
+                    $isOver1L = ($amt > 10000.01);
+                    $opDone = (strtolower($pRow['op_head_status'] ?? 'pending') === 'approved');
+                    $ahDone = (strtolower($pRow['accounts_head_status'] ?? 'pending') === 'approved');
+                    if (!$ahDone) {
+                        if ($appRole === 'accounts_head') {
+                            $isActionable = true;
+                        } elseif ($isOver1L && $opDone) {
+                            $isActionable = true;
+                        } elseif (!$isOver1L && in_array($appRole, ['management', 'operations', 'accounts_head', ''])) {
+                            $isActionable = true;
+                        }
+                    } elseif ($appRole === 'accounts') {
+                        $isActionable = true;
                     }
                 } elseif ($isQC) {
                     if (in_array($appRole, ['qc', 'qc_head'])) $isActionable = true;
@@ -2295,7 +2324,7 @@ class ApprovalRequest extends Model
         } elseif ($statusParam === 'pending_payout' || $statusParam === 'approved_unpaid') {
             $where[] = "(ar.status = 'approved' AND ar.accounts_head_status = 'approved' AND (ar.approve_role = 'accounts' OR ar.approve_role = 'completed'))";
         } elseif ($statusParam === 'pending_accounts_head') {
-            $where[] = "(ar.status = 'approved' AND (ar.accounts_head_status = 'pending' OR ar.accounts_head_status IS NULL OR ar.approve_role = 'accounts_head'))";
+            $where[] = "(ar.status IN ('pending', 'partially_approved', 'approved') AND (ar.accounts_head_status = 'pending' OR ar.accounts_head_status IS NULL OR ar.approve_role = 'accounts_head'))";
         } elseif ($statusParam === 'approved') {
             $where[] = "(ar.status IN ('approved', 'paid') OR ar.approve_role = 'completed')";
         } elseif ($statusParam === 'rejected') {
@@ -2617,17 +2646,35 @@ class ApprovalRequest extends Model
             } else {
                 $isOver1Lac = ((float)($row['request_amount'] ?? 0) > 10000.01);
                 $rowOpStatus = strtolower($row['op_head_status'] ?? 'pending');
+                $rowAhStatus = strtolower($row['accounts_head_status'] ?? 'pending');
                 if ($isOver1Lac) {
                     if ($rowOpStatus !== 'approved') {
                         $pendingStageLabel = 'Pending Op Head (>10K)';
                         $pendingForText = 'Admin & Operation Head';
+                    } elseif ($rowAhStatus !== 'approved') {
+                        $pendingStageLabel = 'Pending Accounts Head (>10K)';
+                        $pendingForText = 'Accounts Head';
+                        $row['approve_role'] = 'accounts_head';
                     } else {
                         $pendingStageLabel = 'Pending Management (>10K)';
                         $pendingForText = 'Management';
+                        $row['approve_role'] = 'management';
                     }
                 } else {
-                    $pendingStageLabel = 'Pending Review (≤10K)';
-                    $pendingForText = 'Op Head / Management';
+                    if ($rowOpStatus === 'approved' || in_array(strtolower($row['status'] ?? ''), ['approved', 'partially_approved'])) {
+                        if ($rowAhStatus !== 'approved') {
+                            $pendingStageLabel = 'Pending Accounts Head';
+                            $pendingForText = 'Accounts Head';
+                            $row['approve_role'] = 'accounts_head';
+                        } else {
+                            $pendingStageLabel = 'Pending Accounts Payout';
+                            $pendingForText = 'Accounts & Finance';
+                            $row['approve_role'] = 'accounts';
+                        }
+                    } else {
+                        $pendingStageLabel = 'Pending Review (≤10K)';
+                        $pendingForText = 'Op Head / Management';
+                    }
                 }
             }
 
@@ -2715,9 +2762,10 @@ class ApprovalRequest extends Model
                         } elseif (in_array($lrStatus, ['qc_approved', 'pm_payment_approved'])) {
                             $isOver100k = ((float)($row['request_amount'] ?? 0) > 10000.01);
                             $isOpHeadApproved = (!empty($row['op_head_status']) && strtolower($row['op_head_status']) === 'approved');
+                            $rowAhStatus = strtolower($row['accounts_head_status'] ?? 'pending');
                             if (!$isOver100k && $isOpHeadApproved) {
                                 $row['status'] = 'approved';
-                                if (($row['accounts_head_status'] ?? 'pending') !== 'approved') {
+                                if ($rowAhStatus !== 'approved') {
                                     $row['approve_role'] = 'accounts_head';
                                     $pendingStageLabel = 'Pending Accounts Head';
                                     $pendingForText = 'Accounts Head';
@@ -2726,11 +2774,28 @@ class ApprovalRequest extends Model
                                     $pendingStageLabel = 'Pending Accounts Payout';
                                     $pendingForText = 'Accounts & Finance';
                                 }
+                            } elseif ($isOver100k) {
+                                if (!$isOpHeadApproved) {
+                                    $row['approve_role'] = 'management';
+                                    $row['status'] = 'pending';
+                                    $pendingStageLabel = 'Pending Op Head (>10K)';
+                                    $pendingForText = 'Admin & Operation Head';
+                                } elseif ($rowAhStatus !== 'approved') {
+                                    $row['approve_role'] = 'accounts_head';
+                                    $row['status'] = 'pending';
+                                    $pendingStageLabel = 'Pending Accounts Head (>10K)';
+                                    $pendingForText = 'Accounts Head';
+                                } else {
+                                    $row['approve_role'] = 'management';
+                                    $row['status'] = 'pending';
+                                    $pendingStageLabel = 'Pending Management (>10K)';
+                                    $pendingForText = 'Management';
+                                }
                             } else {
                                 $row['approve_role'] = 'management';
                                 $row['status'] = 'pending';
-                                $pendingStageLabel = $isOver100k ? ($isOpHeadApproved ? 'Pending Management (>10K)' : 'Pending Op Head (>10K)') : 'Pending Management';
-                                $pendingForText = $isOver100k ? ($isOpHeadApproved ? 'Management' : 'Admin & Operation Head') : 'Management / Operation Head';
+                                $pendingStageLabel = 'Pending Management';
+                                $pendingForText = 'Management / Operation Head';
                             }
                         } elseif ($lrStatus === 'management_approved') {
                             $row['status'] = 'approved';
@@ -2817,9 +2882,10 @@ class ApprovalRequest extends Model
                         } elseif (in_array($vStatus, ['qc approved', 'qc_approved'])) {
                             $isOver100k = ((float)($row['request_amount'] ?? 0) > 10000.01);
                             $isOpHeadApproved = (!empty($row['op_head_status']) && strtolower($row['op_head_status']) === 'approved');
+                            $rowAhStatus = strtolower($row['accounts_head_status'] ?? 'pending');
                             if (!$isOver100k && $isOpHeadApproved) {
                                 $row['status'] = 'approved';
-                                if (($row['accounts_head_status'] ?? 'pending') !== 'approved') {
+                                if ($rowAhStatus !== 'approved') {
                                     $row['approve_role'] = 'accounts_head';
                                     $pendingStageLabel = 'Pending Accounts Head';
                                     $pendingForText = 'Accounts Head';
@@ -2828,11 +2894,28 @@ class ApprovalRequest extends Model
                                     $pendingStageLabel = 'Pending Accounts Payout';
                                     $pendingForText = 'Accounts & Finance';
                                 }
+                            } elseif ($isOver100k) {
+                                if (!$isOpHeadApproved) {
+                                    $row['approve_role'] = 'management';
+                                    $row['status'] = 'pending';
+                                    $pendingStageLabel = 'Pending Op Head (>10K)';
+                                    $pendingForText = 'Admin & Operation Head';
+                                } elseif ($rowAhStatus !== 'approved') {
+                                    $row['approve_role'] = 'accounts_head';
+                                    $row['status'] = 'pending';
+                                    $pendingStageLabel = 'Pending Accounts Head (>10K)';
+                                    $pendingForText = 'Accounts Head';
+                                } else {
+                                    $row['approve_role'] = 'management';
+                                    $row['status'] = 'pending';
+                                    $pendingStageLabel = 'Pending Management (>10K)';
+                                    $pendingForText = 'Management';
+                                }
                             } else {
                                 $row['approve_role'] = 'management';
                                 $row['status'] = 'pending';
-                                $pendingStageLabel = $isOver100k ? ($isOpHeadApproved ? 'Pending Management (>10K)' : 'Pending Op Head (>10K)') : 'Pending Management';
-                                $pendingForText = $isOver100k ? ($isOpHeadApproved ? 'Management' : 'Admin & Operation Head') : 'Management / Operation Head';
+                                $pendingStageLabel = 'Pending Management';
+                                $pendingForText = 'Management / Operation Head';
                             }
                         } elseif (in_array($vStatus, ['approved', 'management approved', 'management_approved'])) {
                             $row['status'] = 'approved';
@@ -2933,9 +3016,10 @@ class ApprovalRequest extends Model
                         } elseif ($pocStatus === 'qc_approved') {
                             $isOver100k = ((float)($row['request_amount'] ?? 0) > 10000.01);
                             $isOpHeadApproved = (!empty($row['op_head_status']) && strtolower($row['op_head_status']) === 'approved');
+                            $rowAhStatus = strtolower($row['accounts_head_status'] ?? 'pending');
                             if (!$isOver100k && $isOpHeadApproved) {
                                 $row['status'] = 'approved';
-                                if (($row['accounts_head_status'] ?? 'pending') !== 'approved') {
+                                if ($rowAhStatus !== 'approved') {
                                     $row['approve_role'] = 'accounts_head';
                                     $pendingStageLabel = 'Pending Accounts Head';
                                     $pendingForText = 'Accounts Head';
@@ -2944,11 +3028,28 @@ class ApprovalRequest extends Model
                                     $pendingStageLabel = 'Pending Accounts Payout';
                                     $pendingForText = 'Accounts & Finance';
                                 }
+                            } elseif ($isOver100k) {
+                                if (!$isOpHeadApproved) {
+                                    $row['approve_role'] = 'management';
+                                    $row['status'] = 'pending';
+                                    $pendingStageLabel = 'Pending Op Head (>10K)';
+                                    $pendingForText = 'Admin & Operation Head';
+                                } elseif ($rowAhStatus !== 'approved') {
+                                    $row['approve_role'] = 'accounts_head';
+                                    $row['status'] = 'pending';
+                                    $pendingStageLabel = 'Pending Accounts Head (>10K)';
+                                    $pendingForText = 'Accounts Head';
+                                } else {
+                                    $row['approve_role'] = 'management';
+                                    $row['status'] = 'pending';
+                                    $pendingStageLabel = 'Pending Management (>10K)';
+                                    $pendingForText = 'Management';
+                                }
                             } else {
                                 $row['approve_role'] = 'management';
                                 $row['status'] = 'pending';
-                                $pendingStageLabel = $isOver100k ? ($isOpHeadApproved ? 'Pending Management (>10K)' : 'Pending Op Head (>10K)') : 'Pending Management';
-                                $pendingForText = $isOver100k ? ($isOpHeadApproved ? 'Management' : 'Admin & Operation Head') : 'Management / Operation Head';
+                                $pendingStageLabel = 'Pending Management';
+                                $pendingForText = 'Management / Operation Head';
                             }
                         } elseif ($pocStatus === 'management_approved' || $pocStatus === 'approved') {
                             $row['status'] = 'approved';
@@ -3016,9 +3117,10 @@ class ApprovalRequest extends Model
                         } elseif ($frStatus === 'pending') {
                             $isOver100k = ((float)($row['request_amount'] ?? 0) > 10000.01);
                             $isOpHeadApproved = (!empty($row['op_head_status']) && strtolower($row['op_head_status']) === 'approved');
+                            $rowAhStatus = strtolower($row['accounts_head_status'] ?? 'pending');
                             if (!$isOver100k && $isOpHeadApproved) {
                                 $row['status'] = 'approved';
-                                if (($row['accounts_head_status'] ?? 'pending') !== 'approved') {
+                                if ($rowAhStatus !== 'approved') {
                                     $row['approve_role'] = 'accounts_head';
                                     $pendingStageLabel = 'Pending Accounts Head';
                                     $pendingForText = 'Accounts Head';
@@ -3027,11 +3129,28 @@ class ApprovalRequest extends Model
                                     $pendingStageLabel = 'Pending Accounts Payout';
                                     $pendingForText = 'Accounts & Finance';
                                 }
+                            } elseif ($isOver100k) {
+                                if (!$isOpHeadApproved) {
+                                    $row['approve_role'] = 'management';
+                                    $row['status'] = 'pending';
+                                    $pendingStageLabel = 'Pending Op Head (>10K)';
+                                    $pendingForText = 'Admin & Operation Head';
+                                } elseif ($rowAhStatus !== 'approved') {
+                                    $row['approve_role'] = 'accounts_head';
+                                    $row['status'] = 'pending';
+                                    $pendingStageLabel = 'Pending Accounts Head (>10K)';
+                                    $pendingForText = 'Accounts Head';
+                                } else {
+                                    $row['approve_role'] = 'management';
+                                    $row['status'] = 'pending';
+                                    $pendingStageLabel = 'Pending Management (>10K)';
+                                    $pendingForText = 'Management';
+                                }
                             } else {
                                 $row['approve_role'] = 'management';
                                 $row['status'] = 'pending';
-                                $pendingStageLabel = $isOver100k ? ($isOpHeadApproved ? 'Pending Management (>10K)' : 'Pending Op Head (>10K)') : 'Pending Management';
-                                $pendingForText = $isOver100k ? ($isOpHeadApproved ? 'Management' : 'Admin & Operation Head') : 'Management / Operation Head';
+                                $pendingStageLabel = 'Pending Management';
+                                $pendingForText = 'Management / Operation Head';
                             }
                         } elseif ($frStatus === 'approved') {
                             $row['status'] = 'approved';
@@ -3646,12 +3765,27 @@ class ApprovalRequest extends Model
             $amount = (float)($item['request_amount'] ?? 0);
             $ahStatus = strtolower($item['accounts_head_status'] ?? 'pending');
 
+            $opStatus = strtolower($item['op_head_status'] ?? 'pending');
+            $isOver10k = ($amount > 10000.01);
+
             // 1. Accounts Head (Role 30): Actionable = items pending Accounts Head approval OR approved and awaiting payout
             if ($isAccountsHead) {
                 if ($payoutStatus === 'Paid & Settled' || $status === 'paid' || $status === 'rejected') {
                     return false;
                 }
-                // Pending Accounts Head approval
+                // Pending Accounts Head approval (Step 2)
+                if ($ahStatus !== 'approved') {
+                    if ($approveRole === 'accounts_head') {
+                        return true;
+                    }
+                    if ($isOver10k && $opStatus === 'approved') {
+                        return true;
+                    }
+                    if (!$isOver10k && ($opStatus === 'approved' || in_array($status, ['approved', 'partially_approved']) || $approveRole === 'accounts_head')) {
+                        return true;
+                    }
+                }
+                // Legacy: status = approved but Accounts Head hasn't signed off yet
                 if ($status === 'approved' && ($ahStatus !== 'approved' || $approveRole === 'accounts_head')) {
                     return true;
                 }
@@ -3682,15 +3816,21 @@ class ApprovalRequest extends Model
             // 2. Role 20 (DGM / Admin & Operation Head):
             if ($isRole20) {
                 if (!$isPending) return false;
-                if (!in_array($approveRole, ['management', 'operations', ''])) return false;
-                $opStatus = strtolower($item['op_head_status'] ?? 'pending');
+                if (!in_array($approveRole, ['management', 'operations', 'accounts_head', ''])) return false;
                 return ($opStatus !== 'approved');
             }
 
             // 3. Full Management (Super Admin 3, Admin 1):
             if ($isFullManagement) {
                 if (!$isPending) return false;
-                return in_array($approveRole, ['management', 'operations', '']);
+                if (!in_array($approveRole, ['management', 'operations', ''])) return false;
+                
+                // For requests > ৳10,000: Management is ONLY actionable after BOTH Op Head AND Accounts Head have approved!
+                // If Accounts Head has NOT approved yet, it belongs in Accounts Head queue, NOT Management!
+                if ($isOver10k) {
+                    return ($opStatus === 'approved' && $ahStatus === 'approved');
+                }
+                return true;
             }
 
             // 4. QC & Internal Audit Head (Role 24, 13, 25):

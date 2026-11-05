@@ -89,7 +89,14 @@
                                 $payoutStatus = $req['payout_status'] ?? '';
                                 $ahStatus = strtolower($req['accounts_head_status'] ?? 'pending');
                                 $isFrPartialMgmt = ($sourceTable === 'fund_requisitions' && $statusLower === 'partially_approved');
-                                $isPendingAccountsHead = ($ahStatus !== 'approved') && ($reqApproveRole === 'accounts_head' || $statusLower === 'approved' || $req['status'] === 'approved' || $isFrPartialMgmt);
+                                $opHeadDone = (strtolower($req['op_head_status'] ?? '') === 'approved');
+                                $isPendingAccountsHead = ($ahStatus !== 'approved') && (
+                                    $reqApproveRole === 'accounts_head'
+                                    || ($reqAmount > 10000.01 && $opHeadDone)
+                                    || ($reqAmount <= 10000.01 && ($opHeadDone || in_array($statusLower, ['approved', 'partially_approved']) || $reqApproveRole === 'accounts_head'))
+                                    || in_array($statusLower, ['approved', 'partially_approved'])
+                                    || $isFrPartialMgmt
+                                );
                                 $isAccountsHeadApproved = ($ahStatus === 'approved');
 
                                 // Determine whether this request is actionable by the logged-in user right now
@@ -408,6 +415,11 @@
                                             $pendingFor = str_replace(['\u0026', '&amp;'], ['&', '&'], $req['pending_for_text'] ?? 'Management');
                                             $pendingFor = trim(preg_replace('/\s*\(Role[^\)]*\)/i', '', $pendingFor));
 
+                                            if ($isPendingAccountsHead) {
+                                                $stageLabel = ($reqAmount > 10000.01) ? 'Pending Accounts Head (>10K)' : 'Pending Accounts Head';
+                                                $pendingFor = 'Accounts Head';
+                                            }
+
                                             $badgeClass = 'bg-warning text-dark';
                                             if (stripos($stageLabel, 'QC') !== false || stripos($stageLabel, 'Audit') !== false) {
                                                 $badgeClass = 'bg-info text-dark';
@@ -419,6 +431,8 @@
                                                 $badgeClass = 'bg-secondary text-white';
                                             } elseif (stripos($stageLabel, 'PM') !== false) {
                                                 $badgeClass = 'bg-info text-white';
+                                            } elseif (stripos($stageLabel, 'Accounts Head') !== false) {
+                                                $badgeClass = 'bg-warning text-dark';
                                             } elseif (stripos($stageLabel, 'Management') !== false) {
                                                 $badgeClass = 'bg-warning text-dark';
                                             } elseif (stripos($stageLabel, 'Accounts') !== false) {
@@ -656,10 +670,10 @@
                                             </a>
 
                                         <?php elseif ($isPendingAccountsHead): ?>
-                                            <?php if ($isAccountsHeadUser || $isManagementUser): ?>
+                                            <?php if ($isAccountsHeadUser || (int)($_SESSION['user']['role_id'] ?? 0) === 1): ?>
                                                 <button type="button" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm fw-semibold me-1" 
                                                     onclick="openAccountsHeadApprovalModal(<?= (int)$req['id'] ?>, '<?= htmlspecialchars(addslashes($req['title'] ?? '')) ?>', '<?= number_format($req['approved_amount'] > 0 ? $req['approved_amount'] : $req['request_amount'], 2) ?>')"
-                                                    title="Approve as Accounts Head (Md. Mamunoor Rashid [1309])">
+                                                    title="Approve as Accounts Head">
                                                     <i class="fa-solid fa-stamp me-1"></i>Approve (Accounts Head)
                                                 </button>
                                                 <?php if ($isFrPartialMgmt && $isManagementUser): ?>
@@ -667,6 +681,13 @@
                                                         <i class="fa-solid fa-up-right-from-square me-1"></i>Remaining
                                                     </a>
                                                 <?php endif; ?>
+                                                <a href="<?= $targetUrl ?>" class="btn btn-sm btn-light text-dark rounded-2 px-2 border" title="View Module Page">
+                                                    <i class="fa-solid fa-eye"></i>
+                                                </a>
+                                            <?php elseif ($isManagementUser): ?>
+                                                <span class="badge bg-light text-muted border rounded-2 px-2 py-1 extra-small me-1" title="Amount exceeds ৳10,000 - Accounts Head payment verification required before Management">
+                                                    <i class="fa-solid fa-lock text-warning me-1"></i>Awaiting Accounts Head
+                                                </span>
                                                 <a href="<?= $targetUrl ?>" class="btn btn-sm btn-light text-dark rounded-2 px-2 border" title="View Module Page">
                                                     <i class="fa-solid fa-eye"></i>
                                                 </a>

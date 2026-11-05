@@ -13,6 +13,8 @@
     </div>
 
     <section class="section">
+        <!-- Executive Management Approval Schedule Notice -->
+        <?php include __DIR__ . '/../layouts/management_approval_notice.php'; ?>
         
         <?php if (isset($_SESSION['success'])): ?>
             <div class="alert alert-success alert-dismissible fade show" role="alert">

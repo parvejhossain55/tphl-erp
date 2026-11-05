@@ -22,6 +22,8 @@ $base = $GLOBALS['base_url'];
         </div>
     <?php endif; ?>
 
+    <?php include __DIR__ . '/../../layouts/management_approval_notice.php'; ?>
+
     <form action="<?php echo $base; ?>/con-labor-requisition-store" method="POST" enctype="multipart/form-data">
         <div class="row">
 
