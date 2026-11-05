@@ -91,6 +91,20 @@ return [
     'api/leads/repibee' => ['controller' => 'LeadAutomationController', 'method' => 'repibeeWebhook'],
 
     // =========================================================================
+    // Controller: LeadInvestmentReportController (Lead Investment & CPL Report)
+    // =========================================================================
+    'lead-investment-report' => ['controller' => 'LeadInvestmentReportController', 'method' => 'index'],
+    'land-investment-report' => ['controller' => 'LeadInvestmentReportController', 'method' => 'index'],
+    'lead-investment-report/api/dashboard' => ['controller' => 'LeadInvestmentReportController', 'method' => 'ajaxDashboardData'],
+    'lead-investment-report/api/match-preview' => ['controller' => 'LeadInvestmentReportController', 'method' => 'ajaxMatchPreview'],
+    'lead-investment-report/api/save-spend' => ['controller' => 'LeadInvestmentReportController', 'method' => 'ajaxSaveSpend'],
+    'lead-investment-report/api/delete-spend' => ['controller' => 'LeadInvestmentReportController', 'method' => 'ajaxDeleteSpend'],
+    'lead-investment-report/api/spend-history' => ['controller' => 'LeadInvestmentReportController', 'method' => 'ajaxSpendHistory'],
+    'lead-investment-report/api/save-budget' => ['controller' => 'LeadInvestmentReportController', 'method' => 'ajaxSaveBudget'],
+    'lead-investment-report/api/campaigns-list' => ['controller' => 'LeadInvestmentReportController', 'method' => 'ajaxCampaignsList'],
+    'lead-investment-report/export-excel' => ['controller' => 'LeadInvestmentReportController', 'method' => 'exportExcel'],
+
+    // =========================================================================
     // Controller: OnboardClientController
     // =========================================================================
     'onboard-access-client-lists' => ['controller' => 'OnboardClientController', 'method' => 'index'],
