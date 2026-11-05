@@ -37,7 +37,7 @@ $ahInfo = ApprovalRequest::getAccountsHeadApprovalInfo($GLOBALS['db'] ?? null, '
 $isAccountsHeadApproved = !empty($ahInfo['is_accounts_head_approved']);
 $isOpHeadApproved       = !empty($ahInfo['is_op_head_approved']);
 $billAmt                = (float)($bill['approved_amount'] ?? $bill['bill_amount'] ?? 0);
-$isOver1Lac             = ($billAmt > 100000);
+$isOver1Lac             = ($billAmt > 10000);
 
 $showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0 && $isAccountsHeadApproved;
 
@@ -512,7 +512,7 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                     <?php elseif ($status === 'approved' && !$isAccountsHeadApproved): ?>
                         <div class="mb-3">
                             <small class="text-muted d-block fw-bold text-primary">Pending Sign-off From</small>
-                            <span class="d-block small"><i class="bi bi-stamp me-1 text-primary"></i> Accounts Head (Md. Mamunoor Rashid)</span>
+                            <span class="d-block small"><i class="bi bi-stamp me-1 text-primary"></i> Accounts Head</span>
                         </div>
                     <?php endif; ?>
                     <div class="mb-3">
@@ -651,13 +651,15 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
             <!-- 3. Operation Head / Management Approval Actions -->
             <?php 
                 $billAmt = (float)($bill['bill_amount'] ?? 0);
-                $isOver1Lac = ($billAmt > 100000);
+                $isOver1Lac = ($billAmt > 10000);
                 $isOpHeadUser = (in_array((int)$userRole, [20, 32], true) || str_contains(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head'));
                 $isMgmtUser = in_array((int)$userRole, [1, 3], true);
                 $isOpHeadApproved = !empty($ahInfo['is_op_head_approved']);
+                $isAhApproved = !empty($ahInfo['is_accounts_head_approved']);
 
                 $isOpHeadAction = false;
                 $isMgmtLocked = false;
+                $mgmtLockReason = '';
                 $canShowCard = false;
 
                 if ($isOver1Lac) {
@@ -667,7 +669,11 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                             $isOpHeadAction = true;
                         } else {
                             $isMgmtLocked = $isMgmtUser && in_array($status, ['qc_approved', 'verified', 'submitted']);
+                            $mgmtLockReason = 'op_head';
                         }
+                    } elseif (!$isAhApproved) {
+                        $isMgmtLocked = $isMgmtUser && in_array($status, ['qc_approved', 'verified', 'submitted']);
+                        $mgmtLockReason = 'accounts_head';
                     } else {
                         if ($isMgmtUser) {
                             $canShowCard = in_array($status, ['qc_approved', 'verified', 'submitted']);
@@ -682,13 +688,17 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
             <div class="card custom-card border-warning mb-3 shadow-sm">
                 <div class="card-header bg-warning bg-opacity-10 d-flex align-items-center justify-content-between">
                     <h6 class="card-title mb-0 fw-bold text-warning">
-                        <i class="bi bi-lock-fill me-2"></i>Management Approval Locked (&gt; ৳1,00,000)
+                        <i class="bi bi-lock-fill me-2"></i>Management Approval Locked (&gt; ৳10,000)
                     </h6>
-                    <span class="badge bg-warning text-dark">Awaiting Op Head</span>
+                    <span class="badge bg-warning text-dark"><?= $mgmtLockReason === 'accounts_head' ? 'Awaiting Accounts Head' : 'Awaiting Op Head' ?></span>
                 </div>
                 <div class="card-body">
                     <p class="mb-0 text-muted small">
-                        This contractor bill exceeds <strong>৳1,00,000</strong>. In accordance with policy, <strong>Admin & Operation Head</strong> must verify and approve this bill first before Management sign-off.
+                        <?php if ($mgmtLockReason === 'accounts_head'): ?>
+                            This contractor bill exceeds <strong>৳10,000</strong>. Admin & Operation Head has approved. <strong>Accounts Head (Role 30)</strong> must verify and approve this bill before Management sign-off.
+                        <?php else: ?>
+                            This contractor bill exceeds <strong>৳10,000</strong>. In accordance with policy, <strong>Admin & Operation Head</strong> must verify and approve this bill first before Management sign-off.
+                        <?php endif; ?>
                     </p>
                 </div>
             </div>
@@ -699,10 +709,10 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                 <div class="card-header <?= $isOpHeadAction ? 'bg-primary bg-opacity-10' : 'bg-success bg-opacity-10' ?> d-flex align-items-center justify-content-between">
                     <h6 class="card-title mb-0">
                         <i class="bi <?= $isOpHeadAction ? 'bi-shield-check text-primary' : 'bi-shield-lock' ?> me-2"></i>
-                        <?= $isOpHeadAction ? 'Operation Head Verification Action (Step 1 of 3)' : 'Management Approval (Step 2 of 3)' ?>
+                        <?= $isOpHeadAction ? 'Operation Head Verification Action (Step 1 of 3)' : 'Management Approval (Step 3 of 3)' ?>
                     </h6>
                     <span class="badge <?= $isOpHeadAction ? 'bg-primary' : 'bg-success' ?>">
-                        <?= $isOpHeadAction ? 'Step 1 of 3' : 'Step 2 of 3' ?>
+                        <?= $isOpHeadAction ? 'Step 1 of 3' : 'Step 3 of 3' ?>
                     </span>
                 </div>
                 <div class="card-body">

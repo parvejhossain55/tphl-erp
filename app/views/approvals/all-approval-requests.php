@@ -77,6 +77,325 @@
         70% { transform: scale(1); box-shadow: 0 0 0 4px rgba(245, 158, 11, 0); }
         100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
     }
+
+    /* Table Rows - Light & Dark Mode */
+    .clickable-approval-row.actionable-approval-row td {
+        background-color: #f8fafc;
+    }
+    .clickable-approval-row:hover td {
+        background-color: rgba(var(--bs-primary-rgb), 0.06) !important;
+    }
+    .hover-primary:hover {
+        color: var(--bs-primary) !important;
+    }
+
+    /* Dark Mode Themes: Supports [bd-theme="bd-theme-dark"], [data-bs-theme="dark"], body.dark-mode, body.dark-only, html.dark, body.dark, [data-theme="dark"] */
+    [bd-theme="bd-theme-dark"] #approvalRequestsTable,
+    [data-bs-theme="dark"] #approvalRequestsTable,
+    body.dark-mode #approvalRequestsTable,
+    body.dark-only #approvalRequestsTable,
+    html.dark #approvalRequestsTable,
+    body.dark #approvalRequestsTable,
+    [data-theme="dark"] #approvalRequestsTable {
+        background-color: #1F2937 !important;
+        border: 1px solid #374151 !important;
+        color: #e5e7eb !important;
+    }
+
+    /* Filter Toolbar & Card Header/Footer in Dark Mode */
+    [bd-theme="bd-theme-dark"] #approvalRequestsTable .card-header,
+    [data-bs-theme="dark"] #approvalRequestsTable .card-header,
+    body.dark-mode #approvalRequestsTable .card-header,
+    body.dark-only #approvalRequestsTable .card-header,
+    html.dark #approvalRequestsTable .card-header,
+    body.dark #approvalRequestsTable .card-header,
+    [data-theme="dark"] #approvalRequestsTable .card-header,
+    [bd-theme="bd-theme-dark"] #approvalRequestsTable .card-footer,
+    [data-bs-theme="dark"] #approvalRequestsTable .card-footer,
+    body.dark-mode #approvalRequestsTable .card-footer,
+    body.dark-only #approvalRequestsTable .card-footer,
+    html.dark #approvalRequestsTable .card-footer,
+    body.dark #approvalRequestsTable .card-footer,
+    [data-theme="dark"] #approvalRequestsTable .card-footer {
+        background-color: #1F2937 !important;
+        border-color: #374151 !important;
+        color: #e5e7eb !important;
+    }
+
+    /* Bulk Action Bar / Light Panes in Dark Mode */
+    [bd-theme="bd-theme-dark"] #approvalRequestsTable .bg-light,
+    [data-bs-theme="dark"] #approvalRequestsTable .bg-light,
+    body.dark-mode #approvalRequestsTable .bg-light,
+    body.dark-only #approvalRequestsTable .bg-light,
+    html.dark #approvalRequestsTable .bg-light,
+    body.dark #approvalRequestsTable .bg-light,
+    [data-theme="dark"] #approvalRequestsTable .bg-light {
+        background-color: #182230 !important;
+        border-color: #374151 !important;
+        color: #9ca3af !important;
+    }
+
+    /* Filter inputs & selects in Dark Mode */
+    [bd-theme="bd-theme-dark"] #approvalRequestsTable .form-control,
+    [data-bs-theme="dark"] #approvalRequestsTable .form-control,
+    body.dark-mode #approvalRequestsTable .form-control,
+    body.dark-only #approvalRequestsTable .form-control,
+    html.dark #approvalRequestsTable .form-control,
+    body.dark #approvalRequestsTable .form-control,
+    [data-theme="dark"] #approvalRequestsTable .form-control,
+    [bd-theme="bd-theme-dark"] #approvalRequestsTable .form-select,
+    [data-bs-theme="dark"] #approvalRequestsTable .form-select,
+    body.dark-mode #approvalRequestsTable .form-select,
+    body.dark-only #approvalRequestsTable .form-select,
+    html.dark #approvalRequestsTable .form-select,
+    body.dark #approvalRequestsTable .form-select,
+    [data-theme="dark"] #approvalRequestsTable .form-select {
+        background-color: #111827 !important;
+        border-color: #4b5563 !important;
+        color: #f3f4f6 !important;
+    }
+
+    /* Main Table & DataTables Dark Styles */
+    [bd-theme="bd-theme-dark"] #allApprovalRequestsTable,
+    [data-bs-theme="dark"] #allApprovalRequestsTable,
+    body.dark-mode #allApprovalRequestsTable,
+    body.dark-only #allApprovalRequestsTable,
+    html.dark #allApprovalRequestsTable,
+    body.dark #allApprovalRequestsTable,
+    [data-theme="dark"] #allApprovalRequestsTable {
+        --bs-table-bg: #1F2937 !important;
+        --bs-table-accent-bg: transparent !important;
+        --bs-table-hover-bg: #2d3b4e !important;
+        background-color: #1F2937 !important;
+        color: #e5e7eb !important;
+        border-color: #374151 !important;
+    }
+
+    /* Table Head in Dark Mode */
+    [bd-theme="bd-theme-dark"] #allApprovalRequestsTable thead,
+    [data-bs-theme="dark"] #allApprovalRequestsTable thead,
+    body.dark-mode #allApprovalRequestsTable thead,
+    body.dark-only #allApprovalRequestsTable thead,
+    html.dark #allApprovalRequestsTable thead,
+    body.dark #allApprovalRequestsTable thead,
+    [data-theme="dark"] #allApprovalRequestsTable thead,
+    [bd-theme="bd-theme-dark"] #allApprovalRequestsTable thead th,
+    [data-bs-theme="dark"] #allApprovalRequestsTable thead th,
+    body.dark-mode #allApprovalRequestsTable thead th,
+    body.dark-only #allApprovalRequestsTable thead th,
+    html.dark #allApprovalRequestsTable thead th,
+    body.dark #allApprovalRequestsTable thead th,
+    [data-theme="dark"] #allApprovalRequestsTable thead th {
+        background-color: #111827 !important;
+        color: #9ca3af !important;
+        border-color: #374151 !important;
+    }
+
+    /* Regular Table Rows & Cells in Dark Mode */
+    [bd-theme="bd-theme-dark"] #allApprovalRequestsTable tbody tr,
+    [data-bs-theme="dark"] #allApprovalRequestsTable tbody tr,
+    body.dark-mode #allApprovalRequestsTable tbody tr,
+    body.dark-only #allApprovalRequestsTable tbody tr,
+    html.dark #allApprovalRequestsTable tbody tr,
+    body.dark #allApprovalRequestsTable tbody tr,
+    [data-theme="dark"] #allApprovalRequestsTable tbody tr,
+    [bd-theme="bd-theme-dark"] #allApprovalRequestsTable tbody tr > td,
+    [data-bs-theme="dark"] #allApprovalRequestsTable tbody tr > td,
+    body.dark-mode #allApprovalRequestsTable tbody tr > td,
+    body.dark-only #allApprovalRequestsTable tbody tr > td,
+    html.dark #allApprovalRequestsTable tbody tr > td,
+    body.dark #allApprovalRequestsTable tbody tr > td,
+    [data-theme="dark"] #allApprovalRequestsTable tbody tr > td,
+    [bd-theme="bd-theme-dark"] #allApprovalRequestsTable.dataTable tbody tr > td,
+    [data-bs-theme="dark"] #allApprovalRequestsTable.dataTable tbody tr > td,
+    body.dark-mode #allApprovalRequestsTable.dataTable tbody tr > td,
+    body.dark-only #allApprovalRequestsTable.dataTable tbody tr > td,
+    html.dark #allApprovalRequestsTable.dataTable tbody tr > td,
+    body.dark #allApprovalRequestsTable.dataTable tbody tr > td,
+    [data-theme="dark"] #allApprovalRequestsTable.dataTable tbody tr > td {
+        background-color: #1F2937 !important;
+        color: #e5e7eb !important;
+        border-color: #374151 !important;
+    }
+
+    /* Actionable Table Rows in Dark Mode (Subtle distinct dark tint) */
+    [bd-theme="bd-theme-dark"] #allApprovalRequestsTable tbody tr.actionable-approval-row,
+    [data-bs-theme="dark"] #allApprovalRequestsTable tbody tr.actionable-approval-row,
+    body.dark-mode #allApprovalRequestsTable tbody tr.actionable-approval-row,
+    body.dark-only #allApprovalRequestsTable tbody tr.actionable-approval-row,
+    html.dark #allApprovalRequestsTable tbody tr.actionable-approval-row,
+    body.dark #allApprovalRequestsTable tbody tr.actionable-approval-row,
+    [data-theme="dark"] #allApprovalRequestsTable tbody tr.actionable-approval-row,
+    [bd-theme="bd-theme-dark"] #allApprovalRequestsTable tbody tr.actionable-approval-row > td,
+    [data-bs-theme="dark"] #allApprovalRequestsTable tbody tr.actionable-approval-row > td,
+    body.dark-mode #allApprovalRequestsTable tbody tr.actionable-approval-row > td,
+    body.dark-only #allApprovalRequestsTable tbody tr.actionable-approval-row > td,
+    html.dark #allApprovalRequestsTable tbody tr.actionable-approval-row > td,
+    body.dark #allApprovalRequestsTable tbody tr.actionable-approval-row > td,
+    [data-theme="dark"] #allApprovalRequestsTable tbody tr.actionable-approval-row > td {
+        background-color: #242f3e !important;
+    }
+
+    /* Hover Table Rows in Dark Mode */
+    [bd-theme="bd-theme-dark"] #allApprovalRequestsTable tbody tr.clickable-approval-row:hover,
+    [data-bs-theme="dark"] #allApprovalRequestsTable tbody tr.clickable-approval-row:hover,
+    body.dark-mode #allApprovalRequestsTable tbody tr.clickable-approval-row:hover,
+    body.dark-only #allApprovalRequestsTable tbody tr.clickable-approval-row:hover,
+    html.dark #allApprovalRequestsTable tbody tr.clickable-approval-row:hover,
+    body.dark #allApprovalRequestsTable tbody tr.clickable-approval-row:hover,
+    [data-theme="dark"] #allApprovalRequestsTable tbody tr.clickable-approval-row:hover,
+    [bd-theme="bd-theme-dark"] #allApprovalRequestsTable tbody tr.clickable-approval-row:hover > td,
+    [data-bs-theme="dark"] #allApprovalRequestsTable tbody tr.clickable-approval-row:hover > td,
+    body.dark-mode #allApprovalRequestsTable tbody tr.clickable-approval-row:hover > td,
+    body.dark-only #allApprovalRequestsTable tbody tr.clickable-approval-row:hover > td,
+    html.dark #allApprovalRequestsTable tbody tr.clickable-approval-row:hover > td,
+    body.dark #allApprovalRequestsTable tbody tr.clickable-approval-row:hover > td,
+    [data-theme="dark"] #allApprovalRequestsTable tbody tr.clickable-approval-row:hover > td {
+        background-color: #2d3b4e !important;
+    }
+
+    /* Dark Mode Text Overrides */
+    [bd-theme="bd-theme-dark"] #allApprovalRequestsTable .text-dark,
+    [data-bs-theme="dark"] #allApprovalRequestsTable .text-dark,
+    body.dark-mode #allApprovalRequestsTable .text-dark,
+    body.dark-only #allApprovalRequestsTable .text-dark,
+    html.dark #allApprovalRequestsTable .text-dark,
+    body.dark #allApprovalRequestsTable .text-dark,
+    [data-theme="dark"] #allApprovalRequestsTable .text-dark,
+    [bd-theme="bd-theme-dark"] #approvalRequestsTable .text-dark,
+    [data-bs-theme="dark"] #approvalRequestsTable .text-dark,
+    body.dark-mode #approvalRequestsTable .text-dark,
+    body.dark-only #approvalRequestsTable .text-dark,
+    html.dark #approvalRequestsTable .text-dark,
+    body.dark #approvalRequestsTable .text-dark,
+    [data-theme="dark"] #approvalRequestsTable .text-dark {
+        color: #f3f4f6 !important;
+    }
+
+    [bd-theme="bd-theme-dark"] #allApprovalRequestsTable a.text-dark:hover,
+    [data-bs-theme="dark"] #allApprovalRequestsTable a.text-dark:hover,
+    body.dark-mode #allApprovalRequestsTable a.text-dark:hover,
+    body.dark-only #allApprovalRequestsTable a.text-dark:hover,
+    html.dark #allApprovalRequestsTable a.text-dark:hover,
+    body.dark #allApprovalRequestsTable a.text-dark:hover,
+    [data-theme="dark"] #allApprovalRequestsTable a.text-dark:hover {
+        color: #60a5fa !important;
+    }
+
+    /* Preserve dark text for badges with light/vibrant backgrounds like yellow/warning */
+    [bd-theme="bd-theme-dark"] #allApprovalRequestsTable .badge.text-dark,
+    [data-bs-theme="dark"] #allApprovalRequestsTable .badge.text-dark,
+    body.dark-mode #allApprovalRequestsTable .badge.text-dark,
+    body.dark-only #allApprovalRequestsTable .badge.text-dark,
+    html.dark #allApprovalRequestsTable .badge.text-dark,
+    body.dark #allApprovalRequestsTable .badge.text-dark,
+    [data-theme="dark"] #allApprovalRequestsTable .badge.text-dark {
+        color: #111827 !important;
+    }
+
+    /* Buttons inside Table in Dark Mode */
+    [bd-theme="bd-theme-dark"] #allApprovalRequestsTable .btn-light,
+    [data-bs-theme="dark"] #allApprovalRequestsTable .btn-light,
+    body.dark-mode #allApprovalRequestsTable .btn-light,
+    body.dark-only #allApprovalRequestsTable .btn-light,
+    html.dark #allApprovalRequestsTable .btn-light,
+    body.dark #allApprovalRequestsTable .btn-light,
+    [data-theme="dark"] #allApprovalRequestsTable .btn-light {
+        background-color: #374151 !important;
+        border-color: #4b5563 !important;
+        color: #e5e7eb !important;
+    }
+
+    /* Status Mini-Cards / Badges in Dark Mode */
+    [bd-theme="bd-theme-dark"] #allApprovalRequestsTable .bg-warning-subtle,
+    [data-bs-theme="dark"] #allApprovalRequestsTable .bg-warning-subtle,
+    body.dark-mode #allApprovalRequestsTable .bg-warning-subtle,
+    body.dark-only #allApprovalRequestsTable .bg-warning-subtle,
+    html.dark #allApprovalRequestsTable .bg-warning-subtle,
+    body.dark #allApprovalRequestsTable .bg-warning-subtle,
+    [data-theme="dark"] #allApprovalRequestsTable .bg-warning-subtle {
+        background-color: rgba(245, 158, 11, 0.16) !important;
+        border-color: rgba(245, 158, 11, 0.35) !important;
+    }
+
+    [bd-theme="bd-theme-dark"] #allApprovalRequestsTable .bg-primary-subtle,
+    [data-bs-theme="dark"] #allApprovalRequestsTable .bg-primary-subtle,
+    body.dark-mode #allApprovalRequestsTable .bg-primary-subtle,
+    body.dark-only #allApprovalRequestsTable .bg-primary-subtle,
+    html.dark #allApprovalRequestsTable .bg-primary-subtle,
+    body.dark #allApprovalRequestsTable .bg-primary-subtle,
+    [data-theme="dark"] #allApprovalRequestsTable .bg-primary-subtle {
+        background-color: rgba(59, 130, 246, 0.16) !important;
+        border-color: rgba(59, 130, 246, 0.35) !important;
+    }
+
+    [bd-theme="bd-theme-dark"] #allApprovalRequestsTable .bg-success-subtle,
+    [data-bs-theme="dark"] #allApprovalRequestsTable .bg-success-subtle,
+    body.dark-mode #allApprovalRequestsTable .bg-success-subtle,
+    body.dark-only #allApprovalRequestsTable .bg-success-subtle,
+    html.dark #allApprovalRequestsTable .bg-success-subtle,
+    body.dark #allApprovalRequestsTable .bg-success-subtle,
+    [data-theme="dark"] #allApprovalRequestsTable .bg-success-subtle {
+        background-color: rgba(16, 185, 129, 0.16) !important;
+        border-color: rgba(16, 185, 129, 0.35) !important;
+    }
+
+    [bd-theme="bd-theme-dark"] #allApprovalRequestsTable .badge.bg-light,
+    [data-bs-theme="dark"] #allApprovalRequestsTable .badge.bg-light,
+    body.dark-mode #allApprovalRequestsTable .badge.bg-light,
+    body.dark-only #allApprovalRequestsTable .badge.bg-light,
+    html.dark #allApprovalRequestsTable .badge.bg-light,
+    body.dark #allApprovalRequestsTable .badge.bg-light,
+    [data-theme="dark"] #allApprovalRequestsTable .badge.bg-light {
+        background-color: #374151 !important;
+        color: #9ca3af !important;
+        border-color: #4b5563 !important;
+    }
+
+    /* Top Module Mini Cards in Dark Mode */
+    [bd-theme="bd-theme-dark"] .module-mini-card,
+    [data-bs-theme="dark"] .module-mini-card,
+    body.dark-mode .module-mini-card,
+    body.dark-only .module-mini-card,
+    html.dark .module-mini-card,
+    body.dark .module-mini-card,
+    [data-theme="dark"] .module-mini-card {
+        background-color: #1F2937 !important;
+        border-color: #374151 !important;
+        color: #e5e7eb !important;
+    }
+
+    [bd-theme="bd-theme-dark"] .module-mini-card .text-dark,
+    [data-bs-theme="dark"] .module-mini-card .text-dark,
+    body.dark-mode .module-mini-card .text-dark,
+    body.dark-only .module-mini-card .text-dark,
+    html.dark .module-mini-card .text-dark,
+    body.dark .module-mini-card .text-dark,
+    [data-theme="dark"] .module-mini-card .text-dark {
+        color: #f3f4f6 !important;
+    }
+
+    [bd-theme="bd-theme-dark"] .module-mini-card.is-active-filter,
+    [data-bs-theme="dark"] .module-mini-card.is-active-filter,
+    body.dark-mode .module-mini-card.is-active-filter,
+    body.dark-only .module-mini-card.is-active-filter,
+    html.dark .module-mini-card.is-active-filter,
+    body.dark .module-mini-card.is-active-filter,
+    [data-theme="dark"] .module-mini-card.is-active-filter {
+        background-color: #1e3a5f !important;
+        border-color: #3b82f6 !important;
+    }
+
+    /* Page title & headings in Dark Mode */
+    [bd-theme="bd-theme-dark"] .container-fluid .text-dark,
+    [data-bs-theme="dark"] .container-fluid .text-dark,
+    body.dark-mode .container-fluid .text-dark,
+    body.dark-only .container-fluid .text-dark,
+    html.dark .container-fluid .text-dark,
+    body.dark .container-fluid .text-dark,
+    [data-theme="dark"] .container-fluid .text-dark {
+        color: #f3f4f6 !important;
+    }
 </style>
 
 <div class="container-fluid py-4">
@@ -527,7 +846,7 @@
                                 $payoutStatus = $req['payout_status'] ?? '';
                                 $ahStatus = strtolower($req['accounts_head_status'] ?? 'pending');
                                 $isFrPartialMgmt = ($sourceTable === 'fund_requisitions' && $statusLower === 'partially_approved');
-                                $isPendingAccountsHead = ($statusLower === 'approved' || $req['status'] === 'approved' || $isFrPartialMgmt) && ($ahStatus !== 'approved' || $reqApproveRole === 'accounts_head');
+                                $isPendingAccountsHead = ($ahStatus !== 'approved') && ($reqApproveRole === 'accounts_head' || $statusLower === 'approved' || $req['status'] === 'approved' || $isFrPartialMgmt);
                                 $isAccountsHeadApproved = ($ahStatus === 'approved');
 
                                 // Determine whether this request is actionable by the logged-in user right now
@@ -538,8 +857,8 @@
                                     $isActionableByMe = false;
                                     $canUserApprove = false;
                                 } elseif ($isPendingAccountsHead) {
-                                    // Pending Accounts Head approval: Actionable by Accounts Head (Role 30) and Super Admin / Admin (1, 3)
-                                    if ($isAccountsHeadUser || $isManagementUser) {
+                                    // Pending Accounts Head approval: Actionable by Accounts Head (Role 30) and Super Admin (Role 1)
+                                    if ($isAccountsHeadUser || (int)($_SESSION['user']['role_id'] ?? 0) === 1) {
                                         $isActionableByMe = true;
                                         $canUserApprove = true;
                                     } else {
@@ -565,8 +884,15 @@
                                     }
                                 } elseif ($isManagementUser) {
                                     if ($isPendingStatus && in_array($reqApproveRole, ['management', 'operations', ''])) {
-                                        $isActionableByMe = true;
-                                        $canUserApprove = true;
+                                        $reqOpStatus = strtolower($req['op_head_status'] ?? 'pending');
+                                        $isOver10k = ((float)($req['request_amount'] ?? 0) > 10000.01);
+                                        if ($isOver10k && ($reqOpStatus !== 'approved' || !$isAccountsHeadApproved)) {
+                                            $isActionableByMe = false;
+                                            $canUserApprove = false;
+                                        } else {
+                                            $isActionableByMe = true;
+                                            $canUserApprove = true;
+                                        }
                                     }
                                 } elseif ($isQcUser) {
                                     if ($isPendingStatus && in_array($reqApproveRole, ['qc', 'qc_head'])) {
@@ -595,9 +921,9 @@
                                     }
                                 }
 
-                                $rowBgStyle = $isActionableByMe ? 'background-color: #f8fafc;' : '';
+                                $rowActionableClass = $isActionableByMe ? ' actionable-approval-row border-start border-primary border-3' : '';
                                 ?>
-                                <tr data-source-table="<?= htmlspecialchars($req['source_table']) ?>" <?= !empty($targetUrl) ? 'data-href="' . htmlspecialchars($targetUrl) . '" class="clickable-approval-row' . ($isActionableByMe ? ' border-start border-primary border-3' : '') . '" style="cursor: pointer; ' . $rowBgStyle . '"' : '' ?>>
+                                <tr data-source-table="<?= htmlspecialchars($req['source_table']) ?>" <?= !empty($targetUrl) ? 'data-href="' . htmlspecialchars($targetUrl) . '" class="clickable-approval-row' . $rowActionableClass . '" style="cursor: pointer;"' : '' ?>>
                                     <td class="ps-3">
                                         <input type="checkbox" class="approval-req-checkbox form-check-input"
                                             value="<?= $req['id'] ?>" <?= ((!in_array($req['status'], ['pending', 'partially_approved', 'partially_paid']) && !($isPendingAccountsHead && ($isAccountsHeadUser || $isManagementUser))) || !$canUserApprove || $isChiefOfficer) ? 'disabled' : '' ?> onchange="updateBulkApprovalCount()">
@@ -1169,11 +1495,19 @@
                                                 if (mb_strlen($pfShort) > 30) {
                                                     $pfShort = mb_substr($pfShort, 0, 28) . '…';
                                                 }
-                                                $awaitOpHead = ($reqAmount > 100000.01 && !$opHeadDone && $isManagementUser);
-                                                $lockLabel = $awaitOpHead ? 'Awaiting Op Head' : 'Pending: ' . $pfShort;
-                                                $lockTitle = $awaitOpHead
-                                                    ? 'Amount exceeds ৳1,00,000 - Admin & Operation Head approval required first'
-                                                    : (($isSiteOperator && $opHeadDone) ? 'You (Admin & Operation Head) already approved. ' : '') . 'Pending for ' . ($pfClean !== '' ? $pfClean : 'Other Role');
+                                                $ahDone = ($ahStatus === 'approved');
+                                                $awaitOpHead = ($reqAmount > 10000.01 && !$opHeadDone && $isManagementUser);
+                                                $awaitAh = ($reqAmount > 10000.01 && $opHeadDone && !$ahDone && $isManagementUser);
+                                                if ($awaitOpHead) {
+                                                    $lockLabel = 'Awaiting Op Head';
+                                                    $lockTitle = 'Amount exceeds ৳10,000 - Admin & Operation Head approval required first';
+                                                } elseif ($awaitAh) {
+                                                    $lockLabel = 'Awaiting Accounts Head';
+                                                    $lockTitle = 'Amount exceeds ৳10,000 - Accounts Head payment verification required before Management';
+                                                } else {
+                                                    $lockLabel = 'Pending: ' . $pfShort;
+                                                    $lockTitle = (($isSiteOperator && $opHeadDone) ? 'You (Admin & Operation Head) already approved. ' : '') . 'Pending for ' . ($pfClean !== '' ? $pfClean : 'Other Role');
+                                                }
                                                 ?>
                                                 <a href="javascript:void(0)"
                                                     class="btn btn-sm btn-light text-muted rounded-2 px-2 border"
@@ -1759,7 +2093,7 @@
             attContainer.style.display = 'none';
         }
 
-        const isOver1Lac = (parseFloat(data.amount) > 100000.01);
+        const isOver1Lac = (parseFloat(data.amount) > 10000.01);
         const isOpHeadApproved = (String(data.op_head_status).toLowerCase() === 'approved');
         const noticeEl = document.getElementById('discModalWorkflowNotice');
         const submitBtn = document.getElementById('discModalSubmitBtn');
@@ -1771,13 +2105,13 @@
             if (!isOpHeadApproved) {
                 if (isRole20 && !isManagement) {
                     noticeEl.className = 'alert alert-warning py-2 px-3 extra-small mb-3 border-warning-subtle';
-                    noticeEl.innerHTML = '<i class="fa-solid fa-shield-halved me-1 text-warning"></i> <strong>Tier 1 Verification:</strong> Discount exceeds ৳1,00,000. Approving will verify and forward this request to Management.';
+                    noticeEl.innerHTML = '<i class="fa-solid fa-shield-halved me-1 text-warning"></i> <strong>Tier 1 Verification:</strong> Discount exceeds ৳10,000. Approving will verify and forward this request to Management.';
                     submitBtn.innerHTML = '<i class="fa-solid fa-shield-check me-1"></i> Verify & Forward to Management';
                     submitBtn.className = 'btn btn-success btn-sm px-4 fw-bold';
                     submitBtn.disabled = false;
                 } else if (isManagement) {
                     noticeEl.className = 'alert alert-info py-2 px-3 extra-small mb-3 border-info-subtle';
-                    noticeEl.innerHTML = '<i class="fa-solid fa-crown me-1 text-primary"></i> <strong>Direct Management Approval:</strong> Discount exceeds ৳1,00,000. As Top Management, you can approve directly (Operation Head verification will be bypassed automatically).';
+                    noticeEl.innerHTML = '<i class="fa-solid fa-crown me-1 text-primary"></i> <strong>Direct Management Approval:</strong> Discount exceeds ৳10,000. As Top Management, you can approve directly (Operation Head verification will be bypassed automatically).';
                     submitBtn.innerHTML = '<i class="fa-solid fa-check-double me-1"></i> Approve Discount (Management Direct)';
                     submitBtn.className = 'btn btn-success btn-sm px-4 fw-bold';
                     submitBtn.disabled = false;
@@ -1803,7 +2137,7 @@
             }
         } else {
             noticeEl.className = 'alert alert-primary py-2 px-3 extra-small mb-3 border-primary-subtle';
-            noticeEl.innerHTML = '<i class="fa-solid fa-info-circle me-1"></i> <strong>Direct Approval:</strong> Discount is within ৳1,00,000 threshold. Approving directly finalizes this booking discount.';
+            noticeEl.innerHTML = '<i class="fa-solid fa-info-circle me-1"></i> <strong>Direct Approval:</strong> Discount is within ৳10,000 threshold. Approving directly finalizes this booking discount.';
             if (isRole20 || isManagement) {
                 submitBtn.innerHTML = '<i class="fa-solid fa-check me-1"></i> Approve Discount';
                 submitBtn.className = 'btn btn-success btn-sm px-4 fw-bold';
@@ -1824,7 +2158,7 @@
         if (!currentDiscountData) return;
         const reqId = currentDiscountData.id;
         const note = document.getElementById('discModalNote').value.trim();
-        const isOver1Lac = (parseFloat(currentDiscountData.amount) > 100000.01);
+        const isOver1Lac = (parseFloat(currentDiscountData.amount) > 10000.01);
         const isOpHeadApproved = (String(currentDiscountData.op_head_status).toLowerCase() === 'approved');
         const isRole20 = (currentLoggedRoleId === 20 || currentLoggedRoleId === 32 || currentLoggedRoleName.includes('operation head') || currentLoggedRoleName.includes('admin & operation'));
         const isManagement = (currentLoggedRoleId === 1 || currentLoggedRoleId === 3 || currentLoggedRoleName.includes('management') || currentLoggedRoleName.includes('super admin'));

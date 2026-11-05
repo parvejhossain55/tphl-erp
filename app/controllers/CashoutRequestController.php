@@ -516,7 +516,7 @@ class CashoutRequestController extends Controller
         } else {
             // Management / Operation Head approval
             $reqAmount = (float)($request['amount'] ?? 0);
-            $isOver1Lac = ($reqAmount > 100000.01);
+            $isOver1Lac = ($reqAmount > 10000.01);
             $approvalRequest = $this->cashoutModel->getApprovalRequest($requestId);
 
             if (!$this->canApproveOrReject($reqAmount)) {
@@ -526,23 +526,29 @@ class CashoutRequestController extends Controller
             }
 
             if ($isOver1Lac && $this->isSiteOperator() && !$this->isManagementUser()) {
-                // Operation Head is approving the > 1L prerequisite step
+                // Operation Head is approving the > 10K prerequisite step
                 $approvalNote = trim($_POST['approval_note'] ?? 'Approved by Admin & Operation Head');
                 $arId = (int)($approvalRequest['id'] ?? 0);
                 if ($arId) {
                     $this->approvalModel->approveOperationHead($arId, $this->userId, $approvalNote);
                 } else {
-                    $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$this->db->real_escape_string($approvalNote)}', approve_role = 'management' WHERE source_table = 'cashout_requests' AND source_id = {$requestId}");
+                    $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$this->db->real_escape_string($approvalNote)}', approve_role = 'accounts_head' WHERE source_table = 'cashout_requests' AND source_id = {$requestId}");
                 }
-                setSuccess("Request approved by Admin & Operation Head (Role 20). Forwarded to Management for final sign-off.");
+                setSuccess("Request approved by Admin & Operation Head (Role 20). Forwarded to Accounts Head (Role 30) for payment verification.");
                 header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
                 exit;
             }
 
             if ($isOver1Lac && $this->isManagementUser()) {
                 $opStatus = strtolower($approvalRequest['op_head_status'] ?? 'pending');
+                $ahStatus = strtolower($approvalRequest['accounts_head_status'] ?? 'pending');
                 if ($opStatus !== 'approved') {
-                    setError("Access Denied: Requests exceeding ৳1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.");
+                    setError("Access Denied: Requests exceeding ৳10,000 must be approved by Admin & Operation Head (Role 20) first.");
+                    header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
+                    exit;
+                }
+                if ($ahStatus !== 'approved') {
+                    setError("Access Denied: Requests exceeding ৳10,000 must be verified & approved by Accounts Head (Role 30) before Management can approve.");
                     header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
                     exit;
                 }
@@ -812,7 +818,7 @@ class CashoutRequestController extends Controller
 
     /**
      * Management (roles 1, 3) can approve any amount.
-     * Operation Head (roles 20, 32) can approve requests <= 100,000.
+     * Operation Head (roles 20, 32) can approve requests <= 10,000.
      */
     public function canApproveOrReject($amount = null)
     {

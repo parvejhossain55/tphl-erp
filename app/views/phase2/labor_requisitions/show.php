@@ -482,11 +482,15 @@ $steps = [
             <?php 
             $mgmtBaseAmount = (float)($req['qc_approved_amount'] ?? $req['pm_verified_amount'] ?? $req['total_amount']);
             $canApproveMgmt = !empty($canApproveManagement);
-            $isOver1LacLabor = ($mgmtBaseAmount > 100000);
+            $isOver1LacLabor = ($mgmtBaseAmount > 10000);
             $isOpHeadApprovedLabor = (!empty($ahInfo['is_op_head_approved']) || ($ahInfo['op_head_status'] ?? '') === 'approved');
+            $isAhApprovedLabor = (!empty($ahInfo['is_accounts_head_approved']) || ($ahInfo['accounts_head_status'] ?? '') === 'approved');
             $isOpHeadUserLabor = (in_array((int)$userRole, [20, 32], true) || str_contains(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head'));
             $isMgmtUserLabor = in_array((int)$userRole, [1, 3], true);
-            $isMgmtLockedLabor = ($isOver1LacLabor && !$isOpHeadApprovedLabor && $isMgmtUserLabor && !$isOpHeadUserLabor);
+            $isMgmtLockedLabor = ($isOver1LacLabor && (!$isOpHeadApprovedLabor || !$isAhApprovedLabor) && $isMgmtUserLabor && !$isOpHeadUserLabor);
+            $mgmtLockMsgLabor = (!$isOpHeadApprovedLabor)
+                ? 'This requisition exceeds ৳10,000 and must be verified and approved by <strong>Admin &amp; Operation Head (Role 20)</strong> before Management can authorize payment.'
+                : 'Admin &amp; Operation Head has approved. Awaiting <strong>Accounts Head (Role 30)</strong> payment verification &amp; approval before Management can authorize payment.';
             ?>
             <?php if (in_array($st, ['qc_approved', 'pm_payment_approved']) && $canApproveMgmt): ?>
             <div class="card custom-card mb-3 border border-success border-opacity-50">
@@ -552,7 +556,7 @@ $steps = [
 
                     <?php if ($isMgmtLockedLabor): ?>
                         <div class="alert alert-warning mb-3">
-                            <i class="fa-solid fa-lock me-2"></i><strong>Management Approval Locked (> ৳1,00,000):</strong> This requisition exceeds ৳1,00,000 and must be verified and approved by <strong>Admin &amp; Operation Head (Role 20)</strong> before Management can authorize payment.
+                            <i class="fa-solid fa-lock me-2"></i><strong>Management Approval Locked (> ৳10,000):</strong> <?= $mgmtLockMsgLabor ?>
                         </div>
                     <?php else: ?>
                         <p class="fs-13 text-muted mb-3">Review and authorize payment disbursement for Accounts. You may adjust the approved amount if needed.</p>
@@ -562,7 +566,7 @@ $steps = [
                         <div class="col-6">
                             <?php if ($isMgmtLockedLabor): ?>
                                 <button type="button" class="btn btn-secondary w-100 fw-bold py-2 disabled" title="Awaiting Admin & Operation Head approval">
-                                    <i class="fa-solid fa-lock me-1"></i> Locked (> ৳1,00,000)
+                                    <i class="fa-solid fa-lock me-1"></i> Locked (> ৳10,000)
                                 </button>
                             <?php elseif ($isOver1LacLabor && !$isOpHeadApprovedLabor && $isOpHeadUserLabor): ?>
                                 <button type="button" class="btn btn-success w-100 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#mgmtApproveModal">
@@ -650,7 +654,7 @@ $steps = [
                         <i class="fa-solid fa-credit-card me-1"></i> Disburse Payment (Due: ৳ <?= number_format($remainingAmt, 2) ?>)
                     </button>
                     <?php else: ?>
-                    <button class="btn btn-sm btn-light text-muted border" disabled title="Awaiting Accounts Head (Md. Mamunoor Rashid [1309]) approval">
+                    <button class="btn btn-sm btn-light text-muted border" disabled title="Awaiting Accounts Head approval">
                         <i class="fa-solid fa-lock text-warning me-1"></i> Payment Locked (Awaiting Accounts Head Approval)
                     </button>
                     <?php endif; ?>

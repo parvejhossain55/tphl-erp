@@ -859,16 +859,17 @@ class Con_ContractorBillController extends Controller
             $managementNote = trim($_POST['management_note'] ?? '');
 
             $billAmount = (float)($approvedAmount > 0 ? $approvedAmount : ($bill['approved_amount'] > 0 ? $bill['approved_amount'] : $bill['bill_amount']));
-            $isOver1Lac = ($billAmount > 100000);
+            $isOver1Lac = ($billAmount > 10000);
             $isOpHeadUser = (in_array((int)$this->userRole, [20, 32], true) || str_contains(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head'));
             $isMgmtUser = in_array((int)$this->userRole, [1, 3], true);
 
             // Fetch approval request record
-            $arCheck = $this->db->query("SELECT id, op_head_status FROM approval_requests WHERE source_table IN ('contractor_bill_requests', 'con_contractor_bills') AND source_id = {$id} ORDER BY id DESC LIMIT 1");
+            $arCheck = $this->db->query("SELECT id, op_head_status, accounts_head_status FROM approval_requests WHERE source_table IN ('contractor_bill_requests', 'con_contractor_bills') AND source_id = {$id} ORDER BY id DESC LIMIT 1");
             $arRow = $arCheck ? $arCheck->fetch_assoc() : null;
             $opHeadStatus = strtolower($arRow['op_head_status'] ?? 'pending');
+            $ahStatus = strtolower($arRow['accounts_head_status'] ?? 'pending');
 
-            // Flow for > 1 Lac: Role 20 must approve first
+            // Flow for > 10K: Role 20 must approve first
             if ($isOver1Lac) {
                 if ($isOpHeadUser && !$isMgmtUser) {
                     $arId = (int)($arRow['id'] ?? 0);
@@ -880,16 +881,21 @@ class Con_ContractorBillController extends Controller
                     if ($arId > 0) {
                         $approvalModel->approveOperationHead($arId, $this->userId, $escNote);
                     } else {
-                        $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'management' WHERE source_table IN ('contractor_bill_requests', 'con_contractor_bills') AND source_id = {$id}");
+                        $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'accounts_head' WHERE source_table IN ('contractor_bill_requests', 'con_contractor_bills') AND source_id = {$id}");
                     }
-                    setSuccess("Contractor bill verified & approved by Admin & Operation Head (Role 20). Forwarded to Management for sign-off.");
+                    setSuccess("Contractor bill verified & approved by Admin & Operation Head (Role 20). Forwarded to Accounts Head (Role 30) for payment verification.");
                     header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
                     exit;
                 }
 
                 if ($isMgmtUser) {
                     if ($opHeadStatus !== 'approved') {
-                        setError("Access Denied: Contractor bills exceeding ৳1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.");
+                        setError("Access Denied: Contractor bills exceeding ৳10,000 must be approved by Admin & Operation Head (Role 20) first.");
+                        header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+                        exit;
+                    }
+                    if ($ahStatus !== 'approved') {
+                        setError("Access Denied: Contractor bills exceeding ৳10,000 must be verified & approved by Accounts Head (Role 30) before Management can approve.");
                         header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
                         exit;
                     }
@@ -898,7 +904,8 @@ class Con_ContractorBillController extends Controller
 
             if ($this->billModel->approve($id, $this->userId, $approvedAmount, $managementNote)) {
                 $this->syncApprovalRequest($id, 'approved', $approvedAmount);
-                $this->db->query("UPDATE approval_requests SET approve_role = 'accounts_head', status = 'pending', op_head_status = 'approved' WHERE source_table IN ('contractor_bill_requests', 'con_contractor_bills') AND source_id = " . (int)$id);
+                $nextRoleCb = ($ahStatus === 'approved') ? 'accounts' : 'accounts_head';
+                $this->db->query("UPDATE approval_requests SET approve_role = '{$nextRoleCb}', status = 'approved', op_head_status = 'approved' WHERE source_table IN ('contractor_bill_requests', 'con_contractor_bills') AND source_id = " . (int)$id);
 
                 // AUTO-GENERATE ACCRUAL JOURNAL
                 try {

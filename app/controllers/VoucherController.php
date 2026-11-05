@@ -962,9 +962,9 @@ class VoucherController extends Controller
             $addApprover('Management Approval', $row['mgmt_by'], $row['mgmt_approved_at'] ?? null, $row['mgmt_note'] ?? null);
         }
 
-        // Admin & Operation Head Approval (Mandatory for requests > ৳1,00,000 or when assigned)
+        // Admin & Operation Head Approval (Mandatory for requests > ৳10,000 or when assigned)
         $voucherAmt = (float)($voucherData['amount'] ?? ($appReq['request_amount'] ?? ($row['bill_amount'] ?? ($row['amount'] ?? 0))));
-        $isOver1Lac = ($voucherAmt > 100000.01);
+        $isOver1Lac = ($voucherAmt > 10000.01);
         $opHeadBy = $appReq['op_head_by'] ?? ($row['op_head_by'] ?? null);
         $opHeadAt = $appReq['op_head_at'] ?? ($row['op_head_at'] ?? null);
         $opHeadStatus = strtolower($appReq['op_head_status'] ?? ($row['op_head_status'] ?? 'pending'));
@@ -977,7 +977,7 @@ class VoucherController extends Controller
                 'stage' => 'Admin & Operation Head',
                 'name'  => 'Pending Verification',
                 'date'  => 'Awaiting Op Head decision',
-                'note'  => 'Mandatory step for requests > ৳1,00,000'
+                'note'  => 'Mandatory step for requests > ৳10,000'
             ];
         }
 
@@ -1030,8 +1030,22 @@ class VoucherController extends Controller
         if (empty($mgmtId) && $isRowOrReqApproved) {
             $mgmtId = $row['approved_by'] ?? ($appReq['approved_by'] ?? null);
         }
+        // If mgmtId is Accounts Head (Role 30), it belongs to Accounts Head stage, NOT Management stage!
+        $ahBy = $appReq['accounts_head_by'] ?? null;
+        if (!empty($mgmtId)) {
+            if (!empty($ahBy) && (int)$mgmtId === (int)$ahBy) {
+                $mgmtId = null;
+            } else {
+                $checkAhRole = $this->db->query("SELECT role_id, secondary_role_id FROM users WHERE id = " . (int)$mgmtId . " LIMIT 1");
+                if ($checkAhRole && ($rAh = $checkAhRole->fetch_assoc())) {
+                    if ((int)$rAh['role_id'] === 30 || (int)$rAh['secondary_role_id'] === 30) {
+                        $mgmtId = null;
+                    }
+                }
+            }
+        }
         $mgmtDate = $row['management_apporved_at'] ?? $row['management_approved_at'] ?? null;
-        if (empty($mgmtDate) && $isRowOrReqApproved) {
+        if (empty($mgmtDate) && $isRowOrReqApproved && !empty($mgmtId)) {
             $mgmtDate = $row['approved_at'] ?? ($appReq['approved_at'] ?? ($row['approved_date'] ?? null));
         }
         $mgmtStage = 'Management / Authority';
@@ -1070,7 +1084,7 @@ class VoucherController extends Controller
             } else {
                 $audit['approvers'][] = [
                     'stage' => $mgmtStage,
-                    'name'  => '⏳ Pending Approval',
+                    'name'  => ' Pending Approval',
                     'date'  => 'Awaiting decision',
                     'note'  => null
                 ];

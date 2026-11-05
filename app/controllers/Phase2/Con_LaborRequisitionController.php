@@ -376,14 +376,15 @@ class Con_LaborRequisitionController extends Controller
         $approvedAmount = (float)($_POST['approved_amount'] ?? 0);
         $note = trim($_POST['management_note'] ?? '');
         $finalApprovedAmount = $approvedAmount > 0 ? $approvedAmount : $baseAmount;
-        $isOver1Lac = ($finalApprovedAmount > 100000);
+        $isOver1Lac = ($finalApprovedAmount > 10000);
         $isOpHeadUser = (in_array((int)$this->userRole, [20, 32], true) || str_contains(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head'));
         $isMgmtUser = in_array((int)$this->userRole, [1, 3], true);
 
         // Fetch approval request record
-        $arCheck = $this->db->query("SELECT id, op_head_status FROM approval_requests WHERE source_table = 'con_labor_requisitions' AND source_id = " . (int)$id . " ORDER BY id DESC LIMIT 1");
+        $arCheck = $this->db->query("SELECT id, op_head_status, accounts_head_status FROM approval_requests WHERE source_table = 'con_labor_requisitions' AND source_id = " . (int)$id . " ORDER BY id DESC LIMIT 1");
         $arRow = $arCheck ? $arCheck->fetch_assoc() : null;
         $opHeadStatus = strtolower($arRow['op_head_status'] ?? 'pending');
+        $ahStatus = strtolower($arRow['accounts_head_status'] ?? 'pending');
 
         if ($isOver1Lac) {
             if ($isOpHeadUser && !$isMgmtUser) {
@@ -396,15 +397,19 @@ class Con_LaborRequisitionController extends Controller
                 if ($arId > 0) {
                     $approvalModel->approveOperationHead($arId, $this->userId, $escNote);
                 } else {
-                    $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'management' WHERE source_table = 'con_labor_requisitions' AND source_id = " . (int)$id);
+                    $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'accounts_head' WHERE source_table = 'con_labor_requisitions' AND source_id = " . (int)$id);
                 }
-                $_SESSION['success'] = "Labor requisition verified & approved by Admin & Operation Head (Role 20). Forwarded to Management for sign-off.";
+                $_SESSION['success'] = "Labor requisition verified & approved by Admin & Operation Head (Role 20). Forwarded to Accounts Head (Role 30) for payment verification.";
                 $this->back($id);
             }
 
             if ($isMgmtUser) {
                 if ($opHeadStatus !== 'approved') {
-                    $_SESSION['error'] = "Access Denied: Labor requisitions exceeding ৳1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.";
+                    $_SESSION['error'] = "Access Denied: Labor requisitions exceeding ৳10,000 must be approved by Admin & Operation Head (Role 20) first.";
+                    $this->back($id);
+                }
+                if ($ahStatus !== 'approved') {
+                    $_SESSION['error'] = "Access Denied: Labor requisitions exceeding ৳10,000 must be verified & approved by Accounts Head (Role 30) before Management can approve.";
                     $this->back($id);
                 }
             }
@@ -489,9 +494,11 @@ class Con_LaborRequisitionController extends Controller
                     $stmt->bind_param('di', $appAmt, $existing['id']);
                     $stmt->execute();
                 } elseif ($action === 'approved') {
-                    $stmt = $this->db->prepare("UPDATE approval_requests SET status = 'approved', approve_role = 'accounts', approved_amount = ?, approved_by = ?, approved_at = NOW(), approval_note = ?, updated_at = NOW() WHERE id = ?");
+                    $isAhAppr = (!empty($existing['accounts_head_status']) && strtolower($existing['accounts_head_status']) === 'approved');
+                    $nextRoleLr = $isAhAppr ? 'accounts' : 'accounts_head';
+                    $stmt = $this->db->prepare("UPDATE approval_requests SET status = 'approved', approve_role = ?, approved_amount = ?, approved_by = ?, approved_at = NOW(), approval_note = ?, updated_at = NOW() WHERE id = ?");
                     $appAmt = ($approvedAmount !== null && $approvedAmount > 0) ? (float)$approvedAmount : ($appAmount ?: $requestedAmount);
-                    $stmt->bind_param('disi', $appAmt, $this->userId, $note, $existing['id']);
+                    $stmt->bind_param('sdisi', $nextRoleLr, $appAmt, $this->userId, $note, $existing['id']);
                     $stmt->execute();
                 } elseif ($action === 'rejected') {
                     $stmt = $this->db->prepare("UPDATE approval_requests SET status = 'rejected', approve_role = 'management', approved_by = ?, approved_at = NOW(), approval_note = ?, updated_at = NOW() WHERE id = ?");

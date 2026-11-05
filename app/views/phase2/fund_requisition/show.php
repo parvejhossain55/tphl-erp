@@ -8,13 +8,13 @@ $isAccounts = in_array($sessionRoleId, [1, 6, 30]);
 require_once __DIR__ . '/../../../models/ApprovalRequest.php';
 $ahInfo = ApprovalRequest::getAccountsHeadApprovalInfo($GLOBALS['db'] ?? ($this->db ?? null), 'fund_requisitions', (int)$req['id']);
 
-$isOver1Lac = ((float)$req['amount'] > 100000.01);
+$isOver1Lac = ((float)$req['amount'] > 10000.01);
 $isOpHeadApproved = (!empty($ahInfo['is_op_head_approved']));
 // Legacy: Management approved (> 1L) before Op Head sign-off -> Op Head step is bypassed, not pending
 $isOpHeadBypassed = (!empty($ahInfo['is_op_head_bypassed']));
 
 $canOpHeadApprove = in_array($sessionRoleId, [20, 32]) && ($isOver1Lac ? !$isOpHeadApproved : true);
-$canMgmtApprove = in_array($sessionRoleId, [1, 3]) && ($isOver1Lac ? $isOpHeadApproved : true);
+$canMgmtApprove = in_array($sessionRoleId, [1, 3]) && ($isOver1Lac ? ($isOpHeadApproved && !empty($ahInfo['is_accounts_head_approved'])) : true);
 $canApprove = $canOpHeadApprove || $canMgmtApprove;
 $isVerified = !empty($req['accounts_settlement_verified']);
 
@@ -667,7 +667,7 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
                                         <?php echo !empty($ahInfo['op_head_at']) ? 'on ' . date('d M Y, h:i A', strtotime($ahInfo['op_head_at'])) : ''; ?>
                                     </p>
                                     <?php if ($isOver1Lac): ?>
-                                        <div class="mt-1"><span class="badge bg-info-transparent text-info fs-10">Forwarded to Management (Request &gt; &#2547;1,00,000)</span></div>
+                                        <div class="mt-1"><span class="badge bg-info-transparent text-info fs-10">Forwarded to Accounts Head (Request &gt; &#2547;10,000)</span></div>
                                     <?php endif; ?>
                                     <?php if (!empty($ahInfo['op_head_note'])): ?>
                                         <div class="bg-light p-2 rounded fs-12 mt-2 text-dark border">
@@ -776,11 +776,11 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
                                     if (in_array($sessionRoleId, [1, 3])) {
                                         $maxApprovableMgmt = (float)$req['amount'];
                                     } else {
-                                        // Operation Head (20, 32): max 1 lakh
+                                        // Operation Head (20, 32): max 10 thousand
                                         $qcCapMgmt = (isset($req['qc_approved_amount']) && (float)$req['qc_approved_amount'] > 0)
                                             ? (float)$req['qc_approved_amount']
                                             : (float)$req['amount'];
-                                        $maxApprovableMgmt = min(100000, $qcCapMgmt);
+                                        $maxApprovableMgmt = min(10000, $qcCapMgmt);
                                     }
                                     $dueToApproveMgmt = max(0, $maxApprovableMgmt - (float)($req['approved_amount'] ?? 0));
                                     if ($canApprove && $dueToApproveMgmt > 0): 
@@ -836,11 +836,11 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
                                         if ($isMgmtPartial) {
                                             echo 'Awaiting Management approval for the remaining balance.';
                                         } elseif ($isOver1Lac && !$isOpHeadApproved) {
-                                            echo 'Will be enabled after Admin & Operation Head approval (request above ৳1,00,000).';
+                                            echo 'Will be enabled after Admin & Operation Head approval (request above ৳10,000).';
                                         } elseif ($isOver1Lac) {
                                             echo 'Admin & Operation Head approved. Awaiting final Management sign-off.';
                                         } else {
-                                            echo 'Awaiting approval from Management (Any Amount) or Operation Head (Up to ৳1,00,000)';
+                                            echo 'Awaiting approval from Management (Any Amount) or Operation Head (Up to ৳10,000)';
                                         }
                                         ?>
                                     </p>
@@ -887,7 +887,7 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
                                         <?php endif; ?>
                                     <?php elseif ($isOver1Lac && !$isOpHeadApproved && in_array($sessionRoleId, [1, 3])): ?>
                                         <div class="alert alert-warning py-2 px-3 extra-small mt-2 mb-0">
-                                            <i class="fa-solid fa-lock me-1 text-warning"></i> Requests exceeding ৳1,00,000 require Admin &amp; Operation Head (Role 20) approval before Management can approve.
+                                            <i class="fa-solid fa-lock me-1 text-warning"></i> Requests exceeding ৳10,000 require Admin &amp; Operation Head (Role 20) approval before Management can approve.
                                         </div>
                                     <?php endif; ?>
                                 </div>
@@ -897,7 +897,7 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
                                 </div>
                                 <div>
                                     <h6 class="fw-bold fs-13 mb-0 text-muted">Pending Management / Operation Head Approval</h6>
-                                    <p class="fs-12 text-muted mb-0 mt-1">Will be enabled after QC & Internal Audit Head approval. <span class="badge bg-info-transparent text-info fs-10">Operation Head: Up to ৳1,00,000</span></p>
+                                    <p class="fs-12 text-muted mb-0 mt-1">Will be enabled after QC & Internal Audit Head approval. <span class="badge bg-info-transparent text-info fs-10">Operation Head: Up to ৳10,000</span></p>
                                 </div>
                             <?php endif; ?>
                         </div>
@@ -1202,7 +1202,7 @@ if (in_array($sessionRoleId, [1, 3])) {
     $effectiveReqAmount = (isset($req['qc_approved_amount']) && (float)$req['qc_approved_amount'] > 0)
         ? (float)$req['qc_approved_amount']
         : (float)$req['amount'];
-    $maxApprovable = min(100000, $effectiveReqAmount);
+    $maxApprovable = min(10000, $effectiveReqAmount);
 }
 $dueToApprove = max(0, $maxApprovable - (float)($req['approved_amount'] ?? 0));
 if ($canApprove && $dueToApprove > 0 && !in_array($req['status'], ['rejected', 'pending_dept', 'pending_qc'])): ?>

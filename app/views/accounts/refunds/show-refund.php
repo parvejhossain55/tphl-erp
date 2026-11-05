@@ -282,13 +282,17 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
             <?php if ($canApproveReq && $isPending): ?>
             <?php
             $refundAmtToCheck = (float)$refund['refund_amount'];
-            $isOver1LacRefund = ($refundAmtToCheck > 100000);
+            $isOver1LacRefund = ($refundAmtToCheck > 10000);
             $isOpHeadApprovedRefund = (!empty($ahInfo['is_op_head_approved']) || ($ahInfo['op_head_status'] ?? '') === 'approved');
+            $isAhApprovedRefund = (!empty($ahInfo['is_accounts_head_approved']) || ($ahInfo['accounts_head_status'] ?? '') === 'approved');
             $userRoleRefund = (int)($_SESSION['user']['role_id'] ?? 0);
             $roleNameRefund = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
             $isOpHeadUserRefund = (in_array($userRoleRefund, [20, 32], true) || str_contains($roleNameRefund, 'operation head'));
             $isMgmtUserRefund = in_array($userRoleRefund, [1, 3], true);
-            $isMgmtLockedRefund = ($isOver1LacRefund && !$isOpHeadApprovedRefund && $isMgmtUserRefund && !$isOpHeadUserRefund);
+            $isMgmtLockedRefund = ($isOver1LacRefund && (!$isOpHeadApprovedRefund || !$isAhApprovedRefund) && $isMgmtUserRefund && !$isOpHeadUserRefund);
+            $mgmtLockMsgRefund = (!$isOpHeadApprovedRefund)
+                ? 'As this refund request exceeds ৳10,000, verification and approval by <strong>Admin &amp; Operation Head (Role 20)</strong> is required prior to Management sign-off.'
+                : 'Admin &amp; Operation Head has approved. Awaiting verification and approval by <strong>Accounts Head (Role 30)</strong> prior to Management sign-off.';
             ?>
             <div class="card custom-card border-0 shadow-sm mb-3" style="border-left: 4px solid #ffc107 !important; background: #fffdf5;">
                 <div class="card-body p-3">
@@ -311,7 +315,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
 
                     <?php if ($isMgmtLockedRefund): ?>
                         <div class="alert alert-warning mb-2" style="font-size: 12px;">
-                            <i class="fa-solid fa-lock me-1 text-warning"></i><strong>Management Approval Locked (> ৳1,00,000):</strong> As this refund request exceeds ৳1,00,000, verification and approval by <strong>Admin &amp; Operation Head (Role 20)</strong> is required prior to Management sign-off.
+                            <i class="fa-solid fa-lock me-1 text-warning"></i><strong>Management Approval Locked (> ৳10,000):</strong> <?= $mgmtLockMsgRefund ?>
                         </div>
                     <?php endif; ?>
 
@@ -358,7 +362,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                         </div>
                         <?php if ($isMgmtLockedRefund): ?>
                             <button type="button" class="btn btn-secondary w-100 fw-bold btn-sm py-2 disabled" title="Awaiting Admin & Operation Head approval">
-                                <i class="fa-solid fa-lock me-1"></i> Locked (> ৳1,00,000)
+                                <i class="fa-solid fa-lock me-1"></i> Locked (> ৳10,000)
                             </button>
                         <?php elseif ($isOver1LacRefund && !$isOpHeadApprovedRefund && $isOpHeadUserRefund): ?>
                             <button type="button" class="btn btn-success w-100 fw-bold btn-sm py-2 shadow-sm" onclick="confirmApproval()">

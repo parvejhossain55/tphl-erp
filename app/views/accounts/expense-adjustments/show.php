@@ -652,11 +652,15 @@ if (!empty($ahInfo['has_request'])) {
                                         <?php if ($canMgmtApprove): ?>
                                             <?php
                                             $adjAmtToCheck = (float)($adj['approved_amount'] ?: $adj['amount']);
-                                            $isOver1LacAdj = ($adjAmtToCheck > 100000);
+                                            $isOver1LacAdj = ($adjAmtToCheck > 10000);
                                             $isOpHeadApprovedAdj = (!empty($ahInfo['is_op_head_approved']) || ($ahInfo['op_head_status'] ?? '') === 'approved');
+                                            $isAhApprovedAdj = (!empty($ahInfo['is_accounts_head_approved']) || ($ahInfo['accounts_head_status'] ?? '') === 'approved');
                                             $isOpHeadUserAdj = (in_array((int)($_SESSION['user']['role_id'] ?? 0), [20, 32], true) || str_contains(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head'));
                                             $isMgmtUserAdj = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3], true);
-                                            $isMgmtLockedAdj = ($isOver1LacAdj && !$isOpHeadApprovedAdj && $isMgmtUserAdj && !$isOpHeadUserAdj);
+                                            $isMgmtLockedAdj = ($isOver1LacAdj && (!$isOpHeadApprovedAdj || !$isAhApprovedAdj) && $isMgmtUserAdj && !$isOpHeadUserAdj);
+                                            $mgmtLockMsgAdj = (!$isOpHeadApprovedAdj)
+                                                ? 'This expense adjustment exceeds ৳10,000 and must be verified and approved by <strong>Admin &amp; Operation Head (Role 20)</strong> before Management can authorize it.'
+                                                : 'Admin &amp; Operation Head has approved. Awaiting <strong>Accounts Head (Role 30)</strong> payment verification &amp; approval before Management can authorize it.';
                                             ?>
                                             <div class="p-3 bg-light rounded border mb-3">
                                                 <h6 class="fw-bold text-primary mb-2">
@@ -664,7 +668,7 @@ if (!empty($ahInfo['has_request'])) {
                                                 </h6>
                                                 <?php if ($isMgmtLockedAdj): ?>
                                                     <div class="alert alert-warning mb-3">
-                                                        <i class="fa-solid fa-lock me-2"></i><strong>Management Approval Locked (> ৳1,00,000):</strong> This expense adjustment exceeds ৳1,00,000 and must be verified and approved by <strong>Admin &amp; Operation Head (Role 20)</strong> before Management can authorize it.
+                                                        <i class="fa-solid fa-lock me-2"></i><strong>Management Approval Locked (> ৳10,000):</strong> <?= $mgmtLockMsgAdj ?>
                                                     </div>
                                                 <?php else: ?>
                                                     <p class="small text-muted mb-3">
@@ -683,7 +687,7 @@ if (!empty($ahInfo['has_request'])) {
                                                     </div>
                                                     <?php if ($isMgmtLockedAdj): ?>
                                                         <button type="button" class="btn btn-secondary w-100 fw-bold shadow-sm disabled" title="Awaiting Admin & Operation Head approval">
-                                                            <i class="fa-solid fa-lock me-1"></i> Locked (> ৳1,00,000)
+                                                            <i class="fa-solid fa-lock me-1"></i> Locked (> ৳10,000)
                                                         </button>
                                                     <?php elseif ($isOver1LacAdj && !$isOpHeadApprovedAdj && $isOpHeadUserAdj): ?>
                                                         <button type="submit" class="btn btn-success w-100 fw-bold shadow-sm">

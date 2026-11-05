@@ -2117,9 +2117,9 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer, $serial = 1) {
 
                 <?php 
                 // Management/Operation Approval button
-                // Role 1,3: any amount | Role 20,32: only <= 100000
+                // Role 1,3: any amount | Role 20,32: only <= 10000
                 $canApproveInList = (in_array($roleId, [1, 3, 33])) ||
-                                    (in_array($roleId, [20, 32]) && (float)($req['amount'] ?? 0) <= 100000);
+                                    (in_array($roleId, [20, 32]) && (float)($req['amount'] ?? 0) <= 10000);
                 if (in_array($req['status'], ['pending', 'partially_approved', 'partially_paid']) && $canApproveInList): ?>
                     <button type="button" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1" 
                             onclick="window.location.href='<?= $GLOBALS['base_url'] ?>/fund-requisitions/view/<?= $req['id'] ?>'">

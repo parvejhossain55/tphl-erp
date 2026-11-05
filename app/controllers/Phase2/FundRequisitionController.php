@@ -161,9 +161,9 @@ class FundRequisitionController extends Controller {
             $where .= " AND fr.requested_by = $userId";
         } elseif (empty($statusFilter) && $viewMode !== 'all') {
             if (in_array($roleId, [20, 32], true)) {
-                // Operation Head: show only management-pending items by default (up to 1 Lakh) OR their own requests OR their dept_pending requests
+                // Operation Head: show only management-pending items by default (up to 10 Thousand) OR their own requests OR their dept_pending requests
                 $deptHeadCond = !empty($deptHeadDeptIds) ? "fr.department_id IN (" . implode(',', $deptHeadDeptIds) . ")" : "0";
-                $where .= " AND ((fr.status IN ('pending', 'partially_approved', 'partially_paid') AND fr.amount <= 100000) OR fr.requested_by = $userId OR (fr.status = 'pending_dept' AND (e_req.reporting_user_id = $userId OR $deptHeadCond)))";
+                $where .= " AND ((fr.status IN ('pending', 'partially_approved', 'partially_paid') AND fr.amount <= 10000) OR fr.requested_by = $userId OR (fr.status = 'pending_dept' AND (e_req.reporting_user_id = $userId OR $deptHeadCond)))";
             } elseif (in_array($roleId, [13, 24, 25], true)) {
                 // QC & Internal Audit: show only QC-pending items by default OR their own requests
                 $where .= " AND (fr.status = 'pending_qc' OR fr.requested_by = $userId)";
@@ -1070,12 +1070,12 @@ class FundRequisitionController extends Controller {
         }
 
         $amount = (float)($frData['amount'] ?? 0);
-        $isOver1Lac = ($amount > 100000.01);
+        $isOver1Lac = ($amount > 10000.01);
         $isSiteOperator = in_array($roleId, [20, 32], true);
         $isManagement = in_array($roleId, [1, 3], true);
 
         if ($isOver1Lac && $isSiteOperator && !$isManagement) {
-            // Operation Head is approving the > 1L prerequisite step
+            // Operation Head is approving the > 10K prerequisite step
             if (!class_exists('ApprovalRequest')) {
                 require_once __DIR__ . '/../../models/ApprovalRequest.php';
             }
@@ -1084,18 +1084,24 @@ class FundRequisitionController extends Controller {
             if ($arRow) {
                 $appModel->approveOperationHead((int)$arRow['id'], $approved_by, $approval_note);
             } else {
-                $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$approved_by}, op_head_at = NOW(), op_head_note = '{$this->db->real_escape_string($approval_note)}', approve_role = 'management' WHERE source_table = 'fund_requisitions' AND source_id = {$id}");
+                $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$approved_by}, op_head_at = NOW(), op_head_note = '{$this->db->real_escape_string($approval_note)}', approve_role = 'accounts_head' WHERE source_table = 'fund_requisitions' AND source_id = {$id}");
             }
-            setSuccess("Requisition approved by Admin & Operation Head (Role 20). Forwarded to Management for final sign-off.");
+            setSuccess("Requisition approved by Admin & Operation Head (Role 20). Forwarded to Accounts Head (Role 30) for payment verification.");
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
             exit;
         }
 
         if ($isOver1Lac && $isManagement) {
-            $arRow = $this->db->query("SELECT op_head_status FROM approval_requests WHERE source_table = 'fund_requisitions' AND source_id = {$id} ORDER BY id DESC LIMIT 1")->fetch_assoc();
+            $arRow = $this->db->query("SELECT op_head_status, accounts_head_status FROM approval_requests WHERE source_table = 'fund_requisitions' AND source_id = {$id} ORDER BY id DESC LIMIT 1")->fetch_assoc();
             $opStatus = strtolower($arRow['op_head_status'] ?? 'pending');
+            $ahStatus = strtolower($arRow['accounts_head_status'] ?? 'pending');
             if ($opStatus !== 'approved') {
-                setError("Access Denied: Requisitions exceeding ৳1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.");
+                setError("Access Denied: Requisitions exceeding ৳10,000 must be approved by Admin & Operation Head (Role 20) first.");
+                header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
+                exit;
+            }
+            if ($ahStatus !== 'approved') {
+                setError("Access Denied: Requisitions exceeding ৳10,000 must be verified & approved by Accounts Head (Role 30) before Management can approve.");
                 header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
                 exit;
             }

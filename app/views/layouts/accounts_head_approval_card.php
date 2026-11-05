@@ -98,19 +98,19 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
 
 <?php if ($renderCard): ?>
 
-    <!-- TIER 1: ADMIN & OPERATION HEAD STAGE (DISPLAYED FOR REQUESTS > ৳1,00,000) -->
+    <!-- TIER 1: ADMIN & OPERATION HEAD STAGE (DISPLAYED FOR REQUESTS > ৳10,000) -->
     <?php if ($isOver1Lac): ?>
     <div class="card border shadow-sm mb-3" id="operationHeadApprovalCard" style="border-radius: 10px; overflow: hidden;">
         <div class="card-header d-flex flex-wrap align-items-center justify-content-between py-2 px-3 <?= $isOpHeadApproved ? 'bg-success-subtle border-success-subtle' : ($isOpHeadRejected ? 'bg-danger-subtle border-danger-subtle' : 'bg-warning-subtle border-warning-subtle') ?>">
             <div class="d-flex align-items-center gap-2">
                 <span class="badge bg-dark text-white rounded-pill px-2 py-1 extra-small fw-bold">
-                    <i class="fa-solid fa-layer-group me-1"></i>Step 1 of 3 (> ৳1 Lac Flow)
+                    <i class="fa-solid fa-layer-group me-1"></i>Step 1 of 3 (> ৳10,000 Flow)
                 </span>
                 <?php if ($isOpHeadApproved): ?>
                     <span class="badge bg-success text-white rounded-pill px-3 py-1 extra-small fw-bold">
                         <i class="fa-solid fa-circle-check me-1"></i>Operation Head Approved
                     </span>
-                    <span class="text-success extra-small fw-semibold">Forwarded to Management (Role 3)</span>
+                    <span class="text-success extra-small fw-semibold">Forwarded to Accounts Head (Role 30)</span>
                 <?php elseif ($isOpHeadRejected): ?>
                     <span class="badge bg-danger text-white rounded-pill px-3 py-1 extra-small fw-bold">
                         <i class="fa-solid fa-circle-xmark me-1"></i>Rejected by Operation Head
@@ -124,11 +124,11 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
                     <span class="badge bg-warning text-dark rounded-pill px-3 py-1 extra-small fw-bold">
                         <i class="fa-solid fa-clock me-1"></i>Pending Admin & Operation Head Approval
                     </span>
-                    <span class="text-danger extra-small fw-semibold">Mandatory Step before Management (Role 3)</span>
+                    <span class="text-danger extra-small fw-semibold">Mandatory Step before Accounts Head &amp; Management</span>
                 <?php endif; ?>
             </div>
             <div class="extra-small text-muted">
-                Threshold: <strong>৳<?= number_format($reqAmount, 2) ?> (&gt; ৳1,00,000)</strong>
+                Threshold: <strong>৳<?= number_format($reqAmount, 2) ?> (&gt; ৳10,000)</strong>
             </div>
         </div>
 
@@ -187,7 +187,7 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
                                     <i class="fa-solid fa-lock text-warning me-1"></i>Management Step Locked
                                 </div>
                                 <div class="extra-small text-secondary">
-                                    Requests over ৳1,00,000 require Admin &amp; Operation Head (Role 20) sign-off first.
+                                    Requests over ৳10,000 require Admin &amp; Operation Head (Role 20) and Accounts Head (Role 30) sign-off first.
                                 </div>
                             </div>
                         <?php else: ?>
@@ -201,7 +201,7 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
                                 <i class="fa-solid fa-check-double me-1"></i>Step 1 Completed
                             </span>
                             <div class="extra-small text-muted mt-1">
-                                Ready for Management &amp; Accounts Head
+                                Forwarded to Accounts Head (Role 30) for payment verification
                             </div>
                         </div>
                     <?php elseif ($isOpHeadRejected): ?>
@@ -232,11 +232,11 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
             <div class="d-flex align-items-center gap-2">
                 <?php if ($isOver1Lac): ?>
                     <span class="badge bg-dark text-white rounded-pill px-2 py-1 extra-small fw-bold">
-                        <i class="fa-solid fa-layer-group me-1"></i>Step 3 of 3 (Final Sign-off)
+                        <i class="fa-solid fa-layer-group me-1"></i>Step 2 of 3 (Verification &amp; Approval before Management)
                     </span>
                 <?php else: ?>
                     <span class="badge bg-secondary text-white rounded-pill px-2 py-1 extra-small fw-bold">
-                        <i class="fa-solid fa-shield-halved me-1"></i>Final Sign-off (≤ ৳1 Lac)
+                        <i class="fa-solid fa-shield-halved me-1"></i>Payment Approval (≤ ৳10,000)
                     </span>
                 <?php endif; ?>
 
@@ -244,7 +244,11 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
                     <span class="badge bg-success text-white rounded-pill px-3 py-1 extra-small fw-bold">
                         <i class="fa-solid fa-circle-check me-1"></i>Accounts Head Approved
                     </span>
-                    <span class="text-success extra-small fw-semibold">Payment Disbursable by Accounts (Role 6)</span>
+                    <?php if ($isOver1Lac && !$ahInfo['is_mgmt_approved']): ?>
+                        <span class="text-primary extra-small fw-semibold">Forwarded to Management (Role 1/3) for Sign-off</span>
+                    <?php else: ?>
+                        <span class="text-success extra-small fw-semibold">Payment Disbursable by Accounts (Role 6)</span>
+                    <?php endif; ?>
                 <?php elseif ($isAhRejected): ?>
                     <span class="badge bg-danger text-white rounded-pill px-3 py-1 extra-small fw-bold">
                         <i class="fa-solid fa-circle-xmark me-1"></i>Rejected by Accounts Head
@@ -359,7 +363,7 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
         <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
             <div class="modal-header bg-primary text-white py-2 px-3">
                 <h6 class="modal-title fw-bold fs-14 mb-0" id="modalOpHeadApproveDirectLabel">
-                    <i class="fa-solid fa-shield-check me-2"></i>Admin &amp; Operation Head Approval (> ৳1,00,000)
+                    <i class="fa-solid fa-shield-check me-2"></i>Admin &amp; Operation Head Approval (> ৳10,000)
                 </h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -368,7 +372,7 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
                 
                 <div class="alert alert-info py-2 px-3 extra-small mb-3 d-flex align-items-center gap-2">
                     <i class="fa-solid fa-circle-info fs-14 text-primary"></i>
-                    <span>This request exceeds ৳1,00,000. Your approval will advance it to Management (Role 3) for final review.</span>
+                    <span>This request exceeds ৳10,000. Your approval will advance it to Accounts Head (Role 30) for payment verification.</span>
                 </div>
 
                 <div class="mb-3">
@@ -381,7 +385,7 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
             <div class="modal-footer py-2 px-3 bg-light border-top-0 d-flex justify-content-between">
                 <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary btn-sm fw-bold px-3 shadow-sm" id="btnSubmitOpHeadApprove" onclick="submitOpHeadApproveAction()">
-                    <i class="fa-solid fa-check me-1"></i>Confirm &amp; Forward to Management
+                    <i class="fa-solid fa-check me-1"></i>Confirm &amp; Forward to Accounts Head
                 </button>
             </div>
         </div>
@@ -546,7 +550,7 @@ window.triggerOpHeadApprove = function(reqId) {
     const reqInput = document.getElementById('opHeadCardApproveReqId');
     if (reqInput) reqInput.value = reqId;
     const noteArea = document.getElementById('opHeadCardApproveNote');
-    if (noteArea) noteArea.value = 'Approved by Admin & Operation Head. Forwarded to Management.';
+    if (noteArea) noteArea.value = 'Approved by Admin & Operation Head. Forwarded to Accounts Head for payment verification.';
     const msgEl = document.getElementById('opHeadApproveMsg');
     if (msgEl) { msgEl.className = 'd-none'; msgEl.innerHTML = ''; }
     
@@ -619,7 +623,7 @@ window.submitOpHeadApproveAction = function() {
         } else {
             if (btn) {
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fa-solid fa-check me-1"></i>Confirm & Forward to Management';
+                btn.innerHTML = '<i class="fa-solid fa-check me-1"></i>Confirm & Forward to Accounts Head';
             }
             if (msgEl) {
                 msgEl.className = 'alert alert-danger py-2 px-3 extra-small mb-0';
@@ -630,7 +634,7 @@ window.submitOpHeadApproveAction = function() {
     .catch(err => {
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fa-solid fa-check me-1"></i>Confirm & Forward to Management';
+            btn.innerHTML = '<i class="fa-solid fa-check me-1"></i>Confirm & Forward to Accounts Head';
         }
         if (msgEl) {
             msgEl.className = 'alert alert-danger py-2 px-3 extra-small mb-0';

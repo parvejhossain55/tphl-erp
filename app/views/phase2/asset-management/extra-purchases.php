@@ -397,7 +397,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                                 $canApprove = false;
                                                 $step = '';
                                                 $reqTotal = (float)($r['total_price'] ?? 0);
-                                                $isOver1Lac = ($reqTotal > 100000);
+                                                $isOver1Lac = ($reqTotal > 10000);
                                                 $isOpHeadUser = (in_array((int)$roleId, [20, 32], true) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head') !== false || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'admin & operation') !== false);
                                                 $isOpHeadApproved = (!empty($r['op_head_status']) && $r['op_head_status'] === 'approved');
                                                 $rowDhStatus = $r['dept_head_status'] ?? 'not_required';
@@ -476,8 +476,12 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                                         <i class="fa-solid fa-xmark"></i>
                                                     </button>
                                                 <?php elseif ($isOver1Lac && !$isOpHeadApproved && $r['qc_audit_status'] === 'approved' && $r['mgmt_status'] === 'pending' && $isManagement): ?>
-                                                    <span class="badge bg-light text-muted border px-2 py-1 extra-small" title="Requests over ৳1,00,000 require Admin & Operation Head approval first">
-                                                        <i class="fa-solid fa-lock me-1 text-warning"></i> Awaiting Op Head (>1L)
+                                                    <span class="badge bg-light text-muted border px-2 py-1 extra-small" title="Requests over ৳10,000 require Admin & Operation Head approval first">
+                                                        <i class="fa-solid fa-lock me-1 text-warning"></i> Awaiting Op Head (>10K)
+                                                    </span>
+                                                <?php elseif ($isOver1Lac && $isOpHeadApproved && !$isAhApproved && $r['qc_audit_status'] === 'approved' && $r['mgmt_status'] === 'pending' && $isManagement): ?>
+                                                    <span class="badge bg-light text-muted border px-2 py-1 extra-small" title="Requests over ৳10,000 require Accounts Head verification first">
+                                                        <i class="fa-solid fa-lock me-1 text-warning"></i> Awaiting Accounts Head
                                                     </span>
                                                 <?php elseif ($canApproveAh): ?>
                                                     <button type="button" class="btn btn-sm btn-primary" title="Approve as Accounts Head"
@@ -991,13 +995,13 @@ function getNextStep(data) {
 
 function getStepTitle(step, data) {
     if (step === 'mgmt') {
-        var isOver1L = data && (parseFloat(data.total_price) > 100000.01);
+        var isOver1L = data && (parseFloat(data.total_price) > 10000.01);
         var opDone = data && (String(data.op_head_status).toLowerCase() === 'approved');
         if (isOver1L) {
-            if (!opDone) return 'Admin & Operation Head Approval (Stage 1: > ৳1 Lakh)';
-            return 'Management Final Approval (Stage 2: > ৳1 Lakh)';
+            if (!opDone) return 'Admin & Operation Head Approval (Stage 1: > ৳10,000)';
+            return 'Management Final Approval (Stage 2: > ৳10,000)';
         }
-        return 'Management / Operation Head Approval (Within ৳1 Lakh)';
+        return 'Management / Operation Head Approval (Within ৳10,000)';
     }
     var titles = {
         'dept_head': 'Department Head / Reporting Boss Approval',

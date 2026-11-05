@@ -274,7 +274,7 @@ class ApprovalRequestController extends Controller
                 $reqAppRole = strtolower($req['approve_role'] ?? 'management');
                 $reqAhStatus = strtolower($req['accounts_head_status'] ?? 'pending');
 
-                $isOver1Lac = ((float)($req['request_amount'] ?? 0) > 100000.01);
+                $isOver1Lac = ((float)($req['request_amount'] ?? 0) > 10000.01);
                 $reqOpStatus = strtolower($req['op_head_status'] ?? 'pending');
 
                 // If Accounts Head is approving:
@@ -311,10 +311,12 @@ class ApprovalRequestController extends Controller
 
                 // If Management (Role 3 / 1) is approving:
                 if ($isManagement) {
-                    // For > 100,000, Operation Head must have approved first!
-                    if ($isOver1Lac && $action === 'approve' && $reqOpStatus !== 'approved') {
-                        $failedCount++;
-                        continue; // Cannot approve > 1L request until Op Head approves
+                    // For > 10,000, BOTH Op Head AND Accounts Head must have approved first!
+                    if ($isOver1Lac && $action === 'approve') {
+                        if ($reqOpStatus !== 'approved' || $reqAhStatus !== 'approved') {
+                            $failedCount++;
+                            continue; // Cannot approve > 10K request until Op Head & Accounts Head approve
+                        }
                     }
                 } elseif ($req && $reqAppRole === 'management' && !$isManagement && !$isSiteOperator) {
                     $failedCount++;
@@ -731,11 +733,16 @@ class ApprovalRequestController extends Controller
             exit;
         }
 
-        // For > ৳1,00,000: Admin & Operation Head (Role 20 / 32) must approve first (same rule as bulk approve & module pages)
-        $isOver1Lac = ((float)($req['request_amount'] ?? 0) > 100000.01);
+        // For > ৳10,000: Admin & Operation Head (Role 20 / 32) must approve first (same rule as bulk approve & module pages)
+        $isOver1Lac = ((float)($req['request_amount'] ?? 0) > 10000.01);
         if ($isOver1Lac && strtolower($req['op_head_status'] ?? 'pending') !== 'approved') {
             ob_clean();
-            echo json_encode(['success' => false, 'message' => 'Requests exceeding ৳1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.']);
+            echo json_encode(['success' => false, 'message' => 'Requests exceeding ৳10,000 must be approved by Admin & Operation Head (Role 20) first.']);
+            exit;
+        }
+        if ($isOver1Lac && strtolower($req['accounts_head_status'] ?? 'pending') !== 'approved') {
+            ob_clean();
+            echo json_encode(['success' => false, 'message' => 'Requests exceeding ৳10,000 must be verified & approved by Accounts Head (Role 30) before Management can approve.']);
             exit;
         }
 

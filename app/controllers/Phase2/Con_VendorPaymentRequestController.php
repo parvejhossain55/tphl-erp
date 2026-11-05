@@ -827,19 +827,20 @@ class Con_VendorPaymentRequestController extends Controller
             }
 
             $mgtNote = trim($_POST['approval_note'] ?? '');
-            $isOver1Lac = ($netPayable > 100000 || $approvedAmount > 100000);
+            $isOver1Lac = ($netPayable > 10000 || $approvedAmount > 10000);
             $isOpHeadUser = (in_array((int)$this->userRole, [20, 32], true) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head') !== false || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'admin & operation') !== false);
             $isMgmtUser = in_array((int)$this->userRole, [1, 3], true);
 
             // Fetch approval request record
-            $arCheck = $this->db->query("SELECT id, op_head_status FROM approval_requests WHERE source_table = 'vendor_payment_requests' AND source_id = {$id} ORDER BY id DESC LIMIT 1");
+            $arCheck = $this->db->query("SELECT id, op_head_status, accounts_head_status FROM approval_requests WHERE source_table = 'vendor_payment_requests' AND source_id = {$id} ORDER BY id DESC LIMIT 1");
             $arRow = $arCheck ? $arCheck->fetch_assoc() : null;
             $opHeadStatus = strtolower($arRow['op_head_status'] ?? 'pending');
+            $ahStatus = strtolower($arRow['accounts_head_status'] ?? 'pending');
 
-            // Two-tier check for > 1 Lac
+            // Two-tier check for > 10K
             if ($isOver1Lac) {
                 if ($isOpHeadUser && !$isMgmtUser) {
-                    // Role 20 is approving Op Head Step 1 for > 1L
+                    // Role 20 is approving Op Head Step 1 for > 10K
                     $arId = (int)($arRow['id'] ?? 0);
                     $escNote = $this->db->real_escape_string($mgtNote ?: 'Verified and approved by Admin & Operation Head');
                     if (!class_exists('ApprovalRequest')) {
@@ -849,16 +850,21 @@ class Con_VendorPaymentRequestController extends Controller
                     if ($arId > 0) {
                         $approvalModel->approveOperationHead($arId, $this->userId, $escNote);
                     } else {
-                        $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'management' WHERE source_table = 'vendor_payment_requests' AND source_id = {$id}");
+                        $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'accounts_head' WHERE source_table = 'vendor_payment_requests' AND source_id = {$id}");
                     }
-                    setSuccess("Payment request verified & approved by Admin & Operation Head (Role 20). Forwarded to Management for sign-off.");
+                    setSuccess("Payment request verified & approved by Admin & Operation Head (Role 20). Forwarded to Accounts Head (Role 30) for payment verification.");
                     header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
                     exit;
                 }
 
                 if ($isMgmtUser) {
                     if ($opHeadStatus !== 'approved') {
-                        setError("Access Denied: Requests exceeding ৳1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.");
+                        setError("Access Denied: Requests exceeding ৳10,000 must be approved by Admin & Operation Head (Role 20) first.");
+                        header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+                        exit;
+                    }
+                    if ($ahStatus !== 'approved') {
+                        setError("Access Denied: Requests exceeding ৳10,000 must be verified & approved by Accounts Head (Role 30) before Management can approve.");
                         header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
                         exit;
                     }
@@ -874,8 +880,9 @@ class Con_VendorPaymentRequestController extends Controller
                 // Sync approval_requests table (moves to accounts for payout)
                 $this->syncApprovalRequest($id, 'approved', $approvedAmount);
 
-                // Ensure op_head_status is approved
-                $this->db->query("UPDATE approval_requests SET op_head_status = 'approved' WHERE source_table = 'vendor_payment_requests' AND source_id = {$id}");
+                // Ensure op_head_status is approved and approve_role reflects accounts head status
+                $nextRoleVp = ($ahStatus === 'approved') ? 'accounts' : 'accounts_head';
+                $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', approve_role = '{$nextRoleVp}' WHERE source_table = 'vendor_payment_requests' AND source_id = {$id}");
 
                 // AUTO-GENERATE ACCRUAL JOURNAL
                 try {

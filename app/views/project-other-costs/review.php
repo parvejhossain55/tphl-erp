@@ -282,7 +282,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                 $canDeptHeadApprove = ($request['dept_head_status'] === 'pending' && ($userId == $creatorReportingUserId || $roleId == 1));
                 $canQCApprove = ($request['status'] == 'pending' && $request['dept_head_status'] !== 'pending' && in_array($roleId, [13, 24, 25, 1]));
                 $reqAmt = (float)($request['approved_amount'] ?? $request['request_amount'] ?? 0);
-                $isOver1Lac = ($reqAmt > 100000);
+                $isOver1Lac = ($reqAmt > 10000);
                 $isOpHeadUser = (in_array($roleId, [20, 32], true) || str_contains(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head'));
                 $isMgmtUser = in_array($roleId, [1, 3], true);
                 $isOpHeadApproved = !empty($ahInfo['is_op_head_approved']);
@@ -299,7 +299,11 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                 $isOpHeadAction = true;
                             } else {
                                 $isMgmtLocked = $isMgmtUser;
+                                $mgmtLockReason = 'op_head';
                             }
+                        } elseif (!$isAhApproved) {
+                            $isMgmtLocked = $isMgmtUser;
+                            $mgmtLockReason = 'accounts_head';
                         } else {
                             if ($isMgmtUser) {
                                 $canMgmtApprove = true;
@@ -358,8 +362,14 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                             <?php if ($isMgmtLocked): ?>
                                 <div class="alert alert-warning py-3 px-3 border-warning text-center mb-0">
                                     <i class="fa-solid fa-lock me-1"></i>
-                                    <strong>Management Approval Locked (&gt; ৳1,00,000)</strong><br>
-                                    <span class="fs-12">Requires <strong>Admin & Operation Head (Role 20)</strong> verification and approval first.</span>
+                                    <strong>Management Approval Locked (&gt; ৳10,000)</strong><br>
+                                    <span class="fs-12">
+                                        <?php if (!empty($mgmtLockReason) && $mgmtLockReason === 'accounts_head'): ?>
+                                            Admin & Operation Head has approved. Awaiting <strong>Accounts Head (Role 30)</strong> payment verification &amp; approval before Management can sign off.
+                                        <?php else: ?>
+                                            Requires <strong>Admin & Operation Head (Role 20)</strong> verification and approval first.
+                                        <?php endif; ?>
+                                    </span>
                                 </div>
                             <?php endif; ?>
 
@@ -367,7 +377,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                 <form method="POST" action="<?= $GLOBALS['base_url'] ?>/project-other-costs/approve-management/<?= $request['id'] ?>">
                                     <?php if ($isOpHeadAction): ?>
                                         <div class="alert alert-primary py-2 px-3 small mb-3">
-                                            <i class="bi bi-shield-check me-1"></i><strong>Operation Head Verification (Step 1 of 3):</strong> Your approval will forward this request exceeding ৳1,00,000 to Management.
+                                            <i class="bi bi-shield-check me-1"></i><strong>Operation Head Verification (Step 1 of 3):</strong> Your approval will forward this request exceeding ৳10,000 to Accounts Head (Role 30).
                                         </div>
                                     <?php endif; ?>
                                     <div class="mb-3">

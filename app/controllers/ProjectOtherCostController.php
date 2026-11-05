@@ -365,17 +365,18 @@ class ProjectOtherCostController extends Controller
 
             $req = $this->otherCostModel->getById($id);
             $approvedAmount = (float)($_POST['approved_amount'] ?? $req['request_amount'] ?? 0);
-            $isOver1Lac = ($approvedAmount > 100000);
+            $isOver1Lac = ($approvedAmount > 10000);
             $isOpHeadUser = (in_array($roleId, [20, 32], true) || str_contains($roleName, 'operation head'));
             $isMgmtUser = in_array($roleId, [1, 3], true);
             $note = trim($_POST['management_apporved_note'] ?? '');
 
             // Fetch approval request record
-            $arCheck = $this->db->query("SELECT id, op_head_status FROM approval_requests WHERE source_table = 'project_other_costs' AND source_id = {$id} ORDER BY id DESC LIMIT 1");
+            $arCheck = $this->db->query("SELECT id, op_head_status, accounts_head_status FROM approval_requests WHERE source_table = 'project_other_costs' AND source_id = {$id} ORDER BY id DESC LIMIT 1");
             $arRow = $arCheck ? $arCheck->fetch_assoc() : null;
             $opHeadStatus = strtolower($arRow['op_head_status'] ?? 'pending');
+            $ahStatus = strtolower($arRow['accounts_head_status'] ?? 'pending');
 
-            // Flow for > 1 Lac: Role 20 must approve first
+            // Flow for > 10K: Role 20 must approve first
             if ($isOver1Lac) {
                 if ($isOpHeadUser && !$isMgmtUser) {
                     $arId = (int)($arRow['id'] ?? 0);
@@ -387,16 +388,21 @@ class ProjectOtherCostController extends Controller
                     if ($arId > 0) {
                         $approvalModel->approveOperationHead($arId, $_SESSION['user']['id'], $escNote);
                     } else {
-                        $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$_SESSION['user']['id']}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'management' WHERE source_table = 'project_other_costs' AND source_id = {$id}");
+                        $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$_SESSION['user']['id']}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'accounts_head' WHERE source_table = 'project_other_costs' AND source_id = {$id}");
                     }
-                    setSuccess("Request verified & approved by Admin & Operation Head (Role 20). Forwarded to Management for sign-off.");
+                    setSuccess("Request verified & approved by Admin & Operation Head (Role 20). Forwarded to Accounts Head (Role 30) for payment verification.");
                     header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
                     exit();
                 }
 
                 if ($isMgmtUser) {
                     if ($opHeadStatus !== 'approved') {
-                        setError("Access Denied: Requests exceeding ৳1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.");
+                        setError("Access Denied: Requests exceeding ৳10,000 must be approved by Admin & Operation Head (Role 20) first.");
+                        header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
+                        exit();
+                    }
+                    if ($ahStatus !== 'approved') {
+                        setError("Access Denied: Requests exceeding ৳10,000 must be verified & approved by Accounts Head (Role 30) before Management can approve.");
                         header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
                         exit();
                     }
@@ -602,8 +608,13 @@ class ProjectOtherCostController extends Controller
             $approvedAt = $row['updated_at'];
             $approvalNote = $row['qc_audit_note'];
         } elseif ($row['status'] == 'management_approved') {
+            $isAhAppr = false;
+            if ($check && $check->num_rows > 0) {
+                $arCheckRow = $this->db->query("SELECT accounts_head_status FROM approval_requests WHERE source_table = 'project_other_costs' AND source_id = $reqId LIMIT 1")->fetch_assoc();
+                $isAhAppr = (strtolower($arCheckRow['accounts_head_status'] ?? '') === 'approved');
+            }
             $status = 'approved';
-            $approveRole = 'accounts';
+            $approveRole = $isAhAppr ? 'accounts' : 'accounts_head';
             $approvedAmount = !empty($row['approved_amount']) ? (float)$row['approved_amount'] : $amount;
             $approvedBy = $row['management_apporved_by_id'] ?? null;
             $approvedAt = $row['management_apporved_at'] ?? $row['updated_at'];
