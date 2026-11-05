@@ -17,7 +17,7 @@ class CedReportController extends Controller
 
         // Permission check
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        $isManagement = in_array($roleId, [1, 3, 33, 34, 35]); // Including Chief Officer, Management Viewer & SEAL CEO
+        $isManagement = in_array($roleId, [1, 3, 33, 34, 35, 38]); // Including Chief Officer, Management Viewer & SEAL CEO
         
         if (function_exists('isClientsCommunicated') && isClientsCommunicated()) {
             header("Location: " . $GLOBALS['base_url'] . "/error-403");
@@ -34,7 +34,7 @@ class CedReportController extends Controller
     {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $userId = (int)($_SESSION['user']['id'] ?? 0);
-        $isManagement = in_array($roleId, [1, 3, 33, 34, 35]);
+        $isManagement = in_array($roleId, [1, 3, 33, 34, 35, 38]);
 
         // Default Agent ID (Self if CED role, otherwise null)
         $defaultAgentId = ($roleId === 7) ? $userId : null;
@@ -139,7 +139,7 @@ class CedReportController extends Controller
     {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $userId = (int)($_SESSION['user']['id'] ?? 0);
-        $isManagement = in_array($roleId, [1, 3, 33, 34, 35]);
+        $isManagement = in_array($roleId, [1, 3, 33, 34, 35, 38]);
 
         // Filters
         $projectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;

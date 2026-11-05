@@ -69,9 +69,17 @@
                                 </td>
                                 <td>
                                     <?php
-                                    $statusBadge = ($v['status'] === 'active') ? 'bg-success' : 'bg-secondary';
+                                    $vSt = $v['status'] ?? 'active';
+                                    if ($vSt === 'active') {
+                                        echo '<span class="badge bg-success">Active</span>';
+                                    } elseif ($vSt === 'pending_approval') {
+                                        echo '<span class="badge bg-warning text-dark"><i class="bi bi-clock-history me-1"></i>Pending Approval</span>';
+                                    } elseif ($vSt === 'rejected') {
+                                        echo '<span class="badge bg-danger">Rejected</span>';
+                                    } else {
+                                        echo '<span class="badge bg-secondary">' . htmlspecialchars(ucfirst($vSt)) . '</span>';
+                                    }
                                     ?>
-                                    <span class="badge <?= $statusBadge ?>"><?= ucfirst($v['status']) ?></span>
                                 </td>
                                 <td class="text-center" style="white-space:nowrap;">
                                     <a href="<?= $base_url ?>/con-vendor/<?= $v['id'] ?>"

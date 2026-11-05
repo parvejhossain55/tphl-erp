@@ -11,7 +11,7 @@ class SalesPerformanceController extends Controller
     protected SalesPerformanceService $service;
 
     /** Management (Admin, Super Admin, Chief Officer, Management Viewer, SEAL CEO) */
-    public const ALLOWED_ROLE_IDS = [1, 3, 33, 34, 35];
+    public const ALLOWED_ROLE_IDS = [1, 3, 33, 34, 35, 38];
 
     public function __construct($db)
     {

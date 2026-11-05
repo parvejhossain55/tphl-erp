@@ -22,12 +22,35 @@ class Con_ContractorController extends Controller
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
 
-        $operators = $this->contractorModel->getAll();
+        $currentPage = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+        $perPageParam = $_GET['per_page'] ?? '50';
+        $isAll = ($perPageParam === 'all');
+        $perPage = $isAll ? 0 : (intval($perPageParam) > 0 ? intval($perPageParam) : 50);
+
+        $search = trim($_GET['search'] ?? '');
+        $totalRecords = $this->contractorModel->countAll($search);
+
+        if ($isAll || $perPage <= 0) {
+            $totalPages = 1;
+            $offset = 0;
+            $operators = $this->contractorModel->getPaginated(0, 0, $search);
+        } else {
+            $totalPages = max(1, (int)ceil($totalRecords / $perPage));
+            if ($currentPage > $totalPages && $totalPages > 0) $currentPage = $totalPages;
+            $offset = ($currentPage - 1) * $perPage;
+            $operators = $this->contractorModel->getPaginated($perPage, $offset, $search);
+        }
 
         $this->view('phase2/contractors/contractor-lists', [
             'current_route' => 'con-contractors',
-            'page_title'    => ' Contractors',
+            'page_title'    => 'Contractors',
             'operators'     => $operators,
+            'currentPage'   => $currentPage,
+            'totalPages'    => $totalPages,
+            'totalRecords'  => $totalRecords,
+            'perPage'       => $perPageParam,
+            'offset'        => $offset,
+            'search'        => $search
         ]);
     }
 
@@ -69,7 +92,7 @@ class Con_ContractorController extends Controller
             'nid_number' => $_POST['nid_number'] ?? null,
             'address'    => $_POST['address'] ?? null,
             'daily_rate' => $_POST['daily_rate'] ?? null,
-            'status'     => 'active',
+            'status'     => 'pending_approval',
             'created_by' => $_SESSION['user']['id'] ?? null,
         ];
 
@@ -79,9 +102,15 @@ class Con_ContractorController extends Controller
             exit;
         }
 
-        if ($this->contractorModel->create($data)) {
-            setSuccess('contractors created successfully!');
-            header("Location: {$GLOBALS['base_url']}/con-contractors");
+        $contractorId = $this->contractorModel->create($data);
+        if ($contractorId) {
+            require_once dirname(dirname(__DIR__)) . '/models/EnrollmentApproval.php';
+            $enrollmentApproval = new \EnrollmentApproval($this->db);
+            $initialStep = $enrollmentApproval->initiateApproval('contractor', $contractorId, $data['created_by']);
+            $stepLabel = $enrollmentApproval->getStepLabel($initialStep);
+            
+            setSuccess("Contractor enrollment request submitted successfully! It is now pending approval from: {$stepLabel}.");
+            header("Location: {$GLOBALS['base_url']}/contractor-enrollment-requests");
             exit;
         }
 

@@ -234,7 +234,7 @@ class Con_VendorPaymentRequest extends Model
                     SUM(CASE WHEN status = 'Submitted' THEN 1 ELSE 0 END) as pending_qc,
                     SUM(CASE WHEN status = 'QC Approved' THEN 1 ELSE 0 END) as pending_apex,
                     SUM(CASE WHEN status = 'Approved' THEN 1 ELSE 0 END) as apex_approved,
-                    SUM(CASE WHEN status = 'Approved' THEN 1 ELSE 0 END) as newly_approved,
+                    SUM(CASE WHEN status = 'Approved' THEN 1 ELSE 0 END) as newly_approved, 
                     SUM(CASE WHEN status = 'Partially_Paid' THEN 1 ELSE 0 END) as ready_to_pay,
                     SUM(CASE WHEN status = 'Partially_Paid' THEN 1 ELSE 0 END) as partially_paid,
                     SUM(CASE WHEN status IN ('Fully_Paid', 'Paid') THEN 1 ELSE 0 END) as fully_paid,

@@ -64,13 +64,14 @@ class Con_VendorController extends Controller
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         $data = [
-            'name'       => trim($_POST['name'] ?? ''),
-            'phone'      => $_POST['phone'] ?? null,
-            'email'      => $_POST['email'] ?? null,
-            'address'    => $_POST['address'] ?? null,
-            'rating'     => 5.00,
-            'status'     => 'active',
-            'created_by' => $_SESSION['user']['id'] ?? null,
+            'name'         => trim($_POST['name'] ?? ''),
+            'company_name' => trim($_POST['company_name'] ?? ''),
+            'phone'        => $_POST['phone'] ?? null,
+            'email'        => $_POST['email'] ?? null,
+            'address'      => $_POST['address'] ?? null,
+            'rating'       => 5.00,
+            'status'       => 'pending_approval',
+            'created_by'   => $_SESSION['user']['id'] ?? null,
         ];
 
         if (empty($data['name'])) {
@@ -79,9 +80,15 @@ class Con_VendorController extends Controller
             exit;
         }
 
-        if ($this->vendorModel->create($data)) {
-            setSuccess('Vendor added successfully!');
-            header("Location: {$GLOBALS['base_url']}/con-vendors");
+        $vendorId = $this->vendorModel->create($data);
+        if ($vendorId) {
+            require_once dirname(dirname(__DIR__)) . '/models/EnrollmentApproval.php';
+            $enrollmentApproval = new \EnrollmentApproval($this->db);
+            $initialStep = $enrollmentApproval->initiateApproval('vendor', $vendorId, $data['created_by']);
+            $stepLabel = $enrollmentApproval->getStepLabel($initialStep);
+            
+            setSuccess("Vendor enrollment request submitted successfully! It is now pending approval from: {$stepLabel}.");
+            header("Location: {$GLOBALS['base_url']}/vendor-enrollment-requests");
             exit;
         }
 

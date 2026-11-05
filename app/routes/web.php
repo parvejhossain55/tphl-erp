@@ -259,6 +259,14 @@ return [
     'api/actionable-approval-alerts' => ['controller' => 'ApprovalRequestController', 'method' => 'getActionableAlerts'],
 
     // =========================================================================
+    // Vendor & Contractor Enrollment Approval Routes
+    // =========================================================================
+    'vendor-enrollment-requests' => ['controller' => 'EnrollmentApprovalController', 'method' => 'vendorRequests'],
+    'contractor-enrollment-requests' => ['controller' => 'EnrollmentApprovalController', 'method' => 'contractorRequests'],
+    'enrollment-request/action' => ['controller' => 'EnrollmentApprovalController', 'method' => 'processAction'],
+    'api/enrollment-request/details' => ['controller' => 'EnrollmentApprovalController', 'method' => 'getDetails'],
+
+    // =========================================================================
     // Live COA & Journal Migration Routes
     // =========================================================================
     'run-live-coa-migration' => ['controller' => 'LiveCoaMigrationController', 'method' => 'run'],

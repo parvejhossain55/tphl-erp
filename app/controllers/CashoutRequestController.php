@@ -800,8 +800,8 @@ class CashoutRequestController extends Controller
         if (in_array($roleId, [33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true)) {
             return false;
         }
-        return in_array($roleId, [1, 3], true)
-            || in_array($roleName, ['super admin', 'admin', 'management'], true);
+        return in_array($roleId, [1, 3, 38], true)
+            || in_array($roleName, ['super admin', 'admin', 'management', 'board of director', 'board of directors'], true);
     }
 
     /**
@@ -811,7 +811,7 @@ class CashoutRequestController extends Controller
     private function isAdminUser()
     {
         $roleId = (int) $this->userRole;
-        return in_array($roleId, [1, 3, 6, 10, 20, 30, 32, 33, 34, 35], true)
+        return in_array($roleId, [1, 3, 6, 10, 20, 30, 32, 33, 34, 35, 38], true)
             || $this->isManagementUser()
             || $this->isSiteOperator();
     }

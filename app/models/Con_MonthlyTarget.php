@@ -72,9 +72,6 @@ class Con_MonthlyTarget
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
-
-
-
     // Get targets for a specific phase
     public function getByPhase(int $phase_id): array
     {

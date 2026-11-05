@@ -1290,102 +1290,59 @@ window.executeDeleteProject = function(projId) {
             });
         })();
 
-        // --- Tipsoi Attendance Sync (Fast & On-Demand, no 8.6MB auto-freeze on load) ---
+        // --- Tipsoi Attendance Sync (Fast Server-Side Sync & Direct DB Save) ---
         window.syncTipsoiAttendance = function(btn) {
             var $btn = $(btn);
             var origHtml = $btn.html();
             $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status"></span> Syncing...');
 
-            var params = new URLSearchParams({
-                from_date: fromDateStr,
-                to_date:   toDateStr
-            });
             var projSelect = document.getElementById('payrollProject');
-            if (projSelect && projSelect.value) {
-                params.set('payroll_project_id', projSelect.value);
+            var projectId = (projSelect && projSelect.value) ? projSelect.value : '';
+
+            if (!projectId) {
+                $btn.prop('disabled', false).html(origHtml);
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire('Warning', 'Please select a payroll project first.', 'warning');
+                } else {
+                    alert('Please select a payroll project first.');
+                }
+                return;
             }
 
-            var overridePromise = (projSelect && projSelect.value) ? fetch(`<?= $GLOBALS['base_url'] ?>/api/payroll/attendance-overrides?project_id=` + encodeURIComponent(projSelect.value)).then(r => r.json()).catch(() => ({ success: false, overrides: {} })) : Promise.resolve({ success: false, overrides: {} });
-            Promise.all([fetch(`<?= $GLOBALS['base_url'] ?>/api/hrm/attendance?` + params.toString()).then(r => r.json()), overridePromise])
-            .then(([res, overrideRes]) => {
-                var dbOverrides = (overrideRes && overrideRes.success && overrideRes.overrides) ? overrideRes.overrides : {};
+            fetch(`<?= $GLOBALS['base_url'] ?>/api/payroll/sync-project-attendance?project_id=` + encodeURIComponent(projectId), {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(r => r.json())
+            .then(res => {
                 $btn.prop('disabled', false).html(origHtml);
-                if (res.success && res.data) {
-                    var rawData = res.data;
-                    var localEmployees = res.local_employees || [];
-                    var updateCount = 0;
-
-                    var allRows = Array.from(document.querySelectorAll('.calc-row'));
-                    var empRowMap = new Map();
-                    allRows.forEach(r => {
-                        var eid = r.getAttribute('data-employee-id');
-                        if (eid) empRowMap.set(String(eid), r);
-                    });
-
-                    rawData.forEach(emp => {
-                        var attMap = emp.attendance || {};
-                        var summ = emp.summary || {};
-                        var officeId = String(emp.employeeOfficeId || emp.employeeId || '').toLowerCase().trim();
-                        var nameNormalized = String(emp.employeeName || '').toLowerCase().trim();
-
-                        var localMatch = localEmployees.find(le => {
-                            var leId = String(le.employee_id || '').toLowerCase().trim();
-                            var leName = String(le.full_name || '').toLowerCase().trim();
-                            return (officeId && leId === officeId) || (nameNormalized && leName === nameNormalized);
-                        });
-
-                        if (localMatch) {
-                            var matchedRow = empRowMap.get(String(localMatch.id));
-                            if (matchedRow) {
-                                var present = 0, absent = 0;
-                                if (summ.totalAbsent !== undefined) {
-                                    absent = parseInt(summ.totalAbsent, 10) || 0;
-                                    present = parseInt(summ.totalPresent, 10) || 0;
-                                } else {
-                                    Object.keys(attMap).forEach(ts => {
-                                        var dayAtt = attMap[ts];
-                                        if (dayAtt.isPresent) present++;
-                                        else if (!dayAtt.isOffday && !dayAtt.isHoliday && !dayAtt.isLeave) absent++;
-                                    });
-                                }
-
-                                var finalLate = parseInt(summ.totalLateEntry, 10) || 0;
-                                var lateDeduction = Math.floor(finalLate / 3);
-                                var empOverride = dbOverrides[localMatch.id] || dbOverrides[String(localMatch.id)] || null;
-                                var totalAbsentDays = (empOverride && empOverride.late_unpaid_absent_days !== undefined && empOverride.late_unpaid_absent_days !== null) ? parseFloat(parseFloat(empOverride.late_unpaid_absent_days).toFixed(2)) : parseFloat((absent + lateDeduction).toFixed(2));
-
-                                var absentInput = matchedRow.querySelector('.in-absent-days');
-                                var unpaidInp = matchedRow.querySelector('.in-deduct.in-unpaid');
-                                var dailyVal = parseFloat(matchedRow.querySelector('.cell-daily').dataset.val) || 0;
-
-                                if (absentInput) {
-                                    absentInput.value = totalAbsentDays;
-                                    if (unpaidInp) {
-                                        unpaidInp.value = (totalAbsentDays * dailyVal).toFixed(2);
-                                    }
-                                    absentInput.dispatchEvent(new Event('input', { bubbles: true }));
-                                    matchedRow.setAttribute('data-has-db', 'true');
-                                    updateCount++;
-                                }
-                            }
-                        }
-                    });
-
-                    Object.keys(dbOverrides).forEach(eid => { var row = empRowMap.get(String(eid)); var ov = dbOverrides[eid]; if (row && ov && ov.late_unpaid_absent_days !== undefined && ov.late_unpaid_absent_days !== null) { var absInp = row.querySelector('.in-absent-days'); var unpInp = row.querySelector('.in-deduct.in-unpaid'); var dVal = parseFloat(row.querySelector('.cell-daily').dataset.val) || 0; var tDays = parseFloat(parseFloat(ov.late_unpaid_absent_days).toFixed(2)); if (absInp && parseFloat(absInp.value) !== tDays) { absInp.value = tDays; if (unpInp) unpInp.value = (tDays * dVal).toFixed(2); absInp.dispatchEvent(new Event('input', { bubbles: true })); row.setAttribute('data-has-db', 'true'); updateCount++; } } });
-                    calculateFooterTotals();
-                    $('#tipsoiNoticeBanner').slideUp();
+                if (res.success) {
                     if (typeof Swal !== 'undefined') {
                         Swal.fire({
-                            toast: true,
-                            position: 'top-end',
                             icon: 'success',
-                            title: 'Synced attendance for ' + updateCount + ' employees from Tipsoi!',
+                            title: 'Sync Complete',
+                            text: res.message || 'Tipsoi attendance synced and saved successfully!',
                             showConfirmButton: false,
-                            timer: 3000
+                            timer: 1500
+                        }).then(() => {
+                            window.location.reload();
                         });
+                    } else {
+                        alert(res.message || 'Tipsoi attendance synced and saved successfully!');
+                        window.location.reload();
                     }
                 } else {
-                    alert(res.message || 'Failed to sync Tipsoi attendance.');
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Sync Failed',
+                            text: res.message || 'Failed to sync Tipsoi attendance.'
+                        });
+                    } else {
+                        alert(res.message || 'Failed to sync Tipsoi attendance.');
+                    }
                 }
             })
             .catch(err => {
@@ -1393,7 +1350,6 @@ window.executeDeleteProject = function(projId) {
                 alert('Tipsoi sync error: ' + err.message);
             });
         };
-
         // Check if attendance is missing and surface banner if needed (non-blocking)
         var allRows = Array.from(document.querySelectorAll('.calc-row'));
         var missingCount = allRows.filter(r => r.getAttribute('data-has-db') === 'false').length;

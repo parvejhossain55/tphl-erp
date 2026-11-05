@@ -49,8 +49,9 @@ $currentUserPriRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
 $isAccountsHeadUser = in_array(30, [$currentUserRoleId, $currentUserSecRoleId, $currentUserPriRoleId], true) 
     || strpos($currentRoleName, 'accounts head') !== false;
 
-$isManagementUser = in_array($currentUserRoleId, [1, 3], true) 
+$isManagementUser = in_array($currentUserRoleId, [1, 3, 38], true) 
     || strpos($currentRoleName, 'super admin') !== false 
+    || strpos($currentRoleName, 'board of director') !== false 
     || ($currentUserRoleId === 1);
 
 $isAccountsStaffUser = ($currentUserRoleId === 6) 
