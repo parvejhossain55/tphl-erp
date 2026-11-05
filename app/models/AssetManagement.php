@@ -820,6 +820,8 @@ class AssetManagement
             'operations_by'     => "INT DEFAULT NULL AFTER `operations_status`",
             'operations_at'     => "TIMESTAMP NULL DEFAULT NULL AFTER `operations_by`",
             'operations_note'   => "TEXT DEFAULT NULL AFTER `operations_at`",
+            'vendor_id'         => "INT NULL DEFAULT NULL AFTER `requested_by`",
+            'vendor_name'       => "VARCHAR(255) NULL DEFAULT NULL AFTER `vendor_id`",
         ];
 
         foreach ($colsToAdd as $colName => $colDef) {
@@ -854,6 +856,10 @@ class AssetManagement
                        u_purchased.full_name AS purchased_by_name,
                        u_assign.full_name AS assigned_to_name,
                        cat.name AS category_name,
+                    COALESCE(NULLIF(pea.vendor_name, ''), v.name) AS vendor_name,
+                    pea.vendor_id,
+  
+  
                        ar.id AS approval_request_id,
                        ar.op_head_status,
                        ar.op_head_by,
@@ -868,6 +874,7 @@ class AssetManagement
                 FROM project_extra_assets pea
                 LEFT JOIN office_branches ob ON ob.id = pea.office_branch_id
                 LEFT JOIN office_procurement_categories cat ON cat.id = pea.item_category_id
+                LEFT JOIN vendors v ON v.id = pea.vendor_id
                 LEFT JOIN projects p ON p.id = pea.project_id
                 LEFT JOIN users u_req ON u_req.id = pea.requested_by
                 LEFT JOIN employees e_req ON e_req.user_id = u_req.id
@@ -1040,6 +1047,8 @@ class AssetManagement
                     u_purchased.full_name AS purchased_by_name,
                     u_assign.full_name AS assigned_to_name,
                     cat.name AS category_name,
+                    COALESCE(NULLIF(pea.vendor_name, ''), v.name) AS vendor_name,
+                    pea.vendor_id,
                     ar.id AS approval_request_id,
                     ar.op_head_status,
                     ar.op_head_by,
@@ -1054,6 +1063,7 @@ class AssetManagement
              FROM project_extra_assets pea
              LEFT JOIN office_branches ob ON ob.id = pea.office_branch_id
              LEFT JOIN office_procurement_categories cat ON cat.id = pea.item_category_id
+              LEFT JOIN vendors v ON v.id = pea.vendor_id
              LEFT JOIN projects p ON p.id = pea.project_id
              LEFT JOIN users u_req ON u_req.id = pea.requested_by
              LEFT JOIN employees e_req ON e_req.user_id = u_req.id
@@ -1160,10 +1170,25 @@ class AssetManagement
 
         $accountId = !empty($data['account_id']) ? (int)$data['account_id'] : null;
 
+        $vendorId = !empty($data['vendor_id']) ? (int)$data['vendor_id'] : null;
+        $vendorName = !empty($data['vendor_name']) ? trim($data['vendor_name']) : null;
+        if ($vendorId && empty($vendorName)) {
+            $vStmt = $this->db->prepare("SELECT name FROM vendors WHERE id = ?");
+            if ($vStmt) {
+                $vStmt->bind_param('i', $vendorId);
+                $vStmt->execute();
+                $vRes = $vStmt->get_result();
+                if ($vRes && $vRow = $vRes->fetch_assoc()) {
+                    $vendorName = $vRow['name'];
+                }
+                $vStmt->close();
+            }
+        }
+
         $stmt = $this->db->prepare(
             "INSERT INTO project_extra_assets 
-            (project_id, department_id, office_branch_id, asset_location, assigned_to, item_category_id, request_type, item_name, quantity, unit_price, total_price, justification, attachment, requested_by, reporting_user_id, dept_head_status, it_head_status, account_id, operations_status, purchase_head_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending')"
+            (project_id, department_id, office_branch_id, asset_location, assigned_to, item_category_id, request_type, item_name, quantity, unit_price, total_price, justification, attachment, requested_by, reporting_user_id, dept_head_status, it_head_status, account_id, vendor_id, vendor_name, operations_status, purchase_head_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending')"
         );
 
         if (!$stmt) {
@@ -1172,7 +1197,7 @@ class AssetManagement
         }
 
         $stmt->bind_param(
-            'iiisiissiddssiissi',
+            'iiisiissiddssiissiis',
             $projectId,
             $departmentId,
             $officeBranchId,
@@ -1190,7 +1215,9 @@ class AssetManagement
             $reportingUserId,
             $deptHeadStatus,
             $itHeadStatus,
-            $accountId
+            $accountId,
+            $vendorId,
+            $vendorName
         );
 
         if ($stmt->execute()) {

@@ -323,6 +323,10 @@ $statusMap = [
 
 <div class="container-fluid px-0">
 
+    <div class="d-print-none">
+        <?php include __DIR__ . '/../../layouts/management_approval_notice.php'; ?>
+    </div>
+
     <!-- ========================================================================= -->
     <!-- 1. SUMMARY KPI STATS (WEB VIEW ONLY) -->
     <!-- ========================================================================= -->

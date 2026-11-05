@@ -22,6 +22,7 @@
     <section class="section">
         <div class="row">
             <div class="col-lg-8 mx-auto">
+                <?php include __DIR__ . '/../layouts/management_approval_notice.php'; ?>
                 <div class="card shadow-sm">
                     <div class="card-body mt-3">
                         <?php if (isset($_SESSION['error'])): ?>

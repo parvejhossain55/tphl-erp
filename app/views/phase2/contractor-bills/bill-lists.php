@@ -138,6 +138,9 @@ $selectedStatus = $filters['status'] ?? 'All';
         </div>
     </div>
 
+    <!-- Executive Management Approval Schedule Notice -->
+    <?php include __DIR__ . '/../../layouts/management_approval_notice.php'; ?>
+
     <!-- Filter Toolbar: Tabs / Pills + Status Dropdown -->
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <div class="d-flex flex-wrap align-items-center gap-2" id="statusPillsContainer">

@@ -13,6 +13,8 @@ $page_title = $page_title ?? 'New Contractor Bill';
         </div>
     </div>
 
+    <?php include __DIR__ . '/../../layouts/management_approval_notice.php'; ?>
+
     <div class="row justify-content-center">
         <div class="col-xl-8">
             <div class="card custom-card">

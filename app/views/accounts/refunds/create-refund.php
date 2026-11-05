@@ -23,6 +23,7 @@ $payments  = $payments ?? [];
 </div>
 
 <div class="container-fluid">
+    <?php include __DIR__ . '/../../layouts/management_approval_notice.php'; ?>
     <div class="row">
         <!-- Left: Booking Info + Form -->
         <div class="col-lg-8">

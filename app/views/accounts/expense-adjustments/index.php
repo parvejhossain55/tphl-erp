@@ -3,6 +3,9 @@ $page_title = "Expense Adjustments";
 $page = 'Accounts';
 $show_breadcrumb = true;
 ?>
+<!-- Executive Management Approval Schedule Notice -->
+<?php include __DIR__ . '/../../layouts/management_approval_notice.php'; ?>
+
 <div class="row">
     <div class="col-xxl-12">
         <div class="card__wrapper">

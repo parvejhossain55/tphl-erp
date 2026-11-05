@@ -1030,22 +1030,26 @@ class VoucherController extends Controller
         if (empty($mgmtId) && $isRowOrReqApproved) {
             $mgmtId = $row['approved_by'] ?? ($appReq['approved_by'] ?? null);
         }
-        // If mgmtId is Accounts Head (Role 30), it belongs to Accounts Head stage, NOT Management stage!
+        // If mgmtId or ar.approved_by is Accounts Head (Role 30), it belongs to Accounts Head stage, NOT Management stage!
         $ahBy = $appReq['accounts_head_by'] ?? null;
-        if (!empty($mgmtId)) {
-            if (!empty($ahBy) && (int)$mgmtId === (int)$ahBy) {
+        $isMgmtUserAh = false;
+        $checkUserId = !empty($mgmtId) ? $mgmtId : ($appReq['approved_by'] ?? null);
+        if (!empty($checkUserId)) {
+            if (!empty($ahBy) && (int)$checkUserId === (int)$ahBy) {
                 $mgmtId = null;
+                $isMgmtUserAh = true;
             } else {
-                $checkAhRole = $this->db->query("SELECT role_id, secondary_role_id FROM users WHERE id = " . (int)$mgmtId . " LIMIT 1");
+                $checkAhRole = $this->db->query("SELECT role_id, secondary_role_id FROM users WHERE id = " . (int)$checkUserId . " LIMIT 1");
                 if ($checkAhRole && ($rAh = $checkAhRole->fetch_assoc())) {
                     if ((int)$rAh['role_id'] === 30 || (int)$rAh['secondary_role_id'] === 30) {
                         $mgmtId = null;
+                        $isMgmtUserAh = true;
                     }
                 }
             }
         }
         $mgmtDate = $row['management_apporved_at'] ?? $row['management_approved_at'] ?? null;
-        if (empty($mgmtDate) && $isRowOrReqApproved && !empty($mgmtId)) {
+        if (empty($mgmtDate) && $isRowOrReqApproved && !empty($mgmtId) && !$isMgmtUserAh) {
             $mgmtDate = $row['approved_at'] ?? ($appReq['approved_at'] ?? ($row['approved_date'] ?? null));
         }
         $mgmtStage = 'Management / Authority';
@@ -1053,13 +1057,12 @@ class VoucherController extends Controller
         
         if ($frMgmtHandled) {
             // Already rendered per-approval entries above
-        } elseif (!empty($mgmtId) || (!empty($appReq['app_name']) && $isRowOrReqApproved)) {
+        } elseif (!empty($mgmtId) || (!empty($appReq['app_name']) && $isRowOrReqApproved && !$isMgmtUserAh)) {
             if (!$isOver1Lac && ($opHeadStatus === 'approved' || !empty($opHeadBy)) && !empty($opHeadBy) && $mgmtId == $opHeadBy) {
                 // Op Head sign-off already added under 'Admin & Operation Head'; no need for duplicate card
             } elseif (!empty($appReq['app_name']) && empty($mgmtId)) {
                 $mgmtName = $appReq['app_name'] . (!empty($appReq['app_des']) ? ' (' . $appReq['app_des'] . ')' : '');
                 $addApprover($mgmtStage, null, $mgmtDate, $mgmtNote);
-                // If still not added because uid is null, check name deduplication
                 $foundByName = false;
                 foreach ($audit['approvers'] as $appr) {
                     if (strpos($appr['name'], $appReq['app_name']) !== false) {
@@ -1078,16 +1081,26 @@ class VoucherController extends Controller
             } else {
                 $addApprover($mgmtStage, $mgmtId, $mgmtDate, $mgmtNote);
             }
-        } elseif (!$isRowOrReqApproved) {
+        } elseif (!$isRowOrReqApproved || $isMgmtUserAh) {
             if (!$isOver1Lac && ($opHeadStatus === 'approved' || !empty($opHeadBy))) {
-                // Op Head approval is sufficient for <= 1 lac, no pending management authority needed
+                // Op Head approval is sufficient for <= 10k, no pending management authority needed
             } else {
-                $audit['approvers'][] = [
-                    'stage' => $mgmtStage,
-                    'name'  => ' Pending Approval',
-                    'date'  => 'Awaiting decision',
-                    'note'  => null
-                ];
+                $ahDoneCheck = (strtolower($appReq['accounts_head_status'] ?? '') === 'approved');
+                if (!$ahDoneCheck && ($opHeadStatus === 'approved' || !empty($opHeadBy))) {
+                    $audit['approvers'][] = [
+                        'stage' => $mgmtStage,
+                        'name'  => '⏳ Awaiting Accounts Head Sign-off',
+                        'date'  => 'Step 2 verification in progress',
+                        'note'  => 'Accounts Head (Role 30) payment verification required before Management final approval'
+                    ];
+                } else {
+                    $audit['approvers'][] = [
+                        'stage' => $mgmtStage,
+                        'name'  => '⏳ Pending Approval',
+                        'date'  => 'Awaiting decision',
+                        'note'  => null
+                    ];
+                }
             }
         }
         // Check con_approval_logs if available
@@ -1126,11 +1139,26 @@ class VoucherController extends Controller
 
         // --- 3. ACCOUNTS HEAD APPROVAL (Role 30) ---
         $ahName = 'Accounts Head';
-        $ahDes = 'Accounts Head';
+        $ahDes = 'AGM - Finance & Accounts';
         $ahEmpId = '';
         $ahDate = null;
         $ahNote = null;
         $isAhApproved = false;
+
+        // Lookup designated Accounts Head dynamically
+        $defAhUser = $this->db->query("
+            SELECT u.id, u.full_name, COALESCE(e.employee_id, u.employee_id) AS emp_code, IFNULL(d.name, 'AGM - Finance & Accounts') AS designation
+            FROM users u
+            LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+            LEFT JOIN designations d ON d.id = COALESCE(e.designation_id, u.designation_id)
+            WHERE (u.role_id = 30 OR u.secondary_role_id = 30) AND (e.deleted_at IS NULL OR e.id IS NULL)
+            ORDER BY u.id ASC LIMIT 1
+        ");
+        if ($defAhUser && ($rDefAh = $defAhUser->fetch_assoc())) {
+            $ahName = $rDefAh['full_name'];
+            $ahEmpId = $rDefAh['emp_code'] ?? '';
+            $ahDes = $rDefAh['designation'] ?? 'AGM - Finance & Accounts';
+        }
 
         if (!empty($appReq)) {
             if (!empty($appReq['ah_name'])) {

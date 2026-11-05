@@ -50,14 +50,13 @@ require_once __DIR__ . '/../../../models/ApprovalRequest.php';
 $ahInfo = ApprovalRequest::getAccountsHeadApprovalInfo($GLOBALS['db'] ?? null, 'vendor_payment_requests', (int)$request['id']);
 $isAccountsHeadApproved = !empty($ahInfo['is_accounts_head_approved']);
 
-$canPayReq = $canProcessPayment && $isApproved && $dueAmount > 0 && $isAccountsHeadApproved;
-$showPaymentForm = $canPayReq;
-
 $netPayable = (float) ($request['net_payable'] ?? 0);
 $approvedAmtSoFar = (float) ($request['approved_amount'] ?? 0);
 $unapprovedAmt = max(0, $netPayable - $approvedAmtSoFar);
 
 $isOver1Lac = ($netPayable > 10000);
+$canPayReq = $canProcessPayment && $isApproved && $dueAmount > 0 && $isAccountsHeadApproved && (!$isOver1Lac || !empty($ahInfo['is_mgmt_approved']));
+$showPaymentForm = $canPayReq;
 $isOpHeadUser = (in_array((int)$userRole, [20, 32], true) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head') !== false || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'admin & operation') !== false);
 $isMgmtUser = in_array((int)$userRole, [1, 3], true);
 $isOpHeadApproved = !empty($ahInfo['is_op_head_approved']);
@@ -254,9 +253,15 @@ if ($status === 'Draft') {
     $nextActionRole = 'Management / Admin';
     $nextActionColor = 'primary';
 } elseif ($status === 'Approved') {
-    $nextActionText = 'Disburse the net payable amount of tk ' . number_format($dueAmount, 2) . '.';
-    $nextActionRole = 'Accounts Team';
-    $nextActionColor = 'success';
+    if ($isOver1Lac && empty($ahInfo['is_mgmt_approved'])) {
+        $nextActionText = 'Step 2 completed by Accounts Head. Awaiting Management (Role 1/3) final sign-off.';
+        $nextActionRole = 'Management / Authority';
+        $nextActionColor = 'warning';
+    } else {
+        $nextActionText = 'Disburse the net payable amount of tk ' . number_format($dueAmount, 2) . '.';
+        $nextActionRole = 'Accounts Team';
+        $nextActionColor = 'success';
+    }
 } elseif ($status === 'Partially_Paid') {
     $nextActionText = 'Disburse the remaining due amount of tk ' . number_format($dueAmount, 2) . '.';
     $nextActionRole = 'Accounts Team';

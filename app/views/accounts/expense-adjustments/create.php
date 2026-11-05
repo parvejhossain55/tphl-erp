@@ -13,6 +13,9 @@ $show_breadcrumb = true;
                 </a>
             </div>
             
+            <div class="px-3 pt-2">
+                <?php include __DIR__ . '/../../layouts/management_approval_notice.php'; ?>
+            </div>
             <div class="card__body">
                 <?php if (isset($_SESSION['error'])): ?>
                     <div class="alert alert-danger alert-dismissible fade show">
