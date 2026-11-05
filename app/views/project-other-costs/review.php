@@ -411,7 +411,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                 <div class="alert alert-warning py-3 px-3 border-warning text-center mb-0">
                                     <i class="fa-solid fa-lock me-1"></i>
                                     <strong>Payment Locked</strong><br>
-                                    <span class="fs-12">Pending Accounts Head approval (<strong>Md. Mamunoor Rashid [1309]</strong>).</span>
+                                    <span class="fs-12">Pending Accounts Head approval.</span>
                                 </div>
                             <?php endif; ?>
 

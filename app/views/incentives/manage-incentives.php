@@ -7,7 +7,7 @@ $isManagement = in_array($userRole, [1, 2, 5, 9, 15, 33]) || strpos($roleName, '
 // Accounts / Accounts Head / HR
 $isAccounts = in_array($userRole, [1, 2, 3, 6, 30, 33]) || strpos($roleName, 'account') !== false;
 $currentUserId = (int)($_SESSION['user']['id'] ?? 0);
-$isAccountsHead = ($userRole === 30) || ($currentUserId === 1309) || ($currentUserId === 247) || strpos($roleName, 'accounts head') !== false;
+$isAccountsHead = ($userRole === 30) || ((int)($_SESSION['user']['secondary_role_id'] ?? 0) === 30) || strpos($roleName, 'accounts head') !== false;
 // STRICT PERMISSION: Only designated Accounts Head or Super Admin (1) can trigger AH Approve (Role 3 Management is strictly excluded)
 $canApproveAh = $isAccountsHead || ($userRole === 1);
 ?>
@@ -482,11 +482,11 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                         <?php endif; ?>
                                                         <?php if (!empty($claim['ah_approved_at'])): ?>
                                                             <div class="text-nowrap text-success fw-semibold">
-                                                                <i class="fa-solid fa-stamp text-success me-1"></i>AH: <span class="text-dark"><?= htmlspecialchars($claim['ah_approver_name'] ?? 'Md. Mamunoor Rashid') ?><?= !empty($claim['ah_approver_code']) ? ' [' . htmlspecialchars($claim['ah_approver_code']) . ']' : '' ?></span> <span class="text-muted" style="font-size:0.64rem;">(<?= date('d M, h:i A', strtotime($claim['ah_approved_at'])) ?>)</span>
+                                                                <i class="fa-solid fa-stamp text-success me-1"></i>AH: <span class="text-dark"><?= htmlspecialchars($claim['ah_approver_name'] ?? 'Accounts Head') ?><?= !empty($claim['ah_approver_code']) ? ' [' . htmlspecialchars($claim['ah_approver_code']) . ']' : '' ?></span> <span class="text-muted" style="font-size:0.64rem;">(<?= date('d M, h:i A', strtotime($claim['ah_approved_at'])) ?>)</span>
                                                             </div>
                                                         <?php elseif (in_array($claim['claim_status'], ['approved', 'partially_paid']) && !$isAhApprovedClaim): ?>
                                                             <div class="text-nowrap text-warning fw-semibold">
-                                                                <i class="fa-solid fa-lock text-warning me-1"></i>AH: <span class="text-dark">Md. Mamunoor Rashid [1309]</span> <span class="badge bg-warning text-dark py-0 px-1" style="font-size:0.60rem;">Pending</span>
+                                                                <i class="fa-solid fa-lock text-warning me-1"></i>AH: <span class="text-dark">Accounts Head</span> <span class="badge bg-warning text-dark py-0 px-1" style="font-size:0.60rem;">Pending</span>
                                                             </div>
                                                         <?php endif; ?>
                                                     </div>
@@ -524,8 +524,8 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                                 <i class="fa-solid fa-stamp me-1"></i>AH Approve
                                                             </button>
                                                         <?php else: ?>
-                                                            <span class="badge bg-light text-muted border py-1 px-2" style="font-size:10px;" title="Payment locked: Accounts Head approval required (Md. Mamunoor Rashid [1309])">
-                                                                <i class="fa-solid fa-lock me-1 text-warning"></i>Awaiting AH (1309)
+                                                            <span class="badge bg-light text-muted border py-1 px-2" style="font-size:10px;" title="Payment locked: Accounts Head approval required">
+                                                                <i class="fa-solid fa-lock me-1 text-warning"></i>Awaiting Accounts Head
                                                             </span>
                                                         <?php endif; ?>
                                                     <?php else: ?>
@@ -644,7 +644,7 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                         <span class="badge bg-warning text-dark rounded-pill px-3 py-1 extra-small">
                                                             <i class="fa-solid fa-lock me-1"></i>Pending Accounts Head
                                                         </span>
-                                                        <div class="extra-small text-muted mt-1">Md. Mamunoor Rashid [1309]</div>
+                                                        <div class="extra-small text-muted mt-1">Accounts Head</div>
                                                     <?php else: ?>
                                                         <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 extra-small mb-1">
                                                             <i class="fa-solid fa-check me-1"></i>AH Approved
@@ -664,8 +664,8 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                                 <i class="fa-solid fa-stamp me-1"></i>AH Approve
                                                             </button>
                                                         <?php else: ?>
-                                                            <span class="badge bg-light text-muted border py-1 px-2" style="font-size:10px;" title="Payment locked: Accounts Head approval required (Md. Mamunoor Rashid [1309])">
-                                                                <i class="fa-solid fa-lock me-1 text-warning"></i>Awaiting AH (1309)
+                                                            <span class="badge bg-light text-muted border py-1 px-2" style="font-size:10px;" title="Payment locked: Accounts Head approval required">
+                                                                <i class="fa-solid fa-lock me-1 text-warning"></i>Awaiting Accounts Head
                                                             </span>
                                                         <?php endif; ?>
                                                     <?php else: ?>
@@ -929,7 +929,7 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                             <span class="badge bg-warning text-dark rounded-pill px-3 py-1 extra-small">
                                                                 <i class="fa-solid fa-lock me-1"></i>Pending Accounts Head
                                                             </span>
-                                                            <div class="extra-small text-muted mt-1">Md. Mamunoor Rashid [1309]</div>
+                                                            <div class="extra-small text-muted mt-1">Accounts Head</div>
                                                         <?php else: ?>
                                                             <span class="badge bg-info text-white rounded-pill px-3 py-1 extra-small">
                                                                 <i class="fa-solid fa-thumbs-up me-1"></i>Ready to Disburse
@@ -963,7 +963,7 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                                 </button>
                                                             <?php else: ?>
                                                                 <span class="badge bg-light text-muted border py-1 px-2" style="font-size:10px;">
-                                                                    <i class="fa-solid fa-lock me-1 text-warning"></i>Awaiting AH (1309)
+                                                                    <i class="fa-solid fa-lock me-1 text-warning"></i>Awaiting Accounts Head
                                                                 </span>
                                                             <?php endif; ?>
                                                         <?php else: ?>

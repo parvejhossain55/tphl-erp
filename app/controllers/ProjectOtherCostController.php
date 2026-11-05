@@ -440,7 +440,7 @@ class ProjectOtherCostController extends Controller
             }
             $ahCheck = ApprovalRequest::getAccountsHeadApprovalInfo($this->db, 'project_other_costs', (int)$id);
             if ($ahCheck && !empty($ahCheck['has_request']) && empty($ahCheck['is_accounts_head_approved'])) {
-                setError("Payment cannot be disbursed. Approval from Accounts Head (Md. Mamunoor Rashid [1309]) is pending.");
+                setError("Payment cannot be disbursed. Approval from Accounts Head is pending.");
                 header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
                 exit();
             }

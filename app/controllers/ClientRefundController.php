@@ -888,7 +888,7 @@ class ClientRefundController extends Controller
         }
         $ahCheck = ApprovalRequest::getAccountsHeadApprovalInfo($this->db, 'client_refund_requests', (int)$id);
         if ($ahCheck && !empty($ahCheck['has_request']) && empty($ahCheck['is_accounts_head_approved'])) {
-            setError("Payment cannot be disbursed. Approval from Accounts Head (Md. Mamunoor Rashid [1309]) is pending.");
+            setError("Payment cannot be disbursed. Approval from Accounts Head is pending.");
             $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
         header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
             exit;

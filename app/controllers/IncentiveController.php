@@ -575,7 +575,7 @@ class IncentiveController extends Controller
         if (!empty($ahCheck['has_request']) && empty($ahCheck['is_accounts_head_approved'])) {
             echo json_encode([
                 'success' => false,
-                'message' => 'Payment locked. Mandatory approval by Accounts Head (Md. Mamunoor Rashid [1309]) is required before disbursement.'
+                'message' => 'Payment locked. Mandatory approval by Accounts Head is required before disbursement.'
             ]);
             exit;
         }

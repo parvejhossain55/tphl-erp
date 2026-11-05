@@ -479,12 +479,12 @@ class ApprovalRequest extends Model
 
 
     /**
-     * Approve the Accounts Head stage for an approval request (Role 30 - Md. Mamunoor Rashid)
+     * Approve the Accounts Head stage for an approval request (Role 30)
      */
     public function approveAccountsHead($id, $userId = null, $note = null, $coaId = null)
     {
         $id = (int)$id;
-        $userId = $userId ? (int)$userId : (int)($_SESSION['user']['id'] ?? 247);
+        $userId = $userId ? (int)$userId : (int)($_SESSION['user']['id'] ?? 0);
         $note = $note !== null ? trim($note) : 'Approved by Accounts Head';
 
         $req = $this->find($id);
@@ -536,7 +536,7 @@ class ApprovalRequest extends Model
     public function rejectAccountsHead($id, $userId = null, $note = null)
     {
         $id = (int)$id;
-        $userId = $userId ? (int)$userId : (int)($_SESSION['user']['id'] ?? 247);
+        $userId = $userId ? (int)$userId : (int)($_SESSION['user']['id'] ?? 0);
         $note = $note !== null ? trim($note) : 'Rejected by Accounts Head';
 
         $req = $this->find($id);
@@ -767,6 +767,27 @@ class ApprovalRequest extends Model
      */
     public static function getAccountsHeadApprovalInfo($db, string $sourceTable, int $sourceId)
     {
+        static $cachedAhUser = null;
+        if ($cachedAhUser === null && $db) {
+            $cachedAhUser = false;
+            $ahUserRes = $db->query("
+                SELECT u.id, u.full_name, u.email, COALESCE(e.employee_id, u.employee_id) AS emp_code, IFNULL(d.name, 'Accounts Head') AS designation
+                FROM users u
+                LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+                LEFT JOIN designations d ON d.id = COALESCE(e.designation_id, u.designation_id)
+                WHERE (u.role_id = 30 OR u.secondary_role_id = 30) AND (u.status = 'active' OR u.status = 1 OR u.status IS NULL)
+                ORDER BY u.id ASC LIMIT 1
+            ");
+            if ($ahUserRes && ($ahRow = $ahUserRes->fetch_assoc())) {
+                $cachedAhUser = $ahRow;
+            }
+        }
+
+        $defAhName = $cachedAhUser['full_name'] ?? 'Accounts Head';
+        $defAhCode = $cachedAhUser['emp_code'] ?? null;
+        $defAhDesig = $cachedAhUser['designation'] ?? 'Accounts Head';
+        $defAhEmail = $cachedAhUser['email'] ?? null;
+
         $defaultDesignated = [
             'has_request'               => false,
             'approval_request_id'       => null,
@@ -790,10 +811,10 @@ class ApprovalRequest extends Model
             'is_accounts_head_approved' => false,
             'is_accounts_head_rejected' => false,
             'can_disburse_payment'      => false,
-            'designated_name'           => 'Md. Mamunoor Rashid',
-            'designated_emp_id'         => '1309',
-            'designated_designation'    => 'AGM - Finance & Accounts',
-            'designated_email'          => 'mamunoor11.tphl@gmail.com',
+            'designated_name'           => $defAhName,
+            'designated_emp_id'         => $defAhCode,
+            'designated_designation'    => $defAhDesig,
+            'designated_email'          => $defAhEmail,
             'approved_by_name'          => null,
             'approved_by_emp_id'        => null,
             'approved_by_designation'   => null,
@@ -892,13 +913,13 @@ class ApprovalRequest extends Model
             'is_accounts_head_approved' => $isAhApproved,
             'is_accounts_head_rejected' => $isAhRejected,
             'can_disburse_payment'      => $isAhApproved,
-            'designated_name'           => 'Md. Mamunoor Rashid',
-            'designated_emp_id'         => '1309',
-            'designated_designation'    => 'AGM - Finance & Accounts',
-            'designated_email'          => 'mamunoor11.tphl@gmail.com',
-            'approved_by_name'          => $row['accounts_head_name'] ?: 'Md. Mamunoor Rashid',
-            'approved_by_emp_id'        => $row['accounts_head_code'] ?: '1309',
-            'approved_by_designation'   => $row['accounts_head_designation'] ?: 'AGM - Finance & Accounts',
+            'designated_name'           => $defAhName,
+            'designated_emp_id'         => $defAhCode,
+            'designated_designation'    => $defAhDesig,
+            'designated_email'          => $defAhEmail,
+            'approved_by_name'          => $row['accounts_head_name'] ?: ($isAhApproved ? $defAhName : null),
+            'approved_by_emp_id'        => $row['accounts_head_code'] ?: ($isAhApproved ? $defAhCode : null),
+            'approved_by_designation'   => $row['accounts_head_designation'] ?: ($isAhApproved ? $defAhDesig : 'Accounts Head'),
             'approved_at'               => $row['accounts_head_at'],
             'approval_note'             => $row['accounts_head_note'],
         ];
@@ -2561,7 +2582,7 @@ class ApprovalRequest extends Model
                 $pendingForText = 'QC & Internal Audit Head';
             } elseif ($appRole === 'accounts_head' || ($row['status'] === 'approved' && $rowAhStatus !== 'approved')) {
                 $pendingStageLabel = 'Pending Accounts Head';
-                $pendingForText = 'Md. Mamunoor Rashid [1309] (Accounts Head)';
+                $pendingForText = 'Accounts Head';
             } elseif ($appRole === 'accounts') {
                 $pendingStageLabel = 'Pending Accounts Payout';
                 $pendingForText = 'Accounts & Finance';
@@ -2680,7 +2701,7 @@ class ApprovalRequest extends Model
                                 if (($row['accounts_head_status'] ?? 'pending') !== 'approved') {
                                     $row['approve_role'] = 'accounts_head';
                                     $pendingStageLabel = 'Pending Accounts Head';
-                                    $pendingForText = 'Md. Mamunoor Rashid [1309] (Accounts Head)';
+                                    $pendingForText = 'Accounts Head';
                                 } else {
                                     $row['approve_role'] = 'accounts';
                                     $pendingStageLabel = 'Pending Accounts Payout';
@@ -2697,7 +2718,7 @@ class ApprovalRequest extends Model
                             if (($row['accounts_head_status'] ?? 'pending') !== 'approved') {
                                 $row['approve_role'] = 'accounts_head';
                                 $pendingStageLabel = 'Pending Accounts Head';
-                                $pendingForText = 'Md. Mamunoor Rashid [1309] (Accounts Head)';
+                                $pendingForText = 'Accounts Head';
                             } else {
                                 $row['approve_role'] = 'accounts';
                                 $pendingStageLabel = 'Pending Accounts Payout';
@@ -2782,7 +2803,7 @@ class ApprovalRequest extends Model
                                 if (($row['accounts_head_status'] ?? 'pending') !== 'approved') {
                                     $row['approve_role'] = 'accounts_head';
                                     $pendingStageLabel = 'Pending Accounts Head';
-                                    $pendingForText = 'Md. Mamunoor Rashid [1309] (Accounts Head)';
+                                    $pendingForText = 'Accounts Head';
                                 } else {
                                     $row['approve_role'] = 'accounts';
                                     $pendingStageLabel = 'Pending Accounts Payout';
@@ -2799,7 +2820,7 @@ class ApprovalRequest extends Model
                             if (($row['accounts_head_status'] ?? 'pending') !== 'approved') {
                                 $row['approve_role'] = 'accounts_head';
                                 $pendingStageLabel = 'Pending Accounts Head';
-                                $pendingForText = 'Md. Mamunoor Rashid [1309] (Accounts Head)';
+                                $pendingForText = 'Accounts Head';
                             } else {
                                 $row['approve_role'] = 'accounts';
                                 $pendingStageLabel = 'Pending Accounts Payout';
@@ -2898,7 +2919,7 @@ class ApprovalRequest extends Model
                                 if (($row['accounts_head_status'] ?? 'pending') !== 'approved') {
                                     $row['approve_role'] = 'accounts_head';
                                     $pendingStageLabel = 'Pending Accounts Head';
-                                    $pendingForText = 'Md. Mamunoor Rashid [1309] (Accounts Head)';
+                                    $pendingForText = 'Accounts Head';
                                 } else {
                                     $row['approve_role'] = 'accounts';
                                     $pendingStageLabel = 'Pending Accounts Payout';
@@ -2915,7 +2936,7 @@ class ApprovalRequest extends Model
                             if (($row['accounts_head_status'] ?? 'pending') !== 'approved') {
                                 $row['approve_role'] = 'accounts_head';
                                 $pendingStageLabel = 'Pending Accounts Head';
-                                $pendingForText = 'Md. Mamunoor Rashid [1309] (Accounts Head)';
+                                $pendingForText = 'Accounts Head';
                             } else {
                                 $row['approve_role'] = 'accounts';
                                 $pendingStageLabel = 'Pending Accounts Payout';
@@ -2981,7 +3002,7 @@ class ApprovalRequest extends Model
                                 if (($row['accounts_head_status'] ?? 'pending') !== 'approved') {
                                     $row['approve_role'] = 'accounts_head';
                                     $pendingStageLabel = 'Pending Accounts Head';
-                                    $pendingForText = 'Md. Mamunoor Rashid [1309] (Accounts Head)';
+                                    $pendingForText = 'Accounts Head';
                                 } else {
                                     $row['approve_role'] = 'accounts';
                                     $pendingStageLabel = 'Pending Accounts Payout';
@@ -2998,7 +3019,7 @@ class ApprovalRequest extends Model
                             if (($row['accounts_head_status'] ?? 'pending') !== 'approved') {
                                 $row['approve_role'] = 'accounts_head';
                                 $pendingStageLabel = 'Pending Accounts Head';
-                                $pendingForText = 'Md. Mamunoor Rashid [1309] (Accounts Head)';
+                                $pendingForText = 'Accounts Head';
                             } else {
                                 $row['approve_role'] = 'accounts';
                                 $pendingStageLabel = 'Pending Accounts Payout';
@@ -3253,7 +3274,7 @@ class ApprovalRequest extends Model
                                 $row['approve_role'] = 'accounts_head';
                                 $payoutStatus = 'Pending Accounts Head Approval';
                                 $pendingStageLabel = 'Pending Accounts Head';
-                                $pendingForText = 'Accounts Head (Md. Mamunoor Rashid)';
+                                $pendingForText = 'Accounts Head';
                             }
                         } elseif (in_array($cbStatus, ['paid', 'fully_paid'])) {
                             $row['status'] = 'approved';
@@ -3518,7 +3539,7 @@ class ApprovalRequest extends Model
                 } else {
                     $payoutStatus = 'Pending Accounts Head Approval';
                     $pendingStageLabel = 'Pending Accounts Head';
-                    $pendingForText = 'Md. Mamunoor Rashid [1309] (Accounts Head)';
+                    $pendingForText = 'Accounts Head';
                 }
             } else if ($row['status'] === 'approved') {
                 $payoutStatus = 'Approved';

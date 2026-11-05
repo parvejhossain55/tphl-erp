@@ -1110,10 +1110,10 @@ class VoucherController extends Controller
             ];
         }
 
-        // --- 3. ACCOUNTS HEAD APPROVAL (Md. Mamunoor Rashid - AGM, Finance & Accounts) ---
-        $ahName = 'Md. Mamunoor Rashid';
-        $ahDes = 'AGM - Finance & Accounts';
-        $ahEmpId = '1309';
+        // --- 3. ACCOUNTS HEAD APPROVAL (Role 30) ---
+        $ahName = 'Accounts Head';
+        $ahDes = 'Accounts Head';
+        $ahEmpId = '';
         $ahDate = null;
         $ahNote = null;
         $isAhApproved = false;

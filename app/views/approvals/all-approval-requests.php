@@ -932,25 +932,25 @@
 
                                                 <!-- Step 2: Accounts Head Row (Pending or Approved) -->
                                                 <?php if ($isPendingAccountsHead): ?>
-                                                    <div class="px-1.5 py-1 rounded bg-warning-subtle border border-warning-subtle d-flex align-items-center justify-content-between gap-1" title="Payment locked until Accounts Head (Md. Mamunoor Rashid [1309]) approves" style="font-size: 10px; line-height: 1.2;">
+                                                    <div class="px-1.5 py-1 rounded bg-warning-subtle border border-warning-subtle d-flex align-items-center justify-content-between gap-1" title="Payment locked until Accounts Head approves" style="font-size: 10px; line-height: 1.2;">
                                                         <div class="d-flex align-items-center gap-1 text-truncate me-1">
                                                             <i class="fa-solid fa-hourglass-half text-warning flex-shrink-0" style="font-size: 9px;"></i>
                                                             <span class="text-dark fw-semibold text-truncate">Pending Accts Head</span>
                                                         </div>
-                                                        <span class="badge bg-warning text-dark p-0 px-1 flex-shrink-0" style="font-size: 8.5px;">1309</span>
+                                                        <span class="badge bg-warning text-dark p-0 px-1 flex-shrink-0" style="font-size: 8.5px;">AH</span>
                                                     </div>
                                                 <?php elseif ($isAccountsHeadApproved): ?>
                                                     <?php
                                                     $ahTooltip = trim(
-                                                        (!empty($req['accounts_head_designation']) ? $req['accounts_head_designation'] : 'AGM - Finance & Accounts') .
+                                                        (!empty($req['accounts_head_designation']) ? $req['accounts_head_designation'] : 'Accounts Head') .
                                                         (!empty($req['accounts_head_at']) ? ' • Approved: ' . date('d M, Y h:i A', strtotime($req['accounts_head_at'])) : '')
                                                     );
                                                     ?>
                                                     <div class="px-1.5 py-1 rounded bg-primary-subtle border border-primary-subtle d-flex align-items-center justify-content-between gap-1" title="<?= htmlspecialchars($ahTooltip) ?>" style="font-size: 10px; line-height: 1.2;">
                                                         <div class="d-flex align-items-center gap-1 text-truncate me-1">
                                                             <i class="fa-solid fa-check-double text-primary flex-shrink-0" style="font-size: 9.5px;"></i>
-                                                            <span class="fw-bold text-dark text-truncate" style="max-width: 105px;" title="<?= htmlspecialchars(!empty($req['accounts_head_name']) ? $req['accounts_head_name'] : 'Md. Mamunoor Rashid') ?>">
-                                                                <?= htmlspecialchars(!empty($req['accounts_head_name']) ? $req['accounts_head_name'] : 'Md. Mamunoor Rashid') ?>
+                                                            <span class="fw-bold text-dark text-truncate" style="max-width: 105px;" title="<?= htmlspecialchars(!empty($req['accounts_head_name']) ? $req['accounts_head_name'] : 'Accounts Head') ?>">
+                                                                <?= htmlspecialchars(!empty($req['accounts_head_name']) ? $req['accounts_head_name'] : 'Accounts Head') ?>
                                                             </span>
                                                             <span class="badge bg-primary text-white p-0 px-1 flex-shrink-0" style="font-size: 8px;">Accts</span>
                                                         </div>
@@ -1091,7 +1091,7 @@
                                             <?php if ($isAccountsHeadUser || $isManagementUser): ?>
                                                 <button type="button" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm fw-semibold me-1" 
                                                     onclick="openAccountsHeadApprovalModal(<?= (int)$req['id'] ?>, '<?= htmlspecialchars(addslashes($req['title'] ?? '')) ?>', '<?= number_format($req['approved_amount'] > 0 ? $req['approved_amount'] : $req['request_amount'], 2) ?>')"
-                                                    title="Approve as Accounts Head (Md. Mamunoor Rashid [1309])">
+                                                    title="Approve as Accounts Head">
                                                     <i class="fa-solid fa-stamp me-1"></i>Approve (Accounts Head)
                                                 </button>
                                                 <?php if ($isFrPartialMgmt && $isManagementUser): ?>
@@ -1103,7 +1103,7 @@
                                                     <i class="fa-solid fa-eye"></i>
                                                 </a>
                                             <?php elseif ($isAccountsStaffUser): ?>
-                                                <span class="badge bg-light text-muted border rounded-2 px-2 py-1 extra-small me-1" title="Payment locked until Accounts Head (Md. Mamunoor Rashid [1309]) approves">
+                                                <span class="badge bg-light text-muted border rounded-2 px-2 py-1 extra-small me-1" title="Payment locked until Accounts Head approves">
                                                     <i class="fa-solid fa-lock text-warning me-1"></i>Awaiting Accounts Head
                                                 </span>
                                                 <a href="<?= $targetUrl ?>" class="btn btn-sm btn-light text-dark rounded-2 px-2 border" title="View Module Page">
@@ -1281,7 +1281,7 @@
 
                 <div class="alert alert-info py-2 px-3 extra-small mb-3 border-info-subtle">
                     <i class="fa-solid fa-user-shield me-1"></i>
-                    <strong>Designated Approver:</strong> Md. Mamunoor Rashid [1309] (AGM - Finance & Accounts)
+                    <strong>Authorized Role:</strong> Accounts Head (Role 30)
                 </div>
 
                 <input type="hidden" id="ahModalReqId" value="">
