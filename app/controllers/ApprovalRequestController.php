@@ -155,7 +155,7 @@ class ApprovalRequestController extends Controller
         $allUserRoles = array_filter([$userRoleId, $userSecRoleId, $userPriRoleId]);
         $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
 
-        $isManagement = count(array_intersect($allUserRoles, [1, 3, 33, 34, 35])) > 0 || strpos($sessionRoleName, 'admin') !== false || strpos($sessionRoleName, 'management') !== false;
+        $isManagement = count(array_intersect($allUserRoles, [1, 3, 33, 34, 35, 38])) > 0 || strpos($sessionRoleName, 'admin') !== false || strpos($sessionRoleName, 'management') !== false || strpos($sessionRoleName, 'director') !== false;
         $isAccounts = count(array_intersect($allUserRoles, [6, 30, 36])) > 0 || strpos($sessionRoleName, 'account') !== false;
         $isRole20 = in_array(20, $allUserRoles, true) || in_array(32, $allUserRoles, true) || strpos($sessionRoleName, 'operation') !== false;
         $isRole24 = count(array_intersect($allUserRoles, [24, 13, 25])) > 0 || strpos($sessionRoleName, 'audit') !== false || strpos($sessionRoleName, 'qc') !== false;
@@ -256,7 +256,7 @@ class ApprovalRequestController extends Controller
             exit;
         }
 
-        $isManagement = in_array($userRoleId, [1, 3], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management'], true);
+        $isManagement = in_array($userRoleId, [1, 3, 38], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management', 'board of director', 'board of directors'], true);
         $isSiteOperator = in_array($userRoleId, [20, 32], true) || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false;
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $userSecRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
@@ -371,8 +371,8 @@ class ApprovalRequestController extends Controller
         // Authorization: strictly Accounts Head (Role 30) or Super Admin / Management
         $isAccountsHead = in_array(30, [$userRoleId, $userSecRoleId, $userPriRoleId], true) || strpos($sessionRoleName, 'accounts head') !== false;
         $isAuthorized = $isAccountsHead 
-            || in_array($userRoleId, [1, 3], true) 
-            || strpos($sessionRoleName, 'super admin') !== false;
+            || in_array($userRoleId, [1, 3, 38], true) 
+            || strpos($sessionRoleName, 'super admin') !== false || strpos($sessionRoleName, 'director') !== false;
 
         if (!$isAuthorized) {
             ob_clean();
@@ -454,8 +454,8 @@ class ApprovalRequestController extends Controller
         // Authorization: strictly Accounts Head (Role 30) or Super Admin / Management
         $isAccountsHead = in_array(30, [$userRoleId, $userSecRoleId, $userPriRoleId], true) || strpos($sessionRoleName, 'accounts head') !== false;
         $isAuthorized = $isAccountsHead 
-            || in_array($userRoleId, [1, 3], true) 
-            || strpos($sessionRoleName, 'super admin') !== false;
+            || in_array($userRoleId, [1, 3, 38], true) 
+            || strpos($sessionRoleName, 'super admin') !== false || strpos($sessionRoleName, 'director') !== false;
 
         if (!$isAuthorized) {
             ob_clean();
@@ -684,9 +684,10 @@ class ApprovalRequestController extends Controller
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
 
-        $isAuthorized = in_array($userRoleId, [1, 3], true) 
+        $isAuthorized = in_array($userRoleId, [1, 3, 38], true) 
             || strpos($sessionRoleName, 'super admin') !== false 
             || strpos($sessionRoleName, 'admin') !== false 
+            || strpos($sessionRoleName, 'director') !== false 
             || strpos($sessionRoleName, 'management') !== false;
 
         if (!$isAuthorized) {
@@ -782,9 +783,10 @@ class ApprovalRequestController extends Controller
         $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
 
-        $isAuthorized = in_array($userRoleId, [1, 3], true) 
+        $isAuthorized = in_array($userRoleId, [1, 3, 38], true) 
             || strpos($sessionRoleName, 'super admin') !== false 
             || strpos($sessionRoleName, 'admin') !== false 
+            || strpos($sessionRoleName, 'director') !== false 
             || strpos($sessionRoleName, 'management') !== false;
 
         if (!$isAuthorized) {
@@ -889,7 +891,7 @@ class ApprovalRequestController extends Controller
         $quote = 'Your prompt action keeps TPHL moving with confidence.';
         $roleCategory = 'general';
 
-        if (in_array($userRoleId, [1, 3], true) || in_array($userRoleName, ['super admin', 'admin', 'management'], true)) {
+        if (in_array($userRoleId, [1, 3, 38], true) || in_array($userRoleName, ['super admin', 'admin', 'management', 'board of director', 'board of directors'], true)) {
             $intervalHours = 6;
             $intervalMs = 6 * 3600 * 1000;
             $roleBadge = 'MANAGEMENT EXECUTIVE DESK';

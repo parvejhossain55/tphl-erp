@@ -1856,7 +1856,7 @@ class AccountClient extends Model
             WHERE es.lead_booking_id = ? 
               AND (
                   (lp.id IS NOT NULL AND lp.is_trashed = 0 AND lp.verification_status = 'verified' AND lp.payment_status IN ('paid','partially_paid'))
-                  OR (lp.id IS NULL AND es.status = 'paid')
+                  OR (es.lead_payment_id IS NULL AND es.status = 'paid')
               )
             ORDER BY es.emi_no
         ");
@@ -2633,7 +2633,7 @@ class AccountClient extends Model
             WHERE es.lead_booking_id = ?
             AND (
                 (lp.id IS NOT NULL AND lp.verification_status != 'rejected' AND lp.is_trashed = 0)
-                OR (lp.id IS NULL AND es.status = 'paid')
+                OR (es.lead_payment_id IS NULL AND es.status = 'paid')
             )
             ORDER BY es.emi_no ASC
         ");
@@ -2665,8 +2665,22 @@ class AccountClient extends Model
         $bookingId = (int)$bookingId;
         if ($bookingId <= 0) return;
 
+        // Purge any orphaned emi_schedules whose linked payment was deleted or trashed
+        $cleanup = $this->db->prepare("
+            DELETE es FROM emi_schedules es
+            LEFT JOIN lead_payments lp ON lp.id = es.lead_payment_id
+            WHERE es.lead_booking_id = ?
+              AND es.lead_payment_id IS NOT NULL
+              AND (lp.id IS NULL OR lp.is_trashed = 1)
+        ");
+        if ($cleanup) {
+            $cleanup->bind_param("i", $bookingId);
+            $cleanup->execute();
+            $cleanup->close();
+        }
+
         $stmt = $this->db->prepare("
-            SELECT lp.id, lp.amount, lp.due_emi_amount, lp.service_fee, lp.payment_date, lp.payment_status
+            SELECT lp.id, lp.amount, lp.due_emi_amount, lp.service_fee, lp.payment_date, lp.payment_status, lp.emi_no
             FROM lead_payments lp
             LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
             WHERE lp.booking_id = ?
@@ -2687,7 +2701,7 @@ class AccountClient extends Model
         if (empty($missing)) return;
 
         foreach ($missing as $row) {
-            $nextEmiNo = $this->getNextAvailableEmiNo($bookingId);
+            $nextEmiNo = !empty($row['emi_no']) ? (int)$row['emi_no'] : $this->getNextAvailableEmiNo($bookingId);
             $due = (float)($row['due_emi_amount'] ?? 0);
             $amount = (float)($row['amount'] ?? 0);
             $svcFee = (float)($row['service_fee'] ?? 0);
@@ -4401,7 +4415,7 @@ class AccountClient extends Model
                 throw new Exception("Transaction not found");
             }
 
-            $isManagementRole = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33, 34, 35]) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'management') !== false || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'admin') !== false;
+            $isManagementRole = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33, 34, 35, 38]) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'management') !== false || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'admin') !== false;
             $isEditableByManagement = $isManagementRole && in_array($oldTransaction['payment_type'] ?? '', ['development_charge', 'land_share', 'shop_service_charge', 'emi', 'booking_money', 'registration', 'mutation_cost', 'others']);
 
             if (($oldTransaction['verification_status'] ?? '') === 'verified' && !$isEditableByManagement) {
@@ -7054,55 +7068,55 @@ class AccountClient extends Model
                         es.lead_booking_id AS booking_id,
                         COUNT(DISTINCT CASE 
                             WHEN (lp.id IS NOT NULL AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' AND lp.is_trashed = 0)
-                              OR (lp.id IS NULL AND es.status = 'paid')
+                              OR (es.lead_payment_id IS NULL AND es.status = 'paid')
                             THEN es.emi_no 
                             ELSE NULL 
                         END) AS completed_emi_count,
                         COUNT(DISTINCT CASE 
                             WHEN ((lp.id IS NOT NULL AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' AND lp.is_trashed = 0)
-                              OR (lp.id IS NULL AND es.status = 'paid'))
+                              OR (es.lead_payment_id IS NULL AND es.status = 'paid'))
                               AND es.due_date <= '{$currentEndOfMonth}'
                             THEN es.emi_no 
                             ELSE NULL 
                         END) AS regular_completed_emi_count,
                         MAX(CASE 
                             WHEN ((lp.id IS NOT NULL AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' AND lp.is_trashed = 0)
-                              OR (lp.id IS NULL AND es.status = 'paid'))
+                              OR (es.lead_payment_id IS NULL AND es.status = 'paid'))
                               AND es.due_date <= '{$currentEndOfMonth}'
                             THEN es.due_date 
                             ELSE NULL 
                         END) AS max_regular_paid_due_date,
                         MAX(CASE 
                             WHEN ((lp.id IS NOT NULL AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' AND lp.is_trashed = 0)
-                              OR (lp.id IS NULL AND es.status = 'paid'))
+                              OR (es.lead_payment_id IS NULL AND es.status = 'paid'))
                               AND es.due_date <= '{$currentEndOfMonth}'
                             THEN es.emi_no 
                             ELSE 0 
                         END) AS max_regular_paid_emi_no,
                         COUNT(DISTINCT CASE 
                             WHEN ((lp.id IS NOT NULL AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' AND lp.is_trashed = 0)
-                              OR (lp.id IS NULL AND es.status = 'paid'))
+                              OR (es.lead_payment_id IS NULL AND es.status = 'paid'))
                               AND es.due_date > '{$currentEndOfMonth}'
                             THEN es.emi_no 
                             ELSE NULL 
                         END) AS advance_emi_count,
                         GROUP_CONCAT(DISTINCT CASE 
                             WHEN ((lp.id IS NOT NULL AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' AND lp.is_trashed = 0)
-                              OR (lp.id IS NULL AND es.status = 'paid'))
+                              OR (es.lead_payment_id IS NULL AND es.status = 'paid'))
                               AND es.due_date > '{$currentEndOfMonth}'
                             THEN es.emi_no 
                             ELSE NULL 
                         END ORDER BY es.emi_no SEPARATOR ', ') AS advance_emi_numbers,
                         MAX(CASE 
                             WHEN ((lp.id IS NOT NULL AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' AND lp.is_trashed = 0)
-                              OR (lp.id IS NULL AND es.status = 'paid'))
+                              OR (es.lead_payment_id IS NULL AND es.status = 'paid'))
                               AND es.due_date > '{$currentEndOfMonth}'
                             THEN es.due_date 
                             ELSE NULL 
                         END) AS max_advance_due_date,
                         SUM(CASE 
                             WHEN ((lp.id IS NOT NULL AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' AND lp.is_trashed = 0)
-                              OR (lp.id IS NULL AND es.status = 'paid'))
+                              OR (es.lead_payment_id IS NULL AND es.status = 'paid'))
                               AND es.due_date > '{$currentEndOfMonth}'
                             THEN es.emi_amount 
                             ELSE 0 
@@ -7282,7 +7296,7 @@ class AccountClient extends Model
                         es.lead_booking_id AS booking_id,
                         SUM(CASE 
                             WHEN ((lp.id IS NOT NULL AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' AND lp.is_trashed = 0)
-                              OR (lp.id IS NULL AND es.status = 'paid'))
+                              OR (es.lead_payment_id IS NULL AND es.status = 'paid'))
                               AND es.due_date > '{$currentEndOfMonth}'
                             THEN es.emi_amount 
                             ELSE 0 

@@ -1736,7 +1736,7 @@ class ApprovalRequest extends Model
             return "1=0";
         }
 
-        $isManagement = in_array($userRoleId, [1, 3], true) || in_array($roleName, ['super admin', 'admin', 'management'], true);
+        $isManagement = in_array($userRoleId, [1, 3, 38], true) || in_array($roleName, ['super admin', 'admin', 'management', 'board of director', 'board of directors'], true);
         $isSiteOperator = in_array($userRoleId, [20, 32], true) || strpos($roleName, 'operation head') !== false || strpos($roleName, 'admin & operation') !== false;
         $isAccountsHead = ($userRoleId === 30) || strpos($roleName, 'accounts head') !== false;
         $isAccounts = ($userRoleId === 6) || (strpos($roleName, 'account') !== false && !$isAccountsHead);
@@ -2118,7 +2118,7 @@ class ApprovalRequest extends Model
         $sessionRoleName = strtolower(trim($filters['role_name'] ?? ($_SESSION['user']['role_name'] ?? '')));
         $isChiefOfficer = (in_array($userRoleId, [33, 34, 35], true) || in_array($sessionRoleName, ['chief officer', 'management viewer', 'seal ceo'], true));
 
-        $isFullManagement = !$isChiefOfficer && (in_array($userRoleId, [1, 3], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management'], true));
+        $isFullManagement = !$isChiefOfficer && (in_array($userRoleId, [1, 3, 38], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management', 'board of director', 'board of directors'], true));
         $isRole20 = in_array($userRoleId, [20, 32], true) || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false;
         $isAccounts = in_array($userRoleId, [6, 30], true) || strpos($sessionRoleName, 'account') !== false;
         $isHR = ($userRoleId === 4) || strpos($sessionRoleName, 'hr') !== false;
@@ -3593,7 +3593,7 @@ class ApprovalRequest extends Model
         $isChiefOfficer = (in_array($userRoleId, [33, 34, 35], true) || in_array($sessionRoleName, ['chief officer', 'management viewer', 'seal ceo'], true));
 
         // Full Management: Super Admin (3), Admin (1)
-        $isFullManagement = !$isChiefOfficer && (in_array($userRoleId, [1, 3], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management'], true));
+        $isFullManagement = !$isChiefOfficer && (in_array($userRoleId, [1, 3, 38], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management', 'board of director', 'board of directors'], true));
 
         // Site Operator / Admin & Operation Head: Role 20, Role 32
         $isRole20 = in_array($userRoleId, [20, 32], true) || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false;

@@ -17,7 +17,7 @@ class CedCollectionStatementController extends Controller
         $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
         $userName = strtolower(trim($_SESSION['user']['user_name'] ?? ''));
         $isClientComm = function_exists('isCreditRecovery') ? isCreditRecovery() : in_array($userRoleId, [7, 37], true);
-        $isManagement = in_array($userRoleId, [1, 3, 33, 34, 35], true)
+        $isManagement = in_array($userRoleId, [1, 3, 33, 34, 35, 38], true)
             || strpos($roleName, 'management') !== false
             || strpos($roleName, 'admin') !== false
             || strpos($userName, 'management') !== false;
@@ -461,7 +461,7 @@ class CedCollectionStatementController extends Controller
             if ($filters['team_scope'] === 'ced_only') {
                 $conds[] = "(u_cr.role_id IN (7, 37) OR r_cr.name LIKE '%client%' OR r_cr.name LIKE '%recovery%' OR d_cr.name LIKE '%client%' OR d_cr.name LIKE '%ced%')";
             } elseif ($filters['team_scope'] === 'ced_mgmt') {
-                $conds[] = "(u_cr.role_id IN (7, 37, 1, 3, 33, 34, 35) OR r_cr.name LIKE '%client%' OR r_cr.name LIKE '%recovery%' OR r_cr.name LIKE '%management%' OR r_cr.name LIKE '%admin%' OR d_cr.name LIKE '%client%' OR d_cr.name LIKE '%ced%' OR u_cr.user_name LIKE '%management%')";
+                $conds[] = "(u_cr.role_id IN (7, 37, 1, 3, 33, 34, 35, 38) OR r_cr.name LIKE '%client%' OR r_cr.name LIKE '%recovery%' OR r_cr.name LIKE '%management%' OR r_cr.name LIKE '%admin%' OR d_cr.name LIKE '%client%' OR d_cr.name LIKE '%ced%' OR u_cr.user_name LIKE '%management%')";
             }
         }
 
@@ -759,7 +759,7 @@ class CedCollectionStatementController extends Controller
                 $r['cheque_amount']      = (float)$r['cheque_amount'];
                 $r['online_amount']      = (float)$r['online_amount'];
                 $r['is_ced_member']      = in_array((int)$r['role_id'], [7, 37], true) || stripos($r['collector_role'], 'client') !== false;
-                $r['is_management']      = in_array((int)$r['role_id'], [1, 3, 33, 34, 35], true) || stripos($r['collector_role'], 'admin') !== false || stripos($r['collector_role'], 'management') !== false || (isset($r['user_name']) && stripos($r['user_name'], 'management') !== false);
+                $r['is_management']      = in_array((int)$r['role_id'], [1, 3, 33, 34, 35, 38], true) || stripos($r['collector_role'], 'admin') !== false || stripos($r['collector_role'], 'management') !== false || (isset($r['user_name']) && stripos($r['user_name'], 'management') !== false);
 
                 $grand['total_count']        += $r['total_count'];
                 $grand['total_amount']       += $r['total_amount'];

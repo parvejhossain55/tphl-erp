@@ -6,6 +6,12 @@ $show_breadcrumb = true;
 
 <div class="row">
     <div class="card__wrapper">
+        <div class="alert alert-info py-2 px-3 mb-4 d-flex align-items-center">
+            <i class="bi bi-info-circle-fill me-2 fs-5"></i>
+            <small>
+                <strong>Multi-Step Approval Process:</strong> Once submitted, this contractor request will progress through required approvals (Dept Head &rarr; Purchase Head &rarr; Role 20 &rarr; Role 38 Board of Director &rarr; Management) before becoming active.
+            </small>
+        </div>
         <form action="<?= $GLOBALS['base_url'] ?>/con-contractor-store" method="POST">
             <div class="row gy-20">
 
@@ -50,7 +56,7 @@ $show_breadcrumb = true;
                 </div>
 
                 <div class="col-12 text-center mt-4">
-                    <button type="submit" class="btn btn-primary px-5">Save Operator</button>
+                    <button type="submit" class="btn btn-primary px-5"><i class="bi bi-send-check me-1"></i> Submit for Approval</button>
                     <a href="<?= $GLOBALS['base_url'] ?>/con-contractors" class="btn btn-secondary ms-2">Cancel</a>
                 </div>
 

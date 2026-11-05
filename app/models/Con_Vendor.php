@@ -78,11 +78,13 @@ public function getPaginated($limit, $offset)
 
     public function create($data)
     {
-        $sql = "INSERT INTO {$this->table} (name, phone, email, address, rating, status, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?)";
+        $companyName = $data['company_name'] ?? null;
+        $sql = "INSERT INTO {$this->table} (name, company_name, phone, email, address, rating, status, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param('ssssdsi',
+        $stmt->bind_param('sssssdsi',
             $data['name'],
+            $companyName,
             $data['phone'],
             $data['email'],
             $data['address'],

@@ -41,7 +41,7 @@ $show_breadcrumb = false;
                         <?php if (!empty($operators)): ?>
                             <?php foreach ($operators as $index => $row): ?>
                                 <tr>
-                                    <td><?= $index + 1 ?></td>
+                                    <td><?= ($offset ?? 0) + $index + 1 ?></td>
                                     <td class="fw-semibold">
                                         <?= htmlspecialchars($row['name']) ?>
                                         <?php if (!empty($row['nid_number'])): ?>
@@ -53,9 +53,18 @@ $show_breadcrumb = false;
                                     <td><?= htmlspecialchars($row['phone'] ?? '—') ?></td>
                                     <td><?= $row['daily_rate'] ? number_format($row['daily_rate'], 2) : '—' ?></td>
                                     <td>
-                                        <span class="badge bg-<?= $row['status'] === 'active' ? 'success' : 'danger' ?>">
-                                            <?= ucfirst($row['status']) ?>
-                                        </span>
+                                        <?php
+                                        $cSt = $row['status'] ?? 'active';
+                                        if ($cSt === 'active') {
+                                            echo '<span class="badge bg-success">Active</span>';
+                                        } elseif ($cSt === 'pending_approval') {
+                                            echo '<span class="badge bg-warning text-dark"><i class="bi bi-clock-history me-1"></i>Pending Approval</span>';
+                                        } elseif ($cSt === 'rejected') {
+                                            echo '<span class="badge bg-danger">Rejected</span>';
+                                        } else {
+                                            echo '<span class="badge bg-secondary">' . htmlspecialchars(ucfirst($cSt)) . '</span>';
+                                        }
+                                        ?>
                                     </td>
                                     <td class="table__icon-box">
                                         <div class="d-flex align-items-center justify-content-center gap-10">

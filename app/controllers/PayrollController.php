@@ -1549,6 +1549,15 @@ class PayrollController extends Controller
         $escapedTargetStart = $this->db->real_escape_string($targetStartDate);
         $escapedTargetEnd = $this->db->real_escape_string($targetEndDate);
 
+        // Auto-provision and sync attendance records from Tipsoi if this project has no attendance data yet
+        if ($selectedProject) {
+            $chkAttRes = $this->db->query("SELECT COUNT(*) as c FROM attendance_monthly_update WHERE payroll_project_id = " . (int)$selectedProject);
+            $attCount = ($chkAttRes && $chkAttRow = $chkAttRes->fetch_assoc()) ? (int)$chkAttRow['c'] : 0;
+            if ($attCount === 0 && !empty($targetStartDate) && !empty($targetEndDate)) {
+                $this->syncProjectAttendanceFromTipsoi((int)$selectedProject);
+            }
+        }
+
         // Build an exhaustive query joining payslips, employees, departments, designations
         $query = '
         SELECT p.*, e.id as real_emp_id_fk,
@@ -1846,6 +1855,11 @@ class PayrollController extends Controller
 
                 if ($meal_project_id > 0 && $newProjId > 0) {
                     $this->db->query("UPDATE meal_projects SET payroll_project_id = $newProjId WHERE id = $meal_project_id");
+                }
+
+                // Auto-sync project attendance from Tipsoi into attendance_monthly_update
+                if ($newProjId > 0) {
+                    $this->syncProjectAttendanceFromTipsoi($newProjId);
                 }
                 echo "<script>window.location.href='{$GLOBALS['base_url']}/payroll-workspace?payroll_project_id={$newProjId}';</script>";
             } else {
@@ -2753,6 +2767,18 @@ class PayrollController extends Controller
 
         $selectedProjectId = isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] !== '' ? (int) $_GET['payroll_project_id'] : (isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int) $_GET['project_id'] : null);
 
+        // Smart auto-match if date range was passed in GET but project_id was omitted
+        if (!$selectedProjectId && !empty($_GET['from_date']) && !empty($_GET['to_date']) && !empty($payroll_projects)) {
+            $gFrom = trim($_GET['from_date']);
+            $gTo = trim($_GET['to_date']);
+            foreach ($payroll_projects as $p) {
+                if (!empty($p['start_date']) && !empty($p['end_date']) && $p['start_date'] === $gFrom && $p['end_date'] === $gTo) {
+                    $selectedProjectId = (int)$p['id'];
+                    break;
+                }
+            }
+        }
+
         $this->view('payrolls/payslips/attendance-report', [
             'current_route' => 'payroll-attendance-report',
             'page_title' => 'Payroll Attendance Report',
@@ -2776,7 +2802,7 @@ class PayrollController extends Controller
             }
         }
 
-        echo json_encode(['success' => true, 'data' => $data]);
+        echo json_encode(['success' => true, 'data' => $data, 'overrides' => $data]);
         exit;
     }
 
@@ -2870,6 +2896,247 @@ class PayrollController extends Controller
         } catch (Exception $e) {
             $this->db->rollback();
             echo json_encode(['success' => false, 'message' => 'Operation failed: ' . $e->getMessage()]);
+        }
+        exit;
+    }
+
+    /**
+     * Server-side Tipsoi Attendance Aggregation & DB Sync for a Payroll Project
+     */
+    public function syncProjectAttendanceFromTipsoi($projectId)
+    {
+        $projectId = (int)$projectId;
+        if ($projectId <= 0) return false;
+
+        $pRes = $this->db->query("SELECT * FROM payroll_projects WHERE id = {$projectId} LIMIT 1");
+        if (!$pRes || !($proj = $pRes->fetch_assoc())) {
+            return false;
+        }
+
+        $fromDateStr = '';
+        $toDateStr = '';
+        if (!empty($proj['is_custom_date']) && !empty($proj['start_date']) && !empty($proj['end_date'])) {
+            $fromDateStr = $proj['start_date'];
+            $toDateStr = $proj['end_date'];
+        } elseif (!empty($proj['date'])) {
+            $parts = explode('-', $proj['date']);
+            if (count($parts) === 2) {
+                $cRange = $this->getCycleDateRange((int)$parts[0], (int)$parts[1]);
+                $fromDateStr = date('Y-m-d', strtotime($cRange['start']));
+                $toDateStr = date('Y-m-d', strtotime($cRange['end']));
+            }
+        }
+
+        if (empty($fromDateStr) || empty($toDateStr)) {
+            return false;
+        }
+
+        require_once dirname(__DIR__) . '/services/ExternalApiService.php';
+        $extApi = new ExternalApiService();
+        $token = $extApi->getBearerToken();
+        if (!$token) {
+            return false;
+        }
+
+        $oldTz = date_default_timezone_get();
+        date_default_timezone_set('Asia/Dhaka');
+        $fromTime = strtotime($fromDateStr . ' 00:00:00') * 1000;
+        $toTime = strtotime($toDateStr . ' 23:59:59') * 1000;
+        date_default_timezone_set($oldTz);
+
+        $url = "https://app.tipsoi.ai/inovace-client/api/v1/attendance?" . http_build_query([
+            'officeId' => 4699,
+            'order' => 'asc',
+            'pageNumber' => 0,
+            'perPage' => 2000,
+            'reportType' => 'department',
+            'sortKey' => 'reportPosition',
+            'status' => 1,
+            'from' => $fromTime,
+            'to' => $toTime
+        ]);
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . $token,
+            'Accept: application/json'
+        ]);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+        $res = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode !== 200 || !$res) {
+            return false;
+        }
+
+        $tipsoiData = json_decode($res, true);
+        $rawTipsoiList = $tipsoiData['attendance'] ?? ($tipsoiData['data'] ?? []);
+        if (empty($rawTipsoiList)) {
+            return 0;
+        }
+
+        $tipsoiMap = [];
+        foreach ($rawTipsoiList as $item) {
+            $offId = trim((string)($item['employeeOfficeId'] ?? $item['employeeId'] ?? ''));
+            if ($offId !== '') {
+                $tipsoiMap['id_' . strtolower($offId)] = $item;
+            }
+            $nName = strtolower(trim((string)($item['employeeName'] ?? '')));
+            if ($nName !== '') {
+                $tipsoiMap['name_' . $nName] = $item;
+            }
+        }
+
+        $localQuery = $this->db->query("
+            SELECT id, employee_id, full_name 
+            FROM employees 
+            WHERE employee_status = 'active'
+              AND (joining_date IS NULL OR joining_date <= '{$toDateStr}')
+              AND (deleted_at IS NULL OR deleted_at >= '{$fromDateStr}')
+        ");
+        if (!$localQuery) return false;
+
+        $cycleTotalDays = max(1, (int)round((strtotime($toDateStr) - strtotime($fromDateStr)) / 86400) + 1);
+
+        $stmt = $this->db->prepare('
+            INSERT INTO attendance_monthly_update 
+            (employee_id, payroll_project_id, working_days, present, absent, leave_days, dayoff, late, approved_lates, final_late, deduction, late_unpaid_absent_days) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+            working_days = VALUES(working_days),
+            present = VALUES(present),
+            absent = VALUES(absent),
+            leave_days = VALUES(leave_days),
+            dayoff = VALUES(dayoff),
+            late = VALUES(late),
+            approved_lates = VALUES(approved_lates),
+            final_late = VALUES(final_late),
+            deduction = VALUES(deduction),
+            late_unpaid_absent_days = VALUES(late_unpaid_absent_days),
+            update_at = NOW()
+        ');
+        if (!$stmt) return false;
+
+        $savedCount = 0;
+        while ($emp = $localQuery->fetch_assoc()) {
+            $empId = (int)$emp['id'];
+            $offId = strtolower(trim((string)($emp['employee_id'] ?? '')));
+            $fullName = strtolower(trim((string)($emp['full_name'] ?? '')));
+
+            $tipsoiEmp = $tipsoiMap['id_' . $offId] ?? ($tipsoiMap['name_' . $fullName] ?? null);
+
+            $workingDays = $cycleTotalDays;
+            $present = 0;
+            $absent = 0;
+            $leave = 0;
+            $dayoff = 0;
+            $late = 0;
+            $approvedLates = 0;
+            $finalLate = 0;
+            $deduction = 0.00;
+            $lateUnpaidAbsentDays = 0.00;
+
+            if ($tipsoiEmp) {
+                $summ = $tipsoiEmp['summary'] ?? [];
+                $attMap = $tipsoiEmp['attendance'] ?? [];
+
+                if (isset($summ['totalAbsent'])) {
+                    $present = (int)($summ['totalPresent'] ?? 0);
+                    $absent = (int)($summ['totalAbsent'] ?? 0);
+                    $leave = (float)($summ['totalLeave'] ?? 0);
+                    $dayoff = (int)($summ['totalWeeklyOffdays'] ?? 0) + (int)($summ['totalHolidays'] ?? 0);
+                } else {
+                    foreach ($attMap as $day) {
+                        if (!empty($day['isPresent'])) $present++;
+                        elseif (!empty($day['isOffday']) || !empty($day['isHoliday'])) $dayoff++;
+                        elseif (!empty($day['isLeave'])) $leave += (!empty($day['isHalfDay']) ? 0.5 : 1);
+                        else $absent++;
+                    }
+                }
+
+                foreach ($attMap as $day) {
+                    $lStatus = strtolower(trim((string)($day['lateApprovalStatus'] ?? '')));
+                    if ($lStatus === 'accepted' || $lStatus === 'approved') {
+                        $approvedLates++;
+                    }
+                }
+                if ($approvedLates === 0 && !empty($summ['totalApprovedLateApplication'])) {
+                    $approvedLates = (int)round((int)$summ['totalApprovedLateApplication'] / 2);
+                }
+
+                $finalLate = (int)($summ['totalLateEntry'] ?? 0);
+                $late = $approvedLates + $finalLate;
+                $deduction = (float)floor($finalLate / 3);
+                $lateUnpaidAbsentDays = (float)($absent + $deduction);
+                $workingDays = max(0, $cycleTotalDays - $dayoff);
+            }
+
+            $stmt->bind_param(
+                'iidddddddddd',
+                $empId,
+                $projectId,
+                $workingDays,
+                $present,
+                $absent,
+                $leave,
+                $dayoff,
+                $late,
+                $approvedLates,
+                $finalLate,
+                $deduction,
+                $lateUnpaidAbsentDays
+            );
+            if ($stmt->execute()) {
+                $savedCount++;
+            }
+        }
+        $stmt->close();
+
+        return $savedCount;
+    }
+
+    /**
+     * AJAX endpoint: Trigger background Tipsoi attendance sync for a project
+     */
+    public function apiSyncProjectAttendance()
+    {
+        header('Content-Type: application/json');
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $isAuthorized = in_array($userRoleId, [1, 3, 4, 20, 30, 33, 35])
+                     || strpos($userRoleName, 'admin') !== false
+                     || strpos($userRoleName, 'management') !== false
+                     || strpos($userRoleName, 'hr') !== false;
+
+        if (!$isAuthorized) {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized access.']);
+            exit;
+        }
+
+        $projectId = isset($_POST['project_id']) ? (int)$_POST['project_id'] : (isset($_GET['project_id']) ? (int)$_GET['project_id'] : 0);
+        if (!$projectId) {
+            echo json_encode(['success' => false, 'message' => 'Valid Payroll Project ID is required.']);
+            exit;
+        }
+
+        $count = $this->syncProjectAttendanceFromTipsoi($projectId);
+        if ($count !== false) {
+            echo json_encode([
+                'success' => true,
+                'message' => "Successfully synced and saved attendance for {$count} employees from Tipsoi!",
+                'count' => $count
+            ]);
+        } else {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Failed to sync attendance from Tipsoi. Check Tipsoi connection or credentials.'
+            ]);
         }
         exit;
     }

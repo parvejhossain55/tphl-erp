@@ -357,7 +357,7 @@ class HomeController extends Controller
             if (in_array($userRoleId, [33, 34, 35], true)) {
                 throw new Exception("Unauthorized action: View-Only roles cannot approve requests.");
             }
-            $isManagement = in_array($userRoleId, [1, 3], true);
+            $isManagement = in_array($userRoleId, [1, 3, 38], true);
             $isSiteOperator = ($userRoleId === 20);
 
             if ($isSiteOperator && !$isManagement) {
@@ -420,7 +420,7 @@ class HomeController extends Controller
             if (in_array($userRoleId, [33, 34, 35], true)) {
                 throw new Exception("Unauthorized action: View-Only roles cannot approve requests.");
             }
-            $isManagement = in_array($userRoleId, [1, 3], true);
+            $isManagement = in_array($userRoleId, [1, 3, 38], true);
             $isSiteOperator = ($userRoleId === 20);
 
             if ($isSiteOperator && !$isManagement) {
@@ -563,7 +563,7 @@ class HomeController extends Controller
         if (in_array($userRoleId, [33, 34, 35], true)) {
             die("Unauthorized action: View-Only roles cannot reject requests.");
         }
-        $isManagement = in_array($userRoleId, [1, 3], true);
+        $isManagement = in_array($userRoleId, [1, 3, 38], true);
         $isSiteOperator = ($userRoleId === 20);
 
         if ($isSiteOperator && !$isManagement) {

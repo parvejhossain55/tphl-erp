@@ -13,7 +13,7 @@ class TeamFollowUpComparisonController extends Controller
     protected $db;
     protected TeamFollowUpComparisonService $service;
 
-    public const ALLOWED_ROLE_IDS = [1, 3, 5, 9, 33, 34, 35];
+    public const ALLOWED_ROLE_IDS = [1, 3, 5, 9, 33, 34, 35, 38];
 
     public function __construct($db)
     {

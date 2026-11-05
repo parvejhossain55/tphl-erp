@@ -20,7 +20,7 @@ class UserActivityLogController extends Controller
 
         // Only role_id 1 (Admin), 3 (Super Admin / Management), 33, 34, 35 can access
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        if (!in_array($roleId, [1, 3, 33, 34, 35])) {
+        if (!in_array($roleId, [1, 3, 33, 34, 35, 38])) {
             header("Location: " . $GLOBALS['base_url'] . "/home");
             exit;
         }

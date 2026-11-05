@@ -483,7 +483,7 @@ class ClientRefundController extends Controller
         $userRole = (int)($this->userRole ?? 0);
         $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
         $isOpHeadUser = (in_array($userRole, [20, 32], true) || str_contains($roleName, 'operation head'));
-        $isMgmtUser = in_array($userRole, [1, 3], true);
+        $isMgmtUser = in_array($userRole, [1, 3, 38], true);
 
         // Fetch approval request record
         $arCheck = $this->db->query("SELECT id, op_head_status, accounts_head_status FROM approval_requests WHERE source_table = 'client_refund_requests' AND source_id = " . (int)$id . " ORDER BY id DESC LIMIT 1");
