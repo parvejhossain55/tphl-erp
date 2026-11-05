@@ -1294,6 +1294,13 @@
                             <span class="sidebar__menu-label">Lead Automation Upload</span>
                         </a>
                     </li>
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/lead-investment-report"
+                            class="sidebar__menu-item <?= isActive('lead-investment-report', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-chart-pie text-success"></i></div>
+                            <span class="sidebar__menu-label">Lead Investment Report</span>
+                        </a>
+                    </li>
                 <?php endif; ?>
 
                 <!--Start Marketing Head Dashboard  -->
@@ -1341,6 +1348,13 @@
                             class="sidebar__menu-item <?= isActive('lead-automation-upload', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-wand-magic-sparkles text-primary"></i></div>
                             <span class="sidebar__menu-label">Lead Automation Upload</span>
+                        </a>
+                    </li>
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/lead-investment-report"
+                            class="sidebar__menu-item <?= isActive('lead-investment-report', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-chart-pie text-success"></i></div>
+                            <span class="sidebar__menu-label">Lead Investment Report</span>
                         </a>
                     </li>
                     <?php endif; ?>
