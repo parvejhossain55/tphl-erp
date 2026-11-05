@@ -258,12 +258,10 @@ class ApprovalRequestController extends Controller
 
         $isManagement = in_array($userRoleId, [1, 3], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management'], true);
         $isSiteOperator = in_array($userRoleId, [20, 32], true) || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false;
-        $userName = strtolower(trim($_SESSION['user']['user_name'] ?? ''));
-        $userFullName = strtolower(trim($_SESSION['user']['full_name'] ?? ''));
-        $isDesignatedAh = ($userId === 247 || $userId === 1309 || strpos($userFullName, 'mamun') !== false) 
-            && ($userId !== 207 && strpos($userName, 'accounts') === false && strpos($userFullName, 'accounts') === false);
-        $isAccountsHead = ($userRoleId === 30 && $isDesignatedAh);
         $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $userSecRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $userPriRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
+        $isAccountsHead = in_array(30, [$userRoleId, $userSecRoleId, $userPriRoleId], true) || strpos($sessionRoleName, 'accounts head') !== false;
 
         foreach ($requestIds as $id) {
             try {
@@ -363,22 +361,20 @@ class ApprovalRequestController extends Controller
         }
 
         $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userSecRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $userPriRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
-        $userName = strtolower(trim($_SESSION['user']['user_name'] ?? ''));
-        $userFullName = strtolower(trim($_SESSION['user']['full_name'] ?? ''));
 
-        // Authorization: strictly designated Accounts Head (Md. Mamunoor Rashid) or Management Admin (1, 3)
-        $isDesignatedAh = ($userId === 247 || $userId === 1309 || strpos($userFullName, 'mamun') !== false) 
-            && ($userId !== 207 && strpos($userName, 'accounts') === false && strpos($userFullName, 'accounts') === false);
-
-        $isAuthorized = ($userRoleId === 30 && $isDesignatedAh) 
+        // Authorization: strictly Accounts Head (Role 30) or Super Admin / Management
+        $isAccountsHead = in_array(30, [$userRoleId, $userSecRoleId, $userPriRoleId], true) || strpos($sessionRoleName, 'accounts head') !== false;
+        $isAuthorized = $isAccountsHead 
             || in_array($userRoleId, [1, 3], true) 
             || strpos($sessionRoleName, 'super admin') !== false;
 
         if (!$isAuthorized) {
             ob_clean();
-            echo json_encode(['success' => false, 'message' => 'Unauthorized: Only Accounts Head (Md. Mamunoor Rashid [1309]) or Management can approve this stage.']);
+            echo json_encode(['success' => false, 'message' => 'Unauthorized: Only Accounts Head (Role 30) or Management can approve this stage.']);
             exit;
         }
 
@@ -418,9 +414,9 @@ class ApprovalRequestController extends Controller
         if ($res) {
             echo json_encode([
                 'success' => true, 
-                'message' => 'Approved by Accounts Head (Md. Mamunoor Rashid [1309]) successfully. Payment can now be disbursed.',
-                'accounts_head_name' => 'Md. Mamunoor Rashid',
-                'accounts_head_code' => '1309',
+                'message' => 'Approved by Accounts Head successfully. Payment can now be disbursed.',
+                'accounts_head_name' => $_SESSION['user']['full_name'] ?? 'Accounts Head',
+                'accounts_head_code' => $_SESSION['user']['employee_id'] ?? '',
                 'approved_at' => date('d M, Y h:i A')
             ]);
         } else {
@@ -448,22 +444,20 @@ class ApprovalRequestController extends Controller
         }
 
         $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userSecRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $userPriRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
-        $userName = strtolower(trim($_SESSION['user']['user_name'] ?? ''));
-        $userFullName = strtolower(trim($_SESSION['user']['full_name'] ?? ''));
 
-        // Authorization: strictly designated Accounts Head (Md. Mamunoor Rashid) or Management Admin (1, 3)
-        $isDesignatedAh = ($userId === 247 || $userId === 1309 || strpos($userFullName, 'mamun') !== false) 
-            && ($userId !== 207 && strpos($userName, 'accounts') === false && strpos($userFullName, 'accounts') === false);
-
-        $isAuthorized = ($userRoleId === 30 && $isDesignatedAh) 
+        // Authorization: strictly Accounts Head (Role 30) or Super Admin / Management
+        $isAccountsHead = in_array(30, [$userRoleId, $userSecRoleId, $userPriRoleId], true) || strpos($sessionRoleName, 'accounts head') !== false;
+        $isAuthorized = $isAccountsHead 
             || in_array($userRoleId, [1, 3], true) 
             || strpos($sessionRoleName, 'super admin') !== false;
 
         if (!$isAuthorized) {
             ob_clean();
-            echo json_encode(['success' => false, 'message' => 'Unauthorized: Only Accounts Head (Md. Mamunoor Rashid [1309]) or Management can reject this stage.']);
+            echo json_encode(['success' => false, 'message' => 'Unauthorized: Only Accounts Head (Role 30) or Management can reject this stage.']);
             exit;
         }
 

@@ -306,7 +306,7 @@ class PayrollController extends Controller
         }
         $ahCheck = ApprovalRequest::getAccountsHeadApprovalInfo($this->db, 'payslips', (int) $payslipId);
         if ($ahCheck && !empty($ahCheck['has_request']) && empty($ahCheck['is_accounts_head_approved'])) {
-            $_SESSION['error'] = 'Payment cannot be disbursed. Approval from Accounts Head (Md. Mamunoor Rashid [1309]) is pending.';
+            $_SESSION['error'] = 'Payment cannot be disbursed. Approval from Accounts Head is pending.';
             header('Location: ' . $GLOBALS['base_url'] . '/payslip-lists');
             exit;
         }
@@ -1140,7 +1140,7 @@ class PayrollController extends Controller
         if ($checkAh && $checkAh->num_rows > 0) {
             echo json_encode([
                 'success' => false,
-                'message' => 'Payment cannot be disbursed. One or more selected payslips are pending approval from Accounts Head (Md. Mamunoor Rashid [1309]).'
+                'message' => 'Payment cannot be disbursed. One or more selected payslips are pending approval from Accounts Head.'
             ]);
             exit;
         }

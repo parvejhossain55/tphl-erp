@@ -42,25 +42,24 @@ $currentRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
 $currentUserName = strtolower(trim($_SESSION['user']['user_name'] ?? ''));
 $currentUserFullName = strtolower(trim($_SESSION['user']['full_name'] ?? ''));
 
-// Designated Accounts Head is specifically Md. Mamunoor Rashid (user 247, emp 1309 / 210)
-$isDesignatedAccountsHead = ($currentUserId === 247)
-    || ($currentUserId === 1309)
-    || (strpos($currentUserFullName, 'mamun') !== false)
-    || (($currentUserRoleId === 30) && $currentUserId !== 207 && strpos($currentUserName, 'accounts') === false && strpos($currentUserFullName, 'accounts') === false);
+$currentUserSecRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+$currentUserPriRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
+
+// Role 30 Accounts Head check
+$isAccountsHeadUser = in_array(30, [$currentUserRoleId, $currentUserSecRoleId, $currentUserPriRoleId], true) 
+    || strpos($currentRoleName, 'accounts head') !== false;
 
 $isManagementUser = in_array($currentUserRoleId, [1, 3], true) 
     || strpos($currentRoleName, 'super admin') !== false 
     || ($currentUserRoleId === 1);
 
 $isAccountsStaffUser = ($currentUserRoleId === 6) 
-    || ($currentUserId === 207) 
-    || strpos($currentUserName, 'accounts') !== false 
-    || (strpos($currentRoleName, 'account') !== false && !$isDesignatedAccountsHead && !$isManagementUser);
+    || (strpos($currentRoleName, 'account') !== false && !$isAccountsHeadUser && !$isManagementUser);
 
 $isOpHeadUser = in_array($currentUserRoleId, [20, 32], true) || strpos($currentRoleName, 'operation head') !== false || strpos($currentRoleName, 'admin & operation') !== false;
 
-// ONLY designated Accounts Head (Md. Mamunoor Rashid) or Super Admin (1) can approve as Accounts Head (Role 3 Management is strictly excluded)
-$canUserApproveAccountsHead = ($isDesignatedAccountsHead && ($currentUserRoleId === 30 || $currentUserRoleId === 1)) || ($currentUserRoleId === 1);
+// ONLY Accounts Head (Role 30) or Super Admin (1) can approve as Accounts Head
+$canUserApproveAccountsHead = $isAccountsHeadUser || ($currentUserRoleId === 1);
 $canUserApproveOpHead = $isOpHeadUser || in_array($currentUserRoleId, [1, 3], true);
 
 $isOver1Lac = !empty($ahInfo['is_over_1lac']);
@@ -86,9 +85,9 @@ $isAhPending = !empty($ahInfo['is_pending_accounts_head']);
 $isAhApproved = !empty($ahInfo['is_accounts_head_approved']);
 $isAhRejected = ($ahInfo['accounts_head_status'] ?? '') === 'rejected';
 
-$designatedName = $ahInfo['designated_official']['name'] ?? 'Md. Mamunoor Rashid';
-$designatedEmpId = $ahInfo['designated_official']['employee_id'] ?? '1309';
-$designatedDesig = $ahInfo['designated_official']['designation'] ?? 'Assistant General Manager (AGM) - Finance & Accounts';
+$designatedName = $ahInfo['designated_name'] ?? 'Accounts Head';
+$designatedEmpId = $ahInfo['designated_emp_id'] ?? '';
+$designatedDesig = $ahInfo['designated_designation'] ?? 'Accounts Head';
 
 $ahApproverName = !empty($ahInfo['accounts_head_name']) ? $ahInfo['accounts_head_name'] : $designatedName;
 $ahApproverEmpId = !empty($ahInfo['accounts_head_employee_code']) ? $ahInfo['accounts_head_employee_code'] : $designatedEmpId;
@@ -725,7 +724,7 @@ window.triggerAhApprove = function(reqId, title = '', amount = '') {
     if (amountEl) amountEl.innerText = amount ? ('৳ ' + amount) : '--';
 
     const noteArea = document.getElementById('ahCardApproveNote');
-    if (noteArea) noteArea.value = 'Approved by Accounts Head (Md. Mamunoor Rashid [1309]). Proceed for payment.';
+    if (noteArea) noteArea.value = 'Approved by Accounts Head. Proceed for payment.';
 
     const coaSelect = document.getElementById('ahCardCoaId');
     if (coaSelect) coaSelect.value = '';
