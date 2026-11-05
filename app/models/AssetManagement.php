@@ -968,10 +968,10 @@ class AssetManagement
                         $conds[] = "(pea.purchase_head_status = 'approved' AND pea.qc_audit_status = 'pending')";
                     }
                     if (!empty($filters['is_management'])) {
-                        $conds[] = "(pea.qc_audit_status = 'approved' AND pea.mgmt_status = 'pending' AND (pea.total_price <= 100000.01 OR ar.op_head_status = 'approved'))";
+                        $conds[] = "(pea.qc_audit_status = 'approved' AND pea.mgmt_status = 'pending' AND (pea.total_price <= 10000.01 OR ar.op_head_status = 'approved'))";
                     }
                     if ($isOpHead) {
-                        $conds[] = "(pea.qc_audit_status = 'approved' AND pea.mgmt_status = 'pending' AND (pea.total_price <= 100000.01 OR ar.op_head_status IS NULL OR ar.op_head_status != 'approved'))";
+                        $conds[] = "(pea.qc_audit_status = 'approved' AND pea.mgmt_status = 'pending' AND (pea.total_price <= 10000.01 OR ar.op_head_status IS NULL OR ar.op_head_status != 'approved'))";
                     }
                     if (!empty($filters['is_accounts'])) {
                         $conds[] = "(pea.mgmt_status = 'approved' AND pea.payment_status = 'unpaid')";

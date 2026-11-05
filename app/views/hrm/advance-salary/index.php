@@ -62,11 +62,11 @@
                                             Approval</span>
                                     <?php elseif ($adv['status'] == 'pending_accounts'): ?>
                                         <?php
-                                        $isOver1LacAdv = ((float)$adv['amount'] > 100000);
+                                        $isOver1LacAdv = ((float)$adv['amount'] > 10000);
                                         $isOpHeadApprovedAdv = (!empty($ahInfoRow['is_op_head_approved']) || ($ahInfoRow['op_head_status'] ?? '') === 'approved');
                                         ?>
                                         <?php if ($isOver1LacAdv && !$isOpHeadApprovedAdv): ?>
-                                            <span class="badge bg-warning text-dark"><i class="fa-solid fa-hourglass-half me-1"></i>Pending Op Head (>1L)</span>
+                                            <span class="badge bg-warning text-dark"><i class="fa-solid fa-hourglass-half me-1"></i>Pending Op Head (>10K)</span>
                                         <?php else: ?>
                                             <span class="badge bg-info text-dark"><i
                                                     class="fa-solid fa-hourglass-half me-1"></i>Management Pending Approval</span>
@@ -79,7 +79,7 @@
                                                 </span>
                                             </div>
                                             <span class="badge bg-light text-secondary border">
-                                                Md. Mamunoor Rashid [1309]
+                                                Accounts Head
                                             </span>
                                         <?php else: ?>
                                             <span class="badge bg-success"><i class="fa-solid fa-check me-1"></i>Account Pending
@@ -108,11 +108,16 @@
                                     $canAccountsDisburse = (in_array($userRole, [1, 6, 30]) || strpos($roleName, 'account') !== false);
                                     $canAhApproveRow = ($userRole === 30 || in_array($userRole, [1, 3]) || strpos($roleName, 'accounts head') !== false || strpos($roleName, 'super admin') !== false || strpos($roleName, 'admin') !== false);
 
-                                    $isOver1LacAdv = ((float)$adv['amount'] > 100000);
+                                    $isOver1LacAdv = ((float)$adv['amount'] > 10000);
                                     $isOpHeadApprovedAdv = (!empty($ahInfoRow['is_op_head_approved']) || ($ahInfoRow['op_head_status'] ?? '') === 'approved');
+                                    $isAhApprovedAdv = (!empty($ahInfoRow['is_accounts_head_approved']) || ($ahInfoRow['accounts_head_status'] ?? '') === 'approved');
                                     $isOpHeadUserAdv = (in_array($userRole, [20, 32], true) || str_contains($roleName, 'operation head'));
                                     $isMgmtUserAdv = in_array($userRole, [1, 3], true);
-                                    $isMgmtLockedAdv = ($isOver1LacAdv && !$isOpHeadApprovedAdv && $isMgmtUserAdv && !$isOpHeadUserAdv);
+                                    $isMgmtLockedAdv = ($isOver1LacAdv && (!$isOpHeadApprovedAdv || !$isAhApprovedAdv) && $isMgmtUserAdv && !$isOpHeadUserAdv);
+                                    $mgmtLockTitleAdv = (!$isOpHeadApprovedAdv)
+                                        ? 'Advance Salary exceeding ৳10,000 must be approved by Admin & Operation Head (Role 20) first'
+                                        : 'Advance Salary exceeding ৳10,000 must be approved by Accounts Head (Role 30) before Management can approve';
+                                    $mgmtLockTextAdv = (!$isOpHeadApprovedAdv) ? 'Locked (Awaiting Op Head)' : 'Locked (Awaiting Accounts Head)';
 
                                     $isHrActive = ($adv['status'] == 'pending_hr' || $adv['status'] == 'pending');
                                     $isMgmtActive = ($adv['status'] == 'pending_accounts');
@@ -145,8 +150,8 @@
                                             <?php if ($isMgmtLockedAdv): ?>
                                                 <span class="btn btn-sm btn-light text-muted rounded-2 border shadow-sm"
                                                     style="padding: 5px 12px; font-weight: 500;"
-                                                    title="Advance Salary exceeding ৳1,00,000 must be approved by Admin & Operation Head (Role 20) first">
-                                                    <i class="fa-solid fa-lock me-1 text-warning"></i>Locked (>1L)
+                                                    title="<?= $mgmtLockTitleAdv ?>">
+                                                    <i class="fa-solid fa-lock me-1 text-warning"></i><?= $mgmtLockTextAdv ?>
                                                 </span>
                                             <?php elseif ($isOver1LacAdv && !$isOpHeadApprovedAdv && $isOpHeadUserAdv): ?>
                                                 <a href="<?= $GLOBALS['base_url'] ?>/approve-advance-salary/<?= $adv['id'] ?>?step=mgmt"
@@ -188,8 +193,8 @@
                                             <?php else: ?>
                                                 <span class="btn btn-sm btn-light text-muted rounded-2 border shadow-sm"
                                                     style="padding: 5px 12px; font-weight: 500;"
-                                                    title="Accounts Head Approval Required (Md. Mamunoor Rashid [1309])">
-                                                    <i class="fa-solid fa-lock me-1 text-warning"></i> Awaiting AH (1309)
+                                                    title="Accounts Head Approval Required">
+                                                    <i class="fa-solid fa-lock me-1 text-warning"></i> Awaiting AH
                                                 </span>
                                             <?php endif; ?>
                                         <?php elseif (in_array($adv['status'], ['paid', 'deducted']) || ($adv['status'] == 'approved' && $isAhApprovedRow)): ?>
@@ -209,7 +214,7 @@
                                         <?php elseif ($isPayActive && !$isAhApprovedRow): ?>
                                             <span class="btn btn-sm btn-light text-muted rounded-2 border shadow-sm"
                                                 style="padding: 5px 12px; font-weight: 500;"
-                                                title="Payment Locked: Accounts Head approval required (Md. Mamunoor Rashid [1309])">
+                                                title="Payment Locked: Accounts Head approval required">
                                                 <i class="fa-solid fa-lock me-1 text-danger"></i> Pay Locked
                                             </span>
                                             

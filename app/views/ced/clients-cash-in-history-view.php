@@ -96,7 +96,7 @@ if (!isset($discountApprovalReq)) {
 <div class="row">
     <?php 
         $discReqAmount = (float)($discountApprovalReq['request_amount'] ?? 0);
-        $discIsOver1Lac = ($discReqAmount > 100000.01);
+        $discIsOver1Lac = ($discReqAmount > 10000.01);
         $discOpHeadStatus = strtolower($discountApprovalReq['op_head_status'] ?? '');
         $discStatus = strtolower($discountApprovalReq['status'] ?? 'pending');
         $isRole20OrOpHead = in_array($userRoleId, [20, 32], true) || strpos($userRoleName, 'operation head') !== false || strpos($userRoleName, 'admin & operation') !== false;
@@ -129,7 +129,7 @@ if (!isset($discountApprovalReq)) {
                         <?php if ($discIsOver1Lac): ?>
                             <?php if ($discOpHeadStatus !== 'approved'): ?>
                                 <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fw-bold" style="font-size: 12px;">
-                                    <i class="fa-solid fa-shield-halved me-1"></i> Tier 1 Pending: Admin & Operation Head (> ৳1,00,000)
+                                    <i class="fa-solid fa-shield-halved me-1"></i> Tier 1 Pending: Admin & Operation Head (> ৳10,000)
                                 </span>
                             <?php else: ?>
                                 <span class="badge bg-primary text-white px-3 py-2 rounded-pill fw-bold" style="font-size: 12px;">

@@ -233,9 +233,14 @@ class HrmDashboardController extends Controller
 
         try {
             $request = $this->approvalModel->find($id);
-            // > 1,00,000: Admin & Operation Head (Role 20) must approve before Management
-            if (($request['source_table'] ?? '') !== 'employee_leaves' && (float)($request['request_amount'] ?? 0) > 100000.01 && strtolower($request['op_head_status'] ?? 'pending') !== 'approved') {
-                throw new Exception("Requests exceeding 1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.");
+            // > 10,000: Admin & Operation Head (Role 20) AND Accounts Head (Role 30) must approve before Management
+            if (($request['source_table'] ?? '') !== 'employee_leaves' && (float)($request['request_amount'] ?? 0) > 10000.01) {
+                if (strtolower($request['op_head_status'] ?? 'pending') !== 'approved') {
+                    throw new Exception("Requests exceeding 10,000 must be approved by Admin & Operation Head (Role 20) first.");
+                }
+                if (strtolower($request['accounts_head_status'] ?? 'pending') !== 'approved') {
+                    throw new Exception("Requests exceeding 10,000 must be verified & approved by Accounts Head (Role 30) before Management can approve.");
+                }
             }
             $approved_days = null;
             $approved_amount = $_POST['approved_amount'] ?? null;
@@ -274,9 +279,14 @@ class HrmDashboardController extends Controller
 
         try {
             $request = $this->approvalModel->find($id);
-            // > 1,00,000: Admin & Operation Head (Role 20) must approve before Management
-            if (($request['source_table'] ?? '') !== 'employee_leaves' && (float)($request['request_amount'] ?? 0) > 100000.01 && strtolower($request['op_head_status'] ?? 'pending') !== 'approved') {
-                throw new Exception("Requests exceeding 1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.");
+            // > 10,000: Admin & Operation Head (Role 20) AND Accounts Head (Role 30) must approve before Management
+            if (($request['source_table'] ?? '') !== 'employee_leaves' && (float)($request['request_amount'] ?? 0) > 10000.01) {
+                if (strtolower($request['op_head_status'] ?? 'pending') !== 'approved') {
+                    throw new Exception("Requests exceeding 10,000 must be approved by Admin & Operation Head (Role 20) first.");
+                }
+                if (strtolower($request['accounts_head_status'] ?? 'pending') !== 'approved') {
+                    throw new Exception("Requests exceeding 10,000 must be verified & approved by Accounts Head (Role 30) before Management can approve.");
+                }
             }
 
             $approved_amount = $_POST['approved_amount'] ?? null;

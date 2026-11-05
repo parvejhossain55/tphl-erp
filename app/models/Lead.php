@@ -222,8 +222,7 @@ class Lead extends Model
             $params[] = $actualTeamId;
             $types .= "ii";
         }
-        
-        if ($period) {
+        if($period) {
             switch ($period) {
                 case 'daily':
                     $sqlQuery .= " AND DATE(l.created_at) = CURDATE()";

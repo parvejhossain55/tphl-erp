@@ -361,16 +361,21 @@ class HomeController extends Controller
             $isSiteOperator = ($userRoleId === 20);
 
             if ($isSiteOperator && !$isManagement) {
-                if (($request['request_amount'] ?? 0) > 100000) {
-                    throw new Exception("Unauthorized action: Site Operator cannot approve amounts greater than 100,000.");
+                if (($request['request_amount'] ?? 0) > 10000) {
+                    throw new Exception("Unauthorized action: Site Operator cannot approve amounts greater than 10,000.");
                 }
             } elseif (($request['approve_role'] ?? 'management') === 'management' && !$isManagement) {
                 throw new Exception("Unauthorized action: Only Management users can approve this request.");
             }
 
-            // > 1,00,000: Admin & Operation Head (Role 20) must approve before Management
-            if ($isManagement && (float)($request['request_amount'] ?? 0) > 100000.01 && strtolower($request['op_head_status'] ?? 'pending') !== 'approved') {
-                throw new Exception("Requests exceeding 1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.");
+            // > 10,000: Admin & Operation Head (Role 20) AND Accounts Head (Role 30) must approve before Management
+            if ($isManagement && (float)($request['request_amount'] ?? 0) > 10000.01) {
+                if (strtolower($request['op_head_status'] ?? 'pending') !== 'approved') {
+                    throw new Exception("Requests exceeding 10,000 must be approved by Admin & Operation Head (Role 20) first.");
+                }
+                if (strtolower($request['accounts_head_status'] ?? 'pending') !== 'approved') {
+                    throw new Exception("Requests exceeding 10,000 must be verified & approved by Accounts Head (Role 30) before Management can approve.");
+                }
             }
 
             $approved_days = null;
@@ -419,16 +424,21 @@ class HomeController extends Controller
             $isSiteOperator = ($userRoleId === 20);
 
             if ($isSiteOperator && !$isManagement) {
-                if (($request['request_amount'] ?? 0) > 100000) {
-                    throw new Exception("Unauthorized action: Site Operator cannot approve amounts greater than 100,000.");
+                if (($request['request_amount'] ?? 0) > 10000) {
+                    throw new Exception("Unauthorized action: Site Operator cannot approve amounts greater than 10,000.");
                 }
             } elseif (($request['approve_role'] ?? 'management') === 'management' && !$isManagement) {
                 throw new Exception("Unauthorized action: Only Management users can approve this request.");
             }
 
-            // > 1,00,000: Admin & Operation Head (Role 20) must approve before Management
-            if ($isManagement && (float)($request['request_amount'] ?? 0) > 100000.01 && strtolower($request['op_head_status'] ?? 'pending') !== 'approved') {
-                throw new Exception("Requests exceeding 1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.");
+            // > 10,000: Admin & Operation Head (Role 20) AND Accounts Head (Role 30) must approve before Management
+            if ($isManagement && (float)($request['request_amount'] ?? 0) > 10000.01) {
+                if (strtolower($request['op_head_status'] ?? 'pending') !== 'approved') {
+                    throw new Exception("Requests exceeding 10,000 must be approved by Admin & Operation Head (Role 20) first.");
+                }
+                if (strtolower($request['accounts_head_status'] ?? 'pending') !== 'approved') {
+                    throw new Exception("Requests exceeding 10,000 must be verified & approved by Accounts Head (Role 30) before Management can approve.");
+                }
             }
 
             $approved_amount = $_POST['approved_amount'] ?? null;
@@ -463,8 +473,8 @@ class HomeController extends Controller
                     throw new Exception('Approved amount required');
                 }
 
-                if ($isSiteOperator && !$isManagement && (float)$approved_amount > 100000) {
-                    throw new Exception("Unauthorized action: Site Operator cannot approve amounts greater than 100,000.");
+                if ($isSiteOperator && !$isManagement && (float)$approved_amount > 10000) {
+                    throw new Exception("Unauthorized action: Site Operator cannot approve amounts greater than 10,000.");
                 }
 
                 $approved_days = null; // important
@@ -557,8 +567,8 @@ class HomeController extends Controller
         $isSiteOperator = ($userRoleId === 20);
 
         if ($isSiteOperator && !$isManagement) {
-            if (($request['request_amount'] ?? 0) > 100000) {
-                die("Unauthorized action: Site Operator cannot reject requests with amount greater than 100,000.");
+            if (($request['request_amount'] ?? 0) > 10000) {
+                die("Unauthorized action: Site Operator cannot reject requests with amount greater than 10,000.");
             }
         } elseif ($request && ($request['approve_role'] ?? 'management') === 'management' && !$isManagement) {
             die("Unauthorized action: Only Management users can reject this request.");

@@ -57,13 +57,15 @@ $netPayable = (float) ($request['net_payable'] ?? 0);
 $approvedAmtSoFar = (float) ($request['approved_amount'] ?? 0);
 $unapprovedAmt = max(0, $netPayable - $approvedAmtSoFar);
 
-$isOver1Lac = ($netPayable > 100000);
+$isOver1Lac = ($netPayable > 10000);
 $isOpHeadUser = (in_array((int)$userRole, [20, 32], true) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head') !== false || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'admin & operation') !== false);
 $isMgmtUser = in_array((int)$userRole, [1, 3], true);
 $isOpHeadApproved = !empty($ahInfo['is_op_head_approved']);
+$isAhApproved = !empty($ahInfo['is_accounts_head_approved']);
 
 $isOpHeadAction = false;
 $isMgmtLocked = false;
+$mgmtLockReason = '';
 
 if ($isOver1Lac) {
     if (!$isOpHeadApproved) {
@@ -73,7 +75,12 @@ if ($isOver1Lac) {
         } else {
             $canApproveReq = false;
             $isMgmtLocked = $isMgmtUser;
+            $mgmtLockReason = 'op_head';
         }
+    } elseif (!$isAhApproved) {
+        $canApproveReq = false;
+        $isMgmtLocked = $isMgmtUser;
+        $mgmtLockReason = 'accounts_head';
     } else {
         if ($isMgmtUser) {
             $canApproveReq = ($isSubmitted || $isQCApproved || ($isApproved && $unapprovedAmt > 0.01));
@@ -247,11 +254,11 @@ if ($status === 'Draft') {
     $nextActionRole = 'Management / Admin';
     $nextActionColor = 'primary';
 } elseif ($status === 'Approved') {
-    $nextActionText = 'Disburse the net payable amount of ৳ ' . number_format($dueAmount, 2) . '.';
+    $nextActionText = 'Disburse the net payable amount of tk ' . number_format($dueAmount, 2) . '.';
     $nextActionRole = 'Accounts Team';
     $nextActionColor = 'success';
 } elseif ($status === 'Partially_Paid') {
-    $nextActionText = 'Disburse the remaining due amount of ৳ ' . number_format($dueAmount, 2) . '.';
+    $nextActionText = 'Disburse the remaining due amount of tk ' . number_format($dueAmount, 2) . '.';
     $nextActionRole = 'Accounts Team';
     $nextActionColor = 'info';
 } elseif (in_array($status, ['Fully_Paid', 'Paid'])) {
@@ -413,20 +420,20 @@ if (!empty($ahInfo['has_request'])) {
                         <?php if ($payApproved): ?>
                             <span class="badge bg-success">Fully Paid</span>
                             <div class="small mt-2 text-muted">
-                                <strong>Total Paid:</strong> ৳ <?= number_format($totalPaid, 2) ?><br>
-                                <strong>Remaining Due:</strong> ৳ 0.00
+                                <strong>Total Paid:</strong> tk <?= number_format($totalPaid, 2) ?><br>
+                                <strong>Remaining Due:</strong> tk 0.00
                             </div>
                         <?php elseif ($payPartial): ?>
                             <span class="badge bg-info animate-blink">Partially Paid</span>
                             <div class="small mt-2 text-muted">
-                                <strong>Total Paid:</strong> ৳ <?= number_format($totalPaid, 2) ?><br>
-                                <strong>Remaining Due:</strong> <span class="text-danger fw-bold">৳ <?= number_format($dueAmount, 2) ?></span>
+                                <strong>Total Paid:</strong> tk <?= number_format($totalPaid, 2) ?><br>
+                                <strong>Remaining Due:</strong> <span class="text-danger fw-bold">tk <?= number_format($dueAmount, 2) ?></span>
                             </div>
                         <?php elseif ($payPending): ?>
                             <span class="badge bg-warning animate-blink">Pending Payment</span>
                             <div class="small mt-2 text-muted">
-                                <strong>Approved Amt:</strong> ৳ <?= number_format($payableAmount, 2) ?><br>
-                                <strong>Pending Due:</strong> <span class="text-danger fw-bold">৳ <?= number_format($dueAmount, 2) ?></span>
+                                <strong>Approved Amt:</strong> tk <?= number_format($payableAmount, 2) ?><br>
+                                <strong>Pending Due:</strong> <span class="text-danger fw-bold">tk <?= number_format($dueAmount, 2) ?></span>
                             </div>
                         <?php elseif ($status === 'Rejected'): ?>
                             <span class="badge bg-secondary">Cancelled</span>
@@ -552,25 +559,25 @@ if (!empty($ahInfo['has_request'])) {
                         <div class="d-grid gap-2 mt-1" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
                             <div class="border rounded p-3 text-center">
                                 <small class="text-muted d-block mb-1">Invoice Amount</small>
-                                <h5 class="text-primary mb-0 fw-bold">৳ <?= number_format($invoiceAmt, 2) ?>
+                                <h5 class="text-primary mb-0 fw-bold">tk <?= number_format($invoiceAmt, 2) ?>
                                 </h5>
                             </div>
                             <?php if ($penaltyAmt > 0): ?>
                                 <div class="border rounded p-3 text-center">
                                     <small class="text-muted d-block mb-1">Penalty Deducted</small>
-                                    <h5 class="text-danger mb-0 fw-bold">- ৳ <?= number_format($penaltyAmt, 2) ?>
+                                    <h5 class="text-danger mb-0 fw-bold">- tk <?= number_format($penaltyAmt, 2) ?>
                                     </h5>
                                 </div>
                             <?php endif; ?>
                             <div class="border rounded p-3 text-center">
                                 <small class="text-muted d-block mb-1">Net Payable</small>
-                                <h5 class="text-success mb-0 fw-bold">৳ <?= number_format($netPayable, 2) ?>
+                                <h5 class="text-success mb-0 fw-bold">tk <?= number_format($netPayable, 2) ?>
                                 </h5>
                             </div>
                             <?php if (!empty($request['approved_amount'])): ?>
                                 <div class="border rounded p-3 text-center border-success">
                                     <small class="text-muted d-block mb-1">Approved Amount</small>
-                                    <h5 class="text-success mb-0 fw-bold">৳
+                                    <h5 class="text-success mb-0 fw-bold">tk
                                         <?= number_format($request['approved_amount'], 2) ?>
                                     </h5>
                                 </div>
@@ -578,14 +585,14 @@ if (!empty($ahInfo['has_request'])) {
                             <?php if ($isApproved || $isFullyPaid): ?>
                                 <div class="border rounded p-3 text-center">
                                     <small class="text-muted d-block mb-1">Total Paid</small>
-                                    <h5 class="text-success mb-0 fw-bold">৳ <?= number_format($totalPaid, 2) ?></h5>
+                                    <h5 class="text-success mb-0 fw-bold">tk <?= number_format($totalPaid, 2) ?></h5>
                                 </div>
                                 <div class="border rounded p-3 text-center">
                                     <small class="text-muted d-block mb-1">Due Amount</small>
                                     <?php if ($dueAmount > 0): ?>
-                                        <h5 class="text-danger mb-0 fw-bold">৳ <?= number_format($dueAmount, 2) ?></h5>
+                                        <h5 class="text-danger mb-0 fw-bold">tk <?= number_format($dueAmount, 2) ?></h5>
                                     <?php else: ?>
-                                        <h5 class="text-success mb-0 fw-bold">৳ 0.00</h5>
+                                        <h5 class="text-success mb-0 fw-bold">tk 0.00</h5>
                                     <?php endif; ?>
                                 </div>
                             <?php endif; ?>
@@ -927,7 +934,7 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                                 </td>
                                 <td class="text-end fw-bold">
                                     <?php if (isset($q['total_quoted_amount'])): ?>
-                                        ৳ <?= number_format((float)$q['total_quoted_amount'], 2) ?>
+                                        tk <?= number_format((float)$q['total_quoted_amount'], 2) ?>
                                     <?php else: ?>
                                         <span class="text-muted">—</span>
                                     <?php endif; ?>
@@ -1050,7 +1057,7 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                                         <?= htmlspecialchars($q['vendor_name'] ?? 'Vendor Quote') ?>
                                     </div>
                                     <div class="text-muted small mb-2 font-monospace" style="font-size: 10.5px;">
-                                        <?= !empty($q['total_quoted_amount']) ? '৳ ' . number_format((float)$q['total_quoted_amount'], 2) : '' ?>
+                                        <?= !empty($q['total_quoted_amount']) ? 'tk ' . number_format((float)$q['total_quoted_amount'], 2) : '' ?>
                                     </div>
                                     <?php if (!empty($qUrl)): ?>
                                         <a href="<?= htmlspecialchars($qUrl) ?>" target="_blank" class="btn btn-sm btn-outline-primary w-100 mb-1" style="font-size: 11px;">
@@ -1204,7 +1211,7 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                                 <tr>
                                     <th>#</th>
                                     <th>Date</th>
-                                    <th>Amount (৳)</th>
+                                    <th>Amount (tk)</th>
                                     <th>Type</th>
                                     <th>Method</th>
                                     <th>Processed By</th>
@@ -1219,7 +1226,7 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                                         $displayDate = $pay['transaction_date_str'] ?? $pay['transaction_date'] ?? null;
                                         echo $displayDate ? date('d M Y', strtotime($displayDate)) : '—';
                                         ?></td>
-                                        <td class="text-end fw-semibold">৳ <?= number_format($pay['amount_paid'], 2) ?></td>
+                                        <td class="text-end fw-semibold">tk <?= number_format($pay['amount_paid'], 2) ?></td>
                                         <td><span
                                                 class="badge bg-<?= $pay['payment_type'] === 'Full' ? 'success' : 'info' ?>"><?= $pay['payment_type'] ?></span>
                                         </td>
@@ -1298,7 +1305,7 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                                     <tr>
                                         <th>#</th>
                                         <th>Date</th>
-                                        <th>Amount (৳)</th>
+                                        <th>Amount (tk)</th>
                                         <th>Type</th>
                                         <th>Method</th>
                                         <th>Processed By</th>
@@ -1314,7 +1321,7 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                                             $displayDate = $pay['transaction_date_str'] ?? $pay['transaction_date'] ?? null;
                                             echo $displayDate ? date('d M Y', strtotime($displayDate)) : '—';
                                             ?></td>
-                                            <td class="text-end fw-semibold">৳ <?= number_format($pay['amount_paid'], 2) ?></td>
+                                            <td class="text-end fw-semibold">tk <?= number_format($pay['amount_paid'], 2) ?></td>
                                             <td><span
                                                     class="badge bg-<?= $pay['payment_type'] === 'Full' ? 'success' : 'info' ?>"><?= $pay['payment_type'] ?></span>
                                             </td>
@@ -1370,7 +1377,7 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                             <th>Penalty ID</th>
                             <th>Date</th>
                             <th>Reason</th>
-                            <th class="text-end">Amount (৳)</th>
+                            <th class="text-end">Amount (tk)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1418,7 +1425,7 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                                     <th>ID</th>
                                     <th>Date</th>
                                     <th>Type</th>
-                                    <th class="text-end">Amount (৳)</th>
+                                    <th class="text-end">Amount (tk)</th>
                                     <th class="text-center">Status</th>
                                     <th class="text-center">Action</th>
                                 </tr>
@@ -1442,7 +1449,7 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                                         <td>ADJ-<?= $adj['id'] ?></td>
                                         <td><?= date('d M Y', strtotime($adj['created_at'])) ?></td>
                                         <td><span class="badge bg-<?= $typeBadge ?>"><?= $typeLabel ?></span></td>
-                                        <td class="text-end fw-semibold">৳ <?= number_format($adj['amount'], 2) ?></td>
+                                        <td class="text-end fw-semibold">tk <?= number_format($adj['amount'], 2) ?></td>
                                         <td class="text-center">
                                             <span class="badge bg-<?= $statusClass ?>"><?= $statusLabel ?></span>
                                         </td>
@@ -1486,7 +1493,7 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                             <small class="text-muted">(<?= date('d M Y h:i A', strtotime($request['qc_approved_at'])) ?>)</small>
                             <?php if (isset($request['qc_approved_amount']) && (float)$request['qc_approved_amount'] > 0): ?>
                                 <div class="mt-1">
-                                    <span class="badge bg-info text-white">QC Approved Amount: ৳ <?= number_format((float)$request['qc_approved_amount'], 2) ?></span>
+                                    <span class="badge bg-info text-white">QC Approved Amount: tk <?= number_format((float)$request['qc_approved_amount'], 2) ?></span>
                                 </div>
                             <?php endif; ?>
                             <?php if (!empty($request['qc_note'])): ?>
@@ -1522,11 +1529,11 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                     </p>
                     <form action="<?= $base_url ?>/con-vendor-payment-qc-approve/<?= $request['id'] ?>" method="POST" id="qcApproveVprForm" class="mb-3">
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">QC Approved Amount (৳) <span class="text-danger">*</span></label>
+                            <label class="form-label fw-semibold">QC Approved Amount (tk) <span class="text-danger">*</span></label>
                             <input type="number" name="qc_approved_amount" id="qcApprovedAmtInput" class="form-control"
                                 value="<?= number_format($netPayable, 2, '.', '') ?>" step="0.01" min="0.01"
                                 max="<?= number_format($netPayable, 2, '.', '') ?>" required>
-                            <small class="text-muted">Net payable: ৳ <?= number_format($netPayable, 2) ?> (You can adjust this amount)</small>
+                            <small class="text-muted">Net payable: tk <?= number_format($netPayable, 2) ?> (You can adjust this amount)</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-semibold">QC & Audit Observation Note <span class="text-muted">(Optional)</span></label>
@@ -1546,18 +1553,22 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
             </div>
         <?php endif; ?>
 
-        <!-- Management Approval Locked Banner for > 1 Lac -->
+        <!-- Management Approval Locked Banner for > 10K -->
         <?php if ($isMgmtLocked): ?>
             <div class="card custom-card border-warning mb-3 shadow-sm">
                 <div class="card-header bg-warning bg-opacity-10 d-flex align-items-center justify-content-between">
                     <h6 class="card-title mb-0 fw-bold text-warning">
-                        <i class="bi bi-lock-fill me-2"></i>Management Approval Locked (&gt; ৳1,00,000)
+                        <i class="bi bi-lock-fill me-2"></i>Management Approval Locked (&gt; tk10,000)
                     </h6>
-                    <span class="badge bg-warning text-dark">Awaiting Op Head</span>
+                    <span class="badge bg-warning text-dark"><?= $mgmtLockReason === 'accounts_head' ? 'Awaiting Accounts Head' : 'Awaiting Op Head' ?></span>
                 </div>
                 <div class="card-body">
                     <p class="mb-0 text-muted small">
-                        This request exceeds <strong>৳1,00,000</strong>. In accordance with policy, <strong>Admin & Operation Head (Role 20)</strong> must verify and approve this request first before Management sign-off.
+                        <?php if ($mgmtLockReason === 'accounts_head'): ?>
+                            This request exceeds <strong>tk10,000</strong>. Admin & Operation Head has approved. <strong>Accounts Head (Role 30)</strong> must verify and approve this request before Management final sign-off.
+                        <?php else: ?>
+                            This request exceeds <strong>tk10,000</strong>. In accordance with policy, <strong>Admin & Operation Head (Role 20)</strong> must verify and approve this request first before Management sign-off.
+                        <?php endif; ?>
                     </p>
                 </div>
             </div>
@@ -1572,7 +1583,7 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                         <?= $isOpHeadAction ? 'Operation Head Verification Action (Step 1 of 3)' : (($isApproved) ? 'Additional Approval Action' : 'Management Final Approval Action') ?>
                     </h6>
                     <span class="badge <?= $isOpHeadAction ? 'bg-primary' : 'bg-warning text-dark' ?>">
-                        <?= $isOpHeadAction ? 'Step 1 of 3' : 'Step 2 of 3' ?>
+                        <?= $isOpHeadAction ? 'Step 1 of 3' : 'Step 3 of 3' ?>
                     </span>
                 </div>
                 <div class="card-body">
@@ -1583,10 +1594,10 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                         <div class="mb-3">
                             <?php if ($isApproved): ?>
                                 <div class="alert alert-info py-2 px-3 mb-3 small">
-                                    Approved so far: <strong>৳ <?= number_format($approvedAmtSoFar, 2) ?></strong><br>
-                                    Remaining unapproved: <strong>৳ <?= number_format($unapprovedAmt, 2) ?></strong>
+                                    Approved so far: <strong>tk <?= number_format($approvedAmtSoFar, 2) ?></strong><br>
+                                    Remaining unapproved: <strong>tk <?= number_format($unapprovedAmt, 2) ?></strong>
                                 </div>
-                                <label class="form-label fw-semibold">Approve Additional Amount (৳)</label>
+                                <label class="form-label fw-semibold">Approve Additional Amount (TK)</label>
                                 <input type="number" name="approved_amount" id="approveAmtInput" class="form-control"
                                     value="<?= number_format($unapprovedAmt, 2, '.', '') ?>" step="0.01" min="0.01"
                                     max="<?= number_format($unapprovedAmt, 2, '.', '') ?>" required>
@@ -1599,20 +1610,20 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                                 <?php if (isset($request['qc_approved_amount']) && (float)$request['qc_approved_amount'] > 0): ?>
                                     <div class="alert alert-info py-2 px-3 mb-3 small">
                                         <i class="bi bi-shield-check me-1"></i>
-                                        QC Audited & Approved Amount: <strong>৳ <?= number_format((float)$request['qc_approved_amount'], 2) ?></strong>
+                                        QC Audited & Approved Amount: <strong>tk <?= number_format((float)$request['qc_approved_amount'], 2) ?></strong>
                                         <?php if ((float)$request['qc_approved_amount'] < $netPayable): ?>
-                                            <span class="text-muted">(Adjusted from Net Payable ৳ <?= number_format($netPayable, 2) ?>)</span>
+                                            <span class="text-muted">(Adjusted from Net Payable tk <?= number_format($netPayable, 2) ?>)</span>
                                         <?php endif; ?>
                                         <?php if (!empty($request['qc_note'])): ?>
                                             <div class="fst-italic mt-1">"<?= htmlspecialchars($request['qc_note']) ?>"</div>
                                         <?php endif; ?>
                                     </div>
                                 <?php endif; ?>
-                                <label class="form-label fw-semibold">Approved Amount (৳)</label>
+                                <label class="form-label fw-semibold">Approved Amount (tk)</label>
                                 <input type="number" name="approved_amount" id="approveAmtInput" class="form-control"
                                     value="<?= number_format($defaultApprovedAmt, 2, '.', '') ?>" step="0.01" min="0.01"
                                     max="<?= number_format($netPayable, 2, '.', '') ?>" required>
-                                <small class="text-muted">Net payable: ৳ <?= number_format($netPayable, 2) ?><?= (isset($request['qc_approved_amount']) && (float)$request['qc_approved_amount'] > 0) ? ' | QC Recommended: ৳ ' . number_format((float)$request['qc_approved_amount'], 2) : '' ?></small>
+                                <small class="text-muted">Net payable: tk <?= number_format($netPayable, 2) ?><?= (isset($request['qc_approved_amount']) && (float)$request['qc_approved_amount'] > 0) ? ' | QC Recommended: tk ' . number_format((float)$request['qc_approved_amount'], 2) : '' ?></small>
                             <?php endif; ?>
                         </div>
                         <div class="mb-3">
@@ -1662,7 +1673,7 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                     <h6 class="card-title mb-0"><i class="bi bi-wallet2 me-2"></i>Process Payment</h6>
                 </div>
                 <div class="card-body text-center">
-                    <p class="text-muted mb-2">Remaining Due: <strong class="text-danger fs-5">৳
+                    <p class="text-muted mb-2">Remaining Due: <strong class="text-danger fs-5">tk
                             <?= number_format($dueAmount, 2) ?></strong></p>
                     <button class="btn btn-success w-100 fw-bold" data-bs-toggle="modal"
                         data-bs-target="#addPaymentModal">
@@ -1708,9 +1719,9 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                                 </td>
                                 <td><?= !empty($pp['created_at']) ? date('d M Y', strtotime($pp['created_at'])) : '—' ?>
                                 </td>
-                                <td class="text-end">৳ <?= number_format($pp['invoice_amount'] ?? 0, 2) ?></td>
-                                <td class="text-end">৳ <?= number_format($pp['net_payable'] ?? 0, 2) ?></td>
-                                <td class="text-end fw-semibold text-success">৳
+                                <td class="text-end">tk <?= number_format($pp['invoice_amount'] ?? 0, 2) ?></td>
+                                <td class="text-end">tk <?= number_format($pp['net_payable'] ?? 0, 2) ?></td>
+                                <td class="text-end fw-semibold text-success">tk
                                     <?= number_format($pp['total_paid'] ?? 0, 2) ?>
                                 </td>
                                 <td>
@@ -1744,7 +1755,7 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                     <div class="modal-body">
                         <div class="row ">
                             <div class="col-md-6">
-                                <label class="form-label fw-semibold">Payment Amount (৳) *</label>
+                                <label class="form-label fw-semibold">Payment Amount (tk) *</label>
                                 <input type="number" name="amount" class="form-control" step="0.01" min="0.01"
                                     max="<?= number_format($dueAmount, 2, '.', '') ?>" required
                                     placeholder="Max: <?= number_format($dueAmount, 2) ?>">
@@ -1891,9 +1902,9 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                       ?>
                       <td class="<?= $isLowest ? 'table-success fw-bold' : '' ?> <?= $isSelectedVendor ? 'border-success' : '' ?>" style="<?= $isSelectedVendor ? 'border-left-width:2px;border-right-width:2px;background:rgba(25,135,84,0.06);' : '' ?>">
                           <?php if ($cell): ?>
-                              ৳ <?= number_format($cell['unit_price'], 2) ?>
+                              tk <?= number_format($cell['unit_price'], 2) ?>
                               <div class="small text-muted" style="margin-top:2px">
-                                  Total: ৳ <?= number_format($cell['total_price'], 2) ?>
+                                  Total: tk <?= number_format($cell['total_price'], 2) ?>
                               </div>
                           <?php else: ?>
                               <span class="text-muted">—</span>
@@ -1907,7 +1918,7 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                 <tr class="fw-bold">
                     <td colspan="5" class="text-end">Vendor Totals:</td>
                     <?php foreach ($vendorIds as $vid): ?>
-                        <td class="<?= ($vid == $selectedVendorId) ? 'text-success' : '' ?>">৳ <?= number_format($totals[$vid] ?? 0, 2) ?></td>
+                        <td class="<?= ($vid == $selectedVendorId) ? 'text-success' : '' ?>">tk <?= number_format($totals[$vid] ?? 0, 2) ?></td>
                     <?php endforeach; ?>
                 </tr>
             </tfoot>
@@ -1960,7 +1971,7 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                         return;
                     }
                     if (max && val > max + 0.01) {
-                        Swal.fire('Validation Error', 'QC approved amount cannot exceed the net payable amount (৳ ' + max.toFixed(2) + ').', 'error');
+                        Swal.fire('Validation Error', 'QC approved amount cannot exceed the net payable amount (tk ' + max.toFixed(2) + ').', 'error');
                         return;
                     }
                 }
@@ -2023,7 +2034,7 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                 }
                 Swal.fire({
                     title: 'Approve Payment?',
-                    text: 'Amount: ৳ ' + parseFloat(amt.value).toLocaleString('en-BD', { minimumFractionDigits: 2 }),
+                    text: 'Amount: tk ' + parseFloat(amt.value).toLocaleString('en-BD', { minimumFractionDigits: 2 }),
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonColor: '#198754',

@@ -479,16 +479,17 @@ class ClientRefundController extends Controller
             $retentionAmount = max(0, $totalPaid - $approvedAmount);
         }
 
-        $isOver1Lac = ($approvedAmount > 100000);
+        $isOver1Lac = ($approvedAmount > 10000);
         $userRole = (int)($this->userRole ?? 0);
         $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
         $isOpHeadUser = (in_array($userRole, [20, 32], true) || str_contains($roleName, 'operation head'));
         $isMgmtUser = in_array($userRole, [1, 3], true);
 
         // Fetch approval request record
-        $arCheck = $this->db->query("SELECT id, op_head_status FROM approval_requests WHERE source_table = 'client_refund_requests' AND source_id = " . (int)$id . " ORDER BY id DESC LIMIT 1");
+        $arCheck = $this->db->query("SELECT id, op_head_status, accounts_head_status FROM approval_requests WHERE source_table = 'client_refund_requests' AND source_id = " . (int)$id . " ORDER BY id DESC LIMIT 1");
         $arRow = $arCheck ? $arCheck->fetch_assoc() : null;
         $opHeadStatus = strtolower($arRow['op_head_status'] ?? 'pending');
+        $ahStatus = strtolower($arRow['accounts_head_status'] ?? 'pending');
 
         if ($isOver1Lac) {
             if ($isOpHeadUser && !$isMgmtUser) {
@@ -501,9 +502,9 @@ class ClientRefundController extends Controller
                 if ($arId > 0) {
                     $approvalModel->approveOperationHead($arId, $this->userId, $escNote);
                 } else {
-                    $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'management' WHERE source_table = 'client_refund_requests' AND source_id = " . (int)$id);
+                    $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'accounts_head' WHERE source_table = 'client_refund_requests' AND source_id = " . (int)$id);
                 }
-                setSuccess("Refund request verified & approved by Admin & Operation Head (Role 20). Forwarded to Management for sign-off.");
+                setSuccess("Refund request verified & approved by Admin & Operation Head (Role 20). Forwarded to Accounts Head (Role 30) for payment verification.");
                 $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
         header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
                 exit;
@@ -511,7 +512,13 @@ class ClientRefundController extends Controller
 
             if ($isMgmtUser) {
                 if ($opHeadStatus !== 'approved') {
-                    setError("Access Denied: Refund requests exceeding ৳1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.");
+                    setError("Access Denied: Refund requests exceeding ৳10,000 must be approved by Admin & Operation Head (Role 20) first.");
+                    $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
+        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
+                    exit;
+                }
+                if ($ahStatus !== 'approved') {
+                    setError("Access Denied: Refund requests exceeding ৳10,000 must be verified & approved by Accounts Head (Role 30) before Management can approve.");
                     $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
         header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
                     exit;
@@ -555,20 +562,23 @@ class ClientRefundController extends Controller
             $stmt->execute();
 
             // Sync approval_requests for the refund
+            $nextRoleRf = ($ahStatus === 'approved') ? 'accounts' : 'accounts_head';
+            $nextAhStRf = ($ahStatus === 'approved') ? 'approved' : 'pending';
             $arStmt = $this->db->prepare(
                 "UPDATE approval_requests
-                 SET op_head_status = 'approved', status = 'approved', approved_by = ?, approved_at = NOW(), approved_amount = ?, request_amount = ?, approve_role = 'accounts_head', accounts_head_status = 'pending'
+                 SET op_head_status = 'approved', status = 'approved', approved_by = ?, approved_at = NOW(), approved_amount = ?, request_amount = ?, approve_role = ?, accounts_head_status = ?
                  WHERE source_table = 'client_refund_requests' AND source_id = ?"
             );
-            $arStmt->bind_param('iddi', $this->userId, $approvedAmount, $approvedAmount, $id);
+            $arStmt->bind_param('iddssi', $this->userId, $approvedAmount, $approvedAmount, $nextRoleRf, $nextAhStRf, $id);
             $arStmt->execute();
 
             // Sync approval_requests for the cashout
             $arCashoutStmt = $this->db->prepare(
                 "UPDATE approval_requests
-                 SET op_head_status = 'approved', status = 'approved', approved_by = ?, approved_at = NOW(), approved_amount = ?, request_amount = ?, approve_role = 'accounts_head', accounts_head_status = 'pending'
+                 SET op_head_status = 'approved', status = 'approved', approved_by = ?, approved_at = NOW(), approved_amount = ?, request_amount = ?, approve_role = ?, accounts_head_status = ?
                  WHERE source_table = 'cashout_requests' AND source_id = ?"
             );
+            $arCashoutStmt->bind_param('iddssi', $this->userId, $approvedAmount, $approvedAmount, $nextRoleRf, $nextAhStRf, $cashoutId);
             $arCashoutStmt->bind_param('iddi', $this->userId, $approvedAmount, $approvedAmount, $cashoutId);
             $arCashoutStmt->execute();
         }

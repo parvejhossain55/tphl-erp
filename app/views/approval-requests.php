@@ -123,7 +123,7 @@
                                                 $isChiefOfficer = ($userRoleId === 33 || $sessionRoleName === 'chief officer');
                                                 $isMgmt = in_array($userRoleId, [1, 3], true) && !$isChiefOfficer;
                                                 $isSiteOp = ($userRoleId === 20);
-                                                $canAct = !$isChiefOfficer && ($isMgmt || ($isSiteOp && (float)($req['request_amount'] ?? 0) <= 100000) || !in_array(strtolower($req['approve_role'] ?? ''), ['management']));
+                                                $canAct = !$isChiefOfficer && ($isMgmt || ($isSiteOp && (float)($req['request_amount'] ?? 0) <= 10000) || !in_array(strtolower($req['approve_role'] ?? ''), ['management']));
                                                 ?>
                                                 <?php if ($canAct): ?>
                                                     <?php if ($req['request_type'] !== 'manpower_requisition'): ?>
@@ -142,7 +142,7 @@
                                                         </button>
                                                     </form>
                                                 <?php else: ?>
-                                                    <span class="badge bg-secondary-subtle text-muted border extra-small" title="Amount exceeds ৳100,000. Top Management approval required.">
+                                                    <span class="badge bg-secondary-subtle text-muted border extra-small" title="Amount exceeds ৳10,000. Top Management approval required.">
                                                         <i class="fa-solid fa-lock text-warning me-1"></i>Management Only
                                                     </span>
                                                 <?php endif; ?>
@@ -189,7 +189,7 @@
                                                                 <?php endif; ?>
                                                                 <div class="mb-3">
                                                                     <label class="form-label">Approve Amount</label>
-                                                                    <input type="number" class="form-control" name="approved_amount" placeholder="Enter approved amount" required <?= ($isSiteOp ?? false) ? 'max="100000"' : '' ?>>
+                                                                    <input type="number" class="form-control" name="approved_amount" placeholder="Enter approved amount" required <?= ($isSiteOp ?? false) ? 'max="10000"' : '' ?>>
                                                                 </div>
                                                                 <div class="mb-3">
                                                                     <label class="form-label">Note</label>

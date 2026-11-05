@@ -422,12 +422,16 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                     </span>
                                                 <?php elseif ($claim['claim_status'] === 'claimed'): ?>
                                                     <?php
-                                                    $isOver1LacClaim = ((float)$claim['incentive_amount'] > 100000);
+                                                    $isOver1LacClaim = ((float)$claim['incentive_amount'] > 10000);
                                                     $isOpHeadApprovedClaim = (!empty($ahInfoClaim['is_op_head_approved']) || ($ahInfoClaim['op_head_status'] ?? '') === 'approved');
                                                     ?>
                                                     <?php if ($isOver1LacClaim && !$isOpHeadApprovedClaim): ?>
                                                         <span class="badge bg-warning text-dark rounded-pill px-2 py-1 extra-small">
-                                                            <i class="fa-solid fa-hourglass-half me-1"></i>Pending Op Head (>1L)
+                                                            <i class="fa-solid fa-hourglass-half me-1"></i>Pending Op Head (>10K)
+                                                        </span>
+                                                    <?php elseif ($isOver1LacClaim && !$isAhApprovedClaim): ?>
+                                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2 py-1 extra-small fw-semibold">
+                                                            <i class="fa-solid fa-lock me-1"></i>Pending AH Approval
                                                         </span>
                                                     <?php else: ?>
                                                         <span class="badge bg-warning text-dark rounded-pill px-2 py-1 extra-small">

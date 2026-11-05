@@ -249,7 +249,7 @@
                 FROM fund_requisitions fr
                 LEFT JOIN users u ON fr.requested_by = u.id
                 LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
-                WHERE (fr.status IN ('pending', 'partially_approved', 'partially_paid') AND fr.amount <= 100000)
+                WHERE (fr.status IN ('pending', 'partially_approved', 'partially_paid') AND fr.amount <= 10000)
                    OR (fr.status = 'pending_dept' AND e.reporting_user_id = $loggedUserId)
             ");
             if ($resMgmt) $pendingFundReqTotalCount = (int)($resMgmt->fetch_assoc()['total'] ?? 0);
@@ -342,7 +342,7 @@
                     WHERE (
                         (pea.dept_head_status IN ('approved', 'not_required') AND pea.it_head_status IN ('approved', 'not_required') AND pea.operations_status = 'pending')
                         OR
-                        (pea.qc_audit_status = 'approved' AND pea.mgmt_status = 'pending' AND (pea.total_price <= 100000.01 OR ar.op_head_status IS NULL OR ar.op_head_status != 'approved'))
+                        (pea.qc_audit_status = 'approved' AND pea.mgmt_status = 'pending' AND (pea.total_price <= 10000.01 OR ar.op_head_status IS NULL OR ar.op_head_status != 'approved'))
                     )
                 ");
                 if ($procRes) $sidebarPendingProcurementCount += (int)($procRes->fetch_assoc()['c'] ?? 0);
@@ -358,7 +358,7 @@
                     FROM project_extra_assets pea 
                     LEFT JOIN approval_requests ar ON (ar.source_table IN ('project_extra_assets', 'purchase_requests') AND ar.source_id = pea.id)
                     WHERE (
-                        (pea.qc_audit_status = 'approved' AND pea.mgmt_status = 'pending' AND (pea.total_price <= 100000.01 OR ar.op_head_status = 'approved'))
+                        (pea.qc_audit_status = 'approved' AND pea.mgmt_status = 'pending' AND (pea.total_price <= 10000.01 OR ar.op_head_status = 'approved'))
                         OR (pea.dept_head_status = 'pending')
                     )
                 ");

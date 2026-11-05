@@ -89,7 +89,7 @@
                                 $payoutStatus = $req['payout_status'] ?? '';
                                 $ahStatus = strtolower($req['accounts_head_status'] ?? 'pending');
                                 $isFrPartialMgmt = ($sourceTable === 'fund_requisitions' && $statusLower === 'partially_approved');
-                                $isPendingAccountsHead = ($statusLower === 'approved' || $req['status'] === 'approved' || $isFrPartialMgmt) && ($ahStatus !== 'approved' || $reqApproveRole === 'accounts_head');
+                                $isPendingAccountsHead = ($ahStatus !== 'approved') && ($reqApproveRole === 'accounts_head' || $statusLower === 'approved' || $req['status'] === 'approved' || $isFrPartialMgmt);
                                 $isAccountsHeadApproved = ($ahStatus === 'approved');
 
                                 // Determine whether this request is actionable by the logged-in user right now
@@ -100,8 +100,8 @@
                                     $isActionableByMe = false;
                                     $canUserApprove = false;
                                 } elseif ($isPendingAccountsHead) {
-                                    // Pending Accounts Head approval: Actionable by Accounts Head (Role 30) and Super Admin / Admin (1, 3)
-                                    if ($isAccountsHeadUser || $isManagementUser) {
+                                    // Pending Accounts Head approval: Actionable by Accounts Head (Role 30) and Super Admin (Role 1)
+                                    if ($isAccountsHeadUser || (int)($_SESSION['user']['role_id'] ?? 0) === 1) {
                                         $isActionableByMe = true;
                                         $canUserApprove = true;
                                     } else {
@@ -126,8 +126,15 @@
                                     }
                                 } elseif ($isManagementUser) {
                                     if ($isPendingStatus && in_array($reqApproveRole, ['management', 'operations', ''])) {
-                                        $isActionableByMe = true;
-                                        $canUserApprove = true;
+                                        $reqOpStatus = strtolower($req['op_head_status'] ?? 'pending');
+                                        $isOver10k = ((float)($req['request_amount'] ?? 0) > 10000.01);
+                                        if ($isOver10k && ($reqOpStatus !== 'approved' || !$isAccountsHeadApproved)) {
+                                            $isActionableByMe = false;
+                                            $canUserApprove = false;
+                                        } else {
+                                            $isActionableByMe = true;
+                                            $canUserApprove = true;
+                                        }
                                     }
                                 } elseif ($isQcUser) {
                                     if ($isPendingStatus && in_array($reqApproveRole, ['qc', 'qc_head'])) {
@@ -510,8 +517,8 @@
                                                     <div class="px-1.5 py-1 rounded bg-primary-subtle border border-primary-subtle d-flex align-items-center justify-content-between gap-1" title="<?= htmlspecialchars($ahTooltip) ?>" style="font-size: 10px; line-height: 1.2;">
                                                         <div class="d-flex align-items-center gap-1 text-truncate me-1">
                                                             <i class="fa-solid fa-check-double text-primary flex-shrink-0" style="font-size: 9.5px;"></i>
-                                                            <span class="fw-bold text-dark text-truncate" style="max-width: 105px;" title="<?= htmlspecialchars(!empty($req['accounts_head_name']) ? $req['accounts_head_name'] : 'Md. Mamunoor Rashid') ?>">
-                                                                <?= htmlspecialchars(!empty($req['accounts_head_name']) ? $req['accounts_head_name'] : 'Md. Mamunoor Rashid') ?>
+                                                            <span class="fw-bold text-dark text-truncate" style="max-width: 105px;" title="<?= htmlspecialchars(!empty($req['accounts_head_name']) ? $req['accounts_head_name'] : 'Accounts Head') ?>">
+                                                                <?= htmlspecialchars(!empty($req['accounts_head_name']) ? $req['accounts_head_name'] : 'Accounts Head') ?>
                                                             </span>
                                                             <span class="badge bg-primary text-white p-0 px-1 flex-shrink-0" style="font-size: 8px;">Accts</span>
                                                         </div>
@@ -730,10 +737,19 @@
                                                 if (mb_strlen($pfShort) > 30) {
                                                     $pfShort = mb_substr($pfShort, 0, 28) . 'â€¦';
                                                 }
-                                                $lockLabel = ($isSiteOperator && $reqAmount > 100000 && !$opHeadDone) ? 'Management Only' : 'Pending: ' . $pfShort;
-                                                $lockTitle = ($isSiteOperator && $reqAmount > 100000 && !$opHeadDone)
-                                                    ? 'Amount exceeds à§³1,00,000 threshold - Full Management approval required'
-                                                    : (($isSiteOperator && $opHeadDone) ? 'You (Admin & Operation Head) already approved. ' : '') . 'Pending for ' . ($pfClean !== '' ? $pfClean : 'Other Role');
+                                                $ahDone = ($ahStatus === 'approved');
+                                                $awaitOpHead = ($reqAmount > 10000.01 && !$opHeadDone && $isManagementUser);
+                                                $awaitAh = ($reqAmount > 10000.01 && $opHeadDone && !$ahDone && $isManagementUser);
+                                                if ($awaitOpHead) {
+                                                    $lockLabel = 'Awaiting Op Head';
+                                                    $lockTitle = 'Amount exceeds ৳10,000 - Admin & Operation Head approval required first';
+                                                } elseif ($awaitAh) {
+                                                    $lockLabel = 'Awaiting Accounts Head';
+                                                    $lockTitle = 'Amount exceeds ৳10,000 - Accounts Head payment verification required before Management';
+                                                } else {
+                                                    $lockLabel = 'Pending: ' . $pfShort;
+                                                    $lockTitle = (($isSiteOperator && $opHeadDone) ? 'You (Admin & Operation Head) already approved. ' : '') . 'Pending for ' . ($pfClean !== '' ? $pfClean : 'Other Role');
+                                                }
                                                 ?>
                                                 <a href="javascript:void(0)"
                                                     class="btn btn-sm btn-light text-muted rounded-2 px-2 border"
