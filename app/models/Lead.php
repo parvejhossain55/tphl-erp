@@ -78,6 +78,51 @@ class Lead extends Model
         }
     }
 
+    public function ensureLeadsEnumColumns(): void
+    {
+        static $enumChecked = false;
+        if ($enumChecked || !$this->db) {
+            return;
+        }
+        $enumChecked = true;
+
+        try {
+            $res = $this->db->query("SHOW COLUMNS FROM `leads` WHERE Field IN ('lead_type', 'lead_quality', 'last_lead_action', 'call_status', 'identity_type', 'religion')");
+            $cols = [];
+            if ($res) {
+                while ($row = $res->fetch_assoc()) {
+                    $cols[$row['Field']] = $row;
+                }
+            }
+
+            $alterParts = [];
+            if (isset($cols['lead_type']) && stripos($cols['lead_type']['Type'], 'Qualification in Progress') === false) {
+                $alterParts[] = "MODIFY COLUMN `lead_type` ENUM('No Response','Pending','Qualification in Progress','Potential','High Potential','Visit Scheduled','Visit Completed','Prospect','High Prospect','Will Visit','Visited','Sold','Lead Transferred','Project Transferred','Not Interested','Don''t Call Again','Refund','Future','Invalid Lead','Cold','Hot','Warm','Irrelevant') NULL DEFAULT NULL";
+            }
+            if (isset($cols['lead_quality']) && stripos($cols['lead_quality']['Type'], 'Potential') === false) {
+                $alterParts[] = "MODIFY COLUMN `lead_quality` ENUM('Not Interested','Potential','Prospect','Pending') NULL DEFAULT 'Pending'";
+            }
+            if (isset($cols['last_lead_action']) && strtoupper($cols['last_lead_action']['Null'] ?? '') === 'NO') {
+                $alterParts[] = "MODIFY COLUMN `last_lead_action` ENUM('new','booked','follow up','visited','cancel','contacted') NULL DEFAULT 'new'";
+            }
+            if (isset($cols['call_status']) && stripos($cols['call_status']['Type'], 'busy') === false) {
+                $alterParts[] = "MODIFY COLUMN `call_status` ENUM('not_called','called','received','not_received','busy','no_answer') NULL DEFAULT 'not_called'";
+            }
+            if (isset($cols['identity_type']) && stripos($cols['identity_type']['Type'], 'Birth Certificate') === false) {
+                $alterParts[] = "MODIFY COLUMN `identity_type` ENUM('NID','Passport','Birth Certificate') NULL DEFAULT NULL";
+            }
+            if (isset($cols['religion']) && stripos($cols['religion']['Type'], "'Hindu'") === false) {
+                $alterParts[] = "MODIFY COLUMN `religion` ENUM('Islam','Hinduism','Hindu','Buddhism','Buddhist','Christianity','Christian','Other') NULL DEFAULT NULL";
+            }
+
+            if (!empty($alterParts)) {
+                $this->db->query("ALTER TABLE `leads` " . implode(", ", $alterParts));
+            }
+        } catch (Throwable $e) {
+            error_log("Lead::ensureLeadsEnumColumns error: " . $e->getMessage());
+        }
+    }
+
     public function findDuplicate($name, $phone)
     {
         $sql = "SELECT * FROM leads WHERE full_name = ? AND (phone_number = ? OR phone = ?) AND deleted_at IS NULL LIMIT 1";
@@ -3364,8 +3409,39 @@ class Lead extends Model
 
     public function create($data)
     {
+        $this->ensureLeadsEnumColumns();
+
+        // Helper for nullable strings (empty string -> null)
+        $nn = function ($key, $maxLen = null) use (&$data) {
+            if (!isset($data[$key])) return null;
+            $val = trim((string)$data[$key]);
+            if ($val === '') return null;
+            if ($maxLen !== null) {
+                $val = mb_substr($val, 0, $maxLen, 'UTF-8');
+            }
+            return $val;
+        };
+
+        // Helper for nullable integer IDs (empty string -> null)
+        $ni = function ($key) use (&$data) {
+            if (!isset($data[$key])) return null;
+            $val = trim((string)$data[$key]);
+            return ($val !== '' && is_numeric($val)) ? (int)$val : null;
+        };
+
+        // Helper for nullable date values
+        $nd = function ($key) use ($nn) {
+            $val = $nn($key);
+            if ($val === null || $val === '0000-00-00') return null;
+            $ts = strtotime($val);
+            return ($ts !== false && $ts > 0) ? date('Y-m-d', $ts) : null;
+        };
+
+        $primaryPhone = $nn('phone_number', 20) ?? $nn('phone', 20);
+        $primaryEmail = $nn('email', 150);
+
         // Auto-assign duplicates to the first owner or team
-        $firstAssignee = $this->findFirstAssignee($data['phone_number'] ?? $data['phone'] ?? null, $data['email'] ?? null);
+        $firstAssignee = $this->findFirstAssignee($primaryPhone, $primaryEmail);
         if ($firstAssignee) {
             if (!empty($firstAssignee['team_id'])) {
                 $data['team_id'] = (int)$firstAssignee['team_id'];
@@ -3386,12 +3462,14 @@ class Lead extends Model
         job_title,
         city,
         full_name,
+        lead_name,
         father_name,
         mother_name,
         dob,
         permanent_address,
         nid_or_passport,
         phone_number,
+        phone,
         alt_phone_number,
         email,
         alt_email,
@@ -3411,6 +3489,7 @@ class Lead extends Model
         lead_quality,
         lead_type,
         company_name,
+        company,
         team_id,
         created_by,
         country,
@@ -3418,7 +3497,7 @@ class Lead extends Model
         2nd_owner_phone,
         2nd_owner_email,
         2nd_owner_address,
-        2nd_owner_other_details ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        2nd_owner_other_details ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         if (!$stmt) {
             setError("Prepare failed: " . $this->db->error);
@@ -3426,60 +3505,92 @@ class Lead extends Model
         }
 
         // Assign variables (CSV columns first)
-        $campaign_name = $data['campaign_name'] ?? null;
-        $platform = $data['platform'] ?? null;
-        $which_apartment_size_are_you_interested_in = $data['which_apartment_size_are_you_interested_in'] ?? null;
-        $which_floor_are_you_for_shop = $data['which_floor_are_you_for_shop'] ?? null;
-        $when_are_you_planning_to_buy = $data['when_are_you_planning_to_buy'] ?? null;
-        $would_you_like_to_schedule_a_site_visit = $data['would_you_like_to_schedule_a_site_visit'] ?? null;
-        $when_is_the_best_time_to_contact_you = $data['when_is_the_best_time_to_contact_you'] ?? null;
-        $job_title = isset($data['job_title']) ? mb_substr((string)$data['job_title'], 0, 255, 'UTF-8') : null;
-        $city = $data['city'] ?? null;
+        $campaign_name = $nn('campaign_name', 255);
+        $platform = $nn('platform', 100);
+        $which_apartment_size_are_you_interested_in = $nn('which_apartment_size_are_you_interested_in', 100);
+        $which_floor_are_you_for_shop = $nn('which_floor_are_you_for_shop', 50);
+        $when_are_you_planning_to_buy = $nn('when_are_you_planning_to_buy', 200);
+        $would_you_like_to_schedule_a_site_visit = $nn('would_you_like_to_schedule_a_site_visit', 200);
+        $when_is_the_best_time_to_contact_you = $nn('when_is_the_best_time_to_contact_you', 50);
+        $job_title = $nn('job_title', 255);
+        $city = $nn('city', 100);
 
         // Existing fields
-        $full_name = isset($data['full_name']) ? mb_substr((string)$data['full_name'], 0, 255, 'UTF-8') : null;
-        $father_name = $data['father_name'] ?? null;
-        $mother_name = $data['mother_name'] ?? null;
-        $dob = isset($data['dob']) && trim($data['dob']) !== ''
-            ? $data['dob']
-            : null;
-        $permanent_address = $data['permanent_address'] ?? null;
-        $nid_or_passport = $data['nid_or_passport'] ?? null;
-        $phone_number = $data['phone_number'] ?? null;
-        $alt_phone_number = $data['alt_phone_number'] ?? null;
-        $email = $data['email'] ?? null;
-        $alt_email = $data['alt_email'] ?? null;
-        $source_type_id = $data['source_type_id'] ?? null;
-        $assigned_id = $data['assigned_id'] ?? null;
-        $address = $data['address'] ?? null;
-        $pref_location_id = $data['pref_location_id'] ?? null;
-        $designation = $data['designation'] ?? null;
-        $project_id = $data['project_id'] ?? null;
-        $project_category_id = $data['project_category_id'] ?? null;
-        $pref_flat_size = $data['pref_flat_size'] ?? null;
-        $communication_type = $data['communication_type'] ?? null;
-        $tags = $data['tags'] ?? null;
-        $description = $data['description'] ?? null;
-        $visibility = $data['visibility'] ?? 'public';
-        $status = $data['status'] ?? 'active';
-        $lead_quality = $data['lead_quality'] ?? 'Pending';
+        $full_name = $nn('full_name', 255) ?? $nn('lead_name', 255);
+        $lead_name = $full_name;
+        $father_name = $nn('father_name', 100);
+        $mother_name = $nn('mother_name', 100);
+        $dob = $nd('dob');
+        $permanent_address = $nn('permanent_address', 250);
+        $nid_or_passport = $nn('nid_or_passport', 100);
+        $phone_number = $primaryPhone;
+        $phone = $primaryPhone;
+        $alt_phone_number = $nn('alt_phone_number', 30);
+        $email = $primaryEmail;
+        $alt_email = $nn('alt_email', 255);
+        $source_type_id = $ni('source_type_id');
+        $assigned_id = $ni('assigned_id');
+        $address = $nn('address', 255);
+        $pref_location_id = $ni('pref_location_id');
+        $designation = $nn('designation', 255);
+        $project_id = $ni('project_id');
+        $project_category_id = $ni('project_category_id');
+        $pref_flat_size = $nn('pref_flat_size', 250) ?? $which_apartment_size_are_you_interested_in;
+
+        // Communication Type (Enum-safe)
+        $communication_type = $nn('communication_type');
+        $validComm = ['WA Messaging', 'WA Conversion', 'Wa Call', 'Imo Massage', 'Imo Call', 'Phone Call', 'Phone Massage', 'Invalid Number', 'No Wa /No Imo', 'Number Off'];
+        if (!empty($communication_type) && !in_array($communication_type, $validComm)) {
+            $cleanComm = strtolower($communication_type);
+            if (strpos($cleanComm, 'wa') !== false || strpos($cleanComm, 'what') !== false) {
+                $communication_type = 'WA Messaging';
+            } elseif (strpos($cleanComm, 'call') !== false || strpos($cleanComm, 'phone') !== false) {
+                $communication_type = 'Phone Call';
+            } elseif (strpos($cleanComm, 'imo') !== false) {
+                $communication_type = 'Imo Massage';
+            } else {
+                $communication_type = null;
+            }
+        }
+
+        $tags = $nn('tags');
+        $description = $nn('description');
+
+        $visibility = $nn('visibility') ?? 'public';
+        if (!in_array($visibility, ['public', 'private', 'selected'])) {
+            $visibility = 'public';
+        }
+
+        $status = $nn('status') ?? 'active';
+        if (!in_array($status, ['active', 'inactive'])) {
+            $status = 'active';
+        }
+
+        $lead_quality = $nn('lead_quality') ?? 'Pending';
         if (!in_array($lead_quality, ['Pending', 'Potential', 'Prospect', 'Not Interested'])) {
             $lead_quality = 'Pending';
         }
-        $lead_type = (!empty($data['lead_type']) && trim((string)$data['lead_type']) !== '') ? trim((string)$data['lead_type']) : null;
-        $company_name = isset($data['company_name']) ? mb_substr((string)$data['company_name'], 0, 255, 'UTF-8') : null;
-        $team_id = $data['team_id'] ?? null;
-        $created_by = $data['created_by'] ?? null;
-        $country = $data['country'] ?? null;
-        $second_lead_owner_name = $data['2nd_lead_owner_name'] ?? null;
-        $second_owner_phone = $data['2nd_owner_phone'] ?? null;
-        $second_owner_email = $data['2nd_owner_email'] ?? null;
-        $second_owner_address = $data['2nd_owner_address'] ?? null;
-        $second_owner_other_details = $data['2nd_owner_other_details'] ?? null;
 
-        // Bind parameters (CSV first, then existing)
+        $lead_type = $nn('lead_type');
+        $validLeadTypes = ['No Response', 'Pending', 'Qualification in Progress', 'Potential', 'High Potential', 'Visit Scheduled', 'Visit Completed', 'Sold', 'Lead Transferred', 'Project Transferred', 'Not Interested', "Don't Call Again", 'Refund', 'Future', 'Invalid Lead', 'Prospect', 'High Prospect', 'Will Visit', 'Visited', 'Cold', 'Hot', 'Warm', 'Irrelevant'];
+        if (!empty($lead_type) && !in_array($lead_type, $validLeadTypes)) {
+            $lead_type = null;
+        }
+
+        $company_name = $nn('company_name', 255) ?? $nn('company', 255);
+        $company = $company_name;
+        $team_id = $ni('team_id');
+        $created_by = $ni('created_by');
+        $country = $nn('country', 200);
+        $second_lead_owner_name = $nn('2nd_lead_owner_name', 255);
+        $second_owner_phone = $nn('2nd_owner_phone', 50);
+        $second_owner_email = $nn('2nd_owner_email', 255);
+        $second_owner_address = $nn('2nd_owner_address');
+        $second_owner_other_details = $nn('2nd_owner_other_details');
+
+        // Bind parameters (46 columns)
         $stmt->bind_param(
-            "sssssssssssssssssssiisisiisssssssssiissssss",
+            "sssssssssssssssssssssiisisiissssssssssiissssss",
             $campaign_name,
             $platform,
             $which_apartment_size_are_you_interested_in,
@@ -3490,12 +3601,14 @@ class Lead extends Model
             $job_title,
             $city,
             $full_name,
+            $lead_name,
             $father_name,
             $mother_name,
             $dob,
             $permanent_address,
             $nid_or_passport,
             $phone_number,
+            $phone,
             $alt_phone_number,
             $email,
             $alt_email,
@@ -3515,6 +3628,7 @@ class Lead extends Model
             $lead_quality,
             $lead_type,
             $company_name,
+            $company,
             $team_id,
             $created_by,
             $country,
@@ -3662,18 +3776,26 @@ class Lead extends Model
 
     public function update($id, $data)
     {
+        $this->ensureLeadsEnumColumns();
+
         $old = $this->find($id);
         if (!$old) {
             return false;
         }
 
         // Helper for nullable string values (empty string -> null or existing)
-        $nn = function($key) use ($data, $old) {
+        $nn = function($key, $maxLen = null) use ($data, $old) {
             if (array_key_exists($key, $data)) {
                 $val = $data[$key];
-                return (isset($val) && trim((string)$val) !== '') ? trim((string)$val) : null;
+                $res = (isset($val) && trim((string)$val) !== '') ? trim((string)$val) : null;
+            } else {
+                $val = $old[$key] ?? null;
+                $res = (isset($val) && trim((string)$val) !== '') ? trim((string)$val) : null;
             }
-            return $old[$key] ?? null;
+            if ($res !== null && $maxLen !== null) {
+                $res = mb_substr($res, 0, $maxLen, 'UTF-8');
+            }
+            return $res;
         };
 
         // Helper for integer IDs (empty string -> null or existing)
@@ -3682,7 +3804,7 @@ class Lead extends Model
                 $val = $data[$key];
                 return (isset($val) && trim((string)$val) !== '' && is_numeric($val)) ? (int)$val : null;
             }
-            return isset($old[$key]) && is_numeric($old[$key]) ? (int)$old[$key] : null;
+            return (isset($old[$key]) && trim((string)$old[$key]) !== '' && is_numeric($old[$key])) ? (int)$old[$key] : null;
         };
 
         // Helper for float/double values
@@ -3691,25 +3813,38 @@ class Lead extends Model
                 $val = $data[$key];
                 return (isset($val) && trim((string)$val) !== '' && is_numeric($val)) ? (float)$val : null;
             }
-            return isset($old[$key]) && is_numeric($old[$key]) ? (float)$old[$key] : null;
+            return (isset($old[$key]) && trim((string)$old[$key]) !== '' && is_numeric($old[$key])) ? (float)$old[$key] : null;
+        };
+
+        // Helper for nullable date values
+        $nd = function($key) use ($nn) {
+            $val = $nn($key);
+            if ($val === null || $val === '0000-00-00') return null;
+            $ts = strtotime($val);
+            return ($ts !== false && $ts > 0) ? date('Y-m-d', $ts) : null;
         };
 
         // Date fields
-        $dob      = $nn('dob');
-        $nomi_dob = $nn('nomi_dob');
+        $dob      = $nd('dob');
+        $nomi_dob = $nd('nomi_dob');
 
         // Personal Info
-        $full_name            = $nn('full_name') ?? $nn('lead_name');
+        $full_name            = $nn('full_name', 255) ?? $nn('lead_name', 255);
         $lead_name            = $full_name;
-        $lead_name_bn         = $nn('lead_name_bn');
-        $father_name          = $nn('father_name');
-        $father_name_bn       = $nn('father_name_bn');
-        $mother_name          = $nn('mother_name');
-        $mother_name_bn       = $nn('mother_name_bn');
-        $nationality          = $nn('nationality') ?? 'Bangladeshi';
+        $lead_name_bn         = $nn('lead_name_bn', 250);
+        $father_name          = $nn('father_name', 100);
+        $father_name_bn       = $nn('father_name_bn', 250);
+        $mother_name          = $nn('mother_name', 100);
+        $mother_name_bn       = $nn('mother_name_bn', 250);
+        $nationality          = $nn('nationality', 250) ?? 'Bangladeshi';
+
         // Religion (Enum-safe)
         $religion             = $nn('religion');
-        if (!empty($religion) && !in_array($religion, ['Islam', 'Hinduism', 'Buddhism', 'Christianity', 'Other'])) {
+        $religionMap = ['Hindu' => 'Hinduism', 'Buddhist' => 'Buddhism', 'Christian' => 'Christianity'];
+        if ($religion !== null && isset($religionMap[$religion])) {
+            $religion = $religionMap[$religion];
+        }
+        if (!empty($religion) && !in_array($religion, ['Islam', 'Hinduism', 'Hindu', 'Buddhism', 'Buddhist', 'Christianity', 'Christian', 'Other'])) {
             $religion = null;
         }
 
@@ -3719,40 +3854,42 @@ class Lead extends Model
         } else {
             $residency_type = 'local';
         }
-        $nid_or_passport      = $nn('nid_or_passport');
+        $nid_or_passport      = $nn('nid_or_passport', 100);
 
         // Identity Type (Enum-safe)
         $identity_type        = $nn('identity_type');
-        if (!empty($identity_type) && !in_array($identity_type, ['NID', 'Passport'])) {
+        if (!empty($identity_type) && !in_array($identity_type, ['NID', 'Passport', 'Birth Certificate'])) {
             $identity_type = null;
         }
 
         // Contact & Address
-        $phone                = $nn('phone') ?? $nn('phone_number');
-        $phone_number         = $phone;
-        $alt_phone_number     = $nn('alt_phone_number');
-        $email                = $nn('email');
-        $alt_email            = $nn('alt_email');
-        $address              = $nn('address');
-        $present_add_bn       = $nn('present_add_bn');
-        $permanent_address    = $nn('permanent_address');
-        $permanent_add_bn     = $nn('permanent_add_bn');
-        $city                 = $nn('city');
-        $country              = $nn('country');
+        $phone                = $nn('phone', 30) ?? $nn('phone_number', 30);
+        $phone_number         = $phone !== null ? mb_substr($phone, 0, 20, 'UTF-8') : null;
+        $alt_phone_number     = $nn('alt_phone_number', 30);
+        $email                = $nn('email', 150);
+        $alt_email            = $nn('alt_email', 255);
+        $address              = $nn('address', 255);
+        $present_add_bn       = $nn('present_add_bn', 255);
+        $permanent_address    = $nn('permanent_address', 250);
+        $permanent_add_bn     = $nn('permanent_add_bn', 255);
+        $city                 = $nn('city', 100);
+        $country              = $nn('country', 200);
 
         // Professional Info
-        $designation          = $nn('designation');
-        $profession_bn        = $nn('profession_bn');
-        $job_title            = $nn('job_title');
-        $company_name         = $nn('company_name') ?? $nn('company');
+        $designation          = $nn('designation', 255);
+        $profession_bn        = $nn('profession_bn', 250);
+        $job_title            = $nn('job_title', 255);
+        $company_name         = $nn('company_name', 255) ?? $nn('company', 255);
         $company              = $company_name;
 
         // Campaign & Source Meta
-        $campaign_name        = $nn('campaign_name');
-        $platform             = $nn('platform');
+        $campaign_name        = $nn('campaign_name', 255);
+        $platform             = $nn('platform', 100);
         $uploaded_from        = $nn('uploaded_from');
-        if (!empty($uploaded_from) && !in_array($uploaded_from, ['From Campaign', 'From Company csv', 'Manually added', ''])) {
-            $uploaded_from = 'From Campaign';
+        if (empty($uploaded_from) || !in_array($uploaded_from, ['From Campaign', 'From Company csv', 'Manually added'])) {
+            $uploaded_from = (!empty($old['uploaded_from']) && in_array($old['uploaded_from'], ['From Campaign', 'From Company csv', 'Manually added']))
+                ? $old['uploaded_from']
+                : 'From Campaign';
         }
         $source_type_id       = $ni('source_type_id');
         $assigned_id          = $ni('assigned_id');
@@ -3763,15 +3900,25 @@ class Lead extends Model
 
         // Lead Type (Enum-safe)
         $lead_type            = $nn('lead_type');
-        $validLeadTypes = ['No Response', 'Pending', 'Qualification in Progress', 'Potential', 'High Potential', 'Visit Scheduled', 'Visit Completed', 'Sold', 'Lead Transferred', 'Project Transferred', 'Not Interested', 'Refund', 'Future', 'Invalid Lead', 'Prospect', 'High Prospect', 'Will Visit', 'Visited', 'Cold', 'Hot', 'Warm', 'Irrelevant'];
+        $validLeadTypes = ['No Response', 'Pending', 'Qualification in Progress', 'Potential', 'High Potential', 'Visit Scheduled', 'Visit Completed', 'Sold', 'Lead Transferred', 'Project Transferred', 'Not Interested', "Don't Call Again", 'Refund', 'Future', 'Invalid Lead', 'Prospect', 'High Prospect', 'Will Visit', 'Visited', 'Cold', 'Hot', 'Warm', 'Irrelevant'];
         if (!empty($lead_type) && !in_array($lead_type, $validLeadTypes)) {
             $lead_type = null;
         }
 
-        $lead_quality         = $nn('lead_quality');
-        if (!empty($lead_quality) && !in_array($lead_quality, ['Pending', 'Potential', 'Prospect', 'Not Interested'])) {
-            $lead_quality = 'Pending';
+        $lead_quality         = $nn('lead_quality') ?? 'Pending';
+        if (!in_array($lead_quality, ['Pending', 'Potential', 'Prospect', 'Not Interested'])) {
+            $lead_quality = (!empty($old['lead_quality']) && in_array($old['lead_quality'], ['Pending', 'Potential', 'Prospect', 'Not Interested']))
+                ? $old['lead_quality']
+                : 'Pending';
         }
+
+        $last_lead_action     = $nn('last_lead_action');
+        if (empty($last_lead_action) || !in_array($last_lead_action, ['new', 'booked', 'follow up', 'visited', 'cancel', 'contacted'])) {
+            $last_lead_action = (!empty($old['last_lead_action']) && in_array($old['last_lead_action'], ['new', 'booked', 'follow up', 'visited', 'cancel', 'contacted']))
+                ? $old['last_lead_action']
+                : 'new';
+        }
+
         $visibility           = $nn('visibility') ?? 'public';
         if (!in_array($visibility, ['public', 'private', 'selected'])) {
             $visibility = 'public';
@@ -3780,8 +3927,8 @@ class Lead extends Model
         if (!in_array($status, ['active', 'inactive'])) {
             $status = 'active';
         }
-        $call_status          = $nn('call_status');
-        if (!empty($call_status) && !in_array($call_status, ['not_called', 'called', 'received', 'not_received'])) {
+        $call_status          = $nn('call_status') ?? 'not_called';
+        if (!in_array($call_status, ['not_called', 'called', 'received', 'not_received', 'busy', 'no_answer'])) {
             $call_status = 'not_called';
         }
         $call_note            = $nn('call_note');
@@ -3792,15 +3939,12 @@ class Lead extends Model
         }
 
         // Customer Requirements & Preferences
-        $which_apt_size       = $nn('which_apartment_size_are_you_interested_in');
-        $which_floor_shop     = $nn('which_floor_are_you_for_shop');
-        $when_buy             = $nn('when_are_you_planning_to_buy');
-        $schedule_visit       = $nn('would_you_like_to_schedule_a_site_visit');
+        $which_apt_size       = $nn('which_apartment_size_are_you_interested_in', 100);
+        $which_floor_shop     = $nn('which_floor_are_you_for_shop', 50);
+        $when_buy             = $nn('when_are_you_planning_to_buy', 200);
+        $schedule_visit       = $nn('would_you_like_to_schedule_a_site_visit', 200);
         
-        $best_time_contact    = $nn('when_is_the_best_time_to_contact_you') ?? $nn('preferred_contact_time');
-        if ($best_time_contact !== null && mb_strlen($best_time_contact) > 50) {
-            $best_time_contact = mb_substr($best_time_contact, 0, 50);
-        }
+        $best_time_contact    = $nn('when_is_the_best_time_to_contact_you', 50) ?? $nn('preferred_contact_time', 50);
 
         // preferred_contact_time is an ENUM ('morning', 'afternoon', 'evening', 'night')
         $preferred_contact = null;
@@ -3819,7 +3963,7 @@ class Lead extends Model
             }
         }
 
-        $pref_flat_size       = $nn('pref_flat_size') ?? $which_apt_size;
+        $pref_flat_size       = $nn('pref_flat_size', 250) ?? $which_apt_size;
 
         // Communication Type (Enum-safe)
         $communication_type   = $nn('communication_type');
@@ -3841,27 +3985,27 @@ class Lead extends Model
         $description          = $nn('description');
 
         // Nominee Info
-        $nominee_name         = $nn('nominee_name');
-        $relation_with_lead   = $nn('relation_with_lead');
-        $nomi_father_name     = $nn('nomi_father_name');
-        $nomi_mother_name     = $nn('nomi_mother_name');
-        $nomi_profession      = $nn('nomi_profession');
-        $nomi_phone           = $nn('nomi_phone');
-        $nomi_email           = $nn('nomi_email');
-        $nomi_nid_passport    = $nn('nomi_nid_passport');
-        $nomi_present_add     = $nn('nomi_present_add');
-        $nomi_permanent_address = $nn('nomi_permanent_address');
+        $nominee_name         = $nn('nominee_name', 250);
+        $relation_with_lead   = $nn('relation_with_lead', 200);
+        $nomi_father_name     = $nn('nomi_father_name', 250);
+        $nomi_mother_name     = $nn('nomi_mother_name', 250);
+        $nomi_profession      = $nn('nomi_profession', 250);
+        $nomi_phone           = $nn('nomi_phone', 100);
+        $nomi_email           = $nn('nomi_email', 200);
+        $nomi_nid_passport    = $nn('nomi_nid_passport', 200);
+        $nomi_present_add     = $nn('nomi_present_add', 200);
+        $nomi_permanent_address = $nn('nomi_permanent_address', 255);
 
         // 2nd Nominee Info
-        $nominee_name_2         = $nn('2nd_nominee_name');
-        $relation_with_lead_2   = $nn('2nd_relation_with_lead');
-        $nomi_father_name_2     = $nn('2nd_nomi_father_name');
-        $nomi_mother_name_2     = $nn('2nd_nomi_mother_name');
-        $nomi_profession_2      = $nn('2nd_nomi_profession');
-        $nomi_dob_2             = $nn('2nd_nomi_dob');
-        $nomi_phone_2           = $nn('2nd_nomi_phone');
-        $nomi_email_2           = $nn('2nd_nomi_email');
-        $nomi_nid_passport_2    = $nn('2nd_nomi_nid_passport');
+        $nominee_name_2         = $nn('2nd_nominee_name', 255);
+        $relation_with_lead_2   = $nn('2nd_relation_with_lead', 255);
+        $nomi_father_name_2     = $nn('2nd_nomi_father_name', 255);
+        $nomi_mother_name_2     = $nn('2nd_nomi_mother_name', 255);
+        $nomi_profession_2      = $nn('2nd_nomi_profession', 255);
+        $nomi_dob_2             = $nd('2nd_nomi_dob');
+        $nomi_phone_2           = $nn('2nd_nomi_phone', 50);
+        $nomi_email_2           = $nn('2nd_nomi_email', 255);
+        $nomi_nid_passport_2    = $nn('2nd_nomi_nid_passport', 100);
         $nomi_present_add_2     = $nn('2nd_nomi_present_add');
         $nomi_permanent_address_2 = $nn('2nd_nomi_permanent_address');
 
@@ -3920,6 +4064,7 @@ class Lead extends Model
             'pref_location_id' => $pref_location_id,
             'lead_type' => $lead_type,
             'lead_quality' => $lead_quality,
+            'last_lead_action' => $last_lead_action,
             'visibility' => $visibility,
             'status' => $status,
             'call_status' => $call_status,
@@ -3961,9 +4106,9 @@ class Lead extends Model
             '2nd_nomi_present_add' => $nomi_present_add_2,
             '2nd_nomi_permanent_address' => $nomi_permanent_address_2,
             '2nd_nomi_image' => $nomi_image_2,
-            '2nd_lead_owner_name' => $nn('2nd_lead_owner_name'),
-            '2nd_owner_phone' => $nn('2nd_owner_phone'),
-            '2nd_owner_email' => $nn('2nd_owner_email'),
+            '2nd_lead_owner_name' => $nn('2nd_lead_owner_name', 255),
+            '2nd_owner_phone' => $nn('2nd_owner_phone', 50),
+            '2nd_owner_email' => $nn('2nd_owner_email', 255),
             '2nd_owner_address' => $nn('2nd_owner_address'),
             '2nd_owner_other_details' => $nn('2nd_owner_other_details'),
             'updated_at' => date('Y-m-d H:i:s')

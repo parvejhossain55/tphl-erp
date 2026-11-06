@@ -1618,52 +1618,68 @@ class LeadController extends Controller
         
         $redirect = $_POST['redirect'] ?? '';
 
+        $optStr = function (string $key): ?string {
+            if (!isset($_POST[$key])) return null;
+            $v = trim((string)$_POST[$key]);
+            return $v !== '' ? $v : null;
+        };
+        $optInt = function (string $key): ?int {
+            if (!isset($_POST[$key])) return null;
+            $v = trim((string)$_POST[$key]);
+            return ($v !== '' && is_numeric($v)) ? (int)$v : null;
+        };
+
+        $primaryPhone = $optStr('phone_number') ?? $optStr('phone');
+
         $leadData = [
             // CSV / new fields
-            'campaign_name' => $_POST['campaign_name'] ?? null,
-            'platform' => $_POST['platform'] ?? null,
-            'which_apartment_size_are_you_interested_in' => $_POST['which_apartment_size_are_you_interested_in'] ?? null,
-            'which_floor_are_you_for_shop' => $_POST['which_floor_are_you_for_shop'] ?? null,
-            'when_are_you_planning_to_buy' => $_POST['when_are_you_planning_to_buy'] ?? null,
-            'would_you_like_to_schedule_a_site_visit' => $_POST['would_you_like_to_schedule_a_site_visit'] ?? null,
-            'when_is_the_best_time_to_contact_you' => $_POST['when_is_the_best_time_to_contact_you'] ?? null,
-            'job_title' => $_POST['job_title'] ?? null,
-            'city' => $_POST['city'] ?? null,
+            'campaign_name' => $optStr('campaign_name'),
+            'platform' => $optStr('platform'),
+            'which_apartment_size_are_you_interested_in' => $optStr('which_apartment_size_are_you_interested_in'),
+            'which_floor_are_you_for_shop' => $optStr('which_floor_are_you_for_shop'),
+            'when_are_you_planning_to_buy' => $optStr('when_are_you_planning_to_buy'),
+            'would_you_like_to_schedule_a_site_visit' => $optStr('would_you_like_to_schedule_a_site_visit'),
+            'when_is_the_best_time_to_contact_you' => $optStr('when_is_the_best_time_to_contact_you'),
+            'job_title' => $optStr('job_title'),
+            'city' => $optStr('city'),
 
             // Existing fields
-            'full_name' => $_POST['full_name'] ?? null,
-            'lead_type' => (!empty($_POST['lead_type']) && trim((string)$_POST['lead_type']) !== '') ? trim((string)$_POST['lead_type']) : null,
-            'father_name' => $_POST['father_name'] ?? null,
-            'mother_name' => $_POST['mother_name'] ?? null,
-            'dob' => $_POST['dob'] ?? null,
-            'permanent_address' => $_POST['permanent_address'] ?? null,
-            'nid_or_passport' => $_POST['nid_or_passport'] ?? null,
-            'company_name' => $_POST['company_name'] ?? null,
-            'phone_number' => $_POST['phone_number'] ?? null,
-            'phone' => $_POST['phone_number'] ?? null,
-            'alt_phone_number' => $_POST['alt_phone_number'] ?? null,
-            'email' => $_POST['email'] ?? null,
-            'source_type_id' => $_POST['source_type_id'] ?? null,
-            'assigned_id' => $_POST['assigned_id'] ?? null,
-            'address' => $_POST['address'] ?? null,
-            'pref_location_id' => $_POST['pref_location_id'] ?? null,
-            'designation' => $_POST['designation'] ?? null,
-            'project_id' => $_POST['project_id'] ?? null,
-            'interest_on' => $_POST['interest_on'] ?? null,
-            'pref_flat_size' => $_POST['pref_flat_size'] ?? null,
-            'communication_type' => $_POST['communication_type'] ?? null,
-            'tags' => $_POST['tags'] ?? null,
-            'description' => $_POST['description'] ?? null,
-            'visibility' => $_POST['visibility'] ?? 'public',
+            'full_name' => $optStr('full_name'),
+            'lead_type' => $optStr('lead_type'),
+            'father_name' => $optStr('father_name'),
+            'mother_name' => $optStr('mother_name'),
+            'dob' => $optStr('dob'),
+            'permanent_address' => $optStr('permanent_address'),
+            'nid_or_passport' => $optStr('nid_or_passport'),
+            'company_name' => $optStr('company_name'),
+            'phone_number' => $primaryPhone,
+            'phone' => $primaryPhone,
+            'alt_phone_number' => $optStr('alt_phone_number'),
+            'email' => $optStr('email'),
+            'alt_email' => $optStr('alt_email'),
+            'source_type_id' => $optInt('source_type_id'),
+            'assigned_id' => $optInt('assigned_id'),
+            'address' => $optStr('address'),
+            'pref_location_id' => $optInt('pref_location_id'),
+            'designation' => $optStr('designation'),
+            'project_id' => $optInt('project_id'),
+            'project_category_id' => $optInt('project_category_id'),
+            'interest_on' => $optStr('interest_on'),
+            'pref_flat_size' => $optStr('pref_flat_size'),
+            'communication_type' => $optStr('communication_type'),
+            'tags' => $optStr('tags'),
+            'description' => $optStr('description'),
+            'visibility' => $optStr('visibility') ?? 'public',
             'status' => 'active',
-            'lead_quality' => $_POST['lead_quality'] ?? 'Pending',
+            'lead_quality' => $optStr('lead_quality') ?? 'Pending',
             'created_by' => $_SESSION['user']['id'] ?? null,
-            'team_id' => $_POST['team_id'] ?? null,
-            '2nd_lead_owner_name' => $_POST['2nd_lead_owner_name'] ?? null,
-            '2nd_owner_phone' => $_POST['2nd_owner_phone'] ?? null,
-            '2nd_owner_email' => $_POST['2nd_owner_email'] ?? null,
-            '2nd_owner_address' => $_POST['2nd_owner_address'] ?? null,
-            '2nd_owner_other_details' => $_POST['2nd_owner_other_details'] ?? null,
+            'team_id' => $optInt('team_id'),
+            'country' => $optStr('country'),
+            '2nd_lead_owner_name' => $optStr('2nd_lead_owner_name'),
+            '2nd_owner_phone' => $optStr('2nd_owner_phone'),
+            '2nd_owner_email' => $optStr('2nd_owner_email'),
+            '2nd_owner_address' => $optStr('2nd_owner_address'),
+            '2nd_owner_other_details' => $optStr('2nd_owner_other_details'),
         ];
 
 
