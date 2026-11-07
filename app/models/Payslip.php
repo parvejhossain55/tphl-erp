@@ -42,18 +42,18 @@ class Payslip extends Model
             $sql .= " AND payroll_project_id = ?";
             $params[] = (int) $projectId;
             $types .= "i";
-        }
+        } else {
+            if (!empty($year)) {
+                $sql .= " AND YEAR(payslip_month) = ?";
+                $params[] = (int) $year;
+                $types .= "i";
+            }
 
-        if (!empty($year)) {
-            $sql .= " AND YEAR(payslip_month) = ?";
-            $params[] = (int) $year;
-            $types .= "i";
-        }
-
-        if (!empty($month)) {
-            $sql .= " AND MONTH(payslip_month) = ?";
-            $params[] = (int) $month;
-            $types .= "i";
+            if (!empty($month)) {
+                $sql .= " AND MONTH(payslip_month) = ?";
+                $params[] = (int) $month;
+                $types .= "i";
+            }
         }
 
         $stmt = $this->db->prepare($sql);
@@ -81,18 +81,18 @@ class Payslip extends Model
             $sql .= " AND payroll_project_id = ?";
             $params[] = (int) $projectId;
             $types .= "i";
-        }
+        } else {
+            if (!empty($year)) {
+                $sql .= " AND YEAR(payslip_month) = ?";
+                $params[] = (int) $year;
+                $types .= "i";
+            }
 
-        if (!empty($year)) {
-            $sql .= " AND YEAR(payslip_month) = ?";
-            $params[] = (int) $year;
-            $types .= "i";
-        }
-
-        if (!empty($month)) {
-            $sql .= " AND MONTH(payslip_month) = ?";
-            $params[] = (int) $month;
-            $types .= "i";
+            if (!empty($month)) {
+                $sql .= " AND MONTH(payslip_month) = ?";
+                $params[] = (int) $month;
+                $types .= "i";
+            }
         }
 
         $stmt = $this->db->prepare($sql);
@@ -304,7 +304,10 @@ class Payslip extends Model
         if (!$hasItemLike('arrear', 'earning') && (float)($payslip['arrears_earning'] ?? 0) > 0) {
             $items[] = ['item_name' => 'Arrears', 'item_type' => 'earning', 'amount' => (float)$payslip['arrears_earning']];
         }
-        if (!$hasItemLike('duty', 'earning') && !$hasItemLike('special', 'earning') && (float)($payslip['duty_allowance'] ?? 0) > 0) {
+        if (!$hasItemLike('special allowance', 'earning') && (float)($payslip['special_allowance'] ?? 0) > 0) {
+            $items[] = ['item_name' => 'Special Allowance', 'item_type' => 'earning', 'amount' => (float)$payslip['special_allowance']];
+        }
+        if (!$hasItemLike('duty', 'earning') && (float)($payslip['duty_allowance'] ?? 0) > 0) {
             $items[] = ['item_name' => 'Duty Allowance', 'item_type' => 'earning', 'amount' => (float)$payslip['duty_allowance']];
         }
 
@@ -345,18 +348,18 @@ class Payslip extends Model
             $query .= " AND payroll_project_id = ?";
             $params[] = (int) $projectId;
             $types .= "i";
-        }
+        } else {
+            if (!empty($year)) {
+                $query .= " AND YEAR(payslip_month) = ?";
+                $params[] = (int) $year;
+                $types .= "i";
+            }
 
-        if (!empty($year)) {
-            $query .= " AND YEAR(payslip_month) = ?";
-            $params[] = (int) $year;
-            $types .= "i";
-        }
-
-        if (!empty($month)) {
-            $query .= " AND MONTH(payslip_month) = ?";
-            $params[] = (int) $month;
-            $types .= "i";
+            if (!empty($month)) {
+                $query .= " AND MONTH(payslip_month) = ?";
+                $params[] = (int) $month;
+                $types .= "i";
+            }
         }
 
         $stmt = $this->db->prepare($query);
@@ -382,18 +385,18 @@ class Payslip extends Model
             $query .= " AND payroll_project_id = ?";
             $params[] = (int) $projectId;
             $types .= "i";
-        }
+        } else {
+            if (!empty($year)) {
+                $query .= " AND YEAR(payslip_month) = ?";
+                $params[] = (int) $year;
+                $types .= "i";
+            }
 
-        if (!empty($year)) {
-            $query .= " AND YEAR(payslip_month) = ?";
-            $params[] = (int) $year;
-            $types .= "i";
-        }
-
-        if (!empty($month)) {
-            $query .= " AND MONTH(payslip_month) = ?";
-            $params[] = (int) $month;
-            $types .= "i";
+            if (!empty($month)) {
+                $query .= " AND MONTH(payslip_month) = ?";
+                $params[] = (int) $month;
+                $types .= "i";
+            }
         }
 
         $stmt = $this->db->prepare($query);
@@ -440,6 +443,7 @@ class Payslip extends Model
                     p.payment_method,
                     p.company_bank_id,
                     p.upload_by,
+                    p.email_sent_at,
                     ar.approved_at AS approval_time,
                     ar.status AS approval_status,
                     pd.amount AS lwp_amount,
@@ -464,17 +468,6 @@ class Payslip extends Model
 
             $params = [$projectId];
             $types = "i";
-
-            if (!empty($year)) {
-                $sql .= " AND YEAR(p.payslip_month) = ?";
-                $params[] = (int) $year;
-                $types .= "i";
-            }
-            if (!empty($month)) {
-                $sql .= " AND MONTH(p.payslip_month) = ?";
-                $params[] = (int) $month;
-                $types .= "i";
-            }
 
             if ($status === 'paid') {
                 $sql .= " AND p.status = 'paid' AND (p.is_excluded = 0 OR p.is_excluded IS NULL)";
@@ -520,6 +513,7 @@ class Payslip extends Model
                     p.payment_method,
                     p.company_bank_id,
                     p.upload_by,
+                    p.email_sent_at,
                     ar.approved_at AS approval_time,
                     ar.status AS approval_status,
                     pd.amount AS lwp_amount,
@@ -562,6 +556,7 @@ class Payslip extends Model
                     p.payment_method,
                     p.company_bank_id,
                     p.upload_by,
+                    p.email_sent_at,
                     ar.approved_at AS approval_time,
                     ar.status AS approval_status,
                     pd.amount AS lwp_amount,

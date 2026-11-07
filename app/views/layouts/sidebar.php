@@ -1,5 +1,17 @@
 <!-- app-sidebar-start -->
 <style>
+    .main-sidebar-header {
+        max-height: 68px !important;
+        overflow: hidden !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+    .main-sidebar-header .header-logo img {
+        max-height: 42px !important;
+        width: auto !important;
+        max-width: 170px !important;
+        object-fit: contain !important;
+    }
     .sidebar__menu-item .badge {
         font-size: 10px !important;
         padding: 3px 6px !important;
@@ -1980,9 +1992,9 @@
 
                     <!-- Payroll & Report -->
                     <li
-                        class="slide has-sub <?= isActive(['payroll-workspace', 'payroll-salary-hold', 'payroll-attendance-report', 'payroll-joining-list', 'payroll-resign-list', 'payroll-detailed-summary', 'payroll-summary-report', 'payroll-salary-report', 'payroll-liquidity-report'], $current_route) ? 'active' : '' ?>">
+                        class="slide has-sub <?= isActive(['payroll-workspace', 'payroll-salary-hold', 'payroll-attendance-report', 'payroll-joining-list', 'payroll-resign-list', 'payroll-reports', 'payroll-detailed-summary', 'payroll-summary-report', 'payroll-salary-report', 'payroll-liquidity-report'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['payroll-workspace', 'payroll-salary-hold', 'payroll-attendance-report', 'payroll-joining-list', 'payroll-resign-list', 'payroll-detailed-summary', 'payroll-summary-report', 'payroll-salary-report', 'payroll-liquidity-report'], $current_route) ? 'menu-open active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['payroll-workspace', 'payroll-salary-hold', 'payroll-attendance-report', 'payroll-joining-list', 'payroll-resign-list', 'payroll-reports', 'payroll-detailed-summary', 'payroll-summary-report', 'payroll-salary-report', 'payroll-liquidity-report'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-regular fa-file-excel"></i></div>
                             <span class="sidebar__menu-label">Payroll & Report</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -2014,24 +2026,9 @@
                                     List</a>
                             </li>
                             <li class="slide">
-                                <a href="<?= $base_url ?>/payroll-detailed-summary"
-                                    class="sidebar__menu-item <?= isActive('payroll-detailed-summary', $current_route) ?>">Detailed
-                                    Summary</a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/payroll-summary-report"
-                                    class="sidebar__menu-item <?= isActive('payroll-summary-report', $current_route) ?>">Payroll
-                                    Summary Report</a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/payroll-salary-report"
-                                    class="sidebar__menu-item <?= isActive('payroll-salary-report', $current_route) ?>">Salary
-                                    Report</a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/payroll-liquidity-report"
-                                    class="sidebar__menu-item <?= isActive('payroll-liquidity-report', $current_route) ?>">Liquidity
-                                    Management</a>
+                                <a href="<?= $base_url ?>/payroll-reports"
+                                    class="sidebar__menu-item <?= isActive(['payroll-reports', 'payroll-detailed-summary', 'payroll-summary-report', 'payroll-salary-report', 'payroll-liquidity-report'], $current_route) ? 'active' : '' ?>">Payroll
+                                    Reports</a>
                             </li>
                         </ul>
                     </li>
@@ -2629,6 +2626,14 @@
                             </li>
                         <?php endif; ?>
                     <?php endif; ?>
+                    <li class="slide <?= isActive('payslip-lists', $current_route) ?>">
+                        <a href="<?= $base_url ?>/payslip-lists"
+                            class="sidebar__menu-item <?= isActive('payslip-lists', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-money-check-dollar text-success"></i></div>
+                            <span class="sidebar__menu-label">Payroll Disbursement</span>
+                            <span class="badge bg-success-subtle text-success rounded-pill ms-auto me-2" style="font-size: 10px;">Payout</span>
+                        </a>
+                    </li>
                     <li class="slide   <?= isActive('central-statement', $current_route) ?>">
                         <a href="<?= $base_url ?>/central-statement"
                             class="sidebar__menu-item <?= isActive('central-statement', $current_route) ?>">

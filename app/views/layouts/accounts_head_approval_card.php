@@ -26,8 +26,8 @@ if (!isset($ahInfo)) {
     }
 }
 
-// If no approval request found for this entity, only render modals/scripts, skip top card
-$renderCard = (!empty($ahInfo) && !empty($ahInfo['has_request']));
+// If no approval request found for this entity (or explicitly hidden for minimal layout), only render modals/scripts, skip top card
+$renderCard = empty($hideAhTopCard) && (!empty($ahInfo) && !empty($ahInfo['has_request']));
 
 if (empty($coaList)) {
     $dbForCoa = $GLOBALS['db'] ?? ($this->db ?? (function_exists('db') ? db() : null));
@@ -100,7 +100,7 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
 <?php if ($renderCard): ?>
 
     <!-- TIER 1: ADMIN & OPERATION HEAD STAGE (DISPLAYED FOR REQUESTS > ৳10,000) -->
-    <?php if ($isOver1Lac): ?>
+    <?php if ($isOver1Lac && ($sourceTable ?? '') !== 'payslips'): ?>
     <div class="card border shadow-sm mb-3" id="operationHeadApprovalCard" style="border-radius: 10px; overflow: hidden;">
         <div class="card-header d-flex flex-wrap align-items-center justify-content-between py-2 px-3 <?= $isOpHeadApproved ? 'bg-success-subtle border-success-subtle' : ($isOpHeadRejected ? 'bg-danger-subtle border-danger-subtle' : 'bg-warning-subtle border-warning-subtle') ?>">
             <div class="d-flex align-items-center gap-2">
@@ -303,7 +303,7 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
 
                 <!-- Action / Status Notice Column -->
                 <div class="col-md-5 col-12 text-md-end text-start">
-                    <?php if ($isOver1Lac && !$isOpHeadApproved && !$isOpHeadBypassed): ?>
+                    <?php if ($isOver1Lac && ($sourceTable ?? '') !== 'payslips' && !$isOpHeadApproved && !$isOpHeadBypassed): ?>
                         <div class="p-2 bg-light rounded border text-start d-inline-block">
                             <div class="extra-small text-muted fw-bold">
                                 <i class="fa-solid fa-lock text-warning me-1"></i>Awaiting Previous Approvals
