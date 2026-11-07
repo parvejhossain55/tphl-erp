@@ -9,7 +9,7 @@ $show_breadcrumb = true;
         <div class="alert alert-info py-2 px-3 mb-4 d-flex align-items-center">
             <i class="bi bi-info-circle-fill me-2 fs-5"></i>
             <small>
-                <strong>Multi-Step Approval Process:</strong> Once submitted, this contractor request will progress through required approvals (Dept Head &rarr; Purchase Head &rarr; Role 20 &rarr; Role 38 Board of Director &rarr; Management) before becoming active.
+                <strong>Multi-Step Approval Process:</strong> Once submitted, this contractor request will progress through required approvals (Dept Head &rarr; Purchase Head &rarr; Admin & Operation Head &rarr; Board of Director &rarr; Management) before becoming active.
             </small>
         </div>
         <form action="<?= $GLOBALS['base_url'] ?>/con-contractor-store" method="POST">

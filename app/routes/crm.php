@@ -130,6 +130,7 @@ return [
     'booking-update' => ['controller' => 'BookingController', 'method' => 'update'],
     'booking-delete/(\d+)' => ['controller' => 'BookingController', 'method' => 'delete'],
     'booking-quick-refund' => ['controller' => 'BookingController', 'method' => 'quickRefund'],
+    'get-booking-payment-summary/(\d+)' => ['controller' => 'BookingController', 'method' => 'getBookingPaymentSummaryAjax'],
     'get-flats-by-project/(\d+)' => ['controller' => 'BookingController', 'method' => 'getFlatsByProject'],
     'update-flats-by-project' => ['controller' => 'BookingController', 'method' => 'update'],
 

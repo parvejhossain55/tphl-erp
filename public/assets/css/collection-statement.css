@@ -195,6 +195,51 @@
     vertical-align: middle;
 }
 
+/* Table Cards & Headers */
+.cs-table-card {
+    background-color: #ffffff;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+.cs-card-header,
+.cs-card-footer {
+    background-color: #ffffff;
+    border-color: #e2e8f0;
+}
+
+/* Light Mode Column Highlights */
+th.col-dev-charge { background-color: #fffbeb !important; }
+td.col-dev-charge { background-color: #fffdf5; }
+
+th.col-emi { background-color: #f0fdf4 !important; }
+td.col-emi { background-color: #f7fee7; }
+
+th.col-settlement { background-color: #f0fdf4 !important; }
+td.col-settlement { background-color: #f0fdf4; }
+
+th.col-booking { background-color: #faf5ff !important; }
+td.col-booking { background-color: #faf5ff; }
+
+th.col-total { background-color: #f8fafc !important; }
+td.col-total { background-color: #f8fafc; }
+
+.cs-tfoot-row {
+    background-color: #f8fafc;
+    border-top: 2px solid #cbd5e1;
+    color: #1e293b;
+}
+.cs-grand-label {
+    color: #1e293b;
+}
+.cs-total-badge {
+    background-color: rgba(99, 102, 241, 0.12) !important;
+}
+
+/* Rows Per Page Box */
+.cs-rows-box {
+    background-color: #f8fafc;
+    border-color: #cbd5e1;
+}
+
 .collector-avatar {
     width: 34px;
     height: 34px;
@@ -335,28 +380,402 @@ body.dark .cs-header-btns .btn-outline-secondary:hover {
 [bd-theme="bd-theme-dark"] .c-cheque .c-amount,[data-bs-theme="dark"] .c-cheque .c-amount,html.dark .c-cheque .c-amount,body.dark .c-cheque .c-amount{ color: #fbbf24 !important; }
 [bd-theme="bd-theme-dark"] .c-online .c-amount,[data-bs-theme="dark"] .c-online .c-amount,html.dark .c-online .c-amount,body.dark .c-online .c-amount{ color: #f472b6 !important; }
 
-[bd-theme="bd-theme-dark"] .table-collection th,
-[data-bs-theme="dark"] .table-collection th,
-html.dark .table-collection th,
-body.dark .table-collection th,
-[bd-theme="bd-theme-dark"] .table-ced th,
-[data-bs-theme="dark"] .table-ced th,
-html.dark .table-ced th,
-body.dark .table-ced th {
-    background-color: #1e293b !important;
-    color: #cbd5e1 !important;
-    border-bottom-color: #334155 !important;
+/* =========================================================
+   DARK MODE OVERRIDES (Compatible with bd-theme-dark & BS dark)
+   ========================================================= */
+:root[bd-theme="bd-theme-dark"] .cs-table-card,
+[bd-theme="bd-theme-dark"] .cs-table-card,
+[data-bs-theme="dark"] .cs-table-card,
+[data-theme="dark"] .cs-table-card,
+body.dark-mode .cs-table-card,
+body.dark-only .cs-table-card,
+body.dark .cs-table-card,
+html.dark .cs-table-card {
+    background-color: #16202e !important;
+    border-color: #243042 !important;
 }
 
-[bd-theme="bd-theme-dark"] .table-collection td,
-[data-bs-theme="dark"] .table-collection td,
-html.dark .table-collection td,
-body.dark .table-collection td,
-[bd-theme="bd-theme-dark"] .table-ced td,
-[data-bs-theme="dark"] .table-ced td,
-html.dark .table-ced td,
-body.dark .table-ced td {
+:root[bd-theme="bd-theme-dark"] .cs-card-header,
+[bd-theme="bd-theme-dark"] .cs-card-header,
+[data-bs-theme="dark"] .cs-card-header,
+[data-theme="dark"] .cs-card-header,
+body.dark-mode .cs-card-header,
+body.dark .cs-card-header,
+html.dark .cs-card-header,
+:root[bd-theme="bd-theme-dark"] .cs-card-footer,
+[bd-theme="bd-theme-dark"] .cs-card-footer,
+[data-bs-theme="dark"] .cs-card-footer,
+[data-theme="dark"] .cs-card-footer,
+body.dark-mode .cs-card-footer,
+body.dark .cs-card-footer,
+html.dark .cs-card-footer {
+    background-color: #1a2436 !important;
+    border-color: #243042 !important;
+    color: #f1f5f9 !important;
+}
+
+/* Dark Mode Table Base */
+:root[bd-theme="bd-theme-dark"] .table-ced,
+[bd-theme="bd-theme-dark"] .table-ced,
+[data-bs-theme="dark"] .table-ced,
+[data-theme="dark"] .table-ced,
+body.dark-mode .table-ced,
+body.dark .table-ced,
+html.dark .table-ced,
+:root[bd-theme="bd-theme-dark"] .table-collection,
+[bd-theme="bd-theme-dark"] .table-collection,
+[data-bs-theme="dark"] .table-collection,
+[data-theme="dark"] .table-collection,
+body.dark-mode .table-collection,
+body.dark .table-collection,
+html.dark .table-collection {
+    --bs-table-bg: transparent;
+    --bs-table-color: #cbd5e1;
+    --bs-table-border-color: #243042;
+    background-color: transparent !important;
+    border-color: #243042 !important;
+    color: #cbd5e1 !important;
+}
+
+/* Headers in Dark Mode */
+:root[bd-theme="bd-theme-dark"] .table-ced thead th,
+[bd-theme="bd-theme-dark"] .table-ced thead th,
+[data-bs-theme="dark"] .table-ced thead th,
+[data-theme="dark"] .table-ced thead th,
+body.dark-mode .table-ced thead th,
+body.dark .table-ced thead th,
+html.dark .table-ced thead th,
+:root[bd-theme="bd-theme-dark"] .table-collection thead th,
+[bd-theme="bd-theme-dark"] .table-collection thead th,
+[data-bs-theme="dark"] .table-collection thead th,
+[data-theme="dark"] .table-collection thead th,
+body.dark-mode .table-collection thead th,
+body.dark .table-collection thead th,
+html.dark .table-collection thead th {
+    background-color: #121927 !important;
+    color: #cbd5e1 !important;
+    border-bottom: 2px solid #243042 !important;
+    border-top: none !important;
+}
+
+/* Rows and Cells in Dark Mode */
+:root[bd-theme="bd-theme-dark"] .table-ced tbody tr,
+[bd-theme="bd-theme-dark"] .table-ced tbody tr,
+[data-bs-theme="dark"] .table-ced tbody tr,
+[data-theme="dark"] .table-ced tbody tr,
+body.dark-mode .table-ced tbody tr,
+body.dark .table-ced tbody tr,
+html.dark .table-ced tbody tr,
+:root[bd-theme="bd-theme-dark"] .table-collection tbody tr,
+[bd-theme="bd-theme-dark"] .table-collection tbody tr,
+[data-bs-theme="dark"] .table-collection tbody tr,
+[data-theme="dark"] .table-collection tbody tr,
+body.dark-mode .table-collection tbody tr,
+body.dark .table-collection tbody tr,
+html.dark .table-collection tbody tr {
+    background-color: transparent !important;
+    color: #cbd5e1 !important;
+}
+
+:root[bd-theme="bd-theme-dark"] .table-ced tbody td,
+[bd-theme="bd-theme-dark"] .table-ced tbody td,
+[data-bs-theme="dark"] .table-ced tbody td,
+[data-theme="dark"] .table-ced tbody td,
+body.dark-mode .table-ced tbody td,
+body.dark .table-ced tbody td,
+html.dark .table-ced tbody td,
+:root[bd-theme="bd-theme-dark"] .table-collection tbody td,
+[bd-theme="bd-theme-dark"] .table-collection tbody td,
+[data-bs-theme="dark"] .table-collection tbody td,
+[data-theme="dark"] .table-collection tbody td,
+body.dark-mode .table-collection tbody td,
+body.dark .table-collection tbody td,
+html.dark .table-collection tbody td {
+    background-color: transparent;
+    border-color: #243042 !important;
+    color: #cbd5e1;
+}
+
+/* Row Hover */
+:root[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover,
+[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover,
+[data-bs-theme="dark"] .table-ced.table-hover tbody tr:hover,
+body.dark-mode .table-ced.table-hover tbody tr:hover,
+body.dark .table-ced.table-hover tbody tr:hover,
+html.dark .table-ced.table-hover tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+:root[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover > td,
+[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover > td,
+[data-bs-theme="dark"] .table-ced.table-hover tbody tr:hover > td,
+body.dark-mode .table-ced.table-hover tbody tr:hover > td,
+body.dark .table-ced.table-hover tbody tr:hover > td,
+html.dark .table-ced.table-hover tbody tr:hover > td {
+    background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Columns Dark Mode Colors */
+/* Dev Charge */
+:root[bd-theme="bd-theme-dark"] th.col-dev-charge,
+[bd-theme="bd-theme-dark"] th.col-dev-charge,
+[data-bs-theme="dark"] th.col-dev-charge,
+[data-theme="dark"] th.col-dev-charge,
+body.dark-mode th.col-dev-charge,
+body.dark th.col-dev-charge,
+html.dark th.col-dev-charge {
+    background-color: rgba(245, 158, 11, 0.14) !important;
+    color: #fcd34d !important;
+    border-bottom: 2px solid rgba(245, 158, 11, 0.35) !important;
+}
+:root[bd-theme="bd-theme-dark"] td.col-dev-charge,
+[bd-theme="bd-theme-dark"] td.col-dev-charge,
+[data-bs-theme="dark"] td.col-dev-charge,
+[data-theme="dark"] td.col-dev-charge,
+body.dark-mode td.col-dev-charge,
+body.dark td.col-dev-charge,
+html.dark td.col-dev-charge {
+    background-color: rgba(245, 158, 11, 0.06) !important;
+    color: #fbbf24 !important;
+}
+:root[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover > td.col-dev-charge,
+[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover > td.col-dev-charge,
+[data-bs-theme="dark"] .table-ced.table-hover tbody tr:hover > td.col-dev-charge,
+body.dark-mode .table-ced.table-hover tbody tr:hover > td.col-dev-charge,
+body.dark .table-ced.table-hover tbody tr:hover > td.col-dev-charge,
+html.dark .table-ced.table-hover tbody tr:hover > td.col-dev-charge {
+    background-color: rgba(245, 158, 11, 0.13) !important;
+}
+
+/* Regular EMI */
+:root[bd-theme="bd-theme-dark"] th.col-emi,
+[bd-theme="bd-theme-dark"] th.col-emi,
+[data-bs-theme="dark"] th.col-emi,
+[data-theme="dark"] th.col-emi,
+body.dark-mode th.col-emi,
+body.dark th.col-emi,
+html.dark th.col-emi {
+    background-color: rgba(34, 197, 94, 0.14) !important;
+    color: #86efac !important;
+    border-bottom: 2px solid rgba(34, 197, 94, 0.35) !important;
+}
+:root[bd-theme="bd-theme-dark"] td.col-emi,
+[bd-theme="bd-theme-dark"] td.col-emi,
+[data-bs-theme="dark"] td.col-emi,
+[data-theme="dark"] td.col-emi,
+body.dark-mode td.col-emi,
+body.dark td.col-emi,
+html.dark td.col-emi {
+    background-color: rgba(34, 197, 94, 0.06) !important;
+    color: #4ade80 !important;
+}
+:root[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover > td.col-emi,
+[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover > td.col-emi,
+[data-bs-theme="dark"] .table-ced.table-hover tbody tr:hover > td.col-emi,
+body.dark-mode .table-ced.table-hover tbody tr:hover > td.col-emi,
+body.dark .table-ced.table-hover tbody tr:hover > td.col-emi,
+html.dark .table-ced.table-hover tbody tr:hover > td.col-emi {
+    background-color: rgba(34, 197, 94, 0.13) !important;
+}
+
+/* Due Settled */
+:root[bd-theme="bd-theme-dark"] th.col-settlement,
+[bd-theme="bd-theme-dark"] th.col-settlement,
+[data-bs-theme="dark"] th.col-settlement,
+[data-theme="dark"] th.col-settlement,
+body.dark-mode th.col-settlement,
+body.dark th.col-settlement,
+html.dark th.col-settlement {
+    background-color: rgba(14, 165, 233, 0.14) !important;
+    color: #7dd3fc !important;
+    border-bottom: 2px solid rgba(14, 165, 233, 0.35) !important;
+}
+:root[bd-theme="bd-theme-dark"] td.col-settlement,
+[bd-theme="bd-theme-dark"] td.col-settlement,
+[data-bs-theme="dark"] td.col-settlement,
+[data-theme="dark"] td.col-settlement,
+body.dark-mode td.col-settlement,
+body.dark td.col-settlement,
+html.dark td.col-settlement {
+    background-color: rgba(14, 165, 233, 0.06) !important;
+    color: #38bdf8 !important;
+}
+:root[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover > td.col-settlement,
+[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover > td.col-settlement,
+[data-bs-theme="dark"] .table-ced.table-hover tbody tr:hover > td.col-settlement,
+body.dark-mode .table-ced.table-hover tbody tr:hover > td.col-settlement,
+body.dark .table-ced.table-hover tbody tr:hover > td.col-settlement,
+html.dark .table-ced.table-hover tbody tr:hover > td.col-settlement {
+    background-color: rgba(14, 165, 233, 0.13) !important;
+}
+
+/* Booking / Registration */
+:root[bd-theme="bd-theme-dark"] th.col-booking,
+[bd-theme="bd-theme-dark"] th.col-booking,
+[data-bs-theme="dark"] th.col-booking,
+[data-theme="dark"] th.col-booking,
+body.dark-mode th.col-booking,
+body.dark th.col-booking,
+html.dark th.col-booking {
+    background-color: rgba(147, 51, 234, 0.14) !important;
+    color: #c084fc !important;
+    border-bottom: 2px solid rgba(147, 51, 234, 0.35) !important;
+}
+:root[bd-theme="bd-theme-dark"] td.col-booking,
+[bd-theme="bd-theme-dark"] td.col-booking,
+[data-bs-theme="dark"] td.col-booking,
+[data-theme="dark"] td.col-booking,
+body.dark-mode td.col-booking,
+body.dark td.col-booking,
+html.dark td.col-booking {
+    background-color: rgba(147, 51, 234, 0.06) !important;
+    color: #c084fc !important;
+}
+:root[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover > td.col-booking,
+[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover > td.col-booking,
+[data-bs-theme="dark"] .table-ced.table-hover tbody tr:hover > td.col-booking,
+body.dark-mode .table-ced.table-hover tbody tr:hover > td.col-booking,
+body.dark .table-ced.table-hover tbody tr:hover > td.col-booking,
+html.dark .table-ced.table-hover tbody tr:hover > td.col-booking {
+    background-color: rgba(147, 51, 234, 0.13) !important;
+}
+
+/* Total Amount */
+:root[bd-theme="bd-theme-dark"] th.col-total,
+[bd-theme="bd-theme-dark"] th.col-total,
+[data-bs-theme="dark"] th.col-total,
+[data-theme="dark"] th.col-total,
+body.dark-mode th.col-total,
+body.dark th.col-total,
+html.dark th.col-total {
+    background-color: rgba(99, 102, 241, 0.18) !important;
+    color: #a5b4fc !important;
+    border-bottom: 2px solid rgba(99, 102, 241, 0.4) !important;
+}
+:root[bd-theme="bd-theme-dark"] td.col-total,
+[bd-theme="bd-theme-dark"] td.col-total,
+[data-bs-theme="dark"] td.col-total,
+[data-theme="dark"] td.col-total,
+body.dark-mode td.col-total,
+body.dark td.col-total,
+html.dark td.col-total {
+    background-color: rgba(99, 102, 241, 0.10) !important;
+    color: #ffffff !important;
+}
+:root[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover > td.col-total,
+[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover > td.col-total,
+[data-bs-theme="dark"] .table-ced.table-hover tbody tr:hover > td.col-total,
+body.dark-mode .table-ced.table-hover tbody tr:hover > td.col-total,
+body.dark .table-ced.table-hover tbody tr:hover > td.col-total,
+html.dark .table-ced.table-hover tbody tr:hover > td.col-total {
+    background-color: rgba(99, 102, 241, 0.20) !important;
+}
+
+/* Footers in Dark Mode */
+:root[bd-theme="bd-theme-dark"] .cs-tfoot-row,
+[bd-theme="bd-theme-dark"] .cs-tfoot-row,
+[data-bs-theme="dark"] .cs-tfoot-row,
+[data-theme="dark"] .cs-tfoot-row,
+body.dark-mode .cs-tfoot-row,
+body.dark .cs-tfoot-row,
+html.dark .cs-tfoot-row {
+    background-color: #121927 !important;
+    border-top: 2px solid #334155 !important;
+    color: #f1f5f9 !important;
+}
+:root[bd-theme="bd-theme-dark"] .cs-grand-label,
+[bd-theme="bd-theme-dark"] .cs-grand-label,
+[data-bs-theme="dark"] .cs-grand-label,
+[data-theme="dark"] .cs-grand-label,
+body.dark-mode .cs-grand-label,
+body.dark .cs-grand-label,
+html.dark .cs-grand-label {
+    color: #f1f5f9 !important;
+}
+:root[bd-theme="bd-theme-dark"] .cs-total-badge,
+[bd-theme="bd-theme-dark"] .cs-total-badge,
+[data-bs-theme="dark"] .cs-total-badge,
+[data-theme="dark"] .cs-total-badge,
+body.dark-mode .cs-total-badge,
+body.dark .cs-total-badge,
+html.dark .cs-total-badge {
+    background-color: rgba(99, 102, 241, 0.25) !important;
+    color: #a5b4fc !important;
+}
+
+/* Dark Mode Typography & Badges in Tables */
+:root[bd-theme="bd-theme-dark"] .table-ced .text-dark,
+[bd-theme="bd-theme-dark"] .table-ced .text-dark,
+[data-bs-theme="dark"] .table-ced .text-dark,
+[data-theme="dark"] .table-ced .text-dark,
+body.dark-mode .table-ced .text-dark,
+body.dark .table-ced .text-dark,
+html.dark .table-ced .text-dark,
+:root[bd-theme="bd-theme-dark"] .cs-card-header .text-dark,
+[bd-theme="bd-theme-dark"] .cs-card-header .text-dark,
+[data-bs-theme="dark"] .cs-card-header .text-dark,
+[data-theme="dark"] .cs-card-header .text-dark,
+body.dark-mode .cs-card-header .text-dark,
+body.dark .cs-card-header .text-dark,
+html.dark .cs-card-header .text-dark {
+    color: #f1f5f9 !important;
+}
+
+:root[bd-theme="bd-theme-dark"] .table-ced .badge.bg-light,
+[bd-theme="bd-theme-dark"] .table-ced .badge.bg-light,
+[data-bs-theme="dark"] .table-ced .badge.bg-light,
+[data-theme="dark"] .table-ced .badge.bg-light,
+body.dark-mode .table-ced .badge.bg-light,
+body.dark .table-ced .badge.bg-light,
+html.dark .table-ced .badge.bg-light {
+    background-color: #243042 !important;
+    color: #cbd5e1 !important;
     border-color: #334155 !important;
+}
+
+:root[bd-theme="bd-theme-dark"] .cs-table-search-box .input-group-text,
+[bd-theme="bd-theme-dark"] .cs-table-search-box .input-group-text,
+[data-bs-theme="dark"] .cs-table-search-box .input-group-text,
+body.dark-mode .cs-table-search-box .input-group-text,
+body.dark .cs-table-search-box .input-group-text,
+html.dark .cs-table-search-box .input-group-text {
+    background-color: #121927 !important;
+    border-color: #243042 !important;
+    color: #94a3b8 !important;
+}
+
+:root[bd-theme="bd-theme-dark"] .cs-table-search-box .form-control,
+[bd-theme="bd-theme-dark"] .cs-table-search-box .form-control,
+[data-bs-theme="dark"] .cs-table-search-box .form-control,
+body.dark-mode .cs-table-search-box .form-control,
+body.dark .cs-table-search-box .form-control,
+html.dark .cs-table-search-box .form-control {
+    background-color: #0d131f !important;
+    border-color: #243042 !important;
+    color: #f1f5f9 !important;
+}
+
+/* Rows Per Page Box Dark Mode */
+:root[bd-theme="bd-theme-dark"] .cs-rows-box,
+[bd-theme="bd-theme-dark"] .cs-rows-box,
+[data-bs-theme="dark"] .cs-rows-box,
+[data-theme="dark"] .cs-rows-box,
+body.dark-mode .cs-rows-box,
+body.dark .cs-rows-box,
+html.dark .cs-rows-box {
+    background-color: #121927 !important;
+    border-color: #243042 !important;
+    color: #cbd5e1 !important;
+}
+
+:root[bd-theme="bd-theme-dark"] .cs-rows-box select,
+[bd-theme="bd-theme-dark"] .cs-rows-box select,
+[data-bs-theme="dark"] .cs-rows-box select,
+body.dark-mode .cs-rows-box select,
+body.dark .cs-rows-box select,
+html.dark .cs-rows-box select {
+    color: #f1f5f9 !important;
+    background-color: #121927 !important;
 }
 
 [bd-theme="bd-theme-dark"] .collector-avatar,

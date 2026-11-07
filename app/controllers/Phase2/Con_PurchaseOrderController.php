@@ -203,10 +203,14 @@ class Con_PurchaseOrderController extends Controller
         $linkedBoq = $this->poModel->getLinkedBoq($id);
 
         // Check if any material receiving already exists for this PO
+        $hasReceiving = false;
         $existingReceivingQuery = $this->db->prepare("SELECT COUNT(*) as count FROM material_receiving WHERE purchase_order_id = ?");
-        $existingReceivingQuery->bind_param('i', $id);
-        $existingReceivingQuery->execute();
-        $hasReceiving = $existingReceivingQuery->get_result()->fetch_assoc()['count'] > 0;
+        if ($existingReceivingQuery) {
+            $existingReceivingQuery->bind_param('i', $id);
+            $existingReceivingQuery->execute();
+            $hasReceiving = ($existingReceivingQuery->get_result()->fetch_assoc()['count'] ?? 0) > 0;
+            $existingReceivingQuery->close();
+        }
 
         // Fetch vendor selection data (attachment & prepared by)
         $vendorSelectionData = null;
@@ -219,9 +223,12 @@ class Con_PurchaseOrderController extends Controller
                 WHERE q.request_id = ? AND q.vendor_id = ?
                 LIMIT 1
             ");
-            $cstQuery->bind_param('ii', $po['request_id'], $po['vendor_id']);
-            $cstQuery->execute();
-            $vendorSelectionData = $cstQuery->get_result()->fetch_assoc();
+            if ($cstQuery) {
+                $cstQuery->bind_param('ii', $po['request_id'], $po['vendor_id']);
+                $cstQuery->execute();
+                $vendorSelectionData = $cstQuery->get_result()->fetch_assoc();
+                $cstQuery->close();
+            }
         }
 
         // Fetch the Comparative Statement (CST) matrix for this PR
@@ -799,11 +806,16 @@ class Con_PurchaseOrderController extends Controller
         }
 
         $stmt = $this->db->prepare("INSERT INTO po_negotiation_notes (purchase_order_id, request_id, user_id, note_text) VALUES (?, ?, ?, ?)");
-        $stmt->bind_param('iiis', $poId, $po['request_id'], $userId, $noteText);
-        if ($stmt->execute()) {
-            setSuccess('Observation note added successfully.');
+        if ($stmt) {
+            $stmt->bind_param('iiis', $poId, $po['request_id'], $userId, $noteText);
+            if ($stmt->execute()) {
+                setSuccess('Observation note added successfully.');
+            } else {
+                setError('Failed to add note: ' . $stmt->error);
+            }
+            $stmt->close();
         } else {
-            setError('Failed to add note: ' . $stmt->error);
+            setError('Failed to prepare note: ' . $this->db->error);
         }
 
         header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$poId}");

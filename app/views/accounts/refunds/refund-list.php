@@ -858,6 +858,7 @@ $statusMap = [
                                 <span class="text-muted small d-block">Client & Flat:</span>
                                 <strong class="text-dark fs-14" id="modalClientName">—</strong>
                                 <div class="text-muted small" id="modalProjectFlat">—</div>
+                                <div class="mt-1 fs-12 text-primary" id="modalBankExpectedNote" style="display:none;"></div>
                             </div>
                             <div class="col-md-6 text-md-end">
                                 <span class="text-muted small d-block">Approved Net Refund to Pay:</span>
@@ -1291,9 +1292,32 @@ function openQuickPayModal(refund) {
     document.getElementById('modalRefundAmount').innerText = '৳ ' + formatMoney(refund.refund_amount);
     document.getElementById('modalRetentionNote').innerText = 'Retention: ৳ ' + formatMoney(refund.retention_amount) + ' | Total Paid: ৳ ' + formatMoney(refund.total_paid);
 
-    // Default to Bank
-    document.getElementById('modalPaymentMethod').value = 'bank';
-    toggleModalFields('bank');
+    // Payment method & client bank pre-filling from sales submission
+    const preMethod = refund.preferred_payment_method || 'bank';
+    document.getElementById('modalPaymentMethod').value = preMethod;
+    toggleModalFields(preMethod);
+
+    const clientBankSel = document.getElementById('modalClientBankSelect');
+    if (clientBankSel && refund.client_bank_name) {
+        clientBankSel.value = refund.client_bank_name;
+    }
+    const clientAcInput = document.getElementById('modalClientAcNo');
+    if (clientAcInput && refund.client_bank_account_no) {
+        clientAcInput.value = refund.client_bank_account_no;
+    }
+
+    const noteEl = document.getElementById('modalBankExpectedNote');
+    if (noteEl) {
+        let notes = [];
+        if (refund.client_bank_name) notes.push('Client Bank: <strong>' + refund.client_bank_name + '</strong>' + (refund.client_bank_account_no ? ' (A/C: ' + refund.client_bank_account_no + ')' : ''));
+        if (refund.expected_refund_date) notes.push('Expected: <strong>' + refund.expected_refund_date + '</strong>');
+        if (notes.length > 0) {
+            noteEl.innerHTML = '<i class="fa-solid fa-circle-info me-1"></i> ' + notes.join(' | ');
+            noteEl.style.display = 'block';
+        } else {
+            noteEl.style.display = 'none';
+        }
+    }
 
     const modal = new bootstrap.Modal(document.getElementById('quickPayModal'));
     modal.show();

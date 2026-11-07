@@ -479,7 +479,7 @@ class ClientRefundController extends Controller
             $retentionAmount = max(0, $totalPaid - $approvedAmount);
         }
 
-        $isOver1Lac = ($approvedAmount > 10000);
+        $isOver1Lac = ($approvedAmount > 100000);
         $userRole = (int)($this->userRole ?? 0);
         $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
         $isOpHeadUser = (in_array($userRole, [20, 32], true) || str_contains($roleName, 'operation head'));
@@ -502,27 +502,12 @@ class ClientRefundController extends Controller
                 if ($arId > 0) {
                     $approvalModel->approveOperationHead($arId, $this->userId, $escNote);
                 } else {
-                    $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'accounts_head' WHERE source_table = 'client_refund_requests' AND source_id = " . (int)$id);
+                    $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'management' WHERE source_table = 'client_refund_requests' AND source_id = " . (int)$id);
                 }
-                setSuccess("Refund request verified & approved by Admin & Operation Head (Role 20). Forwarded to Accounts Head (Role 30) for payment verification.");
+                setSuccess("Refund request verified & approved by Admin & Operation Head (Role 20). Forwarded to Management for final sign-off.");
                 $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
-        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
+                header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
                 exit;
-            }
-
-            if ($isMgmtUser) {
-                if ($opHeadStatus !== 'approved') {
-                    setError("Access Denied: Refund requests exceeding ৳10,000 must be approved by Admin & Operation Head (Role 20) first.");
-                    $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
-        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
-                    exit;
-                }
-                if ($ahStatus !== 'approved') {
-                    setError("Access Denied: Refund requests exceeding ৳10,000 must be verified & approved by Accounts Head (Role 30) before Management can approve.");
-                    $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
-        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
-                    exit;
-                }
             }
         }
 
@@ -561,9 +546,9 @@ class ClientRefundController extends Controller
             $stmt->bind_param('idi', $this->userId, $approvedAmount, $cashoutId);
             $stmt->execute();
 
-            // Sync approval_requests for the refund
-            $nextRoleRf = ($ahStatus === 'approved') ? 'accounts' : 'accounts_head';
-            $nextAhStRf = ($ahStatus === 'approved') ? 'approved' : 'pending';
+            // Sync approval_requests for the refund (Directly to accounts for payout disbursement)
+            $nextRoleRf = 'accounts';
+            $nextAhStRf = 'approved';
             $arStmt = $this->db->prepare(
                 "UPDATE approval_requests
                  SET op_head_status = 'approved', status = 'approved', approved_by = ?, approved_at = NOW(), approved_amount = ?, request_amount = ?, approve_role = ?, accounts_head_status = ?
@@ -579,7 +564,6 @@ class ClientRefundController extends Controller
                  WHERE source_table = 'cashout_requests' AND source_id = ?"
             );
             $arCashoutStmt->bind_param('iddssi', $this->userId, $approvedAmount, $approvedAmount, $nextRoleRf, $nextAhStRf, $cashoutId);
-            $arCashoutStmt->bind_param('iddi', $this->userId, $approvedAmount, $approvedAmount, $cashoutId);
             $arCashoutStmt->execute();
         }
 
@@ -892,18 +876,6 @@ class ClientRefundController extends Controller
             exit;
         }
 
-        // Mandatory Accounts Head Approval Guard
-        if (!class_exists('ApprovalRequest')) {
-            require_once __DIR__ . '/../models/ApprovalRequest.php';
-        }
-        $ahCheck = ApprovalRequest::getAccountsHeadApprovalInfo($this->db, 'client_refund_requests', (int)$id);
-        if ($ahCheck && !empty($ahCheck['has_request']) && empty($ahCheck['is_accounts_head_approved'])) {
-            setError("Payment cannot be disbursed. Approval from Accounts Head is pending.");
-            $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
-        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
-            exit;
-        }
-
         $paymentMethod  = trim($_POST['payment_method'] ?? 'cash');
         $companyBankId  = !empty($_POST['company_bank_id']) ? (int)$_POST['company_bank_id'] : (!empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null);
         $chequeNo       = trim($_POST['cheque_no'] ?? '');
@@ -961,9 +933,9 @@ class ClientRefundController extends Controller
 
         $this->db->begin_transaction();
         try {
-            // 1. Update client_refund_requests status to 'refunded'
+            // 1. Update client_refund_requests status to 'refunded' and record disbursement proof
             $upStmt = $this->db->prepare("UPDATE client_refund_requests 
-                SET status = 'refunded', refunded_at = NOW(), document = ? 
+                SET status = 'refunded', refunded_at = NOW(), disbursement_proof = ? 
                 WHERE id = ?");
             $upStmt->bind_param("si", $proofPath, $id);
             $upStmt->execute();
@@ -987,7 +959,7 @@ class ClientRefundController extends Controller
             $payStmt = $this->db->prepare("INSERT INTO lead_payments 
                 (booking_id, amount, payment_method, bank_id, bank_name, bank_account_no, cheque_no, payment_status, verification_status, verified_by, verified_at, payment_date, transaction_ref, attachment_image, created_by) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, 'paid', 'verified', ?, NOW(), ?, ?, ?, ?)");
-            $payStmt->bind_param("idsisssissssi", $bookingId, $negAmount, $paymentMethod, $companyBankId, $clientBankName, $bankAccountNo, $chequeNo, $this->userId, $paymentDate, $fullRef, $proofPath, $this->userId);
+            $payStmt->bind_param("idsisssisssi", $bookingId, $negAmount, $paymentMethod, $companyBankId, $clientBankName, $bankAccountNo, $chequeNo, $this->userId, $paymentDate, $fullRef, $proofPath, $this->userId);
             $payStmt->execute();
 
             // 3. If linked cashout request exists, record in cashout_payments and set fully_paid

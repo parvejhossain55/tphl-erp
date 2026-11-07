@@ -117,7 +117,9 @@ class Con_PurchaseOrder extends Model
         }
         $stmt->bind_param('i', $id);
         $stmt->execute();
-        return $stmt->get_result()->fetch_assoc();
+        $res = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return $res;
     }
 
     public function getItems($poId)
@@ -146,9 +148,14 @@ class Con_PurchaseOrder extends Model
              WHERE poi.purchase_order_id = ?
              ORDER BY poi.id ASC"
         );
+        if (!$stmt) {
+            return [];
+        }
         $stmt->bind_param('i', $poId);
         $stmt->execute();
-        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $res = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $res;
     }
 
     /**
@@ -165,9 +172,14 @@ class Con_PurchaseOrder extends Model
              WHERE l.purchase_order_id = ?
              ORDER BY l.id DESC"
         );
+        if (!$stmt) {
+            return [];
+        }
         $stmt->bind_param('i', $poId);
         $stmt->execute();
-        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $res = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $res;
     }
 
     /**
@@ -182,9 +194,13 @@ class Con_PurchaseOrder extends Model
 
         // Verify item exists for this PO
         $stmt = $this->db->prepare("SELECT * FROM {$this->itemTable} WHERE id = ? AND purchase_order_id = ?");
+        if (!$stmt) {
+            return ['success' => false, 'error' => 'Database error (verify item): ' . $this->db->error];
+        }
         $stmt->bind_param('ii', $itemId, $poId);
         $stmt->execute();
         $item = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
         if (!$item) {
             return ['success' => false, 'error' => 'Purchase order item not found.'];
         }
@@ -195,9 +211,13 @@ class Con_PurchaseOrder extends Model
             FROM material_receiving_items
             WHERE purchase_order_item_id = ? AND status IN ('Accepted', 'Partially Accepted')
         ");
+        if (!$recvStmt) {
+            return ['success' => false, 'error' => 'Database error (check receiving): ' . $this->db->error];
+        }
         $recvStmt->bind_param('i', $itemId);
         $recvStmt->execute();
         $recvRow = $recvStmt->get_result()->fetch_assoc();
+        $recvStmt->close();
         $receivedTotal = (float)($recvRow['received'] ?? 0);
 
         if ($newQty < $receivedTotal) {
@@ -221,8 +241,12 @@ class Con_PurchaseOrder extends Model
         try {
             // Update purchase_order_items
             $upStmt = $this->db->prepare("UPDATE {$this->itemTable} SET quantity = ?, total_price = ? WHERE id = ?");
+            if (!$upStmt) {
+                throw new \Exception("Database error on prepare item update: " . $this->db->error);
+            }
             $upStmt->bind_param('ddi', $newQty, $newTotalPrice, $itemId);
             $upStmt->execute();
+            $upStmt->close();
 
             // Insert audit record
             $logStmt = $this->db->prepare("
@@ -230,6 +254,9 @@ class Con_PurchaseOrder extends Model
                 (purchase_order_id, purchase_order_item_id, material_id, old_quantity, new_quantity, unit_price, old_total_price, new_total_price, changed_by, reason)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
+            if (!$logStmt) {
+                throw new \Exception("Database error on prepare audit log: " . $this->db->error);
+            }
             $logStmt->bind_param(
                 'iiidddddis',
                 $poId,
@@ -244,6 +271,7 @@ class Con_PurchaseOrder extends Model
                 $reason
             );
             $logStmt->execute();
+            $logStmt->close();
 
             $this->db->commit();
             return [

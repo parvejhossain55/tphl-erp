@@ -370,63 +370,138 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
 
 <!-- Quick Refund Confirmation Modal -->
+<?php 
+    $bdBanksList = function_exists('getBangladeshBanks') ? getBangladeshBanks() : [];
+?>
 <div id="quickRefundModal" class="modal custom-modal fade" role="dialog">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title text-white">
-                    <i class="fa-solid fa-triangle-exclamation me-2"></i>Confirm Booking Refund
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-danger text-white py-2.5 px-3">
+                <h5 class="modal-title fs-15 fw-bold text-white">
+                    <i class="fa-solid fa-triangle-exclamation me-2"></i>Initiate Client Refund Request
                 </h5>
                 <button type="button" class="bd-btn-close btn-close-white" data-bs-dismiss="modal">
                     <i class="fa-solid fa-xmark-large text-white"></i>
                 </button>
             </div>
-            <form action="<?= $GLOBALS['base_url'] ?>/booking-quick-refund" method="POST">
-                <div class="modal-body">
+            <form action="<?= $GLOBALS['base_url'] ?>/booking-quick-refund" method="POST" enctype="multipart/form-data">
+                <div class="modal-body p-3">
                     <input type="hidden" name="booking_id" id="refund_booking_id">
 
-                    <div class="alert alert-warning d-flex align-items-start gap-2 mb-3">
-                        <i class="fa-solid fa-circle-info fs-5 mt-1 text-warning"></i>
+                    <div class="alert alert-warning d-flex align-items-start gap-2 mb-3 py-2 px-3">
+                        <i class="fa-solid fa-circle-info fs-5 mt-0.5 text-warning flex-shrink-0"></i>
                         <div class="small">
-                            <strong>সতর্কতা:</strong> রিফান্ড কনফার্ম করলে সংশ্লিষ্ট ফ্ল্যাট ইউনিটটি তাৎক্ষণিকভাবে সিস্টেমে <strong>Available (উন্মুক্ত)</strong> হয়ে যাবে এবং অনুমোদনের জন্য ম্যানেজমেন্টের কাছে যাবে।
+                            <strong>Notice:</strong> Initiating refund will set booking status to <strong>Refunded</strong>, instantly release the flat unit as <strong>Available</strong>, and submit this refund request for Management &amp; Accounts processing.
                         </div>
                     </div>
 
-                    <div class="bg-light p-3 rounded mb-3 border">
+                    <div class="bg-light p-3 rounded-2 mb-3 border">
                         <div class="row g-2 small">
-                            <div class="col-6"><strong>Client:</strong> <span id="refund_client_name">—</span></div>
-                            <div class="col-6"><strong>Project:</strong> <span id="refund_project_name">—</span></div>
-                            <div class="col-6"><strong>Flat:</strong> <span id="refund_flat_name">—</span></div>
-                            <div class="col-6"><strong>Agreement:</strong> ৳<span id="refund_agreement_val">0.00</span></div>
+                            <div class="col-sm-6"><strong>Client:</strong> <span id="refund_client_name" class="text-dark fw-semibold">—</span></div>
+                            <div class="col-sm-6"><strong>Project:</strong> <span id="refund_project_name" class="text-dark fw-semibold">—</span></div>
+                            <div class="col-sm-6"><strong>Flat Unit:</strong> <span id="refund_flat_name" class="text-dark fw-semibold">—</span></div>
+                            <div class="col-sm-6"><strong>Agreement Value:</strong> ৳<span id="refund_agreement_val" class="font-monospace">0.00</span></div>
                         </div>
                     </div>
 
+                    <!-- Total Verified Paid & Optional Expected Refund Date -->
                     <div class="row g-2 mb-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold small mb-1">Total Verified Paid (মোট আদায়)</label>
-                            <input type="text" id="refund_total_paid_display" class="form-control form-control-sm bg-light fw-bold text-dark" readonly value="৳0.00">
+                            <label class="form-label fw-semibold small mb-1">Total Verified Paid (আদায়কৃত টাকা)</label>
+                            <input type="text" id="refund_total_paid_display" class="form-control form-control-sm bg-light fw-bold text-success font-monospace" readonly value="৳ 0.00">
+                            <small class="text-muted d-block mt-1" id="refund_paid_helper" style="font-size: 11px;">
+                                <i class="fa-light fa-circle-check text-success me-1"></i>Verified collection from client
+                            </small>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold small mb-1 text-danger">Retention Amount (কোম্পানি কর্তন ৳)</label>
-                            <input type="number" step="0.01" name="retention_amount" id="refund_retention_amount" class="form-control form-control-sm fw-bold border-danger text-danger" value="0.00" min="0">
+                            <label class="form-label fw-semibold small mb-1">Expected Refund Date <span class="text-muted">(Optional)</span></label>
+                            <input type="date" name="expected_refund_date" id="refund_expected_date" class="form-control form-control-sm" min="<?= date('Y-m-d') ?>">
+                            <small class="text-muted d-block mt-1" style="font-size: 11px;">
+                                <i class="fa-light fa-calendar me-1"></i>Client's expected payout date if requested
+                            </small>
                         </div>
-                        <div class="col-12 mt-1">
-                            <div class="p-2 rounded bg-light border text-success fw-bold small d-flex justify-content-between align-items-center">
-                                <span>Estimated Net Refund to Client:</span>
-                                <span class="fs-14">৳<span id="refund_net_display">0.00</span></span>
+                    </div>
+
+                    <!-- Refund Reason -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small mb-1">Refund Reason (রিফান্ডের কারণ) <span class="text-danger">*</span></label>
+                        <textarea name="reason" id="refund_reason" class="form-control form-control-sm" rows="2" required placeholder="State why the client is requesting this refund..."></textarea>
+                    </div>
+
+                    <!-- Client Payout Bank & Payment Information -->
+                    <div class="card custom-card border mb-3 shadow-none">
+                        <div class="card-header bg-light py-2 px-3 border-bottom d-flex align-items-center">
+                            <i class="fa-solid fa-building-columns text-primary me-2"></i>
+                            <h6 class="card-title mb-0 fs-13 fw-semibold text-primary">Client Payout Bank &amp; Payment Details</h6>
+                        </div>
+                        <div class="card-body p-3 bg-white">
+                            <div class="row g-2">
+                                <!-- Preferred Payment Method -->
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold small mb-1">Payment Method</label>
+                                    <select name="preferred_payment_method" id="refund_preferred_method" class="form-select form-select-sm">
+                                        <option value="bank" selected>Bank Transfer</option>
+                                        <option value="cheque">Cheque</option>
+                                        <option value="cash">Cash</option>
+                                    </select>
+                                </div>
+
+                                <!-- Client Bank Name -->
+                                <div class="col-md-8">
+                                    <label class="form-label fw-semibold small mb-1">Client Bank Name</label>
+                                    <select name="client_bank_name" id="refund_client_bank_name" class="form-select form-select-sm">
+                                        <option value="">-- Select Client Bank --</option>
+                                        <option value="Other Country / Foreign Bank">Other Country / Foreign Bank</option>
+                                        <option value="Other Bank">Other Bank</option>
+                                        <?php foreach ($bdBanksList as $bName): ?>
+                                            <option value="<?= htmlspecialchars($bName) ?>"><?= htmlspecialchars($bName) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+
+                                <!-- Bank Account Name -->
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small mb-1">A/C Holder / Client Name</label>
+                                    <input type="text" name="client_bank_account_name" id="refund_client_bank_acc_name" class="form-control form-control-sm" placeholder="Name as per bank account">
+                                </div>
+
+                                <!-- Bank Account Number -->
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small mb-1">Bank Account Number</label>
+                                    <input type="text" name="client_bank_account_no" id="refund_client_bank_acc_no" class="form-control form-control-sm" placeholder="Client bank account number">
+                                </div>
+
+                                <!-- Bank Branch Name -->
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small mb-1">Branch Name</label>
+                                    <input type="text" name="client_bank_branch" id="refund_client_bank_branch" class="form-control form-control-sm" placeholder="e.g. Gulshan Branch / Principal Branch">
+                                </div>
+
+                                <!-- Routing Number (Optional) -->
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small mb-1">Routing Number <span class="text-muted">(Optional)</span></label>
+                                    <input type="text" name="client_bank_routing_no" id="refund_client_bank_routing" class="form-control form-control-sm" placeholder="e.g. 090271234">
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Refund Reason (রিফান্ডের কারণ) <span class="text-danger">*</span></label>
-                        <textarea name="reason" id="refund_reason" class="form-control" rows="3" required placeholder="কেন রিফান্ড করা হচ্ছে তা বিস্তারিত লিখুন..."></textarea>
+                    <!-- Client Application Attachment (PDF / Image) -->
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold small mb-1">
+                            <i class="fa-light fa-paperclip text-primary me-1"></i> Client Refund Application / Cheque Copy / Document Attachment
+                            <span class="text-muted small ms-1">(PDF, JPG, JPEG, PNG — max 10MB)</span>
+                        </label>
+                        <input type="file" name="refund_attachment" id="refund_attachment_file" class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png">
+                        <small class="text-muted fs-11 d-block mt-1">
+                            Upload client's written refund application letter, bank cheque scan, or ID document.
+                        </small>
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer bg-light py-2 px-3">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to release this flat and initiate refund?');">
-                        <i class="fa-solid fa-check me-1"></i> Confirm & Release Flat
+                    <button type="submit" class="btn btn-danger btn-sm fw-bold px-3" onclick="return confirm('Are you sure you want to release this flat and initiate refund request?');">
+                        <i class="fa-solid fa-paper-plane me-1"></i> Submit Refund Request
                     </button>
                 </div>
             </form>
@@ -830,8 +905,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
             });
         });
 
-        // Quick Refund Modal data population & retention calculation
-        let currentRefundPaid = 0;
+        // Quick Refund Modal data population & live verified payment fetch
         document.querySelectorAll('.quickRefundBtn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const bookingId = this.dataset.id || '';
@@ -839,7 +913,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 const project = this.dataset.project || '—';
                 const flat = this.dataset.flat || '—';
                 const agreement = this.dataset.agreement || '0.00';
-                currentRefundPaid = parseFloat(this.dataset.paid) || 0;
+                const datasetPaid = parseFloat(this.dataset.paid) || 0;
 
                 const idInput = document.getElementById('refund_booking_id');
                 const clientSpan = document.getElementById('refund_client_name');
@@ -848,8 +922,14 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 const agreementSpan = document.getElementById('refund_agreement_val');
                 const reasonInput = document.getElementById('refund_reason');
                 const paidInput = document.getElementById('refund_total_paid_display');
-                const retentionInput = document.getElementById('refund_retention_amount');
-                const netSpan = document.getElementById('refund_net_display');
+                const paidHelper = document.getElementById('refund_paid_helper');
+                const expectedDateInput = document.getElementById('refund_expected_date');
+                const accNameInput = document.getElementById('refund_client_bank_acc_name');
+                const bankNameInput = document.getElementById('refund_client_bank_name');
+                const bankBranchInput = document.getElementById('refund_client_bank_branch');
+                const bankAccNoInput = document.getElementById('refund_client_bank_acc_no');
+                const bankRoutingInput = document.getElementById('refund_client_bank_routing');
+                const attachmentInput = document.getElementById('refund_attachment_file');
 
                 if (idInput) idInput.value = bookingId;
                 if (clientSpan) clientSpan.textContent = client;
@@ -857,25 +937,51 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 if (flatSpan) flatSpan.textContent = flat;
                 if (agreementSpan) agreementSpan.textContent = agreement;
                 if (reasonInput) reasonInput.value = '';
-                if (paidInput) paidInput.value = '৳ ' + currentRefundPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                if (retentionInput) {
-                    retentionInput.value = '0.00';
-                    retentionInput.max = currentRefundPaid;
+                if (expectedDateInput) expectedDateInput.value = '';
+
+                // Set initial verified paid from dataset
+                if (paidInput) {
+                    paidInput.value = '৳ ' + datasetPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
                 }
-                if (netSpan) netSpan.textContent = currentRefundPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                if (paidHelper) {
+                    paidHelper.innerHTML = datasetPaid > 0 
+                        ? '<span class="text-success"><i class="fa-light fa-circle-check me-1"></i>Verified collection from client</span>'
+                        : '<span class="text-muted"><i class="fa-light fa-info-circle me-1"></i>Checking verified payments...</span>';
+                }
+
+                // Pre-fill client name into Bank Account Name and reset other inputs
+                if (accNameInput) accNameInput.value = (client && client !== '—') ? client : '';
+                if (bankNameInput) bankNameInput.value = '';
+                if (bankBranchInput) bankBranchInput.value = '';
+                if (bankAccNoInput) bankAccNoInput.value = '';
+                if (bankRoutingInput) bankRoutingInput.value = '';
+                if (attachmentInput) attachmentInput.value = '';
+
+                // Live AJAX fetch to guarantee accurate real-time verified payment total
+                if (bookingId) {
+                    fetch('<?= $GLOBALS['base_url'] ?>/get-booking-payment-summary/' + bookingId)
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success) {
+                                const vPaid = parseFloat(data.total_verified_paid) || 0;
+                                const pPaid = parseFloat(data.total_pending_paid) || 0;
+                                if (paidInput) {
+                                    paidInput.value = '৳ ' + vPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                                }
+                                if (paidHelper) {
+                                    if (vPaid > 0) {
+                                        paidHelper.innerHTML = `<span class="text-success"><i class="fa-light fa-circle-check me-1"></i>Verified: ৳ ${vPaid.toLocaleString(undefined, {minimumFractionDigits: 2})} (${data.verified_count} transaction${data.verified_count > 1 ? 's' : ''})</span>`;
+                                    } else if (pPaid > 0) {
+                                        paidHelper.innerHTML = `<span class="text-warning"><i class="fa-light fa-clock me-1"></i>৳ ${pPaid.toLocaleString(undefined, {minimumFractionDigits: 2})} pending Accounts verification</span>`;
+                                    } else {
+                                        paidHelper.innerHTML = '<span class="text-muted"><i class="fa-light fa-circle-exclamation me-1"></i>No payment recorded yet for this booking</span>';
+                                    }
+                                }
+                            }
+                        })
+                        .catch(err => console.error('Failed fetching payment summary:', err));
+                }
             });
         });
-
-        const quickRetentionInput = document.getElementById('refund_retention_amount');
-        if (quickRetentionInput) {
-            quickRetentionInput.addEventListener('input', function() {
-                let ret = parseFloat(this.value);
-                if (isNaN(ret) || ret < 0) ret = 0;
-                if (ret > currentRefundPaid) ret = currentRefundPaid;
-                const net = Math.max(0, currentRefundPaid - ret);
-                const netSpan = document.getElementById('refund_net_display');
-                if (netSpan) netSpan.textContent = net.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            });
-        }
     });
 </script>

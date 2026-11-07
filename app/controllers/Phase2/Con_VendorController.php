@@ -41,7 +41,7 @@ class Con_VendorController extends Controller
 
     public function create()
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 20, 22])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -55,7 +55,7 @@ class Con_VendorController extends Controller
 
     public function store()
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 20, 22])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -99,7 +99,7 @@ class Con_VendorController extends Controller
 
     public function edit($id)
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 20, 22])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -122,7 +122,7 @@ class Con_VendorController extends Controller
 
     public function update($id)
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 20, 22])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -179,7 +179,7 @@ class Con_VendorController extends Controller
 
     public function delete()
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 20, 22])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -292,8 +292,8 @@ class Con_VendorController extends Controller
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
-        // Allowed: Management (1, 3, 33, 34, 35, 20, 32), Purchase (17, 22, 23, 31), Accounts (6, 30)
-        $allowedRoles = [1, 3, 6, 17, 20, 22, 23, 30, 31, 32, 33, 34, 35];
+        // Allowed: Management (1, 3, 33, 34, 35, 38, 20, 32), Purchase (17, 22, 23, 31), Accounts (6, 30)
+        $allowedRoles = [1, 3, 6, 17, 20, 22, 23, 30, 31, 32, 33, 34, 35, 38];
         if (!in_array($userRole, $allowedRoles, true) && !hasPermission(['Vendor Manage', 'Construction Accounts', 'Financial Reports', 'Purchase Manage'])) {
             setError('You do not have permission to access the Vendor Ledger.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
@@ -464,7 +464,7 @@ class Con_VendorController extends Controller
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
-        $allowedRoles = [1, 3, 6, 17, 20, 22, 23, 30, 31, 32, 33, 34, 35];
+        $allowedRoles = [1, 3, 6, 17, 20, 22, 23, 30, 31, 32, 33, 34, 35, 38];
         if (!in_array($userRole, $allowedRoles, true) && !hasPermission(['Vendor Manage', 'Construction Accounts', 'Financial Reports'])) {
             die('Unauthorized access.');
         }

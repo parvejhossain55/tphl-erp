@@ -45,6 +45,14 @@ class SalesDashboardController extends Controller
         $filterProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int) $_GET['project_id'] : null;
         $filterExecutiveId = isset($_GET['executive_id']) && $_GET['executive_id'] !== '' ? (int) $_GET['executive_id'] : null;
         $productType = $_GET['product_type'] ?? 'all'; // 'all', 'units', 'shares'
+        $trendHorizon = trim((string) ($_GET['trend_horizon'] ?? '6m')); // '3m', '6m', '1y'
+        if (!in_array($trendHorizon, ['3m', '6m', '1y'], true)) {
+            $trendHorizon = '6m';
+        }
+        $trendMode = trim((string) ($_GET['trend_mode'] ?? 'cycle')); // 'cycle', 'calendar'
+        if (!in_array($trendMode, ['cycle', 'calendar'], true)) {
+            $trendMode = 'cycle';
+        }
 
         // Access scoping
         // Admin, Super Admin, Sales Team Head, Management, Chief Officer, SEAL CEO can filter any team
@@ -208,76 +216,218 @@ class SalesDashboardController extends Controller
         $requiredPerDayShares = $daysRemaining > 0 ? (max(0, $targetShares - $sharesSold) / $daysRemaining) : 0;
 
         // -----------------------------------------------------------------
-        // 3. SALES VALUE TREND (LAST 6 REPORTING CYCLES)
+        // 3. SALES VALUE TREND & MoM GROWTH (LAST 3M / 6M / 1Y)
         // -----------------------------------------------------------------
         $salesTrend = [];
         $tracker = new TrackerCalculationService($this->db);
         $curY = (int) date('Y');
         $curM = (int) date('n');
-        if ((int) date('j') >= 26) {
+        if ($trendMode === 'cycle' && (int) date('j') >= 26) {
             $curM++;
             if ($curM > 12) {
                 $curM = 1;
                 $curY++;
             }
         }
-        for ($i = 5; $i >= 0; $i--) {
+
+        $numCycles = match($trendHorizon) {
+            '3m' => 3,
+            '1y', '12m' => 12,
+            default => 6
+        };
+
+        // Query numCycles + 1 to establish baseline for the first month's comparison
+        $rawCycles = [];
+        for ($i = $numCycles; $i >= 0; $i--) {
             $m = $curM - $i;
             $y = $curY;
             while ($m < 1) {
                 $m += 12;
                 $y--;
             }
-            $rng = $tracker->getDateRange($y, $m);
-            $s = substr($rng['start'], 0, 10);
-            $e = substr($rng['end'], 0, 10);
-            $monthLabel = date('M', mktime(0, 0, 0, $m, 1, $y));
+
+            if ($trendMode === 'calendar') {
+                $s = sprintf('%04d-%02d-01', $y, $m);
+                $e = date('Y-m-t', strtotime($s));
+            } else {
+                $rng = $tracker->getDateRange($y, $m);
+                $s = substr($rng['start'], 0, 10);
+                $e = substr($rng['end'], 0, 10);
+            }
+
+            $monthLabel = date('M Y', mktime(0, 0, 0, $m, 1, $y));
+            $shortLabel = date('M', mktime(0, 0, 0, $m, 1, $y));
+
+            $projCond = $filterProjectId ? " AND lb.project_id = {$filterProjectId}" : "";
+            $teamCond = $effectiveTeamId ? " AND (l.team_id = {$effectiveTeamId} OR l.assigned_id IN (SELECT id FROM users WHERE team_id = {$effectiveTeamId}) OR lb.sales_by_id IN (SELECT id FROM users WHERE team_id = {$effectiveTeamId}))" : "";
+            $execCond = $filterExecutiveId ? " AND (lb.sales_by_id = {$filterExecutiveId} OR (COALESCE(lb.sales_by_id, 0) = 0 AND l.assigned_id = {$filterExecutiveId}))" : "";
 
             $trendRes = $this->db->query("
-                SELECT SUM(agreement_value) AS val 
-                FROM lead_bookings 
-                WHERE deleted_at IS NULL 
-                  AND booking_status IN ('booked', 'completed')
-                  AND booking_date BETWEEN '{$s}' AND '{$e}'
-                  " . ($filterProjectId ? " AND project_id = {$filterProjectId}" : "") . "
-            ");
-            $v = (float) ($trendRes->fetch_assoc()['val'] ?? 0);
-            $salesTrend[] = [
-                'month'    => $monthLabel,
-                'year'     => $y,
-                'cycle'    => sprintf('%04d-%02d', $y, $m),
-                'value_cr' => round($v / 10000000, 2),
-                'value'    => $v,
+                SELECT 
+                    COUNT(lb.id) AS total_bkg,
+                    SUM(CASE WHEN lb.booking_status IN ('booked', 'completed') THEN COALESCE(NULLIF(lb.agreement_value, 0), f.price_value, 0) ELSE 0 END) AS gross_val,
+                    SUM(CASE WHEN lb.booking_status = 'cancelled' THEN COALESCE(NULLIF(lb.agreement_value, 0), f.price_value, 0) ELSE 0 END) AS can_val
+                FROM lead_bookings lb
+                JOIN leads l ON l.id = lb.lead_id
+                LEFT JOIN flats f ON f.id = lb.flat_id
+                WHERE lb.deleted_at IS NULL 
+                  AND lb.booking_date BETWEEN '{$s}' AND '{$e}'
+                  {$projCond} {$teamCond} {$execCond}
+            ")->fetch_assoc() ?: [];
+
+            $grossVal = (float)($trendRes['gross_val'] ?? 0);
+            $canVal = (float)($trendRes['can_val'] ?? 0);
+            $netVal = max(0.0, $grossVal - $canVal);
+            $bkgCount = (int)($trendRes['total_bkg'] ?? 0);
+
+            $rawCycles[] = [
+                'month'         => $shortLabel,
+                'month_label'   => $monthLabel,
+                'year'          => $y,
+                'cycle'         => sprintf('%04d-%02d', $y, $m),
+                'start_date'    => $s,
+                'end_date'      => $e,
+                'bookings'      => $bkgCount,
+                'gross_value'   => $grossVal,
+                'cancelled_val' => $canVal,
+                'value'         => $netVal,
+                'value_cr'      => round($netVal / 10000000, 2),
             ];
         }
 
+        // Calculate MoM growth comparisons
+        $salesTrend = [];
+        $totalTrendVal = 0.0;
+        $totalTrendBkg = 0;
+        $bestVal = 0.0;
+        $bestMonth = '';
+
+        for ($idx = 1; $idx < count($rawCycles); $idx++) {
+            $curr = $rawCycles[$idx];
+            $prev = $rawCycles[$idx - 1];
+
+            $diffVal = $curr['value'] - $prev['value'];
+            $growthPct = ($prev['value'] > 0) ? round(($diffVal / $prev['value']) * 100, 1) : 0;
+            $growthDir = ($diffVal > 0) ? 'up' : (($diffVal < 0) ? 'down' : 'flat');
+            $bkgDiff = $curr['bookings'] - $prev['bookings'];
+
+            $curr['prev_value'] = $prev['value'];
+            $curr['diff_value'] = $diffVal;
+            $curr['diff_cr']    = round($diffVal / 10000000, 2);
+            $curr['growth_pct'] = $growthPct;
+            $curr['growth_dir'] = $growthDir;
+            $curr['bkg_diff']   = $bkgDiff;
+
+            $salesTrend[] = $curr;
+
+            $totalTrendVal += $curr['value'];
+            $totalTrendBkg += $curr['bookings'];
+            if ($curr['value'] > $bestVal) {
+                $bestVal = $curr['value'];
+                $bestMonth = $curr['month_label'];
+            }
+        }
+
+        $latestTrendItem = !empty($salesTrend) ? end($salesTrend) : [];
+        $trendSummary = [
+            'horizon'           => $trendHorizon,
+            'mode'              => $trendMode,
+            'count'             => count($salesTrend),
+            'total_bookings'    => $totalTrendBkg,
+            'total_sales'       => $totalTrendVal,
+            'total_sales_cr'    => round($totalTrendVal / 10000000, 2),
+            'avg_monthly_val'   => count($salesTrend) > 0 ? round($totalTrendVal / count($salesTrend), 2) : 0,
+            'avg_monthly_cr'    => count($salesTrend) > 0 ? round(($totalTrendVal / count($salesTrend)) / 10000000, 2) : 0,
+            'best_month'        => $bestMonth,
+            'best_val'          => $bestVal,
+            'best_val_cr'       => round($bestVal / 10000000, 2),
+            'latest_growth_pct' => $latestTrendItem['growth_pct'] ?? 0,
+            'latest_growth_dir' => $latestTrendItem['growth_dir'] ?? 'flat',
+            'latest_diff_cr'    => $latestTrendItem['diff_cr'] ?? 0,
+            'latest_diff_val'   => $latestTrendItem['diff_value'] ?? 0,
+        ];
+
         // -----------------------------------------------------------------
-        // 4. PROJECT SALES & TARGET ACHIEVEMENT
+        // 4. PROJECT SALES & COMPLETE INVENTORY OVERVIEW (SOLD VS UNSOLD)
         // -----------------------------------------------------------------
+        $invSummaryQ = "
+            SELECT 
+                COUNT(DISTINCT p.id) AS total_projects,
+                COUNT(f.id) AS total_units,
+                SUM(CASE WHEN f.is_booked = 1 OR f.status IN ('booked', 'sold') THEN 1 ELSE 0 END) AS total_sold,
+                SUM(CASE WHEN f.is_booked = 0 AND f.status = 'available' THEN 1 ELSE 0 END) AS total_unsold,
+                SUM(CASE WHEN f.is_booked = 1 OR f.status IN ('booked', 'sold') THEN f.price_value ELSE 0 END) AS total_sold_val,
+                SUM(CASE WHEN f.is_booked = 0 AND f.status = 'available' THEN f.price_value ELSE 0 END) AS total_unsold_val
+            FROM projects p
+            INNER JOIN flats f ON f.project_id = p.id AND f.deleted_at IS NULL
+            WHERE p.deleted_at IS NULL
+        ";
+        $invSummaryRow = $this->db->query($invSummaryQ)->fetch_assoc() ?: [];
+        $totalInvProjects = (int)($invSummaryRow['total_projects'] ?? 0);
+        $totalInvUnits = (int)($invSummaryRow['total_units'] ?? 0);
+        $totalInvSold = (int)($invSummaryRow['total_sold'] ?? 0);
+        $totalInvUnsold = (int)($invSummaryRow['total_unsold'] ?? 0);
+        $invSoldPct = $totalInvUnits > 0 ? round(($totalInvSold / $totalInvUnits) * 100, 1) : 0;
+        $inventorySummary = [
+            'total_projects'   => $totalInvProjects,
+            'total_units'      => $totalInvUnits,
+            'total_sold'       => $totalInvSold,
+            'total_unsold'     => $totalInvUnsold,
+            'sold_pct'         => $invSoldPct,
+            'total_sold_val'   => (float)($invSummaryRow['total_sold_val'] ?? 0),
+            'total_unsold_val' => (float)($invSummaryRow['total_unsold_val'] ?? 0),
+        ];
+
         $allProjectsQ = "
             SELECT 
                 p.id, 
                 p.name,
-                COUNT(DISTINCT CASE WHEN lb.booking_date BETWEEN '{$startD}' AND '{$endD}' AND lb.booking_status IN ('booked', 'completed') THEN lb.id END) AS total_bkg,
-                SUM(CASE WHEN lb.booking_date BETWEEN '{$startD}' AND '{$endD}' AND lb.booking_status IN ('booked', 'completed') AND NOT ((p.id = 74 OR f.project_id = 74) AND f.flat_name REGEXP '[a-zA-Z]') THEN 1 ELSE 0 END) AS units_sold,
-                SUM(CASE WHEN lb.booking_date BETWEEN '{$startD}' AND '{$endD}' AND lb.booking_status IN ('booked', 'completed') AND ((p.id = 74 OR f.project_id = 74) AND f.flat_name REGEXP '[a-zA-Z]') THEN 1 ELSE 0 END) AS shares_sold,
-                SUM(CASE WHEN lb.booking_date BETWEEN '{$startD}' AND '{$endD}' AND lb.booking_status IN ('booked', 'completed') THEN COALESCE(NULLIF(lb.agreement_value, 0), f.price_value, 0) ELSE 0 END) AS net_sales,
-                f_avail.avail_units,
-                f_avail.avail_shares
+                COALESCE(inv.total_units, 0) AS total_units,
+                COALESCE(inv.total_sold, 0) AS total_sold,
+                COALESCE(inv.total_unsold, 0) AS total_unsold,
+                COALESCE(inv.avail_units, 0) AS avail_units,
+                COALESCE(inv.avail_shares, 0) AS avail_shares,
+                COALESCE(inv.total_sold_val, 0) AS total_sold_val,
+                COALESCE(inv.total_unsold_val, 0) AS total_unsold_val,
+                COALESCE(cur.cycle_bkg, 0) AS total_bkg,
+                COALESCE(cur.cycle_units, 0) AS units_sold,
+                COALESCE(cur.cycle_shares, 0) AS shares_sold,
+                COALESCE(cur.cycle_net_sales, 0) AS net_sales
             FROM projects p
-            LEFT JOIN lead_bookings lb ON lb.project_id = p.id AND lb.deleted_at IS NULL
-            LEFT JOIN flats f ON f.id = lb.flat_id
             LEFT JOIN (
                 SELECT 
                     project_id,
-                    SUM(CASE WHEN NOT (project_id = 74 AND flat_name REGEXP '[a-zA-Z]') AND status = 'available' THEN 1 ELSE 0 END) AS avail_units,
-                    SUM(CASE WHEN (project_id = 74 AND flat_name REGEXP '[a-zA-Z]') AND status = 'available' THEN 1 ELSE 0 END) AS avail_shares
+                    COUNT(id) AS total_units,
+                    SUM(CASE WHEN is_booked = 1 OR status IN ('booked', 'sold') THEN 1 ELSE 0 END) AS total_sold,
+                    SUM(CASE WHEN is_booked = 0 AND status = 'available' THEN 1 ELSE 0 END) AS total_unsold,
+                    SUM(CASE WHEN NOT (project_id = 74 AND flat_name REGEXP '[a-zA-Z]') AND (is_booked = 0 AND status = 'available') THEN 1 ELSE 0 END) AS avail_units,
+                    SUM(CASE WHEN (project_id = 74 AND flat_name REGEXP '[a-zA-Z]') AND (is_booked = 0 AND status = 'available') THEN 1 ELSE 0 END) AS avail_shares,
+                    SUM(CASE WHEN is_booked = 1 OR status IN ('booked', 'sold') THEN price_value ELSE 0 END) AS total_sold_val,
+                    SUM(CASE WHEN is_booked = 0 AND status = 'available' THEN price_value ELSE 0 END) AS total_unsold_val
                 FROM flats
                 WHERE deleted_at IS NULL
                 GROUP BY project_id
-            ) f_avail ON f_avail.project_id = p.id
-            GROUP BY p.id, p.name
-            ORDER BY net_sales DESC, total_bkg DESC
+            ) inv ON inv.project_id = p.id
+            LEFT JOIN (
+                SELECT 
+                    lb.project_id,
+                    COUNT(lb.id) AS cycle_bkg,
+                    SUM(CASE WHEN NOT ((lb.project_id = 74 OR f.project_id = 74) AND f.flat_name REGEXP '[a-zA-Z]') THEN 1 ELSE 0 END) AS cycle_units,
+                    SUM(CASE WHEN ((lb.project_id = 74 OR f.project_id = 74) AND f.flat_name REGEXP '[a-zA-Z]') THEN 1 ELSE 0 END) AS cycle_shares,
+                    SUM(COALESCE(NULLIF(lb.agreement_value, 0), f.price_value, 0)) AS cycle_net_sales
+                FROM lead_bookings lb
+                JOIN leads l ON l.id = lb.lead_id
+                LEFT JOIN flats f ON f.id = lb.flat_id
+                WHERE lb.deleted_at IS NULL
+                  AND lb.booking_status IN ('booked', 'completed')
+                  AND lb.booking_date BETWEEN '{$startD}' AND '{$endD}'
+                  {$teamB} {$execB}
+                GROUP BY lb.project_id
+            ) cur ON cur.project_id = p.id
+            WHERE p.deleted_at IS NULL
+              " . ($filterProjectId ? " AND p.id = {$filterProjectId}" : "") . "
+              AND (inv.total_units > 0 OR cur.cycle_bkg > 0)
+            ORDER BY net_sales DESC, total_sold DESC, total_units DESC
         ";
         $allProjectsRes = $this->db->query($allProjectsQ);
         $projectRows = [];
@@ -287,6 +437,9 @@ class SalesDashboardController extends Controller
         $projTargetTotal = 0;
         $projAvailUnitsTotal = 0;
         $projAvailSharesTotal = 0;
+        $projTotalUnitsSum = 0;
+        $projTotalSoldSum = 0;
+        $projTotalUnsoldSum = 0;
 
         while ($allProjectsRes && $r = $allProjectsRes->fetch_assoc()) {
             $pid = (int) $r['id'];
@@ -294,9 +447,13 @@ class SalesDashboardController extends Controller
             $uSold = (int) $r['units_sold'];
             $sSold = (int) $r['shares_sold'];
             $aUnits = (int) $r['avail_units'];
-            $aShares = (int) $r['avail_shares'];
+            $aShares = (int) $r['avail_shares'];+
+            $totUnits = (int) $r['total_units'];
+            $totSold = (int) $r['total_sold'];
+            $totUnsold = (int) $r['total_unsold'];
+            $soldPct = $totUnits > 0 ? round(($totSold / $totUnits) * 100, 1) : 0;
 
-            // Target allocation from sales_targets for this project (or benchmark proportional)
+            // Target allocation from sales_targets for this project
             $targetQ = "
                 SELECT SUM(booking_value_target) AS proj_target 
                 FROM sales_targets 
@@ -320,22 +477,29 @@ class SalesDashboardController extends Controller
             $projTargetTotal += $pTarget;
             $projAvailUnitsTotal += $aUnits;
             $projAvailSharesTotal += $aShares;
+            $projTotalUnitsSum += $totUnits;
+            $projTotalSoldSum += $totSold;
+            $projTotalUnsoldSum += $totUnsold;
 
-            // Only show projects with activity or availability in the featured list
-            if ($ns > 0 || $uSold > 0 || $sSold > 0 || $aUnits > 0 || $aShares > 0) {
-                $projectRows[] = [
-                    'id'           => $pid,
-                    'name'         => $r['name'],
-                    'units'        => $uSold,
-                    'shares'       => $sSold,
-                    'net_sales'    => $ns,
-                    'value_target' => $pTarget,
-                    'achieved'     => $achPct,
-                    'value_gap'    => $vGap,
-                    'avail_units'  => $aUnits,
-                    'avail_shares' => $aShares,
-                ];
-            }
+            // Show project in list
+            $projectRows[] = [
+                'id'               => $pid,
+                'name'             => $r['name'],
+                'total_units'      => $totUnits,
+                'total_sold'       => $totSold,
+                'total_unsold'     => $totUnsold,
+                'sold_pct'         => $soldPct,
+                'units'            => $uSold,
+                'shares'           => $sSold,
+                'net_sales'        => $ns,
+                'value_target'     => $pTarget,
+                'achieved'         => $achPct,
+                'value_gap'        => $vGap,
+                'avail_units'      => $aUnits,
+                'avail_shares'     => $aShares,
+                'total_sold_val'   => (float) $r['total_sold_val'],
+                'total_unsold_val' => (float) $r['total_unsold_val'],
+            ];
         }
 
         // -----------------------------------------------------------------
@@ -774,6 +938,8 @@ class SalesDashboardController extends Controller
                 "team_id"      => $effectiveTeamId,
                 "executive_id" => $filterExecutiveId,
                 "product_type" => $productType,
+                "trend_horizon"=> $trendHorizon,
+                "trend_mode"   => $trendMode,
             ],
             // Top Metrics Cards
             "metrics" => [
@@ -812,14 +978,21 @@ class SalesDashboardController extends Controller
             ],
             // Visual Trend & Projects Table
             "salesTrend"             => $salesTrend,
+            "trendSummary"           => $trendSummary,
+            "trendHorizon"           => $trendHorizon,
+            "trendMode"              => $trendMode,
+            "inventorySummary"       => $inventorySummary,
             "projectRows"            => $projectRows,
             "projectTotals"          => [
-                "net_sales"    => $projNetSalesTotal,
-                "units"        => $projUnitsTotal,
-                "shares"       => $projSharesTotal,
-                "target"       => $projTargetTotal,
-                "avail_units"  => $projAvailUnitsTotal,
-                "avail_shares" => $projAvailSharesTotal,
+                "net_sales"          => $projNetSalesTotal,
+                "units"              => $projUnitsTotal,
+                "shares"             => $projSharesTotal,
+                "target"             => $projTargetTotal,
+                "avail_units"        => $projAvailUnitsTotal,
+                "avail_shares"       => $projAvailSharesTotal,
+                "total_units"        => $projTotalUnitsSum,
+                "total_sold"         => $projTotalSoldSum,
+                "total_unsold"       => $projTotalUnsoldSum,
             ],
             // Inventory & Collections
             "inventory"              => $inventory,

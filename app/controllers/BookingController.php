@@ -557,12 +557,44 @@ class BookingController extends Controller
             $emiStmt->bind_param("i", $bookingId);
             $emiStmt->execute();
 
-            // 5. Create/update client_refund_requests record
-            $retentionAmount = isset($_POST['retention_amount']) ? (float)$_POST['retention_amount'] : 0.0;
-            if ($retentionAmount < 0 || $retentionAmount > $totalPaid) {
-                $retentionAmount = 0.0;
+            // 5. Client Payout Bank Details, Expected Date & Attachment
+            $clientBankName        = trim($_POST['client_bank_name'] ?? '');
+            $clientBankBranch      = trim($_POST['client_bank_branch'] ?? '');
+            $clientBankAccountName = trim($_POST['client_bank_account_name'] ?? '');
+            $clientBankAccountNo   = trim($_POST['client_bank_account_no'] ?? '');
+            $clientBankRoutingNo   = trim($_POST['client_bank_routing_no'] ?? '');
+            $preferredMethod       = trim($_POST['preferred_payment_method'] ?? 'bank');
+            $expectedRefundDate    = !empty($_POST['expected_refund_date']) ? $_POST['expected_refund_date'] : null;
+
+            // Handle optional client refund attachment (PDF, Image: JPG, JPEG, PNG)
+            $documentPath = null;
+            if (!empty($_FILES['refund_attachment']['name']) && $_FILES['refund_attachment']['error'] === UPLOAD_ERR_OK) {
+                $allowedTypes = ['pdf', 'jpg', 'jpeg', 'png'];
+                $fileExt = strtolower(pathinfo($_FILES['refund_attachment']['name'], PATHINFO_EXTENSION));
+                if (!in_array($fileExt, $allowedTypes)) {
+                    setError("Invalid attachment format. Allowed formats: PDF, JPG, JPEG, PNG.");
+                    header("Location: {$GLOBALS['base_url']}/booking-leads/{$leadId}");
+                    exit;
+                }
+                if ($_FILES['refund_attachment']['size'] > 10 * 1024 * 1024) {
+                    setError("Attachment file size must not exceed 10MB.");
+                    header("Location: {$GLOBALS['base_url']}/booking-leads/{$leadId}");
+                    exit;
+                }
+                $newFileName = 'client_refund_req_' . $bookingId . '_' . time() . '.' . $fileExt;
+                $uploadPath  = 'uploads/refunds/' . $newFileName;
+                $fullPath    = __DIR__ . '/../../public/' . $uploadPath;
+                if (!is_dir(dirname($fullPath))) {
+                    mkdir(dirname($fullPath), 0777, true);
+                }
+                if (move_uploaded_file($_FILES['refund_attachment']['tmp_name'], $fullPath)) {
+                    $documentPath = $uploadPath;
+                }
             }
-            $refundAmount = max(0, $totalPaid - $retentionAmount);
+
+            // Salesperson does not set retention amount; accounts sets retention later
+            $retentionAmount = 0.0;
+            $refundAmount    = $totalPaid;
 
             // Check if active refund already exists
             $checkRefund = $this->db->prepare("SELECT id FROM client_refund_requests WHERE booking_id = ? AND status != 'rejected' LIMIT 1");
@@ -573,21 +605,69 @@ class BookingController extends Controller
             $refundId = null;
             if ($existingRefund) {
                 $refundId = (int)$existingRefund['id'];
-                $rfUpdate = $this->db->prepare("UPDATE client_refund_requests SET total_paid = ?, retention_amount = ?, refund_amount = ?, reason = ?, requested_by = ?, status = 'pending' WHERE id = ?");
-                $rfUpdate->bind_param("dddsii", $totalPaid, $retentionAmount, $refundAmount, $reason, $userId, $refundId);
+                $rfUpdate = $this->db->prepare("UPDATE client_refund_requests SET 
+                    total_paid = ?, 
+                    retention_amount = ?, 
+                    refund_amount = ?, 
+                    reason = ?, 
+                    expected_refund_date = ?, 
+                    client_bank_name = ?, 
+                    client_bank_branch = ?, 
+                    client_bank_account_name = ?, 
+                    client_bank_account_no = ?, 
+                    client_bank_routing_no = ?, 
+                    preferred_payment_method = ?, 
+                    document = IFNULL(?, document), 
+                    requested_by = ?, 
+                    status = 'pending' 
+                    WHERE id = ?");
+                $rfUpdate->bind_param("dddssssssssssii", 
+                    $totalPaid, 
+                    $retentionAmount, 
+                    $refundAmount, 
+                    $reason, 
+                    $expectedRefundDate, 
+                    $clientBankName, 
+                    $clientBankBranch, 
+                    $clientBankAccountName, 
+                    $clientBankAccountNo, 
+                    $clientBankRoutingNo, 
+                    $preferredMethod, 
+                    $documentPath, 
+                    $userId, 
+                    $refundId
+                );
                 $rfUpdate->execute();
             } else {
                 $rfInsert = $this->db->prepare("INSERT INTO client_refund_requests 
-                    (booking_id, lead_id, project_id, flat_id, total_paid, retention_amount, refund_amount, reason, requested_by, status) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
+                    (booking_id, lead_id, project_id, flat_id, total_paid, retention_amount, refund_amount, reason, expected_refund_date, client_bank_name, client_bank_branch, client_bank_account_name, client_bank_account_no, client_bank_routing_no, preferred_payment_method, document, requested_by, status) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
                 $flatId = (int)($booking['flat_id'] ?? 0);
                 $projId = (int)($booking['project_id'] ?? 0);
-                $rfInsert->bind_param("iiiidddsi", $bookingId, $leadId, $projId, $flatId, $totalPaid, $retentionAmount, $refundAmount, $reason, $userId);
+                $rfInsert->bind_param("iiiidddsssssssssi", 
+                    $bookingId, 
+                    $leadId, 
+                    $projId, 
+                    $flatId, 
+                    $totalPaid, 
+                    $retentionAmount, 
+                    $refundAmount, 
+                    $reason, 
+                    $expectedRefundDate, 
+                    $clientBankName, 
+                    $clientBankBranch, 
+                    $clientBankAccountName, 
+                    $clientBankAccountNo, 
+                    $clientBankRoutingNo, 
+                    $preferredMethod, 
+                    $documentPath, 
+                    $userId
+                );
                 $rfInsert->execute();
                 $refundId = $rfInsert->insert_id;
             }
 
-            // 6. Add/Update approval_requests for management approval (Roles 3, 9, 20, 33)
+            // 6. Add/Update approval_requests for Accounts retention first (approve_role = 'accounts_retention')
             if ($refundId) {
                 $delAr = $this->db->prepare("DELETE FROM approval_requests WHERE source_table = 'client_refund_requests' AND source_id = ?");
                 $delAr->bind_param("i", $refundId);
@@ -601,7 +681,7 @@ class BookingController extends Controller
                     'source_id'      => $refundId,
                     'requested_days' => 0,
                     'requested_by'   => $userId,
-                    'approve_role'   => ($retentionAmount > 0) ? 'management' : 'accounts_retention',
+                    'approve_role'   => 'accounts_retention',
                     'meta_data'      => null,
                     'request_amount' => $refundAmount,
                 ]);
@@ -622,6 +702,45 @@ class BookingController extends Controller
         }
 
         header("Location: {$GLOBALS['base_url']}/booking-leads/{$leadId}");
+        exit;
+    }
+
+    /**
+     * AJAX: Get real-time verified and total payments for a booking
+     */
+    public function getBookingPaymentSummaryAjax($bookingId)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        header('Content-Type: application/json');
+
+        $bookingId = (int)$bookingId;
+        if (!$bookingId) {
+            echo json_encode(['success' => false, 'message' => 'Invalid booking ID']);
+            exit;
+        }
+
+        $stmt = $this->db->prepare("
+            SELECT 
+                COALESCE(SUM(CASE WHEN verification_status = 'verified' THEN amount ELSE 0 END), 0) AS total_verified_paid,
+                COALESCE(SUM(CASE WHEN verification_status = 'pending' THEN amount ELSE 0 END), 0) AS total_pending_paid,
+                COALESCE(SUM(amount), 0) AS total_paid_all,
+                COUNT(CASE WHEN verification_status = 'verified' THEN 1 END) AS verified_count,
+                COUNT(CASE WHEN verification_status = 'pending' THEN 1 END) AS pending_count
+            FROM lead_payments 
+            WHERE booking_id = ?
+        ");
+        $stmt->bind_param("i", $bookingId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+
+        echo json_encode([
+            'success'             => true,
+            'total_verified_paid' => (float)($row['total_verified_paid'] ?? 0),
+            'total_pending_paid'  => (float)($row['total_pending_paid'] ?? 0),
+            'total_paid_all'      => (float)($row['total_paid_all'] ?? 0),
+            'verified_count'      => (int)($row['verified_count'] ?? 0),
+            'pending_count'       => (int)($row['pending_count'] ?? 0),
+        ]);
         exit;
     }
 

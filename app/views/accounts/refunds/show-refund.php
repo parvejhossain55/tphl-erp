@@ -66,13 +66,6 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
         </a>
     </div>
     <?php endif; ?>
-    <?php 
-    if (!empty($ahInfo['has_request']) && $status !== 'pending') {
-        $sourceTable = 'client_refund_requests';
-        $sourceId = (int)$refund['id'];
-        include __DIR__ . '/../../layouts/accounts_head_approval_card.php';
-    }
-    ?>
     <div class="row">
         <!-- Main Content (Left) -->
         <div class="col-lg-8">
@@ -120,17 +113,17 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                             </div>
                         </div>
 
-                        <!-- Financial Summary -->
+                        <!-- Financial & Request Summary -->
                         <div class="col-md-12 mt-3">
                             <div class="row g-2">
-                                <div class="col-md-4">
-                                    <div class="border rounded p-3 text-center">
+                                <div class="col-md-3">
+                                    <div class="border rounded p-3 text-center bg-white">
                                         <small class="text-muted d-block mb-1">Total Verified Paid</small>
                                         <h5 class="text-primary mb-0 fw-bold">৳ <?= number_format($refund['total_paid'], 2) ?></h5>
                                     </div>
                                 </div>
-                                <div class="col-md-4">
-                                    <div class="border rounded p-3 text-center border-danger">
+                                <div class="col-md-3">
+                                    <div class="border rounded p-3 text-center border-danger bg-white">
                                         <small class="text-muted d-block mb-1">Retention (Non-refundable)</small>
                                         <?php
                                         $retPctSummary = ((float)$refund['total_paid'] > 0) ? round(((float)$refund['retention_amount'] / (float)$refund['total_paid']) * 100, 2) : 0;
@@ -143,39 +136,116 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                         </h5>
                                     </div>
                                 </div>
-                                <div class="col-md-4">
-                                    <div class="border rounded p-3 text-center border-success">
-                                        <small class="text-muted d-block mb-1">Refund Amount</small>
+                                <div class="col-md-3">
+                                    <div class="border rounded p-3 text-center border-success bg-white">
+                                        <small class="text-muted d-block mb-1">Net Refund to Pay</small>
                                         <h5 class="text-success mb-0 fw-bold">৳ <?= number_format($refund['refund_amount'], 2) ?></h5>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="border rounded p-3 text-center border-info bg-white">
+                                        <small class="text-muted d-block mb-1"><i class="fa-regular fa-calendar-check text-info me-1"></i>Expected Refund Date</small>
+                                        <h5 class="text-info mb-0 fw-bold fs-15">
+                                            <?= !empty($refund['expected_refund_date']) ? date('d M Y', strtotime($refund['expected_refund_date'])) : '<span class="text-muted fs-13 fst-italic">Not specified</span>' ?>
+                                        </h5>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <?php if (!empty($refund['reason'])): ?>
+                        <!-- Sales Refund Reason / Note -->
                         <div class="col-md-12 mt-3">
-                            <div class="p-3 rounded-2 border border-warning bg-warning bg-opacity-10 shadow-sm">
-                                <div class="d-flex align-items-center mb-1">
-                                    <i class="bi bi-chat-left-quote-fill text-warning fs-5 me-2"></i>
-                                    <span class="fw-bold text-dark text-uppercase small">Sales Refund Note / Reason:</span>
-                                </div>
-                                <div class="text-dark fw-semibold ps-4" style="font-size: 15px; line-height: 1.5;">
-                                    <?= nl2br(htmlspecialchars($refund['reason'])) ?>
+                            <div class="card custom-card border mb-0 shadow-none" style="border-left: 4px solid #2563eb !important; background: #f8fafc;">
+                                <div class="card-body p-3">
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <div class="d-flex align-items-center">
+                                            <div class="rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 28px; height: 28px; background: rgba(37, 99, 235, 0.1); color: #2563eb;">
+                                                <i class="fa-solid fa-comment-dots fs-13"></i>
+                                            </div>
+                                            <h6 class="card-title mb-0 fs-13 fw-bold text-dark text-uppercase" style="letter-spacing: 0.5px;">Sales Refund Reason / Note</h6>
+                                        </div>
+                                        <?php if (!empty($refund['requested_at'])): ?>
+                                            <span class="text-muted small fs-11">
+                                                <i class="fa-regular fa-clock me-1"></i>Submitted: <?= date('d M Y, h:i A', strtotime($refund['requested_at'])) ?>
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="p-3 bg-white rounded border" style="min-height: 48px;">
+                                        <?php if (!empty(trim($refund['reason'] ?? ''))): ?>
+                                            <div class="d-flex align-items-start">
+                                                <i class="fa-solid fa-quote-left text-primary opacity-50 fs-5 me-2 mt-1 flex-shrink-0"></i>
+                                                <span class="text-dark fs-14 fw-medium" style="line-height: 1.6; word-break: break-word;">
+                                                    <?= nl2br(htmlspecialchars($refund['reason'])) ?>
+                                                </span>
+                                            </div>
+                                        <?php else: ?>
+                                            <div class="text-muted fst-italic fs-13">
+                                                <i class="fa-solid fa-circle-info me-1"></i>No specific reason provided during refund request.
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <?php endif; ?>
 
-                        <?php if (!empty($refund['document'])): ?>
-                        <div class="col-md-12 mt-2">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Document</div>
-                            <div class="info-value">
-                                <a href="<?= $base_url ?>/<?= htmlspecialchars($refund['document']) ?>" target="_blank" class="btn btn-sm btn-outline-primary">
-                                    <i class="bi bi-file-earmark-text me-1"></i> View Document
-                                </a>
+                        <!-- Client Payout Bank & Sales Application Attachment -->
+                        <div class="col-md-12 mt-3">
+                            <div class="card custom-card border mb-0 shadow-none">
+                                <div class="card-header bg-light py-2 px-3 border-bottom d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa-solid fa-building-columns text-primary me-2"></i>
+                                        <h6 class="card-title mb-0 fs-13 fw-semibold text-primary">Client Payout Bank &amp; Request Details (Submitted by Sales)</h6>
+                                    </div>
+                                    <?php if (!empty($refund['preferred_payment_method'])): ?>
+                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace text-uppercase" style="font-size: 11px;">
+                                            Method: <?= htmlspecialchars($refund['preferred_payment_method']) ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="card-body p-3 bg-white">
+                                    <div class="row ">
+                                        <div class="col-sm-6 col-md-4">
+                                            <span class="text-muted small d-block">Client Bank Name:</span>
+                                            <strong class="text-dark fs-13"><?= htmlspecialchars($refund['client_bank_name'] ?? '—') ?: '—' ?></strong>
+                                        </div>
+                                        <div class="col-sm-6 col-md-4">
+                                            <span class="text-muted small d-block">A/C Holder Name:</span>
+                                            <strong class="text-dark fs-13"><?= htmlspecialchars($refund['client_bank_account_name'] ?? '—') ?: '—' ?></strong>
+                                        </div>
+                                        <div class="col-sm-6 col-md-4">
+                                            <span class="text-muted small d-block">Bank Account No:</span>
+                                            <strong class="text-dark fs-13 font-monospace"><?= htmlspecialchars($refund['client_bank_account_no'] ?? '—') ?: '—' ?></strong>
+                                        </div>
+                                        <div class="col-sm-6 col-md-4">
+                                            <span class="text-muted small d-block">Branch:</span>
+                                            <strong class="text-dark fs-13"><?= htmlspecialchars($refund['client_bank_branch'] ?? '—') ?: '—' ?></strong>
+                                        </div>
+                                        <div class="col-sm-6 col-md-4">
+                                            <span class="text-muted small d-block">Routing Number:</span>
+                                            <strong class="text-dark fs-13 font-monospace"><?= htmlspecialchars($refund['client_bank_routing_no'] ?? '—') ?: '—' ?></strong>
+                                        </div>
+                                        <div class="col-sm-6 col-md-4">
+                                            <span class="text-muted small d-block">Expected Refund Date:</span>
+                                            <?php if (!empty($refund['expected_refund_date'])): ?>
+                                                <strong class="text-primary fs-13"><i class="fa-light fa-calendar me-1"></i><?= date('d M Y', strtotime($refund['expected_refund_date'])) ?></strong>
+                                            <?php else: ?>
+                                                <span class="text-muted fst-italic small">Not specified</span>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="col-sm-6 col-md-4">
+                                            <span class="text-muted small d-block">Application / Cheque Attachment:</span>
+                                            <?php if (!empty($refund['document'])): ?>
+                                                <a href="<?= $base_url ?>/<?= htmlspecialchars($refund['document']) ?>" target="_blank" class="btn btn-xs btn-outline-primary py-1 px-2.5 mt-0.5 fw-semibold">
+                                                    <i class="bi bi-file-earmark-text me-1"></i> View Client Document
+                                                </a>
+                                            <?php else: ?>
+                                                <span class="text-muted fst-italic small">No document attached</span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -282,17 +352,12 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
             <?php if ($canApproveReq && $isPending): ?>
             <?php
             $refundAmtToCheck = (float)$refund['refund_amount'];
-            $isOver1LacRefund = ($refundAmtToCheck > 10000);
+            $isOver1LacRefund = ($refundAmtToCheck > 100000);
             $isOpHeadApprovedRefund = (!empty($ahInfo['is_op_head_approved']) || ($ahInfo['op_head_status'] ?? '') === 'approved');
-            $isAhApprovedRefund = (!empty($ahInfo['is_accounts_head_approved']) || ($ahInfo['accounts_head_status'] ?? '') === 'approved');
             $userRoleRefund = (int)($_SESSION['user']['role_id'] ?? 0);
             $roleNameRefund = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
             $isOpHeadUserRefund = (in_array($userRoleRefund, [20, 32], true) || str_contains($roleNameRefund, 'operation head'));
-            $isMgmtUserRefund = in_array($userRoleRefund, [1, 3], true);
-            $isMgmtLockedRefund = ($isOver1LacRefund && (!$isOpHeadApprovedRefund || !$isAhApprovedRefund) && $isMgmtUserRefund && !$isOpHeadUserRefund);
-            $mgmtLockMsgRefund = (!$isOpHeadApprovedRefund)
-                ? 'As this refund request exceeds ৳10,000, verification and approval by <strong>Admin &amp; Operation Head (Role 20)</strong> is required prior to Management sign-off.'
-                : 'Admin &amp; Operation Head has approved. Awaiting verification and approval by <strong>Accounts Head (Role 30)</strong> prior to Management sign-off.';
+            $isMgmtUserRefund = in_array($userRoleRefund, [1, 3, 38], true);
             ?>
             <div class="card custom-card border-0 shadow-sm mb-3" style="border-left: 4px solid #ffc107 !important; background: #fffdf5;">
                 <div class="card-body p-3">
@@ -306,16 +371,35 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                         </div>
                     </div>
                     
-                    <div class="p-2.5 rounded-2  border  small mb-3 " style="font-size: 12px; line-height: 1.6;">
-                        <span class="fw-semibold text-dark d-block mb-1">Approval Impact:</span>
-                        • Authorizes Accounts to disburse payout with attachment proof<br>
-                        • Net Refund Amount: ৳ <?= number_format($refund['refund_amount'], 2) ?><br>
-                        • Company Retention: ৳ <?= number_format($refund['retention_amount'], 2) ?>
+                    <div class="p-2.5 rounded-2 border small mb-3" style="font-size: 12px; line-height: 1.6; background-color: #ffffff;">
+                        <span class="fw-semibold text-dark d-block mb-1.5 border-bottom pb-1">
+                            <i class="fa-solid fa-clipboard-check text-primary me-1"></i>Request &amp; Approval Summary:
+                        </span>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Refund Reason:</span>
+                            <strong class="text-dark text-end ms-2" style="max-width: 170px; word-break: break-word;"><?= htmlspecialchars($refund['reason'] ?? '—') ?></strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Expected Refund Date:</span>
+                            <strong class="text-info"><?= !empty($refund['expected_refund_date']) ? date('d M Y', strtotime($refund['expected_refund_date'])) : '—' ?></strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Client Payout Bank:</span>
+                            <strong class="text-dark text-end ms-2"><?= htmlspecialchars($refund['client_bank_name'] ?? '—') ?></strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Net Refund to Pay:</span>
+                            <strong class="text-success">৳ <?= number_format($refund['refund_amount'], 2) ?></strong>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Company Retention:</span>
+                            <strong class="text-danger">৳ <?= number_format($refund['retention_amount'], 2) ?></strong>
+                        </div>
                     </div>
 
-                    <?php if ($isMgmtLockedRefund): ?>
-                        <div class="alert alert-warning mb-2" style="font-size: 12px;">
-                            <i class="fa-solid fa-lock me-1 text-warning"></i><strong>Management Approval Locked (> ৳10,000):</strong> <?= $mgmtLockMsgRefund ?>
+                    <?php if ($isOver1LacRefund && !$isOpHeadApprovedRefund && $isMgmtUserRefund && !$isOpHeadUserRefund): ?>
+                        <div class="p-2 rounded-2 mb-2" style="font-size: 11.5px; background-color: #fff9e6; border: 1px solid #ffe082; color: #855700; line-height: 1.5;">
+                            <i class="fa-solid fa-circle-info me-1 text-warning"></i><strong>Notice:</strong> High-value refund (> ৳1,00,000). Op Head verification is pending, but Management may approve directly.
                         </div>
                     <?php endif; ?>
 
@@ -360,13 +444,13 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                 <input type="number" step="0.01" name="approved_amount" id="app_approved_amount" class="form-control form-control-sm fw-bold border-success text-success" value="<?= htmlspecialchars($refund['refund_amount']) ?>" min="0" max="<?= htmlspecialchars($refund['total_paid']) ?>" required>
                             </div>
                         </div>
-                        <?php if ($isMgmtLockedRefund): ?>
-                            <button type="button" class="btn btn-secondary w-100 fw-bold btn-sm py-2 disabled" title="Awaiting Admin & Operation Head approval">
-                                <i class="fa-solid fa-lock me-1"></i> Locked (> ৳10,000)
-                            </button>
-                        <?php elseif ($isOver1LacRefund && !$isOpHeadApprovedRefund && $isOpHeadUserRefund): ?>
+                        <?php if ($isOver1LacRefund && !$isOpHeadApprovedRefund && $isOpHeadUserRefund): ?>
                             <button type="button" class="btn btn-success w-100 fw-bold btn-sm py-2 shadow-sm" onclick="confirmApproval()">
                                 <i class="fa-solid fa-check-double me-1"></i> Verify &amp; Approve (Op Head)
+                            </button>
+                        <?php elseif ($isMgmtUserRefund): ?>
+                            <button type="button" class="btn btn-success w-100 fw-bold btn-sm py-2 shadow-sm" onclick="confirmApproval()">
+                                <i class="bi bi-check-circle me-1"></i> Approve Refund (Management)
                             </button>
                         <?php else: ?>
                             <button type="button" class="btn btn-success w-100 fw-bold btn-sm py-2 shadow-sm" onclick="confirmApproval()">
@@ -569,19 +653,11 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                     </div>
                     <div class="p-2.5 rounded-2 bg-white border border-light-subtle small mt-2 mb-3 text-secondary" style="font-size: 12.5px; line-height: 1.6;">
                         <span class="fw-semibold text-dark d-block mb-1">Action for Accounts Department:</span>
-                        Approved by Management &amp; Role 20. Now disburse refund payment with voucher/cheque attachment.
+                        Approved by Management. Now disburse refund payment with voucher/cheque attachment.
                     </div>
-                    <?php if ($isAhApproved): ?>
                     <button type="button" class="btn btn-success w-100 fw-bold py-2 shadow-sm d-flex align-items-center justify-content-center gap-2" data-bs-toggle="modal" data-bs-target="#disburseRefundModal">
                         <i class="bi bi-cash-stack fs-6"></i> Pay Refund (with Attachment)
                     </button>
-                    <?php else: ?>
-                    <div class="alert alert-warning py-2 px-3 small mb-0 border-warning text-center">
-                        <i class="fa-solid fa-lock me-1"></i>
-                        <strong>Payment Locked</strong><br>
-                        <span class="fs-12">Pending Accounts Head approval (<strong>Md. Mamunoor Rashid [1309]</strong>).</span>
-                    </div>
-                    <?php endif; ?>
                 </div>
             </div>
             <?php endif; ?>
@@ -602,9 +678,12 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                     <p class="small text-secondary mb-2 mt-2" style="font-size: 12.5px; line-height: 1.6;">
                         This refund has been disbursed by Accounts and adjusted in the client ledger for <strong>৳ <?= number_format($refund['refund_amount'], 2) ?></strong>.
                     </p>
-                    <?php if (!empty($refund['document'])): ?>
+                    <?php 
+                        $payoutProof = !empty($refund['disbursement_proof']) ? $refund['disbursement_proof'] : (!empty($refund['document']) ? $refund['document'] : null);
+                    ?>
+                    <?php if ($payoutProof): ?>
                     <div class="mt-2 pt-2 border-top">
-                        <a href="<?= $base_url ?>/<?= htmlspecialchars($refund['document']) ?>" target="_blank" class="btn btn-sm btn-outline-success w-100 fw-semibold">
+                        <a href="<?= $base_url ?>/<?= htmlspecialchars($payoutProof) ?>" target="_blank" class="btn btn-sm btn-outline-success w-100 fw-semibold">
                             <i class="bi bi-file-earmark-arrow-down me-1"></i> View Payment Voucher / Attachment
                         </a>
                     </div>
@@ -617,6 +696,11 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
             <!-- Modal: Accounts Refund Disbursement Payout (Matching Image 2) -->
             <!-- ========================================================================= -->
             <?php if ($status === 'approved' && in_array($userRole, [1, 3, 6, 10, 30])): ?>
+            <?php
+                $preMethod = !empty($refund['preferred_payment_method']) ? strtolower($refund['preferred_payment_method']) : 'bank';
+                $clientBankVal = $refund['client_bank_name'] ?? '';
+                $clientAcVal   = $refund['client_bank_account_no'] ?? '';
+            ?>
             <div class="modal fade" id="disburseRefundModal" tabindex="-1" aria-labelledby="disburseRefundModalLabel" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered modal-lg">
                     <div class="modal-content border-0 shadow">
@@ -628,17 +712,6 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                         </div>
                         <form action="<?= $base_url ?>/client-refund-disburse/<?= $refund['id'] ?><?= (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '' ?>" method="POST" enctype="multipart/form-data" id="disburseForm">
                             <div class="modal-body p-3">
-                                <!-- Warning if Accounts Head approval is pending -->
-                                <?php if (!$isAhApproved): ?>
-                                <div class="alert alert-warning py-2 px-3 small mb-3 border-warning d-flex align-items-center">
-                                    <i class="fa-solid fa-lock text-warning fs-5 me-2 flex-shrink-0"></i>
-                                    <div>
-                                        <strong>Notice: Accounts Head Sign-Off Pending</strong><br>
-                                        Payment payout requires sign-off from designated Accounts Head (<strong>Md. Mamunoor Rashid [1309]</strong>).
-                                    </div>
-                                </div>
-                                <?php endif; ?>
-
                                 <!-- Client & Amount Summary Banner matching Image 2 -->
                                 <div class="p-3 rounded-2 bg-light border mb-3">
                                     <div class="row g-2">
@@ -646,6 +719,11 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                             <span class="text-muted small d-block">Client & Flat:</span>
                                             <strong class="text-dark fs-14"><?= htmlspecialchars($refund['client_name'] ?? '—') ?><?= !empty($refund['client_phone']) ? ' (' . htmlspecialchars($refund['client_phone']) . ')' : '' ?></strong>
                                             <div class="text-muted small"><?= htmlspecialchars($refund['project_name'] ?? '—') ?> — Flat: <?= htmlspecialchars($refund['flat_name'] ?? '—') ?></div>
+                                            <?php if (!empty($clientBankVal) || !empty($clientAcVal)): ?>
+                                                <div class="mt-1 fs-12 text-primary">
+                                                    <i class="fa-solid fa-building-columns me-1"></i> Client Bank: <strong><?= htmlspecialchars($clientBankVal ?: '—') ?></strong> (A/C: <?= htmlspecialchars($clientAcVal ?: '—') ?>)
+                                                </div>
+                                            <?php endif; ?>
                                         </div>
                                         <div class="col-md-6 text-md-end">
                                             <span class="text-muted small d-block">Approved Net Refund to Pay:</span>
@@ -656,15 +734,15 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                 </div>
 
                                 <!-- Payment Form Grid matching Image 2 -->
-                                <div class="row g-3">
+                                <div class="row ">
                                     <!-- Payment Method * -->
                                     <div class="col-md-6">
                                         <label class="form-label fs-12 fw-semibold text-dark">Payment Method <span class="text-danger">*</span></label>
                                         <select name="payment_method" id="disburseMethod" class="form-select form-select-sm" required onchange="toggleDisburseFields(this.value)">
-                                            <option value="bank" selected>Bank</option>
-                                            <option value="cheque">Cheque</option>
-                                            <option value="cash">Cash</option>
-                                            <option value="online">Online</option>
+                                            <option value="bank" <?= $preMethod === 'bank' ? 'selected' : '' ?>>Bank</option>
+                                            <option value="cheque" <?= $preMethod === 'cheque' ? 'selected' : '' ?>>Cheque</option>
+                                            <option value="cash" <?= $preMethod === 'cash' ? 'selected' : '' ?>>Cash</option>
+                                            <option value="online" <?= $preMethod === 'online' ? 'selected' : '' ?>>Online</option>
                                         </select>
                                     </div>
 
@@ -691,11 +769,16 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                         <label class="form-label fs-12 fw-semibold text-dark">Transfer From / Client Bank <span class="text-danger">*</span></label>
                                         <select name="bank_name" id="disburseClientBankSelect" class="form-select form-select-sm" style="width: 100%;">
                                             <option value="">-- Select Client Bank --</option>
-                                            <option value="Other Country / Foreign Bank">Other Country / Foreign Bank</option>
-                                            <option value="Other Bank">Other Bank</option>
+                                            <option value="Other Country / Foreign Bank" <?= $clientBankVal === 'Other Country / Foreign Bank' ? 'selected' : '' ?>>Other Country / Foreign Bank</option>
+                                            <option value="Other Bank" <?= $clientBankVal === 'Other Bank' ? 'selected' : '' ?>>Other Bank</option>
+                                            <?php if (!empty($clientBankVal) && !in_array($clientBankVal, $allBangladeshBanks ?? []) && !in_array($clientBankVal, ['Other Country / Foreign Bank', 'Other Bank'])): ?>
+                                                <option value="<?= htmlspecialchars($clientBankVal) ?>" selected><?= htmlspecialchars($clientBankVal) ?></option>
+                                            <?php endif; ?>
                                             <?php if (!empty($allBangladeshBanks)): ?>
                                                 <?php foreach ($allBangladeshBanks as $bName): ?>
-                                                    <option value="<?= htmlspecialchars($bName) ?>"><?= htmlspecialchars($bName) ?></option>
+                                                    <option value="<?= htmlspecialchars($bName) ?>" <?= (strcasecmp($clientBankVal, $bName) === 0) ? 'selected' : '' ?>>
+                                                        <?= htmlspecialchars($bName) ?>
+                                                    </option>
                                                 <?php endforeach; ?>
                                             <?php endif; ?>
                                         </select>
@@ -704,7 +787,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                     <!-- Client Bank A/C No. (Optional) -->
                                     <div class="col-md-6" id="disburseClientAcCol">
                                         <label class="form-label fs-12 fw-semibold text-dark">Client Bank A/C No. <span class="text-muted">(Optional)</span></label>
-                                        <input type="text" name="bank_account_no" id="disburseClientAcNo" class="form-control form-control-sm" placeholder="Account Number">
+                                        <input type="text" name="bank_account_no" id="disburseClientAcNo" class="form-control form-control-sm" placeholder="Account Number" value="<?= htmlspecialchars($clientAcVal) ?>">
                                     </div>
 
                                     <!-- Cheque Number (When Cheque selected) -->

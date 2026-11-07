@@ -22,6 +22,17 @@ if (!function_exists('sd_fmt_cr')) {
     function sd_pct($num, $den): string {
         return $den > 0 ? number_format(($num / $den) * 100, 1) . '%' : '0%';
     }
+    function sd_build_url(array $params = []): string {
+        $queryParams = $_GET;
+        foreach ($params as $k => $v) {
+            if ($v === null) {
+                unset($queryParams[$k]);
+            } else {
+                $queryParams[$k] = $v;
+            }
+        }
+        return $GLOBALS['base_url'] . '/sales-dashboard' . (!empty($queryParams) ? '?' . http_build_query($queryParams) : '');
+    }
 }
 
 $m = $metrics;
@@ -806,76 +817,265 @@ body.dark-mode {
                 </div>
             </div>
 
-            <!-- Sales value trend (Bar Chart) -->
+            <!-- Sales value trend & MoM Growth Analysis -->
             <div class="col-12 col-xl-6">
                 <div class="sd-card">
-                    <div>
-                        <h5 class="fw-bold m-0" style="font-size: 15px;">Sales value trend</h5>
-                        <div class="text-muted mb-1" style="font-size: 11.5px;">Last 6 completed reporting cycles • Net contract value • BDT crore</div>
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                        <div>
+                            <h5 class="fw-bold m-0" style="font-size: 15px;">
+                                Sales value trend & MoM Growth
+                            </h5>
+                            <div class="text-muted" style="font-size: 11px;">
+                                Net contract value • <?= ($trendMode === 'calendar') ? 'Calendar Month (1st-31st)' : 'Reporting Cycle (26th-25th)' ?> • BDT crore
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-1 flex-wrap">
+                            <!-- Horizon Selector: 3M, 6M, 1Y -->
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="<?= sd_build_url(['trend_horizon' => '3m']) ?>" class="btn <?= ($trendHorizon === '3m') ? 'btn-primary text-white fw-bold' : 'btn-outline-secondary' ?>" style="font-size: 10.5px; padding: 2px 7px;">3M</a>
+                                <a href="<?= sd_build_url(['trend_horizon' => '6m']) ?>" class="btn <?= ($trendHorizon === '6m') ? 'btn-primary text-white fw-bold' : 'btn-outline-secondary' ?>" style="font-size: 10.5px; padding: 2px 7px;">6M</a>
+                                <a href="<?= sd_build_url(['trend_horizon' => '1y']) ?>" class="btn <?= ($trendHorizon === '1y') ? 'btn-primary text-white fw-bold' : 'btn-outline-secondary' ?>" style="font-size: 10.5px; padding: 2px 7px;">1Y</a>
+                            </div>
+
+                            <!-- Mode Selector: Cycle vs Calendar -->
+                            <div class="btn-group btn-group-sm ms-1" role="group">
+                                <a href="<?= sd_build_url(['trend_mode' => 'cycle']) ?>" class="btn <?= ($trendMode === 'cycle') ? 'btn-dark text-white fw-bold' : 'btn-outline-secondary' ?>" style="font-size: 10.5px; padding: 2px 6px;" title="26th to 25th Cycle">Cycle</a>
+                                <a href="<?= sd_build_url(['trend_mode' => 'calendar']) ?>" class="btn <?= ($trendMode === 'calendar') ? 'btn-dark text-white fw-bold' : 'btn-outline-secondary' ?>" style="font-size: 10.5px; padding: 2px 6px;" title="1st to end of Month">Month</a>
+                            </div>
+
+                            <!-- Toggle View: Chart vs Table -->
+                            <button type="button" class="btn btn-sm btn-outline-info ms-1" onclick="toggleTrendView()" id="btnTrendToggle" style="font-size: 10.5px; padding: 2px 7px;">
+                                <i class="fa-solid fa-table me-1"></i> <span id="trendToggleLabel">Table</span>
+                            </button>
+                        </div>
                     </div>
-                    <div style="min-height: 165px;">
+
+                    <!-- Trend Summary Metrics Strip -->
+                    <?php if (!empty($trendSummary)): ?>
+                    <div class="d-flex flex-wrap gap-2 p-2 mb-2 rounded" style="background: var(--sd-table-hover); border: 1px solid var(--sd-card-border); font-size: 11px;">
+                        <div>
+                            <span class="text-muted">Total Sales (<?= $trendHorizon ?>):</span>
+                            <span class="fw-bold text-dark" style="color: var(--sd-text-main) !important;">BDT <?= $trendSummary['total_sales_cr'] ?> Cr</span>
+                            <span class="text-muted small">(<?= $trendSummary['total_bookings'] ?> bkg)</span>
+                        </div>
+                        <div class="border-start ps-2">
+                            <span class="text-muted">Monthly Avg:</span>
+                            <span class="fw-bold text-primary">BDT <?= $trendSummary['avg_monthly_cr'] ?> Cr</span>
+                        </div>
+                        <div class="border-start ps-2">
+                            <span class="text-muted">Best:</span>
+                            <span class="fw-bold text-success"><?= $trendSummary['best_month'] ?> (<?= $trendSummary['best_val_cr'] ?> Cr)</span>
+                        </div>
+                        <?php if (isset($trendSummary['latest_growth_pct'])): ?>
+                        <div class="border-start ps-2 ms-auto">
+                            <span class="text-muted">Latest MoM:</span>
+                            <?php if ($trendSummary['latest_growth_dir'] === 'up'): ?>
+                                <span class="badge bg-success-subtle text-success fw-bold" style="font-size: 10px;">
+                                    <i class="fa-solid fa-arrow-trend-up me-1"></i>+<?= $trendSummary['latest_growth_pct'] ?>% (+<?= $trendSummary['latest_diff_cr'] ?> Cr)
+                                </span>
+                            <?php elseif ($trendSummary['latest_growth_dir'] === 'down'): ?>
+                                <span class="badge bg-danger-subtle text-danger fw-bold" style="font-size: 10px;">
+                                    <i class="fa-solid fa-arrow-trend-down me-1"></i><?= $trendSummary['latest_growth_pct'] ?>% (<?= $trendSummary['latest_diff_cr'] ?> Cr)
+                                </span>
+                            <?php else: ?>
+                                <span class="badge bg-secondary-subtle text-secondary" style="font-size: 10px;">0%</span>
+                            <?php endif; ?>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
+
+                    <!-- View 1: ApexCharts Bar Chart -->
+                    <div id="trendChartContainer" style="min-height: 175px;">
                         <div id="sdSalesValueTrendChart"></div>
                     </div>
-                    <div class="sd-kpi-footer">Completed cycles are shown here; November is still in progress.</div>
+
+                    <!-- View 2: Month-over-Month Growth Table (Toggleable) -->
+                    <div id="trendTableContainer" class="table-responsive" style="display: none; max-height: 220px; overflow-y: auto;">
+                        <table class="sd-table table-sm" style="font-size: 11px;">
+                            <thead>
+                                <tr>
+                                    <th>Month</th>
+                                    <th>Period Range</th>
+                                    <th class="text-center">Bookings</th>
+                                    <th>Net Sales (BDT)</th>
+                                    <th>vs Prev Month</th>
+                                    <th>Growth %</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (!empty($salesTrend)): ?>
+                                    <?php foreach ($salesTrend as $tRow): ?>
+                                        <tr>
+                                            <td class="fw-bold"><?= $tRow['month_label'] ?></td>
+                                            <td class="text-muted" style="font-size: 10px;"><?= $tRow['start_date'] ?> to <?= $tRow['end_date'] ?></td>
+                                            <td class="text-center fw-semibold"><?= $tRow['bookings'] ?></td>
+                                            <td class="fw-bold text-success"><?= sd_fmt_cr($tRow['value']) ?></td>
+                                            <td>
+                                                <?php if ($tRow['growth_dir'] === 'up'): ?>
+                                                    <span class="text-success fw-semibold">+<?= sd_fmt_cr($tRow['diff_value']) ?></span>
+                                                <?php elseif ($tRow['growth_dir'] === 'down'): ?>
+                                                    <span class="text-danger fw-semibold"><?= sd_fmt_cr($tRow['diff_value']) ?></span>
+                                                <?php else: ?>
+                                                    <span class="text-muted">-</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <?php if ($tRow['growth_dir'] === 'up'): ?>
+                                                    <span class="badge bg-success-subtle text-success fw-bold" style="font-size: 10px;">
+                                                        <i class="fa-solid fa-arrow-up me-1"></i>+<?= $tRow['growth_pct'] ?>%
+                                                    </span>
+                                                <?php elseif ($tRow['growth_dir'] === 'down'): ?>
+                                                    <span class="badge bg-danger-subtle text-danger fw-bold" style="font-size: 10px;">
+                                                        <i class="fa-solid fa-arrow-down me-1"></i><?= $tRow['growth_pct'] ?>%
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="badge bg-secondary-subtle text-secondary" style="font-size: 10px;">0%</span>
+                                                <?php endif; ?>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted py-2">No trend data available.</td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="sd-kpi-footer d-flex justify-content-between align-items-center mt-1">
+                        <span>Showing last <?= count($salesTrend) ?> months (<?= $trendHorizon ?> horizon) • Hover bar for MoM details</span>
+                        <a href="<?= $GLOBALS['base_url'] ?>/sales-report" class="text-decoration-none fw-bold" style="color: var(--sd-teal); font-size: 11px;">
+                            Detailed Sales Report <i class="fa-solid fa-arrow-right ms-1"></i>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- ====================================================================
-             PROJECT SALES & TARGET ACHIEVEMENT TABLE
+             PROJECT SALES & COMPLETE INVENTORY OVERVIEW (SOLD VS UNSOLD)
              ==================================================================== -->
         <div class="sd-card mb-3">
-            <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
                 <div>
-                    <h5 class="fw-bold m-0" style="font-size: 15px;">Project sales & target achievement</h5>
-                    <div class="text-muted" style="font-size: 11px;">Cycle to date • Net sales by verified date • Available stock as of today</div>
+                    <h5 class="fw-bold m-0" style="font-size: 15px;">
+                        Project Sales & Inventory Overview (Sold vs Unsold)
+                    </h5>
+                    <div class="text-muted" style="font-size: 11px;">
+                        Total units inventory, all-time sold vs unsold stock & current period performance
+                    </div>
                 </div>
-                <a href="<?= $GLOBALS['base_url'] ?>/projects" class="text-decoration-none small fw-bold" style="color: var(--sd-teal); font-size: 11.5px;">
-                    View all projects <i class="fa-solid fa-arrow-right ms-1"></i>
-                </a>
+                <div class="d-flex align-items-center gap-2">
+                    <input type="text" id="sdProjectSearch" class="form-control form-control-sm" placeholder="🔍 Search projects..." style="width: 180px; font-size: 11px;" onkeyup="sdFilterProjects()">
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-primary active" id="btnFilterActiveProj" onclick="sdSetProjectFilter('active')" style="font-size: 11px; padding: 2px 8px;">
+                            Active Cycle Sales
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="btnFilterAllProj" onclick="sdSetProjectFilter('all')" style="font-size: 11px; padding: 2px 8px;">
+                            All Inventory Projects (<?= count($projectRows) ?>)
+                        </button>
+                    </div>
+                    <a href="<?= $GLOBALS['base_url'] ?>/projects" class="text-decoration-none small fw-bold ms-1" style="color: var(--sd-teal); font-size: 11.5px;">
+                        All Projects <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
             </div>
 
-            <div class="table-responsive">
-                <table class="sd-table">
+            <!-- Executive Inventory Summary Strip -->
+            <?php if (!empty($inventorySummary)): ?>
+            <div class="p-2 mb-3 rounded" style="background: var(--sd-table-hover); border: 1px solid var(--sd-card-border);">
+                <div class="row g-2 align-items-center text-center">
+                    <div class="col-6 col-md-3">
+                        <div class="text-muted small" style="font-size: 11px;">Active Inventory Projects</div>
+                        <div class="fw-bold" style="font-size: 16px; color: var(--sd-primary);">
+                            <?= $inventorySummary['total_projects'] ?> Projects
+                        </div>
+                        <div class="text-muted" style="font-size: 10px;">Residential & Commercial</div>
+                    </div>
+                    <div class="col-6 col-md-3 border-start">
+                        <div class="text-muted small" style="font-size: 11px;">Total Inventory Units</div>
+                        <div class="fw-bold" style="font-size: 16px; color: var(--sd-text-main);">
+                            <?= number_format($inventorySummary['total_units']) ?> Units
+                        </div>
+                        <div class="text-muted" style="font-size: 10px;">All Apartments & Shops</div>
+                    </div>
+                    <div class="col-6 col-md-3 border-start">
+                        <div class="text-muted small" style="font-size: 11px;">Total Sold / Booked</div>
+                        <div class="fw-bold text-success" style="font-size: 16px;">
+                            <?= number_format($inventorySummary['total_sold']) ?> Sold (<?= $inventorySummary['sold_pct'] ?>%)
+                        </div>
+                        <div class="text-success small" style="font-size: 10px;"><?= sd_fmt_cr($inventorySummary['total_sold_val']) ?></div>
+                    </div>
+                    <div class="col-6 col-md-3 border-start">
+                        <div class="text-muted small" style="font-size: 11px;">Unsold Available Stock</div>
+                        <div class="fw-bold text-warning" style="font-size: 16px;">
+                            <?= number_format($inventorySummary['total_unsold']) ?> Available (<?= round(100 - $inventorySummary['sold_pct'], 1) ?>%)
+                        </div>
+                        <div class="text-warning small" style="font-size: 10px;"><?= sd_fmt_cr($inventorySummary['total_unsold_val']) ?></div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+                <table class="sd-table" id="sdProjectsTable">
                     <thead>
                         <tr>
                             <th>Project</th>
-                            <th class="text-center">Units</th>
-                            <th class="text-center">Shares</th>
-                            <th>Net Sales</th>
+                            <th class="text-center">Total Units</th>
+                            <th class="text-center">All-Time Sold</th>
+                            <th class="text-center">Unsold Avail.</th>
+                            <th class="text-center">Sold %</th>
+                            <th class="text-center">Cycle Units</th>
+                            <th class="text-center">Cycle Shares</th>
+                            <th>Cycle Net Sales</th>
                             <th>Value Target</th>
                             <th>Achieved</th>
-                            <th>Value Gap</th>
-                            <th class="text-center">Avail. Units</th>
-                            <th class="text-center">Avail. Shares</th>
                             <th class="text-end">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (!empty($projectRows)): ?>
-                            <?php foreach (array_slice($projectRows, 0, 8) as $row): ?>
-                                <tr>
+                            <?php foreach ($projectRows as $idx => $row): 
+                                $hasCycleSales = ($row['net_sales'] > 0 || $row['units'] > 0 || $row['shares'] > 0);
+                            ?>
+                                <tr class="project-table-row <?= $hasCycleSales ? 'has-cycle-sales' : 'no-cycle-sales' ?>" 
+                                    data-project-name="<?= strtolower(htmlspecialchars($row['name'])) ?>"
+                                    data-has-sales="<?= $hasCycleSales ? '1' : '0' ?>"
+                                    style="<?= (!$hasCycleSales && $idx >= 8) ? 'display: none;' : '' ?>">
                                     <td>
                                         <div class="fw-bold text-dark sd-clickable" onclick="showProjectSales(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['name'])) ?>')" style="color: var(--sd-text-main) !important; font-size: 12.5px; cursor: pointer;" title="Click to view sales for <?= htmlspecialchars($row['name']) ?>">
                                             <?= htmlspecialchars($row['name']) ?>
                                         </div>
-                                        <small class="text-muted" style="font-size: 10.5px;">Whole units & shares</small>
+                                        <small class="text-muted" style="font-size: 10.5px;">
+                                            <?= $row['total_units'] ?> units • <?= sd_fmt_cr($row['total_sold_val']) ?> sold
+                                        </small>
+                                    </td>
+                                    <td class="text-center fw-bold"><?= number_format($row['total_units']) ?></td>
+                                    <td class="text-center fw-semibold text-success"><?= number_format($row['total_sold']) ?></td>
+                                    <td class="text-center fw-semibold text-warning"><?= number_format($row['total_unsold']) ?></td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-1 justify-content-center">
+                                            <span class="fw-bold small" style="font-size: 10.5px; width: 35px;"><?= $row['sold_pct'] ?>%</span>
+                                            <div class="sd-progress-bar-bg" style="height: 5px; width: 45px;">
+                                                <div class="sd-progress-bar-fill" style="width: <?= min(100, $row['sold_pct']) ?>%; background: <?= $row['sold_pct'] >= 80 ? 'var(--sd-success)' : ($row['sold_pct'] >= 40 ? 'var(--sd-primary)' : 'var(--sd-warning)') ?>;"></div>
+                                            </div>
+                                        </div>
                                     </td>
                                     <td class="text-center fw-semibold"><?= $row['units'] ?></td>
                                     <td class="text-center fw-semibold text-primary"><?= $row['shares'] ?></td>
-                                    <td class="fw-bold text-success"><?= sd_fmt_cr($row['net_sales']) ?></td>
+                                    <td class="fw-bold <?= $row['net_sales'] > 0 ? 'text-success' : 'text-muted' ?>"><?= sd_fmt_cr($row['net_sales']) ?></td>
                                     <td class="text-muted fw-semibold"><?= sd_fmt_cr($row['value_target']) ?></td>
                                     <td>
                                         <div class="d-flex align-items-center gap-1">
                                             <span class="fw-bold small" style="font-size: 11px; width: 35px;"><?= $row['achieved'] ?>%</span>
-                                            <div class="sd-progress-bar-bg flex-grow-1" style="height: 5px; width: 45px;">
+                                            <div class="sd-progress-bar-bg flex-grow-1" style="height: 5px; width: 40px;">
                                                 <div class="sd-progress-bar-fill" style="width: <?= min(100, $row['achieved']) ?>%;"></div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="text-muted"><?= sd_fmt_cr($row['value_gap']) ?></td>
-                                    <td class="text-center fw-bold"><?= $row['avail_units'] ?></td>
-                                    <td class="text-center fw-bold text-primary"><?= $row['avail_shares'] ?></td>
                                     <td class="text-end">
                                         <button type="button" class="btn btn-sm btn-link text-primary p-0 me-2" onclick="showProjectSales(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['name'])) ?>')" title="View Project Sales Drilldown">
                                             <i class="fa-solid fa-eye" style="font-size: 13px;"></i>
@@ -888,7 +1088,7 @@ body.dark-mode {
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="10" class="text-center text-muted py-3">No project sales recorded in this cycle.</td>
+                                <td colspan="11" class="text-center text-muted py-3">No project sales recorded in this cycle.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>
@@ -896,14 +1096,15 @@ body.dark-mode {
                         <tfoot style="border-top: 2px solid var(--sd-card-border); font-weight: bold;">
                             <tr>
                                 <td>TOTAL</td>
+                                <td class="text-center"><?= number_format($projectTotals['total_units'] ?? 0) ?></td>
+                                <td class="text-center text-success"><?= number_format($projectTotals['total_sold'] ?? 0) ?></td>
+                                <td class="text-center text-warning"><?= number_format($projectTotals['total_unsold'] ?? 0) ?></td>
+                                <td class="text-center"><?= sd_pct($projectTotals['total_sold'] ?? 0, $projectTotals['total_units'] ?? 1) ?></td>
                                 <td class="text-center"><?= $projectTotals['units'] ?></td>
-                                <td class="text-center"><?= $projectTotals['shares'] ?></td>
+                                <td class="text-center text-primary"><?= $projectTotals['shares'] ?></td>
                                 <td class="text-success"><?= sd_fmt_cr($projectTotals['net_sales']) ?></td>
                                 <td><?= sd_fmt_cr($projectTotals['target']) ?></td>
                                 <td><?= sd_pct($projectTotals['net_sales'], $projectTotals['target']) ?></td>
-                                <td><?= sd_fmt_cr(max(0, $projectTotals['target'] - $projectTotals['net_sales'])) ?></td>
-                                <td class="text-center"><?= $projectTotals['avail_units'] ?></td>
-                                <td class="text-center text-primary"><?= $projectTotals['avail_shares'] ?></td>
                                 <td></td>
                             </tr>
                         </tfoot>
@@ -1966,7 +2167,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const chartOptions = {
         chart: {
             type: 'bar',
-            height: 165,
+            height: 175,
             toolbar: { show: false },
             fontFamily: 'inherit',
             background: 'transparent'
@@ -2031,10 +2232,34 @@ document.addEventListener("DOMContentLoaded", function() {
         },
         tooltip: {
             theme: isDarkMode ? 'dark' : 'light',
-            y: {
-                formatter: function(val) {
-                    return 'BDT ' + val + ' Cr';
+            custom: function({series, seriesIndex, dataPointIndex, w}) {
+                const item = trendData[dataPointIndex] || {};
+                const valCr = item.value_cr || 0;
+                const bkg = item.bookings || 0;
+                const mLabel = item.month_label || item.month || '';
+                const pct = item.growth_pct || 0;
+                const diffCr = item.diff_cr || 0;
+                const dir = item.growth_dir || 'flat';
+
+                let growthHtml = '';
+                if (dir === 'up') {
+                    growthHtml = `<span style="color: #10b981; font-weight: bold;"><i class="fa-solid fa-arrow-up"></i> +${pct}% (+${diffCr} Cr)</span> vs prev month`;
+                } else if (dir === 'down') {
+                    growthHtml = `<span style="color: #ef4444; font-weight: bold;"><i class="fa-solid fa-arrow-down"></i> ${pct}% (${diffCr} Cr)</span> vs prev month`;
+                } else {
+                    growthHtml = `<span style="color: #94a3b8;">Baseline month</span>`;
                 }
+
+                return `
+                    <div style="padding: 8px 12px; font-size: 11px; min-width: 170px;">
+                        <div style="font-weight: bold; margin-bottom: 4px; font-size: 12px;">${mLabel}</div>
+                        <div>Net Sales: <strong style="color: #0d9488;">BDT ${valCr} Cr</strong></div>
+                        <div>Bookings: <strong>${bkg} units</strong></div>
+                        <div style="margin-top: 4px; font-size: 10px; border-top: 1px solid rgba(148, 163, 184, 0.2); padding-top: 3px;">
+                            ${growthHtml}
+                        </div>
+                    </div>
+                `;
             }
         }
     };
@@ -2042,4 +2267,63 @@ document.addEventListener("DOMContentLoaded", function() {
     const chart = new ApexCharts(document.querySelector("#sdSalesValueTrendChart"), chartOptions);
     chart.render();
 });
+
+// Toggle Trend Chart vs MoM Table
+function toggleTrendView() {
+    const chartBox = document.getElementById('trendChartContainer');
+    const tableBox = document.getElementById('trendTableContainer');
+    const label = document.getElementById('trendToggleLabel');
+    if (!chartBox || !tableBox) return;
+
+    if (chartBox.style.display === 'none') {
+        chartBox.style.display = 'block';
+        tableBox.style.display = 'none';
+        if (label) label.innerText = 'Table';
+    } else {
+        chartBox.style.display = 'none';
+        tableBox.style.display = 'block';
+        if (label) label.innerText = 'Chart';
+    }
+}
+
+// Project Search & Filter logic
+let currentProjectFilter = 'active';
+function sdSetProjectFilter(type) {
+    currentProjectFilter = type;
+    const btnActive = document.getElementById('btnFilterActiveProj');
+    const btnAll = document.getElementById('btnFilterAllProj');
+    if (btnActive && btnAll) {
+        if (type === 'active') {
+            btnActive.className = 'btn btn-primary active';
+            btnAll.className = 'btn btn-outline-secondary';
+        } else {
+            btnActive.className = 'btn btn-outline-secondary';
+            btnAll.className = 'btn btn-primary active';
+        }
+    }
+    sdApplyProjectFiltering();
+}
+
+function sdFilterProjects() {
+    sdApplyProjectFiltering();
+}
+
+function sdApplyProjectFiltering() {
+    const query = (document.getElementById('sdProjectSearch')?.value || '').toLowerCase().trim();
+    const rows = document.querySelectorAll('#sdProjectsTable tbody tr.project-table-row');
+    
+    rows.forEach(row => {
+        const name = (row.getAttribute('data-project-name') || '').toLowerCase();
+        const hasSales = row.getAttribute('data-has-sales') === '1';
+
+        const matchesQuery = !query || name.includes(query);
+        const matchesFilter = (currentProjectFilter === 'all') || hasSales;
+
+        if (matchesQuery && matchesFilter) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
 </script>

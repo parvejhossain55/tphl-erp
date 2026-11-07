@@ -12,7 +12,9 @@ $type_summary      = $type_summary ?? ['rows' => [], 'grand' => []];
 $transactions      = $transactions ?? [];
 $collectors_list   = $collectors_list ?? [];
 $projects_list     = $projects_list ?? [];
-$pagination        = $pagination ?? ['current_page' => 1, 'total_pages' => 1, 'total_records' => 0, 'limit' => 50];
+$pagination    = $pagination ?? ['current_page' => 1, 'total_pages' => 1, 'total_records' => 0, 'limit' => 50, 'is_all' => false];
+$curLimit      = $pagination['limit_param'] ?? ($pagination['limit'] ?? 50);
+$isAllRows     = !empty($pagination['is_all']) || $curLimit === 'all' || (int)$curLimit >= 10000;
 
 $curPeriodType = $filters['period_type'] ?? 'monthly';
 $curYear       = $filters['year'] ?? (int)date('Y');
@@ -28,9 +30,16 @@ $curVer        = $filters['verification_status'] ?? '';
 $curSearch     = $filters['search'] ?? '';
 
 $curViewMode   = $view_mode ?? 'collectors';
+if (!in_array($curViewMode, ['collectors', 'transactions', 'type_summary', 'all'], true)) {
+    $curViewMode = 'collectors';
+}
 
-// Build query params for print and export links
+// Build query params for print and export links (always preserve active view_mode and limit)
 $queryParams = $_GET;
+$queryParams['view_mode'] = $curViewMode;
+if (isset($_GET['limit'])) {
+    $queryParams['limit'] = $_GET['limit'];
+}
 $printUrl     = $base_url . '/ced-collection-statement-print?' . http_build_query($queryParams);
 $exportUrl    = $base_url . '/ced-collection-statement-export?' . http_build_query($queryParams);
 
@@ -42,7 +51,425 @@ $exportColUrl = $base_url . '/ced-collection-statement-export?' . http_build_que
 $exportTrxUrl = $base_url . '/ced-collection-statement-export?' . http_build_query(array_merge($queryParams, ['export_mode' => 'transactions']));
 ?>
 
-<link rel="stylesheet" href="<?= $base_url ?>/public/assets/css/collection-statement.css">
+<link rel="stylesheet" href="<?= $base_url ?>/public/assets/css/collection-statement.css?v=2.1">
+
+<style>
+/* =========================================================================
+   Collection Statement Custom Table & Dark Mode Enhancements
+   ========================================================================= */
+.cs-table-card {
+    background-color: #ffffff;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+.cs-card-header,
+.cs-card-footer {
+    background-color: #ffffff;
+    border-color: #e2e8f0;
+}
+
+/* Light Mode Column Highlighting */
+th.col-dev-charge { background-color: #fffbeb !important; }
+td.col-dev-charge { background-color: #fffdf5; }
+
+th.col-emi { background-color: #f0fdf4 !important; }
+td.col-emi { background-color: #f7fee7; }
+
+th.col-settlement { background-color: #f0fdf4 !important; }
+td.col-settlement { background-color: #f0fdf4; }
+
+th.col-booking { background-color: #faf5ff !important; }
+td.col-booking { background-color: #faf5ff; }
+
+th.col-total { background-color: #f8fafc !important; }
+td.col-total { background-color: #f8fafc; }
+
+.cs-tfoot-row {
+    background-color: #f8fafc;
+    border-top: 2px solid #cbd5e1;
+    color: #1e293b;
+}
+.cs-grand-label {
+    color: #1e293b;
+}
+.cs-total-badge {
+    background-color: rgba(99, 102, 241, 0.12) !important;
+}
+
+/* =========================================================
+   DARK MODE OVERRIDES (Compatible with bd-theme-dark & BS dark)
+   ========================================================= */
+:root[bd-theme="bd-theme-dark"] .cs-table-card,
+[bd-theme="bd-theme-dark"] .cs-table-card,
+[data-bs-theme="dark"] .cs-table-card,
+[data-theme="dark"] .cs-table-card,
+body.dark-mode .cs-table-card,
+body.dark-only .cs-table-card,
+body.dark .cs-table-card,
+html.dark .cs-table-card {
+    background-color: #16202e !important;
+    border-color: #243042 !important;
+}
+
+:root[bd-theme="bd-theme-dark"] .cs-card-header,
+[bd-theme="bd-theme-dark"] .cs-card-header,
+[data-bs-theme="dark"] .cs-card-header,
+[data-theme="dark"] .cs-card-header,
+body.dark-mode .cs-card-header,
+body.dark .cs-card-header,
+html.dark .cs-card-header,
+:root[bd-theme="bd-theme-dark"] .cs-card-footer,
+[bd-theme="bd-theme-dark"] .cs-card-footer,
+[data-bs-theme="dark"] .cs-card-footer,
+[data-theme="dark"] .cs-card-footer,
+body.dark-mode .cs-card-footer,
+body.dark .cs-card-footer,
+html.dark .cs-card-footer {
+    background-color: #1a2436 !important;
+    border-color: #243042 !important;
+    color: #f1f5f9 !important;
+}
+
+/* Dark Mode Table Base */
+:root[bd-theme="bd-theme-dark"] .table-ced,
+[bd-theme="bd-theme-dark"] .table-ced,
+[data-bs-theme="dark"] .table-ced,
+[data-theme="dark"] .table-ced,
+body.dark-mode .table-ced,
+body.dark .table-ced,
+html.dark .table-ced {
+    --bs-table-bg: transparent;
+    --bs-table-color: #cbd5e1;
+    --bs-table-border-color: #243042;
+    background-color: transparent !important;
+    border-color: #243042 !important;
+    color: #cbd5e1 !important;
+}
+
+/* Headers in Dark Mode */
+:root[bd-theme="bd-theme-dark"] .table-ced thead th,
+[bd-theme="bd-theme-dark"] .table-ced thead th,
+[data-bs-theme="dark"] .table-ced thead th,
+[data-theme="dark"] .table-ced thead th,
+body.dark-mode .table-ced thead th,
+body.dark .table-ced thead th,
+html.dark .table-ced thead th {
+    background-color: #121927 !important;
+    color: #cbd5e1 !important;
+    border-bottom: 2px solid #243042 !important;
+    border-top: none !important;
+}
+
+/* Rows and Cells in Dark Mode */
+:root[bd-theme="bd-theme-dark"] .table-ced tbody tr,
+[bd-theme="bd-theme-dark"] .table-ced tbody tr,
+[data-bs-theme="dark"] .table-ced tbody tr,
+[data-theme="dark"] .table-ced tbody tr,
+body.dark-mode .table-ced tbody tr,
+body.dark .table-ced tbody tr,
+html.dark .table-ced tbody tr {
+    background-color: transparent !important;
+    color: #cbd5e1 !important;
+}
+
+:root[bd-theme="bd-theme-dark"] .table-ced tbody td,
+[bd-theme="bd-theme-dark"] .table-ced tbody td,
+[data-bs-theme="dark"] .table-ced tbody td,
+[data-theme="dark"] .table-ced tbody td,
+body.dark-mode .table-ced tbody td,
+body.dark .table-ced tbody td,
+html.dark .table-ced tbody td {
+    background-color: transparent;
+    border-color: #243042 !important;
+    color: #cbd5e1;
+}
+
+/* Row Hover */
+:root[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover,
+[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover,
+[data-bs-theme="dark"] .table-ced.table-hover tbody tr:hover,
+body.dark-mode .table-ced.table-hover tbody tr:hover,
+body.dark .table-ced.table-hover tbody tr:hover,
+html.dark .table-ced.table-hover tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+:root[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover > td,
+[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover > td,
+[data-bs-theme="dark"] .table-ced.table-hover tbody tr:hover > td,
+body.dark-mode .table-ced.table-hover tbody tr:hover > td,
+body.dark .table-ced.table-hover tbody tr:hover > td,
+html.dark .table-ced.table-hover tbody tr:hover > td {
+    background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Columns Dark Mode Colors */
+/* Dev Charge */
+:root[bd-theme="bd-theme-dark"] th.col-dev-charge,
+[bd-theme="bd-theme-dark"] th.col-dev-charge,
+[data-bs-theme="dark"] th.col-dev-charge,
+[data-theme="dark"] th.col-dev-charge,
+body.dark-mode th.col-dev-charge,
+body.dark th.col-dev-charge,
+html.dark th.col-dev-charge {
+    background-color: rgba(245, 158, 11, 0.14) !important;
+    color: #fcd34d !important;
+    border-bottom: 2px solid rgba(245, 158, 11, 0.35) !important;
+}
+:root[bd-theme="bd-theme-dark"] td.col-dev-charge,
+[bd-theme="bd-theme-dark"] td.col-dev-charge,
+[data-bs-theme="dark"] td.col-dev-charge,
+[data-theme="dark"] td.col-dev-charge,
+body.dark-mode td.col-dev-charge,
+body.dark td.col-dev-charge,
+html.dark td.col-dev-charge {
+    background-color: rgba(245, 158, 11, 0.06) !important;
+    color: #fbbf24 !important;
+}
+:root[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover > td.col-dev-charge,
+[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover > td.col-dev-charge,
+[data-bs-theme="dark"] .table-ced.table-hover tbody tr:hover > td.col-dev-charge,
+body.dark-mode .table-ced.table-hover tbody tr:hover > td.col-dev-charge,
+body.dark .table-ced.table-hover tbody tr:hover > td.col-dev-charge,
+html.dark .table-ced.table-hover tbody tr:hover > td.col-dev-charge {
+    background-color: rgba(245, 158, 11, 0.13) !important;
+}
+
+/* Regular EMI */
+:root[bd-theme="bd-theme-dark"] th.col-emi,
+[bd-theme="bd-theme-dark"] th.col-emi,
+[data-bs-theme="dark"] th.col-emi,
+[data-theme="dark"] th.col-emi,
+body.dark-mode th.col-emi,
+body.dark th.col-emi,
+html.dark th.col-emi {
+    background-color: rgba(34, 197, 94, 0.14) !important;
+    color: #86efac !important;
+    border-bottom: 2px solid rgba(34, 197, 94, 0.35) !important;
+}
+:root[bd-theme="bd-theme-dark"] td.col-emi,
+[bd-theme="bd-theme-dark"] td.col-emi,
+[data-bs-theme="dark"] td.col-emi,
+[data-theme="dark"] td.col-emi,
+body.dark-mode td.col-emi,
+body.dark td.col-emi,
+html.dark td.col-emi {
+    background-color: rgba(34, 197, 94, 0.06) !important;
+    color: #4ade80 !important;
+}
+:root[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover > td.col-emi,
+[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover > td.col-emi,
+[data-bs-theme="dark"] .table-ced.table-hover tbody tr:hover > td.col-emi,
+body.dark-mode .table-ced.table-hover tbody tr:hover > td.col-emi,
+body.dark .table-ced.table-hover tbody tr:hover > td.col-emi,
+html.dark .table-ced.table-hover tbody tr:hover > td.col-emi {
+    background-color: rgba(34, 197, 94, 0.13) !important;
+}
+
+/* Due Settled */
+:root[bd-theme="bd-theme-dark"] th.col-settlement,
+[bd-theme="bd-theme-dark"] th.col-settlement,
+[data-bs-theme="dark"] th.col-settlement,
+[data-theme="dark"] th.col-settlement,
+body.dark-mode th.col-settlement,
+body.dark th.col-settlement,
+html.dark th.col-settlement {
+    background-color: rgba(14, 165, 233, 0.14) !important;
+    color: #7dd3fc !important;
+    border-bottom: 2px solid rgba(14, 165, 233, 0.35) !important;
+}
+:root[bd-theme="bd-theme-dark"] td.col-settlement,
+[bd-theme="bd-theme-dark"] td.col-settlement,
+[data-bs-theme="dark"] td.col-settlement,
+[data-theme="dark"] td.col-settlement,
+body.dark-mode td.col-settlement,
+body.dark td.col-settlement,
+html.dark td.col-settlement {
+    background-color: rgba(14, 165, 233, 0.06) !important;
+    color: #38bdf8 !important;
+}
+:root[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover > td.col-settlement,
+[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover > td.col-settlement,
+[data-bs-theme="dark"] .table-ced.table-hover tbody tr:hover > td.col-settlement,
+body.dark-mode .table-ced.table-hover tbody tr:hover > td.col-settlement,
+body.dark .table-ced.table-hover tbody tr:hover > td.col-settlement,
+html.dark .table-ced.table-hover tbody tr:hover > td.col-settlement {
+    background-color: rgba(14, 165, 233, 0.13) !important;
+}
+
+/* Booking / Registration */
+:root[bd-theme="bd-theme-dark"] th.col-booking,
+[bd-theme="bd-theme-dark"] th.col-booking,
+[data-bs-theme="dark"] th.col-booking,
+[data-theme="dark"] th.col-booking,
+body.dark-mode th.col-booking,
+body.dark th.col-booking,
+html.dark th.col-booking {
+    background-color: rgba(147, 51, 234, 0.14) !important;
+    color: #c084fc !important;
+    border-bottom: 2px solid rgba(147, 51, 234, 0.35) !important;
+}
+:root[bd-theme="bd-theme-dark"] td.col-booking,
+[bd-theme="bd-theme-dark"] td.col-booking,
+[data-bs-theme="dark"] td.col-booking,
+[data-theme="dark"] td.col-booking,
+body.dark-mode td.col-booking,
+body.dark td.col-booking,
+html.dark td.col-booking {
+    background-color: rgba(147, 51, 234, 0.06) !important;
+    color: #c084fc !important;
+}
+:root[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover > td.col-booking,
+[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover > td.col-booking,
+[data-bs-theme="dark"] .table-ced.table-hover tbody tr:hover > td.col-booking,
+body.dark-mode .table-ced.table-hover tbody tr:hover > td.col-booking,
+body.dark .table-ced.table-hover tbody tr:hover > td.col-booking,
+html.dark .table-ced.table-hover tbody tr:hover > td.col-booking {
+    background-color: rgba(147, 51, 234, 0.13) !important;
+}
+
+/* Total Amount */
+:root[bd-theme="bd-theme-dark"] th.col-total,
+[bd-theme="bd-theme-dark"] th.col-total,
+[data-bs-theme="dark"] th.col-total,
+[data-theme="dark"] th.col-total,
+body.dark-mode th.col-total,
+body.dark th.col-total,
+html.dark th.col-total {
+    background-color: rgba(99, 102, 241, 0.18) !important;
+    color: #a5b4fc !important;
+    border-bottom: 2px solid rgba(99, 102, 241, 0.4) !important;
+}
+:root[bd-theme="bd-theme-dark"] td.col-total,
+[bd-theme="bd-theme-dark"] td.col-total,
+[data-bs-theme="dark"] td.col-total,
+[data-theme="dark"] td.col-total,
+body.dark-mode td.col-total,
+body.dark td.col-total,
+html.dark td.col-total {
+    background-color: rgba(99, 102, 241, 0.10) !important;
+    color: #ffffff !important;
+}
+:root[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover > td.col-total,
+[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover > td.col-total,
+[data-bs-theme="dark"] .table-ced.table-hover tbody tr:hover > td.col-total,
+body.dark-mode .table-ced.table-hover tbody tr:hover > td.col-total,
+body.dark .table-ced.table-hover tbody tr:hover > td.col-total,
+html.dark .table-ced.table-hover tbody tr:hover > td.col-total {
+    background-color: rgba(99, 102, 241, 0.20) !important;
+}
+
+/* Footers in Dark Mode */
+:root[bd-theme="bd-theme-dark"] .cs-tfoot-row,
+[bd-theme="bd-theme-dark"] .cs-tfoot-row,
+[data-bs-theme="dark"] .cs-tfoot-row,
+[data-theme="dark"] .cs-tfoot-row,
+body.dark-mode .cs-tfoot-row,
+body.dark .cs-tfoot-row,
+html.dark .cs-tfoot-row {
+    background-color: #121927 !important;
+    border-top: 2px solid #334155 !important;
+    color: #f1f5f9 !important;
+}
+:root[bd-theme="bd-theme-dark"] .cs-grand-label,
+[bd-theme="bd-theme-dark"] .cs-grand-label,
+[data-bs-theme="dark"] .cs-grand-label,
+[data-theme="dark"] .cs-grand-label,
+body.dark-mode .cs-grand-label,
+body.dark .cs-grand-label,
+html.dark .cs-grand-label {
+    color: #f1f5f9 !important;
+}
+:root[bd-theme="bd-theme-dark"] .cs-total-badge,
+[bd-theme="bd-theme-dark"] .cs-total-badge,
+[data-bs-theme="dark"] .cs-total-badge,
+[data-theme="dark"] .cs-total-badge,
+body.dark-mode .cs-total-badge,
+body.dark .cs-total-badge,
+html.dark .cs-total-badge {
+    background-color: rgba(99, 102, 241, 0.25) !important;
+    color: #a5b4fc !important;
+}
+
+/* Dark Mode Typography & Badges in Tables */
+:root[bd-theme="bd-theme-dark"] .table-ced .text-dark,
+[bd-theme="bd-theme-dark"] .table-ced .text-dark,
+[data-bs-theme="dark"] .table-ced .text-dark,
+[data-theme="dark"] .table-ced .text-dark,
+body.dark-mode .table-ced .text-dark,
+body.dark .table-ced .text-dark,
+html.dark .table-ced .text-dark,
+:root[bd-theme="bd-theme-dark"] .cs-card-header .text-dark,
+[bd-theme="bd-theme-dark"] .cs-card-header .text-dark,
+[data-bs-theme="dark"] .cs-card-header .text-dark,
+[data-theme="dark"] .cs-card-header .text-dark,
+body.dark-mode .cs-card-header .text-dark,
+body.dark .cs-card-header .text-dark,
+html.dark .cs-card-header .text-dark {
+    color: #f1f5f9 !important;
+}
+
+:root[bd-theme="bd-theme-dark"] .table-ced .badge.bg-light,
+[bd-theme="bd-theme-dark"] .table-ced .badge.bg-light,
+[data-bs-theme="dark"] .table-ced .badge.bg-light,
+[data-theme="dark"] .table-ced .badge.bg-light,
+body.dark-mode .table-ced .badge.bg-light,
+body.dark .table-ced .badge.bg-light,
+html.dark .table-ced .badge.bg-light {
+    background-color: #243042 !important;
+    color: #cbd5e1 !important;
+    border-color: #334155 !important;
+}
+
+:root[bd-theme="bd-theme-dark"] .cs-table-search-box .input-group-text,
+[bd-theme="bd-theme-dark"] .cs-table-search-box .input-group-text,
+[data-bs-theme="dark"] .cs-table-search-box .input-group-text,
+body.dark-mode .cs-table-search-box .input-group-text,
+body.dark .cs-table-search-box .input-group-text,
+html.dark .cs-table-search-box .input-group-text {
+    background-color: #121927 !important;
+    border-color: #243042 !important;
+    color: #94a3b8 !important;
+}
+
+:root[bd-theme="bd-theme-dark"] .cs-table-search-box .form-control,
+[bd-theme="bd-theme-dark"] .cs-table-search-box .form-control,
+[data-bs-theme="dark"] .cs-table-search-box .form-control,
+body.dark-mode .cs-table-search-box .form-control,
+body.dark .cs-table-search-box .form-control,
+html.dark .cs-table-search-box .form-control {
+    background-color: #0d131f !important;
+    border-color: #243042 !important;
+    color: #f1f5f9 !important;
+}
+
+/* Rows Per Page Box */
+.cs-rows-box {
+    background-color: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+:root[bd-theme="bd-theme-dark"] .cs-rows-box,
+[bd-theme="bd-theme-dark"] .cs-rows-box,
+[data-bs-theme="dark"] .cs-rows-box,
+[data-theme="dark"] .cs-rows-box,
+body.dark-mode .cs-rows-box,
+body.dark .cs-rows-box,
+html.dark .cs-rows-box {
+    background-color: #121927 !important;
+    border-color: #243042 !important;
+    color: #cbd5e1 !important;
+}
+
+:root[bd-theme="bd-theme-dark"] .cs-rows-box select,
+[bd-theme="bd-theme-dark"] .cs-rows-box select,
+[data-bs-theme="dark"] .cs-rows-box select,
+body.dark-mode .cs-rows-box select,
+body.dark .cs-rows-box select,
+html.dark .cs-rows-box select {
+    color: #f1f5f9 !important;
+    background-color: #121927 !important;
+}
+</style>
 
 <div class="row">
     <!-- Header Section -->
@@ -446,27 +873,27 @@ $exportTrxUrl = $base_url . '/ced-collection-statement-export?' . http_build_que
                         <i class="fa-solid fa-sliders text-primary me-1"></i> Statement View:
                     </span>
                     <div class="btn-group btn-group-sm p-1 bg-light rounded-2 border" role="group">
-                        <button type="button" class="btn btn-sm ced-mode-btn <?= $curViewMode === 'collectors' ? 'btn-primary shadow-sm active' : 'btn-light text-secondary' ?>" onclick="switchView('collectors')">
+                        <button type="button" class="btn btn-sm ced-mode-btn <?= $curViewMode === 'collectors' ? 'btn-primary shadow-sm active' : 'btn-light text-secondary' ?>" data-mode="collectors" onclick="switchView('collectors')">
                             <i class="fa-solid fa-users-gear me-1"></i> Executive Matrix
                         </button>
-                        <button type="button" class="btn btn-sm ced-mode-btn <?= $curViewMode === 'transactions' ? 'btn-primary shadow-sm active' : 'btn-light text-secondary' ?>" onclick="switchView('transactions')">
+                        <button type="button" class="btn btn-sm ced-mode-btn <?= $curViewMode === 'transactions' ? 'btn-primary shadow-sm active' : 'btn-light text-secondary' ?>" data-mode="transactions" onclick="switchView('transactions')">
                             <i class="fa-solid fa-list-check me-1"></i> Detailed Register
                         </button>
-                        <button type="button" class="btn btn-sm ced-mode-btn <?= $curViewMode === 'type_summary' ? 'btn-primary shadow-sm active' : 'btn-light text-secondary' ?>" onclick="switchView('type_summary')">
+                        <button type="button" class="btn btn-sm ced-mode-btn <?= $curViewMode === 'type_summary' ? 'btn-primary shadow-sm active' : 'btn-light text-secondary' ?>" data-mode="type_summary" onclick="switchView('type_summary')">
                             <i class="fa-solid fa-chart-pie me-1"></i> Payment Heads
                         </button>
-                        <button type="button" class="btn btn-sm ced-mode-btn <?= $curViewMode === 'all' ? 'btn-primary shadow-sm active' : 'btn-light text-secondary' ?>" onclick="switchView('all')">
+                        <button type="button" class="btn btn-sm ced-mode-btn <?= $curViewMode === 'all' ? 'btn-primary shadow-sm active' : 'btn-light text-secondary' ?>" data-mode="all" onclick="switchView('all')">
                             <i class="fa-solid fa-table-cells-large me-1"></i> Full Report (All)
                         </button>
                     </div>
                 </div>
 
                 <div class="d-flex align-items-center gap-2">
-                    <a href="<?= $printColUrl ?>" target="_blank" class="btn btn-sm btn-light border text-dark d-flex align-items-center gap-1 shadow-xs" title="Print Executive Summary">
-                        <i class="fa-solid fa-print text-primary"></i> <span class="d-none d-sm-inline">Print View</span>
+                    <a href="<?= $curViewMode === 'transactions' ? $printTrxUrl : ($curViewMode === 'type_summary' ? $printTypeUrl : $printColUrl) ?>" target="_blank" class="btn btn-sm btn-light border text-dark d-flex align-items-center gap-1 shadow-xs" title="Print Statement" id="statementPrintBtn">
+                        <i class="fa-solid fa-print text-primary"></i> <span class="d-none d-sm-inline"><?= $curViewMode === 'transactions' ? 'Print Register' : ($curViewMode === 'type_summary' ? 'Print Heads' : 'Print View') ?></span>
                     </a>
-                    <a href="<?= $exportColUrl ?>" class="btn btn-sm btn-light border text-dark d-flex align-items-center gap-1 shadow-xs" title="Export CSV Summary">
-                        <i class="fa-solid fa-file-csv text-success"></i> <span class="d-none d-sm-inline">Export Matrix</span>
+                    <a href="<?= $curViewMode === 'transactions' ? $exportTrxUrl : $exportColUrl ?>" class="btn btn-sm btn-light border text-dark d-flex align-items-center gap-1 shadow-xs" title="Export Statement CSV" id="statementExportBtn">
+                        <i class="fa-solid fa-file-csv text-success"></i> <span class="d-none d-sm-inline"><?= $curViewMode === 'transactions' ? 'Export Register' : ($curViewMode === 'type_summary' ? 'Export Heads' : 'Export Matrix') ?></span>
                     </a>
                 </div>
             </div>
@@ -475,8 +902,8 @@ $exportTrxUrl = $base_url . '/ced-collection-statement-export?' . http_build_que
 
     <!-- 1. Executive / Collector Collection Matrix (DEFAULT VIEW) -->
     <div class="col-12 mb-4" id="section-collectors" style="<?= in_array($curViewMode, ['transactions', 'type_summary'], true) ? 'display:none;' : '' ?>">
-        <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
-            <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="card border-0 shadow-sm rounded-3 overflow-hidden cs-table-card">
+            <div class="card-header cs-card-header py-3 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <div>
                     <h5 class="mb-1 fw-bold text-dark d-flex align-items-center gap-2">
                         <span class="badge bg-primary text-white p-2 rounded-2"><i class="fa-solid fa-users-gear"></i></span>
@@ -504,11 +931,11 @@ $exportTrxUrl = $base_url . '/ced-collection-statement-export?' . http_build_que
                             <th class="text-center" style="width: 45px;">#</th>
                             <th style="min-width: 200px;">Executive / Collector Name</th>
                             <th class="text-center" style="width: 100px;">Total Trx</th>
-                            <th class="text-end" style="min-width: 140px; background-color: #fffbeb !important;">Dev Charge (BDT)</th>
-                            <th class="text-end" style="min-width: 140px; background-color: #f0fdf4 !important;">Regular EMI (BDT)</th>
-                            <th class="text-end" style="min-width: 140px; background-color: #f0fdf4 !important;">Due Settled (BDT)</th>
-                            <th class="text-end" style="min-width: 130px;">Booking / Reg (BDT)</th>
-                            <th class="text-end" style="min-width: 150px; background-color: #f8fafc !important;">Total Collected (BDT)</th>
+                            <th class="text-end col-dev-charge" style="min-width: 140px;">Dev Charge (BDT)</th>
+                            <th class="text-end col-emi" style="min-width: 140px;">Regular EMI (BDT)</th>
+                            <th class="text-end col-settlement" style="min-width: 140px;">Due Settled (BDT)</th>
+                            <th class="text-end col-booking" style="min-width: 130px;">Booking / Reg (BDT)</th>
+                            <th class="text-end col-total" style="min-width: 150px;">Total Collected (BDT)</th>
                             <th style="min-width: 160px;">% Share</th>
                             <th class="text-center" style="width: 90px;">Action</th>
                         </tr>
@@ -527,7 +954,8 @@ $exportTrxUrl = $base_url . '/ced-collection-statement-export?' . http_build_que
                             foreach ($collector_summary['rows'] as $row):
                                 $colFilterUrl = '?' . http_build_query(array_merge($queryParams, [
                                     'collector_id' => $row['created_by'],
-                                    'view_mode'    => 'transactions'
+                                    'view_mode'    => 'transactions',
+                                    'page'         => 1
                                 ])) . '#section-transactions';
                                 $initials = strtoupper(substr($row['collector_name'], 0, 2));
                         ?>
@@ -558,7 +986,7 @@ $exportTrxUrl = $base_url . '/ced-collection-statement-export?' . http_build_que
                                     <span class="badge bg-light text-dark border px-2 py-1"><?= number_format($row['total_count']) ?></span>
                                 </td>
                                 <!-- Dev Charge -->
-                                <td class="text-end font-monospace text-warning fw-semibold" style="background-color: #fffdf5;">
+                                <td class="text-end font-monospace text-warning fw-semibold col-dev-charge">
                                     <?php if ($row['dev_charge_amount'] > 0): ?>
                                         <div>৳<?= number_format($row['dev_charge_amount'], 2) ?></div>
                                         <small class="text-muted extra-small">(<?= $row['dev_charge_count'] ?> Trx)</small>
@@ -567,7 +995,7 @@ $exportTrxUrl = $base_url . '/ced-collection-statement-export?' . http_build_que
                                     <?php endif; ?>
                                 </td>
                                 <!-- Regular EMI -->
-                                <td class="text-end font-monospace text-success fw-semibold" style="background-color: #f7fee7;">
+                                <td class="text-end font-monospace text-success fw-semibold col-emi">
                                     <?php if ($row['emi_amount'] > 0): ?>
                                         <div>৳<?= number_format($row['emi_amount'], 2) ?></div>
                                         <small class="text-muted extra-small">(<?= $row['emi_count'] ?> Trx)</small>
@@ -576,7 +1004,7 @@ $exportTrxUrl = $base_url . '/ced-collection-statement-export?' . http_build_que
                                     <?php endif; ?>
                                 </td>
                                 <!-- Due Settlement / Advance -->
-                                <td class="text-end font-monospace text-info fw-semibold" style="background-color: #f0fdf4;">
+                                <td class="text-end font-monospace text-info fw-semibold col-settlement">
                                     <?php if ($row['settlement_amount'] > 0): ?>
                                         <div>৳<?= number_format($row['settlement_amount'], 2) ?></div>
                                         <small class="text-muted extra-small">(<?= $row['settlement_count'] ?> Trx)</small>
@@ -585,7 +1013,7 @@ $exportTrxUrl = $base_url . '/ced-collection-statement-export?' . http_build_que
                                     <?php endif; ?>
                                 </td>
                                 <!-- Booking & Reg (Rare) -->
-                                <td class="text-end font-monospace">
+                                <td class="text-end font-monospace col-booking">
                                     <?php 
                                     $bookRegAmt = $row['booking_amount'] + $row['registration_amount'];
                                     $bookRegCnt = $row['booking_count'] + $row['registration_count'];
@@ -598,7 +1026,7 @@ $exportTrxUrl = $base_url . '/ced-collection-statement-export?' . http_build_que
                                     <?php endif; ?>
                                 </td>
                                 <!-- Total Amount -->
-                                <td class="text-end font-monospace fw-bold text-dark fs-13" style="background-color: #f8fafc;">
+                                <td class="text-end font-monospace fw-bold fs-13 col-total">
                                     ৳<?= number_format($row['total_amount'], 2) ?>
                                 </td>
                                 <!-- % Share Progress Bar -->
@@ -622,28 +1050,28 @@ $exportTrxUrl = $base_url . '/ced-collection-statement-export?' . http_build_que
                     <?php if (!empty($collector_summary['rows'])): 
                         $g = $collector_summary['grand'];
                     ?>
-                        <tfoot class="table-light">
-                            <tr class="fw-bold bg-light" style="border-top: 2px solid #cbd5e1; font-size: 13.5px;">
+                        <tfoot class="cs-tfoot">
+                            <tr class="fw-bold cs-tfoot-row" style="font-size: 13.5px;">
                                 <td class="text-center text-muted"><?= count($collector_summary['rows']) ?></td>
-                                <td class="text-uppercase text-dark">
+                                <td class="text-uppercase cs-grand-label">
                                     <i class="fa-solid fa-calculator text-primary me-1"></i> GRAND TOTAL:
                                 </td>
                                 <td class="text-center font-monospace">
                                     <span class="badge bg-dark text-white px-2 py-1"><?= number_format($g['total_count']) ?></span>
                                 </td>
-                                <td class="text-end font-monospace text-warning">
+                                <td class="text-end font-monospace text-warning col-dev-charge">
                                     ৳<?= number_format($g['dev_charge_amount'], 2) ?>
                                 </td>
-                                <td class="text-end font-monospace text-success">
+                                <td class="text-end font-monospace text-success col-emi">
                                     ৳<?= number_format($g['emi_amount'], 2) ?>
                                 </td>
-                                <td class="text-end font-monospace text-info">
+                                <td class="text-end font-monospace text-info col-settlement">
                                     ৳<?= number_format($g['settlement_amount'], 2) ?>
                                 </td>
-                                <td class="text-end font-monospace text-purple" style="color: #9333ea;">
+                                <td class="text-end font-monospace text-purple col-booking" style="color: #9333ea;">
                                     ৳<?= number_format($g['booking_amount'] + $g['registration_amount'], 2) ?>
                                 </td>
-                                <td class="text-end font-monospace text-primary fs-14 bg-primary-subtle">
+                                <td class="text-end font-monospace text-primary fs-14 col-total cs-total-badge">
                                     ৳<?= number_format($g['total_amount'], 2) ?>
                                 </td>
                                 <td>
@@ -664,19 +1092,39 @@ $exportTrxUrl = $base_url . '/ced-collection-statement-export?' . http_build_que
 
     <!-- 2. Detailed Collection Records Register -->
     <div class="col-12 mb-4" id="section-transactions" style="<?= in_array($curViewMode, ['collectors', 'type_summary'], true) ? 'display:none;' : '' ?>">
-        <div class="card border-0 shadow-sm rounded-3">
-            <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="card border-0 shadow-sm rounded-3 cs-table-card">
+            <div class="card-header cs-card-header py-3 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <div>
                     <h5 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
                         <span class="badge bg-success text-white p-2 rounded-2"><i class="fa-solid fa-list-check"></i></span>
                         <span>Detailed Collection Records Register</span>
                     </h5>
                     <div class="text-muted small">
-                        Showing <?= count($transactions) ?> of <?= number_format($pagination['total_records']) ?> records &bull; Page <?= $pagination['current_page'] ?> of <?= $pagination['total_pages'] ?>
+                        <?php if (!empty($isAllRows)): ?>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle me-1"><i class="fa-solid fa-list-check"></i> All Rows View</span>
+                            Showing <strong>all <?= number_format($pagination['total_records']) ?></strong> records
+                        <?php else: ?>
+                            Showing <?= count($transactions) ?> of <?= number_format($pagination['total_records']) ?> records &bull; Page <?= $pagination['current_page'] ?> of <?= $pagination['total_pages'] ?>
+                        <?php endif; ?>
                     </div>
                 </div>
 
-                <div class="d-flex align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <!-- Rows Per Page Selector -->
+                    <div class="d-flex align-items-center gap-1 border rounded px-2 py-1 cs-rows-box">
+                        <label class="form-label mb-0 extra-small fw-bold text-muted text-nowrap" style="font-size: 11px;">
+                            <i class="fa-solid fa-table-list text-primary me-1"></i>Rows:
+                        </label>
+                        <select class="form-select form-select-sm border-0 bg-transparent py-0 ps-1 pe-4" style="width: auto; height: 24px; font-size: 11.5px; font-weight: 600;" onchange="changeTrxLimit(this.value)" title="Change rows per page">
+                            <option value="25" <?= ($curLimit == 25) ? 'selected' : '' ?>>25 Rows</option>
+                            <option value="50" <?= ($curLimit == 50 && empty($isAllRows)) ? 'selected' : '' ?>>50 Rows</option>
+                            <option value="100" <?= ($curLimit == 100) ? 'selected' : '' ?>>100 Rows</option>
+                            <option value="250" <?= ($curLimit == 250) ? 'selected' : '' ?>>250 Rows</option>
+                            <option value="500" <?= ($curLimit == 500) ? 'selected' : '' ?>>500 Rows</option>
+                            <option value="all" <?= !empty($isAllRows) ? 'selected' : '' ?>>All Rows (<?= number_format($pagination['total_records']) ?>)</option>
+                        </select>
+                    </div>
+
                     <a href="<?= $printTrxUrl ?>" target="_blank" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 shadow-sm">
                         <i class="fa-solid fa-print"></i> <span>Print Register</span>
                     </a>
@@ -825,10 +1273,10 @@ $exportTrxUrl = $base_url . '/ced-collection-statement-export?' . http_build_que
                         <?php endforeach; endif; ?>
                     </tbody>
                     <?php if (!empty($transactions)): ?>
-                        <tfoot class="table-light">
-                            <tr class="fw-bold bg-light" style="border-top: 2px solid #cbd5e1;">
-                                <td colspan="8" class="text-end text-uppercase">Page Subtotal:</td>
-                                <td class="text-end font-monospace text-primary fs-14 bg-primary-subtle">
+                        <tfoot class="cs-tfoot">
+                            <tr class="fw-bold cs-tfoot-row" style="border-top: 2px solid #cbd5e1;">
+                                <td colspan="8" class="text-end text-uppercase cs-grand-label">Page Subtotal:</td>
+                                <td class="text-end font-monospace text-primary fs-14 col-total cs-total-badge">
                                     ৳<?= number_format($pageTotal, 2) ?>
                                 </td>
                                 <td colspan="3"></td>
@@ -838,47 +1286,73 @@ $exportTrxUrl = $base_url . '/ced-collection-statement-export?' . http_build_que
                 </table>
             </div>
 
-            <!-- Pagination -->
-            <?php if ($pagination['total_pages'] > 1): ?>
-                <div class="card-footer bg-white border-top py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <!-- Pagination & Records Footer -->
+            <div class="card-footer cs-card-footer border-top py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-3 flex-wrap">
                     <div class="text-muted small">
-                        Showing page <strong><?= $pagination['current_page'] ?></strong> of <strong><?= $pagination['total_pages'] ?></strong> (<?= number_format($pagination['total_records']) ?> total records)
+                        <?php if (!empty($isAllRows)): ?>
+                            <i class="fa-solid fa-circle-check text-success me-1"></i> Showing <strong>all <?= number_format($pagination['total_records']) ?></strong> records (Full View)
+                        <?php else: ?>
+                            Showing <strong><?= count($transactions) ?></strong> of <strong><?= number_format($pagination['total_records']) ?></strong> records &bull; Page <strong><?= $pagination['current_page'] ?></strong> of <strong><?= $pagination['total_pages'] ?></strong>
+                        <?php endif; ?>
                     </div>
+
+                    <div class="d-flex align-items-center gap-1">
+                        <span class="text-muted extra-small">Rows:</span>
+                        <select class="form-select form-select-sm py-0 ps-1 pe-4" style="width: auto; height: 28px; font-size: 11.5px;" onchange="changeTrxLimit(this.value)">
+                            <option value="25" <?= ($curLimit == 25) ? 'selected' : '' ?>>25</option>
+                            <option value="50" <?= ($curLimit == 50 && empty($isAllRows)) ? 'selected' : '' ?>>50</option>
+                            <option value="100" <?= ($curLimit == 100) ? 'selected' : '' ?>>100</option>
+                            <option value="250" <?= ($curLimit == 250) ? 'selected' : '' ?>>250</option>
+                            <option value="500" <?= ($curLimit == 500) ? 'selected' : '' ?>>500</option>
+                            <option value="all" <?= !empty($isAllRows) ? 'selected' : '' ?>>All (<?= number_format($pagination['total_records']) ?>)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <?php if (empty($isAllRows) && $pagination['total_pages'] > 1): ?>
                     <nav aria-label="Transaction pagination">
                         <ul class="pagination pagination-sm mb-0">
                             <?php 
                             $cPage = $pagination['current_page'];
                             $tPages = $pagination['total_pages'];
                             $pageRange = range(max(1, $cPage - 2), min($tPages, $cPage + 2));
+                            $targetViewMode = ($curViewMode === 'all') ? 'all' : 'transactions';
                             ?>
                             <li class="page-item <?= $cPage <= 1 ? 'disabled' : '' ?>">
-                                <a class="page-link" href="?<?= http_build_query(array_merge($queryParams, ['page' => 1])) ?>">&laquo;</a>
+                                <a class="page-link" href="?<?= http_build_query(array_merge($queryParams, ['page' => 1, 'view_mode' => $targetViewMode])) ?>#section-transactions" title="First Page">&laquo;</a>
                             </li>
                             <li class="page-item <?= $cPage <= 1 ? 'disabled' : '' ?>">
-                                <a class="page-link" href="?<?= http_build_query(array_merge($queryParams, ['page' => $cPage - 1])) ?>">&lsaquo;</a>
+                                <a class="page-link" href="?<?= http_build_query(array_merge($queryParams, ['page' => max(1, $cPage - 1), 'view_mode' => $targetViewMode])) ?>#section-transactions" title="Previous Page">&lsaquo;</a>
                             </li>
                             <?php foreach ($pageRange as $pNum): ?>
                                 <li class="page-item <?= $pNum === $cPage ? 'active' : '' ?>">
-                                    <a class="page-link" href="?<?= http_build_query(array_merge($queryParams, ['page' => $pNum])) ?>"><?= $pNum ?></a>
+                                    <a class="page-link" href="?<?= http_build_query(array_merge($queryParams, ['page' => $pNum, 'view_mode' => $targetViewMode])) ?>#section-transactions"><?= $pNum ?></a>
                                 </li>
                             <?php endforeach; ?>
                             <li class="page-item <?= $cPage >= $tPages ? 'disabled' : '' ?>">
-                                <a class="page-link" href="?<?= http_build_query(array_merge($queryParams, ['page' => $cPage + 1])) ?>">&rsaquo;</a>
+                                <a class="page-link" href="?<?= http_build_query(array_merge($queryParams, ['page' => min($tPages, $cPage + 1), 'view_mode' => $targetViewMode])) ?>#section-transactions" title="Next Page">&rsaquo;</a>
                             </li>
                             <li class="page-item <?= $cPage >= $tPages ? 'disabled' : '' ?>">
-                                <a class="page-link" href="?<?= http_build_query(array_merge($queryParams, ['page' => $tPages])) ?>">&raquo;</a>
+                                <a class="page-link" href="?<?= http_build_query(array_merge($queryParams, ['page' => $tPages, 'view_mode' => $targetViewMode])) ?>#section-transactions" title="Last Page">&raquo;</a>
                             </li>
                         </ul>
                     </nav>
-                </div>
-            <?php endif; ?>
+                <?php elseif (!empty($isAllRows)): ?>
+                    <div>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                            <i class="fa-solid fa-list-check me-1"></i> All <?= number_format($pagination['total_records']) ?> Rows Displayed
+                        </span>
+                    </div>
+                <?php endif; ?>
+            </div>
         </div>
     </div>
 
     <!-- 3. Payment Head / Purpose Matrix -->
     <div class="col-12 mb-4" id="section-type-summary" style="<?= in_array($curViewMode, ['collectors', 'transactions'], true) ? 'display:none;' : '' ?>">
-        <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
-            <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="card border-0 shadow-sm rounded-3 overflow-hidden cs-table-card">
+            <div class="card-header cs-card-header py-3 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <div>
                     <h5 class="mb-1 fw-bold text-dark d-flex align-items-center gap-2">
                         <span class="badge bg-info text-white p-2 rounded-2"><i class="fa-solid fa-chart-pie"></i></span>
@@ -888,8 +1362,11 @@ $exportTrxUrl = $base_url . '/ced-collection-statement-export?' . http_build_que
                         Inflow distribution across Development Charges, EMIs, Booking Money, Registration &amp; Other Heads
                     </div>
                 </div>
-                <div class="d-flex align-items-center gap-2">
-                    <a href="<?= $printTypeUrl ?>" target="_blank" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 shadow-sm">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <a href="?<?= http_build_query(array_merge($queryParams, ['view_mode' => 'transactions', 'limit' => 'all'])) ?>#section-transactions" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 shadow-sm" title="View all collection records in Detailed Register">
+                        <i class="fa-solid fa-table-list"></i> <span>View All Records Register</span>
+                    </a>
+                    <a href="<?= $printTypeUrl ?>" target="_blank" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1 shadow-sm">
                         <i class="fa-solid fa-print"></i> <span>Print Heads</span>
                     </a>
                 </div>
@@ -906,14 +1383,15 @@ $exportTrxUrl = $base_url . '/ced-collection-statement-export?' . http_build_que
                             <th class="text-end" style="min-width: 130px;">Bank Inflow (BDT)</th>
                             <th class="text-end" style="min-width: 130px;">Cheque Inflow (BDT)</th>
                             <th class="text-end" style="min-width: 130px;">Online Inflow (BDT)</th>
-                            <th class="text-end" style="min-width: 150px; background-color: #f8fafc !important;">Total Amount (BDT)</th>
+                            <th class="text-end col-total" style="min-width: 150px;">Total Amount (BDT)</th>
                             <th style="min-width: 160px;">% Share</th>
+                            <th class="text-center" style="width: 90px;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($type_summary['rows'])): ?>
                             <tr>
-                                <td colspan="9" class="text-center py-4 text-muted">No data available for payment heads.</td>
+                                <td colspan="10" class="text-center py-4 text-muted">No data available for payment heads.</td>
                             </tr>
                         <?php else:
                             $tSl = 1;
@@ -931,7 +1409,7 @@ $exportTrxUrl = $base_url . '/ced-collection-statement-export?' . http_build_que
                                 <td class="text-end font-monospace">৳<?= number_format($tRow['bank_amount'], 2) ?></td>
                                 <td class="text-end font-monospace">৳<?= number_format($tRow['cheque_amount'], 2) ?></td>
                                 <td class="text-end font-monospace">৳<?= number_format($tRow['online_amount'], 2) ?></td>
-                                <td class="text-end font-monospace fw-bold text-dark fs-13" style="background-color: #f8fafc;">
+                                <td class="text-end font-monospace fw-bold fs-13 col-total">
                                     ৳<?= number_format($tRow['total_amount'], 2) ?>
                                 </td>
                                 <td>
@@ -942,22 +1420,49 @@ $exportTrxUrl = $base_url . '/ced-collection-statement-export?' . http_build_que
                                         <span class="small font-monospace text-muted" style="width: 44px; font-size: 11px;"><?= number_format($tRow['percentage'], 1) ?>%</span>
                                     </div>
                                 </td>
+                                <!-- Action -->
+                                <td class="text-center">
+                                    <?php 
+                                    $typeMap = [
+                                        'development_charge' => 'development_charge',
+                                        'emi'                => 'emi',
+                                        'emi_due_settlement' => 'emi_settlement',
+                                        'booking_money'      => 'booking_money',
+                                        'registration'       => 'registration',
+                                        'land_share'         => 'land_share'
+                                    ];
+                                    $filterTypeKey = $typeMap[$tRow['ptype']] ?? $tRow['ptype'];
+                                    $headFilterUrl = '?' . http_build_query(array_merge($queryParams, [
+                                        'payment_type' => $filterTypeKey,
+                                        'view_mode'    => 'transactions',
+                                        'page'         => 1
+                                    ])) . '#section-transactions';
+                                    ?>
+                                    <a href="<?= $headFilterUrl ?>" class="btn btn-xs btn-outline-primary py-1 px-2 rounded-2" style="font-size: 11px;" title="View all <?= htmlspecialchars($tRow['label']) ?> records">
+                                        <i class="fa-solid fa-list me-1"></i> Register
+                                    </a>
+                                </td>
                             </tr>
                         <?php endforeach; endif; ?>
                     </tbody>
                     <?php if (!empty($type_summary['rows'])): 
                         $tg = $type_summary['grand'];
                     ?>
-                        <tfoot class="table-light">
-                            <tr class="fw-bold bg-light" style="border-top: 2px solid #cbd5e1;">
-                                <td colspan="2" class="text-uppercase text-dark">Total:</td>
+                        <tfoot class="cs-tfoot">
+                            <tr class="fw-bold cs-tfoot-row" style="border-top: 2px solid #cbd5e1;">
+                                <td colspan="2" class="text-uppercase cs-grand-label">Total:</td>
                                 <td class="text-center font-monospace"><span class="badge bg-dark text-white px-2 py-1"><?= number_format($tg['count']) ?></span></td>
                                 <td class="text-end font-monospace">৳<?= number_format($tg['cash_amount'], 2) ?></td>
                                 <td class="text-end font-monospace">৳<?= number_format($tg['bank_amount'], 2) ?></td>
                                 <td class="text-end font-monospace">৳<?= number_format($tg['cheque_amount'], 2) ?></td>
                                 <td class="text-end font-monospace">৳<?= number_format($tg['online_amount'], 2) ?></td>
-                                <td class="text-end font-monospace text-primary fs-14 bg-primary-subtle">৳<?= number_format($tg['total_amount'], 2) ?></td>
+                                <td class="text-end font-monospace text-primary fs-14 col-total cs-total-badge">৳<?= number_format($tg['total_amount'], 2) ?></td>
                                 <td><span class="badge bg-success-subtle text-success border border-success-subtle fw-bold">100.0%</span></td>
+                                <td class="text-center">
+                                    <a href="?<?= http_build_query(array_merge($queryParams, ['view_mode' => 'transactions', 'payment_type' => '', 'page' => 1])) ?>#section-transactions" class="btn btn-xs btn-primary py-1 px-2" style="font-size: 11px;" title="View all records">
+                                        <i class="fa-solid fa-list"></i> All Rows
+                                    </a>
+                                </td>
                             </tr>
                         </tfoot>
                     <?php endif; ?>
@@ -985,42 +1490,118 @@ function togglePeriodFields() {
     }
 }
 
-function switchView(mode) {
-    document.getElementById('viewModeInput').value = mode;
+function switchView(mode, updateUrl) {
+    if (typeof updateUrl === 'undefined') {
+        updateUrl = true;
+    }
+    if (!mode) {
+        mode = 'collectors';
+    }
+
+    var viewInput = document.getElementById('viewModeInput');
+    if (viewInput) {
+        viewInput.value = mode;
+    }
 
     var secCollectors = document.getElementById('section-collectors');
     var secTrx = document.getElementById('section-transactions');
     var secType = document.getElementById('section-type-summary');
 
     if (mode === 'collectors') {
-        secCollectors.style.display = 'block';
-        secTrx.style.display = 'none';
-        secType.style.display = 'none';
+        if (secCollectors) secCollectors.style.display = 'block';
+        if (secTrx) secTrx.style.display = 'none';
+        if (secType) secType.style.display = 'none';
     } else if (mode === 'transactions') {
-        secCollectors.style.display = 'none';
-        secTrx.style.display = 'block';
-        secType.style.display = 'none';
+        if (secCollectors) secCollectors.style.display = 'none';
+        if (secTrx) secTrx.style.display = 'block';
+        if (secType) secType.style.display = 'none';
     } else if (mode === 'type_summary') {
-        secCollectors.style.display = 'none';
-        secTrx.style.display = 'none';
-        secType.style.display = 'block';
+        if (secCollectors) secCollectors.style.display = 'none';
+        if (secTrx) secTrx.style.display = 'none';
+        if (secType) secType.style.display = 'block';
     } else {
         // all
-        secCollectors.style.display = 'block';
-        secTrx.style.display = 'block';
-        secType.style.display = 'block';
+        if (secCollectors) secCollectors.style.display = 'block';
+        if (secTrx) secTrx.style.display = 'block';
+        if (secType) secType.style.display = 'block';
     }
 
-    // Update active button state
+    // Update active button state reliably using data-mode attribute
     document.querySelectorAll('.ced-mode-btn').forEach(function(btn) {
-        btn.classList.remove('btn-primary', 'shadow-sm', 'active');
-        btn.classList.add('btn-light', 'text-secondary');
+        var btnMode = btn.getAttribute('data-mode');
+        if (btnMode === mode) {
+            btn.classList.add('btn-primary', 'shadow-sm', 'active');
+            btn.classList.remove('btn-light', 'text-secondary');
+        } else {
+            btn.classList.remove('btn-primary', 'shadow-sm', 'active');
+            btn.classList.add('btn-light', 'text-secondary');
+        }
     });
-    if (event && event.target) {
-        var clickedBtn = event.target.closest('.ced-mode-btn');
-        if (clickedBtn) {
-            clickedBtn.classList.remove('btn-light', 'text-secondary');
-            clickedBtn.classList.add('btn-primary', 'shadow-sm', 'active');
+
+    // Update browser URL query parameter without reload
+    if (updateUrl && window.history && window.history.replaceState) {
+        try {
+            var url = new URL(window.location.href);
+            url.searchParams.set('view_mode', mode);
+            // If switching to collectors or type_summary, clean up any transaction page parameter
+            if (mode === 'collectors' || mode === 'type_summary') {
+                url.searchParams.delete('page');
+            }
+            window.history.replaceState({ view_mode: mode }, '', url.toString());
+        } catch (e) {
+            console.error('Failed to update URL state', e);
+        }
+    }
+
+    // Update all pagination links in Detailed Register to keep current view_mode
+    var pagLinks = document.querySelectorAll('#section-transactions .pagination .page-link');
+    pagLinks.forEach(function(link) {
+        try {
+            var href = link.getAttribute('href');
+            if (href && href.startsWith('?')) {
+                var dummyUrl = new URL(window.location.origin + window.location.pathname + href);
+                dummyUrl.searchParams.set('view_mode', (mode === 'all' ? 'all' : 'transactions'));
+                link.setAttribute('href', dummyUrl.search + '#section-transactions');
+            }
+        } catch(e) {}
+    });
+
+    // Update statement header print/export buttons
+    var printBtn = document.getElementById('statementPrintBtn');
+    var exportBtn = document.getElementById('statementExportBtn');
+    if (printBtn && exportBtn) {
+        var printUrls = {
+            'collectors': <?= json_encode($printColUrl) ?>,
+            'transactions': <?= json_encode($printTrxUrl) ?>,
+            'type_summary': <?= json_encode($printTypeUrl) ?>,
+            'all': <?= json_encode($printUrl) ?>
+        };
+        var exportUrls = {
+            'collectors': <?= json_encode($exportColUrl) ?>,
+            'transactions': <?= json_encode($exportTrxUrl) ?>,
+            'type_summary': <?= json_encode($exportColUrl) ?>,
+            'all': <?= json_encode($exportUrl) ?>
+        };
+        var printTexts = {
+            'collectors': 'Print View',
+            'transactions': 'Print Register',
+            'type_summary': 'Print Heads',
+            'all': 'Print All'
+        };
+        var exportTexts = {
+            'collectors': 'Export Matrix',
+            'transactions': 'Export Register',
+            'type_summary': 'Export Heads',
+            'all': 'Export All'
+        };
+
+        if (printUrls[mode]) printBtn.href = printUrls[mode];
+        if (exportUrls[mode]) exportBtn.href = exportUrls[mode];
+        if (printBtn.querySelector('span') && printTexts[mode]) {
+            printBtn.querySelector('span').innerText = printTexts[mode];
+        }
+        if (exportBtn.querySelector('span') && exportTexts[mode]) {
+            exportBtn.querySelector('span').innerText = exportTexts[mode];
         }
     }
 }
@@ -1040,12 +1621,46 @@ function filterCollectorTable() {
     });
 }
 
+function changeTrxLimit(val) {
+    try {
+        var url = new URL(window.location.href);
+        url.searchParams.set('limit', val);
+        url.searchParams.set('page', '1');
+        var curMode = document.getElementById('viewModeInput') ? document.getElementById('viewModeInput').value : 'transactions';
+        url.searchParams.set('view_mode', (curMode === 'all' ? 'all' : 'transactions'));
+        url.hash = 'section-transactions';
+        window.location.href = url.toString();
+    } catch(e) {
+        window.location.href = '?limit=' + encodeURIComponent(val) + '&view_mode=transactions&page=1#section-transactions';
+    }
+}
+
 (function() {
     function initModuleScripts() {
         if (typeof jQuery === 'undefined' || typeof bootstrap === 'undefined') {
             setTimeout(initModuleScripts, 50);
             return;
         }
+
+        // On page load, auto-detect view mode from URL params or URL hash
+        try {
+            var urlParams = new URLSearchParams(window.location.search);
+            var paramViewMode = urlParams.get('view_mode');
+            var paramPage = parseInt(urlParams.get('page'), 10);
+            var hash = window.location.hash;
+
+            if (paramViewMode && ['collectors', 'transactions', 'type_summary', 'all'].indexOf(paramViewMode) !== -1) {
+                switchView(paramViewMode, false);
+            } else if (paramPage && paramPage > 1) {
+                switchView('transactions', false);
+            } else if (hash === '#section-transactions') {
+                switchView('transactions', false);
+            } else if (hash === '#section-type-summary') {
+                switchView('type_summary', false);
+            } else if (hash === '#section-collectors') {
+                switchView('collectors', false);
+            }
+        } catch(e) {}
 
         jQuery(function($) {
             // Initialize Select2 on Collector and Project dropdowns

@@ -47,15 +47,23 @@ class CedCollectionStatementController extends Controller
         $dateInfo = $this->resolveDateRange($filters);
         $summary = $this->fetchSummary($dateInfo['start_date'], $dateInfo['end_date'], $filters);
         
-        // Pagination for detailed transactions
-        $page = max(1, (int)($_GET['page'] ?? 1));
-        $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 50;
-        if ($limit <= 0) $limit = 50;
-        if ($limit > 500) $limit = 500;
-        $offset = ($page - 1) * $limit;
+        // Pagination for detailed transactions (Supports 25, 50, 100, 250, 500, or 'all')
+        $limitParam = $_GET['limit'] ?? 50;
+        $isAllRows = ($limitParam === 'all' || (int)$limitParam === -1);
+        if ($isAllRows) {
+            $limit = 10000;
+            $page = 1;
+            $offset = 0;
+        } else {
+            $page = max(1, (int)($_GET['page'] ?? 1));
+            $limit = (int)$limitParam;
+            if ($limit <= 0) $limit = 50;
+            if ($limit > 1000) $limit = 1000;
+            $offset = ($page - 1) * $limit;
+        }
 
         $totalRecords = $summary['total_count'] ?? 0;
-        $totalPages = ceil(max(1, $totalRecords) / $limit);
+        $totalPages = $isAllRows ? 1 : ceil(max(1, $totalRecords) / $limit);
 
         $collectorSummary = $this->fetchCollectorSummary($dateInfo['start_date'], $dateInfo['end_date'], $filters);
         $typeSummary      = $this->fetchPaymentTypeSummary($dateInfo['start_date'], $dateInfo['end_date'], $filters);
@@ -64,7 +72,12 @@ class CedCollectionStatementController extends Controller
         $projectsList     = $this->fetchProjects();
 
         // Default view mode for CED: 'collectors' (Executive-wise Collection Summary)
-        $viewMode = $_GET['view_mode'] ?? 'collectors';
+        // If page parameter is explicitly present (> 1) and view_mode is not passed, default to 'transactions' because only transactions are paginated
+        if (!isset($_GET['view_mode']) && isset($_GET['page']) && (int)$_GET['page'] > 1) {
+            $viewMode = 'transactions';
+        } else {
+            $viewMode = $_GET['view_mode'] ?? 'collectors';
+        }
         if (!in_array($viewMode, ['collectors', 'transactions', 'type_summary', 'all'], true)) {
             $viewMode = 'collectors';
         }
@@ -86,7 +99,9 @@ class CedCollectionStatementController extends Controller
                 'current_page' => $page,
                 'total_pages'  => $totalPages,
                 'total_records'=> $totalRecords,
-                'limit'        => $limit
+                'limit'        => $limit,
+                'is_all'       => $isAllRows,
+                'limit_param'  => $limitParam
             ]
         ];
 

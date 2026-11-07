@@ -3769,7 +3769,7 @@
 
                     <!-- ====== Operators & Bills (Batch 2 NEW) ====== -->
                     <?php 
-                    $contractorAllowedRoles = [1, 3, 15, 17, 20, 22, 23, 31, 32, 38];
+                    $contractorAllowedRoles = [1, 3, 15, 17, 20, 22, 23, 31, 32, 33, 34, 35, 38];
                     $userRoleId = (int) ($_SESSION['user']['role_id'] ?? 0);
                     $userSecRoleId = (int) ($_SESSION['user']['secondary_role_id'] ?? 0);
                     $userRoleName = strtolower($_SESSION['user']['role_name'] ?? '');
