@@ -45,22 +45,36 @@ class ApprovalRequest extends Model
         $checked = true;
 
         try {
-            $colRes = $this->db->query("SHOW COLUMNS FROM `approval_requests` LIKE 'accounts_head_status'");
-            if ($colRes && $colRes->num_rows === 0) {
-                @$this->db->query("ALTER TABLE `approval_requests` 
-                    ADD COLUMN `accounts_head_status` ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending' AFTER `status`,
-                    ADD COLUMN `accounts_head_by` INT UNSIGNED NULL DEFAULT NULL AFTER `accounts_head_status`,
-                    ADD COLUMN `accounts_head_at` TIMESTAMP NULL DEFAULT NULL AFTER `accounts_head_by`,
-                    ADD COLUMN `accounts_head_note` TEXT NULL AFTER `accounts_head_at`");
+            $existingCols = [];
+            $cRes = $this->db->query("SHOW COLUMNS FROM `approval_requests`");
+            if ($cRes) {
+                while ($r = $cRes->fetch_assoc()) {
+                    $existingCols[$r['Field']] = true;
+                }
             }
-            $opRes = $this->db->query("SHOW COLUMNS FROM `approval_requests` LIKE 'op_head_status'");
-            if ($opRes && $opRes->num_rows === 0) {
-                @$this->db->query("ALTER TABLE `approval_requests` 
-                    ADD COLUMN `op_head_status` VARCHAR(20) NOT NULL DEFAULT 'pending' AFTER `status`,
-                    ADD COLUMN `op_head_by` INT UNSIGNED NULL DEFAULT NULL AFTER `op_head_status`,
-                    ADD COLUMN `op_head_at` DATETIME NULL DEFAULT NULL AFTER
-                     `op_head_by`,
-                    ADD COLUMN `op_head_note` TEXT NULL AFTER `op_head_at`");
+            if (!empty($existingCols)) {
+                $requiredCols = [
+                    'meta_data'            => "LONGTEXT NULL DEFAULT NULL",
+                    'request_amount'       => "DECIMAL(15,2) NOT NULL DEFAULT 0.00",
+                    'attachment'           => "VARCHAR(255) NULL DEFAULT NULL",
+                    'approved_amount'      => "DECIMAL(15,2) NULL DEFAULT NULL",
+                    'approved_by'          => "INT NULL DEFAULT NULL",
+                    'approved_at'          => "DATETIME NULL DEFAULT NULL",
+                    'rejection_reason'     => "TEXT NULL DEFAULT NULL",
+                    'accounts_head_status' => "ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending'",
+                    'accounts_head_by'     => "INT UNSIGNED NULL DEFAULT NULL",
+                    'accounts_head_at'     => "TIMESTAMP NULL DEFAULT NULL",
+                    'accounts_head_note'   => "TEXT NULL DEFAULT NULL",
+                    'op_head_status'       => "VARCHAR(20) NOT NULL DEFAULT 'pending'",
+                    'op_head_by'           => "INT UNSIGNED NULL DEFAULT NULL",
+                    'op_head_at'           => "DATETIME NULL DEFAULT NULL",
+                    'op_head_note'         => "TEXT NULL DEFAULT NULL",
+                ];
+                foreach ($requiredCols as $colName => $colDef) {
+                    if (!isset($existingCols[$colName])) {
+                        @$this->db->query("ALTER TABLE `approval_requests` ADD COLUMN `{$colName}` {$colDef}");
+                    }
+                }
             }
         } catch (\Throwable $e) {
             // Silently ignore if restricted
@@ -91,7 +105,7 @@ class ApprovalRequest extends Model
 
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {
-            die("Prepare failed: " . $this->db->error);
+            throw new \Exception("ApprovalRequest prepare failed: " . $this->db->error);
         }
 
         $stmt->bind_param(
@@ -116,7 +130,9 @@ class ApprovalRequest extends Model
         $stmt->execute();
 
         if ($stmt->error) {
-            die("Execute failed: " . $stmt->error);
+            $err = $stmt->error;
+            $stmt->close();
+            throw new \Exception("ApprovalRequest execute failed: " . $err);
         }
 
         $insertId = $stmt->insert_id;
@@ -506,14 +522,15 @@ class ApprovalRequest extends Model
         $reqAmount = (float)($req['request_amount'] ?? 0);
         $isOver10k = ($reqAmount > 10000.01);
         $isAlreadyPaid = in_array(strtolower($req['status'] ?? ''), ['paid', 'partially_paid']);
+        $isAlreadyMgmtApproved = (strtolower($req['status'] ?? '') === 'approved' && !empty($req['approved_by']));
 
-        if ($isOver10k && !$isAlreadyPaid) {
-            // For > 10,000: Accounts Head verification complete (Step 2).
+        if ($isOver10k && !$isAlreadyPaid && !$isAlreadyMgmtApproved) {
+            // For > 10,000 (when Management hasn't approved yet): Accounts Head verification complete (Step 2).
             // ALWAYS forward to Management (Role 1/3) for final executive sign-off!
             $nextRole = 'management';
             $nextStatus = 'pending';
         } else {
-            // For <= 10,000 (or historical already paid): fully approved and ready for Accounts Payout!
+            // For <= 10,000, or when Management has already approved, or historical already paid: fully approved and ready for Accounts Payout!
             $nextRole = ($req['status'] === 'partially_approved' && ($req['source_table'] ?? '') === 'fund_requisitions') ? ($req['approve_role'] ?? 'accounts') : 'accounts';
             $nextStatus = 'approved';
         }
@@ -537,8 +554,8 @@ class ApprovalRequest extends Model
         $res = $stmt->execute();
         $stmt->close();
 
-        // If <= 10,000 (or historical already paid): sync source table to approved so payout can proceed
-        if (!$isOver10k || $isAlreadyPaid) {
+        // If <= 10,000, or Management already approved, or historical already paid: sync source table to approved so payout can proceed
+        if (!$isOver10k || $isAlreadyPaid || $isAlreadyMgmtApproved) {
             $sourceTable = $req['source_table'] ?? '';
             $sourceId = (int)($req['source_id'] ?? 0);
             if ($sourceTable && $sourceId) {
@@ -831,6 +848,8 @@ class ApprovalRequest extends Model
 
         $stmt = $db->prepare("
             SELECT ar.id, ar.status, ar.approve_role, ar.request_amount,
+                   ar.approved_by, ar.approved_at, ar.approval_note,
+                   u_mg.full_name AS mgmt_approver_name,
                    ar.op_head_status, ar.op_head_by, ar.op_head_at, ar.op_head_note,
                    u_op.full_name AS op_head_name,
                    e_op.employee_id AS op_head_code,
@@ -840,6 +859,7 @@ class ApprovalRequest extends Model
                    e_ah.employee_id AS accounts_head_code,
                    IFNULL(des_ah.name, 'AGM - Finance & Accounts') AS accounts_head_designation
             FROM approval_requests ar
+            LEFT JOIN users u_mg ON ar.approved_by = u_mg.id
             LEFT JOIN users u_op ON ar.op_head_by = u_op.id
             LEFT JOIN employees e_op ON (e_op.user_id = u_op.id OR e_op.id = u_op.employee_id)
             LEFT JOIN designations des_op ON des_op.id = COALESCE(e_op.designation_id, u_op.designation_id)
@@ -893,7 +913,9 @@ class ApprovalRequest extends Model
         // NEW ORDER: Accounts Head stage is pending:
         // For > 10k: as soon as Op Head approves (BEFORE Management)
         // For <= 10k: as soon as Op Head OR Management approves, OR approve_role is accounts_head
-        if ($isOver1Lac) {
+        if ($sourceTable === 'payslips') {
+            $isPendingAh = !$isAhApproved && !in_array($reqStatus, ['rejected', 'cancelled']);
+        } elseif ($isOver1Lac) {
             $isPendingAh = $isOpHeadApproved && !$isAhApproved && !in_array($reqStatus, ['rejected', 'cancelled']);
         } else {
             $isPendingAh = ($isOpHeadApproved || $isMgmtApproved || strtolower($row['approve_role'] ?? '') === 'accounts_head') && !$isAhApproved && !in_array($reqStatus, ['rejected', 'cancelled']);
@@ -918,6 +940,9 @@ class ApprovalRequest extends Model
             'is_pending_op_head'        => $isPendingOpHead,
             'is_mgmt_approved'          => $isMgmtApproved,
             'can_mgmt_approve'          => $canMgmtApprove,
+            'mgmt_approver_name'        => $row['mgmt_approver_name'] ?: ($isMgmtApproved ? 'Management' : null),
+            'mgmt_approved_at'          => $row['approved_at'] ?: null,
+            'mgmt_approval_note'        => $row['approval_note'] ?: null,
             'op_head_name'              => $row['op_head_name'] ?: 'Admin & Operation Head',
             'op_head_code'              => $row['op_head_code'] ?: null,
             'op_head_designation'       => $row['op_head_designation'] ?: 'Admin & Operation Head',

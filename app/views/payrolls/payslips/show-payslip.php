@@ -8,8 +8,19 @@
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
+        .extra-small {
+            font-size: 12px;
+        }
+        .fs-14 {
+            font-size: 14px;
+        }
+        .fs-15 {
+            font-size: 15px;
+        }
         /* ================= BASE ================= */
         * {
             margin: 0;
@@ -541,7 +552,8 @@
 
             /* ================= HIDE UI ================= */
 
-            .action-section {
+            .action-section,
+            .no-print {
                 display: none !important;
             }
 
@@ -557,19 +569,96 @@
 
 <body>
 <?php
-if (!class_exists('ApprovalRequest')) {
-    require_once __DIR__ . '/../../../../models/ApprovalRequest.php';
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
-$ahInfo = ApprovalRequest::getAccountsHeadApprovalInfo($GLOBALS['db'] ?? ($this->db ?? null), 'payslips', (int)$payslip['id']);
+if (!class_exists('ApprovalRequest')) {
+    require_once __DIR__ . '/../../../models/ApprovalRequest.php';
+}
+$dbConn = $GLOBALS['db'] ?? ($this->db ?? null);
+$ahInfo = ApprovalRequest::getAccountsHeadApprovalInfo($dbConn, 'payslips', (int)$payslip['id']);
 $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_head_approved']);
+$isMgmtApproved = !empty($ahInfo['is_mgmt_approved']) || in_array(strtolower($payslip['status'] ?? ''), ['approved', 'paid'], true);
+$isMgmtRejected = in_array(strtolower($ahInfo['status'] ?? ''), ['rejected', 'reject'], true) || in_array(strtolower($payslip['status'] ?? ''), ['rejected', 'reject'], true);
+
+$currentUserRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+$currentUserSecRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+$currentUserPriRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
+$currentRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+$isChiefOfficer = in_array($currentUserRoleId, [33, 34, 35], true) || in_array($currentRoleName, ['chief officer', 'management viewer', 'seal ceo'], true);
+$canMgmtApprovePayslip = (
+    in_array($currentUserRoleId, [1, 3, 38], true) ||
+    strpos($currentRoleName, 'super admin') !== false ||
+    strpos($currentRoleName, 'admin') !== false ||
+    strpos($currentRoleName, 'management') !== false ||
+    strpos($currentRoleName, 'director') !== false
+) && !$isChiefOfficer;
+$isAccountsHeadUser = in_array(30, [$currentUserRoleId, $currentUserSecRoleId, $currentUserPriRoleId], true) || strpos($currentRoleName, 'accounts head') !== false;
+$isAhRejected = ($ahInfo['accounts_head_status'] ?? '') === 'rejected';
+
+$mgmtApproverName = $ahInfo['mgmt_approver_name'] ?? 'Management';
+$mgmtApprovedAt = !empty($ahInfo['mgmt_approved_at']) ? date('d M, Y h:i A', strtotime($ahInfo['mgmt_approved_at'])) : null;
+$reqIdForJs = (int)($ahInfo['approval_request_id'] ?? 0);
+$backUrl = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals')
+    ? ($GLOBALS['base_url'] . '/all-approval-requests')
+    : ($GLOBALS['base_url'] . '/payslip-lists');
 ?>
 
-<div class="no-print" style="max-width: 900px; margin: 20px auto 10px auto;">
+<div class="no-print" style="max-width: 900px; margin: 10px auto 14px auto;">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 bg-white border px-3 py-2" style="border-radius: 8px;">
+        <!-- Left: Back + Minimal Status Pills -->
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <a href="<?= $backUrl ?>" class="btn btn-light btn-sm border text-secondary px-2 py-1" style="font-size: 12px; font-weight: 600;">
+                <i class="fa-solid fa-arrow-left me-1"></i>Back
+            </a>
+
+            <?php if ($payslip['status'] !== 'draft'): ?>
+                <span class="text-muted opacity-50">|</span>
+
+                <!-- Management Status Pill -->
+                <span class="d-inline-flex align-items-center gap-1 px-2 py-1 rounded border" style="font-size: 12px; background: <?= $isMgmtApproved ? '#f0fdf4' : ($isMgmtRejected ? '#fef2f2' : '#fffbeb') ?>; border-color: <?= $isMgmtApproved ? '#bbf7d0' : ($isMgmtRejected ? '#fecaca' : '#fde68a') ?> !important; color: <?= $isMgmtApproved ? '#166534' : ($isMgmtRejected ? '#991b1b' : '#92400e') ?>;">
+                    <i class="fa-solid <?= $isMgmtApproved ? 'fa-circle-check' : ($isMgmtRejected ? 'fa-circle-xmark' : 'fa-clock') ?>"></i>
+                    <span>Management: <strong><?= $isMgmtApproved ? 'Approved' : ($isMgmtRejected ? 'Rejected' : 'Pending') ?></strong></span>
+                </span>
+
+                <!-- Accounts Head Status Pill -->
+                <span class="d-inline-flex align-items-center gap-1 px-2 py-1 rounded border" style="font-size: 12px; background: <?= $isAhApproved ? '#f0fdf4' : ($isAhRejected ? '#fef2f2' : '#fffbeb') ?>; border-color: <?= $isAhApproved ? '#bbf7d0' : ($isAhRejected ? '#fecaca' : '#fde68a') ?> !important; color: <?= $isAhApproved ? '#166534' : ($isAhRejected ? '#991b1b' : '#92400e') ?>;">
+                    <i class="fa-solid <?= $isAhApproved ? 'fa-circle-check' : ($isAhRejected ? 'fa-circle-xmark' : 'fa-clock') ?>"></i>
+                    <span>Accounts Head: <strong><?= $isAhApproved ? 'Approved' : ($isAhRejected ? 'Rejected' : 'Pending') ?></strong></span>
+                </span>
+            <?php endif; ?>
+        </div>
+
+        <!-- Right: Clean Action Buttons -->
+        <?php if ($payslip['status'] !== 'draft' && $payslip['status'] !== 'paid'): ?>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <?php if (!$isMgmtApproved && !$isMgmtRejected && $canMgmtApprovePayslip): ?>
+                    <button type="button" class="btn btn-success btn-sm px-3 py-1 fw-semibold" style="font-size: 12px;" id="btnMgmtPayslipApprove" onclick="handleMgmtPayslipApprove(<?= $reqIdForJs ?>, <?= (int)$payslip['id'] ?>, <?= $isAhApproved ? 'true' : 'false' ?>)">
+                        <i class="fa-solid fa-check me-1"></i>Approve
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-sm px-2.5 py-1 fw-semibold" style="font-size: 12px;" onclick="handleMgmtPayslipReject(<?= $reqIdForJs ?>, <?= (int)$payslip['id'] ?>)">
+                        <i class="fa-solid fa-xmark me-1"></i>Reject
+                    </button>
+                <?php endif; ?>
+
+                <?php if (!$isAhApproved && !$isAhRejected && $isAccountsHeadUser && !empty($ahInfo['has_request'])): ?>
+                    <button type="button" class="btn btn-primary btn-sm px-3 py-1 fw-semibold" style="font-size: 12px;" onclick="triggerAhApprove(<?= $reqIdForJs ?>, 'Payslip PS-<?= (int)$payslip['id'] ?>', '<?= number_format((float)($payslip['net_salary'] ?? 0), 2) ?>')">
+                        <i class="fa-solid fa-check me-1"></i>Approve (Accts Head)
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-sm px-2.5 py-1 fw-semibold" style="font-size: 12px;" onclick="triggerAhReject(<?= $reqIdForJs ?>)">
+                        <i class="fa-solid fa-xmark me-1"></i>Reject
+                    </button>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+    </div>
+
     <?php 
     if (!empty($ahInfo['has_request'])) {
         $sourceTable = 'payslips';
         $sourceId = (int)$payslip['id'];
-        include __DIR__ . '/../../../layouts/accounts_head_approval_card.php';
+        $hideAhTopCard = true;
+        include __DIR__ . '/../../layouts/accounts_head_approval_card.php';
     }
     ?>
 </div>
@@ -819,14 +908,26 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                     <!-- Status hidden for draft salary certificates -->
                 <?php else: ?>
                     <div class="payslip-status-wrapper">
-                        <p class="fw-semibold fs-6">Payment Status</p>
-                        <?php if (!$isAhApproved): ?>
-                            <span class="status-btn" style="background:#fff3cd; color:#856404; border:1px solid #ffeeba; font-size:11px; padding: 4px 8px;">
-                                <i class="fa-solid fa-lock me-1"></i> PENDING ACCOUNTS HEAD
+                        <p class="fw-semibold fs-6 mb-2">Payment Status</p>
+                        <?php if ($isMgmtRejected): ?>
+                            <span class="status-btn status-unpaid">
+                                <i class="fa-solid fa-ban me-1"></i> REJECTED
+                            </span>
+                        <?php elseif (!$isMgmtApproved && !$isAhApproved): ?>
+                            <span class="status-btn" style="background:#fff3cd; color:#856404; border:1px solid #ffeeba; font-size:11px; padding: 5px 12px;">
+                                <i class="fa-solid fa-lock me-1"></i> PENDING MANAGEMENT &amp; ACCOUNTS HEAD
+                            </span>
+                        <?php elseif (!$isMgmtApproved): ?>
+                            <span class="status-btn" style="background:#fff3cd; color:#856404; border:1px solid #ffeeba; font-size:11px; padding: 5px 12px;">
+                                <i class="fa-solid fa-clock me-1"></i> PENDING MANAGEMENT APPROVAL
+                            </span>
+                        <?php elseif (!$isAhApproved): ?>
+                            <span class="status-btn" style="background:#fff3cd; color:#856404; border:1px solid #ffeeba; font-size:11px; padding: 5px 12px;">
+                                <i class="fa-solid fa-lock me-1"></i> MANAGEMENT APPROVED &bull; PENDING ACCOUNTS HEAD
                             </span>
                         <?php else: ?>
                             <span class="status-btn status-unpaid">
-                                ✖ UNPAID
+                                ✖ UNPAID (APPROVED FOR DISBURSEMENT)
                             </span>
                         <?php endif; ?>
                     </div>
@@ -861,6 +962,150 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
         </button>
     </div>
     <script>
+        function handleMgmtPayslipApprove(reqId, payslipId, isAhApproved) {
+            const executeApproval = () => {
+                const btn = document.getElementById('btnMgmtPayslipApprove');
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Approving...';
+                }
+
+                fetch('<?= $GLOBALS['base_url'] ?>/approval-requests/approve-management', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        approval_request_id: reqId,
+                        source_table: 'payslips',
+                        source_id: payslipId,
+                        force_approve: true,
+                        note: 'Approved by Management'
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Approved!',
+                            text: data.message || 'Payslip approved by Management successfully.',
+                            timer: 1400,
+                            showConfirmButton: false
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.innerHTML = '<i class="fa-solid fa-check me-1"></i>Approve';
+                        }
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Approval Failed',
+                            text: data.message || 'Failed to approve payslip.'
+                        });
+                    }
+                })
+                .catch(err => {
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fa-solid fa-check me-1"></i>Approve';
+                    }
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: err.toString()
+                    });
+                });
+            };
+
+            if (!isAhApproved) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Accounts Head Approval Pending',
+                    html: 'Accounts Head এখনও এটি approve করেননি। আপনি কি এখনই Final Approval দিতে চাচ্ছেন?',
+                    showCancelButton: true,
+                    confirmButtonColor: '#198754',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Yes, Approve',
+                    cancelButtonText: 'Cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        executeApproval();
+                    }
+                });
+            } else {
+                Swal.fire({
+                    icon: 'question',
+                    title: 'Confirm Final Approval',
+                    text: 'Are you sure you want to approve this payslip as Management?',
+                    showCancelButton: true,
+                    confirmButtonColor: '#198754',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Yes, Approve',
+                    cancelButtonText: 'Cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        executeApproval();
+                    }
+                });
+            }
+        }
+
+        function handleMgmtPayslipReject(reqId, payslipId) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Reject Payslip?',
+                input: 'textarea',
+                inputLabel: 'Rejection Reason (Optional)',
+                inputPlaceholder: 'Enter reason for rejection...',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, Reject',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('<?= $GLOBALS['base_url'] ?>/approval-requests/reject-management', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            approval_request_id: reqId,
+                            source_table: 'payslips',
+                            source_id: payslipId,
+                            note: result.value || 'Rejected by Management'
+                        })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Rejected!',
+                                text: data.message || 'Payslip rejected by Management.',
+                                timer: 1400,
+                                showConfirmButton: false
+                            }).then(() => {
+                                window.location.reload();
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Rejection Failed',
+                                text: data.message || 'Failed to reject payslip.'
+                            });
+                        }
+                    })
+                    .catch(err => {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: err.toString()
+                        });
+                    });
+                }
+            });
+        }
+
         function printPayslip() {
             window.print();
         }

@@ -17,8 +17,10 @@
                                     class="text-danger">*</span></label>
                             <select id="projectSelect" class="form-select select2">
                                 <option value="">-- Select Project --</option>
-                                <?php foreach ($payroll_projects as $proj): ?>
-                                    <option value="<?= $proj['id'] ?>" data-date="<?= htmlspecialchars($proj['date'] ?? '') ?>" <?= (isset($selected_project_id) && $selected_project_id == $proj['id']) ? 'selected' : '' ?>><?= htmlspecialchars($proj['name']) ?></option>
+                                <?php foreach ($payroll_projects as $proj): 
+                                    $projEffectiveDate = !empty($proj['date']) ? $proj['date'] : ($proj['start_date'] ?? '');
+                                ?>
+                                    <option value="<?= $proj['id'] ?>" data-date="<?= htmlspecialchars($projEffectiveDate) ?>" <?= (isset($selected_project_id) && $selected_project_id == $proj['id']) ? 'selected' : '' ?>><?= htmlspecialchars($proj['name']) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -110,6 +112,7 @@
                                 <th>Conveyance Allowance</th>
                                 <th>Medical Allowance</th>
                                 <th>House Rent Allowance</th>
+                                <th>Special Allowance</th>
                                 <th>Gross</th>
                                 <th>Daily Salary</th>
                                 <th>Advance on Salary</th>
@@ -372,6 +375,7 @@
                 else if (name.includes('conveyance')) itemMap.conveyance = x.id;
                 else if (name.includes('medical')) itemMap.medical = x.id;
                 else if (name.includes('house rent')) itemMap.houserent = x.id;
+                else if (name.includes('special allowance') || name === 'special') itemMap.special = x.id;
                 else if (name.includes('other')) itemMap.other = x.id;
 
                 if (name.includes('recreation') && x.percentage) itemPercents.recreation = parseFloat(x.percentage) / 100;
@@ -400,6 +404,7 @@
                 const convVal = (emp.conveyance_allowance !== null && emp.conveyance_allowance !== undefined && emp.conveyance_allowance !== '') ? parseFloat(emp.conveyance_allowance) : (basic * itemPercents.conveyance);
                 const medVal = (emp.medical_allowance !== null && emp.medical_allowance !== undefined && emp.medical_allowance !== '') ? parseFloat(emp.medical_allowance) : (basic * itemPercents.medical);
                 const hrVal = (emp.house_rent_allowance !== null && emp.house_rent_allowance !== undefined && emp.house_rent_allowance !== '') ? parseFloat(emp.house_rent_allowance) : (basic * itemPercents.houserent);
+                const specialVal = (emp.special_allowance !== null && emp.special_allowance !== undefined && emp.special_allowance !== '') ? parseFloat(emp.special_allowance) : (parseFloat(emp.configured_items && itemMap.special ? emp.configured_items[itemMap.special] : 0) || 0);
 
                 const mealCount = parseFloat(emp.meal_count !== undefined && emp.meal_count !== null ? emp.meal_count : (emp.tipsoi_present || 0));
                 const unpaidAbsentsDays = parseFloat(emp.late_unpaid_absent_days !== undefined && emp.late_unpaid_absent_days !== null ? emp.late_unpaid_absent_days : (emp.absent_days || 0));
@@ -442,10 +447,11 @@
                 <td>${htmlspecialchars(emp.designation_name || 'N/A')}</td>
                 <td class="cell-basic" data-val="${basic}">${basic.toFixed(2)}</td>
 
-                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-basic-allowance in-recreation" ${itemMap.recreation ? `data-item-id="${itemMap.recreation}"` : ''} value="${recVal.toFixed(2)}" style="min-width: 80px;"></td>
-                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-basic-allowance in-conveyance" ${itemMap.conveyance ? `data-item-id="${itemMap.conveyance}"` : ''} value="${convVal.toFixed(2)}" style="min-width: 80px;"></td>
-                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-basic-allowance in-medical" ${itemMap.medical ? `data-item-id="${itemMap.medical}"` : ''} value="${medVal.toFixed(2)}" style="min-width: 80px;"></td>
-                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-basic-allowance in-houserent" ${itemMap.houserent ? `data-item-id="${itemMap.houserent}"` : ''} value="${hrVal.toFixed(2)}" style="min-width: 80px;"></td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-basic-allowance in-recreation bg-light" ${itemMap.recreation ? `data-item-id="${itemMap.recreation}"` : ''} value="${recVal.toFixed(2)}" readonly tabindex="-1" style="min-width: 80px; pointer-events: none;"></td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-basic-allowance in-conveyance bg-light" ${itemMap.conveyance ? `data-item-id="${itemMap.conveyance}"` : ''} value="${convVal.toFixed(2)}" readonly tabindex="-1" style="min-width: 80px; pointer-events: none;"></td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-basic-allowance in-medical bg-light" ${itemMap.medical ? `data-item-id="${itemMap.medical}"` : ''} value="${medVal.toFixed(2)}" readonly tabindex="-1" style="min-width: 80px; pointer-events: none;"></td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-basic-allowance in-houserent bg-light" ${itemMap.houserent ? `data-item-id="${itemMap.houserent}"` : ''} value="${hrVal.toFixed(2)}" readonly tabindex="-1" style="min-width: 80px; pointer-events: none;"></td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-special" ${itemMap.special ? `data-item-id="${itemMap.special}"` : ''} value="${specialVal.toFixed(2)}" style="min-width: 90px;"></td>
 
                 <td class="cell-gross fw-bold text-nowrap">${gross.toFixed(2)}</td>
                 <td class="cell-daily text-nowrap" data-val="${daily.toFixed(2)}">${daily.toFixed(2)}</td>
@@ -691,6 +697,7 @@
                     let conveyanceVal = parseFloat(row.querySelector('.in-conveyance')?.value || 0);
                     let medicalVal = parseFloat(row.querySelector('.in-medical')?.value || 0);
                     let houseRentVal = parseFloat(row.querySelector('.in-houserent')?.value || 0);
+                    let specialVal = parseFloat(row.querySelector('.in-special')?.value || 0);
 
                     row.querySelectorAll('.in-earning').forEach(inp => {
                         const itemId = inp.dataset.itemId;
@@ -756,6 +763,7 @@
                         conveyance_allowance: conveyanceVal,
                         medical_allowance: medicalVal,
                         house_rent_allowance: houseRentVal,
+                        special_allowance: specialVal,
                         advance_salary: advanceSalary,
                         meal_count: mealCount,
                         subsidized_lunch: subsidizedLunch,
@@ -804,7 +812,19 @@
                 },
                 body: JSON.stringify(payload)
             })
-                .then(res => res.json())
+                .then(async res => {
+                    const text = await res.text();
+                    try {
+                        return JSON.parse(text);
+                    } catch (parseErr) {
+                        const jsonStart = text.indexOf('{');
+                        const jsonEnd = text.lastIndexOf('}');
+                        if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+                            return JSON.parse(text.substring(jsonStart, jsonEnd + 1));
+                        }
+                        throw new Error(text.substring(0, 300) || 'Invalid server response');
+                    }
+                })
                 .then(res => {
                     generateBtn.disabled = false;
                     generateBtn.innerHTML = '<i class="fa-solid fa-circle-check me-2"></i>Generate & Submit for Approval';
@@ -819,7 +839,7 @@
                 .catch(err => {
                     generateBtn.disabled = false;
                     generateBtn.innerHTML = '<i class="fa-solid fa-circle-check me-2"></i>Generate & Submit for Approval';
-                    alert('A network error occurred. Please try again.');
+                    alert('Error: ' + (err.message || 'A network error occurred. Please try again.'));
                     console.error(err);
                 });
         });

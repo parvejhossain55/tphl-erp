@@ -29,16 +29,21 @@ public function getAll() {
 
     // Create a new role
 
- public function create($payslipId, $itemId, $amount)
+    public function create($payslipId, $itemId, $amount)
     {
         $stmt = $this->db->prepare("
             INSERT INTO payslip_details
             (payslip_id, payslip_item_id, amount)
             VALUES (?, ?, ?)
         ");
+        if (!$stmt) {
+            throw new \Exception("PayslipDetail prepare failed: " . $this->db->error);
+        }
 
         $stmt->bind_param("iid", $payslipId, $itemId, $amount);
-        return $stmt->execute();
+        $res = $stmt->execute();
+        $stmt->close();
+        return $res;
     }
 
 

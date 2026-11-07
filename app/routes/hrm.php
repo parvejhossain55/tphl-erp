@@ -380,6 +380,9 @@ return [
     'payroll-resign-list' => ['controller' => 'PayrollController', 'method' => 'resignList'],
     'payroll-resign-list-pdf' => ['controller' => 'PayrollController', 'method' => 'exportResignListPDF'],
 
+    // Unified Payroll Reports Hub
+    'payroll-reports' => ['controller' => 'PayrollController', 'method' => 'payrollReports'],
+
     // Detailed Summary
     'payroll-detailed-summary' => ['controller' => 'PayrollController', 'method' => 'detailedSummary'],
     'payroll-detailed-summary-pdf' => ['controller' => 'PayrollController', 'method' => 'exportDetailedSummaryPDF'],

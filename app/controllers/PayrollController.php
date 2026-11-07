@@ -475,6 +475,16 @@ class PayrollController extends Controller
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
+        $currRoleId = (int) ($_SESSION['user']['role_id'] ?? 0);
+        $secRoleId  = (int) ($_SESSION['user']['secondary_role_id'] ?? 0);
+        $canDisburse = in_array($currRoleId, [1, 3, 6, 30, 33, 34, 35, 38], true)
+            || in_array($secRoleId, [1, 3, 6, 30, 33, 34, 35, 38], true)
+            || (function_exists('hasPermission') && hasPermission('accounts manage'));
+        if (!$canDisburse) {
+            $_SESSION['error'] = 'Only Accounts or Management can disburse payroll payments.';
+            header('Location: ' . $GLOBALS['base_url'] . '/payslip-lists');
+            exit;
+        }
         $payslipId = $_POST['payslip_id'] ?? null;
         $paymentMethod = $_POST['payment_method'] ?? null;
         $companyBankId = $_POST['company_bank_id'] ?? null;
@@ -487,13 +497,24 @@ class PayrollController extends Controller
 
         $companyBankId = $companyBankId ?: null;  // nullable
 
-        // Mandatory Accounts Head Approval Guard
+        // Mandatory Management & Accounts Head Approval Guard
         if (!class_exists('ApprovalRequest')) {
             require_once __DIR__ . '/../models/ApprovalRequest.php';
         }
         $ahCheck = ApprovalRequest::getAccountsHeadApprovalInfo($this->db, 'payslips', (int) $payslipId);
-        if ($ahCheck && !empty($ahCheck['has_request']) && empty($ahCheck['is_accounts_head_approved'])) {
-            $_SESSION['error'] = 'Payment cannot be disbursed. Approval from Accounts Head is pending.';
+        $pRow = $this->db->query('SELECT status FROM payslips WHERE id = ' . (int) $payslipId . ' LIMIT 1');
+        $pStatus = ($pRow && ($pData = $pRow->fetch_assoc())) ? strtolower($pData['status'] ?? 'pending') : 'pending';
+        $isMgmtPending = empty($ahCheck['is_mgmt_approved']) && !in_array($pStatus, ['approved', 'paid'], true);
+        $isAhPending = !empty($ahCheck['has_request']) && empty($ahCheck['is_accounts_head_approved']);
+
+        if ($isMgmtPending || $isAhPending) {
+            if ($isMgmtPending && $isAhPending) {
+                $_SESSION['error'] = 'Payment cannot be disbursed. Both Management and Accounts Head approvals are pending.';
+            } elseif ($isMgmtPending) {
+                $_SESSION['error'] = 'Payment cannot be disbursed. Management approval is pending.';
+            } else {
+                $_SESSION['error'] = 'Payment cannot be disbursed. Accounts Head approval is pending.';
+            }
             header('Location: ' . $GLOBALS['base_url'] . '/payslip-lists');
             exit;
         }
@@ -993,6 +1014,10 @@ class PayrollController extends Controller
 
         $detailsModel = new PayslipDetail($this->db);
         $approvalModel = new ApprovalRequest($this->db);
+        if (!class_exists('AdvanceSalary')) {
+            require_once __DIR__ . '/../models/AdvanceSalary.php';
+        }
+        $advanceSalaryModel = new AdvanceSalary($this->db);
 
         // Begin Transaction
         $this->db->begin_transaction();
@@ -1002,13 +1027,30 @@ class PayrollController extends Controller
         $skippedNames = [];
 
         try {
+            // Ensure Special Allowance payslip_item exists for itemized payslip_details
+            $specialItemId = 0;
+            $spItemRes = $this->db->query("SELECT id FROM payslip_items WHERE LOWER(TRIM(name)) = 'special allowance' AND type = 'earning' LIMIT 1");
+            if ($spItemRes && $spRow = $spItemRes->fetch_assoc()) {
+                $specialItemId = (int) $spRow['id'];
+            } else {
+                $stmtSpCreate = $this->db->prepare("INSERT INTO payslip_items (name, type, created_by, created_at) VALUES ('Special Allowance', 'earning', ?, NOW())");
+                if ($stmtSpCreate) {
+                    $stmtSpCreate->bind_param('i', $generatedBy);
+                    $stmtSpCreate->execute();
+                    $specialItemId = (int) $this->db->insert_id;
+                    $stmtSpCreate->close();
+                }
+            }
+
             foreach ($payload['employees'] as $empData) {
-                // Check if employee has a payslip for this month and project
+                // Check if employee has a payslip for this project
                 $stmtCheck = $this->db->prepare("
-                    SELECT id, status, COALESCE(special_allowance, 0) AS special_allowance FROM payslips WHERE employee_id = ? AND DATE_FORMAT(payslip_month, '%Y-%m') = ? AND payroll_project_id = ? LIMIT 1
+                    SELECT id, status, COALESCE(special_allowance, 0) AS special_allowance FROM payslips WHERE employee_id = ? AND payroll_project_id = ? ORDER BY id DESC LIMIT 1
                 ");
-                $monthStr = date('Y-m', strtotime($payslipMonth));
-                $stmtCheck->bind_param('isi', $empData['employee_id'], $monthStr, $payrollProjectId);
+                if (!$stmtCheck) {
+                    throw new \Exception('Prepare check failed: ' . $this->db->error);
+                }
+                $stmtCheck->bind_param('ii', $empData['employee_id'], $payrollProjectId);
                 $stmtCheck->execute();
                 $exists = $stmtCheck->get_result()->fetch_assoc();
                 $stmtCheck->close();
@@ -1088,7 +1130,7 @@ class PayrollController extends Controller
                         throw new Exception('Prepare update failed: ' . $this->db->error);
                     }
                     $stmtUp->bind_param(
-                        'isdddsdddssdddddddddddddddddii',
+                        'isdddsdddssddddddddddddddddii',
                         $designationId,
                         $payslipMonth,
                         $totalEarning,
@@ -1151,7 +1193,7 @@ class PayrollController extends Controller
                         throw new Exception('Prepare insert failed: ' . $this->db->error);
                     }
                     $stmtIns->bind_param(
-                        'iiisidddsdddssddddddddddddddddd',
+                        'iiisidddsdddssdddddddddddddddd',
                         $employeeId,
                         $payrollProjectId,
                         $designationId,
@@ -1194,13 +1236,20 @@ class PayrollController extends Controller
 
                 // 2. Refresh payslip_details
                 $this->db->query("DELETE FROM payslip_details WHERE payslip_id = $payslipId");
+                $savedSpecialDetail = false;
                 if (!empty($empData['earnings'])) {
                     foreach ($empData['earnings'] as $itemId => $amount) {
                         $amt = (float) $amount;
                         if ($amt > 0) {
                             $detailsModel->create($payslipId, (int) $itemId, $amt);
+                            if ((int) $itemId === $specialItemId) {
+                                $savedSpecialDetail = true;
+                            }
                         }
                     }
+                }
+                if ($specialAllowance > 0 && $specialItemId > 0 && !$savedSpecialDetail) {
+                    $detailsModel->create($payslipId, $specialItemId, $specialAllowance);
                 }
                 if (!empty($empData['deductions'])) {
                     foreach ($empData['deductions'] as $itemId => $amount) {
@@ -1213,10 +1262,6 @@ class PayrollController extends Controller
 
                 // 3. Handle Advance Salary deduction
                 if ($advanceSalary > 0) {
-                    if (!class_exists('AdvanceSalary')) {
-                        require_once __DIR__ . '/../models/AdvanceSalary.php';
-                    }
-                    $advanceSalaryModel = new AdvanceSalary($this->db);
                     $chkAdv = $this->db->query("SELECT id FROM advance_salaries WHERE deducted_payslip_id = $payslipId");
                     if (!$chkAdv || $chkAdv->num_rows == 0) {
                         $advanceRequests = $advanceSalaryModel->getPaidAdvancesByEmployee($employeeId);
@@ -1241,8 +1286,12 @@ class PayrollController extends Controller
                 $chkAppr = $this->db->query("SELECT id FROM approval_requests WHERE source_table = 'payslips' AND source_id = $payslipId LIMIT 1");
                 if ($chkAppr && $rowAppr = $chkAppr->fetch_assoc()) {
                     $apprId = (int) $rowAppr['id'];
-                    $stmtApprUp = $this->db->prepare('UPDATE approval_requests SET request_amount = ?, meta_data = ? WHERE id = ?');
+                    $stmtApprUp = $this->db->prepare("UPDATE approval_requests SET status = 'pending', request_amount = ?, meta_data = ? WHERE id = ?");
+                    if (!$stmtApprUp) {
+                        throw new \Exception('ApprovalRequest update prepare failed: ' . $this->db->error);
+                    }
                     $metaData = json_encode([
+                        'employee_id' => $employeeId,
                         'employee_name' => $empData['employee_name'],
                         'net_salary' => $netSalary,
                         'month' => $payslipMonth
@@ -1261,6 +1310,7 @@ class PayrollController extends Controller
                         'requested_by' => $generatedBy,
                         'approve_role' => 'management',
                         'meta_data' => json_encode([
+                            'employee_id' => $employeeId,
                             'employee_name' => $empData['employee_name'],
                             'net_salary' => $netSalary,
                             'month' => $payslipMonth
@@ -1275,6 +1325,10 @@ class PayrollController extends Controller
             // Commit Transaction
             $this->db->commit();
 
+            if (ob_get_length()) {
+                ob_clean();
+            }
+
             if ($generatedCount === 0 && $skippedCount > 0) {
                 echo json_encode([
                     'success' => false,
@@ -1288,8 +1342,11 @@ class PayrollController extends Controller
                 echo json_encode(['success' => true, 'message' => $msg]);
             }
             exit;
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             $this->db->rollback();
+            if (ob_get_length()) {
+                ob_clean();
+            }
             echo json_encode(['success' => false, 'message' => 'Failed to generate payslips: ' . $e->getMessage()]);
             exit;
         }
@@ -1297,44 +1354,222 @@ class PayrollController extends Controller
 
     public function disburseBatch()
     {
+        ob_start();
         header('Content-Type: application/json');
 
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
 
+        $currRoleId = (int) ($_SESSION['user']['role_id'] ?? 0);
+        $secRoleId  = (int) ($_SESSION['user']['secondary_role_id'] ?? 0);
+        $canDisburse = in_array($currRoleId, [1, 3, 6, 30, 33, 34, 35, 38], true)
+            || in_array($secRoleId, [1, 3, 6, 30, 33, 34, 35, 38], true)
+            || (function_exists('hasPermission') && hasPermission('accounts manage'));
+        if (!$canDisburse) {
+            if (ob_get_length()) {
+                ob_clean();
+            }
+            echo json_encode(['success' => false, 'message' => 'Only Accounts or Management can disburse payroll payments.']);
+            exit;
+        }
+
         $input = file_get_contents('php://input');
         $payload = json_decode($input, true);
 
         if (empty($payload) || empty($payload['payslip_ids']) || !is_array($payload['payslip_ids'])) {
+            if (ob_get_length()) {
+                ob_clean();
+            }
             echo json_encode(['success' => false, 'message' => 'No payslips selected for disbursement.']);
             exit;
         }
 
         $bankAccountId = (int) ($payload['bank_account_id'] ?? 0);
-        $payslipIds = array_map('intval', $payload['payslip_ids']);
-        $userId = $_SESSION['user']['id'] ?? 1;
+        $payslipIds = array_values(array_filter(array_map('intval', $payload['payslip_ids']), function ($id) {
+            return $id > 0;
+        }));
+        $userId = (int) ($_SESSION['user']['id'] ?? ($_SESSION['user_id'] ?? 1));
 
         if (empty($payslipIds)) {
+            if (ob_get_length()) {
+                ob_clean();
+            }
             echo json_encode(['success' => false, 'message' => 'Invalid payslips selected.']);
             exit;
         }
 
-        // Mandatory Accounts Head Approval Guard
+        // Mandatory Management & Accounts Head Approval Guard
         $idListStr = implode(',', $payslipIds);
-        $checkAh = $this->db->query("
-            SELECT ar.source_id 
-            FROM approval_requests ar 
-            WHERE ar.source_table = 'payslips' 
-              AND ar.source_id IN ($idListStr) 
-              AND ar.accounts_head_status != 'approved'
+        $checkAppr = $this->db->query("
+            SELECT p.id, p.status AS payslip_status,
+                   ar.id AS ar_id, ar.status AS mgmt_status, ar.accounts_head_status
+            FROM payslips p
+            LEFT JOIN approval_requests ar 
+                ON ar.source_table = 'payslips' AND ar.source_id = p.id
+            WHERE p.id IN ($idListStr)
         ");
-        if ($checkAh && $checkAh->num_rows > 0) {
+        $pendingMgmt = false;
+        $pendingAh = false;
+        if ($checkAppr) {
+            while ($row = $checkAppr->fetch_assoc()) {
+                $mStatus = strtolower($row['mgmt_status'] ?? $row['payslip_status'] ?? 'pending');
+                $pStatus = strtolower($row['payslip_status'] ?? 'pending');
+                if (!in_array($mStatus, ['approved', 'paid'], true) && !in_array($pStatus, ['approved', 'paid'], true)) {
+                    $pendingMgmt = true;
+                }
+                if (!empty($row['ar_id']) && strtolower($row['accounts_head_status'] ?? 'pending') !== 'approved') {
+                    $pendingAh = true;
+                }
+            }
+        }
+        if ($pendingMgmt || $pendingAh) {
+            if ($pendingMgmt && $pendingAh) {
+                $errMsg = 'Payment cannot be disbursed. Both Management and Accounts Head approvals are pending.';
+            } elseif ($pendingMgmt) {
+                $errMsg = 'Payment cannot be disbursed. Management approval is pending.';
+            } else {
+                $errMsg = 'Payment cannot be disbursed. Accounts Head approval is pending.';
+            }
+            if (ob_get_length()) {
+                ob_clean();
+            }
             echo json_encode([
                 'success' => false,
-                'message' => 'Payment cannot be disbursed. One or more selected payslips are pending approval from Accounts Head.'
+                'message' => $errMsg
             ]);
             exit;
+        }
+
+        // Self-healing schema check for chart_of_accounts, journals, and journal_details BEFORE transaction
+        try {
+            $this->db->query("
+                CREATE TABLE IF NOT EXISTS `chart_of_accounts` (
+                    `id` int unsigned NOT NULL AUTO_INCREMENT,
+                    `parent_id` int DEFAULT NULL,
+                    `project_id` int DEFAULT NULL,
+                    `account_code` varchar(50) NOT NULL,
+                    `account_name` varchar(255) NOT NULL,
+                    `account_type` varchar(50) NOT NULL DEFAULT 'Expense',
+                    `level` varchar(50) NOT NULL DEFAULT 'ledger',
+                    `root_type` varchar(50) NOT NULL DEFAULT 'expense',
+                    `status` varchar(50) DEFAULT 'active',
+                    `is_system_account` tinyint(1) DEFAULT 0,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `account_code` (`account_code`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+            ");
+            $this->db->query("INSERT IGNORE INTO `chart_of_accounts` (`account_code`, `account_name`, `account_type`, `level`, `root_type`, `status`, `is_system_account`) VALUES
+                ('580003', 'Salaries & Wages', 'Expense', 'ledger', 'expense', 'active', 1),
+                ('114400', 'Cash at Bank', 'Asset', 'ledger', 'asset', 'active', 1),
+                ('114100-03', 'Head Office Cash in Hand', 'Asset', 'ledger', 'asset', 'active', 1)
+            ");
+
+            $this->db->query("
+                CREATE TABLE IF NOT EXISTS `journals` (
+                    `id` int unsigned NOT NULL AUTO_INCREMENT,
+                    `journal_number` varchar(50) NOT NULL,
+                    `date` date NOT NULL,
+                    `voucher_type` varchar(50) DEFAULT 'General',
+                    `project_id` int DEFAULT NULL,
+                    `office` varchar(100) DEFAULT NULL,
+                    `narration` text,
+                    `total_debit` decimal(15,2) DEFAULT 0.00,
+                    `total_credit` decimal(15,2) DEFAULT 0.00,
+                    `status` varchar(50) DEFAULT 'approved',
+                    `created_by` int DEFAULT NULL,
+                    `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    `source_module` varchar(50) DEFAULT NULL,
+                    `source_ref_id` int DEFAULT NULL,
+                    `entry_type` varchar(50) DEFAULT 'disbursement',
+                    `approval_status` varchar(50) DEFAULT 'approved',
+                    PRIMARY KEY (`id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+            ");
+
+            $jCols = [];
+            $jStatusType = '';
+            $jColRes = $this->db->query("SHOW COLUMNS FROM `journals`");
+            if ($jColRes) {
+                while ($r = $jColRes->fetch_assoc()) {
+                    $jCols[$r['Field']] = true;
+                    if ($r['Field'] === 'status') {
+                        $jStatusType = strtolower((string) ($r['Type'] ?? ''));
+                    }
+                }
+            }
+            if (!empty($jCols)) {
+                if ($jStatusType !== '' && strpos($jStatusType, 'enum') !== false && strpos($jStatusType, 'posted') === false) {
+                    $this->db->query("ALTER TABLE `journals` MODIFY COLUMN `status` VARCHAR(50) DEFAULT 'approved'");
+                }
+                $reqJCols = [
+                    'voucher_type'    => "VARCHAR(50) DEFAULT 'General'",
+                    'project_id'      => "INT DEFAULT NULL",
+                    'office'          => "VARCHAR(100) DEFAULT NULL",
+                    'narration'       => "TEXT NULL",
+                    'total_debit'     => "DECIMAL(15,2) DEFAULT 0.00",
+                    'total_credit'    => "DECIMAL(15,2) DEFAULT 0.00",
+                    'status'          => "VARCHAR(50) DEFAULT 'approved'",
+                    'created_by'      => "INT DEFAULT NULL",
+                    'created_at'      => "TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP",
+                    'updated_at'      => "TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+                    'source_module'   => "VARCHAR(50) DEFAULT NULL",
+                    'source_ref_id'   => "INT DEFAULT NULL",
+                    'entry_type'      => "VARCHAR(50) DEFAULT 'disbursement'",
+                    'approval_status' => "VARCHAR(50) DEFAULT 'approved'",
+                ];
+                foreach ($reqJCols as $cName => $cDef) {
+                    if (!isset($jCols[$cName])) {
+                        $this->db->query("ALTER TABLE `journals` ADD COLUMN `{$cName}` {$cDef}");
+                    }
+                }
+            }
+
+            $this->db->query("
+                CREATE TABLE IF NOT EXISTS `journal_details` (
+                    `id` int unsigned NOT NULL AUTO_INCREMENT,
+                    `journal_id` int unsigned NOT NULL,
+                    `account_id` int unsigned NOT NULL,
+                    `debit` decimal(15,2) DEFAULT 0.00,
+                    `credit` decimal(15,2) DEFAULT 0.00,
+                    `project_id` int DEFAULT NULL,
+                    `reference_id` int DEFAULT NULL,
+                    `reference_type` varchar(50) DEFAULT NULL,
+                    `narration` text,
+                    `party_type` varchar(50) DEFAULT NULL,
+                    `party_id` int DEFAULT NULL,
+                    PRIMARY KEY (`id`),
+                    KEY `journal_id` (`journal_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+            ");
+
+            $jdCols = [];
+            $jdColRes = $this->db->query("SHOW COLUMNS FROM `journal_details`");
+            if ($jdColRes) {
+                while ($r = $jdColRes->fetch_assoc()) {
+                    $jdCols[$r['Field']] = true;
+                }
+            }
+            if (!empty($jdCols)) {
+                $reqJdCols = [
+                    'debit'          => "DECIMAL(15,2) DEFAULT 0.00",
+                    'credit'         => "DECIMAL(15,2) DEFAULT 0.00",
+                    'project_id'     => "INT DEFAULT NULL",
+                    'reference_id'   => "INT DEFAULT NULL",
+                    'reference_type' => "VARCHAR(50) DEFAULT NULL",
+                    'narration'      => "TEXT NULL",
+                    'party_type'     => "VARCHAR(50) DEFAULT NULL",
+                    'party_id'       => "INT DEFAULT NULL",
+                ];
+                foreach ($reqJdCols as $cName => $cDef) {
+                    if (!isset($jdCols[$cName])) {
+                        $this->db->query("ALTER TABLE `journal_details` ADD COLUMN `{$cName}` {$cDef}");
+                    }
+                }
+            }
+        } catch (\Throwable $schemaErr) {
+            error_log("disburseBatch schema check warning: " . $schemaErr->getMessage());
         }
 
         $this->db->begin_transaction();
@@ -1348,6 +1583,9 @@ class PayrollController extends Controller
                 LEFT JOIN employees e ON p.employee_id = e.id
                 WHERE p.id IN ($placeholders) AND p.status != 'paid'
             ");
+            if (!$stmt) {
+                throw new \Exception('Failed to query payslips: ' . $this->db->error);
+            }
             $types = str_repeat('i', count($payslipIds));
             $stmt->bind_param($types, ...$payslipIds);
             $stmt->execute();
@@ -1355,41 +1593,73 @@ class PayrollController extends Controller
             $stmt->close();
 
             if (empty($payslipsToPay)) {
+                $this->db->rollback();
+                if (ob_get_length()) {
+                    ob_clean();
+                }
                 echo json_encode(['success' => false, 'message' => 'Selected payslips are already paid or invalid.']);
                 exit;
             }
 
+            // Determine fallback valid COA ID so FK on journal_details never fails
+            $defaultCoaId = 1;
+            $anyCoaRes = $this->db->query("SELECT id FROM chart_of_accounts ORDER BY id ASC LIMIT 1");
+            if ($anyCoaRes && ($anyCoaRow = $anyCoaRes->fetch_assoc())) {
+                $defaultCoaId = (int) $anyCoaRow['id'];
+            }
+
             // Fetch dynamic COA IDs for Salaries & Wages and Bank/Cash
+            $salaryCoaId = $defaultCoaId;
             $stmtCoa1 = $this->db->prepare("SELECT id FROM chart_of_accounts WHERE account_code = '580003' LIMIT 1");
-            $stmtCoa1->execute();
-            $salaryCoaRow = $stmtCoa1->get_result()->fetch_assoc();
-            $salaryCoaId = $salaryCoaRow ? (int) $salaryCoaRow['id'] : 1;
-            $stmtCoa1->close();
+            if ($stmtCoa1) {
+                $stmtCoa1->execute();
+                $salaryCoaRow = $stmtCoa1->get_result()->fetch_assoc();
+                if ($salaryCoaRow) {
+                    $salaryCoaId = (int) $salaryCoaRow['id'];
+                }
+                $stmtCoa1->close();
+            }
 
+            $bankCoaId = $defaultCoaId;
             $stmtCoa2 = $this->db->prepare("SELECT id FROM chart_of_accounts WHERE account_code = '114400' LIMIT 1");
-            $stmtCoa2->execute();
-            $bankCoaRow = $stmtCoa2->get_result()->fetch_assoc();
-            $bankCoaId = $bankCoaRow ? (int) $bankCoaRow['id'] : 1;
-            $stmtCoa2->close();
+            if ($stmtCoa2) {
+                $stmtCoa2->execute();
+                $bankCoaRow = $stmtCoa2->get_result()->fetch_assoc();
+                if ($bankCoaRow) {
+                    $bankCoaId = (int) $bankCoaRow['id'];
+                }
+                $stmtCoa2->close();
+            }
 
+            $cashCoaId = $bankCoaId;
             $stmtCoa3 = $this->db->prepare("SELECT id FROM chart_of_accounts WHERE account_code = '114100-03' LIMIT 1");
-            $stmtCoa3->execute();
-            $cashCoaRow = $stmtCoa3->get_result()->fetch_assoc();
-            $cashCoaId = $cashCoaRow ? (int) $cashCoaRow['id'] : $bankCoaId;
-            $stmtCoa3->close();
+            if ($stmtCoa3) {
+                $stmtCoa3->execute();
+                $cashCoaRow = $stmtCoa3->get_result()->fetch_assoc();
+                if ($cashCoaRow) {
+                    $cashCoaId = (int) $cashCoaRow['id'];
+                }
+                $stmtCoa3->close();
+            }
 
             // Get bank details or default cash
             $bankName = 'Head Office Cash Account';
             $payCoaId = $cashCoaId;
+            $paymentMethodVal = 'cash';
+            $companyBankIdVal = null;
             if ($bankAccountId > 0) {
+                $paymentMethodVal = 'bank';
+                $companyBankIdVal = $bankAccountId;
                 $stmtBank = $this->db->prepare('SELECT bank_name, account_name, account_number FROM company_bank_accounts WHERE id = ?');
-                $stmtBank->bind_param('i', $bankAccountId);
-                $stmtBank->execute();
-                $bankRes = $stmtBank->get_result()->fetch_assoc();
-                $stmtBank->close();
-                if ($bankRes) {
-                    $bankName = $bankRes['bank_name'] . ' (' . $bankRes['account_number'] . ')';
-                    $payCoaId = $bankCoaId;
+                if ($stmtBank) {
+                    $stmtBank->bind_param('i', $bankAccountId);
+                    $stmtBank->execute();
+                    $bankRes = $stmtBank->get_result()->fetch_assoc();
+                    $stmtBank->close();
+                    if ($bankRes) {
+                        $bankName = $bankRes['bank_name'] . ' (' . $bankRes['account_number'] . ')';
+                        $payCoaId = $bankCoaId;
+                    }
                 }
             }
 
@@ -1412,49 +1682,76 @@ class PayrollController extends Controller
             $stmtJ = $this->db->prepare("
                 INSERT INTO journals 
                 (journal_number, date, voucher_type, narration, total_debit, total_credit, status, created_by, created_at, source_module, source_ref_id, entry_type, approval_status)
-                VALUES (?, ?, ?, ?, ?, ?, 'posted', ?, NOW(), 'payroll', 0, 'disbursement', 'approved')
+                VALUES (?, ?, ?, ?, ?, ?, 'approved', ?, NOW(), 'payroll', 0, 'disbursement', 'approved')
             ");
-            $voucherType = 'Payment';
+            if (!$stmtJ) {
+                throw new \Exception('Failed to prepare journal header: ' . $this->db->error);
+            }
+            $voucherType = 'Payment Voucher';
             $stmtJ->bind_param('ssssddi', $journalNum, $sampleDate, $voucherType, $narration, $totalAmount, $totalAmount, $userId);
-            $stmtJ->execute();
-            $journalId = $stmtJ->insert_id;
+            if (!$stmtJ->execute()) {
+                throw new \Exception('Failed to insert journal header: ' . $stmtJ->error);
+            }
+            $journalId = (int) $stmtJ->insert_id;
             $stmtJ->close();
 
             // 2. Insert Debit & Credit details in 'journal_details'
-            // Debit: Salaries & Wages (580003)
-            $stmtD1 = $this->db->prepare('
-                INSERT INTO journal_details (journal_id, account_id, debit, credit, narration)
-                VALUES (?, ?, ?, 0.00, ?)
-            ');
-            $narrDebit = "Salaries & Wages Expense for $monthText";
-            $stmtD1->bind_param('iids', $journalId, $salaryCoaId, $totalAmount, $narrDebit);
-            $stmtD1->execute();
-            $stmtD1->close();
+            if ($journalId > 0) {
+                // Debit: Salaries & Wages (580003)
+                $stmtD1 = $this->db->prepare('
+                    INSERT INTO journal_details (journal_id, account_id, debit, credit, narration)
+                    VALUES (?, ?, ?, 0.00, ?)
+                ');
+                if ($stmtD1) {
+                    $narrDebit = "Salaries & Wages Expense for $monthText";
+                    $stmtD1->bind_param('iids', $journalId, $salaryCoaId, $totalAmount, $narrDebit);
+                    $stmtD1->execute();
+                    $stmtD1->close();
+                }
 
-            // Credit: Cash at Bank (114400) or Head Office Cash (114100-03)
-            $stmtD2 = $this->db->prepare('
-                INSERT INTO journal_details (journal_id, account_id, debit, credit, narration)
-                VALUES (?, ?, 0.00, ?, ?)
-            ');
-            $narrCredit = "Disbursed via $bankName for $monthText Payroll";
-            $stmtD2->bind_param('iids', $journalId, $payCoaId, $totalAmount, $narrCredit);
-            $stmtD2->execute();
-            $stmtD2->close();
+                // Credit: Cash at Bank (114400) or Head Office Cash (114100-03)
+                $stmtD2 = $this->db->prepare('
+                    INSERT INTO journal_details (journal_id, account_id, debit, credit, narration)
+                    VALUES (?, ?, 0.00, ?, ?)
+                ');
+                if ($stmtD2) {
+                    $narrCredit = "Disbursed via $bankName for $monthText Payroll";
+                    $stmtD2->bind_param('iids', $journalId, $payCoaId, $totalAmount, $narrCredit);
+                    $stmtD2->execute();
+                    $stmtD2->close();
+                }
+            }
 
             // 3. Update payslips status to PAID & link journal_voucher_id
             $stmtUpd = $this->db->prepare("
                 UPDATE payslips 
-                SET status = 'paid', payment_status = 'paid', bank_account_id = ?, disbursed_by = ?, disbursed_at = NOW(), journal_voucher_id = ?
+                SET status = 'paid',
+                    payment_status = 'paid',
+                    payment_method = ?,
+                    company_bank_id = ?,
+                    bank_account_id = ?,
+                    disbursed_by = ?,
+                    disbursed_at = NOW(),
+                    journal_voucher_id = ?
                 WHERE id = ?
             ");
+            if (!$stmtUpd) {
+                throw new \Exception('Failed to prepare payslip status update: ' . $this->db->error);
+            }
             foreach ($payslipsToPay as $p) {
-                $stmtUpd->bind_param('iiii', $bankAccountId, $userId, $journalId, $p['id']);
-                $stmtUpd->execute();
+                $pid = (int) $p['id'];
+                $stmtUpd->bind_param('siiiii', $paymentMethodVal, $companyBankIdVal, $bankAccountId, $userId, $journalId, $pid);
+                if (!$stmtUpd->execute()) {
+                    throw new \Exception('Failed to update payslip #' . $pid . ': ' . $stmtUpd->error);
+                }
             }
             $stmtUpd->close();
 
             $this->db->commit();
 
+            if (ob_get_length()) {
+                ob_clean();
+            }
             echo json_encode([
                 'success' => true,
                 'message' => 'Successfully disbursed ' . count($payslipsToPay) . ' payslips (Total: ৳' . number_format($totalAmount, 2) . ') and posted Journal Entry (' . $journalNum . ').',
@@ -1463,8 +1760,11 @@ class PayrollController extends Controller
                 'total_amount' => $totalAmount
             ]);
             exit;
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             $this->db->rollback();
+            if (ob_get_length()) {
+                ob_clean();
+            }
             echo json_encode(['success' => false, 'message' => 'Disbursement failed: ' . $e->getMessage()]);
             exit;
         }
@@ -2478,12 +2778,10 @@ class PayrollController extends Controller
                 LEFT JOIN departments dept ON e.department_id = dept.id
                 LEFT JOIN designations desg ON e.designation_id = desg.id
                 WHERE p.payroll_project_id = ?
-                  AND YEAR(p.payslip_month) = ?
-                  AND MONTH(p.payslip_month) = ?
                   AND LOWER(TRIM(p.salary_hold)) = 'hold'
                 ORDER BY e.employee_id ASC
             ");
-            $stmt->bind_param('iii', $selectedProject, $selectedYear, $selectedMonth);
+            $stmt->bind_param('i', $selectedProject);
         } else {
             $stmt = $this->db->prepare("
                 SELECT p.id, p.payslip_month, p.net_salary, p.total_earning, p.salary_hold, p.remarks,
@@ -4595,8 +4893,20 @@ class PayrollController extends Controller
         exit;
     }
 
-    public function detailedSummary()
+    public function payrollReports()
     {
+        $validTabs = ['detailed-summary', 'summary-report', 'salary-report', 'liquidity-management'];
+        $activeTab = $_GET['tab'] ?? 'detailed-summary';
+        if (!in_array($activeTab, $validTabs, true)) {
+            $activeTab = 'detailed-summary';
+        }
+
+        $chkSpec = $this->db->query("SHOW COLUMNS FROM payslips LIKE 'special_allowance'");
+        if ($chkSpec && $chkSpec->num_rows === 0) {
+            $this->db->query('ALTER TABLE payslips ADD COLUMN special_allowance DECIMAL(15,2) NOT NULL DEFAULT 0.00 AFTER house_rent_allowance');
+        }
+
+        // Projects ordered DESC for single-project selectors
         $projectRes = $this->db->query('SELECT * FROM payroll_projects ORDER BY id DESC');
         $payroll_projects = [];
         if ($projectRes) {
@@ -4605,17 +4915,37 @@ class PayrollController extends Controller
             }
         }
 
-        $payrollProjectId = isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] !== '' ? (int) $_GET['payroll_project_id'] : null;
-
-        $departmentsData = [];
-
-        if ($payrollProjectId) {
-            $chkSpec = $this->db->query("SHOW COLUMNS FROM payslips LIKE 'special_allowance'");
-            if ($chkSpec && $chkSpec->num_rows === 0) {
-                $this->db->query('ALTER TABLE payslips ADD COLUMN special_allowance DECIMAL(15,2) NOT NULL DEFAULT 0.00 AFTER house_rent_allowance');
+        // Projects ordered ASC for From/To range in Summary Report
+        $projectAscRes = $this->db->query("SELECT * FROM payroll_projects ORDER BY COALESCE(NULLIF(date, ''), start_date, '1970-01-01') ASC, id ASC");
+        $payroll_projects_asc = [];
+        if ($projectAscRes) {
+            while ($pRow = $projectAscRes->fetch_assoc()) {
+                $payroll_projects_asc[] = $pRow;
             }
+        }
 
-            $sql = "
+        $payrollProjectId = isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] !== ''
+            ? (int) $_GET['payroll_project_id']
+            : (isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int) $_GET['project_id'] : null);
+
+        if (!$payrollProjectId && !empty($payroll_projects)) {
+            $payrollProjectId = (int) $payroll_projects[0]['id'];
+        }
+
+        $selectedProject = null;
+        if ($payrollProjectId) {
+            foreach ($payroll_projects as $p) {
+                if ((int) $p['id'] === $payrollProjectId) {
+                    $selectedProject = $p;
+                    break;
+                }
+            }
+        }
+
+        // 1. Detailed Summary Data
+        $departmentsData = [];
+        if ($payrollProjectId) {
+            $sqlDetailed = "
                 SELECT p.id, p.net_salary, COALESCE(p.special_allowance, 0) as special_allowance,
                        e.full_name, e.employee_id as emp_id,
                        COALESCE(dept.name, 'Unassigned') as department_name, 
@@ -4628,39 +4958,197 @@ class PayrollController extends Controller
                   AND (p.is_excluded = 0 OR p.is_excluded IS NULL)
                 ORDER BY dept.name ASC, e.employee_id ASC
             ";
-
-            $stmt = $this->db->prepare($sql);
-            $stmt->bind_param('i', $payrollProjectId);
-            $stmt->execute();
-            $res = $stmt->get_result();
-
-            if ($res) {
-                while ($row = $res->fetch_assoc()) {
-                    $dept = $row['department_name'];
-                    if (!isset($departmentsData[$dept])) {
-                        $departmentsData[$dept] = [
-                            'employees' => [],
-                            'total_payable' => 0,
-                            'total_special_allowance' => 0
-                        ];
+            $stmtDet = $this->db->prepare($sqlDetailed);
+            if ($stmtDet) {
+                $stmtDet->bind_param('i', $payrollProjectId);
+                $stmtDet->execute();
+                $resDet = $stmtDet->get_result();
+                if ($resDet) {
+                    while ($row = $resDet->fetch_assoc()) {
+                        $dept = $row['department_name'];
+                        if (!isset($departmentsData[$dept])) {
+                            $departmentsData[$dept] = [
+                                'employees' => [],
+                                'total_payable' => 0,
+                                'total_special_allowance' => 0
+                            ];
+                        }
+                        $departmentsData[$dept]['employees'][] = $row;
+                        $departmentsData[$dept]['total_payable'] += (float) $row['net_salary'];
+                        $departmentsData[$dept]['total_special_allowance'] += (float) ($row['special_allowance'] ?? 0);
                     }
-                    $departmentsData[$dept]['employees'][] = $row;
-                    $departmentsData[$dept]['total_payable'] += (float) $row['net_salary'];
-                    $departmentsData[$dept]['total_special_allowance'] += (float) ($row['special_allowance'] ?? 0);
+                }
+                $stmtDet->close();
+            }
+        }
+
+        // 2. Payroll Summary Report Data
+        $fromProjectId = isset($_GET['from_project_id']) && $_GET['from_project_id'] !== '' ? (int) $_GET['from_project_id'] : $payrollProjectId;
+        $toProjectId = isset($_GET['to_project_id']) && $_GET['to_project_id'] !== '' ? (int) $_GET['to_project_id'] : $payrollProjectId;
+
+        $targetProjects = [];
+        if ($fromProjectId && $toProjectId && !empty($payroll_projects_asc)) {
+            $projectIds = array_map('intval', array_column($payroll_projects_asc, 'id'));
+            $fromIndex = array_search($fromProjectId, $projectIds);
+            $toIndex = array_search($toProjectId, $projectIds);
+
+            if ($fromIndex !== false && $toIndex !== false) {
+                $startIndex = min($fromIndex, $toIndex);
+                $endIndex = max($fromIndex, $toIndex);
+                $targetProjects = array_slice($payroll_projects_asc, $startIndex, $endIndex - $startIndex + 1);
+            }
+        }
+
+        $summaryData = [
+            'No of employees' => [],
+            'Special Allowance (BDT)' => [],
+            'Net Salary (BDT)' => [],
+            'Tax Deducted(BDT)' => [],
+            'Net Payable(BDT)' => [],
+            'Salary via Bank(BDT)' => [],
+            'Salary via Cash(BDT)' => []
+        ];
+
+        foreach ($targetProjects as $proj) {
+            $pid = $proj['id'];
+            foreach (array_keys($summaryData) as $key) {
+                $summaryData[$key][$pid] = 0;
+            }
+        }
+
+        if (!empty($targetProjects)) {
+            $targetProjectIds = array_map('intval', array_column($targetProjects, 'id'));
+            $inClause = implode(',', $targetProjectIds);
+
+            $sqlSum = "
+                SELECT p.id, p.payroll_project_id, p.net_salary, p.payment_method, p.employee_id,
+                       COALESCE(p.special_allowance, 0) as special_allowance,
+                       COALESCE(p.tax, 0) as tax_deducted,
+                       COALESCE(p.bank_amount, 0) as bank_amount,
+                       COALESCE(p.cash_amount, 0) as cash_amount
+                FROM payslips p
+                WHERE p.payroll_project_id IN ($inClause)
+                  AND (p.is_excluded = 0 OR p.is_excluded IS NULL)
+            ";
+            $resSum = $this->db->query($sqlSum);
+            if ($resSum) {
+                while ($row = $resSum->fetch_assoc()) {
+                    $pid = (int) $row['payroll_project_id'];
+                    if (!isset($summaryData['No of employees'][$pid])) {
+                        continue;
+                    }
+                    $netSalary = (float) $row['net_salary'];
+                    $specialAllowance = (float) ($row['special_allowance'] ?? 0);
+                    $taxDeducted = (float) $row['tax_deducted'];
+                    $bankAmount = (float) $row['bank_amount'];
+                    $cashAmount = (float) $row['cash_amount'];
+
+                    $summaryData['No of employees'][$pid] += 1;
+                    $summaryData['Special Allowance (BDT)'][$pid] += $specialAllowance;
+                    $summaryData['Net Salary (BDT)'][$pid] += ($netSalary + $taxDeducted);
+                    $summaryData['Tax Deducted(BDT)'][$pid] += $taxDeducted;
+                    $summaryData['Net Payable(BDT)'][$pid] += $netSalary;
+
+                    if ($bankAmount > 0 || $cashAmount > 0) {
+                        $summaryData['Salary via Bank(BDT)'][$pid] += $bankAmount;
+                        $summaryData['Salary via Cash(BDT)'][$pid] += $cashAmount;
+                    } else {
+                        $method = strtolower($row['payment_method'] ?? '');
+                        if ($method === 'bank' || $method === 'bank transfer') {
+                            $summaryData['Salary via Bank(BDT)'][$pid] += $netSalary;
+                        } elseif ($method === 'cash') {
+                            $summaryData['Salary via Cash(BDT)'][$pid] += $netSalary;
+                        }
+                    }
                 }
             }
         }
 
-        $page_title = 'Detailed Summary';
-        $current_route = 'payroll-detailed-summary';
+        // 3. Salary Report Data
+        $reportType = $_GET['report_type'] ?? 'department';
+        $salaryData = [];
+        if ($payrollProjectId) {
+            if ($reportType === 'department') {
+                $sqlSal = "SELECT 
+                            d.name AS dept_name, 
+                            COUNT(p.id) AS no_of_emp,
+                            SUM(COALESCE(p.special_allowance, 0)) AS special_allowance,
+                            SUM(p.net_salary) AS total_amount
+                        FROM payslips p
+                        JOIN employees e ON p.employee_id = e.id
+                        JOIN departments d ON e.department_id = d.id
+                        WHERE p.payroll_project_id = ? 
+                          AND (p.is_excluded = 0 OR p.is_excluded IS NULL)
+                        GROUP BY d.id
+                        ORDER BY d.name ASC";
+            } else {
+                $sqlSal = "SELECT 
+                            IFNULL(ob.name, 'Unassigned') AS office_name, 
+                            COUNT(p.id) AS no_of_emp,
+                            SUM(COALESCE(p.special_allowance, 0)) AS special_allowance,
+                            SUM(p.net_salary) AS total_amount,
+                            SUM(CASE 
+                                WHEN (p.bank_amount > 0 OR p.cash_amount > 0) THEN COALESCE(p.bank_amount, 0)
+                                WHEN LOWER(COALESCE(p.payment_method, '')) LIKE '%bank%' THEN p.net_salary
+                                ELSE 0 
+                            END) AS bank_amount,
+                            SUM(CASE 
+                                WHEN (p.bank_amount > 0 OR p.cash_amount > 0) THEN COALESCE(p.cash_amount, 0)
+                                WHEN LOWER(COALESCE(p.payment_method, '')) LIKE '%cash%' THEN p.net_salary
+                                ELSE 0 
+                            END) AS cash_amount
+                        FROM payslips p
+                        JOIN employees e ON p.employee_id = e.id
+                        LEFT JOIN office_branches ob ON e.office_branch_id = ob.id
+                        WHERE p.payroll_project_id = ? 
+                          AND (p.is_excluded = 0 OR p.is_excluded IS NULL)
+                        GROUP BY ob.id
+                        ORDER BY office_name ASC";
+            }
+            $stmtSal = $this->db->prepare($sqlSal);
+            if ($stmtSal) {
+                $stmtSal->bind_param('i', $payrollProjectId);
+                $stmtSal->execute();
+                $resSal = $stmtSal->get_result();
+                if ($resSal) {
+                    while ($row = $resSal->fetch_assoc()) {
+                        $salaryData[] = $row;
+                    }
+                }
+                $stmtSal->close();
+            }
+        }
 
-        $this->view('payrolls/payslips/detailed-summary', [
-            'page_title' => $page_title,
-            'current_route' => $current_route,
-            'departmentsData' => $departmentsData,
+        // 4. Liquidity Management Data
+        $liquidity = $this->getLiquidityData($payrollProjectId);
+
+        $this->view('payrolls/payslips/payroll-reports', [
+            'page_title' => 'Payroll Reports',
+            'current_route' => 'payroll-reports',
+            'active_tab' => $activeTab,
             'payroll_projects' => $payroll_projects,
-            'payroll_project_id' => $payrollProjectId
+            'payroll_projects_asc' => $payroll_projects_asc,
+            'payroll_project_id' => $payrollProjectId,
+            'selectedProject' => $selectedProject,
+            'departmentsData' => $departmentsData,
+            'from_project_id' => $fromProjectId,
+            'to_project_id' => $toProjectId,
+            'targetProjects' => $targetProjects,
+            'summaryData' => $summaryData,
+            'reportType' => $reportType,
+            'salaryData' => $salaryData,
+            'totalRequirement' => $liquidity['totalRequirement'],
+            'totalBankRequirement' => $liquidity['totalBankRequirement'],
+            'totalCashRequirement' => $liquidity['totalCashRequirement'],
+            'bankEmployees' => $liquidity['bankEmployees'],
+            'cashEmployees' => $liquidity['cashEmployees'],
         ]);
+    }
+
+    public function detailedSummary()
+    {
+        $_GET['tab'] = 'detailed-summary';
+        return $this->payrollReports();
     }
 
     public function exportDetailedSummaryPDF()
@@ -4805,108 +5293,8 @@ class PayrollController extends Controller
 
     public function summaryReport()
     {
-        $projectRes = $this->db->query("SELECT * FROM payroll_projects ORDER BY COALESCE(NULLIF(date, ''), start_date, '1970-01-01') ASC, id ASC");
-        $payroll_projects = [];
-        if ($projectRes) {
-            while ($pRow = $projectRes->fetch_assoc()) {
-                $payroll_projects[] = $pRow;
-            }
-        }
-
-        $fromProjectId = isset($_GET['from_project_id']) && $_GET['from_project_id'] !== '' ? (int) $_GET['from_project_id'] : null;
-        $toProjectId = isset($_GET['to_project_id']) && $_GET['to_project_id'] !== '' ? (int) $_GET['to_project_id'] : null;
-
-        $targetProjects = [];
-        if ($fromProjectId && $toProjectId) {
-            $projectIds = array_map('intval', array_column($payroll_projects, 'id'));
-            $fromIndex = array_search($fromProjectId, $projectIds);
-            $toIndex = array_search($toProjectId, $projectIds);
-
-            if ($fromIndex !== false && $toIndex !== false) {
-                $startIndex = min($fromIndex, $toIndex);
-                $endIndex = max($fromIndex, $toIndex);
-                $targetProjects = array_slice($payroll_projects, $startIndex, $endIndex - $startIndex + 1);
-            }
-        }
-
-        $data = [
-            'No of employees' => [],
-            'Net Salary (BDT)' => [],
-            'Tax Deducted(BDT)' => [],
-            'Net Payable(BDT)' => [],
-            'Salary via Bank(BDT)' => [],
-            'Salary via Cash(BDT)' => []
-        ];
-
-        // Pre-fill structure
-        foreach ($targetProjects as $proj) {
-            $pid = $proj['id'];
-            foreach (array_keys($data) as $key) {
-                $data[$key][$pid] = 0;
-            }
-        }
-
-        if (!empty($targetProjects)) {
-            $targetProjectIds = array_map('intval', array_column($targetProjects, 'id'));
-            $inClause = implode(',', $targetProjectIds);
-
-            $sql = "
-                SELECT p.id, p.payroll_project_id, p.net_salary, p.payment_method, p.employee_id,
-                       COALESCE(p.tax, 0) as tax_deducted,
-                       COALESCE(p.bank_amount, 0) as bank_amount,
-                       COALESCE(p.cash_amount, 0) as cash_amount
-                FROM payslips p
-                WHERE p.payroll_project_id IN ($inClause)
-                  AND p.status != 'draft'
-                  AND (p.is_excluded = 0 OR p.is_excluded IS NULL)
-            ";
-
-            $res = $this->db->query($sql);
-
-            if ($res) {
-                while ($row = $res->fetch_assoc()) {
-                    $pid = (int) $row['payroll_project_id'];
-
-                    if (!isset($data['No of employees'][$pid]))
-                        continue;
-
-                    $netSalary = (float) $row['net_salary'];
-                    $taxDeducted = (float) $row['tax_deducted'];
-                    $bankAmount = (float) $row['bank_amount'];
-                    $cashAmount = (float) $row['cash_amount'];
-
-                    $data['No of employees'][$pid] += 1;
-                    $data['Net Salary (BDT)'][$pid] += $netSalary;
-                    $data['Tax Deducted(BDT)'][$pid] += $taxDeducted;
-                    $data['Net Payable(BDT)'][$pid] += $netSalary;
-
-                    if ($bankAmount > 0 || $cashAmount > 0) {
-                        $data['Salary via Bank(BDT)'][$pid] += $bankAmount;
-                        $data['Salary via Cash(BDT)'][$pid] += $cashAmount;
-                    } else {
-                        $method = strtolower($row['payment_method'] ?? '');
-                        if ($method === 'bank' || $method === 'bank transfer') {
-                            $data['Salary via Bank(BDT)'][$pid] += $netSalary;
-                        } elseif ($method === 'cash') {
-                            $data['Salary via Cash(BDT)'][$pid] += $netSalary;
-                        }
-                    }
-                }
-            }
-        }
-
-        $page_title = 'Payroll Summary Report';
-        $current_route = 'payroll-summary-report';
-
-        $this->view('payrolls/payslips/summary-report', [
-            'page_title' => $page_title,
-            'current_route' => $current_route,
-            'payroll_projects' => $payroll_projects,
-            'from_project_id' => $fromProjectId,
-            'to_project_id' => $toProjectId,
-            'targetProjects' => $targetProjects,
-            'data' => $data
-        ]);
+        $_GET['tab'] = 'summary-report';
+        return $this->payrollReports();
     }
 
     public function exportSummaryReportPDF()
@@ -4940,6 +5328,7 @@ class PayrollController extends Controller
 
         $data = [
             'No of employees' => [],
+            'Special Allowance (BDT)' => [],
             'Net Salary (BDT)' => [],
             'Tax Deducted(BDT)' => [],
             'Net Payable(BDT)' => [],
@@ -4961,12 +5350,12 @@ class PayrollController extends Controller
 
             $sql = "
                 SELECT p.id, p.payroll_project_id, p.net_salary, p.payment_method, p.employee_id,
+                       COALESCE(p.special_allowance, 0) as special_allowance,
                        COALESCE(p.tax, 0) as tax_deducted,
                        COALESCE(p.bank_amount, 0) as bank_amount,
                        COALESCE(p.cash_amount, 0) as cash_amount
                 FROM payslips p
                 WHERE p.payroll_project_id IN ($inClause)
-                  AND p.status != 'draft'
                   AND (p.is_excluded = 0 OR p.is_excluded IS NULL)
             ";
 
@@ -4980,12 +5369,14 @@ class PayrollController extends Controller
                         continue;
 
                     $netSalary = (float) $row['net_salary'];
+                    $specialAllowance = (float) ($row['special_allowance'] ?? 0);
                     $taxDeducted = (float) $row['tax_deducted'];
                     $bankAmount = (float) $row['bank_amount'];
                     $cashAmount = (float) $row['cash_amount'];
 
                     $data['No of employees'][$pid] += 1;
-                    $data['Net Salary (BDT)'][$pid] += $netSalary;
+                    $data['Special Allowance (BDT)'][$pid] += $specialAllowance;
+                    $data['Net Salary (BDT)'][$pid] += ($netSalary + $taxDeducted);
                     $data['Tax Deducted(BDT)'][$pid] += $taxDeducted;
                     $data['Net Payable(BDT)'][$pid] += $netSalary;
 
@@ -5099,93 +5490,8 @@ class PayrollController extends Controller
 
     public function salaryReport()
     {
-        $reportType = $_GET['report_type'] ?? 'department';
-        $payrollProjectId = isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] !== '' ? (int) $_GET['payroll_project_id'] : null;
-
-        $projectRes = $this->db->query('SELECT * FROM payroll_projects ORDER BY id DESC');
-        $payroll_projects = [];
-        if ($projectRes) {
-            while ($pRow = $projectRes->fetch_assoc()) {
-                $payroll_projects[] = $pRow;
-            }
-        }
-
-        $data = [];
-        if ($payrollProjectId) {
-            $chkSpec = $this->db->query("SHOW COLUMNS FROM payslips LIKE 'special_allowance'");
-            if ($chkSpec && $chkSpec->num_rows === 0) {
-                $this->db->query('ALTER TABLE payslips ADD COLUMN special_allowance DECIMAL(15,2) NOT NULL DEFAULT 0.00 AFTER house_rent_allowance');
-            }
-
-            if ($reportType === 'department') {
-                $sql = "SELECT 
-                            d.name AS dept_name, 
-                            COUNT(p.id) AS no_of_emp,
-                            SUM(COALESCE(p.special_allowance, 0)) AS special_allowance,
-                            SUM(p.net_salary) AS total_amount
-                        FROM payslips p
-                        JOIN employees e ON p.employee_id = e.id
-                        JOIN departments d ON e.department_id = d.id
-                        WHERE p.payroll_project_id = ? 
-                          AND (p.is_excluded = 0 OR p.is_excluded IS NULL)
-                        GROUP BY d.id
-                        ORDER BY d.name ASC";
-                $stmt = $this->db->prepare($sql);
-                if ($stmt) {
-                    $stmt->bind_param('i', $payrollProjectId);
-                    $stmt->execute();
-                    $res = $stmt->get_result();
-                    if ($res) {
-                        while ($row = $res->fetch_assoc()) {
-                            $data[] = $row;
-                        }
-                    }
-                    $stmt->close();
-                }
-            } else {
-                $sql = "SELECT 
-                            IFNULL(ob.name, 'Unassigned') AS office_name, 
-                            COUNT(p.id) AS no_of_emp,
-                            SUM(COALESCE(p.special_allowance, 0)) AS special_allowance,
-                            SUM(p.net_salary) AS total_amount,
-                            SUM(CASE 
-                                WHEN (p.bank_amount > 0 OR p.cash_amount > 0) THEN COALESCE(p.bank_amount, 0)
-                                WHEN LOWER(COALESCE(p.payment_method, '')) LIKE '%bank%' THEN p.net_salary
-                                ELSE 0 
-                            END) AS bank_amount,
-                            SUM(CASE 
-                                WHEN (p.bank_amount > 0 OR p.cash_amount > 0) THEN COALESCE(p.cash_amount, 0)
-                                WHEN LOWER(COALESCE(p.payment_method, '')) LIKE '%cash%' THEN p.net_salary
-                                ELSE 0 
-                            END) AS cash_amount
-                        FROM payslips p
-                        JOIN employees e ON p.employee_id = e.id
-                        LEFT JOIN office_branches ob ON e.office_branch_id = ob.id
-                        WHERE p.payroll_project_id = ? 
-                          AND (p.is_excluded = 0 OR p.is_excluded IS NULL)
-                        GROUP BY ob.id
-                        ORDER BY office_name ASC";
-                $stmt = $this->db->prepare($sql);
-                if ($stmt) {
-                    $stmt->bind_param('i', $payrollProjectId);
-                    $stmt->execute();
-                    $res = $stmt->get_result();
-                    if ($res) {
-                        while ($row = $res->fetch_assoc()) {
-                            $data[] = $row;
-                        }
-                    }
-                    $stmt->close();
-                }
-            }
-        }
-
-        $this->view('payrolls/payslips/salary-report', [
-            'reportType' => $reportType,
-            'payroll_projects' => $payroll_projects,
-            'payroll_project_id' => $payrollProjectId,
-            'data' => $data
-        ]);
+        $_GET['tab'] = 'salary-report';
+        return $this->payrollReports();
     }
 
     public function exportSalaryReportPDF()
@@ -5516,8 +5822,9 @@ class PayrollController extends Controller
             foreach ($payroll_projects as $prj) {
                 if ($prj['id'] == $selectedProject) {
                     if (empty($_GET['year']) || empty($_GET['month'])) {
-                        if (!empty($prj['date'])) {
-                            $dateParts = explode('-', $prj['date']);
+                        $prjDateStr = !empty($prj['date']) ? $prj['date'] : ($prj['start_date'] ?? '');
+                        if (!empty($prjDateStr)) {
+                            $dateParts = explode('-', $prjDateStr);
                             if (count($dateParts) >= 2) {
                                 $selectedYear = $dateParts[0];
                                 $selectedMonth = $dateParts[1];
@@ -5539,7 +5846,7 @@ class PayrollController extends Controller
         }
 
         $holds = [];
-        if ($selectedProject && $selectedYear && $selectedMonth) {
+        if ($selectedProject) {
             $stmt = $this->db->prepare("
                 SELECT p.id as payslip_id, p.net_salary, p.total_earning, p.salary_hold, p.remarks,
                        e.employee_id, e.full_name, e.gross_salary, dept.name as department_name, desg.name as designation_name
@@ -5548,15 +5855,11 @@ class PayrollController extends Controller
                 LEFT JOIN departments dept ON e.department_id = dept.id
                 LEFT JOIN designations desg ON e.designation_id = desg.id
                 WHERE p.payroll_project_id = ? 
-                  AND YEAR(p.payslip_month) = ? 
-                  AND MONTH(p.payslip_month) = ?
                   AND LOWER(TRIM(p.salary_hold)) = 'hold'
                 ORDER BY e.employee_id ASC
             ");
             $projIdInt = (int) $selectedProject;
-            $yearInt = (int) $selectedYear;
-            $monthInt = (int) $selectedMonth;
-            $stmt->bind_param('iii', $projIdInt, $yearInt, $monthInt);
+            $stmt->bind_param('i', $projIdInt);
             $stmt->execute();
             $res = $stmt->get_result();
             if ($res) {
@@ -5740,46 +6043,8 @@ class PayrollController extends Controller
 
     public function liquidityReport()
     {
-        $projectRes = $this->db->query('SELECT * FROM payroll_projects ORDER BY id DESC');
-        $payroll_projects = [];
-        if ($projectRes) {
-            while ($pRow = $projectRes->fetch_assoc()) {
-                $payroll_projects[] = $pRow;
-            }
-        }
-
-        $selectedProjectId = isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] !== ''
-            ? (int) $_GET['payroll_project_id']
-            : (isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int) $_GET['project_id'] : null);
-
-        if (!$selectedProjectId && !empty($payroll_projects)) {
-            $selectedProjectId = (int) $payroll_projects[0]['id'];
-        }
-
-        $selectedProject = null;
-        if ($selectedProjectId) {
-            foreach ($payroll_projects as $p) {
-                if ((int) $p['id'] === $selectedProjectId) {
-                    $selectedProject = $p;
-                    break;
-                }
-            }
-        }
-
-        $data = $this->getLiquidityData($selectedProjectId);
-
-        $this->view('payrolls/payslips/liquidity-report', [
-            'page_title' => 'Liquidity Management Report',
-            'current_route' => 'payroll-liquidity-report',
-            'payroll_projects' => $payroll_projects,
-            'selected_project_id' => $selectedProjectId,
-            'selectedProject' => $selectedProject,
-            'totalRequirement' => $data['totalRequirement'],
-            'totalBankRequirement' => $data['totalBankRequirement'],
-            'totalCashRequirement' => $data['totalCashRequirement'],
-            'bankEmployees' => $data['bankEmployees'],
-            'cashEmployees' => $data['cashEmployees'],
-        ]);
+        $_GET['tab'] = 'liquidity-management';
+        return $this->payrollReports();
     }
 
     public function exportLiquidityReportPDF()

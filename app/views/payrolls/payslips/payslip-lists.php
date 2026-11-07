@@ -277,17 +277,25 @@ $show_breadcrumb = true;
                 </div>
             </div>
             <div id="lwpDebugBanner" class="alert alert-warning py-2 px-3 mb-3 d-none fs-12 fw-bold" style="font-family: monospace;"></div>
-            <!-- Accounts Payroll Disbursement Action Bar -->
+            <?php
+            $currRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+            $secRoleId  = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+            $canDisbursePayroll = in_array($currRoleId, [1, 3, 6, 30, 33, 34, 35, 38], true)
+                || in_array($secRoleId, [1, 3, 6, 30, 33, 34, 35, 38], true)
+                || (function_exists('hasPermission') && hasPermission('accounts manage'));
+            ?>
+            <!-- Accounts Payroll Disbursement & Bulk Action Bar -->
             <div class="card p-3 mb-3 border-success bg-light animate__animated animate__fadeIn">
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                     <div class="d-flex align-items-center gap-2">
                         <i class="fa-light fa-building-columns text-success fs-4"></i>
                         <div>
-                            <h6 class="mb-0 fw-bold text-dark">Accounts Payroll Disbursement & Journal Posting</h6>
-                            <small class="text-muted">Select un-disbursed payslips below, choose payment account & disburse in 1 click.</small>
+                            <h6 class="mb-0 fw-bold text-dark"><?= $canDisbursePayroll ? 'Accounts Payroll Disbursement & Journal Posting' : 'Payroll Bulk Actions & Email Dispatch' ?></h6>
+                            <small class="text-muted"><?= $canDisbursePayroll ? 'Select un-disbursed payslips below, choose payment account & disburse in 1 click.' : 'Select payslips below to send payslip emails or manage unpaid records. (Disbursement is handled by Accounts)' ?></small>
                         </div>
                     </div>
                         <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <?php if ($canDisbursePayroll): ?>
                             <label class="form-label mb-0 fw-bold fs-13">Paying Bank/Cash:</label>
                             <select id="disburse_bank_account_id" class="form-select form-select-sm" style="min-width: 220px;">
                                 <option value="0">Petty Cash / Cash Account</option>
@@ -300,6 +308,7 @@ $show_breadcrumb = true;
                             <button type="button" class="btn btn-success btn-sm px-3 fw-bold" onclick="disburseSelectedPayroll()">
                                 <i class="fa-light fa-money-check-dollar me-1"></i> Disburse Selected & Post Journal
                             </button>
+                            <?php endif; ?>
                             <button type="button" class="btn btn-danger btn-sm px-3 fw-bold" onclick="bulkDeleteSelected()">
                                 <i class="fa-light fa-trash-can me-1"></i> Bulk Delete
                             </button>
@@ -408,14 +417,20 @@ $show_breadcrumb = true;
                                              <?php if ($payslip['status'] == 'draft'): ?>
                                                  <span class="badge bg-secondary-subtle text-secondary border py-2 px-2" style="font-size: 11px;">Draft Certificate</span>
                                              <?php elseif ($payslip['status'] != 'paid'): ?>
-                                                 <button
-                                                     class="btn btn-warning btn-sm payPayslipBtn"
-                                                     data-id="<?= $payslip['id'] ?>"
-                                                     data-earning="<?= $payslip['total_earning'] ?>"
-                                                     data-deduction="<?= $payslip['total_deduction'] ?>"
-                                                     data-net="<?= $payslip['net_salary'] ?>">
-                                                     Payment
-                                                 </button>
+                                                 <?php if ($canDisbursePayroll): ?>
+                                                     <button
+                                                         class="btn btn-warning btn-sm payPayslipBtn"
+                                                         data-id="<?= $payslip['id'] ?>"
+                                                         data-earning="<?= $payslip['total_earning'] ?>"
+                                                         data-deduction="<?= $payslip['total_deduction'] ?>"
+                                                         data-net="<?= $payslip['net_salary'] ?>">
+                                                         Payment
+                                                     </button>
+                                                 <?php else: ?>
+                                                     <span class="badge bg-warning-subtle text-dark border border-warning-subtle py-1 px-2" style="font-size: 11px;" title="Accounts department will disburse payment">
+                                                         Accounts Payout
+                                                     </span>
+                                                 <?php endif; ?>
                                              <?php else: ?>
                                                  <button
                                                      class="btn btn-primary btn-sm desabled">

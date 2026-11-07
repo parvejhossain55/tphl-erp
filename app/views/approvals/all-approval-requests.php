@@ -889,7 +889,7 @@
                                     if ($isPendingStatus && in_array($reqApproveRole, ['management', 'operations', ''])) {
                                         $reqOpStatus = strtolower($req['op_head_status'] ?? 'pending');
                                         $isOver10k = ((float)($req['request_amount'] ?? 0) > 10000.01);
-                                        if ($isOver10k && ($reqOpStatus !== 'approved' || !$isAccountsHeadApproved)) {
+                                        if ($isOver10k && $sourceTable !== 'payslips' && ($reqOpStatus !== 'approved' || !$isAccountsHeadApproved)) {
                                             $isActionableByMe = false;
                                             $canUserApprove = false;
                                         } else {

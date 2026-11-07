@@ -30,6 +30,7 @@ class AdvanceSalary extends Model
             `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )";
         try {
+            $this->db->query($sql);
             $colsRes = $this->db->query("SHOW COLUMNS FROM advance_salaries");
             $existingCols = [];
             if ($colsRes) {
@@ -51,6 +52,12 @@ class AdvanceSalary extends Model
             }
             if (!in_array('approved_date', $existingCols)) {
                 $this->db->query("ALTER TABLE advance_salaries ADD COLUMN approved_date DATETIME NULL AFTER status");
+            }
+            if (!in_array('approval_request_id', $existingCols)) {
+                $this->db->query("ALTER TABLE advance_salaries ADD COLUMN approval_request_id INT NULL");
+            }
+            if (!in_array('deducted_payslip_id', $existingCols)) {
+                $this->db->query("ALTER TABLE advance_salaries ADD COLUMN deducted_payslip_id INT NULL");
             }
             $this->db->query("ALTER TABLE advance_salaries MODIFY COLUMN status ENUM('pending', 'pending_hr', 'pending_accounts', 'approved', 'paid', 'deducted', 'rejected') DEFAULT 'pending_hr'");
             $this->db->query("UPDATE advance_salaries SET status = 'pending_hr' WHERE status = '' OR status = 'pending' OR status IS NULL");
@@ -139,6 +146,9 @@ class AdvanceSalary extends Model
     {
         $sql = "SELECT id, amount, paid_back_amount FROM advance_salaries WHERE employee_id = ? AND status = 'paid' AND (amount - IFNULL(paid_back_amount, 0)) > 0 ORDER BY id ASC";
         $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return [];
+        }
         $stmt->bind_param("i", $employee_id);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -208,6 +218,9 @@ class AdvanceSalary extends Model
         // Add to paid_back_amount and update status if fully paid
         $sql = "UPDATE advance_salaries SET paid_back_amount = IFNULL(paid_back_amount, 0) + ?, deducted_payslip_id = ? WHERE id = ?";
         $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return false;
+        }
         $stmt->bind_param("dii", $deducted_amount, $payslip_id, $id);
         $res = $stmt->execute();
         $stmt->close();
@@ -215,9 +228,11 @@ class AdvanceSalary extends Model
         // Check if fully paid
         $checkSql = "UPDATE advance_salaries SET status = 'deducted' WHERE id = ? AND paid_back_amount >= amount";
         $checkStmt = $this->db->prepare($checkSql);
-        $checkStmt->bind_param("i", $id);
-        $checkStmt->execute();
-        $checkStmt->close();
+        if ($checkStmt) {
+            $checkStmt->bind_param("i", $id);
+            $checkStmt->execute();
+            $checkStmt->close();
+        }
 
         return $res;
     }
