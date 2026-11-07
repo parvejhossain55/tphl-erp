@@ -373,70 +373,29 @@ class HrmApiController extends Controller
         if (empty($fromDateStr)) $fromDateStr = date('Y-m-d');
         if (empty($toDateStr)) $toDateStr = date('Y-m-d');
 
-        // Convert to millisecond timestamps for Tipsoi API (Tipsoi expects 'from' and 'to' in milliseconds)
-        // The 'from' should start at 00:00:00 of from_date, and 'to' should end at 23:59:59 of to_date
-        $fromTime = strtotime($fromDateStr . ' 00:00:00') * 1000;
-        $toTime = strtotime($toDateStr . ' 23:59:59') * 1000;
+        $forceSync = !empty($_GET['force_sync']) && $_GET['force_sync'] == '1';
+
+        // Release PHP session lock before external cURL / DB sync so concurrent filter changes never queue or race
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
 
         // Restore old timezone
         date_default_timezone_set($oldTimezone);
 
         try {
-            // Get Bearer Token
-            $token = $this->externalApiService->getBearerToken();
-            if (!$token) {
+            // Sync any new Tipsoi data into ERP `attendances` table and retrieve strictly from `attendances` table
+            $syncResult = $this->externalApiService->syncAndGetAttendanceFromDb($fromDateStr, $toDateStr, $forceSync);
+            if (!$syncResult['success']) {
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Failed to authenticate with Tipsoi API.'
+                    'message' => $syncResult['message'] ?? 'Failed to retrieve attendance logs.'
                 ]);
                 exit;
             }
 
-            // Construct the Tipsoi API request URL
-            $url = "https://app.tipsoi.ai/inovace-client/api/v1/attendance?" . http_build_query([
-                'officeId' => 4699,
-                'order' => 'asc',
-                'pageNumber' => 0,
-                'perPage' => 2000,
-                'reportType' => 'department',
-                'sortKey' => 'reportPosition',
-                'status' => 1,
-                'from' => $fromTime,
-                'to' => $toTime
-            ]);
-
-            // Execute request
-            $ch = curl_init($url);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Authorization: Bearer ' . $token,
-                'Accept: application/json'
-            ]);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 120);
-
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $curlError = curl_error($ch);
-            curl_close($ch);
-
-            if ($curlError) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Tipsoi API Error: ' . $curlError
-                ]);
-                exit;
-            }
-
-            $data = json_decode($response, true);
-
-            if ($httpCode !== 200 || !isset($data['attendance'])) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => $data['message'] ?? 'Failed to retrieve attendance logs from Tipsoi API.'
-                ]);
-                exit;
-            }
+            $fromDateStr = $syncResult['from_date'];
+            $toDateStr = $syncResult['to_date'];
 
             // Fetch local employees details for name/email/ID mapping and joining_date fallback
             $localEmployees = [];
@@ -491,8 +450,12 @@ class HrmApiController extends Controller
 
             echo json_encode([
                 'success' => true,
-                'data' => $data['attendance'],
-                'dates' => $data['dates'] ?? [],
+                'data' => $syncResult['data'],
+                'dates' => [],
+                'source' => $syncResult['source'] ?? 'erp_attendances_table',
+                'synced_from_tipsoi' => $syncResult['synced_from_tipsoi'] ?? false,
+                'synced_records_count' => $syncResult['synced_records_count'] ?? 0,
+                'total_period_days' => $syncResult['total_period_days'] ?? 30,
                 'local_employee_ids' => $localIds,
                 'local_employee_emails' => $localEmails,
                 'local_employees' => $localEmployees,

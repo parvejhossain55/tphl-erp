@@ -384,4 +384,639 @@ class ExternalApiService
 
         return null;
     }
+
+    /**
+     * Ensure local `attendances` and `attendance_sync_logs` tables exist in ERP database
+     */
+    public function ensureAttendanceStorageTables(): void
+    {
+        $this->db->query("
+            CREATE TABLE IF NOT EXISTS `attendances` (
+                `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `employee_id` INT NULL DEFAULT NULL,
+                `office_id` VARCHAR(50) NOT NULL,
+                `tipsoi_emp_id` VARCHAR(50) NULL DEFAULT NULL,
+                `employee_name` VARCHAR(150) NULL DEFAULT NULL,
+                `department_name` VARCHAR(150) NULL DEFAULT NULL,
+                `designation_name` VARCHAR(150) NULL DEFAULT NULL,
+                `workplace_name` VARCHAR(150) NULL DEFAULT NULL,
+                `shift_start_time` VARCHAR(50) NULL DEFAULT NULL,
+                `shift_end_time` VARCHAR(50) NULL DEFAULT NULL,
+                `shift_group_name` VARCHAR(100) NULL DEFAULT NULL,
+                `date_of_join` VARCHAR(50) NULL DEFAULT NULL,
+                `attendance_date` DATE NOT NULL,
+                `day_timestamp` VARCHAR(30) NULL DEFAULT NULL,
+                `date_label` VARCHAR(50) NULL DEFAULT NULL,
+                `first_logged_time` VARCHAR(50) NULL DEFAULT NULL,
+                `last_logged_time` VARCHAR(50) NULL DEFAULT NULL,
+                `total_hour` VARCHAR(50) NULL DEFAULT NULL,
+                `is_present` TINYINT(1) NOT NULL DEFAULT 0,
+                `is_absent` TINYINT(1) NOT NULL DEFAULT 0,
+                `is_late` TINYINT(1) NOT NULL DEFAULT 0,
+                `is_early` TINYINT(1) NOT NULL DEFAULT 0,
+                `late_by` VARCHAR(50) NULL DEFAULT NULL,
+                `late_approval_status` VARCHAR(50) NULL DEFAULT NULL,
+                `is_leave` TINYINT(1) NOT NULL DEFAULT 0,
+                `is_half_day` TINYINT(1) NOT NULL DEFAULT 0,
+                `is_offday` TINYINT(1) NOT NULL DEFAULT 0,
+                `is_holiday` TINYINT(1) NOT NULL DEFAULT 0,
+                `raw_day_json` MEDIUMTEXT NULL DEFAULT NULL,
+                `synced_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `uq_office_att_date` (`office_id`, `attendance_date`),
+                KEY `idx_att_date` (`attendance_date`),
+                KEY `idx_emp_id` (`employee_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+        ");
+
+        $this->db->query("
+            CREATE TABLE IF NOT EXISTS `attendance_sync_logs` (
+                `sync_date` DATE NOT NULL,
+                `records_count` INT NOT NULL DEFAULT 0,
+                `last_synced_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (`sync_date`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+        ");
+    }
+
+    /**
+     * Normalize Tipsoi day record date/timestamp into YYYY-MM-DD (Asia/Dhaka)
+     */
+    protected function resolveTipsoiDayDate(array $dayAtt, $tsKey): ?string
+    {
+        $rawDate = $dayAtt['date'] ?? ($dayAtt['attendanceDate'] ?? null);
+        if (!empty($rawDate)) {
+            $s = trim((string) $rawDate);
+            if (preg_match('/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})/', $s, $m)) {
+                return sprintf('%04d-%02d-%02d', (int) $m[3], (int) $m[2], (int) $m[1]);
+            }
+            if (preg_match('/^(\d{4})[.\/-](\d{1,2})[.\/-](\d{1,2})/', $s, $m)) {
+                return sprintf('%04d-%02d-%02d', (int) $m[1], (int) $m[2], (int) $m[3]);
+            }
+        }
+
+        if (is_numeric($tsKey) && $tsKey > 0) {
+            $sec = $tsKey > 9999999999 ? (int) floor($tsKey / 1000) : (int) $tsKey;
+            $dt = new DateTime("@$sec");
+            $dt->setTimezone(new DateTimeZone('Asia/Dhaka'));
+            return $dt->format('Y-m-d');
+        }
+
+        return null;
+    }
+
+    /**
+     * Normalize Office ID (strip leading zeros if purely numeric)
+     */
+    protected function normalizeOfficeId($id): string
+    {
+        $str = trim((string) ($id ?? ''));
+        return preg_match('/^\d+$/', $str) ? (string) ((int) $str) : $str;
+    }
+
+    /**
+     * Check if Tipsoi has new data, sync into ERP `attendances` table,
+     * and return attendance data exclusively from the local `attendances` table.
+     */
+    public function syncAndGetAttendanceFromDb(string $fromDateStr, string $toDateStr, bool $forceSync = false): array
+    {
+        $this->ensureAttendanceStorageTables();
+
+        $oldTz = date_default_timezone_get();
+        date_default_timezone_set('Asia/Dhaka');
+
+        $fromTs = strtotime($fromDateStr);
+        $toTs = strtotime($toDateStr);
+        if (!$fromTs) {
+            $fromDateStr = date('Y-m-d');
+            $fromTs = strtotime($fromDateStr);
+        }
+        if (!$toTs) {
+            $toDateStr = date('Y-m-d');
+            $toTs = strtotime($toDateStr);
+        }
+        if ($fromTs > $toTs) {
+            [$fromDateStr, $toDateStr] = [$toDateStr, $fromDateStr];
+            [$fromTs, $toTs] = [$toTs, $fromTs];
+        }
+
+        $totalPeriodDays = max(1, (int) round(($toTs - $fromTs) / 86400) + 1);
+        $todayTs = strtotime(date('Y-m-d'));
+        $effectiveToTs = min($toTs, $todayTs);
+        $expectedSyncedDays = $effectiveToTs >= $fromTs
+            ? max(1, (int) round(($effectiveToTs - $fromTs) / 86400) + 1)
+            : 0;
+
+        $escapedFrom = $this->db->real_escape_string($fromDateStr);
+        $escapedTo = $this->db->real_escape_string($toDateStr);
+
+        // 1. Check current coverage and freshness in local `attendances` & `attendance_sync_logs`
+        $needTipsoiSync = $forceSync;
+        if (!$needTipsoiSync) {
+            $chkRes = $this->db->query("
+                SELECT COUNT(DISTINCT attendance_date) AS synced_days,
+                       MAX(synced_at) AS latest_sync,
+                       MIN(synced_at) AS oldest_sync
+                FROM attendances
+                WHERE attendance_date BETWEEN '$escapedFrom' AND '$escapedTo'
+            ");
+            $chkRow = $chkRes ? $chkRes->fetch_assoc() : null;
+            $syncedDays = (int) ($chkRow['synced_days'] ?? 0);
+            $latestSync = $chkRow['latest_sync'] ?? null;
+
+            if (($expectedSyncedDays > 0 && $syncedDays < $expectedSyncedDays) || empty($latestSync)) {
+                $needTipsoiSync = true;
+            } else {
+                // Re-check Tipsoi if last sync was more than 3 minutes ago to catch any newly added punches/approvals
+                $secondsSinceSync = time() - strtotime($latestSync);
+                if ($secondsSinceSync > 180) {
+                    $needTipsoiSync = true;
+                }
+            }
+        }
+
+        $didSyncFromTipsoi = false;
+        $syncedRecordsCount = 0;
+        $tipsoiErrorMsg = null;
+
+        // 2. If needed, fetch from Tipsoi API and save/upsert into `attendances` table
+        if ($needTipsoiSync) {
+            $fromTimeMs = strtotime($fromDateStr . ' 00:00:00') * 1000;
+            $toTimeMs = strtotime($toDateStr . ' 23:59:59') * 1000;
+
+            $token = $this->getBearerToken();
+            if ($token) {
+                $url = "https://app.tipsoi.ai/inovace-client/api/v1/attendance?" . http_build_query([
+                    'officeId' => 4699,
+                    'order' => 'asc',
+                    'pageNumber' => 0,
+                    'perPage' => 2000,
+                    'reportType' => 'department',
+                    'sortKey' => 'reportPosition',
+                    'status' => 1,
+                    'from' => $fromTimeMs,
+                    'to' => $toTimeMs
+                ]);
+
+                $ch = curl_init($url);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                    'Authorization: Bearer ' . $token,
+                    'Accept: application/json'
+                ]);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 120);
+
+                $response = curl_exec($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $curlError = curl_error($ch);
+                curl_close($ch);
+
+                if (!$curlError && $httpCode === 200 && $response) {
+                    $decoded = json_decode($response, true);
+                    if (isset($decoded['attendance']) && is_array($decoded['attendance'])) {
+                        $syncedRecordsCount = $this->saveTipsoiAttendanceToTable($decoded['attendance'], $fromDateStr, $toDateStr);
+                        $didSyncFromTipsoi = true;
+                    } else {
+                        $tipsoiErrorMsg = $decoded['message'] ?? 'Invalid response structure from Tipsoi API.';
+                    }
+                } else {
+                    $tipsoiErrorMsg = $curlError ?: "Tipsoi API returned HTTP $httpCode.";
+                }
+            } else {
+                $tipsoiErrorMsg = 'Failed to authenticate with Tipsoi API.';
+            }
+        }
+
+        date_default_timezone_set($oldTz);
+
+        // 3. Always read and build the response from our ERP `attendances` table for the exact date range
+        $dbAttendanceData = $this->buildAttendancePayloadFromTable($fromDateStr, $toDateStr);
+
+        // If DB has no records AND Tipsoi failed, report error; otherwise serve from DB
+        if (empty($dbAttendanceData) && !$didSyncFromTipsoi && !empty($tipsoiErrorMsg)) {
+            return [
+                'success' => false,
+                'message' => $tipsoiErrorMsg
+            ];
+        }
+
+        return [
+            'success' => true,
+            'data' => $dbAttendanceData,
+            'source' => 'erp_attendances_table',
+            'synced_from_tipsoi' => $didSyncFromTipsoi,
+            'synced_records_count' => $syncedRecordsCount,
+            'total_period_days' => $totalPeriodDays,
+            'from_date' => $fromDateStr,
+            'to_date' => $toDateStr
+        ];
+    }
+
+    /**
+     * Save/Upsert Tipsoi attendance payload into ERP `attendances` table
+     */
+    protected function saveTipsoiAttendanceToTable(array $tipsoiEmployees, string $fromDateStr, string $toDateStr): int
+    {
+        // Build lookup map of local ERP employees
+        $empIdByOfficeId = [];
+        $empByName = [];
+        $empRes = $this->db->query("SELECT id, employee_id, full_name FROM employees WHERE deleted_at IS NULL");
+        if ($empRes) {
+            while ($er = $empRes->fetch_assoc()) {
+                $normOid = $this->normalizeOfficeId($er['employee_id'] ?? '');
+                if ($normOid !== '') {
+                    $empIdByOfficeId[$normOid] = (int) $er['id'];
+                }
+                $normName = strtolower(trim($er['full_name'] ?? ''));
+                if ($normName !== '') {
+                    $empByName[$normName] = [
+                        'id' => (int) $er['id'],
+                        'office_id' => $normOid
+                    ];
+                }
+            }
+        }
+
+        $stmt = $this->db->prepare("
+            INSERT INTO `attendances` (
+                `employee_id`, `office_id`, `tipsoi_emp_id`, `employee_name`,
+                `department_name`, `designation_name`, `workplace_name`,
+                `shift_start_time`, `shift_end_time`, `shift_group_name`, `date_of_join`,
+                `attendance_date`, `day_timestamp`, `date_label`,
+                `first_logged_time`, `last_logged_time`, `total_hour`,
+                `is_present`, `is_absent`, `is_late`, `is_early`,
+                `late_by`, `late_approval_status`,
+                `is_leave`, `is_half_day`, `is_offday`, `is_holiday`,
+                `raw_day_json`, `synced_at`
+            ) VALUES (
+                ?, ?, ?, ?,
+                ?, ?, ?,
+                ?, ?, ?, ?,
+                ?, ?, ?,
+                ?, ?, ?,
+                ?, ?, ?, ?,
+                ?, ?,
+                ?, ?, ?, ?,
+                ?, NOW()
+            )
+            ON DUPLICATE KEY UPDATE
+                `employee_id` = COALESCE(VALUES(`employee_id`), `employee_id`),
+                `tipsoi_emp_id` = VALUES(`tipsoi_emp_id`),
+                `employee_name` = VALUES(`employee_name`),
+                `department_name` = VALUES(`department_name`),
+                `designation_name` = VALUES(`designation_name`),
+                `workplace_name` = VALUES(`workplace_name`),
+                `shift_start_time` = VALUES(`shift_start_time`),
+                `shift_end_time` = VALUES(`shift_end_time`),
+                `shift_group_name` = VALUES(`shift_group_name`),
+                `date_of_join` = VALUES(`date_of_join`),
+                `day_timestamp` = VALUES(`day_timestamp`),
+                `date_label` = VALUES(`date_label`),
+                `first_logged_time` = VALUES(`first_logged_time`),
+                `last_logged_time` = VALUES(`last_logged_time`),
+                `total_hour` = VALUES(`total_hour`),
+                `is_present` = VALUES(`is_present`),
+                `is_absent` = VALUES(`is_absent`),
+                `is_late` = VALUES(`is_late`),
+                `is_early` = VALUES(`is_early`),
+                `late_by` = VALUES(`late_by`),
+                `late_approval_status` = VALUES(`late_approval_status`),
+                `is_leave` = VALUES(`is_leave`),
+                `is_half_day` = VALUES(`is_half_day`),
+                `is_offday` = VALUES(`is_offday`),
+                `is_holiday` = VALUES(`is_holiday`),
+                `raw_day_json` = VALUES(`raw_day_json`),
+                `synced_at` = NOW()
+        ");
+
+        if (!$stmt) {
+            error_log("Prepare failed for attendances upsert: " . $this->db->error);
+            return 0;
+        }
+
+        $savedCount = 0;
+        $dateCounts = [];
+
+        $this->db->begin_transaction();
+        try {
+            foreach ($tipsoiEmployees as $tEmp) {
+                $rawOfficeId = trim((string) ($tEmp['employeeOfficeId'] ?? $tEmp['employeeId'] ?? ''));
+                $normOfficeId = $this->normalizeOfficeId($rawOfficeId);
+                $empName = trim((string) ($tEmp['employeeName'] ?? ''));
+                $normName = strtolower($empName);
+
+                $localEmpId = null;
+                if ($normOfficeId !== '' && isset($empIdByOfficeId[$normOfficeId])) {
+                    $localEmpId = $empIdByOfficeId[$normOfficeId];
+                } elseif ($normName !== '' && isset($empByName[$normName])) {
+                    $localEmpId = $empByName[$normName]['id'];
+                    if ($normOfficeId === '' && $empByName[$normName]['office_id'] !== '') {
+                        $normOfficeId = $empByName[$normName]['office_id'];
+                    }
+                }
+
+                if ($normOfficeId === '') {
+                    continue;
+                }
+
+                $tipsoiEmpId = trim((string) ($tEmp['employeeId'] ?? ''));
+                $deptName = trim((string) ($tEmp['departmentName'] ?? ''));
+                $desgName = trim((string) ($tEmp['designationName'] ?? ''));
+                $workplaceName = trim((string) ($tEmp['workplaceName'] ?? ''));
+                $shiftStart = trim((string) ($tEmp['shiftStartTime'] ?? ''));
+                $shiftEnd = trim((string) ($tEmp['shiftEndTime'] ?? ''));
+                $shiftGroup = trim((string) ($tEmp['shiftGroupName'] ?? ''));
+                $dateOfJoin = trim((string) ($tEmp['dateOfJoin'] ?? ''));
+
+                $attMap = $tEmp['attendance'] ?? [];
+                if (!is_array($attMap) || empty($attMap)) {
+                    continue;
+                }
+
+                // Reconcile summary approved lates if Tipsoi summary reports approved lates not flagged on daily items
+                $summ = $tEmp['summary'] ?? [];
+                $summApprovedLates = !empty($summ['totalApprovedLateApplication'])
+                    ? (int) round(((int) $summ['totalApprovedLateApplication']) / 2)
+                    : 0;
+                $dailyApprovedCount = 0;
+                $unapprovedLateDates = [];
+
+                $normalizedDays = [];
+                foreach ($attMap as $tsKey => $dayAtt) {
+                    if (!is_array($dayAtt)) {
+                        continue;
+                    }
+                    $dayDate = $this->resolveTipsoiDayDate($dayAtt, $tsKey);
+                    if (!$dayDate) {
+                        continue;
+                    }
+                    // Strictly keep only dates within the requested [fromDateStr, toDateStr] range
+                    if ($dayDate < $fromDateStr || $dayDate > $toDateStr) {
+                        continue;
+                    }
+
+                    $lateStatus = trim((string) ($dayAtt['lateApprovalStatus'] ?? ''));
+                    $lateStatusLower = strtolower($lateStatus);
+                    $firstLog = trim((string) ($dayAtt['firstLoggedTime'] ?? '-'));
+                    $isPres = (!empty($dayAtt['isPresent']) && $dayAtt['isPresent'] !== 'false') || ($firstLog !== '' && $firstLog !== '-');
+                    $isLt = $isPres && !empty($dayAtt['isLate']) && $dayAtt['isLate'] !== 'false';
+
+                    if ($lateStatusLower === 'accepted' || $lateStatusLower === 'approved') {
+                        $dailyApprovedCount++;
+                    } elseif ($isLt) {
+                        $unapprovedLateDates[] = $dayDate;
+                    }
+
+                    $normalizedDays[$dayDate] = [
+                        'tsKey' => (string) $tsKey,
+                        'dayAtt' => $dayAtt
+                    ];
+                }
+
+                // If Tipsoi summary has more approved lates than flagged on daily items, mark the earliest late days as Approved
+                if ($dailyApprovedCount === 0 && $summApprovedLates > 0 && !empty($unapprovedLateDates)) {
+                    $toApprove = min($summApprovedLates, count($unapprovedLateDates));
+                    for ($i = 0; $i < $toApprove; $i++) {
+                        $dKey = $unapprovedLateDates[$i];
+                        $normalizedDays[$dKey]['dayAtt']['lateApprovalStatus'] = 'Approved';
+                    }
+                }
+
+                foreach ($normalizedDays as $dayDate => $dayEntry) {
+                    $tsKey = $dayEntry['tsKey'];
+                    $dayAtt = $dayEntry['dayAtt'];
+
+                    $dateLabel = trim((string) ($dayAtt['date'] ?? ''));
+                    $firstLog = trim((string) ($dayAtt['firstLoggedTime'] ?? '-'));
+                    $lastLog = trim((string) ($dayAtt['lastLoggedTime'] ?? '-'));
+                    $totalHour = trim((string) ($dayAtt['totalHour'] ?? '-'));
+
+                    $isPresent = ((!empty($dayAtt['isPresent']) && $dayAtt['isPresent'] !== 'false') || ($firstLog !== '' && $firstLog !== '-')) ? 1 : 0;
+                    $isLeave = (!empty($dayAtt['isLeave']) && $dayAtt['isLeave'] !== 'false') ? 1 : 0;
+                    $isHalfDay = (!empty($dayAtt['isHalfDay']) && $dayAtt['isHalfDay'] !== 'false') ? 1 : 0;
+                    $isOffday = (!empty($dayAtt['isOffday']) && $dayAtt['isOffday'] !== 'false') ? 1 : 0;
+                    $isHoliday = (!empty($dayAtt['isHoliday']) && $dayAtt['isHoliday'] !== 'false') ? 1 : 0;
+                    $isLate = ($isPresent && !empty($dayAtt['isLate']) && $dayAtt['isLate'] !== 'false') ? 1 : 0;
+                    $isEarly = (!empty($dayAtt['isEarly']) && $dayAtt['isEarly'] !== 'false') ? 1 : 0;
+                    $isAbsent = (!$isPresent && !$isLeave && !$isOffday && !$isHoliday) ? 1 : 0;
+
+                    $lateBy = trim((string) ($dayAtt['lateBy'] ?? ''));
+                    $lateApprovalStatus = trim((string) ($dayAtt['lateApprovalStatus'] ?? ''));
+                    $rawJson = json_encode($dayAtt, JSON_UNESCAPED_UNICODE);
+
+                    $stmt->bind_param(
+                        "issssssssssssssssiiiissiiiis",
+                        $localEmpId,
+                        $normOfficeId,
+                        $tipsoiEmpId,
+                        $empName,
+                        $deptName,
+                        $desgName,
+                        $workplaceName,
+                        $shiftStart,
+                        $shiftEnd,
+                        $shiftGroup,
+                        $dateOfJoin,
+                        $dayDate,
+                        $tsKey,
+                        $dateLabel,
+                        $firstLog,
+                        $lastLog,
+                        $totalHour,
+                        $isPresent,
+                        $isAbsent,
+                        $isLate,
+                        $isEarly,
+                        $lateBy,
+                        $lateApprovalStatus,
+                        $isLeave,
+                        $isHalfDay,
+                        $isOffday,
+                        $isHoliday,
+                        $rawJson
+                    );
+
+                    if ($stmt->execute()) {
+                        $savedCount++;
+                        $dateCounts[$dayDate] = ($dateCounts[$dayDate] ?? 0) + 1;
+                    }
+                }
+            }
+
+            $stmt->close();
+
+            // Record sync log per date
+            if (!empty($dateCounts)) {
+                $logStmt = $this->db->prepare("
+                    INSERT INTO `attendance_sync_logs` (`sync_date`, `records_count`, `last_synced_at`)
+                    VALUES (?, ?, NOW())
+                    ON DUPLICATE KEY UPDATE
+                        `records_count` = VALUES(`records_count`),
+                        `last_synced_at` = NOW()
+                ");
+                if ($logStmt) {
+                    foreach ($dateCounts as $sDate => $cnt) {
+                        $logStmt->bind_param("si", $sDate, $cnt);
+                        $logStmt->execute();
+                    }
+                    $logStmt->close();
+                }
+            }
+
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            $this->db->rollback();
+            error_log("Error saving Tipsoi attendance to table: " . $e->getMessage());
+        }
+
+        return $savedCount;
+    }
+
+    /**
+     * Build Tipsoi-compatible attendance array strictly from ERP `attendances` table for [fromDateStr, toDateStr]
+     */
+    protected function buildAttendancePayloadFromTable(string $fromDateStr, string $toDateStr): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT *
+            FROM `attendances`
+            WHERE `attendance_date` BETWEEN ? AND ?
+            ORDER BY CAST(`office_id` AS UNSIGNED) ASC, `office_id` ASC, `attendance_date` ASC
+        ");
+        if (!$stmt) {
+            return [];
+        }
+
+        $stmt->bind_param("ss", $fromDateStr, $toDateStr);
+        $stmt->execute();
+        $res = $stmt->get_result();
+
+        $grouped = [];
+        while ($row = $res->fetch_assoc()) {
+            $oid = $row['office_id'];
+            if (!isset($grouped[$oid])) {
+                $grouped[$oid] = [
+                    'meta' => $row,
+                    'days' => []
+                ];
+            }
+            $grouped[$oid]['days'][$row['attendance_date']] = $row;
+        }
+        $stmt->close();
+
+        $oldTz = date_default_timezone_get();
+        date_default_timezone_set('Asia/Dhaka');
+
+        $result = [];
+        foreach ($grouped as $oid => $empBundle) {
+            $meta = $empBundle['meta'];
+            $days = $empBundle['days'];
+
+            $attMap = [];
+            $totalPresent = 0;
+            $totalAbsent = 0;
+            $totalLeave = 0.0;
+            $totalWeeklyOffdays = 0;
+            $totalHolidays = 0;
+            $totalLateEntry = 0;
+            $approvedLates = 0;
+
+            foreach ($days as $dayDate => $r) {
+                $dayAtt = !empty($r['raw_day_json']) ? json_decode($r['raw_day_json'], true) : [];
+                if (!is_array($dayAtt)) {
+                    $dayAtt = [];
+                }
+
+                $isPresent = (int) $r['is_present'] === 1;
+                $isLeave = (int) $r['is_leave'] === 1;
+                $isHalfDay = (int) $r['is_half_day'] === 1;
+                $isOffday = (int) $r['is_offday'] === 1;
+                $isHoliday = (int) $r['is_holiday'] === 1;
+                $isLate = (int) $r['is_late'] === 1;
+                $isEarly = (int) $r['is_early'] === 1;
+                $isAbsent = (!$isPresent && !$isLeave && !$isOffday && !$isHoliday);
+
+                $lateStatus = trim((string) ($r['late_approval_status'] ?? ''));
+                $lateStatusLower = strtolower($lateStatus);
+                $isLateApproved = ($lateStatusLower === 'accepted' || $lateStatusLower === 'approved');
+
+                // Mutually exclusive daily bucket tally so Working Days + Day Off strictly equals period days
+                if ($isLeave) {
+                    if ($isHalfDay) {
+                        $totalLeave += 0.5;
+                        if ($isPresent) {
+                            $totalPresent += 0.5;
+                        } else {
+                            $totalAbsent += 0.5;
+                        }
+                    } else {
+                        $totalLeave += 1.0;
+                    }
+                } elseif ($isPresent) {
+                    $totalPresent += 1;
+                } elseif ($isOffday) {
+                    $totalWeeklyOffdays += 1;
+                } elseif ($isHoliday) {
+                    $totalHolidays += 1;
+                } else {
+                    $totalAbsent += 1;
+                }
+
+                if ($isLateApproved) {
+                    $approvedLates += 1;
+                } elseif ($isPresent && $isLate) {
+                    $totalLateEntry += 1;
+                }
+
+                // Populate normalized fields on dayAtt
+                $dayAtt['date'] = !empty($r['date_label']) ? $r['date_label'] : date('d.m.Y (D)', strtotime($dayDate));
+                $dayAtt['attendanceDate'] = $dayDate;
+                $dayAtt['firstLoggedTime'] = !empty($r['first_logged_time']) ? $r['first_logged_time'] : '-';
+                $dayAtt['lastLoggedTime'] = !empty($r['last_logged_time']) ? $r['last_logged_time'] : '-';
+                $dayAtt['totalHour'] = !empty($r['total_hour']) ? $r['total_hour'] : '-';
+                $dayAtt['isPresent'] = $isPresent;
+                $dayAtt['isAbsent'] = $isAbsent;
+                $dayAtt['isLate'] = $isLate;
+                $dayAtt['isEarly'] = $isEarly;
+                $dayAtt['lateBy'] = $r['late_by'] ?? '';
+                $dayAtt['lateApprovalStatus'] = $lateStatus;
+                $dayAtt['isLeave'] = $isLeave;
+                $dayAtt['isHalfDay'] = $isHalfDay;
+                $dayAtt['isOffday'] = $isOffday;
+                $dayAtt['isHoliday'] = $isHoliday;
+
+                // Use canonical timestamp for the date so keys are 1-to-1 with calendar dates
+                $canonicalTs = (string) (strtotime($dayDate . ' 00:00:00') * 1000);
+                $attMap[$canonicalTs] = $dayAtt;
+            }
+
+            $result[] = [
+                'employeeId' => $meta['tipsoi_emp_id'] ?: $oid,
+                'employeeOfficeId' => $oid,
+                'employeeName' => $meta['employee_name'] ?? '',
+                'departmentName' => $meta['department_name'] ?? '',
+                'designationName' => $meta['designation_name'] ?? '',
+                'workplaceName' => $meta['workplace_name'] ?? '',
+                'shiftStartTime' => $meta['shift_start_time'] ?? '',
+                'shiftEndTime' => $meta['shift_end_time'] ?? '',
+                'shiftGroupName' => $meta['shift_group_name'] ?? '',
+                'dateOfJoin' => $meta['date_of_join'] ?? '',
+                'attendance' => $attMap,
+                'summary' => [
+                    'totalPresent' => $totalPresent,
+                    'totalAbsent' => $totalAbsent,
+                    'totalLeave' => $totalLeave,
+                    'totalWeeklyOffdays' => $totalWeeklyOffdays,
+                    'totalHolidays' => $totalHolidays,
+                    'totalLateEntry' => $totalLateEntry,
+                    'totalApprovedLateApplication' => $approvedLates * 2
+                ]
+            ];
+        }
+
+        date_default_timezone_set($oldTz);
+
+        return $result;
+    }
 }

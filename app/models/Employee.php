@@ -3,27 +3,104 @@
 class Employee extends Model
 {
     protected $db;
+    private static $officeBranchSchemaChecked = false;
 
     public function __construct($db = null)
     {
-        return parent::__construct($db);
+        parent::__construct($db);
+        $this->ensureOfficeBranchSchema();
     }
+
     public function ensureOfficeBranchSchema()
     {
-        $res = $this->db->query("SHOW COLUMNS FROM `employees` LIKE 'office_branch_id'");
-        if ($res && $res->num_rows === 0) {
-            $this->db->query("ALTER TABLE `employees` ADD COLUMN `office_branch_id` INT NULL DEFAULT 2 AFTER `workplace`");
+        if (self::$officeBranchSchemaChecked || !$this->db) {
+            return;
         }
-        $this->db->query("UPDATE `employees` SET `office_branch_id` = 2 WHERE `office_branch_id` IS NULL OR `office_branch_id` = 0");
+        self::$officeBranchSchemaChecked = true;
 
-        $resMeal = $this->db->query("SHOW COLUMNS FROM `employees` LIKE 'is_meal_deduction'");
-        if ($resMeal && $resMeal->num_rows === 0) {
-            $this->db->query("ALTER TABLE `employees` ADD COLUMN `is_meal_deduction` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = Subject to meal deduction, 0 = No deduction' AFTER `per_meal_amount`");
-        }
+        try {
+            // 1. Ensure office_branches table exists and has default branches
+            $this->db->query("
+                CREATE TABLE IF NOT EXISTS `office_branches` (
+                  `id` int NOT NULL AUTO_INCREMENT,
+                  `name` varchar(255) NOT NULL,
+                  `status` enum('active','inactive') DEFAULT 'active',
+                  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+                  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+            ");
+            $obCntRes = $this->db->query("SELECT COUNT(*) AS cnt FROM `office_branches`");
+            if ($obCntRes && ($obCntRow = $obCntRes->fetch_assoc()) && (int)$obCntRow['cnt'] === 0) {
+                $this->db->query("
+                    INSERT INTO `office_branches` (`id`, `name`, `status`) VALUES
+                    (1, 'Corporate Gulshan Office', 'active'),
+                    (2, 'Ashulia Site Office', 'active'),
+                    (3, 'Ati Site Office 2', 'active'),
+                    (4, 'Shaymoli Zonal Office', 'active')
+                ");
+            }
 
-        $resMealPct = $this->db->query("SHOW COLUMNS FROM `employees` LIKE 'per_meal_percentage'");
-        if ($resMealPct && $resMealPct->num_rows === 0) {
-            $this->db->query("ALTER TABLE `employees` ADD COLUMN `per_meal_percentage` DECIMAL(5,2) NOT NULL DEFAULT 100.00 COMMENT 'Percentage of standard meal amount employee pays' AFTER `is_meal_deduction`");
+            // 2. Ensure required columns on employees
+            $isBranchColNew = false;
+            $resBranch = $this->db->query("SHOW COLUMNS FROM `employees` LIKE 'office_branch_id'");
+            if ($resBranch && $resBranch->num_rows === 0) {
+                $this->db->query("ALTER TABLE `employees` ADD COLUMN `office_branch_id` INT NULL DEFAULT 2");
+                $isBranchColNew = true;
+            }
+
+            $resMealAmt = $this->db->query("SHOW COLUMNS FROM `employees` LIKE 'per_meal_amount'");
+            if ($resMealAmt && $resMealAmt->num_rows === 0) {
+                $this->db->query("ALTER TABLE `employees` ADD COLUMN `per_meal_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00");
+            }
+
+            $isMealColNew = false;
+            $resMeal = $this->db->query("SHOW COLUMNS FROM `employees` LIKE 'is_meal_deduction'");
+            if ($resMeal && $resMeal->num_rows === 0) {
+                $this->db->query("ALTER TABLE `employees` ADD COLUMN `is_meal_deduction` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '1 = Subject to meal deduction, 0 = No deduction'");
+                $isMealColNew = true;
+            }
+
+            $resMealPct = $this->db->query("SHOW COLUMNS FROM `employees` LIKE 'per_meal_percentage'");
+            if ($resMealPct && $resMealPct->num_rows === 0) {
+                $this->db->query("ALTER TABLE `employees` ADD COLUMN `per_meal_percentage` DECIMAL(5,2) NOT NULL DEFAULT 100.00 COMMENT 'Percentage of standard meal amount employee pays'");
+            }
+
+            $resDel = $this->db->query("SHOW COLUMNS FROM `employees` LIKE 'deleted_at'");
+            if ($resDel && $resDel->num_rows === 0) {
+                $this->db->query("ALTER TABLE `employees` ADD COLUMN `deleted_at` DATETIME NULL DEFAULT NULL");
+            }
+
+            // 3. Synchronize office_branch_id ONLY when newly added or NULL/0 (never overwrite existing live branch assignments)
+            if ($isBranchColNew) {
+                $this->db->query("UPDATE `employees` SET `office_branch_id` = 1 WHERE `workplace` LIKE '%Corporate%' OR `workplace` LIKE '%Gulshan%'");
+                $this->db->query("UPDATE `employees` SET `office_branch_id` = 3 WHERE `workplace` LIKE '%Ati%'");
+                $this->db->query("UPDATE `employees` SET `office_branch_id` = 4 WHERE `workplace` LIKE '%Zonal%' OR `workplace` LIKE '%Shaymoli%' OR `workplace` LIKE '%Shyamoli%'");
+            }
+            $this->db->query("UPDATE `employees` SET `office_branch_id` = 2 WHERE `office_branch_id` IS NULL OR `office_branch_id` = 0");
+
+            // 4. Initialize is_meal_deduction ONLY on fresh schema migration or when 0 active employees are enabled
+            if ($isMealColNew) {
+                $this->db->query("UPDATE `employees` SET `is_meal_deduction` = 1 WHERE `per_meal_amount` > 0");
+                $this->db->query("UPDATE `employees` SET `per_meal_percentage` = 50.00 WHERE `per_meal_amount` = 60");
+            }
+
+            $mealCntRes = $this->db->query("
+                SELECT 
+                    SUM(CASE WHEN `is_meal_deduction` = 1 THEN 1 ELSE 0 END) AS meal_cnt,
+                    COUNT(*) AS total_active
+                FROM `employees`
+                WHERE `employee_status` = 'active' AND `deleted_at` IS NULL
+            ");
+            if ($mealCntRes && ($mRow = $mealCntRes->fetch_assoc())) {
+                $mealCnt = (int)($mRow['meal_cnt'] ?? 0);
+                $totalActive = (int)($mRow['total_active'] ?? 0);
+                if ($totalActive > 0 && $mealCnt === 0) {
+                    $this->db->query("UPDATE `employees` SET `is_meal_deduction` = 1 WHERE `employee_status` = 'active' AND `deleted_at` IS NULL");
+                }
+            }
+        } catch (\Throwable $e) {
+            error_log("Employee::ensureOfficeBranchSchema error: " . $e->getMessage());
         }
     }
 
@@ -893,6 +970,8 @@ WHERE e.id = ?
      */
     public function getActiveMealEmployeesByBranch($branchId, $projectId = null)
     {
+        $this->ensureOfficeBranchSchema();
+
         $projectClause = "";
         if ($projectId) {
             $pId = (int)$projectId;
@@ -912,16 +991,17 @@ WHERE e.id = ?
                   AND e.office_branch_id = ?
                 ORDER BY CAST(e.employee_id AS UNSIGNED) ASC, e.employee_id ASC";
 
+        $branchId = (int)$branchId;
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {
             return [];
         }
-        $branchId = (int)$branchId;
         $stmt->bind_param("i", $branchId);
         $stmt->execute();
         $res = $stmt->get_result();
         $employees = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
         $stmt->close();
+
         return $employees;
     }
 

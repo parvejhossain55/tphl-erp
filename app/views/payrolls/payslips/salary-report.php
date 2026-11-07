@@ -69,12 +69,14 @@ $show_breadcrumb = true;
 
             <?php
             $totalEmpCount = 0;
+            $grandTotalSpecial = 0;
             $grandTotalAmount = 0;
             $grandTotalBank = 0;
             $grandTotalCash = 0;
             if (!empty($data)) {
                 foreach ($data as $r) {
                     $totalEmpCount += (int)($r['no_of_emp'] ?? 0);
+                    $grandTotalSpecial += (float)($r['special_allowance'] ?? 0);
                     $grandTotalAmount += (float)($r['total_amount'] ?? 0);
                     $grandTotalBank += (float)($r['bank_amount'] ?? 0);
                     $grandTotalCash += (float)($r['cash_amount'] ?? 0);
@@ -89,6 +91,7 @@ $show_breadcrumb = true;
                                 <th class="text-center" style="width: 80px;">Serial</th>
                                 <th>Department Name</th>
                                 <th class="text-center">No of employees</th>
+                                <th class="text-end">Special Allowance</th>
                                 <th class="text-end pe-4">Amount</th>
                             </tr>
                         </thead>
@@ -102,6 +105,9 @@ $show_breadcrumb = true;
                                         <td class="text-center">
                                             <span
                                                 class="badge bg-primary-subtle text-primary rounded-pill px-3 fs-13"><?= $row['no_of_emp'] ?></span>
+                                        </td>
+                                        <td class="text-end fw-semibold text-dark">
+                                            ৳ <?= number_format($row['special_allowance'] ?? 0, 2) ?>
                                         </td>
                                         <td class="text-end fw-bold text-dark pe-4">
                                             ৳ <?= number_format($row['total_amount'], 2) ?>
@@ -117,6 +123,7 @@ $show_breadcrumb = true;
                                 <td class="text-center">
                                     <span class="badge bg-primary text-white rounded-pill px-3 fs-13"><?= $totalEmpCount ?></span>
                                 </td>
+                                <td class="text-end fw-bold text-dark fs-14">৳ <?= number_format($grandTotalSpecial, 2) ?></td>
                                 <td class="text-end fw-bold text-dark pe-4 fs-14">৳ <?= number_format($grandTotalAmount, 2) ?></td>
                             </tr>
                         </tfoot>
@@ -126,6 +133,7 @@ $show_breadcrumb = true;
                             <tr>
                                 <th>Office name</th>
                                 <th class="text-center">No of employees</th>
+                                <th class="text-end">Special Allowance</th>
                                 <th class="text-end">Total</th>
                                 <th class="text-end">Bank</th>
                                 <th class="text-end pe-4">Cash</th>
@@ -142,6 +150,9 @@ $show_breadcrumb = true;
                                         <td class="text-center">
                                             <span
                                                 class="badge bg-primary-subtle text-primary rounded-pill px-3 fs-13"><?= $row['no_of_emp'] ?></span>
+                                        </td>
+                                        <td class="text-end fw-semibold text-dark">
+                                            ৳ <?= number_format($row['special_allowance'] ?? 0, 2) ?>
                                         </td>
                                         <td class="text-end fw-bold text-dark">
                                             ৳ <?= number_format($row['total_amount'], 2) ?>
@@ -163,6 +174,7 @@ $show_breadcrumb = true;
                                 <td class="text-center">
                                     <span class="badge bg-primary text-white rounded-pill px-3 fs-13"><?= $totalEmpCount ?></span>
                                 </td>
+                                <td class="text-end fw-bold text-dark fs-14">৳ <?= number_format($grandTotalSpecial, 2) ?></td>
                                 <td class="text-end fw-bold text-dark fs-14">৳ <?= number_format($grandTotalAmount, 2) ?></td>
                                 <td class="text-end text-success fw-bold fs-14">৳ <?= number_format($grandTotalBank, 2) ?></td>
                                 <td class="text-end text-warning fw-bold pe-4 fs-14">৳ <?= number_format($grandTotalCash, 2) ?></td>

@@ -57,13 +57,14 @@ $defaultMonth = date('m');
                 <table id="detailedSummaryTable" class="table table-bordered mb-20">
                     <thead class="text-center text-nowrap align-middle bg-light">
                         <tr>
-                            <th style="width: 15%">Department</th>
-                            <th style="width: 6%">SL</th>
-                            <th class="text-start" style="width: 24%">Employee Name</th>
-                            <th style="width: 10%">ID</th>
-                            <th class="text-start" style="width: 15%">Designation</th>
-                            <th class="text-end" style="width: 15%">Net Payable</th>
-                            <th class="text-end" style="width: 15%">Total Payable</th>
+                            <th style="width: 14%">Department</th>
+                            <th style="width: 5%">SL</th>
+                            <th class="text-start" style="width: 21%">Employee Name</th>
+                            <th style="width: 9%">ID</th>
+                            <th class="text-start" style="width: 13%">Designation</th>
+                            <th class="text-end" style="width: 12%">Special Allowance</th>
+                            <th class="text-end" style="width: 13%">Net Payable</th>
+                            <th class="text-end" style="width: 13%">Total Payable</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -100,6 +101,9 @@ $defaultMonth = date('m');
                                         <td class="text-start"><?= htmlspecialchars($emp['full_name'] ?? '') ?></td>
                                         <td><?= htmlspecialchars($emp['emp_id'] ?? '') ?></td>
                                         <td class="text-start"><?= htmlspecialchars($emp['designation_name'] ?? '-') ?></td>
+                                        <td class="text-end text-nowrap">
+                                            <?= number_format($emp['special_allowance'] ?? 0, 2) ?>
+                                        </td>
                                         <td class="text-end fw-semibold text-nowrap">
                                             <?= number_format($emp['net_salary'] ?? 0, 2) ?>
                                         </td>
@@ -116,15 +120,18 @@ $defaultMonth = date('m');
                     </tbody>
                     <?php if (!empty($departmentsData)): 
                         $grandTotalEmployees = 0;
+                        $grandTotalSpecial = 0;
                         $grandTotalPayable = 0;
                         foreach ($departmentsData as $deptInfo) {
                             $grandTotalEmployees += count($deptInfo['employees']);
+                            $grandTotalSpecial += (float)($deptInfo['total_special_allowance'] ?? 0);
                             $grandTotalPayable += (float)$deptInfo['total_payable'];
                         }
                     ?>
                     <tfoot class="table-light fw-bold">
                         <tr class="align-middle">
                             <td colspan="5" class="text-end text-dark fs-14">Grand Total (<?= $grandTotalEmployees ?> Employees):</td>
+                            <td class="text-end text-dark fs-14">৳ <?= number_format($grandTotalSpecial, 2) ?></td>
                             <td class="text-end text-success fs-14">৳ <?= number_format($grandTotalPayable, 2) ?></td>
                             <td class="text-end text-success fs-14">৳ <?= number_format($grandTotalPayable, 2) ?></td>
                         </tr>

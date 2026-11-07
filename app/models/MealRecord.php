@@ -661,59 +661,109 @@ class MealRecord extends Model
             $attStmt->close();
         }
 
-        // 3b. Fetch from Tipsoi API if available and merge
-        try {
-            $apiServicePath = dirname(__DIR__) . '/services/ExternalApiService.php';
-            if (file_exists($apiServicePath)) {
-                require_once $apiServicePath;
-                $apiService = new ExternalApiService($this->db);
-                $fromTime = strtotime($fromDate . ' 00:00:00') * 1000;
-                $toTime   = strtotime($toDate . ' 23:59:59') * 1000;
-                $tipsoiAttendance = $apiService->getAttendanceLogs($fromTime, $toTime);
+        // 3a. Also fetch from local ERP `attendances` table (synced Tipsoi daily logs)
+        $empLookup = [];
+        foreach ($employees as $emp) {
+            $eIdNorm = strtolower(trim($emp['employee_id'] ?? ''));
+            $eNameNorm = strtolower(trim($emp['full_name'] ?? ''));
+            if ($eIdNorm !== '') {
+                $empLookup['id_' . $eIdNorm] = (int)$emp['id'];
+                if (ctype_digit($eIdNorm)) {
+                    $empLookup['id_' . (int)$eIdNorm] = (int)$emp['id'];
+                }
+            }
+            if ($eNameNorm !== '') {
+                $empLookup['name_' . $eNameNorm] = (int)$emp['id'];
+            }
+        }
 
-                if (!empty($tipsoiAttendance) && is_array($tipsoiAttendance)) {
-                    // Map local employees by normalized ID and Name
-                    $empLookup = [];
-                    foreach ($employees as $emp) {
-                        $eIdNorm = strtolower(trim($emp['employee_id'] ?? ''));
-                        $eNameNorm = strtolower(trim($emp['full_name'] ?? ''));
-                        if ($eIdNorm !== '') $empLookup['id_' . $eIdNorm] = (int)$emp['id'];
-                        if ($eNameNorm !== '') $empLookup['name_' . $eNameNorm] = (int)$emp['id'];
+        $localAttendancesFound = 0;
+        $todayStr = date('Y-m-d');
+        $localAttCheck = $this->db->query("SHOW TABLES LIKE 'attendances'");
+        if ($localAttCheck && $localAttCheck->num_rows > 0) {
+            $localAttStmt = $this->db->prepare("
+                SELECT employee_id, office_id, employee_name, attendance_date, is_present, is_late, first_logged_time
+                FROM attendances
+                WHERE attendance_date BETWEEN ? AND ?
+            ");
+            if ($localAttStmt) {
+                $localAttStmt->bind_param("ss", $fromDate, $toDate);
+                $localAttStmt->execute();
+                $localAttRes = $localAttStmt->get_result();
+                if ($localAttRes) {
+                    while ($lar = $localAttRes->fetch_assoc()) {
+                        $localAttendancesFound++;
+                        $d = $lar['attendance_date'] ?? '';
+                        if (!$d || $d > $todayStr) {
+                            continue;
+                        }
+                        $firstLog = trim((string)($lar['first_logged_time'] ?? '-'));
+                        $isPres = ((int)($lar['is_present'] ?? 0) === 1)
+                            || ((int)($lar['is_late'] ?? 0) === 1)
+                            || ($firstLog !== '' && $firstLog !== '-');
+                        if (!$isPres) {
+                            continue;
+                        }
+                        $matchedEmpDbId = !empty($lar['employee_id']) ? (int)$lar['employee_id'] : null;
+                        if (!$matchedEmpDbId) {
+                            $oid = strtolower(trim((string)($lar['office_id'] ?? '')));
+                            $ename = strtolower(trim((string)($lar['employee_name'] ?? '')));
+                            $matchedEmpDbId = $empLookup['id_' . $oid] ?? ($empLookup['name_' . $ename] ?? null);
+                        }
+                        if ($matchedEmpDbId) {
+                            $attendanceMap[$matchedEmpDbId][$d] = true;
+                        }
                     }
+                }
+                $localAttStmt->close();
+            }
+        }
 
-                    foreach ($tipsoiAttendance as $tEmp) {
-                        $tOfficeId = strtolower(trim($tEmp['employeeOfficeId'] ?? $tEmp['employeeId'] ?? ''));
-                        $tName = strtolower(trim($tEmp['employeeName'] ?? ''));
-                        $matchedEmpDbId = $empLookup['id_' . $tOfficeId] ?? ($empLookup['name_' . $tName] ?? null);
+        // 3b. Fetch from Tipsoi API if local `attendances` table had no records for this range
+        if ($localAttendancesFound === 0) {
+            try {
+                $apiServicePath = dirname(__DIR__) . '/services/ExternalApiService.php';
+                if (file_exists($apiServicePath)) {
+                    require_once $apiServicePath;
+                    $apiService = new ExternalApiService($this->db);
+                    $fromTime = strtotime($fromDate . ' 00:00:00') * 1000;
+                    $toTime   = strtotime($toDate . ' 23:59:59') * 1000;
+                    $tipsoiAttendance = $apiService->getAttendanceLogs($fromTime, $toTime);
 
-                        if ($matchedEmpDbId && !empty($tEmp['attendance']) && is_array($tEmp['attendance'])) {
-                            $todayStr = date('Y-m-d');
-                            foreach ($tEmp['attendance'] as $ts => $dayAtt) {
-                                $rawDate = $dayAtt['date'] ?? '';
-                                $dateStr = null;
-                                if (preg_match('/^(\d{2})\.(\d{2})\.(\d{4})/', $rawDate, $m)) {
-                                    $dateStr = "{$m[3]}-{$m[2]}-{$m[1]}";
-                                } else if (is_numeric($ts)) {
-                                    $sec = $ts > 9999999999 ? (int)($ts / 1000) : (int)$ts;
-                                    $dtObj = new DateTime("@$sec");
-                                    $dtObj->setTimezone(new DateTimeZone('Asia/Dhaka'));
-                                    $dateStr = $dtObj->format('Y-m-d');
-                                }
+                    if (!empty($tipsoiAttendance) && is_array($tipsoiAttendance)) {
+                        foreach ($tipsoiAttendance as $tEmp) {
+                            $tOfficeId = strtolower(trim($tEmp['employeeOfficeId'] ?? $tEmp['employeeId'] ?? ''));
+                            $tName = strtolower(trim($tEmp['employeeName'] ?? ''));
+                            $matchedEmpDbId = $empLookup['id_' . $tOfficeId] ?? ($empLookup['name_' . $tName] ?? null);
 
-                                $isPres = !empty($dayAtt['isPresent']) 
-                                    || (!empty($dayAtt['firstLoggedTime']) && trim($dayAtt['firstLoggedTime']) !== '-');
+                            if ($matchedEmpDbId && !empty($tEmp['attendance']) && is_array($tEmp['attendance'])) {
+                                foreach ($tEmp['attendance'] as $ts => $dayAtt) {
+                                    $rawDate = $dayAtt['date'] ?? '';
+                                    $dateStr = null;
+                                    if (preg_match('/^(\d{2})\.(\d{2})\.(\d{4})/', $rawDate, $m)) {
+                                        $dateStr = "{$m[3]}-{$m[2]}-{$m[1]}";
+                                    } else if (is_numeric($ts)) {
+                                        $sec = $ts > 9999999999 ? (int)($ts / 1000) : (int)$ts;
+                                        $dtObj = new DateTime("@$sec");
+                                        $dtObj->setTimezone(new DateTimeZone('Asia/Dhaka'));
+                                        $dateStr = $dtObj->format('Y-m-d');
+                                    }
 
-                                // Only mark present up to today (future dates cannot be present)
-                                if ($dateStr && $dateStr >= $fromDate && $dateStr <= $toDate && $dateStr <= $todayStr && $isPres) {
-                                    $attendanceMap[$matchedEmpDbId][$dateStr] = true;
+                                    $isPres = !empty($dayAtt['isPresent']) 
+                                        || (!empty($dayAtt['firstLoggedTime']) && trim($dayAtt['firstLoggedTime']) !== '-');
+
+                                    // Only mark present up to today (future dates cannot be present)
+                                    if ($dateStr && $dateStr >= $fromDate && $dateStr <= $toDate && $dateStr <= $todayStr && $isPres) {
+                                        $attendanceMap[$matchedEmpDbId][$dateStr] = true;
+                                    }
                                 }
                             }
                         }
                     }
                 }
+            } catch (\Throwable $te) {
+                error_log("MealRecord sync Tipsoi attendance fetch skipped: " . $te->getMessage());
             }
-        } catch (\Throwable $te) {
-            error_log("MealRecord sync Tipsoi attendance fetch skipped: " . $te->getMessage());
         }
 
         // 4. Generate all dates in period
@@ -942,6 +992,289 @@ class MealRecord extends Model
         }
         $stmt->close();
         return $attendances;
+    }
+
+    /**
+     * Synchronize a single employee's consumed meal count in `meal_records` when edited from Payroll Workplace.
+     * Ensures `COUNT(*) WHERE is_consumed = 1` in `meal_records` (and the Meal Tracker grid) matches $targetCount.
+     */
+    public function syncEmployeeMealCountFromPayroll(int $mealProjectId, int $employeeId, int $targetCount): bool
+    {
+        $this->ensureTablesExist();
+        $mealProjectId = (int)$mealProjectId;
+        $employeeId    = (int)$employeeId;
+        $targetCount   = max(0, (int)round($targetCount));
+
+        if ($mealProjectId <= 0 || $employeeId <= 0) {
+            return false;
+        }
+
+        // Fetch meal project date range
+        $mpRes = $this->db->query("SELECT id, from_date, to_date FROM meal_projects WHERE id = {$mealProjectId} LIMIT 1");
+        if (!$mpRes || !($mpRow = $mpRes->fetch_assoc())) {
+            return false;
+        }
+        $fromDate = trim((string)($mpRow['from_date'] ?? ''));
+        $toDate   = trim((string)($mpRow['to_date'] ?? ''));
+        if (empty($fromDate) || empty($toDate)) {
+            return false;
+        }
+
+        // Fetch employee branch and ensure is_meal_deduction = 1 if targetCount > 0
+        $empRes = $this->db->query("SELECT office_branch_id, is_meal_deduction FROM employees WHERE id = {$employeeId} LIMIT 1");
+        $empRow = $empRes ? $empRes->fetch_assoc() : null;
+        $branchId = !empty($empRow['office_branch_id']) ? (int)$empRow['office_branch_id'] : 2;
+        if ($targetCount > 0 && $empRow && (int)($empRow['is_meal_deduction'] ?? 0) === 0) {
+            $this->db->query("UPDATE employees SET is_meal_deduction = 1 WHERE id = {$employeeId}");
+        }
+
+        // Build ordered list of all dates in the meal project cycle
+        $allDates = [];
+        try {
+            $start = new DateTime($fromDate);
+            $end   = new DateTime($toDate);
+            $end->modify('+1 day');
+            $period = new DatePeriod($start, new DateInterval('P1D'), $end);
+            foreach ($period as $dt) {
+                $allDates[] = $dt->format('Y-m-d');
+            }
+        } catch (\Throwable $e) {
+            return false;
+        }
+
+        if (empty($allDates)) {
+            return false;
+        }
+
+        $targetCount = min(count($allDates), $targetCount);
+
+        // Fetch existing meal_records for this employee in this project
+        $existingMap = [];
+        $currentConsumed = 0;
+        $rRes = $this->db->query("SELECT meal_date, is_consumed FROM meal_records WHERE meal_project_id = {$mealProjectId} AND employee_id = {$employeeId} ORDER BY meal_date ASC");
+        if ($rRes) {
+            while ($r = $rRes->fetch_assoc()) {
+                $d = $r['meal_date'];
+                $c = (int)$r['is_consumed'];
+                $existingMap[$d] = $c;
+                if ($c === 1) {
+                    $currentConsumed++;
+                }
+            }
+        }
+
+        // If already matching, nothing to do
+        if ($currentConsumed === $targetCount) {
+            return true;
+        }
+
+        $consumedDates   = [];
+        $unconsumedDates = [];
+        foreach ($allDates as $d) {
+            if (isset($existingMap[$d]) && $existingMap[$d] === 1) {
+                $consumedDates[] = $d;
+            } else {
+                $unconsumedDates[] = $d;
+            }
+        }
+
+        $finalState = array_fill_keys($allDates, 0);
+
+        if (count($consumedDates) >= $targetCount) {
+            // Keep the earliest $targetCount consumed dates
+            for ($i = 0; $i < $targetCount; $i++) {
+                $finalState[$consumedDates[$i]] = 1;
+            }
+        } else {
+            // Keep all existing consumed dates, and add ($targetCount - count($consumedDates)) more dates
+            foreach ($consumedDates as $cd) {
+                $finalState[$cd] = 1;
+            }
+            $needed = $targetCount - count($consumedDates);
+
+            // Prefer weekdays (Sun-Thu) up to today first, then remaining weekdays, then weekends (Fri/Sat)
+            $todayStr = date('Y-m-d');
+            $weekdaysPast   = [];
+            $weekdaysFuture = [];
+            $weekends       = [];
+            foreach ($unconsumedDates as $ud) {
+                $dayName = date('D', strtotime($ud));
+                if (in_array($dayName, ['Fri', 'Sat'], true)) {
+                    $weekends[] = $ud;
+                } elseif ($ud <= $todayStr) {
+                    $weekdaysPast[] = $ud;
+                } else {
+                    $weekdaysFuture[] = $ud;
+                }
+            }
+            $candidates = array_merge($weekdaysPast, $weekdaysFuture, $weekends);
+            for ($i = 0; $i < $needed && $i < count($candidates); $i++) {
+                $finalState[$candidates[$i]] = 1;
+            }
+        }
+
+        $stmt = $this->db->prepare("
+            INSERT INTO meal_records (meal_project_id, office_branch_id, employee_id, meal_date, is_consumed, is_manual, updated_at)
+            VALUES (?, ?, ?, ?, ?, 1, NOW())
+            ON DUPLICATE KEY UPDATE
+                is_consumed = VALUES(is_consumed),
+                office_branch_id = VALUES(office_branch_id),
+                is_manual = 1,
+                updated_at = NOW()
+        ");
+        if (!$stmt) {
+            return false;
+        }
+
+        foreach ($finalState as $mealDate => $isConsumed) {
+            $cVal = (int)$isConsumed;
+            $stmt->bind_param("iiisi", $mealProjectId, $branchId, $employeeId, $mealDate, $cVal);
+            $stmt->execute();
+        }
+        $stmt->close();
+
+        return true;
+    }
+
+    /**
+     * Synchronize linked Payroll Project `payslips` (`meal_count`, `subsidized_lunch`, `total_deduction`, `net_salary`, `bank_amount`, `cash_amount`)
+     * whenever records or standard rates are updated in Meal Tracker Workspace.
+     */
+    public function syncLinkedPayrollPayslips(int $mealProjectId): void
+    {
+        $this->ensureTablesExist();
+        $mealProjectId = (int)$mealProjectId;
+        if ($mealProjectId <= 0) {
+            return;
+        }
+
+        $mpRes = $this->db->query("SELECT id, standard_meal_amount, from_date, to_date, payroll_project_id FROM meal_projects WHERE id = {$mealProjectId} LIMIT 1");
+        if (!$mpRes || !($mp = $mpRes->fetch_assoc())) {
+            return;
+        }
+
+        $standardMealRate = ((float)($mp['standard_meal_amount'] ?? 0) > 0) ? (float)$mp['standard_meal_amount'] : 120.00;
+        $fromDate = trim((string)($mp['from_date'] ?? ''));
+        $toDate   = trim((string)($mp['to_date'] ?? ''));
+
+        // Find all matching payroll_project_ids
+        $payrollProjIds = [];
+        if (!empty($mp['payroll_project_id'])) {
+            $payrollProjIds[] = (int)$mp['payroll_project_id'];
+        }
+        if (!empty($fromDate) && !empty($toDate)) {
+            $escF = $this->db->real_escape_string($fromDate);
+            $escT = $this->db->real_escape_string($toDate);
+            $ppRes = $this->db->query("
+                SELECT id FROM payroll_projects
+                WHERE (start_date = '{$escF}' AND end_date = '{$escT}')
+                   OR (is_custom_date = 0 AND date = SUBSTRING('{$escF}', 1, 7))
+            ");
+            if ($ppRes) {
+                while ($pp = $ppRes->fetch_assoc()) {
+                    $pid = (int)$pp['id'];
+                    if ($pid > 0 && !in_array($pid, $payrollProjIds, true)) {
+                        $payrollProjIds[] = $pid;
+                    }
+                }
+            }
+        }
+
+        if (empty($payrollProjIds)) {
+            return;
+        }
+
+        $mealCounts = $this->getEmployeeMealCounts($mealProjectId);
+        $inSql = implode(',', array_map('intval', $payrollProjIds));
+
+        $pRes = $this->db->query("
+            SELECT p.*, e.per_meal_percentage, e.per_meal_amount, e.account_number
+            FROM payslips p
+            LEFT JOIN employees e ON p.employee_id = e.id
+            WHERE p.payroll_project_id IN ({$inSql})
+        ");
+        if (!$pRes) {
+            return;
+        }
+
+        // Lookup Subsidized Lunch item id in payslip_items
+        $lunchItemId = 0;
+        $liRes = $this->db->query("SELECT id FROM payslip_items WHERE LOWER(name) LIKE '%lunch%' OR LOWER(name) LIKE '%meal%' LIMIT 1");
+        if ($liRes && $liRow = $liRes->fetch_assoc()) {
+            $lunchItemId = (int)$liRow['id'];
+        }
+
+        while ($row = $pRes->fetch_assoc()) {
+            $payslipId = (int)$row['id'];
+            $empId     = (int)$row['employee_id'];
+            $mealPct   = (isset($row['per_meal_percentage']) && (float)$row['per_meal_percentage'] > 0) ? (float)$row['per_meal_percentage'] : 100.00;
+            if ($mealPct == 100.00 && !empty($row['per_meal_amount']) && (float)$row['per_meal_amount'] > 0 && (float)$row['per_meal_amount'] != $standardMealRate) {
+                $effectiveMealRate = (float)$row['per_meal_amount'];
+            } else {
+                $effectiveMealRate = max(0, round($standardMealRate * ($mealPct / 100), 2));
+            }
+
+            $newMealCount = isset($mealCounts[$empId]) ? (float)$mealCounts[$empId] : 0.00;
+            $newSubLunch  = round($newMealCount * $effectiveMealRate, 2);
+
+            $oldMealCount = (float)($row['meal_count'] ?? 0);
+            $oldSubLunch  = (float)($row['subsidized_lunch'] ?? 0);
+
+            if (abs($oldMealCount - $newMealCount) > 0.009 || abs($oldSubLunch - $newSubLunch) > 0.009) {
+                $advanceSalary    = (float)($row['advance_salary'] ?? 0);
+                $unpaidAbsentAmt  = (float)($row['unpaid_absent_amount'] ?? 0);
+                $arrearsDeduction = (float)($row['arrears_deduction'] ?? 0);
+                $othersDeduction  = (float)($row['others_deduction'] ?? 0);
+                $tax              = (float)($row['tax'] ?? 0);
+                $totalEarning     = (float)($row['total_earning'] ?? 0);
+
+                $newTotalDed  = round($advanceSalary + $newSubLunch + $unpaidAbsentAmt + $arrearsDeduction + $othersDeduction + $tax, 2);
+                $newNetSalary = max(0, round($totalEarning - $newTotalDed, 2));
+
+                $hasBank = !empty(trim((string)($row['account_number'] ?? '')));
+                $oldBank = (float)($row['bank_amount'] ?? 0);
+                $oldCash = (float)($row['cash_amount'] ?? 0);
+
+                if ($hasBank) {
+                    if ($oldBank > 0 && $oldCash > 0) {
+                        $newBank = min($newNetSalary, $oldBank);
+                        $newCash = max(0, round($newNetSalary - $newBank, 2));
+                    } elseif ($oldCash > 0 && $oldBank <= 0) {
+                        $newBank = 0.00;
+                        $newCash = $newNetSalary;
+                    } else {
+                        $newBank = $newNetSalary;
+                        $newCash = 0.00;
+                    }
+                } else {
+                    $newBank = 0.00;
+                    $newCash = $newNetSalary;
+                }
+
+                $this->db->query(sprintf(
+                    "UPDATE payslips SET meal_count = %.2f, subsidized_lunch = %.2f, total_deduction = %.2f, net_salary = %.2f, bank_amount = %.2f, cash_amount = %.2f, updated_at = NOW() WHERE id = %d",
+                    $newMealCount,
+                    $newSubLunch,
+                    $newTotalDed,
+                    $newNetSalary,
+                    $newBank,
+                    $newCash,
+                    $payslipId
+                ));
+
+                if ($lunchItemId > 0) {
+                    $this->db->query("DELETE FROM payslip_details WHERE payslip_id = {$payslipId} AND payslip_item_id = {$lunchItemId}");
+                    if ($newSubLunch > 0) {
+                        $this->db->query(sprintf(
+                            "INSERT INTO payslip_details (payslip_id, payslip_item_id, amount) VALUES (%d, %d, %.2f)",
+                            $payslipId,
+                            $lunchItemId,
+                            $newSubLunch
+                        ));
+                    }
+                }
+            }
+        }
     }
 }
 

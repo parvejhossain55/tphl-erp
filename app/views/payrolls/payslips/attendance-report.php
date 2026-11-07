@@ -16,9 +16,16 @@ $filterType = isset($_GET['filter_type']) && in_array($_GET['filter_type'], ['mo
 // Attendance Status Filter
 $selectedStatus = isset($_GET['attendance_status']) ? $_GET['attendance_status'] : 'all';
 
-// Default date range
-$default_from = isset($_GET['from_date']) && !empty($_GET['from_date']) ? $_GET['from_date'] : date('Y-m-d');
-$default_to = isset($_GET['to_date']) && !empty($_GET['to_date']) ? $_GET['to_date'] : date('Y-m-d');
+// Default date range (defaults to the standard 26th-to-25th payroll cycle if not provided in URL)
+if ((int) date('d') < 25) {
+    $cycleDefaultFrom = date('Y-m-26', strtotime('first day of -2 months'));
+    $cycleDefaultTo = date('Y-m-25', strtotime('first day of -1 month'));
+} else {
+    $cycleDefaultFrom = date('Y-m-26', strtotime('first day of -1 month'));
+    $cycleDefaultTo = date('Y-m-25');
+}
+$default_from = isset($_GET['from_date']) && !empty($_GET['from_date']) ? $_GET['from_date'] : $cycleDefaultFrom;
+$default_to = isset($_GET['to_date']) && !empty($_GET['to_date']) ? $_GET['to_date'] : $cycleDefaultTo;
 ?>
 
 <!-- Info Indicator Card -->
@@ -41,7 +48,7 @@ $default_to = isset($_GET['to_date']) && !empty($_GET['to_date']) ? $_GET['to_da
         <div class="filters card__wrapper p-3 bg-white rounded shadow-sm">
             <form id="filterForm" class="row gx-3 gy-2 align-items-end">
                 <!-- Filter Type -->
-                <div class="col-lg-2 col-md-3 col-sm-6">
+                <div class="col-lg-3 col-md-3 col-sm-6">
                     <label for="filterType" class="form-label fw-semibold text-muted mb-2">Select Filter Type</label>
                     <select class="form-select custom-select2" id="filterType">
                         <option value="monthly" <?= $filterType === 'monthly' ? 'selected' : '' ?>>Monthly</option>
@@ -49,29 +56,10 @@ $default_to = isset($_GET['to_date']) && !empty($_GET['to_date']) ? $_GET['to_da
                     </select>
                 </div>
 
-                <!-- Payroll Project -->
-                <div class="col-lg-3 col-md-3 col-sm-6">
-                    <label for="payrollProject" class="form-label fw-semibold text-muted mb-2">Payroll Project <span
-                            class="text-danger">*</span></label>
-                    <select class="form-select custom-select2" id="payrollProject" required>
-                        <option value="">Select Project</option>
-                        <?php if (isset($payroll_projects)): ?>
-                            <?php foreach ($payroll_projects as $proj): ?>
-                                <option value="<?= htmlspecialchars($proj['id']) ?>"
-                                    data-date="<?= htmlspecialchars($proj['date'] ?? '') ?>"
-                                    data-iscustom="<?= htmlspecialchars($proj['is_custom_date'] ?? '0') ?>"
-                                    data-start="<?= htmlspecialchars($proj['start_date'] ?? '') ?>"
-                                    data-end="<?= htmlspecialchars($proj['end_date'] ?? '') ?>"
-                                    <?= (isset($selected_project_id) && $selected_project_id == $proj['id']) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($proj['name']) ?> (<?= htmlspecialchars($proj['date'] ?? '') ?>)
-                                </option>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </select>
-                </div>
+                <input type="hidden" id="payrollProject" value="<?= htmlspecialchars((string) ($selected_project_id ?? '')) ?>">
 
                 <!-- Monthly Filter Container -->
-                <div class="col-lg-4 col-md-3 col-sm-6" id="monthlyContainer" style="<?= $filterType === 'custom' ? 'display: none;' : '' ?>">
+                <div class="col-lg-5 col-md-5 col-sm-6" id="monthlyContainer" style="<?= $filterType === 'custom' ? 'display: none;' : '' ?>">
                     <div class="row gx-2">
                         <div class="col-6">
                             <label for="filterMonth" class="form-label fw-semibold text-muted mb-2">Month</label>
@@ -105,7 +93,7 @@ $default_to = isset($_GET['to_date']) && !empty($_GET['to_date']) ? $_GET['to_da
                 </div>
 
                 <!-- Custom Range Filter Container -->
-                <div class="col-lg-4 col-md-3 col-sm-6" id="customContainer" style="<?= $filterType === 'custom' ? '' : 'display: none;' ?>">
+                <div class="col-lg-5 col-md-5 col-sm-6" id="customContainer" style="<?= $filterType === 'custom' ? '' : 'display: none;' ?>">
                     <div class="row gx-2">
                         <!-- From Date -->
                         <div class="col-6">
@@ -121,7 +109,7 @@ $default_to = isset($_GET['to_date']) && !empty($_GET['to_date']) ? $_GET['to_da
                 </div>
 
                 <!-- Attendance Status Filter -->
-                <div class="col-lg-3 col-md-3 col-sm-6">
+                <div class="col-lg-4 col-md-4 col-sm-6">
                     <label for="filterAttendanceStatus" class="form-label fw-semibold text-muted mb-2">Attendance Status</label>
                     <select class="form-select custom-select2" id="filterAttendanceStatus">
                         <option value="all" <?= $selectedStatus === 'all' ? 'selected' : '' ?>>All Statuses</option>
@@ -154,6 +142,9 @@ $default_to = isset($_GET['to_date']) && !empty($_GET['to_date']) ? $_GET['to_da
                     <i class="fa-solid fa-file-invoice-dollar text-primary me-2"></i>Attendance Report
                 </h4>
                 <div>
+                    <button type="button" class="btn btn-info text-white fw-semibold shadow-sm me-2" id="btnSyncTipsoi" title="Check Tipsoi API for new data and update ERP attendances table">
+                        <i class="fa-solid fa-rotate me-1"></i> Sync Tipsoi
+                    </button>
                     <button type="button" class="btn btn-primary fw-semibold shadow-sm me-2" id="btnSaveAttendance">
                         <i class="fa-solid fa-save me-1"></i> Save Data
                     </button>
@@ -238,7 +229,8 @@ document.addEventListener("DOMContentLoaded", function () {
     let dataTableInstance = null;
     let activeFromDate = "";
     let activeToDate = "";
-    let isFetching = false;
+    let currentAbortController = null;
+    let dateChangeTimer = null;
 
     // Helper functions from tipsoi integration map
     const normalizeId = (id) => {
@@ -338,10 +330,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
                 columnDefs: [{
                     searchable: false,
-                    orderable: false,
+                    orderable: true,
                     targets: 0
                 }],
-                order: [[1, 'asc']]
+                order: [[0, 'asc']]
             });
 
             // Re-apply attendance status filter if one is selected
@@ -437,10 +429,13 @@ document.addEventListener("DOMContentLoaded", function () {
         fetchAttendanceData();
     });
 
-    // Trigger API fetch and compilation
-    function fetchAttendanceData() {
-        if (isFetching) return;
-        isFetching = true;
+    // Trigger API fetch and compilation (Syncs Tipsoi -> ERP attendances table -> Serves from ERP DB)
+    function fetchAttendanceData(forceSync = false) {
+        if (currentAbortController) {
+            currentAbortController.abort();
+        }
+        currentAbortController = new AbortController();
+        const signal = currentAbortController.signal;
 
         const projId = document.getElementById("payrollProject").value;
 
@@ -455,6 +450,14 @@ document.addEventListener("DOMContentLoaded", function () {
         } else {
             activeFromDate = fromDateInput.value;
             activeToDate = toDateInput.value;
+            if (!activeFromDate || !activeToDate) {
+                return;
+            }
+            if (activeFromDate > activeToDate) {
+                const tmp = activeFromDate;
+                activeFromDate = activeToDate;
+                activeToDate = tmp;
+            }
         }
 
         // Sync browser URL so refreshing (F5) keeps the active filters intact
@@ -501,7 +504,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Loading...</span>
                 </div>
-                <div class="text-muted mt-2">Aggregating attendance over ${activeFromDate} to ${activeToDate} from Tipsoi...</div>
+                <div class="text-muted mt-2">${forceSync ? 'Syncing latest Tipsoi data into ERP database' : 'Checking ERP attendances table'} for ${activeFromDate} to ${activeToDate}...</div>
             </td>
         </tr>
         `;
@@ -511,27 +514,57 @@ document.addEventListener("DOMContentLoaded", function () {
             to_date: activeToDate,
             payroll_project_id: projId
         });
+        if (forceSync) {
+            params.set('force_sync', '1');
+        }
+
+        const overrideParams = new URLSearchParams({
+            from_date: activeFromDate,
+            to_date: activeToDate,
+            filter_type: filterType.value,
+            project_id: projId || ''
+        });
+        const overridesPromise = fetch(`${baseUrl}/api/payroll/attendance-overrides?${overrideParams.toString()}`, { signal })
+            .then(r => r.json())
+            .catch(() => ({ success: true, data: {} }));
 
         Promise.all([
-            fetch(`${baseUrl}/api/hrm/attendance?${params.toString()}`).then(r => r.json()),
-            fetch(`${baseUrl}/api/payroll/attendance-overrides?project_id=${projId}`).then(r => r.json())
+            fetch(`${baseUrl}/api/hrm/attendance?${params.toString()}`, { signal }).then(r => r.json()),
+            overridesPromise
         ])
         .then(([res, overridesRes]) => {
-            isFetching = false;
+            if (signal.aborted) return;
 
             if (res && res.success) {
                 statusCard.style.display = "flex";
                 statusCard.className = "card__wrapper mb-20 border-start border-success border-4";
                 statusIcon.className = "bi bi-check-circle-fill text-success fs-4";
-                statusTitle.textContent = "API Synchronization Success";
-                statusDesc.textContent = "Attendance mapped against Tipsoi accurately.";
+                statusTitle.textContent = res.synced_from_tipsoi
+                    ? "Synced from Tipsoi & Saved to ERP Table"
+                    : "Loaded from ERP Attendances Table";
+                statusDesc.textContent = res.synced_from_tipsoi
+                    ? `Synced ${res.synced_records_count || 0} daily records into ERP 'attendances' table (${res.from_date} to ${res.to_date}).`
+                    : `Showing saved records from ERP 'attendances' table (${res.from_date} to ${res.to_date}).`;
                 modeBadge.className = "badge bg-success text-light px-3 py-2";
-                modeBadge.textContent = "Aggregated";
+                modeBadge.textContent = res.synced_from_tipsoi ? "Synced -> ERP DB" : "ERP DB Table";
 
                 const rawData = res.data || [];
                 const localEmployees = res.local_employees || [];
-                const dbOverrides = (overridesRes && overridesRes.success) ? overridesRes.data : {};
+                const dbOverrides = (overridesRes && overridesRes.success) ? (overridesRes.data || {}) : {};
+                if (overridesRes && overridesRes.project_id && document.getElementById('payrollProject')) {
+                    document.getElementById('payrollProject').value = overridesRes.project_id;
+                }
                 const customHolidays = res.custom_holidays || { global: {}, department: {}, employee: {} };
+
+                const calcRangeDays = () => {
+                    const d1 = new Date(activeFromDate + "T00:00:00");
+                    const d2 = new Date(activeToDate + "T00:00:00");
+                    if (!isNaN(d1.getTime()) && !isNaN(d2.getTime())) {
+                        return Math.max(1, Math.round((d2 - d1) / 86400000) + 1);
+                    }
+                    return 30;
+                };
+                const rangeCalendarDays = parseInt(res.total_period_days, 10) || calcRangeDays();
 
                 let aggregatedRows = "";
                 let index = 1;
@@ -542,7 +575,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     const leId = normalizeId(localMatch.employee_id);
                     const leName = String(localMatch.full_name || '').toLowerCase().trim();
 
-                    // Find matching emp in Tipsoi data
+                    // Find matching emp in ERP attendances table data
                     const emp = rawData.find(e => {
                         const officeId = normalizeId(e.employeeOfficeId || e.employeeId);
                         const nameNormalized = String(e.employeeName || '').toLowerCase().trim();
@@ -568,9 +601,9 @@ document.addEventListener("DOMContentLoaded", function () {
                         approvedLates = Math.round(parseInt(summ.totalApprovedLateApplication, 10) / 2);
                     }
 
-                    // Use official Tipsoi summary figures if available, otherwise fallback to daily loop
-                    let present = (summ.totalPresent !== undefined) ? parseInt(summ.totalPresent, 10) : 0;
-                    let absent = (summ.totalAbsent !== undefined) ? parseInt(summ.totalAbsent, 10) : 0;
+                    // Use summary figures computed from ERP attendances table
+                    let present = (summ.totalPresent !== undefined) ? parseFloat(summ.totalPresent) : 0;
+                    let absent = (summ.totalAbsent !== undefined) ? parseFloat(summ.totalAbsent) : 0;
                     let leave = (summ.totalLeave !== undefined) ? parseFloat(summ.totalLeave) : 0;
                     let dayOff = (summ.totalWeeklyOffdays !== undefined) ? parseInt(summ.totalWeeklyOffdays, 10) : 0;
                     if (summ.totalHolidays) {
@@ -648,7 +681,8 @@ document.addEventListener("DOMContentLoaded", function () {
                         }
                     });
 
-                    const totalPeriodDays = Object.keys(attMap).length || 30;
+                    const mapDaysCount = Object.keys(attMap).length;
+                    const totalPeriodDays = mapDaysCount > 0 ? Math.min(rangeCalendarDays, mapDaysCount) : rangeCalendarDays;
                     let workingDays = Math.max(0, totalPeriodDays - dayOff);
 
                     // If summary is empty (e.g. offline/fallback), calculate manually from attMap
@@ -676,7 +710,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         });
                     }
 
-                    // For site staff who worked on scheduled off days, adjust workingDays and dayOff accordingly
+                    // For site staff who worked on scheduled off days, adjust workingDays and dayOff within totalPeriodDays
                     if ((present + absent + leave) > workingDays) {
                         workingDays = Math.min(totalPeriodDays, Math.round(present + absent + leave));
                         dayOff = Math.max(0, totalPeriodDays - workingDays);
@@ -700,7 +734,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     let displayJoinDate = localMatch.joining_date || (emp ? emp.dateOfJoin : '-');
 
-                    // Apply DB Overrides if they exist
+                    // Apply DB Overrides for the matched period/project
                     if (rowEmpId && dbOverrides[rowEmpId]) {
                         const override = dbOverrides[rowEmpId];
                         workingDays = override.working_days ?? workingDays;
@@ -757,36 +791,68 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
             } else {
-                showErrorRow((res && res.message) || "Failed to fetch Tipsoi records.");
+                showErrorRow((res && res.message) || "Failed to fetch attendance records.");
             }
         })
         .catch(err => {
-            isFetching = false;
+            if (err && err.name === 'AbortError') {
+                return;
+            }
             console.error("API Fetch Error:", err);
             showErrorRow("Network or API error occurred while fetching attendance data.");
         });
     }
 
-    // Bind auto-fetch triggers for custom dates
-    fromDateInput.addEventListener('change', fetchAttendanceData);
-    toDateInput.addEventListener('change', fetchAttendanceData);
+    // Bind auto-fetch triggers for custom dates with debounce to prevent partial date race conditions
+    const onFromDateChange = () => {
+        const fVal = fromDateInput.value;
+        const tVal = toDateInput.value;
+        if (fVal) {
+            const fParts = fVal.split('-').map(Number);
+            // If user selected a 26th cycle start date (e.g. 2026-09-26) and To Date is before From Date or >32 days away (e.g. leftover month 11/25/2026), auto-align To Date to the 25th of the next month (2026-10-25)
+            if (fParts.length === 3 && fParts[2] === 26) {
+                const fDateObj = new Date(fParts[0], fParts[1] - 1, fParts[2]);
+                const tDateObj = tVal ? new Date(tVal + 'T00:00:00') : null;
+                const diffDays = tDateObj && !isNaN(tDateObj.getTime())
+                    ? Math.round((tDateObj - fDateObj) / 86400000) + 1
+                    : -1;
+                if (diffDays < 1 || diffDays > 32) {
+                    const nextMonthYear = fParts[1] === 12 ? fParts[0] + 1 : fParts[0];
+                    const nextMonth = fParts[1] === 12 ? 1 : fParts[1] + 1;
+                    toDateInput.value = `${nextMonthYear}-${String(nextMonth).padStart(2, '0')}-25`;
+                }
+            }
+        }
+        if (dateChangeTimer) clearTimeout(dateChangeTimer);
+        dateChangeTimer = setTimeout(() => {
+            fetchAttendanceData(false);
+        }, 500);
+    };
+    const onToDateChange = () => {
+        if (dateChangeTimer) clearTimeout(dateChangeTimer);
+        dateChangeTimer = setTimeout(() => {
+            fetchAttendanceData(false);
+        }, 500);
+    };
+    fromDateInput.addEventListener('change', onFromDateChange);
+    toDateInput.addEventListener('change', onToDateChange);
+
+    // Bind manual Sync Tipsoi button
+    const btnSyncTipsoi = document.getElementById('btnSyncTipsoi');
+    if (btnSyncTipsoi) {
+        btnSyncTipsoi.addEventListener('click', function() {
+            fetchAttendanceData(true);
+        });
+    }
 
     // Bind auto-fetch for manual month/year selection
     $('#filterYear, #filterMonth').on('change', function() {
-        fetchAttendanceData();
+        fetchAttendanceData(false);
     });
 
     // Save data logic
     document.getElementById('btnSaveAttendance').addEventListener('click', function() {
-        const projectId = document.getElementById('payrollProject').value;
-        if (!projectId) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Missing Project',
-                text: 'Please select a Payroll Project first.'
-            });
-            return;
-        }
+        const projectId = document.getElementById('payrollProject') ? document.getElementById('payrollProject').value : '';
 
         if (!dataTableInstance) {
             Swal.fire({
@@ -841,6 +907,11 @@ document.addEventListener("DOMContentLoaded", function () {
             },
             body: JSON.stringify({
                 project_id: projectId,
+                from_date: activeFromDate,
+                to_date: activeToDate,
+                filter_type: filterType.value,
+                month: filterMonthInput.value,
+                year: filterYearInput.value,
                 target_month: targetMonthStr,
                 rows: rows
             })
@@ -848,6 +919,9 @@ document.addEventListener("DOMContentLoaded", function () {
         .then(res => res.json())
         .then(data => {
             if (data.success) {
+                if (data.project_id && document.getElementById('payrollProject')) {
+                    document.getElementById('payrollProject').value = data.project_id;
+                }
                 Swal.fire({
                     icon: 'success',
                     title: 'Saved!',
@@ -922,38 +996,6 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    // Project Select Change Handler
-    const projectSelect = document.getElementById('payrollProject');
-    if (projectSelect) {
-        $(projectSelect).on('change', function() {
-            const selectedOpt = this.options[this.selectedIndex];
-            if (selectedOpt && selectedOpt.value) {
-                const isCustom = selectedOpt.getAttribute('data-iscustom') === '1';
-
-                if (isCustom) {
-                    filterType.value = 'custom';
-                    monthlyContainer.style.display = 'none';
-                    customContainer.style.display = 'block';
-                    fromDateInput.value = selectedOpt.getAttribute('data-start') || '';
-                    toDateInput.value = selectedOpt.getAttribute('data-end') || '';
-                } else {
-                    filterType.value = 'monthly';
-                    monthlyContainer.style.display = 'block';
-                    customContainer.style.display = 'none';
-                    const dateVal = selectedOpt.getAttribute('data-date');
-                    if (dateVal) {
-                        const parts = dateVal.split('-');
-                        if (parts.length >= 2) {
-                            filterYearInput.value = parts[0];
-                            filterMonthInput.value = parts[1];
-                        }
-                    }
-                }
-                fetchAttendanceData();
-            }
-        });
-    }
-
     // Global PDF export trigger
     window.exportPdf = function() {
         const projId = document.getElementById("payrollProject") ? document.getElementById("payrollProject").value : '';
@@ -966,18 +1008,7 @@ document.addEventListener("DOMContentLoaded", function () {
     };
 
     // Initial load
-    const urlParams = new URLSearchParams(window.location.search);
-    const hasExplicitUrlParams = urlParams.has('month') || urlParams.has('from_date');
-
-    if (projectSelect && projectSelect.value) {
-        if (!hasExplicitUrlParams) {
-            $(projectSelect).trigger('change');
-        } else {
-            fetchAttendanceData();
-        }
-    } else {
-        fetchAttendanceData();
-    }
+    fetchAttendanceData();
 });
 <?php
 $page_script = ob_get_clean();
