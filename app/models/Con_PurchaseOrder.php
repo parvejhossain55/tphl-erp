@@ -239,12 +239,12 @@ class Con_PurchaseOrder extends Model
 
         $this->db->begin_transaction();
         try {
-            // Update purchase_order_items
-            $upStmt = $this->db->prepare("UPDATE {$this->itemTable} SET quantity = ?, total_price = ? WHERE id = ?");
+            // Update purchase_order_items (only update quantity; total_price is a generated column that MySQL recalculates automatically)
+            $upStmt = $this->db->prepare("UPDATE {$this->itemTable} SET quantity = ? WHERE id = ?");
             if (!$upStmt) {
                 throw new \Exception("Database error on prepare item update: " . $this->db->error);
             }
-            $upStmt->bind_param('ddi', $newQty, $newTotalPrice, $itemId);
+            $upStmt->bind_param('di', $newQty, $itemId);
             $upStmt->execute();
             $upStmt->close();
 
