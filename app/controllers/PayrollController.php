@@ -3476,6 +3476,91 @@ class PayrollController extends Controller
         exit;
     }
 
+    /**
+     * Server-side Tipsoi Attendance Aggregation & DB Sync for a Payroll Project
+     */
+    public function syncProjectAttendanceFromTipsoi($projectId)
+    {
+        $projectId = (int)$projectId;
+        if ($projectId <= 0) return false;
+
+        $pRes = $this->db->query("SELECT * FROM payroll_projects WHERE id = {$projectId} LIMIT 1");
+        if (!$pRes || !($proj = $pRes->fetch_assoc())) {
+            return false;
+        }
+
+        $fromDateStr = '';
+        $toDateStr = '';
+        if (!empty($proj['is_custom_date']) && !empty($proj['start_date']) && !empty($proj['end_date'])) {
+            $fromDateStr = $proj['start_date'];
+            $toDateStr = $proj['end_date'];
+        } elseif (!empty($proj['date'])) {
+            $parts = explode('-', $proj['date']);
+            if (count($parts) === 2) {
+                $fromDateStr = sprintf('%04d-%02d-01', (int)$parts[0], (int)$parts[1]);
+                $toDateStr = date('Y-m-t', strtotime($fromDateStr));
+            }
+        }
+
+        if (empty($fromDateStr) || empty($toDateStr)) {
+            return false;
+        }
+
+        if (!class_exists('ExternalApiService')) {
+            require_once dirname(__DIR__) . '/services/ExternalApiService.php';
+        }
+        $extApi = new ExternalApiService($this->db);
+        $syncRes = $extApi->syncAndGetAttendanceFromDb($fromDateStr, $toDateStr, true);
+        if (empty($syncRes['success']) || empty($syncRes['data'])) {
+            return 0;
+        }
+
+        return count($syncRes['data']);
+    }
+
+    /**
+     * AJAX endpoint: Trigger background Tipsoi attendance sync for a project
+     */
+    public function apiSyncProjectAttendance()
+    {
+        header('Content-Type: application/json');
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $isAuthorized = in_array($userRoleId, [1, 3, 4, 20, 30, 33, 35])
+                     || strpos($userRoleName, 'admin') !== false
+                     || strpos($userRoleName, 'management') !== false
+                     || strpos($userRoleName, 'hr') !== false;
+
+        if (!$isAuthorized) {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized access.']);
+            exit;
+        }
+
+        $projectId = isset($_POST['project_id']) ? (int)$_POST['project_id'] : (isset($_GET['project_id']) ? (int)$_GET['project_id'] : 0);
+        if (!$projectId) {
+            echo json_encode(['success' => false, 'message' => 'Valid Payroll Project ID is required.']);
+            exit;
+        }
+
+        $count = $this->syncProjectAttendanceFromTipsoi($projectId);
+        if ($count !== false) {
+            echo json_encode([
+                'success' => true,
+                'message' => "Successfully synced and saved attendance for {$count} employees from Tipsoi!",
+                'count' => $count
+            ]);
+        } else {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Failed to sync attendance from Tipsoi. Check Tipsoi connection or credentials.'
+            ]);
+        }
+        exit;
+    }
+
     public function exportAttendancePDF()
     {
         // Require Tipsoi External API logic if not already loaded
