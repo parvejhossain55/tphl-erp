@@ -3,6 +3,26 @@ $page = "Payroll Workplace";
 ?>
 <style>
 .swal2-container { z-index: 1000005 !important; }
+#workspaceTable thead th:first-child::before,
+#workspaceTable thead th:first-child::after,
+.dataTables_scrollHead thead th:first-child::before,
+.dataTables_scrollHead thead th:first-child::after {
+    display: none !important;
+    content: none !important;
+}
+#workspaceTable thead th:first-child,
+.dataTables_scrollHead thead th:first-child {
+    background-image: none !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    cursor: default !important;
+}
+#tipsoiNoticeBanner i {
+    position: static !important;
+    transform: none !important;
+    left: auto !important;
+    top: auto !important;
+}
 </style>
 <?php
 $show_breadcrumb = true;
@@ -666,13 +686,14 @@ window.executeDeleteProject = function(projId) {
 
 
             <!-- Tipsoi Attendance Notice Banner (Non-blocking) -->
-            <div class="alert alert-info d-flex align-items-center justify-content-between p-3 mb-3 border-0 shadow-sm d-none" id="tipsoiNoticeBanner" style="border-radius: 10px; background: #e0f2fe; color: #0369a1;">
+            <div class="d-flex align-items-center justify-content-between p-3 mb-3 border-0 shadow-sm d-none" id="tipsoiNoticeBanner" style="border-radius: 10px; background: #e0f2fe; color: #0369a1;">
                 <div class="d-flex align-items-center gap-2">
-                    <i class="fa-solid fa-circle-info fs-5 text-info"></i>
+                    <i class="fa-solid fa-circle-info fs-5" style="color: #0284c7; flex-shrink: 0;"></i>
                     <span><strong>Tipsoi Attendance:</strong> Some employees have not been synced yet from Tipsoi for this project cycle.</span>
                 </div>
-                <button type="button" class="btn btn-sm btn-primary fw-semibold" onclick="syncTipsoiAttendance(this)">
-                    <i class="fa-solid fa-arrows-rotate me-1"></i> Sync Now
+                <button type="button" class="btn btn-sm btn-success fw-semibold d-inline-flex align-items-center gap-1" onclick="syncTipsoiAttendance(this)">
+                    <i class="fa-solid fa-arrows-rotate"></i>
+                    <span>Sync Now</span>
                 </button>
             </div>
 
@@ -680,7 +701,7 @@ window.executeDeleteProject = function(projId) {
                 <table id="workspaceTable" class="table no-border-table mb-20">
                     <thead>
                         <tr class="table__title table__sort">
-                            <th class="text-center" style="width: 40px;"><input type="checkbox" autocomplete="off" id="selectAllEmployees" class="form-check-input" checked style="cursor:pointer;" title="Select All"></th>
+                            <th class="text-center no-sort" data-orderable="false" style="width: 40px;"><input type="checkbox" autocomplete="off" id="selectAllEmployees" class="form-check-input select-all-employees" checked style="cursor:pointer;" title="Select / Unselect All"></th>
                             <th>SL</th>
                             <th>Department</th>
                             <th>Name</th>
@@ -694,6 +715,7 @@ window.executeDeleteProject = function(projId) {
                             <th>Conveyance Allowance</th>
                             <th>Medical Allowance</th>
                             <th>House Rent Allowance</th>
+                            <th>Special Allowance</th>
                             <th>Gross</th>
                             <th>Daily Salary</th>
                             <th>Advance on Salary</th>
@@ -801,6 +823,7 @@ window.executeDeleteProject = function(projId) {
                                 $hrAllow = ($isExisting && isset($p['house_rent_allowance'])) ? (float)$p['house_rent_allowance'] : round($basic * $itemPercents['houserent'], 2);
 
                                 // Additional earnings
+                                $specialAllow = $isExisting ? (float)($p['special_allowance'] ?? 0) : 0;
                                 $punctBonus = $isExisting ? (float)($p['punctuality_bonus'] ?? 0) : 0;
                                 $overtime = $isExisting ? (float)($p['overtime'] ?? 0) : 0;
                                 $arrearsEarning = $isExisting ? (float)($p['arrears_earning'] ?? 0) : 0;
@@ -830,11 +853,15 @@ window.executeDeleteProject = function(projId) {
                                             : round($unpaidAbsentsDays * $daily, 2);
                                     }
                                 } elseif ($hasAttOverride) {
-                                    // Authoritative attendance from /payroll-attendance-report
+                                    // Authoritative attendance override from /payroll-attendance-report
                                     $unpaidAbsentsDays = (float) $p['att_late_unpaid_absent_days'];
                                     $unpaidAbsentsAmount = round($unpaidAbsentsDays * $daily, 2);
+                                } elseif (isset($p['erp_att_late_unpaid_absent_days'])) {
+                                    // Automatically populated from ERP `attendances` table (Absent + Late Deduction)
+                                    $unpaidAbsentsDays = (float) $p['erp_att_late_unpaid_absent_days'];
+                                    $unpaidAbsentsAmount = round($unpaidAbsentsDays * $daily, 2);
                                 } else {
-                                    // Tipsoi / fallback
+                                    // Fallback
                                     $unpaidAbsentsDays = isset($p['tipsoi_absent']) ? (float) $p['tipsoi_absent'] : 0;
                                     $unpaidAbsentsAmount = round($unpaidAbsentsDays * $daily, 2);
                                 }
@@ -844,28 +871,27 @@ window.executeDeleteProject = function(projId) {
 
                                 // Meal tracking and deduction
                                 $isMealDeductible = isset($p['is_meal_deduction']) ? (int)$p['is_meal_deduction'] : 1;
-                                $mealPct = isset($p['per_meal_percentage']) ? (float)$p['per_meal_percentage'] : 0.00;
+                                $mealPct = (isset($p['per_meal_percentage']) && (float)$p['per_meal_percentage'] > 0) ? (float)$p['per_meal_percentage'] : 100.00;
                                 $standardMealRate = isset($activeMealProject['standard_meal_amount']) && $activeMealProject['standard_meal_amount'] > 0 
                                     ? (float)$activeMealProject['standard_meal_amount'] 
                                     : 120.00;
-                                $effectiveMealRate = max(0, round($standardMealRate * (1 - ($mealPct / 100)), 2));
+                                if ($mealPct == 100.00 && !empty($p['per_meal_amount']) && (float)$p['per_meal_amount'] > 0 && (float)$p['per_meal_amount'] != $standardMealRate) {
+                                    $effectiveMealRate = (float)$p['per_meal_amount'];
+                                } else {
+                                    $effectiveMealRate = max(0, round($standardMealRate * ($mealPct / 100), 2));
+                                }
 
                                 $mealCount = 0;
-                                if ($isExisting && isset($p['meal_count'])) {
-                                    // Workplace has been saved/updated: manual edit is authoritative
-                                    $mealCount = (float)$p['meal_count'];
-                                } elseif (!empty($activeMealProject)) {
-                                    // Initial sync from Meal Tracker (meal_records)
+                                if (!empty($activeMealProject)) {
+                                    // Real-time two-way synced with Meal Tracker (meal_records)
                                     $mealCount = isset($mealCountsByEmp[$empIdFk]) ? (float)$mealCountsByEmp[$empIdFk] : 0;
+                                } elseif ($isExisting && isset($p['meal_count'])) {
+                                    $mealCount = (float)$p['meal_count'];
                                 }
 
-                                $subsidizeLunch = 0;
-                                if ($isExisting && isset($p['subsidized_lunch'])) {
-                                    // Workplace has been saved/updated: manual edit is authoritative
-                                    $subsidizeLunch = (float)$p['subsidized_lunch'];
-                                } elseif ($mealCount > 0) {
-                                    $subsidizeLunch = round($mealCount * $effectiveMealRate, 2);
-                                }
+                                $subsidizeLunch = ($mealCount > 0)
+                                    ? round($mealCount * $effectiveMealRate, 2)
+                                    : ($isExisting && empty($activeMealProject) && isset($p['subsidized_lunch']) ? (float)$p['subsidized_lunch'] : 0);
 
                                 // Additional deductions
                                 $arrearsDeduction = $isExisting ? (float)($p['arrears_deduction'] ?? 0) : 0;
@@ -873,17 +899,27 @@ window.executeDeleteProject = function(projId) {
                                 $tax = $isExisting ? (float)($p['tax'] ?? 0) : 0;
 
                                 // Net salary calculation (prorated gross + additions - deductions)
-                                $totalEarnings = $effectiveGross + $arrearsEarning + $dutyAllow + $punctBonus + $overtime;
+                                $totalEarnings = $effectiveGross + $specialAllow + $arrearsEarning + $dutyAllow + $punctBonus + $overtime;
                                 $totalDeductions = $advanceSalary + $subsidizeLunch + $unpaidAbsentsAmount + $arrearsDeduction + $othersDeduction + $tax;
                                 $netSalary = max(0, round($totalEarnings - $totalDeductions, 2));
 
                                 // Bank / cash allocation
                                 $hasBankDetails = !empty(trim($p['account_number'] ?? ''));
-                                $paymentMethod = $hasBankDetails ? 'bank' : 'cash';
+                                $savedBank = isset($p['bank_amount']) ? (float)$p['bank_amount'] : 0.0;
+                                $savedCash = isset($p['cash_amount']) ? (float)$p['cash_amount'] : 0.0;
+
                                 if ($hasBankDetails) {
-                                    if ($isExisting && isset($p['bank_amount']) && (float)$p['bank_amount'] > 0 && isset($p['cash_amount']) && (float)$p['cash_amount'] > 0) {
-                                        $bank = (float)$p['bank_amount'];
-                                        $cash = max(0, round($netSalary - $bank, 2));
+                                    if ($isExisting && ($savedBank > 0 || $savedCash > 0)) {
+                                        if ($savedBank > 0 && $savedCash > 0) {
+                                            $bank = min($netSalary, $savedBank);
+                                            $cash = max(0, round($netSalary - $bank, 2));
+                                        } elseif ($savedBank > 0) {
+                                            $bank = $netSalary;
+                                            $cash = 0;
+                                        } else {
+                                            $bank = 0;
+                                            $cash = $netSalary;
+                                        }
                                     } else {
                                         $bank = $netSalary;
                                         $cash = 0;
@@ -892,8 +928,9 @@ window.executeDeleteProject = function(projId) {
                                     $bank = 0;
                                     $cash = $netSalary;
                                 }
+                                $paymentMethod = $hasBankDetails ? (($cash > 0 && $bank <= 0) ? 'cash' : 'bank') : 'cash';
                                 ?>
-                                        <tr class="calc-row" data-payslip-id="<?= $p['id'] ?? 0 ?>" data-employee-id="<?= $p['real_emp_id_fk'] ?? $p['id'] ?? 0 ?>" data-employee-office-id="<?= htmlspecialchars($p['emp_id']) ?>" data-joining-date="<?= !empty($p['joining_date']) ? date('Y-m-d', strtotime($p['joining_date'])) : '' ?>" data-resignation-date="<?= !empty($p['deleted_at']) ? date('Y-m-d', strtotime($p['deleted_at'])) : '' ?>" data-effective-days="<?= $empEffectiveDays ?>" data-non-working-days="<?= $nonWorkingCycleDays ?>" data-has-db="<?= ($hasAttOverride || ($isExisting && !$attIsNewer) || isset($p['tipsoi_present'])) ? 'true' : 'false' ?>">
+                                        <tr class="calc-row" data-payslip-id="<?= $p['id'] ?? 0 ?>" data-employee-id="<?= $p['real_emp_id_fk'] ?? $p['id'] ?? 0 ?>" data-employee-office-id="<?= htmlspecialchars($p['emp_id']) ?>" data-employee-name="<?= htmlspecialchars($p['full_name']) ?>" data-has-bank="<?= $hasBankDetails ? '1' : '0' ?>" data-joining-date="<?= !empty($p['joining_date']) ? date('Y-m-d', strtotime($p['joining_date'])) : '' ?>" data-resignation-date="<?= !empty($p['deleted_at']) ? date('Y-m-d', strtotime($p['deleted_at'])) : '' ?>" data-effective-days="<?= $empEffectiveDays ?>" data-non-working-days="<?= $nonWorkingCycleDays ?>" data-has-db="<?= ($hasAttOverride || ($isExisting && !$attIsNewer) || isset($p['tipsoi_present'])) ? 'true' : 'false' ?>">
                                             <?php $excludedState = (isset($p['is_excluded']) && $p['is_excluded'] == 1) ? "" : "checked"; ?>
                                             <td class="text-center"><input type="checkbox" autocomplete="off" class="form-check-input emp-checkbox" <?= $excludedState ?> style="cursor:pointer;"></td>
                                             <td><?= $sl++ ?></td>
@@ -903,12 +940,13 @@ window.executeDeleteProject = function(projId) {
                                             <td><?= htmlspecialchars($p['emp_id']) ?></td>
                                             <td><?= htmlspecialchars($p['workplace'] ?? 'N/A') ?></td>
                                             <td><?= htmlspecialchars($p['designation_name'] ?? 'N/A') ?></td>
-                                            <td class="cell-basic" data-val="<?= $basic ?>"><?= number_format($basic, 2) ?></td>
+                                            <td class="cell-basic text-end text-nowrap" data-val="<?= $basic ?>"><?= number_format($basic, 2) ?></td>
 
-                                            <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-basic-allowance in-recreation" value="<?= $recAllow ?>" style="min-width: 80px;"></td>
-                                            <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-basic-allowance in-conveyance" value="<?= $convAllow ?>" style="min-width: 80px;"></td>
-                                            <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-basic-allowance in-medical" value="<?= $medAllow ?>" style="min-width: 80px;"></td>
-                                            <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-basic-allowance in-houserent" value="<?= $hrAllow ?>" style="min-width: 80px;"></td>
+                                            <td class="text-end text-nowrap"><?= number_format($recAllow, 2) ?><input type="hidden" class="in-earning in-basic-allowance in-recreation" value="<?= $recAllow ?>"></td>
+                                            <td class="text-end text-nowrap"><?= number_format($convAllow, 2) ?><input type="hidden" class="in-earning in-basic-allowance in-conveyance" value="<?= $convAllow ?>"></td>
+                                            <td class="text-end text-nowrap"><?= number_format($medAllow, 2) ?><input type="hidden" class="in-earning in-basic-allowance in-medical" value="<?= $medAllow ?>"></td>
+                                            <td class="text-end text-nowrap"><?= number_format($hrAllow, 2) ?><input type="hidden" class="in-earning in-basic-allowance in-houserent" value="<?= $hrAllow ?>"></td>
+                                            <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-special-allowance" value="<?= round($specialAllow, 2) ?>" style="min-width: 85px;"></td>
 
                                             <td class="cell-gross fw-bold text-nowrap" data-val="<?= $gross ?>"><?= number_format($gross, 2) ?></td>
                                             <td class="cell-daily text-nowrap" data-val="<?= $daily ?>"><?= number_format($daily, 2) ?>
@@ -1044,7 +1082,7 @@ window.executeDeleteProject = function(projId) {
                 function recalcRow(e) {
                     const basic = parseFloat(row.querySelector('.cell-basic').dataset.val) || 0;
                     const daily = parseFloat(row.querySelector('.cell-daily').dataset.val) || 0;
-                    const perMeal = parseFloat(row.querySelector('.in-mealcount').dataset.permeal) || 0;
+                    const perMeal = parseFloat(row.querySelector('.in-mealcount').dataset.permeal) || <?= (float)($activeMealProject['standard_meal_amount'] ?? 120) ?>;
 
                     if (e && e.target.classList.contains('in-mealcount')) {
                         const mealCount = parseFloat(row.querySelector('.in-mealcount').value) || 0;
@@ -1109,10 +1147,36 @@ window.executeDeleteProject = function(projId) {
                     row.querySelector('.cell-netpayable').textContent = netPayable.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
                     const payMethod = row.querySelector('.cell-net').dataset.paymentMethod || '';
+                    const hasBankAccount = row.getAttribute('data-has-bank') === '1';
+                    const empName = row.getAttribute('data-employee-name') || 'This employee';
+                    const empOfficeId = row.getAttribute('data-employee-office-id') || '';
                     let bankInput = row.querySelector('.in-bank');
                     let cashInput = row.querySelector('.in-cash');
 
-                    if (e && e.target.classList.contains('in-bank')) {
+                    if (!hasBankAccount) {
+                        const attemptedBank = parseFloat(bankInput.value) || 0;
+                        const attemptedCash = parseFloat(cashInput.value) || 0;
+                        const isBankEdit = e && e.target.classList.contains('in-bank') && attemptedBank > 0;
+                        const isCashChange = e && e.type === 'change' && e.target.classList.contains('in-cash') && Math.abs(attemptedCash - netPayable) > 0.01;
+
+                        if (isBankEdit || isCashChange) {
+                            bankInput.value = 0;
+                            cashInput.value = netPayable.toFixed(2);
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Bank Account Missing!',
+                                    text: `${empName}${empOfficeId ? ' (ID: ' + empOfficeId + ')' : ''}-এর কোনো ব্যাংক অ্যাকাউন্ট নম্বর যুক্ত করা নেই। তাই তার বেতন Bank-এ ভাগ করা যাবে না (সম্পূর্ণ Cash-এ থাকবে)।`,
+                                    confirmButtonColor: '#0f766e'
+                                });
+                            } else {
+                                alert(`${empName} has no Bank Account Number configured! Salary must remain in Cash.`);
+                            }
+                        } else if (!e || !e.target.classList.contains('in-cash')) {
+                            bankInput.value = 0;
+                            cashInput.value = netPayable.toFixed(2);
+                        }
+                    } else if (e && e.target.classList.contains('in-bank')) {
                         cashInput.value = (netPayable - (parseFloat(bankInput.value) || 0)).toFixed(2);
                     } else if (e && e.target.classList.contains('in-cash')) {
                         bankInput.value = (netPayable - (parseFloat(cashInput.value) || 0)).toFixed(2);
@@ -1135,6 +1199,7 @@ window.executeDeleteProject = function(projId) {
 
                 inputs.forEach(input => {
                     input.addEventListener('input', recalcRow);
+                    input.addEventListener('change', recalcRow);
                 });
 
                 // Initial calculation check on row (deferred footer totals)
@@ -1309,14 +1374,15 @@ window.executeDeleteProject = function(projId) {
                 return;
             }
 
-            fetch(`<?= $GLOBALS['base_url'] ?>/api/payroll/sync-project-attendance?project_id=` + encodeURIComponent(projectId), {
-                method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(r => r.json())
-            .then(res => {
+            var overrideParams = new URLSearchParams({
+                from_date: fromDateStr,
+                to_date: toDateStr,
+                project_id: (projSelect && projSelect.value) ? projSelect.value : ''
+            });
+            var overridePromise = fetch(`<?= $GLOBALS['base_url'] ?>/api/payroll/attendance-overrides?` + overrideParams.toString()).then(r => r.json()).catch(() => ({ success: false, data: {} }));
+            Promise.all([fetch(`<?= $GLOBALS['base_url'] ?>/api/hrm/attendance?` + params.toString()).then(r => r.json()), overridePromise])
+            .then(([res, overrideRes]) => {
+                var dbOverrides = (overrideRes && overrideRes.success) ? (overrideRes.data || overrideRes.overrides || {}) : {};
                 $btn.prop('disabled', false).html(origHtml);
                 if (res.success) {
                     if (typeof Swal !== 'undefined') {
@@ -1375,10 +1441,14 @@ window.executeDeleteProject = function(projId) {
         // --- DataTables with CSV and PDF ---
         if (typeof $ !== 'undefined' && $.fn.DataTable) {
             var table = $('#workspaceTable').DataTable({
-                deferRender: true,
+                deferRender: false,
                 autoWidth: false,
                 responsive: false,
                 scrollX: true,
+                order: [[1, 'asc']],
+                columnDefs: [
+                    { orderable: false, searchable: false, targets: 0 }
+                ],
                 lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
                 pageLength: 25,
                 
@@ -1404,8 +1474,8 @@ window.executeDeleteProject = function(projId) {
                             columns: ':not(:first-child)',
                             format: {
                                   body: function (inner, rowidx, colidx, node) {
-                                      if ($(node).find('input').length > 0) {
-                                          return $(node).find('input').val();
+                                      if ($(node).find('input:not([type="hidden"])').length > 0) {
+                                          return $(node).find('input:not([type="hidden"])').val();
                                       } else {
                                           return inner.replace(/(<([^>]+)>)/ig, "").trim();
                                       }
@@ -1566,6 +1636,7 @@ window.executeDeleteProject = function(projId) {
                     var conveyance_allowance = parseFloat(tr.find('.in-conveyance').val()) || 0;
                     var medical_allowance = parseFloat(tr.find('.in-medical').val()) || 0;
                     var house_rent_allowance = parseFloat(tr.find('.in-houserent').val()) || 0;
+                    var special_allowance = parseFloat(tr.find('.in-special-allowance').val()) || 0;
                     var advance_salary = parseFloat(tr.find('.in-advance').val()) || 0;
                     var meal_count = parseFloat(tr.find('.in-mealcount').val()) || 0;
                     var subsidized_lunch = parseFloat(tr.find('.in-sublunch').val()) || 0;
@@ -1608,6 +1679,7 @@ window.executeDeleteProject = function(projId) {
                         conveyance_allowance: conveyance_allowance,
                         medical_allowance: medical_allowance,
                         house_rent_allowance: house_rent_allowance,
+                        special_allowance: special_allowance,
                         advance_salary: advance_salary,
                         meal_count: meal_count,
                         subsidized_lunch: subsidized_lunch,
@@ -1687,14 +1759,15 @@ window.executeDeleteProject = function(projId) {
                 nodes = document.querySelectorAll('.calc-row');
             }
             $(nodes).each(function() {
-                if ($(this).find('.emp-checkbox').length > 0) {
+                var $cb = $(this).find('.emp-checkbox');
+                if ($cb.length > 0) {
                     totalCount++;
-                    if (!$(this).find('.emp-checkbox').is(':checked')) {
+                    if (!$cb.prop('checked')) {
                         allChecked = false;
                     }
                 }
             });
-            $('#selectAllEmployees').prop('checked', allChecked && totalCount > 0);
+            $('.select-all-employees, #selectAllEmployees').prop('checked', allChecked && totalCount > 0);
         }
         
         setTimeout(function() {
@@ -1709,23 +1782,27 @@ window.executeDeleteProject = function(projId) {
             });
         }
 
-        $(document).on('change', '#selectAllEmployees', function() {
-            var isChecked = $(this).is(':checked');
-            var nodes = [];
+        $(document).on('click', '.select-all-employees, #selectAllEmployees', function(e) {
+            e.stopPropagation();
+        });
+
+        $(document).on('change', '.select-all-employees, #selectAllEmployees', function(e) {
+            e.stopPropagation();
+            var isChecked = $(this).prop('checked');
+            $('.select-all-employees, #selectAllEmployees').prop('checked', isChecked);
+
             if ($.fn.DataTable && $.fn.DataTable.isDataTable('#workspaceTable')) {
-                nodes = $('#workspaceTable').DataTable().rows().nodes();
-            } else {
-                nodes = document.querySelectorAll('.calc-row');
+                var dtNodes = $('#workspaceTable').DataTable().rows().nodes();
+                $(dtNodes).find('.emp-checkbox').prop('checked', isChecked);
             }
-            $(nodes).each(function() {
-                $(this).find('.emp-checkbox').prop('checked', isChecked);
-            });
+            $('#workspaceTable tbody .emp-checkbox').prop('checked', isChecked);
+
             calculateFooterTotals();
         });
         
         $(document).on('change', '.emp-checkbox', function() {
-            if (!$(this).is(':checked')) {
-                $('#selectAllEmployees').prop('checked', false);
+            if (!$(this).prop('checked')) {
+                $('.select-all-employees, #selectAllEmployees').prop('checked', false);
             } else {
                 updateMasterCheckbox();
             }

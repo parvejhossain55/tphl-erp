@@ -104,6 +104,9 @@ class MealTrackerController extends Controller
             }
         }
 
+        // Ensure office_branches & employee meal columns exist and are initialized
+        $this->employeeModel->ensureOfficeBranchSchema();
+
         // Fetch all active office branches
         $branchRes = $this->db->query("SELECT * FROM office_branches WHERE status = 'active' ORDER BY id ASC");
         $branches = [];
@@ -113,10 +116,18 @@ class MealTrackerController extends Controller
             }
         }
 
-        // Selected Branch ID
+        // Selected Branch ID (if not specified in URL, prefer the first branch that has active meal employees)
         $selectedBranchId = isset($_GET['branch_id']) && $_GET['branch_id'] !== '' ? (int)$_GET['branch_id'] : null;
         if (!$selectedBranchId && !empty($branches)) {
             $selectedBranchId = (int)$branches[0]['id'];
+            foreach ($branches as $bCandidate) {
+                $bCid = (int)$bCandidate['id'];
+                $bCntRes = $this->db->query("SELECT COUNT(*) AS cnt FROM employees WHERE employee_status = 'active' AND deleted_at IS NULL AND office_branch_id = " . $bCid);
+                if ($bCntRes && ($bCntRow = $bCntRes->fetch_assoc()) && (int)$bCntRow['cnt'] > 0) {
+                    $selectedBranchId = $bCid;
+                    break;
+                }
+            }
         }
 
         // Fetch employees for this branch where is_meal_deduction = 1
@@ -287,6 +298,7 @@ class MealTrackerController extends Controller
 
         $updated = $this->mealProjectModel->updateStandardRate($projectId, $standardAmount);
         if ($updated) {
+            $this->mealRecordModel->syncLinkedPayrollPayslips($projectId);
             setSuccess("Standard meal rate for '{$project['name']}' updated to ৳" . number_format($standardAmount, 2) . " successfully.");
         } else {
             setError("Failed to update standard meal rate.");
@@ -452,6 +464,7 @@ class MealTrackerController extends Controller
             }
 
             $this->db->commit();
+            $this->mealRecordModel->syncLinkedPayrollPayslips($projectId);
             echo json_encode([
                 'success' => true, 
                 'message' => 'Meal tracker records saved successfully!'
@@ -769,6 +782,9 @@ class MealTrackerController extends Controller
         }
 
         $res = $this->mealRecordModel->syncAttendanceWithMealRecords($projectId, $branchId);
+        if (!empty($res['success'])) {
+            $this->mealRecordModel->syncLinkedPayrollPayslips($projectId);
+        }
         echo json_encode($res);
         exit;
     }
