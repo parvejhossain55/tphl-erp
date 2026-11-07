@@ -675,9 +675,27 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                             <span class="badge bg-success text-white font-monospace" style="font-size: 10px;">Refunded Paid</span>
                         </div>
                     </div>
-                    <p class="small text-secondary mb-2 mt-2" style="font-size: 12.5px; line-height: 1.6;">
-                        This refund has been disbursed by Accounts and adjusted in the client ledger for <strong>৳ <?= number_format($refund['refund_amount'], 2) ?></strong>.
-                    </p>
+                    <div class="p-2.5 rounded-2 bg-white border border-light-subtle small mt-2 mb-3" style="font-size: 12px; line-height: 1.6;">
+                        <span class="fw-semibold text-dark d-block mb-1 border-bottom pb-1">Payment Settlement Summary:</span>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Total Collected:</span>
+                            <strong class="text-dark">৳ <?= number_format($refund['total_paid'], 2) ?></strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Company Retention (<?= $retPctSummary ?>%):</span>
+                            <strong class="text-danger">৳ <?= number_format($refund['retention_amount'], 2) ?></strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Net Disbursed to Client:</span>
+                            <strong class="text-success">৳ <?= number_format($refund['refund_amount'], 2) ?></strong>
+                        </div>
+                        <?php if (!empty($refund['refunded_at'])): ?>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Disbursed Date:</span>
+                            <strong class="text-dark"><?= date('d M Y, h:i A', strtotime($refund['refunded_at'])) ?></strong>
+                        </div>
+                        <?php endif; ?>
+                    </div>
                     <?php 
                         $payoutProof = !empty($refund['disbursement_proof']) ? $refund['disbursement_proof'] : (!empty($refund['document']) ? $refund['document'] : null);
                     ?>

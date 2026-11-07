@@ -338,17 +338,18 @@ $statusMap = [
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
                             <span class="fs-11 text-uppercase fw-bold text-muted d-block">
-                                <i class="fa-solid fa-shield-halved  me-1"></i> Total Retention Amount
+                                <i class="fa-solid fa-shield-halved me-1 text-warning"></i> Total Retention Amount
                             </span>
-                            <h3 class="fw-bold mb-1  fs-20 mt-1" id="kpiTotalRetention">
+                            <h3 class="fw-bold mb-1 fs-20 mt-1" id="kpiTotalRetention">
                                 ৳ <?= number_format($summaryStats['total_retention'] ?? 0, 2) ?>
                             </h3>
-                            <span class="badge bg-warning bg-opacity-10  border border-warning border-opacity-25 fs-11 py-1 px-2">
-                                Company Cut / Non-Refundable
-                            </span>
+                            <div class="fs-11 text-muted" id="kpiRetentionSubtitle">
+                                Realized (Paid): <strong class="text-danger" id="kpiRealizedRetention">৳ <?= number_format($summaryStats['refunded_retention'] ?? 0, 2) ?></strong>
+                                <span class="ms-1 text-muted">(Pending: <span id="kpiPendingRetention">৳ <?= number_format($summaryStats['pending_retention'] ?? 0, 2) ?></span>)</span>
+                            </div>
                         </div>
-                        <div class="kpi-icon-wrap bg-warning bg-opacity-10 ">
-                            <i class="fa-solid fa-piggy-bank fs-4"></i>
+                        <div class="kpi-icon-wrap bg-warning bg-opacity-10">
+                            <i class="fa-solid fa-piggy-bank fs-4 text-warning"></i>
                         </div>
                     </div>
                 </div>
@@ -362,17 +363,18 @@ $statusMap = [
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
                             <span class="fs-11 text-uppercase fw-bold text-muted d-block">
-                                <i class="fa-solid fa-money-bill-transfer  me-1"></i> Total Net Refund
+                                <i class="fa-solid fa-money-bill-transfer me-1 text-success"></i> Total Net Refund
                             </span>
                             <h3 class="fw-bold mb-1 fs-20 mt-1" id="kpiTotalRefund">
                                 ৳ <?= number_format($summaryStats['total_refund_amount'] ?? 0, 2) ?>
                             </h3>
-                            <div class="fs-11 text-muted">
+                            <div class="fs-11 text-muted" id="kpiRefundSubtitle">
                                 Paid Disbursed: <strong class="text-success" id="kpiTotalDisbursed">৳ <?= number_format($summaryStats['total_refunded_paid'] ?? 0, 2) ?></strong>
+                                <span class="ms-1 text-muted">(Pending: <span id="kpiPendingRefund">৳ <?= number_format($summaryStats['pending_refund_amount'] ?? 0, 2) ?></span>)</span>
                             </div>
                         </div>
-                        <div class="kpi-icon-wrap bg-success bg-opacity-10 ">
-                            <i class="fa-solid fa-money-check-dollar fs-4"></i>
+                        <div class="kpi-icon-wrap bg-success bg-opacity-10">
+                            <i class="fa-solid fa-money-check-dollar fs-4 text-success"></i>
                         </div>
                     </div>
                 </div>
@@ -385,18 +387,18 @@ $statusMap = [
                 <div class="card-body p-3">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <span class="fs-11 text-uppercase fw-bold  d-block">
-                                <i class="fa-solid fa-wallet  me-1"></i> Total Verified Paid
+                            <span class="fs-11 text-uppercase fw-bold d-block text-muted">
+                                <i class="fa-solid fa-wallet me-1 text-primary"></i> Total Verified Paid
                             </span>
-                            <h3 class="fw-bold mb-1  fs-20 mt-1" id="kpiTotalPaid">
+                            <h3 class="fw-bold mb-1 fs-20 mt-1" id="kpiTotalPaid">
                                 ৳ <?= number_format($summaryStats['total_verified_paid'] ?? 0, 2) ?>
                             </h3>
-                            <div class="fs-11 text-muted">
-                                Collected prior to cancellation
+                            <div class="fs-11 text-muted" id="kpiPaidSubtitle">
+                                Disbursed Cases: <strong class="text-primary" id="kpiDisbursedPaid">৳ <?= number_format($summaryStats['refunded_total_paid'] ?? 0, 2) ?></strong>
                             </div>
                         </div>
                         <div class="kpi-icon-wrap bg-primary bg-opacity-10">
-                            <i class="fa-solid fa-receipt fs-4"></i>
+                            <i class="fa-solid fa-receipt fs-4 text-primary"></i>
                         </div>
                     </div>
                 </div>
@@ -458,8 +460,9 @@ $statusMap = [
                         <strong class="fs-12">All Projects</strong>
                         <span class="badge-sub"><?= $summaryStats['total_requests'] ?? 0 ?></span>
                     </div>
-                    <div class="fs-11 text-muted">
-                        Retention: ৳<?= number_format($summaryStats['total_retention'] ?? 0) ?>
+                    <div class="d-flex justify-content-between fs-11 text-muted">
+                        <span>Ret: <strong class="text-danger me-2">৳<?= number_format($summaryStats['total_retention'] ?? 0) ?></strong></span>
+                        <span>Ref: <strong class="text-success">৳<?= number_format($summaryStats['total_refund_amount'] ?? 0) ?></strong></span>
                     </div>
                 </a>
 
@@ -1246,14 +1249,26 @@ function updateSummaryKpis(stats) {
     if (document.getElementById('kpiTotalRetention')) {
         document.getElementById('kpiTotalRetention').innerText = '৳ ' + formatMoney(stats.total_retention);
     }
+    if (document.getElementById('kpiRealizedRetention')) {
+        document.getElementById('kpiRealizedRetention').innerText = '৳ ' + formatMoney(stats.refunded_retention || 0);
+    }
+    if (document.getElementById('kpiPendingRetention')) {
+        document.getElementById('kpiPendingRetention').innerText = '৳ ' + formatMoney(stats.pending_retention || 0);
+    }
     if (document.getElementById('kpiTotalRefund')) {
         document.getElementById('kpiTotalRefund').innerText = '৳ ' + formatMoney(stats.total_refund_amount);
     }
     if (document.getElementById('kpiTotalDisbursed')) {
-        document.getElementById('kpiTotalDisbursed').innerText = '৳ ' + formatMoney(stats.total_refunded_paid);
+        document.getElementById('kpiTotalDisbursed').innerText = '৳ ' + formatMoney(stats.total_refunded_paid || 0);
+    }
+    if (document.getElementById('kpiPendingRefund')) {
+        document.getElementById('kpiPendingRefund').innerText = '৳ ' + formatMoney(stats.pending_refund_amount || 0);
     }
     if (document.getElementById('kpiTotalPaid')) {
         document.getElementById('kpiTotalPaid').innerText = '৳ ' + formatMoney(stats.total_verified_paid);
+    }
+    if (document.getElementById('kpiDisbursedPaid')) {
+        document.getElementById('kpiDisbursedPaid').innerText = '৳ ' + formatMoney(stats.refunded_total_paid || 0);
     }
     if (document.getElementById('kpiTotalRequests')) {
         document.getElementById('kpiTotalRequests').innerText = (stats.total_requests || 0) + ' Cases';

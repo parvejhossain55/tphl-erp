@@ -88,7 +88,7 @@ class ClientRefundController extends Controller
         $totalRecords = $paginated['total'];
         $totalPages = (int)ceil($totalRecords / $perPage);
 
-        $summaryStats = $this->model->getSummaryStats($filterUserId);
+        $summaryStats = $this->model->getSummaryStats($filterUserId, $filters);
 
         // Fetch active projects for filter dropdown
         $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
