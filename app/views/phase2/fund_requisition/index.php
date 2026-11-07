@@ -114,6 +114,10 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
             </div>
         </div>
 
+        <div class="no-print">
+            <?php include __DIR__ . '/../../layouts/management_approval_notice.php'; ?>
+        </div>
+
         <!-- Print-only header section -->
         <div class="print-header d-none text-center mb-4">
             <h2 class="mb-1">TPHL ERP</h2>

@@ -89,6 +89,10 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
         </div>
     </div>
 
+    <div class="col-xxl-12 mb-3 no-print">
+        <?php include __DIR__ . '/../../layouts/management_approval_notice.php'; ?>
+    </div>
+
     <!-- Quick Stats -->
     <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-6 no-print">
         <div class="card__wrapper">

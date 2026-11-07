@@ -21,6 +21,9 @@ $canRequest = in_array($roleId, [1, 3, 14, 15, 20, 22, 32, 33]);
     <?php endif; ?>
 </div>
 
+<!-- Executive Management Approval Schedule Notice -->
+<?php include __DIR__ . '/../../layouts/management_approval_notice.php'; ?>
+
 <!-- Top KPI Stats Row -->
 <div class="row mb-4 align-items-stretch">
     <div class="col-xl-3 col-md-6 mb-3">

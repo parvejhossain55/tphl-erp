@@ -22,6 +22,7 @@
     <section class="section">
         <div class="row">
             <div class="col-lg-8 mx-auto">
+                <?php include __DIR__ . '/../layouts/management_approval_notice.php'; ?>
                 <div class="card shadow-sm">
                     <div class="card-body mt-3">
                         <?php if (isset($_SESSION['error'])): ?>
@@ -53,8 +54,8 @@
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold">Cost Type <span class="text-danger">*</span></label>
-                                    <select name="rcost_type" class="form-select" required>
-                                        <option value="">Select Type</option>
+                                    <select name="rcost_type" id="pageCostTypeSelect" class="form-select select2" required style="width: 100%;" data-placeholder="Select or search cost type...">
+                                        <option value="">Select or search cost type...</option>
                                         <?php 
                                         $types = $costTypes ?? (class_exists('ProjectOtherCost') ? ProjectOtherCost::getCostTypes() : []);
                                         foreach ($types as $val => $label): 
@@ -115,6 +116,11 @@
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         if (typeof $.fn.select2 !== 'undefined') {
+            $('#pageCostTypeSelect').select2({
+                placeholder: 'Select or search cost type...',
+                allowClear: true,
+                width: '100%'
+            });
             $('#pageProjectSelect').select2({
                 placeholder: 'Select single or multiple projects...',
                 width: '100%'
@@ -244,6 +250,65 @@
     [bd-theme="bd-theme-dark"] .select2-container--default .select2-selection--multiple .select2-selection__choice__display,
     [bd-theme="bd-theme-dark"] .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
         color: #86efac !important;
+    }
+    /* Single Select (Cost Type & COA) */
+    .select2-container--default .select2-selection--single {
+        background-color: #ffffff !important;
+        border: 1px solid #dee2e6 !important;
+        border-radius: 6px !important;
+        height: 40px !important;
+        padding: 5px 12px !important;
+        display: flex !important;
+        align-items: center !important;
+        box-sizing: border-box !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 26px !important;
+        padding-left: 0 !important;
+        color: #212529 !important;
+        font-size: 14px !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 38px !important;
+        right: 10px !important;
+    }
+    .select2-container--default.select2-container--focus .select2-selection--single,
+    .select2-container--default.select2-container--open .select2-selection--single {
+        border-color: #198754 !important;
+        box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.15) !important;
+    }
+
+    /* Dark Mode Enhancements for Select2 */
+    [bd-theme="bd-theme-dark"] .select2-container--default .select2-selection--single {
+        background-color: #1b2430 !important;
+        border-color: #334155 !important;
+    }
+    [bd-theme="bd-theme-dark"] .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: #f1f5f9 !important;
+    }
+    [bd-theme="bd-theme-dark"] .select2-container--default .select2-selection--single .select2-selection__placeholder {
+        color: #94a3b8 !important;
+    }
+    [bd-theme="bd-theme-dark"] .select2-container--default .select2-selection--single .select2-selection__arrow b {
+        border-color: #94a3b8 transparent transparent transparent !important;
+    }
+    [bd-theme="bd-theme-dark"] .select2-dropdown {
+        background-color: #1b2430 !important;
+        border-color: #334155 !important;
+        color: #f1f5f9 !important;
+    }
+    [bd-theme="bd-theme-dark"] .select2-dropdown .select2-search__field {
+        background-color: #0f172a !important;
+        border: 1px solid #334155 !important;
+        color: #f1f5f9 !important;
+    }
+    [bd-theme="bd-theme-dark"] .select2-results__option {
+        color: #cbd5e1 !important;
+    }
+    [bd-theme="bd-theme-dark"] .select2-results__option--highlighted,
+    [bd-theme="bd-theme-dark"] .select2-results__option--highlighted[aria-selected] {
+        background-color: rgba(25, 135, 84, 0.25) !important;
+        color: #34d399 !important;
     }
 </style>
 

@@ -45,9 +45,9 @@
     $sbUserSecRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
     $sbUserPriRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
     $sbUserId = (int)($_SESSION['user']['id'] ?? 0);
-    $isManagement = in_array($sbUserRoleId, [1, 3, 33, 34, 35], true) 
-        || in_array($sbUserSecRoleId, [1, 3, 33, 34, 35], true) 
-        || in_array($sbUserPriRoleId, [1, 3, 33, 34, 35], true) 
+    $isManagement = in_array($sbUserRoleId, [1, 3, 33, 34, 35, 38], true) 
+        || in_array($sbUserSecRoleId, [1, 3, 33, 34, 35, 38], true) 
+        || in_array($sbUserPriRoleId, [1, 3, 33, 34, 35, 38], true) 
         || $sbUserId === 94;
 
     // Calculate pending verifications
@@ -92,6 +92,23 @@
             'role_name' => $loggedUserRoleName
         ]);
     }
+
+    // Calculate pending vendor & contractor enrollment requests count for current user
+    $pendingVendorEnrollmentCount = 0;
+    $pendingContractorEnrollmentCount = 0;
+    if (isset($db)) {
+        if (!class_exists('EnrollmentApproval')) {
+            require_once dirname(dirname(__DIR__)) . '/models/EnrollmentApproval.php';
+        }
+        $enrollmentSidebarModel = new EnrollmentApproval($db);
+        $sbLoggedUserId = (int)($_SESSION['user']['id'] ?? 0);
+        $sbLoggedRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $sbLoggedSecRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+
+        $pendingVendorEnrollmentCount = $enrollmentSidebarModel->getActionableCountForUser('vendor', $sbLoggedUserId, $sbLoggedRoleId, $sbLoggedSecRoleId);
+        $pendingContractorEnrollmentCount = $enrollmentSidebarModel->getActionableCountForUser('contractor', $sbLoggedUserId, $sbLoggedRoleId, $sbLoggedSecRoleId);
+    }
+    $totalEnrollmentPending = $pendingVendorEnrollmentCount + $pendingContractorEnrollmentCount;
 
     // Calculate pending labor requisitions count for current user's approval role ("jar jar kache tar approval count")
     $pendingLaborReqCount = 0;
@@ -143,9 +160,9 @@
         $ur = (int)($_SESSION['user']['role_id'] ?? 0);
         $roleNameLower = strtolower($_SESSION['user']['role_name'] ?? '');
         $qcRoles = [1, 24, 25];
-        $mgmtRoles = [1, 3, 22, 20, 32];
+        $mgmtRoles = [1, 3, 22, 20, 32, 38];
         $isQc = in_array($ur, $qcRoles) || str_contains($roleNameLower, 'qc') || str_contains($roleNameLower, 'audit') || hasPermission('QC & Internal Audit');
-        $isMgmt = in_array($ur, $mgmtRoles) || str_contains($roleNameLower, 'operation') || str_contains($roleNameLower, 'operator') || str_contains($roleNameLower, 'management') || str_contains($roleNameLower, 'admin') || str_contains($roleNameLower, 'pm head');
+        $isMgmt = in_array($ur, $mgmtRoles) || str_contains($roleNameLower, 'operation') || str_contains($roleNameLower, 'operator') || str_contains($roleNameLower, 'management') || str_contains($roleNameLower, 'admin') || str_contains($roleNameLower, 'pm head') || str_contains($roleNameLower, 'director');
         if (in_array($ur, [33, 34, 35], true) || in_array($roleNameLower, ['chief officer', 'management viewer', 'seal ceo'], true)) {
             $isQc = false;
             $isMgmt = false;
@@ -225,7 +242,7 @@
         $loggedUserId = (int) $_SESSION['user']['id'];
         $loggedRoleId = (int) ($_SESSION['user']['role_id'] ?? 0);
 
-        if (in_array($loggedRoleId, [1, 3, 33, 34, 35])) {
+        if (in_array($loggedRoleId, [1, 3, 33, 34, 35, 38])) {
             // Admin / Full Management: count ALL types of pending
             // 1. Dept head pending (awaiting their approval)
             $resDept = $db->query("
@@ -352,7 +369,7 @@
             } elseif (in_array($sidebarRoleId, [24, 25])) {
                 $procRes = $db->query("SELECT COUNT(*) AS c FROM project_extra_assets WHERE purchase_head_status = 'approved' AND qc_audit_status = 'pending'");
                 if ($procRes) $sidebarPendingProcurementCount += (int)($procRes->fetch_assoc()['c'] ?? 0);
-            } elseif (in_array($sidebarRoleId, [1, 3])) {
+            } elseif (in_array($sidebarRoleId, [1, 3, 38])) {
                 $procRes = $db->query("
                     SELECT COUNT(*) AS c 
                     FROM project_extra_assets pea 
@@ -368,7 +385,7 @@
                 if ($procRes) $sidebarPendingProcurementCount += (int)($procRes->fetch_assoc()['c'] ?? 0);
             }
             // 1. Pending Purchase Requests awaiting role-specific action
-            if (in_array($sidebarRoleId, [1, 3])) {
+            if (in_array($sidebarRoleId, [1, 3, 38])) {
                 // Admin / Super Admin: Submitted PRs awaiting approval OR Approved PRs awaiting executive assignment
                 $prRes = $db->query("
                     SELECT COUNT(*) AS c 
@@ -483,7 +500,7 @@
             $sbRoleName = strtolower($_SESSION['user']['role_name'] ?? '');
             $sbIsChiefOfficer = (in_array($sidebarRoleId, [33, 34, 35], true) || strpos($sbRoleName, 'chief officer') !== false || strpos($sbRoleName, 'management viewer') !== false || strpos($sbRoleName, 'seal ceo') !== false);
             $isQcRole = !$sbIsChiefOfficer && (in_array($sidebarRoleId, [24, 25]) || strpos($sbRoleName, 'qc') !== false);
-            $isMgmtRole = !$sbIsChiefOfficer && (in_array($sidebarRoleId, [1, 3, 20, 32]) || strpos($sbRoleName, 'admin') !== false || strpos($sbRoleName, 'management') !== false || strpos($sbRoleName, 'operation') !== false);
+            $isMgmtRole = !$sbIsChiefOfficer && (in_array($sidebarRoleId, [1, 3, 20, 32, 38]) || strpos($sbRoleName, 'admin') !== false || strpos($sbRoleName, 'management') !== false || strpos($sbRoleName, 'operation') !== false);
             $isAccExecutiveRole = ($sidebarRoleId === 36 || strpos($sbRoleName, 'executive') !== false || (function_exists('isAccountsExecutive') && isAccountsExecutive()));
             $isAccountsRole = !$sbIsChiefOfficer && !$isAccExecutiveRole && (in_array($sidebarRoleId, [6, 30]) || strpos($sbRoleName, 'accounts') !== false);
 
@@ -585,11 +602,31 @@
                             <span class="sidebar__menu-label">My Approval History</span>
                         </a>
                     </li>
+                    <li class="slide <?= isActive('vendor-enrollment-requests', $current_route) ?>">
+                        <a href="<?= $base_url ?>/vendor-enrollment-requests"
+                            class="sidebar__menu-item <?= isActive('vendor-enrollment-requests', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-user-tie text-warning"></i></div>
+                            <span class="sidebar__menu-label">Vendor Enrollment</span>
+                            <?php if ($pendingVendorEnrollmentCount > 0): ?>
+                                <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $pendingVendorEnrollmentCount ?></span>
+                            <?php endif; ?>
+                        </a>
+                    </li>
+                    <li class="slide <?= isActive('contractor-enrollment-requests', $current_route) ?>">
+                        <a href="<?= $base_url ?>/contractor-enrollment-requests"
+                            class="sidebar__menu-item <?= isActive('contractor-enrollment-requests', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-person-digging text-success"></i></div>
+                            <span class="sidebar__menu-label">Contractor Enrollment</span>
+                            <?php if ($pendingContractorEnrollmentCount > 0): ?>
+                                <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $pendingContractorEnrollmentCount ?></span>
+                            <?php endif; ?>
+                        </a>
+                    </li>
                     <?php 
                     $canViewOfficeTxns = !empty($isManagement) 
-                        || in_array((int)($sbUserRoleId ?? 0), [1, 3, 6, 20, 24, 25, 30, 32, 33, 34, 35])
-                        || in_array((int)($sbUserSecRoleId ?? 0), [1, 3, 6, 20, 24, 25, 30, 32, 33, 34, 35])
-                        || in_array((int)($sbUserPriRoleId ?? 0), [1, 3, 6, 20, 24, 25, 30, 32, 33, 34, 35])
+                        || in_array((int)($sbUserRoleId ?? 0), [1, 3, 6, 20, 24, 25, 30, 32, 33, 34, 35, 38])
+                        || in_array((int)($sbUserSecRoleId ?? 0), [1, 3, 6, 20, 24, 25, 30, 32, 33, 34, 35, 38])
+                        || in_array((int)($sbUserPriRoleId ?? 0), [1, 3, 6, 20, 24, 25, 30, 32, 33, 34, 35, 38])
                         || stripos($sbRoleName ?? '', 'account') !== false
                         || stripos($sbRoleName ?? '', 'audit') !== false
                         || stripos($sbRoleName ?? '', 'operation') !== false
@@ -612,7 +649,7 @@
                 $sidebarUserRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
                 // Allowed roles: Admin (1), Super Admin (3), Accounts (6), Accounts Head (30), Role 20, Role 32, Purchase Head (17)
                 // Excludes Chief Officer (Role 33)
-                $canViewExpenseAnalytics = in_array($sidebarUserRoleId, [1, 3, 6, 30, 20, 32, 17], true);
+                $canViewExpenseAnalytics = in_array($sidebarUserRoleId, [1, 3, 6, 30, 20, 32, 17, 38], true);
                 if ($canViewExpenseAnalytics): 
                 ?>
                     <!-- Expense Analytics Dashboard -->
@@ -629,7 +666,7 @@
                 // Roles allowed to access Expense Adjustments:
                 // Accounts (6, 30), Purchase (17, 23, 31), Management (1, 3, 33), Admin & Operation Head (20, 32),
                 // QC & Internal Audit (13, 24, 25), Site Engineers & PMs (12, 15, 22), or anyone who made adjustments
-                $canViewExpenseAdjustments = in_array($sidebarUserRoleId, [1, 3, 33, 6, 30, 20, 32, 13, 24, 25, 17, 23, 31, 12, 15, 22], true)
+                $canViewExpenseAdjustments = in_array($sidebarUserRoleId, [1, 3, 33, 6, 30, 20, 32, 13, 24, 25, 17, 23, 31, 12, 15, 22, 38], true)
                     || ($isManagement ?? false)
                     || ($isAccountsRole ?? false)
                     || ($isQcRole ?? false)
@@ -659,7 +696,7 @@
                 // Check if user has ERP Tracker access
                 $sidebar_user_id = $_SESSION['user']['id'] ?? 0;
                 $sidebar_role_id = $_SESSION['user']['role_id'] ?? 0;
-                $hasErpAccess = in_array($sidebar_role_id, [1, 3, 33, 34, 35]);
+                $hasErpAccess = in_array($sidebar_role_id, [1, 3, 33, 34, 35, 38]);
 
                 if (!$hasErpAccess) {
                     global $db;
@@ -683,14 +720,14 @@
 
                 $upcomingCount = getFollowUpCount($userId, 'upcoming');
                 ?>
-                <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22, 9, 7, 33, 34, 35]) || in_array($_SESSION['user']['secondary_role_id'] ?? 0, [1, 3, 15, 22, 9, 7, 33, 34, 35])): ?>
+                <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22, 9, 7, 33, 34, 35, 38]) || in_array($_SESSION['user']['secondary_role_id'] ?? 0, [1, 3, 15, 22, 9, 7, 33, 34, 35, 38])): ?>
 
                     <!--Sales CATEGORY -->
                     <li class="sidebar__menu-category">
                         <span class="category-name">Sales & Business</span>
                     </li>
 
-                    <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 9, 33, 34, 35]) || in_array($_SESSION['user']['secondary_role_id'] ?? 0, [1, 3, 9, 33, 34, 35])): ?>
+                    <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 9, 33, 34, 35, 38]) || in_array($_SESSION['user']['secondary_role_id'] ?? 0, [1, 3, 9, 33, 34, 35, 38])): ?>
                         <?php if (($_SESSION['user']['role_id'] ?? 0) != 9): ?>
                             <!-- sales Dashboard -->
                             <li class="slide ">
@@ -975,7 +1012,7 @@
 
 
                         <!-- Teams Manage for Sales -->
-                        <?php if (hasPermission("Sales Team") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])): ?>
+                        <?php if (hasPermission("Sales Team") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 38])): ?>
                             <li class="slide ">
                                 <a href="<?= $base_url ?>/teams"
                                     class="sidebar__menu-item <?= isActive('teams', $current_route) ?>">
@@ -1028,7 +1065,7 @@
                         <?php endif; ?>
 
                         <!-- Sales Incentive for Management, Accounts, and Role 20 -->
-                        <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 20, 30, 32, 33, 34, 35, 36]) || $isManagement): ?>
+                        <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 20, 30, 32, 33, 34, 35, 36, 38]) || $isManagement): ?>
                             <li class="slide <?= isActive('incentive-management', $current_route) ?>">
                                 <a href="<?= $base_url ?>/incentive-management"
                                     class="sidebar__menu-item <?= isActive('incentive-management', $current_route) ?>">
@@ -1042,7 +1079,7 @@
                         <?php endif; ?>
 
                         <!-- Sales Incentive Target: Accessible to Management, Accounts, Role 20 (to set targets) and Sales Head (to view) -->
-                        <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 9, 20, 30, 32, 33, 34, 35, 36]) || $isManagement): ?>
+                        <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 9, 20, 30, 32, 33, 34, 35, 36, 38]) || $isManagement): ?>
                             <li class="slide <?= isActive('sales-executive-teams', $current_route) ?>">
                                 <a href="<?= $base_url ?>/sales-executive-teams"
                                     class="sidebar__menu-item <?= isActive('sales-executive-teams', $current_route) ?>">
@@ -1052,7 +1089,7 @@
                             </li>
                         <?php endif; ?>
 
-                        <?php if (!$isManagement && !in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 9, 20, 30, 32, 33, 34, 35])): ?>
+                        <?php if (!$isManagement && !in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 9, 20, 30, 32, 33, 34, 35, 38])): ?>
 
                             <li class="slide ">
                                 <a href="<?= $base_url ?>/contact-lists"
@@ -1263,7 +1300,7 @@
                 <!-- for sales executive  -->
 
                 <?php 
-                $isMgmtUserForDM = !empty($isManagement) || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33, 34, 35], true);
+                $isMgmtUserForDM = !empty($isManagement) || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33, 34, 35, 38], true);
                 if ($isMgmtUserForDM && !hasPermission("Digital Marketing Panel") && ($_SESSION['user']['role_id'] ?? 0) != 10 && ($_SESSION['user']['secondary_role_id'] ?? 0) != 10): 
                 ?>
                     <li class="slide ">
@@ -1675,7 +1712,7 @@
                         </ul>
                     </li>
 
-                    <?php if (hasPermission("HRM Management") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 34, 35, 4])): ?>
+                    <?php if (hasPermission("HRM Management") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 34, 35, 4, 38])): ?>
                         <!-- Tipsoi Reports -->
                         <li
                             class="slide has-sub <?= isActive(['tipsoi-monthly-report', 'tipsoi-daily-report', 'tipsoi-department-report'], $current_route) ? 'active open' : '' ?>">
@@ -1886,7 +1923,7 @@
                 <?php endif; ?>
 
                 <!-- User Activity Log — Admin / Management only -->
-                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 34, 35])): ?>
+                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 34, 35, 38])): ?>
                     <li class="slide <?= isActive('user-activity-log', $current_route) ?>">
                         <a href="<?= $base_url ?>/user-activity-log"
                             class="sidebar__menu-item <?= isActive('user-activity-log', $current_route) ?>">
@@ -2004,7 +2041,7 @@
                 <?php
                 $mealUserRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
                 $mealUserRoleName = strtolower($_SESSION['user']['role_name'] ?? '');
-                $canAccessMealTracker = in_array($mealUserRoleId, [1, 3, 4, 20, 32, 33, 34, 35])
+                $canAccessMealTracker = in_array($mealUserRoleId, [1, 3, 4, 20, 32, 33, 34, 35, 38])
                     || (strpos($mealUserRoleName, 'admin') !== false)
                     || (strpos($mealUserRoleName, 'operation') !== false)
                     || (strpos($mealUserRoleName, 'hr') !== false)
@@ -2264,7 +2301,7 @@
                     || (strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'credit recovery') !== false)
                     || (strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'recovery') !== false)
                     || (strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'communicat') !== false);
-                $canViewCedCategory = (hasPermission("CED Manage") || in_array($sbUserRoleId, [1, 3, 7, 33, 34, 35, 37]) || $isClientCommUser) && ($sbUserRoleId != 9);
+                $canViewCedCategory = (hasPermission("CED Manage") || in_array($sbUserRoleId, [1, 3, 7, 33, 34, 35, 37, 38]) || $isClientCommUser) && ($sbUserRoleId != 9);
 
                 $sbTodayFollowupCount = 0;
                 $sbUpcomingFollowupCount = 0;
@@ -2697,7 +2734,7 @@
                         </a>
                     </li>
 
-                    <?php if ((!$isManagement || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33])) && !$isSbAccExec): ?>
+                    <?php if ((!$isManagement || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 38])) && !$isSbAccExec): ?>
                         <li
                             class="slide has-sub <?= isActive(['create-cashout-request', 'admin-cashout-requests', 'expense-adjustments'], $current_route) ? 'active' : '' ?>">
                             <a href="javascript:void(0);"
@@ -3013,7 +3050,7 @@
                             <span class="category-name">Construction </span>
                         </li>
                     <?php endif; ?>
-                    <?php if (hasPermission('Construction Management') || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 15, 34, 35], true)): ?>
+                    <?php if (hasPermission('Construction Management') || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 15, 34, 35, 38], true)): ?>
                         <li class="slide ">
                             <a href="<?= $base_url ?>/con-dashboard"
                                 class="sidebar__menu-item <?= isActive('con-dashboard', $current_route) ?>">
@@ -3023,7 +3060,7 @@
                         </li>
                     <?php endif; ?>
 
-                    <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [3, 15, 22, 12, 20, 32, 34, 35])): ?>
+                    <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [3, 15, 22, 12, 20, 32, 34, 35, 38])): ?>
                         <li class="slide">
                             <a href="<?= $base_url ?>/all-projects-overview"
                                 class="sidebar__menu-item <?= isActive('all-projects-overview', $current_route) ?>">
@@ -3033,7 +3070,7 @@
                         </li>
                     <?php endif; ?>
 
-                    <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 12, 15, 22, 34, 35])): ?>
+                    <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 12, 15, 22, 34, 35, 38])): ?>
                         <li class="slide">
                             <a href="<?= $base_url ?>/con-progress-report"
                                 class="sidebar__menu-item <?= isActive('con-progress-report', $current_route) ?>">
@@ -3043,7 +3080,7 @@
                         </li>
                     <?php endif; ?>
 
-                    <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22, 34, 35])): ?>
+                    <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22, 34, 35, 38])): ?>
                         <li class="slide">
                             <a href="<?= $base_url ?>/con-projects"
                                 class="sidebar__menu-item <?= isActive('con-projects', $current_route) ?>">
@@ -3054,7 +3091,7 @@
                     <?php endif; ?>
 
                     <?php
-                    $showAllPhases = in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22, 34, 35]);
+                    $showAllPhases = in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22, 34, 35, 38]);
                     if (!empty($_SESSION['active_project_id']) && $showAllPhases):
                         $projectSubRoutes = ['con-project', 'con-project-timeline', 'con-phase-plan', 'con-floor-setup', 'con-monthly-targets', 'con-monthly-target', 'con-monthly-review', 'con-risk-dashboard'];
                         $isProjectActive = isActive($projectSubRoutes, $current_route);
@@ -3324,7 +3361,7 @@
                                             href="<?= $base_url ?>/con-land-visibility-studies">Land Visibility Study</a>
                                     </li>
                                 <?php endif; ?>
-                                <?php if (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 6, 14, 30, 34, 35])): ?>
+                                <?php if (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 6, 14, 30, 34, 35, 38])): ?>
                                     <li
                                         class="slide <?= isActive(['con-land-acquisitions', 'con-land-acquisitions/create', 'con-land-acquisitions/edit'], $current_route) ? 'active' : '' ?>">
                                         <a class="sidebar__menu-item <?= isActive(['con-land-acquisitions', 'con-land-acquisitions/create', 'con-land-acquisitions/edit'], $current_route) ? 'active' : '' ?>"
@@ -3487,7 +3524,7 @@
                     <?php endif; ?>
                     <!-- ====== END Site Operations ====== -->
 
-                    <?php if (hasPermission('Material Manage') || hasPermission('Project Material Report') || hasPermission('Estimator dashboard') || in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 17, 31])): ?>
+                    <?php if (hasPermission('Material Manage') || hasPermission('Project Material Report') || hasPermission('Estimator dashboard') || in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 17, 31, 38])): ?>
                         <!-- Module 3: Materials & Inventory -->
                         <li
                             class="slide has-sub <?= isActive(['con-materials', 'con-material-create', 'con-warehouses', 'con-warehouse-create', 'con-stocks', 'con-project-materials-report'], $current_route) ? 'active' : '' ?>">
@@ -3524,7 +3561,7 @@
                                         class="sidebar__menu-item <?= isActive('con-stocks', $current_route) ?>">Stock
                                         Levels</a>
                                 </li>
-                                <?php if (hasPermission('Project Material Report') || hasPermission('Material Manage') || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3])): ?>
+                                <?php if (hasPermission('Project Material Report') || hasPermission('Material Manage') || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 38])): ?>
                                     <li class="slide">
                                         <a href="<?= $base_url ?>/con-project-materials-report"
                                             class="sidebar__menu-item <?= isActive('con-project-materials-report', $current_route) ?>">Project Material Report</a>
@@ -3534,7 +3571,7 @@
                         </li>
                     <?php endif; ?>
 
-                    <?php if (hasPermission('Purchase order') || in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 12, 15, 17, 22, 23, 31])): ?>
+                    <?php if (hasPermission('Purchase order') || in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 12, 15, 17, 22, 23, 31, 38])): ?>
                         <!-- Module 5: Procurement -->
                         <li
                             class="slide has-sub <?= isActive(['con-purchase-requests', 'con-purchase-request-create', 'con-purchase-orders', 'con-wastage', 'con-wastage-create'], $current_route) ? 'active' : '' ?>">
@@ -3584,7 +3621,7 @@
                         </li>
                     <?php endif; ?>
 
-                    <?php if (hasPermission('Vendor Manage') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 17, 20, 22, 23, 30, 31, 32, 33, 34, 35])): ?>
+                    <?php if (hasPermission('Vendor Manage') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 17, 20, 22, 23, 30, 31, 32, 33, 34, 35, 38])): ?>
                         <!-- Module 6: Vendors -->
 
                         <li
@@ -3667,7 +3704,7 @@
                                         class="sidebar__menu-item <?= isActive('con-stocks', $current_route) ?>">Stock
                                         Levels</a>
                                 </li>
-                                <?php if (hasPermission('Project Material Report') || hasPermission('Material Manage') || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3])): ?>
+                                <?php if (hasPermission('Project Material Report') || hasPermission('Material Manage') || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 38])): ?>
                                     <li class="slide">
                                         <a href="<?= $base_url ?>/con-project-materials-report"
                                             class="sidebar__menu-item <?= isActive('con-project-materials-report', $current_route) ?>">Project Material Report</a>
@@ -3732,7 +3769,7 @@
 
                     <!-- ====== Operators & Bills (Batch 2 NEW) ====== -->
                     <?php 
-                    $contractorAllowedRoles = [1, 3, 15, 17, 20, 22, 23, 31, 32];
+                    $contractorAllowedRoles = [1, 3, 15, 17, 20, 22, 23, 31, 32, 38];
                     $userRoleId = (int) ($_SESSION['user']['role_id'] ?? 0);
                     $userSecRoleId = (int) ($_SESSION['user']['secondary_role_id'] ?? 0);
                     $userRoleName = strtolower($_SESSION['user']['role_name'] ?? '');
@@ -3772,7 +3809,7 @@
 
 
                     <!-- ====== Operators & Bills (Batch 2 NEW) ====== -->
-                    <?php if (hasPermission('Contractor Bill') || hasPermission('QC & Internal Audit') || hasPermission('Operation manage') || in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 15, 17, 20, 22, 23, 24, 25, 30, 31, 32, 33, 34, 35])): ?>
+                    <?php if (hasPermission('Contractor Bill') || hasPermission('QC & Internal Audit') || hasPermission('Operation manage') || in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 15, 17, 20, 22, 23, 24, 25, 30, 31, 32, 33, 34, 35, 38])): ?>
                         <li
                             class="slide has-sub <?= isActive(['con-contractor-bills', 'con-contractor-bill-create', 'con-fund-requests', 'con-fund-request-create'], $current_route) ? 'active' : '' ?>">
                             <a href="javascript:void(0);"
@@ -3799,7 +3836,7 @@
                                 </li>
 
                                 <!-- Labor Requisition shortcut inside Bills menu -->
-                                <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 15, 20, 22, 24, 30, 33, 34, 35])): ?>
+                                <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 15, 20, 22, 24, 30, 33, 34, 35, 38])): ?>
                                     <li class="slide">
                                         <a href="<?= $base_url ?>/con-labor-requisitions"
                                             class="sidebar__menu-item <?= isActive('con-labor-requisitions', $current_route) ?>">
@@ -3826,7 +3863,7 @@
                     <?php endif; ?>
 
                     <!-- ====== Labor Requisitions ====== -->
-                    <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 15, 20, 22, 24, 30, 33, 34, 35])): ?>
+                    <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 15, 20, 22, 24, 30, 33, 34, 35, 38])): ?>
                         <li
                             class="slide has-sub <?= isActive(['con-labor-requisitions', 'con-labor-requisition', 'con-labor-requisition-create'], $current_route) ? 'active' : '' ?>">
                             <a href="javascript:void(0);"
@@ -3848,7 +3885,7 @@
                                         <?php endif; ?>
                                     </a>
                                 </li>
-                                <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 12, 15, 20, 22])): ?>
+                                <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 12, 15, 20, 22, 38])): ?>
                                     <li class="slide">
                                         <a href="<?= $base_url ?>/con-labor-requisition-create"
                                             class="sidebar__menu-item <?= isActive('con-labor-requisition-create', $current_route) ?>">
@@ -3861,7 +3898,7 @@
                     <?php endif; ?>
 
                     <!-- ══ Weekly Progress Reports (Phase-Based) ════════════════════ -->
-                    <?php if (hasPermission('Construction Management') || hasPermission('site engineer dashboard') || hasPermission('QC Dashboard') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22])): ?>
+                    <?php if (hasPermission('Construction Management') || hasPermission('site engineer dashboard') || hasPermission('QC Dashboard') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22, 38])): ?>
                         <li class="d-none slide <?= isActive(['con-weekly-reports', 'con-weekly-report'], $current_route) ?>">
                             <a href="<?= $base_url ?>/con-weekly-reports"
                                 class="sidebar__menu-item <?= isActive(['con-weekly-reports', 'con-weekly-report'], $current_route) ?>">
@@ -3945,17 +3982,56 @@
                         </li>
                     <?php endif; ?>
 
-                    <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])): ?>
-                        <li class="slide <?= isActive('approval-requests', $current_route) ?>">
-                            <a href="<?= $base_url ?>/approval-requests"
-                                class="sidebar__menu-item <?= isActive('approval-requests', $current_route) ?>">
+                    <?php 
+                    $canSeeApprovalRequestsMenu = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 17, 20, 31, 38], true)
+                        || in_array((int)($_SESSION['user']['secondary_role_id'] ?? 0), [1, 3, 17, 20, 31, 38], true)
+                        || ($totalEnrollmentPending > 0)
+                        || (!empty($isManagement));
+                    if ($canSeeApprovalRequestsMenu): 
+                    ?>
+                        <li class="slide has-sub <?= isActive(['approval-requests', 'vendor-enrollment-requests', 'contractor-enrollment-requests'], $current_route) ? 'active' : '' ?>">
+                            <a href="javascript:void(0);"
+                                class="sidebar__menu-item <?= isActive(['approval-requests', 'vendor-enrollment-requests', 'contractor-enrollment-requests'], $current_route) ? 'menu-open active' : '' ?>">
                                 <div class="side-menu__icon"><i class="fa-solid fa-check-double"></i></div>
                                 <span class="sidebar__menu-label">Approval Requests</span>
+                                <?php if ($totalEnrollmentPending > 0): ?>
+                                    <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $totalEnrollmentPending ?></span>
+                                <?php else: ?>
+                                    <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                                <?php endif; ?>
                             </a>
+                            <ul class="sidebar-menu child2" style="display:block;">
+                                <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 38], true)): ?>
+                                    <li class="slide">
+                                        <a href="<?= $base_url ?>/approval-requests"
+                                            class="sidebar__menu-item <?= isActive('approval-requests', $current_route) ?>">
+                                            <i class="bi bi-circle me-1"></i> General Requests
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/vendor-enrollment-requests"
+                                        class="sidebar__menu-item <?= isActive('vendor-enrollment-requests', $current_route) ?>">
+                                        <span><i class="fa-solid fa-user-tie me-1"></i> Vendor Enrollment Requests</span>
+                                        <?php if ($pendingVendorEnrollmentCount > 0): ?>
+                                            <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $pendingVendorEnrollmentCount ?></span>
+                                        <?php endif; ?>
+                                    </a>
+                                </li>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/contractor-enrollment-requests"
+                                        class="sidebar__menu-item <?= isActive('contractor-enrollment-requests', $current_route) ?>">
+                                        <span><i class="fa-solid fa-person-digging me-1"></i> Contractor Enrollment Requests</span>
+                                        <?php if ($pendingContractorEnrollmentCount > 0): ?>
+                                            <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $pendingContractorEnrollmentCount ?></span>
+                                        <?php endif; ?>
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
                     <?php endif; ?>
 
-                    <?php if (hasPermission('QC & Internal Audit') || strtolower($_SESSION['user']['role_name'] ?? '') === 'qc & internal audit' || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 24, 25])): ?>
+                    <?php if (hasPermission('QC & Internal Audit') || strtolower($_SESSION['user']['role_name'] ?? '') === 'qc & internal audit' || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 24, 25, 38])): ?>
                         <!-- ====== Internal Audit Section ====== -->
                         <li class="sidebar__menu-category">
                             <span class="category-name">Internal Audit</span>
@@ -4107,7 +4183,7 @@
                         </a>
                     </li>
 
-                    <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 4, 33]) || hasPermission("Hr Manage") || hasPermission("HRM Management") || (stripos($_SESSION['user']['role_name'] ?? '', 'hr') !== false) || (stripos($_SESSION['user']['role_name'] ?? '', 'admin') !== false)): ?>
+                    <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 4, 33, 38]) || hasPermission("Hr Manage") || hasPermission("HRM Management") || (stripos($_SESSION['user']['role_name'] ?? '', 'hr') !== false) || (stripos($_SESSION['user']['role_name'] ?? '', 'admin') !== false)): ?>
                     <li class="slide ">
                         <a href="<?= $base_url ?>/all-employee-tasks"
                             class="sidebar__menu-item <?= isActive('all-employee-tasks', $current_route) ?>">
@@ -4165,9 +4241,9 @@
                             <?php endif; ?>
                             <?php 
                             $canViewMgmtOverview = !empty($isManagement) 
-                                || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33, 34, 35], true) 
-                                || in_array((int)($_SESSION['user']['secondary_role_id'] ?? 0), [1, 3, 33, 34, 35], true)
-                                || in_array((int)($_SESSION['user']['primary_role_id'] ?? 0), [1, 3, 33, 34, 35], true)
+                                || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33, 34, 35, 38], true) 
+                                || in_array((int)($_SESSION['user']['secondary_role_id'] ?? 0), [1, 3, 33, 34, 35, 38], true)
+                                || in_array((int)($_SESSION['user']['primary_role_id'] ?? 0), [1, 3, 33, 34, 35, 38], true)
                                 || ((int)($_SESSION['user']['id'] ?? 0) === 94);
                             if ($canViewMgmtOverview): 
                             ?>
@@ -4185,7 +4261,7 @@
 
                     <!-- FOR Task Manage  -->
                     <!-- ====== BATCH IMPORTS ====== -->
-                    <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])): // Only Admins can import ?>
+                    <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 38])): // Only Admins can import ?>
                         <li class="slide d-none">
                             <a href="<?= $GLOBALS['base_url'] ?>/con-batch2-import"
                                 class="sidebar__menu-item <?= isActive('con-batch2-import', $current_route) ?>">
@@ -4196,7 +4272,7 @@
                     <?php endif; ?>
 
                     <!-- ====== ASSET MANAGEMENT ====== -->
-                    <?php if (hasPermission('Asset Management') || hasPermission('QC & Internal Audit') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 32])): ?>
+                    <?php if (hasPermission('Asset Management') || hasPermission('QC & Internal Audit') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 32, 38])): ?>
                         <li class="slide <?= isActive(['office-assets', 'asset-products'], $current_route) ?>">
                             <a href="<?= $base_url ?>/office-assets"
                                 class="sidebar__menu-item <?= isActive(['office-assets', 'asset-products'], $current_route) ?>">

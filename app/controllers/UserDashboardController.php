@@ -651,7 +651,6 @@ class UserDashboardController extends Controller
         if ($stmt) $stmt->close();
     }
 
-
     public function updateCallNote()
     {
         if (session_status() === PHP_SESSION_NONE) session_start();

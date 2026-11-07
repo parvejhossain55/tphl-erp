@@ -23,6 +23,9 @@ $show_breadcrumb = true;
                     <i class="fa-light fa-arrow-left me-2"></i> Back
                 </a>
             </div>
+            <div class="px-4 pt-3">
+                <?php include __DIR__ . '/../../layouts/management_approval_notice.php'; ?>
+            </div>
             <div class="card__body">
                 <?php if (!empty($_SESSION['error'])): ?>
                     <div class="alert alert-danger alert-dismissible fade show">

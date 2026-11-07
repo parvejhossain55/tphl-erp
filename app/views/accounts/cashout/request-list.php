@@ -74,6 +74,10 @@ $userRoleName = $roleNames[$userRole ?? 2] ?? 'Employee';
         </div>
     </div>
 
+    <div class="col-xxl-12">
+        <?php include __DIR__ . '/../../layouts/management_approval_notice.php'; ?>
+    </div>
+
     <!-- Statistics Cards -->
     <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-6">
         <div class="card__wrapper">

@@ -23,6 +23,9 @@ $canApprove = $canApprove ?? false;
         </div>
     </div>
 
+    <!-- Executive Management Approval Schedule Notice -->
+    <?php include __DIR__ . '/../../layouts/management_approval_notice.php'; ?>
+
     <!-- Quick Status Filter Pills / KPI Badges -->
     <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
         <a href="<?= $base_url ?>/con-vendor-payment-requests" 

@@ -837,8 +837,10 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
                                             echo 'Awaiting Management approval for the remaining balance.';
                                         } elseif ($isOver1Lac && !$isOpHeadApproved) {
                                             echo 'Will be enabled after Admin & Operation Head approval (request above ৳10,000).';
+                                        } elseif ($isOver1Lac && empty($ahInfo['is_accounts_head_approved'])) {
+                                            echo 'Admin & Operation Head approved. Awaiting Accounts Head payment verification before Management sign-off.';
                                         } elseif ($isOver1Lac) {
-                                            echo 'Admin & Operation Head approved. Awaiting final Management sign-off.';
+                                            echo 'Accounts Head verified. Awaiting final Management sign-off.';
                                         } else {
                                             echo 'Awaiting approval from Management (Any Amount) or Operation Head (Up to ৳10,000)';
                                         }
@@ -888,6 +890,10 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
                                     <?php elseif ($isOver1Lac && !$isOpHeadApproved && in_array($sessionRoleId, [1, 3])): ?>
                                         <div class="alert alert-warning py-2 px-3 extra-small mt-2 mb-0">
                                             <i class="fa-solid fa-lock me-1 text-warning"></i> Requests exceeding ৳10,000 require Admin &amp; Operation Head (Role 20) approval before Management can approve.
+                                        </div>
+                                    <?php elseif ($isOver1Lac && empty($ahInfo["is_accounts_head_approved"]) && in_array($sessionRoleId, [1, 3])): ?>
+                                        <div class="alert alert-warning py-2 px-3 extra-small mt-2 mb-0">
+                                            <i class="fa-solid fa-lock me-1 text-warning"></i> Requests exceeding ৳10,000 require Accounts Head (Role 30) payment verification before Management can approve.
                                         </div>
                                     <?php endif; ?>
                                 </div>
@@ -947,13 +953,17 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
                                     <?php endif; ?>
 
                                     <?php if ($isAccounts && $dueToPay > 0): ?>
-                                        <?php if (!empty($ahInfo['is_accounts_head_approved'])): ?>
+                                        <?php if (!empty($ahInfo['can_disburse_payment'])): ?>
                                             <button class="btn btn-sm btn-success mt-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#payModal">
                                                 <i class="fa-solid fa-file-invoice-dollar me-1"></i> Process Payment Now
                                             </button>
-                                        <?php else: ?>
-                                            <button class="btn btn-sm btn-light text-muted mt-2 border" disabled title="Payment locked pending Accounts Head (Md. Mamunoor Rashid [1309]) approval">
+                                        <?php elseif (empty($ahInfo['is_accounts_head_approved'])): ?>
+                                            <button class="btn btn-sm btn-light text-muted mt-2 border" disabled title="Payment locked pending Accounts Head approval">
                                                 <i class="fa-solid fa-lock text-warning me-1"></i> Payment Locked (Awaiting Accounts Head Approval)
+                                            </button>
+                                        <?php else: ?>
+                                            <button class="btn btn-sm btn-light text-muted mt-2 border" disabled title="Payment locked pending Management (Role 1/3) approval">
+                                                <i class="fa-solid fa-lock text-warning me-1"></i> Payment Locked (Awaiting Management Final Sign-off)
                                             </button>
                                         <?php endif; ?>
                                     <?php endif; ?>

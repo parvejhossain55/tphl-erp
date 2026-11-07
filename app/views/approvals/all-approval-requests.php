@@ -418,6 +418,9 @@
         </div>
     </div>
 
+    <!-- Executive Management Approval Schedule Notice -->
+    <?php include __DIR__ . '/../layouts/management_approval_notice.php'; ?>
+
     <!-- Company Dashboard Summary Metrics Row -->
     <div class="row mb-4">
         <!-- Total System Requests -->

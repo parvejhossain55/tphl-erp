@@ -49,8 +49,9 @@ $currentUserPriRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
 $isAccountsHeadUser = in_array(30, [$currentUserRoleId, $currentUserSecRoleId, $currentUserPriRoleId], true) 
     || strpos($currentRoleName, 'accounts head') !== false;
 
-$isManagementUser = in_array($currentUserRoleId, [1, 3], true) 
+$isManagementUser = in_array($currentUserRoleId, [1, 3, 38], true) 
     || strpos($currentRoleName, 'super admin') !== false 
+    || strpos($currentRoleName, 'board of director') !== false 
     || ($currentUserRoleId === 1);
 
 $isAccountsStaffUser = ($currentUserRoleId === 6) 
@@ -337,12 +338,21 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
                         <?php endif; ?>
                     <?php elseif ($isAhApproved): ?>
                         <div class="text-md-end text-start">
-                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2 extra-small fw-bold">
-                                <i class="fa-solid fa-check-double me-1"></i>Payment Authorized
-                            </span>
-                            <div class="extra-small text-muted mt-1">
-                                Disbursement permitted by Role 6 &amp; 30
-                            </div>
+                            <?php if ($isOver1Lac && empty($ahInfo['is_mgmt_approved'])): ?>
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-2 extra-small fw-bold">
+                                    <i class="fa-solid fa-check-double me-1"></i>Step 2 Completed
+                                </span>
+                                <div class="extra-small text-muted mt-1">
+                                    Forwarded to Management (Role 1/3) for Executive Approval
+                                </div>
+                            <?php else: ?>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2 extra-small fw-bold">
+                                    <i class="fa-solid fa-check-double me-1"></i>Payment Authorized
+                                </span>
+                                <div class="extra-small text-muted mt-1">
+                                    Disbursement permitted by Role 6 &amp; 30
+                                </div>
+                            <?php endif; ?>
                         </div>
                     <?php elseif ($isAhRejected): ?>
                         <div class="text-md-end text-start">

@@ -356,6 +356,7 @@ return [
     'auto-generate-payslip' => ['controller' => 'PayrollController', 'method' => 'showAutoGenerateForm'],
     'api/payroll/department-attendance' => ['controller' => 'PayrollController', 'method' => 'getDepartmentAttendance'],
     'api/payroll/attendance-overrides' => ['controller' => 'PayrollController', 'method' => 'getAttendanceOverrides'],
+    'api/payroll/sync-project-attendance' => ['controller' => 'PayrollController', 'method' => 'apiSyncProjectAttendance'],
     'store-bulk-payslips' => ['controller' => 'PayrollController', 'method' => 'storeBulkPayslips'],
     'disburse-batch-payslips' => ['controller' => 'PayrollController', 'method' => 'disburseBatch'],
 

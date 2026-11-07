@@ -14,6 +14,7 @@
 </div>
 
 <section class="section">
+<?php include __DIR__ . '/../../layouts/management_approval_notice.php'; ?>
 <div class="row justify-content-center">
     <!-- ── LEFT: Form ── -->
     <div class="col-lg-7">

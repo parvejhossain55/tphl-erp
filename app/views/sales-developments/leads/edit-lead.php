@@ -76,10 +76,20 @@ $selectedTeamId     = $_SESSION['old']['team_id']          ?? $leadData['team_id
 
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">Religion</label>
+                        <?php
+                        $currentRel = $leadData['religion'] ?? '';
+                        $relOptions = [
+                            'Islam' => ['Islam'],
+                            'Hinduism' => ['Hinduism', 'Hindu'],
+                            'Christianity' => ['Christianity', 'Christian'],
+                            'Buddhism' => ['Buddhism', 'Buddhist'],
+                            'Other' => ['Other'],
+                        ];
+                        ?>
                         <select name="religion" class="form-select">
                             <option value="">-- Select Religion --</option>
-                            <?php foreach (['Islam', 'Hindu', 'Christian', 'Buddhist', 'Other'] as $rel): ?>
-                                <option value="<?= $rel ?>" <?= ($leadData['religion'] ?? '') === $rel ? 'selected' : '' ?>><?= $rel ?></option>
+                            <?php foreach ($relOptions as $relVal => $relAliases): ?>
+                                <option value="<?= $relVal ?>" <?= in_array($currentRel, $relAliases, true) ? 'selected' : '' ?>><?= $relVal ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -87,7 +97,7 @@ $selectedTeamId     = $_SESSION['old']['team_id']          ?? $leadData['team_id
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">Residency Type</label>
                         <select name="residency_type" class="form-select">
-                            <option value="local" <?= ($leadData['residency_type'] ?? '') === 'local' ? 'selected' : '' ?>>Local Resident</option>
+                            <option value="local" <?= ($leadData['residency_type'] ?? 'local') === 'local' ? 'selected' : '' ?>>Local Resident</option>
                             <option value="expatriate" <?= ($leadData['residency_type'] ?? '') === 'expatriate' ? 'selected' : '' ?>>NRB (Non-Resident)</option>
                         </select>
                     </div>
@@ -95,6 +105,7 @@ $selectedTeamId     = $_SESSION['old']['team_id']          ?? $leadData['team_id
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">Identity Document Type</label>
                         <select name="identity_type" class="form-select">
+                            <option value="">-- Select Document Type --</option>
                             <option value="NID" <?= ($leadData['identity_type'] ?? '') === 'NID' ? 'selected' : '' ?>>NID</option>
                             <option value="Passport" <?= ($leadData['identity_type'] ?? '') === 'Passport' ? 'selected' : '' ?>>Passport</option>
                             <option value="Birth Certificate" <?= ($leadData['identity_type'] ?? '') === 'Birth Certificate' ? 'selected' : '' ?>>Birth Certificate</option>
@@ -312,6 +323,7 @@ $selectedTeamId     = $_SESSION['old']['team_id']          ?? $leadData['team_id
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">Lead Type</label>
                         <select name="lead_type" class="form-select">
+                            <option value="">-- Select Lead Type --</option>
                             <option value="Qualification in Progress" <?= ($leadData['lead_type'] ?? '') === 'Qualification in Progress' ? 'selected' : '' ?>>Qualification in Progress</option>
                             <option value="Potential" <?= in_array($leadData['lead_type'] ?? '', ['Potential', 'Prospect', 'Warm']) ? 'selected' : '' ?>>Potential</option>
                             <option value="High Potential" <?= in_array($leadData['lead_type'] ?? '', ['High Potential', 'High Prospect', 'Hot']) ? 'selected' : '' ?>>High Potential</option>
@@ -328,6 +340,7 @@ $selectedTeamId     = $_SESSION['old']['team_id']          ?? $leadData['team_id
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">Lead Quality</label>
                         <select name="lead_quality" class="form-select">
+                            <option value="">-- Select Quality --</option>
                             <option value="Pending" <?= ($leadData['lead_quality'] ?? '') === 'Pending' ? 'selected' : '' ?>>Pending</option>
                             <option value="Potential" <?= in_array($leadData['lead_quality'] ?? '', ['Potential', 'Prospect']) ? 'selected' : '' ?>>Potential</option>
                             <option value="Not Interested" <?= ($leadData['lead_quality'] ?? '') === 'Not Interested' ? 'selected' : '' ?>>Not Interested</option>
@@ -337,7 +350,7 @@ $selectedTeamId     = $_SESSION['old']['team_id']          ?? $leadData['team_id
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">Lead Action Status</label>
                         <select name="last_lead_action" class="form-select">
-                            <option value="new" <?= ($leadData['last_lead_action'] ?? '') === 'new' ? 'selected' : '' ?>>New</option>
+                            <option value="new" <?= ($leadData['last_lead_action'] ?? 'new') === 'new' ? 'selected' : '' ?>>New</option>
                             <option value="follow up" <?= ($leadData['last_lead_action'] ?? '') === 'follow up' ? 'selected' : '' ?>>Follow Up</option>
                             <option value="contacted" <?= ($leadData['last_lead_action'] ?? '') === 'contacted' ? 'selected' : '' ?>>Contacted</option>
                             <option value="visited" <?= ($leadData['last_lead_action'] ?? '') === 'visited' ? 'selected' : '' ?>>Visited</option>
@@ -349,8 +362,10 @@ $selectedTeamId     = $_SESSION['old']['team_id']          ?? $leadData['team_id
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">Call Status</label>
                         <select name="call_status" class="form-select">
-                            <option value="not_called" <?= ($leadData['call_status'] ?? '') === 'not_called' ? 'selected' : '' ?>>Not Called</option>
+                            <option value="not_called" <?= ($leadData['call_status'] ?? 'not_called') === 'not_called' ? 'selected' : '' ?>>Not Called</option>
                             <option value="called" <?= ($leadData['call_status'] ?? '') === 'called' ? 'selected' : '' ?>>Called</option>
+                            <option value="received" <?= ($leadData['call_status'] ?? '') === 'received' ? 'selected' : '' ?>>Received</option>
+                            <option value="not_received" <?= ($leadData['call_status'] ?? '') === 'not_received' ? 'selected' : '' ?>>Not Received</option>
                             <option value="busy" <?= ($leadData['call_status'] ?? '') === 'busy' ? 'selected' : '' ?>>Busy</option>
                             <option value="no_answer" <?= ($leadData['call_status'] ?? '') === 'no_answer' ? 'selected' : '' ?>>No Answer</option>
                         </select>

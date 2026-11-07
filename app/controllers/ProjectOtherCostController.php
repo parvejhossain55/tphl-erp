@@ -22,7 +22,7 @@ class ProjectOtherCostController extends Controller
         $approvalRequests = [];
         
         // Approver roles: QC(13, 24, 25), Management(3, 33, 34, 35, 32, 15, 22), Accounts(6, 30), Admin(1), Land Manager(14)
-        $approverRoles = [1, 3, 6, 13, 14, 15, 20, 22, 24, 25, 30, 32, 33, 34, 35];
+        $approverRoles = [1, 3, 6, 13, 14, 15, 20, 22, 24, 25, 30, 32, 33, 34, 35, 38];
         
         // Check if user is a designated reporting boss for any employees
         $isReportingBoss = false;
@@ -61,45 +61,9 @@ class ProjectOtherCostController extends Controller
 
         $userRole = $roleId;
         
-        // Allowed roles to see all under_construction projects (including Employee role 2):
-        // 1(Admin), 2(Employee), 3(Management), 20(Operation Head), 33(Chief Officer), 17(Purchase Head), 22(PM Head), 23(Purchase Exec), 31(Sr Purchase Exec), 
-        // 6(Accounts), 30(Accounts Head), 24(QC Head), 25(QC Exec), 32(Admin Operation), 14(Land Manager)
-        if (in_array($userRole, [1, 2, 3, 14, 20, 33, 17, 22, 23, 31, 6, 30, 24, 25, 32])) {
-            $pResult  = $this->db->query("SELECT id, name, under_construction FROM projects WHERE deleted_at IS NULL AND (under_construction = 1 OR is_common = 1) ORDER BY name ASC");
-            if (!$pResult || $pResult->num_rows === 0) {
-                $pResult = $this->db->query("SELECT id, name, under_construction FROM projects WHERE deleted_at IS NULL ORDER BY name ASC");
-            }
-            $projects = $pResult ? $pResult->fetch_all(MYSQLI_ASSOC) : [];
-        } else {
-            // Other construction roles (e.g. Site Engineer, Project Manager, Site Operator) → any project they are assigned to
-            $pStmt = $this->db->prepare("
-                SELECT id, name, under_construction FROM projects 
-                WHERE deleted_at IS NULL AND under_construction = 1
-                AND (
-                    purchase_user_id     = ?
-                    OR pm_id             = ?
-                    OR site_engineer_id  = ?
-                    OR landman_id        = ?
-                    OR struct_engineer_id= ?
-                    OR operation_head_id = ?
-                    OR draftsman_id      = ?
-                    OR architect_id      = ?
-                    OR estimator_id      = ?
-                    OR qc_id            = ?
-                    OR operator_id      = ?
-                    OR created_by       = ?
-                    OR is_common        = 1
-                )
-                ORDER BY name ASC
-            ");
-            $pStmt->bind_param('iiiiiiiiiiii',
-                $userId, $userId, $userId, $userId,
-                $userId, $userId, $userId, $userId,
-                $userId, $userId, $userId, $userId
-            );
-            $pStmt->execute();
-            $projects = $pStmt->get_result()->fetch_all(MYSQLI_ASSOC);
-        }
+        // Fetch all active projects for other cost creation (all projects, not restricted to under_construction or is_common)
+        $pResult = $this->db->query("SELECT id, name, under_construction FROM projects WHERE deleted_at IS NULL ORDER BY name ASC");
+        $projects = $pResult ? $pResult->fetch_all(MYSQLI_ASSOC) : [];
 
         $this->view('project-other-costs/index', [
             'myRequests'              => $myRequests,
@@ -119,41 +83,9 @@ class ProjectOtherCostController extends Controller
         $userId = $_SESSION['user']['id'];
         $userRole = (int)$_SESSION['user']['role_id'];
         
-        if (in_array($userRole, [1, 2, 3, 14, 20, 33, 17, 22, 23, 31, 6, 30, 24, 25, 32])) {
-            $pResult  = $this->db->query("SELECT id, name, under_construction FROM projects WHERE deleted_at IS NULL AND (under_construction = 1 OR is_common = 1) ORDER BY name ASC");
-            if (!$pResult || $pResult->num_rows === 0) {
-                $pResult = $this->db->query("SELECT id, name, under_construction FROM projects WHERE deleted_at IS NULL ORDER BY name ASC");
-            }
-            $projects = $pResult ? $pResult->fetch_all(MYSQLI_ASSOC) : [];
-        } else {
-            $pStmt = $this->db->prepare("
-                SELECT id, name, under_construction FROM projects 
-                WHERE deleted_at IS NULL AND under_construction = 1
-                AND (
-                    purchase_user_id     = ?
-                    OR pm_id             = ?
-                    OR site_engineer_id  = ?
-                    OR landman_id        = ?
-                    OR struct_engineer_id= ?
-                    OR operation_head_id = ?
-                    OR draftsman_id      = ?
-                    OR architect_id      = ?
-                    OR estimator_id      = ?
-                    OR qc_id            = ?
-                    OR operator_id      = ?
-                    OR created_by       = ?
-                    OR is_common        = 1
-                )
-                ORDER BY name ASC
-            ");
-            $pStmt->bind_param('iiiiiiiiiiii',
-                $userId, $userId, $userId, $userId,
-                $userId, $userId, $userId, $userId,
-                $userId, $userId, $userId, $userId
-            );
-            $pStmt->execute();
-            $projects = $pStmt->get_result()->fetch_all(MYSQLI_ASSOC);
-        }
+        // Fetch all active projects for other cost creation (all projects, not restricted to under_construction or is_common)
+        $pResult = $this->db->query("SELECT id, name, under_construction FROM projects WHERE deleted_at IS NULL ORDER BY name ASC");
+        $projects = $pResult ? $pResult->fetch_all(MYSQLI_ASSOC) : [];
 
         $this->view('project-other-costs/create', [
             'projects'  => $projects,
@@ -357,7 +289,7 @@ class ProjectOtherCostController extends Controller
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
             $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
-            if (in_array($roleId, [33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true) || !in_array($roleId, [1, 3, 15, 20, 22, 32])) {
+            if (in_array($roleId, [33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true) || !in_array($roleId, [1, 3, 15, 20, 22, 32, 38])) {
                 setError("You are not authorized to approve this request as Management.");
                 header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
                 exit();
@@ -367,7 +299,7 @@ class ProjectOtherCostController extends Controller
             $approvedAmount = (float)($_POST['approved_amount'] ?? $req['request_amount'] ?? 0);
             $isOver1Lac = ($approvedAmount > 10000);
             $isOpHeadUser = (in_array($roleId, [20, 32], true) || str_contains($roleName, 'operation head'));
-            $isMgmtUser = in_array($roleId, [1, 3], true);
+            $isMgmtUser = in_array($roleId, [1, 3, 38], true);
             $note = trim($_POST['management_apporved_note'] ?? '');
 
             // Fetch approval request record

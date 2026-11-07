@@ -22,6 +22,36 @@ class Con_Contractor extends Model
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
 
+    public function countAll($search = '')
+    {
+        $where = "";
+        if (!empty($search)) {
+            $esc = $this->db->real_escape_string($search);
+            $where = " WHERE name LIKE '%{$esc}%' OR phone LIKE '%{$esc}%' OR trade LIKE '%{$esc}%' OR nid_number LIKE '%{$esc}%'";
+        }
+        $sql = "SELECT COUNT(*) as total FROM {$this->table} {$where}";
+        $result = $this->db->query($sql);
+        $row = $result ? $result->fetch_assoc() : null;
+        return $row ? (int)$row['total'] : 0;
+    }
+
+    public function getPaginated($limit = 50, $offset = 0, $search = '')
+    {
+        $where = "";
+        if (!empty($search)) {
+            $esc = $this->db->real_escape_string($search);
+            $where = " WHERE oo.name LIKE '%{$esc}%' OR oo.phone LIKE '%{$esc}%' OR oo.trade LIKE '%{$esc}%' OR oo.nid_number LIKE '%{$esc}%'";
+        }
+        $limitClause = ($limit > 0) ? "LIMIT {$limit} OFFSET {$offset}" : "";
+        $sql = "SELECT oo.*, u.full_name AS created_by_name
+                FROM {$this->table} oo
+                LEFT JOIN users u ON u.id = oo.created_by
+                {$where}
+                ORDER BY oo.name ASC
+                {$limitClause}";
+        return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
+    }
+
     public function find($id)
     {
         $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE id = ?");

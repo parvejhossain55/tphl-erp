@@ -2299,6 +2299,11 @@ class PayrollController extends Controller
                 if ($meal_project_id > 0 && $newProjId > 0) {
                     $this->db->query("UPDATE meal_projects SET payroll_project_id = $newProjId WHERE id = $meal_project_id");
                 }
+
+                // Auto-sync project attendance from Tipsoi into attendance_monthly_update
+                if ($newProjId > 0) {
+                    $this->syncProjectAttendanceFromTipsoi($newProjId);
+                }
                 echo "<script>window.location.href='{$GLOBALS['base_url']}/payroll-workspace?payroll_project_id={$newProjId}';</script>";
             } else {
                 echo "<script>alert('Failed to create project.'); window.location.href='{$GLOBALS['base_url']}/payroll-workspace';</script>";
@@ -3286,6 +3291,18 @@ class PayrollController extends Controller
         }
 
         $selectedProjectId = isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] !== '' ? (int) $_GET['payroll_project_id'] : (isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int) $_GET['project_id'] : null);
+
+        // Smart auto-match if date range was passed in GET but project_id was omitted
+        if (!$selectedProjectId && !empty($_GET['from_date']) && !empty($_GET['to_date']) && !empty($payroll_projects)) {
+            $gFrom = trim($_GET['from_date']);
+            $gTo = trim($_GET['to_date']);
+            foreach ($payroll_projects as $p) {
+                if (!empty($p['start_date']) && !empty($p['end_date']) && $p['start_date'] === $gFrom && $p['end_date'] === $gTo) {
+                    $selectedProjectId = (int)$p['id'];
+                    break;
+                }
+            }
+        }
 
         $this->view('payrolls/payslips/attendance-report', [
             'current_route' => 'payroll-attendance-report',

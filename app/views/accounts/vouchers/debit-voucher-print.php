@@ -827,7 +827,7 @@
                             </div>
                         <?php endif; ?>
                         <div style="font-size: 10px; color: <?= !empty($voucher['audit_trail']['accounts_head']['is_approved']) ? '#16a34a' : '#d97706' ?>; font-weight: bold; margin-top: 3px;">
-                            ✓ <?= htmlspecialchars($voucher['audit_trail']['accounts_head']['status_label'] ?? 'Approved & Authorized') ?>
+                            <?= !empty($voucher['audit_trail']['accounts_head']['is_approved']) ? '✓ ' : '⏳ ' ?><?= htmlspecialchars($voucher['audit_trail']['accounts_head']['status_label'] ?? 'Approved & Authorized') ?>
                         </div>
                     </div>
                 </div>
