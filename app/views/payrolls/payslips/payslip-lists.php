@@ -18,265 +18,194 @@ $show_breadcrumb = true;
 
 
 
-<form action="" method="get">
-    <div class="row mb-3 align-items-end">
+<?php
+$currentYear  = date('Y');
+$currentMonth = date('m');
+$selectedYear  = $selectedYear ?? $currentYear;
+$selectedMonth = $selectedMonth ?? $currentMonth;
+$startYear = $currentYear - 10;
+$months = [
+    1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
+    5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August',
+    9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'
+];
+?>
 
-        <?php
-        $currentYear  = date('Y');
-        $currentMonth = date('m');
-
-        // Controller theke pass kora selected value, fallback to current month/year
-        $selectedYear  = $selectedYear ?? $currentYear;
-        $selectedMonth = $selectedMonth ?? $currentMonth;
-
-        $startYear = $currentYear - 10;
-
-        $months = [
-            1 => 'January',
-            2 => 'February',
-            3 => 'March',
-            4 => 'April',
-            5 => 'May',
-            6 => 'June',
-            7 => 'July',
-            8 => 'August',
-            9 => 'September',
-            10 => 'October',
-            11 => 'November',
-            12 => 'December'
-        ];
-        ?>
-
-        <!-- Year Select -->
-        <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-12 animate__animated animate__fadeIn">
-            <div class="card__wrapper h-100">
-                <div class="from__input-box">
-                    <select name="year" id="filterYear" class="form-control">
-                        <option value="">Year Select</option>
-                        <?php for ($year = $currentYear; $year >= $startYear; $year--): ?>
-                            <option value="<?= $year ?>" <?= ($selectedYear == $year) ? 'selected' : '' ?>>
-                                <?= $year ?>
-                            </option>
-                        <?php endfor; ?>
-                    </select>
-                </div>
+<!-- Single-Line Minimal Filter & Action Bar -->
+<form action="" method="get" class="mb-3">
+    <div class="bg-white rounded-3 px-3 py-2" style="border: 1px solid #e9ecef; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+        <div class="row g-2 align-items-center">
+            <!-- Year Select -->
+            <div class="col-xl-2 col-lg-2 col-md-3 col-sm-6">
+                <select name="year" id="filterYear" class="form-select form-select-sm text-dark fw-medium" style="height: 34px; font-size: 13px; border-color: #dee2e6;">
+                    <option value="">Year Select</option>
+                    <?php for ($year = $currentYear; $year >= $startYear; $year--): ?>
+                        <option value="<?= $year ?>" <?= ($selectedYear == $year) ? 'selected' : '' ?>><?= $year ?></option>
+                    <?php endfor; ?>
+                </select>
             </div>
-        </div>
 
-        <!-- Month Select -->
-        <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-12 animate__animated animate__fadeIn">
-            <div class="card__wrapper h-100">
-                <div class="from__input-box">
-                    <select name="month" id="filterMonth" class="form-control">
-                        <option value="">Month Select</option>
-                        <?php foreach ($months as $id => $name): ?>
-                            <option value="<?= $id ?>" <?= ($selectedMonth == $id) ? 'selected' : '' ?>>
-                                <?= $name ?>
+            <!-- Month Select -->
+            <div class="col-xl-2 col-lg-2 col-md-3 col-sm-6">
+                <select name="month" id="filterMonth" class="form-select form-select-sm text-dark fw-medium" style="height: 34px; font-size: 13px; border-color: #dee2e6;">
+                    <option value="">Month Select</option>
+                    <?php foreach ($months as $id => $name): ?>
+                        <option value="<?= $id ?>" <?= ($selectedMonth == $id) ? 'selected' : '' ?>><?= $name ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <!-- Status Select -->
+            <div class="col-xl-2 col-lg-2 col-md-3 col-sm-6">
+                <select name="status" class="form-select form-select-sm text-dark fw-medium" style="height: 34px; font-size: 13px; border-color: #dee2e6;">
+                    <option value="">All Status</option>
+                    <option value="paid" <?= (isset($selectedStatus) && $selectedStatus == 'paid') ? 'selected' : '' ?>>Paid</option>
+                    <option value="unpaid" <?= (isset($selectedStatus) && $selectedStatus == 'unpaid') ? 'selected' : '' ?>>Unpaid</option>
+                    <option value="draft" <?= (isset($selectedStatus) && $selectedStatus == 'draft') ? 'selected' : '' ?>>Draft / Certificate</option>
+                </select>
+            </div>
+
+            <!-- Payroll Project Select -->
+            <div class="col-xl-2 col-lg-2 col-md-3 col-sm-6">
+                <select name="project_id" id="filterProject" class="form-select form-select-sm text-dark fw-medium" style="height: 34px; font-size: 13px; border-color: #dee2e6;">
+                    <option value="">All Projects</option>
+                    <?php if (!empty($payroll_projects)): ?>
+                        <?php foreach ($payroll_projects as $proj): ?>
+                            <option value="<?= htmlspecialchars($proj['id']) ?>"
+                                data-date="<?= htmlspecialchars($proj['date'] ?? '') ?>"
+                                data-iscustom="<?= htmlspecialchars($proj['is_custom_date'] ?? '0') ?>"
+                                data-start="<?= htmlspecialchars($proj['start_date'] ?? '') ?>"
+                                data-end="<?= htmlspecialchars($proj['end_date'] ?? '') ?>"
+                                <?= (isset($selectedProjectId) && $selectedProjectId == $proj['id']) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($proj['name']) ?>
+                                <?= !empty($proj['date']) ? '(' . date('M Y', strtotime($proj['date'])) . ')' : '' ?>
                             </option>
                         <?php endforeach; ?>
-                    </select>
-                </div>
+                    <?php endif; ?>
+                </select>
             </div>
-        </div>
 
-        <!-- Status Select -->
-        <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-12 animate__animated animate__fadeIn">
-            <div class="card__wrapper h-100">
-                <div class="from__input-box">
-                    <select name="status" class="form-control">
-                        <option value="">Status Select</option>
-                        <option value="paid" <?= (isset($selectedStatus) && $selectedStatus == 'paid') ? 'selected' : '' ?>>Paid</option>
-                        <option value="unpaid" <?= (isset($selectedStatus) && $selectedStatus == 'unpaid') ? 'selected' : '' ?>>Unpaid</option>
-                        <option value="draft" <?= (isset($selectedStatus) && $selectedStatus == 'draft') ? 'selected' : '' ?>>Draft / Certificate</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        <!-- Payroll Project Select -->
-        <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-12 animate__animated animate__fadeIn">
-            <div class="card__wrapper h-100">
-                <div class="from__input-box">
-                    <select name="project_id" id="filterProject" class="form-control">
-                        <option value="">All Projects</option>
-                        <?php if (!empty($payroll_projects)): ?>
-                            <?php foreach ($payroll_projects as $proj): ?>
-                                <option value="<?= htmlspecialchars($proj['id']) ?>"
-                                    data-date="<?= htmlspecialchars($proj['date'] ?? '') ?>"
-                                    data-iscustom="<?= htmlspecialchars($proj['is_custom_date'] ?? '0') ?>"
-                                    data-start="<?= htmlspecialchars($proj['start_date'] ?? '') ?>"
-                                    data-end="<?= htmlspecialchars($proj['end_date'] ?? '') ?>"
-                                    <?= (isset($selectedProjectId) && $selectedProjectId == $proj['id']) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($proj['name']) ?>
-                                    <?= !empty($proj['date']) ? '(' . date('M Y', strtotime($proj['date'])) . ')' : '' ?>
-                                </option>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        <!-- Buttons -->
-        <div class="col-xxl-12 col-xl-12 col-lg-12 col-md-12 col-12 animate__animated animate__fadeIn mt-3">
-            <div class="card__wrapper ">
-                <div class="d-flex flex-column flex-sm-row gap-2">
-                    <button type="submit" class="btn btn-secondary w-100 px-0">
-                        Search
+            <!-- Action Buttons (Same Line with Proper Spacing) -->
+            <div class="col-xl-4 col-lg-4 col-md-12">
+                <div class="d-flex align-items-center justify-content-xl-end flex-wrap" style="gap: 8px;">
+                    <button type="submit" class="btn btn-success btn-sm px-3 fw-semibold d-inline-flex align-items-center justify-content-center" style="height: 34px; font-size: 12.5px; gap: 5px;">
+                        <i class="fa-solid fa-magnifying-glass"></i><span>Search</span>
                     </button>
-                    <a href="<?= $GLOBALS['base_url'] ?>/payslip-lists" class="btn btn-success w-100 px-0">
-                        Reset
+                    <a href="<?= $GLOBALS['base_url'] ?>/payslip-lists" class="btn btn-light btn-sm px-3 text-secondary fw-semibold d-inline-flex align-items-center justify-content-center" style="height: 34px; font-size: 12.5px; border: 1px solid #dee2e6; gap: 5px;" title="Reset Filters">
+                        <i class="fa-solid fa-rotate-left"></i><span>Reset</span>
                     </a>
-                    <a href="<?= $GLOBALS['base_url'] ?>/import-payslips" class="btn btn-info w-100 px-0">
-                        Import
+                    <a href="<?= $GLOBALS['base_url'] ?>/import-payslips" class="btn btn-outline-info btn-sm px-3 fw-semibold d-inline-flex align-items-center justify-content-center" style="height: 34px; font-size: 12.5px; gap: 5px;">
+                        <i class="fa-solid fa-file-import"></i><span>Import</span>
                     </a>
-                    <a href="<?= $GLOBALS['base_url'] ?>/create-payslip?year=<?= $selectedYear ?>&month=<?= $selectedMonth ?>" class="btn btn-primary w-100 px-0">
-                        Create
+                    <a href="<?= $GLOBALS['base_url'] ?>/create-payslip?year=<?= $selectedYear ?>&month=<?= $selectedMonth ?>" class="btn btn-primary btn-sm px-3 fw-semibold d-inline-flex align-items-center justify-content-center" style="height: 34px; font-size: 12.5px; gap: 5px;">
+                        <i class="fa-solid fa-plus"></i><span>Create</span>
                     </a>
                 </div>
             </div>
         </div>
-
-
     </div>
-
-
 </form>
 
-
-
-<div class="row gy-4 mb-4 animate__animated animate__fadeIn">
+<!-- Compact Single-Row Summary Cards (6 Cards with Soft Minimal Borders) -->
+<div class="row g-2 mb-3">
     <!-- Card 1: Total ERP Employees -->
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-6 col-12">
-        <a href="<?= $GLOBALS['base_url'] ?>/payslip-lists?year=<?= $selectedYear ?>&month=<?= $selectedMonth ?>&status=<?= !empty($selectedProjectId) ? '&project_id=' . $selectedProjectId : '' ?>" class="text-decoration-none card-hover-effect">
-            <div class="card__wrapper h-100 border-start border-4 border-secondary shadow-sm">
-                <div class="d-flex align-items-center gap-sm p-2">
-                    <div class="card__icon" style="background: rgba(108, 117, 125, 0.1); color: #6c757d; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                        <span><i class="fa-solid fa-server fs-4"></i></span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-5 text-secondary fw-semibold" style="font-size: 0.85rem;">Total ERP Employees</h6>
-                        <div class="d-flex flex-column align-items-start">
-                            <h3 class="card__title mb-0 fw-bold" style="font-size: 1.35rem; color: #2c3e50;"><?= $totalEmployees ?> <span style="font-size: 0.9rem; font-weight: normal;" class="text-muted">Staff</span></h3>
-                            <span class="fs-12 text-muted mt-1"><i class="fa-solid fa-database me-1"></i>ERP Database</span>
-                        </div>
-                    </div>
+    <div class="col-xxl-2 col-xl-2 col-lg-4 col-md-4 col-sm-6">
+        <a href="<?= $GLOBALS['base_url'] ?>/payslip-lists?year=<?= $selectedYear ?>&month=<?= $selectedMonth ?>&status=<?= !empty($selectedProjectId) ? '&project_id=' . $selectedProjectId : '' ?>" class="text-decoration-none d-block h-100">
+            <div class="bg-white rounded-3 h-100 d-flex align-items-center" style="padding: 10px 12px; gap: 10px; border: 1px solid #eaeef2; border-left: 3px solid #64748b; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-2" style="width: 34px; height: 34px; background: #f1f5f9; color: #475569;">
+                    <i class="fa-solid fa-server" style="font-size: 13px;"></i>
+                </div>
+                <div class="text-truncate">
+                    <div class="text-muted fw-semibold text-truncate" style="font-size: 11px; line-height: 1.2;">ERP Employees</div>
+                    <div class="fw-bold text-dark" style="font-size: 15px; line-height: 1.35;"><?= $totalEmployees ?> <small class="text-muted fw-normal" style="font-size: 11px;">Staff</small></div>
+                    <div class="text-muted text-truncate" style="font-size: 10.5px;">ERP Database</div>
                 </div>
             </div>
         </a>
     </div>
 
     <!-- Card 2: Total Tipsoi Employees -->
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-6 col-12">
-        <div class="card__wrapper h-100 border-start border-4 border-info shadow-sm">
-            <div class="d-flex align-items-center gap-sm p-2">
-                <div class="card__icon" style="background: rgba(23, 162, 184, 0.1); color: #17a2b8; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                    <span><i class="fa-solid fa-users-viewfinder fs-4"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-5 text-info fw-semibold" style="font-size: 0.85rem;">Total Tipsoi Employees</h6>
-                    <div class="d-flex flex-column align-items-start">
-                        <h3 class="card__title mb-0 fw-bold" style="font-size: 1.35rem; color: #2c3e50;"><span id="tipsoiEmployeesCount">0</span> <span style="font-size: 0.9rem; font-weight: normal;" class="text-muted">Staff</span></h3>
-                        <span class="fs-12 text-muted mt-1"><i class="fa-solid fa-network-wired me-1"></i>Active in Tipsoi</span>
-                    </div>
-                </div>
+    <div class="col-xxl-2 col-xl-2 col-lg-4 col-md-4 col-sm-6">
+        <div class="bg-white rounded-3 h-100 d-flex align-items-center" style="padding: 10px 12px; gap: 10px; border: 1px solid #eaeef2; border-left: 3px solid #0ea5e9; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+            <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-2" style="width: 34px; height: 34px; background: #e0f2fe; color: #0284c7;">
+                <i class="fa-solid fa-users-viewfinder" style="font-size: 13px;"></i>
+            </div>
+            <div class="text-truncate">
+                <div class="text-muted fw-semibold text-truncate" style="font-size: 11px; line-height: 1.2;">Tipsoi Employees</div>
+                <div class="fw-bold text-dark" style="font-size: 15px; line-height: 1.35;"><span id="tipsoiEmployeesCount">0</span> <small class="text-muted fw-normal" style="font-size: 11px;">Staff</small></div>
+                <div class="text-muted text-truncate" style="font-size: 10.5px;">Active in Tipsoi</div>
             </div>
         </div>
     </div>
 
     <!-- Card 3: Not in ERP (Tipsoi) -->
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-6 col-12">
-        <a href="javascript:void(0);" id="btnViewUnregistered" class="text-decoration-none card-hover-effect">
-            <div class="card__wrapper h-100 border-start border-4 border-danger shadow-sm">
-                <div class="d-flex align-items-center gap-sm p-2">
-                    <div class="card__icon" style="background: rgba(220, 53, 69, 0.1); color: #dc3545; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                        <span><i class="fa-solid fa-user-slash fs-4 animate__animated animate__pulse animate__infinite"></i></span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-5 text-danger fw-semibold" style="font-size: 0.85rem;">Not in ERP (Tipsoi)</h6>
-                        <div class="d-flex flex-column align-items-start">
-                            <h3 class="card__title mb-0 fw-bold" style="font-size: 1.35rem; color: #2c3e50;"><span id="unregisteredCount">0</span> <span style="font-size: 0.9rem; font-weight: normal;" class="text-muted">Employees</span></h3>
-                            <span class="fs-12 text-danger mt-1 fw-bold"><i class="fa-regular fa-eye me-1"></i>Click to view list</span>
-                        </div>
-                    </div>
+    <div class="col-xxl-2 col-xl-2 col-lg-4 col-md-4 col-sm-6">
+        <a href="javascript:void(0);" id="btnViewUnregistered" class="text-decoration-none d-block h-100">
+            <div class="bg-white rounded-3 h-100 d-flex align-items-center" style="padding: 10px 12px; gap: 10px; border: 1px solid #eaeef2; border-left: 3px solid #ef4444; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-2" style="width: 34px; height: 34px; background: #fee2e2; color: #dc2626;">
+                    <i class="fa-solid fa-user-slash" style="font-size: 13px;"></i>
+                </div>
+                <div class="text-truncate">
+                    <div class="text-muted fw-semibold text-truncate" style="font-size: 11px; line-height: 1.2;">Not in ERP (Tipsoi)</div>
+                    <div class="fw-bold text-dark" style="font-size: 15px; line-height: 1.35;"><span id="unregisteredCount">0</span> <small class="text-muted fw-normal" style="font-size: 11px;">Staff</small></div>
+                    <div class="text-danger fw-semibold text-truncate" style="font-size: 10.5px;"><i class="fa-regular fa-eye me-1"></i>View list</div>
                 </div>
             </div>
         </a>
     </div>
 
     <!-- Card 4: Total Paid -->
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-6 col-12">
-        <a href="<?= $GLOBALS['base_url'] ?>/payslip-lists?year=<?= $selectedYear ?>&month=<?= $selectedMonth ?>&status=paid<?= !empty($selectedProjectId) ? '&project_id=' . $selectedProjectId : '' ?>" class="text-decoration-none card-hover-effect">
-            <div class="card__wrapper h-100 border-start border-4 border-success shadow-sm">
-                <div class="d-flex align-items-center gap-sm p-2">
-                    <div class="card__icon" style="background: rgba(40, 167, 69, 0.1); color: #28a745; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                        <span><i class="fa-light fa-badge-check fs-4"></i></span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-5 text-success fw-semibold" style="font-size: 0.85rem;">Total Paid</h6>
-                        <div class="d-flex flex-column align-items-start">
-                            <h3 class="card__title mb-0 fw-bold" style="font-size: 1.35rem; color: #2c3e50;"><?= $paidCount ?> <span style="font-size: 0.9rem; font-weight: normal;" class="text-muted">Paid Slips</span></h3>
-                            <span class="fs-12 text-success mt-1 fw-semibold"><i class="fa-solid fa-circle-check me-1"></i><?= number_format($paidSalarySum, 2) ?> TK</span>
-                        </div>
-                    </div>
+    <div class="col-xxl-2 col-xl-2 col-lg-4 col-md-4 col-sm-6">
+        <a href="<?= $GLOBALS['base_url'] ?>/payslip-lists?year=<?= $selectedYear ?>&month=<?= $selectedMonth ?>&status=paid<?= !empty($selectedProjectId) ? '&project_id=' . $selectedProjectId : '' ?>" class="text-decoration-none d-block h-100">
+            <div class="bg-white rounded-3 h-100 d-flex align-items-center" style="padding: 10px 12px; gap: 10px; border: 1px solid #eaeef2; border-left: 3px solid #10b981; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-2" style="width: 34px; height: 34px; background: #dcfce7; color: #16a34a;">
+                    <i class="fa-solid fa-circle-check" style="font-size: 13px;"></i>
+                </div>
+                <div class="text-truncate">
+                    <div class="text-muted fw-semibold text-truncate" style="font-size: 11px; line-height: 1.2;">Total Paid</div>
+                    <div class="fw-bold text-dark" style="font-size: 15px; line-height: 1.35;"><?= $paidCount ?> <small class="text-muted fw-normal" style="font-size: 11px;">Slips</small></div>
+                    <div class="text-success fw-semibold text-truncate" style="font-size: 10.5px;">৳<?= number_format($paidSalarySum, 2) ?></div>
                 </div>
             </div>
         </a>
     </div>
 
     <!-- Card 5: Total Unpaid -->
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-6 col-12">
-        <a href="<?= $GLOBALS['base_url'] ?>/payslip-lists?year=<?= $selectedYear ?>&month=<?= $selectedMonth ?>&status=unpaid<?= !empty($selectedProjectId) ? '&project_id=' . $selectedProjectId : '' ?>" class="text-decoration-none card-hover-effect">
-            <div class="card__wrapper h-100 border-start border-4 border-warning shadow-sm">
-                <div class="d-flex align-items-center gap-sm p-2">
-                    <div class="card__icon" style="background: rgba(255, 193, 7, 0.1); color: #ffc107; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                        <span><i class="fa-sharp fa-regular fa-user fs-4"></i></span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-5 text-warning fw-semibold" style="font-size: 0.85rem;">Total Unpaid</h6>
-                        <div class="d-flex flex-column align-items-start">
-                            <h3 class="card__title mb-0 fw-bold" style="font-size: 1.35rem; color: #2c3e50;"><?= $pendingCount ?> <span style="font-size: 0.9rem; font-weight: normal;" class="text-muted">Pending Slips</span></h3>
-                            <span class="fs-12 text-warning mt-1 fw-semibold"><i class="fa-solid fa-clock me-1"></i><?= number_format($unpaidSalarySum, 2) ?> TK</span>
-                        </div>
-                    </div>
+    <div class="col-xxl-2 col-xl-2 col-lg-4 col-md-4 col-sm-6">
+        <a href="<?= $GLOBALS['base_url'] ?>/payslip-lists?year=<?= $selectedYear ?>&month=<?= $selectedMonth ?>&status=unpaid<?= !empty($selectedProjectId) ? '&project_id=' . $selectedProjectId : '' ?>" class="text-decoration-none d-block h-100">
+            <div class="bg-white rounded-3 h-100 d-flex align-items-center" style="padding: 10px 12px; gap: 10px; border: 1px solid #eaeef2; border-left: 3px solid #f59e0b; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-2" style="width: 34px; height: 34px; background: #fef3c7; color: #d97706;">
+                    <i class="fa-solid fa-clock" style="font-size: 13px;"></i>
+                </div>
+                <div class="text-truncate">
+                    <div class="text-muted fw-semibold text-truncate" style="font-size: 11px; line-height: 1.2;">Total Unpaid</div>
+                    <div class="fw-bold text-dark" style="font-size: 15px; line-height: 1.35;"><?= $pendingCount ?> <small class="text-muted fw-normal" style="font-size: 11px;">Pending</small></div>
+                    <div class="fw-semibold text-truncate" style="font-size: 10.5px; color: #d97706;">৳<?= number_format($unpaidSalarySum, 2) ?></div>
                 </div>
             </div>
         </a>
     </div>
 
     <!-- Card 6: Total Paid Amount -->
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-6 col-12">
-        <a href="<?= $GLOBALS['base_url'] ?>/payslip-lists?year=<?= $selectedYear ?>&month=<?= $selectedMonth ?>&status=paid<?= !empty($selectedProjectId) ? '&project_id=' . $selectedProjectId : '' ?>" class="text-decoration-none card-hover-effect">
-            <div class="card__wrapper h-100 border-start border-4 border-primary shadow-sm">
-                <div class="d-flex align-items-center gap-sm p-2">
-                    <div class="card__icon" style="background: rgba(0, 123, 255, 0.1); color: #007bff; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                        <span><i class="fa-light fa-money-bill-wave fs-4"></i></span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-5 text-primary fw-semibold" style="font-size: 0.85rem;">Total Paid Amount</h6>
-                        <div class="d-flex flex-column align-items-start">
-                            <h3 class="card__title mb-0 fw-bold" style="font-size: 1.35rem; color: #007bff;"><?= number_format($paidSalarySum, 2) ?> TK</h3>
-                            <span class="fs-12 text-muted mt-1"><i class="fa-solid fa-vault me-1"></i>Paid Funds</span>
-                        </div>
-                    </div>
+    <div class="col-xxl-2 col-xl-2 col-lg-4 col-md-4 col-sm-6">
+        <a href="<?= $GLOBALS['base_url'] ?>/payslip-lists?year=<?= $selectedYear ?>&month=<?= $selectedMonth ?>&status=paid<?= !empty($selectedProjectId) ? '&project_id=' . $selectedProjectId : '' ?>" class="text-decoration-none d-block h-100">
+            <div class="bg-white rounded-3 h-100 d-flex align-items-center" style="padding: 10px 12px; gap: 10px; border: 1px solid #eaeef2; border-left: 3px solid #3b82f6; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-2" style="width: 34px; height: 34px; background: #dbeafe; color: #2563eb;">
+                    <i class="fa-solid fa-money-bill-wave" style="font-size: 13px;"></i>
+                </div>
+                <div class="text-truncate">
+                    <div class="text-muted fw-semibold text-truncate" style="font-size: 11px; line-height: 1.2;">Total Paid Amount</div>
+                    <div class="fw-bold text-primary text-truncate" style="font-size: 14.5px; line-height: 1.35;">৳<?= number_format($paidSalarySum, 2) ?></div>
+                    <div class="text-muted text-truncate" style="font-size: 10.5px;">Disbursed Funds</div>
                 </div>
             </div>
         </a>
     </div>
 </div>
 
-    <div class="col-xxl-12 animate__animated animate__fadeIn">
-        <div class="card__wrapper">
-            <div class="d-flex justify-content-between align-items-center mb-15 flex-wrap gap-2">
-                <h5 class="fw-bold m-0 text-dark" style="font-size: 1rem;">Salary Slips</h5>
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="filterLwpOnly">
-                    <label class="form-check-label fw-bold text-secondary" style="font-size: 0.85rem;" for="filterLwpOnly">
-                        <i class="fa-solid fa-filter me-1 text-danger animate__animated animate__pulse animate__infinite"></i> Show LWP Employees Only
-                    </label>
-                </div>
-            </div>
-            <div id="lwpDebugBanner" class="alert alert-warning py-2 px-3 mb-3 d-none fs-12 fw-bold" style="font-family: monospace;"></div>
+    <div class="col-xxl-12">
+        <div class="card__wrapper p-3">
+            <!-- Compact Header + Disbursement Action Bar -->
             <?php
             $currRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
             $secRoleId  = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
@@ -288,40 +217,44 @@ $show_breadcrumb = true;
                 || strpos($roleNameLc, 'admin') !== false
                 || (function_exists('hasPermission') && hasPermission('accounts manage'));
             ?>
-            <!-- Accounts Payroll Disbursement & Bulk Action Bar -->
-            <div class="card p-3 mb-3 border-success bg-light animate__animated animate__fadeIn">
-                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="fa-light fa-building-columns text-success fs-4"></i>
-                        <div>
-                            <h6 class="mb-0 fw-bold text-dark"><?= $canDisbursePayroll ? 'Accounts Payroll Disbursement & Journal Posting' : 'Payroll Bulk Actions & Email Dispatch' ?></h6>
-                            <small class="text-muted"><?= $canDisbursePayroll ? 'Select un-disbursed payslips below, choose payment account & disburse in 1 click.' : 'Select payslips below to send payslip emails or manage unpaid records. (Disbursement is handled by Accounts)' ?></small>
-                        </div>
-                    </div>
-                        <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <?php if ($canDisbursePayroll): ?>
-                            <label class="form-label mb-0 fw-bold fs-13">Paying Bank/Cash:</label>
-                            <select id="disburse_bank_account_id" class="form-select form-select-sm" style="min-width: 220px;">
-                                <option value="0">Petty Cash / Cash Account</option>
-                                <?php foreach ($companyBanks as $bank): ?>
-                                    <option value="<?= $bank['id'] ?>">
-                                        <?= htmlspecialchars($bank['bank_name']) ?> - <?= htmlspecialchars($bank['account_number']) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <button type="button" class="btn btn-success btn-sm px-3 fw-bold" onclick="disburseSelectedPayroll()">
-                                <i class="fa-light fa-money-check-dollar me-1"></i> Disburse Selected & Post Journal
-                            </button>
-                            <?php endif; ?>
-                            <button type="button" class="btn btn-danger btn-sm px-3 fw-bold" onclick="bulkDeleteSelected()">
-                                <i class="fa-light fa-trash-can me-1"></i> Bulk Delete
-                            </button>
-                            <button type="button" class="btn btn-primary btn-sm px-3 fw-bold" onclick="sendBulkPayslipEmail()">
-                                <i class="fa-light fa-envelope me-1"></i> Email Selected
-                            </button>
-                        </div>
+            <div class="d-flex flex-wrap align-items-center justify-content-between pb-3 mb-3 border-bottom" style="gap: 12px;">
+                <div class="d-flex align-items-center flex-wrap" style="gap: 16px;">
+                    <h6 class="fw-bold m-0 text-dark d-inline-flex align-items-center" style="font-size: 14.5px; gap: 7px;">
+                        <i class="fa-solid fa-file-invoice-dollar text-success"></i>
+                        <span>Salary Slips</span>
+                    </h6>
+                    <div class="form-check form-switch m-0 d-inline-flex align-items-center" style="gap: 8px; padding-left: 2.2em;">
+                        <input class="form-check-input m-0" type="checkbox" id="filterLwpOnly" style="cursor: pointer; margin-left: -2.2em !important;">
+                        <label class="form-check-label text-secondary fw-medium" style="font-size: 12.5px; cursor: pointer;" for="filterLwpOnly">
+                            Show LWP Only
+                        </label>
                     </div>
                 </div>
+
+                <div class="d-flex align-items-center flex-wrap" style="gap: 8px;">
+                    <?php if ($canDisbursePayroll): ?>
+                        <span class="text-muted fw-semibold" style="font-size: 12.5px;">Pay From:</span>
+                        <select id="disburse_bank_account_id" class="form-select form-select-sm" style="width: auto; min-width: 195px; height: 32px; font-size: 12.5px; border-color: #dee2e6;">
+                            <option value="0">Petty Cash / Cash Account</option>
+                            <?php foreach ($companyBanks as $bank): ?>
+                                <option value="<?= $bank['id'] ?>">
+                                    <?= htmlspecialchars($bank['bank_name']) ?> - <?= htmlspecialchars($bank['account_number']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <button type="button" class="btn btn-success btn-sm px-3 fw-semibold d-inline-flex align-items-center" style="height: 32px; font-size: 12.5px; gap: 6px;" onclick="disburseSelectedPayroll()">
+                            <i class="fa-solid fa-money-check-dollar"></i><span>Disburse & Post Journal</span>
+                        </button>
+                    <?php endif; ?>
+                    <button type="button" class="btn btn-outline-primary btn-sm px-3 fw-semibold d-inline-flex align-items-center" style="height: 32px; font-size: 12.5px; gap: 6px;" onclick="sendBulkPayslipEmail()">
+                        <i class="fa-regular fa-envelope"></i><span>Email Selected</span>
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-sm px-3 fw-semibold d-inline-flex align-items-center" style="height: 32px; font-size: 12.5px; gap: 6px;" onclick="bulkDeleteSelected()">
+                        <i class="fa-regular fa-trash-can"></i><span>Bulk Delete</span>
+                    </button>
+                </div>
+            </div>
+            <div id="lwpDebugBanner" class="d-none"></div>
 
                 <div class="table__wrapper table-responsive">
                     <table class="table hover mb-20" id="payslipListTable">
@@ -909,20 +842,7 @@ $show_breadcrumb = true;
                 const cells = document.querySelectorAll('.table__lwp-days');
                 console.log("table__lwp-days cells found:", cells.length);
 
-                const debugBanner = document.getElementById('lwpDebugBanner');
-                if (debugBanner) {
-                    const cellOfficeIds = Array.from(cells).map(c => c.dataset.empOfficeId || 'NULL');
-                    debugBanner.innerHTML = `
-                        LWP Debug: 
-                        [Month: ${selectedYear}-${selectedMonth}] 
-                        [API Recs: ${response.data ? response.data.length : 0}] 
-                        [LWP Approved: ${flatHistoryRecords ? flatHistoryRecords.filter(r => String(r.leaveCategoryName).toLowerCase().includes('without pay') && r.approvalStatus === 1).length : 0}] 
-                        [LWP Groups: ${Object.keys(empGroups).join(', ') || 'None'}] 
-                        [Table Rows: ${cells.length}] 
-                        [Table Office IDs: ${cellOfficeIds.slice(0, 15).join(', ')}${cellOfficeIds.length > 15 ? '...' : ''}]
-                    `;
-                    debugBanner.classList.remove('d-none');
-                }
+                // Keep debug banner hidden in production UI
 
                 cells.forEach(cell => {
                     const rawId = cell.dataset.empOfficeId || '';
