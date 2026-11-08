@@ -501,7 +501,7 @@ class Con_LaborRequisitionController extends Controller
                     $stmt->bind_param('sdisi', $nextRoleLr, $appAmt, $this->userId, $note, $existing['id']);
                     $stmt->execute();
                 } elseif ($action === 'rejected') {
-                    $stmt = $this->db->prepare("UPDATE approval_requests SET status = 'rejected', approve_role = 'management', approved_by = ?, approved_at = NOW(), approval_note = ?, updated_at = NOW() WHERE id = ?");
+                    $stmt = $this->db->prepare("UPDATE approval_requests SET status = 'rejected', approve_role = 'rejected', approved_by = ?, approved_at = NOW(), approval_note = ?, updated_at = NOW() WHERE id = ?");
                     $stmt->bind_param('isi', $this->userId, $note, $existing['id']);
                     $stmt->execute();
                 } else {
@@ -519,7 +519,7 @@ class Con_LaborRequisitionController extends Controller
                 }
             } else {
                 $status = ($action === 'approved' || $action === 'paid') ? 'approved' : (($action === 'partially_paid') ? 'partially_paid' : (($action === 'rejected') ? 'rejected' : 'pending'));
-                $appRole = ($action === 'paid') ? 'completed' : (($action === 'approved' || $action === 'partially_paid') ? 'accounts' : ($lrStatus === 'payment_requested' ? 'qc' : ($lrStatus === 'pending' ? 'pm' : 'management')));
+                $appRole = ($action === 'paid') ? 'completed' : (($action === 'rejected') ? 'rejected' : (($action === 'approved' || $action === 'partially_paid') ? 'accounts' : ($lrStatus === 'payment_requested' ? 'qc' : ($lrStatus === 'pending' ? 'pm' : 'management'))));
                 $appAmt = ($status === 'approved' || $status === 'partially_paid') ? ($approvedAmount ?: $appAmount) : $appAmount;
                 $appBy  = ($status !== 'pending') ? $this->userId : null;
                 $appAt  = ($status !== 'pending') ? date('Y-m-d H:i:s') : null;

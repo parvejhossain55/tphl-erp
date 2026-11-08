@@ -29,13 +29,14 @@ $dueToPay = max(0, $effectiveApprovedAmount - (float)($req['paid_amount'] ?? 0))
 
 $statusColors = [
     'pending_dept' => 'bg-warning text-dark',
+    'pending_qc'   => 'bg-warning text-dark',
     'pending'      => 'bg-info text-white',
     'approved'     => 'bg-primary text-white',
     'paid'         => 'bg-success text-white',
     'rejected'     => 'bg-danger text-white'
 ];
 $statusClass = $statusColors[$req['status']] ?? 'bg-secondary text-white';
-$statusLabel = ($req['status'] === 'pending_dept') ? 'Pending Dept Head' : (($req['status'] === 'pending') ? 'Pending Management' : ucwords(str_replace('_', ' ', $req['status'])));
+$statusLabel = ($req['status'] === 'pending_dept') ? 'Pending Dept Head' : (($req['status'] === 'pending_qc') ? 'Pending QC Head' : (($req['status'] === 'pending') ? 'Pending Management' : ucwords(str_replace('_', ' ', $req['status']))));
 
 // Management / Operation Head approval breakdown (who approved how much)
 $mgmtApprovals = (isset($mgmtApprovals) && is_array($mgmtApprovals)) ? $mgmtApprovals : [];
@@ -217,6 +218,27 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
         <div class="alert alert-danger alert-dismissible fade show mb-4 border-0 shadow-sm" role="alert">
             <i class="fa-solid fa-triangle-exclamation me-2"></i> <?php echo $_SESSION['error']; unset($_SESSION['error']); ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <?php endif; ?>
+
+    <?php if ($req['status'] === 'rejected'): ?>
+        <div class="alert alert-danger d-flex align-items-center mb-4 border border-danger shadow-sm py-3 px-3 rounded-3" role="alert">
+            <div class="avatar avatar-md bg-danger text-white rounded-circle me-3 flex-shrink-0 fs-18">
+                <i class="fa-solid fa-ban"></i>
+            </div>
+            <div class="flex-grow-1">
+                <h5 class="fw-bold mb-1 text-danger">Requisition Rejected</h5>
+                <div class="fs-13 text-dark">
+                    This fund requisition has been <strong>rejected</strong>. No payment or further action can be processed.
+                    <?php if (!empty($req['approval_note'])): ?>
+                        <div class="mt-1 small text-dark"><strong>Reason:</strong> <?php echo htmlspecialchars($req['approval_note']); ?></div>
+                    <?php elseif (!empty($req['qc_approval_note'])): ?>
+                        <div class="mt-1 small text-dark"><strong>QC Reason:</strong> <?php echo htmlspecialchars($req['qc_approval_note']); ?></div>
+                    <?php elseif (!empty($req['dept_head_approval_note'])): ?>
+                        <div class="mt-1 small text-dark"><strong>Dept Head Reason:</strong> <?php echo htmlspecialchars($req['dept_head_approval_note']); ?></div>
+                    <?php endif; ?>
+                </div>
+            </div>
         </div>
     <?php endif; ?>
 
@@ -491,6 +513,13 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
                                     <div class="d-flex align-items-center gap-2">
                                         <h6 class="fw-bold fs-13 mb-0 text-dark">Department Head Approved</h6>
                                         <span class="badge bg-success-transparent text-success fs-10">Approved</span>
+                                        <?php 
+                                        $canDeptHeadReject = ($sessionUserId == ($req['requester_reporting_boss_id'] ?? 0) || (!empty($req['department_id']) && in_array((int)$req['department_id'], $deptHeadDeptIds ?? [], true)) || $sessionUserId == ($req['dept_head_approved_by'] ?? 0) || in_array($sessionRoleId, [1, 3, 20, 32, 33]));
+                                        if (!in_array($req['status'], ['paid', 'partially_paid', 'rejected']) && $canDeptHeadReject): ?>
+                                            <button class="btn btn-xs btn-outline-danger py-0 px-2 shadow-sm ms-1" data-bs-toggle="modal" data-bs-target="#deptRejectModal">
+                                                <i class="fa-solid fa-xmark me-1"></i> Reject
+                                            </button>
+                                        <?php endif; ?>
                                     </div>
                                     <p class="fs-12 text-muted mb-0 mt-1">
                                         Approved by <strong><?php echo htmlspecialchars($req['dept_head_approved_by_name'] ?? $req['reporting_boss_name'] ?? 'Department Head'); ?></strong>
@@ -547,9 +576,14 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
                                     $canApproveDept = ($sessionUserId == ($req['requester_reporting_boss_id'] ?? 0) || (!empty($req['department_id']) && in_array((int)$req['department_id'], $deptHeadDeptIds ?? [], true)) || in_array($sessionRoleId, [1, 3, 33]));
                                     if ($req['status'] === 'pending_dept' && $canApproveDept): 
                                     ?>
-                                        <button class="btn btn-sm btn-warning text-dark mt-2 shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#deptApproveModal">
-                                            <i class="fa-solid fa-stamp me-1"></i> Dept Head Approve / Reject
-                                        </button>
+                                        <div class="d-flex gap-2 mt-2">
+                                            <button class="btn btn-sm btn-success shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#deptApproveModal">
+                                                <i class="fa-solid fa-check me-1"></i> Approve as Dept Head
+                                            </button>
+                                            <button class="btn btn-sm btn-danger shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#deptRejectModal">
+                                                <i class="fa-solid fa-xmark me-1"></i> Reject
+                                            </button>
+                                        </div>
                                     <?php endif; ?>
                                 </div>
                             <?php endif; ?>
@@ -567,9 +601,14 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
                                         Awaiting approval from QC & Internal Audit Head (Role 24).
                                     </p>
                                     <?php if (in_array($sessionRoleId, [13, 24, 25, 1, 3])): ?>
-                                        <button class="btn btn-sm btn-info text-white mt-2 shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#qcApproveModal">
-                                            <i class="fa-solid fa-stamp me-1"></i> QC Head Approve / Reject
-                                        </button>
+                                        <div class="d-flex gap-2 mt-2">
+                                            <button class="btn btn-sm btn-info text-white shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#qcApproveModal">
+                                                <i class="fa-solid fa-check me-1"></i> Approve as QC Head
+                                            </button>
+                                            <button class="btn btn-sm btn-danger shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#qcRejectModal">
+                                                <i class="fa-solid fa-xmark me-1"></i> Reject
+                                            </button>
+                                        </div>
                                     <?php endif; ?>
                                 </div>
                             <?php elseif (!empty($req['qc_approved_by']) || ($req['status'] === 'rejected' && $req['dept_head_status'] === 'approved' && empty($req['approved_by']))): ?>
@@ -582,6 +621,13 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
                                         <div class="d-flex align-items-center gap-2">
                                             <h6 class="fw-bold fs-13 mb-0 text-dark">QC & Internal Audit Head Approved</h6>
                                             <span class="badge bg-success-transparent text-success fs-10">Approved</span>
+                                            <?php 
+                                            $canQcReject = in_array($sessionRoleId, [24, 13, 25, 20, 32, 1, 3]) || $sessionUserId == ($req['qc_approved_by'] ?? 0);
+                                            if (!in_array($req['status'], ['paid', 'partially_paid', 'rejected']) && $canQcReject): ?>
+                                                <button class="btn btn-xs btn-outline-danger py-0 px-2 shadow-sm ms-1" data-bs-toggle="modal" data-bs-target="#qcRejectModal">
+                                                    <i class="fa-solid fa-xmark me-1"></i> Reject
+                                                </button>
+                                            <?php endif; ?>
                                         </div>
                                         <p class="fs-12 text-muted mb-0 mt-1">
                                             Approved by <strong><?php echo htmlspecialchars($req['qc_approved_by_name'] ?? 'QC Head'); ?></strong>
@@ -657,6 +703,11 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
                                     <div class="d-flex align-items-center gap-2">
                                         <h6 class="fw-bold fs-13 mb-0 text-dark">Admin &amp; Operation Head Approved</h6>
                                         <span class="badge bg-success-transparent text-success fs-10">Approved</span>
+                                        <?php if (!in_array($req['status'], ['paid', 'partially_paid', 'rejected']) && (in_array($sessionRoleId, [20, 32, 1, 3]) || $sessionUserId == ($ahInfo['op_head_by'] ?? 0))): ?>
+                                            <button class="btn btn-xs btn-outline-danger py-0 px-2 shadow-sm ms-1" data-bs-toggle="modal" data-bs-target="#opHeadRejectModal">
+                                                <i class="fa-solid fa-xmark me-1"></i> Reject
+                                            </button>
+                                        <?php endif; ?>
                                     </div>
                                     <p class="fs-12 text-muted mb-0 mt-1">
                                         Approved by <strong><?php echo htmlspecialchars($ahInfo['op_head_name'] ?? 'Admin & Operation Head'); ?></strong>
@@ -724,9 +775,14 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
                                     <h6 class="fw-bold fs-13 mb-0 text-dark">Pending Admin &amp; Operation Head Approval</h6>
                                     <p class="fs-12 text-muted mb-0 mt-1">Awaiting approval from Admin &amp; Operation Head (Role 20) &mdash; mandatory before Management sign-off for requests above &#2547;1,00,000.</p>
                                     <?php if ($canOpHeadApprove && $req['status'] === 'pending'): ?>
-                                        <button class="btn btn-sm btn-primary mt-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#approveModal">
-                                            <i class="fa-solid fa-stamp me-1"></i> Approve as Operation Head (Role 20)
-                                        </button>
+                                        <div class="d-flex gap-2 mt-2">
+                                            <button class="btn btn-sm btn-primary shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#approveModal">
+                                                <i class="fa-solid fa-stamp me-1"></i> Approve as Operation Head (Role 20)
+                                            </button>
+                                            <button class="btn btn-sm btn-danger shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#opHeadRejectModal">
+                                                <i class="fa-solid fa-xmark me-1"></i> Reject
+                                            </button>
+                                        </div>
                                     <?php endif; ?>
                                 </div>
                             <?php endif; ?>
@@ -743,6 +799,11 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
                                     <div class="d-flex align-items-center gap-2">
                                         <h6 class="fw-bold fs-13 mb-0 text-dark">Management Approved</h6>
                                         <span class="badge bg-success-transparent text-success fs-10">Approved</span>
+                                        <?php if (!in_array($req['status'], ['paid', 'partially_paid', 'rejected']) && in_array($sessionRoleId, [1, 3])): ?>
+                                            <button class="btn btn-xs btn-outline-danger py-0 px-2 shadow-sm ms-1" data-bs-toggle="modal" data-bs-target="#mgmtRejectModal">
+                                                <i class="fa-solid fa-xmark me-1"></i> Reject
+                                            </button>
+                                        <?php endif; ?>
                                     </div>
                                     <p class="fs-12 text-muted mb-0 mt-1">
                                         Approved by <strong><?php echo htmlspecialchars($req['approved_by_name'] ?? 'Management'); ?></strong>
@@ -883,9 +944,14 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
                                         <?php if ($isOver1Lac && !$isOpHeadApproved && in_array($sessionRoleId, [20, 32])): ?>
                                             <?php /* Op Head action button is shown in the Admin & Operation Head step above */ ?>
                                         <?php else: ?>
-                                            <button class="btn btn-sm btn-primary mt-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#approveModal">
-                                                <i class="fa-solid fa-stamp me-1"></i> <?php echo $isMgmtPartial ? 'Approve Remaining Balance' : 'Management Approve'; ?>
-                                            </button>
+                                            <div class="d-flex gap-2 mt-2">
+                                                <button class="btn btn-sm btn-primary shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#approveModal">
+                                                    <i class="fa-solid fa-stamp me-1"></i> <?php echo $isMgmtPartial ? 'Approve Remaining Balance' : 'Management Approve'; ?>
+                                                </button>
+                                                <button class="btn btn-sm btn-danger shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#mgmtRejectModal">
+                                                    <i class="fa-solid fa-xmark me-1"></i> Reject
+                                                </button>
+                                            </div>
                                         <?php endif; ?>
                                     <?php elseif ($isOver1Lac && !$isOpHeadApproved && in_array($sessionRoleId, [1, 3])): ?>
                                         <div class="alert alert-warning py-2 px-3 extra-small mt-2 mb-0">
@@ -1148,62 +1214,108 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
 
 <?php 
 $canApproveQc = in_array($sessionRoleId, [24, 1, 3]);
-$canShowQcModal = $canApproveQc && ($req['status'] === 'pending_qc' || (!empty($req['qc_approved_by']) && (float)($req['qc_approved_amount'] ?? 0) < (float)$req['amount']));
+$canShowQcModal = $canApproveQc && (!in_array($req['status'], ['paid', 'partially_paid']) && ($req['status'] === 'pending_qc' || !empty($req['qc_approved_by'])));
 if ($canShowQcModal): 
 ?>
 <div class="modal fade" id="qcApproveModal" tabindex="-1">
     <div class="modal-dialog"><form action="<?php echo $base; ?>/fund-requisitions/approve-qc" method="POST">
         <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title">QC & Internal Audit Head Approval</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header bg-info bg-opacity-10"><h5 class="modal-title text-info"><i class="fa-solid fa-check me-1"></i> QC & Internal Audit Head Approval</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
+                <input type="hidden" name="status" value="approved">
                 <div class="mb-3 p-3 bg-light rounded border">
                     <small class="text-muted d-block fs-11 text-uppercase fw-semibold">Requested Amount</small>
                     <div class="fs-15 text-dark fw-bold mt-1">&#2547; <?php echo number_format($req['amount'], 2); ?></div>
-                </div>
-                <div class="mb-3"><label class="form-label fw-semibold">Action</label>
-                    <select name="status" id="qc_action_select" class="form-select" required>
-                        <option value="approved">Approve (Send to Management)</option>
-                        <option value="rejected">Reject</option>
-                    </select>
                 </div>
                 <div class="mb-3" id="qc_amount_div">
                     <label class="form-label fw-semibold">QC Approved Amount (&#2547;) <span class="text-danger">*</span></label>
                     <input type="number" name="qc_approved_amount" id="qc_approved_amount_input" class="form-control" 
                            step="0.01" min="0.01" max="<?php echo $req['amount']; ?>" 
-                           value="<?php echo number_format($req['amount'], 2, '.', ''); ?>" required>
+                           value="<?php echo number_format((float)($req['qc_approved_amount'] ?? $req['amount']), 2, '.', ''); ?>" required>
                     <small class="text-muted">You can adjust the approved amount up to requested &#2547; <?php echo number_format($req['amount'], 2); ?></small>
                 </div>
-                <div class="mb-3"><label class="form-label fw-semibold">Remarks / Observation Note</label>
-                    <textarea name="approval_note" class="form-control" rows="3" placeholder="Enter remarks or audit observation notes..."></textarea>
+                <div class="mb-3"><label class="form-label fw-semibold">Remarks / Observation Note (Optional)</label>
+                    <textarea name="approval_note" class="form-control" rows="3" placeholder="Enter remarks or audit observation notes..."><?php echo htmlspecialchars($req['qc_approval_note'] ?? ''); ?></textarea>
                 </div>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-info text-white btn-sm fw-bold">Submit Decision</button></div>
+            <div class="modal-footer"><button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-info text-white btn-sm fw-bold"><i class="fa-solid fa-check me-1"></i> Confirm QC Approval</button></div>
         </div>
     </form></div>
 </div>
 <?php endif; ?>
 
+<!-- QC Rejection Modal -->
+<div class="modal fade" id="qcRejectModal" tabindex="-1">
+    <div class="modal-dialog"><form action="<?php echo $base; ?>/fund-requisitions/approve-qc" method="POST">
+        <div class="modal-content">
+            <div class="modal-header bg-danger bg-opacity-10">
+                <h5 class="modal-title text-danger"><i class="fa-solid fa-xmark me-1"></i> Reject Requisition (QC &amp; Internal Audit)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
+                <input type="hidden" name="status" value="rejected">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Reason for QC Rejection <span class="text-danger">*</span></label>
+                    <textarea name="approval_note" class="form-control" rows="3" placeholder="Enter reason for rejection or audit observations..." required></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-danger btn-sm fw-bold" onclick="return confirm('Are you sure you want to REJECT this requisition?');"><i class="fa-solid fa-xmark me-1"></i> Confirm QC Rejection</button>
+            </div>
+        </div>
+    </form></div>
+</div>
+
 <?php 
 $canApproveDept = ($sessionUserId == ($req['requester_reporting_boss_id'] ?? 0) || in_array($sessionRoleId, [1, 3]));
-if ($req['status'] === 'pending_dept' && $canApproveDept): 
+if (!in_array($req['status'], ['paid', 'partially_paid']) && $canApproveDept): 
 ?>
 <div class="modal fade" id="deptApproveModal" tabindex="-1">
     <div class="modal-dialog"><form action="<?php echo $base; ?>/fund-requisitions/approve-dept" method="POST">
         <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title">Department Head Approval</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header bg-success bg-opacity-10"><h5 class="modal-title text-success"><i class="fa-solid fa-check me-1"></i> Department Head Approval</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
-                <div class="mb-3"><label class="form-label">Action</label>
-                    <select name="status" class="form-select" required><option value="approved">Approve (Send to Management)</option><option value="rejected">Reject</option></select></div>
-                <div class="mb-3"><label class="form-label">Remarks / Note</label>
+                <input type="hidden" name="status" value="approved">
+                <div class="mb-3 p-3 bg-light rounded border">
+                    <small class="text-muted d-block fs-11 text-uppercase fw-semibold">Requested Amount</small>
+                    <div class="fs-15 text-dark fw-bold mt-1">&#2547; <?php echo number_format($req['amount'], 2); ?></div>
+                </div>
+                <div class="mb-3"><label class="form-label fw-semibold">Remarks / Note (Optional)</label>
                     <textarea name="approval_note" class="form-control" rows="3" placeholder="Enter remarks..."></textarea></div>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-warning btn-sm">Submit Decision</button></div>
+            <div class="modal-footer"><button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-success btn-sm fw-bold"><i class="fa-solid fa-check me-1"></i> Confirm Approval</button></div>
         </div>
     </form></div>
 </div>
 <?php endif; ?>
+
+<!-- Department Head Rejection Modal -->
+<div class="modal fade" id="deptRejectModal" tabindex="-1">
+    <div class="modal-dialog"><form action="<?php echo $base; ?>/fund-requisitions/approve-dept" method="POST">
+        <div class="modal-content">
+            <div class="modal-header bg-danger bg-opacity-10">
+                <h5 class="modal-title text-danger"><i class="fa-solid fa-xmark me-1"></i> Reject Requisition (Department Head)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
+                <input type="hidden" name="status" value="rejected">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Reason for Rejection <span class="text-danger">*</span></label>
+                    <textarea name="approval_note" class="form-control" rows="3" placeholder="Enter reason for rejection..." required></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-danger btn-sm fw-bold" onclick="return confirm('Are you sure you want to REJECT this requisition?');"><i class="fa-solid fa-xmark me-1"></i> Confirm Rejection</button>
+            </div>
+        </div>
+    </form></div>
+</div>
 
 <?php 
 if (in_array($sessionRoleId, [1, 3])) {
@@ -1219,14 +1331,14 @@ if ($canApprove && $dueToApprove > 0 && !in_array($req['status'], ['rejected', '
 <div class="modal fade" id="approveModal" tabindex="-1">
     <div class="modal-dialog"><form action="<?php echo $base; ?>/fund-requisitions/approve" method="POST">
         <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title">Approve / Reject Requisition</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header bg-success bg-opacity-10"><h5 class="modal-title text-success"><i class="fa-solid fa-stamp me-1"></i> Approve Requisition</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
                 
                 <?php if (isset($req['qc_approved_amount']) && (float)$req['qc_approved_amount'] > 0): ?>
                     <div class="alert alert-info py-2 px-3 mb-2 small">
                         <i class="fa-solid fa-shield-check me-1"></i>
-                        <strong>QC & Internal Audit Approved:</strong> &#2547; <?php echo number_format((float)$req['qc_approved_amount'], 2); ?>
+                        <strong>QC &amp; Internal Audit Approved:</strong> &#2547; <?php echo number_format((float)$req['qc_approved_amount'], 2); ?>
                         <?php if ((float)$req['qc_approved_amount'] < (float)$req['amount']): ?>
                             <span class="text-muted">(Reduced from requested &#2547; <?php echo number_format($req['amount'], 2); ?>)</span>
                         <?php endif; ?>
@@ -1239,25 +1351,72 @@ if ($canApprove && $dueToApprove > 0 && !in_array($req['status'], ['rejected', '
                 <div class="mb-2 p-3 bg-light rounded border">
                     <div class="fs-15 text-dark fw-bold mt-1">Due to Approve: &#2547; <?php echo number_format($dueToApprove, 2); ?></div>
                 </div>
-                <div class="mb-3"><label class="form-label">Action</label>
+                <div class="mb-3"><label class="form-label fw-semibold">Action</label>
                     <select name="status" id="approve_action_select" class="form-select" required>
                         <option value="approved">Approve (Full Due Amount - &#2547; <?php echo number_format($dueToApprove, 2); ?>)</option>
                         <option value="partially_approved">Partially Approve</option>
-                        <option value="rejected">Reject</option>
                     </select>
                 </div>
                 <div class="mb-3 d-none" id="partial_amount_div">
-                    <label class="form-label">Approved Amount (&#2547;)</label>
+                    <label class="form-label fw-semibold">Approved Amount (&#2547;)</label>
                     <input type="number" name="approved_amount" class="form-control" step="0.01" max="<?php echo $dueToApprove; ?>" placeholder="0.00">
                 </div>
-                <div class="mb-3"><label class="form-label">Remarks</label>
-                    <textarea name="approval_note" class="form-control" rows="3"></textarea></div>
+                <div class="mb-3"><label class="form-label fw-semibold">Remarks (Optional)</label>
+                    <textarea name="approval_note" class="form-control" rows="3" placeholder="Enter remarks..."></textarea></div>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary btn-sm">Submit</button></div>
+            <div class="modal-footer"><button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-success btn-sm fw-bold"><i class="fa-solid fa-check me-1"></i> Confirm Approval</button></div>
         </div>
     </form></div>
 </div>
 <?php endif; ?>
+
+<!-- Management Rejection Modal -->
+<div class="modal fade" id="mgmtRejectModal" tabindex="-1">
+    <div class="modal-dialog"><form action="<?php echo $base; ?>/fund-requisitions/approve" method="POST">
+        <div class="modal-content">
+            <div class="modal-header bg-danger bg-opacity-10">
+                <h5 class="modal-title text-danger"><i class="fa-solid fa-xmark me-1"></i> Reject Requisition (Management)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
+                <input type="hidden" name="status" value="rejected">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Reason for Rejection <span class="text-danger">*</span></label>
+                    <textarea name="approval_note" class="form-control" rows="3" placeholder="Enter reason for rejection..." required></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-danger btn-sm fw-bold" onclick="return confirm('Are you sure you want to REJECT this requisition?');"><i class="fa-solid fa-xmark me-1"></i> Confirm Rejection</button>
+            </div>
+        </div>
+    </form></div>
+</div>
+
+<!-- Operation Head Rejection Modal -->
+<div class="modal fade" id="opHeadRejectModal" tabindex="-1">
+    <div class="modal-dialog"><form action="<?php echo $base; ?>/fund-requisitions/approve" method="POST">
+        <div class="modal-content">
+            <div class="modal-header bg-danger bg-opacity-10">
+                <h5 class="modal-title text-danger"><i class="fa-solid fa-xmark me-1"></i> Reject Requisition (Operation Head)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
+                <input type="hidden" name="status" value="rejected">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Reason for Rejection <span class="text-danger">*</span></label>
+                    <textarea name="approval_note" class="form-control" rows="3" placeholder="Enter reason for rejection..." required></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-danger btn-sm fw-bold" onclick="return confirm('Are you sure you want to REJECT this requisition?');"><i class="fa-solid fa-xmark me-1"></i> Confirm Rejection</button>
+            </div>
+        </div>
+    </form></div>
+</div>
 
 <?php 
 if (in_array($req['status'], ['approved', 'partially_approved', 'partially_paid']) && $isAccounts && $dueToPay > 0 && !empty($ahInfo['is_accounts_head_approved'])): ?>

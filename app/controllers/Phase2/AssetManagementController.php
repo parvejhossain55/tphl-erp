@@ -498,7 +498,7 @@ class AssetManagementController extends Controller
 
                 $canApprove = false;
                 $step = '';
-                if (!$isCreator && !$isChiefOfficer) {
+                if (!$isCreator && !$isChiefOfficer && ($autoOpenRequest['overall_status'] ?? '') !== 'rejected') {
                     $dhStatus = $autoOpenRequest['dept_head_status'] ?? 'not_required';
                     $itStatus = $autoOpenRequest['it_head_status'] ?? 'not_required';
                     if (($isReporterBoss || $isSuperAdmin) && $dhStatus === 'pending') {
@@ -631,6 +631,19 @@ class AssetManagementController extends Controller
 
             if ($req && (int)$req['requested_by'] === $userId) {
                 setError("You cannot approve or reject your own purchase request.");
+                header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                exit;
+            }
+
+            if ($req && (($req['overall_status'] ?? '') === 'rejected' || in_array('rejected', [
+                $req['dept_head_status'] ?? '',
+                $req['it_head_status'] ?? '',
+                $req['operations_status'] ?? '',
+                $req['purchase_head_status'] ?? '',
+                $req['qc_audit_status'] ?? '',
+                $req['mgmt_status'] ?? ''
+            ], true))) {
+                setError("This request has already been rejected and cannot be approved or processed further.");
                 header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
                 exit;
             }
@@ -857,6 +870,24 @@ class AssetManagementController extends Controller
                 // ======================================================
 
                 // Sync with central approval_requests
+                if ($status === 'rejected') {
+                    $escNote = $this->db->real_escape_string($note);
+                    $this->db->query("UPDATE approval_requests SET status = 'rejected', approve_role = 'rejected', approved_by = {$userId}, approved_at = NOW(), approval_note = '{$escNote}', op_head_status = IF('{$step}' IN ('operations', 'mgmt'), 'rejected', op_head_status), op_head_by = IF('{$step}' IN ('operations', 'mgmt'), {$userId}, op_head_by), op_head_at = IF('{$step}' IN ('operations', 'mgmt'), NOW(), op_head_at), op_head_note = IF('{$step}' IN ('operations', 'mgmt'), '{$escNote}', op_head_note) WHERE source_table IN ('project_extra_assets', 'purchase_requests') AND source_id = {$id}");
+
+                    try {
+                        $updatedRequest = $this->model->findExtraPurchase($id);
+                        if ($updatedRequest && !empty($updatedRequest['requested_by'])) {
+                            $this->mailService->sendOfficeProcurementToUser(
+                                $updatedRequest,
+                                (int)$updatedRequest['requested_by'],
+                                'Rejected'
+                            );
+                        }
+                    } catch (\Throwable $e) {
+                        error_log('Procurement rejection email failed: ' . $e->getMessage());
+                    }
+                }
+
                 try {
                     require_once dirname(dirname(__DIR__)) . '/models/ApprovalRequest.php';
                     $appModel = new \ApprovalRequest($this->db);

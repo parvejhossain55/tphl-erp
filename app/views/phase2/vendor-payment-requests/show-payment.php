@@ -90,7 +90,7 @@ if ($isOver1Lac) {
 } else {
     $canApproveReq = ($canApprove ?? false) && ($isSubmitted || $isQCApproved || ($isApproved && $unapprovedAmt > 0.01));
 }
-$canReject = ($canApproveReq && $isSubmitted) || ($canApproveReq && $isQCApproved);
+$canReject = ($canApproveReq || ($canApprove ?? false)) && in_array($status, ['Submitted', 'QC Approved', 'Approved']) && ($totalPaid <= 0);
 
 // Payment type badge
 $typeBadge = match ($request['payment_type'] ?? 'Final') {
@@ -324,7 +324,14 @@ if (!empty($ahInfo['has_request'])) {
                     
                     <div class="mt-2">
                         <?php if ($qcApproved): ?>
-                            <span class="badge bg-success">QC Approved</span>
+                            <div class="d-flex align-items-center justify-content-center gap-2">
+                                <span class="badge bg-success">QC Approved</span>
+                                <?php if (($canApproveQC || in_array($userRole, [1, 3, 20, 32])) && $totalPaid <= 0 && !in_array($status, ['Rejected', 'Fully_Paid', 'Paid'])): ?>
+                                    <button type="button" class="btn btn-xs btn-outline-danger py-0 px-2 shadow-sm" onclick="triggerQcRejectModal()">
+                                        <i class="bi bi-x-circle me-1"></i> Reject
+                                    </button>
+                                <?php endif; ?>
+                            </div>
                             <div class="small mt-2 text-muted">
                                 <strong>By:</strong> <?= htmlspecialchars($request['qc_approved_by_name'] ?? 'QC Department') ?><br>
                                 <?php if (!empty($request['qc_approved_at'])): ?>
@@ -370,7 +377,14 @@ if (!empty($ahInfo['has_request'])) {
                     
                     <div class="mt-2">
                         <?php if ($mgmtApproved): ?>
-                            <span class="badge bg-success">Approved</span>
+                            <div class="d-flex align-items-center justify-content-center gap-2">
+                                <span class="badge bg-success">Approved</span>
+                                <?php if ((($canApprove ?? false) || in_array($userRole, [1, 3, 20, 32])) && $totalPaid <= 0 && !in_array($status, ['Rejected', 'Fully_Paid', 'Paid'])): ?>
+                                    <button type="button" class="btn btn-xs btn-outline-danger py-0 px-2 shadow-sm" onclick="triggerMgmtRejectModal()">
+                                        <i class="bi bi-x-circle me-1"></i> Reject
+                                    </button>
+                                <?php endif; ?>
+                            </div>
                             <div class="small mt-2 text-muted">
                                 <strong>By:</strong> <?= htmlspecialchars($request['approved_by_name'] ?? 'Management') ?><br>
                                 <?php if (!empty($approval_request['approved_at'])): ?>
@@ -1544,15 +1558,17 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                             <label class="form-label fw-semibold">QC & Audit Observation Note <span class="text-muted">(Optional)</span></label>
                             <textarea name="qc_note" class="form-control" rows="2" placeholder="Write observation, material verification notes or comments..."></textarea>
                         </div>
-                        <button type="button" id="btnQcApprove" class="btn btn-info text-white w-100 fw-bold mb-2">
-                            <i class="bi bi-shield-check me-1"></i> Approve & Verify as QC
-                        </button>
+                        <div class="d-flex gap-2">
+                            <button type="button" id="btnQcApprove" class="btn btn-info text-white flex-grow-1 fw-bold">
+                                <i class="bi bi-shield-check me-1"></i> Approve & Verify as QC
+                            </button>
+                            <button type="button" id="btnQcReject" class="btn btn-danger flex-grow-1 fw-bold">
+                                <i class="bi bi-x-circle me-1"></i> Reject
+                            </button>
+                        </div>
                     </form>
-                    <form action="<?= $base_url ?>/con-vendor-payment-qc-reject/<?= $request['id'] ?>" method="POST" id="qcRejectVprForm">
+                    <form action="<?= $base_url ?>/con-vendor-payment-qc-reject/<?= $request['id'] ?>" method="POST" id="qcRejectVprForm" style="display:none;">
                         <input type="hidden" name="qc_note" id="qcRejectNoteHidden" value="">
-                        <button type="button" id="btnQcReject" class="btn btn-outline-danger w-100 btn-sm">
-                            <i class="bi bi-x-circle me-1"></i> Reject Request
-                        </button>
                     </form>
                 </div>
             </div>
@@ -1636,17 +1652,22 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                             <textarea name="approval_note" class="form-control" rows="2"
                                 placeholder="Leave a note..."></textarea>
                         </div>
-                        <button type="button" id="approveVprBtn" class="btn <?= $isOpHeadAction ? 'btn-primary' : 'btn-success' ?> w-100 fw-bold mb-2">
-                            <i class="bi bi-check-circle me-1"></i>
-                            <?= $isOpHeadAction ? 'Approve as Operation Head' : (($isApproved) ? 'Approve Additional' : 'Approve Payment') ?>
-                        </button>
+                        <div class="d-flex gap-2">
+                            <button type="button" id="approveVprBtn" class="btn <?= $isOpHeadAction ? 'btn-primary' : 'btn-success' ?> flex-grow-1 fw-bold">
+                                <i class="bi bi-check-circle me-1"></i>
+                                <?= $isOpHeadAction ? 'Approve as Operation Head' : (($isApproved) ? 'Approve Additional' : 'Approve Payment') ?>
+                            </button>
+                            <?php if ($canReject): ?>
+                                <button type="button" id="rejectVprBtn" class="btn btn-danger flex-grow-1 fw-bold">
+                                    <i class="bi bi-x-circle me-1"></i> Reject
+                                </button>
+                            <?php endif; ?>
+                        </div>
                     </form>
                     <?php if ($canReject): ?>
                         <form action="<?= $base_url ?>/con-vendor-payment-reject/<?= $request['id'] ?>" method="POST"
-                            id="rejectVprForm">
-                            <button type="button" id="rejectVprBtn" class="btn btn-outline-danger w-100 btn-sm">
-                                <i class="bi bi-x-circle me-1"></i> Reject
-                            </button>
+                            id="rejectVprForm" style="display:none;">
+                            <input type="hidden" name="approval_note" id="rejectNoteHidden" value="">
                         </form>
                     <?php endif; ?>
                 </div>
@@ -1658,6 +1679,14 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
             <div class="alert alert-success text-center mb-0">
                 <i class="bi bi-check-circle-fill fs-4 d-block mb-2"></i>
                 Approved — awaiting payment processing.
+                <?php if ($canReject): ?>
+                    <div class="mt-2">
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="triggerMgmtRejectModal()">
+                            <i class="bi bi-x-circle me-1"></i> Reject Requisition
+                        </button>
+                    </div>
+                <?php endif; ?>
+            </div>
             </div>
         <?php elseif ($isFullyPaid): ?>
             <div class="alert alert-secondary text-center mb-0">
@@ -2085,4 +2114,81 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
             }
         }
     });
+
+    window.triggerQcRejectModal = function () {
+        Swal.fire({
+            title: 'Reject Payment Request (QC)?',
+            text: 'Please enter rejection reason / observation:',
+            input: 'textarea',
+            inputPlaceholder: 'Reason for QC rejection...',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, Reject',
+            cancelButtonText: 'Cancel',
+            inputValidator: function (val) {
+                if (!val || !val.trim()) {
+                    return 'Rejection reason is required!';
+                }
+            }
+        }).then(function (result) {
+            if (result.isConfirmed) {
+                var f = document.getElementById('qcRejectVprForm');
+                if (!f) {
+                    f = document.createElement('form');
+                    f.method = 'POST';
+                    f.action = '<?= $base_url ?>/con-vendor-payment-qc-reject/<?= $request['id'] ?>';
+                    var inp = document.createElement('input');
+                    inp.type = 'hidden';
+                    inp.name = 'qc_note';
+                    inp.value = result.value;
+                    f.appendChild(inp);
+                    document.body.appendChild(f);
+                } else {
+                    document.getElementById('qcRejectNoteHidden').value = result.value;
+                }
+                f.submit();
+            }
+        });
+    };
+
+    window.triggerMgmtRejectModal = function () {
+        Swal.fire({
+            title: 'Reject Payment Request (Management)?',
+            text: 'Please enter remarks for rejection:',
+            input: 'textarea',
+            inputPlaceholder: 'Reason for rejection...',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, Reject',
+            cancelButtonText: 'Cancel',
+            inputValidator: function (val) {
+                if (!val || !val.trim()) {
+                    return 'Rejection remarks are required!';
+                }
+            }
+        }).then(function (result) {
+            if (result.isConfirmed) {
+                var f = document.getElementById('rejectVprForm');
+                if (!f) {
+                    f = document.createElement('form');
+                    f.method = 'POST';
+                    f.action = '<?= $base_url ?>/con-vendor-payment-reject/<?= $request['id'] ?>';
+                    var inp = document.createElement('input');
+                    inp.type = 'hidden';
+                    inp.name = 'approval_note';
+                    inp.value = result.value;
+                    f.appendChild(inp);
+                    document.body.appendChild(f);
+                } else {
+                    var hiddenNote = document.getElementById('rejectNoteHidden');
+                    if (hiddenNote) hiddenNote.value = result.value;
+                }
+                f.submit();
+            }
+        });
+    };
 </script>

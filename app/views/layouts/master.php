@@ -4,29 +4,35 @@
 // Controller থেকে পাঠানো variable
 $current_route = !empty($current_route) ? $current_route : ($data['current_route'] ?? ($current_page ?? ''));
 
-function isActive($pages, $current_route)
-{
-    if (is_array($pages)) {
-        foreach ($pages as $page) {
-            if ($current_route === $page || ($page !== '' && strpos($current_route, $page) === 0)) {
-                return 'active';
+if (!function_exists('isActive')) {
+    function isActive($pages, $current_route)
+    {
+        if (is_array($pages)) {
+            foreach ($pages as $page) {
+                if ($current_route === $page || ($page !== '' && strpos($current_route, $page) === 0)) {
+                    return 'active';
+                }
             }
+            return '';
         }
-        return '';
+        return ($current_route === $pages || ($pages !== '' && strpos($current_route, $pages) === 0)) ? 'active' : '';
     }
-    return ($current_route === $pages || ($pages !== '' && strpos($current_route, $pages) === 0)) ? 'active' : '';
 }
 
-function isMenuOpen($pages, $current_route)
-{
-    if (is_array($pages)) {
-        return in_array($current_route, $pages, true);
+if (!function_exists('isMenuOpen')) {
+    function isMenuOpen($pages, $current_route)
+    {
+        if (is_array($pages)) {
+            return in_array($current_route, $pages, true);
+        }
+        return ($current_route === $pages);
     }
-    return ($current_route === $pages);
 }
-function isMenuOpenAlways($pages, $current_route) {
-    // submenu always display block
-    return true;
+if (!function_exists('isMenuOpenAlways')) {
+    function isMenuOpenAlways($pages, $current_route) {
+        // submenu always display block
+        return true;
+    }
 }
 
 

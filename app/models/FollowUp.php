@@ -83,13 +83,18 @@ class FollowUp extends Model
             $follow_up_type = 'Email';
         }
 
+        $interested_location_name = !empty($data['interested_location_name']) ? trim($data['interested_location_name']) : null;
+        if (($data['lead_status'] ?? '') !== 'Interested in Other Location') {
+            $interested_location_name = null;
+        }
+
         // ==============================
         // PREPARE QUERY
         // ==============================
         $stmt = $this->db->prepare("
         INSERT INTO lead_follow_ups 
-        (lead_id, project_id, flat_id, follow_up_date, follow_up_time, follow_up_type, status, discussion_note, next_follow_up_date, next_action, created_by, assigned_with, follow_up_agent_id, lead_status, next_follow_up_plan_notes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (lead_id, project_id, flat_id, follow_up_date, follow_up_time, follow_up_type, status, discussion_note, next_follow_up_date, next_action, created_by, assigned_with, follow_up_agent_id, lead_status, interested_location_name, next_follow_up_plan_notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
         if (!$stmt) {
@@ -98,7 +103,7 @@ class FollowUp extends Model
         }
 
         $stmt->bind_param(
-            "iiisssssssiiiss",
+            "iiisssssssiiisss",
             $data['lead_id'],
             $data['project_id'],
             $flat_id,
@@ -113,6 +118,7 @@ class FollowUp extends Model
             $data['assigned_with'],
             $data['follow_up_agent_id'],
             $data['lead_status'],
+            $interested_location_name,
             $data['next_follow_up_plan_notes']
         );
 
@@ -120,6 +126,8 @@ class FollowUp extends Model
             setError($stmt->error);
             return false;
         }
+
+        $insertedId = $stmt->insert_id;
 
         // ==============================
         // LEAD STATUS AUTO UPDATE
@@ -151,7 +159,7 @@ class FollowUp extends Model
             }
         }
 
-        return true;
+        return $insertedId ?: true;
     }
 
 
@@ -200,6 +208,11 @@ class FollowUp extends Model
         $projectId = !empty($data['project_id']) ? (int)$data['project_id'] : null;
         $flatId = !empty($data['flat_id']) ? (int)$data['flat_id'] : null;
 
+        $interested_location_name = !empty($data['interested_location_name']) ? trim($data['interested_location_name']) : null;
+        if (($data['lead_status'] ?? '') !== 'Interested in Other Location') {
+            $interested_location_name = null;
+        }
+
         $stmt = $this->db->prepare("
         UPDATE lead_follow_ups SET
             lead_id = ?,
@@ -214,6 +227,7 @@ class FollowUp extends Model
             next_action = ?,
             follow_up_agent_id = ?,
             lead_status = ?,
+            interested_location_name = ?,
             next_follow_up_plan_notes = ?
         WHERE id = ?
     ");
@@ -227,7 +241,7 @@ class FollowUp extends Model
         $follow_up_time = !empty($data['follow_up_time']) ? $data['follow_up_time'] : null;
 
         $stmt->bind_param(
-            "iiisssssssissi",
+            "iiisssssssisssi",
             $data['lead_id'],
             $projectId,
             $flatId,   // NULL or valid flats.id
@@ -240,6 +254,7 @@ class FollowUp extends Model
             $data['next_action'],
             $data['follow_up_agent_id'],
             $data['lead_status'],
+            $interested_location_name,
             $data['next_follow_up_plan_notes'],
             $data['id']
         );

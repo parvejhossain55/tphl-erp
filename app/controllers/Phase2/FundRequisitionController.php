@@ -152,27 +152,31 @@ class FundRequisitionController extends Controller {
         $endDate = $_GET['end_date'] ?? '';
         $statusFilter = $_GET['status'] ?? '';
         $searchQuery = trim($_GET['search'] ?? '');
-        $viewMode = $_GET['view_mode'] ?? ''; // 'all', 'my_pending', 'payment_pending', or '' (default = role-based)
+        $viewMode = $_GET['view_mode'] ?? 'all'; // Default to 'all' so approved and rejected requisitions are visible in the table below
 
-        // --- Role-based default view filter (when no explicit status filter and no 'all' view mode) ---
-        // Each role sees only the items THEY need to act on by default OR items they requested themselves.
-        // To see everything, the user can switch to 'all' view.
+        // Filter based on selected view mode
         if ($viewMode === 'my_requests') {
             $where .= " AND fr.requested_by = $userId";
-        } elseif (empty($statusFilter) && $viewMode !== 'all') {
+        } elseif ($viewMode === 'my_pending') {
+            $deptHeadCond = !empty($deptHeadDeptIds) ? "fr.department_id IN (" . implode(',', $deptHeadDeptIds) . ")" : "0";
             if (in_array($roleId, [20, 32], true)) {
-                // Operation Head: show only management-pending items by default (up to 10 Thousand) OR their own requests OR their dept_pending requests
-                $deptHeadCond = !empty($deptHeadDeptIds) ? "fr.department_id IN (" . implode(',', $deptHeadDeptIds) . ")" : "0";
-                $where .= " AND ((fr.status IN ('pending', 'partially_approved', 'partially_paid') AND fr.amount <= 10000) OR fr.requested_by = $userId OR (fr.status = 'pending_dept' AND (e_req.reporting_user_id = $userId OR $deptHeadCond)))";
+                // Operation Head: management-pending items (up to 10 Thousand) OR dept_pending requests under them
+                $where .= " AND ((fr.status IN ('pending', 'partially_approved', 'partially_paid') AND fr.amount <= 10000) OR (fr.status = 'pending_dept' AND (e_req.reporting_user_id = $userId OR $deptHeadCond)))";
             } elseif (in_array($roleId, [13, 24, 25], true)) {
-                // QC & Internal Audit: show only QC-pending items by default OR their own requests
-                $where .= " AND (fr.status = 'pending_qc' OR fr.requested_by = $userId)";
+                // QC & Internal Audit: show only QC-pending items
+                $where .= " AND fr.status = 'pending_qc'";
             } elseif (in_array($roleId, [6, 30], true)) {
-                // Accounts: show only approved (ready for payment) by default OR their own requests
-                $where .= " AND (fr.status IN ('approved', 'partially_approved', 'partially_paid') OR fr.requested_by = $userId)";
-            } elseif ($viewMode === 'payment_pending') {
-                $where .= " AND fr.status IN ('approved', 'partially_approved')";
+                // Accounts: show only approved (ready for payment)
+                $where .= " AND fr.status IN ('approved', 'partially_approved', 'partially_paid')";
+            } elseif (in_array($roleId, [1, 3, 33, 34, 35], true)) {
+                // Management: show pending items across all review stages
+                $where .= " AND fr.status IN ('pending_dept', 'pending_qc', 'pending', 'partially_approved', 'partially_paid')";
+            } else {
+                // Dept Head / Reporting Boss: show dept-pending items
+                $where .= " AND (fr.status = 'pending_dept' AND (e_req.reporting_user_id = $userId OR $deptHeadCond))";
             }
+        } elseif ($viewMode === 'payment_pending') {
+            $where .= " AND fr.status IN ('approved', 'partially_approved')";
         }
 
         $params = [];
@@ -200,13 +204,14 @@ class FundRequisitionController extends Controller {
             }
         }
         if (!empty($searchQuery)) {
-            $where .= " AND (fr.id LIKE ? OR u_req.full_name LIKE ? OR fr.purpose LIKE ? OR p.name LIKE ?)";
+            $where .= " AND (fr.id LIKE ? OR u_req.full_name LIKE ? OR fr.purpose LIKE ? OR p.name LIKE ? OR fr.status LIKE ?)";
             $searchParam = '%' . $searchQuery . '%';
             $params[] = $searchParam;
             $params[] = $searchParam;
             $params[] = $searchParam;
             $params[] = $searchParam;
-            $types .= "ssss";
+            $params[] = $searchParam;
+            $types .= "sssss";
         }
 
         $selectedProject = $_GET['project_id'] ?? '';
@@ -340,6 +345,74 @@ class FundRequisitionController extends Controller {
 
         $coaList = getCOAExpenseList($this->db);
 
+        $isAllAccess = in_array($roleId, [1, 3, 33, 34, 35, 6, 30, 20, 32, 13, 24, 25], true);
+        
+        // 1. Rejected count
+        if ($isAllAccess) {
+            $rejRes = $this->db->query("SELECT COUNT(*) FROM fund_requisitions WHERE status = 'rejected'");
+        } else {
+            $rejRes = $this->db->query("SELECT COUNT(*) FROM fund_requisitions WHERE status = 'rejected' AND requested_by = $userId");
+        }
+        $rejectedCount = $rejRes ? (int)$rejRes->fetch_row()[0] : 0;
+
+        // 2. Pending Action count for current user
+        $pendingActionCount = 0;
+        if (in_array($roleId, [1, 3, 33, 34, 35, 38], true)) {
+            $resDept = $this->db->query("
+                SELECT COUNT(DISTINCT fr.id) AS total 
+                FROM fund_requisitions fr
+                LEFT JOIN users u ON fr.requested_by = u.id
+                LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+                WHERE fr.status = 'pending_dept' 
+                  AND (e.reporting_user_id = $userId OR $roleId IN (1, 3))
+            ");
+            if ($resDept) $pendingActionCount += (int)($resDept->fetch_assoc()['total'] ?? 0);
+            $resMgmt = $this->db->query("SELECT COUNT(*) AS total FROM fund_requisitions WHERE status IN ('pending', 'partially_approved', 'partially_paid')");
+            if ($resMgmt) $pendingActionCount += (int)($resMgmt->fetch_assoc()['total'] ?? 0);
+        } elseif (in_array($roleId, [20, 32], true)) {
+            $resMgmt = $this->db->query("
+                SELECT COUNT(DISTINCT fr.id) AS total 
+                FROM fund_requisitions fr
+                LEFT JOIN users u ON fr.requested_by = u.id
+                LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+                WHERE (fr.status IN ('pending', 'partially_approved', 'partially_paid') AND fr.amount <= 10000)
+                   OR (fr.status = 'pending_dept' AND e.reporting_user_id = $userId)
+            ");
+            if ($resMgmt) $pendingActionCount = (int)($resMgmt->fetch_assoc()['total'] ?? 0);
+        } elseif (in_array($roleId, [13, 24, 25], true)) {
+            $resQc = $this->db->query("SELECT COUNT(*) AS total FROM fund_requisitions WHERE status = 'pending_qc'");
+            if ($resQc) $pendingActionCount = (int)($resQc->fetch_assoc()['total'] ?? 0);
+        } elseif (in_array($roleId, [6, 30], true)) {
+            $resAccts = $this->db->query("SELECT COUNT(*) AS total FROM fund_requisitions WHERE status IN ('approved', 'partially_approved', 'partially_paid')");
+            if ($resAccts) $pendingActionCount = (int)($resAccts->fetch_assoc()['total'] ?? 0);
+        } else {
+            $resDept = $this->db->query("
+                SELECT COUNT(DISTINCT fr.id) AS total 
+                FROM fund_requisitions fr
+                LEFT JOIN users u ON fr.requested_by = u.id
+                LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+                WHERE fr.status = 'pending_dept' 
+                  AND e.reporting_user_id = $userId
+            ");
+            if ($resDept) $pendingActionCount = (int)($resDept->fetch_assoc()['total'] ?? 0);
+        }
+
+        // 3. My Requests count
+        $myReqRes = $this->db->query("SELECT COUNT(*) FROM fund_requisitions WHERE requested_by = $userId");
+        $myRequestsCount = $myReqRes ? (int)$myReqRes->fetch_row()[0] : 0;
+
+        // 4. Payment Pending count
+        $payRes = $this->db->query("SELECT COUNT(*) FROM fund_requisitions WHERE status IN ('approved', 'partially_approved')");
+        $paymentPendingCount = $payRes ? (int)$payRes->fetch_row()[0] : 0;
+
+        // 5. Total accessible requisitions count
+        if ($isAllAccess) {
+            $allRes = $this->db->query("SELECT COUNT(*) FROM fund_requisitions");
+        } else {
+            $allRes = $this->db->query("SELECT COUNT(*) FROM fund_requisitions WHERE requested_by = $userId");
+        }
+        $totalAllCount = $allRes ? (int)$allRes->fetch_row()[0] : 0;
+
         $this->view('phase2/fund_requisition/index', [
             'current_route' => 'fund-requisitions',
             'page_title' => 'Fund Requisitions',
@@ -357,6 +430,11 @@ class FundRequisitionController extends Controller {
             'isDefaultLimit' => $isDefaultLimit,
             'deptHeadDeptIds' => $deptHeadDeptIds,
             'viewMode' => $viewMode,
+            'rejectedCount' => $rejectedCount,
+            'pendingActionCount' => $pendingActionCount,
+            'myRequestsCount' => $myRequestsCount,
+            'paymentPendingCount' => $paymentPendingCount,
+            'totalAllCount' => $totalAllCount,
         ]);
     }
 
@@ -779,11 +857,17 @@ class FundRequisitionController extends Controller {
         $deptId = (int)($req['department_id'] ?? 0);
         $deptHeadDeptIds = $this->getUserDeptHeadDepartmentIds($sessionUserId);
         $isDeptHead = ($deptId > 0 && in_array($deptId, $deptHeadDeptIds, true));
-        $isAllowed = ($sessionUserId === $reportingBossId || $isDeptHead || in_array($roleId, [1, 3, 33], true));
+        $isAllowed = ($sessionUserId === $reportingBossId || $isDeptHead || in_array($roleId, [1, 3, 20, 32, 33], true));
 
         if (!$isAllowed) {
             setError('Only the designated Department Head, Reporting Boss, or Admin can approve this stage.');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+            exit;
+        }
+
+        if (in_array($req['status'], ['paid', 'partially_paid'])) {
+            setError('Cannot modify an already paid requisition.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
             exit;
         }
 
@@ -859,7 +943,7 @@ class FundRequisitionController extends Controller {
         $sessionUserId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        if (in_array($roleId, [33, 34, 35], true) || ($roleId !== 24 && !in_array($roleId, [1, 3]))) {
+        if (in_array($roleId, [33, 34, 35], true) || (!in_array($roleId, [24, 13, 25, 20, 32, 1, 3], true))) {
             setError('Only QC & Internal Audit Head or Admins can approve this stage.');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
             exit;
@@ -885,14 +969,21 @@ class FundRequisitionController extends Controller {
 
         $isInitialQc = ($req['status'] === 'pending_qc');
         $isQcUpdate  = (!empty($req['qc_approved_by']) && (float)($req['qc_approved_amount'] ?? 0) < (float)$req['amount']);
+        $isQcRejectRevoke = (!empty($req['qc_approved_by']) && $status === 'rejected' && !in_array($req['status'], ['paid', 'partially_paid']));
 
-        if (!$isInitialQc && !$isQcUpdate) {
+        if (!$isInitialQc && !$isQcUpdate && !$isQcRejectRevoke) {
             setError('Requisition is not waiting for QC approval.');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
             exit;
         }
 
-        if ($isInitialQc) {
+        if (in_array($req['status'], ['paid', 'partially_paid'])) {
+            setError('Cannot modify an already paid requisition.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
+            exit;
+        }
+
+        if ($isInitialQc || $isQcRejectRevoke) {
             $newMainStatus = ($status === 'approved') ? 'pending' : 'rejected';
         } else {
             $newMainStatus = ($status === 'rejected') ? 'rejected' : $req['status'];
@@ -1069,18 +1160,37 @@ class FundRequisitionController extends Controller {
             exit;
         }
 
+        if (in_array($frData['status'], ['paid', 'partially_paid']) && (float)($frData['paid_amount'] ?? 0) > 0) {
+            setError('Cannot modify an already paid requisition.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
+            exit;
+        }
+
         $amount = (float)($frData['amount'] ?? 0);
         $isOver1Lac = ($amount > 10000.01);
         $isSiteOperator = in_array($roleId, [20, 32], true);
         $isManagement = in_array($roleId, [1, 3], true);
 
         if ($isOver1Lac && $isSiteOperator && !$isManagement) {
-            // Operation Head is approving the > 10K prerequisite step
+            // Operation Head is processing the > 10K prerequisite step
             if (!class_exists('ApprovalRequest')) {
                 require_once __DIR__ . '/../../models/ApprovalRequest.php';
             }
             $appModel = new \ApprovalRequest($this->db);
             $arRow = $this->db->query("SELECT id FROM approval_requests WHERE source_table = 'fund_requisitions' AND source_id = {$id} ORDER BY id DESC LIMIT 1")->fetch_assoc();
+            
+            if ($status === 'rejected') {
+                if ($arRow) {
+                    $appModel->rejectOperationHead((int)$arRow['id'], $approved_by, $approval_note);
+                } else {
+                    $this->db->query("UPDATE approval_requests SET op_head_status = 'rejected', op_head_by = {$approved_by}, op_head_at = NOW(), op_head_note = '{$this->db->real_escape_string($approval_note)}', status = 'rejected', approve_role = 'rejected' WHERE source_table = 'fund_requisitions' AND source_id = {$id}");
+                }
+                $this->db->query("UPDATE fund_requisitions SET status = 'rejected', updated_at = NOW() WHERE id = {$id}");
+                setSuccess("Requisition rejected by Admin & Operation Head (Role 20).");
+                header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
+                exit;
+            }
+
             if ($arRow) {
                 $appModel->approveOperationHead((int)$arRow['id'], $approved_by, $approval_note);
             } else {
@@ -1091,7 +1201,7 @@ class FundRequisitionController extends Controller {
             exit;
         }
 
-        if ($isOver1Lac && $isManagement) {
+        if ($isOver1Lac && $isManagement && $status !== 'rejected') {
             $arRow = $this->db->query("SELECT op_head_status, accounts_head_status FROM approval_requests WHERE source_table = 'fund_requisitions' AND source_id = {$id} ORDER BY id DESC LIMIT 1")->fetch_assoc();
             $opStatus = strtolower($arRow['op_head_status'] ?? 'pending');
             $ahStatus = strtolower($arRow['accounts_head_status'] ?? 'pending');
@@ -1146,7 +1256,8 @@ class FundRequisitionController extends Controller {
                 $status = 'partially_approved';
             }
         } elseif ($status === 'rejected') {
-            // No change to approved_amount
+            // No change to approved_amount, mark approval_requests as rejected
+            $this->db->query("UPDATE approval_requests SET status = 'rejected', approve_role = 'rejected' WHERE source_table = 'fund_requisitions' AND source_id = {$id}");
         }
 
         // Preserve any pre-existing (legacy) approval in the approval log before overwriting approved_by

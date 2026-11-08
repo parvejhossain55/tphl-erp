@@ -8,7 +8,7 @@ $isChiefOfficer = (in_array($roleId, [33, 34, 35], true) || in_array(strtolower(
 
 // Approval Pipeline Role Permissions (Admin=1, super Admin=3)
 $isAdminOrMgmt = in_array($roleId, [1, 3]) && !$isChiefOfficer; 
-$isOperations   = ($isAdminOrMgmt || (int)$roleId === 32) && !$isChiefOfficer; // Admin & Operation Step: Role 32
+$isOperations   = ($isAdminOrMgmt || in_array((int)$roleId, [20, 32], true) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head') !== false || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'admin & operation') !== false) && !$isChiefOfficer; // Admin & Operation Step: Role 20, 32
 $isPurchaseHead = ($isAdminOrMgmt || in_array($roleId, [17, 31])) && !$isChiefOfficer; // Purchase Head Step: Role 17, 31
 $isQcAudit      = ($isAdminOrMgmt || in_array($roleId, [24, 25])) && !$isChiefOfficer; // QC & Internal Audit Step
 $isManagement   = $isAdminOrMgmt;                               // Management Step
@@ -58,7 +58,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
     <div class="alert alert-info-transparent border fs-12 mb-4">
         <i class="fa-solid fa-circle-info me-1"></i>
         <strong>Approval Flow:</strong> 
-        Requisition → Department Head / Reporting Boss (if applicable) → Admin & Operation (Role 32) → Purchase Head → QC & Internal Audit → Management → Accounts (Payment) → Purchased (Asset Inventory)
+        Requisition → Department Head / Reporting Boss (if applicable) → Admin & Operation (Role 20/32) → Purchase Head → QC & Internal Audit → Management → Accounts (Payment) → Purchased (Asset Inventory)
     </div>
 
     <!-- Filter Card Wrapper (Matching flat-lists) -->
@@ -177,7 +177,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                 <th>Requested By</th>
                                 <th class="text-center">Dept Head</th>
                                 <th class="text-center">IT Item Approved</th>
-                                <th class="text-center" title="Admin & Operation (Role 32)">Admin & Operation</th>
+                                <th class="text-center" title="Admin & Operation (Role 20 / 32)">Admin & Operation</th>
                                 <th class="text-center">Purchase Head</th>
                                 <th class="text-center">QC & Audit</th>
                                 <th class="text-center">Management</th>
@@ -247,7 +247,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                                 </span>
                                                 <?php if ($dhStatus !== 'pending' && !empty($r['dept_head_by_name'])): ?>
                                                     <small class="d-block text-muted fs-10 mt-1" style="line-height:1.2;" title="<?= !empty($r['dept_head_at']) ? date('d M Y, h:i A', strtotime($r['dept_head_at'])) : '' ?>">
-                                                        <i class="fa-solid fa-user-check text-success me-1 fs-9"></i><?= htmlspecialchars($r['dept_head_by_name']) ?>
+                                                        <i class="fa-solid <?= $dhStatus === 'rejected' ? 'fa-user-xmark text-danger' : 'fa-user-check text-success' ?> me-1 fs-9"></i><?= htmlspecialchars($r['dept_head_by_name']) ?>
                                                         <?php if (!empty($r['dept_head_at'])): ?>
                                                             <br><span class="text-secondary fs-9"><?= date('d M, h:i A', strtotime($r['dept_head_at'])) ?></span>
                                                         <?php endif; ?>
@@ -277,7 +277,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                                 </span>
                                                 <?php if ($itStatus !== 'pending' && !empty($r['it_head_by_name'])): ?>
                                                     <small class="d-block text-muted fs-10 mt-1" style="line-height:1.2;" title="<?= !empty($r['it_head_at']) ? date('d M Y, h:i A', strtotime($r['it_head_at'])) : '' ?>">
-                                                        <i class="fa-solid fa-user-check text-success me-1 fs-9"></i><?= htmlspecialchars($r['it_head_by_name']) ?>
+                                                        <i class="fa-solid <?= $itStatus === 'rejected' ? 'fa-user-xmark text-danger' : 'fa-user-check text-success' ?> me-1 fs-9"></i><?= htmlspecialchars($r['it_head_by_name']) ?>
                                                         <?php if (!empty($r['it_head_at'])): ?>
                                                             <br><span class="text-secondary fs-9"><?= date('d M, h:i A', strtotime($r['it_head_at'])) ?></span>
                                                         <?php endif; ?>
@@ -296,7 +296,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                             </span>
                                             <?php if ($r['operations_status'] !== 'pending' && !empty($r['operations_by_name'])): ?>
                                                 <small class="d-block text-muted fs-10 mt-1" style="line-height:1.2;" title="<?= !empty($r['operations_at']) ? date('d M Y, h:i A', strtotime($r['operations_at'])) : '' ?>">
-                                                    <i class="fa-solid fa-user-check text-success me-1 fs-9"></i><?= htmlspecialchars($r['operations_by_name']) ?>
+                                                    <i class="fa-solid <?= $r['operations_status'] === 'rejected' ? 'fa-user-xmark text-danger' : 'fa-user-check text-success' ?> me-1 fs-9"></i><?= htmlspecialchars($r['operations_by_name']) ?>
                                                     <?php if (!empty($r['operations_at'])): ?>
                                                         <br><span class="text-secondary fs-9"><?= date('d M, h:i A', strtotime($r['operations_at'])) ?></span>
                                                     <?php endif; ?>
@@ -314,7 +314,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                             </span>
                                             <?php if ($r['purchase_head_status'] !== 'pending' && !empty($r['purchase_head_by_name'])): ?>
                                                 <small class="d-block text-muted fs-10 mt-1" style="line-height:1.2;" title="<?= !empty($r['purchase_head_at']) ? date('d M Y, h:i A', strtotime($r['purchase_head_at'])) : '' ?>">
-                                                    <i class="fa-solid fa-user-check text-success me-1 fs-9"></i><?= htmlspecialchars($r['purchase_head_by_name']) ?>
+                                                    <i class="fa-solid <?= $r['purchase_head_status'] === 'rejected' ? 'fa-user-xmark text-danger' : 'fa-user-check text-success' ?> me-1 fs-9"></i><?= htmlspecialchars($r['purchase_head_by_name']) ?>
                                                     <?php if (!empty($r['purchase_head_at'])): ?>
                                                         <br><span class="text-secondary fs-9"><?= date('d M, h:i A', strtotime($r['purchase_head_at'])) ?></span>
                                                     <?php endif; ?>
@@ -332,7 +332,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                             </span>
                                             <?php if ($r['qc_audit_status'] !== 'pending' && !empty($r['qc_audit_by_name'])): ?>
                                                 <small class="d-block text-muted fs-10 mt-1" style="line-height:1.2;" title="<?= !empty($r['qc_audit_at']) ? date('d M Y, h:i A', strtotime($r['qc_audit_at'])) : '' ?>">
-                                                    <i class="fa-solid fa-user-check text-success me-1 fs-9"></i><?= htmlspecialchars($r['qc_audit_by_name']) ?>
+                                                    <i class="fa-solid <?= $r['qc_audit_status'] === 'rejected' ? 'fa-user-xmark text-danger' : 'fa-user-check text-success' ?> me-1 fs-9"></i><?= htmlspecialchars($r['qc_audit_by_name']) ?>
                                                     <?php if (!empty($r['qc_audit_at'])): ?>
                                                         <br><span class="text-secondary fs-9"><?= date('d M, h:i A', strtotime($r['qc_audit_at'])) ?></span>
                                                     <?php endif; ?>
@@ -350,7 +350,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                             </span>
                                             <?php if ($r['mgmt_status'] !== 'pending' && !empty($r['mgmt_by_name'])): ?>
                                                 <small class="d-block text-muted fs-10 mt-1" style="line-height:1.2;" title="<?= !empty($r['mgmt_at']) ? date('d M Y, h:i A', strtotime($r['mgmt_at'])) : '' ?>">
-                                                    <i class="fa-solid fa-user-check text-success me-1 fs-9"></i><?= htmlspecialchars($r['mgmt_by_name']) ?>
+                                                    <i class="fa-solid <?= $r['mgmt_status'] === 'rejected' ? 'fa-user-xmark text-danger' : 'fa-user-check text-success' ?> me-1 fs-9"></i><?= htmlspecialchars($r['mgmt_by_name']) ?>
                                                     <?php if (!empty($r['mgmt_at'])): ?>
                                                         <br><span class="text-secondary fs-9"><?= date('d M, h:i A', strtotime($r['mgmt_at'])) ?></span>
                                                     <?php endif; ?>
@@ -384,10 +384,81 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                                 'purchased' => ['#6f42c1','#e2d9f3']
                                             ];
                                             $oc = $ovColors[$r['overall_status']] ?? ['#6c757d','#e9ecef'];
+                                            $isRowRejected = ($r['overall_status'] === 'rejected' || ($r['mgmt_status'] ?? '') === 'rejected' || ($r['qc_audit_status'] ?? '') === 'rejected' || ($r['purchase_head_status'] ?? '') === 'rejected' || ($r['operations_status'] ?? '') === 'rejected' || ($r['it_head_status'] ?? '') === 'rejected' || ($r['dept_head_status'] ?? '') === 'rejected' || ($r['op_head_status'] ?? '') === 'rejected' || ($r['accounts_head_status'] ?? '') === 'rejected');
                                             ?>
-                                            <span class="badge fs-10 px-2 py-1" style="background:<?= $oc[1] ?>;color:<?= $oc[0] ?>;font-weight:700;">
-                                                <?= ucfirst(str_replace('_', ' ', $r['overall_status'])) ?>
-                                            </span>
+                                            <?php if ($isRowRejected): ?>
+                                                <?php
+                                                $rejStep = 'Approver';
+                                                $rejBy = '';
+                                                $rejAt = '';
+                                                $rejNote = '';
+                                                if (($r['dept_head_status'] ?? '') === 'rejected') {
+                                                    $rejStep = 'Dept Head';
+                                                    $rejBy = $r['dept_head_by_name'] ?? 'Dept Head';
+                                                    $rejAt = $r['dept_head_at'] ?? '';
+                                                    $rejNote = $r['dept_head_note'] ?? '';
+                                                } elseif (($r['it_head_status'] ?? '') === 'rejected') {
+                                                    $rejStep = 'IT Head';
+                                                    $rejBy = $r['it_head_by_name'] ?? 'IT Head';
+                                                    $rejAt = $r['it_head_at'] ?? '';
+                                                    $rejNote = $r['it_head_note'] ?? '';
+                                                } elseif (($r['operations_status'] ?? '') === 'rejected') {
+                                                    $rejStep = 'Admin & Operation Head';
+                                                    $rejBy = $r['operations_by_name'] ?? 'Operation Head';
+                                                    $rejAt = $r['operations_at'] ?? '';
+                                                    $rejNote = $r['operations_note'] ?? '';
+                                                } elseif (($r['purchase_head_status'] ?? '') === 'rejected') {
+                                                    $rejStep = 'Purchase Head';
+                                                    $rejBy = $r['purchase_head_by_name'] ?? 'Purchase Head';
+                                                    $rejAt = $r['purchase_head_at'] ?? '';
+                                                    $rejNote = $r['purchase_head_note'] ?? '';
+                                                } elseif (($r['qc_audit_status'] ?? '') === 'rejected') {
+                                                    $rejStep = 'QC & Audit';
+                                                    $rejBy = $r['qc_audit_by_name'] ?? 'QC & Audit';
+                                                    $rejAt = $r['qc_audit_at'] ?? '';
+                                                    $rejNote = $r['qc_audit_note'] ?? '';
+                                                } elseif (($r['op_head_status'] ?? '') === 'rejected') {
+                                                    $rejStep = 'Admin & Operation Head (>10K)';
+                                                    $rejBy = $r['op_head_by_name'] ?? 'Operation Head';
+                                                    $rejAt = $r['op_head_at'] ?? '';
+                                                    $rejNote = $r['op_head_note'] ?? '';
+                                                } elseif (($r['accounts_head_status'] ?? '') === 'rejected') {
+                                                    $rejStep = 'Accounts Head';
+                                                    $rejBy = $r['accounts_head_by_name'] ?? 'Accounts Head';
+                                                    $rejAt = $r['accounts_head_at'] ?? '';
+                                                    $rejNote = $r['accounts_head_note'] ?? '';
+                                                } elseif (($r['mgmt_status'] ?? '') === 'rejected') {
+                                                    $rejStep = 'Management';
+                                                    $rejBy = $r['mgmt_by_name'] ?? 'Management';
+                                                    $rejAt = $r['mgmt_at'] ?? '';
+                                                    $rejNote = $r['mgmt_note'] ?? '';
+                                                } else {
+                                                    $rejBy = $r['mgmt_by_name'] ?? $r['operations_by_name'] ?? '';
+                                                    $rejAt = $r['updated_at'] ?? '';
+                                                }
+                                                ?>
+                                                <span class="badge fs-10 px-2 py-1" style="background:#f8d7da;color:#dc3545;font-weight:700;">
+                                                    <i class="fa-solid fa-circle-xmark me-1"></i> Rejected
+                                                </span>
+                                                <div class="mt-1 fs-11 text-danger fw-semibold" style="line-height:1.2;">
+                                                    Rejected by <?= htmlspecialchars($rejBy ?: 'Approver') ?>
+                                                    <span class="d-block text-muted fs-10 fw-normal"><?= htmlspecialchars($rejStep) ?></span>
+                                                </div>
+                                                <?php if (!empty($rejAt)): ?>
+                                                    <div class="fs-10 text-muted mt-0">
+                                                        <i class="fa-regular fa-clock me-1"></i><?= date('d M Y, h:i A', strtotime($rejAt)) ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                                <?php if (!empty($rejNote)): ?>
+                                                    <div class="fs-10 text-danger mt-1 fst-italic" style="max-width:180px;word-break:break-word;">
+                                                        <i class="fa-solid fa-quote-left me-1"></i><?= htmlspecialchars($rejNote) ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                            <?php else: ?>
+                                                <span class="badge fs-10 px-2 py-1" style="background:<?= $oc[1] ?>;color:<?= $oc[0] ?>;font-weight:700;">
+                                                    <?= ucfirst(str_replace('_', ' ', $r['overall_status'])) ?>
+                                                </span>
+                                            <?php endif; ?>
                                         </td>
                                         <td class="text-center no-print">
                                             <div class="d-flex align-items-center justify-content-center gap-1 flex-wrap">
@@ -405,7 +476,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                                 $isOpHeadApproved = (!empty($r['op_head_status']) && $r['op_head_status'] === 'approved');
                                                 $rowDhStatus = $r['dept_head_status'] ?? 'not_required';
                                                 
-                                                if (!$isCreator) {
+                                                if (!$isCreator && $r['overall_status'] !== 'rejected') {
                                                     if (($isReporterBoss || $isAdminOrMgmt) && $rowDhStatus === 'pending') {
                                                         $canApprove = true; $step = 'dept_head';
                                                     } elseif (($userId === 242 || $isAdminOrMgmt) && in_array($rowDhStatus, ['approved', 'not_required']) && ($r['it_head_status'] ?? '') === 'pending') {
@@ -1011,10 +1082,77 @@ function formatDate(dateStr) {
 }
 
 function getNextStep(data) {
-    if (data.overall_status === 'rejected') return { text: 'Request was rejected', color: 'danger', icon: 'fa-circle-xmark' };
+    var isRejected = (data.overall_status === 'rejected' || data.dept_head_status === 'rejected' || data.it_head_status === 'rejected' || data.operations_status === 'rejected' || data.purchase_head_status === 'rejected' || data.qc_audit_status === 'rejected' || data.mgmt_status === 'rejected' || data.op_head_status === 'rejected' || data.accounts_head_status === 'rejected');
+    
+    if (isRejected) {
+        var rejBy = '';
+        var rejStep = '';
+        var rejAt = '';
+        var rejNote = '';
+        if (data.dept_head_status === 'rejected') {
+            rejStep = 'Department Head';
+            rejBy = data.dept_head_by_name || 'Dept Head';
+            rejAt = data.dept_head_at;
+            rejNote = data.dept_head_note;
+        } else if (data.it_head_status === 'rejected') {
+            rejStep = 'IT Head';
+            rejBy = data.it_head_by_name || 'IT Head';
+            rejAt = data.it_head_at;
+            rejNote = data.it_head_note;
+        } else if (data.operations_status === 'rejected') {
+            rejStep = 'Admin & Operation Head';
+            rejBy = data.operations_by_name || 'Operation Head';
+            rejAt = data.operations_at;
+            rejNote = data.operations_note;
+        } else if (data.purchase_head_status === 'rejected') {
+            rejStep = 'Purchase Head';
+            rejBy = data.purchase_head_by_name || 'Purchase Head';
+            rejAt = data.purchase_head_at;
+            rejNote = data.purchase_head_note;
+        } else if (data.qc_audit_status === 'rejected') {
+            rejStep = 'QC & Audit';
+            rejBy = data.qc_audit_by_name || 'QC & Audit';
+            rejAt = data.qc_audit_at;
+            rejNote = data.qc_audit_note;
+        } else if (data.op_head_status === 'rejected') {
+            rejStep = 'Admin & Operation Head (>10K)';
+            rejBy = data.op_head_by_name || 'Operation Head';
+            rejAt = data.op_head_at;
+            rejNote = data.op_head_note;
+        } else if (data.accounts_head_status === 'rejected') {
+            rejStep = 'Accounts Head';
+            rejBy = data.accounts_head_by_name || 'Accounts Head';
+            rejAt = data.accounts_head_at;
+            rejNote = data.accounts_head_note;
+        } else if (data.mgmt_status === 'rejected') {
+            rejStep = 'Management';
+            rejBy = data.mgmt_by_name || 'Management';
+            rejAt = data.mgmt_at;
+            rejNote = data.mgmt_note;
+        } else {
+            rejBy = data.mgmt_by_name || data.operations_by_name || '';
+            rejAt = data.updated_at || '';
+        }
+
+        var mainText = 'Purchase Request Rejected';
+        var subText = '';
+        if (rejBy) {
+            subText = 'Rejected by ' + rejBy + (rejStep ? ' (' + rejStep + ')' : '');
+        }
+        if (rejAt) {
+            subText += (subText ? ' • ' : '') + formatDate(rejAt);
+        }
+        return {
+            text: mainText,
+            subtext: subText,
+            note: rejNote || '',
+            color: 'danger',
+            icon: 'fa-circle-xmark'
+        };
+    }
     if (data.overall_status === 'purchased') return { text: 'Completed — Payment processed & assets registered', color: 'success', icon: 'fa-circle-check' };
     if (data.dept_head_status === 'pending') return { text: 'Waiting for Department Head / Reporting Boss approval', color: 'info', icon: 'fa-hourglass-half' };
-    if (data.operations_status === 'pending') return { text: 'Waiting for Admin & Operation (Role 32) approval', color: 'secondary', icon: 'fa-hourglass-half' };
+    if (data.operations_status === 'pending') return { text: 'Waiting for Admin & Operation (Role 20 / 32) approval', color: 'secondary', icon: 'fa-hourglass-half' };
     if (data.purchase_head_status === 'pending') return { text: 'Waiting for Purchase Head (Role 17, 31) approval', color: 'primary', icon: 'fa-hourglass-half' };
     if (data.qc_audit_status === 'pending') return { text: 'Waiting for QC & Internal Audit review', color: 'info', icon: 'fa-hourglass-half' };
     if (data.mgmt_status === 'pending') return { text: 'Waiting for Management approval', color: 'warning', icon: 'fa-hourglass-half' };
@@ -1034,7 +1172,7 @@ function getStepTitle(step, data) {
     }
     var titles = {
         'dept_head': 'Department Head / Reporting Boss Approval',
-        'operations': 'Admin & Operation Approval (Role 32)',
+        'operations': 'Admin & Operation Approval (Role 20 / 32)',
         'purchase_head': 'Purchase Head Approval (Role 17, 31)',
         'qc_audit': 'QC & Internal Audit Review',
         'mgmt': 'Management Approval'
@@ -1079,10 +1217,12 @@ function renderDetailModal(data) {
     var body = document.getElementById('detailModalBody');
     body.innerHTML = `
         <!-- Next Step Banner -->
-        <div class="next-step-banner bg-${nextStep.color}-transparent mb-3">
-            <i class="fa-solid ${nextStep.icon} text-${nextStep.color}"></i>
+        <div class="next-step-banner bg-${nextStep.color}-transparent mb-3 ${nextStep.color === 'danger' ? 'border border-danger-subtle' : ''}">
+            <i class="fa-solid ${nextStep.icon} text-${nextStep.color} fs-16"></i>
             <div>
-                <div class="fw-bold fs-12 text-${nextStep.color}">${nextStep.text}</div>
+                <div class="fw-bold fs-13 text-${nextStep.color}">${nextStep.text}</div>
+                ${nextStep.subtext ? `<div class="fs-11 text-muted mt-1">${nextStep.subtext}</div>` : ''}
+                ${nextStep.note ? `<div class="fs-11 text-danger mt-1 fst-italic"><i class="fa-solid fa-quote-left me-1"></i>"${nextStep.note}"</div>` : ''}
             </div>
         </div>
 
@@ -1221,16 +1361,18 @@ function renderDetailModal(data) {
         </div>
 
         <!-- Approval Notes (if any) -->
-        ${(data.dept_head_note || data.operations_note || data.purchase_head_note || data.qc_audit_note || data.mgmt_note || data.purchase_note || data.return_note) ? `
+        ${(data.dept_head_note || data.it_head_note || data.operations_note || data.op_head_note || data.purchase_head_note || data.qc_audit_note || data.mgmt_note || data.accounts_head_note || data.purchase_note || data.return_note) ? `
         <div class="mt-3">
-            <div class="detail-label mb-1 px-1">APPROVAL NOTES</div>
+            <div class="detail-label mb-1 px-1">APPROVAL / REJECTION NOTES</div>
             <div class="bg-light rounded p-2">
                 ${data.dept_head_note ? '<div class="fs-11 mb-1"><strong class="text-info">Dept Head:</strong> ' + data.dept_head_note + '</div>' : ''}
                 ${data.it_head_note ? '<div class="fs-11 mb-1"><strong class="text-info">IT Head:</strong> ' + data.it_head_note + '</div>' : ''}
-                ${data.operations_note ? '<div class="fs-11 mb-1"><strong class="text-secondary">Operations:</strong> ' + data.operations_note + '</div>' : ''}
+                ${data.operations_note ? '<div class="fs-11 mb-1"><strong class="text-secondary">Admin & Operation Head:</strong> ' + data.operations_note + '</div>' : ''}
+                ${data.op_head_note ? '<div class="fs-11 mb-1"><strong class="text-secondary">Admin & Operation Head (>10K):</strong> ' + data.op_head_note + '</div>' : ''}
                 ${data.purchase_head_note ? '<div class="fs-11 mb-1"><strong class="text-primary">Purchase Head:</strong> ' + data.purchase_head_note + '</div>' : ''}
                 ${data.qc_audit_note ? '<div class="fs-11 mb-1"><strong class="text-info">QC & Audit:</strong> ' + data.qc_audit_note + '</div>' : ''}
                 ${data.mgmt_note ? '<div class="fs-11 mb-1"><strong class="text-warning">Management:</strong> ' + data.mgmt_note + '</div>' : ''}
+                ${data.accounts_head_note ? '<div class="fs-11 mb-1"><strong class="text-dark">Accounts Head:</strong> ' + data.accounts_head_note + '</div>' : ''}
                 ${data.purchase_note ? '<div class="fs-11 mb-1"><strong class="text-success">Operations / Purchaser:</strong> ' + data.purchase_note + '</div>' : ''}
                 ${data.return_note ? '<div class="fs-11"><strong class="text-danger">Return Note:</strong> ' + data.return_note + '</div>' : ''}
             </div>
@@ -1498,6 +1640,19 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 });
 </script>
+
+<?php if (!empty($autoOpenRequest)): ?>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    var autoData = <?= json_encode($autoOpenRequest) ?>;
+    if (autoData) {
+        setTimeout(function() {
+            renderDetailModal(autoData);
+        }, 250);
+    }
+});
+</script>
+<?php endif; ?>
 
 <?php include __DIR__ . '/../../layouts/accounts_head_approval_card.php'; ?>
 

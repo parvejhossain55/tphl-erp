@@ -725,6 +725,40 @@ class ApprovalRequest extends Model
         $userId = (int)$userId;
         $note = $this->db->real_escape_string($note);
 
+        if ($status === 'rejected') {
+            if ($sourceTable === 'vendor_payment_requests') {
+                $this->db->query("UPDATE vendor_payment_requests SET status = 'Rejected', approved_by = {$userId}, management_note = '{$note}', updated_at = NOW() WHERE id = {$sourceId}");
+                $this->db->query("UPDATE vendor_penalties SET payment_request_id = NULL WHERE payment_request_id = {$sourceId}");
+            } elseif ($sourceTable === 'contractor_bill_requests') {
+                $this->db->query("UPDATE contractor_bill_requests SET status = 'rejected', approved_by = {$userId}, management_note = '{$note}', rejection_reason = '{$note}', updated_at = NOW() WHERE id = {$sourceId}");
+            } elseif ($sourceTable === 'fund_requisitions') {
+                $this->db->query("UPDATE fund_requisitions SET status = 'rejected', approved_by = {$userId}, approval_note = '{$note}', updated_at = NOW() WHERE id = {$sourceId}");
+            } elseif ($sourceTable === 'project_other_costs') {
+                $this->db->query("UPDATE project_other_costs SET status = 'rejected', management_apporved_by_id = {$userId}, management_apporved_note = '{$note}', management_apporved_at = NOW() WHERE id = {$sourceId}");
+            } elseif ($sourceTable === 'cashout_requests') {
+                $this->db->query("UPDATE cashout_requests SET status = 'rejected', approved_by = {$userId}, approved_at = NOW(), approval_note = '{$note}' WHERE id = {$sourceId}");
+            } elseif ($sourceTable === 'land_fund_requisitions') {
+                $this->db->query("UPDATE land_fund_requisitions SET mgmt_status = 'Rejected', mgmt_by = {$userId}, mgmt_approved_at = NOW(), mgmt_note = '{$note}' WHERE id = {$sourceId}");
+            } elseif ($sourceTable === 'project_extra_assets') {
+                $this->db->query("UPDATE project_extra_assets SET overall_status = 'rejected', mgmt_status = 'rejected', mgmt_by = {$userId}, mgmt_at = NOW(), mgmt_note = '{$note}' WHERE id = {$sourceId}");
+            } elseif ($sourceTable === 'con_labor_requisitions') {
+                $this->db->query("UPDATE con_labor_requisitions SET status = 'rejected', management_approved_by = {$userId}, management_approved_at = NOW() WHERE id = {$sourceId}");
+            } elseif ($sourceTable === 'expense_adjustments') {
+                $this->db->query("UPDATE expense_adjustments SET status = 'rejected', approved_by = {$userId}, approved_at = NOW() WHERE id = {$sourceId}");
+            } elseif ($sourceTable === 'advance_salaries') {
+                $this->db->query("UPDATE advance_salaries SET status = 'rejected', approved_date = NOW() WHERE id = {$sourceId}");
+            } elseif ($sourceTable === 'payslips') {
+                $this->db->query("UPDATE payslips SET mgmt_status = 'rejected', status = 'rejected' WHERE id = {$sourceId}");
+            } elseif ($sourceTable === 'project_incentive_claims') {
+                $this->db->query("UPDATE project_incentive_claims SET claim_status = 'rejected', approved_by = {$userId}, approved_at = NOW() WHERE id = {$sourceId}");
+            } elseif ($sourceTable === 'client_refund_requests') {
+                $this->db->query("UPDATE client_refund_requests SET status = 'rejected', approved_by = {$userId}, approved_at = NOW() WHERE id = {$sourceId}");
+            } elseif ($sourceTable === 'lead_bookings') {
+                $this->db->query("UPDATE lead_bookings SET approval_status = 'rejected' WHERE id = {$sourceId}");
+            }
+            return;
+        }
+
         if ($sourceTable === 'cashout_requests') {
             $this->db->query("UPDATE cashout_requests SET status = 'approved', approved_by = {$userId}, approved_at = NOW(), approval_note = '{$note}' WHERE id = {$sourceId}");
         } elseif ($sourceTable === 'fund_requisitions') {
@@ -4196,16 +4230,16 @@ class ApprovalRequest extends Model
                 ar.approve_role = CASE
                     WHEN pea.payment_status = 'paid' OR pea.overall_status = 'purchased' THEN 'completed'
                     WHEN pea.mgmt_status = 'approved' THEN CASE WHEN ar.accounts_head_status = 'approved' THEN 'accounts' ELSE 'accounts_head' END
-                    WHEN pea.mgmt_status = 'rejected' OR pea.overall_status = 'rejected' OR pea.qc_audit_status = 'rejected' OR pea.purchase_head_status = 'rejected' OR pea.operations_status = 'rejected' OR pea.dept_head_status = 'rejected' THEN 'management'
+                    WHEN pea.mgmt_status = 'rejected' OR pea.overall_status = 'rejected' OR pea.qc_audit_status = 'rejected' OR pea.purchase_head_status = 'rejected' OR pea.operations_status = 'rejected' OR pea.dept_head_status = 'rejected' THEN 'rejected'
                     WHEN pea.dept_head_status = 'pending' THEN IF(pea.reporting_user_id IS NOT NULL AND pea.reporting_user_id > 0, CONCAT('dept_head_', pea.reporting_user_id), 'dept_head')
                     WHEN pea.operations_status = 'pending' THEN 'operations'
                     WHEN pea.purchase_head_status = 'pending' THEN 'purchase_head'
                     WHEN pea.qc_audit_status = 'pending' THEN 'qc'
                     ELSE 'management'
                 END,
-                ar.approved_by = pea.mgmt_by,
-                ar.approved_at = pea.mgmt_at,
-                ar.approval_note = pea.mgmt_note,
+                ar.approved_by = COALESCE(pea.mgmt_by, pea.qc_audit_by, pea.purchase_head_by, pea.operations_by, pea.dept_head_by, ar.approved_by),
+                ar.approved_at = COALESCE(pea.mgmt_at, pea.qc_audit_at, pea.purchase_head_at, pea.operations_at, pea.dept_head_at, ar.approved_at),
+                ar.approval_note = COALESCE(pea.mgmt_note, pea.qc_audit_note, pea.purchase_head_note, pea.operations_note, pea.dept_head_note, ar.approval_note),
                 ar.request_amount = pea.total_price,
                 ar.approved_amount = CASE WHEN pea.mgmt_status = 'approved' THEN pea.total_price ELSE ar.approved_amount END
         ";

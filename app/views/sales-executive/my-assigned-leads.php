@@ -188,29 +188,36 @@ foreach ($myAllleads as $lead) {
     }
 
     /* Stat Card Styles */
+    a.stat-card-link {
+        display: block;
+        height: 100%;
+        text-decoration: none;
+        color: inherit;
+        border-radius: 12px;
+    }
     .stat-card {
         border-radius: 12px;
         padding: 0 !important;
         margin-bottom: 0 !important;
         transition: transform 0.3s ease, box-shadow 0.3s ease;
         border: none;
+        height: 100% !important;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
     .stat-value {
         font-size: 1.5rem;
-        font-weight: bold;
-        margin: 0.2rem 0;
+        font-weight: 800;
+        margin: 0.15rem 0;
+        line-height: 1.2;
     }
     .stat-label {
         font-size: 11px;
-        font-weight: 600;
+        font-weight: 700;
         text-transform: uppercase;
         color: #718096;
-    }
-    a.stat-card-link {
-        display: block;
-        text-decoration: none;
-        color: inherit;
-        border-radius: 15px;
+        letter-spacing: 0.2px;
     }
     a.stat-card-link .stat-card {
         position: relative;
@@ -218,12 +225,12 @@ foreach ($myAllleads as $lead) {
         transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
     }
     a.stat-card-link:hover .stat-card {
-        transform: translateY(-6px);
-        box-shadow: 0 14px 30px rgba(220,53,69,0.18) !important;
+        transform: translateY(-4px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
     }
     a.stat-card-link .card-nav-arrow {
         position: absolute;
-        top: 10px; right: 12px;
+        top: 8px; right: 10px;
         font-size: 0.65rem;
         color: #bbb;
         opacity: 0;
@@ -238,6 +245,39 @@ foreach ($myAllleads as $lead) {
         color: #a0aec0;
         display: block;
         margin-top: 2px;
+    }
+
+    /* Mobile Responsiveness for Stat Cards */
+    @media (max-width: 767.98px) {
+        .stat-card {
+            min-height: 75px !important;
+        }
+        .stat-card .card-body {
+            padding: 8px 10px !important;
+        }
+        .stat-card .stat-value {
+            font-size: 1.25rem !important;
+            font-weight: 700 !important;
+        }
+        .stat-card .stat-label {
+            font-size: 10px !important;
+            line-height: 1.2 !important;
+        }
+        .stat-card .card-hint {
+            font-size: 9px !important;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 105px;
+        }
+        .stat-card .card__icon {
+            font-size: 1.3rem !important;
+        }
+    }
+    @media (min-width: 992px) {
+        .stat-card {
+            min-height: 88px !important;
+        }
     }
 </style>
 
@@ -271,12 +311,12 @@ if (!function_exists('getMyAssignedStatCardLink')) {
 </div>
 
 <!-- Stats Grid -->
-<div class="row mb-4 align-items-stretch">
+<div class="row g-2 g-md-3 mb-4 align-items-stretch">
     <!-- Total My Leads Card -->
-    <div class="col-6 col-md-4 col-xl mb-2">
-        <a href="<?= getMyAssignedStatCardLink('total_leads') ?>" class="stat-card-link">
+    <div class="col-6 col-sm-6 col-md-6 col-lg-3 col-xl-3 mb-2 mb-md-3">
+        <a href="<?= getMyAssignedStatCardLink('total_leads') ?>" class="stat-card-link h-100 d-block">
             <div class="card__wrapper stat-card shadow-sm <?= (empty($filterCard) && empty($selectedAction) && empty($selectedCallStatus) && empty($search) && empty($followup_date) && !($isFilterMissing ?? false)) ? 'border-primary' : '' ?>" 
-                 style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 1.5px solid #bfdbfe !important; min-height: 85px;">
+                 style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 1.5px solid #bfdbfe !important; height: 100% !important; min-height: 85px;">
                 <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right text-primary"></i></span>
                 <div class="card-body d-flex justify-content-between align-items-center p-2 px-3">
                     <div>
@@ -291,10 +331,10 @@ if (!function_exists('getMyAssignedStatCardLink')) {
     </div>
 
     <!-- Contacted Card (Includes Contacted & Follow Up) -->
-    <div class="col-6 col-md-4 col-xl mb-2">
-        <a href="<?= getMyAssignedStatCardLink('contacted') ?>" class="stat-card-link">
+    <div class="col-6 col-sm-6 col-md-6 col-lg-3 col-xl-3 mb-2 mb-md-3">
+        <a href="<?= getMyAssignedStatCardLink('contacted') ?>" class="stat-card-link h-100 d-block">
             <div class="card__wrapper stat-card shadow-sm <?= (($filterCard ?? '') === 'contacted' || ($selectedAction ?? '') === 'Contacted') ? 'border-success' : '' ?>" 
-                 style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1.5px solid #bbf7d0 !important; min-height: 85px;">
+                 style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1.5px solid #bbf7d0 !important; height: 100% !important; min-height: 85px;">
                 <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right text-success"></i></span>
                 <div class="card-body d-flex justify-content-between align-items-center p-2 px-3">
                     <div>
@@ -309,10 +349,10 @@ if (!function_exists('getMyAssignedStatCardLink')) {
     </div>
 
     <!-- Not Contacted Card -->
-    <div class="col-6 col-md-4 col-xl mb-2">
-        <a href="<?= getMyAssignedStatCardLink('not_contacted') ?>" class="stat-card-link">
+    <div class="col-6 col-sm-6 col-md-6 col-lg-3 col-xl-3 mb-2 mb-md-3">
+        <a href="<?= getMyAssignedStatCardLink('not_contacted') ?>" class="stat-card-link h-100 d-block">
             <div class="card__wrapper stat-card shadow-sm <?= (($filterCard ?? '') === 'not_contacted' || ($filterCard ?? '') === 'not_called' || ($selectedCallStatus ?? '') === 'not_called') ? 'border-warning' : '' ?>" 
-                 style="background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); border: 1.5px solid #fed7aa !important; min-height: 85px;">
+                 style="background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); border: 1.5px solid #fed7aa !important; height: 100% !important; min-height: 85px;">
                 <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right text-warning"></i></span>
                 <div class="card-body d-flex justify-content-between align-items-center p-2 px-3">
                     <div>
@@ -327,10 +367,10 @@ if (!function_exists('getMyAssignedStatCardLink')) {
     </div>
 
     <!-- Booked Card -->
-    <div class="col-6 col-md-4 col-xl mb-2">
-        <a href="<?= getMyAssignedStatCardLink('booked') ?>" class="stat-card-link">
+    <div class="col-6 col-sm-6 col-md-6 col-lg-3 col-xl-3 mb-2 mb-md-3">
+        <a href="<?= getMyAssignedStatCardLink('booked') ?>" class="stat-card-link h-100 d-block">
             <div class="card__wrapper stat-card shadow-sm <?= (($filterCard ?? '') === 'booked' || ($selectedAction ?? '') === 'Booked') ? 'border-purple' : '' ?>" 
-                 style="background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%); border: 1.5px solid #e9d5ff !important; min-height: 85px;">
+                 style="background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%); border: 1.5px solid #e9d5ff !important; height: 100% !important; min-height: 85px;">
                 <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right text-purple"></i></span>
                 <div class="card-body d-flex justify-content-between align-items-center p-2 px-3">
                     <div>
@@ -349,10 +389,10 @@ if (!function_exists('getMyAssignedStatCardLink')) {
     </div>
 
     <!-- Upcoming Follow-ups Card -->
-    <div class="col-6 col-md-4 col-xl mb-2">
-        <a href="<?= getMyAssignedStatCardLink('upcoming_follow_ups') ?>" class="stat-card-link">
+    <div class="col-6 col-sm-6 col-md-6 col-lg-3 col-xl-3 mb-2 mb-md-3">
+        <a href="<?= getMyAssignedStatCardLink('upcoming_follow_ups') ?>" class="stat-card-link h-100 d-block">
             <div class="card__wrapper stat-card shadow-sm <?= (($filterCard ?? '') === 'upcoming_follow_ups') ? 'border-info' : '' ?>" 
-                 style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 1.5px solid #bae6fd !important; min-height: 85px;">
+                 style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 1.5px solid #bae6fd !important; height: 100% !important; min-height: 85px;">
                 <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right text-info"></i></span>
                 <div class="card-body d-flex justify-content-between align-items-center p-2 px-3">
                     <div>
@@ -367,10 +407,10 @@ if (!function_exists('getMyAssignedStatCardLink')) {
     </div>
 
     <!-- Missing Follow-ups Stats Card -->
-    <div class="col-6 col-md-4 col-xl mb-2">
-        <a href="<?= getMyAssignedStatCardLink('missing_followup') ?>" class="stat-card-link">
+    <div class="col-6 col-sm-6 col-md-6 col-lg-3 col-xl-3 mb-2 mb-md-3">
+        <a href="<?= getMyAssignedStatCardLink('missing_followup') ?>" class="stat-card-link h-100 d-block">
             <div class="card__wrapper stat-card shadow-sm <?= ($isFilterMissing ?? false) ? 'border-danger' : '' ?>" 
-                 style="background: linear-gradient(135deg, #fff5f5 0%, #ffe3e3 100%); border: 1.5px solid <?= ($isFilterMissing ?? false) ? '#dc3545' : '#fecaca' ?> !important; min-height: 85px;">
+                 style="background: linear-gradient(135deg, #fff5f5 0%, #ffe3e3 100%); border: 1.5px solid <?= ($isFilterMissing ?? false) ? '#dc3545' : '#fecaca' ?> !important; height: 100% !important; min-height: 85px;">
                 <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right text-danger"></i></span>
                 <div class="card-body d-flex justify-content-between align-items-center p-2 px-3">
                     <div>
@@ -385,10 +425,10 @@ if (!function_exists('getMyAssignedStatCardLink')) {
     </div>
 
     <!-- No Response Leads Card -->
-    <div class="col-6 col-md-4 col-xl mb-2">
-        <a href="<?= getMyAssignedStatCardLink('no_response') ?>" class="stat-card-link">
+    <div class="col-6 col-sm-6 col-md-6 col-lg-3 col-xl-3 mb-2 mb-md-3">
+        <a href="<?= getMyAssignedStatCardLink('no_response') ?>" class="stat-card-link h-100 d-block">
             <div class="card__wrapper stat-card shadow-sm <?= (in_array(($filterCard ?? ''), ['no_response', 'no_response_leads']) || ($selectedLeadStatus ?? '') === 'No Response') ? 'border-warning' : '' ?>" 
-                 style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 1.5px solid #fde68a !important; min-height: 85px;">
+                 style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 1.5px solid #fde68a !important; height: 100% !important; min-height: 85px;">
                 <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right text-warning"></i></span>
                 <div class="card-body d-flex justify-content-between align-items-center p-2 px-3">
                     <div>
@@ -397,6 +437,24 @@ if (!function_exists('getMyAssignedStatCardLink')) {
                         <span class="card-hint text-warning-emphasis" style="font-size: 10px; margin-top: 0;">Click to view no response &rarr;</span>
                     </div>
                     <div class="card__icon text-warning" style="opacity: 0.2; font-size: 1.8rem;"><i class="fa-solid fa-phone-slash"></i></div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Interested Other Location Leads Card -->
+    <div class="col-6 col-sm-6 col-md-6 col-lg-3 col-xl-3 mb-2 mb-md-3">
+        <a href="<?= getMyAssignedStatCardLink('interested_other_location') ?>" class="stat-card-link h-100 d-block">
+            <div class="card__wrapper stat-card shadow-sm <?= (in_array(($filterCard ?? ''), ['interested_other_location', 'interested_in_other_location', 'other_location']) || ($selectedLeadStatus ?? '') === 'Interested in Other Location') ? 'border-purple' : '' ?>" 
+                 style="background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%); border: 1.5px solid #ddd6fe !important; height: 100% !important; min-height: 85px;">
+                <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right" style="color: #8b5cf6;"></i></span>
+                <div class="card-body d-flex justify-content-between align-items-center p-2 px-3">
+                    <div>
+                        <p class="stat-label mb-1" style="color: #6d28d9;"><i class="fa-solid fa-map-location-dot me-1"></i> Other Location</p>
+                        <h2 class="stat-value mb-1" style="font-size: 1.6rem; font-weight: 800; color: #7c3aed;"><?= $interestedOtherLocationCount ?? 0 ?></h2>
+                        <span class="card-hint" style="color: #6d28d9; font-size: 10px; margin-top: 0;">Click to view &rarr;</span>
+                    </div>
+                    <div class="card__icon" style="opacity: 0.25; font-size: 1.8rem; color: #7c3aed;"><i class="fa-solid fa-map-location-dot"></i></div>
                 </div>
             </div>
         </a>
@@ -650,7 +708,7 @@ $hasActiveFilters = !empty($search)
                         <?php
                         $statuses = [
                             'No Response', 'Pending', 'Qualification in Progress', 'Potential', 'High Potential', 
-                            'Visit Scheduled', 'Visit Completed', 'Sold', 'Lead Transferred', 
+                            'Visit Scheduled', 'Visit Completed', 'Interested in Other Location', 'Sold', 'Lead Transferred', 
                             'Project Transferred', 'Not Interested', 
                             'Refund', 'Future', 'Invalid Lead'
                         ];
@@ -1075,6 +1133,7 @@ $hasActiveFilters = !empty($search)
                                         }
                                         
                                         $badgeClass = 'bg-secondary text-white';
+                                        $badgeStyle = '';
                                         if (in_array($statusVal, ['High Potential', 'High Prospect', 'Hot'])) {
                                             $badgeClass = 'bg-danger text-white';
                                         } elseif ($statusVal === 'Qualification in Progress') {
@@ -1085,6 +1144,9 @@ $hasActiveFilters = !empty($search)
                                             $badgeClass = 'bg-info text-dark';
                                         } elseif (in_array($statusVal, ['Visit Completed', 'Visited'])) {
                                             $badgeClass = 'bg-primary text-white';
+                                        } elseif ($statusVal === 'Interested in Other Location') {
+                                            $badgeClass = 'text-white';
+                                            $badgeStyle = 'background-color: #8b5cf6 !important;';
                                         } elseif (in_array($statusVal, ['Not Interested', "Don't Call Again", 'Cold', 'Refund'])) {
                                             $badgeClass = 'bg-danger text-white';
                                         } elseif ($statusVal == 'Warm') {
@@ -1114,7 +1176,17 @@ $hasActiveFilters = !empty($search)
                                             <option value="cancel" <?= $last_action == 'cancel' ? 'selected' : '' ?>>Cancel</option>
                                         </select>
                                         <div class="text-center lead-status-badge-wrap" data-lead-id="<?= $lead['id'] ?>">
-                                            <span class="badge <?= $badgeClass ?> px-2 py-1" style="font-size: 10px;"><?= htmlspecialchars($statusVal) ?></span>
+                                            <span class="badge <?= $badgeClass ?> px-2 py-1" style="font-size: 10px; <?= $badgeStyle ?>"><?= htmlspecialchars($statusVal) ?></span>
+                                            <?php 
+                                            $locName = !empty($lead['interested_location_name']) ? $lead['interested_location_name'] : (!empty($lead['last_follow_up_interested_location']) ? $lead['last_follow_up_interested_location'] : '');
+                                            if ($statusVal === 'Interested in Other Location' && !empty($locName)): 
+                                            ?>
+                                                <div class="mt-1">
+                                                    <span class="badge rounded-pill px-1.5 py-0.5 text-truncate" style="font-size:9px; background-color: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe; max-width: 130px;" title="Interested Location: <?= htmlspecialchars($locName, ENT_QUOTES, 'UTF-8') ?>">
+                                                        <i class="fa-solid fa-location-dot me-1"></i><?= htmlspecialchars($locName) ?>
+                                                    </span>
+                                                </div>
+                                            <?php endif; ?>
                                         </div>
                                     </td>
 
@@ -1354,7 +1426,7 @@ $hasActiveFilters = !empty($search)
                         <?php
                         $statuses = [
                             'No Response', 'Pending', 'Qualification in Progress', 'Potential', 'High Potential', 
-                            'Visit Scheduled', 'Visit Completed', 'Sold', 'Lead Transferred', 
+                            'Visit Scheduled', 'Visit Completed', 'Interested in Other Location', 'Sold', 'Lead Transferred', 
                             'Project Transferred', 'Not Interested', 
                             'Refund', 'Future', 'Invalid Lead'
                         ];
@@ -1444,6 +1516,14 @@ $hasActiveFilters = !empty($search)
                 <div class="lead-card-header d-flex justify-content-between align-items-start gap-1">
                     <div class="flex-grow-1 overflow-hidden">
                         <span class="lead-name text-truncate"><?= htmlspecialchars($lead['full_name'] ?? '') ?></span>
+                        <?php 
+                        $mLoc = !empty($lead['interested_location_name']) ? $lead['interested_location_name'] : (!empty($lead['last_follow_up_interested_location']) ? $lead['last_follow_up_interested_location'] : '');
+                        if (!empty($mLoc)): 
+                        ?>
+                            <span class="badge rounded-pill px-2 py-0.5 ms-1" style="font-size: 9px; background-color: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe;" title="Interested Location: <?= htmlspecialchars($mLoc, ENT_QUOTES, 'UTF-8') ?>">
+                                <i class="fa-solid fa-location-dot me-1"></i><?= htmlspecialchars($mLoc) ?>
+                            </span>
+                        <?php endif; ?>
                         <?php if ($isDup): ?>
                             <span class="badge bg-danger cursor-pointer duplicate-badge-click" 
                                   data-duplicates="<?= htmlspecialchars(json_encode($leadDuplicates), ENT_QUOTES, 'UTF-8') ?>"
@@ -2497,6 +2577,18 @@ document.addEventListener('DOMContentLoaded', function () {
 </div>
 
 <!-- Create Follow Up Modal -->
+<?php
+if (!isset($allLocationsList)) {
+    $locDb = $GLOBALS['db'] ?? (isset($this) && isset($this->db) ? $this->db : (class_exists('Database') ? Database::getInstance()->getConnection() : null));
+    $locRes = $locDb ? $locDb->query("SELECT DISTINCT name FROM locations WHERE name IS NOT NULL AND name != '' ORDER BY name ASC") : null;
+    $allLocationsList = $locRes ? $locRes->fetch_all(MYSQLI_ASSOC) : [];
+}
+?>
+<datalist id="interestedLocationsList">
+    <?php foreach (($allLocationsList ?? []) as $loc): ?>
+        <option value="<?= htmlspecialchars($loc['name']) ?>"></option>
+    <?php endforeach; ?>
+</datalist>
 <div class="modal custom-modal fade" id="createFollowUpModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
@@ -2600,7 +2692,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <?php
                                 $statuses = [
                                     'No Response', 'Pending', 'Qualification in Progress', 'Potential', 'High Potential', 
-                                    'Visit Scheduled', 'Visit Completed', 'Lead Transferred', 
+                                    'Visit Scheduled', 'Visit Completed', 'Interested in Other Location', 'Lead Transferred', 
                                     'Not Interested', 'Invalid Lead'
                                 ];
                                 foreach($statuses as $st) {
@@ -2608,6 +2700,12 @@ document.addEventListener('DOMContentLoaded', function () {
                                 }
                                 ?>
                             </select>
+                        </div>
+                        
+                        <!-- Interested Location Name (Hidden by default, shown when Interested in Other Location) -->
+                        <div class="col-lg-6" id="createModalInterestedLocationDiv" style="display: none;">
+                            <label class="form__input-title">Interested Location Name*</label>
+                            <input type="text" name="interested_location_name" id="createModalInterestedLocationName" class="form-control" list="interestedLocationsList" placeholder="Select or type location name...">
                         </div>
                         
                         <!-- Team Re-assign (Hidden by default) -->
@@ -2839,6 +2937,8 @@ document.addEventListener('DOMContentLoaded', function() {
         $('#createFollowUpForm')[0].reset();
         $('#createFollowUpLeadId').val(leadId);
         $('#createModalReassignTeamDiv').hide();
+        $('#createModalInterestedLocationDiv').hide();
+        $('#createModalInterestedLocationName').prop('required', false).val('');
         $('#createFollowUpFlatSelect').html('<option value="">Select Flat</option>');
         $('#createFollowUpProjectSelect').val('');
         if ($('#createFollowUpProjectSelect').hasClass('select2-hidden-accessible')) {
@@ -2872,14 +2972,22 @@ document.addEventListener('DOMContentLoaded', function() {
                         let lsBadge = '<span class="text-muted">—</span>';
                         if (item.lead_status) {
                             let lsCls = 'bg-secondary text-white';
+                            let extraLoc = '';
                             if (item.lead_status === 'High Potential' || item.lead_status === 'High Prospect' || item.lead_status === 'Hot') lsCls = 'bg-danger text-white';
                             else if (item.lead_status === 'Qualification in Progress') lsCls = 'bg-info text-white';
                             else if (item.lead_status === 'Potential' || item.lead_status === 'Prospect' || item.lead_status === 'Warm') lsCls = 'bg-success text-white';
                             else if (item.lead_status === 'Visit Scheduled' || item.lead_status === 'Will Visit') lsCls = 'bg-info text-dark';
                             else if (item.lead_status === 'Visit Completed' || item.lead_status === 'Visited') lsCls = 'bg-primary text-white';
+                            else if (item.lead_status === 'Interested in Other Location') {
+                                lsCls = 'text-white" style="background-color: #8b5cf6 !important;';
+                                if (item.interested_location_name) {
+                                    extraLoc = `<div class="mt-1"><span class="badge rounded-pill px-1.5 py-0.5" style="font-size:9px; background-color: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe;"><i class="fa-solid fa-location-dot me-1"></i>${escapeHtml(item.interested_location_name)}</span></div>`;
+                                }
+                            }
+                            else if (item.lead_status === 'No Response') lsCls = 'bg-warning text-dark';
                             else if (item.lead_status === 'Invalid Lead' || item.lead_status === 'Irrelevant') lsCls = 'bg-dark text-white';
                             else if (item.lead_status === 'Cold' || item.lead_status === 'Not Interested' || item.lead_status === "Don't Call Again") lsCls = 'bg-secondary text-white';
-                            lsBadge = `<span class="badge ${lsCls} px-2 py-1">${escapeHtml(item.lead_status)}</span>`;
+                            lsBadge = `<span class="badge ${lsCls} px-2 py-1">${escapeHtml(item.lead_status)}</span>${extraLoc}`;
                         }
 
                         let fuStatusBadge = '<span class="badge bg-warning text-dark">Pending</span>';
@@ -2940,9 +3048,17 @@ document.addEventListener('DOMContentLoaded', function() {
         loadFlatsForProject(projectId, null);
     });
 
-    // Handle Lead Transferred toggle & No Response requirement
+    // Handle Lead Transferred toggle & No Response requirement & Interested in Other Location
     $('#createModalLeadStatus').on('change', function() {
         syncNoResponseNextDateRequirement();
+        if (this.value === 'Interested in Other Location') {
+            $('#createModalInterestedLocationDiv').show();
+            $('#createModalInterestedLocationName').prop('required', true);
+        } else {
+            $('#createModalInterestedLocationDiv').hide();
+            $('#createModalInterestedLocationName').prop('required', false).val('');
+        }
+
         if (this.value === 'Lead Transferred') {
             $('#createModalReassignTeamDiv').show();
             $('#createModalReassignTeamId').prop('required', false);
@@ -2987,6 +3103,13 @@ document.addEventListener('DOMContentLoaded', function() {
         $('#createModalLeadStatus').val(item.lead_status || '');
         $('#createModalTransferUserId').val('');
         $('#createModalTransferUserDiv').hide();
+        if (item.lead_status === 'Interested in Other Location') {
+            $('#createModalInterestedLocationDiv').show();
+            $('#createModalInterestedLocationName').prop('required', true).val(item.interested_location_name || '');
+        } else {
+            $('#createModalInterestedLocationDiv').hide();
+            $('#createModalInterestedLocationName').prop('required', false).val('');
+        }
         if (item.lead_status === 'Lead Transferred') {
             $('#createModalReassignTeamDiv').show();
             $('#createModalReassignTeamId').prop('required', false).val(item.team_id || '');
@@ -3077,22 +3200,35 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     
                     let savedLeadStatus = $('#createModalLeadStatus').val();
+                    let savedInterestedLoc = $('#createModalInterestedLocationName').val();
                     let fuStatus = $('#createFollowUpForm select[name="status"]').val();
                     let displayStatus = savedLeadStatus || (fuStatus ? fuStatus.charAt(0).toUpperCase() + fuStatus.slice(1) : 'Pending');
                     let badgeWrap = $(`.lead-status-badge-wrap[data-lead-id="${leadId}"]`);
                     if (badgeWrap.length > 0) {
                         let bCls = 'bg-secondary text-white';
+                        let locHtml = '';
                         if (displayStatus === 'High Potential' || displayStatus === 'High Prospect' || displayStatus === 'Hot') bCls = 'bg-danger text-white';
                         else if (displayStatus === 'Qualification in Progress') bCls = 'bg-info text-white';
                         else if (displayStatus === 'Potential' || displayStatus === 'Prospect') bCls = 'bg-success text-white';
                         else if (displayStatus === 'Visit Scheduled' || displayStatus === 'Will Visit') bCls = 'bg-info text-dark';
                         else if (displayStatus === 'Visit Completed' || displayStatus === 'Visited') bCls = 'bg-primary text-white';
+                        else if (displayStatus === 'Interested in Other Location') {
+                            bCls = 'text-white" style="background-color: #8b5cf6 !important; font-size: 10px;';
+                            if (savedInterestedLoc) {
+                                locHtml = `<div class="mt-1"><span class="badge rounded-pill px-2 py-0.5" style="font-size:9px; background-color: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe;"><i class="fa-solid fa-location-dot me-1"></i>${escapeHtml(savedInterestedLoc)}</span></div>`;
+                            }
+                        }
                         else if (displayStatus === 'Warm') bCls = 'bg-warning text-dark';
                         else if (displayStatus === 'Invalid Lead' || displayStatus === 'Irrelevant') bCls = 'bg-dark text-white';
                         else if (displayStatus === 'No Response') bCls = 'bg-warning text-dark';
                         else if (displayStatus === 'Not Interested' || displayStatus === "Don't Call Again" || displayStatus === 'Cold' || displayStatus === 'Refund') bCls = 'bg-danger text-white';
                         else if (displayStatus === 'Sold' || displayStatus === 'Completed') bCls = 'bg-success text-white';
-                        badgeWrap.html(`<span class="badge ${bCls} px-2 py-1" style="font-size: 10px;">${escapeHtml(displayStatus)}</span>`);
+
+                        if (displayStatus === 'Interested in Other Location') {
+                            badgeWrap.html(`<span class="badge ${bCls}">${escapeHtml(displayStatus)}</span>${locHtml}`);
+                        } else {
+                            badgeWrap.html(`<span class="badge ${bCls} px-2 py-1" style="font-size: 10px;">${escapeHtml(displayStatus)}</span>`);
+                        }
                     }
 
                     resetFormToCreateMode();

@@ -1058,8 +1058,15 @@ class Con_VendorPaymentRequestController extends Controller
         }
 
         $request = $this->model->find($id);
-        if (!$request || $request['status'] !== 'Submitted') {
+        if (!$request || !in_array($request['status'], ['Submitted', 'QC Approved'])) {
             setError('Invalid request status for QC rejection.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+            exit;
+        }
+
+        $totalPaid = $this->txnModel->getTotalPaidForSource('vendor_payment', $id);
+        if ($totalPaid > 0) {
+            setError('Cannot reject a payment request where disbursements have already been made.');
             header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
             exit;
         }
@@ -1094,23 +1101,37 @@ class Con_VendorPaymentRequestController extends Controller
             exit;
         }
 
-        $isQC = ($request['status'] === 'Submitted');
-        $isMgmt = ($request['status'] === 'QC Approved');
+        $totalPaid = $this->txnModel->getTotalPaidForSource('vendor_payment', $id);
+        if ($totalPaid > 0) {
+            setError('Cannot reject a payment request where disbursements have already been made.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+            exit;
+        }
 
-        if (($isQC || $isMgmt) && !$this->canApprove()) {
+        if (!in_array($request['status'], ['Submitted', 'QC Approved', 'Approved'])) {
+            setError('Payment request cannot be rejected in its current status.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+            exit;
+        }
+
+        if (!$this->canApprove()) {
             setError('You are not authorized to reject as Management.');
             header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
             exit;
         }
 
-        if ($this->model->reject($id, $this->userId)) {
-            $note = trim($_POST['approval_note'] ?? '');
+        $note = trim($_POST['approval_note'] ?? '');
+        if (empty($note)) {
+            $note = 'Rejected';
+        }
+
+        if ($this->model->reject($id, $this->userId, $note)) {
             $stmt = $this->db->prepare("UPDATE vendor_payment_requests SET management_note = ? WHERE id = ?");
             $stmt->bind_param('si', $note, $id);
             $stmt->execute();
 
             // Sync approval_requests table
-            $this->syncApprovalRequest($id, 'rejected');
+            $this->syncApprovalRequest($id, 'rejected', null, $note);
             setSuccess('Payment Request Rejected.');
         } else {
             setError('Failed to reject request.');
@@ -1377,26 +1398,44 @@ class Con_VendorPaymentRequestController extends Controller
     }
 
     /** Sync approval_requests status when approving/rejecting from this page */
-    private function syncApprovalRequest($requestId, $newStatus, $approvedAmount = null)
+    private function syncApprovalRequest($requestId, $newStatus, $approvedAmount = null, $note = null)
     {
         $arStatus = ($newStatus === 'approved') ? 'approved' : 'rejected';
         $arRow = $this->getApprovalRequest($requestId);
         $isAhApproved = (!empty($arRow['accounts_head_status']) && strtolower($arRow['accounts_head_status']) === 'approved');
         $approveRole = ($newStatus === 'approved') ? ($isAhApproved ? 'accounts' : 'accounts_head') : 'rejected';
 
-        $stmt = $this->db->prepare(
-            "UPDATE approval_requests
-             SET status = ?, 
-                 approve_role = ?,
-                 approved_amount = COALESCE(?, approved_amount, request_amount),
-                 approved_by = ?, 
-                 approved_at = NOW()
-             WHERE source_table = 'vendor_payment_requests' AND source_id = ?"
-        );
-        if ($stmt) {
-            $stmt->bind_param('ssdii', $arStatus, $approveRole, $approvedAmount, $this->userId, $requestId);
-            $stmt->execute();
-            $stmt->close();
+        $isOpHeadUser = (in_array((int)$this->userRole, [20, 32], true) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head') !== false || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'admin & operation') !== false);
+
+        if ($newStatus === 'rejected') {
+            $escNote = $this->db->real_escape_string($note ?: 'Rejected');
+            $opHeadClause = $isOpHeadUser ? ", op_head_status = 'rejected', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$escNote}'" : "";
+            
+            $this->db->query("
+                UPDATE approval_requests
+                SET status = 'rejected',
+                    approve_role = 'rejected',
+                    approved_by = {$this->userId},
+                    approved_at = NOW(),
+                    approval_note = '{$escNote}'
+                    {$opHeadClause}
+                WHERE source_table = 'vendor_payment_requests' AND source_id = {$requestId}
+            ");
+        } else {
+            $stmt = $this->db->prepare(
+                "UPDATE approval_requests
+                 SET status = ?, 
+                     approve_role = ?,
+                     approved_amount = COALESCE(?, approved_amount, request_amount),
+                     approved_by = ?, 
+                     approved_at = NOW()
+                 WHERE source_table = 'vendor_payment_requests' AND source_id = ?"
+            );
+            if ($stmt) {
+                $stmt->bind_param('ssdii', $arStatus, $approveRole, $approvedAmount, $this->userId, $requestId);
+                $stmt->execute();
+                $stmt->close();
+            }
         }
     }
 

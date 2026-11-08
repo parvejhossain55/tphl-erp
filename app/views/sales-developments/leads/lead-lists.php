@@ -83,7 +83,7 @@ if (!function_exists('getStatCardLink')) {
 }
 $activeCard = $_GET['filter_card'] ?? '';
 ?>
-<?php if (!empty($filteredExecName) || in_array($activeCard, ['no_response', 'no_response_leads', 'potential_leads', 'potential', 'visit_scheduled', 'visit_scheduled_leads', 'visited_leads', 'visited', 'visit_completed'])): ?>
+<?php if (!empty($filteredExecName) || in_array($activeCard, ['no_response', 'no_response_leads', 'potential_leads', 'potential', 'visit_scheduled', 'visit_scheduled_leads', 'visited_leads', 'visited', 'visit_completed', 'interested_other_location', 'interested_in_other_location', 'other_location'])): ?>
 <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
     <?php if (!empty($filteredExecName)): ?>
     <span class="badge rounded-pill text-bg-primary" style="font-size:0.8rem; padding:6px 14px;">
@@ -111,6 +111,11 @@ $activeCard = $_GET['filter_card'] ?? '';
     <span class="badge rounded-pill text-bg-primary d-inline-flex align-items-center gap-1" style="font-size:0.8rem; padding:6px 14px; background-color: #ede9fe !important; color: #6b21a8 !important; border: 1px solid #ddd6fe;">
         <i class="fa-solid fa-building-circle-check me-1"></i> Card Filter: <strong>Visited Leads</strong>
         <a href="<?= getStatCardLink('total_leads') ?>" class="ms-2 text-decoration-none fw-bold" style="color: #6b21a8;" title="Clear card filter">&times;</a>
+    </span>
+    <?php elseif (in_array($activeCard, ['interested_other_location', 'interested_in_other_location', 'other_location'])): ?>
+    <span class="badge rounded-pill d-inline-flex align-items-center gap-1" style="font-size:0.8rem; padding:6px 14px; background-color: #ede9fe !important; color: #6d28d9 !important; border: 1px solid #ddd6fe;">
+        <i class="fa-solid fa-map-location-dot me-1"></i> Card Filter: <strong>Interested in Other Location Leads</strong>
+        <a href="<?= getStatCardLink('total_leads') ?>" class="ms-2 text-decoration-none fw-bold" style="color: #6d28d9;" title="Clear card filter">&times;</a>
     </span>
     <?php endif; ?>
 </div>
@@ -261,6 +266,15 @@ $activeCard = $_GET['filter_card'] ?? '';
         <a href="<?= getStatCardLink('visited_leads') ?>" class="card__wrapper stat-card text-decoration-none d-block h-100 <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>" style="cursor: pointer; <?= in_array($activeCard, ['visited_leads', 'visited', 'visit_completed']) ? 'border: 2px solid #6366f1 !important; background-color: #eef2ff;' : '' ?>" title="Leads with last follow-up status Visited">
             <div class="stat-label text-primary fw-semibold"><i class="fa-solid fa-building-circle-check me-1"></i>Visited <?= !empty($filteredExecName) ? '<i class="fa-solid fa-filter ms-1 text-primary" style="font-size:9px;" title="Filtered"></i>' : '' ?></div>
             <div class="stat-value text-primary"><?= number_format($totalVisitedLeads ?? 0) ?></div>
+            <div class="stat-change positive d-none">
+                <i class="bi bi-arrow-up"></i>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-6 col-lg-4 col-xl-2">
+        <a href="<?= getStatCardLink('interested_other_location') ?>" class="card__wrapper stat-card text-decoration-none d-block h-100 <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>" style="cursor: pointer; <?= in_array($activeCard, ['interested_other_location', 'interested_in_other_location', 'other_location']) ? 'border: 2px solid #8b5cf6 !important; background-color: #f5f3ff;' : '' ?>" title="Leads with last follow-up status Interested in Other Location">
+            <div class="stat-label fw-semibold" style="color: #6d28d9;"><i class="fa-solid fa-map-location-dot me-1"></i>Other Location <?= !empty($filteredExecName) ? '<i class="fa-solid fa-filter ms-1 text-primary" style="font-size:9px;" title="Filtered"></i>' : '' ?></div>
+            <div class="stat-value" style="color: #7c3aed;"><?= number_format($totalInterestedOtherLocationLeads ?? 0) ?></div>
             <div class="stat-change positive d-none">
                 <i class="bi bi-arrow-up"></i>
             </div>
@@ -1247,6 +1261,18 @@ $activeCard = $_GET['filter_card'] ?? '';
 </div>
 
 <!-- Create / Edit Follow Up Modal -->
+<?php
+if (!isset($allLocationsList)) {
+    $locDb = $GLOBALS['db'] ?? (isset($this) && isset($this->db) ? $this->db : (class_exists('Database') ? Database::getInstance()->getConnection() : null));
+    $locRes = $locDb ? $locDb->query("SELECT DISTINCT name FROM locations WHERE name IS NOT NULL AND name != '' ORDER BY name ASC") : null;
+    $allLocationsList = $locRes ? $locRes->fetch_all(MYSQLI_ASSOC) : [];
+}
+?>
+<datalist id="interestedLocationsList">
+    <?php foreach (($allLocationsList ?? []) as $loc): ?>
+        <option value="<?= htmlspecialchars($loc['name']) ?>"></option>
+    <?php endforeach; ?>
+</datalist>
 <div class="modal custom-modal fade" id="createFollowUpModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
@@ -1350,7 +1376,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                                 <?php
                                 $statuses = [
                                     'No Response', 'Pending', 'Qualification in Progress', 'Potential', 'High Potential', 
-                                    'Visit Scheduled', 'Visit Completed', 'Lead Transferred', 
+                                    'Visit Scheduled', 'Visit Completed', 'Interested in Other Location', 'Lead Transferred', 
                                     'Not Interested', 'Invalid Lead'
                                 ];
                                 foreach($statuses as $st) {
@@ -1358,6 +1384,12 @@ $activeCard = $_GET['filter_card'] ?? '';
                                 }
                                 ?>
                             </select>
+                        </div>
+                        
+                        <!-- Interested Location Name (Hidden by default, shown when Interested in Other Location) -->
+                        <div class="col-lg-6" id="createModalInterestedLocationDiv" style="display: none;">
+                            <label class="form__input-title">Interested Location Name*</label>
+                            <input type="text" name="interested_location_name" id="createModalInterestedLocationName" class="form-control" list="interestedLocationsList" placeholder="Select or type location name...">
                         </div>
                         
                         <!-- Team Re-assign (Hidden by default) -->
@@ -1589,6 +1621,8 @@ document.addEventListener('DOMContentLoaded', function() {
         $('#createFollowUpForm')[0].reset();
         $('#createFollowUpLeadId').val(leadId);
         $('#createModalReassignTeamDiv').hide();
+        $('#createModalInterestedLocationDiv').hide();
+        $('#createModalInterestedLocationName').prop('required', false).val('');
         $('#createFollowUpFlatSelect').html('<option value="">Select Flat</option>');
         $('#createFollowUpProjectSelect').val('');
         if ($('#createFollowUpProjectSelect').hasClass('select2-hidden-accessible')) {
@@ -1622,14 +1656,22 @@ document.addEventListener('DOMContentLoaded', function() {
                         let lsBadge = '<span class="text-muted">—</span>';
                         if (item.lead_status) {
                             let lsCls = 'bg-secondary text-white';
+                            let extraLoc = '';
                             if (item.lead_status === 'High Potential' || item.lead_status === 'High Prospect' || item.lead_status === 'Hot') lsCls = 'bg-danger text-white';
                             else if (item.lead_status === 'Qualification in Progress') lsCls = 'bg-info text-white';
                             else if (item.lead_status === 'Potential' || item.lead_status === 'Prospect' || item.lead_status === 'Warm') lsCls = 'bg-success text-white';
                             else if (item.lead_status === 'Visit Scheduled' || item.lead_status === 'Will Visit') lsCls = 'bg-info text-dark';
                             else if (item.lead_status === 'Visit Completed' || item.lead_status === 'Visited') lsCls = 'bg-primary text-white';
+                            else if (item.lead_status === 'Interested in Other Location') {
+                                lsCls = 'text-white" style="background-color: #8b5cf6 !important;';
+                                if (item.interested_location_name) {
+                                    extraLoc = `<div class="mt-1"><span class="badge rounded-pill px-1.5 py-0.5" style="font-size:9px; background-color: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe;"><i class="fa-solid fa-location-dot me-1"></i>${escapeHtml(item.interested_location_name)}</span></div>`;
+                                }
+                            }
+                            else if (item.lead_status === 'No Response') lsCls = 'bg-warning text-dark';
                             else if (item.lead_status === 'Invalid Lead' || item.lead_status === 'Irrelevant') lsCls = 'bg-dark text-white';
                             else if (item.lead_status === 'Cold' || item.lead_status === 'Not Interested' || item.lead_status === "Don't Call Again") lsCls = 'bg-secondary text-white';
-                            lsBadge = `<span class="badge ${lsCls} px-2 py-1">${escapeHtml(item.lead_status)}</span>`;
+                            lsBadge = `<span class="badge ${lsCls} px-2 py-1">${escapeHtml(item.lead_status)}</span>${extraLoc}`;
                         }
 
                         let fuStatusBadge = '<span class="badge bg-warning text-dark">Pending</span>';
@@ -1698,6 +1740,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     $('#createModalLeadStatus').on('change', function() {
         syncNoResponseNextDateRequirement();
+        if (this.value === 'Interested in Other Location') {
+            $('#createModalInterestedLocationDiv').show();
+            $('#createModalInterestedLocationName').prop('required', true);
+        } else {
+            $('#createModalInterestedLocationDiv').hide();
+            $('#createModalInterestedLocationName').prop('required', false).val('');
+        }
         if (this.value === 'Lead Transferred') {
             $('#createModalReassignTeamDiv').show();
             $('#createModalReassignTeamId').prop('required', false);
@@ -1739,6 +1788,13 @@ document.addEventListener('DOMContentLoaded', function() {
         $('#createModalLeadStatus').val(item.lead_status || '');
         $('#createModalTransferUserId').val('');
         $('#createModalTransferUserDiv').hide();
+        if (item.lead_status === 'Interested in Other Location') {
+            $('#createModalInterestedLocationDiv').show();
+            $('#createModalInterestedLocationName').prop('required', true).val(item.interested_location_name || '');
+        } else {
+            $('#createModalInterestedLocationDiv').hide();
+            $('#createModalInterestedLocationName').prop('required', false).val('');
+        }
         if (item.lead_status === 'Lead Transferred') {
             $('#createModalReassignTeamDiv').show();
             $('#createModalReassignTeamId').prop('required', false).val(item.team_id || '');
@@ -1830,15 +1886,25 @@ document.addEventListener('DOMContentLoaded', function() {
                         let badgeWrap = $(`.lead-status-badge-wrap[data-lead-id="${leadId}"]`);
                         if (badgeWrap.length > 0) {
                             let bCls = 'bg-secondary text-white';
+                            let bStyle = '';
+                            let extraLocHtml = '';
                             if (savedLeadStatus === 'High Potential' || savedLeadStatus === 'High Prospect' || savedLeadStatus === 'Hot') bCls = 'bg-danger text-white';
                             else if (savedLeadStatus === 'Qualification in Progress') bCls = 'bg-info text-white';
                             else if (savedLeadStatus === 'Potential' || savedLeadStatus === 'Prospect' || savedLeadStatus === 'Warm') bCls = 'bg-success text-white';
                             else if (savedLeadStatus === 'Visit Scheduled' || savedLeadStatus === 'Will Visit') bCls = 'bg-info text-dark';
                             else if (savedLeadStatus === 'Visit Completed' || savedLeadStatus === 'Visited') bCls = 'bg-primary text-white';
+                            else if (savedLeadStatus === 'Interested in Other Location') {
+                                bCls = 'text-white';
+                                bStyle = 'background-color: #8b5cf6 !important;';
+                                let locVal = $('#createModalInterestedLocationName').val();
+                                if (locVal) {
+                                    extraLocHtml = `<div class="mt-1"><span class="badge rounded-pill px-1.5 py-0.5 text-truncate" style="font-size:9px; background-color: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe; max-width: 140px;" title="Interested Location: ${escapeHtml(locVal)}"><i class="fa-solid fa-location-dot me-1"></i>${escapeHtml(locVal)}</span></div>`;
+                                }
+                            }
                             else if (savedLeadStatus === 'No Response') bCls = 'bg-warning text-dark';
                             else if (savedLeadStatus === 'Invalid Lead' || savedLeadStatus === 'Irrelevant') bCls = 'bg-dark text-white';
                             else if (savedLeadStatus === 'Not Interested' || savedLeadStatus === "Don't Call Again" || savedLeadStatus === 'Cold' || savedLeadStatus === 'Refund') bCls = 'bg-secondary text-white';
-                            badgeWrap.html(`<span class="badge ${bCls} px-2 py-1" style="font-size: 10px;">${escapeHtml(savedLeadStatus)}</span>`);
+                            badgeWrap.html(`<span class="badge ${bCls} px-2 py-1" style="font-size: 10px; ${bStyle}">${escapeHtml(savedLeadStatus)}</span>${extraLocHtml}`);
                         }
                     }
 

@@ -190,7 +190,22 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                 <?php if($request['dept_head_status'] === 'not_required'): ?>
                                     <span class="text-muted"><i class="bi bi-dash-circle"></i> Not Required (No Dept Head Added)</span>
                                 <?php elseif($request['dept_head_status'] === 'approved'): ?>
-                                    <span class="text-success"><i class="bi bi-check-circle"></i> Approved</span> by <?= htmlspecialchars($request['dh_name'] ?? 'N/A') ?><br>
+                                    <span class="text-success"><i class="bi bi-check-circle"></i> Approved</span> by <?= htmlspecialchars($request['dh_name'] ?? 'N/A') ?>
+                                    <?php if ($request['status'] !== 'paid' && $request['status'] !== 'rejected' && ((int)($request['creator_reporting_user_id'] ?? 0) === (int)$userId || in_array($roleId, [1, 3, 20, 32, 38]))): ?>
+                                        <button type="button" class="btn btn-xs btn-outline-danger ms-2 py-0 px-2" data-bs-toggle="collapse" data-bs-target="#deptHeadRejectCollapse">
+                                            <i class="bi bi-x-circle me-1"></i> Reject
+                                        </button>
+                                        <div class="collapse mt-2" id="deptHeadRejectCollapse">
+                                            <form method="POST" action="<?= $GLOBALS['base_url'] ?>/project-other-costs/approve-dept-head/<?= $request['id'] ?>" class="border p-2 rounded bg-light">
+                                                <div class="mb-2">
+                                                    <textarea class="form-control form-control-sm" name="dept_head_approval_note" rows="2" placeholder="Reason for rejection..." required></textarea>
+                                                </div>
+                                                <button type="submit" name="dept_head_status" value="rejected" class="btn btn-sm btn-danger w-100" onclick="return confirm('Are you sure you want to reject this request?');">
+                                                    <i class="bi bi-x-circle me-1"></i> Confirm Rejection
+                                                </button>
+                                            </form>
+                                        </div>
+                                    <?php endif; ?><br>
                                     <?php if(!empty($request['dept_head_approved_at'])): ?>
                                         <small class="text-muted"><?= date('d M Y h:i A', strtotime($request['dept_head_approved_at'])) ?></small><br>
                                     <?php endif; ?>
@@ -214,7 +229,22 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                             <li class="list-group-item">
                                 <strong>QC Approval:</strong> 
                                 <?php if($request['qc_audit_approved_id']): ?>
-                                    <span class="text-success"><i class="bi bi-check-circle"></i> Approved</span> by <?= htmlspecialchars($request['qc_name'] ?? 'N/A') ?><br>
+                                    <span class="text-success"><i class="bi bi-check-circle"></i> Approved</span> by <?= htmlspecialchars($request['qc_name'] ?? 'N/A') ?>
+                                    <?php if ($request['status'] !== 'paid' && $request['status'] !== 'rejected' && in_array($roleId, [1, 3, 13, 24, 25, 20, 32, 38])): ?>
+                                        <button type="button" class="btn btn-xs btn-outline-danger ms-2 py-0 px-2" data-bs-toggle="collapse" data-bs-target="#qcRejectCollapse">
+                                            <i class="bi bi-x-circle me-1"></i> Reject
+                                        </button>
+                                        <div class="collapse mt-2" id="qcRejectCollapse">
+                                            <form method="POST" action="<?= $GLOBALS['base_url'] ?>/project-other-costs/approve-qc/<?= $request['id'] ?>" class="border p-2 rounded bg-light">
+                                                <div class="mb-2">
+                                                    <textarea class="form-control form-control-sm" name="qc_audit_note" rows="2" placeholder="Reason for QC rejection..." required></textarea>
+                                                </div>
+                                                <button type="submit" name="action" value="reject" class="btn btn-sm btn-danger w-100" onclick="return confirm('Are you sure you want to reject this request?');">
+                                                    <i class="bi bi-x-circle me-1"></i> Confirm QC Rejection
+                                                </button>
+                                            </form>
+                                        </div>
+                                    <?php endif; ?><br>
                                     <?php if(!empty($request['qc_audit_approved_at'])): ?>
                                         <small class="text-muted"><?= date('d M Y h:i A', strtotime($request['qc_audit_approved_at'])) ?></small><br>
                                     <?php endif; ?>
@@ -226,7 +256,22 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                             <li class="list-group-item">
                                 <strong>Management Approval:</strong>
                                 <?php if($request['management_apporved_by_id']): ?>
-                                    <span class="text-success"><i class="bi bi-check-circle"></i> Approved</span> by <?= htmlspecialchars($request['mgmt_name'] ?? 'N/A') ?><br>
+                                    <span class="text-success"><i class="bi bi-check-circle"></i> Approved</span> by <?= htmlspecialchars($request['mgmt_name'] ?? 'N/A') ?>
+                                    <?php if ($request['status'] !== 'paid' && $request['status'] !== 'rejected' && in_array($roleId, [1, 3, 15, 20, 22, 32, 38])): ?>
+                                        <button type="button" class="btn btn-xs btn-outline-danger ms-2 py-0 px-2" data-bs-toggle="collapse" data-bs-target="#mgmtRejectCollapse">
+                                            <i class="bi bi-x-circle me-1"></i> Reject
+                                        </button>
+                                        <div class="collapse mt-2" id="mgmtRejectCollapse">
+                                            <form method="POST" action="<?= $GLOBALS['base_url'] ?>/project-other-costs/approve-management/<?= $request['id'] ?>" class="border p-2 rounded bg-light">
+                                                <div class="mb-2">
+                                                    <textarea class="form-control form-control-sm" name="management_apporved_note" rows="2" placeholder="Reason for management rejection..." required></textarea>
+                                                </div>
+                                                <button type="submit" name="action" value="reject" class="btn btn-sm btn-danger w-100" onclick="return confirm('Are you sure you want to reject this request?');">
+                                                    <i class="bi bi-x-circle me-1"></i> Confirm Management Rejection
+                                                </button>
+                                            </form>
+                                        </div>
+                                    <?php endif; ?><br>
                                     <?php if(!empty($request['management_apporved_at'])): ?>
                                         <small class="text-muted"><?= date('d M Y h:i A', strtotime($request['management_apporved_at'])) ?></small><br>
                                     <?php endif; ?>
@@ -353,9 +398,14 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                         <label class="form-label fw-bold">QC Note (Optional)</label>
                                         <textarea class="form-control" name="qc_audit_note" rows="3" placeholder="Enter remarks..."></textarea>
                                     </div>
-                                    <button type="submit" class="btn btn-success btn-lg w-100" onclick="return confirm('Are you sure you want to approve this request?');">
-                                        <i class="bi bi-check-circle me-1"></i> Submit QC Approval
-                                    </button>
+                                    <div class="d-flex gap-2">
+                                        <button type="submit" name="action" value="approve" class="btn btn-success btn-lg flex-grow-1" onclick="return confirm('Are you sure you want to approve this request?');">
+                                            <i class="bi bi-check-circle me-1"></i> Submit QC Approval
+                                        </button>
+                                        <button type="submit" name="action" value="reject" class="btn btn-danger btn-lg flex-grow-1" onclick="return confirm('Are you sure you want to reject this request?');">
+                                            <i class="bi bi-x-circle me-1"></i> Reject
+                                        </button>
+                                    </div>
                                 </form>
                             <?php endif; ?>
 
@@ -388,9 +438,14 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                         <label class="form-label fw-bold"><?= $isOpHeadAction ? 'Operation Head Note' : 'Management Note' ?> (Optional)</label>
                                         <textarea class="form-control" name="management_apporved_note" rows="3" placeholder="Enter remarks..."></textarea>
                                     </div>
-                                    <button type="submit" class="btn <?= $isOpHeadAction ? 'btn-primary' : 'btn-success' ?> btn-lg w-100" onclick="return confirm('<?= $isOpHeadAction ? 'Approve as Operation Head?' : 'Are you sure you want to approve this request?' ?>');">
-                                        <i class="bi bi-check-circle me-1"></i> <?= $isOpHeadAction ? 'Submit Op Head Approval' : 'Submit Mgmt Approval' ?>
-                                    </button>
+                                    <div class="d-flex gap-2">
+                                        <button type="submit" name="action" value="approve" class="btn <?= $isOpHeadAction ? 'btn-primary' : 'btn-success' ?> btn-lg flex-grow-1" onclick="return confirm('<?= $isOpHeadAction ? 'Approve as Operation Head?' : 'Are you sure you want to approve this request?' ?>');">
+                                            <i class="bi bi-check-circle me-1"></i> <?= $isOpHeadAction ? 'Submit Op Head Approval' : 'Submit Mgmt Approval' ?>
+                                        </button>
+                                        <button type="submit" name="action" value="reject" class="btn btn-danger btn-lg flex-grow-1" onclick="return confirm('Are you sure you want to reject this request?');">
+                                            <i class="bi bi-x-circle me-1"></i> Reject
+                                        </button>
+                                    </div>
                                 </form>
                             <?php endif; ?>
 
