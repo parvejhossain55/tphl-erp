@@ -353,7 +353,7 @@ $show_breadcrumb = true;
                             <?= esc($lead['full_name'] ?? '-') ?>
                         </div>
                         <div class="small text-muted">
-                            📞 <?= esc($lead['phone'] ?? '-') ?>
+                             <?= esc($lead['phone'] ?? '-') ?>
                         </div>
                         <div class="small text-muted">
                             ✉ <?= esc($lead['email'] ?? '-') ?>

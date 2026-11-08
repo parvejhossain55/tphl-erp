@@ -478,7 +478,8 @@ public function indexTwo($bookingId = null)
         "refundDetails"   => $refundDetails,
         "refundPaidAmount"=> $refundPaidAmount,
         "salesUsers"      => $salesUsers,
-        "accountModel"    => $this->clientModel
+        "accountModel"    => $this->clientModel,
+        "datewiseSummary" => $this->clientModel->getDatewiseBatchPaymentSummary($bookingId)
     ]);
 }
 
@@ -2303,6 +2304,7 @@ public function indexTwoView($bookingId = null)
         "banks"           => $banks,
         "salesUsers"      => $salesUsers,
         "accountModel"    => $this->clientModel,
+        "datewiseSummary" => $this->clientModel->getDatewiseBatchPaymentSummary($bookingId),
         "discountApprovalReq" => $discountApprovalReq,
         "db"              => $this->db
     ]);
@@ -3772,6 +3774,50 @@ public function viewPaymentInvoice($paymentId = null)
     $payment = $payments[0];
     $isBulk = count($payments) > 1;
 
+    // Check if ALL payments in this batch/request are verified
+    $allBatchVerified = true;
+    foreach ($payments as $p) {
+        if (strtolower(trim($p['verification_status'] ?? '')) !== 'verified') {
+            $allBatchVerified = false;
+            break;
+        }
+    }
+
+    $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+    $userRoleName = strtolower($_SESSION['user']['role_name'] ?? '');
+    $isCedUser = in_array($userRoleId, [7, 37, 39], true)
+        || in_array((int)($_SESSION['user']['secondary_role_id'] ?? 0), [7, 37, 39], true)
+        || strpos($userRoleName, 'client experience') !== false;
+
+    // CED restriction: Money receipt cannot be accessed unless TOTAL batch_id payments are verified!
+    if ($isCedUser && !$allBatchVerified) {
+        die("<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='utf-8'>
+    <title>Money Receipt Not Available</title>
+    <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'>
+</head>
+<body style='font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,sans-serif; background:#f8fafc; display:flex; align-items:center; justify-content:center; min-height:80vh; margin:0;'>
+    <div style='background:#ffffff; border:1px solid #fee2e2; border-radius:12px; padding:35px; max-width:480px; text-align:center; box-shadow:0 10px 25px rgba(0,0,0,0.06);'>
+        <div style='width:56px; height:56px; background:#fef2f2; color:#ef4444; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:24px; margin-bottom:16px;'>
+            <i class='fa-solid fa-lock'></i>
+        </div>
+        <h3 style='color:#1e293b; margin:0 0 8px 0; font-size:20px;'>Money Receipt Locked</h3>
+        <p style='color:#64748b; font-size:13.5px; line-height:1.6; margin-bottom:20px;'>
+            This money receipt cannot be viewed or printed by Client Experience (CED) because one or more payments in this transaction batch are still pending verification by Accounts.
+        </p>
+        <div style='background:#fefce8; border:1px solid #fef08a; padding:10px 14px; border-radius:6px; font-size:12.5px; color:#854d0e; margin-bottom:20px; text-align:left;'>
+            <i class='fa-solid fa-circle-info me-1'></i> <strong>Rule:</strong> All payments under the same <code>batch_id</code> must be verified before the receipt is issued.
+        </div>
+        <button onclick='window.close(); history.back();' style='background:#0ea5e9; color:#ffffff; border:none; padding:9px 22px; border-radius:6px; font-weight:600; cursor:pointer;'>
+            Close / Go Back
+        </button>
+    </div>
+</body>
+</html>");
+    }
+
     // Use absolute path from root
     $root = dirname(dirname(__DIR__)); // Go up to project root
     $viewPath = $root . '/app/views/accounts/cashIn/invoice.php';
@@ -4501,6 +4547,40 @@ public function viewClientStatement($bookingId = null)
     }
     
     // Render the statement view
+    include $viewPath;
+    exit;
+}
+
+/**
+ * View Date-Wise Aggregated Payment Statement
+ * Shows total paid per batch/date without internal payment_type breakdowns.
+ * Accessible via /client-datewise-statement/{bookingId}
+ */
+public function viewClientDatewiseStatement($bookingId = null)
+{
+    if (session_status() === PHP_SESSION_NONE) session_start();
+
+    if (!$bookingId) {
+        $bookingId = $_GET['booking_id'] ?? null;
+    }
+
+    $bookingId = (int)$bookingId;
+    if ($bookingId <= 0) {
+        die("Invalid or missing booking ID.");
+    }
+
+    $summaryData = $this->clientModel->getDatewiseBatchPaymentSummary($bookingId);
+    if (!$summaryData || empty($summaryData['client_details'])) {
+        die("Booking details not found for ID: " . $bookingId);
+    }
+
+    $root = dirname(dirname(__DIR__));
+    $viewPath = $root . '/app/views/accounts/cashIn/client-datewise-statement.php';
+
+    if (!file_exists($viewPath)) {
+        die("View file not found at: " . $viewPath);
+    }
+
     include $viewPath;
     exit;
 }
@@ -5751,8 +5831,9 @@ public function discountStatement($bookingId = null)
         $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
 
         // Permission check: only CED and Admin can set EMI due dates
-        $isCedUser = in_array($userRoleId, [1, 3, 7, 37], true)
-            || in_array($userSecRoleId, [7, 37], true)
+        $isCedUser = in_array($userRoleId, [1, 3, 7, 37, 39], true)
+            || in_array($userSecRoleId, [7, 37, 39], true)
+            || strpos($roleName, 'head of client experience') !== false
             || strpos($roleName, 'client experience') !== false
             || strpos($roleName, 'credit recovery') !== false
             || strpos($roleName, 'client communication') !== false
@@ -6268,7 +6349,7 @@ public function discountStatement($bookingId = null)
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
 
-        $allowedRoles = [1, 3, 6, 7, 30, 33, 34, 35, 36, 37];
+        $allowedRoles = [1, 3, 6, 7, 30, 33, 34, 35, 36, 37, 39];
         $isAuthorized = in_array($userRoleId, $allowedRoles, true)
             || in_array($userSecRoleId, $allowedRoles, true)
             || in_array($userPriRoleId, $allowedRoles, true)
@@ -7180,7 +7261,7 @@ public function discountStatement($bookingId = null)
         $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
 
-        return in_array($userRoleId, [1, 3, 7, 33, 34, 35, 36, 37])
+        return in_array($userRoleId, [1, 3, 7, 33, 34, 35, 36, 37, 39])
             || strpos($roleName, 'account') !== false
             || strpos($roleName, 'client experience') !== false
             || strpos($roleName, 'clients experiment') !== false

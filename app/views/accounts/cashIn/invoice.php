@@ -85,95 +85,53 @@ if ($isNatureProject) {
     $themeQrHex     = "11-102-56";
 }
 
-// Payment & Verification Status
+// Payment & Verification Status:
+// For batch/bulk payments, ALL payments under the batch must be verified for the invoice to carry Verified status
 $isVerified = isset($payment['verification_status']) && strtolower(trim($payment['verification_status'])) === 'verified';
+if (!empty($payments) && is_array($payments)) {
+    foreach ($payments as $p) {
+        if (strtolower(trim($p['verification_status'] ?? '')) !== 'verified') {
+            $isVerified = false;
+            break;
+        }
+    }
+}
 
 // -------------------------------------------------------------
 // 1. CREATED BY RESOLUTION:
-// Show sales officer (sales_by_id / assigned_id).
-// If sales agent is Unknown Sales employee (user 195 or Unknown),
-// fallback to the person who created this payment transaction (lead_payments.created_by).
+// Always show the person who created this payment transaction (lead_payments.created_by)
 // -------------------------------------------------------------
-$salesPersonName = '';
-$salesPersonEmpId = '';
+$createdByName = !empty($payment['created_by_name']) ? trim($payment['created_by_name']) : '';
+$createdByEmpId = !empty($payment['created_by_employee_id']) ? trim($payment['created_by_employee_id']) : '';
 
-if (!empty($payment['sales_by_name'])) {
-    $salesPersonName = trim($payment['sales_by_name']);
-    $salesPersonEmpId = trim($payment['sales_by_employee_id'] ?? '');
-} elseif (!empty($clientDetails['agent_name'])) {
-    $salesPersonName = trim($clientDetails['agent_name']);
-    $salesPersonEmpId = trim($clientDetails['agent_employee_id'] ?? '');
-}
-
-// Fallback direct DB lookup for sales_by_id or assigned_id if not resolved
-if (empty($salesPersonName) && !empty($payment['booking_id']) && isset($this) && isset($this->db)) {
-    try {
-        $sStmt = $this->db->prepare("
-            SELECT u.full_name, 
-                   COALESCE(NULLIF(e1.employee_id, ''), NULLIF(e2.employee_id, ''), NULLIF(u.employee_id, '')) as employee_id
-            FROM lead_bookings lb
-            LEFT JOIN leads l ON lb.lead_id = l.id
-            LEFT JOIN users u ON COALESCE(NULLIF(lb.sales_by_id, 0), NULLIF(l.assigned_id, 0)) = u.id
-            LEFT JOIN employees e1 ON e1.user_id = u.id
-            LEFT JOIN employees e2 ON u.employee_id = e2.id
-            WHERE lb.id = ?
-            LIMIT 1
-        ");
-        if ($sStmt) {
-            $sStmt->bind_param("i", $payment['booking_id']);
-            $sStmt->execute();
-            $sRes = $sStmt->get_result();
-            if ($sRow = $sRes->fetch_assoc()) {
-                $salesPersonName = trim($sRow['full_name'] ?? '');
-                $salesPersonEmpId = trim($sRow['employee_id'] ?? '');
-            }
-            $sStmt->close();
-        }
-    } catch (Exception $e) {}
-}
-
-// Check if sales agent is Unknown Sales employee (user 195 or name contains unknown)
-$salesOfficerId = (int)($payment['sales_by_id'] ?? ($clientDetails['sales_by_id'] ?? ($clientDetails['assigned_id'] ?? 0)));
-$isUnknownSalesPerson = ($salesOfficerId === 195) 
-    || (!empty($salesPersonName) && stripos($salesPersonName, 'unknown') !== false);
-
-if (!empty($salesPersonName) && !$isUnknownSalesPerson) {
-    $createdByName = $salesPersonName;
-    $createdByEmpId = $salesPersonEmpId;
-} else {
-    // If Unknown Sales employee (195), use the user who created lead_payments record
-    $createdByName = !empty($payment['created_by_name']) ? trim($payment['created_by_name']) : '';
-    $createdByEmpId = !empty($payment['created_by_employee_id']) ? trim($payment['created_by_employee_id']) : '';
-
-    if (empty($createdByName) && !empty($payment['created_by'])) {
-        $dbConn = $this->db ?? ($GLOBALS['db'] ?? null);
-        if ($dbConn) {
-            try {
-                $uStmt = $dbConn->prepare("
-                    SELECT u.full_name, 
-                           COALESCE(NULLIF(e.employee_id, ''), NULLIF(u.employee_id, '')) as employee_id
-                    FROM users u
-                    LEFT JOIN employees e ON e.user_id = u.id
-                    WHERE u.id = ?
-                    LIMIT 1
-                ");
-                if ($uStmt) {
-                    $uStmt->bind_param("i", $payment['created_by']);
-                    $uStmt->execute();
-                    $uRes = $uStmt->get_result();
-                    if ($uRow = $uRes->fetch_assoc()) {
-                        $createdByName = trim($uRow['full_name'] ?? '');
-                        $createdByEmpId = trim($uRow['employee_id'] ?? '');
-                    }
-                    $uStmt->close();
+if (empty($createdByName) && !empty($payment['created_by'])) {
+    $dbConn = $this->db ?? ($GLOBALS['db'] ?? null);
+    if ($dbConn) {
+        try {
+            $uStmt = $dbConn->prepare("
+                SELECT u.full_name, 
+                       COALESCE(NULLIF(e.employee_id, ''), NULLIF(u.employee_id, '')) as employee_id
+                FROM users u
+                LEFT JOIN employees e ON e.user_id = u.id
+                WHERE u.id = ?
+                LIMIT 1
+            ");
+            if ($uStmt) {
+                $uStmt->bind_param("i", $payment['created_by']);
+                $uStmt->execute();
+                $uRes = $uStmt->get_result();
+                if ($uRow = $uRes->fetch_assoc()) {
+                    $createdByName = trim($uRow['full_name'] ?? '');
+                    $createdByEmpId = trim($uRow['employee_id'] ?? '');
                 }
-            } catch (Exception $e) {}
-        }
+                $uStmt->close();
+            }
+        } catch (Exception $e) {}
     }
+}
 
-    if (empty($createdByName)) {
-        $createdByName = 'System';
-    }
+if (empty($createdByName)) {
+    $createdByName = 'System';
 }
 
 // Format Created By display (no ugly 'No ID')

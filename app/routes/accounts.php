@@ -99,6 +99,8 @@ return [
     'booking-invoice/(\d+)' => ['controller' => 'AccountClientController', 'method' => 'viewBookingInvoice'],
     'client-statement' => ['controller' => 'AccountClientController', 'method' => 'viewClientStatement'],
     'client-statement/(\d+)' => ['controller' => 'AccountClientController', 'method' => 'viewClientStatement'],
+    'client-datewise-statement' => ['controller' => 'AccountClientController', 'method' => 'viewClientDatewiseStatement'],
+    'client-datewise-statement/(\d+)' => ['controller' => 'AccountClientController', 'method' => 'viewClientDatewiseStatement'],
     'discount-statement' => ['controller' => 'AccountClientController', 'method' => 'discountStatement'],
     'discount-statement/(\d+)' => ['controller' => 'AccountClientController', 'method' => 'discountStatement'],
     'clients-cashin-view' => ['controller' => 'AccountClientController', 'method' => 'indexView'],

@@ -51,10 +51,10 @@ class ClientRefundController extends Controller
         return false;
     }
 
-    /** Roles 1 (Admin), 3 (Super Admin), 4 (Sales Exec), 5 (Sales Mgr), 6, 7 (Clients Experiment), 10, 30 (Accounts), 37 (Credit Recovery) can create refund requests */
+    /** Roles 1 (Admin), 3 (Super Admin), 4 (Sales Exec), 5 (Sales Mgr), 6, 7 (Clients Experiment), 10, 30 (Accounts), 37 (Credit Recovery), 39 (Head of CED) can create refund requests */
     private function canCreateRefund()
     {
-        return in_array($this->userRole, [1, 3, 4, 5, 6, 7, 10, 30, 37]);
+        return in_array($this->userRole, [1, 3, 4, 5, 6, 7, 10, 30, 37, 39]);
     }
 
     // =========================================================================
@@ -64,7 +64,7 @@ class ClientRefundController extends Controller
     public function index()
     {
         $filterUserId = null;
-        if (!in_array($this->userRole, [1, 3, 6, 7, 30, 37])) {
+        if (!in_array($this->userRole, [1, 3, 6, 7, 30, 37, 39])) {
             $filterUserId = $this->userId;
         }
 
@@ -598,8 +598,8 @@ class ClientRefundController extends Controller
     // =========================================================================
     public function adjustRetention($id)
     {
-        // Allow Accounts (6, 7, 10, 30, 37) and Management (1, 3, 9, 20, 33)
-        if (!in_array($this->userRole, [1, 3, 6, 7, 9, 10, 20, 30, 33, 37])) {
+        // Allow Accounts (6, 7, 10, 30, 37, 39) and Management (1, 3, 9, 20, 33)
+        if (!in_array($this->userRole, [1, 3, 6, 7, 9, 10, 20, 30, 33, 37, 39])) {
             setError('You are not authorized to set or adjust refund retention.');
             $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
         header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");

@@ -955,7 +955,7 @@ $show_breadcrumb = true;
         const tbody = document.getElementById('projects_table_body');
         tbody.innerHTML = '';
 
-        const isManagement = <?= in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 7, 30, 33, 35]) ? 'true' : 'false' ?>;
+        const isManagement = <?= in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 7, 30, 33, 35, 39]) ? 'true' : 'false' ?>;
 
         lands.forEach(land => {
             const row = document.createElement('tr');

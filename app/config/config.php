@@ -95,7 +95,7 @@ if ($current_server == 3) {
     return [
         "db_host" => "127.0.0.1",
         "db_user" => "final_erp_user",
-        "db_pass" => "finaltPhl@#5672dhKL%sd10",
+        "db_pass" => "#erp_db@TPHL_PASS#",
 
         "db_name" => "final_erp_db",
 
@@ -115,7 +115,7 @@ if ($current_server == 3) {
         "tipsoi_base_url" => "https://app.tipsoi.ai/inovace-client/api/v1/",
         "tipsoi_email" => "info@dpremiumhomes.com",
         "tipsoi_password" => "HRD@dpremium@2026",
-
+        
         // Automas Bulk SMS API Configuration
         "automas_sms_api_url" => "https://api.automas.com.bd/smsapiv4",
         "automas_sms_api_key" => "734f99f126704a937debae6c0ce52516",
