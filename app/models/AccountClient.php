@@ -1971,14 +1971,24 @@ class AccountClient extends Model
         }
         if ($totalEmi <= 0) return [];
 
-        // Fetch all verified paid/partially paid EMIs
+        // 1. Fetch verified paid/partially paid EMIs via emi_schedules
         $paidEmiStmt = $this->db->prepare("
-            SELECT es.emi_no, es.emi_amount, es.due_emi_amount, es.due_date, es.status, lp.payment_date, lp.payment_status
+            SELECT 
+                es.emi_no, 
+                SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status != 'rejected' THEN es.emi_amount ELSE 0 END) as total_paid,
+                MIN(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status != 'rejected' THEN es.due_emi_amount ELSE NULL END) as min_due_emi,
+                MAX(lp.payment_date) as last_payment_date,
+                MIN(lp.payment_date) as first_payment_date,
+                MAX(es.due_date) as schedule_due_date,
+                SUBSTRING_INDEX(GROUP_CONCAT(lp.payment_status ORDER BY lp.id DESC), ',', 1) as latest_payment_status,
+                COUNT(lp.id) as payment_count
             FROM emi_schedules es
             INNER JOIN lead_payments lp ON lp.id = es.lead_payment_id
-            WHERE lp.is_trashed = 0 AND lp.booking_id = ? 
-            AND lp.payment_status IN ('paid','partially_paid')
-            AND lp.verification_status != 'rejected'
+            WHERE es.lead_booking_id = ? 
+              AND lp.is_trashed = 0 
+              AND lp.payment_status IN ('paid','partially_paid')
+              AND lp.verification_status != 'rejected'
+            GROUP BY es.emi_no
             ORDER BY es.emi_no ASC
         ");
         $paidEmiStmt->bind_param("i", $bookingId);
@@ -1990,12 +2000,37 @@ class AccountClient extends Model
         if ($paidResult) {
             while ($row = $paidResult->fetch_assoc()) {
                 $paidEmis[(int)$row['emi_no']] = $row;
-                if (!empty($row['due_date'])) {
-                    $lastPaidDueDate = $row['due_date'];
+                if (!empty($row['schedule_due_date'])) {
+                    $lastPaidDueDate = $row['schedule_due_date'];
                 }
             }
         }
+        $paidEmiStmt->close();
 
+        // 2. Fetch custom fixed dates set by CED
+        $fixedDates = [];
+        $fixedStmt = $this->db->prepare("
+            SELECT cef.emi_no, cef.due_date, cef.notes, cef.fixed_by, cef.fixed_at,
+                   u.full_name as fixed_by_name,
+                   COALESCE(NULLIF(e.employee_id, ''), NULLIF(u.employee_id, '')) as fixed_by_code
+            FROM client_emi_fixed_dates cef
+            LEFT JOIN users u ON u.id = cef.fixed_by
+            LEFT JOIN employees e ON e.user_id = u.id
+            WHERE cef.booking_id = ?
+        ");
+        if ($fixedStmt) {
+            $fixedStmt->bind_param("i", $bookingId);
+            $fixedStmt->execute();
+            $fRes = $fixedStmt->get_result();
+            if ($fRes) {
+                while ($frow = $fRes->fetch_assoc()) {
+                    $fixedDates[(int)$frow['emi_no']] = $frow;
+                }
+            }
+            $fixedStmt->close();
+        }
+
+        // 3. Followup counts
         $followupCounts = [];
         $followupStmt = $this->db->prepare("
             SELECT emi_no, COUNT(*) as cnt 
@@ -2012,18 +2047,19 @@ class AccountClient extends Model
                     $followupCounts[(int)$f['emi_no']] = (int)$f['cnt'];
                 }
             }
+            $followupStmt->close();
         }
 
         $schedule = [];
-        $currentDate = new \DateTime();
-        $currentMonth = (int)$currentDate->format('Ym'); // e.g., 202606
+        $today = new \DateTime();
+        $todayStr = $today->format('Y-m-d');
+        $currentMonth = (int)$today->format('Ym');
         
-        // Determine the anchor date for the very first EMI
+        // 4. Anchor date for the very first unanchored EMI
         $anchorDate = null;
         if (!empty($lastPaidDueDate)) {
             $anchorDate = new \DateTime($lastPaidDueDate);
         } else {
-            // No EMIs paid yet, anchor to the date of the last completed pre-EMI payment
             $lastPaymentStmt = $this->db->prepare("
                 SELECT MAX(payment_date) as last_payment_date 
                 FROM lead_payments 
@@ -2037,6 +2073,7 @@ class AccountClient extends Model
                 $lastPaymentStmt->execute();
                 $lastPaymentResult = $lastPaymentStmt->get_result();
                 $lastPaymentRow = $lastPaymentResult ? $lastPaymentResult->fetch_assoc() : null;
+                $lastPaymentStmt->close();
             }
             
             $anchorDateStr = !empty($lastPaymentRow['last_payment_date']) 
@@ -2050,86 +2087,279 @@ class AccountClient extends Model
         $runnerDate = clone $anchorDate;
         
         for ($i = 1; $i <= $totalEmi; $i++) {
-            $isPaid = isset($paidEmis[$i]);
+            $hasPayment = isset($paidEmis[$i]);
+            $hasFixedDate = isset($fixedDates[$i]);
             
-            if ($isPaid) {
-                $record = $paidEmis[$i];
-                $dueDateObj = new \DateTime($record['due_date']);
-                $dueMonth = (int)$dueDateObj->format('Ym');
+            // Determine due date & CED fixed metadata
+            $isDateCustom = false;
+            $fixedByName = null;
+            $fixedByCode = null;
+            $fixedAt = null;
+            $fixedNotes = null;
+            $dueDateStr = null;
+            $dueDateObj = null;
+            
+            if ($hasFixedDate) {
+                $dueDateStr = $fixedDates[$i]['due_date'];
+                $isDateCustom = true;
+                $fixedByName = $fixedDates[$i]['fixed_by_name'] ?? 'CED Team';
+                $fixedByCode = $fixedDates[$i]['fixed_by_code'] ?? null;
+                $fixedAt = $fixedDates[$i]['fixed_at'] ?? null;
+                $fixedNotes = $fixedDates[$i]['notes'] ?? null;
+                $dueDateObj = new \DateTime($dueDateStr);
+                $runnerDate = clone $dueDateObj;
+            } elseif ($hasPayment && !empty($paidEmis[$i]['schedule_due_date'])) {
+                $dueDateStr = $paidEmis[$i]['schedule_due_date'];
+                $dueDateObj = new \DateTime($dueDateStr);
+                $runnerDate = clone $dueDateObj;
+            } else {
+                // Unpaid & no custom fixed date by CED:
+                // Only project forward if CED or payment has anchored at least one date in this booking
+                if (!empty($fixedDates) || !empty($lastPaidDueDate)) {
+                    if (count($paidEmis) > 0 || count($fixedDates) > 0 || $i > 1) {
+                        $runnerDate->modify('+1 month');
+                    }
+                    $dueDateStr = $runnerDate->format('Y-m-d');
+                    $dueDateObj = clone $runnerDate;
+                } else {
+                    // No date has ever been scheduled by CED or recorded via payment.
+                    // Keep unassigned (Not Scheduled) so artificial past dates are never fabricated.
+                    $dueDateStr = null;
+                    $dueDateObj = null;
+                }
+            }
+
+            $dueMonth = $dueDateObj ? (int)$dueDateObj->format('Ym') : null;
+            $isOverdueDate = ($dueDateStr !== null && $dueDateStr < $todayStr);
+            
+            // Amounts & payment stats
+            $scheduledAmt = (float)($clientDetails['per_emi_amount'] ?? 0);
+            $paidAmt = 0.0;
+            $dueAmt = $scheduledAmt;
+            $lastPaymentDate = null;
+            $paymentStatus = 'unpaid';
+            $isFullyPaid = false;
+            
+            if ($hasPayment) {
+                $payRec = $paidEmis[$i];
+                $paidAmt = (float)($payRec['total_paid'] ?? 0);
+                $minDue = $payRec['min_due_emi'];
+                $dueAmt = ($minDue !== null) ? (float)$minDue : max(0, $scheduledAmt - $paidAmt);
+                $lastPaymentDate = $payRec['last_payment_date'] ?? null;
+                $paymentStatus = $payRec['latest_payment_status'] ?? ($dueAmt <= 0 ? 'paid' : 'partially_paid');
                 
-                $isPartiallyPaid = ($record['payment_status'] === 'partially_paid' && $record['due_emi_amount'] > 0);
+                if ($dueAmt <= 0.01 && $paidAmt > 0) {
+                    $isFullyPaid = true;
+                    $dueAmt = 0;
+                    $paymentStatus = 'paid';
+                }
                 
-                if ($isPartiallyPaid) {
-                    if ($dueMonth < $currentMonth) {
-                        $maturityStatus = 'due';
+                if ($paidAmt + $dueAmt > 0) {
+                    $scheduledAmt = $paidAmt + $dueAmt;
+                }
+            }
+
+            // Lock check (Best Practice #1): Locked if fully paid
+            $isLocked = $isFullyPaid;
+            
+            // Maturity & delay calculation
+            $delayDays = 0;
+            $overdueDays = 0;
+            $maturityStatus = '';
+            
+            if ($isFullyPaid) {
+                if (!empty($lastPaymentDate) && !empty($dueDateStr)) {
+                    if ($lastPaymentDate <= $dueDateStr) {
+                        $maturityStatus = 'paid_on_time';
+                        $delayDays = 0;
                     } else {
-                        $maturityStatus = 'pending';
+                        $maturityStatus = 'paid_late';
+                        $diff = (new \DateTime($lastPaymentDate))->diff($dueDateObj);
+                        $delayDays = (int)$diff->days;
                     }
                 } else {
-                    if ($dueMonth < $currentMonth) {
-                        $maturityStatus = 'matured';
-                    } else {
-                        $maturityStatus = 'paid';
-                    }
+                    $maturityStatus = ($dueMonth && $dueMonth < $currentMonth) ? 'matured' : 'paid';
                 }
-                
-                $paidAmt = (float)($record['emi_amount'] ?? 0);
-                $dueAmt  = (float)($record['due_emi_amount'] ?? 0);
-                $scheduledAmt = ($paidAmt + $dueAmt > 0) ? ($paidAmt + $dueAmt) : (float)($clientDetails['per_emi_amount'] ?? 0);
-
-                $penaltyCalc = $this->calculateCompoundedPenalty($scheduledAmt, $record['due_date']);
-                $schedule[] = [
-                    'emi_no' => $i,
-                    'due_date' => $record['due_date'],
-                    'amount' => $scheduledAmt,
-                    'paid_amount' => $paidAmt,
-                    'due_amount' => $dueAmt,
-                    'status' => $record['payment_status'],
-                    'maturity_status' => $maturityStatus,
-                    'is_virtual' => false,
-                    'followup_count' => $followupCounts[$i] ?? 0,
-                    'months_overdue' => ($maturityStatus === 'due') ? $penaltyCalc['months_overdue'] : 0,
-                    'penalty_amount' => ($maturityStatus === 'due') ? $penaltyCalc['penalty_amount'] : 0,
-                    'total_payable'  => ($maturityStatus === 'due') ? $penaltyCalc['total_payable'] : $dueAmt
-                ];
-                
-                $runnerDate = clone $dueDateObj;
-                
-            } else {
-                if (count($paidEmis) > 0 || $i > 1) {
-                    $runnerDate->modify('+1 month');
-                }
-                $projectedDueDate = $runnerDate->format('Y-m-d');
-                $dueMonth = (int)$runnerDate->format('Ym');
-                
-                if ($dueMonth < $currentMonth) {
+            } elseif ($paidAmt > 0 && $dueAmt > 0) {
+                // Partially Paid
+                if ($isOverdueDate) {
                     $maturityStatus = 'due';
-                } elseif ($dueMonth == $currentMonth) {
+                    $diff = $today->diff($dueDateObj);
+                    $overdueDays = (int)$diff->days;
+                } elseif ($dueMonth && $dueMonth == $currentMonth) {
                     $maturityStatus = 'pending';
                 } else {
                     $maturityStatus = 'future';
                 }
-                
-                $penaltyCalc = $this->calculateCompoundedPenalty($clientDetails['per_emi_amount'], $projectedDueDate);
-
-                $schedule[] = [
-                    'emi_no' => $i,
-                    'due_date' => $projectedDueDate,
-                    'amount' => $clientDetails['per_emi_amount'],
-                    'paid_amount' => 0,
-                    'due_amount' => $clientDetails['per_emi_amount'],
-                    'status' => 'unpaid',
-                    'maturity_status' => $maturityStatus,
-                    'is_virtual' => true,
-                    'followup_count' => $followupCounts[$i] ?? 0,
-                    'months_overdue' => ($maturityStatus === 'due') ? $penaltyCalc['months_overdue'] : 0,
-                    'penalty_amount' => ($maturityStatus === 'due') ? $penaltyCalc['penalty_amount'] : 0,
-                    'total_payable'  => ($maturityStatus === 'due') ? $penaltyCalc['total_payable'] : $clientDetails['per_emi_amount']
-                ];
+            } else {
+                // Unpaid (no payment)
+                if ($hasFixedDate) {
+                    // CED set an explicit due date for this unpaid EMI
+                    if ($isOverdueDate) {
+                        $maturityStatus = 'due';
+                        $diff = $today->diff($dueDateObj);
+                        $overdueDays = (int)$diff->days;
+                    } elseif ($dueMonth && $dueMonth == $currentMonth) {
+                        $maturityStatus = 'pending';
+                    } else {
+                        $maturityStatus = 'future';
+                    }
+                } else {
+                    // Unpaid and NOT scheduled by CED yet:
+                    // Cannot be overdue or penalized!
+                    $maturityStatus = !empty($dueDateStr) ? 'future' : 'unscheduled';
+                    $overdueDays = 0;
+                }
             }
+
+            $penaltyCalc = ($maturityStatus === 'due' && !empty($dueDateStr))
+                ? $this->calculateCompoundedPenalty($scheduledAmt, $dueDateStr)
+                : ['months_overdue' => 0, 'penalty_amount' => 0, 'total_payable' => $dueAmt];
+
+            $schedule[] = [
+                'emi_no'            => $i,
+                'due_date'          => $dueDateStr,
+                'amount'            => $scheduledAmt,
+                'paid_amount'       => $paidAmt,
+                'due_amount'        => $dueAmt,
+                'status'            => $paymentStatus,
+                'maturity_status'   => $maturityStatus,
+                'is_virtual'        => !$hasPayment,
+                'is_locked'         => $isLocked,
+                'is_date_custom'    => $isDateCustom,
+                'fixed_by_name'     => $fixedByName,
+                'fixed_by_code'     => $fixedByCode,
+                'fixed_at'          => $fixedAt,
+                'notes'             => $fixedNotes,
+                'last_payment_date' => $lastPaymentDate,
+                'delay_days'        => $delayDays,
+                'overdue_days'      => $overdueDays,
+                'followup_count'    => $followupCounts[$i] ?? 0,
+                'months_overdue'    => ($maturityStatus === 'due') ? $penaltyCalc['months_overdue'] : 0,
+                'penalty_amount'    => ($maturityStatus === 'due') ? $penaltyCalc['penalty_amount'] : 0,
+                'total_payable'     => ($maturityStatus === 'due') ? $penaltyCalc['total_payable'] : $dueAmt
+            ];
         }
         
         return $schedule;
+    }
+
+    /**
+     * Save custom EMI Due Date fixed by CED
+     * Enforces Best Practice #1: Fully paid EMIs are locked and cannot be edited.
+     */
+    public function saveEmiDueDate($bookingId, $emiNo, $dueDate, $notes = '', $userId = 0, $applySubsequent = 0)
+    {
+        $bookingId = (int)$bookingId;
+        $emiNo = (int)$emiNo;
+        $dueDate = trim($dueDate);
+        $userId = (int)$userId;
+        
+        if ($bookingId <= 0 || $emiNo <= 0 || empty($dueDate)) {
+            return ['success' => false, 'message' => 'Invalid parameters provided.'];
+        }
+
+        $d = \DateTime::createFromFormat('Y-m-d', $dueDate);
+        if (!$d || $d->format('Y-m-d') !== $dueDate) {
+            return ['success' => false, 'message' => 'Invalid date format (must be YYYY-MM-DD).'];
+        }
+
+        // Lock check: check if this EMI is already fully paid
+        $checkStmt = $this->db->prepare("
+            SELECT es.due_emi_amount, es.status
+            FROM emi_schedules es
+            INNER JOIN lead_payments lp ON lp.id = es.lead_payment_id
+            WHERE es.lead_booking_id = ? AND es.emi_no = ?
+              AND lp.is_trashed = 0
+              AND lp.verification_status != 'rejected'
+            ORDER BY es.id DESC LIMIT 1
+        ");
+        if ($checkStmt) {
+            $checkStmt->bind_param("ii", $bookingId, $emiNo);
+            $checkStmt->execute();
+            $chkRes = $checkStmt->get_result();
+            if ($chkRes && $chkRow = $chkRes->fetch_assoc()) {
+                if ($chkRow['status'] === 'paid' && (float)$chkRow['due_emi_amount'] <= 0.01) {
+                    $checkStmt->close();
+                    return [
+                        'success' => false, 
+                        'message' => "EMI #{$emiNo} is already fully paid. The due date is locked and cannot be modified."
+                    ];
+                }
+            }
+            $checkStmt->close();
+        }
+
+        // Save to client_emi_fixed_dates
+        $saveStmt = $this->db->prepare("
+            INSERT INTO client_emi_fixed_dates (booking_id, emi_no, due_date, notes, fixed_by, fixed_at)
+            VALUES (?, ?, ?, ?, ?, NOW())
+            ON DUPLICATE KEY UPDATE 
+                due_date = VALUES(due_date),
+                notes = VALUES(notes),
+                fixed_by = VALUES(fixed_by),
+                fixed_at = NOW()
+        ");
+        if (!$saveStmt) {
+            return ['success' => false, 'message' => 'Database error: ' . $this->db->error];
+        }
+        $saveStmt->bind_param("iissi", $bookingId, $emiNo, $dueDate, $notes, $userId);
+        if (!$saveStmt->execute()) {
+            $err = $saveStmt->error;
+            $saveStmt->close();
+            return ['success' => false, 'message' => 'Failed to save EMI due date: ' . $err];
+        }
+        $saveStmt->close();
+
+        // If applySubsequent is enabled, set following unpaid EMIs consecutively (+1 month)
+        if ($applySubsequent) {
+            $client = $this->getClientByBookingId($bookingId);
+            $totalEmi = (int)($client['total_emi'] ?? 0);
+            if ($totalEmi > 120) $totalEmi = 42;
+            
+            $baseDate = new \DateTime($dueDate);
+            for ($nextEmi = $emiNo + 1; $nextEmi <= $totalEmi; $nextEmi++) {
+                // Check if nextEmi is already paid
+                $pChk = $this->db->prepare("
+                    SELECT 1 FROM emi_schedules es
+                    INNER JOIN lead_payments lp ON lp.id = es.lead_payment_id
+                    WHERE es.lead_booking_id = ? AND es.emi_no = ?
+                      AND lp.is_trashed = 0 AND lp.verification_status != 'rejected'
+                      AND es.status = 'paid' AND es.due_emi_amount <= 0.01
+                    LIMIT 1
+                ");
+                $isPaid = false;
+                if ($pChk) {
+                    $pChk->bind_param("ii", $bookingId, $nextEmi);
+                    $pChk->execute();
+                    $isPaid = (bool)$pChk->get_result()->fetch_row();
+                    $pChk->close();
+                }
+                if ($isPaid) continue;
+
+                $nextDate = clone $baseDate;
+                $nextDate->modify('+' . ($nextEmi - $emiNo) . ' month');
+                $nextDateStr = $nextDate->format('Y-m-d');
+                $subNote = 'Auto-adjusted based on EMI #' . $emiNo;
+
+                $subStmt = $this->db->prepare("
+                    INSERT INTO client_emi_fixed_dates (booking_id, emi_no, due_date, notes, fixed_by, fixed_at)
+                    VALUES (?, ?, ?, ?, ?, NOW())
+                    ON DUPLICATE KEY UPDATE 
+                        due_date = VALUES(due_date),
+                        notes = VALUES(notes),
+                        fixed_by = VALUES(fixed_by),
+                        fixed_at = NOW()
+                ");
+                if ($subStmt) {
+                    $subStmt->bind_param("iissi", $bookingId, $nextEmi, $nextDateStr, $subNote, $userId);
+                    $subStmt->execute();
+                    $subStmt->close();
+                }
+            }
+        }
+
+        return ['success' => true, 'message' => "EMI #{$emiNo} Due Date saved successfully!"];
     }
 
     /**

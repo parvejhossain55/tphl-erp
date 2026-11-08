@@ -548,18 +548,18 @@ class LeadController extends Controller
                 $mFirstAssignedFormatted = !empty($mFirstAssignedRaw) ? date('d M, Y, h:i A', strtotime($mFirstAssignedRaw)) : '';
 
                 $mHasAgent = !empty($lead['agent_name']);
-                $mTeamAssigner = !empty($lead['team_assigner_name'])
-                    ? $lead['team_assigner_name']
-                    : (!empty($lead['assigned_by_name']) && $lead['assigned_by_name'] !== 'System' ? $lead['assigned_by_name'] : $mFirstAssigner);
+                $mTeamAssigner = !empty($lead['team_assigner_name']) ? $lead['team_assigner_name'] : '';
 
                 $mTeamAssignedAtRaw = (!empty($lead['assigned_at']) && $lead['assigned_at'] !== '0000-00-00 00:00:00' && $lead['assigned_at'] !== '0000-00-00')
                     ? $lead['assigned_at']
                     : '';
                 $mTeamAssignedAtFormatted = !empty($mTeamAssignedAtRaw) ? date('d M, Y, h:i A', strtotime($mTeamAssignedAtRaw)) : '';
 
-                $mTeamName = !empty($lead['team_id']) && isset($teamsData[$lead['team_id']])
-                    ? $teamsData[$lead['team_id']]['team_name']
-                    : ($mIsAuto ? 'Pending Team Distribution' : 'Self Added');
+                $mTeamName = !empty($lead['team_name'])
+                    ? $lead['team_name']
+                    : (!empty($lead['team_id']) && isset($teamsData[$lead['team_id']])
+                        ? $teamsData[$lead['team_id']]['team_name']
+                        : ($mIsAuto ? 'Pending Team Distribution' : 'No Team'));
                 $mManagerName = !empty($lead['team_id']) && isset($teamsData[$lead['team_id']])
                     ? $teamsData[$lead['team_id']]['manager_name']
                     : ($mIsAuto ? 'No Team Assigned' : (!empty($lead['creator_name']) ? $lead['creator_name'] : 'System'));
@@ -583,6 +583,9 @@ class LeadController extends Controller
                     'team_assigner_name'          => $mTeamAssigner,
                     'team_assigned_at_formatted'  => $mTeamAssignedAtFormatted,
                     'has_agent'                   => $mHasAgent ? 1 : 0,
+                    'created_by'                  => $lead['created_by'] ?? null,
+                    'assigned_id'                 => $lead['assigned_id'] ?? null,
+                    'creator_name'                => $lead['creator_name'] ?? '',
                     'follow_up_count'  => $followUpCounts[$lead['id']] ?? 0,
                     'booking_count'    => $bookingCounts[$lead['id']] ?? 0,
                     'created_at'       => (!empty($lead['created_at']) && $lead['created_at'] !== '0000-00-00 00:00:00') ? (function($raw, $appr) {
@@ -862,9 +865,13 @@ class LeadController extends Controller
 
             // Tier 2: Team Level Assignment
             $hasAgent = !empty($lead['agent_name']);
-            $teamAssignerName = !empty($lead['team_assigner_name'])
-                ? $lead['team_assigner_name']
-                : (!empty($lead['assigned_by_name']) && $lead['assigned_by_name'] !== 'System' ? $lead['assigned_by_name'] : $firstAssignerName);
+            $teamName = !empty($lead['team_name'])
+                ? $lead['team_name']
+                : (!empty($lead['team_id']) && isset($teamsData[$lead['team_id']])
+                    ? $teamsData[$lead['team_id']]['team_name']
+                    : (!empty($lead['is_automated']) && (int)$lead['is_automated'] === 1 ? 'Pending Team Distribution' : 'No Team'));
+
+            $teamAssignerName = !empty($lead['team_assigner_name']) ? $lead['team_assigner_name'] : '';
 
             $teamAssignedAtRaw = (!empty($lead['assigned_at']) && $lead['assigned_at'] !== '0000-00-00 00:00:00' && $lead['assigned_at'] !== '0000-00-00')
                 ? $lead['assigned_at']
@@ -893,12 +900,20 @@ class LeadController extends Controller
             // Block 2: Assigned from Team
             $assignedByHtml .= '<div class="pt-1 border-top mt-1" style="line-height: 1.25;">';
             if ($hasAgent) {
-                $assignedByHtml .= '  <div class="text-primary fw-medium ps-1" title="Assigned from Team to Executive"><i class="bi bi-people-fill me-1"></i>Team: <strong class="text-dark">' . htmlspecialchars($teamAssignerName) . '</strong></div>';
+                $assignedByHtml .= '  <div class="text-primary fw-medium ps-1" title="Team"><i class="bi bi-people-fill me-1"></i>Team: <strong class="text-dark">' . htmlspecialchars($teamName) . '</strong></div>';
+                if (!empty($teamAssignerName)) {
+                    $assignedByHtml .= '  <div class="text-muted ps-1" style="font-size: 10px; margin-top: 2px;" title="Assigned by Team Leader"><i class="bi bi-person-check me-1"></i>By: <strong class="text-dark">' . htmlspecialchars($teamAssignerName) . '</strong></div>';
+                } elseif (!empty($lead['creator_name']) && !empty($lead['assigned_id']) && $lead['created_by'] == $lead['assigned_id']) {
+                    $assignedByHtml .= '  <div class="text-muted ps-1" style="font-size: 10px; margin-top: 2px;" title="Self Assigned"><i class="bi bi-person-check me-1"></i>By: <span class="badge bg-light text-secondary border px-1 py-0.5" style="font-size:9px;">Self Added</span></div>';
+                }
                 if (!empty($teamAssignedAtFormatted)) {
                     $assignedByHtml .= '  <div class="text-muted ps-1" style="font-size: 10px; margin-top: 2px;" title="Team Assigned Date & Time"><i class="bi bi-calendar-check me-1"></i>' . $teamAssignedAtFormatted . '</div>';
                 }
             } else {
-                $assignedByHtml .= '  <div class="ps-1"><span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-0.5" style="font-size: 10px;"><i class="bi bi-hourglass-split me-1 text-warning"></i>Pending Team Assign</span></div>';
+                $assignedByHtml .= '  <div class="ps-1 mb-1"><span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-0.5" style="font-size: 10px;"><i class="bi bi-hourglass-split me-1 text-warning"></i>Pending Team Assign</span></div>';
+                if (!empty($lead['team_id']) && isset($teamsData[$lead['team_id']])) {
+                    $assignedByHtml .= '  <div class="text-muted ps-1" style="font-size: 10px;" title="Target Team"><i class="bi bi-people me-1"></i>' . htmlspecialchars($teamName) . '</div>';
+                }
             }
             $assignedByHtml .= '</div>';
             $assignedByHtml .= '</div>';

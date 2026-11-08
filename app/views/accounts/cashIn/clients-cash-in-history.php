@@ -1234,33 +1234,63 @@ window.openEditPaymentDateModal = function(target) {
                     </table>
                 </div>
 
-                <!-- VIRTUAL EMI SCHEDULE (Yield to Maturity) -->
+                <!-- VIRTUAL EMI SCHEDULE (Yield to Maturity & CED Scheduling) -->
                 <?php if (!empty($virtualEmiSchedule)): ?>
                 <div class="mt-4 pt-4 border-top">
-                    <h5 class="mb-3"><i class="fa-light fa-calendar-check me-2"></i>EMI Maturity Schedule</h5>
+                    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                        <h5 class="mb-0"><i class="fa-light fa-calendar-check me-2"></i>EMI Maturity Schedule</h5>
+                        <div class="d-flex align-items-center gap-2">
+                            <a href="<?= $GLOBALS['base_url'] ?>/client-emi-schedule-print/<?= htmlspecialchars($bookingId) ?>" target="_blank" class="btn btn-sm btn-outline-secondary shadow-sm" title="Print EMI Maturity Schedule">
+                                <i class="fa-solid fa-print me-1"></i> Print Schedule
+                            </a>
+                            <span class="badge bg-light text-muted border px-2 py-1 small">
+                                <i class="fa-solid fa-eye me-1"></i>Accounts View (Dates scheduled by CED)
+                            </span>
+                        </div>
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-bordered table-striped" style="font-size: 14px;">
                             <thead style="background-color: #f8f9fa;">
                                 <tr>
                                     <th>EMI No</th>
-                                    <th>Projected/Actual Due Date</th>
+                                    <th>Scheduled / Due Date</th>
                                     <th>Amount</th>
                                     <th>Paid Amount</th>
                                     <th>Due Amount</th>
                                     <th>Payment Status</th>
                                     <th>Maturity Status</th>
-                                    <th>Follow Up</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php foreach ($virtualEmiSchedule as $emi): 
                                     $maturityBadge = '';
                                     switch($emi['maturity_status']) {
-                                        case 'paid': $maturityBadge = '<span class="badge bg-success">Paid</span>'; break;
-                                        case 'matured': $maturityBadge = '<span class="badge bg-info text-dark" style="background-color: #0dcaf0; color: #000;">Matured</span>'; break;
-                                        case 'pending': $maturityBadge = '<span class="badge bg-warning text-dark">Pending (Current Month)</span>'; break;
-                                        case 'due': $maturityBadge = '<span class="badge bg-danger">Due (Overdue)</span>'; break;
-                                        case 'future': $maturityBadge = '<span class="badge bg-secondary">Future</span>'; break;
+                                        case 'paid_on_time':
+                                            $maturityBadge = '<span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>Paid On Time</span>';
+                                            break;
+                                        case 'paid_late':
+                                            $delayText = (!empty($emi['delay_days']) && $emi['delay_days'] > 0) ? ' (' . $emi['delay_days'] . 'd delay)' : '';
+                                            $maturityBadge = '<span class="badge text-white" style="background:#ea580c;"><i class="fa-solid fa-clock-rotate-left me-1"></i>Paid Late' . $delayText . '</span>';
+                                            break;
+                                        case 'matured': 
+                                            $maturityBadge = '<span class="badge bg-info text-dark" style="background-color: #0dcaf0; color: #000;"><i class="fa-solid fa-check me-1"></i>Matured</span>'; 
+                                            break;
+                                        case 'pending': 
+                                            $maturityBadge = '<span class="badge bg-warning text-dark"><i class="fa-solid fa-hourglass-half me-1"></i>Pending (Current Month)</span>'; 
+                                            break;
+                                        case 'due': 
+                                            $overdueText = (!empty($emi['overdue_days']) && $emi['overdue_days'] > 0) ? ' (' . $emi['overdue_days'] . 'd overdue)' : '';
+                                            $maturityBadge = '<span class="badge bg-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i>Overdue' . $overdueText . '</span>'; 
+                                            break;
+                                        case 'unscheduled':
+                                            $maturityBadge = '<span class="badge bg-light text-secondary border"><i class="fa-regular fa-clock me-1"></i>Unscheduled</span>';
+                                            break;
+                                        case 'future': 
+                                            $maturityBadge = '<span class="badge bg-secondary">Future</span>'; 
+                                            break;
+                                        default:
+                                            $maturityBadge = '<span class="badge bg-secondary">' . htmlspecialchars(ucfirst($emi['maturity_status'])) . '</span>';
+                                            break;
                                     }
                                     
                                     $statusBadge = '';
@@ -1269,21 +1299,47 @@ window.openEditPaymentDateModal = function(target) {
                                     else $statusBadge = '<span class="text-muted">Unpaid</span>';
                                 ?>
                                 <tr>
-                                    <td><strong>#<?= $emi['emi_no'] ?></strong> <?= $emi['is_virtual'] ? '<small class="text-muted">(Proj.)</small>' : '' ?></td>
-                                    <td><?= date('d M, Y', strtotime($emi['due_date'])) ?></td>
+                                    <td>
+                                        <strong>#<?= $emi['emi_no'] ?></strong> 
+                                        <?php if (!empty($emi['is_virtual']) && !empty($emi['due_date'])): ?>
+                                            <small class="text-muted">(Proj.)</small>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php if (!empty($emi['due_date'])): ?>
+                                            <div class="d-flex align-items-center gap-1 flex-wrap">
+                                                <span class="fw-semibold"><?= date('d M, Y', strtotime($emi['due_date'])) ?></span>
+                                                <?php if (!empty($emi['is_date_custom'])): ?>
+                                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 10px;" title="Fixed by <?= htmlspecialchars($emi['fixed_by_name'] ?? 'CED') ?> on <?= !empty($emi['fixed_at']) ? date('d M, Y', strtotime($emi['fixed_at'])) : '' ?>">
+                                                        <i class="fa-solid fa-user-check me-1"></i>Fixed by <?= htmlspecialchars($emi['fixed_by_name'] ?? 'CED') ?>
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="badge bg-light text-muted border" style="font-size: 10px;">(Proj.)</span>
+                                                <?php endif; ?>
+                                            </div>
+                                            <?php if (!empty($emi['notes'])): ?>
+                                                <div class="small text-muted fst-italic mt-1" style="font-size: 11px;">
+                                                    <i class="fa-light fa-comment-dots me-1"></i><?= htmlspecialchars($emi['notes']) ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <span class="badge bg-light text-secondary border px-2 py-1" style="font-size: 11px;">
+                                                <i class="fa-regular fa-calendar-xmark me-1"></i>Not Scheduled
+                                            </span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td>TK. <?= number_format($emi['amount'], 2) ?></td>
-                                    <td>TK. <?= number_format($emi['paid_amount'], 2) ?></td>
+                                    <td>
+                                        TK. <?= number_format($emi['paid_amount'], 2) ?>
+                                        <?php if (!empty($emi['last_payment_date'])): ?>
+                                            <div class="small text-muted" style="font-size: 11px;">
+                                                <i class="fa-light fa-calendar-check me-1"></i>Cleared: <?= date('d M, Y', strtotime($emi['last_payment_date'])) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </td>
                                     <td>TK. <?= number_format($emi['due_amount'], 2) ?></td>
                                     <td><?= $statusBadge ?></td>
                                     <td><?= $maturityBadge ?></td>
-                                    <td>
-                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="openEmiFollowupModal(<?= $clientDetails['booking_id'] ?? 0 ?>, <?= $emi['emi_no'] ?>)">
-                                            <i class="fa-light fa-comment-dots"></i> Follow Up 
-                                            <?php if (($emi['followup_count'] ?? 0) > 0): ?>
-                                                <span class="badge bg-secondary rounded-pill ms-1"><?= $emi['followup_count'] ?></span>
-                                            <?php endif; ?>
-                                        </button>
-                                    </td>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>

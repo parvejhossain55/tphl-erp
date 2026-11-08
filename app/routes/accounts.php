@@ -61,6 +61,8 @@ return [
     'clients-cash-in-history/(\d+)' => ['controller' => 'AccountClientController', 'method' => 'indexTwo'],
     'client-emi-tracking' => ['controller' => 'AccountClientController', 'method' => 'clientEmiTracking'],
     'client-emi-tracking/(\d+)' => ['controller' => 'AccountClientController', 'method' => 'clientEmiTracking'],
+    'client-emi-schedule-print' => ['controller' => 'AccountClientController', 'method' => 'printEmiSchedule'],
+    'client-emi-schedule-print/(\d+)' => ['controller' => 'AccountClientController', 'method' => 'printEmiSchedule'],
     'update-booking-info' => ['controller' => 'AccountClientController', 'method' => 'updateBookingInfo'],
     'update-shop-service-charge' => ['controller' => 'AccountClientController', 'method' => 'updateShopServiceCharge'],
     'add-transaction' => ['controller' => 'AccountClientController', 'method' => 'addTransaction'],
@@ -119,9 +121,10 @@ return [
     'ced-add-transaction-form/(\d+)' => ['controller' => 'AccountClientController', 'method' => 'showCedTransactionForm'],
     'ced-add-transaction' => ['controller' => 'AccountClientController', 'method' => 'addCedTransaction'],
     
-    // EMI Followups
+    // EMI Followups & CED Fixed Due Dates
     'account-client/getEmiFollowups' => ['controller' => 'AccountClientController', 'method' => 'getEmiFollowups'],
     'account-client/saveEmiFollowup' => ['controller' => 'AccountClientController', 'method' => 'saveEmiFollowup'],
+    'account-client/saveEmiDueDate'  => ['controller' => 'AccountClientController', 'method' => 'saveEmiDueDate'],
     
     // Financial Dashboard
     'financial-dashboard' => ['controller' => 'AccountFinancialController', 'method' => 'index'],
