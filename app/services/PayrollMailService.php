@@ -70,27 +70,7 @@ class PayrollMailService
             // 3. Build HTML Email Body
             $htmlBody = $this->buildEmailHtmlTemplate($payslip, $payslipMonthText, $companyTitle);
 
-            // 4. Initialize PHPMailer
-            $mail = new PHPMailer(true);
-            $mail->CharSet = 'UTF-8';
-            $mail->isSMTP();
-            $mail->SMTPDebug = 0;
-
-            $mail->Host       = $this->config['smtp_host'] ?? 'smtp.gmail.com';
-            $mail->SMTPAuth   = true;
-            $mail->Username   = $this->config['smtp_user'] ?? 'farzana.tphl13@gmail.com';
-            $mail->Password   = $this->config['smtp_pass'] ?? 'hvptjfnsprecofmi';
-            $mail->SMTPSecure = $this->config['smtp_secure'] ?? 'ssl';
-            $mail->Port       = (int) ($this->config['smtp_port'] ?? 465);
-
-            $mail->setFrom($mail->Username, $companyTitle . ' Payroll');
-            $mail->addAddress($recipientEmail, $employeeName);
-
-            $formatVal = function ($val) {
-                if ($val <= 0) return '';
-                return ((float)$val == (int)$val) ? number_format($val, 0, '.', '') : number_format($val, 2, '.', '');
-            };
-
+            // 4. Initialize PHPMailer with SSL peer-verification relaxation and multi-SMTP fallback
             $deductionTotal = 0;
             if (!empty($payslip['items'])) {
                 foreach ($payslip['items'] as $item) {
@@ -124,21 +104,90 @@ class PayrollMailService
             $netFormatted = number_format($netSalaryVal, 2);
             $bankFormatted = $formatVal($bankAmountVal);
             $cashFormatted = $formatVal($cashAmountVal);
-
-            $mail->isHTML(true);
-            $mail->Subject = $subject;
-            $mail->Body    = $htmlBody;
-            $mail->AltBody = "Dear {$employeeName},\n\nPlease find attached your Payslip for {$payslipMonthText} with the salary breakdown details below:\n\nNet Salary: {$netFormatted}\nBank Payment: {$bankFormatted}\nCash Payment: {$cashFormatted}\n\nPlease review the attached Payslip for your reference.";
-
-            // Attach PDF
+            $altBody = "Dear {$employeeName},\n\nPlease find attached your Payslip for {$payslipMonthText} with the salary breakdown details below:\n\nNet Salary: {$netFormatted}\nBank Payment: {$bankFormatted}\nCash Payment: {$cashFormatted}\n\nPlease review the attached Payslip for your reference.";
             $pdfFilename = 'Payslip_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', $employeeCode) . '_' . date('Y_m', strtotime($payslip['payslip_month'] ?? 'now')) . '.pdf';
-            $mail->addStringAttachment($pdfContent, $pdfFilename, 'base64', 'application/pdf');
 
-            // Send
-            $mail->send();
+            $smtpCandidates = [
+                [
+                    'host'   => $this->config['smtp_host'] ?? 'smtp.gmail.com',
+                    'user'   => $this->config['smtp_user'] ?? 'no-reply@dpremiumhomes.com',
+                    'pass'   => $this->config['smtp_pass'] ?? 'djcdawaxdbmdotlj',
+                    'secure' => $this->config['smtp_secure'] ?? 'ssl',
+                    'port'   => (int) ($this->config['smtp_port'] ?? 465),
+                ],
+                [
+                    'host'   => 'mail.dpremiumhomes.com',
+                    'user'   => 'no-reply@dpremiumhomes.com',
+                    'pass'   => 'djcdawaxdbmdotlj',
+                    'secure' => 'ssl',
+                    'port'   => 465,
+                ],
+                [
+                    'host'   => 'smtp.gmail.com',
+                    'user'   => 'farzana.tphl13@gmail.com',
+                    'pass'   => 'hvptjfnsprecofmi',
+                    'secure' => 'ssl',
+                    'port'   => 465,
+                ],
+            ];
+
+            $sentOk = false;
+            $lastMailerErr = '';
+            foreach ($smtpCandidates as $smtpCfg) {
+                if (empty($smtpCfg['user']) || $smtpCfg['user'] === 'your_email@gmail.com') {
+                    continue;
+                }
+                $mail = new PHPMailer(true);
+                try {
+                    $mail->CharSet   = 'UTF-8';
+                    $mail->isSMTP();
+                    $mail->SMTPDebug = 0;
+                    $mail->Timeout   = 12;
+                    $mail->Host       = $smtpCfg['host'];
+                    $mail->SMTPAuth   = true;
+                    $mail->Username   = $smtpCfg['user'];
+                    $mail->Password   = $smtpCfg['pass'];
+                    $mail->SMTPSecure = $smtpCfg['secure'];
+                    $mail->Port       = (int) $smtpCfg['port'];
+                    $mail->SMTPOptions = [
+                        'ssl' => [
+                            'verify_peer'       => false,
+                            'verify_peer_name'  => false,
+                            'allow_self_signed' => true,
+                        ],
+                    ];
+
+                    $mail->setFrom($smtpCfg['user'], $companyTitle . ' Payroll');
+                    $mail->addAddress($recipientEmail, $employeeName);
+                    $mail->isHTML(true);
+                    $mail->Subject = $subject;
+                    $mail->Body    = $htmlBody;
+                    $mail->AltBody = $altBody;
+                    $mail->addStringAttachment($pdfContent, $pdfFilename, 'base64', 'application/pdf');
+
+                    $mail->send();
+                    $sentOk = true;
+                    break;
+                } catch (\Throwable $smtpEx) {
+                    $lastMailerErr = !empty($mail->ErrorInfo) ? $mail->ErrorInfo : $smtpEx->getMessage();
+                    error_log("Payslip SMTP attempt ({$smtpCfg['host']} / {$smtpCfg['user']}) failed for ID {$payslipId}: " . $lastMailerErr);
+                }
+            }
+
+            if (!$sentOk) {
+                return [
+                    'success' => false,
+                    'message' => "Mailer error for {$employeeName}: " . $lastMailerErr
+                ];
+            }
 
             // 5. Update email_sent_at timestamp in database
             $stmtUpd = $this->db->prepare("UPDATE payslips SET email_sent_at = NOW(), email_sent_by = ? WHERE id = ?");
+            if (!$stmtUpd) {
+                @$this->db->query("ALTER TABLE payslips ADD COLUMN email_sent_at DATETIME NULL DEFAULT NULL");
+                @$this->db->query("ALTER TABLE payslips ADD COLUMN email_sent_by INT NULL DEFAULT NULL");
+                $stmtUpd = $this->db->prepare("UPDATE payslips SET email_sent_at = NOW(), email_sent_by = ? WHERE id = ?");
+            }
             if ($stmtUpd) {
                 $stmtUpd->bind_param("ii", $senderUserId, $payslipId);
                 $stmtUpd->execute();
@@ -338,10 +387,28 @@ class PayrollMailService
 
         $wordsText = function_exists('amountInWords') ? trim(amountInWords($displayNetSalary)) : '';
 
-        // Logo resolution (prefer optimized thumbnail to prevent TCPDF memory exhaustion)
+        // Logo resolution (prefer optimized thumbnail to prevent TCPDF memory exhaustion and guard against PNG alpha without GD/Imagick)
         $logoHtml = '';
+        $canHandleAlphaPng = extension_loaded('gd') || extension_loaded('imagick');
+        $isSafeImageForTcpdf = function ($filePath) use ($canHandleAlphaPng): bool {
+            if (!$filePath || !file_exists($filePath)) {
+                return false;
+            }
+            if ($canHandleAlphaPng) {
+                return true;
+            }
+            $header = @file_get_contents($filePath, false, null, 0, 64);
+            if ($header !== false && substr($header, 0, 8) === "\x89PNG\x0d\x0a\x1a\x0a" && strlen($header) >= 26) {
+                $colorType = ord($header[25]);
+                if ($colorType >= 4 || strpos($header, 'tRNS') !== false) {
+                    return false; // Alpha channel PNG without GD/Imagick would cause TCPDF to die()
+                }
+            }
+            return true;
+        };
+
         $logoThumb = realpath(__DIR__ . '/../../public/assets/images/logo/tphl_logo_thumb.png');
-        if ($logoThumb && file_exists($logoThumb)) {
+        if ($logoThumb && $isSafeImageForTcpdf($logoThumb)) {
             $logoHtml = '<img src="' . $logoThumb . '" style="height: 38px;" /><br>';
         } else {
             $logoPath = realpath(__DIR__ . '/../../public/assets/images/logo/tphl_logo.png');
@@ -354,7 +421,7 @@ class PayrollMailService
                     }
                 }
             }
-            if ($logoPath && file_exists($logoPath)) {
+            if ($logoPath && $isSafeImageForTcpdf($logoPath)) {
                 $info = @getimagesize($logoPath);
                 if ($info && $info[0] <= 2500) {
                     $logoHtml = '<img src="' . $logoPath . '" style="height: 38px;" /><br>';

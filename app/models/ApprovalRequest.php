@@ -448,6 +448,7 @@ class ApprovalRequest extends Model
         $this->syncMissingContractorBills();
         $this->syncMissingLandFundRequisitions();
         $this->syncMissingClientRefundRequests();
+        $this->syncMissingPayslips();
 
         $roles = array_map('strtolower', $roles);
 
@@ -521,16 +522,17 @@ class ApprovalRequest extends Model
 
         $reqAmount = (float)($req['request_amount'] ?? 0);
         $isOver10k = ($reqAmount > 10000.01);
+        $isPayslipReq = (($req['source_table'] ?? '') === 'payslips');
         $isAlreadyPaid = in_array(strtolower($req['status'] ?? ''), ['paid', 'partially_paid']);
         $isAlreadyMgmtApproved = (strtolower($req['status'] ?? '') === 'approved' && !empty($req['approved_by']));
 
-        if ($isOver10k && !$isAlreadyPaid && !$isAlreadyMgmtApproved) {
-            // For > 10,000 (when Management hasn't approved yet): Accounts Head verification complete (Step 2).
+        if (($isOver10k || $isPayslipReq) && !$isAlreadyPaid && !$isAlreadyMgmtApproved) {
+            // For > 10,000 or Payslips (when Management hasn't approved yet): Accounts Head verification complete (Step 2).
             // ALWAYS forward to Management (Role 1/3) for final executive sign-off!
             $nextRole = 'management';
             $nextStatus = 'pending';
         } else {
-            // For <= 10,000, or when Management has already approved, or historical already paid: fully approved and ready for Accounts Payout!
+            // For <= 10,000 (non-payslip), or when Management has already approved, or historical already paid: fully approved and ready for Accounts Payout!
             $nextRole = ($req['status'] === 'partially_approved' && ($req['source_table'] ?? '') === 'fund_requisitions') ? ($req['approve_role'] ?? 'accounts') : 'accounts';
             $nextStatus = 'approved';
         }
@@ -554,8 +556,18 @@ class ApprovalRequest extends Model
         $res = $stmt->execute();
         $stmt->close();
 
-        // If <= 10,000, or Management already approved, or historical already paid: sync source table to approved so payout can proceed
-        if (!$isOver10k || $isAlreadyPaid || $isAlreadyMgmtApproved) {
+        // Always sync payslips accounts_head_status column if source_table is payslips
+        if ($isPayslipReq && !empty($req['source_id'])) {
+            $psId = (int)$req['source_id'];
+            $colAh = $this->db->query("SHOW COLUMNS FROM `payslips` LIKE 'accounts_head_status'");
+            if ($colAh && $colAh->num_rows > 0) {
+                $escNote = $this->db->real_escape_string($note);
+                $this->db->query("UPDATE `payslips` SET accounts_head_status = 'approved', accounts_head_by = {$userId}, accounts_head_at = NOW(), accounts_head_note = '{$escNote}' WHERE id = {$psId}");
+            }
+        }
+
+        // If <= 10,000 (non-payslip), or Management already approved, or historical already paid: sync source table to approved so payout can proceed
+        if ((!$isOver10k && !$isPayslipReq) || $isAlreadyPaid || $isAlreadyMgmtApproved) {
             $sourceTable = $req['source_table'] ?? '';
             $sourceId = (int)($req['source_id'] ?? 0);
             if ($sourceTable && $sourceId) {
@@ -1796,12 +1808,17 @@ class ApprovalRequest extends Model
                 LOWER({$prefix}approve_role) != 'completed' AND (
                     ({$prefix}status IN ('pending', 'partially_approved', '') AND ({$prefix}accounts_head_status != 'approved' OR {$prefix}accounts_head_status IS NULL) AND (
                         LOWER({$prefix}approve_role) = 'accounts_head'
+                        OR {$prefix}source_table = 'payslips'
                         OR ({$prefix}request_amount > 10000.01 AND {$prefix}op_head_status = 'approved')
                         OR ({$prefix}request_amount <= 10000.01 AND ({$prefix}op_head_status = 'approved' OR {$prefix}status = 'approved' OR LOWER({$prefix}approve_role) IN ('management', 'operations', 'accounts_head', '')))
                     ))
                     OR ({$prefix}status = 'approved' AND ({$prefix}accounts_head_status != 'approved' OR {$prefix}accounts_head_status IS NULL OR LOWER({$prefix}approve_role) = 'accounts_head'))
                     OR ({$prefix}status = 'partially_approved' AND {$prefix}source_table = 'fund_requisitions' AND ({$prefix}accounts_head_status != 'approved' OR {$prefix}accounts_head_status IS NULL))
-                    OR ({$prefix}accounts_head_status = 'approved' AND (LOWER({$prefix}approve_role) = 'accounts' OR {$prefix}source_table IN ('project_incentive_claims', 'vendor_payment_requests', 'contractor_bill_requests', 'con_labor_requisitions', 'fund_requisitions', 'project_other_costs', 'project_extra_assets', 'expense_adjustments', 'land_fund_requisitions', 'con_land_requisitions')))
+                    OR ({$prefix}accounts_head_status = 'approved' AND (
+                        LOWER({$prefix}approve_role) = 'accounts'
+                        OR ({$prefix}source_table = 'payslips' AND {$prefix}status = 'approved')
+                        OR {$prefix}source_table IN ('project_incentive_claims', 'vendor_payment_requests', 'contractor_bill_requests', 'con_labor_requisitions', 'fund_requisitions', 'project_other_costs', 'project_extra_assets', 'expense_adjustments', 'land_fund_requisitions', 'con_land_requisitions')
+                    ))
                 )
             )";
         } elseif ($isAccounts) {
@@ -1809,17 +1826,18 @@ class ApprovalRequest extends Model
                 LOWER({$prefix}approve_role) != 'completed' AND {$prefix}accounts_head_status = 'approved' AND (
                     ({$prefix}status IN ('pending', 'partially_approved', '') AND LOWER({$prefix}approve_role) = 'accounts')
                     OR ({$prefix}status = 'partially_approved' AND {$prefix}source_table = 'fund_requisitions')
-                    OR ({$prefix}status = 'approved' AND (LOWER({$prefix}approve_role) = 'accounts' OR {$prefix}source_table IN ('project_incentive_claims', 'vendor_payment_requests', 'contractor_bill_requests', 'con_labor_requisitions', 'fund_requisitions', 'project_other_costs', 'project_extra_assets', 'expense_adjustments', 'land_fund_requisitions', 'con_land_requisitions')))
+                    OR ({$prefix}status = 'approved' AND (LOWER({$prefix}approve_role) = 'accounts' OR {$prefix}source_table IN ('payslips', 'project_incentive_claims', 'vendor_payment_requests', 'contractor_bill_requests', 'con_labor_requisitions', 'fund_requisitions', 'project_other_costs', 'project_extra_assets', 'expense_adjustments', 'land_fund_requisitions', 'con_land_requisitions')))
                 )
             )";
         } elseif ($isSiteOperator && !$isManagement) {
             return "({$prefix}status IN ('pending', 'partially_approved', '') 
+                    AND {$prefix}source_table != 'payslips'
                     AND (LOWER({$prefix}approve_role) IN ('management', 'operations', 'accounts_head') OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = '') 
                     AND ({$prefix}op_head_status != 'approved' OR {$prefix}op_head_status IS NULL))";
         } elseif ($isManagement) {
             return "({$prefix}status IN ('pending', 'partially_approved', '') 
-                    AND (LOWER({$prefix}approve_role) IN ('management', 'operations') OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = '')
-                    AND ({$prefix}request_amount <= 10000.01 OR ({$prefix}op_head_status = 'approved' AND {$prefix}accounts_head_status = 'approved')))";
+                    AND (LOWER({$prefix}approve_role) IN ('management', 'operations') OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = '' OR {$prefix}source_table = 'payslips')
+                    AND ({$prefix}source_table = 'payslips' OR {$prefix}request_amount <= 10000.01 OR ({$prefix}op_head_status = 'approved' AND {$prefix}accounts_head_status = 'approved')))";
         } elseif ($isQc) {
             return "({$prefix}status IN ('pending', 'partially_approved', '') 
                     AND LOWER({$prefix}approve_role) IN ('qc', 'qc_head'))";
@@ -1868,6 +1886,7 @@ class ApprovalRequest extends Model
         $this->syncMissingExpenseAdjustments();
         $this->syncMissingLandFundRequisitions();
         $this->syncMissingClientRefundRequests();
+        $this->syncMissingPayslips();
 
         $moduleDefs = [
             'contractor_bill_requests' => [
@@ -2175,7 +2194,8 @@ class ApprovalRequest extends Model
                     department,
                     requested_by
                  FROM approval_requests
-                 WHERE status IN ('pending', 'partially_approved', '')";
+                 WHERE status IN ('pending', 'partially_approved', '')
+                    OR (status = 'approved' AND (accounts_head_status != 'approved' OR accounts_head_status IS NULL))";
         $pRes = $this->db->query($pSql);
         $myPendingData = [];
         $allPendingData = [];
@@ -2188,49 +2208,53 @@ class ApprovalRequest extends Model
                 $appRole = strtolower($pRow['approve_role'] ?? 'management');
                 if (empty($appRole)) $appRole = 'management';
                 $rowDept = strtolower($pRow['department'] ?? '');
+                $rowStatus = strtolower($pRow['status'] ?? 'pending');
+                $ahDone = (strtolower($pRow['accounts_head_status'] ?? 'pending') === 'approved');
 
                 if (!empty($deptFilter) && strpos($rowDept, $deptFilter) === false) {
                     continue;
                 }
 
-                if (!isset($allPendingData[$mKey])) {
-                    $allPendingData[$mKey] = ['count' => 0, 'amount' => 0.0];
+                if (in_array($rowStatus, ['pending', 'partially_approved', '']) || !$ahDone) {
+                    if (!isset($allPendingData[$mKey])) {
+                        $allPendingData[$mKey] = ['count' => 0, 'amount' => 0.0];
+                    }
+                    $allPendingData[$mKey]['count']++;
+                    $allPendingData[$mKey]['amount'] += $amt;
                 }
-                $allPendingData[$mKey]['count']++;
-                $allPendingData[$mKey]['amount'] += $amt;
 
                 // Actionable pending check for current user
                 $isActionable = false;
                 if ($isAccounts) {
-                    if ($appRole === 'accounts') $isActionable = true;
+                    if ($appRole === 'accounts' && $ahDone) $isActionable = true;
                 } elseif ($isRole20) {
-                    $opDone = (strtolower($pRow['op_head_status'] ?? 'pending') === 'approved');
-                    if (in_array($srcTbl, ['project_other_costs', 'expense_adjustments']) && in_array($appRole, ['management', ''])) {
-                        $isActionable = true;
-                    } elseif ($srcTbl === 'project_extra_assets') {
-                        if ($appRole === 'operations' && in_array($userRoleId, [20, 32], true)) {
+                    if ($srcTbl !== 'payslips' && in_array($rowStatus, ['pending', 'partially_approved', ''])) {
+                        $opDone = (strtolower($pRow['op_head_status'] ?? 'pending') === 'approved');
+                        if (in_array($srcTbl, ['project_other_costs', 'expense_adjustments']) && in_array($appRole, ['management', ''])) {
                             $isActionable = true;
+                        } elseif ($srcTbl === 'project_extra_assets') {
+                            if ($appRole === 'operations' && in_array($userRoleId, [20, 32], true)) {
+                                $isActionable = true;
+                            } elseif (in_array($appRole, ['management', '']) && ($amt <= 10000.01 || !$opDone)) {
+                                $isActionable = true;
+                            }
                         } elseif (in_array($appRole, ['management', '']) && ($amt <= 10000.01 || !$opDone)) {
                             $isActionable = true;
                         }
-                    } elseif (in_array($appRole, ['management', '']) && ($amt <= 10000.01 || !$opDone)) {
-                        $isActionable = true;
                     }
                 } elseif ($isFullManagement) {
                     $isOver1L = ($amt > 10000.01);
                     $opDone = (strtolower($pRow['op_head_status'] ?? 'pending') === 'approved');
-                    $ahDone = (strtolower($pRow['accounts_head_status'] ?? 'pending') === 'approved');
-                    if (in_array($appRole, ['management', ''])) {
-                        if (!$isOver1L || ($opDone && $ahDone)) {
+                    if (in_array($rowStatus, ['pending', 'partially_approved', '']) && (in_array($appRole, ['management', '']) || $srcTbl === 'payslips')) {
+                        if (!$isOver1L || $srcTbl === 'payslips' || ($opDone && $ahDone)) {
                             $isActionable = true;
                         }
                     }
                 } elseif ($isAccountsHead) {
                     $isOver1L = ($amt > 10000.01);
                     $opDone = (strtolower($pRow['op_head_status'] ?? 'pending') === 'approved');
-                    $ahDone = (strtolower($pRow['accounts_head_status'] ?? 'pending') === 'approved');
                     if (!$ahDone) {
-                        if ($appRole === 'accounts_head') {
+                        if ($appRole === 'accounts_head' || $srcTbl === 'payslips' || $rowStatus === 'approved') {
                             $isActionable = true;
                         } elseif ($isOver1L && $opDone) {
                             $isActionable = true;
@@ -2355,7 +2379,7 @@ class ApprovalRequest extends Model
         } elseif ($statusParam === 'rejected') {
             $where[] = "ar.status = 'rejected'";
         } elseif ($statusParam === 'all_pending') {
-            $where[] = "ar.status IN ('pending', 'partially_approved', '')";
+            $where[] = "(ar.status IN ('pending', 'partially_approved', '') OR (ar.status = 'approved' AND (ar.accounts_head_status != 'approved' OR ar.accounts_head_status IS NULL)))";
         } elseif ($statusParam === 'all') {
             // All company requests: complete audit without status filter
         } else {
@@ -2436,6 +2460,7 @@ class ApprovalRequest extends Model
 
     public function countAllApprovalHistory($filters = [])
     {
+        $this->syncMissingPayslips();
         list($where, $params, $types) = $this->buildApprovalHistoryWhere($filters);
         $whereClause = implode(" AND ", $where);
 
@@ -2461,6 +2486,7 @@ class ApprovalRequest extends Model
 
     public function getAllApprovalHistory($filters = [], $limit = 0, $offset = 0)
     {
+        $this->syncMissingPayslips();
         // Throttle background table syncs so they don't block every single click/page load
         $lastSync = $_SESSION['last_approval_sync_time'] ?? 0;
         if (time() - $lastSync > 180) {
@@ -2476,6 +2502,7 @@ class ApprovalRequest extends Model
             $this->syncMissingExpenseAdjustments();
             $this->syncMissingLandFundRequisitions();
         $this->syncMissingClientRefundRequests();
+        $this->syncMissingPayslips();
         }
 
         list($where, $params, $types) = $this->buildApprovalHistoryWhere($filters);
@@ -3688,9 +3715,23 @@ class ApprovalRequest extends Model
                                 $row['disbursed_branch_id'] = $d['branch_id'];
                             }
                         } else if ($row['status'] === 'approved') {
-                            $payoutStatus = 'Pending Accounts Payout';
-                            $pendingStageLabel = 'Pending Accounts Payout';
-                            $pendingForText = 'Accounts & Finance';
+                            if (($row['accounts_head_status'] ?? '') === 'approved') {
+                                $payoutStatus = 'Pending Accounts Payout';
+                                $pendingStageLabel = 'Pending Accounts Payout';
+                                $pendingForText = 'Accounts & Finance';
+                            } else {
+                                $payoutStatus = 'Pending Accounts Head Approval';
+                                $pendingStageLabel = 'Pending Accounts Head';
+                                $pendingForText = 'Accounts Head';
+                            }
+                        } else if (in_array(strtolower($row['status'] ?? ''), ['pending', ''])) {
+                            if (($row['accounts_head_status'] ?? '') === 'approved') {
+                                $pendingStageLabel = 'Pending Management';
+                                $pendingForText = 'Management';
+                            } else {
+                                $pendingStageLabel = 'Pending Mgmt & Accts Head';
+                                $pendingForText = 'Management / Accounts Head';
+                            }
                         }
                     }
                 }
@@ -3800,7 +3841,7 @@ class ApprovalRequest extends Model
                 }
                 // Pending Accounts Head approval (Step 2)
                 if ($ahStatus !== 'approved') {
-                    if ($approveRole === 'accounts_head') {
+                    if ($approveRole === 'accounts_head' || ($item['source_table'] ?? '') === 'payslips') {
                         return true;
                     }
                     if ($isOver10k && $opStatus === 'approved') {
@@ -3841,6 +3882,7 @@ class ApprovalRequest extends Model
             // 2. Role 20 (DGM / Admin & Operation Head):
             if ($isRole20) {
                 if (!$isPending) return false;
+                if (($item['source_table'] ?? '') === 'payslips') return false;
                 if (!in_array($approveRole, ['management', 'operations', 'accounts_head', ''])) return false;
                 return ($opStatus !== 'approved');
             }
@@ -3848,11 +3890,11 @@ class ApprovalRequest extends Model
             // 3. Full Management (Super Admin 3, Admin 1):
             if ($isFullManagement) {
                 if (!$isPending) return false;
-                if (!in_array($approveRole, ['management', 'operations', ''])) return false;
+                if (!in_array($approveRole, ['management', 'operations', '']) && ($item['source_table'] ?? '') !== 'payslips') return false;
                 
-                // For requests > ৳10,000: Management is ONLY actionable after BOTH Op Head AND Accounts Head have approved!
-                // If Accounts Head has NOT approved yet, it belongs in Accounts Head queue, NOT Management!
-                if ($isOver10k) {
+                // For requests > ৳10,000 (except payslips which use 2-tier Management + Accounts Head approval):
+                // Management is ONLY actionable after BOTH Op Head AND Accounts Head have approved!
+                if ($isOver10k && ($item['source_table'] ?? '') !== 'payslips') {
                     return ($opStatus === 'approved' && $ahStatus === 'approved');
                 }
                 return true;
@@ -3933,7 +3975,8 @@ class ApprovalRequest extends Model
             foreach ($list as $item) {
                 $st = strtolower($item['status'] ?? '');
                 $pst = $item['payout_status'] ?? '';
-                if (in_array($st, ['pending', 'partially_approved', '']) || in_array($pst, ['Pending Accounts Payout', 'Partially Paid'])) {
+                $ahSt = strtolower($item['accounts_head_status'] ?? 'pending');
+                if (in_array($st, ['pending', 'partially_approved', '']) || $ahSt !== 'approved' || in_array($pst, ['Pending Accounts Head Approval', 'Pending Accounts Payout', 'Partially Paid'])) {
                     $filteredList[] = $item;
                 }
             }
@@ -5764,5 +5807,63 @@ class ApprovalRequest extends Model
             }
         }
         return $officers;
+    }
+
+    /**
+     * Ensure all non-draft payslips in `payslips` table have a corresponding record in `approval_requests`
+     */
+    public function syncMissingPayslips()
+    {
+        try {
+            $sql = "SELECT p.*, e.full_name as emp_name, e.employee_id as emp_code
+                    FROM payslips p
+                    LEFT JOIN approval_requests ar ON ar.source_table = 'payslips' AND ar.source_id = p.id
+                    LEFT JOIN employees e ON e.id = p.employee_id
+                    WHERE ar.id IS NULL AND (p.status IS NULL OR p.status NOT IN ('draft', 'on_hold'))";
+            $res = $this->db->query($sql);
+            if ($res && $res->num_rows > 0) {
+                $insStmt = $this->db->prepare("INSERT INTO approval_requests 
+                    (department, request_type, title, source_table, source_id, requested_days, requested_by, approve_role, meta_data, request_amount, approved_amount, status, approved_by, approved_at, accounts_head_status, accounts_head_by, accounts_head_at, created_at)
+                    VALUES ('HR', 'salary', ?, 'payslips', ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                if ($insStmt) {
+                    while ($row = $res->fetch_assoc()) {
+                        $psId = (int)$row['id'];
+                        $empId = (int)($row['employee_id'] ?? 0);
+                        $empLabel = trim(($row['emp_name'] ?? 'Employee') . (!empty($row['emp_code']) ? ' (' . $row['emp_code'] . ')' : ''));
+                        $psDate = !empty($row['payslip_month']) ? $row['payslip_month'] : (!empty($row['created_at']) ? $row['created_at'] : date('Y-m-01'));
+                        $monthLabel = date('F Y', strtotime($psDate));
+                        $title = 'Salary Approval';
+                        $amt = (float)($row['net_salary'] ?? 0);
+                        $metaData = json_encode([
+                            'employee_id'   => $empId,
+                            'employee_name' => $empLabel,
+                            'net_salary'    => $amt,
+                            'month'         => date('Y-m-01', strtotime($psDate))
+                        ]);
+                        $reqBy = !empty($row['created_by']) ? (int)$row['created_by'] : 1;
+                        $pStatus = strtolower($row['status'] ?? 'pending');
+                        $payStatus = strtolower($row['payment_status'] ?? 'unpaid');
+                        $isPaid = ($pStatus === 'paid' || $payStatus === 'paid');
+                        $arStatus = $isPaid ? 'approved' : (in_array($pStatus, ['approved', 'rejected']) ? $pStatus : 'pending');
+                        $ahStatus = strtolower($row['accounts_head_status'] ?? 'pending');
+                        if ($isPaid) {
+                            $ahStatus = 'approved';
+                        }
+                        $appRole = ($arStatus === 'approved' && $ahStatus === 'approved') ? 'accounts' : (($arStatus === 'approved' && $ahStatus !== 'approved') ? 'accounts_head' : 'management');
+                        $appAmt = ($arStatus === 'approved') ? $amt : null;
+                        $appBy = !empty($row['approved_by']) ? (int)$row['approved_by'] : null;
+                        $appAt = !empty($row['approved_at']) ? $row['approved_at'] : null;
+                        $ahBy = !empty($row['accounts_head_by']) ? (int)$row['accounts_head_by'] : null;
+                        $ahAt = !empty($row['accounts_head_at']) ? $row['accounts_head_at'] : null;
+                        $createdAt = !empty($row['created_at']) ? $row['created_at'] : date('Y-m-d H:i:s');
+                        $insStmt->bind_param("siissddsisssis", $title, $psId, $reqBy, $appRole, $metaData, $amt, $appAmt, $arStatus, $appBy, $appAt, $ahStatus, $ahBy, $ahAt, $createdAt);
+                        $insStmt->execute();
+                    }
+                    $insStmt->close();
+                }
+            }
+        } catch (\Throwable $e) {
+            error_log("syncMissingPayslips error: " . $e->getMessage());
+        }
     }
 }

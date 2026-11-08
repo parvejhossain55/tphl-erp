@@ -849,7 +849,13 @@
                                 $payoutStatus = $req['payout_status'] ?? '';
                                 $ahStatus = strtolower($req['accounts_head_status'] ?? 'pending');
                                 $isFrPartialMgmt = ($sourceTable === 'fund_requisitions' && $statusLower === 'partially_approved');
-                                $isPendingAccountsHead = ($ahStatus !== 'approved') && ($reqApproveRole === 'accounts_head' || $statusLower === 'approved' || $req['status'] === 'approved' || $isFrPartialMgmt);
+                                $isPendingAccountsHead = ($ahStatus !== 'approved') && (
+                                    $reqApproveRole === 'accounts_head'
+                                    || $statusLower === 'approved'
+                                    || $req['status'] === 'approved'
+                                    || $isFrPartialMgmt
+                                    || ($sourceTable === 'payslips' && $isAccountsHeadUser && $isPendingStatus)
+                                );
                                 $isAccountsHeadApproved = ($ahStatus === 'approved');
 
                                 // Determine whether this request is actionable by the logged-in user right now
@@ -881,12 +887,12 @@
                                     }
                                 } elseif ($isSiteOperator) {
                                     $reqOpStatus = strtolower($req['op_head_status'] ?? 'pending');
-                                    if ($isPendingStatus && in_array($reqApproveRole, ['management', 'operations', '']) && $reqOpStatus !== 'approved') {
+                                    if ($isPendingStatus && $sourceTable !== 'payslips' && in_array($reqApproveRole, ['management', 'operations', '']) && $reqOpStatus !== 'approved') {
                                         $isActionableByMe = true;
                                         $canUserApprove = true;
                                     }
                                 } elseif ($isManagementUser) {
-                                    if ($isPendingStatus && in_array($reqApproveRole, ['management', 'operations', ''])) {
+                                    if ($isPendingStatus && (in_array($reqApproveRole, ['management', 'operations', '']) || $sourceTable === 'payslips')) {
                                         $reqOpStatus = strtolower($req['op_head_status'] ?? 'pending');
                                         $isOver10k = ((float)($req['request_amount'] ?? 0) > 10000.01);
                                         if ($isOver10k && $sourceTable !== 'payslips' && ($reqOpStatus !== 'approved' || !$isAccountsHeadApproved)) {
@@ -1210,6 +1216,21 @@
                                                         </div>
                                                         <span class="text-success fw-semibold flex-shrink-0" style="font-size: 9.5px;">
                                                             <?= !empty($req['op_head_at']) ? date('d M, h:i A', strtotime($req['op_head_at'])) : 'Approved' ?>
+                                                        </span>
+                                                    </div>
+                                                <?php endif; ?>
+                                                <?php if ($isAccountsHeadApproved): ?>
+                                                    <div class="p-1 px-2 rounded-2 bg-primary-subtle border border-primary-subtle text-start d-flex align-items-center justify-content-between"
+                                                         title="<?= htmlspecialchars(($req['accounts_head_name'] ?? 'Accounts Head') . (!empty($req['accounts_head_at']) ? ' • ' . date('d M, Y h:i A', strtotime($req['accounts_head_at'])) : '')) ?>">
+                                                        <div class="d-flex align-items-center gap-1 text-truncate me-1">
+                                                            <i class="fa-solid fa-check-double text-primary flex-shrink-0" style="font-size: 10px;"></i>
+                                                            <span class="fw-bold text-dark text-truncate" style="font-size: 10.5px; max-width: 110px;">
+                                                                <?= htmlspecialchars(!empty($req['accounts_head_name']) ? $req['accounts_head_name'] : 'Accounts Head') ?>
+                                                            </span>
+                                                            <span class="badge bg-primary text-white p-0 px-1" style="font-size: 8px;">Accts</span>
+                                                        </div>
+                                                        <span class="text-primary fw-semibold flex-shrink-0" style="font-size: 9.5px;">
+                                                            <?= !empty($req['accounts_head_at']) ? date('d M, h:i A', strtotime($req['accounts_head_at'])) : 'Approved' ?>
                                                         </span>
                                                     </div>
                                                 <?php endif; ?>

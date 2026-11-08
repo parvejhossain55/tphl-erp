@@ -165,6 +165,12 @@ class PayrollController extends Controller
                     'payment_status'          => "VARCHAR(50) NULL DEFAULT 'unpaid'",
                     'hr_status'               => "VARCHAR(50) NULL DEFAULT 'pending'",
                     'mgmt_status'             => "VARCHAR(50) NULL DEFAULT 'pending'",
+                    'approved_by'             => 'INT NULL DEFAULT NULL',
+                    'approved_at'             => 'DATETIME NULL DEFAULT NULL',
+                    'accounts_head_status'    => "VARCHAR(20) NULL DEFAULT 'pending'",
+                    'accounts_head_by'        => 'INT NULL DEFAULT NULL',
+                    'accounts_head_at'        => 'DATETIME NULL DEFAULT NULL',
+                    'accounts_head_note'      => 'TEXT NULL DEFAULT NULL',
                     'bank_account_id'         => 'INT NULL DEFAULT NULL',
                     'disbursed_by'            => 'INT NULL DEFAULT NULL',
                     'disbursed_at'            => 'DATETIME NULL DEFAULT NULL',
@@ -477,8 +483,12 @@ class PayrollController extends Controller
         }
         $currRoleId = (int) ($_SESSION['user']['role_id'] ?? 0);
         $secRoleId  = (int) ($_SESSION['user']['secondary_role_id'] ?? 0);
-        $canDisburse = in_array($currRoleId, [1, 3, 6, 30, 33, 34, 35, 38], true)
-            || in_array($secRoleId, [1, 3, 6, 30, 33, 34, 35, 38], true)
+        $roleNameLc = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $canDisburse = in_array($currRoleId, [1, 3, 6, 30, 33, 34, 35, 36, 38], true)
+            || in_array($secRoleId, [1, 3, 6, 30, 33, 34, 35, 36, 38], true)
+            || strpos($roleNameLc, 'account') !== false
+            || strpos($roleNameLc, 'management') !== false
+            || strpos($roleNameLc, 'admin') !== false
             || (function_exists('hasPermission') && hasPermission('accounts manage'));
         if (!$canDisburse) {
             $_SESSION['error'] = 'Only Accounts or Management can disburse payroll payments.';
@@ -1363,8 +1373,12 @@ class PayrollController extends Controller
 
         $currRoleId = (int) ($_SESSION['user']['role_id'] ?? 0);
         $secRoleId  = (int) ($_SESSION['user']['secondary_role_id'] ?? 0);
-        $canDisburse = in_array($currRoleId, [1, 3, 6, 30, 33, 34, 35, 38], true)
-            || in_array($secRoleId, [1, 3, 6, 30, 33, 34, 35, 38], true)
+        $roleNameLc = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $canDisburse = in_array($currRoleId, [1, 3, 6, 30, 33, 34, 35, 36, 38], true)
+            || in_array($secRoleId, [1, 3, 6, 30, 33, 34, 35, 36, 38], true)
+            || strpos($roleNameLc, 'account') !== false
+            || strpos($roleNameLc, 'management') !== false
+            || strpos($roleNameLc, 'admin') !== false
             || (function_exists('hasPermission') && hasPermission('accounts manage'));
         if (!$canDisburse) {
             if (ob_get_length()) {
@@ -1775,27 +1789,42 @@ class PayrollController extends Controller
      */
     public function sendSinglePayslipEmail()
     {
+        ob_start();
         header('Content-Type: application/json');
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
 
-        $input = file_get_contents('php://input');
-        $payload = json_decode($input, true);
-        $payslipId = (int) ($payload['payslip_id'] ?? ($_POST['payslip_id'] ?? 0));
+        try {
+            $input = file_get_contents('php://input');
+            $payload = json_decode($input, true);
+            $payslipId = (int) ($payload['payslip_id'] ?? ($_POST['payslip_id'] ?? 0));
 
-        if ($payslipId <= 0) {
-            echo json_encode(['success' => false, 'message' => 'Invalid payslip ID provided.']);
+            if ($payslipId <= 0) {
+                if (ob_get_length()) {
+                    ob_clean();
+                }
+                echo json_encode(['success' => false, 'message' => 'Invalid payslip ID provided.']);
+                exit;
+            }
+
+            $userId = (int) ($_SESSION['user']['id'] ?? 1);
+            require_once __DIR__ . '/../services/PayrollMailService.php';
+            $mailService = new PayrollMailService($this->db);
+            $result = $mailService->sendPayslipEmail($payslipId, $userId);
+
+            if (ob_get_length()) {
+                ob_clean();
+            }
+            echo json_encode($result);
+            exit;
+        } catch (\Throwable $e) {
+            if (ob_get_length()) {
+                ob_clean();
+            }
+            echo json_encode(['success' => false, 'message' => 'Email error: ' . $e->getMessage()]);
             exit;
         }
-
-        $userId = (int) ($_SESSION['user']['id'] ?? 1);
-        require_once __DIR__ . '/../services/PayrollMailService.php';
-        $mailService = new PayrollMailService($this->db);
-        $result = $mailService->sendPayslipEmail($payslipId, $userId);
-
-        echo json_encode($result);
-        exit;
     }
 
     /**
@@ -1803,66 +1832,84 @@ class PayrollController extends Controller
      */
     public function sendBulkPayslipEmail()
     {
+        ob_start();
         header('Content-Type: application/json');
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
 
-        $input = file_get_contents('php://input');
-        $payload = json_decode($input, true);
-        $payslipIds = $payload['payslip_ids'] ?? [];
+        try {
+            $input = file_get_contents('php://input');
+            $payload = json_decode($input, true);
+            $payslipIds = $payload['payslip_ids'] ?? [];
 
-        if (empty($payslipIds) || !is_array($payslipIds)) {
-            echo json_encode(['success' => false, 'message' => 'No payslips selected for sending email.']);
-            exit;
-        }
-
-        $payslipIds = array_filter(array_map('intval', $payslipIds));
-        if (empty($payslipIds)) {
-            echo json_encode(['success' => false, 'message' => 'Invalid payslip IDs selected.']);
-            exit;
-        }
-
-        $userId = (int) ($_SESSION['user']['id'] ?? 1);
-        require_once __DIR__ . '/../services/PayrollMailService.php';
-        $mailService = new PayrollMailService($this->db);
-
-        $sentCount = 0;
-        $skippedCount = 0;
-        $failedCount = 0;
-        $details = [];
-
-        foreach ($payslipIds as $id) {
-            $res = $mailService->sendPayslipEmail($id, $userId);
-            if ($res['success']) {
-                $sentCount++;
-            } else {
-                if (stripos($res['message'], 'no valid email') !== false) {
-                    $skippedCount++;
-                } else {
-                    $failedCount++;
+            if (empty($payslipIds) || !is_array($payslipIds)) {
+                if (ob_get_length()) {
+                    ob_clean();
                 }
-                $details[] = $res['message'];
+                echo json_encode(['success' => false, 'message' => 'No payslips selected for sending email.']);
+                exit;
             }
-        }
 
-        $summaryMsg = "Successfully emailed {$sentCount} payslip(s).";
-        if ($skippedCount > 0) {
-            $summaryMsg .= " {$skippedCount} skipped due to missing email.";
-        }
-        if ($failedCount > 0) {
-            $summaryMsg .= " {$failedCount} failed to deliver.";
-        }
+            $payslipIds = array_filter(array_map('intval', $payslipIds));
+            if (empty($payslipIds)) {
+                if (ob_get_length()) {
+                    ob_clean();
+                }
+                echo json_encode(['success' => false, 'message' => 'Invalid payslip IDs selected.']);
+                exit;
+            }
 
-        echo json_encode([
-            'success' => $sentCount > 0,
-            'message' => $summaryMsg,
-            'sent_count' => $sentCount,
-            'skipped_count' => $skippedCount,
-            'failed_count' => $failedCount,
-            'errors' => $details
-        ]);
-        exit;
+            $userId = (int) ($_SESSION['user']['id'] ?? 1);
+            require_once __DIR__ . '/../services/PayrollMailService.php';
+            $mailService = new PayrollMailService($this->db);
+
+            $sentCount = 0;
+            $skippedCount = 0;
+            $failedCount = 0;
+            $details = [];
+
+            foreach ($payslipIds as $id) {
+                $res = $mailService->sendPayslipEmail($id, $userId);
+                if ($res['success']) {
+                    $sentCount++;
+                } else {
+                    if (stripos($res['message'], 'no valid email') !== false) {
+                        $skippedCount++;
+                    } else {
+                        $failedCount++;
+                    }
+                    $details[] = $res['message'];
+                }
+            }
+
+            $summaryMsg = "Successfully emailed {$sentCount} payslip(s).";
+            if ($skippedCount > 0) {
+                $summaryMsg .= " {$skippedCount} skipped due to missing email.";
+            }
+            if ($failedCount > 0) {
+                $summaryMsg .= " {$failedCount} failed to deliver.";
+            }
+
+            if (ob_get_length()) {
+                ob_clean();
+            }
+            echo json_encode([
+                'success' => $sentCount > 0,
+                'message' => $summaryMsg,
+                'sent_count' => $sentCount,
+                'skipped_count' => $skippedCount,
+                'failed_count' => $failedCount,
+                'errors' => $details
+            ]);
+            exit;
+        } catch (\Throwable $e) {
+            if (ob_get_length()) {
+                ob_clean();
+            }
+            echo json_encode(['success' => false, 'message' => 'Bulk email error: ' . $e->getMessage()]);
+            exit;
+        }
     }
 
     /**
