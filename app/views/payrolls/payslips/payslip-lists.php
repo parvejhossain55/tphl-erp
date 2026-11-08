@@ -280,8 +280,12 @@ $show_breadcrumb = true;
             <?php
             $currRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
             $secRoleId  = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
-            $canDisbursePayroll = in_array($currRoleId, [1, 3, 6, 30, 33, 34, 35, 38], true)
-                || in_array($secRoleId, [1, 3, 6, 30, 33, 34, 35, 38], true)
+            $roleNameLc = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+            $canDisbursePayroll = in_array($currRoleId, [1, 3, 6, 30, 33, 34, 35, 36, 38], true)
+                || in_array($secRoleId, [1, 3, 6, 30, 33, 34, 35, 36, 38], true)
+                || strpos($roleNameLc, 'account') !== false
+                || strpos($roleNameLc, 'management') !== false
+                || strpos($roleNameLc, 'admin') !== false
                 || (function_exists('hasPermission') && hasPermission('accounts manage'));
             ?>
             <!-- Accounts Payroll Disbursement & Bulk Action Bar -->

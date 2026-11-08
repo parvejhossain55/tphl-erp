@@ -595,6 +595,22 @@ $canMgmtApprovePayslip = (
 ) && !$isChiefOfficer;
 $isAccountsHeadUser = in_array(30, [$currentUserRoleId, $currentUserSecRoleId, $currentUserPriRoleId], true) || strpos($currentRoleName, 'accounts head') !== false;
 $isAhRejected = ($ahInfo['accounts_head_status'] ?? '') === 'rejected';
+$canDisbursePayslip = in_array($currentUserRoleId, [1, 3, 6, 30, 33, 34, 35, 36, 38], true)
+    || in_array($currentUserSecRoleId, [1, 3, 6, 30, 33, 34, 35, 36, 38], true)
+    || strpos($currentRoleName, 'account') !== false
+    || strpos($currentRoleName, 'management') !== false
+    || strpos($currentRoleName, 'admin') !== false
+    || (function_exists('hasPermission') && hasPermission('accounts manage'));
+
+$companyBanksForDisburse = [];
+if ($dbConn && $canDisbursePayslip) {
+    $cbRes = @$dbConn->query("SELECT id, bank_name, account_number FROM company_bank_accounts ORDER BY bank_name ASC");
+    if ($cbRes) {
+        while ($cbRow = $cbRes->fetch_assoc()) {
+            $companyBanksForDisburse[] = $cbRow;
+        }
+    }
+}
 
 $mgmtApproverName = $ahInfo['mgmt_approver_name'] ?? 'Management';
 $mgmtApprovedAt = !empty($ahInfo['mgmt_approved_at']) ? date('d M, Y h:i A', strtotime($ahInfo['mgmt_approved_at'])) : null;
@@ -626,12 +642,19 @@ $backUrl = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals')
                     <i class="fa-solid <?= $isAhApproved ? 'fa-circle-check' : ($isAhRejected ? 'fa-circle-xmark' : 'fa-clock') ?>"></i>
                     <span>Accounts Head: <strong><?= $isAhApproved ? 'Approved' : ($isAhRejected ? 'Rejected' : 'Pending') ?></strong></span>
                 </span>
+
+                <?php if ($payslip['status'] === 'paid'): ?>
+                    <span class="d-inline-flex align-items-center gap-1 px-2 py-1 rounded border" style="font-size: 12px; background: #ecfdf5; border-color: #6ee7b7 !important; color: #065f46;">
+                        <i class="fa-solid fa-money-check-dollar"></i>
+                        <span>Payout: <strong>Disbursed</strong></span>
+                    </span>
+                <?php endif; ?>
             <?php endif; ?>
         </div>
 
         <!-- Right: Clean Action Buttons -->
-        <?php if ($payslip['status'] !== 'draft' && $payslip['status'] !== 'paid'): ?>
-            <div class="d-flex flex-wrap align-items-center gap-2">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <?php if ($payslip['status'] !== 'draft' && $payslip['status'] !== 'paid'): ?>
                 <?php if (!$isMgmtApproved && !$isMgmtRejected && $canMgmtApprovePayslip): ?>
                     <button type="button" class="btn btn-success btn-sm px-3 py-1 fw-semibold" style="font-size: 12px;" id="btnMgmtPayslipApprove" onclick="handleMgmtPayslipApprove(<?= $reqIdForJs ?>, <?= (int)$payslip['id'] ?>, <?= $isAhApproved ? 'true' : 'false' ?>)">
                         <i class="fa-solid fa-check me-1"></i>Approve
@@ -649,8 +672,23 @@ $backUrl = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals')
                         <i class="fa-solid fa-xmark me-1"></i>Reject
                     </button>
                 <?php endif; ?>
-            </div>
-        <?php endif; ?>
+
+                <?php if ($isMgmtApproved && $isAhApproved && $canDisbursePayslip): ?>
+                    <button type="button" class="btn btn-success btn-sm px-3 py-1 fw-semibold" style="font-size: 12px;" onclick="disburseSinglePayslipModal(<?= (int)$payslip['id'] ?>, '<?= htmlspecialchars(addslashes($payslip['employee_name'] ?? 'Employee')) ?>', '<?= number_format((float)$displayNetSalary, 2) ?>')">
+                        <i class="fa-solid fa-money-check-dollar me-1"></i>Disburse Payment
+                    </button>
+                    <a href="<?= $GLOBALS['base_url'] ?>/payslip-lists" class="btn btn-outline-success btn-sm px-2.5 py-1 fw-semibold" style="font-size: 12px;" title="Go to Bulk Payroll Disbursement">
+                        <i class="fa-solid fa-list-check me-1"></i>Bulk Disburse List
+                    </a>
+                <?php endif; ?>
+            <?php endif; ?>
+
+            <?php if ($payslip['status'] === 'paid'): ?>
+                <button type="button" class="btn btn-outline-primary btn-sm px-3 py-1 fw-semibold" style="font-size: 12px;" onclick="sendPayslipEmailFromView(<?= (int)$payslip['id'] ?>, '<?= htmlspecialchars(addslashes($payslip['employee_name'] ?? 'Employee')) ?>', '<?= htmlspecialchars(addslashes($payslip['email'] ?? '')) ?>')">
+                    <i class="fa-regular fa-paper-plane me-1"></i><?= !empty($payslip['email_sent_at']) ? 'Resend Email' : 'Send Email' ?>
+                </button>
+            <?php endif; ?>
+        </div>
     </div>
 
     <?php 
@@ -1101,6 +1139,122 @@ $backUrl = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals')
                             title: 'Error',
                             text: err.toString()
                         });
+                    });
+                }
+            });
+        }
+
+        const companyBanksOptions = <?= json_encode($companyBanksForDisburse ?? []) ?>;
+
+        function disburseSinglePayslipModal(payslipId, empName, netAmount) {
+            let optionsHtml = '<option value="0">Petty Cash / Cash Account</option>';
+            if (Array.isArray(companyBanksOptions)) {
+                companyBanksOptions.forEach(b => {
+                    optionsHtml += `<option value="${b.id}">${b.bank_name} (${b.account_number})</option>`;
+                });
+            }
+
+            Swal.fire({
+                title: 'Disburse Salary Payment',
+                html: `
+                    <div class="text-start" style="font-size: 13px;">
+                        <p class="mb-2">Disburse salary for <strong>${empName}</strong> (Net Payable: <strong>৳ ${netAmount}</strong>):</p>
+                        <label class="form-label fw-semibold mb-1">Disburse From Account</label>
+                        <select id="swal_disburse_bank_id" class="form-select form-select-sm">
+                            ${optionsHtml}
+                        </select>
+                    </div>
+                `,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, Disburse',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#198754',
+                showLoaderOnConfirm: true,
+                preConfirm: () => {
+                    const bankSelect = document.getElementById('swal_disburse_bank_id');
+                    const bankId = bankSelect ? bankSelect.value : 0;
+                    return fetch('<?= $GLOBALS['base_url'] ?>/disburse-batch-payslips', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            payslip_ids: [payslipId],
+                            bank_account_id: bankId
+                        })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (!data.success) {
+                            throw new Error(data.message || 'Failed to disburse payment.');
+                        }
+                        return data;
+                    })
+                    .catch(err => {
+                        Swal.showValidationMessage(err.message || err.toString());
+                    });
+                },
+                allowOutsideClick: () => !Swal.isLoading()
+            }).then((result) => {
+                if (result.isConfirmed && result.value) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Disbursed Successfully!',
+                        text: result.value.message || 'Salary payment has been disbursed.',
+                        confirmButtonColor: '#198754'
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                }
+            });
+        }
+
+        function sendPayslipEmailFromView(payslipId, empName, empEmail) {
+            if (!empEmail || empEmail.trim() === '') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'No Email Configured',
+                    text: `Employee "${empName}" does not have an email address in their profile.`,
+                    confirmButtonColor: '#0f766e'
+                });
+                return;
+            }
+
+            Swal.fire({
+                title: 'Send Payslip via Email?',
+                html: `Send the official payslip and PDF attachment to:<br><br><b>${empName}</b><br><span class="text-primary font-monospace">&lt;${empEmail}&gt;</span>`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: '<i class="fa-regular fa-paper-plane me-1"></i> Yes, Send Email',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#0f766e',
+                showLoaderOnConfirm: true,
+                preConfirm: () => {
+                    return fetch('<?= $GLOBALS['base_url'] ?>/send-payslip-email', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ payslip_id: payslipId })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (!data.success) {
+                            throw new Error(data.message || 'Failed to send email.');
+                        }
+                        return data;
+                    })
+                    .catch(err => {
+                        Swal.showValidationMessage(err.message || err.toString());
+                    });
+                },
+                allowOutsideClick: () => !Swal.isLoading()
+            }).then(result => {
+                if (result.isConfirmed && result.value) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Email Sent!',
+                        text: result.value.message || 'Payslip has been emailed successfully.',
+                        confirmButtonColor: '#0f766e'
+                    }).then(() => {
+                        window.location.reload();
                     });
                 }
             });

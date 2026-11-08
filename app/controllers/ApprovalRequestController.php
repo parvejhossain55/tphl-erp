@@ -413,10 +413,12 @@ class ApprovalRequestController extends Controller
 
         $reqBefore = $this->approvalModel->find($reqId);
         $reqAmt = (float)($reqBefore['request_amount'] ?? 0);
+        $isPayslip = (($reqBefore['source_table'] ?? '') === 'payslips');
+        $isMgmtAlreadyDone = (strtolower($reqBefore['status'] ?? '') === 'approved' && !empty($reqBefore['approved_by']));
         $res = $this->approvalModel->approveAccountsHead($reqId, $userId, $note, $coaId);
         ob_clean();
         if ($res) {
-            $succMsg = ($reqAmt > 10000.01)
+            $succMsg = (($reqAmt > 10000.01 || $isPayslip) && !$isMgmtAlreadyDone)
                 ? 'Approved by Accounts Head successfully. Forwarded to Management for final sign-off.'
                 : 'Approved by Accounts Head successfully. Payment can now be disbursed.';
             echo json_encode([

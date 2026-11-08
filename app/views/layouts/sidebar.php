@@ -655,6 +655,25 @@
                             </a>
                         </li>
                     <?php endif; ?>
+                    <?php
+                    $canViewTopPayrollDisburse = !empty($isManagement)
+                        || in_array((int)($sbUserRoleId ?? 0), [1, 3, 6, 30, 33, 34, 35, 36, 38])
+                        || in_array((int)($sbUserSecRoleId ?? 0), [1, 3, 6, 30, 33, 34, 35, 36, 38])
+                        || in_array((int)($sbUserPriRoleId ?? 0), [1, 3, 6, 30, 33, 34, 35, 36, 38])
+                        || stripos($sbRoleName ?? '', 'account') !== false
+                        || stripos($sbRoleName ?? '', 'management') !== false
+                        || stripos($sbRoleName ?? '', 'admin') !== false;
+                    if ($canViewTopPayrollDisburse):
+                    ?>
+                        <li class="slide <?= isActive('payslip-lists', $current_route) ?>">
+                            <a href="<?= $base_url ?>/payslip-lists"
+                                class="sidebar__menu-item <?= isActive('payslip-lists', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-money-check-dollar text-success"></i></div>
+                                <span class="sidebar__menu-label">Payroll Disbursement</span>
+                                <span class="badge bg-success-subtle text-success rounded-pill ms-auto me-2" style="font-size: 10px;">Payout</span>
+                            </a>
+                        </li>
+                    <?php endif; ?>
                 <?php endif; ?>
 
                 <?php 
@@ -2494,8 +2513,9 @@
                 <!--Accounts CATEGORY -->
                 <?php 
                 $sbUserRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+                $sbRoleNameAcc = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
                 $isSbAccExec = (function_exists('isAccountsExecutive') && isAccountsExecutive()) || $sbUserRoleId === 36;
-                $canViewAccountsCategory = (hasPermission("accounts manage") || $isSbAccExec) && !in_array($sbUserRoleId, [9, 34, 35]);
+                $canViewAccountsCategory = (hasPermission("accounts manage") || $isSbAccExec || in_array($sbUserRoleId, [6, 30, 36], true) || strpos($sbRoleNameAcc, 'account') !== false) && !in_array($sbUserRoleId, [9, 34, 35]);
                 ?>
                 <?php if ($canViewAccountsCategory): ?>
                     <li class="sidebar__menu-category">
