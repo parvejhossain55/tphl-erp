@@ -668,8 +668,8 @@ window.executeDeleteProject = function(projId) {
                         <i class="fa-solid fa-save me-1"></i> Save Data
                     </button>
                     <button type="button" class="btn btn-success fw-semibold shadow-sm me-2"
-                        onclick="$('#workspaceTable').DataTable().button('.buttons-csv').trigger();">
-                        <i class="fa-solid fa-file-csv me-1"></i> Export CSV
+                        onclick="exportFormattedWorkspaceExcel();">
+                        <i class="fa-solid fa-file-excel me-1"></i> Export Excel
                     </button>
                     <button type="button" class="btn btn-danger fw-semibold shadow-sm me-2" onclick="
                         if ($.fn.DataTable && $.fn.DataTable.isDataTable('#workspaceTable')) {
@@ -1597,6 +1597,231 @@ window.executeDeleteProject = function(projId) {
                 form.submit();
                 document.body.removeChild(form);
             }
+
+            // Rich, Color-Coded, Visually Grouped Excel (.xls) Export for Payroll Workplace
+            window.exportFormattedWorkspaceExcel = function () {
+                var yearSel = document.getElementById('year');
+                var monthSel = document.getElementById('month');
+                var year = yearSel ? yearSel.value : '<?= htmlspecialchars($_selectedYear) ?>';
+                var month = monthSel ? monthSel.value : '<?= htmlspecialchars($_selectedMonth) ?>';
+                var monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                var monthLabel = monthNames[(parseInt(month, 10) || 1) - 1] + ' ' + year;
+
+                var projectSelect = document.getElementById('payrollProject');
+                var projectName = 'All Employees';
+                if (projectSelect && projectSelect.selectedIndex >= 0) {
+                    var pText = projectSelect.options[projectSelect.selectedIndex].text.trim();
+                    if (pText && !pText.toLowerCase().includes('select')) {
+                        projectName = pText;
+                    }
+                }
+
+                var headers = [];
+                $(table.table().header()).find('th').each(function (idx) {
+                    if (idx === 0) return;
+                    headers.push($(this).text().trim());
+                });
+
+                var rows = [];
+                var dtNodes = table.rows().nodes();
+                var slCounter = 1;
+
+                var sumGross = 0, sumNetPayable = 0, sumBank = 0, sumCash = 0, sumDeductions = 0, sumAdditions = 0;
+                var colTotals = new Array(headers.length).fill(0);
+                var colIsNumeric = new Array(headers.length).fill(false);
+
+                $(dtNodes).each(function () {
+                    var tr = $(this);
+                    if (tr.find('.emp-checkbox').length > 0 && !tr.find('.emp-checkbox').is(':checked')) {
+                        return;
+                    }
+
+                    var rowCells = [];
+                    tr.find('td').each(function (index) {
+                        if (index === 0) return;
+                        var colIdx = index - 1;
+                        var hName = (headers[colIdx] || '').toLowerCase();
+                        var cell = $(this);
+                        var rawVal = '';
+
+                        if (index === 1) {
+                            rawVal = String(slCounter++);
+                        } else if (cell.find('input[type="hidden"].in-salary-hold-string').length > 0) {
+                            rawVal = cell.find('input[type="hidden"].in-salary-hold-string').val() === 'Hold' ? 'Hold' : 'Active';
+                        } else if (cell.find('input:not([type="hidden"])').length > 0) {
+                            rawVal = cell.find('input:not([type="hidden"])').val();
+                        } else {
+                            rawVal = cell.clone().children('input').remove().end().text().trim();
+                        }
+
+                        var isTextCol = (colIdx <= 6) || hName.includes('date') || hName.includes('remark') || hName.includes('account') || hName.includes('id check') || hName.includes('salary hold');
+                        if (!isTextCol) {
+                            var numVal = parseFloat(String(rawVal).replace(/,/g, '')) || 0;
+                            colTotals[colIdx] += numVal;
+                            colIsNumeric[colIdx] = true;
+
+                            if (hName === 'gross') sumGross += numVal;
+                            else if (hName === 'net payable') sumNetPayable += numVal;
+                            else if (hName === 'bank') sumBank += numVal;
+                            else if (hName === 'cash') sumCash += numVal;
+                            else if (hName.includes('advance') || hName.includes('lunch') || hName.includes('absent (amount)') || hName.includes('arrears') || hName.includes('others deduction') || hName === 'tax') {
+                                sumDeductions += numVal;
+                            } else if (hName.includes('special') || hName.includes('punctuality') || hName.includes('overtime') || hName === 'arrear' || hName.includes('duty/food')) {
+                                sumAdditions += numVal;
+                            }
+                            rowCells.push({ val: numVal, type: (hName.includes('days') || hName.includes('meal count')) ? 'qty' : 'num', hName: hName });
+                        } else {
+                            rowCells.push({ val: rawVal, type: 'text', hName: hName });
+                        }
+                    });
+                    rows.push(rowCells);
+                });
+
+                if (rows.length === 0) {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire('No Rows Selected', 'Please select at least one employee row to export.', 'warning');
+                    } else {
+                        alert('Please select at least one employee row to export.');
+                    }
+                    return;
+                }
+
+                var esc = function (s) {
+                    return String(s === null || s === undefined ? '' : s)
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;');
+                };
+                var fmtMoney = function (n) {
+                    return (parseFloat(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                };
+
+                var totalCols = headers.length;
+                var nowStr = new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+                var html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+                html += '<head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Payroll Workplace</x:Name><x:WorksheetOptions><x:DisplayGridlines/><x:FreezePanes/><x:FrozenNoSplit/><x:SplitHorizontal>6</x:SplitHorizontal><x:TopRowBottomPane>6</x:TopRowBottomPane><x:SplitVertical>4</x:SplitVertical><x:LeftColumnRightPane>4</x:LeftColumnRightPane><x:ActivePane>0</x:ActivePane></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
+                html += '<style>';
+                html += 'body, table { font-family: "Segoe UI", Calibri, Arial, sans-serif; font-size: 10pt; }';
+                html += 'table { border-collapse: collapse; }';
+                html += 'td, th { border: 1px solid #cbd5e1; padding: 6px 8px; vertical-align: middle; white-space: nowrap; }';
+                html += '.num { mso-number-format:"\\#\\,\\#\\#0\\.00"; text-align: right; }';
+                html += '.qty { mso-number-format:"0\\.00"; text-align: center; }';
+                html += '.txt { mso-number-format:"\\@"; text-align: left; }';
+                html += '.txt-c { mso-number-format:"\\@"; text-align: center; }';
+                html += '</style></head><body>';
+
+                html += '<table>';
+                // Row 1: Company Title
+                html += '<tr><td colspan="' + totalCols + '" style="background:#0f766e; color:#ffffff; font-size:15pt; font-weight:bold; text-align:left; padding:10px 14px; border:none;">THE PREMIUM HOMES LTD &mdash; PAYROLL WORKPLACE SHEET</td></tr>';
+                // Row 2: Project & Period Subtitle
+                html += '<tr><td colspan="' + totalCols + '" style="background:#f0fdf4; color:#115e59; font-size:10.5pt; font-weight:600; text-align:left; padding:6px 14px; border-bottom:2px solid #0f766e;">Project: ' + esc(projectName) + ' &nbsp;|&nbsp; Period: ' + esc(monthLabel) + ' &nbsp;|&nbsp; Active Staff: ' + rows.length + ' &nbsp;|&nbsp; Exported: ' + esc(nowStr) + '</td></tr>';
+                // Row 3: Visual Summary KPI Strip
+                html += '<tr>';
+                html += '<td colspan="5" style="background:#f8fafc; font-weight:bold; color:#334155; padding:8px 10px;">Employees: <span style="color:#0f172a; font-size:11pt;">' + rows.length + ' Staff</span></td>';
+                html += '<td colspan="6" style="background:#f0fdf4; font-weight:bold; color:#166534; padding:8px 10px;">Total Gross: ৳ ' + fmtMoney(sumGross) + '</td>';
+                html += '<td colspan="6" style="background:#eff6ff; font-weight:bold; color:#1e40af; padding:8px 10px;">Total Additions: ৳ ' + fmtMoney(sumAdditions) + '</td>';
+                html += '<td colspan="7" style="background:#fff1f2; font-weight:bold; color:#9f1239; padding:8px 10px;">Total Deductions: ৳ ' + fmtMoney(sumDeductions) + '</td>';
+                html += '<td colspan="6" style="background:#ecfdf5; font-weight:bold; color:#065f46; padding:8px 10px;">Net Payable: ৳ ' + fmtMoney(sumNetPayable) + '</td>';
+                html += '<td colspan="' + Math.max(1, totalCols - 30) + '" style="background:#f5f3ff; font-weight:bold; color:#4c1d95; padding:8px 10px;">Bank: ৳ ' + fmtMoney(sumBank) + ' &nbsp;|&nbsp; Cash: ৳ ' + fmtMoney(sumCash) + '</td>';
+                html += '</tr>';
+                // Row 4: Blank Spacer
+                html += '<tr><td colspan="' + totalCols + '" style="border:none; height:6px; padding:0;"></td></tr>';
+
+                // Row 5: Section Group Header Band
+                html += '<tr>';
+                headers.forEach(function (h) {
+                    var hl = h.toLowerCase();
+                    var grpBg = '#1e293b', grpLabel = 'EMPLOYEE INFO';
+                    if (hl.includes('basic') || hl.includes('recreation') || hl.includes('conveyance') || hl.includes('medical') || hl.includes('house rent') || hl.includes('special') || hl === 'gross' || hl.includes('daily')) {
+                        grpBg = '#0f766e'; grpLabel = 'SALARY & ALLOWANCES';
+                    } else if (hl.includes('advance') || hl.includes('meal') || hl.includes('lunch') || hl.includes('absent') || hl.includes('hold') || hl.includes('arrears') || hl.includes('others deduction')) {
+                        grpBg = '#b45309'; grpLabel = 'ATTENDANCE & DEDUCTIONS';
+                    } else if (hl.includes('punctuality') || hl.includes('overtime') || hl === 'arrear' || hl.includes('duty/food')) {
+                        grpBg = '#1d4ed8'; grpLabel = 'BONUSES & ADDITIONS';
+                    } else if (hl.includes('joining') || hl.includes('resignation') || hl.includes('effective days')) {
+                        grpBg = '#475569'; grpLabel = 'SERVICE & CYCLE';
+                    } else if (hl.includes('net') || hl === 'tax' || hl === 'bank' || hl === 'cash' || hl.includes('account') || hl === 'amount' || hl.includes('remark') || hl.includes('id check')) {
+                        grpBg = '#15803d'; grpLabel = 'NET PAYABLE & DISBURSEMENT';
+                    }
+                    html += '<th style="background:' + grpBg + '; color:#e2e8f0; font-size:8pt; font-weight:bold; text-align:center; padding:3px 6px; letter-spacing:0.4px;">' + grpLabel + '</th>';
+                });
+                html += '</tr>';
+
+                // Row 6: Column Headers
+                html += '<tr>';
+                headers.forEach(function (h) {
+                    var hl = h.toLowerCase();
+                    var thBg = '#334155';
+                    if (hl === 'gross' || hl === 'net salary' || hl === 'net payable') thBg = '#065f46';
+                    else if (hl === 'bank' || hl === 'cash' || hl === 'amount') thBg = '#1e3a8a';
+                    else if (hl.includes('deduct') || hl.includes('absent') || hl.includes('advance') || hl.includes('lunch') || hl === 'tax') thBg = '#9a3412';
+                    html += '<th style="background:' + thBg + '; color:#ffffff; font-size:9.5pt; font-weight:bold; text-align:center; padding:7px 8px;">' + esc(h) + '</th>';
+                });
+                html += '</tr>';
+
+                // Data Rows
+                rows.forEach(function (r, rIdx) {
+                    var rowBg = (rIdx % 2 === 0) ? '#ffffff' : '#f8fafc';
+                    html += '<tr>';
+                    r.forEach(function (cell, cIdx) {
+                        var h = cell.hName;
+                        var bg = rowBg;
+                        var fw = 'normal';
+                        var color = '#0f172a';
+
+                        if (h === 'gross') { bg = '#f0fdf4'; fw = 'bold'; color = '#166534'; }
+                        else if (h === 'net salary' || h === 'net payable') { bg = '#dcfce7'; fw = 'bold'; color = '#065f46'; }
+                        else if (h === 'bank' || h === 'amount') { bg = '#eff6ff'; fw = 'bold'; color = '#1e40af'; }
+                        else if (h === 'cash') { bg = '#fefce8'; fw = 'bold'; color = '#854d0e'; }
+                        else if (h === 'salary hold' && cell.val === 'Hold') { bg = '#fee2e2'; fw = 'bold'; color = '#b91c1c'; }
+
+                        if (cell.type === 'num') {
+                            html += '<td class="num" style="background:' + bg + '; font-weight:' + fw + '; color:' + color + ';">' + fmtMoney(cell.val) + '</td>';
+                        } else if (cell.type === 'qty') {
+                            html += '<td class="qty" style="background:' + bg + '; font-weight:' + fw + '; color:' + color + ';">' + (parseFloat(cell.val) || 0) + '</td>';
+                        } else {
+                            var cls = (cIdx === 0 || cIdx === 4 || h.includes('date') || h === 'salary hold') ? 'txt-c' : 'txt';
+                            html += '<td class="' + cls + '" style="background:' + bg + '; font-weight:' + (cIdx === 2 ? '600' : fw) + '; color:' + color + ';">' + esc(cell.val) + '</td>';
+                        }
+                    });
+                    html += '</tr>';
+                });
+
+                // Grand Total Footer Row
+                html += '<tr>';
+                headers.forEach(function (h, cIdx) {
+                    if (cIdx < 6) {
+                        html += '<td style="background:#0f766e; color:#ffffff; font-weight:bold;"></td>';
+                    } else if (cIdx === 6) {
+                        html += '<td style="background:#0f766e; color:#ffffff; font-weight:bold; text-align:right;">GRAND TOTAL:</td>';
+                    } else if (colIsNumeric[cIdx]) {
+                        var hl = h.toLowerCase();
+                        if (hl.includes('days') || hl.includes('meal count')) {
+                            html += '<td class="qty" style="background:#0f766e; color:#ffffff; font-weight:bold;">' + (Math.round(colTotals[cIdx] * 100) / 100) + '</td>';
+                        } else {
+                            html += '<td class="num" style="background:#0f766e; color:#ffffff; font-weight:bold;">' + fmtMoney(colTotals[cIdx]) + '</td>';
+                        }
+                    } else {
+                        html += '<td style="background:#0f766e; color:#ffffff; font-weight:bold;"></td>';
+                    }
+                });
+                html += '</tr>';
+                html += '</table></body></html>';
+
+                var cleanProj = projectName.replace(/[^a-zA-Z0-9_-]/g, '_');
+                var fileName = 'Payroll_Workplace_' + cleanProj + '_' + monthLabel.replace(/\s+/g, '_') + '.xls';
+                var blob = new Blob(['\ufeff', html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+            };
             
             // Assign save function to window so the button can access it
             window.saveWorkspaceData = function(btn) {
