@@ -3979,6 +3979,237 @@ class AccountClient extends Model
     }
 
     /**
+     * Get date-wise aggregated payment summary grouped by batch_id (or single payment)
+     * For client date-wise ledger without internal payment_type breakdowns.
+     * Computes running balance (total due decreasing chronologically).
+     */
+    public function getDatewiseBatchPaymentSummary($bookingId)
+    {
+        $bookingId = (int)$bookingId;
+        $clientDetails = $this->getClientByBookingId($bookingId);
+        if (!$clientDetails) {
+            return null;
+        }
+
+        $totalPrice = (float)($clientDetails['total_price'] ?? 0);
+        if ($totalPrice <= 0) {
+            $totalPrice = (float)($clientDetails['agreement_value'] ?? 0);
+        }
+
+        $transactions = $this->getFilteredTransactionsByBookingId($bookingId);
+
+        // Include agreement booking money if not in lead_payments table
+        $hasBookingMoneyInDB = $this->hasBookingMoneyInDatabase($bookingId);
+        if (!$hasBookingMoneyInDB && !empty($clientDetails['booking_money'])) {
+            $bookingMoneyTxn = $this->getBookingMoneyTransaction($bookingId);
+            if (!$bookingMoneyTxn) {
+                $bookingMoneyTxn = [
+                    'id'                  => 'booking-' . $bookingId,
+                    'payment_date'        => $clientDetails['booking_date'],
+                    'formatted_date'      => date('d M, Y', strtotime($clientDetails['booking_date'])),
+                    'payment_type'        => 'booking_money',
+                    'amount'              => $clientDetails['booking_money'],
+                    'payment_status'      => 'paid',
+                    'payment_method'      => 'cash',
+                    'bank_name'           => '',
+                    'bank_display_name'   => '',
+                    'cheque_no'           => '',
+                    'transaction_ref'     => '',
+                    'created_by_name'     => $clientDetails['agent_name'] ?? 'System',
+                    'verification_status' => 'verified',
+                    'batch_id'            => 'booking_initial_' . $bookingId
+                ];
+            }
+            array_unshift($transactions, $bookingMoneyTxn);
+        }
+
+        // Group by batch_id (or fallback to single_{id})
+        $batches = [];
+        foreach ($transactions as $txn) {
+            if (!empty($txn['is_trashed'])) continue;
+
+            $batchKey = !empty($txn['batch_id']) ? $txn['batch_id'] : ('single_' . $txn['id']);
+
+            if (!isset($batches[$batchKey])) {
+                $bankDisplay = !empty($txn['bank_name']) ? $txn['bank_name'] : ($txn['bank_display_name'] ?? '');
+                $batches[$batchKey] = [
+                    'batch_id'            => $txn['batch_id'] ?? null,
+                    'primary_payment_id'  => $txn['id'],
+                    'payment_ids'         => [$txn['id']],
+                    'payment_date'        => $txn['payment_date'] ?? date('Y-m-d'),
+                    'payment_method'      => ucfirst(strtolower($txn['payment_method'] ?? 'cash')),
+                    'bank_name'           => $bankDisplay,
+                    'bank_account_no'     => $txn['bank_account_no'] ?? '',
+                    'cheque_no'           => $txn['cheque_no'] ?? '',
+                    'transaction_ref'     => $txn['transaction_ref'] ?? '',
+                    'created_by_name'     => !empty($txn['created_by_name']) ? $txn['created_by_name'] : 'System',
+                    'created_at'          => $txn['created_at'] ?? null,
+                    'verified_by_name'    => $txn['verified_by_name'] ?? null,
+                    'verification_status' => $txn['verification_status'] ?? 'pending',
+                    'total_paid'          => 0.0,
+                    'total_discount'      => 0.0,
+                    'item_count'          => 1,
+                    'is_bulk_batch'       => false,
+                    'other_purposes'      => []
+                ];
+            } else {
+                $batches[$batchKey]['payment_ids'][] = $txn['id'];
+                $batches[$batchKey]['item_count']++;
+                $batches[$batchKey]['is_bulk_batch'] = true;
+
+                if (empty($batches[$batchKey]['bank_name']) && !empty($txn['bank_name'])) {
+                    $batches[$batchKey]['bank_name'] = $txn['bank_name'];
+                }
+                if (empty($batches[$batchKey]['cheque_no']) && !empty($txn['cheque_no'])) {
+                    $batches[$batchKey]['cheque_no'] = $txn['cheque_no'];
+                }
+                if (empty($batches[$batchKey]['transaction_ref']) && !empty($txn['transaction_ref'])) {
+                    $batches[$batchKey]['transaction_ref'] = $txn['transaction_ref'];
+                }
+            }
+
+            if (!empty($txn['other_purpose'])) {
+                $batches[$batchKey]['other_purposes'][] = trim($txn['other_purpose']);
+            }
+
+            $amt = (float)($txn['amount'] ?? 0);
+            $isDiscount = !empty($txn['is_emi_discount']) && (int)$txn['is_emi_discount'] === 1;
+            if ($isDiscount) {
+                $batches[$batchKey]['total_discount'] += $amt;
+            } else {
+                $batches[$batchKey]['total_paid'] += $amt;
+            }
+        }
+
+        // Query database to get authoritative counts of total vs verified payments for every batch_id in this booking
+        $batchIdStats = [];
+        $batchIds = [];
+        foreach ($transactions as $txn) {
+            if (!empty($txn['batch_id'])) {
+                $batchIds[] = trim((string)$txn['batch_id']);
+            }
+        }
+        $batchIds = array_values(array_unique(array_filter($batchIds)));
+
+        if (!empty($batchIds)) {
+            $inClause = implode(',', array_fill(0, count($batchIds), '?'));
+            $types = str_repeat('s', count($batchIds));
+            $bSql = "SELECT batch_id,
+                            COUNT(*) as total_count,
+                            SUM(CASE WHEN LOWER(TRIM(verification_status)) = 'verified' THEN 1 ELSE 0 END) as verified_count
+                     FROM lead_payments
+                     WHERE batch_id IN ($inClause) AND (is_trashed = 0 OR is_trashed IS NULL)
+                     GROUP BY batch_id";
+            $bStmt = $this->db->prepare($bSql);
+            if ($bStmt) {
+                $bStmt->bind_param($types, ...$batchIds);
+                $bStmt->execute();
+                $bRes = $bStmt->get_result();
+                while ($bRow = $bRes->fetch_assoc()) {
+                    $batchIdStats[$bRow['batch_id']] = [
+                        'total_count'    => (int)$bRow['total_count'],
+                        'verified_count' => (int)$bRow['verified_count']
+                    ];
+                }
+                $bStmt->close();
+            }
+        }
+
+        // Determine strict batch verification: ALL payments in a batch_id MUST be verified
+        foreach ($batches as &$b) {
+            $batchId = $b['batch_id'] ?? null;
+            if (!empty($batchId) && isset($batchIdStats[$batchId])) {
+                $totalInDb = $batchIdStats[$batchId]['total_count'];
+                $verifiedInDb = $batchIdStats[$batchId]['verified_count'];
+                $b['total_payments_in_batch'] = $totalInDb;
+                $b['verified_payments_in_batch'] = $verifiedInDb;
+                $b['is_fully_verified'] = ($totalInDb > 0 && $totalInDb === $verifiedInDb);
+                if ($b['is_fully_verified']) {
+                    $b['verification_status'] = 'verified';
+                } elseif ($verifiedInDb > 0) {
+                    $b['verification_status'] = 'partially_verified';
+                } else {
+                    $b['verification_status'] = 'pending';
+                }
+            } else {
+                $isSingleVerified = (strtolower(trim($b['verification_status'] ?? '')) === 'verified');
+                $b['total_payments_in_batch'] = 1;
+                $b['verified_payments_in_batch'] = $isSingleVerified ? 1 : 0;
+                $b['is_fully_verified'] = $isSingleVerified;
+                $b['verification_status'] = $isSingleVerified ? 'verified' : 'pending';
+            }
+        }
+        unset($b);
+
+        // Sort chronologically: payment_date ASC, primary_payment_id ASC
+        usort($batches, function($a, $b) {
+            $tA = strtotime($a['payment_date']);
+            $tB = strtotime($b['payment_date']);
+            if ($tA === $tB) {
+                return ($a['primary_payment_id'] <=> $b['primary_payment_id']);
+            }
+            return ($tA <=> $tB);
+        });
+
+        // Compute running balance (Due decreasing chronologically)
+        $runningDue = $totalPrice;
+        $grandTotalPaid = 0.0;
+        $grandTotalDiscount = 0.0;
+
+        foreach ($batches as &$b) {
+            $paid = (float)$b['total_paid'];
+            $discount = (float)$b['total_discount'];
+
+            $grandTotalPaid += $paid;
+            $grandTotalDiscount += $discount;
+
+            $runningDue -= ($paid + $discount);
+            if ($runningDue < 0) $runningDue = 0;
+
+            $b['remaining_due'] = $runningDue;
+            $b['total_price_reference'] = $totalPrice;
+
+            // Receipt formatting
+            if (is_numeric($b['primary_payment_id'])) {
+                $b['receipt_no'] = 'REC-' . str_pad($b['primary_payment_id'], 6, '0', STR_PAD_LEFT);
+            } else {
+                $b['receipt_no'] = 'REC-' . strtoupper(str_replace('booking-', 'BKG-', (string)$b['primary_payment_id']));
+            }
+            $b['formatted_date'] = !empty($b['payment_date']) ? date('d M, Y', strtotime($b['payment_date'])) : '—';
+        }
+        unset($b);
+
+        // Construct batch verification lookup map
+        $batchMap = [];
+        foreach ($batches as $b) {
+            $mapVal = [
+                'is_fully_verified'           => !empty($b['is_fully_verified']),
+                'verification_status'         => $b['verification_status'] ?? 'pending',
+                'total_payments_in_batch'     => $b['total_payments_in_batch'] ?? 1,
+                'verified_payments_in_batch'  => $b['verified_payments_in_batch'] ?? 0
+            ];
+            if (!empty($b['batch_id'])) {
+                $batchMap[$b['batch_id']] = $mapVal;
+            }
+            if (!empty($b['primary_payment_id'])) {
+                $batchMap['single_' . $b['primary_payment_id']] = $mapVal;
+                $batchMap[(string)$b['primary_payment_id']] = $mapVal;
+            }
+        }
+
+        return [
+            'client_details'        => $clientDetails,
+            'total_agreement_value' => $totalPrice,
+            'total_price'           => $totalPrice,
+            'total_paid'            => $grandTotalPaid,
+            'total_discount'        => $grandTotalDiscount,
+            'current_due'           => max(0, $totalPrice - ($grandTotalPaid + $grandTotalDiscount)),
+            'batches'               => array_values($batches),
+            'batch_map'             => $batchMap
+        ];
+    }
+
+    /**
      * Delete transaction
      */
     public function deleteTransaction($paymentId)

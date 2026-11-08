@@ -218,6 +218,7 @@ function redirectByRole()
 
         case 7: // Clients Experiment
         case 37: // Credit Recovery (Clients Communicated)
+        case 39: // Head of Client Experience
             $url = "{$GLOBALS['base_url']}/ced-dashboard";
             break;
         case 8: // sales executive
@@ -1256,7 +1257,7 @@ function isAccountsHead(): bool
 }
 
 /**
- * Check if the currently logged-in user is Credit Recovery / Clients Communicated (Role ID 37)
+ * Check if the currently logged-in user is Credit Recovery / Clients Communicated / Head of Client Experience (Role ID 7, 37, 39)
  */
 function isCreditRecovery(): bool
 {
@@ -1267,9 +1268,12 @@ function isCreditRecovery(): bool
     $secRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
     $priRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
     $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
-    return $roleId === 37 
-        || $secRoleId === 37 
-        || $priRoleId === 37 
+    return in_array($roleId, [7, 37, 39], true)
+        || in_array($secRoleId, [7, 37, 39], true)
+        || in_array($priRoleId, [7, 37, 39], true)
+        || strpos($roleName, 'head of client experience') !== false
+        || strpos($roleName, 'client experience') !== false
+        || strpos($roleName, 'clients experiment') !== false
         || strpos($roleName, 'credit recovery') !== false
         || strpos($roleName, 'recovery') !== false
         || strpos($roleName, 'clients communicated') !== false 
@@ -1279,6 +1283,30 @@ function isCreditRecovery(): bool
 }
 
 function isClientsCommunicated(): bool
+{
+    return isCreditRecovery();
+}
+
+/**
+ * Check if the currently logged-in user is Head of Client Experience (Role ID 39)
+ */
+function isHeadOfClientExperience(): bool
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+    $secRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+    $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+    return $roleId === 39 
+        || $secRoleId === 39 
+        || strpos($roleName, 'head of client experience') !== false;
+}
+
+/**
+ * Check if user is any CED / Client Experience member
+ */
+function isCedUser(): bool
 {
     return isCreditRecovery();
 }

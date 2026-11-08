@@ -22,6 +22,12 @@ $isClientsCommunicatedRole = (function_exists('isClientsCommunicated') && isClie
     || ($userRoleId === 37)
     || ((int)($_SESSION['user']['secondary_role_id'] ?? 0) === 37)
     || ((int)($_SESSION['user']['id'] ?? 0) === 359);
+
+if (!isset($datewiseSummary) || empty($datewiseSummary)) {
+    if (isset($accountModel) && method_exists($accountModel, 'getDatewiseBatchPaymentSummary')) {
+        $datewiseSummary = $accountModel->getDatewiseBatchPaymentSummary($clientDetails['booking_id'] ?? $bookingId);
+    }
+}
 ?>
 
 <script>
@@ -695,6 +701,9 @@ window.openEditPaymentDateModal = function(target) {
                     <a href="<?= $base_url ?>/discount-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn" style="background: linear-gradient(135deg, #6c5ffc, #8b5cf6); color:#fff; border:none;">
                         <i class="fa-light fa-tags me-2"></i> Discount Statement
                     </a>
+                    <a href="<?= $base_url ?>/client-datewise-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn" style="background: linear-gradient(135deg, #0ea5e9, #0284c7); color:#fff; border:none; font-weight:600;">
+                        <i class="fa-solid fa-calendar-check me-2"></i> Date-Wise Statement (Print)
+                    </a>
                     <?php if ($canEditBookingInfo ?? false): ?>
                     <button type="button" class="btn btn-warning text-dark fw-bold" data-bs-toggle="modal" data-bs-target="#editBookingInfoModal">
                         <i class="fa-solid fa-pen-to-square me-1"></i> Edit Booking Info
@@ -724,7 +733,26 @@ window.openEditPaymentDateModal = function(target) {
                     </div>
                 </div>
 
-                <!-- Payment Type Filter and Search -->
+                <!-- Navigation Tabs: Detailed Ledger vs Date-Wise Aggregated Summary -->
+                <ul class="nav nav-pills mb-3 border-bottom pb-2 gap-2" id="trxViewTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active px-3 py-1.5 fw-semibold" id="tabDetailedTrx" data-bs-toggle="pill" data-bs-target="#paneDetailedTrx" type="button" role="tab" style="border-radius: 6px;">
+                            <i class="fa-solid fa-list-check me-1.5"></i> Detailed Breakdown (Ledger)
+                            <span class="badge bg-secondary-subtle text-secondary rounded-pill ms-1"><?= count($transactions) ?></span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link px-3 py-1.5 fw-semibold" id="tabDatewiseTrx" data-bs-toggle="pill" data-bs-target="#paneDatewiseTrx" type="button" role="tab" style="border-radius: 6px;">
+                            <i class="fa-solid fa-calendar-days me-1.5"></i> Date-Wise Payment Summary (Unified Batches)
+                            <span class="badge bg-primary-subtle text-primary rounded-pill ms-1"><?= count($datewiseSummary['batches'] ?? []) ?></span>
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="trxViewTabsContent">
+                    <!-- Pane 1: Detailed Ledger (Existing) -->
+                    <div class="tab-pane fade show active" id="paneDetailedTrx" role="tabpanel">
+                        <!-- Payment Type Filter and Search -->
                 <div class="mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
                     <div class="d-flex flex-wrap align-items-center gap-2">
                         <span class="text-muted me-1" style="font-size:13px;font-weight:600;">Filter:</span>
@@ -1233,6 +1261,172 @@ window.openEditPaymentDateModal = function(target) {
                         </tbody>
                     </table>
                 </div>
+            </div> <!-- End Pane 1: Detailed Ledger -->
+
+            <!-- Pane 2: Date-Wise Payment Summary (Unified Batches) -->
+            <div class="tab-pane fade" id="paneDatewiseTrx" role="tabpanel">
+                <!-- Top Summary Banner -->
+                <div class="d-flex align-items-center justify-content-between p-3 mb-3 rounded-3 flex-wrap gap-2" style="background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%); border: 1px solid #dbeafe;">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="badge bg-primary-subtle text-primary p-2" style="font-size: 18px; border-radius: 8px;">
+                            <i class="fa-solid fa-calendar-check"></i>
+                        </span>
+                        <div>
+                            <h6 class="mb-0 text-dark fw-bold">Date-Wise Payment Summary (Unified Batches)</h6>
+                            <small class="text-muted">
+                                Payments made on the same date/batch are combined together without internal split breakdown. Total: <strong><?= count($datewiseSummary['batches'] ?? []) ?></strong> transaction date(s).
+                            </small>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fw-bold" style="font-size: 12px;">
+                            <i class="fa-solid fa-sack-dollar me-1"></i> Total Paid: ৳<?= number_format($datewiseSummary['total_paid'] ?? 0, 2) ?>
+                        </span>
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 fw-bold" style="font-size: 12px;">
+                            <i class="fa-solid fa-clock-rotate-left me-1"></i> Current Due: ৳<?= number_format($datewiseSummary['current_due'] ?? 0, 2) ?>
+                        </span>
+                        <a href="<?= $GLOBALS['base_url'] ?>/client-datewise-statement/<?= (int)$clientDetails['booking_id'] ?>" target="_blank" class="btn btn-sm btn-primary shadow-sm" style="font-weight: 600;">
+                            <i class="fa-solid fa-print me-1"></i> Print This Statement
+                        </a>
+                    </div>
+                </div>
+
+                <div class="table__wrapper table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="datewiseBatchTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="text-center" style="width: 45px;">#</th>
+                                <th style="white-space:nowrap;">Payment Date</th>
+                                <th style="white-space:nowrap;">Receipt / Voucher</th>
+                                <th>Payment Method</th>
+                                <th>Bank &amp; Account Details</th>
+                                <th>Cheque / Txn Ref</th>
+                                <th>Added By</th>
+                                <th class="text-end" style="white-space:nowrap;">Paid Amount (BDT)</th>
+                                <th class="text-end" style="white-space:nowrap;">Remaining Due (BDT)</th>
+                                <th class="text-center">Status</th>
+                                <th class="text-center" style="width: 70px;">Receipt</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($datewiseSummary['batches'])): ?>
+                                <tr>
+                                    <td colspan="11" class="text-center py-4 text-muted">
+                                        <i class="fa-solid fa-inbox fa-2x mb-2 text-secondary opacity-50 d-block"></i>
+                                        No payment transactions recorded for this client.
+                                    </td>
+                                </tr>
+                            <?php else: ?>
+                                <?php 
+                                $dwSl = 1;
+                                foreach ($datewiseSummary['batches'] as $dw): 
+                                    $dwStatus = strtolower($dw['verification_status'] ?? 'pending');
+                                ?>
+                                    <tr>
+                                        <td class="text-center text-muted fw-bold"><?= $dwSl++ ?></td>
+                                        <td class="text-nowrap fw-semibold">
+                                            <i class="fa-regular fa-calendar text-primary me-1" style="font-size: 11px;"></i>
+                                            <?= $dw['formatted_date'] ?>
+                                        </td>
+                                        <td class="text-nowrap font-monospace fw-bold" style="color: #4f46e5;">
+                                            <?= htmlspecialchars($dw['receipt_no']) ?>
+                                            <?php if (!empty($dw['is_bulk_batch'])): ?>
+                                                <span class="badge bg-info-subtle text-info border border-info px-1 ms-1" style="font-size: 9px;" title="Combined Multi-head Batch">
+                                                    <?= $dw['item_count'] ?> heads
+                                                </span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-light text-dark border px-2 py-1 text-uppercase fw-semibold" style="font-size: 10.5px;">
+                                                <?= htmlspecialchars($dw['payment_method']) ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <?php if (!empty($dw['bank_name']) && strtolower($dw['bank_name']) !== 'cash'): ?>
+                                                <div class="fw-semibold text-dark text-truncate" style="max-width: 170px;" title="<?= htmlspecialchars($dw['bank_name']) ?>">
+                                                    <i class="fa-solid fa-building-columns text-secondary me-1" style="font-size: 10px;"></i><?= htmlspecialchars($dw['bank_name']) ?>
+                                                </div>
+                                                <?php if (!empty($dw['bank_account_no'])): ?>
+                                                    <div class="text-muted extra-small">A/C: <?= htmlspecialchars($dw['bank_account_no']) ?></div>
+                                                <?php endif; ?>
+                                            <?php else: ?>
+                                                <span class="text-muted extra-small"><i class="fa-solid fa-money-bill-wave text-success me-1"></i>Cash Office</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="text-nowrap">
+                                            <?php if (!empty($dw['cheque_no'])): ?>
+                                                <div class="text-muted extra-small"><strong>Chq:</strong> <?= htmlspecialchars($dw['cheque_no']) ?></div>
+                                            <?php elseif (!empty($dw['transaction_ref'])): ?>
+                                                <code style="font-size: 10.5px;"><?= htmlspecialchars($dw['transaction_ref']) ?></code>
+                                            <?php else: ?>
+                                                <span class="text-muted extra-small">—</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <div class="fw-semibold text-dark extra-small d-flex align-items-center gap-1" title="Added by: <?= htmlspecialchars($dw['created_by_name']) ?>">
+                                                <i class="fa-solid fa-user-pen text-primary" style="font-size: 10px;"></i>
+                                                <span class="text-truncate" style="max-width: 130px;"><?= htmlspecialchars($dw['created_by_name']) ?></span>
+                                            </div>
+                                        </td>
+                                        <td class="text-end text-nowrap font-monospace fw-bold text-success" style="font-size: 13px;">
+                                            ৳<?= number_format((float)$dw['total_paid'], 2) ?>
+                                            <?php if ((float)$dw['total_discount'] > 0): ?>
+                                                <div class="text-warning extra-small fw-normal" title="Bulk EMI Discount Applied">
+                                                    + Disc: ৳<?= number_format((float)$dw['total_discount'], 2) ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="text-end text-nowrap font-monospace fw-bold text-danger" style="font-size: 13px;">
+                                            ৳<?= number_format((float)$dw['remaining_due'], 2) ?>
+                                        </td>
+                                        <td class="text-center">
+                                            <?php if (!empty($dw['is_fully_verified'])): ?>
+                                                <span class="badge bg-success-subtle text-success border border-success px-2 py-1" style="font-size: 10.5px; font-weight: 600;">
+                                                    <i class="fa-solid fa-circle-check me-1"></i>Verified
+                                                </span>
+                                            <?php elseif (($dw['verified_payments_in_batch'] ?? 0) > 0): ?>
+                                                <span class="badge bg-warning-subtle text-warning border border-warning px-2 py-1" style="font-size: 10.5px; font-weight: 600;" title="<?= (int)$dw['verified_payments_in_batch'] ?> of <?= (int)$dw['total_payments_in_batch'] ?> payments verified">
+                                                    <i class="fa-solid fa-clock-rotate-left me-1"></i>Partial (<?= (int)$dw['verified_payments_in_batch'] ?>/<?= (int)$dw['total_payments_in_batch'] ?>)
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="badge bg-secondary-subtle text-secondary border px-2 py-1" style="font-size: 10.5px; font-weight: 600;">
+                                                    <i class="fa-solid fa-clock me-1"></i>Pending
+                                                </span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="text-center">
+                                            <?php if (!empty($dw['is_fully_verified']) && is_numeric($dw['primary_payment_id'])): ?>
+                                                <a href="<?= $GLOBALS['base_url'] ?>/payment-invoice/<?= (int)$dw['primary_payment_id'] ?>" target="_blank" class="btn btn-xs btn-outline-primary p-1 px-2 rounded-2 shadow-sm" title="View / Print Combined Receipt">
+                                                    <i class="fa-solid fa-receipt"></i>
+                                                </a>
+                                            <?php else: ?>
+                                                <span class="table__icon disabled" title="Money receipt available only after all batch payments are verified by Accounts" style="background-color:#fef3cd;color:#856404;cursor:not-allowed; display:inline-flex; width:28px; height:28px; align-items:center; justify-content:center; border-radius:4px; font-size:12px;">
+                                                    <i class="fa-solid fa-lock"></i>
+                                                </span>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr class="fw-bold">
+                                <td colspan="7" class="text-end" style="font-size: 12px; text-transform: uppercase;">
+                                    TOTAL PAID AMOUNT ACCROSS ALL DATES:
+                                </td>
+                                <td class="text-end text-nowrap font-monospace text-success fs-14">
+                                    ৳<?= number_format($datewiseSummary['total_paid'] ?? 0, 2) ?>
+                                </td>
+                                <td class="text-end text-nowrap font-monospace text-danger fs-14">
+                                    ৳<?= number_format($datewiseSummary['current_due'] ?? 0, 2) ?>
+                                </td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div> <!-- End Pane 2: Date-Wise Payment Summary -->
+        </div> <!-- End tab-content -->
 
                 <!-- VIRTUAL EMI SCHEDULE (Yield to Maturity & CED Scheduling) -->
                 <?php if (!empty($virtualEmiSchedule)): ?>

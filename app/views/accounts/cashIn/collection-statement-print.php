@@ -788,6 +788,7 @@ $printMode   = $print_mode ?? ($_GET['print_mode'] ?? 'full');
                     <th style="width: 100px;">Payment Type</th>
                     <th>Payment Method & Bank</th>
                     <th style="width: 90px;">Receipt / Ref</th>
+                    <th style="width: 95px;">Added By</th>
                     <th class="text-center" style="width: 60px;">Status</th>
                     <th class="text-end" style="width: 95px;">Amount (৳)</th>
                 </tr>
@@ -795,7 +796,7 @@ $printMode   = $print_mode ?? ($_GET['print_mode'] ?? 'full');
             <tbody>
                 <?php if (empty($transactions)): ?>
                     <tr>
-                        <td colspan="10" class="text-center" style="padding: 24px; color: #94a3b8;">
+                        <td colspan="11" class="text-center" style="padding: 24px; color: #94a3b8;">
                             <i class="fas fa-search" style="font-size: 20px; margin-bottom: 6px; display: block;"></i>
                             No collection transactions found matching the selected criteria.
                         </td>
@@ -852,6 +853,9 @@ $printMode   = $print_mode ?? ($_GET['print_mode'] ?? 'full');
                         <td>
                             <?= htmlspecialchars($t['money_receipt_no'] ?? '-') ?>
                         </td>
+                        <td>
+                            <span style="font-size: 8.5px;"><?= htmlspecialchars($t['collector_name'] ?? 'System') ?></span>
+                        </td>
                         <td class="text-center">
                             <?php 
                                 $status = strtolower($t['verification_status'] ?? 'pending');
@@ -873,7 +877,7 @@ $printMode   = $print_mode ?? ($_GET['print_mode'] ?? 'full');
             </tbody>
             <tfoot>
                 <tr>
-                    <td colspan="9" class="text-end">
+                    <td colspan="10" class="text-end">
                         <strong>TOTAL COLLECTION (<?= number_format(count($transactions)) ?> Transactions):</strong>
                     </td>
                     <td class="text-end" style="color: #15803d; font-size: 11px;">
