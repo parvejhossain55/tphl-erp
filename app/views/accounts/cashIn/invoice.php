@@ -90,7 +90,9 @@ $isVerified = isset($payment['verification_status']) && strtolower(trim($payment
 
 // -------------------------------------------------------------
 // 1. CREATED BY RESOLUTION:
-// Must show sales officer (sales_by_id) or assigned officer (assigned_id)
+// Show sales officer (sales_by_id / assigned_id).
+// If sales agent is Unknown Sales employee (user 195 or Unknown),
+// fallback to the person who created this payment transaction (lead_payments.created_by).
 // -------------------------------------------------------------
 $salesPersonName = '';
 $salesPersonEmpId = '';
@@ -130,12 +132,48 @@ if (empty($salesPersonName) && !empty($payment['booking_id']) && isset($this) &&
     } catch (Exception $e) {}
 }
 
-if (!empty($salesPersonName)) {
+// Check if sales agent is Unknown Sales employee (user 195 or name contains unknown)
+$salesOfficerId = (int)($payment['sales_by_id'] ?? ($clientDetails['sales_by_id'] ?? ($clientDetails['assigned_id'] ?? 0)));
+$isUnknownSalesPerson = ($salesOfficerId === 195) 
+    || (!empty($salesPersonName) && stripos($salesPersonName, 'unknown') !== false);
+
+if (!empty($salesPersonName) && !$isUnknownSalesPerson) {
     $createdByName = $salesPersonName;
     $createdByEmpId = $salesPersonEmpId;
 } else {
-    $createdByName = !empty($payment['created_by_name']) ? $payment['created_by_name'] : 'System';
+    // If Unknown Sales employee (195), use the user who created lead_payments record
+    $createdByName = !empty($payment['created_by_name']) ? trim($payment['created_by_name']) : '';
     $createdByEmpId = !empty($payment['created_by_employee_id']) ? trim($payment['created_by_employee_id']) : '';
+
+    if (empty($createdByName) && !empty($payment['created_by'])) {
+        $dbConn = $this->db ?? ($GLOBALS['db'] ?? null);
+        if ($dbConn) {
+            try {
+                $uStmt = $dbConn->prepare("
+                    SELECT u.full_name, 
+                           COALESCE(NULLIF(e.employee_id, ''), NULLIF(u.employee_id, '')) as employee_id
+                    FROM users u
+                    LEFT JOIN employees e ON e.user_id = u.id
+                    WHERE u.id = ?
+                    LIMIT 1
+                ");
+                if ($uStmt) {
+                    $uStmt->bind_param("i", $payment['created_by']);
+                    $uStmt->execute();
+                    $uRes = $uStmt->get_result();
+                    if ($uRow = $uRes->fetch_assoc()) {
+                        $createdByName = trim($uRow['full_name'] ?? '');
+                        $createdByEmpId = trim($uRow['employee_id'] ?? '');
+                    }
+                    $uStmt->close();
+                }
+            } catch (Exception $e) {}
+        }
+    }
+
+    if (empty($createdByName)) {
+        $createdByName = 'System';
+    }
 }
 
 // Format Created By display (no ugly 'No ID')

@@ -536,6 +536,53 @@ public function indexTwo($bookingId = null)
     }
 
     /**
+     * Dedicated printable view for EMI Maturity Schedule
+     */
+    public function printEmiSchedule($bookingId = null)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (!$bookingId) {
+            $bookingId = $_GET['booking_id'] ?? null;
+        }
+
+        if (!$bookingId) {
+            setError("No booking ID provided");
+            header("Location: {$GLOBALS['base_url']}/clients-cash-in");
+            exit;
+        }
+
+        $bookingId = (int)$bookingId;
+        $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
+
+        if (!$clientDetails) {
+            setError("Client booking not found");
+            header("Location: {$GLOBALS['base_url']}/clients-cash-in");
+            exit;
+        }
+
+        if (!empty($clientDetails['is_shop']) && $clientDetails['is_shop'] == 1) {
+            require_once dirname(__DIR__) . '/models/AccountShopClient.php';
+            $this->clientModel = new AccountShopClient($this->db);
+            $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
+        }
+
+        $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
+        $virtualEmiSchedule = $this->clientModel->getVirtualEmiSchedule($bookingId);
+
+        $this->view("accounts/cashIn/client-emi-schedule-print", [
+            "current_route"      => "client-emi-schedule-print",
+            "page_title"         => "EMI Maturity Schedule - " . htmlspecialchars($clientDetails['client_name'] ?? 'Client'),
+            "clientDetails"      => $clientDetails,
+            "paymentSummary"     => $paymentSummary,
+            "virtualEmiSchedule" => $virtualEmiSchedule,
+            "bookingId"          => $bookingId
+        ], false);
+    }
+
+    /**
      * Update booking info (booking_date, sales_by_id) from clients-cash-in-history
      * Cascades:
      * - lead_bookings: updates booking_date and sales_by_id
@@ -1121,6 +1168,10 @@ public function indexTwo($bookingId = null)
                             ];
                             $clientDueTotal += $dueAmt;
                         }
+                    } elseif (isset($clientDueEmis[$emiNo]) && ($maturity === 'future' || ($maturity === 'pending' && !$isExpired))) {
+                        // CED rescheduled this EMI to a future date — no longer overdue
+                        $clientDueTotal -= $clientDueEmis[$emiNo]['due_amount'];
+                        unset($clientDueEmis[$emiNo]);
                     }
                 }
             }
@@ -5674,6 +5725,61 @@ public function discountStatement($bookingId = null)
         } else {
             echo json_encode(['success' => false, 'message' => 'Database error: ' . $stmt->error]);
         }
+        exit;
+    }
+
+    /**
+     * Save custom EMI Due Date fixed by CED (Client Experience Department)
+     * Permission: Only CED role (7, 37, Credit Recovery, Client Experience) & Admin (1, 3)
+     * Rejects Accounts roles and ensures lock check for fully paid EMIs.
+     */
+    public function saveEmiDueDate()
+    {
+        header('Content-Type: application/json');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Invalid request method.']);
+            exit;
+        }
+
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userSecRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+
+        // Permission check: only CED and Admin can set EMI due dates
+        $isCedUser = in_array($userRoleId, [1, 3, 7, 37], true)
+            || in_array($userSecRoleId, [7, 37], true)
+            || strpos($roleName, 'client experience') !== false
+            || strpos($roleName, 'credit recovery') !== false
+            || strpos($roleName, 'client communication') !== false
+            || (function_exists('isCreditRecovery') && isCreditRecovery());
+
+        if (!$isCedUser) {
+            echo json_encode([
+                'success' => false, 
+                'message' => 'Permission denied. Only Client Experience Department (CED) can schedule or modify EMI due dates.'
+            ]);
+            exit;
+        }
+
+        $bookingId       = (int)($_POST['booking_id'] ?? 0);
+        $emiNo           = (int)($_POST['emi_no'] ?? 0);
+        $dueDate         = trim($_POST['due_date'] ?? '');
+        $notes           = trim($_POST['notes'] ?? '');
+        $applySubsequent = !empty($_POST['apply_subsequent']) ? 1 : 0;
+        $userId          = (int)($_SESSION['user']['id'] ?? 0);
+
+        if (!$bookingId || !$emiNo || empty($dueDate)) {
+            echo json_encode(['success' => false, 'message' => 'Booking ID, EMI number and due date are required.']);
+            exit;
+        }
+
+        $result = $this->clientModel->saveEmiDueDate($bookingId, $emiNo, $dueDate, $notes, $userId, $applySubsequent);
+        echo json_encode($result);
         exit;
     }
 

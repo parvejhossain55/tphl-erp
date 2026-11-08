@@ -53,6 +53,15 @@ $isClientsCommunicatedRole = (function_exists('isClientsCommunicated') && isClie
     || ($userRoleId === 37)
     || ((int)($_SESSION['user']['secondary_role_id'] ?? 0) === 37)
     || ((int)($_SESSION['user']['id'] ?? 0) === 359);
+
+$isCedUser = in_array($userRoleId, [1, 3, 7, 37], true)
+    || ((int)($_SESSION['user']['secondary_role_id'] ?? 0) === 37)
+    || ((int)($_SESSION['user']['secondary_role_id'] ?? 0) === 7)
+    || strpos($userRoleName, 'client experience') !== false 
+    || strpos($userRoleName, 'credit recovery') !== false 
+    || strpos($userRoleName, 'communicat') !== false 
+    || (function_exists('isCreditRecovery') && isCreditRecovery())
+    || $isClientsCommunicatedRole;
 ?>
 
 <?php
@@ -375,6 +384,12 @@ if (!isset($discountApprovalReq)) {
                         <i class="fa-light fa-list me-1"></i> Follow Up List
                     </button>
 
+                    <?php if ($isCedUser): ?>
+                        <button type="button" class="btn btn-sm text-white fw-bold shadow-sm" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); border: none; padding: 6px 14px; border-radius: 6px;" onclick="openNextEmiScheduleModal()" title="Schedule or update EMI due date">
+                            <i class="fa-solid fa-calendar-check me-1"></i> Schedule EMI Date
+                        </button>
+                    <?php endif; ?>
+
                     <?php if (isset($clientDetails['transfer_status']) && $clientDetails['transfer_status'] == 1): ?>
                         <span class="badge bg-warning text-dark">Transferred</span>
                     <?php else: ?>
@@ -513,11 +528,41 @@ if (!isset($discountApprovalReq)) {
                         ];
                         $totalDueEmiAmount += $dueAmt;
                     }
+                } elseif (isset($dueEmisList[$emiNo]) && ($maturity === 'future' || ($maturity === 'pending' && !$isExpired))) {
+                    // CED rescheduled this EMI to a future date — remove from overdue card
+                    $totalDueEmiAmount -= $dueEmisList[$emiNo]['due_amount'];
+                    unset($dueEmisList[$emiNo]);
                 }
             }
         }
         ksort($dueEmisList);
+
+        $isDevChargeCompleted = ($devRemain <= 0 && ($devTarget > 0 || $devPaid > 0));
+        $firstEmi = !empty($virtualEmiSchedule[0]) ? $virtualEmiSchedule[0] : null;
+        $needsFirstEmiScheduling = $isDevChargeCompleted && $firstEmi && empty($firstEmi['is_date_custom']) && ((float)($firstEmi['paid_amount'] ?? 0) <= 0);
     ?>
+
+    <?php if ($isCedUser && $needsFirstEmiScheduling): ?>
+    <div class="alert shadow-sm border-0 d-flex flex-wrap align-items-center justify-content-between p-3 mb-4 rounded-3 text-white" 
+         style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);">
+        <div class="d-flex align-items-center gap-3">
+            <div class="rounded-circle bg-white text-primary d-flex align-items-center justify-content-center shadow-sm" style="width: 44px; height: 44px; min-width: 44px;">
+                <i class="fa-solid fa-bell fs-5 text-primary"></i>
+            </div>
+            <div>
+                <h6 class="mb-1 text-white fw-bold"><i class="fa-solid fa-circle-check text-warning me-1"></i> Development Charge Completed!</h6>
+                <p class="mb-0 text-white-50 small">Development charges have been fully cleared for this client. Please schedule the <strong>1st EMI Due Date</strong>.</p>
+            </div>
+        </div>
+        <div class="mt-2 mt-sm-0">
+            <button type="button" class="btn btn-warning text-dark fw-bold btn-sm shadow px-3 py-2" 
+                    onclick="openSetEmiDateModal(<?= (int)($clientDetails['booking_id'] ?? $bookingId) ?>, 1, '<?= htmlspecialchars($firstEmi['due_date'] ?? date('Y-m-d')) ?>', '')">
+                <i class="fa-solid fa-calendar-plus me-1"></i> Schedule 1st EMI Date
+            </button>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <div class="row">
 
         <!-- ROW 1: Agreement Overview -->
@@ -1652,32 +1697,66 @@ if (!isset($discountApprovalReq)) {
                     </table>
                 </div>
 
-                <!-- VIRTUAL EMI SCHEDULE (Yield to Maturity) -->
+                <!-- VIRTUAL EMI SCHEDULE (Yield to Maturity & CED Scheduling) -->
                 <?php if (!empty($virtualEmiSchedule)): ?>
                 <div class="mt-10" id="emi-schedule-section">
-                    <h5 class="mb-3"><i class="fa-light fa-calendar-check me-2"></i>EMI Maturity Schedule</h5>
+                    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                        <h5 class="mb-0"><i class="fa-light fa-calendar-check me-2"></i>EMI Maturity Schedule</h5>
+                        <div class="d-flex align-items-center gap-2">
+                            <a href="<?= $GLOBALS['base_url'] ?>/client-emi-schedule-print/<?= htmlspecialchars($bookingId) ?>" target="_blank" class="btn btn-sm btn-outline-secondary shadow-sm" title="Print EMI Maturity Schedule">
+                                <i class="fa-solid fa-print me-1"></i> Print Schedule
+                            </a>
+                            <?php if ($isCedUser): ?>
+                                <button type="button" class="btn btn-sm btn-primary shadow-sm" onclick="openNextEmiScheduleModal()">
+                                    <i class="fa-solid fa-calendar-plus me-1"></i> Schedule Next EMI Date
+                                </button>
+                            <?php endif; ?>
+                        </div>
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-bordered table-striped" style="font-size: 14px;">
                             <thead style="background-color: #f8f9fa;">
                                 <tr>
                                     <th>EMI No</th>
-                                    <th>Projected/Actual Due Date</th>
+                                    <th>Scheduled / Due Date</th>
                                     <th>Amount</th>
                                     <th>Paid Amount</th>
                                     <th>Due Amount</th>
                                     <th>Payment Status</th>
                                     <th>Maturity Status</th>
+                                    <th>Schedule Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php foreach ($virtualEmiSchedule as $emi): 
                                     $maturityBadge = '';
                                     switch($emi['maturity_status']) {
-                                        case 'paid': $maturityBadge = '<span class="badge bg-success">Paid</span>'; break;
-                                        case 'matured': $maturityBadge = '<span class="badge bg-info text-dark" style="background-color: #0dcaf0; color: #000;">Matured</span>'; break;
-                                        case 'pending': $maturityBadge = '<span class="badge bg-warning text-dark">Pending (Current Month)</span>'; break;
-                                        case 'due': $maturityBadge = '<span class="badge bg-danger">Due (Overdue)</span>'; break;
-                                        case 'future': $maturityBadge = '<span class="badge bg-secondary">Future</span>'; break;
+                                        case 'paid_on_time':
+                                            $maturityBadge = '<span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>Paid On Time</span>';
+                                            break;
+                                        case 'paid_late':
+                                            $delayText = (!empty($emi['delay_days']) && $emi['delay_days'] > 0) ? ' (' . $emi['delay_days'] . 'd delay)' : '';
+                                            $maturityBadge = '<span class="badge text-white" style="background:#ea580c;"><i class="fa-solid fa-clock-rotate-left me-1"></i>Paid Late' . $delayText . '</span>';
+                                            break;
+                                        case 'matured': 
+                                            $maturityBadge = '<span class="badge bg-info text-dark" style="background-color: #0dcaf0; color: #000;"><i class="fa-solid fa-check me-1"></i>Matured</span>'; 
+                                            break;
+                                        case 'pending': 
+                                            $maturityBadge = '<span class="badge bg-warning text-dark"><i class="fa-solid fa-hourglass-half me-1"></i>Pending (Current Month)</span>'; 
+                                            break;
+                                        case 'due': 
+                                            $overdueText = (!empty($emi['overdue_days']) && $emi['overdue_days'] > 0) ? ' (' . $emi['overdue_days'] . 'd overdue)' : '';
+                                            $maturityBadge = '<span class="badge bg-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i>Overdue' . $overdueText . '</span>'; 
+                                            break;
+                                        case 'unscheduled':
+                                            $maturityBadge = '<span class="badge bg-light text-secondary border"><i class="fa-regular fa-clock me-1"></i>Unscheduled</span>';
+                                            break;
+                                        case 'future': 
+                                            $maturityBadge = '<span class="badge bg-secondary">Future</span>'; 
+                                            break;
+                                        default:
+                                            $maturityBadge = '<span class="badge bg-secondary">' . htmlspecialchars(ucfirst($emi['maturity_status'])) . '</span>';
+                                            break;
                                     }
                                     
                                     $statusBadge = '';
@@ -1686,13 +1765,66 @@ if (!isset($discountApprovalReq)) {
                                     else $statusBadge = '<span class="text-muted">Unpaid</span>';
                                 ?>
                                 <tr>
-                                    <td><strong>#<?= $emi['emi_no'] ?></strong> <?= $emi['is_virtual'] ? '<small class="text-muted">(Proj.)</small>' : '' ?></td>
-                                    <td><?= date('d M, Y', strtotime($emi['due_date'])) ?></td>
+                                    <td>
+                                        <strong>#<?= $emi['emi_no'] ?></strong> 
+                                        <?php if (!empty($emi['is_virtual']) && !empty($emi['due_date'])): ?>
+                                            <small class="text-muted">(Proj.)</small>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php if (!empty($emi['due_date'])): ?>
+                                            <div class="d-flex align-items-center gap-1 flex-wrap">
+                                                <span class="fw-semibold"><?= date('d M, Y', strtotime($emi['due_date'])) ?></span>
+                                                <?php if (!empty($emi['is_date_custom'])): ?>
+                                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 10px;" title="Fixed by <?= htmlspecialchars($emi['fixed_by_name'] ?? 'CED') ?> on <?= !empty($emi['fixed_at']) ? date('d M, Y', strtotime($emi['fixed_at'])) : '' ?>">
+                                                        <i class="fa-solid fa-user-check me-1"></i>Fixed
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="badge bg-light text-muted border" style="font-size: 10px;">(Proj.)</span>
+                                                <?php endif; ?>
+                                            </div>
+                                            <?php if (!empty($emi['fixed_by_name'])): ?>
+                                                <div class="small text-muted mt-1" style="font-size: 11px;">
+                                                    <i class="fa-light fa-user me-1"></i>By: <?= htmlspecialchars($emi['fixed_by_name']) ?>
+                                                </div>
+                                            <?php endif; ?>
+                                            <?php if (!empty($emi['notes'])): ?>
+                                                <div class="small text-muted fst-italic" style="font-size: 11px;">
+                                                    <i class="fa-light fa-comment-dots me-1"></i><?= htmlspecialchars($emi['notes']) ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <span class="badge bg-light text-secondary border px-2 py-1" style="font-size: 11px;">
+                                                <i class="fa-regular fa-calendar-xmark me-1"></i>Not Scheduled
+                                            </span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td>TK. <?= number_format($emi['amount'], 2) ?></td>
-                                    <td>TK. <?= number_format($emi['paid_amount'], 2) ?></td>
+                                    <td>
+                                        TK. <?= number_format($emi['paid_amount'], 2) ?>
+                                        <?php if (!empty($emi['last_payment_date'])): ?>
+                                            <div class="small text-muted" style="font-size: 11px;">
+                                                <i class="fa-light fa-calendar-check me-1"></i>Cleared: <?= date('d M, Y', strtotime($emi['last_payment_date'])) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </td>
                                     <td>TK. <?= number_format($emi['due_amount'], 2) ?></td>
                                     <td><?= $statusBadge ?></td>
                                     <td><?= $maturityBadge ?></td>
+                                    <td>
+                                        <?php if (!empty($emi['is_locked'])): ?>
+                                            <span class="badge bg-light text-muted border py-1 px-2" title="Payment fully completed. Due date is locked and cannot be changed.">
+                                                <i class="fa-solid fa-lock me-1 text-secondary"></i>Locked
+                                            </span>
+                                        <?php elseif ($isCedUser): ?>
+                                            <button type="button" class="btn btn-xs btn-outline-primary py-1 px-2" 
+                                                    onclick="openSetEmiDateModal(<?= (int)($clientDetails['booking_id'] ?? $bookingId) ?>, <?= $emi['emi_no'] ?>, '<?= $emi['due_date'] ?? '' ?>', '<?= htmlspecialchars(addslashes($emi['notes'] ?? '')) ?>')">
+                                                <i class="fa-solid fa-calendar-pen me-1"></i>Set Date
+                                            </button>
+                                        <?php else: ?>
+                                            <span class="text-muted small">-</span>
+                                        <?php endif; ?>
+                                    </td>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -2332,6 +2464,65 @@ if (!isset($discountApprovalReq)) {
                     <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-warning text-dark fw-bold px-4" id="btnSaveBookingInfoCed">
                         <i class="fa-solid fa-save me-1"></i> Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Set EMI Due Date (CED Scheduling) -->
+<div class="modal fade" id="setEmiDateModal" tabindex="-1" aria-labelledby="setEmiDateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 12px; overflow: hidden; border: none; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
+            <div class="modal-header" style="background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%); color: #fff;">
+                <h5 class="modal-title fw-bold" id="setEmiDateModalLabel">
+                    <i class="fa-solid fa-calendar-check me-2"></i>Schedule EMI Due Date
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="setEmiDateForm" onsubmit="handleSaveEmiDueDate(event)">
+                <input type="hidden" name="booking_id" id="cedModalBookingId" value="<?= (int)($clientDetails['booking_id'] ?? $bookingId) ?>">
+                <div class="modal-body p-4">
+                    <div class="alert alert-info border-0 py-2 px-3 small rounded-2 mb-3">
+                        <i class="fa-solid fa-circle-info me-1"></i>
+                        Set client-agreed EMI maturity date. Once an EMI is fully paid, its date will be permanently locked.
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="cedModalEmiNo" class="form-label fw-semibold">Select EMI Number <span class="text-danger">*</span></label>
+                        <select class="form-select" id="cedModalEmiNo" name="emi_no" required>
+                            <?php foreach ($virtualEmiSchedule as $schItem): ?>
+                                <option value="<?= $schItem['emi_no'] ?>" <?= !empty($schItem['is_locked']) ? 'disabled' : '' ?>>
+                                    EMI #<?= $schItem['emi_no'] ?> - <?= date('d M, Y', strtotime($schItem['due_date'])) ?> 
+                                    <?= !empty($schItem['is_locked']) ? '(Fully Paid - Locked 🔒)' : (($schItem['status'] === 'partially_paid') ? '(Partially Paid)' : '(Unpaid)') ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="cedModalDueDate" class="form-label fw-semibold">New Due Date <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="cedModalDueDate" name="due_date" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="cedModalNotes" class="form-label fw-semibold">Discussion / Scheduling Notes (Optional)</label>
+                        <textarea class="form-control" id="cedModalNotes" name="notes" rows="2" placeholder="e.g., Client requested 15th of month due to salary schedule"></textarea>
+                    </div>
+
+                    <div class="form-check form-switch p-0 ps-4 mb-2">
+                        <input class="form-check-input" type="checkbox" id="cedModalApplySubsequent" name="apply_subsequent" value="1" checked>
+                        <label class="form-check-label small" for="cedModalApplySubsequent">
+                            <strong>Auto-align subsequent unpaid EMIs</strong>
+                            <div class="text-muted" style="font-size: 11px;">Automatically sets upcoming unpaid EMIs at +1 month intervals from this date.</div>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light px-4 py-3">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm px-3 fw-bold" id="btnSaveEmiDueDate">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> Save Due Date
                     </button>
                 </div>
             </form>
@@ -3130,6 +3321,91 @@ function cedExecuteDiscountAction(action, stage, reqId, bookingId) {
             });
         } else {
             alert('Network Error: ' + err);
+        }
+    });
+}
+
+// ─── Set EMI Due Date Functions (CED) ──────────────────────────
+function openSetEmiDateModal(bookingId, emiNo, currentDate, notes) {
+    document.getElementById('cedModalBookingId').value = bookingId;
+    const emiSelect = document.getElementById('cedModalEmiNo');
+    if (emiSelect) {
+        emiSelect.value = emiNo;
+    }
+    document.getElementById('cedModalDueDate').value = currentDate || '';
+    document.getElementById('cedModalNotes').value = notes || '';
+    new bootstrap.Modal(document.getElementById('setEmiDateModal')).show();
+}
+
+function openNextEmiScheduleModal() {
+    const emiSelect = document.getElementById('cedModalEmiNo');
+    if (emiSelect) {
+        for (let i = 0; i < emiSelect.options.length; i++) {
+            if (!emiSelect.options[i].disabled) {
+                emiSelect.selectedIndex = i;
+                break;
+            }
+        }
+    }
+    new bootstrap.Modal(document.getElementById('setEmiDateModal')).show();
+}
+
+function handleSaveEmiDueDate(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnSaveEmiDueDate');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+
+    const form = document.getElementById('setEmiDateForm');
+    const formData = new FormData(form);
+
+    fetch('<?= $GLOBALS['base_url'] ?>/account-client/saveEmiDueDate', {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        if (data.success) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Scheduled!',
+                    text: data.message || 'EMI Due Date updated successfully.',
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => {
+                    location.reload();
+                });
+            } else {
+                alert(data.message || 'Saved successfully');
+                location.reload();
+            }
+        } else {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Action Failed',
+                    text: data.message || 'Failed to update EMI Due Date.'
+                });
+            } else {
+                alert(data.message || 'Failed to update EMI Due Date.');
+            }
+        }
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Network error: ' + err
+            });
+        } else {
+            alert('Network error: ' + err);
         }
     });
 }

@@ -1100,6 +1100,7 @@ class Lead extends Model
         COALESCE(u_assigned_by.full_name, u_by.full_name, 'System') AS assigned_by_name,
         u_by.full_name AS creator_name,
         u_appr.full_name AS approved_by_name,
+        t.name AS team_name,
         COALESCE(p.name, lp.name) AS project_name,
         lpc.name AS project_category_name,
         lf.next_action,
@@ -1116,6 +1117,7 @@ class Lead extends Model
     LEFT JOIN users AS u_assigned_by ON l.assigned_by = u_assigned_by.id
     LEFT JOIN users AS u_by ON l.created_by = u_by.id
     LEFT JOIN users AS u_appr ON l.approved_by = u_appr.id
+    LEFT JOIN teams AS t ON l.team_id = t.id
     LEFT JOIN employees AS emp ON emp.user_id = l.assigned_id
     LEFT JOIN (
         SELECT lf1.lead_id, lf1.next_action, lf1.follow_up_type, lf1.next_follow_up_date, lf1.discussion_note, lf1.lead_status AS last_follow_up_lead_status, lf1.interested_location_name AS last_follow_up_interested_location
