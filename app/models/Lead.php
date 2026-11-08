@@ -856,6 +856,13 @@ class Lead extends Model
                         l.lead_type
                     ) IN ('Visit Completed', 'Visited')
                 )";
+            } elseif (in_array($filter_card, ['interested_other_location', 'interested_in_other_location', 'other_location'])) {
+                $sql .= " AND (
+                    COALESCE(
+                        NULLIF((SELECT lf_sub.lead_status FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.deleted_at IS NULL ORDER BY lf_sub.id DESC LIMIT 1), ''),
+                        l.lead_type
+                    ) = 'Interested in Other Location'
+                )";
             }
         }
 
@@ -1100,6 +1107,7 @@ class Lead extends Model
         lf.next_follow_up_date,
         lf.discussion_note,
         lf.last_follow_up_lead_status,
+        lf.last_follow_up_interested_location,
         ldr.delete_request_reason,
         ldr.delete_requested_at,
         ldr.delete_requested_by_name
@@ -1110,7 +1118,7 @@ class Lead extends Model
     LEFT JOIN users AS u_appr ON l.approved_by = u_appr.id
     LEFT JOIN employees AS emp ON emp.user_id = l.assigned_id
     LEFT JOIN (
-        SELECT lf1.lead_id, lf1.next_action, lf1.follow_up_type, lf1.next_follow_up_date, lf1.discussion_note, lf1.lead_status AS last_follow_up_lead_status
+        SELECT lf1.lead_id, lf1.next_action, lf1.follow_up_type, lf1.next_follow_up_date, lf1.discussion_note, lf1.lead_status AS last_follow_up_lead_status, lf1.interested_location_name AS last_follow_up_interested_location
         FROM lead_follow_ups lf1
         WHERE lf1.id = (
             SELECT MAX(lf2.id) FROM lead_follow_ups lf2
@@ -1518,6 +1526,8 @@ class Lead extends Model
                 $sql .= " AND (COALESCE(NULLIF(lf.last_follow_up_lead_status, ''), l.lead_type) IN ('Visit Scheduled', 'Will Visit'))";
             } elseif (in_array($filter_card, ['visited_leads', 'visited', 'visit_completed'])) {
                 $sql .= " AND (COALESCE(NULLIF(lf.last_follow_up_lead_status, ''), l.lead_type) IN ('Visit Completed', 'Visited'))";
+            } elseif (in_array($filter_card, ['interested_other_location', 'interested_in_other_location', 'other_location'])) {
+                $sql .= " AND (COALESCE(NULLIF(lf.last_follow_up_lead_status, ''), l.lead_type) = 'Interested in Other Location')";
             }
         }
 
@@ -1919,6 +1929,7 @@ class Lead extends Model
         lf.follow_up_type,
         lf.status AS last_follow_up_status,
         lf.lead_status AS last_follow_up_lead_status,
+        lf.interested_location_name AS last_follow_up_interested_location,
         lf.discussion_note AS last_follow_up_note,
         p.name AS project_name,
         lpc.name AS project_category_name,
@@ -2188,6 +2199,8 @@ class Lead extends Model
                     OR LOWER(COALESCE(lf.lead_status, '')) LIKE '%wrong%'
                     OR LOWER(COALESCE(lf.lead_status, '')) LIKE '%invalid%'
                 )";
+            } elseif (in_array($filter_card, ['interested_other_location', 'interested_in_other_location', 'other_location'])) {
+                $sql .= " AND (leads.lead_type = 'Interested in Other Location' OR lf.lead_status = 'Interested in Other Location')";
             }
         }
 
@@ -2492,6 +2505,8 @@ class Lead extends Model
                     OR LOWER(COALESCE(lf.lead_status, '')) LIKE '%wrong%'
                     OR LOWER(COALESCE(lf.lead_status, '')) LIKE '%invalid%'
                 )";
+            } elseif (in_array($filter_card, ['interested_other_location', 'interested_in_other_location', 'other_location'])) {
+                $sql .= " AND (leads.lead_type = 'Interested in Other Location' OR lf.lead_status = 'Interested in Other Location')";
             }
         }
 
@@ -2536,7 +2551,8 @@ class Lead extends Model
             SUM(CASE WHEN lf.next_follow_up_date IS NOT NULL AND DATE(lf.next_follow_up_date) >= CURDATE() THEN 1 ELSE 0 END) as upcoming_follow_ups,
             SUM(CASE WHEN lf.next_follow_up_date IS NOT NULL AND lf.next_follow_up_date > '1000-01-01' AND DATE(lf.next_follow_up_date) <= CURDATE() AND lf.deleted_at IS NULL THEN 1 ELSE 0 END) as missing_follow_ups,
             SUM(CASE WHEN (leads.lead_type IN ('Invalid Lead', 'Irrelevant') OR lf.lead_status IN ('Invalid Lead', 'Irrelevant')) THEN 1 ELSE 0 END) as irrelevant_leads,
-            SUM(CASE WHEN {$noResponseCond} THEN 1 ELSE 0 END) as no_response_leads
+            SUM(CASE WHEN {$noResponseCond} THEN 1 ELSE 0 END) as no_response_leads,
+            SUM(CASE WHEN (leads.lead_type = 'Interested in Other Location' OR lf.lead_status = 'Interested in Other Location') THEN 1 ELSE 0 END) as interested_other_location_leads
         FROM leads
         LEFT JOIN (
             SELECT t1.*

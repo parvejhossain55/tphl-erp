@@ -98,7 +98,7 @@
                                 <?php
                                 $statuses = [
                                     'No Response', 'Pending', 'Qualification in Progress', 'Potential', 'High Potential', 
-                                    'Visit Scheduled', 'Visit Completed', 'Lead Transferred', 
+                                    'Visit Scheduled', 'Visit Completed', 'Interested in Other Location', 'Lead Transferred', 
                                     'Not Interested', 'Invalid Lead'
                                 ];
                                 foreach($statuses as $st) {
@@ -106,6 +106,12 @@
                                 }
                                 ?>
                             </select>
+                        </div>
+
+                        <!-- Interested Location Name (Hidden by default, shown when Interested in Other Location) -->
+                        <div class="col-lg-6" id="edit_interested_location_div" style="display: none;">
+                            <label class="form-label">Interested Location Name*</label>
+                            <input type="text" name="interested_location_name" id="edit_interested_location_name" class="form-control" list="interestedLocationsList" placeholder="Select or type location name...">
                         </div>
                         
                         <!-- Follow Up Agent (Optional) -->

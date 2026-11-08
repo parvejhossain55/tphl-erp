@@ -130,6 +130,7 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
         <!-- Filter Card Wrapper (Matching flat-lists) -->
         <div class="card__wrapper mb-3 no-print">
             <form action="<?= $GLOBALS['base_url'] ?>/fund-requisitions" method="get">
+                <input type="hidden" name="view_mode" value="<?= htmlspecialchars($viewMode ?? 'all') ?>">
 
                 <!-- Row 1: Filter inputs -->
                 <div class="row g-2 align-items-center mb-2">
@@ -182,7 +183,7 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
                             <button type="submit" class="btn btn-secondary btn-sm flex-fill">
                                 <i class="fa-solid fa-filter me-1"></i> Filter
                             </button>
-                            <a href="<?= $GLOBALS['base_url'] ?>/fund-requisitions" class="btn btn-success btn-sm flex-fill">
+                            <a href="<?= $GLOBALS['base_url'] ?>/fund-requisitions?view_mode=all" class="btn btn-success btn-sm flex-fill">
                                 <i class="fa-solid fa-rotate-right me-1"></i> Reset
                             </a>
                         </div>
@@ -233,43 +234,47 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
             <div class="col-xxl-12">
                 <div class="card__wrapper">
                     <?php
-                    $viewMode = $viewMode ?? '';
+                    $viewMode = $viewMode ?? 'all';
                     $base = $GLOBALS['base_url'];
-                    // Determine if this user has a role-specific default view
-                    $hasRoleDefaultView = in_array($roleId, [20, 32, 13, 24, 25, 6, 30]);
-                    // Build base query string without view_mode
+                    $canSeeTabs = in_array($roleId, [1, 3, 33, 34, 35, 20, 32, 13, 24, 25, 6, 30]) || !empty($deptHeadDeptIds);
+                    // Build base query string without view_mode or status
                     $baseQs = http_build_query(array_filter([
                         'start_date' => $startDate ?? '',
                         'end_date' => $endDate ?? '',
-                        'status' => $statusFilter ?? '',
                         'search' => $searchQuery ?? '',
                         'project_id' => $selectedProject ?? '',
                         'requisition_type' => $selectedType ?? '',
                     ]));
                     ?>
-                    <?php if ($hasRoleDefaultView): ?>
-                    <div class="d-flex align-items-center gap-2 mb-3 no-print">
-                        <a href="<?= $base ?>/fund-requisitions<?= $baseQs ? '?' . $baseQs : '' ?>" 
-                           class="btn btn-sm <?= ($viewMode !== 'all' && $viewMode !== 'my_requests' && ($statusFilter ?? '') === '') ? 'btn-primary' : 'btn-outline-primary' ?>">
+                    <?php if ($canSeeTabs): ?>
+                    <div class="d-flex align-items-center gap-2 mb-3 no-print flex-wrap">
+                        <a href="<?= $base ?>/fund-requisitions?view_mode=all<?= $baseQs ? '&' . $baseQs : '' ?>" 
+                           class="btn btn-sm <?= ($viewMode === 'all' && empty($statusFilter)) ? 'btn-secondary fw-semibold' : 'btn-outline-secondary' ?>">
+                            <i class="fa-solid fa-list me-1"></i> All Requisitions
+                            <span class="badge <?= ($viewMode === 'all' && empty($statusFilter)) ? 'bg-white text-secondary' : 'bg-secondary text-white' ?> ms-1"><?= (int)($totalAllCount ?? count($requests)) ?></span>
+                        </a>
+                        <a href="<?= $base ?>/fund-requisitions?view_mode=my_pending<?= $baseQs ? '&' . $baseQs : '' ?>" 
+                           class="btn btn-sm <?= ($viewMode === 'my_pending') ? 'btn-primary fw-semibold' : 'btn-outline-primary' ?>">
                             <i class="fa-solid fa-clock-rotate-left me-1"></i> My Pending Action
-                            <?php if ($viewMode !== 'all' && $viewMode !== 'my_requests' && ($statusFilter ?? '') === ''): ?>
-                                <span class="badge bg-white text-primary ms-1"><?= count($requests ?? []) ?></span>
-                            <?php endif; ?>
+                            <span class="badge <?= ($viewMode === 'my_pending') ? 'bg-white text-primary' : 'bg-primary text-white' ?> ms-1"><?= (int)($pendingActionCount ?? 0) ?></span>
                         </a>
                         <a href="<?= $base ?>/fund-requisitions?view_mode=my_requests<?= $baseQs ? '&' . $baseQs : '' ?>" 
-                           class="btn btn-sm <?= $viewMode === 'my_requests' ? 'btn-info text-white' : 'btn-outline-info' ?>">
+                           class="btn btn-sm <?= ($viewMode === 'my_requests') ? 'btn-info text-white fw-semibold' : 'btn-outline-info' ?>">
                             <i class="fa-solid fa-user me-1"></i> My Requests
+                            <span class="badge <?= ($viewMode === 'my_requests') ? 'bg-white text-info' : 'bg-info text-white' ?> ms-1"><?= (int)($myRequestsCount ?? 0) ?></span>
                         </a>
-                        <a href="<?= $base ?>/fund-requisitions?view_mode=all<?= $baseQs ? '&' . $baseQs : '' ?>" 
-                           class="btn btn-sm <?= $viewMode === 'all' ? 'btn-secondary' : 'btn-outline-secondary' ?>">
-                            <i class="fa-solid fa-list me-1"></i> All Requisitions
-                        </a>
-                        <?php if (in_array($roleId, [1, 6, 30, 20, 32])): ?>
+                        <?php if (in_array($roleId, [1, 3, 6, 30, 20, 32])): ?>
                         <a href="<?= $base ?>/fund-requisitions?view_mode=all&status=approved<?= $baseQs ? '&' . $baseQs : '' ?>" 
-                           class="btn btn-sm btn-outline-success">
+                           class="btn btn-sm <?= (($statusFilter ?? '') === 'approved') ? 'btn-success fw-semibold' : 'btn-outline-success' ?>">
                             <i class="fa-solid fa-file-invoice-dollar me-1"></i> Payment Pending
+                            <span class="badge <?= (($statusFilter ?? '') === 'approved') ? 'bg-white text-success' : 'bg-success text-white' ?> ms-1"><?= (int)($paymentPendingCount ?? 0) ?></span>
                         </a>
                         <?php endif; ?>
+                        <a href="<?= $base ?>/fund-requisitions?view_mode=all&status=rejected<?= $baseQs ? '&' . $baseQs : '' ?>" 
+                           class="btn btn-sm <?= (($statusFilter ?? '') === 'rejected') ? 'btn-danger fw-semibold' : 'btn-outline-danger' ?>">
+                            <i class="fa-solid fa-ban me-1"></i> Rejected
+                            <span class="badge <?= (($statusFilter ?? '') === 'rejected') ? 'bg-white text-danger' : 'bg-danger text-white' ?> ms-1"><?= (int)($rejectedCount ?? 0) ?></span>
+                        </a>
                     </div>
                     <?php endif; ?>
                     
@@ -279,7 +284,7 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
                         <ul class="nav nav-tabs nav-tabs-bordered mb-0" id="fundTabs" role="tablist">
                             <li class="nav-item">
                                 <button class="nav-link active fw-semibold" id="tab-all" data-type="" type="button">
-                                    All Requisitions (<span id="count-all"><?= count($requests) ?></span>)
+                                    All (<span id="count-all"><?= count($requests) ?></span>)
                                 </button>
                             </li>
                             <li class="nav-item">
@@ -1278,6 +1283,11 @@ function openDeptApproveModal(id, requesterName, deptName, type, amount) {
     myModal.show();
 }
 
+function openDeptRejectModal(id, requesterName, deptName, type, amount) {
+    openDeptApproveModal(id, requesterName, deptName, type, amount);
+    document.getElementById('deptApproveStatusSelect').value = 'rejected';
+}
+
 function openApproveModal(id, requesterName, deptName, type, amount) {
     document.getElementById('approveRequisitionId').value = id;
     document.getElementById('approveRequesterInfo').innerText = requesterName + ' - ' + deptName;
@@ -1922,7 +1932,7 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer, $serial = 1) {
         $statusClass = 'bg-success-transparent text-success border border-success';
         $statusText = 'Partially Paid (BDT ' . number_format($req['paid_amount'] ?? 0, 2) . ')';
     } elseif ($req['status'] === 'rejected') {
-        $statusClass = 'bg-danger-transparent text-danger border border-danger';
+        $statusClass = 'bg-danger text-white fw-bold shadow-sm';
         $statusText = 'Rejected';
     }
     
@@ -2080,6 +2090,25 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer, $serial = 1) {
                     Paid via <?= htmlspecialchars($req['payment_method'] ?? 'Cash') ?><br>
                     By <?= htmlspecialchars($req['paid_by_name'] . (!empty($req['paid_by_designation_name']) ? ' (' . $req['paid_by_designation_name'] . ')' : '')) ?>
                 </div>
+            <?php elseif ($req['status'] === 'rejected'): ?>
+                <div class="fs-9 text-danger mt-1 fw-semibold">
+                    <i class="fa-solid fa-circle-xmark me-1"></i>Rejected
+                    <?php if (!empty($req['approved_by_name'])): ?>
+                        by <?= htmlspecialchars($req['approved_by_name']) ?>
+                    <?php elseif (!empty($req['qc_approved_by_name'])): ?>
+                        by QC (<?= htmlspecialchars($req['qc_approved_by_name']) ?>)
+                    <?php elseif (!empty($req['dept_head_approved_by_name'])): ?>
+                        by Dept (<?= htmlspecialchars($req['dept_head_approved_by_name']) ?>)
+                    <?php endif; ?>
+                </div>
+                <?php 
+                $rejectNote = !empty($req['approval_note']) ? $req['approval_note'] : (!empty($req['qc_approval_note']) ? $req['qc_approval_note'] : ($req['dept_head_approval_note'] ?? ''));
+                if (!empty($rejectNote)): 
+                ?>
+                    <div class="fs-9 text-muted mt-1">
+                        <strong>Reason:</strong> <?= htmlspecialchars($rejectNote) ?>
+                    </div>
+                <?php endif; ?>
             <?php endif; ?>
         </td>
         <td class="no-print text-center">

@@ -231,6 +231,12 @@ class ProjectOtherCostController extends Controller
                 exit();
             }
 
+            if ($request['status'] === 'paid' || $request['status'] === 'rejected') {
+                setError("Cannot modify an already " . $request['status'] . " request.");
+                header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
+                exit();
+            }
+
             $status = $_POST['dept_head_status'] ?? 'approved';
             $data = [
                 'dept_head_status' => $status,
@@ -260,8 +266,40 @@ class ProjectOtherCostController extends Controller
             $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
             $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
             if (in_array($roleId, [33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true) || !in_array($roleId, [1, 13, 24, 25])) {
-                setError("You are not authorized to approve this request as QC.");
+                setError("You are not authorized to process this request as QC.");
                 header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
+                exit();
+            }
+
+            $request = $this->otherCostModel->getById($id);
+            if (!$request) {
+                setError("Request not found.");
+                header("Location: " . $GLOBALS['base_url'] . "/project-other-costs");
+                exit();
+            }
+
+            if ($request['status'] === 'paid' || $request['status'] === 'rejected') {
+                setError("Cannot modify an already " . $request['status'] . " request.");
+                header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
+                exit();
+            }
+
+            $action = $_POST['action'] ?? (($_POST['status'] ?? '') === 'rejected' ? 'reject' : 'approve');
+            if ($action === 'reject') {
+                $qcNote = trim($_POST['qc_audit_note'] ?? 'Rejected by QC Audit');
+                $data = [
+                    'qc_audit_note' => $qcNote,
+                    'qc_audit_approved_id' => $_SESSION['user']['id'],
+                    'qc_audit_approved_at' => date('Y-m-d H:i:s'),
+                    'status' => 'rejected'
+                ];
+                if ($this->otherCostModel->update($id, $data)) {
+                    $this->syncToApprovalRequests($id);
+                    setSuccess("Request rejected by QC Audit successfully.");
+                } else {
+                    setError("Failed to reject request.");
+                }
+                header("Location: " . $GLOBALS['base_url'] . "/project-other-costs");
                 exit();
             }
 
@@ -296,6 +334,37 @@ class ProjectOtherCostController extends Controller
             }
 
             $req = $this->otherCostModel->getById($id);
+            if (!$req) {
+                setError("Request not found.");
+                header("Location: " . $GLOBALS['base_url'] . "/project-other-costs");
+                exit();
+            }
+
+            if ($req['status'] === 'paid' || $req['status'] === 'rejected') {
+                setError("Cannot modify an already " . $req['status'] . " request.");
+                header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
+                exit();
+            }
+
+            $action = $_POST['action'] ?? (($_POST['status'] ?? '') === 'rejected' ? 'reject' : 'approve');
+            if ($action === 'reject') {
+                $note = trim($_POST['management_apporved_note'] ?? 'Rejected by Management');
+                $data = [
+                    'management_apporved_note' => $note,
+                    'management_apporved_by_id' => $_SESSION['user']['id'],
+                    'management_apporved_at' => date('Y-m-d H:i:s'),
+                    'status' => 'rejected'
+                ];
+                if ($this->otherCostModel->update($id, $data)) {
+                    $this->syncToApprovalRequests($id);
+                    $this->db->query("UPDATE approval_requests SET status = 'rejected', approve_role = 'rejected' WHERE source_table = 'project_other_costs' AND source_id = {$id}");
+                    setSuccess("Request rejected by Management successfully.");
+                } else {
+                    setError("Failed to reject request.");
+                }
+                header("Location: " . $GLOBALS['base_url'] . "/project-other-costs");
+                exit();
+            }
             $approvedAmount = (float)($_POST['approved_amount'] ?? $req['request_amount'] ?? 0);
             $isOver1Lac = ($approvedAmount > 10000);
             $isOpHeadUser = (in_array($roleId, [20, 32], true) || str_contains($roleName, 'operation head'));

@@ -65,6 +65,7 @@ $config = require $root . "/app/config/config.php";
 // Create DB
 $database = new Database($config);
 $db = $database->conn;
+$GLOBALS['db'] = $db;
 
 // Routes (regex for ID)
 $routes = array_merge(

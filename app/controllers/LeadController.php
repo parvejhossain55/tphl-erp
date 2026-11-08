@@ -188,6 +188,7 @@ class LeadController extends Controller
         $totalPotentialLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'potential_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
         $totalVisitScheduledLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'visit_scheduled', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
         $totalVisitedLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'visited_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
+        $totalInterestedOtherLocationLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'interested_other_location', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
         // ── Duplicate Leads Detection ─────────────────────────────────────────
         // My team leads assigned to me whose phone/email also appears in OTHER assigned_ids
         $dupGroups  = [];
@@ -301,9 +302,13 @@ class LeadController extends Controller
             }
         }
 
+        $locRes = $this->db->query("SELECT DISTINCT name FROM locations WHERE name IS NOT NULL AND name != '' ORDER BY name ASC");
+        $allLocationsList = $locRes ? $locRes->fetch_all(MYSQLI_ASSOC) : [];
+
         $this->view("sales-developments/leads/lead-lists", [
             "current_route" => "lead-lists",
             "page_title" => "Lead List",
+            "allLocationsList" => $allLocationsList,
             "owners" => $owners,
             "leads" => $leads,
             "teamsData" => $teamsData,
@@ -332,6 +337,7 @@ class LeadController extends Controller
             "totalPotentialLeads" => $totalPotentialLeads,
             "totalVisitScheduledLeads" => $totalVisitScheduledLeads,
             "totalVisitedLeads" => $totalVisitedLeads,
+            "totalInterestedOtherLocationLeads" => $totalInterestedOtherLocationLeads,
             "date_type" => $date_type,
             "selectedAction" => $lastAction,
             "selectedAssigned" => $assigned,
@@ -717,6 +723,7 @@ class LeadController extends Controller
             $base_url = $GLOBALS['base_url'];
             $statusVal = !empty($lead['last_follow_up_lead_status']) ? $lead['last_follow_up_lead_status'] : (!empty($lead['lead_type']) ? $lead['lead_type'] : 'Pending');
             $badgeClass = 'bg-secondary text-white';
+            $badgeStyle = '';
             if (in_array($statusVal, ['High Potential', 'High Prospect', 'Hot'])) {
                 $badgeClass = 'bg-danger text-white';
             } elseif ($statusVal === 'Qualification in Progress') {
@@ -727,6 +734,9 @@ class LeadController extends Controller
                 $badgeClass = 'bg-info text-dark';
             } elseif (in_array($statusVal, ['Visit Completed', 'Visited'])) {
                 $badgeClass = 'bg-primary text-white';
+            } elseif ($statusVal === 'Interested in Other Location') {
+                $badgeClass = 'text-white';
+                $badgeStyle = 'background-color: #8b5cf6 !important;';
             } elseif (in_array($statusVal, ['Not Interested', "Don't Call Again", 'Cold', 'Refund'])) {
                 $badgeClass = 'bg-danger text-white';
             } elseif ($statusVal == 'Warm') {
@@ -739,6 +749,12 @@ class LeadController extends Controller
                 $badgeClass = 'bg-success text-white';
             } elseif (in_array($statusVal, ['Lead Transferred', 'Project Transferred'])) {
                 $badgeClass = 'bg-dark text-white';
+            }
+
+            $locDisplay = '';
+            $locName = !empty($lead['last_follow_up_interested_location']) ? $lead['last_follow_up_interested_location'] : (!empty($lead['interested_location_name']) ? $lead['interested_location_name'] : '');
+            if ($statusVal === 'Interested in Other Location' && !empty($locName)) {
+                $locDisplay = '<div class="mt-1"><span class="badge rounded-pill px-1.5 py-0.5 text-truncate" style="font-size:9px; background-color: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe; max-width: 140px;" title="Interested Location: ' . htmlspecialchars($locName, ENT_QUOTES, 'UTF-8') . '"><i class="fa-solid fa-location-dot me-1"></i>' . htmlspecialchars($locName) . '</span></div>';
             }
 
             $extraBadges = '';
@@ -762,7 +778,8 @@ class LeadController extends Controller
                 </select>
             </form>
             <div class="text-center lead-status-badge-wrap" data-lead-id="' . $lead['id'] . '">
-                <span class="badge ' . $badgeClass . ' px-2 py-1" style="font-size: 10px;">' . htmlspecialchars($statusVal) . '</span>
+                <span class="badge ' . $badgeClass . ' px-2 py-1" style="font-size: 10px;' . $badgeStyle . '">' . htmlspecialchars($statusVal) . '</span>
+                ' . $locDisplay . '
                 ' . $extraBadges . '
             </div>';
             $row[] = $statusHtml;

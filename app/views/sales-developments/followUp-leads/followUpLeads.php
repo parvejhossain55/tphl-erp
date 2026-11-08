@@ -10,7 +10,19 @@ if (!empty($followUpLeads) && is_array($followUpLeads)) {
 $page_title = "Follow Ups Page";
 $page = 'Follow Ups';
 $show_breadcrumb = true;
+
+// Fetch locations list for autocomplete datalist if not already set
+if (!isset($allLocationsList)) {
+    $locDb = $GLOBALS['db'] ?? (isset($this) && isset($this->db) ? $this->db : (class_exists('Database') ? Database::getInstance()->getConnection() : null));
+    $locRes = $locDb ? $locDb->query("SELECT DISTINCT name FROM locations WHERE name IS NOT NULL AND name != '' ORDER BY name ASC") : null;
+    $allLocationsList = $locRes ? $locRes->fetch_all(MYSQLI_ASSOC) : [];
+}
 ?>
+<datalist id="interestedLocationsList">
+    <?php foreach (($allLocationsList ?? []) as $loc): ?>
+        <option value="<?= htmlspecialchars($loc['name']) ?>"></option>
+    <?php endforeach; ?>
+</datalist>
 <div class="row">
 
     <!-- Summary Cards -->
@@ -121,7 +133,7 @@ $show_breadcrumb = true;
                             <?php
                             $statuses = [
                                 'No Response', 'Pending', 'Qualification in Progress', 'Potential', 'High Potential', 
-                                'Visit Scheduled', 'Visit Completed', 'Lead Transferred', 
+                                'Visit Scheduled', 'Visit Completed', 'Interested in Other Location', 'Lead Transferred', 
                                 'Not Interested', 'Invalid Lead'
                             ];
                             foreach($statuses as $st) {
@@ -129,6 +141,12 @@ $show_breadcrumb = true;
                             }
                             ?>
                         </select>
+                    </div>
+
+                    <!-- Interested Location Name (Hidden by default, shown when Interested in Other Location) -->
+                    <div class="col-lg-6" id="create_interested_location_div" style="display: none;">
+                        <label class="form__input-title">Interested Location Name*</label>
+                        <input type="text" name="interested_location_name" id="create_interested_location_name" class="form-control" list="interestedLocationsList" placeholder="Select or type location name...">
                     </div>
                     
                     <!-- Team Re-assign (Hidden by default) -->
@@ -250,13 +268,19 @@ $show_breadcrumb = true;
                                 elseif (in_array($fuLeadStatus, ['Potential', 'Prospect'])) $fuBadgeClass = 'bg-success text-white';
                                 elseif (in_array($fuLeadStatus, ['Visit Scheduled', 'Will Visit'])) $fuBadgeClass = 'bg-info text-dark';
                                 elseif (in_array($fuLeadStatus, ['Visit Completed', 'Visited'])) $fuBadgeClass = 'bg-primary text-white';
+                                elseif ($fuLeadStatus === 'Interested in Other Location') $fuBadgeClass = 'text-white" style="background-color: #8b5cf6 !important;';
                                 elseif (in_array($fuLeadStatus, ['Not Interested', "Don't Call Again", 'Cold', 'Refund'])) $fuBadgeClass = 'bg-danger text-white';
                                 elseif ($fuLeadStatus === 'Warm') $fuBadgeClass = 'bg-warning text-dark';
                                 elseif (in_array($fuLeadStatus, ['Invalid Lead', 'Irrelevant'])) $fuBadgeClass = 'bg-dark text-white';
                                 elseif ($fuLeadStatus === 'No Response') $fuBadgeClass = 'bg-warning text-dark';
                                 elseif ($fuLeadStatus === 'Sold') $fuBadgeClass = 'bg-success text-white';
                                 ?>
-                                <td><span class="badge <?= $fuBadgeClass ?> px-2 py-1" style="font-size:11px;"><?= htmlspecialchars($fuLeadStatus) ?></span></td>
+                                <td>
+                                    <span class="badge <?= $fuBadgeClass ?> px-2 py-1" style="font-size:11px;"><?= htmlspecialchars($fuLeadStatus) ?></span>
+                                    <?php if ($fuLeadStatus === 'Interested in Other Location' && !empty($fu['interested_location_name'])): ?>
+                                        <div class="mt-1"><span class="badge rounded-pill px-1.5 py-0.5" style="font-size:9px; background-color: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe;"><i class="fa-solid fa-location-dot me-1"></i><?= htmlspecialchars($fu['interested_location_name']) ?></span></div>
+                                    <?php endif; ?>
+                                </td>
                                 <td><?= $fu['discussion_note'] ?? '' ?></td>
                                 <td><?= $fu['next_follow_up_date'] ?? '' ?></td>
                                 <td><?= $fu['next_action'] ?? '' ?></td>
@@ -281,6 +305,7 @@ $show_breadcrumb = true;
                                             data-next-date="<?= $fu['next_follow_up_date'] ?>"
                                             data-next-action="<?= $fu['next_action'] ?>"
                                             data-lead-status="<?= $fu['lead_status'] ?? '' ?>"
+                                            data-interested-location="<?= htmlspecialchars($fu['interested_location_name'] ?? '') ?>"
                                             data-agent-id="<?= $fu['follow_up_agent_id'] ?? '' ?>"
                                             data-plan-notes="<?= htmlspecialchars($fu['next_follow_up_plan_notes'] ?? '') ?>">
                                             <i class="fa-sharp fa-light fa-pen"></i>
@@ -410,7 +435,7 @@ $show_breadcrumb = true;
         });
     }
 
-    // Lead Transferred toggle logic
+    // Lead Transferred & Interested in Other Location toggle logic
     document.getElementById('create_lead_status').addEventListener('change', function() {
         const reassignDiv = document.getElementById('reassign_team_div');
         const reassignSelect = document.getElementById('reassign_team_id');
@@ -420,6 +445,19 @@ $show_breadcrumb = true;
         } else {
             reassignDiv.style.display = 'none';
             reassignSelect.required = false;
+        }
+
+        const otherLocDiv = document.getElementById('create_interested_location_div');
+        const otherLocInput = document.getElementById('create_interested_location_name');
+        if (otherLocDiv && otherLocInput) {
+            if (this.value === 'Interested in Other Location') {
+                otherLocDiv.style.display = 'block';
+                otherLocInput.required = true;
+            } else {
+                otherLocDiv.style.display = 'none';
+                otherLocInput.required = false;
+                otherLocInput.value = '';
+            }
         }
     });
 
@@ -459,6 +497,21 @@ $show_breadcrumb = true;
                 modal.querySelector('textarea[name="next_follow_up_plan_notes"]').value = this.dataset.planNotes;
             }
 
+            // Interested location for edit modal
+            const editOtherLocDiv = document.getElementById('edit_interested_location_div');
+            const editOtherLocInput = document.getElementById('edit_interested_location_name');
+            if (editOtherLocDiv && editOtherLocInput) {
+                if (this.dataset.leadStatus === 'Interested in Other Location') {
+                    editOtherLocDiv.style.display = 'block';
+                    editOtherLocInput.required = true;
+                    editOtherLocInput.value = this.dataset.interestedLocation || '';
+                } else {
+                    editOtherLocDiv.style.display = 'none';
+                    editOtherLocInput.required = false;
+                    editOtherLocInput.value = '';
+                }
+            }
+
             // Sync No Response for edit modal
             const editModalLeadStatusEl = modal.querySelector('select[name="lead_status"]');
             const editModalNextDateLabel = document.getElementById('editModalNextDateLabel');
@@ -496,7 +549,19 @@ $show_breadcrumb = true;
             }
 
             if (editModalLeadStatusEl) {
-                editModalLeadStatusEl.onchange = syncEditModalRequirement;
+                editModalLeadStatusEl.onchange = function() {
+                    syncEditModalRequirement();
+                    if (editOtherLocDiv && editOtherLocInput) {
+                        if (this.value === 'Interested in Other Location') {
+                            editOtherLocDiv.style.display = 'block';
+                            editOtherLocInput.required = true;
+                        } else {
+                            editOtherLocDiv.style.display = 'none';
+                            editOtherLocInput.required = false;
+                            editOtherLocInput.value = '';
+                        }
+                    }
+                };
                 syncEditModalRequirement();
             }
 

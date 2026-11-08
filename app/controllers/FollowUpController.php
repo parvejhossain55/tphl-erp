@@ -128,8 +128,12 @@ public function store()
         'created_by' => $_SESSION['user']['id'] ?? null,
         'follow_up_agent_id' => !empty($_POST['follow_up_agent_id']) ? (int)$_POST['follow_up_agent_id'] : null,
         'lead_status' => $_POST['lead_status'] ?? null,
+        'interested_location_name' => !empty($_POST['interested_location_name']) ? trim($_POST['interested_location_name']) : null,
         'next_follow_up_plan_notes' => $_POST['next_follow_up_plan_notes'] ?? null,
     ];
+    if (($followUpData['lead_status'] ?? '') !== 'Interested in Other Location') {
+        $followUpData['interested_location_name'] = null;
+    }
 
     // Validation: If lead_status is 'No Response', next_follow_up_date is mandatory up to 4 attempts
     $leadId = (int)$followUpData['lead_id'];
@@ -248,7 +252,15 @@ public function store()
         $dropReason = !empty($_POST['drop_reason']) ? trim($_POST['drop_reason']) : null;
         $dropNote   = !empty($_POST['drop_note']) ? trim($_POST['drop_note']) : null;
 
-        if ($dropReason !== null || $dropNote !== null) {
+        if ($lead_status === 'Interested in Other Location') {
+            $locName = $followUpData['interested_location_name'];
+            $updateLeadType = $this->db->prepare("UPDATE leads SET lead_type = ?, interested_location_name = ? WHERE id = ?");
+            if ($updateLeadType) {
+                $updateLeadType->bind_param("ssi", $lead_status, $locName, $lead_id);
+                $updateLeadType->execute();
+                $updateLeadType->close();
+            }
+        } elseif ($dropReason !== null || $dropNote !== null) {
             $updateLeadType = $this->db->prepare("UPDATE leads SET lead_type = ?, drop_reason = ?, drop_note = ? WHERE id = ?");
             if ($updateLeadType) {
                 $updateLeadType->bind_param("sssi", $lead_status, $dropReason, $dropNote, $lead_id);
@@ -381,8 +393,12 @@ public function store()
             'next_action' => $next_action,
             'follow_up_agent_id' => !empty($_POST['follow_up_agent_id']) ? (int)$_POST['follow_up_agent_id'] : null,
             'lead_status' => $_POST['lead_status'] ?? null,
+            'interested_location_name' => !empty($_POST['interested_location_name']) ? trim($_POST['interested_location_name']) : null,
             'next_follow_up_plan_notes' => $_POST['next_follow_up_plan_notes'] ?? null,
         ];
+        if (($followUpData['lead_status'] ?? '') !== 'Interested in Other Location') {
+            $followUpData['interested_location_name'] = null;
+        }
 
         // Validation: If lead_status is 'No Response', next_follow_up_date is mandatory up to 4 attempts
         $leadStatus = trim($followUpData['lead_status'] ?? '');
@@ -416,10 +432,21 @@ public function store()
         // Update Lead Type if provided
         if (!empty($followUpData['lead_status'])) {
             $lead_status = $followUpData['lead_status'];
-            $updateLeadType = $this->db->prepare("UPDATE leads SET lead_type = ? WHERE id = ?");
-            if ($updateLeadType) {
-                $updateLeadType->bind_param("si", $lead_status, $leadId);
-                $updateLeadType->execute();
+            if ($lead_status === 'Interested in Other Location') {
+                $locName = $followUpData['interested_location_name'];
+                $updateLeadType = $this->db->prepare("UPDATE leads SET lead_type = ?, interested_location_name = ? WHERE id = ?");
+                if ($updateLeadType) {
+                    $updateLeadType->bind_param("ssi", $lead_status, $locName, $leadId);
+                    $updateLeadType->execute();
+                    $updateLeadType->close();
+                }
+            } else {
+                $updateLeadType = $this->db->prepare("UPDATE leads SET lead_type = ? WHERE id = ?");
+                if ($updateLeadType) {
+                    $updateLeadType->bind_param("si", $lead_status, $leadId);
+                    $updateLeadType->execute();
+                    $updateLeadType->close();
+                }
             }
         }
 

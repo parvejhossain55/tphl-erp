@@ -545,19 +545,19 @@ class Con_VendorPaymentRequest extends Model
     }
 
     // =========================================================================
-    // REJECT — now tracks approved_by
+    // REJECT — now tracks approved_by & supports Submitted, QC Approved, and Approved
     // =========================================================================
 
-    public function reject($id, $userId)
+    public function reject($id, $userId, $reason = '')
     {
         $this->db->begin_transaction();
         try {
             $stmt = $this->db->prepare(
                 "UPDATE {$this->table}
-                 SET status = 'Rejected', approved_by = ?
-                 WHERE id = ? AND status = 'Submitted'"
+                 SET status = 'Rejected', approved_by = ?, management_note = COALESCE(NULLIF(?, ''), management_note)
+                 WHERE id = ? AND status IN ('Submitted', 'QC Approved', 'Approved', 'Partially_Paid')"
             );
-            $stmt->bind_param('ii', $userId, $id);
+            $stmt->bind_param('isi', $userId, $reason, $id);
             $stmt->execute();
 
             // Unlink penalties so they can be applied to future requests

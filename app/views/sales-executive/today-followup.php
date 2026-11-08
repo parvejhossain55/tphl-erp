@@ -207,6 +207,20 @@
     </div>
 </div>
 
+<?php
+// Fetch locations list for autocomplete datalist if not already set
+if (!isset($allLocationsList)) {
+    $locDb = $GLOBALS['db'] ?? (isset($this) && isset($this->db) ? $this->db : (class_exists('Database') ? Database::getInstance()->getConnection() : null));
+    $locRes = $locDb ? $locDb->query("SELECT DISTINCT name FROM locations WHERE name IS NOT NULL AND name != '' ORDER BY name ASC") : null;
+    $allLocationsList = $locRes ? $locRes->fetch_all(MYSQLI_ASSOC) : [];
+}
+?>
+<datalist id="interestedLocationsList">
+    <?php foreach (($allLocationsList ?? []) as $loc): ?>
+        <option value="<?= htmlspecialchars($loc['name']) ?>"></option>
+    <?php endforeach; ?>
+</datalist>
+
 <!-- Create Follow Up Modal -->
 <div class="modal custom-modal fade" id="createFollowUpModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -311,7 +325,7 @@
                                 <?php
                                 $statuses = [
                                     'No Response', 'Pending', 'Qualification in Progress', 'Potential', 'High Potential', 
-                                    'Visit Scheduled', 'Visit Completed', 'Lead Transferred', 
+                                    'Visit Scheduled', 'Visit Completed', 'Interested in Other Location', 'Lead Transferred', 
                                     'Not Interested', 'Invalid Lead'
                                 ];
                                 foreach($statuses as $st) {
@@ -319,6 +333,12 @@
                                 }
                                 ?>
                             </select>
+                        </div>
+
+                        <!-- Interested Location Name (Hidden by default, shown when Interested in Other Location) -->
+                        <div class="col-lg-6" id="createModalInterestedLocationDiv" style="display: none;">
+                            <label class="form__input-title">Interested Location Name*</label>
+                            <input type="text" name="interested_location_name" id="createModalInterestedLocationName" class="form-control" list="interestedLocationsList" placeholder="Select or type location name...">
                         </div>
                         
                         <!-- Team Re-assign (Hidden by default) -->
@@ -535,6 +555,8 @@ document.addEventListener('DOMContentLoaded', function() {
         $('#createFollowUpForm')[0].reset();
         $('#createFollowUpLeadId').val(leadId);
         $('#createModalReassignTeamDiv').hide();
+        $('#createModalInterestedLocationDiv').hide();
+        $('#createModalInterestedLocationName').prop('required', false).val('');
         $('#createFollowUpFlatSelect').html('<option value="">Select Flat</option>');
         $('#createFollowUpProjectSelect').val('');
         if ($('#createFollowUpProjectSelect').hasClass('select2-hidden-accessible')) {
@@ -568,14 +590,21 @@ document.addEventListener('DOMContentLoaded', function() {
                         let lsBadge = '<span class="text-muted">—</span>';
                         if (item.lead_status) {
                             let lsCls = 'bg-secondary text-white';
+                            let extraLoc = '';
                             if (item.lead_status === 'High Potential' || item.lead_status === 'High Prospect' || item.lead_status === 'Hot') lsCls = 'bg-danger text-white';
                             else if (item.lead_status === 'Qualification in Progress') lsCls = 'bg-info text-white';
                             else if (item.lead_status === 'Potential' || item.lead_status === 'Prospect' || item.lead_status === 'Warm') lsCls = 'bg-success text-white';
                             else if (item.lead_status === 'Visit Scheduled' || item.lead_status === 'Will Visit') lsCls = 'bg-info text-dark';
                             else if (item.lead_status === 'Visit Completed' || item.lead_status === 'Visited') lsCls = 'bg-primary text-white';
+                            else if (item.lead_status === 'Interested in Other Location') {
+                                lsCls = 'text-white" style="background-color: #8b5cf6 !important;';
+                                if (item.interested_location_name) {
+                                    extraLoc = `<div class="mt-1"><span class="badge rounded-pill px-1.5 py-0.5" style="font-size:9px; background-color: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe;"><i class="fa-solid fa-location-dot me-1"></i>${escapeHtml(item.interested_location_name)}</span></div>`;
+                                }
+                            }
                             else if (item.lead_status === 'Invalid Lead' || item.lead_status === 'Irrelevant') lsCls = 'bg-dark text-white';
                             else if (item.lead_status === 'Cold' || item.lead_status === 'Not Interested' || item.lead_status === "Don't Call Again") lsCls = 'bg-secondary text-white';
-                            lsBadge = `<span class="badge ${lsCls} px-2 py-1">${escapeHtml(item.lead_status)}</span>`;
+                            lsBadge = `<span class="badge ${lsCls} px-2 py-1">${escapeHtml(item.lead_status)}</span>${extraLoc}`;
                         }
 
                         let fuStatusBadge = '<span class="badge bg-warning text-dark">Pending</span>';
@@ -636,9 +665,17 @@ document.addEventListener('DOMContentLoaded', function() {
         loadFlatsForProject(projectId, null);
     });
 
-    // Handle Lead Transferred toggle & No Response requirement
+    // Handle Lead Transferred toggle & No Response requirement & Interested in Other Location
     $('#createModalLeadStatus').on('change', function() {
         syncNoResponseNextDateRequirement();
+        if (this.value === 'Interested in Other Location') {
+            $('#createModalInterestedLocationDiv').show();
+            $('#createModalInterestedLocationName').prop('required', true);
+        } else {
+            $('#createModalInterestedLocationDiv').hide();
+            $('#createModalInterestedLocationName').prop('required', false).val('');
+        }
+
         if (this.value === 'Lead Transferred') {
             $('#createModalReassignTeamDiv').show();
             $('#createModalReassignTeamId').prop('required', false);
@@ -678,6 +715,14 @@ document.addEventListener('DOMContentLoaded', function() {
         $('#createFollowUpForm input[name="follow_up_time"]').val(fTime);
         $('#createFollowUpForm select[name="follow_up_type"]').val(item.follow_up_type || '');
         $('#createModalLeadStatus').val(item.lead_status || '');
+
+        if (item.lead_status === 'Interested in Other Location') {
+            $('#createModalInterestedLocationDiv').show();
+            $('#createModalInterestedLocationName').prop('required', true).val(item.interested_location_name || '');
+        } else {
+            $('#createModalInterestedLocationDiv').hide();
+            $('#createModalInterestedLocationName').prop('required', false).val('');
+        }
 
         if (item.lead_status === 'Lead Transferred') {
             $('#createModalReassignTeamDiv').show();
