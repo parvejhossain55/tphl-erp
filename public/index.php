@@ -8,12 +8,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // =========================================================================
 $maintenance_mode = false; 
 
-// আপনি নিজে লাইভে কাজ বা টেস্ট করার জন্য ?bypass=tphl দিলে মেইনটেন্যান্স বাইপাস হবে
-if (isset($_GET['bypass']) && $_GET['bypass'] === 'tphl') {
-    $_SESSION['maintenance_bypass'] = true;
-}
-
-if ($maintenance_mode && empty($_SESSION['maintenance_bypass'])) {
+if ($maintenance_mode) {
     http_response_code(503);
     $maintenancePage = __DIR__ . '/maintenance.html';
     if (file_exists($maintenancePage)) {
