@@ -104,17 +104,17 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
 
     <!-- TIER 1: ADMIN & OPERATION HEAD STAGE (DISPLAYED FOR REQUESTS > ৳10,000 OR VENDOR/CONTRACTOR BILLS) -->
     <?php if ($requiresOpHeadStage): ?>
-    <div class="card border shadow-sm mb-3" id="operationHeadApprovalCard" style="border-radius: 10px; overflow: hidden;">
-        <div class="card-header d-flex flex-wrap align-items-center justify-content-between py-2 px-3 <?= $isOpHeadApproved ? 'bg-success-subtle border-success-subtle' : ($isOpHeadRejected ? 'bg-danger-subtle border-danger-subtle' : 'bg-warning-subtle border-warning-subtle') ?>">
-            <div class="d-flex align-items-center gap-2">
-                <span class="badge bg-dark text-white rounded-pill px-2 py-1 extra-small fw-bold">
+    <div class="card border shadow-sm mb-3" id="operationHeadApprovalCard" style="border-radius: 12px; overflow: hidden;">
+        <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2 py-2.5 px-4 <?= $isOpHeadApproved ? 'bg-success-subtle border-success-subtle' : ($isOpHeadRejected ? 'bg-danger-subtle border-danger-subtle' : 'bg-warning-subtle border-warning-subtle') ?>" style="padding-top: 10px; padding-bottom: 10px;">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <span class="badge bg-dark text-white rounded-pill px-2.5 py-1 extra-small fw-bold">
                     <i class="fa-solid fa-layer-group me-1"></i><?= $isOver1Lac ? 'Step 1 of 3 (> ৳10,000 Flow)' : 'Operation Head Approval (≤ ৳10,000 Flow)' ?>
                 </span>
                 <?php if ($isOpHeadApproved): ?>
                     <span class="badge bg-success text-white rounded-pill px-3 py-1 extra-small fw-bold">
                         <i class="fa-solid fa-circle-check me-1"></i>Operation Head Approved
                     </span>
-                    <span class="text-success extra-small fw-semibold">Forwarded to Accounts Head (Role 30)</span>
+                    <span class="text-success extra-small fw-semibold ms-1">Forwarded to Accounts Head (Role 30)</span>
                 <?php elseif ($isOpHeadRejected): ?>
                     <span class="badge bg-danger text-white rounded-pill px-3 py-1 extra-small fw-bold">
                         <i class="fa-solid fa-circle-xmark me-1"></i>Rejected by Operation Head
@@ -123,7 +123,7 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
                     <span class="badge bg-secondary text-white rounded-pill px-3 py-1 extra-small fw-bold">
                         <i class="fa-solid fa-forward me-1"></i>Op Head Step Bypassed
                     </span>
-                    <span class="text-muted extra-small fw-semibold">Management approved directly (legacy)</span>
+                    <span class="text-muted extra-small fw-semibold ms-1">Management approved directly (legacy)</span>
                 <?php elseif (!$isReadyForOpHead): ?>
                     <span class="badge bg-secondary text-white rounded-pill px-3 py-1 extra-small fw-bold">
                         <i class="fa-solid fa-lock me-1"></i>Locked — Awaiting QC &amp; Purchase Head
@@ -132,35 +132,35 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
                     <span class="badge bg-warning text-dark rounded-pill px-3 py-1 extra-small fw-bold">
                         <i class="fa-solid fa-clock me-1"></i>Pending Admin & Operation Head Approval
                     </span>
-                    <span class="text-danger extra-small fw-semibold">Mandatory Step before Accounts Head<?= $isOver1Lac ? ' &amp; Management' : '' ?></span>
+                    <span class="text-danger extra-small fw-semibold ms-1">Mandatory Step before Accounts Head<?= $isOver1Lac ? ' &amp; Management' : '' ?></span>
                 <?php endif; ?>
             </div>
             <div class="extra-small text-muted">
-                Amount: <strong>৳<?= number_format($reqAmount, 2) ?> (<?= $isOver1Lac ? '&gt; ৳10,000' : '&le; ৳10,000' ?>)</strong>
+                Amount: <strong class="text-dark">৳<?= number_format($reqAmount, 2) ?> (<?= $isOver1Lac ? '&gt; ৳10,000' : '&le; ৳10,000' ?>)</strong>
             </div>
         </div>
 
-        <div class="card-body p-3">
-            <div class="row align-items-center">
+        <div class="card-body py-3 px-4">
+            <div class="row align-items-center g-3">
                 <!-- Info Column -->
-                <div class="col-md-7 col-12 mb-2 mb-md-0">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 <?= $isOpHeadApproved ? 'bg-success text-white' : ($isOpHeadRejected ? 'bg-danger text-white' : 'bg-warning text-dark') ?>" style="width: 44px; height: 44px; font-size: 18px;">
+                <div class="col-md-7 col-12">
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 mt-1 <?= $isOpHeadApproved ? 'bg-success text-white' : ($isOpHeadRejected ? 'bg-danger text-white' : 'bg-warning text-dark') ?>" style="width: 46px; height: 46px; font-size: 18px;">
                             <i class="fa-solid <?= $isOpHeadApproved ? 'fa-user-check' : ($isOpHeadRejected ? 'fa-user-xmark' : 'fa-user-shield') ?>"></i>
                         </div>
-                        <div>
-                            <div class="extra-small text-muted text-uppercase fw-bold">
+                        <div class="lh-base">
+                            <div class="extra-small text-muted text-uppercase fw-bold mb-1" style="letter-spacing: 0.3px;">
                                 <?= $isOpHeadApproved ? 'Approved By Admin & Operation Head' : ($isOpHeadRejected ? 'Rejected By Admin & Operation Head' : 'Designated Approver (Role 20 / 32)') ?>
                             </div>
-                            <div class="fw-bold text-dark fs-14">
-                                <?= htmlspecialchars($isOpHeadApproved ? $opHeadName : 'Admin & Operation Head') ?>
+                            <div class="fw-bold text-dark fs-14 mb-1 d-flex align-items-center flex-wrap gap-1">
+                                <span><?= htmlspecialchars($isOpHeadApproved ? $opHeadName : 'Admin & Operation Head') ?></span>
                                 <?php if (!empty($opHeadCode)): ?>
                                     <span class="badge bg-light text-secondary border extra-small ms-1">
                                         ID: <?= htmlspecialchars($opHeadCode) ?>
                                     </span>
                                 <?php endif; ?>
                             </div>
-                            <div class="extra-small text-muted">
+                            <div class="extra-small text-muted mb-1">
                                 <?= htmlspecialchars($opHeadDesig) ?>
                             </div>
                             <?php if ($isOpHeadApproved && $opHeadApprovedAt): ?>
@@ -180,8 +180,8 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
                 <!-- Action Column -->
                 <div class="col-md-5 col-12 text-md-end text-start">
                     <?php if (!$isReadyForOpHead && !$isOpHeadApproved && !$isOpHeadRejected): ?>
-                        <div class="p-2 bg-light rounded border text-start d-inline-block">
-                            <div class="extra-small text-muted fw-bold">
+                        <div class="p-2.5 px-3 bg-light rounded-2 border text-start d-inline-block">
+                            <div class="extra-small text-muted fw-bold mb-0.5">
                                 <i class="fa-solid fa-lock text-warning me-1"></i>Awaiting Previous Approvals
                             </div>
                             <div class="extra-small text-secondary">
@@ -199,8 +199,8 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
                                 </button>
                             </div>
                         <?php elseif ($isManagementUser): ?>
-                            <div class="p-2 bg-warning-subtle rounded border border-warning text-start d-inline-block">
-                                <div class="extra-small text-dark fw-bold">
+                            <div class="p-2.5 px-3 bg-warning-subtle rounded-2 border border-warning text-start d-inline-block">
+                                <div class="extra-small text-dark fw-bold mb-0.5">
                                     <i class="fa-solid fa-shield-halved text-warning me-1"></i>Pending Operation Head Approval
                                 </div>
                                 <div class="extra-small text-secondary">
@@ -217,7 +217,7 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
                             <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2 extra-small fw-bold">
                                 <i class="fa-solid fa-check-double me-1"></i>Step Completed
                             </span>
-                            <div class="extra-small text-muted mt-1">
+                            <div class="extra-small text-muted mt-1.5">
                                 Forwarded to Accounts Head (Role 30) for payment verification
                             </div>
                         </div>
@@ -232,7 +232,7 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
                             <span class="badge bg-secondary-subtle text-secondary border rounded-pill px-3 py-2 extra-small fw-bold">
                                 <i class="fa-solid fa-forward me-1"></i>Not Required Anymore
                             </span>
-                            <div class="extra-small text-muted mt-1">
+                            <div class="extra-small text-muted mt-1.5">
                                 Management already approved &mdash; forwarded to Accounts Head
                             </div>
                         </div>
@@ -244,15 +244,15 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
     <?php endif; ?>
 
     <!-- TIER 2: ACCOUNTS HEAD APPROVAL CARD (MANDATORY BEFORE PAYMENT DISBURSEMENT) -->
-    <div class="card border shadow-sm mb-4" id="accountsHeadApprovalCard" style="border-radius: 10px; overflow: hidden;">
-        <div class="card-header d-flex flex-wrap align-items-center justify-content-between py-2 px-3 <?= $isAhApproved ? 'bg-success-subtle border-success-subtle' : ($isAhRejected ? 'bg-danger-subtle border-danger-subtle' : 'bg-warning-subtle border-warning-subtle') ?>">
-            <div class="d-flex align-items-center gap-2">
+    <div class="card border shadow-sm mb-4" id="accountsHeadApprovalCard" style="border-radius: 12px; overflow: hidden;">
+        <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2 py-2.5 px-4 <?= $isAhApproved ? 'bg-success-subtle border-success-subtle' : ($isAhRejected ? 'bg-danger-subtle border-danger-subtle' : 'bg-warning-subtle border-warning-subtle') ?>" style="padding-top: 10px; padding-bottom: 10px;">
+            <div class="d-flex flex-wrap align-items-center gap-2">
                 <?php if ($isOver1Lac): ?>
-                    <span class="badge bg-dark text-white rounded-pill px-2 py-1 extra-small fw-bold">
+                    <span class="badge bg-dark text-white rounded-pill px-2.5 py-1 extra-small fw-bold">
                         <i class="fa-solid fa-layer-group me-1"></i>Step 2 of 3 (Verification &amp; Approval before Management)
                     </span>
                 <?php else: ?>
-                    <span class="badge bg-secondary text-white rounded-pill px-2 py-1 extra-small fw-bold">
+                    <span class="badge bg-secondary text-white rounded-pill px-2.5 py-1 extra-small fw-bold">
                         <i class="fa-solid fa-shield-halved me-1"></i>Payment Approval (≤ ৳10,000)
                     </span>
                 <?php endif; ?>
@@ -262,9 +262,9 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
                         <i class="fa-solid fa-circle-check me-1"></i>Accounts Head Approved
                     </span>
                     <?php if ($isOver1Lac && !$ahInfo['is_mgmt_approved']): ?>
-                        <span class="text-primary extra-small fw-semibold">Forwarded to Management (Role 1/3) for Sign-off</span>
+                        <span class="text-primary extra-small fw-semibold ms-1">Forwarded to Management (Role 1/3) for Sign-off</span>
                     <?php else: ?>
-                        <span class="text-success extra-small fw-semibold">Payment Disbursable by Accounts (Role 6)</span>
+                        <span class="text-success extra-small fw-semibold ms-1">Payment Disbursable by Accounts (Role 6)</span>
                     <?php endif; ?>
                 <?php elseif ($isAhRejected): ?>
                     <span class="badge bg-danger text-white rounded-pill px-3 py-1 extra-small fw-bold">
@@ -274,33 +274,33 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
                     <span class="badge bg-warning text-dark rounded-pill px-3 py-1 extra-small fw-bold">
                         <i class="fa-solid fa-clock me-1"></i>Pending Accounts Head Approval
                     </span>
-                    <span class="text-dark extra-small fw-semibold">Accounts Payment Locked Pending Sign-off</span>
+                    <span class="text-dark extra-small fw-semibold ms-1">Accounts Payment Locked Pending Sign-off</span>
                 <?php endif; ?>
             </div>
             <div class="extra-small text-muted">
-                Designated: <strong><?= htmlspecialchars($designatedName) ?> [<?= htmlspecialchars($designatedEmpId) ?>]</strong>
+                Designated: <strong class="text-dark"><?= htmlspecialchars($designatedName) ?> [<?= htmlspecialchars($designatedEmpId) ?>]</strong>
             </div>
         </div>
 
-        <div class="card-body p-3">
-            <div class="row align-items-center">
+        <div class="card-body py-3 px-4">
+            <div class="row align-items-center g-3">
                 <!-- Official Info Column -->
-                <div class="col-md-7 col-12 mb-2 mb-md-0">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 <?= $isAhApproved ? 'bg-success text-white' : ($isAhRejected ? 'bg-danger text-white' : 'bg-warning text-dark') ?>" style="width: 44px; height: 44px; font-size: 18px;">
+                <div class="col-md-7 col-12">
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 mt-1 <?= $isAhApproved ? 'bg-success text-white' : ($isAhRejected ? 'bg-danger text-white' : 'bg-warning text-dark') ?>" style="width: 46px; height: 46px; font-size: 18px;">
                             <i class="fa-solid <?= $isAhApproved ? 'fa-user-check' : ($isAhRejected ? 'fa-user-xmark' : 'fa-user-shield') ?>"></i>
                         </div>
-                        <div>
-                            <div class="extra-small text-muted text-uppercase fw-bold">
+                        <div class="lh-base">
+                            <div class="extra-small text-muted text-uppercase fw-bold mb-1" style="letter-spacing: 0.3px;">
                                 <?= $isAhApproved ? 'Approved By Accounts Head' : ($isAhRejected ? 'Rejected By Accounts Head' : 'Designated Accounts Head Approver') ?>
                             </div>
-                            <div class="fw-bold text-dark fs-14">
-                                <?= htmlspecialchars($isAhApproved ? $ahApproverName : $designatedName) ?>
+                            <div class="fw-bold text-dark fs-14 mb-1 d-flex align-items-center flex-wrap gap-1">
+                                <span><?= htmlspecialchars($isAhApproved ? $ahApproverName : $designatedName) ?></span>
                                 <span class="badge bg-light text-secondary border extra-small ms-1">
                                     ID: <?= htmlspecialchars($isAhApproved ? $ahApproverEmpId : $designatedEmpId) ?>
                                 </span>
                             </div>
-                            <div class="extra-small text-muted">
+                            <div class="extra-small text-muted mb-1">
                                 <?= htmlspecialchars($isAhApproved ? $ahApproverDesig : $designatedDesig) ?>
                             </div>
                             <?php if ($isAhApproved && $ahApprovedAt): ?>
@@ -320,8 +320,8 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
                 <!-- Action / Status Notice Column -->
                 <div class="col-md-5 col-12 text-md-end text-start">
                     <?php if ($requiresOpHeadStage && !$isOpHeadApproved && !$isOpHeadBypassed): ?>
-                        <div class="p-2 bg-light rounded border text-start d-inline-block">
-                            <div class="extra-small text-muted fw-bold">
+                        <div class="p-2.5 px-3 bg-light rounded-2 border text-start d-inline-block">
+                            <div class="extra-small text-muted fw-bold mb-0.5">
                                 <i class="fa-solid fa-lock text-warning me-1"></i>Awaiting Previous Approvals
                             </div>
                             <div class="extra-small text-secondary">
@@ -339,8 +339,8 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
                                 </button>
                             </div>
                         <?php elseif ($isAccountsStaffUser): ?>
-                            <div class="p-2 bg-light rounded border text-start d-inline-block">
-                                <div class="extra-small text-muted fw-bold">
+                            <div class="p-2.5 px-3 bg-light rounded-2 border text-start d-inline-block">
+                                <div class="extra-small text-muted fw-bold mb-0.5">
                                     <i class="fa-solid fa-lock text-warning me-1"></i>Awaiting Accounts Head Sign-off
                                 </div>
                                 <div class="extra-small text-secondary">
@@ -358,14 +358,14 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
                                 <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-2 extra-small fw-bold">
                                     <i class="fa-solid fa-check-double me-1"></i>Step 2 Completed
                                 </span>
-                                <div class="extra-small text-muted mt-1">
+                                <div class="extra-small text-muted mt-1.5">
                                     Forwarded to Management (Role 1/3) for Executive Approval
                                 </div>
                             <?php else: ?>
                                 <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2 extra-small fw-bold">
                                     <i class="fa-solid fa-check-double me-1"></i>Payment Authorized
                                 </span>
-                                <div class="extra-small text-muted mt-1">
+                                <div class="extra-small text-muted mt-1.5">
                                     Disbursement permitted by Role 6 &amp; 30
                                 </div>
                             <?php endif; ?>
