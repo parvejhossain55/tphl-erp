@@ -64,6 +64,9 @@ $canUserApproveAccountsHead = $isAccountsHeadUser || ($currentUserRoleId === 1);
 $canUserApproveOpHead = $isOpHeadUser || in_array($currentUserRoleId, [1, 3], true);
 
 $isOver1Lac = !empty($ahInfo['is_over_1lac']);
+$isVprOrCbrCard = in_array(strtolower($sourceTable ?? ''), ['vendor_payment_requests', 'contractor_bill_requests'], true);
+$requiresOpHeadStage = ($isOver1Lac || $isVprOrCbrCard) && ($sourceTable ?? '') !== 'payslips';
+$isReadyForOpHead = isset($ahInfo['is_ready_for_op_head']) ? (bool)$ahInfo['is_ready_for_op_head'] : true;
 $reqAmount = (float)($ahInfo['request_amount'] ?? 0);
 $reqStatus = strtolower($ahInfo['status'] ?? 'pending');
 
@@ -99,13 +102,13 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
 
 <?php if ($renderCard): ?>
 
-    <!-- TIER 1: ADMIN & OPERATION HEAD STAGE (DISPLAYED FOR REQUESTS > ৳10,000) -->
-    <?php if ($isOver1Lac && ($sourceTable ?? '') !== 'payslips'): ?>
+    <!-- TIER 1: ADMIN & OPERATION HEAD STAGE (DISPLAYED FOR REQUESTS > ৳10,000 OR VENDOR/CONTRACTOR BILLS) -->
+    <?php if ($requiresOpHeadStage): ?>
     <div class="card border shadow-sm mb-3" id="operationHeadApprovalCard" style="border-radius: 10px; overflow: hidden;">
         <div class="card-header d-flex flex-wrap align-items-center justify-content-between py-2 px-3 <?= $isOpHeadApproved ? 'bg-success-subtle border-success-subtle' : ($isOpHeadRejected ? 'bg-danger-subtle border-danger-subtle' : 'bg-warning-subtle border-warning-subtle') ?>">
             <div class="d-flex align-items-center gap-2">
                 <span class="badge bg-dark text-white rounded-pill px-2 py-1 extra-small fw-bold">
-                    <i class="fa-solid fa-layer-group me-1"></i>Step 1 of 3 (> ৳10,000 Flow)
+                    <i class="fa-solid fa-layer-group me-1"></i><?= $isOver1Lac ? 'Step 1 of 3 (> ৳10,000 Flow)' : 'Operation Head Approval (≤ ৳10,000 Flow)' ?>
                 </span>
                 <?php if ($isOpHeadApproved): ?>
                     <span class="badge bg-success text-white rounded-pill px-3 py-1 extra-small fw-bold">
@@ -121,15 +124,19 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
                         <i class="fa-solid fa-forward me-1"></i>Op Head Step Bypassed
                     </span>
                     <span class="text-muted extra-small fw-semibold">Management approved directly (legacy)</span>
+                <?php elseif (!$isReadyForOpHead): ?>
+                    <span class="badge bg-secondary text-white rounded-pill px-3 py-1 extra-small fw-bold">
+                        <i class="fa-solid fa-lock me-1"></i>Locked — Awaiting QC &amp; Purchase Head
+                    </span>
                 <?php else: ?>
                     <span class="badge bg-warning text-dark rounded-pill px-3 py-1 extra-small fw-bold">
                         <i class="fa-solid fa-clock me-1"></i>Pending Admin & Operation Head Approval
                     </span>
-                    <span class="text-danger extra-small fw-semibold">Mandatory Step before Accounts Head &amp; Management</span>
+                    <span class="text-danger extra-small fw-semibold">Mandatory Step before Accounts Head<?= $isOver1Lac ? ' &amp; Management' : '' ?></span>
                 <?php endif; ?>
             </div>
             <div class="extra-small text-muted">
-                Threshold: <strong>৳<?= number_format($reqAmount, 2) ?> (&gt; ৳10,000)</strong>
+                Amount: <strong>৳<?= number_format($reqAmount, 2) ?> (<?= $isOver1Lac ? '&gt; ৳10,000' : '&le; ৳10,000' ?>)</strong>
             </div>
         </div>
 
@@ -172,7 +179,16 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
 
                 <!-- Action Column -->
                 <div class="col-md-5 col-12 text-md-end text-start">
-                    <?php if ($isOpHeadPending): ?>
+                    <?php if (!$isReadyForOpHead && !$isOpHeadApproved && !$isOpHeadRejected): ?>
+                        <div class="p-2 bg-light rounded border text-start d-inline-block">
+                            <div class="extra-small text-muted fw-bold">
+                                <i class="fa-solid fa-lock text-warning me-1"></i>Awaiting Previous Approvals
+                            </div>
+                            <div class="extra-small text-secondary">
+                                Requires Head of Purchase &amp; QC Audit approval before Operation Head stage unlocks.
+                            </div>
+                        </div>
+                    <?php elseif ($isOpHeadPending): ?>
                         <?php if ($isOpHeadUser): ?>
                             <div class="d-flex flex-wrap gap-2 justify-content-md-end align-items-center">
                                 <button type="button" class="btn btn-outline-danger btn-sm px-3 fw-semibold" onclick="triggerOpHeadReject(<?= (int)$ahInfo['approval_request_id'] ?>)">
@@ -185,10 +201,10 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
                         <?php elseif ($isManagementUser): ?>
                             <div class="p-2 bg-warning-subtle rounded border border-warning text-start d-inline-block">
                                 <div class="extra-small text-dark fw-bold">
-                                    <i class="fa-solid fa-lock text-warning me-1"></i>Management Step Locked
+                                    <i class="fa-solid fa-shield-halved text-warning me-1"></i>Pending Operation Head Approval
                                 </div>
                                 <div class="extra-small text-secondary">
-                                    Requests over ৳10,000 require Admin &amp; Operation Head (Role 20) and Accounts Head (Role 30) sign-off first.
+                                    Awaiting Admin &amp; Operation Head (Role 20) sign-off (or use Management Override below).
                                 </div>
                             </div>
                         <?php else: ?>
@@ -199,7 +215,7 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
                     <?php elseif ($isOpHeadApproved): ?>
                         <div class="text-md-end text-start">
                             <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2 extra-small fw-bold">
-                                <i class="fa-solid fa-check-double me-1"></i>Step 1 Completed
+                                <i class="fa-solid fa-check-double me-1"></i>Step Completed
                             </span>
                             <div class="extra-small text-muted mt-1">
                                 Forwarded to Accounts Head (Role 30) for payment verification
@@ -303,7 +319,7 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
 
                 <!-- Action / Status Notice Column -->
                 <div class="col-md-5 col-12 text-md-end text-start">
-                    <?php if ($isOver1Lac && ($sourceTable ?? '') !== 'payslips' && !$isOpHeadApproved && !$isOpHeadBypassed): ?>
+                    <?php if ($requiresOpHeadStage && !$isOpHeadApproved && !$isOpHeadBypassed): ?>
                         <div class="p-2 bg-light rounded border text-start d-inline-block">
                             <div class="extra-small text-muted fw-bold">
                                 <i class="fa-solid fa-lock text-warning me-1"></i>Awaiting Previous Approvals

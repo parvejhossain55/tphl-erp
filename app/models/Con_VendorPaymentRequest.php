@@ -9,6 +9,67 @@ class Con_VendorPaymentRequest extends Model
         parent::__construct($db);
         $this->db = $db ?? $GLOBALS['db'];
         $this->ensureDocumentsTable();
+        $this->ensurePurchaseApprovalColumns();
+    }
+
+    /**
+     * Ensure Purchase Team Leader & Purchase Head approval columns exist on vendor_payment_requests
+     */
+    public function ensurePurchaseApprovalColumns()
+    {
+        static $checked = false;
+        if ($checked || !$this->db) {
+            return;
+        }
+        $checked = true;
+
+        $colCheck = $this->db->query("SHOW COLUMNS FROM `{$this->table}` LIKE 'purchase_head_approved_by_id'");
+        if (!$colCheck || $colCheck->num_rows === 0) {
+            @$this->db->query("ALTER TABLE `{$this->table}` 
+                ADD COLUMN `purchase_team_leader_by_id` INT(11) DEFAULT NULL AFTER `created_by`,
+                ADD COLUMN `purchase_team_leader_at` DATETIME DEFAULT NULL AFTER `purchase_team_leader_by_id`,
+                ADD COLUMN `purchase_team_leader_note` TEXT DEFAULT NULL AFTER `purchase_team_leader_at`,
+                ADD COLUMN `purchase_head_approved_by_id` INT(11) DEFAULT NULL AFTER `purchase_team_leader_note`,
+                ADD COLUMN `purchase_head_approved_at` DATETIME DEFAULT NULL AFTER `purchase_head_approved_by_id`,
+                ADD COLUMN `purchase_head_note` TEXT DEFAULT NULL AFTER `purchase_head_approved_at`");
+
+            // Auto-clear Purchase Head step for bills submitted directly by Purchase Head (Role 17) or Management (Role 1, 3)
+            @$this->db->query("
+                UPDATE `{$this->table}` pr
+                INNER JOIN `users` u ON u.id = pr.created_by
+                SET pr.purchase_head_approved_by_id = pr.created_by,
+                    pr.purchase_head_approved_at = pr.created_at,
+                    pr.purchase_head_note = 'Auto-approved upon submission by Head of Purchase / Management'
+                WHERE pr.purchase_head_approved_by_id IS NULL
+                  AND u.role_id IN (1, 3, 17)
+            ");
+
+            // Auto-mark Team Leader review for bills submitted by Team Leader (Role 31)
+            @$this->db->query("
+                UPDATE `{$this->table}` pr
+                INNER JOIN `users` u ON u.id = pr.created_by
+                SET pr.purchase_team_leader_by_id = pr.created_by,
+                    pr.purchase_team_leader_at = pr.created_at,
+                    pr.purchase_team_leader_note = 'Submitted by Purchase Team Leader'
+                WHERE pr.purchase_team_leader_by_id IS NULL
+                  AND u.role_id = 31
+            ");
+
+            // Route currently pending Submitted bills (without Purchase Head approval) to purchase_head in approval_requests
+            @$this->db->query("
+                UPDATE `approval_requests` ar
+                INNER JOIN `{$this->table}` pr ON pr.id = ar.source_id AND ar.source_table = 'vendor_payment_requests'
+                SET ar.approve_role = 'purchase_head'
+                WHERE pr.status = 'Submitted'
+                  AND pr.purchase_head_approved_by_id IS NULL
+                  AND ar.status = 'pending'
+            ");
+        }
+
+        $accColCheck = $this->db->query("SHOW COLUMNS FROM `{$this->table}` LIKE 'account_id'");
+        if (!$accColCheck || $accColCheck->num_rows === 0) {
+            @$this->db->query("ALTER TABLE `{$this->table}` ADD COLUMN `account_id` INT(11) DEFAULT NULL");
+        }
     }
 
     /**
@@ -50,6 +111,9 @@ class Con_VendorPaymentRequest extends Model
                        p.name       AS project_name,
                        po.id        AS po_number,
                        u.full_name  AS created_by_name,
+                       u.role_id    AS created_by_role_id,
+                       ptl.full_name AS purchase_team_leader_by_name,
+                       ph.full_name AS purchase_head_approved_by_name,
                        ab.full_name AS approved_by_name,
                        ab_r.name    AS approved_by_role,
                        qc.full_name AS qc_approved_by_name,
@@ -61,6 +125,8 @@ class Con_VendorPaymentRequest extends Model
                 LEFT JOIN projects p         ON p.id  = pr.project_id
                 LEFT JOIN purchase_orders po ON po.id = pr.purchase_order_id
                 LEFT JOIN users u            ON u.id  = pr.created_by
+                LEFT JOIN users ptl          ON ptl.id = pr.purchase_team_leader_by_id
+                LEFT JOIN users ph           ON ph.id = pr.purchase_head_approved_by_id
                 LEFT JOIN users ab           ON ab.id = pr.approved_by
                 LEFT JOIN roles ab_r         ON ab_r.id = ab.role_id
                 LEFT JOIN users qc           ON qc.id = pr.qc_approved_by_id
@@ -120,8 +186,10 @@ class Con_VendorPaymentRequest extends Model
             $st = trim($filters['status']);
             if ($st === 'pending' || $st === 'all_pending') {
                 $whereClauses[] = "pr.status IN ('Submitted', 'QC Approved')";
+            } elseif ($st === 'pending_purchase_head') {
+                $whereClauses[] = "pr.status = 'Submitted' AND pr.purchase_head_approved_by_id IS NULL";
             } elseif ($st === 'pending_qc') {
-                $whereClauses[] = "pr.status = 'Submitted'";
+                $whereClauses[] = "pr.status = 'Submitted' AND pr.purchase_head_approved_by_id IS NOT NULL";
             } elseif ($st === 'pending_apex' || $st === 'pending_mgmt') {
                 $whereClauses[] = "pr.status = 'QC Approved'";
             } elseif ($st === 'ready_to_pay' || $st === 'partially_paid') {
@@ -231,7 +299,8 @@ class Con_VendorPaymentRequest extends Model
 
         $sql = "SELECT 
                     COUNT(*) as total,
-                    SUM(CASE WHEN status = 'Submitted' THEN 1 ELSE 0 END) as pending_qc,
+                    SUM(CASE WHEN status = 'Submitted' AND purchase_head_approved_by_id IS NULL THEN 1 ELSE 0 END) as pending_purchase_head,
+                    SUM(CASE WHEN status = 'Submitted' AND purchase_head_approved_by_id IS NOT NULL THEN 1 ELSE 0 END) as pending_qc,
                     SUM(CASE WHEN status = 'QC Approved' THEN 1 ELSE 0 END) as pending_apex,
                     SUM(CASE WHEN status = 'Approved' THEN 1 ELSE 0 END) as apex_approved,
                     SUM(CASE WHEN status = 'Approved' THEN 1 ELSE 0 END) as newly_approved, 
@@ -243,15 +312,16 @@ class Con_VendorPaymentRequest extends Model
 
         $res = $this->db->query($sql);
         return $res ? $res->fetch_assoc() : [
-            'total'          => 0,
-            'pending_qc'     => 0,
-            'pending_apex'   => 0,
-            'newly_approved' => 0,
-            'apex_approved'  => 0,
-            'ready_to_pay'   => 0,
-            'partially_paid' => 0,
-            'fully_paid'     => 0,
-            'rejected'       => 0
+            'total'                 => 0,
+            'pending_purchase_head' => 0,
+            'pending_qc'            => 0,
+            'pending_apex'          => 0,
+            'newly_approved'        => 0,
+            'apex_approved'         => 0,
+            'ready_to_pay'          => 0,
+            'partially_paid'        => 0,
+            'fully_paid'            => 0,
+            'rejected'              => 0
         ];
     }
 
@@ -274,21 +344,26 @@ class Con_VendorPaymentRequest extends Model
     {
         $stmt = $this->db->prepare(
             "SELECT pr.*,
-                    v.name       AS vendor_name,
-                    p.name       AS project_name,
-                    po.id        AS po_number,
-                    u.full_name  AS created_by_name,
-                    ab.full_name AS approved_by_name,
-                    ab_r.name    AS approved_by_role,
-                    qc.full_name AS qc_approved_by_name
+                    v.name        AS vendor_name,
+                    p.name        AS project_name,
+                    po.id         AS po_number,
+                    u.full_name   AS created_by_name,
+                    u.role_id     AS created_by_role_id,
+                    ptl.full_name AS purchase_team_leader_by_name,
+                    ph.full_name  AS purchase_head_approved_by_name,
+                    ab.full_name  AS approved_by_name,
+                    ab_r.name     AS approved_by_role,
+                    qc.full_name  AS qc_approved_by_name
              FROM {$this->table} pr
-             LEFT JOIN vendors v          ON v.id  = pr.vendor_id
-             LEFT JOIN projects p         ON p.id  = pr.project_id
-             LEFT JOIN purchase_orders po ON po.id = pr.purchase_order_id
-             LEFT JOIN users u            ON u.id  = pr.created_by
-             LEFT JOIN users ab           ON ab.id = pr.approved_by
+             LEFT JOIN vendors v          ON v.id   = pr.vendor_id
+             LEFT JOIN projects p         ON p.id   = pr.project_id
+             LEFT JOIN purchase_orders po ON po.id  = pr.purchase_order_id
+             LEFT JOIN users u            ON u.id   = pr.created_by
+             LEFT JOIN users ptl          ON ptl.id = pr.purchase_team_leader_by_id
+             LEFT JOIN users ph           ON ph.id  = pr.purchase_head_approved_by_id
+             LEFT JOIN users ab           ON ab.id  = pr.approved_by
              LEFT JOIN roles ab_r         ON ab_r.id = ab.role_id
-             LEFT JOIN users qc           ON qc.id = pr.qc_approved_by_id
+             LEFT JOIN users qc           ON qc.id  = pr.qc_approved_by_id
              WHERE pr.id = ?"
         );
         $stmt->bind_param('i', $id);
@@ -383,15 +458,16 @@ class Con_VendorPaymentRequest extends Model
 
             // INSERT — matches actual table columns
             $attachmentPath = $data['payment_attachment'] ?? null;
+            $accountId      = !empty($data['account_id']) ? (int)$data['account_id'] : null;
             $stmt = $this->db->prepare(
                 "INSERT INTO {$this->table}
                     (project_id, vendor_id, purchase_order_id, payment_type, invoice_number,
                      invoice_amount, penalty_amount, net_payable_amount, net_payable,
-                     delivery_verified, payment_attachment, status, created_by)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Submitted', ?)"
+                     delivery_verified, payment_attachment, status, created_by, account_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Submitted', ?, ?)"
             );
             $stmt->bind_param(
-                'iiissddddssi',
+                'iiissddddssii',
                 $projectId,
                 $vendorId,
                 $purchaseOrderId,
@@ -403,7 +479,8 @@ class Con_VendorPaymentRequest extends Model
                 $netPayable,      // net_payable (same value)
                 $deliveryVerified,
                 $attachmentPath,
-                $createdBy
+                $createdBy,
+                $accountId
             );
             $stmt->execute();
             $requestId = $this->db->insert_id;
@@ -423,12 +500,111 @@ class Con_VendorPaymentRequest extends Model
                 $updStmt->execute();
             }
 
+            // Auto-handle Purchase Team Leader / Purchase Head step if submitted by Role 31, Role 17, or Management (1, 3)
+            $creatorRoleId = (int)($data['creator_role_id'] ?? ($_SESSION['user']['role_id'] ?? 0));
+            if (in_array($creatorRoleId, [1, 3, 17], true)) {
+                $autoNote = ($creatorRoleId === 17)
+                    ? 'Submitted directly by Head of Purchase'
+                    : 'Submitted directly by Management';
+                $phStmt = $this->db->prepare(
+                    "UPDATE {$this->table}
+                     SET purchase_head_approved_by_id = ?,
+                         purchase_head_approved_at = NOW(),
+                         purchase_head_note = ?
+                     WHERE id = ?"
+                );
+                if ($phStmt) {
+                    $phStmt->bind_param('isi', $createdBy, $autoNote, $requestId);
+                    $phStmt->execute();
+                    $phStmt->close();
+                }
+            } elseif ($creatorRoleId === 31) {
+                $tlNote = 'Submitted by Purchase Team Leader / Sr. Executive';
+                $tlStmt = $this->db->prepare(
+                    "UPDATE {$this->table}
+                     SET purchase_team_leader_by_id = ?,
+                         purchase_team_leader_at = NOW(),
+                         purchase_team_leader_note = ?
+                     WHERE id = ?"
+                );
+                if ($tlStmt) {
+                    $tlStmt->bind_param('isi', $createdBy, $tlNote, $requestId);
+                    $tlStmt->execute();
+                    $tlStmt->close();
+                }
+            }
+
             $this->db->commit();
             return $requestId;
 
         } catch (\Throwable $e) {
             $this->db->rollback();
             error_log("VPR create failed: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // =========================================================================
+    // PURCHASE TEAM LEADER (OPTIONAL REVIEW) & PURCHASE HEAD (MANDATORY)
+    // =========================================================================
+
+    public function reviewPurchaseTeamLeader($id, $userId, $note = '')
+    {
+        $stmt = $this->db->prepare(
+            "UPDATE {$this->table}
+             SET purchase_team_leader_by_id = ?,
+                 purchase_team_leader_at = NOW(),
+                 purchase_team_leader_note = ?
+             WHERE id = ? AND status = 'Submitted'"
+        );
+        if (!$stmt) return false;
+        $stmt->bind_param('isi', $userId, $note, $id);
+        return $stmt->execute();
+    }
+
+    public function approvePurchaseHead($id, $userId, $note = '')
+    {
+        $stmt = $this->db->prepare(
+            "UPDATE {$this->table}
+             SET purchase_head_approved_by_id = ?,
+                 purchase_head_approved_at = NOW(),
+                 purchase_head_note = ?
+             WHERE id = ? AND status = 'Submitted'"
+        );
+        if (!$stmt) return false;
+        $stmt->bind_param('isi', $userId, $note, $id);
+        return $stmt->execute();
+    }
+
+    public function rejectPurchaseHead($id, $userId, $note = '')
+    {
+        $this->db->begin_transaction();
+        try {
+            $stmt = $this->db->prepare(
+                "UPDATE {$this->table}
+                 SET status = 'Rejected',
+                     purchase_head_approved_by_id = ?,
+                     purchase_head_approved_at = NOW(),
+                     purchase_head_note = ?,
+                     management_note = COALESCE(NULLIF(?, ''), management_note)
+                 WHERE id = ? AND status = 'Submitted'"
+            );
+            $stmt->bind_param('issi', $userId, $note, $note, $id);
+            $stmt->execute();
+
+            // Unlink penalties so they can be applied to future requests
+            $updStmt = $this->db->prepare(
+                "UPDATE vendor_penalties
+                 SET payment_request_id = NULL
+                 WHERE payment_request_id = ?"
+            );
+            $updStmt->bind_param('i', $id);
+            $updStmt->execute();
+
+            $this->db->commit();
+            return true;
+        } catch (\Throwable $e) {
+            $this->db->rollback();
             return false;
         }
     }

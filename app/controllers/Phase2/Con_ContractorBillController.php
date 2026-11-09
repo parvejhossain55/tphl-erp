@@ -84,11 +84,40 @@ class Con_ContractorBillController extends Controller
         return $this->canApproveManagement();
     }
 
+    /** Roles that can do Purchase Team Leader Review (Role 31) */
+    private function canReviewTeamLeader()
+    {
+        $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        if (in_array($this->userRole, [33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true)) {
+            return false;
+        }
+        return (
+            in_array($this->userRole, [31, 17, 1, 3], true)
+            || str_contains($roleName, 'purchase team leader')
+            || str_contains($roleName, 'senior purchase')
+            || $this->canApprovePurchaseHead()
+        );
+    }
+
+    /** Roles that can do Purchase Head Approval (Role 17 only + Management 1, 3) */
+    private function canApprovePurchaseHead()
+    {
+        $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        if (in_array($this->userRole, [33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true)) {
+            return false;
+        }
+        return (
+            in_array($this->userRole, [17, 1, 3], true)
+            || str_contains($roleName, 'purchase head')
+            || str_contains($roleName, 'head of purchase')
+        );
+    }
+
     /** QC & Internal Audit role or specific permission check */
     private function canApproveQC()
     {
-        if (in_array($this->userRole, [3, 22, 20, 33, 34, 35])) return false;
-        if (in_array($this->userRole, [1, 24, 25])) return true;
+        if (in_array($this->userRole, [22, 20, 33, 34, 35])) return false;
+        if (in_array($this->userRole, [1, 3, 24, 25])) return true;
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
         if (in_array($this->userRole, [33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true)) return false;
         return (
@@ -336,7 +365,7 @@ class Con_ContractorBillController extends Controller
 
     public function create()
     {
-        if (!hasPermission('Contractor Bill') && !in_array($this->userRole, [1, 3, 33, 17, 23, 31, 20, 32, 12, 6, 30])) {
+        if (!hasPermission('Contractor Bill') && !in_array($this->userRole, [1, 3, 33, 15, 16, 22, 17, 23, 31, 20, 32, 12, 6, 30])) {
             setError('You do not have permission to create contractor bills.');
             header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
             exit;
@@ -363,11 +392,14 @@ class Con_ContractorBillController extends Controller
 
     public function store()
     {
-        if (!hasPermission('Contractor Bill') && !in_array($this->userRole, [1, 3, 33, 17, 23, 31, 20, 32, 12, 6, 30])) {
+        if (!hasPermission('Contractor Bill') && !in_array($this->userRole, [1, 3, 33, 15, 16, 22, 17, 23, 31, 20, 32, 12, 6, 30])) {
             setError('You do not have permission to create contractor bills.');
             header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
             exit;
         }
+        $creatorRole = (int)$this->userRole;
+        $initialStatus = in_array($creatorRole, [1, 3, 15, 22, 17, 23, 31], true) ? 'verified' : 'submitted';
+
         $data = [
             'project_id'       => $_POST['project_id'] ?? null,
             'operator_id'      => $_POST['operator_id'] ?? null,
@@ -378,7 +410,7 @@ class Con_ContractorBillController extends Controller
             'work_description' => trim($_POST['work_description'] ?? ''),
             'bill_amount'      => $_POST['bill_amount'] ?? 0,
             'attachment_path'  => null,
-            'status'           => 'submitted',
+            'status'           => $initialStatus,
             'created_by'       => $this->userId,
             'account_id'       => !empty($_POST['account_id']) ? (int)$_POST['account_id'] : null,
         ];
@@ -459,6 +491,21 @@ class Con_ContractorBillController extends Controller
         $billId = $this->billModel->create($data);
 
         if ($billId) {
+            // Auto-populate verification/purchase columns based on submitter's role
+            if (in_array($creatorRole, [1, 3, 17], true)) {
+                $this->db->query("UPDATE contractor_bill_requests SET verified_by = {$this->userId}, verified_at = NOW(), verification_note = 'Auto-verified upon submission', purchase_head_approved_by_id = {$this->userId}, purchase_head_approved_at = NOW(), purchase_head_note = 'Submitted directly by Head of Purchase / Management' WHERE id = " . (int)$billId);
+                $initialApproveRole = 'qc';
+            } elseif ($creatorRole === 31) {
+                $this->db->query("UPDATE contractor_bill_requests SET verified_by = {$this->userId}, verified_at = NOW(), verification_note = 'Submitted by Purchase Team Leader', purchase_team_leader_by_id = {$this->userId}, purchase_team_leader_at = NOW(), purchase_team_leader_note = 'Submitted by Purchase Team Leader' WHERE id = " . (int)$billId);
+                $initialApproveRole = 'purchase_head';
+            } elseif (in_array($creatorRole, [15, 22, 23], true)) {
+                $vNote = in_array($creatorRole, [15, 22], true) ? 'Submitted directly by Project Manager' : 'Submitted by Purchase Executive';
+                $this->db->query("UPDATE contractor_bill_requests SET verified_by = {$this->userId}, verified_at = NOW(), verification_note = '{$vNote}' WHERE id = " . (int)$billId);
+                $initialApproveRole = 'purchase_head';
+            } else {
+                $initialApproveRole = 'pm';
+            }
+
             $operator = $this->operatorModel->find($data['operator_id']);
             $project  = $this->db->query("SELECT name FROM projects WHERE id = " . (int)$data['project_id'])->fetch_assoc();
 
@@ -470,7 +517,7 @@ class Con_ContractorBillController extends Controller
                 'source_id'     => $billId,
                 'requested_days'=> 0,
                 'requested_by'  => $this->userId,
-                'approve_role'  => 'pm',
+                'approve_role'  => $initialApproveRole,
                 'meta_data'     => null,
                 'request_amount'=> $data['bill_amount'],
             ]);
@@ -505,7 +552,7 @@ class Con_ContractorBillController extends Controller
 
     public function edit($id)
     {
-        if (!hasPermission('Contractor Bill') && !in_array($this->userRole, [1, 3, 33, 17, 23, 31, 20, 32, 12, 6, 30])) {
+        if (!hasPermission('Contractor Bill') && !in_array($this->userRole, [1, 3, 33, 15, 16, 22, 17, 23, 31, 20, 32, 12, 6, 30])) {
             setError('You do not have permission to edit contractor bills.');
             header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
             exit;
@@ -547,7 +594,7 @@ class Con_ContractorBillController extends Controller
 
     public function update($id)
     {
-        if (!hasPermission('Contractor Bill') && !in_array($this->userRole, [1, 3, 33, 17, 23, 31, 20, 32, 12, 6, 30])) {
+        if (!hasPermission('Contractor Bill') && !in_array($this->userRole, [1, 3, 33, 15, 16, 22, 17, 23, 31, 20, 32, 12, 6, 30])) {
             setError('You do not have permission to edit contractor bills.');
             header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
             exit;
@@ -596,8 +643,8 @@ class Con_ContractorBillController extends Controller
 
         $this->billModel->update($id, $data);
         
-        // Also update the approval_request amount if it exists and hasn't been approved yet
-        $this->db->query("UPDATE approval_requests SET request_amount = " . (float)$data['bill_amount'] . " WHERE source_table = 'contractor_bill_requests' AND source_id = " . (int)$id . " AND status = 'pending'");
+        // Also update the approval_request amount if it exists and hasn't been finally approved yet
+        $this->db->query("UPDATE approval_requests SET request_amount = " . (float)$data['bill_amount'] . " WHERE source_table = 'contractor_bill_requests' AND source_id = " . (int)$id . " AND status IN ('pending', 'in_review')");
 
         setSuccess('Contractor bill updated successfully!');
         header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
@@ -721,6 +768,8 @@ class Con_ContractorBillController extends Controller
             'payable_amount'          => $payableAmt,
             'approval_request'        => $approvalReq,
             'canApprovePM'            => $this->canApprovePM(),
+            'canApprovePurchaseHead'  => $this->canApprovePurchaseHead(),
+            'canReviewTeamLeader'     => $this->canReviewTeamLeader(),
             'canApproveQC'            => $this->canApproveQC(),
             'canApproveManagement'    => $this->canApproveManagement(),
             'canApprove'              => $this->canApproveManagement(),
@@ -757,10 +806,10 @@ class Con_ContractorBillController extends Controller
         ];
 
         if ($this->billModel->updateStatus($id, $data)) {
-            // Forward approval request to QC
+            // Forward approval request to Head of Purchase (Role 17)
             $stmtAr = $this->db->prepare("
                 UPDATE approval_requests 
-                SET approve_role = 'qc', 
+                SET approve_role = 'purchase_head', 
                     status = 'pending', 
                     approval_note = ?
                 WHERE source_table = 'contractor_bill_requests' AND source_id = ?
@@ -771,12 +820,126 @@ class Con_ContractorBillController extends Controller
                 $stmtAr->execute();
                 $stmtAr->close();
             }
-            setSuccess('Bill approved by Project Manager & forwarded to QC!');
+            setSuccess('Bill approved by Project Manager & forwarded to Head of Purchase (Role 17)!');
         } else {
             setError('Verification failed.');
         }
 
         header("Location: {$GLOBALS['base_url']}/con-contractor-bill/$id");
+        exit;
+    }
+
+    // =========================================================================
+    // PURCHASE TEAM LEADER REVIEW (Role 31 Optional Step)
+    // =========================================================================
+
+    public function reviewTeamLeader($id)
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+            exit;
+        }
+
+        if (!$this->canReviewTeamLeader()) {
+            setError('You are not authorized to review as Purchase Team Leader.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+            exit;
+        }
+
+        $bill = $this->billModel->find($id);
+        if (!$bill || !in_array($bill['status'], ['submitted', 'verified'])) {
+            setError('Invalid bill status for Team Leader review.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+            exit;
+        }
+
+        $note = trim($_POST['tl_note'] ?? '');
+        if ($this->billModel->reviewPurchaseTeamLeader($id, $this->userId, $note)) {
+            $tlNoteFull = "Reviewed & Forwarded by Purchase Team Leader. " . ($note ? "Note: {$note}" : "");
+            $stmtAr = $this->db->prepare(
+                "UPDATE approval_requests
+                 SET approve_role = 'purchase_head',
+                     status = 'pending',
+                     approval_note = ?
+                 WHERE source_table = 'contractor_bill_requests' AND source_id = ? AND status = 'pending'"
+            );
+            if ($stmtAr) {
+                $stmtAr->bind_param('si', $tlNoteFull, $id);
+                $stmtAr->execute();
+                $stmtAr->close();
+            }
+            setSuccess('Contractor Bill reviewed and forwarded to Head of Purchase (Role 17).');
+        } else {
+            setError('Failed to record Team Leader review.');
+        }
+
+        header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+        exit;
+    }
+
+    // =========================================================================
+    // HEAD OF PURCHASE APPROVE (Role 17 Mandatory Step)
+    // =========================================================================
+
+    public function approvePurchaseHead($id)
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+            exit;
+        }
+
+        if (!$this->canApprovePurchaseHead()) {
+            setError('You are not authorized to perform Head of Purchase approval.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+            exit;
+        }
+
+        $bill = $this->billModel->find($id);
+        if (!$bill || !in_array($bill['status'], ['submitted', 'verified'])) {
+            setError('Invalid bill status for Head of Purchase approval.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+            exit;
+        }
+
+        $isMgmtUser = in_array((int)$this->userRole, [1, 3], true);
+        if ($bill['status'] !== 'verified' && !$isMgmtUser) {
+            setError('Sequential Approval Required: Project Manager / Department Head must verify this Contractor Bill before Head of Purchase can approve.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+            exit;
+        }
+
+        $note = trim($_POST['ph_note'] ?? '');
+
+        // If Management overrides PM verification during Purchase Head step, mark verified too
+        if ($bill['status'] !== 'verified' && $isMgmtUser) {
+            $this->billModel->updateStatus($id, [
+                'status'            => 'verified',
+                'verified_by'       => $this->userId,
+                'verified_at'       => date('Y-m-d H:i:s'),
+                'verification_note' => ($note ?: 'Approved') . ' (Management Override)',
+            ]);
+        }
+
+        if ($this->billModel->approvePurchaseHead($id, $this->userId, $note)) {
+            $phNoteFull = "Approved by Head of Purchase. " . ($note ? "Note: {$note}" : "");
+            $stmtAr = $this->db->prepare(
+                "UPDATE approval_requests
+                 SET approve_role = 'qc',
+                     status = 'pending',
+                     approval_note = ?
+                 WHERE source_table = 'contractor_bill_requests' AND source_id = ?"
+            );
+            if ($stmtAr) {
+                $stmtAr->bind_param('si', $phNoteFull, $id);
+                $stmtAr->execute();
+                $stmtAr->close();
+            }
+            setSuccess('Contractor Bill approved by Head of Purchase! Forwarded to QC & Internal Audit.');
+        } else {
+            setError('Failed to approve as Head of Purchase.');
+        }
+
+        header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
         exit;
     }
 
@@ -814,15 +977,37 @@ class Con_ContractorBillController extends Controller
                 exit;
             }
 
+            $isMgmtUser = in_array((int)$this->userRole, [1, 3], true);
+            if (($bill['status'] !== 'verified' || empty($bill['purchase_head_approved_by_id'])) && !$isMgmtUser) {
+                setError('Sequential Approval Required: PM Verification and Head of Purchase (Role 17) approval must be completed before QC & Internal Audit can approve.');
+                header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+                exit;
+            }
+
             $qcNote = trim($_POST['approval_note'] ?? '');
             $approvedAmount = (float)($_POST['approved_amount'] ?? $bill['bill_amount']);
             if ($approvedAmount <= 0) $approvedAmount = (float)$bill['bill_amount'];
 
+            // If Management overrides earlier stages during QC approval, populate them
+            if ($isMgmtUser) {
+                if ($bill['status'] !== 'verified') {
+                    $this->billModel->updateStatus($id, [
+                        'status'            => 'verified',
+                        'verified_by'       => $this->userId,
+                        'verified_at'       => date('Y-m-d H:i:s'),
+                        'verification_note' => ($qcNote ?: 'Approved') . ' (Management Override)',
+                    ]);
+                }
+                if (empty($bill['purchase_head_approved_by_id'])) {
+                    $this->billModel->approvePurchaseHead($id, $this->userId, ($qcNote ?: 'Approved') . ' (Management Override)');
+                }
+            }
+
             if ($this->billModel->updateQCStatus($id, $this->userId, $qcNote, $approvedAmount)) {
-                // Forward approval request to Management (Role 20)
+                // Forward approval request to Operation Head ('operations')
                 $stmtAr = $this->db->prepare("
                     UPDATE approval_requests 
-                    SET approve_role = 'management', 
+                    SET approve_role = 'operations', 
                         status = 'pending', 
                         request_amount = ?, 
                         approval_note = ?
@@ -834,14 +1019,14 @@ class Con_ContractorBillController extends Controller
                     $stmtAr->execute();
                     $stmtAr->close();
                 }
-                setSuccess('Bill QC Approved successfully & forwarded to Management (Role 20).');
+                setSuccess('Bill QC Approved successfully & forwarded to Head of Operation (Role 20).');
             } else {
                 setError('Failed to QC approve bill.');
             }
         } else {
-            // -- MANAGEMENT APPROVAL PATH --
+            // -- OPERATION HEAD & MANAGEMENT APPROVAL PATH --
             if (!$this->canApproveManagement()) {
-                setError('You are not authorized for final management approval.');
+                setError('You are not authorized for management approval.');
                 header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
                 exit;
             }
@@ -858,8 +1043,6 @@ class Con_ContractorBillController extends Controller
             }
             $managementNote = trim($_POST['management_note'] ?? '');
 
-            $billAmount = (float)($approvedAmount > 0 ? $approvedAmount : ($bill['approved_amount'] > 0 ? $bill['approved_amount'] : $bill['bill_amount']));
-            $isOver1Lac = ($billAmount > 10000);
             $isOpHeadUser = (in_array((int)$this->userRole, [20, 32], true) || str_contains(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head'));
             $isMgmtUser = in_array((int)$this->userRole, [1, 3], true);
 
@@ -869,43 +1052,73 @@ class Con_ContractorBillController extends Controller
             $opHeadStatus = strtolower($arRow['op_head_status'] ?? 'pending');
             $ahStatus = strtolower($arRow['accounts_head_status'] ?? 'pending');
 
-            // Flow for > 10K: Role 20 must approve first
-            if ($isOver1Lac) {
-                if ($isOpHeadUser && !$isMgmtUser) {
-                    $arId = (int)($arRow['id'] ?? 0);
-                    $escNote = $this->db->real_escape_string($managementNote ?: 'Verified and approved by Admin & Operation Head');
-                    if (!class_exists('ApprovalRequest')) {
-                        require_once __DIR__ . '/../../models/ApprovalRequest.php';
-                    }
-                    $approvalModel = new \ApprovalRequest($this->db);
-                    if ($arId > 0) {
-                        $approvalModel->approveOperationHead($arId, $this->userId, $escNote);
-                    } else {
-                        $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'accounts_head' WHERE source_table IN ('contractor_bill_requests', 'con_contractor_bills') AND source_id = {$id}");
-                    }
-                    setSuccess("Contractor bill verified & approved by Admin & Operation Head (Role 20). Forwarded to Accounts Head (Role 30) for payment verification.");
+            // Operation Head (Role 20/32) approves after QC for BOTH <= 10K and > 10K, then forwards to Accounts Head (Role 30)
+            if ($isOpHeadUser && !$isMgmtUser) {
+                if ($bill['status'] !== 'qc_approved') {
+                    setError('Sequential Approval Required: Operation Head can only approve after QC & Internal Audit has verified and approved this bill.');
                     header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
                     exit;
                 }
 
-                if ($isMgmtUser) {
-                    if ($opHeadStatus !== 'approved') {
-                        setError("Access Denied: Contractor bills exceeding ৳10,000 must be approved by Admin & Operation Head (Role 20) first.");
-                        header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
-                        exit;
-                    }
-                    if ($ahStatus !== 'approved') {
-                        setError("Access Denied: Contractor bills exceeding ৳10,000 must be verified & approved by Accounts Head (Role 30) before Management can approve.");
-                        header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
-                        exit;
-                    }
+                $arId = (int)($arRow['id'] ?? 0);
+                $escNote = $this->db->real_escape_string($managementNote ?: 'Verified and approved by Admin & Operation Head');
+                if (!class_exists('ApprovalRequest')) {
+                    require_once __DIR__ . '/../../models/ApprovalRequest.php';
                 }
+                $approvalModel = new \ApprovalRequest($this->db);
+                if ($arId > 0) {
+                    $approvalModel->approveOperationHead($arId, $this->userId, $escNote);
+                } else {
+                    $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'accounts_head' WHERE source_table IN ('contractor_bill_requests', 'con_contractor_bills') AND source_id = {$id}");
+                }
+                setSuccess("Contractor bill verified & approved by Admin & Operation Head (Role 20). Forwarded to Accounts Head (Role 30) for payment verification.");
+                header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+                exit;
             }
 
             if ($this->billModel->approve($id, $this->userId, $approvedAmount, $managementNote)) {
-                $this->syncApprovalRequest($id, 'approved', $approvedAmount);
-                $nextRoleCb = ($ahStatus === 'approved') ? 'accounts' : 'accounts_head';
-                $this->db->query("UPDATE approval_requests SET approve_role = '{$nextRoleCb}', status = 'approved', op_head_status = 'approved' WHERE source_table IN ('contractor_bill_requests', 'con_contractor_bills') AND source_id = " . (int)$id);
+                $escMgtNote = $this->db->real_escape_string($managementNote ?: 'Approved by Management');
+
+                if ($isMgmtUser) {
+                    // Auto-populate any bypassed earlier stages on contractor_bill_requests so responsibility is attributed to this Management person
+                    $this->db->query("
+                        UPDATE contractor_bill_requests
+                        SET verified_by = COALESCE(verified_by, {$this->userId}),
+                            verified_at = COALESCE(verified_at, NOW()),
+                            verification_note = COALESCE(verification_note, '{$escMgtNote} (Management Override)'),
+                            purchase_head_approved_by_id = COALESCE(purchase_head_approved_by_id, {$this->userId}),
+                            purchase_head_approved_at = COALESCE(purchase_head_approved_at, NOW()),
+                            purchase_head_note = COALESCE(purchase_head_note, '{$escMgtNote} (Management Override)'),
+                            qc_approved_by_id = COALESCE(qc_approved_by_id, {$this->userId}),
+                            qc_approved_at = COALESCE(qc_approved_at, NOW()),
+                            qc_note = COALESCE(qc_note, '{$escMgtNote} (Management Override)')
+                        WHERE id = " . (int)$id . "
+                    ");
+
+                    // Attribute bypassed Operation Head and Accounts Head steps to this Management user so disbursement is immediately unlocked
+                    $this->db->query("
+                        UPDATE approval_requests
+                        SET status = 'approved',
+                            approve_role = 'accounts',
+                            approved_amount = {$approvedAmount},
+                            approved_by = {$this->userId},
+                            approved_at = NOW(),
+                            approval_note = '{$escMgtNote}',
+                            op_head_status = 'approved',
+                            op_head_by = COALESCE(op_head_by, {$this->userId}),
+                            op_head_at = COALESCE(op_head_at, NOW()),
+                            op_head_note = COALESCE(op_head_note, '{$escMgtNote} (Management Override)'),
+                            accounts_head_status = 'approved',
+                            accounts_head_by = COALESCE(accounts_head_by, {$this->userId}),
+                            accounts_head_at = COALESCE(accounts_head_at, NOW()),
+                            accounts_head_note = COALESCE(accounts_head_note, '{$escMgtNote} (Management Override)')
+                        WHERE source_table IN ('contractor_bill_requests', 'con_contractor_bills') AND source_id = " . (int)$id . "
+                    ");
+                } else {
+                    $this->syncApprovalRequest($id, 'approved', $approvedAmount);
+                    $nextRoleCb = ($ahStatus === 'approved') ? 'accounts' : 'accounts_head';
+                    $this->db->query("UPDATE approval_requests SET approve_role = '{$nextRoleCb}', status = 'approved', op_head_status = 'approved' WHERE source_table IN ('contractor_bill_requests', 'con_contractor_bills') AND source_id = " . (int)$id);
+                }
 
                 // AUTO-GENERATE ACCRUAL JOURNAL
                 try {
@@ -952,7 +1165,7 @@ class Con_ContractorBillController extends Controller
 
     public function reject($id)
     {
-        if (!$this->canApprovePM() && !$this->canApproveQC() && !$this->canApproveManagement()) {
+        if (!$this->canApprovePM() && !$this->canApprovePurchaseHead() && !$this->canApproveQC() && !$this->canApproveManagement()) {
             setError('You are not authorized to reject bills.');
             header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
             exit;

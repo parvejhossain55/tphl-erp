@@ -262,6 +262,14 @@ $canApprove = $canApprove ?? false;
                                     </td>
                                     <td>
                                         <span class="badge bg-<?= $badge ?>"><?= $statusLabel ?></span>
+                                        <?php if (($req['status'] ?? '') === 'Submitted'): ?>
+                                            <br>
+                                            <?php if (empty($req['purchase_head_approved_by_id'])): ?>
+                                                <small class="text-primary fw-semibold" style="font-size: 9.5px;"><i class="bi bi-clock"></i> Pending Purchase Head</small>
+                                            <?php else: ?>
+                                                <small class="text-info fw-semibold" style="font-size: 9.5px;"><i class="bi bi-clock"></i> Pending QC Audit</small>
+                                            <?php endif; ?>
+                                        <?php endif; ?>
                                     </td>
                                     <td>
                                         <div class="d-flex align-items-center gap-1">
@@ -276,6 +284,16 @@ $canApprove = $canApprove ?? false;
                                     </td>
                                     <td>
                                         <div class="small" style="font-size: 11px; line-height: 1.35;">
+                                            <div class="mb-1">
+                                                <strong>PH:</strong>
+                                                <?php if (!empty($req['purchase_head_approved_by_name'])): ?>
+                                                    <span class="text-success fw-semibold"><?= htmlspecialchars($req['purchase_head_approved_by_name']) ?></span>
+                                                <?php elseif (($req['status'] ?? '') === 'Submitted'): ?>
+                                                    <span class="badge bg-primary text-white" style="font-size:9.5px">Pending PH</span>
+                                                <?php else: ?>
+                                                    <span class="text-muted">—</span>
+                                                <?php endif; ?>
+                                            </div>
                                             <div>
                                                 <strong>QC:</strong> 
                                                 <?php if (!empty($req['qc_approved_by_name'])): ?>
