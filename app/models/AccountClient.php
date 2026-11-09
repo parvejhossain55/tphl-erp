@@ -33,10 +33,22 @@ class AccountClient extends Model
         $params = [];
         $types = '';
 
-        if ($projectId) {
-            $whereParts[] = "lb.project_id = ?";
-            $params[] = (int) $projectId;
-            $types .= 'i';
+        if (!empty($projectId)) {
+            if (is_array($projectId)) {
+                $pIds = array_values(array_filter(array_map('intval', $projectId)));
+                if (!empty($pIds)) {
+                    $inPlaceholders = implode(',', array_fill(0, count($pIds), '?'));
+                    $whereParts[] = "lb.project_id IN ($inPlaceholders)";
+                    foreach ($pIds as $pId) {
+                        $params[] = $pId;
+                        $types .= 'i';
+                    }
+                }
+            } else {
+                $whereParts[] = "lb.project_id = ?";
+                $params[] = (int) $projectId;
+                $types .= 'i';
+            }
         }
 
         if (!empty($search)) {
@@ -163,7 +175,12 @@ class AccountClient extends Model
         $whereClause = "WHERE " . implode(" AND ", $whereParts);
         $havingClause = !empty($havingParts) ? "HAVING " . implode(" AND ", $havingParts) : "";
 
-        $projectSubFilter = $projectId ? " AND lb_sub.project_id = " . (int)$projectId : "";
+        if (is_array($projectId)) {
+            $pIds = array_values(array_filter(array_map('intval', $projectId)));
+            $projectSubFilter = !empty($pIds) ? " AND lb_sub.project_id IN (" . implode(',', $pIds) . ")" : "";
+        } else {
+            $projectSubFilter = $projectId ? " AND lb_sub.project_id = " . (int)$projectId : "";
+        }
 
         $dataSql ="SELECT
             l.id AS lead_id,
@@ -421,10 +438,22 @@ class AccountClient extends Model
         $params = [];
         $types = '';
 
-        if ($projectId) {
-            $whereParts[] = "lb.project_id = ?";
-            $params[] = (int) $projectId;
-            $types .= 'i';
+        if (!empty($projectId)) {
+            if (is_array($projectId)) {
+                $pIds = array_values(array_filter(array_map('intval', $projectId)));
+                if (!empty($pIds)) {
+                    $inPlaceholders = implode(',', array_fill(0, count($pIds), '?'));
+                    $whereParts[] = "lb.project_id IN ($inPlaceholders)";
+                    foreach ($pIds as $pId) {
+                        $params[] = $pId;
+                        $types .= 'i';
+                    }
+                }
+            } else {
+                $whereParts[] = "lb.project_id = ?";
+                $params[] = (int) $projectId;
+                $types .= 'i';
+            }
         }
 
         if (!empty($search)) {
@@ -550,7 +579,12 @@ class AccountClient extends Model
         $whereClause = "WHERE " . implode(" AND ", $whereParts);
         $havingClause = !empty($havingParts) ? "HAVING " . implode(" AND ", $havingParts) : "";
 
-        $projectSubFilter = $projectId ? " AND lb_sub.project_id = " . (int)$projectId : "";
+        if (is_array($projectId)) {
+            $pIds = array_values(array_filter(array_map('intval', $projectId)));
+            $projectSubFilter = !empty($pIds) ? " AND lb_sub.project_id IN (" . implode(',', $pIds) . ")" : "";
+        } else {
+            $projectSubFilter = $projectId ? " AND lb_sub.project_id = " . (int)$projectId : "";
+        }
 
         $countSql = "
             SELECT COUNT(*) as total FROM (
@@ -676,10 +710,22 @@ class AccountClient extends Model
         $params = [];
         $types = "";
 
-        if ($projectId) {
-            $projectWhere = " AND lb.project_id = ?";
-            $params[] = (int)$projectId;
-            $types .= "i";
+        if (!empty($projectId)) {
+            if (is_array($projectId)) {
+                $pIds = array_values(array_filter(array_map('intval', $projectId)));
+                if (!empty($pIds)) {
+                    $inPlaceholders = implode(',', array_fill(0, count($pIds), '?'));
+                    $projectWhere = " AND lb.project_id IN ($inPlaceholders)";
+                    foreach ($pIds as $pId) {
+                        $params[] = $pId;
+                        $types .= "i";
+                    }
+                }
+            } else {
+                $projectWhere = " AND lb.project_id = ?";
+                $params[] = (int)$projectId;
+                $types .= "i";
+            }
         }
 
         $sql = "
@@ -743,10 +789,22 @@ class AccountClient extends Model
         $params = [];
         $types = "";
 
-        if ($projectId) {
-            $whereParts[] = "lb.project_id = ?";
-            $params[] = (int)$projectId;
-            $types .= "i";
+        if (!empty($projectId)) {
+            if (is_array($projectId)) {
+                $pIds = array_values(array_filter(array_map('intval', $projectId)));
+                if (!empty($pIds)) {
+                    $inPlaceholders = implode(',', array_fill(0, count($pIds), '?'));
+                    $whereParts[] = "lb.project_id IN ($inPlaceholders)";
+                    foreach ($pIds as $pId) {
+                        $params[] = $pId;
+                        $types .= "i";
+                    }
+                }
+            } else {
+                $whereParts[] = "lb.project_id = ?";
+                $params[] = (int)$projectId;
+                $types .= "i";
+            }
         }
 
         if (!empty($search)) {
@@ -1094,10 +1152,22 @@ class AccountClient extends Model
         $params = [];
         $types = "";
 
-        if ($projectId) {
-            $whereClause .= " AND lb.project_id = ?";
-            $params[] = (int) $projectId;
-            $types .= "i";
+        if (!empty($projectId)) {
+            if (is_array($projectId)) {
+                $pIds = array_values(array_filter(array_map('intval', $projectId)));
+                if (!empty($pIds)) {
+                    $inPlaceholders = implode(',', array_fill(0, count($pIds), '?'));
+                    $whereClause .= " AND lb.project_id IN ($inPlaceholders)";
+                    foreach ($pIds as $pId) {
+                        $params[] = $pId;
+                        $types .= 'i';
+                    }
+                }
+            } else {
+                $whereClause .= " AND lb.project_id = ?";
+                $params[] = (int) $projectId;
+                $types .= "i";
+            }
         }
 
         $sql = $this->db->prepare("
@@ -1184,10 +1254,22 @@ class AccountClient extends Model
         $params = [];
         $types = "";
 
-        if ($projectId) {
-            $whereClause .= " AND lb.project_id = ?";
-            $params[] = (int) $projectId;
-            $types .= "i";
+        if (!empty($projectId)) {
+            if (is_array($projectId)) {
+                $pIds = array_values(array_filter(array_map('intval', $projectId)));
+                if (!empty($pIds)) {
+                    $inPlaceholders = implode(',', array_fill(0, count($pIds), '?'));
+                    $whereClause .= " AND lb.project_id IN ($inPlaceholders)";
+                    foreach ($pIds as $pId) {
+                        $params[] = $pId;
+                        $types .= 'i';
+                    }
+                }
+            } else {
+                $whereClause .= " AND lb.project_id = ?";
+                $params[] = (int) $projectId;
+                $types .= "i";
+            }
         }
 
         $sql = $this->db->prepare("
@@ -1264,8 +1346,20 @@ class AccountClient extends Model
     /**
      * Get project-wise collection breakdown (Total, Land Share, Dev Charge, EMI, Verified EMI, Unverified EMI per project)
      */
-    public function getProjectCollectionBreakdown()
+    public function getProjectCollectionBreakdown($allowedProjectIds = null)
     {
+        $projectFilter = "";
+        if (!empty($allowedProjectIds)) {
+            if (is_array($allowedProjectIds)) {
+                $pIds = array_values(array_filter(array_map('intval', $allowedProjectIds)));
+                if (!empty($pIds)) {
+                    $projectFilter = " AND p.id IN (" . implode(',', $pIds) . ")";
+                }
+            } else {
+                $projectFilter = " AND p.id = " . (int)$allowedProjectIds;
+            }
+        }
+
         $sql = "
             SELECT 
                 p.id AS project_id,
@@ -1312,7 +1406,7 @@ class AccountClient extends Model
                 AND lp.is_trashed = 0
                 AND COALESCE(lp.is_emi_discount, 0) = 0
                 AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected')
-            WHERE p.deleted_at IS NULL
+            WHERE p.deleted_at IS NULL {$projectFilter}
             GROUP BY p.id, p.name
             HAVING total_collected > 0
             ORDER BY total_collected DESC, p.name ASC
@@ -6715,10 +6809,22 @@ class AccountClient extends Model
         $params = [];
         $types = "";
 
-        if ($projectId) {
-            $whereParts[] = "lb.project_id = ?";
-            $params[] = (int)$projectId;
-            $types .= "i";
+        if (!empty($projectId)) {
+            if (is_array($projectId)) {
+                $pIds = array_values(array_filter(array_map('intval', $projectId)));
+                if (!empty($pIds)) {
+                    $inPlaceholders = implode(',', array_fill(0, count($pIds), '?'));
+                    $whereParts[] = "lb.project_id IN ($inPlaceholders)";
+                    foreach ($pIds as $pId) {
+                        $params[] = $pId;
+                        $types .= "i";
+                    }
+                }
+            } else {
+                $whereParts[] = "lb.project_id = ?";
+                $params[] = (int)$projectId;
+                $types .= "i";
+            }
         }
 
         $whereClause = "WHERE " . implode(" AND ", $whereParts);
@@ -7052,14 +7158,21 @@ class AccountClient extends Model
      * @param string|null $search
      * @return array
      */
-    public function getProjectWiseDueBreakdown($search = null)
+    public function getProjectWiseDueBreakdown($search = null, ?array $projectIds = null)
     {
         $projectWhere = "";
         $params = [];
         $types = "";
 
+        if (!empty($projectIds)) {
+            $pIds = array_values(array_filter(array_map('intval', $projectIds)));
+            if (!empty($pIds)) {
+                $projectWhere .= " AND p.id IN (" . implode(',', $pIds) . ")";
+            }
+        }
+
         if (!empty($search)) {
-            $projectWhere = " AND p.name LIKE ?";
+            $projectWhere .= " AND p.name LIKE ?";
             $params[] = '%' . trim($search) . '%';
             $types .= "s";
         }
@@ -7314,7 +7427,7 @@ class AccountClient extends Model
      */
     public function getClientWiseDueList($filters = [], $limit = 20, $offset = 0)
     {
-        $projectId = !empty($filters['project_id']) ? (int)$filters['project_id'] : null;
+        $projectId = !empty($filters['project_id']) ? $filters['project_id'] : null;
         $dueType   = !empty($filters['due_type']) ? trim($filters['due_type']) : 'all';
         $search    = !empty($filters['search']) ? trim($filters['search']) : null;
         $dateType  = !empty($filters['date_type']) ? trim($filters['date_type']) : null;
@@ -7333,10 +7446,22 @@ class AccountClient extends Model
         $types = "";
         $currentEndOfMonth = date('Y-m-t');
 
-        if ($projectId) {
-            $whereParts[] = "lb.project_id = ?";
-            $params[] = $projectId;
-            $types .= "i";
+        if (!empty($projectId)) {
+            if (is_array($projectId)) {
+                $pIds = array_values(array_filter(array_map('intval', $projectId)));
+                if (!empty($pIds)) {
+                    $inPlaceholders = implode(',', array_fill(0, count($pIds), '?'));
+                    $whereParts[] = "lb.project_id IN ($inPlaceholders)";
+                    foreach ($pIds as $pId) {
+                        $params[] = $pId;
+                        $types .= "i";
+                    }
+                }
+            } else {
+                $whereParts[] = "lb.project_id = ?";
+                $params[] = (int)$projectId;
+                $types .= "i";
+            }
         }
 
         if (!empty($search)) {
@@ -7623,7 +7748,7 @@ class AccountClient extends Model
      */
     public function getClientWiseDueCount($filters = [])
     {
-        $projectId = !empty($filters['project_id']) ? (int)$filters['project_id'] : null;
+        $projectId = !empty($filters['project_id']) ? $filters['project_id'] : null;
         $dueType   = !empty($filters['due_type']) ? trim($filters['due_type']) : 'all';
         $search    = !empty($filters['search']) ? trim($filters['search']) : null;
         $dateType  = !empty($filters['date_type']) ? trim($filters['date_type']) : null;
@@ -7640,10 +7765,22 @@ class AccountClient extends Model
         $types = "";
         $currentEndOfMonth = date('Y-m-t');
 
-        if ($projectId) {
-            $whereParts[] = "lb.project_id = ?";
-            $params[] = $projectId;
-            $types .= "i";
+        if (!empty($projectId)) {
+            if (is_array($projectId)) {
+                $pIds = array_values(array_filter(array_map('intval', $projectId)));
+                if (!empty($pIds)) {
+                    $inPlaceholders = implode(',', array_fill(0, count($pIds), '?'));
+                    $whereParts[] = "lb.project_id IN ($inPlaceholders)";
+                    foreach ($pIds as $pId) {
+                        $params[] = $pId;
+                        $types .= "i";
+                    }
+                }
+            } else {
+                $whereParts[] = "lb.project_id = ?";
+                $params[] = (int)$projectId;
+                $types .= "i";
+            }
         }
 
         if (!empty($search)) {
@@ -7796,8 +7933,15 @@ class AccountClient extends Model
     {
         $currentEndOfMonth = date('Y-m-t'); // e.g. current month end
         $projectFilterLb = "";
-        if (!empty($projectId) && (int)$projectId > 0) {
-            $projectFilterLb = " AND lb.project_id = " . (int)$projectId;
+        if (!empty($projectId)) {
+            if (is_array($projectId)) {
+                $pIds = array_values(array_filter(array_map('intval', $projectId)));
+                if (!empty($pIds)) {
+                    $projectFilterLb = " AND lb.project_id IN (" . implode(',', $pIds) . ")";
+                }
+            } elseif ((int)$projectId > 0) {
+                $projectFilterLb = " AND lb.project_id = " . (int)$projectId;
+            }
         }
 
         $sql = "
@@ -7889,8 +8033,15 @@ class AccountClient extends Model
     {
         $currentEndOfMonth = date('Y-m-t'); // e.g. current month end
         $projectFilterLb = "";
-        if (!empty($projectId) && (int)$projectId > 0) {
-            $projectFilterLb = " AND lb.project_id = " . (int)$projectId;
+        if (!empty($projectId)) {
+            if (is_array($projectId)) {
+                $pIds = array_values(array_filter(array_map('intval', $projectId)));
+                if (!empty($pIds)) {
+                    $projectFilterLb = " AND lb.project_id IN (" . implode(',', $pIds) . ")";
+                }
+            } elseif ((int)$projectId > 0) {
+                $projectFilterLb = " AND lb.project_id = " . (int)$projectId;
+            }
         }
 
         $whereCategory = "";

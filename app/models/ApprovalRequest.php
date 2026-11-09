@@ -574,7 +574,8 @@ class ApprovalRequest extends Model
                 if ($sourceTable === 'project_incentive_claims') {
                     $this->db->query("UPDATE project_incentive_claims SET claim_status = 'approved', approved_by = {$userId}, approved_at = NOW() WHERE id = {$sourceId}");
                 } else {
-                    $this->syncSourceTableStatusDirect($sourceTable, $sourceId, 'approved', $userId, $reqAmount, $note);
+                    $actualApproverId = !empty($req['approved_by']) ? (int)$req['approved_by'] : (!empty($req['op_head_by']) ? (int)$req['op_head_by'] : $userId);
+                    $this->syncSourceTableStatusDirect($sourceTable, $sourceId, 'approved', $actualApproverId, $reqAmount, $note);
                 }
             }
         }
@@ -781,14 +782,14 @@ class ApprovalRequest extends Model
             $this->db->query("UPDATE project_extra_assets SET mgmt_status = 'approved', mgmt_by = {$userId}, mgmt_at = NOW(), mgmt_note = '{$note}' WHERE id = {$sourceId}");
         } elseif ($sourceTable === 'vendor_payment_requests') {
             $amtSql = ($amount !== null && (float)$amount > 0) ? (float)$amount : "COALESCE(qc_approved_amount, net_payable, invoice_amount, 0.00)";
-            $this->db->query("UPDATE vendor_payment_requests SET status = 'Approved', approved_by = {$userId}, approved_amount = {$amtSql}, due_amount = {$amtSql}, updated_at = NOW(), management_note = '{$note}' WHERE id = {$sourceId}");
+            $this->db->query("UPDATE vendor_payment_requests SET status = 'Approved', approved_by = COALESCE(approved_by, {$userId}), approved_amount = {$amtSql}, due_amount = {$amtSql}, updated_at = NOW(), management_note = CASE WHEN management_note IS NULL OR management_note = '' THEN '{$note}' ELSE management_note END WHERE id = {$sourceId}");
         } elseif ($sourceTable === 'contractor_bill_requests') {
             $amtSql = ($amount !== null && (float)$amount > 0) ? (float)$amount : "COALESCE(approved_amount, bill_amount, 0.00)";
-            $this->db->query("UPDATE contractor_bill_requests SET status = 'approved', approved_by = {$userId}, approved_amount = {$amtSql}, due_amount = {$amtSql}, updated_at = NOW(), management_note = '{$note}' WHERE id = {$sourceId}");
+            $this->db->query("UPDATE contractor_bill_requests SET status = 'approved', approved_by = COALESCE(approved_by, {$userId}), approved_amount = {$amtSql}, due_amount = {$amtSql}, updated_at = NOW(), management_note = CASE WHEN management_note IS NULL OR management_note = '' THEN '{$note}' ELSE management_note END WHERE id = {$sourceId}");
         } elseif ($sourceTable === 'project_other_costs') {
-            $this->db->query("UPDATE project_other_costs SET status = 'management_approved', management_apporved_by_id = {$userId}, management_apporved_at = NOW(), management_apporved_note = '{$note}' WHERE id = {$sourceId}");
+            $this->db->query("UPDATE project_other_costs SET status = 'management_approved', management_apporved_by_id = COALESCE(management_apporved_by_id, {$userId}), management_apporved_at = COALESCE(management_apporved_at, NOW()), management_apporved_note = CASE WHEN management_apporved_note IS NULL OR management_apporved_note = '' THEN '{$note}' ELSE management_apporved_note END WHERE id = {$sourceId}");
         } elseif ($sourceTable === 'con_labor_requisitions') {
-            $this->db->query("UPDATE con_labor_requisitions SET status = 'management_approved', management_approved_by = {$userId}, management_approved_at = NOW(), approved_amount = total_amount WHERE id = {$sourceId}");
+            $this->db->query("UPDATE con_labor_requisitions SET status = 'management_approved', management_approved_by = COALESCE(management_approved_by, {$userId}), management_approved_at = COALESCE(management_approved_at, NOW()), approved_amount = total_amount WHERE id = {$sourceId}");
         } elseif ($sourceTable === 'expense_adjustments') {
             $this->db->query("UPDATE expense_adjustments SET status = 'approved', approved_by = {$userId}, approved_at = NOW() WHERE id = {$sourceId}");
         } elseif ($sourceTable === 'advance_salaries') {
@@ -4465,7 +4466,11 @@ class ApprovalRequest extends Model
                     WHEN poc.status IN ('management_approved', 'approved', 'paid') THEN 'approved'
                     ELSE 'pending'
                 END,
-                ar.approved_by = COALESCE(poc.management_apporved_by_id, poc.qc_audit_approved_id, poc.dept_head_approved_by, ar.approved_by),
+                ar.approved_by = CASE
+                    WHEN poc.management_apporved_by_id IS NOT NULL AND poc.management_apporved_by_id != ar.accounts_head_by THEN poc.management_apporved_by_id
+                    WHEN ar.op_head_by IS NOT NULL THEN ar.op_head_by
+                    ELSE COALESCE(ar.approved_by, poc.management_apporved_by_id, poc.qc_audit_approved_id, poc.dept_head_approved_by)
+                END,
                 ar.approved_at = COALESCE(poc.management_apporved_at, poc.qc_audit_approved_at, poc.dept_head_approved_at, poc.updated_at, ar.approved_at),
                 ar.approval_note = COALESCE(poc.management_apporved_note, poc.qc_audit_note, poc.dept_head_approval_note, ar.approval_note),
                 ar.request_amount = poc.request_amount,

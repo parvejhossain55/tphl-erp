@@ -338,8 +338,8 @@ $show_breadcrumb = true;
 
                     <!-- Project Filter (Same as flat-lists) -->
                     <div style="min-width: 220px; max-width: 280px; flex: 1;">
-                        <select class="form-control form-control-sm select2" name="project_id" id="cedProjectFilter">
-                            <option value="">All Projects</option>
+                        <select class="form-control form-control-sm select2" name="project_id" id="cedProjectFilter" data-placeholder="<?= !empty($assignedProjectIds) ? 'All Assigned Projects (' . count($projects) . ')' : 'All Projects' ?>">
+                            <option value=""><?= !empty($assignedProjectIds) ? 'All Assigned Projects (' . count($projects) . ')' : 'All Projects' ?></option>
                             <?php if (!empty($projects)): ?>
                                 <?php foreach ($projects as $project): ?>
                                     <option value="<?= $project['id'] ?>"
@@ -2171,7 +2171,7 @@ function loadCedClientsPage(page) {
     const tbody = document.getElementById('clientsCedTableBody');
     const pagContainer = document.getElementById('clientsCedPaginationContainer');
     const searchVal = document.getElementById('cedSearchInput') ? document.getElementById('cedSearchInput').value.trim() : '';
-    const projectId = document.getElementById('cedProjectFilter') ? document.getElementById('cedProjectFilter').value : '';
+    const projectId = document.getElementById('cedProjectFilter') ? document.getElementById('cedProjectFilter').value : '<?= $selectedProjectId ?? '' ?>';
     const verificationStatus = document.getElementById('cedStatusFilter') ? document.getElementById('cedStatusFilter').value : '';
     const limit = document.getElementById('cedLimitSelect') ? document.getElementById('cedLimitSelect').value : '20';
     const dateTypeVal = document.getElementById('cedDateType') ? document.getElementById('cedDateType').value : '';
@@ -2310,9 +2310,17 @@ function initCedAjaxControls() {
         }
     });
 
-    // Listen on Project Filter change (fires when Select2 or native select changes)
+    // Listen on Project Filter change: Reload page so top financial summary cards & flat stats update
     $(document).on('change', '#cedProjectFilter', function() {
-        triggerCedFilterChange();
+        const pId = $(this).val();
+        const currentPId = '<?= $selectedProjectId ?? '' ?>';
+        if (String(pId || '') !== String(currentPId || '')) {
+            if (pId) {
+                window.location.href = '<?= $GLOBALS['base_url'] ?>/clients-cashin-view?project_id=' + encodeURIComponent(pId);
+            } else {
+                window.location.href = '<?= $GLOBALS['base_url'] ?>/clients-cashin-view';
+            }
+        }
     });
 
     // 4. Conflict filter toggle buttons

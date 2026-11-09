@@ -20,11 +20,6 @@ class CedPollController extends Controller
             session_start();
         }
 
-        if (function_exists('isClientsCommunicated') && isClientsCommunicated()) {
-            header("Location: {$GLOBALS['base_url']}/client-wise-due-tracking");
-            exit;
-        }
-
         // Fetch active projects from database
         $projects = [];
         $res = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC");

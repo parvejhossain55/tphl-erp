@@ -24,7 +24,7 @@ class CedReportController extends Controller
             exit;
         }
 
-        if (!hasPermission("CED Manage") && !$isManagement && $roleId !== 7) {
+        if (!hasPermission("CED Manage") && !$isManagement && !in_array($roleId, [7, 39], true)) {
             header("Location: " . $GLOBALS['base_url'] . "/error-403");
             exit;
         }

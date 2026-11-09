@@ -421,8 +421,26 @@ class ProjectOtherCostController extends Controller
 
             if ($this->otherCostModel->update($id, $data)) {
                 $this->syncToApprovalRequests($id);
-                $this->db->query("UPDATE approval_requests SET op_head_status = 'approved' WHERE source_table = 'project_other_costs' AND source_id = {$id}");
-                setSuccess("Request Management Approved successfully.");
+                $escNote = $this->db->real_escape_string($note);
+                if ($isOpHeadUser) {
+                    $this->db->query("UPDATE approval_requests 
+                        SET op_head_status = 'approved', 
+                            op_head_by = {$_SESSION['user']['id']}, 
+                            op_head_at = NOW(), 
+                            op_head_note = '{$escNote}',
+                            approve_role = 'accounts_head'
+                        WHERE source_table = 'project_other_costs' AND source_id = {$id}");
+                    setSuccess("Request approved by Admin & Operation Head successfully.");
+                } else {
+                    $this->db->query("UPDATE approval_requests 
+                        SET op_head_status = 'approved', 
+                            approved_by = {$_SESSION['user']['id']}, 
+                            approved_at = NOW(), 
+                            approval_note = '{$escNote}',
+                            approve_role = 'accounts_head'
+                        WHERE source_table = 'project_other_costs' AND source_id = {$id}");
+                    setSuccess("Request Management Approved successfully.");
+                }
             } else {
                 setError("Failed to approve request.");
             }
