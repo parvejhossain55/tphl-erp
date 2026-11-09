@@ -195,6 +195,7 @@ function redirectByRole()
 
         case 7: // Clients Experiment
         case 37: // Credit Recovery (Clients Communicated)
+        case 39: // Head of Client Experience
             $url = "{$GLOBALS['base_url']}/ced-dashboard";
             break;
         case 8: // sales executive
@@ -1244,20 +1245,87 @@ function isCreditRecovery(): bool
     $secRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
     $priRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
     $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+
+    // Explicitly exclude Client Experience (Role 7, 39)
+    if (in_array($roleId, [7, 39], true)
+        || in_array($secRoleId, [7, 39], true)
+        || in_array($priRoleId, [7, 39], true)
+        || strpos($roleName, 'client experience') !== false
+        || strpos($roleName, 'head of client experience') !== false
+        || strpos($roleName, 'clients experiment') !== false) {
+        return false;
+    }
+
     return $roleId === 37 
         || $secRoleId === 37 
         || $priRoleId === 37 
         || strpos($roleName, 'credit recovery') !== false
-        || strpos($roleName, 'recovery') !== false
+        || (strpos($roleName, 'recovery') !== false && strpos($roleName, 'client') === false)
         || strpos($roleName, 'clients communicated') !== false 
         || strpos($roleName, 'client communicated') !== false 
-        || strpos($roleName, 'client communication') !== false
-        || strpos($roleName, 'communicat') !== false;
+        || strpos($roleName, 'client communication') !== false;
 }
 
 function isClientsCommunicated(): bool
 {
     return isCreditRecovery();
+}
+
+/**
+ * Check if the currently logged-in user is Head of Client Experience (Role ID 39)
+ */
+function isHeadOfClientExperience(): bool
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+    $secRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+    $priRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
+    $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+    return $roleId === 39 
+        || $secRoleId === 39 
+        || $priRoleId === 39
+        || strpos($roleName, 'head of client experience') !== false;
+}
+
+/**
+ * Check if the currently logged-in user is Client Experience / Clients Experiment (Role ID 7 or 39)
+ */
+function isClientExperience(): bool
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+    $secRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+    $priRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
+    $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+    return in_array($roleId, [7, 39], true)
+        || in_array($secRoleId, [7, 39], true)
+        || in_array($priRoleId, [7, 39], true)
+        || strpos($roleName, 'client experience') !== false
+        || strpos($roleName, 'clients experiment') !== false
+        || strpos($roleName, 'head of client experience') !== false;
+}
+
+/**
+ * Check if user is any CED / Client Experience member
+ */
+function isCedUser(): bool
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+    $secRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+    $priRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
+    return in_array($roleId, [1, 3, 7, 33, 34, 35, 37, 38, 39], true)
+        || in_array($secRoleId, [7, 37, 39], true)
+        || in_array($priRoleId, [7, 37, 39], true)
+        || isCreditRecovery()
+        || isClientExperience()
+        || (function_exists('hasPermission') && hasPermission("CED Manage"));
 }
 
 /**

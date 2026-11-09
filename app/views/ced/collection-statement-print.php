@@ -295,25 +295,35 @@ $printMode = $print_mode ?? 'collectors';
                     <th class="text-center" style="width: 30px;">#</th>
                     <th>Executive / Collector Name</th>
                     <th>Role / Dept</th>
+                    <th>Assigned Projects</th>
                     <th class="text-center">Total Trx</th>
                     <th class="text-end">Dev Charge (BDT)</th>
                     <th class="text-end">Regular EMI (BDT)</th>
                     <th class="text-end">Due Settled (BDT)</th>
                     <th class="text-end">Booking &amp; Reg (BDT)</th>
                     <th class="text-end">Total Collected (BDT)</th>
-                    <th class="text-center" style="width: 70px;">% Share</th>
+                    <th class="text-center" style="width: 60px;">% Share</th>
+                    <th>Voucher Entered By</th>
                 </tr>
             </thead>
             <tbody>
                 <?php 
                 $cSl = 1;
-                foreach ($collectorSummary['rows'] as $r):
+                $printRows = !empty($collectorSummary['portfolio_rows']) ? $collectorSummary['portfolio_rows'] : ($collectorSummary['rows'] ?? []);
+                foreach ($printRows as $r):
                     $bookReg = $r['booking_amount'] + $r['registration_amount'];
+                    $prjNames = !empty($r['assigned_projects']) 
+                        ? implode(', ', array_column($r['assigned_projects'], 'name')) 
+                        : ($r['assigned_projects_names'] ?? 'None');
                 ?>
                     <tr>
                         <td class="text-center"><?= $cSl++ ?></td>
-                        <td><strong><?= htmlspecialchars($r['collector_name']) ?></strong></td>
+                        <td>
+                            <strong><?= htmlspecialchars($r['collector_name']) ?></strong>
+                            <?= !empty($r['emp_code']) ? ' [ID: ' . htmlspecialchars($r['emp_code']) . ']' : '' ?>
+                        </td>
                         <td><?= htmlspecialchars($r['collector_role']) ?></td>
+                        <td style="font-size: 9.5px;"><?= htmlspecialchars($prjNames) ?></td>
                         <td class="text-center font-mono"><?= number_format($r['total_count']) ?></td>
                         <td class="text-end font-mono"><?= $r['dev_charge_amount'] > 0 ? '৳' . number_format($r['dev_charge_amount'], 2) : '-' ?></td>
                         <td class="text-end font-mono"><?= $r['emi_amount'] > 0 ? '৳' . number_format($r['emi_amount'], 2) : '-' ?></td>
@@ -321,15 +331,16 @@ $printMode = $print_mode ?? 'collectors';
                         <td class="text-end font-mono"><?= $bookReg > 0 ? '৳' . number_format($bookReg, 2) : '-' ?></td>
                         <td class="text-end font-mono fw-bold">৳<?= number_format($r['total_amount'], 2) ?></td>
                         <td class="text-center font-mono"><?= number_format($r['percentage'], 1) ?>%</td>
+                        <td style="font-size: 9.5px; color: #475569;"><?= htmlspecialchars($r['creators_list'] ?? 'N/A') ?></td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
-            <?php if (!empty($collectorSummary['rows'])): 
+            <?php if (!empty($printRows)): 
                 $cg = $collectorSummary['grand'];
             ?>
                 <tfoot>
                     <tr style="background: #f1f5f9; font-weight: 700;">
-                        <td colspan="3" class="text-uppercase">Total Collections:</td>
+                        <td colspan="4" class="text-uppercase">Total Collections:</td>
                         <td class="text-center font-mono"><?= number_format($cg['total_count']) ?></td>
                         <td class="text-end font-mono">৳<?= number_format($cg['dev_charge_amount'], 2) ?></td>
                         <td class="text-end font-mono">৳<?= number_format($cg['emi_amount'], 2) ?></td>
@@ -337,10 +348,75 @@ $printMode = $print_mode ?? 'collectors';
                         <td class="text-end font-mono">৳<?= number_format($cg['booking_amount'] + $cg['registration_amount'], 2) ?></td>
                         <td class="text-end font-mono fw-bold" style="color: #0284c7;">৳<?= number_format($cg['total_amount'], 2) ?></td>
                         <td class="text-center font-mono">100.0%</td>
+                        <td></td>
                     </tr>
                 </tfoot>
             <?php endif; ?>
         </table>
+
+        <!-- Project-wise Inflow & Assignment Matrix (Print) -->
+        <?php if (!empty($collectorSummary['project_rows'])): ?>
+            <h4 style="margin: 18px 0 8px 0; color: #0f172a; font-size: 13px; text-transform: uppercase;">
+                <i class="fa-solid fa-city" style="color: #0284c7;"></i> Project-wise Inflows &amp; Assignments
+            </h4>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th class="text-center" style="width: 30px;">#</th>
+                        <th>Project Name</th>
+                        <th>Assigned CED Executive</th>
+                        <th class="text-center">Inflow Trx</th>
+                        <th class="text-end">Dev Charge (BDT)</th>
+                        <th class="text-end">Regular EMI (BDT)</th>
+                        <th class="text-end">Due Settled (BDT)</th>
+                        <th class="text-end">Total Inflow (BDT)</th>
+                        <th>Voucher Entered By</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php 
+                    $pjSl = 1;
+                    $pTotalAmt = 0;
+                    $pTotalTrx = 0;
+                    $pDevAmt   = 0;
+                    $pEmiAmt   = 0;
+                    $pSetAmt   = 0;
+                    foreach ($collectorSummary['project_rows'] as $pr):
+                        $pTotalTrx += $pr['total_count'];
+                        $pTotalAmt += $pr['total_amount'];
+                        $pDevAmt   += $pr['dev_charge_amount'];
+                        $pEmiAmt   += $pr['emi_amount'];
+                        $pSetAmt   += $pr['settlement_amount'];
+                    ?>
+                        <tr>
+                            <td class="text-center"><?= $pjSl++ ?></td>
+                            <td><strong><?= htmlspecialchars($pr['project_name']) ?></strong> <span style="color: #64748b; font-size: 9px;">(#<?= $pr['project_id'] ?>)</span></td>
+                            <td>
+                                <strong><?= htmlspecialchars($pr['ced_officer_name']) ?></strong>
+                                <?= !empty($pr['ced_emp_code']) ? ' [ID: ' . htmlspecialchars($pr['ced_emp_code']) . ']' : '' ?>
+                            </td>
+                            <td class="text-center font-mono"><?= number_format($pr['total_count']) ?></td>
+                            <td class="text-end font-mono"><?= $pr['dev_charge_amount'] > 0 ? '৳' . number_format($pr['dev_charge_amount'], 2) : '-' ?></td>
+                            <td class="text-end font-mono"><?= $pr['emi_amount'] > 0 ? '৳' . number_format($pr['emi_amount'], 2) : '-' ?></td>
+                            <td class="text-end font-mono"><?= $pr['settlement_amount'] > 0 ? '৳' . number_format($pr['settlement_amount'], 2) : '-' ?></td>
+                            <td class="text-end font-mono fw-bold">৳<?= number_format($pr['total_amount'], 2) ?></td>
+                            <td style="font-size: 9.5px; color: #475569;"><?= htmlspecialchars($pr['creators_list'] ?: 'N/A') ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+                <tfoot>
+                    <tr style="background: #f1f5f9; font-weight: 700;">
+                        <td colspan="3" class="text-uppercase">Total Project Inflows:</td>
+                        <td class="text-center font-mono"><?= number_format($pTotalTrx) ?></td>
+                        <td class="text-end font-mono">৳<?= number_format($pDevAmt, 2) ?></td>
+                        <td class="text-end font-mono">৳<?= number_format($pEmiAmt, 2) ?></td>
+                        <td class="text-end font-mono">৳<?= number_format($pSetAmt, 2) ?></td>
+                        <td class="text-end font-mono fw-bold" style="color: #0284c7;">৳<?= number_format($pTotalAmt, 2) ?></td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        <?php endif; ?>
     <?php endif; ?>
 
     <!-- Mode 2: Detailed Transactions -->
@@ -356,12 +432,13 @@ $printMode = $print_mode ?? 'collectors';
                     <th>Client Name</th>
                     <th>Phone</th>
                     <th>Project &amp; Unit</th>
+                    <th>Assigned CED Officer</th>
                     <th>Purpose / Head</th>
                     <th>Method</th>
                     <th>Banking Details</th>
                     <th>Voucher Ref</th>
                     <th class="text-end">Amount (BDT)</th>
-                    <th>Collector (Staff)</th>
+                    <th>Voucher Creator (Staff)</th>
                     <th class="text-center">Status</th>
                     <th>Verified By</th>
                 </tr>
@@ -386,6 +463,12 @@ $printMode = $print_mode ?? 'collectors';
                         <td><strong><?= htmlspecialchars($t['client_name'] ?? 'N/A') ?></strong></td>
                         <td class="font-mono"><?= htmlspecialchars($t['client_phone'] ?? '') ?></td>
                         <td><?= htmlspecialchars($t['project_name'] ?? 'N/A') ?> (<?= htmlspecialchars($t['flat_name'] ?? 'N/A') ?>)</td>
+                        <td>
+                            <strong><?= htmlspecialchars($t['ced_assigned_name'] ?? 'Unassigned') ?></strong>
+                            <?php if (!empty($t['ced_assigned_role']) && $t['ced_assigned_role'] !== 'N/A'): ?>
+                                <div style="font-size: 8.5px; color: #64748b;"><?= htmlspecialchars($t['ced_assigned_role']) ?></div>
+                            <?php endif; ?>
+                        </td>
                         <td><?= htmlspecialchars($pLabel) ?></td>
                         <td style="text-transform: uppercase;"><?= htmlspecialchars($t['payment_method'] ?? 'cash') ?></td>
                         <td style="font-size: 10px; line-height: 1.3;">
@@ -435,7 +518,7 @@ $printMode = $print_mode ?? 'collectors';
             </tbody>
             <tfoot>
                 <tr style="background: #f1f5f9; font-weight: 700;">
-                    <td colspan="9" class="text-uppercase text-end">Total Register Amount:</td>
+                    <td colspan="10" class="text-uppercase text-end">Total Register Amount:</td>
                     <td class="text-end font-mono fw-bold" style="color: #0284c7;">৳<?= number_format($tSum, 2) ?></td>
                     <td colspan="3"></td>
                 </tr>

@@ -32,7 +32,7 @@ if ($isLocal) {
         $pdo = new PDO("mysql:host=127.0.0.1;dbname=tphl_db;charset=utf8mb4", 'root', '', $options);
     } catch (\PDOException $e) {
         try {
-            $pdo = new PDO("mysql:host=127.0.0.1;dbname=final_erp_db;charset=utf8mb4", 'final_erp_user', 'finaltPhl@#5672dhKL%sd10', $options);
+            $pdo = new PDO("mysql:host=127.0.0.1;dbname=final_erp_db;charset=utf8mb4", 'final_erp_user', '#erp_db@TPHL_PASS', $options);
         } catch (\PDOException $e2) {
             echo json_encode([
                 'success' => false,
@@ -44,7 +44,7 @@ if ($isLocal) {
     }
 } else {
     try {
-        $pdo = new PDO("mysql:host=127.0.0.1;dbname=final_erp_db;charset=utf8mb4", 'final_erp_user', 'finaltPhl@#5672dhKL%sd10', $options);
+        $pdo = new PDO("mysql:host=127.0.0.1;dbname=final_erp_db;charset=utf8mb4", 'final_erp_user', '#erp_db@TPHL_PASS', $options);
     } catch (\PDOException $e) {
         try {
             $pdo = new PDO("mysql:host=127.0.0.1;dbname=tphl_db;charset=utf8mb4", 'root', '', $options);

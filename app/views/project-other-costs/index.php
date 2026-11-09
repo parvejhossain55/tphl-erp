@@ -199,6 +199,10 @@
                                                     <span class="badge bg-info text-white mb-1">Qc approved</span>
                                                 <?php elseif ($row['status'] == 'management_approved'): ?>
                                                     <span class="badge bg-primary text-white mb-1">Management approved</span>
+                                                <?php elseif ($row['status'] == 'paid'): ?>
+                                                    <span class="badge bg-success mb-1">Paid</span>
+                                                <?php elseif ($row['status'] == 'rejected'): ?>
+                                                    <span class="badge bg-danger mb-1">Rejected</span>
                                                 <?php endif; ?>
                                                 
                                                 <?php if ($row['dept_head_status'] === 'approved'): ?>

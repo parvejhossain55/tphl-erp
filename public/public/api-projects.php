@@ -9,7 +9,7 @@ header('Access-Control-Allow-Origin: *');
 $host = '127.0.0.1';
 $db   = 'final_erp_db';
 $user = 'final_erp_user';
-$pass = 'finaltPhl@#5672dhKL%sd10';
+$pass = '#erp_db@TPHL_PASS';
 $charset = 'utf8mb4';
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
