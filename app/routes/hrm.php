@@ -34,6 +34,14 @@ return [
     'delete-task/(\d+)' => ['controller' => 'TaskController', 'method' => 'delete'],
 
     // =========================================================================
+    // Controller: MyWorkController (Personal Workspace)
+    // =========================================================================
+    'my-work' => ['controller' => 'MyWorkController', 'method' => 'index'],
+    'my-work-dashboard' => ['controller' => 'MyWorkController', 'method' => 'index'],
+    'my-work/delete/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'deleteTask'],
+    'my-work/store-task' => ['controller' => 'MyWorkController', 'method' => 'storeTask'],
+
+    // =========================================================================
     // Controller: EmployeeController
     // =========================================================================
     'employee-lists' => ['controller' => 'EmployeeController', 'method' => 'index'],

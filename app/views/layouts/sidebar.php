@@ -4284,6 +4284,16 @@
                         </ul>
                     </li>
 
+                    <!-- My Work Module -->
+                    <li class="slide <?= isActive(['my-work-dashboard', 'my-work-add', 'my-work-list', 'my-work-created', 'my-work-sheets'], $current_route) ? 'active' : '' ?>">
+                        <a href="<?= $base_url ?>/my-work-dashboard"
+                            class="sidebar__menu-item <?= isActive(['my-work-dashboard', 'my-work-add', 'my-work-list', 'my-work-created', 'my-work-sheets'], $current_route) ? 'active' : '' ?>">
+                            <div class="side-menu__icon"><i class="fas fa-briefcase"></i></div>
+                            <span class="sidebar__menu-label">My Work</span>
+                        </a>
+                    </li>
+
+
                     <!-- FOR Task Manage  -->
                     <!-- ====== BATCH IMPORTS ====== -->
                     <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 38])): // Only Admins can import ?>
