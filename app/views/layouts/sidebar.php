@@ -1275,8 +1275,6 @@
                                 <?php endif; ?>
                             </a>
                         </li>
-
-
                         <li class="slide">
                             <a href="<?= $base_url ?>/create-lead"
                                 class="sidebar__menu-item <?= isActive('create-lead', $current_route) ?>">Add Lead</a>
@@ -2312,13 +2310,9 @@
 
                 <!--Start CED  -->
                 <?php 
-                $isClientCommUser = (function_exists('isClientsCommunicated') && isClientsCommunicated()) 
-                    || in_array($sbUserRoleId, [7, 37, 39], true)
-                    || (strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'head of client experience') !== false)
-                    || (strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'client experience') !== false)
-                    || (strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'credit recovery') !== false)
-                    || (strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'recovery') !== false)
-                    || (strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'communicat') !== false);
+                $isClientCommUser = (function_exists('isCreditRecovery') && isCreditRecovery()) 
+                    && !in_array($sbUserRoleId, [1, 3, 7, 33, 34, 35, 38, 39], true)
+                    && (strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'experience') === false);
                 $canViewCedCategory = (hasPermission("CED Manage") || in_array($sbUserRoleId, [1, 3, 7, 33, 34, 35, 37, 38, 39]) || $isClientCommUser) && ($sbUserRoleId != 9);
 
                 $sbTodayFollowupCount = 0;
@@ -2341,6 +2335,14 @@
                     </li>
 
                     <?php if ($isClientCommUser): ?>
+                        <li class="slide <?= isActive(['my-projects-history', 'ced-projects-history'], $current_route) ?>">
+                            <a href="<?= $base_url ?>/ced-projects-history"
+                                class="sidebar__menu-item <?= isActive(['my-projects-history', 'ced-projects-history'], $current_route) ?>"
+                                title="CED Projects History">
+                                <div class="side-menu__icon"><i class="fa-solid fa-city"></i></div>
+                                <span class="sidebar__menu-label">CED Projects History</span>
+                            </a>
+                        </li>
                         <!-- For Clients Communicated: Collection Statement, Client-wise Due Tracking, Today Follow Up, and Upcoming Follow Up -->
                         <li class="slide <?= isActive('ced-collection-statement', $current_route) ?>">
                             <a href="<?= $base_url ?>/ced-collection-statement"
@@ -2436,6 +2438,23 @@
                                 <span class="sidebar__menu-label">Company Bank Manage</span>
                             </a>
                         </li>
+                        <li class="slide <?= isActive(['my-projects-history', 'ced-projects-history'], $current_route) ?>">
+                            <a href="<?= $base_url ?>/ced-projects-history"
+                                class="sidebar__menu-item <?= isActive(['my-projects-history', 'ced-projects-history'], $current_route) ?>"
+                                title="CED Projects History">
+                                <div class="side-menu__icon"><i class="fa-solid fa-city"></i></div>
+                                <span class="sidebar__menu-label">CED Projects History</span>
+                            </a>
+                        </li>
+                        <?php if (in_array($sbUserRoleId, [1, 3, 33, 38, 39], true) || (function_exists('isHeadOfClientExperience') && isHeadOfClientExperience())): ?>
+                            <li class="slide <?= isActive('manage-projects-for-ced', $current_route) ?>">
+                                <a href="<?= $base_url ?>/manage-projects-for-ced"
+                                    class="sidebar__menu-item <?= isActive('manage-projects-for-ced', $current_route) ?>">
+                                    <div class="side-menu__icon"><i class="fa-solid fa-diagram-project"></i></div>
+                                    <span class="sidebar__menu-label">Manage Projects for CED</span>
+                                </a>
+                            </li>
+                        <?php endif; ?>
 
 
                         <!-- Cash In Manage -->
@@ -2772,7 +2791,6 @@
                             </a>
 
                             <ul class="sidebar-menu child2" style="display:block;">
-
 
                                 <?php if (($_SESSION['user']['role_id'] ?? 0) != 3): ?>
                                     <li class="slide <?= isActive('create-cashout-request', $current_route) ?>">

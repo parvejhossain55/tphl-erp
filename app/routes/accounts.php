@@ -84,6 +84,11 @@ return [
     'ced-collection-statement' => ['controller' => 'CedCollectionStatementController', 'method' => 'index'],
     'ced-collection-statement-print' => ['controller' => 'CedCollectionStatementController', 'method' => 'printStatement'],
     'ced-collection-statement-export' => ['controller' => 'CedCollectionStatementController', 'method' => 'exportCSV'],
+    'manage-projects-for-ced' => ['controller' => 'CedProjectManageController', 'method' => 'manageProjects'],
+    'ced-project-assignments/save' => ['controller' => 'CedProjectManageController', 'method' => 'saveAssignmentsAjax'],
+    'ced-project-assignments/agent-projects/(\d+)' => ['controller' => 'CedProjectManageController', 'method' => 'getAgentProjectsAjax'],
+    'my-projects-history' => ['controller' => 'CedProjectManageController', 'method' => 'myProjectsHistory'],
+    'ced-projects-history' => ['controller' => 'CedProjectManageController', 'method' => 'myProjectsHistory'],
 
     'payment-invoice' => ['controller' => 'AccountClientController', 'method' => 'viewPaymentInvoice'],
     'payment-invoice/(\d+)' => ['controller' => 'AccountClientController', 'method' => 'viewPaymentInvoice'],

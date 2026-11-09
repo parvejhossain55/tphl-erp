@@ -43,6 +43,52 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
             include __DIR__ . '/../layouts/accounts_head_approval_card.php';
         }
         ?>
+
+        <?php if ($request['status'] === 'rejected'): ?>
+            <?php
+            $rejBy = 'Authority';
+            $rejStep = 'Rejected';
+            $rejAt = $request['updated_at'] ?? '';
+            $rejNote = '';
+            if (($request['dept_head_status'] ?? '') === 'rejected') {
+                $rejStep = 'Department Head';
+                $rejBy = $request['dh_name'] ?? 'Department Head';
+                $rejAt = $request['dept_head_approved_at'] ?? '';
+                $rejNote = $request['dept_head_approval_note'] ?? '';
+            } elseif (!empty($request['management_apporved_by_id'])) {
+                $rejStep = 'Management / Operation Head';
+                $rejBy = $request['mgmt_name'] ?? 'Management';
+                $rejAt = $request['management_apporved_at'] ?? '';
+                $rejNote = $request['management_apporved_note'] ?? '';
+            } elseif (!empty($request['qc_audit_approved_id'])) {
+                $rejStep = 'QC & Internal Audit';
+                $rejBy = $request['qc_name'] ?? 'QC Audit';
+                $rejAt = $request['qc_audit_approved_at'] ?? '';
+                $rejNote = $request['qc_audit_note'] ?? '';
+            }
+            ?>
+            <div class="alert alert-danger border border-danger d-flex align-items-center justify-content-between p-3 mb-4 rounded-3 shadow-sm">
+                <div class="d-flex align-items-center gap-3">
+                    <i class="fa-solid fa-circle-xmark fs-2 text-danger flex-shrink-0"></i>
+                    <div>
+                        <h5 class="fw-bold mb-1 text-danger">Request Rejected</h5>
+                        <div class="fs-13 text-dark">
+                            Rejected by <strong><?= htmlspecialchars($rejBy) ?></strong> (<?= htmlspecialchars($rejStep) ?>)
+                            <?php if (!empty($rejAt)): ?>
+                                • <span class="text-muted"><?= date('d M Y, h:i A', strtotime($rejAt)) ?></span>
+                            <?php endif; ?>
+                        </div>
+                        <?php if (!empty($rejNote)): ?>
+                            <div class="fs-12 text-danger mt-1 fst-italic">
+                                <i class="fa-solid fa-quote-left me-1"></i>"<?= htmlspecialchars($rejNote) ?>"
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <span class="badge bg-danger fs-12 px-3 py-2">Rejected</span>
+            </div>
+        <?php endif; ?>
+
         <div class="row">
             <div class="col-lg-8">
                 <!-- Request Details Card -->
@@ -120,8 +166,20 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                     <td class="text-success fw-bold">
                                         ৳ <?= number_format($request['approved_amount'], 2) ?>
                                         <div class="mt-1">
+                                            <?php
+                                            $approvedByText = 'N/A';
+                                            if (!empty($request['management_apporved_by_id']) && stripos($request['mgmt_name'] ?? '', 'accounts') === false) {
+                                                $approvedByText = $request['mgmt_name'];
+                                            } elseif (!empty($ahInfo['op_head_name']) && !empty($ahInfo['is_op_head_approved'])) {
+                                                $approvedByText = $ahInfo['op_head_name'] . (!empty($ahInfo['op_head_designation']) ? ' (' . $ahInfo['op_head_designation'] . ')' : '');
+                                            } elseif (!empty($request['mgmt_name'])) {
+                                                $approvedByText = $request['mgmt_name'];
+                                            } elseif (!empty($request['qc_name'])) {
+                                                $approvedByText = $request['qc_name'];
+                                            }
+                                            ?>
                                             <small class="text-muted fw-normal" style="font-size: 0.75rem;">
-                                                <i class="bi bi-person me-1"></i>Updated by <?= htmlspecialchars($request['management_apporved_by_id'] ? ($request['mgmt_name'] ?? 'N/A') : ($request['qc_name'] ?? 'N/A')) ?>
+                                                <i class="bi bi-person me-1"></i>Approved by <?= htmlspecialchars($approvedByText) ?>
                                             </small>
                                         </div>
                                     </td>
@@ -151,7 +209,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                 <tr>
                                     <th class="bg-light">Status</th>
                                     <td>
-                                        <span class="badge bg-<?= $request['status'] == 'pending' ? 'warning' : ($request['status'] == 'paid' ? 'success' : 'info') ?>">
+                                        <span class="badge bg-<?= $request['status'] == 'pending' ? 'warning' : ($request['status'] == 'paid' ? 'success' : ($request['status'] == 'rejected' ? 'danger' : 'info')) ?>">
                                             <?= ucfirst(str_replace('_', ' ', $request['status'])) ?>
                                         </span>
                                     </td>
@@ -229,7 +287,11 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                             <li class="list-group-item">
                                 <strong>QC Approval:</strong> 
                                 <?php if($request['qc_audit_approved_id']): ?>
-                                    <span class="text-success"><i class="bi bi-check-circle"></i> Approved</span> by <?= htmlspecialchars($request['qc_name'] ?? 'N/A') ?>
+                                    <?php if($request['status'] === 'rejected' && empty($request['management_apporved_by_id'])): ?>
+                                        <span class="text-danger"><i class="bi bi-x-circle"></i> Rejected</span> by <?= htmlspecialchars($request['qc_name'] ?? 'N/A') ?>
+                                    <?php else: ?>
+                                        <span class="text-success"><i class="bi bi-check-circle"></i> Approved</span> by <?= htmlspecialchars($request['qc_name'] ?? 'N/A') ?>
+                                    <?php endif; ?>
                                     <?php if ($request['status'] !== 'paid' && $request['status'] !== 'rejected' && in_array($roleId, [1, 3, 13, 24, 25, 20, 32, 38])): ?>
                                         <button type="button" class="btn btn-xs btn-outline-danger ms-2 py-0 px-2" data-bs-toggle="collapse" data-bs-target="#qcRejectCollapse">
                                             <i class="bi bi-x-circle me-1"></i> Reject
@@ -249,14 +311,108 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                         <small class="text-muted"><?= date('d M Y h:i A', strtotime($request['qc_audit_approved_at'])) ?></small><br>
                                     <?php endif; ?>
                                     <?php if($request['qc_audit_note']): ?><small>Note: <?= htmlspecialchars($request['qc_audit_note']) ?></small><?php endif; ?>
+                                <?php elseif($request['dept_head_status'] === 'rejected'): ?>
+                                    <span class="text-muted"><i class="bi bi-dash-circle"></i> Skipped (Rejected by Dept Head)</span>
                                 <?php else: ?>
                                     <span class="text-warning"><i class="bi bi-clock"></i> Pending</span>
                                 <?php endif; ?>
                             </li>
+                            <!-- Admin & Operation Head Approval -->
+                            <li class="list-group-item">
+                                <strong>Admin &amp; Operation Head Approval:</strong>
+                                <?php 
+                                $isOpHeadApproved = !empty($ahInfo['is_op_head_approved']) || (strtolower($ahInfo['op_head_status'] ?? '') === 'approved');
+                                ?>
+                                <?php if ($isOpHeadApproved): ?>
+                                    <span class="text-success"><i class="bi bi-check-circle"></i> Approved</span> by <?= htmlspecialchars($ahInfo['op_head_name'] ?? 'Admin & Operation Head') ?>
+                                    <?php if (!empty($ahInfo['op_head_designation'])): ?>
+                                        <span class="text-muted small">(<?= htmlspecialchars($ahInfo['op_head_designation']) ?>)</span>
+                                    <?php endif; ?>
+                                    <?php if (!empty($ahInfo['op_head_code'])): ?>
+                                        <span class="badge bg-light text-secondary border ms-1">[<?= htmlspecialchars($ahInfo['op_head_code']) ?>]</span>
+                                    <?php endif; ?>
+                                    <?php if ($request['status'] !== 'paid' && $request['status'] !== 'rejected' && in_array($roleId, [1, 3, 20, 32, 38])): ?>
+                                        <button type="button" class="btn btn-xs btn-outline-danger ms-2 py-0 px-2" data-bs-toggle="collapse" data-bs-target="#opHeadRejectCollapse">
+                                            <i class="bi bi-x-circle me-1"></i> Reject
+                                        </button>
+                                        <div class="collapse mt-2" id="opHeadRejectCollapse">
+                                            <form method="POST" action="<?= $GLOBALS['base_url'] ?>/project-other-costs/approve-management/<?= $request['id'] ?>" class="border p-2 rounded bg-light">
+                                                <div class="mb-2">
+                                                    <textarea class="form-control form-control-sm" name="management_apporved_note" rows="2" placeholder="Reason for rejection..." required></textarea>
+                                                </div>
+                                                <button type="submit" name="action" value="reject" class="btn btn-sm btn-danger w-100" onclick="return confirm('Are you sure you want to reject this request?');">
+                                                    <i class="bi bi-x-circle me-1"></i> Confirm Rejection
+                                                </button>
+                                            </form>
+                                        </div>
+                                    <?php endif; ?><br>
+                                    <?php if (!empty($ahInfo['op_head_at'])): ?>
+                                        <small class="text-muted"><?= date('d M Y h:i A', strtotime($ahInfo['op_head_at'])) ?></small><br>
+                                    <?php endif; ?>
+                                    <?php if (!empty($ahInfo['op_head_note'])): ?>
+                                        <small>Note: <?= htmlspecialchars($ahInfo['op_head_note']) ?></small>
+                                    <?php endif; ?>
+                                <?php elseif ($request['status'] === 'rejected' && ($ahInfo['op_head_status'] ?? '') === 'rejected'): ?>
+                                    <span class="text-danger"><i class="bi bi-x-circle"></i> Rejected</span> by <?= htmlspecialchars($ahInfo['op_head_name'] ?? 'Admin & Operation Head') ?><br>
+                                    <?php if (!empty($ahInfo['op_head_at'])): ?>
+                                        <small class="text-muted"><?= date('d M Y h:i A', strtotime($ahInfo['op_head_at'])) ?></small><br>
+                                    <?php endif; ?>
+                                    <?php if (!empty($ahInfo['op_head_note'])): ?><small>Note: <?= htmlspecialchars($ahInfo['op_head_note']) ?></small><?php endif; ?>
+                                <?php elseif ($request['dept_head_status'] === 'rejected' || ($request['status'] === 'rejected' && empty($request['qc_audit_approved_id']))): ?>
+                                    <span class="text-muted"><i class="bi bi-dash-circle"></i> Skipped (Rejected at Earlier Stage)</span>
+                                <?php else: ?>
+                                    <span class="text-warning"><i class="bi bi-clock"></i> Pending</span>
+                                    <?php if (((float)($request['approved_amount'] ?? $request['request_amount'])) > 10000): ?>
+                                        <span class="text-danger small fw-semibold ms-1">(Mandatory for &gt; ৳10,000)</span>
+                                    <?php endif; ?>
+                                <?php endif; ?>
+                            </li>
+
+                            <!-- Accounts Head Approval -->
+                            <li class="list-group-item">
+                                <strong>Accounts Head Approval:</strong>
+                                <?php if (!empty($ahInfo['is_accounts_head_approved'])): ?>
+                                    <span class="text-success"><i class="bi bi-check-circle"></i> Approved</span> by <?= htmlspecialchars($ahInfo['approved_by_name'] ?? 'Accounts Head') ?>
+                                    <?php if (!empty($ahInfo['approved_by_designation'])): ?>
+                                        <span class="text-muted small">(<?= htmlspecialchars($ahInfo['approved_by_designation']) ?>)</span>
+                                    <?php endif; ?>
+                                    <?php if (!empty($ahInfo['approved_by_emp_id'])): ?>
+                                        <span class="badge bg-light text-secondary border ms-1">[<?= htmlspecialchars($ahInfo['approved_by_emp_id']) ?>]</span>
+                                    <?php endif; ?><br>
+                                    <?php if (!empty($ahInfo['approved_at'])): ?>
+                                        <small class="text-muted"><?= date('d M Y h:i A', strtotime($ahInfo['approved_at'])) ?></small><br>
+                                    <?php endif; ?>
+                                    <?php if (!empty($ahInfo['approval_note'])): ?>
+                                        <small>Note: <?= htmlspecialchars($ahInfo['approval_note']) ?></small>
+                                    <?php endif; ?>
+                                <?php elseif (!empty($ahInfo['is_accounts_head_rejected'])): ?>
+                                    <span class="text-danger"><i class="bi bi-x-circle"></i> Rejected</span> by <?= htmlspecialchars($ahInfo['approved_by_name'] ?? 'Accounts Head') ?><br>
+                                    <?php if (!empty($ahInfo['approved_at'])): ?>
+                                        <small class="text-muted"><?= date('d M Y h:i A', strtotime($ahInfo['approved_at'])) ?></small><br>
+                                    <?php endif; ?>
+                                    <?php if (!empty($ahInfo['approval_note'])): ?><small>Note: <?= htmlspecialchars($ahInfo['approval_note']) ?></small><?php endif; ?>
+                                <?php elseif ($request['status'] === 'rejected'): ?>
+                                    <span class="text-muted"><i class="bi bi-dash-circle"></i> Skipped (Rejected at Earlier Stage)</span>
+                                <?php else: ?>
+                                    <span class="text-warning"><i class="bi bi-clock"></i> Pending Accounts Head Verification & Approval</span>
+                                <?php endif; ?>
+                            </li>
+
+                            <!-- Management Final Approval -->
                             <li class="list-group-item">
                                 <strong>Management Approval:</strong>
-                                <?php if($request['management_apporved_by_id']): ?>
-                                    <span class="text-success"><i class="bi bi-check-circle"></i> Approved</span> by <?= htmlspecialchars($request['mgmt_name'] ?? 'N/A') ?>
+                                <?php
+                                $isUnder10k = ((float)($request['approved_amount'] ?? $request['request_amount']) <= 10000.01);
+                                $isDistinctMgmtUser = !empty($request['management_apporved_by_id']) 
+                                    && stripos($request['mgmt_name'] ?? '', 'accounts') === false
+                                    && (empty($ahInfo['op_head_name']) || strtolower(trim($request['mgmt_name'] ?? '')) !== strtolower(trim($ahInfo['op_head_name'] ?? '')));
+                                ?>
+                                <?php if ($isDistinctMgmtUser): ?>
+                                    <?php if ($request['status'] === 'rejected'): ?>
+                                        <span class="text-danger"><i class="bi bi-x-circle"></i> Rejected</span> by <?= htmlspecialchars($request['mgmt_name'] ?? 'Management') ?>
+                                    <?php else: ?>
+                                        <span class="text-success"><i class="bi bi-check-circle"></i> Approved</span> by <?= htmlspecialchars($request['mgmt_name'] ?? 'Management') ?>
+                                    <?php endif; ?>
                                     <?php if ($request['status'] !== 'paid' && $request['status'] !== 'rejected' && in_array($roleId, [1, 3, 15, 20, 22, 32, 38])): ?>
                                         <button type="button" class="btn btn-xs btn-outline-danger ms-2 py-0 px-2" data-bs-toggle="collapse" data-bs-target="#mgmtRejectCollapse">
                                             <i class="bi bi-x-circle me-1"></i> Reject
@@ -272,12 +428,20 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                             </form>
                                         </div>
                                     <?php endif; ?><br>
-                                    <?php if(!empty($request['management_apporved_at'])): ?>
+                                    <?php if (!empty($request['management_apporved_at'])): ?>
                                         <small class="text-muted"><?= date('d M Y h:i A', strtotime($request['management_apporved_at'])) ?></small><br>
                                     <?php endif; ?>
-                                    <?php if($request['management_apporved_note']): ?><small>Note: <?= htmlspecialchars($request['management_apporved_note']) ?></small><?php endif; ?>
+                                    <?php if ($request['management_apporved_note']): ?><small>Note: <?= htmlspecialchars($request['management_apporved_note']) ?></small><?php endif; ?>
+                                <?php elseif ($isUnder10k && $isOpHeadApproved): ?>
+                                    <span class="text-success"><i class="bi bi-shield-check"></i> Authorized by Admin &amp; Operation Head (&le; ৳10,000 Tier)</span><br>
+                                    <small class="text-muted">Separate Executive Management sign-off not required for expenses &le; ৳10,000.</small>
+                                <?php elseif ($request['dept_head_status'] === 'rejected' || ($request['status'] === 'rejected' && empty($request['management_apporved_by_id']))): ?>
+                                    <span class="text-muted"><i class="bi bi-dash-circle"></i> Skipped (Rejected at Earlier Stage)</span>
                                 <?php else: ?>
                                     <span class="text-warning"><i class="bi bi-clock"></i> Pending</span>
+                                    <?php if (!$isUnder10k): ?>
+                                        <span class="text-danger small fw-semibold ms-1">(Mandatory for &gt; ৳10,000)</span>
+                                    <?php endif; ?>
                                 <?php endif; ?>
                             </li>
                             <li class="list-group-item">
@@ -310,6 +474,8 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                             </div>
                                         <?php endif; ?>
                                     <?php endif; ?>
+                                <?php elseif($request['status'] === 'rejected'): ?>
+                                    <span class="text-muted"><i class="bi bi-dash-circle"></i> Cancelled (Request Rejected)</span>
                                 <?php else: ?>
                                     <span class="text-warning"><i class="bi bi-clock"></i> Pending Accounts Payout</span>
                                 <?php endif; ?>
@@ -357,6 +523,9 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                     } else {
                         if ($isMgmtUser || $isOpHeadUser) {
                             $canMgmtApprove = true;
+                            if ($isOpHeadUser && !$isMgmtUser) {
+                                $isOpHeadAction = true;
+                            }
                         }
                     }
                 }
@@ -427,7 +596,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                 <form method="POST" action="<?= $GLOBALS['base_url'] ?>/project-other-costs/approve-management/<?= $request['id'] ?>">
                                     <?php if ($isOpHeadAction): ?>
                                         <div class="alert alert-primary py-2 px-3 small mb-3">
-                                            <i class="bi bi-shield-check me-1"></i><strong>Operation Head Verification (Step 1 of 3):</strong> Your approval will forward this request exceeding ৳10,000 to Accounts Head (Role 30).
+                                            <i class="bi bi-shield-check me-1"></i><strong>Admin &amp; Operation Head Approval<?= $isOver1Lac ? ' (Step 1 of 3)' : ' (≤ ৳10,000 Tier)' ?>:</strong> Your approval verifies and forwards this request to Accounts Head (Role 30).
                                         </div>
                                     <?php endif; ?>
                                     <div class="mb-3">
