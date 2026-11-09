@@ -98,18 +98,30 @@
                                                 <td><span class="badge bg-warning text-dark border"><?= htmlspecialchars($req['type']) ?></span></td>
                                                 <td class="fw-bold">#<?= htmlspecialchars($req['id']) ?></td>
                                                 <td class="fw-semibold">৳<?= number_format((float)($req['amount'] ?? 0), 2) ?></td>
-                                                <td><span class="badge bg-secondary"><?= htmlspecialchars($req['status']) ?></span></td>
+                                                <td>
+                                                    <span class="badge bg-secondary"><?= htmlspecialchars($req['status']) ?></span>
+                                                    <?php if (!empty($req['pending_stage_label'])): ?>
+                                                        <div class="mt-1"><span class="badge <?= !empty($req['can_qc_approve']) ? 'bg-success-transparent text-success' : 'bg-warning-transparent text-warning' ?> fs-10"><?= htmlspecialchars($req['pending_stage_label']) ?></span></div>
+                                                    <?php endif; ?>
+                                                </td>
                                                 <td>
                                                     <a href="<?= $details_url ?>" target="_blank" class="btn btn-sm btn-outline-info me-1">
                                                         <i class="bi bi-eye me-1"></i> Details
                                                     </a>
-                                                    <button class="btn btn-sm btn-success approve-btn" 
-                                                            data-id="<?= $req['id'] ?>" 
-                                                            data-type="<?= $req['type'] ?>"
-                                                            data-bs-toggle="modal" 
-                                                            data-bs-target="#approveModal">
-                                                        <i class="bi bi-check-circle me-1"></i> Review & Approve
-                                                    </button>
+                                                    <?php $canQcAct = !isset($req['can_qc_approve']) || (int)$req['can_qc_approve'] === 1 || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3], true); ?>
+                                                    <?php if ($canQcAct): ?>
+                                                        <button class="btn btn-sm btn-success approve-btn" 
+                                                                data-id="<?= $req['id'] ?>" 
+                                                                data-type="<?= $req['type'] ?>"
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#approveModal">
+                                                            <i class="bi bi-check-circle me-1"></i> Review & Approve
+                                                        </button>
+                                                    <?php else: ?>
+                                                        <button class="btn btn-sm btn-secondary" disabled title="Waiting for <?= htmlspecialchars($req['pending_stage_label'] ?? 'prior approval') ?>">
+                                                            <i class="bi bi-lock me-1"></i> <?= htmlspecialchars($req['pending_stage_label'] ?? 'Awaiting Prior Step') ?>
+                                                        </button>
+                                                    <?php endif; ?>
                                                 </td>
                                             </tr>
                                         <?php endforeach; ?>

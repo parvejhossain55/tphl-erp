@@ -61,6 +61,37 @@ class Con_VendorPaymentRequestController extends Controller
         );
     }
     
+    /** Roles that can do Purchase Team Leader Review (Role 31) */
+    private function canReviewTeamLeader()
+    {
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        if (in_array($roleId, [33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true)) {
+            return false;
+        }
+        return (
+            in_array($roleId, [31, 17, 1, 3], true)
+            || strpos($roleName, 'purchase team leader') !== false
+            || strpos($roleName, 'senior purchase') !== false
+            || $this->canApprovePurchaseHead()
+        );
+    }
+
+    /** Roles that can do Purchase Head Approval (Role 17 only + Management 1, 3) */
+    private function canApprovePurchaseHead()
+    {
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        if (in_array($roleId, [33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true)) {
+            return false;
+        }
+        return (
+            in_array($roleId, [17, 1, 3], true)
+            || strpos($roleName, 'purchase head') !== false
+            || strpos($roleName, 'head of purchase') !== false
+        );
+    }
+
     /** Roles that can do QC Approval */
     private function canApproveQC()
     {
@@ -404,6 +435,7 @@ class Con_VendorPaymentRequestController extends Controller
             'net_payable'       => $netPayable,
             'delivery_verified' => ($paymentType === 'Advance') ? 0 : (int)($_POST['delivery_verified'] ?? 0),
             'created_by'        => $userId,
+            'creator_role_id'   => (int)$this->userRole,
             'account_id'        => !empty($_POST['account_id']) ? (int)$_POST['account_id'] : null,
         ];
 
@@ -431,8 +463,8 @@ class Con_VendorPaymentRequestController extends Controller
             $project = $this->db->query("SELECT name FROM projects WHERE id = " . (int)$data['project_id'])->fetch_assoc();
             $vendor  = $this->db->query("SELECT name FROM vendors WHERE id = " . (int)$vendorId)->fetch_assoc();
 
-            // Set approve_role: 'qc' for Step 1 verification (QC & Audit)
-            $approveRole = 'qc';
+            // Set approve_role: if submitted by Purchase Head (17) or Management (1, 3), go directly to QC ('qc'); else 'purchase_head'
+            $approveRole = in_array((int)$this->userRole, [1, 3, 17], true) ? 'qc' : 'purchase_head';
 
             // Now create the approval_request for management immediately
             $this->approvalModel->create([
@@ -692,10 +724,12 @@ class Con_VendorPaymentRequestController extends Controller
             'total_paid'        => $totalPaid,
             'due_amount'        => $dueAmount,
             'payable_amount'    => $payableAmt,
-            'approval_request'  => $approvalReq,
-            'canApprove'        => $this->canApprove(),
-            'canApproveQC'      => $this->canApproveQC(),
-            'canProcessPayment' => $this->canProcessPayment(),
+            'approval_request'       => $approvalReq,
+            'canApprove'             => $this->canApprove(),
+            'canApproveQC'           => $this->canApproveQC(),
+            'canApprovePurchaseHead' => $this->canApprovePurchaseHead(),
+            'canReviewTeamLeader'    => $this->canReviewTeamLeader(),
+            'canProcessPayment'      => $this->canProcessPayment(),
             'userRole'          => $this->userRole,
             'banks'             => $banks,
             'documents'         => $documents,
@@ -763,7 +797,137 @@ class Con_VendorPaymentRequestController extends Controller
     }
 
     // =========================================================================
-    // APPROVE — 2-Tier: QC -> Management
+    // PURCHASE TEAM LEADER REVIEW (Role 31 Optional Step)
+    // =========================================================================
+
+    public function reviewTeamLeader($id)
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+            exit;
+        }
+
+        if (!$this->canReviewTeamLeader()) {
+            setError('You are not authorized to review as Purchase Team Leader.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+            exit;
+        }
+
+        $request = $this->model->find($id);
+        if (!$request || $request['status'] !== 'Submitted') {
+            setError('Invalid request status for Team Leader review.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+            exit;
+        }
+
+        $note = trim($_POST['tl_note'] ?? '');
+        if ($this->model->reviewPurchaseTeamLeader($id, $this->userId, $note)) {
+            $tlNoteFull = "Reviewed & Forwarded by Purchase Team Leader. " . ($note ? "Note: {$note}" : "");
+            $stmtAr = $this->db->prepare(
+                "UPDATE approval_requests
+                 SET approve_role = 'purchase_head',
+                     status = 'pending',
+                     approval_note = ?
+                 WHERE source_table = 'vendor_payment_requests' AND source_id = ? AND status = 'pending'"
+            );
+            if ($stmtAr) {
+                $stmtAr->bind_param('si', $tlNoteFull, $id);
+                $stmtAr->execute();
+                $stmtAr->close();
+            }
+            setSuccess('Vendor Payment Request reviewed and forwarded to Head of Purchase (Role 17).');
+        } else {
+            setError('Failed to record Team Leader review.');
+        }
+
+        header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+        exit;
+    }
+
+    // =========================================================================
+    // HEAD OF PURCHASE APPROVE / REJECT (Role 17 Mandatory Step)
+    // =========================================================================
+
+    public function approvePurchaseHead($id)
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+            exit;
+        }
+
+        if (!$this->canApprovePurchaseHead()) {
+            setError('You are not authorized to perform Head of Purchase approval.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+            exit;
+        }
+
+        $request = $this->model->find($id);
+        if (!$request || $request['status'] !== 'Submitted') {
+            setError('Invalid request status for Head of Purchase approval.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+            exit;
+        }
+
+        $note = trim($_POST['ph_note'] ?? '');
+        if ($this->model->approvePurchaseHead($id, $this->userId, $note)) {
+            $phNoteFull = "Approved by Head of Purchase. " . ($note ? "Note: {$note}" : "");
+            $stmtAr = $this->db->prepare(
+                "UPDATE approval_requests
+                 SET approve_role = 'qc',
+                     status = 'pending',
+                     approved_by = ?,
+                     approved_at = NOW(),
+                     approval_note = ?
+                 WHERE source_table = 'vendor_payment_requests' AND source_id = ?"
+            );
+            if ($stmtAr) {
+                $stmtAr->bind_param('isi', $this->userId, $phNoteFull, $id);
+                $stmtAr->execute();
+                $stmtAr->close();
+            }
+            setSuccess('Vendor Payment Request approved by Head of Purchase. Forwarded to QC & Internal Audit.');
+        } else {
+            setError('Failed to approve as Head of Purchase.');
+        }
+
+        header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+        exit;
+    }
+
+    public function rejectPurchaseHead($id)
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+            exit;
+        }
+
+        if (!$this->canApprovePurchaseHead()) {
+            setError('You are not authorized to perform Head of Purchase rejection.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+            exit;
+        }
+
+        $request = $this->model->find($id);
+        if (!$request || $request['status'] !== 'Submitted') {
+            setError('Invalid request status for Head of Purchase rejection.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+            exit;
+        }
+
+        $note = trim($_POST['ph_note'] ?? 'Rejected by Head of Purchase');
+        if ($this->model->rejectPurchaseHead($id, $this->userId, $note)) {
+            $this->syncApprovalRequest($id, 'rejected', null, $note);
+            setSuccess('Vendor Payment Request rejected by Head of Purchase.');
+        } else {
+            setError('Failed to reject payment request.');
+        }
+
+        header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+        exit;
+    }
+
+    // =========================================================================
+    // APPROVE — Multi-Tier: Purchase Head -> QC -> Op Head -> Accounts Head -> Management (>10K)
     // =========================================================================
 
     public function approve($id)
@@ -827,7 +991,6 @@ class Con_VendorPaymentRequestController extends Controller
             }
 
             $mgtNote = trim($_POST['approval_note'] ?? '');
-            $isOver1Lac = ($netPayable > 10000 || $approvedAmount > 10000);
             $isOpHeadUser = (in_array((int)$this->userRole, [20, 32], true) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head') !== false || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'admin & operation') !== false);
             $isMgmtUser = in_array((int)$this->userRole, [1, 3], true);
 
@@ -837,52 +1000,78 @@ class Con_VendorPaymentRequestController extends Controller
             $opHeadStatus = strtolower($arRow['op_head_status'] ?? 'pending');
             $ahStatus = strtolower($arRow['accounts_head_status'] ?? 'pending');
 
-            // Two-tier check for > 10K
-            if ($isOver1Lac) {
-                if ($isOpHeadUser && !$isMgmtUser) {
-                    // Role 20 is approving Op Head Step 1 for > 10K
-                    $arId = (int)($arRow['id'] ?? 0);
-                    $escNote = $this->db->real_escape_string($mgtNote ?: 'Verified and approved by Admin & Operation Head');
-                    if (!class_exists('ApprovalRequest')) {
-                        require_once __DIR__ . '/../../models/ApprovalRequest.php';
-                    }
-                    $approvalModel = new \ApprovalRequest($this->db);
-                    if ($arId > 0) {
-                        $approvalModel->approveOperationHead($arId, $this->userId, $escNote);
-                    } else {
-                        $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'accounts_head' WHERE source_table = 'vendor_payment_requests' AND source_id = {$id}");
-                    }
-                    setSuccess("Payment request verified & approved by Admin & Operation Head (Role 20). Forwarded to Accounts Head (Role 30) for payment verification.");
+            // Operation Head (Role 20/32) approval applies to BOTH <= 10K and > 10K after QC approval
+            if ($isOpHeadUser && !$isMgmtUser) {
+                if ($request['status'] !== 'QC Approved') {
+                    setError('Sequential Approval Required: Operation Head can only approve after QC & Internal Audit has verified and approved this bill.');
                     header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
                     exit;
                 }
 
-                if ($isMgmtUser) {
-                    if ($opHeadStatus !== 'approved') {
-                        setError("Access Denied: Requests exceeding ৳10,000 must be approved by Admin & Operation Head (Role 20) first.");
-                        header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
-                        exit;
-                    }
-                    if ($ahStatus !== 'approved') {
-                        setError("Access Denied: Requests exceeding ৳10,000 must be verified & approved by Accounts Head (Role 30) before Management can approve.");
-                        header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
-                        exit;
-                    }
+                $arId = (int)($arRow['id'] ?? 0);
+                $escNote = $this->db->real_escape_string($mgtNote ?: 'Verified and approved by Admin & Operation Head');
+                if (!class_exists('ApprovalRequest')) {
+                    require_once __DIR__ . '/../../models/ApprovalRequest.php';
                 }
+                $approvalModel = new \ApprovalRequest($this->db);
+                if ($arId > 0) {
+                    $approvalModel->approveOperationHead($arId, $this->userId, $escNote);
+                } else {
+                    $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'accounts_head' WHERE source_table = 'vendor_payment_requests' AND source_id = {$id}");
+                }
+                setSuccess("Payment request verified & approved by Admin & Operation Head (Role 20). Forwarded to Accounts Head (Role 30) for payment verification.");
+                header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+                exit;
             }
 
             if ($this->model->approve($id, $this->userId, $approvedAmount)) {
-                // Update management note
-                $stmt = $this->db->prepare("UPDATE vendor_payment_requests SET management_note = ? WHERE id = ?");
-                $stmt->bind_param('si', $mgtNote, $id);
-                $stmt->execute();
-                
-                // Sync approval_requests table (moves to accounts for payout)
-                $this->syncApprovalRequest($id, 'approved', $approvedAmount);
+                $escMgtNote = $this->db->real_escape_string($mgtNote ?: 'Approved by Management');
 
-                // Ensure op_head_status is approved and approve_role reflects accounts head status
-                $nextRoleVp = ($ahStatus === 'approved') ? 'accounts' : 'accounts_head';
-                $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', approve_role = '{$nextRoleVp}' WHERE source_table = 'vendor_payment_requests' AND source_id = {$id}");
+                // Update management note AND auto-populate any bypassed earlier stages if Management (1, 3) approved directly
+                if ($isMgmtUser) {
+                    $this->db->query("
+                        UPDATE vendor_payment_requests
+                        SET management_note = '{$escMgtNote}',
+                            purchase_head_approved_by_id = COALESCE(purchase_head_approved_by_id, {$this->userId}),
+                            purchase_head_approved_at = COALESCE(purchase_head_approved_at, NOW()),
+                            purchase_head_note = COALESCE(purchase_head_note, '{$escMgtNote} (Management Override)'),
+                            qc_approved_by_id = COALESCE(qc_approved_by_id, {$this->userId}),
+                            qc_approved_at = COALESCE(qc_approved_at, NOW()),
+                            qc_verified = 1,
+                            qc_approved_amount = COALESCE(NULLIF(qc_approved_amount, 0), {$approvedAmount}),
+                            qc_note = COALESCE(qc_note, '{$escMgtNote} (Management Override)')
+                        WHERE id = {$id}
+                    ");
+
+                    // Also attribute bypassed Operation Head & Accounts Head steps to this Management user so responsibility is recorded and disbursement is ready
+                    $this->db->query("
+                        UPDATE approval_requests
+                        SET status = 'approved',
+                            approve_role = 'accounts',
+                            approved_amount = {$approvedAmount},
+                            approved_by = {$this->userId},
+                            approved_at = NOW(),
+                            approval_note = '{$escMgtNote}',
+                            op_head_status = 'approved',
+                            op_head_by = COALESCE(op_head_by, {$this->userId}),
+                            op_head_at = COALESCE(op_head_at, NOW()),
+                            op_head_note = COALESCE(op_head_note, '{$escMgtNote} (Management Override)'),
+                            accounts_head_status = 'approved',
+                            accounts_head_by = COALESCE(accounts_head_by, {$this->userId}),
+                            accounts_head_at = COALESCE(accounts_head_at, NOW()),
+                            accounts_head_note = COALESCE(accounts_head_note, '{$escMgtNote} (Management Override)')
+                        WHERE source_table = 'vendor_payment_requests' AND source_id = {$id}
+                    ");
+                } else {
+                    $stmt = $this->db->prepare("UPDATE vendor_payment_requests SET management_note = ? WHERE id = ?");
+                    $stmt->bind_param('si', $mgtNote, $id);
+                    $stmt->execute();
+
+                    // Sync approval_requests table (moves to accounts for payout)
+                    $this->syncApprovalRequest($id, 'approved', $approvedAmount);
+                    $nextRoleVp = ($ahStatus === 'approved') ? 'accounts' : 'accounts_head';
+                    $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', approve_role = '{$nextRoleVp}' WHERE source_table = 'vendor_payment_requests' AND source_id = {$id}");
+                }
 
                 // AUTO-GENERATE ACCRUAL JOURNAL
                 try {
@@ -955,6 +1144,13 @@ class Con_VendorPaymentRequestController extends Controller
             exit;
         }
 
+        $isMgmtUser = in_array((int)$this->userRole, [1, 3], true);
+        if (empty($request['purchase_head_approved_by_id']) && !$isMgmtUser) {
+            setError('Sequential Approval Required: Head of Purchase (Role 17) must approve this Vendor Payment Request before QC & Internal Audit can approve.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+            exit;
+        }
+
         $qcNote = trim($_POST['qc_note'] ?? '');
         $netPayable = (float)($request['net_payable'] ?? 0);
 
@@ -974,12 +1170,17 @@ class Con_VendorPaymentRequestController extends Controller
             exit;
         }
 
+        // If Management overrides Purchase Head during QC approval, attribute Purchase Head step to Management
+        if (empty($request['purchase_head_approved_by_id']) && $isMgmtUser) {
+            $this->model->approvePurchaseHead($id, $this->userId, ($qcNote ?: 'Approved') . ' (Management Override)');
+        }
+
         if ($this->model->approveQC($id, $this->userId, $qcNote, $qcApprovedAmount)) {
-            // Forward linked approval_request to management
+            // Forward linked approval_request to Operation Head ('operations')
             $qcNoteFull = "Audited & Approved by QC. " . ($qcNote ? "Note: {$qcNote}" : "");
             $stmtAr = $this->db->prepare(
                 "UPDATE approval_requests 
-                 SET approve_role = 'management', 
+                 SET approve_role = 'operations', 
                      status = 'pending',
                      request_amount = ?,
                      approved_by = ?,
@@ -1003,7 +1204,7 @@ class Con_VendorPaymentRequestController extends Controller
                             'source_id'      => $id,
                             'requested_days' => 0,
                             'requested_by'   => $request['created_by'] ?? $this->userId,
-                            'approve_role'   => 'management',
+                            'approve_role'   => 'operations',
                             'meta_data'      => null,
                             'request_amount' => $qcApprovedAmount,
                         ]);
@@ -1012,7 +1213,7 @@ class Con_VendorPaymentRequestController extends Controller
                 $stmtAr->close();
             }
 
-            // Notify Management roles [1, 3, 33]
+            // Notify Management & Operation Head roles [1, 3, 20, 32, 33]
             try {
                 $updatedRequest = $this->model->find($id);
                 if ($updatedRequest) {
@@ -1023,15 +1224,15 @@ class Con_VendorPaymentRequestController extends Controller
 
                     $this->mailService->sendVendorPaymentToApprovalRoles(
                         $updatedRequest,
-                        [1, 3, 33],
-                        'Management'
+                        [1, 3, 20, 32, 33],
+                        'Operation Head & Management'
                     );
                 }
             } catch (\Exception $e) {
                 error_log("Vendor Payment QC approval email failed: " . $e->getMessage());
             }
 
-            setSuccess('Payment Request successfully audited and approved by QC with amount ৳ ' . number_format($qcApprovedAmount, 2) . '. Forwarded to Management for final approval.');
+            setSuccess('Payment Request successfully audited and approved by QC with amount ৳ ' . number_format($qcApprovedAmount, 2) . '. Forwarded to Head of Operation (Role 20) for next approval.');
         } else {
             setError('Failed to QC approve payment request.');
         }

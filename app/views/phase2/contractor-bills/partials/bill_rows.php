@@ -56,7 +56,19 @@ $statusMap = [
             </td>
             <td><?= !empty($b['bill_date']) ? date('d M Y', strtotime($b['bill_date'])) : '-' ?></td>
             <td class="fw-semibold text-end">৳ <?= number_format($b['bill_amount'] ?? 0, 2) ?></td>
-            <td><span class="badge bg-<?= $badge ?>"><?= $statusLabel ?></span></td>
+            <td>
+                <span class="badge bg-<?= $badge ?>"><?= $statusLabel ?></span>
+                <?php if ($b['status'] === 'submitted'): ?>
+                    <div class="text-warning fw-semibold mt-1" style="font-size: 10px;"><i class="bi bi-hourglass-split"></i> Pending PM</div>
+                <?php elseif ($b['status'] === 'verified' && empty($b['purchase_head_approved_by_id'])): ?>
+                    <div class="text-warning fw-semibold mt-1" style="font-size: 10px;"><i class="bi bi-hourglass-split"></i> Pending Purchase Head</div>
+                    <?php if (!empty($b['purchase_team_leader_by_name'])): ?>
+                        <div class="text-info" style="font-size: 9.5px;"><i class="bi bi-check2"></i> TL: <?= htmlspecialchars($b['purchase_team_leader_by_name']) ?></div>
+                    <?php endif; ?>
+                <?php elseif ($b['status'] === 'verified' && !empty($b['purchase_head_approved_by_id'])): ?>
+                    <div class="text-primary fw-semibold mt-1" style="font-size: 10px;"><i class="bi bi-shield-check"></i> Pending QC Audit</div>
+                <?php endif; ?>
+            </td>
             <td>
                 <div class="fw-medium text-dark"><?= htmlspecialchars($b['created_by_name'] ?? '-') ?></div>
                 <?php if (!empty($b['created_at'])): ?>
@@ -79,6 +91,24 @@ $statusMap = [
                                 <span class="text-truncate"><?= htmlspecialchars($b['verified_by_role'] ?? 'PM Head') ?></span>
                                 <?php if ($pmDate): ?>
                                     <span class="text-nowrap ms-1 text-primary fw-medium"><?= $pmDate ?></span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if (!empty($b['purchase_head_approved_by_name'])): 
+                        $hasApprover = true;
+                        $phDate = !empty($b['purchase_head_approved_at']) ? date('d M Y', strtotime($b['purchase_head_approved_at'])) : '';
+                    ?>
+                        <div class="p-1 rounded bg-light border border-warning-subtle mb-1">
+                            <div class="d-flex align-items-center justify-content-between gap-1">
+                                <span class="badge bg-warning text-dark px-1" style="font-size: 8.5px; font-weight: 600;">PH</span>
+                                <span class="fw-semibold text-dark text-truncate" title="<?= htmlspecialchars($b['purchase_head_approved_by_name']) ?>"><?= htmlspecialchars($b['purchase_head_approved_by_name']) ?></span>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between text-muted mt-1" style="font-size: 9.5px;">
+                                <span class="text-truncate"><?= htmlspecialchars($b['purchase_head_approved_by_role'] ?? 'Purchase Head') ?></span>
+                                <?php if ($phDate): ?>
+                                    <span class="text-nowrap ms-1 text-primary fw-medium"><?= $phDate ?></span>
                                 <?php endif; ?>
                             </div>
                         </div>

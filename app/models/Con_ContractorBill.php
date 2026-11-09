@@ -4,6 +4,85 @@ class Con_ContractorBill extends Model
 {
     protected $table = 'contractor_bill_requests';
 
+    public function __construct($db = null)
+    {
+        parent::__construct($db);
+        $this->db = $db ?? $GLOBALS['db'];
+        $this->ensurePurchaseApprovalColumns();
+    }
+
+    /**
+     * Ensure Purchase Team Leader & Purchase Head approval columns exist on contractor_bill_requests
+     */
+    public function ensurePurchaseApprovalColumns()
+    {
+        static $checked = false;
+        if ($checked || !$this->db) {
+            return;
+        }
+        $checked = true;
+
+        $colCheck = $this->db->query("SHOW COLUMNS FROM `{$this->table}` LIKE 'purchase_head_approved_by_id'");
+        if (!$colCheck || $colCheck->num_rows === 0) {
+            @$this->db->query("ALTER TABLE `{$this->table}` 
+                ADD COLUMN `purchase_team_leader_by_id` INT(11) DEFAULT NULL AFTER `verified_at`,
+                ADD COLUMN `purchase_team_leader_at` DATETIME DEFAULT NULL AFTER `purchase_team_leader_by_id`,
+                ADD COLUMN `purchase_team_leader_note` TEXT DEFAULT NULL AFTER `purchase_team_leader_at`,
+                ADD COLUMN `purchase_head_approved_by_id` INT(11) DEFAULT NULL AFTER `purchase_team_leader_note`,
+                ADD COLUMN `purchase_head_approved_at` DATETIME DEFAULT NULL AFTER `purchase_head_approved_by_id`,
+                ADD COLUMN `purchase_head_note` TEXT DEFAULT NULL AFTER `purchase_head_approved_at`");
+
+            // For bills submitted by PM (15, 22) or Purchase (17, 23, 31) or Management (1, 3) that are still 'submitted', auto-verify PM stage
+            @$this->db->query("
+                UPDATE `{$this->table}` cbr
+                INNER JOIN `users` u ON u.id = cbr.created_by
+                SET cbr.status = 'verified',
+                    cbr.verified_by = cbr.created_by,
+                    cbr.verified_at = cbr.created_at,
+                    cbr.verification_note = 'Auto-verified upon submission'
+                WHERE cbr.status = 'submitted'
+                  AND u.role_id IN (1, 3, 15, 22, 17, 23, 31)
+            ");
+
+            // For bills submitted by Purchase Head (Role 17) or Management (1, 3), auto-clear Purchase Head stage
+            @$this->db->query("
+                UPDATE `{$this->table}` cbr
+                INNER JOIN `users` u ON u.id = cbr.created_by
+                SET cbr.purchase_head_approved_by_id = cbr.created_by,
+                    cbr.purchase_head_approved_at = cbr.created_at,
+                    cbr.purchase_head_note = 'Submitted directly by Head of Purchase / Management'
+                WHERE cbr.purchase_head_approved_by_id IS NULL
+                  AND u.role_id IN (1, 3, 17)
+            ");
+
+            // For bills submitted by Team Leader (Role 31), auto-record Team Leader review
+            @$this->db->query("
+                UPDATE `{$this->table}` cbr
+                INNER JOIN `users` u ON u.id = cbr.created_by
+                SET cbr.purchase_team_leader_by_id = cbr.created_by,
+                    cbr.purchase_team_leader_at = cbr.created_at,
+                    cbr.purchase_team_leader_note = 'Submitted by Purchase Team Leader'
+                WHERE cbr.purchase_team_leader_by_id IS NULL
+                  AND u.role_id = 31
+            ");
+
+            // Route currently pending 'verified' bills (without Purchase Head approval) to purchase_head in approval_requests
+            @$this->db->query("
+                UPDATE `approval_requests` ar
+                INNER JOIN `{$this->table}` cbr ON cbr.id = ar.source_id AND ar.source_table = 'contractor_bill_requests'
+                SET ar.approve_role = 'purchase_head'
+                WHERE cbr.status = 'verified'
+                  AND cbr.purchase_head_approved_by_id IS NULL
+                  AND ar.status = 'pending'
+            ");
+        }
+
+        $accColCheck = $this->db->query("SHOW COLUMNS FROM `{$this->table}` LIKE 'account_id'");
+        if (!$accColCheck || $accColCheck->num_rows === 0) {
+            @$this->db->query("ALTER TABLE `{$this->table}` ADD COLUMN `account_id` INT(11) DEFAULT NULL");
+        }
+    }
+
     /**
      * Get all bills with relations + approved_by/payment_by names
      * @param int|null $userId      If set, show bills created_by this user
@@ -17,8 +96,12 @@ class Con_ContractorBill extends Model
                        oo.trade AS operator_trade,
                        p.name   AS project_name,
                        u.full_name  AS created_by_name,
+                       u.role_id    AS created_by_role_id,
                        v.full_name  AS verified_by_name,
                        v_r.name     AS verified_by_role,
+                       ptl.full_name AS purchase_team_leader_by_name,
+                       ph.full_name  AS purchase_head_approved_by_name,
+                       ph_r.name     AS purchase_head_approved_by_role,
                        qc_u.full_name AS qc_approved_by_name,
                        qc_r.name    AS qc_approved_by_role,
                        ab.full_name AS approved_by_name,
@@ -37,6 +120,9 @@ class Con_ContractorBill extends Model
                 LEFT JOIN users u     ON u.id  = cbr.created_by
                 LEFT JOIN users v     ON v.id  = cbr.verified_by
                 LEFT JOIN roles v_r   ON v_r.id = v.role_id
+                LEFT JOIN users ptl   ON ptl.id = cbr.purchase_team_leader_by_id
+                LEFT JOIN users ph    ON ph.id  = cbr.purchase_head_approved_by_id
+                LEFT JOIN roles ph_r  ON ph_r.id = ph.role_id
                 LEFT JOIN users qc_u  ON qc_u.id = cbr.qc_approved_by_id
                 LEFT JOIN roles qc_r  ON qc_r.id = qc_u.role_id
                 LEFT JOIN users ab    ON ab.id = cbr.approved_by
@@ -191,8 +277,12 @@ class Con_ContractorBill extends Model
                        oo.trade AS operator_trade,
                        p.name   AS project_name,
                        u.full_name  AS created_by_name,
+                       u.role_id    AS created_by_role_id,
                        v.full_name  AS verified_by_name,
                        v_r.name     AS verified_by_role,
+                       ptl.full_name AS purchase_team_leader_by_name,
+                       ph.full_name AS purchase_head_approved_by_name,
+                       ph_r.name    AS purchase_head_approved_by_role,
                        qc_u.full_name AS qc_approved_by_name,
                        qc_r.name    AS qc_approved_by_role,
                        ab.full_name AS approved_by_name,
@@ -211,6 +301,9 @@ class Con_ContractorBill extends Model
                 LEFT JOIN users u     ON u.id  = cbr.created_by
                 LEFT JOIN users v     ON v.id  = cbr.verified_by
                 LEFT JOIN roles v_r   ON v_r.id = v.role_id
+                LEFT JOIN users ptl   ON ptl.id = cbr.purchase_team_leader_by_id
+                LEFT JOIN users ph    ON ph.id  = cbr.purchase_head_approved_by_id
+                LEFT JOIN roles ph_r  ON ph_r.id = ph.role_id
                 LEFT JOIN users qc_u  ON qc_u.id = cbr.qc_approved_by_id
                 LEFT JOIN roles qc_r  ON qc_r.id = qc_u.role_id
                 LEFT JOIN users ab    ON ab.id = cbr.approved_by
@@ -388,8 +481,12 @@ class Con_ContractorBill extends Model
                        oo.trade AS operator_trade,
                        p.name   AS project_name,
                        u.full_name  AS created_by_name,
+                       u.role_id    AS created_by_role_id,
                        v.full_name  AS verified_by_name,
                        v_r.name     AS verified_by_role,
+                       ptl.full_name AS purchase_team_leader_by_name,
+                       ph.full_name AS purchase_head_approved_by_name,
+                       ph_r.name    AS purchase_head_approved_by_role,
                        qc_u.full_name AS qc_approved_by_name,
                        qc_r.name    AS qc_approved_by_role,
                        ab.full_name AS approved_by_name,
@@ -407,6 +504,9 @@ class Con_ContractorBill extends Model
                 LEFT JOIN users u     ON u.id  = cbr.created_by
                 LEFT JOIN users v     ON v.id  = cbr.verified_by
                 LEFT JOIN roles v_r   ON v_r.id = v.role_id
+                LEFT JOIN users ptl   ON ptl.id = cbr.purchase_team_leader_by_id
+                LEFT JOIN users ph    ON ph.id  = cbr.purchase_head_approved_by_id
+                LEFT JOIN roles ph_r  ON ph_r.id = ph.role_id
                 LEFT JOIN users qc_u  ON qc_u.id = cbr.qc_approved_by_id
                 LEFT JOIN roles qc_r  ON qc_r.id = qc_u.role_id
                 LEFT JOIN users ab    ON ab.id = cbr.approved_by
@@ -431,12 +531,13 @@ class Con_ContractorBill extends Model
 
     public function create($data)
     {
+        $accountId = !empty($data['account_id']) ? (int)$data['account_id'] : null;
         $sql = "INSERT INTO {$this->table}
-                (project_id, operator_id, work_order_id, target_id, bill_type, bill_date, work_description, bill_amount, attachment_path, status, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                (project_id, operator_id, work_order_id, target_id, bill_type, bill_date, work_description, bill_amount, attachment_path, status, created_by, account_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            'iiiisssdssi',
+            'iiiisssdssii',
             $data['project_id'],
             $data['operator_id'],
             $data['work_order_id'],
@@ -447,7 +548,8 @@ class Con_ContractorBill extends Model
             $data['bill_amount'],
             $data['attachment_path'],
             $data['status'],
-            $data['created_by']
+            $data['created_by'],
+            $accountId
         );
         $stmt->execute();
         return $stmt->insert_id;
@@ -526,6 +628,40 @@ class Con_ContractorBill extends Model
              WHERE id = ?"
         );
         $stmt->bind_param('didsi', $approvedAmount, $userId, $approvedAmount, $managementNote, $id);
+        return $stmt->execute();
+    }
+
+    /**
+     * Review & forward by Purchase Team Leader / Sr. Executive (Role 31)
+     */
+    public function reviewPurchaseTeamLeader($id, $userId, $note = null)
+    {
+        $bill = $this->find($id);
+        if (!$bill || !in_array($bill['status'], ['submitted', 'verified'])) return false;
+
+        $stmt = $this->db->prepare(
+            "UPDATE {$this->table}
+             SET purchase_team_leader_by_id = ?, purchase_team_leader_at = NOW(), purchase_team_leader_note = ?
+             WHERE id = ?"
+        );
+        $stmt->bind_param('isi', $userId, $note, $id);
+        return $stmt->execute();
+    }
+
+    /**
+     * Approve by Head of Purchase (Role 17)
+     */
+    public function approvePurchaseHead($id, $userId, $note = null)
+    {
+        $bill = $this->find($id);
+        if (!$bill || !in_array($bill['status'], ['submitted', 'verified'])) return false;
+
+        $stmt = $this->db->prepare(
+            "UPDATE {$this->table}
+             SET purchase_head_approved_by_id = ?, purchase_head_approved_at = NOW(), purchase_head_note = ?
+             WHERE id = ?"
+        );
+        $stmt->bind_param('isi', $userId, $note, $id);
         return $stmt->execute();
     }
 

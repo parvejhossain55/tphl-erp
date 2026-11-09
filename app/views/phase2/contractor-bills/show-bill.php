@@ -17,6 +17,8 @@ $status     = $bill['status'] ?? 'submitted';
 $statusInfo = $statusMap[$status] ?? ['label' => ucfirst(str_replace('_', ' ', $status)), 'color' => 'secondary'];
 
 $canApprovePMReq         = $canApprovePM ?? false;
+$canApprovePurchaseHeadReq = $canApprovePurchaseHead ?? false;
+$canReviewTeamLeaderReq  = $canReviewTeamLeader ?? false;
 $canApproveQCReq         = $canApproveQC ?? false;
 $canApproveManagementReq = $canApproveManagement ?? ($canApprove ?? false);
 $canApproveReq           = $canApproveManagementReq;
@@ -31,6 +33,8 @@ $isQCApproved    = ($status === 'qc_approved');
 $isApproved      = in_array($status, ['approved', 'partially_paid']);
 $isRejected      = ($status === 'rejected');
 $isFullyPaid     = in_array($status, ['fully_paid', 'paid']);
+$isPurchaseHeadApproved = !empty($bill['purchase_head_approved_by_id']) || !in_array($status, ['submitted', 'verified']);
+$isTeamLeaderReviewed   = !empty($bill['purchase_team_leader_by_id']);
 
 require_once __DIR__ . '/../../../models/ApprovalRequest.php';
 $ahInfo = ApprovalRequest::getAccountsHeadApprovalInfo($GLOBALS['db'] ?? null, 'contractor_bill_requests', (int)$bill['id']);
@@ -39,7 +43,7 @@ $isOpHeadApproved       = !empty($ahInfo['is_op_head_approved']);
 $billAmt                = (float)($bill['approved_amount'] ?? $bill['bill_amount'] ?? 0);
 $isOver1Lac             = ($billAmt > 10000);
 
-$showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0 && $isAccountsHeadApproved;
+$showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0 && $isAccountsHeadApproved && (!$isOver1Lac || !empty($ahInfo['is_mgmt_approved']));
 
 // Settlement variables
 $settlements           = $settlements ?? [];
@@ -213,10 +217,35 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                         </div>
                         <?php if (!empty($bill['verified_by_name'])): ?>
                         <div class="col-md-6 text-muted">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Verified By</div>
+                            <div class="info-label text-uppercase text-muted small fw-bold">PM Verified By</div>
                             <div class="info-value"><strong><?= htmlspecialchars($bill['verified_by_name']) ?></strong>
                                 <?php if (!empty($bill['verified_at'])): ?>
                                     <small class="text-muted">(<?= date('d M Y h:i A', strtotime($bill['verified_at'])) ?>)</small>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        <?php if (!empty($bill['purchase_team_leader_name'])): ?>
+                        <div class="col-md-6 text-muted mt-2">
+                            <div class="info-label text-uppercase text-muted small fw-bold">Purchase Team Leader Reviewed By</div>
+                            <div class="info-value">
+                                <strong><?= htmlspecialchars($bill['purchase_team_leader_name']) ?></strong>
+                                <?php if (!empty($bill['purchase_team_leader_at'])): ?>
+                                    <small class="text-muted d-block"><?= date('d M Y h:i A', strtotime($bill['purchase_team_leader_at'])) ?></small>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        <?php if (!empty($bill['purchase_head_approved_by_name'])): ?>
+                        <div class="col-md-6 text-muted mt-2">
+                            <div class="info-label text-uppercase text-muted small fw-bold">Head of Purchase Approved By</div>
+                            <div class="info-value">
+                                <strong><?= htmlspecialchars($bill['purchase_head_approved_by_name']) ?></strong>
+                                <?php if (!empty($bill['purchase_head_approved_by_role'])): ?>
+                                    <span class="badge bg-light text-secondary border extra-small"><?= htmlspecialchars($bill['purchase_head_approved_by_role']) ?></span>
+                                <?php endif; ?>
+                                <?php if (!empty($bill['purchase_head_approved_at'])): ?>
+                                    <small class="text-muted d-block"><?= date('d M Y h:i A', strtotime($bill['purchase_head_approved_at'])) ?></small>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -251,9 +280,21 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                         </div>
                         <?php endif; ?>
 
+                        <?php if ($isAccountsHeadApproved && !empty($ahInfo['accounts_head_name'])): ?>
+                        <div class="col-md-6 text-muted mt-2">
+                            <div class="info-label text-uppercase text-muted small fw-bold">Accounts Head Approved By</div>
+                            <div class="info-value">
+                                <strong><?= htmlspecialchars($ahInfo['accounts_head_name']) ?></strong>
+                                <?php if (!empty($ahInfo['accounts_head_at'])): ?>
+                                    <small class="text-muted d-block"><?= date('d M Y h:i A', strtotime($ahInfo['accounts_head_at'])) ?></small>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
                         <?php if (!empty($bill['approved_by_name'])): ?>
                         <div class="col-md-6 text-muted mt-2">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Management Approved By</div>
+                            <div class="info-label text-uppercase text-muted small fw-bold">Final Approved By</div>
                             <div class="info-value">
                                 <strong><?= htmlspecialchars($bill['approved_by_name']) ?></strong>
                                 <?php if (!empty($bill['approved_by_role'])): ?>
@@ -263,6 +304,13 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                                     <small class="text-muted d-block"><?= date('d M Y h:i A', strtotime($bill['updated_at'])) ?></small>
                                 <?php endif; ?>
                             </div>
+                        </div>
+                        <?php endif; ?>
+
+                        <?php if (!empty($bill['purchase_head_note'])): ?>
+                        <div class="col-md-12 text-muted mt-2">
+                            <div class="info-label text-uppercase text-muted small fw-bold">Head of Purchase Note</div>
+                            <div class="info-value text-muted fst-italic">"<?= nl2br(htmlspecialchars($bill['purchase_head_note'])) ?>"</div>
                         </div>
                         <?php endif; ?>
 
@@ -493,20 +541,26 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                     <?php if ($status === 'submitted'): ?>
                         <div class="mb-3">
                             <small class="text-muted d-block fw-bold text-info">Pending Approval From</small>
-                            <span class="d-block small"><i class="bi bi-person-check me-1 text-info"></i> Project Manager / PM Head</span>
+                            <span class="d-block small"><i class="bi bi-person-check me-1 text-info"></i> Project Manager / PM Head (Role 15/22)</span>
                         </div>
                     <?php elseif ($status === 'verified'): ?>
                         <div class="mb-3">
-                            <small class="text-muted d-block fw-bold text-warning">Pending Approval From</small>
-                            <span class="d-block small"><i class="bi bi-shield-check me-1 text-warning"></i> QC & Internal Audit</span>
+                            <small class="text-muted d-block fw-bold <?= empty($bill['purchase_head_approved_by_id']) ? 'text-primary' : 'text-warning' ?>">Pending Approval From</small>
+                            <?php if (empty($bill['purchase_head_approved_by_id'])): ?>
+                                <span class="d-block small"><i class="bi bi-bag-check me-1 text-primary"></i> Head of Purchase (Role 17)</span>
+                            <?php else: ?>
+                                <span class="d-block small"><i class="bi bi-shield-check me-1 text-warning"></i> QC & Internal Audit (Role 24)</span>
+                            <?php endif; ?>
                         </div>
                     <?php elseif ($status === 'qc_approved'): ?>
                         <div class="mb-3">
                             <small class="text-muted d-block fw-bold text-success">Pending Approval From</small>
-                            <?php if ($isOver1Lac && !$isOpHeadApproved): ?>
-                                <span class="d-block small text-warning"><i class="bi bi-shield-lock me-1 text-warning"></i> Admin & Operation Head</span>
+                            <?php if (!$isOpHeadApproved): ?>
+                                <span class="d-block small text-warning"><i class="bi bi-shield-lock me-1 text-warning"></i> Head of Operation (Role 20/32)</span>
+                            <?php elseif (!$isAccountsHeadApproved): ?>
+                                <span class="d-block small text-primary"><i class="bi bi-stamp me-1 text-primary"></i> Accounts Head (Role 30)</span>
                             <?php else: ?>
-                                <span class="d-block small text-primary"><i class="bi bi-shield-check me-1 text-primary"></i> Management</span>
+                                <span class="d-block small text-primary"><i class="bi bi-shield-check me-1 text-primary"></i> Management / DCEO (Role 1/3)</span>
                             <?php endif; ?>
                         </div>
                     <?php elseif ($status === 'approved' && !$isAccountsHeadApproved): ?>
@@ -528,6 +582,30 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                         <?php endif; ?>
                         <?php if (!empty($bill['verification_note'])): ?>
                             <small class="text-info d-block fst-italic">"<?= htmlspecialchars($bill['verification_note']) ?>"</small>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
+                    <?php if (!empty($bill['purchase_team_leader_name'])): ?>
+                    <div class="mb-3 text-muted">
+                        <small class="text-muted d-block">Purchase Team Leader Reviewed By</small>
+                        <strong><?= htmlspecialchars($bill['purchase_team_leader_name']) ?></strong>
+                        <?php if (!empty($bill['purchase_team_leader_at'])): ?>
+                            <small class="text-muted d-block"><?= date('d M Y h:i A', strtotime($bill['purchase_team_leader_at'])) ?></small>
+                        <?php endif; ?>
+                        <?php if (!empty($bill['purchase_team_leader_note'])): ?>
+                            <small class="text-secondary d-block fst-italic">"<?= htmlspecialchars($bill['purchase_team_leader_note']) ?>"</small>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
+                    <?php if (!empty($bill['purchase_head_approved_by_name'])): ?>
+                    <div class="mb-3 text-muted">
+                        <small class="text-muted d-block">Head of Purchase Approved By</small>
+                        <strong><?= htmlspecialchars($bill['purchase_head_approved_by_name']) ?></strong>
+                        <?php if (!empty($bill['purchase_head_approved_at'])): ?>
+                            <small class="text-muted d-block"><?= date('d M Y h:i A', strtotime($bill['purchase_head_approved_at'])) ?></small>
+                        <?php endif; ?>
+                        <?php if (!empty($bill['purchase_head_note'])): ?>
+                            <small class="text-primary d-block fst-italic">"<?= htmlspecialchars($bill['purchase_head_note']) ?>"</small>
                         <?php endif; ?>
                     </div>
                     <?php endif; ?>
@@ -558,9 +636,21 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                         <?php endif; ?>
                     </div>
                     <?php endif; ?>
+                    <?php if ($isAccountsHeadApproved && !empty($ahInfo['accounts_head_name'])): ?>
+                    <div class="mb-3 text-muted">
+                        <small class="text-muted d-block">Accounts Head Approved By</small>
+                        <strong><?= htmlspecialchars($ahInfo['accounts_head_name']) ?></strong>
+                        <?php if (!empty($ahInfo['accounts_head_at'])): ?>
+                            <small class="text-muted d-block"><?= date('d M Y h:i A', strtotime($ahInfo['accounts_head_at'])) ?></small>
+                        <?php endif; ?>
+                        <?php if (!empty($ahInfo['accounts_head_note'])): ?>
+                            <small class="text-primary d-block fst-italic">"<?= htmlspecialchars($ahInfo['accounts_head_note']) ?>"</small>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
                     <?php if (!empty($bill['approved_by_name'])): ?>
                     <div class="mb-3 text-muted">
-                        <small class="text-muted d-block">Management Approved By</small>
+                        <small class="text-muted d-block">Final Approved By</small>
                         <strong><?= htmlspecialchars($bill['approved_by_name']) ?></strong>
                         <?php if (!empty($bill['updated_at'])): ?>
                             <small class="text-muted d-block"><?= date('d M Y h:i A', strtotime($bill['updated_at'])) ?></small>
@@ -581,7 +671,7 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
             <?php if ($canApprovePMReq && $status === 'submitted'): ?>
             <div class="card custom-card border-info mb-3">
                 <div class="card-header bg-info bg-opacity-10">
-                    <h6 class="card-title mb-0"><i class="bi bi-person-check me-2"></i>Project Manager Approval (PM / PM Head)</h6>
+                    <h6 class="card-title mb-0"><i class="bi bi-person-check me-2"></i>1. Project Manager Approval (PM / PM Head)</h6>
                 </div>
                 <div class="card-body">
                     <form action="<?= $base_url ?>/con-contractor-bill-verify/<?= $bill['id'] ?>" method="POST">
@@ -595,7 +685,7 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                         </div>
                         <div class="row gx-2">
                             <div class="col-6">
-                                <button type="submit" class="btn btn-info text-white w-100 fw-bold py-2" onclick="return confirm('Approve as Project Manager and forward to QC?');">
+                                <button type="submit" class="btn btn-info text-white w-100 fw-bold py-2" onclick="return confirm('Approve as Project Manager and forward to Head of Purchase?');">
                                     <i class="bi bi-check-circle me-1"></i> PM Approve
                                 </button>
                             </div>
@@ -610,45 +700,123 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
             </div>
             <?php endif; ?>
 
-            <!-- 2. QC Approval Actions (QC & Internal Audit) -->
-            <?php if ($canApproveQCReq && in_array($status, ['verified', 'submitted'])): ?>
-            <div class="card custom-card border-warning mb-3">
-                <div class="card-header bg-warning bg-opacity-10">
-                    <h6 class="card-title mb-0"><i class="bi bi-shield-check me-2"></i>QC & Internal Audit Approval</h6>
+            <!-- 1b. Optional Review Card: Purchase Team Leader / Sr. Executive (Role 31) -->
+            <?php if (in_array($status, ['submitted', 'verified']) && empty($bill['purchase_head_approved_by_id']) && !$isTeamLeaderReviewed && $canReviewTeamLeaderReq && (int)$userRole === 31): ?>
+            <div class="card custom-card border-secondary mb-3">
+                <div class="card-header bg-secondary bg-opacity-10 d-flex justify-content-between align-items-center">
+                    <h6 class="card-title mb-0"><i class="bi bi-eye me-2"></i>Purchase Team Leader Review</h6>
+                    <span class="badge bg-secondary">Optional</span>
                 </div>
                 <div class="card-body">
-                    <form action="<?= $base_url ?>/con-contractor-bill-approve/<?= $bill['id'] ?>" method="POST">
-                        <input type="hidden" name="status" value="qc_approved">
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">Approved Amount (৳)</label>
-                            <input type="number" name="approved_amount" class="form-control"
-                                   value="<?= number_format($bill['approved_amount'] ?? $bill['bill_amount'], 2, '.', '') ?>"
-                                   step="0.01" min="0.01" max="<?= $bill['bill_amount'] ?>" required>
-                            <small class="text-muted">Bill amount: ৳ <?= number_format($bill['bill_amount'], 2) ?></small>
+                    <form action="<?= $base_url ?>/con-contractor-bill-tl-review/<?= $bill['id'] ?>" method="POST">
+                        <div class="mb-2">
+                            <label class="form-label fw-semibold small">Review Note for Purchase Head (Optional)</label>
+                            <textarea name="tl_note" class="form-control form-control-sm" rows="2" placeholder="Write review note..."></textarea>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">QC Note (Optional)</label>
-                            <textarea name="approval_note" class="form-control form-control-sm" rows="2" placeholder="Add QC remarks..."></textarea>
-                        </div>
-                        <div class="row gx-2">
-                            <div class="col-6">
-                                <button type="submit" class="btn btn-warning w-100 fw-bold py-2"
-                                        onclick="return confirm('QC Approve this bill?');">
-                                    <i class="bi bi-check-circle me-1"></i> QC Approve
-                                </button>
-                            </div>
-                            <div class="col-6">
-                                <button type="button" class="btn btn-danger w-100 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#rejectBillModal">
-                                    <i class="bi bi-x-circle me-1"></i> Reject
-                                </button>
-                            </div>
-                        </div>
+                        <button type="submit" class="btn btn-secondary btn-sm w-100 fw-bold">
+                            <i class="bi bi-send-check me-1"></i> Review &amp; Forward to Head of Purchase
+                        </button>
                     </form>
                 </div>
             </div>
             <?php endif; ?>
 
-            <!-- 3. Operation Head / Management Approval Actions -->
+            <!-- 2. Head of Purchase Approval Actions (Role 17) -->
+            <?php if ($canApprovePurchaseHeadReq && in_array($status, ['submitted', 'verified']) && empty($bill['purchase_head_approved_by_id'])): ?>
+                <?php if ($status === 'submitted' && !in_array((int)$userRole, [1, 3], true)): ?>
+                <div class="card custom-card border-warning mb-3">
+                    <div class="card-header bg-warning bg-opacity-10 d-flex justify-content-between align-items-center">
+                        <h6 class="card-title mb-0 text-dark fw-bold"><i class="bi bi-lock-fill text-warning me-2"></i>2. Head of Purchase Locked</h6>
+                        <span class="badge bg-warning text-dark">Pending PM</span>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0 small text-muted">
+                            This contractor bill was submitted by Site Engineer and is awaiting <strong>Project Manager / Dept Head (Role 15/22)</strong> verification first. Once PM approves, Head of Purchase approval will unlock.
+                        </p>
+                    </div>
+                </div>
+                <?php else: ?>
+                <div class="card custom-card border-primary mb-3">
+                    <div class="card-header bg-primary bg-opacity-10 d-flex justify-content-between align-items-center">
+                        <h6 class="card-title mb-0 text-primary fw-bold"><i class="bi bi-bag-check-fill me-2"></i>2. Head of Purchase Approval</h6>
+                        <span class="badge bg-primary">Role 17</span>
+                    </div>
+                    <div class="card-body">
+                        <form action="<?= $base_url ?>/con-contractor-bill-ph-approve/<?= $bill['id'] ?>" method="POST" id="cbPhApproveForm">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Head of Purchase Note (Optional)</label>
+                                <textarea name="purchase_head_note" class="form-control form-control-sm" rows="2" placeholder="Add Head of Purchase remarks..."></textarea>
+                            </div>
+                            <div class="row gx-2">
+                                <div class="col-6">
+                                    <button type="button" id="btnCbPhApprove" class="btn btn-primary w-100 fw-bold py-2">
+                                        <i class="bi bi-check-circle me-1"></i> Purchase Head Approve
+                                    </button>
+                                </div>
+                                <div class="col-6">
+                                    <button type="button" class="btn btn-danger w-100 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#rejectBillModal">
+                                        <i class="bi bi-x-circle me-1"></i> Reject
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <?php endif; ?>
+            <?php endif; ?>
+
+            <!-- 3. QC Approval Actions (QC & Internal Audit) -->
+            <?php if ($canApproveQCReq && in_array($status, ['verified', 'submitted'])): ?>
+                <?php if (($status !== 'verified' || empty($bill['purchase_head_approved_by_id'])) && !in_array((int)$userRole, [1, 3], true)): ?>
+                <div class="card custom-card border-warning mb-3">
+                    <div class="card-header bg-warning bg-opacity-10 d-flex justify-content-between align-items-center">
+                        <h6 class="card-title mb-0 text-dark fw-bold"><i class="bi bi-lock-fill text-warning me-2"></i>3. QC Audit Locked</h6>
+                        <span class="badge bg-warning text-dark"><?= $status !== 'verified' ? 'Pending PM & PH' : 'Pending Purchase Head' ?></span>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0 small text-muted">
+                            This bill is currently awaiting <strong><?= $status !== 'verified' ? 'Project Manager & Head of Purchase (Role 17)' : 'Head of Purchase (Role 17)' ?></strong> approval first. You can view all details now, and QC approval will unlock once Head of Purchase approves.
+                        </p>
+                    </div>
+                </div>
+                <?php else: ?>
+                <div class="card custom-card border-warning mb-3">
+                    <div class="card-header bg-warning bg-opacity-10">
+                        <h6 class="card-title mb-0"><i class="bi bi-shield-check me-2"></i>3. QC & Internal Audit Approval</h6>
+                    </div>
+                    <div class="card-body">
+                        <form action="<?= $base_url ?>/con-contractor-bill-approve/<?= $bill['id'] ?>" method="POST" id="cbQcApproveForm">
+                            <input type="hidden" name="status" value="qc_approved">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Approved Amount (৳)</label>
+                                <input type="number" name="approved_amount" class="form-control"
+                                       value="<?= number_format($bill['approved_amount'] ?? $bill['bill_amount'], 2, '.', '') ?>"
+                                       step="0.01" min="0.01" max="<?= $bill['bill_amount'] ?>" required>
+                                <small class="text-muted">Bill amount: ৳ <?= number_format($bill['bill_amount'], 2) ?></small>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">QC Note (Optional)</label>
+                                <textarea name="approval_note" class="form-control form-control-sm" rows="2" placeholder="Add QC remarks..."></textarea>
+                            </div>
+                            <div class="row gx-2">
+                                <div class="col-6">
+                                    <button type="button" id="btnCbQcApprove" class="btn btn-warning w-100 fw-bold py-2">
+                                        <i class="bi bi-check-circle me-1"></i> QC Approve
+                                    </button>
+                                </div>
+                                <div class="col-6">
+                                    <button type="button" class="btn btn-danger w-100 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#rejectBillModal">
+                                        <i class="bi bi-x-circle me-1"></i> Reject
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <?php endif; ?>
+            <?php endif; ?>
+
+            <!-- 4. Operation Head / Management Approval Actions -->
             <?php 
                 $billAmt = (float)($bill['bill_amount'] ?? 0);
                 $isOver1Lac = ($billAmt > 10000);
@@ -658,65 +826,49 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                 $isAhApproved = !empty($ahInfo['is_accounts_head_approved']);
 
                 $isOpHeadAction = false;
-                $isMgmtLocked = false;
-                $mgmtLockReason = '';
                 $canShowCard = false;
+                $cbMgmtOverrideStage = '';
 
-                if ($isOver1Lac) {
-                    if (!$isOpHeadApproved) {
-                        if ($isOpHeadUser && !$isMgmtUser) {
-                            $canShowCard = in_array($status, ['qc_approved', 'verified', 'submitted']);
-                            $isOpHeadAction = true;
-                        } else {
-                            $isMgmtLocked = $isMgmtUser && in_array($status, ['qc_approved', 'verified', 'submitted']);
-                            $mgmtLockReason = 'op_head';
-                        }
-                    } elseif (!$isAhApproved) {
-                        $isMgmtLocked = $isMgmtUser && in_array($status, ['qc_approved', 'verified', 'submitted']);
-                        $mgmtLockReason = 'accounts_head';
-                    } else {
-                        if ($isMgmtUser) {
-                            $canShowCard = in_array($status, ['qc_approved', 'verified', 'submitted']);
-                        }
+                if ($isMgmtUser) {
+                    $canShowCard = in_array($status, ['submitted', 'verified', 'qc_approved']);
+                    if ($status === 'submitted') {
+                        $cbMgmtOverrideStage = 'PM / Dept Head';
+                    } elseif ($status === 'verified' && empty($bill['purchase_head_approved_by_id'])) {
+                        $cbMgmtOverrideStage = 'Purchase Head';
+                    } elseif ($status === 'verified') {
+                        $cbMgmtOverrideStage = 'QC & Internal Audit';
+                    } elseif ($status === 'qc_approved' && !$isOpHeadApproved) {
+                        $cbMgmtOverrideStage = 'Head of Operation';
+                    } elseif ($status === 'qc_approved' && $isOpHeadApproved && !$isAhApproved) {
+                        $cbMgmtOverrideStage = 'Accounts Head';
                     }
-                } else {
-                    $canShowCard = ($canApproveManagementReq && $status === 'qc_approved') || ($isMgmtUser && in_array($status, ['submitted', 'verified', 'qc_approved']));
+                } elseif ($isOpHeadUser) {
+                    if ($status === 'qc_approved' && !$isOpHeadApproved) {
+                        $canShowCard = true;
+                        $isOpHeadAction = true;
+                    }
                 }
             ?>
-
-            <?php if ($isMgmtLocked): ?>
-            <div class="card custom-card border-warning mb-3 shadow-sm">
-                <div class="card-header bg-warning bg-opacity-10 d-flex align-items-center justify-content-between">
-                    <h6 class="card-title mb-0 fw-bold text-warning">
-                        <i class="bi bi-lock-fill me-2"></i>Management Approval Locked (&gt; ৳10,000)
-                    </h6>
-                    <span class="badge bg-warning text-dark"><?= $mgmtLockReason === 'accounts_head' ? 'Awaiting Accounts Head' : 'Awaiting Op Head' ?></span>
-                </div>
-                <div class="card-body">
-                    <p class="mb-0 text-muted small">
-                        <?php if ($mgmtLockReason === 'accounts_head'): ?>
-                            This contractor bill exceeds <strong>৳10,000</strong>. Admin & Operation Head has approved. <strong>Accounts Head (Role 30)</strong> must verify and approve this bill before Management sign-off.
-                        <?php else: ?>
-                            This contractor bill exceeds <strong>৳10,000</strong>. In accordance with policy, <strong>Admin & Operation Head</strong> must verify and approve this bill first before Management sign-off.
-                        <?php endif; ?>
-                    </p>
-                </div>
-            </div>
-            <?php endif; ?>
 
             <?php if ($canShowCard): ?>
             <div class="card custom-card <?= $isOpHeadAction ? 'border-primary' : 'border-success' ?> mb-3">
                 <div class="card-header <?= $isOpHeadAction ? 'bg-primary bg-opacity-10' : 'bg-success bg-opacity-10' ?> d-flex align-items-center justify-content-between">
                     <h6 class="card-title mb-0">
                         <i class="bi <?= $isOpHeadAction ? 'bi-shield-check text-primary' : 'bi-shield-lock' ?> me-2"></i>
-                        <?= $isOpHeadAction ? 'Operation Head Verification Action (Step 1 of 3)' : 'Management Approval (Step 3 of 3)' ?>
+                        <?= $isOpHeadAction ? '4. Head of Operation Approval' : ($cbMgmtOverrideStage !== '' ? 'Management Override / Direct Approval' : 'Management / DCEO Final Approval') ?>
                     </h6>
                     <span class="badge <?= $isOpHeadAction ? 'bg-primary' : 'bg-success' ?>">
-                        <?= $isOpHeadAction ? 'Step 1 of 3' : 'Step 3 of 3' ?>
+                        <?= $isOpHeadAction ? 'Operation Head' : ($cbMgmtOverrideStage !== '' ? 'Pending: ' . htmlspecialchars($cbMgmtOverrideStage) : 'Management') ?>
                     </span>
                 </div>
                 <div class="card-body">
-                    <form action="<?= $base_url ?>/con-contractor-bill-approve/<?= $bill['id'] ?>" method="POST">
+                    <?php if ($cbMgmtOverrideStage !== ''): ?>
+                        <div class="alert alert-warning py-2 px-3 small mb-3 border-warning">
+                            <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>
+                            <strong>Pending for <?= htmlspecialchars($cbMgmtOverrideStage) ?>:</strong> As Management / CEO / DCEO, approving now will also complete the pending prior stage(s) (<strong><?= htmlspecialchars($cbMgmtOverrideStage) ?></strong>) under your responsibility.
+                        </div>
+                    <?php endif; ?>
+                    <form action="<?= $base_url ?>/con-contractor-bill-approve/<?= $bill['id'] ?>" method="POST" id="cbMgmtApproveForm">
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Approved Amount (৳)</label>
                             <input type="number" name="approved_amount" class="form-control"
@@ -730,8 +882,7 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                         </div>
                         <div class="row gx-2">
                             <div class="col-6">
-                                <button type="submit" class="btn <?= $isOpHeadAction ? 'btn-primary' : 'btn-success' ?> w-100 fw-bold py-2"
-                                        onclick="return confirm('<?= $isOpHeadAction ? 'Approve as Operation Head?' : 'Approve this bill?' ?>');">
+                                <button type="button" id="btnCbMgmtApprove" class="btn <?= $isOpHeadAction ? 'btn-primary' : 'btn-success' ?> w-100 fw-bold py-2">
                                     <i class="bi bi-check-circle me-1"></i> <?= $isOpHeadAction ? 'Approve (Op Head)' : 'Approve Bill' ?>
                                 </button>
                             </div>
@@ -747,7 +898,7 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
             <?php endif; ?>
 
             <!-- Reject Bill Modal -->
-            <?php if (($canApprovePMReq || $canApproveQCReq || $canApproveManagementReq) && in_array($status, ['submitted', 'verified', 'qc_approved'])): ?>
+            <?php if (($canApprovePMReq || $canApprovePurchaseHeadReq || $canApproveQCReq || $canApproveManagementReq) && in_array($status, ['submitted', 'verified', 'qc_approved'])): ?>
             <div class="modal fade" id="rejectBillModal" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content" style="border-radius:16px;border:none;box-shadow:0 10px 40px rgba(0,0,0,.15)">
@@ -1263,5 +1414,93 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (paidInput) paidInput.addEventListener('input', updateBalance);
     if (receivedInput) receivedInput.addEventListener('input', updateBalance);
+
+    // Head of Purchase Approval Confirmation (with Management override warning if pending PM)
+    var btnCbPhApprove = document.getElementById('btnCbPhApprove');
+    var cbPhApproveForm = document.getElementById('cbPhApproveForm');
+    if (btnCbPhApprove && cbPhApproveForm) {
+        btnCbPhApprove.addEventListener('click', function() {
+            var isPendingPm = <?= ($status === 'submitted') ? 'true' : 'false' ?>;
+            var title = isPendingPm
+                ? "Pending PM / Dept Head's Approval"
+                : "Approve as Head of Purchase?";
+            var htmlMsg = isPendingPm
+                ? "This bill is pending for <strong>PM / Dept Head's</strong> approval. Are you ready to approve for <strong>PM &amp; Purchase Head</strong> first?"
+                : "Confirm Head of Purchase approval and forward to QC &amp; Internal Audit?";
+            Swal.fire({
+                title: title,
+                html: htmlMsg,
+                icon: isPendingPm ? 'warning' : 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#0d6efd',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: isPendingPm ? 'Yes, Override & Approve' : 'Yes, Approve'
+            }).then(function(result) {
+                if (result.isConfirmed) {
+                    cbPhApproveForm.submit();
+                }
+            });
+        });
+    }
+
+    // QC Approval Confirmation (with Management override warning if pending PM or Purchase Head)
+    var btnCbQcApprove = document.getElementById('btnCbQcApprove');
+    var cbQcApproveForm = document.getElementById('cbQcApproveForm');
+    if (btnCbQcApprove && cbQcApproveForm) {
+        btnCbQcApprove.addEventListener('click', function() {
+            var isPendingPrior = <?= ($status !== 'verified' || empty($bill['purchase_head_approved_by_id'])) ? 'true' : 'false' ?>;
+            var priorLabel = <?= json_encode($status !== 'verified' ? "PM & Purchase Head's" : "Purchase Head's") ?>;
+            var title = isPendingPrior
+                ? 'Pending ' + priorLabel + ' Approval'
+                : 'Approve QC & Audit?';
+            var htmlMsg = isPendingPrior
+                ? 'This bill is pending for <strong>' + priorLabel + '</strong> approval. Are you ready to approve for prior stage(s) first and complete QC approval under your responsibility?'
+                : 'Confirm QC &amp; Internal Audit verification for this contractor bill?';
+            Swal.fire({
+                title: title,
+                html: htmlMsg,
+                icon: isPendingPrior ? 'warning' : 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#ffc107',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: isPendingPrior ? 'Yes, Override & Approve' : 'Yes, QC Approve'
+            }).then(function(result) {
+                if (result.isConfirmed) {
+                    cbQcApproveForm.submit();
+                }
+            });
+        });
+    }
+
+    // Operation Head / Management Final Approval Confirmation (with Management bypass warning modal)
+    var btnCbMgmtApprove = document.getElementById('btnCbMgmtApprove');
+    var cbMgmtApproveForm = document.getElementById('cbMgmtApproveForm');
+    if (btnCbMgmtApprove && cbMgmtApproveForm) {
+        btnCbMgmtApprove.addEventListener('click', function() {
+            var overrideStage = <?= json_encode($cbMgmtOverrideStage ?? '') ?>;
+            var isOpHeadAction = <?= !empty($isOpHeadAction) ? 'true' : 'false' ?>;
+            var title = overrideStage !== ''
+                ? 'Pending ' + overrideStage + "'s Approval"
+                : (isOpHeadAction ? 'Approve as Head of Operation?' : 'Final Management Approval?');
+            var htmlMsg = overrideStage !== ''
+                ? 'This bill is pending for <strong>' + overrideStage + "'s</strong> approval. Are you ready to approve for <strong>" + overrideStage + '</strong> first?<br><small class="text-muted d-block mt-2">Your name will be recorded as the approver for all bypassed stages as well as final Management approval.</small>'
+                : (isOpHeadAction
+                    ? 'Confirm Head of Operation approval and forward to Accounts Head?'
+                    : 'Confirm final Management approval for this contractor bill?');
+            Swal.fire({
+                title: title,
+                html: htmlMsg,
+                icon: overrideStage !== '' ? 'warning' : 'question',
+                showCancelButton: true,
+                confirmButtonColor: isOpHeadAction ? '#0d6efd' : '#198754',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: overrideStage !== '' ? 'Yes, Approve All Stages' : 'Yes, Approve'
+            }).then(function(result) {
+                if (result.isConfirmed) {
+                    cbMgmtApproveForm.submit();
+                }
+            });
+        });
+    }
 });
 </script>

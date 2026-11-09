@@ -892,15 +892,19 @@
                                         $canUserApprove = true;
                                     }
                                 } elseif ($isManagementUser) {
-                                    if ($isPendingStatus && (in_array($reqApproveRole, ['management', 'operations', '']) || $sourceTable === 'payslips')) {
+                                    if ($isPendingStatus) {
+                                        // Management (Role 1, 3) can always review and approve any pending bill at any stage (with override confirmation on the module page)
+                                        $canUserApprove = true;
                                         $reqOpStatus = strtolower($req['op_head_status'] ?? 'pending');
                                         $isOver10k = ((float)($req['request_amount'] ?? 0) > 10000.01);
-                                        if ($isOver10k && $sourceTable !== 'payslips' && ($reqOpStatus !== 'approved' || !$isAccountsHeadApproved)) {
-                                            $isActionableByMe = false;
-                                            $canUserApprove = false;
-                                        } else {
-                                            $isActionableByMe = true;
-                                            $canUserApprove = true;
+                                        if ((in_array($reqApproveRole, ['management', 'operations', '']) || $sourceTable === 'payslips')) {
+                                            if ($isOver10k && $sourceTable !== 'payslips' && ($reqOpStatus !== 'approved' || !$isAccountsHeadApproved)) {
+                                                $isActionableByMe = false;
+                                            } elseif (!$isOver10k && in_array($sourceTable, ['vendor_payment_requests', 'contractor_bill_requests'], true)) {
+                                                $isActionableByMe = false;
+                                            } else {
+                                                $isActionableByMe = true;
+                                            }
                                         }
                                     }
                                 } elseif ($isQcUser) {
@@ -909,9 +913,14 @@
                                         $canUserApprove = true;
                                     }
                                 } elseif ($isPurchaseUser) {
-                                    if ($isPendingStatus && in_array($reqApproveRole, ['purchase', 'purchase team leader', 'purchase_lead'])) {
-                                        $isActionableByMe = true;
-                                        $canUserApprove = true;
+                                    if ($isPendingStatus && in_array($reqApproveRole, ['purchase_head', 'purchase', 'purchase team leader', 'purchase_lead'])) {
+                                        if ($reqApproveRole === 'purchase_head' && $userRoleId !== 17) {
+                                            $isActionableByMe = false;
+                                            $canUserApprove = false;
+                                        } else {
+                                            $isActionableByMe = true;
+                                            $canUserApprove = true;
+                                        }
                                     }
                                 } elseif ($isHrUser) {
                                     if ($isPendingStatus && in_array($reqApproveRole, ['hr', 'hr_head'])) {
@@ -919,7 +928,7 @@
                                         $canUserApprove = true;
                                     }
                                 } elseif ($isDeptHeadUser) {
-                                    if ($isPendingStatus && ($reqApproveRole === 'dept_head' || $reqApproveRole === 'dept_head_' . ($_SESSION['user']['id'] ?? 0))) {
+                                    if ($isPendingStatus && ($reqApproveRole === 'dept_head' || $reqApproveRole === 'dept_head_' . ($_SESSION['user']['id'] ?? 0) || ($reqApproveRole === 'pm' && in_array($userRoleId, [15, 22], true)))) {
                                         $isActionableByMe = true;
                                         $canUserApprove = true;
                                     }
@@ -1533,7 +1542,7 @@
                                                     $lockTitle = (($isSiteOperator && $opHeadDone) ? 'You (Admin & Operation Head) already approved. ' : '') . 'Pending for ' . ($pfClean !== '' ? $pfClean : 'Other Role');
                                                 }
                                                 ?>
-                                                <a href="javascript:void(0)"
+                                                <a href="<?= !empty($targetUrl) && $targetUrl !== 'javascript:void(0)' ? $targetUrl : 'javascript:void(0)' ?>"
                                                     class="btn btn-sm btn-light text-muted rounded-2 px-2 border"
                                                     title="<?= htmlspecialchars($lockTitle) ?>">
                                                     <i class="fa-solid <?= ($isSiteOperator && $opHeadDone) ? 'fa-circle-check text-success' : 'fa-lock text-warning' ?> me-1"></i><?= htmlspecialchars($lockLabel) ?>

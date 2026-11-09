@@ -391,22 +391,50 @@ class ProjectOtherCostController extends Controller
                     } else {
                         $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$_SESSION['user']['id']}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'accounts_head' WHERE source_table = 'project_other_costs' AND source_id = {$id}");
                     }
+                    $this->otherCostModel->update($id, [
+                        'approved_amount' => $approvedAmount,
+                        'op_head_status'  => 'approved',
+                        'op_head_by'      => $_SESSION['user']['id'],
+                        'op_head_at'      => date('Y-m-d H:i:s'),
+                        'op_head_note'    => $note ?: 'Verified and approved by Admin & Operation Head',
+                        'status'          => 'in_review'
+                    ]);
                     setSuccess("Request verified & approved by Admin & Operation Head (Role 20). Forwarded to Accounts Head (Role 30) for payment verification.");
                     header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
                     exit();
                 }
 
                 if ($isMgmtUser) {
+                    $mgmtUid = (int)$_SESSION['user']['id'];
+                    $escBypassNote = $this->db->real_escape_string($note ?: 'Approved directly by Management');
+                    // Management bypass: auto-fill any pending prior steps
                     if ($opHeadStatus !== 'approved') {
-                        setError("Access Denied: Requests exceeding ৳10,000 must be approved by Admin & Operation Head (Role 20) first.");
-                        header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
-                        exit();
+                        $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$mgmtUid}, op_head_at = NOW(), op_head_note = '{$escBypassNote}' WHERE source_table = 'project_other_costs' AND source_id = {$id}");
+                        $this->db->query("UPDATE project_other_costs SET op_head_status = 'approved', op_head_by = {$mgmtUid}, op_head_at = NOW(), op_head_note = '{$escBypassNote}' WHERE id = {$id}");
                     }
                     if ($ahStatus !== 'approved') {
-                        setError("Access Denied: Requests exceeding ৳10,000 must be verified & approved by Accounts Head (Role 30) before Management can approve.");
-                        header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
-                        exit();
+                        $this->db->query("UPDATE approval_requests SET accounts_head_status = 'approved', accounts_head_by = {$mgmtUid}, accounts_head_at = NOW(), accounts_head_note = '{$escBypassNote}' WHERE source_table = 'project_other_costs' AND source_id = {$id}");
+                        $this->db->query("UPDATE project_other_costs SET accounts_head_status = 'approved', accounts_head_by = {$mgmtUid}, accounts_head_at = NOW(), accounts_head_note = '{$escBypassNote}' WHERE id = {$id}");
                     }
+                }
+            }
+
+            if ($isMgmtUser) {
+                $mgmtUid = (int)$_SESSION['user']['id'];
+                if (($req['dept_head_status'] ?? '') === 'pending') {
+                    $this->otherCostModel->update($id, [
+                        'dept_head_status'        => 'approved',
+                        'dept_head_approved_by'   => $mgmtUid,
+                        'dept_head_approved_at'   => date('Y-m-d H:i:s'),
+                        'dept_head_approval_note' => $note ?: 'Approved directly by Management'
+                    ]);
+                }
+                if (empty($req['qc_audit_approved_id'])) {
+                    $this->otherCostModel->update($id, [
+                        'qc_audit_approved_id' => $mgmtUid,
+                        'qc_audit_approved_at' => date('Y-m-d H:i:s'),
+                        'qc_audit_note'        => $note ?: 'Approved directly by Management'
+                    ]);
                 }
             }
 
@@ -416,6 +444,7 @@ class ProjectOtherCostController extends Controller
                 'management_apporved_by_id' => $_SESSION['user']['id'],
                 'management_apporved_at' => date('Y-m-d H:i:s'),
                 'pc_approved_id' => $_SESSION['user']['id'],
+                'op_head_status' => 'approved',
                 'status' => 'management_approved'
             ];
 
@@ -434,10 +463,24 @@ class ProjectOtherCostController extends Controller
     public function pay($id)
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+            $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+            if (in_array($roleId, [33, 34, 35], true) || (!in_array($roleId, [1, 3, 6, 30]) && strpos($roleName, 'accounts') === false && strpos($roleName, 'admin') === false)) {
+                setError("Only Accounts or Admins are authorized to disburse payments.");
+                header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
+                exit();
+            }
+
             $request = $this->otherCostModel->getById($id);
             if (!$request) {
                 setError("Request not found.");
                 header("Location: " . $GLOBALS['base_url'] . "/project-other-costs");
+                exit();
+            }
+
+            if (!in_array($request['status'], ['management_approved', 'approved'])) {
+                setError("Payment cannot be processed! Request must be approved by Management first.");
+                header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
                 exit();
             }
 
@@ -602,12 +645,22 @@ class ProjectOtherCostController extends Controller
                     $approvalNote = $row['dept_head_approval_note'];
                 }
             }
-        } elseif ($row['status'] == 'qc_approved') {
+        } elseif (in_array($row['status'], ['qc_approved', 'in_review'], true)) {
             $status = 'pending';
-            $approveRole = 'management';
-            $approvedBy = $row['qc_audit_approved_id'];
-            $approvedAt = $row['updated_at'];
-            $approvalNote = $row['qc_audit_note'];
+            $arCheckRow = ($check && $check->num_rows > 0)
+                ? $this->db->query("SELECT op_head_status, accounts_head_status FROM approval_requests WHERE source_table = 'project_other_costs' AND source_id = $reqId LIMIT 1")->fetch_assoc()
+                : null;
+            $opDone = (strtolower($row['op_head_status'] ?? '') === 'approved' || strtolower($arCheckRow['op_head_status'] ?? '') === 'approved');
+            $ahDone = (strtolower($row['accounts_head_status'] ?? '') === 'approved' || strtolower($arCheckRow['accounts_head_status'] ?? '') === 'approved');
+            $effAmt = $approvedAmount ?: $amount;
+            if ($effAmt > 10000.01 && $opDone && !$ahDone) {
+                $approveRole = 'accounts_head';
+            } else {
+                $approveRole = 'management';
+            }
+            $approvedBy = $row['op_head_by'] ?? $row['qc_audit_approved_id'];
+            $approvedAt = $row['op_head_at'] ?? $row['updated_at'];
+            $approvalNote = $row['op_head_note'] ?? $row['qc_audit_note'];
         } elseif ($row['status'] == 'management_approved') {
             $isAhAppr = false;
             if ($check && $check->num_rows > 0) {
