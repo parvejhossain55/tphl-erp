@@ -107,87 +107,89 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
         </div>
     </div>
     <?php endif; ?>
-    <div class="row">
+    <div class="row g-4">
         <!-- Main Content (Left) -->
         <div class="col-lg-8">
             <!-- Bill Details Card -->
-            <div class="card custom-card mb-3">
-                <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="card custom-card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center py-3 px-4">
                     <h6 class="card-title mb-0"><i class="bi bi-receipt me-2"></i>Bill Details</h6>
-                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-12 px-2 py-1 fw-bold">CB-<?= $bill['id'] ?></span>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-12 px-2.5 py-1 fw-bold">CB-<?= $bill['id'] ?></span>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6 text-muted mb-2">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Bill Number</div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="info-label text-uppercase text-muted small fw-bold mb-1">Bill Number</div>
                             <div class="info-value fw-bold text-primary fs-14">CB-<?= $bill['id'] ?></div>
                         </div>
-                        <div class="col-md-6 text-muted mb-2">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Project</div>
-                            <div class="info-value"><?= htmlspecialchars($bill['project_name'] ?? '—') ?></div>
+                        <div class="col-md-6">
+                            <div class="info-label text-uppercase text-muted small fw-bold mb-1">Project</div>
+                            <div class="info-value fw-semibold text-dark"><?= htmlspecialchars($bill['project_name'] ?? '—') ?></div>
                         </div>
-                        <div class="col-md-6 text-muted">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Contractor</div>
-                            <div class="info-value">
+                        <div class="col-md-6">
+                            <div class="info-label text-uppercase text-muted small fw-bold mb-1">Contractor</div>
+                            <div class="info-value fw-semibold text-dark">
                                 <?= htmlspecialchars($bill['operator_name'] ?? '—') ?>
                                 <?php if (!empty($bill['operator_phone'])): ?>
-                                    <small class="text-muted">(<?= $bill['operator_phone'] ?>)</small>
+                                    <small class="text-muted fw-normal ms-1">(<?= $bill['operator_phone'] ?>)</small>
                                 <?php endif; ?>
                             </div>
                         </div>
-                        <div class="col-md-6 text-muted">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Bill Date</div>
-                            <div class="info-value"><?= date('d M Y', strtotime($bill['bill_date'])) ?></div>
+                        <div class="col-md-6">
+                            <div class="info-label text-uppercase text-muted small fw-bold mb-1">Bill Date</div>
+                            <div class="info-value fw-semibold text-dark"><?= date('d M Y', strtotime($bill['bill_date'])) ?></div>
                         </div>
-                        <div class="col-md-6 text-muted">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Trade</div>
-                            <div class="info-value"><?= htmlspecialchars($bill['operator_trade'] ?? '—') ?></div>
+                        <div class="col-md-6">
+                            <div class="info-label text-uppercase text-muted small fw-bold mb-1">Trade</div>
+                            <div class="info-value text-dark"><?= !empty($bill['operator_trade']) ? htmlspecialchars($bill['operator_trade']) : '<span class="text-muted">—</span>' ?></div>
                         </div>
-                        <div class="col-md-12">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Work Description</div>
-                            <div class="info-value text-muted"><?= nl2br(htmlspecialchars($bill['work_description'] ?? '—')) ?></div>
+                        <div class="col-md-12 mt-3">
+                            <div class="info-label text-uppercase text-muted small fw-bold mb-1.5">Work Description</div>
+                            <div class="info-value text-dark p-3 bg-light rounded-2 border lh-base"><?= nl2br(htmlspecialchars($bill['work_description'] ?? '—')) ?></div>
                         </div>
                         <?php if (!empty($bill['attachment_path'])): ?>
-                        <div class="col-md-12 text-muted">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Attachment</div>
-                            <a href="<?= $base_url ?>/<?= $bill['attachment_path'] ?>" target="_blank" class="btn btn-sm btn-outline-primary">
-                                <i class="bi bi-paperclip me-1"></i> View Attachment
-                            </a>
+                        <div class="col-md-12 mt-3">
+                            <div class="info-label text-uppercase text-muted small fw-bold mb-1.5">Attachment</div>
+                            <div>
+                                <a href="<?= $base_url ?>/<?= $bill['attachment_path'] ?>" target="_blank" class="btn btn-sm btn-outline-primary px-3 py-1.5">
+                                    <i class="bi bi-paperclip me-1"></i> View Attachment
+                                </a>
+                            </div>
                         </div>
                         <?php endif; ?>
                         <?php if (!empty($bill['verification_note'])): ?>
-                        <div class="col-md-12 text-muted">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Verification Note</div>
+                        <div class="col-md-12 mt-3">
+                            <div class="info-label text-uppercase text-muted small fw-bold mb-1">Verification Note</div>
                             <div class="info-value text-info"><?= htmlspecialchars($bill['verification_note']) ?></div>
                         </div>
                         <?php endif; ?>
 
                         <!-- Financial Summary Row -->
-                        <div class="col-md-12">
-                            <div class="row g-2 mt-1">
-                                <div class="col-md-3">
-                                    <div class="border rounded p-3 text-center">
+                        <div class="col-md-12 mt-3 pt-2">
+                            <div class="row g-3">
+                                <div class="col-sm-6 col-md-4">
+                                    <div class="border rounded-3 p-3 text-center h-100 d-flex flex-column justify-content-center">
                                         <small class="text-muted d-block mb-1">Bill Amount</small>
                                         <h5 class="text-primary mb-0 fw-bold">৳ <?= number_format($bill['bill_amount'], 2) ?></h5>
                                     </div>
                                 </div>
                                 <?php if (!empty($bill['approved_amount'])): ?>
-                                <div class="col-md-3">
-                                    <div class="border rounded p-3 text-center border-success">
+                                <div class="col-sm-6 col-md-4">
+                                    <div class="border rounded-3 p-3 text-center border-success h-100 d-flex flex-column justify-content-center">
                                         <small class="text-muted d-block mb-1">Approved Amount</small>
                                         <h5 class="text-success mb-0 fw-bold">৳ <?= number_format($bill['approved_amount'], 2) ?></h5>
                                     </div>
                                 </div>
                                 <?php endif; ?>
                                 <?php if ($isApproved || $isFullyPaid): ?>
-                                <div class="col-md-3">
-                                    <div class="border rounded p-3 text-center">
+                                <div class="col-sm-6 col-md-4">
+                                    <div class="border rounded-3 p-3 text-center h-100 d-flex flex-column justify-content-center">
                                         <small class="text-muted d-block mb-1">Total Paid</small>
                                         <h5 class="text-success mb-0 fw-bold">৳ <?= number_format($totalPaid, 2) ?></h5>
                                     </div>
                                 </div>
-                                <div class="col-md-3">
-                                    <div class="border rounded p-3 text-center">
+                                <div class="col-sm-6 col-md-4">
+                                    <div class="border rounded-3 p-3 text-center h-100 d-flex flex-column justify-content-center">
                                         <small class="text-muted d-block mb-1">Due Amount</small>
                                         <?php if ($dueAmount > 0): ?>
                                             <h5 class="text-danger mb-0 fw-bold">৳ <?= number_format($dueAmount, 2) ?></h5>
@@ -198,7 +200,7 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                                 </div>
                                 <?php endif; ?>
                             </div>
-                            <div class="mt-2 py-2 px-3 bg-light rounded text-muted small d-flex align-items-center justify-content-between flex-wrap gap-2">
+                            <div class="mt-3 py-2.5 px-3 bg-light rounded-2 border text-muted small d-flex align-items-center justify-content-between flex-wrap gap-2" style="padding-top: 10px; padding-bottom: 10px;">
                                 <span><strong class="text-dark">Bill Amount in Words:</strong> <?= class_exists('FormatHelper') ? FormatHelper::amountInWords($bill['bill_amount'] ?? 0) : (function_exists('amountInWords') ? amountInWords($bill['bill_amount'] ?? 0) : '') ?></span>
                                 <?php if (!empty($bill['approved_amount'])): ?>
                                     <span><strong class="text-dark">Approved in Words:</strong> <span class="text-success fw-semibold"><?= class_exists('FormatHelper') ? FormatHelper::amountInWords($bill['approved_amount']) : (function_exists('amountInWords') ? amountInWords($bill['approved_amount']) : '') ?></span></span>
@@ -206,131 +208,143 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                             </div>
                         </div>
 
-                        <div class="col-md-6 text-muted">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Submitted By</div>
-                            <div class="info-value">
-                                <?= htmlspecialchars($bill['created_by_name'] ?? '—') ?>
-                                <?php if (!empty($bill['created_at'])): ?>
-                                    <small class="text-muted">(<?= date('d M Y h:i A', strtotime($bill['created_at'])) ?>)</small>
+                        <!-- Approver Metadata Grid -->
+                        <div class="col-md-12 border-top pt-3 mt-3">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="info-label text-uppercase text-muted small fw-bold mb-1">Submitted By</div>
+                                    <div class="info-value lh-base">
+                                        <strong class="text-dark"><?= htmlspecialchars($bill['created_by_name'] ?? '—') ?></strong>
+                                        <?php if (!empty($bill['created_at'])): ?>
+                                            <small class="text-muted d-block mt-0.5"><?= date('d M Y h:i A', strtotime($bill['created_at'])) ?></small>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                                <?php if (!empty($bill['verified_by_name'])): ?>
+                                <div class="col-md-6">
+                                    <div class="info-label text-uppercase text-muted small fw-bold mb-1">PM Verified By</div>
+                                    <div class="info-value lh-base">
+                                        <strong class="text-dark"><?= htmlspecialchars($bill['verified_by_name']) ?></strong>
+                                        <?php if (!empty($bill['verified_at'])): ?>
+                                            <small class="text-muted d-block mt-0.5"><?= date('d M Y h:i A', strtotime($bill['verified_at'])) ?></small>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
                                 <?php endif; ?>
-                            </div>
-                        </div>
-                        <?php if (!empty($bill['verified_by_name'])): ?>
-                        <div class="col-md-6 text-muted">
-                            <div class="info-label text-uppercase text-muted small fw-bold">PM Verified By</div>
-                            <div class="info-value"><strong><?= htmlspecialchars($bill['verified_by_name']) ?></strong>
-                                <?php if (!empty($bill['verified_at'])): ?>
-                                    <small class="text-muted">(<?= date('d M Y h:i A', strtotime($bill['verified_at'])) ?>)</small>
+                                <?php if (!empty($bill['purchase_team_leader_name'])): ?>
+                                <div class="col-md-6">
+                                    <div class="info-label text-uppercase text-muted small fw-bold mb-1">Purchase Team Leader Reviewed By</div>
+                                    <div class="info-value lh-base">
+                                        <strong class="text-dark"><?= htmlspecialchars($bill['purchase_team_leader_name']) ?></strong>
+                                        <?php if (!empty($bill['purchase_team_leader_at'])): ?>
+                                            <small class="text-muted d-block mt-0.5"><?= date('d M Y h:i A', strtotime($bill['purchase_team_leader_at'])) ?></small>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
                                 <?php endif; ?>
-                            </div>
-                        </div>
-                        <?php endif; ?>
-                        <?php if (!empty($bill['purchase_team_leader_name'])): ?>
-                        <div class="col-md-6 text-muted mt-2">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Purchase Team Leader Reviewed By</div>
-                            <div class="info-value">
-                                <strong><?= htmlspecialchars($bill['purchase_team_leader_name']) ?></strong>
-                                <?php if (!empty($bill['purchase_team_leader_at'])): ?>
-                                    <small class="text-muted d-block"><?= date('d M Y h:i A', strtotime($bill['purchase_team_leader_at'])) ?></small>
+                                <?php if (!empty($bill['purchase_head_approved_by_name'])): ?>
+                                <div class="col-md-6">
+                                    <div class="info-label text-uppercase text-muted small fw-bold mb-1">Head of Purchase Approved By</div>
+                                    <div class="info-value lh-base">
+                                        <div class="d-flex align-items-center flex-wrap gap-1">
+                                            <strong class="text-dark"><?= htmlspecialchars($bill['purchase_head_approved_by_name']) ?></strong>
+                                            <?php if (!empty($bill['purchase_head_approved_by_role'])): ?>
+                                                <span class="badge bg-light text-secondary border extra-small"><?= htmlspecialchars($bill['purchase_head_approved_by_role']) ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                        <?php if (!empty($bill['purchase_head_approved_at'])): ?>
+                                            <small class="text-muted d-block mt-0.5"><?= date('d M Y h:i A', strtotime($bill['purchase_head_approved_at'])) ?></small>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
                                 <?php endif; ?>
-                            </div>
-                        </div>
-                        <?php endif; ?>
-                        <?php if (!empty($bill['purchase_head_approved_by_name'])): ?>
-                        <div class="col-md-6 text-muted mt-2">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Head of Purchase Approved By</div>
-                            <div class="info-value">
-                                <strong><?= htmlspecialchars($bill['purchase_head_approved_by_name']) ?></strong>
-                                <?php if (!empty($bill['purchase_head_approved_by_role'])): ?>
-                                    <span class="badge bg-light text-secondary border extra-small"><?= htmlspecialchars($bill['purchase_head_approved_by_role']) ?></span>
+                                <?php if (!empty($bill['qc_approved_by_id'])): ?>
+                                <div class="col-md-6">
+                                    <div class="info-label text-uppercase text-muted small fw-bold mb-1">QC Approved By</div>
+                                    <div class="info-value lh-base">
+                                        <div class="d-flex align-items-center flex-wrap gap-1">
+                                            <strong class="text-dark"><?= htmlspecialchars($bill['qc_approved_by_name'] ?? ('User #' . $bill['qc_approved_by_id'])) ?></strong>
+                                            <?php if (!empty($bill['qc_approved_by_role'])): ?>
+                                                <span class="badge bg-light text-secondary border extra-small"><?= htmlspecialchars($bill['qc_approved_by_role']) ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                        <?php if (!empty($bill['qc_approved_at'])): ?>
+                                            <small class="text-muted d-block mt-0.5"><?= date('d M Y h:i A', strtotime($bill['qc_approved_at'])) ?></small>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
                                 <?php endif; ?>
-                                <?php if (!empty($bill['purchase_head_approved_at'])): ?>
-                                    <small class="text-muted d-block"><?= date('d M Y h:i A', strtotime($bill['purchase_head_approved_at'])) ?></small>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                        <?php endif; ?>
-                        <?php if (!empty($bill['qc_approved_by_id'])): ?>
-                        <div class="col-md-6 text-muted mt-2">
-                            <div class="info-label text-uppercase text-muted small fw-bold">QC Approved By</div>
-                            <div class="info-value">
-                                <strong><?= htmlspecialchars($bill['qc_approved_by_name'] ?? ('User #' . $bill['qc_approved_by_id'])) ?></strong>
-                                <?php if (!empty($bill['qc_approved_by_role'])): ?>
-                                    <span class="badge bg-light text-secondary border extra-small"><?= htmlspecialchars($bill['qc_approved_by_role']) ?></span>
-                                <?php endif; ?>
-                                <?php if (!empty($bill['qc_approved_at'])): ?>
-                                    <small class="text-muted d-block"><?= date('d M Y h:i A', strtotime($bill['qc_approved_at'])) ?></small>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                        <?php endif; ?>
 
-                        <?php if ($isOpHeadApproved): ?>
-                        <div class="col-md-6 text-muted mt-2">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Operation Head Approved By</div>
-                            <div class="info-value">
-                                <strong><?= htmlspecialchars($ahInfo['op_head_name'] ?? 'Admin & Operation Head') ?></strong>
-                                <?php if (!empty($ahInfo['op_head_designation'])): ?>
-                                    <span class="badge bg-light text-secondary border extra-small"><?= htmlspecialchars($ahInfo['op_head_designation']) ?></span>
+                                <?php if ($isOpHeadApproved): ?>
+                                <div class="col-md-6">
+                                    <div class="info-label text-uppercase text-muted small fw-bold mb-1">Operation Head Approved By</div>
+                                    <div class="info-value lh-base">
+                                        <div class="d-flex align-items-center flex-wrap gap-1">
+                                            <strong class="text-dark"><?= htmlspecialchars($ahInfo['op_head_name'] ?? 'Admin & Operation Head') ?></strong>
+                                            <?php if (!empty($ahInfo['op_head_designation'])): ?>
+                                                <span class="badge bg-light text-secondary border extra-small"><?= htmlspecialchars($ahInfo['op_head_designation']) ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                        <?php if (!empty($ahInfo['op_head_at'])): ?>
+                                            <small class="text-muted d-block mt-0.5"><?= date('d M Y h:i A', strtotime($ahInfo['op_head_at'])) ?></small>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
                                 <?php endif; ?>
-                                <?php if (!empty($ahInfo['op_head_at'])): ?>
-                                    <small class="text-muted d-block"><?= date('d M Y h:i A', strtotime($ahInfo['op_head_at'])) ?></small>
+
+                                <?php if ($isAccountsHeadApproved && !empty($ahInfo['accounts_head_name'])): ?>
+                                <div class="col-md-6">
+                                    <div class="info-label text-uppercase text-muted small fw-bold mb-1">Accounts Head Approved By</div>
+                                    <div class="info-value lh-base">
+                                        <strong class="text-dark"><?= htmlspecialchars($ahInfo['accounts_head_name']) ?></strong>
+                                        <?php if (!empty($ahInfo['accounts_head_at'])): ?>
+                                            <small class="text-muted d-block mt-0.5"><?= date('d M Y h:i A', strtotime($ahInfo['accounts_head_at'])) ?></small>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
+
+                                <?php if (!empty($bill['approved_by_name'])): ?>
+                                <div class="col-md-6">
+                                    <div class="info-label text-uppercase text-muted small fw-bold mb-1">Final Approved By</div>
+                                    <div class="info-value lh-base">
+                                        <div class="d-flex align-items-center flex-wrap gap-1">
+                                            <strong class="text-dark"><?= htmlspecialchars($bill['approved_by_name']) ?></strong>
+                                            <?php if (!empty($bill['approved_by_role'])): ?>
+                                                <span class="badge bg-light text-secondary border extra-small"><?= htmlspecialchars($bill['approved_by_role']) ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                        <?php if (!empty($bill['updated_at'])): ?>
+                                            <small class="text-muted d-block mt-0.5"><?= date('d M Y h:i A', strtotime($bill['updated_at'])) ?></small>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
+
+                                <?php if (!empty($bill['purchase_head_note'])): ?>
+                                <div class="col-md-12">
+                                    <div class="info-label text-uppercase text-muted small fw-bold mb-1">Head of Purchase Note</div>
+                                    <div class="info-value text-muted fst-italic">"<?= nl2br(htmlspecialchars($bill['purchase_head_note'])) ?>"</div>
+                                </div>
+                                <?php endif; ?>
+
+                                <?php if (!empty($bill['qc_note'])): ?>
+                                <div class="col-md-12">
+                                    <div class="info-label text-uppercase text-muted small fw-bold mb-1">QC Note</div>
+                                    <div class="info-value text-muted fst-italic">"<?= nl2br(htmlspecialchars($bill['qc_note'])) ?>"</div>
+                                </div>
+                                <?php endif; ?>
+                                
+                                <?php if (!empty($bill['management_note'])): ?>
+                                <div class="col-md-12">
+                                    <div class="info-label text-uppercase text-muted small fw-bold mb-1">Management Note</div>
+                                    <div class="info-value text-muted fst-italic">"<?= nl2br(htmlspecialchars($bill['management_note'])) ?>"</div>
+                                </div>
                                 <?php endif; ?>
                             </div>
                         </div>
-                        <?php endif; ?>
-
-                        <?php if ($isAccountsHeadApproved && !empty($ahInfo['accounts_head_name'])): ?>
-                        <div class="col-md-6 text-muted mt-2">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Accounts Head Approved By</div>
-                            <div class="info-value">
-                                <strong><?= htmlspecialchars($ahInfo['accounts_head_name']) ?></strong>
-                                <?php if (!empty($ahInfo['accounts_head_at'])): ?>
-                                    <small class="text-muted d-block"><?= date('d M Y h:i A', strtotime($ahInfo['accounts_head_at'])) ?></small>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                        <?php endif; ?>
-
-                        <?php if (!empty($bill['approved_by_name'])): ?>
-                        <div class="col-md-6 text-muted mt-2">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Final Approved By</div>
-                            <div class="info-value">
-                                <strong><?= htmlspecialchars($bill['approved_by_name']) ?></strong>
-                                <?php if (!empty($bill['approved_by_role'])): ?>
-                                    <span class="badge bg-light text-secondary border extra-small"><?= htmlspecialchars($bill['approved_by_role']) ?></span>
-                                <?php endif; ?>
-                                <?php if (!empty($bill['updated_at'])): ?>
-                                    <small class="text-muted d-block"><?= date('d M Y h:i A', strtotime($bill['updated_at'])) ?></small>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                        <?php endif; ?>
-
-                        <?php if (!empty($bill['purchase_head_note'])): ?>
-                        <div class="col-md-12 text-muted mt-2">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Head of Purchase Note</div>
-                            <div class="info-value text-muted fst-italic">"<?= nl2br(htmlspecialchars($bill['purchase_head_note'])) ?>"</div>
-                        </div>
-                        <?php endif; ?>
-
-                        <?php if (!empty($bill['qc_note'])): ?>
-                        <div class="col-md-12 text-muted mt-2">
-                            <div class="info-label text-uppercase text-muted small fw-bold">QC Note</div>
-                            <div class="info-value text-muted fst-italic">"<?= nl2br(htmlspecialchars($bill['qc_note'])) ?>"</div>
-                        </div>
-                        <?php endif; ?>
-                        
-                        <?php if (!empty($bill['management_note'])): ?>
-                        <div class="col-md-12 text-muted mt-2">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Management Note</div>
-                            <div class="info-value text-muted fst-italic">"<?= nl2br(htmlspecialchars($bill['management_note'])) ?>"</div>
-                        </div>
-                        <?php endif; ?>
                     </div>
                 </div>
-
-                
             </div>
 
             <?php if (!empty($bill['target_id'])): ?>
@@ -529,161 +543,163 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
         <!-- Sidebar (Right) -->
         <div class="col-lg-4">
             <!-- Status Info Card -->
-            <div class="card custom-card mb-3">
-                <div class="card-header">
+            <div class="card custom-card mb-4">
+                <div class="card-header py-3 px-4">
                     <h6 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>Status Info</h6>
                 </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <small class="text-muted d-block">Current Status</small>
-                        <span class="badge bg-<?= $statusInfo['color'] ?> fs-6"><?= $statusInfo['label'] ?></span>
+                <div class="card-body p-4">
+                    <div class="pb-3 mb-3 border-bottom">
+                        <small class="text-muted d-block mb-1">Current Status</small>
+                        <span class="badge bg-<?= $statusInfo['color'] ?> fs-6 px-2.5 py-1.5"><?= $statusInfo['label'] ?></span>
                     </div>
                     <?php if ($status === 'submitted'): ?>
-                        <div class="mb-3">
-                            <small class="text-muted d-block fw-bold text-info">Pending Approval From</small>
-                            <span class="d-block small"><i class="bi bi-person-check me-1 text-info"></i> Project Manager / PM Head (Role 15/22)</span>
+                        <div class="pb-3 mb-3 border-bottom">
+                            <small class="text-muted d-block fw-bold text-info mb-1">Pending Approval From</small>
+                            <span class="d-block small fw-semibold"><i class="bi bi-person-check me-1 text-info"></i> Project Manager / PM Head (Role 15/22)</span>
                         </div>
                     <?php elseif ($status === 'verified'): ?>
-                        <div class="mb-3">
-                            <small class="text-muted d-block fw-bold <?= empty($bill['purchase_head_approved_by_id']) ? 'text-primary' : 'text-warning' ?>">Pending Approval From</small>
+                        <div class="pb-3 mb-3 border-bottom">
+                            <small class="text-muted d-block fw-bold <?= empty($bill['purchase_head_approved_by_id']) ? 'text-primary' : 'text-warning' ?> mb-1">Pending Approval From</small>
                             <?php if (empty($bill['purchase_head_approved_by_id'])): ?>
-                                <span class="d-block small"><i class="bi bi-bag-check me-1 text-primary"></i> Head of Purchase (Role 17)</span>
+                                <span class="d-block small fw-semibold"><i class="bi bi-bag-check me-1 text-primary"></i> Head of Purchase (Role 17)</span>
                             <?php else: ?>
-                                <span class="d-block small"><i class="bi bi-shield-check me-1 text-warning"></i> QC & Internal Audit (Role 24)</span>
+                                <span class="d-block small fw-semibold"><i class="bi bi-shield-check me-1 text-warning"></i> QC & Internal Audit (Role 24)</span>
                             <?php endif; ?>
                         </div>
                     <?php elseif ($status === 'qc_approved'): ?>
-                        <div class="mb-3">
-                            <small class="text-muted d-block fw-bold text-success">Pending Approval From</small>
+                        <div class="pb-3 mb-3 border-bottom">
+                            <small class="text-muted d-block fw-bold text-success mb-1">Pending Approval From</small>
                             <?php if (!$isOpHeadApproved): ?>
-                                <span class="d-block small text-warning"><i class="bi bi-shield-lock me-1 text-warning"></i> Head of Operation (Role 20/32)</span>
+                                <span class="d-block small text-warning fw-semibold"><i class="bi bi-shield-lock me-1 text-warning"></i> Head of Operation (Role 20/32)</span>
                             <?php elseif (!$isAccountsHeadApproved): ?>
-                                <span class="d-block small text-primary"><i class="bi bi-stamp me-1 text-primary"></i> Accounts Head (Role 30)</span>
+                                <span class="d-block small text-primary fw-semibold"><i class="bi bi-stamp me-1 text-primary"></i> Accounts Head (Role 30)</span>
                             <?php else: ?>
-                                <span class="d-block small text-primary"><i class="bi bi-shield-check me-1 text-primary"></i> Management / DCEO (Role 1/3)</span>
+                                <span class="d-block small text-primary fw-semibold"><i class="bi bi-shield-check me-1 text-primary"></i> Management / DCEO (Role 1/3)</span>
                             <?php endif; ?>
                         </div>
                     <?php elseif ($status === 'approved' && !$isAccountsHeadApproved): ?>
-                        <div class="mb-3">
-                            <small class="text-muted d-block fw-bold text-primary">Pending Sign-off From</small>
-                            <span class="d-block small"><i class="bi bi-stamp me-1 text-primary"></i> Accounts Head</span>
+                        <div class="pb-3 mb-3 border-bottom">
+                            <small class="text-muted d-block fw-bold text-primary mb-1">Pending Sign-off From</small>
+                            <span class="d-block small fw-semibold"><i class="bi bi-stamp me-1 text-primary"></i> Accounts Head</span>
                         </div>
                     <?php endif; ?>
-                    <div class="mb-3">
-                        <small class="text-muted d-block text-muted">Submitted At</small>
-                        <strong class="text-muted"><?= date('d M Y h:i A', strtotime($bill['created_at'])) ?></strong>
+                    <div class="pb-3 mb-3 border-bottom">
+                        <small class="text-muted d-block mb-1">Submitted At</small>
+                        <strong class="text-dark"><?= date('d M Y h:i A', strtotime($bill['created_at'])) ?></strong>
                     </div>
                     <?php if (!empty($bill['verified_by_name'])): ?>
-                    <div class="mb-3 text-muted">
-                        <small class="text-muted d-block">PM Approved / Verified By</small>
-                        <strong><?= htmlspecialchars($bill['verified_by_name']) ?></strong>
+                    <div class="pb-3 mb-3 border-bottom lh-base">
+                        <small class="text-muted d-block mb-1">PM Approved / Verified By</small>
+                        <strong class="text-dark"><?= htmlspecialchars($bill['verified_by_name']) ?></strong>
                         <?php if (!empty($bill['verified_at'])): ?>
-                            <small class="text-muted d-block"><?= date('d M Y h:i A', strtotime($bill['verified_at'])) ?></small>
+                            <small class="text-muted d-block mt-0.5"><?= date('d M Y h:i A', strtotime($bill['verified_at'])) ?></small>
                         <?php endif; ?>
                         <?php if (!empty($bill['verification_note'])): ?>
-                            <small class="text-info d-block fst-italic">"<?= htmlspecialchars($bill['verification_note']) ?>"</small>
+                            <small class="text-info d-block fst-italic mt-1">"<?= htmlspecialchars($bill['verification_note']) ?>"</small>
                         <?php endif; ?>
                     </div>
                     <?php endif; ?>
                     <?php if (!empty($bill['purchase_team_leader_name'])): ?>
-                    <div class="mb-3 text-muted">
-                        <small class="text-muted d-block">Purchase Team Leader Reviewed By</small>
-                        <strong><?= htmlspecialchars($bill['purchase_team_leader_name']) ?></strong>
+                    <div class="pb-3 mb-3 border-bottom lh-base">
+                        <small class="text-muted d-block mb-1">Purchase Team Leader Reviewed By</small>
+                        <strong class="text-dark"><?= htmlspecialchars($bill['purchase_team_leader_name']) ?></strong>
                         <?php if (!empty($bill['purchase_team_leader_at'])): ?>
-                            <small class="text-muted d-block"><?= date('d M Y h:i A', strtotime($bill['purchase_team_leader_at'])) ?></small>
+                            <small class="text-muted d-block mt-0.5"><?= date('d M Y h:i A', strtotime($bill['purchase_team_leader_at'])) ?></small>
                         <?php endif; ?>
                         <?php if (!empty($bill['purchase_team_leader_note'])): ?>
-                            <small class="text-secondary d-block fst-italic">"<?= htmlspecialchars($bill['purchase_team_leader_note']) ?>"</small>
+                            <small class="text-secondary d-block fst-italic mt-1">"<?= htmlspecialchars($bill['purchase_team_leader_note']) ?>"</small>
                         <?php endif; ?>
                     </div>
                     <?php endif; ?>
                     <?php if (!empty($bill['purchase_head_approved_by_name'])): ?>
-                    <div class="mb-3 text-muted">
-                        <small class="text-muted d-block">Head of Purchase Approved By</small>
-                        <strong><?= htmlspecialchars($bill['purchase_head_approved_by_name']) ?></strong>
+                    <div class="pb-3 mb-3 border-bottom lh-base">
+                        <small class="text-muted d-block mb-1">Head of Purchase Approved By</small>
+                        <strong class="text-dark"><?= htmlspecialchars($bill['purchase_head_approved_by_name']) ?></strong>
                         <?php if (!empty($bill['purchase_head_approved_at'])): ?>
-                            <small class="text-muted d-block"><?= date('d M Y h:i A', strtotime($bill['purchase_head_approved_at'])) ?></small>
+                            <small class="text-muted d-block mt-0.5"><?= date('d M Y h:i A', strtotime($bill['purchase_head_approved_at'])) ?></small>
                         <?php endif; ?>
                         <?php if (!empty($bill['purchase_head_note'])): ?>
-                            <small class="text-primary d-block fst-italic">"<?= htmlspecialchars($bill['purchase_head_note']) ?>"</small>
+                            <small class="text-primary d-block fst-italic mt-1">"<?= htmlspecialchars($bill['purchase_head_note']) ?>"</small>
                         <?php endif; ?>
                     </div>
                     <?php endif; ?>
                     <?php if (!empty($bill['qc_approved_by_name']) || !empty($bill['qc_approved_by_id'])): ?>
-                    <div class="mb-3 text-muted">
-                        <small class="text-muted d-block">QC Approved By</small>
-                        <strong><?= htmlspecialchars($bill['qc_approved_by_name'] ?? ('User #' . $bill['qc_approved_by_id'])) ?></strong>
+                    <div class="pb-3 mb-3 border-bottom lh-base">
+                        <small class="text-muted d-block mb-1">QC Approved By</small>
+                        <strong class="text-dark"><?= htmlspecialchars($bill['qc_approved_by_name'] ?? ('User #' . $bill['qc_approved_by_id'])) ?></strong>
                         <?php if (!empty($bill['qc_approved_at'])): ?>
-                            <small class="text-muted d-block"><?= date('d M Y h:i A', strtotime($bill['qc_approved_at'])) ?></small>
+                            <small class="text-muted d-block mt-0.5"><?= date('d M Y h:i A', strtotime($bill['qc_approved_at'])) ?></small>
                         <?php endif; ?>
                         <?php if (!empty($bill['qc_note'])): ?>
-                            <small class="text-warning d-block fst-italic">"<?= htmlspecialchars($bill['qc_note']) ?>"</small>
+                            <small class="text-warning d-block fst-italic mt-1">"<?= htmlspecialchars($bill['qc_note']) ?>"</small>
                         <?php endif; ?>
                     </div>
                     <?php endif; ?>
                     <?php if ($isOpHeadApproved): ?>
-                    <div class="mb-3 text-muted">
-                        <small class="text-muted d-block">Operation Head Approved By</small>
-                        <strong><?= htmlspecialchars($ahInfo['op_head_name'] ?? 'Admin & Operation Head') ?></strong>
-                        <?php if (!empty($ahInfo['op_head_designation'])): ?>
-                            <span class="badge bg-light text-secondary border extra-small d-inline-block"><?= htmlspecialchars($ahInfo['op_head_designation']) ?></span>
-                        <?php endif; ?>
+                    <div class="pb-3 mb-3 border-bottom lh-base">
+                        <small class="text-muted d-block mb-1">Operation Head Approved By</small>
+                        <div class="d-flex align-items-center flex-wrap gap-1">
+                            <strong class="text-dark"><?= htmlspecialchars($ahInfo['op_head_name'] ?? 'Admin & Operation Head') ?></strong>
+                            <?php if (!empty($ahInfo['op_head_designation'])): ?>
+                                <span class="badge bg-light text-secondary border extra-small d-inline-block"><?= htmlspecialchars($ahInfo['op_head_designation']) ?></span>
+                            <?php endif; ?>
+                        </div>
                         <?php if (!empty($ahInfo['op_head_at'])): ?>
-                            <small class="text-muted d-block"><?= date('d M Y h:i A', strtotime($ahInfo['op_head_at'])) ?></small>
+                            <small class="text-muted d-block mt-0.5"><?= date('d M Y h:i A', strtotime($ahInfo['op_head_at'])) ?></small>
                         <?php endif; ?>
                         <?php if (!empty($ahInfo['op_head_note'])): ?>
-                            <small class="text-success d-block fst-italic">"<?= htmlspecialchars($ahInfo['op_head_note']) ?>"</small>
+                            <small class="text-success d-block fst-italic mt-1">"<?= htmlspecialchars($ahInfo['op_head_note']) ?>"</small>
                         <?php endif; ?>
                     </div>
                     <?php endif; ?>
                     <?php if ($isAccountsHeadApproved && !empty($ahInfo['accounts_head_name'])): ?>
-                    <div class="mb-3 text-muted">
-                        <small class="text-muted d-block">Accounts Head Approved By</small>
-                        <strong><?= htmlspecialchars($ahInfo['accounts_head_name']) ?></strong>
+                    <div class="pb-3 mb-3 border-bottom lh-base">
+                        <small class="text-muted d-block mb-1">Accounts Head Approved By</small>
+                        <strong class="text-dark"><?= htmlspecialchars($ahInfo['accounts_head_name']) ?></strong>
                         <?php if (!empty($ahInfo['accounts_head_at'])): ?>
-                            <small class="text-muted d-block"><?= date('d M Y h:i A', strtotime($ahInfo['accounts_head_at'])) ?></small>
+                            <small class="text-muted d-block mt-0.5"><?= date('d M Y h:i A', strtotime($ahInfo['accounts_head_at'])) ?></small>
                         <?php endif; ?>
                         <?php if (!empty($ahInfo['accounts_head_note'])): ?>
-                            <small class="text-primary d-block fst-italic">"<?= htmlspecialchars($ahInfo['accounts_head_note']) ?>"</small>
+                            <small class="text-primary d-block fst-italic mt-1">"<?= htmlspecialchars($ahInfo['accounts_head_note']) ?>"</small>
                         <?php endif; ?>
                     </div>
                     <?php endif; ?>
                     <?php if (!empty($bill['approved_by_name'])): ?>
-                    <div class="mb-3 text-muted">
-                        <small class="text-muted d-block">Final Approved By</small>
-                        <strong><?= htmlspecialchars($bill['approved_by_name']) ?></strong>
+                    <div class="pb-3 mb-3 border-bottom lh-base">
+                        <small class="text-muted d-block mb-1">Final Approved By</small>
+                        <strong class="text-dark"><?= htmlspecialchars($bill['approved_by_name']) ?></strong>
                         <?php if (!empty($bill['updated_at'])): ?>
-                            <small class="text-muted d-block"><?= date('d M Y h:i A', strtotime($bill['updated_at'])) ?></small>
+                            <small class="text-muted d-block mt-0.5"><?= date('d M Y h:i A', strtotime($bill['updated_at'])) ?></small>
                         <?php endif; ?>
                         <?php if (!empty($bill['management_note'])): ?>
-                            <small class="text-success d-block fst-italic">"<?= htmlspecialchars($bill['management_note']) ?>"</small>
+                            <small class="text-success d-block fst-italic mt-1">"<?= htmlspecialchars($bill['management_note']) ?>"</small>
                         <?php endif; ?>
                     </div>
                     <?php endif; ?>
-                    <div class="mb-3 text-muted">
-                        <small class="text-muted d-block">Last Updated</small>
-                        <strong><?= !empty($bill['updated_at']) ? date('d M Y h:i A', strtotime($bill['updated_at'])) : '—' ?></strong>
+                    <div class="mb-0 lh-base">
+                        <small class="text-muted d-block mb-1">Last Updated</small>
+                        <strong class="text-dark"><?= !empty($bill['updated_at']) ? date('d M Y h:i A', strtotime($bill['updated_at'])) : '—' ?></strong>
                     </div>
                 </div>
             </div>
 
             <!-- 1. PM Approval Actions (PM / PM Head) -->
             <?php if ($canApprovePMReq && $status === 'submitted'): ?>
-            <div class="card custom-card border-info mb-3">
-                <div class="card-header bg-info bg-opacity-10">
+            <div class="card custom-card border-info mb-4">
+                <div class="card-header bg-info bg-opacity-10 py-3 px-4">
                     <h6 class="card-title mb-0"><i class="bi bi-person-check me-2"></i>1. Project Manager Approval (PM / PM Head)</h6>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-4">
                     <form action="<?= $base_url ?>/con-contractor-bill-verify/<?= $bill['id'] ?>" method="POST">
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Bill Amount</label>
+                            <label class="form-label fw-semibold mb-1">Bill Amount</label>
                             <div class="fs-5 fw-bold text-primary">৳ <?= number_format($bill['bill_amount'], 2) ?></div>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">PM Verification Remarks / Note (Optional)</label>
+                            <label class="form-label fw-semibold mb-1.5">PM Verification Remarks / Note (Optional)</label>
                             <textarea name="verification_note" class="form-control form-control-sm" rows="2" placeholder="Add PM verification remarks..."></textarea>
                         </div>
-                        <div class="row gx-2">
+                        <div class="row gx-2 pt-1">
                             <div class="col-6">
                                 <button type="submit" class="btn btn-info text-white w-100 fw-bold py-2" onclick="return confirm('Approve as Project Manager and forward to Head of Purchase?');">
                                     <i class="bi bi-check-circle me-1"></i> PM Approve
@@ -702,18 +718,18 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
 
             <!-- 1b. Optional Review Card: Purchase Team Leader / Sr. Executive (Role 31) -->
             <?php if (in_array($status, ['submitted', 'verified']) && empty($bill['purchase_head_approved_by_id']) && !$isTeamLeaderReviewed && $canReviewTeamLeaderReq && (int)$userRole === 31): ?>
-            <div class="card custom-card border-secondary mb-3">
-                <div class="card-header bg-secondary bg-opacity-10 d-flex justify-content-between align-items-center">
+            <div class="card custom-card border-secondary mb-4">
+                <div class="card-header bg-secondary bg-opacity-10 d-flex justify-content-between align-items-center flex-wrap gap-2 py-3 px-4">
                     <h6 class="card-title mb-0"><i class="bi bi-eye me-2"></i>Purchase Team Leader Review</h6>
                     <span class="badge bg-secondary">Optional</span>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-4">
                     <form action="<?= $base_url ?>/con-contractor-bill-tl-review/<?= $bill['id'] ?>" method="POST">
-                        <div class="mb-2">
-                            <label class="form-label fw-semibold small">Review Note for Purchase Head (Optional)</label>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small mb-1.5">Review Note for Purchase Head (Optional)</label>
                             <textarea name="tl_note" class="form-control form-control-sm" rows="2" placeholder="Write review note..."></textarea>
                         </div>
-                        <button type="submit" class="btn btn-secondary btn-sm w-100 fw-bold">
+                        <button type="submit" class="btn btn-secondary btn-sm w-100 fw-bold py-2">
                             <i class="bi bi-send-check me-1"></i> Review &amp; Forward to Head of Purchase
                         </button>
                     </form>
@@ -724,30 +740,30 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
             <!-- 2. Head of Purchase Approval Actions (Role 17) -->
             <?php if ($canApprovePurchaseHeadReq && in_array($status, ['submitted', 'verified']) && empty($bill['purchase_head_approved_by_id'])): ?>
                 <?php if ($status === 'submitted' && !in_array((int)$userRole, [1, 3], true)): ?>
-                <div class="card custom-card border-warning mb-3">
-                    <div class="card-header bg-warning bg-opacity-10 d-flex justify-content-between align-items-center">
+                <div class="card custom-card border-warning mb-4">
+                    <div class="card-header bg-warning bg-opacity-10 d-flex justify-content-between align-items-center flex-wrap gap-2 py-3 px-4">
                         <h6 class="card-title mb-0 text-dark fw-bold"><i class="bi bi-lock-fill text-warning me-2"></i>2. Head of Purchase Locked</h6>
                         <span class="badge bg-warning text-dark">Pending PM</span>
                     </div>
-                    <div class="card-body">
-                        <p class="mb-0 small text-muted">
+                    <div class="card-body p-4">
+                        <p class="mb-0 small text-muted lh-base">
                             This contractor bill was submitted by Site Engineer and is awaiting <strong>Project Manager / Dept Head (Role 15/22)</strong> verification first. Once PM approves, Head of Purchase approval will unlock.
                         </p>
                     </div>
                 </div>
                 <?php else: ?>
-                <div class="card custom-card border-primary mb-3">
-                    <div class="card-header bg-primary bg-opacity-10 d-flex justify-content-between align-items-center">
+                <div class="card custom-card border-primary mb-4">
+                    <div class="card-header bg-primary bg-opacity-10 d-flex justify-content-between align-items-center flex-wrap gap-2 py-3 px-4">
                         <h6 class="card-title mb-0 text-primary fw-bold"><i class="bi bi-bag-check-fill me-2"></i>2. Head of Purchase Approval</h6>
                         <span class="badge bg-primary">Role 17</span>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body p-4">
                         <form action="<?= $base_url ?>/con-contractor-bill-ph-approve/<?= $bill['id'] ?>" method="POST" id="cbPhApproveForm">
                             <div class="mb-3">
-                                <label class="form-label fw-semibold">Head of Purchase Note (Optional)</label>
+                                <label class="form-label fw-semibold mb-1.5">Head of Purchase Note (Optional)</label>
                                 <textarea name="purchase_head_note" class="form-control form-control-sm" rows="2" placeholder="Add Head of Purchase remarks..."></textarea>
                             </div>
-                            <div class="row gx-2">
+                            <div class="row gx-2 pt-1">
                                 <div class="col-6">
                                     <button type="button" id="btnCbPhApprove" class="btn btn-primary w-100 fw-bold py-2">
                                         <i class="bi bi-check-circle me-1"></i> Purchase Head Approve
@@ -768,37 +784,37 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
             <!-- 3. QC Approval Actions (QC & Internal Audit) -->
             <?php if ($canApproveQCReq && in_array($status, ['verified', 'submitted'])): ?>
                 <?php if (($status !== 'verified' || empty($bill['purchase_head_approved_by_id'])) && !in_array((int)$userRole, [1, 3], true)): ?>
-                <div class="card custom-card border-warning mb-3">
-                    <div class="card-header bg-warning bg-opacity-10 d-flex justify-content-between align-items-center">
+                <div class="card custom-card border-warning mb-4">
+                    <div class="card-header bg-warning bg-opacity-10 d-flex justify-content-between align-items-center flex-wrap gap-2 py-3 px-4">
                         <h6 class="card-title mb-0 text-dark fw-bold"><i class="bi bi-lock-fill text-warning me-2"></i>3. QC Audit Locked</h6>
                         <span class="badge bg-warning text-dark"><?= $status !== 'verified' ? 'Pending PM & PH' : 'Pending Purchase Head' ?></span>
                     </div>
-                    <div class="card-body">
-                        <p class="mb-0 small text-muted">
+                    <div class="card-body p-4">
+                        <p class="mb-0 small text-muted lh-base">
                             This bill is currently awaiting <strong><?= $status !== 'verified' ? 'Project Manager & Head of Purchase (Role 17)' : 'Head of Purchase (Role 17)' ?></strong> approval first. You can view all details now, and QC approval will unlock once Head of Purchase approves.
                         </p>
                     </div>
                 </div>
                 <?php else: ?>
-                <div class="card custom-card border-warning mb-3">
-                    <div class="card-header bg-warning bg-opacity-10">
+                <div class="card custom-card border-warning mb-4">
+                    <div class="card-header bg-warning bg-opacity-10 py-3 px-4">
                         <h6 class="card-title mb-0"><i class="bi bi-shield-check me-2"></i>3. QC & Internal Audit Approval</h6>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body p-4">
                         <form action="<?= $base_url ?>/con-contractor-bill-approve/<?= $bill['id'] ?>" method="POST" id="cbQcApproveForm">
                             <input type="hidden" name="status" value="qc_approved">
                             <div class="mb-3">
-                                <label class="form-label fw-semibold">Approved Amount (৳)</label>
+                                <label class="form-label fw-semibold mb-1.5">Approved Amount (৳)</label>
                                 <input type="number" name="approved_amount" class="form-control"
                                        value="<?= number_format($bill['approved_amount'] ?? $bill['bill_amount'], 2, '.', '') ?>"
                                        step="0.01" min="0.01" max="<?= $bill['bill_amount'] ?>" required>
-                                <small class="text-muted">Bill amount: ৳ <?= number_format($bill['bill_amount'], 2) ?></small>
+                                <small class="text-muted d-block mt-1">Bill amount: ৳ <?= number_format($bill['bill_amount'], 2) ?></small>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label fw-semibold">QC Note (Optional)</label>
+                                <label class="form-label fw-semibold mb-1.5">QC Note (Optional)</label>
                                 <textarea name="approval_note" class="form-control form-control-sm" rows="2" placeholder="Add QC remarks..."></textarea>
                             </div>
-                            <div class="row gx-2">
+                            <div class="row gx-2 pt-1">
                                 <div class="col-6">
                                     <button type="button" id="btnCbQcApprove" class="btn btn-warning w-100 fw-bold py-2">
                                         <i class="bi bi-check-circle me-1"></i> QC Approve
@@ -851,36 +867,38 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
             ?>
 
             <?php if ($canShowCard): ?>
-            <div class="card custom-card <?= $isOpHeadAction ? 'border-primary' : 'border-success' ?> mb-3">
-                <div class="card-header <?= $isOpHeadAction ? 'bg-primary bg-opacity-10' : 'bg-success bg-opacity-10' ?> d-flex align-items-center justify-content-between">
+            <div class="card custom-card <?= $isOpHeadAction ? 'border-primary' : 'border-success' ?> mb-4">
+                <div class="card-header <?= $isOpHeadAction ? 'bg-primary bg-opacity-10' : 'bg-success bg-opacity-10' ?> d-flex align-items-center justify-content-between flex-wrap gap-2 py-3 px-4">
                     <h6 class="card-title mb-0">
                         <i class="bi <?= $isOpHeadAction ? 'bi-shield-check text-primary' : 'bi-shield-lock' ?> me-2"></i>
                         <?= $isOpHeadAction ? '4. Head of Operation Approval' : ($cbMgmtOverrideStage !== '' ? 'Management Override / Direct Approval' : 'Management / DCEO Final Approval') ?>
                     </h6>
-                    <span class="badge <?= $isOpHeadAction ? 'bg-primary' : 'bg-success' ?>">
+                    <span class="badge <?= $isOpHeadAction ? 'bg-primary' : 'bg-success' ?> px-2.5 py-1">
                         <?= $isOpHeadAction ? 'Operation Head' : ($cbMgmtOverrideStage !== '' ? 'Pending: ' . htmlspecialchars($cbMgmtOverrideStage) : 'Management') ?>
                     </span>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-4">
                     <?php if ($cbMgmtOverrideStage !== ''): ?>
-                        <div class="alert alert-warning py-2 px-3 small mb-3 border-warning">
-                            <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>
-                            <strong>Pending for <?= htmlspecialchars($cbMgmtOverrideStage) ?>:</strong> As Management / CEO / DCEO, approving now will also complete the pending prior stage(s) (<strong><?= htmlspecialchars($cbMgmtOverrideStage) ?></strong>) under your responsibility.
+                        <div class="d-flex align-items-start gap-2.5 p-3 mb-3 rounded-2 border border-warning bg-warning-subtle text-dark small lh-base">
+                            <i class="bi bi-exclamation-triangle-fill text-warning fs-6 flex-shrink-0 mt-0.5"></i>
+                            <div>
+                                <strong>Pending for <?= htmlspecialchars($cbMgmtOverrideStage) ?>:</strong> As Management / CEO / DCEO, approving now will also complete the pending prior stage(s) (<strong><?= htmlspecialchars($cbMgmtOverrideStage) ?></strong>) under your responsibility.
+                            </div>
                         </div>
                     <?php endif; ?>
                     <form action="<?= $base_url ?>/con-contractor-bill-approve/<?= $bill['id'] ?>" method="POST" id="cbMgmtApproveForm">
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Approved Amount (৳)</label>
+                            <label class="form-label fw-semibold mb-1.5">Approved Amount (৳)</label>
                             <input type="number" name="approved_amount" class="form-control"
                                    value="<?= number_format($bill['approved_amount'] ?? $bill['bill_amount'], 2, '.', '') ?>"
                                    step="0.01" min="0.01" max="<?= $bill['bill_amount'] ?>" required>
-                            <small class="text-muted">Bill amount: ৳ <?= number_format($bill['bill_amount'], 2) ?></small>
+                            <small class="text-muted d-block mt-1">Bill amount: ৳ <?= number_format($bill['bill_amount'], 2) ?></small>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-semibold"><?= $isOpHeadAction ? 'Operation Head Note' : 'Management Note' ?> (Optional)</label>
+                            <label class="form-label fw-semibold mb-1.5"><?= $isOpHeadAction ? 'Operation Head Note' : 'Management Note' ?> (Optional)</label>
                             <textarea name="management_note" class="form-control form-control-sm" rows="2" placeholder="Add remarks..."></textarea>
                         </div>
-                        <div class="row gx-2">
+                        <div class="row gx-2 pt-1">
                             <div class="col-6">
                                 <button type="button" id="btnCbMgmtApprove" class="btn <?= $isOpHeadAction ? 'btn-primary' : 'btn-success' ?> w-100 fw-bold py-2">
                                     <i class="bi bi-check-circle me-1"></i> <?= $isOpHeadAction ? 'Approve (Op Head)' : 'Approve Bill' ?>
@@ -969,9 +987,9 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
 <!-- ============================================================
      SETTLEMENT & ACCOUNTABILITY SECTION
      ============================================================ -->
-<div class="container-fluid mt-3">
+<div class="container-fluid mt-3 mb-4">
     <div class="card custom-card">
-        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2 py-3 px-4">
             <h6 class="card-title mb-0">
                 <i class="bi bi-patch-check me-2 text-success"></i>
                 Contractor Settlement &amp; Labour Accountability
@@ -989,32 +1007,32 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                 <?php endif; ?>
             </div>
         </div>
-        <div class="card-body">
+        <div class="card-body p-4">
 
             <!-- Summary strip -->
-            <div class="row mb-3 g-2">
+            <div class="row mb-4 g-3">
                 <div class="col-md-3">
-                    <div class="p-3 rounded bg-success bg-opacity-10 text-center">
-                        <small class="text-light d-block">Total Paid by Accounts</small>
+                    <div class="p-3 rounded-3 bg-success bg-opacity-10 text-center">
+                        <small class="text-light d-block mb-1">Total Paid by Accounts</small>
                         <strong class="text-light fs-5">৳ <?= number_format($totalPaid, 2) ?></strong>
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="p-3 rounded bg-primary bg-opacity-10 text-center">
-                        <small class="text-light d-block">Paid to Contractor</small>
+                    <div class="p-3 rounded-3 bg-primary bg-opacity-10 text-center">
+                        <small class="text-light d-block mb-1">Paid to Contractor</small>
                         <strong class="text-light fs-5">৳ <?= number_format($totalPaidToContractor, 2) ?></strong>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <?php $unsettled = max(0, $totalPaid - $totalPaidToContractor); ?>
-                    <div class="p-3 rounded <?= $unsettled > 0 ? 'bg-warning bg-opacity-15' : 'bg-secondary bg-opacity-10' ?> text-center">
-                        <small class="text-light d-block">Unsettled Balance</small>
+                    <div class="p-3 rounded-3 <?= $unsettled > 0 ? 'bg-warning bg-opacity-15' : 'bg-secondary bg-opacity-10' ?> text-center">
+                        <small class="text-light d-block mb-1">Unsettled Balance</small>
                         <strong class="<?= $unsettled > 0 ? 'text-light' : 'text-muted' ?> fs-5">৳ <?= number_format($unsettled, 2) ?></strong>
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="p-3 rounded bg-info bg-opacity-10 text-center">
-                        <small class="text-light d-block">Settlements Submitted</small>
+                    <div class="p-3 rounded-3 bg-info bg-opacity-10 text-center">
+                        <small class="text-light d-block mb-1">Settlements Submitted</small>
                         <strong class="text-light fs-5"><?= count($settlements) ?></strong>
                     </div>
                 </div>
