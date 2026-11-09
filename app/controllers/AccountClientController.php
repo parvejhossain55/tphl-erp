@@ -1843,7 +1843,16 @@ public function indexTwo($bookingId = null)
 
             $html .= '<td>TK.' . number_format($client['total_agreement_value'] ?? 0, 2) . '</td>';
             $html .= '<td>TK.' . number_format($client['total_paid'] ?? 0, 2) . '</td>';
-            $html .= '<td>' . ($client['last_payment_date'] ? date('d M, Y', strtotime($client['last_payment_date'])) : 'No Payment') . '</td>';
+            if (!empty($client['last_payment_date'])) {
+                $formattedDate = date('d M, Y', strtotime($client['last_payment_date']));
+                $creatorHtml = '';
+                if (!empty($client['last_payment_creator_name'])) {
+                    $creatorHtml = '<div class="extra-small text-muted mt-0.5 text-nowrap" style="font-size: 11px;"><i class="fa-solid fa-user-pen text-primary me-1"></i>By: ' . htmlspecialchars($client['last_payment_creator_name']) . '</div>';
+                }
+                $html .= '<td><span class="fw-semibold text-dark text-nowrap">' . $formattedDate . '</span>' . $creatorHtml . '</td>';
+            } else {
+                $html .= '<td><span class="text-muted extra-small">No Payment</span></td>';
+            }
 
             // Current Month / Due status
             $cms = $client['current_month_status'] ?? 'N/A';
@@ -2077,13 +2086,17 @@ public function indexTwo($bookingId = null)
         $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') 
                   || (isset($_GET['ajax']) && $_GET['ajax'] == '1');
 
+        $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
+        $assignedProjectIds = [];
+        $effectiveProjectId = $this->getEffectiveCedProjectFilter($selectedProjectId, $assignedProjectIds);
+
         $search = trim($_GET['search'] ?? '');
         $page = max(1, (int)($_GET['page'] ?? 1));
         $limit = min(100, max(5, (int)($_GET['limit'] ?? 10)));
         $offset = ($page - 1) * $limit;
 
         if ($isAjax) {
-            $totalClients = $this->clientModel->getTotalBookingsCount(null, $search);
+            $totalClients = $this->clientModel->getTotalBookingsCount($effectiveProjectId, $search);
             $totalPages = $totalClients > 0 ? (int)ceil($totalClients / $limit) : 1;
             
             if ($page > $totalPages && $totalPages > 0) {
@@ -2091,7 +2104,7 @@ public function indexTwo($bookingId = null)
                 $offset = ($page - 1) * $limit;
             }
 
-            $clients = $this->clientModel->getAllBookings(null, $search, $limit, $offset);
+            $clients = $this->clientModel->getAllBookings($effectiveProjectId, $search, $limit, $offset);
 
             foreach ($clients as &$client) {
                 $schedule = $this->clientModel->getVirtualEmiSchedule($client['booking_id']);
@@ -2119,18 +2132,38 @@ public function indexTwo($bookingId = null)
             exit;
         }
 
-        $paymentStats = $this->clientModel->getPaymentStatistics();
-        $collectionData = $this->clientModel->getDashboardCollectionStats();
+        $paymentStats = $this->clientModel->getPaymentStatistics($effectiveProjectId);
+        $collectionData = $this->clientModel->getDashboardCollectionStats($effectiveProjectId);
+        $collectionStats = $this->clientModel->getCollectionStatsSummary($effectiveProjectId);
+        $dueTrackingStats = $this->clientModel->getClientDueTrackingStats($effectiveProjectId);
+        $paymentStatusData = $this->clientModel->getPaymentStatusCounts($effectiveProjectId);
+
+        // Projects list for dropdown filter
+        $projectModel = new Project($this->db);
+        $projects = $projectModel->getAll();
+        if (empty($projects)) {
+            $projects = $this->clientModel->getProjectsForCED();
+        }
+        if (!empty($assignedProjectIds)) {
+            $projects = array_values(array_filter($projects, fn($p) => in_array((int)$p['id'], $assignedProjectIds, true)));
+        }
 
         // For initial load, do not load clients. Let AJAX load them.
         $clients = [];
 
         $this->view("ced/ced-dashboard", [
-            "current_route" => "ced-dashboard",
-            "page_title" => "CED Dashboard",
-            "clients" => $clients,
-            "paymentStats" => $paymentStats,
-            "collectionData" => $collectionData
+            "current_route"      => "ced-dashboard",
+            "page_title"         => "CED Dashboard",
+            "clients"            => $clients,
+            "paymentStats"       => $paymentStats,
+            "collectionData"     => $collectionData,
+            "collectionStats"    => $collectionStats,
+            "dueTrackingStats"   => $dueTrackingStats,
+            "paymentStatusData"  => $paymentStatusData,
+            "projects"           => $projects,
+            "selectedProjectId"  => $selectedProjectId,
+            "effectiveProjectId" => $effectiveProjectId,
+            "assignedProjectIds" => $assignedProjectIds
         ]);
     }
 

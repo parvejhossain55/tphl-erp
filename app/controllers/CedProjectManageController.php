@@ -144,8 +144,8 @@ class CedProjectManageController extends Controller
             $selectedAgentId = $currentUserId;
         }
 
-        // Summary metrics
-        $allAgentsSummary = $canManage ? $this->assignmentModel->getPortfolioSummary($search) : [];
+        // Summary metrics (supports search and project filter)
+        $allAgentsSummary = $canManage ? $this->assignmentModel->getPortfolioSummary($search, null, $selectedProjectId) : [];
 
         // If a specific agent is selected (or regular agent viewing self)
         $targetAgentSummary = null;

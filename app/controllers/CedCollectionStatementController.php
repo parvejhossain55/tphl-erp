@@ -68,7 +68,13 @@ class CedCollectionStatementController extends Controller
         $collectorSummary = $this->fetchCollectorSummary($dateInfo['start_date'], $dateInfo['end_date'], $filters);
         $typeSummary      = $this->fetchPaymentTypeSummary($dateInfo['start_date'], $dateInfo['end_date'], $filters);
         $transactions     = $this->fetchTransactions($dateInfo['start_date'], $dateInfo['end_date'], $filters, $limit, $offset);
-        $collectorsList   = $this->fetchCedCollectors();
+        $teamScope = $filters['team_scope'] ?? 'ced_only';
+        $collectorsList   = $this->fetchCedCollectors($teamScope);
+        $collectorsByScope = [
+            'ced_only' => $this->fetchCedCollectors('ced_only'),
+            'ced_mgmt' => $this->fetchCedCollectors('ced_mgmt'),
+            'all'      => $this->fetchCedCollectors('all')
+        ];
         $projectsList     = $this->fetchProjects();
 
         // Default view mode for CED: 'collectors' (Executive-wise Collection Summary)
@@ -82,19 +88,71 @@ class CedCollectionStatementController extends Controller
             $viewMode = 'collectors';
         }
 
+        $collectorHistoryNotice = null;
+        if (!empty($filters['collector_id'])) {
+            $cId = (int)$filters['collector_id'];
+            $colTrxCount = 0;
+            if (!empty($collectorSummary['rows'])) {
+                foreach ($collectorSummary['rows'] as $r) {
+                    if (($r['officer_id'] ?? $r['created_by']) == $cId) {
+                        $colTrxCount += (int)$r['total_count'];
+                    }
+                }
+            }
+            if ($colTrxCount === 0) {
+                // Check if they have collections in any month
+                $qHist = $this->db->query("
+                    SELECT 
+                        COUNT(lp.id) as total_life_trx,
+                        COALESCE(SUM(lp.amount), 0) as total_life_amount,
+                        MAX(lp.payment_date) as latest_payment_date,
+                        DATE_FORMAT(MAX(lp.payment_date), '%Y') as latest_year,
+                        DATE_FORMAT(MAX(lp.payment_date), '%m') as latest_month,
+                        DATE_FORMAT(MAX(lp.payment_date), '%M %Y') as latest_month_name
+                    FROM lead_payments lp
+                    WHERE lp.created_by = {$cId}
+                      AND lp.is_trashed = 0
+                      AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected')
+                ");
+                if ($qHist && $hRow = $qHist->fetch_assoc()) {
+                    if ((int)$hRow['total_life_trx'] > 0) {
+                        $cName = 'Selected Executive';
+                        foreach ($collectorsList as $cl) {
+                            if ((int)$cl['user_id'] === $cId) {
+                                $cName = $cl['full_name'];
+                                break;
+                            }
+                        }
+                        $collectorHistoryNotice = [
+                            'collector_id'        => $cId,
+                            'collector_name'      => $cName,
+                            'total_life_trx'      => (int)$hRow['total_life_trx'],
+                            'total_life_amount'   => (float)$hRow['total_life_amount'],
+                            'latest_payment_date' => $hRow['latest_payment_date'],
+                            'latest_year'         => $hRow['latest_year'],
+                            'latest_month'        => (int)$hRow['latest_month'],
+                            'latest_month_name'   => $hRow['latest_month_name']
+                        ];
+                    }
+                }
+            }
+        }
+
         $viewData = [
-            'current_route'       => 'ced-collection-statement',
-            'current_page'        => 'ced-collection-statement',
-            'page_title'          => 'CED Collection Statement',
-            'filters'             => $filters,
-            'date_info'           => $dateInfo,
-            'summary'             => $summary,
-            'collector_summary'   => $collectorSummary,
-            'type_summary'        => $typeSummary,
-            'view_mode'           => $viewMode,
-            'transactions'        => $transactions,
-            'collectors_list'     => $collectorsList,
-            'projects_list'       => $projectsList,
+            'current_route'            => 'ced-collection-statement',
+            'current_page'             => 'ced-collection-statement',
+            'page_title'               => 'CED Collection Statement',
+            'filters'                  => $filters,
+            'date_info'                => $dateInfo,
+            'summary'                  => $summary,
+            'collector_summary'        => $collectorSummary,
+            'collector_history_notice' => $collectorHistoryNotice,
+            'type_summary'             => $typeSummary,
+            'view_mode'                => $viewMode,
+            'transactions'             => $transactions,
+            'collectors_list'          => $collectorsList,
+            'collectors_by_scope'      => $collectorsByScope,
+            'projects_list'            => $projectsList,
             'pagination'          => [
                 'current_page' => $page,
                 'total_pages'  => $totalPages,
@@ -133,7 +191,7 @@ class CedCollectionStatementController extends Controller
 
         $collectorName = 'All Collectors / Executives';
         if (!empty($filters['collector_id'])) {
-            $colList = $this->fetchCedCollectors();
+            $colList = $this->fetchCedCollectors($filters['team_scope'] ?? 'ced_only');
             foreach ($colList as $c) {
                 if ($c['user_id'] == $filters['collector_id']) {
                     $collectorName = $c['full_name'];
@@ -183,6 +241,8 @@ class CedCollectionStatementController extends Controller
                 'SL',
                 'Collector / Executive Name',
                 'Employee ID',
+                'Assigned Projects',
+                'Voucher Creators in Software',
                 'Dev Charge Trx',
                 'Dev Charge Amount (BDT)',
                 'EMI Trx',
@@ -203,10 +263,14 @@ class CedCollectionStatementController extends Controller
 
             $sl = 1;
             foreach ($colSummary['rows'] as $r) {
+                $assignedPrjs = $r['assigned_projects_names'] ?? (!empty($r['assigned_projects']) ? implode(', ', array_column($r['assigned_projects'], 'name')) : 'N/A');
+                $creators = $r['creators_list'] ?? 'N/A';
                 fputcsv($output, [
                     $sl++,
                     $r['collector_name'],
                     $r['emp_code'] ?? 'N/A',
+                    $assignedPrjs,
+                    $creators,
                     $r['dev_charge_count'],
                     number_format($r['dev_charge_amount'], 2, '.', ''),
                     $r['emi_count'],
@@ -231,6 +295,8 @@ class CedCollectionStatementController extends Controller
             fputcsv($output, [
                 '',
                 'GRAND TOTAL',
+                '',
+                '',
                 '',
                 $grand['dev_charge_count'],
                 number_format($grand['dev_charge_amount'], 2, '.', ''),
@@ -270,6 +336,7 @@ class CedCollectionStatementController extends Controller
             'Client / Depositor',
             'Phone',
             'Project',
+            'Assigned CED Officer',
             'Flat / Unit',
             'Payment Purpose / Head',
             'Payment Method',
@@ -278,7 +345,7 @@ class CedCollectionStatementController extends Controller
             'Cheque No',
             'Receipt / Voucher Ref',
             'Amount (BDT)',
-            'Collector / Created By',
+            'Created By / Staff',
             'Verification Status',
             'Verified By',
             'Verified At'
@@ -307,6 +374,7 @@ class CedCollectionStatementController extends Controller
                 $t['client_name'] ?? 'N/A',
                 $t['client_phone'] ?? 'N/A',
                 $t['project_name'] ?? 'N/A',
+                !empty($t['ced_assigned_name']) ? $t['ced_assigned_name'] : 'Unassigned',
                 $t['flat_name'] ?? 'N/A',
                 $purposeLabel,
                 ucfirst($t['payment_method'] ?? ''),
@@ -474,15 +542,28 @@ class CedCollectionStatementController extends Controller
         // Team scope: CED Only vs CED & Management vs All
         if (!empty($filters['team_scope']) && empty($filters['collector_id'])) {
             if ($filters['team_scope'] === 'ced_only') {
-                $conds[] = "(u_cr.role_id IN (7, 37, 39) OR r_cr.name LIKE '%client%' OR r_cr.name LIKE '%recovery%' OR d_cr.name LIKE '%client%' OR d_cr.name LIKE '%ced%')";
+                $conds[] = "(u_cr.role_id IN (7, 37, 39) 
+                             OR r_cr.name LIKE '%client%' 
+                             OR r_cr.name LIKE '%recovery%' 
+                             OR d_cr.name LIKE '%client%' 
+                             OR d_cr.name LIKE '%ced%' 
+                             OR lb.project_id IN (SELECT DISTINCT project_id FROM ced_project_assignments))";
             } elseif ($filters['team_scope'] === 'ced_mgmt') {
-                $conds[] = "(u_cr.role_id IN (7, 37, 39, 1, 3, 33, 34, 35, 38) OR r_cr.name LIKE '%client%' OR r_cr.name LIKE '%recovery%' OR r_cr.name LIKE '%management%' OR r_cr.name LIKE '%admin%' OR d_cr.name LIKE '%client%' OR d_cr.name LIKE '%ced%' OR u_cr.user_name LIKE '%management%')";
+                $conds[] = "(u_cr.role_id IN (7, 37, 39, 1, 3, 33, 34, 35, 38) 
+                             OR r_cr.name LIKE '%client%' 
+                             OR r_cr.name LIKE '%recovery%' 
+                             OR r_cr.name LIKE '%management%' 
+                             OR r_cr.name LIKE '%admin%' 
+                             OR d_cr.name LIKE '%client%' 
+                             OR d_cr.name LIKE '%ced%' 
+                             OR u_cr.user_name LIKE '%management%' 
+                             OR lb.project_id IN (SELECT DISTINCT project_id FROM ced_project_assignments))";
             }
         }
 
         if (!empty($filters['collector_id'])) {
             $cId = (int)$filters['collector_id'];
-            $conds[] = "lp.created_by = {$cId}";
+            $conds[] = "(lp.created_by = {$cId} OR lb.project_id IN (SELECT project_id FROM ced_project_assignments WHERE user_id = {$cId}))";
         }
 
         if (!empty($filters['project_id'])) {
@@ -516,7 +597,7 @@ class CedCollectionStatementController extends Controller
 
         if (!empty($filters['search'])) {
             $s = $this->db->real_escape_string($filters['search']);
-            $conds[] = "(l.full_name LIKE '%{$s}%' OR l.lead_name LIKE '%{$s}%' OR l.phone LIKE '%{$s}%' OR l.phone_number LIKE '%{$s}%' OR p.name LIKE '%{$s}%' OR f.flat_name LIKE '%{$s}%' OR lp.transaction_ref LIKE '%{$s}%' OR lp.cheque_no LIKE '%{$s}%' OR u_cr.user_name LIKE '%{$s}%' OR e_cr.full_name LIKE '%{$s}%')";
+            $conds[] = "(l.full_name LIKE '%{$s}%' OR l.lead_name LIKE '%{$s}%' OR l.phone LIKE '%{$s}%' OR l.phone_number LIKE '%{$s}%' OR p.name LIKE '%{$s}%' OR f.flat_name LIKE '%{$s}%' OR lp.transaction_ref LIKE '%{$s}%' OR lp.cheque_no LIKE '%{$s}%' OR u_cr.user_name LIKE '%{$s}%' OR u_cr.full_name LIKE '%{$s}%' OR e_cr.full_name LIKE '%{$s}%' OR u_cpa.full_name LIKE '%{$s}%' OR e_cpa.full_name LIKE '%{$s}%')";
         }
 
         return implode(" AND ", $conds);
@@ -536,6 +617,10 @@ class CedCollectionStatementController extends Controller
             LEFT JOIN employees e_cr ON (u_cr.employee_id = e_cr.id OR e_cr.user_id = u_cr.id)
             LEFT JOIN roles r_cr ON u_cr.role_id = r_cr.id
             LEFT JOIN departments d_cr ON e_cr.department_id = d_cr.id
+            LEFT JOIN ced_project_assignments cpa ON cpa.project_id = lb.project_id
+            LEFT JOIN users u_cpa ON cpa.user_id = u_cpa.id
+            LEFT JOIN employees e_cpa ON (u_cpa.employee_id = e_cpa.id OR e_cpa.user_id = u_cpa.id)
+            LEFT JOIN roles r_cpa ON u_cpa.role_id = r_cpa.id
         ";
     }
 
@@ -799,15 +884,318 @@ class CedCollectionStatementController extends Controller
             }
         }
 
-        // Compute percentages
+        // Compute percentages for creator rows
         foreach ($rows as &$item) {
             $item['percentage'] = $grand['total_amount'] > 0 ? round(($item['total_amount'] / $grand['total_amount']) * 100, 2) : 0.0;
         }
         unset($item);
 
+        // ── Portfolio & Project-wise mapping breakdown ───────────────────────
+        $assignedProjectsByAgent = [];
+        $qAssigned = $this->db->query("
+            SELECT cpa.user_id, p.id AS project_id, p.name AS project_name
+            FROM ced_project_assignments cpa
+            INNER JOIN projects p ON cpa.project_id = p.id
+            ORDER BY p.name ASC
+        ");
+        if ($qAssigned) {
+            while ($r = $qAssigned->fetch_assoc()) {
+                $assignedProjectsByAgent[$r['user_id']][] = [
+                    'id'   => (int)$r['project_id'],
+                    'name' => $r['project_name']
+                ];
+            }
+        }
+
+        $allCedOfficers = [];
+        $qOfficers = $this->db->query("
+            SELECT DISTINCT
+                u.id AS user_id,
+                COALESCE(e.full_name, u.full_name, u.user_name) AS full_name,
+                e.employee_id AS emp_code,
+                COALESCE(r.name, 'Client Experience') AS role_name,
+                COALESCE(r.id, 0) AS role_id
+            FROM users u
+            LEFT JOIN employees e ON (u.employee_id = e.id OR e.user_id = u.id)
+            LEFT JOIN roles r ON u.role_id = r.id
+            LEFT JOIN departments d ON e.department_id = d.id
+            WHERE e.department_id IN (4, 29)
+               OR u.role_id IN (7, 37, 39)
+               OR u.id IN (SELECT DISTINCT user_id FROM ced_project_assignments)
+            ORDER BY full_name ASC
+        ");
+        if ($qOfficers) {
+            while ($r = $qOfficers->fetch_assoc()) {
+                $allCedOfficers[$r['user_id']] = $r;
+            }
+        }
+
+        $sqlPrj = "
+            SELECT 
+                p.id AS project_id,
+                p.name AS project_name,
+                COALESCE(cpa.user_id, CASE WHEN (u_cr.role_id IN (7, 37, 39) OR e_cr.department_id IN (4, 29)) THEN lp.created_by ELSE 0 END, 0) AS ced_officer_id,
+                COALESCE(e_cpa.full_name, u_cpa.full_name, u_cpa.user_name, e_cr.full_name, u_cr.full_name, u_cr.user_name, 'Unassigned') AS ced_officer_name,
+                COALESCE(r_cpa.name, r_cr.name, 'N/A') AS ced_officer_role,
+                COALESCE(e_cpa.employee_id, e_cr.employee_id, '') AS ced_emp_code,
+                COUNT(CASE WHEN {$validCond} THEN 1 ELSE NULL END) AS total_count,
+                COALESCE(SUM(CASE WHEN {$validCond} THEN lp.amount ELSE 0 END), 0) AS total_amount,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'development_charge' AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS dev_charge_amount,
+                COUNT(CASE WHEN lp.payment_type = 'development_charge' AND {$validCond} THEN 1 ELSE NULL END) AS dev_charge_count,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'emi' AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement') AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS emi_amount,
+                COUNT(CASE WHEN lp.payment_type = 'emi' AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement') AND {$validCond} THEN 1 ELSE NULL END) AS emi_count,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'emi' AND lp.settlement_type = 'emi_due_settlement' AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS settlement_amount,
+                COUNT(CASE WHEN lp.payment_type = 'emi' AND lp.settlement_type = 'emi_due_settlement' AND {$validCond} THEN 1 ELSE NULL END) AS settlement_count,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'booking_money' AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS booking_amount,
+                COUNT(CASE WHEN lp.payment_type = 'booking_money' AND {$validCond} THEN 1 ELSE NULL END) AS booking_count,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'registration' AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS registration_amount,
+                COUNT(CASE WHEN lp.payment_type = 'registration' AND {$validCond} THEN 1 ELSE NULL END) AS registration_count,
+                COALESCE(SUM(CASE WHEN lp.payment_type NOT IN ('development_charge', 'emi', 'booking_money', 'registration') AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS other_amount,
+                COUNT(CASE WHEN lp.payment_type NOT IN ('development_charge', 'emi', 'booking_money', 'registration') AND {$validCond} THEN 1 ELSE NULL END) AS other_count,
+                COALESCE(SUM(CASE WHEN lp.payment_method = 'cash' AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS cash_amount,
+                COALESCE(SUM(CASE WHEN lp.payment_method = 'bank' AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS bank_amount,
+                COALESCE(SUM(CASE WHEN lp.payment_method = 'cheque' AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS cheque_amount,
+                COALESCE(SUM(CASE WHEN lp.payment_method = 'online' AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS online_amount,
+                GROUP_CONCAT(DISTINCT COALESCE(e_cr.full_name, u_cr.full_name, u_cr.user_name, CONCAT('User #', lp.created_by)) SEPARATOR ', ') AS creators_list
+            FROM lead_payments lp
+            INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+            INNER JOIN leads l ON lb.lead_id = l.id
+            INNER JOIN projects p ON lb.project_id = p.id
+            LEFT JOIN flats f ON lb.flat_id = f.id
+            LEFT JOIN ced_project_assignments cpa ON cpa.project_id = p.id
+            LEFT JOIN users u_cpa ON cpa.user_id = u_cpa.id
+            LEFT JOIN employees e_cpa ON (u_cpa.employee_id = e_cpa.id OR e_cpa.user_id = u_cpa.id)
+            LEFT JOIN roles r_cpa ON u_cpa.role_id = r_cpa.id
+            LEFT JOIN users u_cr ON lp.created_by = u_cr.id
+            LEFT JOIN employees e_cr ON (u_cr.employee_id = e_cr.id OR e_cr.user_id = u_cr.id)
+            LEFT JOIN roles r_cr ON u_cr.role_id = r_cr.id
+            LEFT JOIN departments d_cr ON e_cr.department_id = d_cr.id
+            WHERE {$where}
+            GROUP BY p.id, ced_officer_id
+            HAVING total_count > 0 OR total_amount > 0
+            ORDER BY ced_officer_id DESC, total_amount DESC
+        ";
+
+        $projectRows = [];
+        $officerSummary = [];
+
+        $resPrj = $this->db->query($sqlPrj);
+        if ($resPrj) {
+            while ($r = $resPrj->fetch_assoc()) {
+                $uId = (int)$r['ced_officer_id'];
+                if (!empty($filters['collector_id'])) {
+                    $targetCId = (int)$filters['collector_id'];
+                    if ($uId === $targetCId || $uId === 0) {
+                        $uId = $targetCId;
+                        if (isset($allCedOfficers[$targetCId])) {
+                            $r['ced_officer_name'] = $allCedOfficers[$targetCId]['full_name'];
+                            $r['ced_officer_role'] = $allCedOfficers[$targetCId]['role_name'];
+                            $r['ced_emp_code'] = $allCedOfficers[$targetCId]['emp_code'] ?? '';
+                        }
+                    }
+                }
+                $r['total_count']         = (int)$r['total_count'];
+                $r['total_amount']        = (float)$r['total_amount'];
+                $r['dev_charge_amount']   = (float)$r['dev_charge_amount'];
+                $r['dev_charge_count']    = (int)$r['dev_charge_count'];
+                $r['emi_amount']          = (float)$r['emi_amount'];
+                $r['emi_count']           = (int)$r['emi_count'];
+                $r['settlement_amount']   = (float)$r['settlement_amount'];
+                $r['settlement_count']    = (int)$r['settlement_count'];
+                $r['booking_amount']      = (float)$r['booking_amount'];
+                $r['booking_count']       = (int)$r['booking_count'];
+                $r['registration_amount'] = (float)$r['registration_amount'];
+                $r['registration_count']  = (int)$r['registration_count'];
+                $r['other_amount']        = (float)$r['other_amount'];
+                $r['other_count']         = (int)$r['other_count'];
+                $r['cash_amount']         = (float)$r['cash_amount'];
+                $r['bank_amount']         = (float)$r['bank_amount'];
+                $r['cheque_amount']       = (float)$r['cheque_amount'];
+                $r['online_amount']       = (float)$r['online_amount'];
+                $r['assigned_projects']   = $assignedProjectsByAgent[$uId] ?? [];
+                $projectRows[] = $r;
+
+                if (!isset($officerSummary[$uId])) {
+                    $officerSummary[$uId] = [
+                        'created_by'          => $uId,
+                        'officer_id'          => $uId,
+                        'collector_name'      => $r['ced_officer_name'],
+                        'collector_role'      => $r['ced_officer_role'] ?: 'Client Experience',
+                        'role_id'             => 7,
+                        'emp_code'            => $r['ced_emp_code'] ?? '',
+                        'dept_name'           => 'Client Experience',
+                        'is_ced_member'       => ($uId > 0),
+                        'is_management'       => false,
+                        'total_count'         => 0,
+                        'total_amount'        => 0.0,
+                        'dev_charge_amount'   => 0.0,
+                        'dev_charge_count'    => 0,
+                        'emi_amount'          => 0.0,
+                        'emi_count'           => 0,
+                        'settlement_amount'   => 0.0,
+                        'settlement_count'    => 0,
+                        'booking_amount'      => 0.0,
+                        'booking_count'       => 0,
+                        'registration_amount' => 0.0,
+                        'registration_count'  => 0,
+                        'other_amount'        => 0.0,
+                        'other_count'         => 0,
+                        'cash_amount'         => 0.0,
+                        'bank_amount'         => 0.0,
+                        'cheque_amount'       => 0.0,
+                        'online_amount'       => 0.0,
+                        'projects_collected'  => [],
+                        'creators'            => []
+                    ];
+                }
+                $officerSummary[$uId]['total_count']         += $r['total_count'];
+                $officerSummary[$uId]['total_amount']        += $r['total_amount'];
+                $officerSummary[$uId]['dev_charge_amount']   += $r['dev_charge_amount'];
+                $officerSummary[$uId]['dev_charge_count']    += $r['dev_charge_count'];
+                $officerSummary[$uId]['emi_amount']          += $r['emi_amount'];
+                $officerSummary[$uId]['emi_count']           += $r['emi_count'];
+                $officerSummary[$uId]['settlement_amount']   += $r['settlement_amount'];
+                $officerSummary[$uId]['settlement_count']    += $r['settlement_count'];
+                $officerSummary[$uId]['booking_amount']      += $r['booking_amount'];
+                $officerSummary[$uId]['booking_count']       += $r['booking_count'];
+                $officerSummary[$uId]['registration_amount'] += $r['registration_amount'];
+                $officerSummary[$uId]['registration_count']  += $r['registration_count'];
+                $officerSummary[$uId]['other_amount']        += $r['other_amount'];
+                $officerSummary[$uId]['other_count']         += $r['other_count'];
+                $officerSummary[$uId]['cash_amount']         += $r['cash_amount'];
+                $officerSummary[$uId]['bank_amount']         += $r['bank_amount'];
+                $officerSummary[$uId]['cheque_amount']       += $r['cheque_amount'];
+                $officerSummary[$uId]['online_amount']       += $r['online_amount'];
+                $officerSummary[$uId]['projects_collected'][] = $r['project_name'];
+                if (!empty($r['creators_list'])) {
+                    foreach (explode(', ', $r['creators_list']) as $cName) {
+                        $officerSummary[$uId]['creators'][$cName] = true;
+                    }
+                }
+            }
+        }
+
+        // Ensure filtered collector is present even if 0 collections in this period
+        if (!empty($filters['collector_id'])) {
+            $filteredCId = (int)$filters['collector_id'];
+            if (!isset($officerSummary[$filteredCId])) {
+                $off = $allCedOfficers[$filteredCId] ?? null;
+                if (!$off) {
+                    $qUser = $this->db->query("SELECT u.id AS user_id, COALESCE(e.full_name, u.full_name, u.user_name) AS full_name, e.employee_id AS emp_code, COALESCE(r.name, 'Staff') AS role_name, COALESCE(r.id, 0) AS role_id FROM users u LEFT JOIN employees e ON (u.employee_id = e.id OR e.user_id = u.id) LEFT JOIN roles r ON u.role_id = r.id WHERE u.id = {$filteredCId} LIMIT 1");
+                    if ($qUser && $uRow = $qUser->fetch_assoc()) {
+                        $off = $uRow;
+                    }
+                }
+                $assigned = $assignedProjectsByAgent[$filteredCId] ?? [];
+                $officerSummary[$filteredCId] = [
+                    'created_by'          => $filteredCId,
+                    'officer_id'          => $filteredCId,
+                    'collector_name'      => $off ? $off['full_name'] : "User #{$filteredCId}",
+                    'collector_role'      => $off ? $off['role_name'] : 'Client Experience',
+                    'role_id'             => $off ? (int)$off['role_id'] : 7,
+                    'emp_code'            => $off['emp_code'] ?? '',
+                    'dept_name'           => 'Client Experience',
+                    'is_ced_member'       => true,
+                    'is_management'       => false,
+                    'total_count'         => 0,
+                    'total_amount'        => 0.0,
+                    'dev_charge_amount'   => 0.0,
+                    'dev_charge_count'    => 0,
+                    'emi_amount'          => 0.0,
+                    'emi_count'           => 0,
+                    'settlement_amount'   => 0.0,
+                    'settlement_count'    => 0,
+                    'booking_amount'      => 0.0,
+                    'booking_count'       => 0,
+                    'registration_amount' => 0.0,
+                    'registration_count'  => 0,
+                    'other_amount'        => 0.0,
+                    'other_count'         => 0,
+                    'cash_amount'         => 0.0,
+                    'bank_amount'         => 0.0,
+                    'cheque_amount'       => 0.0,
+                    'online_amount'       => 0.0,
+                    'projects_collected'  => [],
+                    'creators'            => []
+                ];
+            }
+        }
+
+        // Add CED officers who have 0 collections in this period
+        if (($filters['team_scope'] ?? 'ced_only') === 'ced_only' && empty($filters['collector_id'])) {
+            foreach ($allCedOfficers as $uId => $off) {
+                if (!isset($officerSummary[$uId])) {
+                    $assigned = $assignedProjectsByAgent[$uId] ?? [];
+                    $officerSummary[$uId] = [
+                        'created_by'          => $uId,
+                        'officer_id'          => $uId,
+                        'collector_name'      => $off['full_name'],
+                        'collector_role'      => $off['role_name'],
+                        'role_id'             => (int)$off['role_id'],
+                        'emp_code'            => $off['emp_code'] ?? '',
+                        'dept_name'           => 'Client Experience',
+                        'is_ced_member'       => true,
+                        'is_management'       => false,
+                        'total_count'         => 0,
+                        'total_amount'        => 0.0,
+                        'dev_charge_amount'   => 0.0,
+                        'dev_charge_count'    => 0,
+                        'emi_amount'          => 0.0,
+                        'emi_count'           => 0,
+                        'settlement_amount'   => 0.0,
+                        'settlement_count'    => 0,
+                        'booking_amount'      => 0.0,
+                        'booking_count'       => 0,
+                        'registration_amount' => 0.0,
+                        'registration_count'  => 0,
+                        'other_amount'        => 0.0,
+                        'other_count'         => 0,
+                        'cash_amount'         => 0.0,
+                        'bank_amount'         => 0.0,
+                        'cheque_amount'       => 0.0,
+                        'online_amount'       => 0.0,
+                        'projects_collected'  => [],
+                        'creators'            => []
+                    ];
+                }
+            }
+        }
+
+        // Sort portfolio rows
+        uasort($officerSummary, function($a, $b) use ($assignedProjectsByAgent) {
+            if ($a['officer_id'] === 0) return 1;
+            if ($b['officer_id'] === 0) return -1;
+            if ($a['total_amount'] != $b['total_amount']) {
+                return $b['total_amount'] <=> $a['total_amount'];
+            }
+            $aPrjs = count($assignedProjectsByAgent[$a['officer_id']] ?? []);
+            $bPrjs = count($assignedProjectsByAgent[$b['officer_id']] ?? []);
+            if ($aPrjs != $bPrjs) {
+                return $bPrjs <=> $aPrjs;
+            }
+            return strcasecmp($a['collector_name'], $b['collector_name']);
+        });
+
+        $portfolioRows = [];
+        foreach ($officerSummary as $uId => $row) {
+            $row['percentage'] = $grand['total_amount'] > 0 ? round(($row['total_amount'] / $grand['total_amount']) * 100, 2) : 0.0;
+            $assigned = $assignedProjectsByAgent[$uId] ?? [];
+            $row['assigned_projects'] = $assigned;
+            $row['assigned_projects_names'] = !empty($assigned) ? implode(', ', array_column($assigned, 'name')) : ($uId === 0 ? 'Company Unassigned Projects' : 'None');
+            $row['creators_list'] = !empty($row['creators']) ? implode(', ', array_keys($row['creators'])) : 'N/A';
+            $portfolioRows[] = $row;
+        }
+
+        // Default display rows: CED Portfolio rows if in CED scope or filtering by officer, otherwise creator rows
+        $isCedScope = in_array(($filters['team_scope'] ?? 'ced_only'), ['ced_only', 'ced_mgmt'], true);
+        $displayRows = $isCedScope ? $portfolioRows : $rows;
+
         return [
-            'rows'  => $rows,
-            'grand' => $grand
+            'rows'           => $displayRows,
+            'portfolio_rows' => $portfolioRows,
+            'project_rows'   => $projectRows,
+            'creator_rows'   => $rows,
+            'grand'          => $grand
         ];
     }
 
@@ -936,6 +1324,9 @@ class CedCollectionStatementController extends Controller
                 f.flat_name,
                 COALESCE(e_cr.full_name, u_cr.full_name, u_cr.user_name, CONCAT('User #', lp.created_by)) AS collector_name,
                 COALESCE(r_cr.name, 'N/A') AS collector_role,
+                COALESCE(e_cpa.full_name, u_cpa.full_name, u_cpa.user_name, 'Unassigned') AS ced_assigned_name,
+                COALESCE(r_cpa.name, '') AS ced_assigned_role,
+                COALESCE(cpa.user_id, 0) AS ced_assigned_user_id,
                 COALESCE(e_v.full_name, u_v.full_name, u_v.user_name, '') AS verifier_name,
                 COALESCE(r_v.name, '') AS verifier_role
             FROM lead_payments lp
@@ -1153,29 +1544,57 @@ class CedCollectionStatementController extends Controller
     }
 
         /**
-     * Fetch list of CED collectors / executives for filter dropdown
+     * Fetch list of CED collectors / executives for filter dropdown based on Department Scope
      */
-    protected function fetchCedCollectors()
+    protected function fetchCedCollectors($teamScope = 'ced_only')
     {
+        $whereDept = "";
+        if ($teamScope === 'ced_only') {
+            $whereDept = "WHERE (
+                e.department_id IN (4, 29)
+                OR u.role_id IN (7, 37, 39)
+                OR r.name LIKE '%client%'
+                OR r.name LIKE '%recovery%'
+                OR d.name LIKE '%client%'
+                OR d.name LIKE '%ced%'
+                OR u.id IN (SELECT DISTINCT user_id FROM ced_project_assignments)
+            )";
+        } elseif ($teamScope === 'ced_mgmt') {
+            $whereDept = "WHERE (
+                e.department_id IN (4, 29)
+                OR u.role_id IN (7, 37, 39, 1, 3, 33, 34, 35, 38)
+                OR r.name LIKE '%client%'
+                OR r.name LIKE '%recovery%'
+                OR r.name LIKE '%management%'
+                OR r.name LIKE '%admin%'
+                OR d.name LIKE '%client%'
+                OR d.name LIKE '%ced%'
+                OR u.id IN (SELECT DISTINCT user_id FROM ced_project_assignments)
+                OR u.user_name LIKE '%management%'
+            )";
+        } else { // 'all'
+            $whereDept = "";
+        }
+
         $sql = "
             SELECT DISTINCT 
                 u.id AS user_id,
                 COALESCE(e.full_name, u.full_name, u.user_name) AS full_name,
                 e.employee_id AS emp_code,
                 COALESCE(r.name, 'Staff') AS role_name,
-                COALESCE(r.id, 0) AS role_id
+                COALESCE(r.id, 0) AS role_id,
+                COALESCE(d.name, 'General') AS dept_name,
+                (SELECT COUNT(*) FROM ced_project_assignments cpa WHERE cpa.user_id = u.id) AS assigned_projects_count,
+                CASE 
+                    WHEN (e.department_id IN (4, 29) OR u.role_id IN (7, 37, 39) OR r.name LIKE '%client%' OR r.name LIKE '%recovery%' OR d.name LIKE '%client%' OR d.name LIKE '%ced%' OR u.id IN (SELECT DISTINCT user_id FROM ced_project_assignments)) THEN 'ced_only'
+                    WHEN (u.role_id IN (1, 3, 33, 34, 35, 38) OR r.name LIKE '%management%' OR r.name LIKE '%admin%' OR u.user_name LIKE '%management%') THEN 'ced_mgmt'
+                    ELSE 'all'
+                END AS scope_category
             FROM users u
             LEFT JOIN employees e ON (u.employee_id = e.id OR e.user_id = u.id)
             LEFT JOIN roles r ON u.role_id = r.id
             LEFT JOIN departments d ON e.department_id = d.id
-            WHERE (
-                u.role_id IN (7, 37, 39) 
-                OR r.name LIKE '%client%' 
-                OR r.name LIKE '%recovery%'
-                OR d.name LIKE '%client%'
-                OR d.name LIKE '%ced%'
-                OR u.id IN (SELECT DISTINCT created_by FROM lead_payments WHERE created_by IS NOT NULL AND is_trashed = 0)
-            )
+            {$whereDept}
             ORDER BY full_name ASC
         ";
 

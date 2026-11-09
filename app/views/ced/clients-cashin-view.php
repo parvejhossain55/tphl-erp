@@ -501,7 +501,7 @@ $show_breadcrumb = true;
                             <th>Project &amp; Flats</th>
                             <th>Total Agreement Value</th>
                             <th>Total Paid</th>
-                            <th>Last Payment Date</th>
+                            <th style="min-width: 140px;">Last Payment Date &amp; Creator</th>
                             <th>Current Month</th>
                             <th>Profile</th>
                             <th>Action</th>
@@ -562,7 +562,7 @@ $show_breadcrumb = true;
                                     <th>Service Fee</th>
                                     <th>Booking Status</th>
                                     <th>Land Share Status</th>
-                                    <th>Last Payment</th>
+                                    <th style="min-width: 140px;">Last Payment &amp; Creator</th>
                                     <th>Current Month</th>
                                     <th>Action</th>
                                 </tr>
@@ -1031,7 +1031,8 @@ $show_breadcrumb = true;
                 </span>
             </td>
             <td>
-                ${land.last_payment_date ? formatDate(land.last_payment_date) : 'No Payment'}
+                <div>${land.last_payment_date ? `<span class="fw-semibold text-dark text-nowrap">${formatDate(land.last_payment_date)}</span>` : '<span class="text-muted extra-small">No Payment</span>'}</div>
+                ${land.last_payment_creator_name ? `<div class="extra-small text-muted mt-0.5 text-nowrap" style="font-size: 11px;"><i class="fa-solid fa-user-pen text-primary me-1"></i>By: ${escapeHtml(land.last_payment_creator_name)}</div>` : ''}
             </td>
             <td>
                 ${getCurrentMonthBadge(land.current_month_status)}

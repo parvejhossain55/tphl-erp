@@ -469,6 +469,48 @@ html.dark .cs-rows-box select {
     color: #f1f5f9 !important;
     background-color: #121927 !important;
 }
+/* Matrix Sub-tabs Styling */
+.cs-matrix-tabs .nav-link {
+    color: #64748b;
+    border: none;
+    border-bottom: 2.5px solid transparent;
+    padding: 0.55rem 1rem;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    border-radius: 0;
+    background: transparent;
+}
+.cs-matrix-tabs .nav-link:hover {
+    color: #0f172a;
+    border-bottom-color: #cbd5e1;
+}
+.cs-matrix-tabs .nav-link.active {
+    color: #2563eb !important;
+    border-bottom: 2.5px solid #2563eb !important;
+    background: transparent !important;
+}
+
+:root[bd-theme="bd-theme-dark"] .cs-matrix-tabs .nav-link,
+[data-bs-theme="dark"] .cs-matrix-tabs .nav-link,
+body.dark-mode .cs-matrix-tabs .nav-link,
+html.dark .cs-matrix-tabs .nav-link {
+    color: #94a3b8;
+}
+:root[bd-theme="bd-theme-dark"] .cs-matrix-tabs .nav-link:hover,
+[data-bs-theme="dark"] .cs-matrix-tabs .nav-link:hover,
+body.dark-mode .cs-matrix-tabs .nav-link:hover,
+html.dark .cs-matrix-tabs .nav-link:hover {
+    color: #f1f5f9;
+    border-bottom-color: #475569;
+}
+:root[bd-theme="bd-theme-dark"] .cs-matrix-tabs .nav-link.active,
+[data-bs-theme="dark"] .cs-matrix-tabs .nav-link.active,
+body.dark-mode .cs-matrix-tabs .nav-link.active,
+html.dark .cs-matrix-tabs .nav-link.active {
+    color: #60a5fa !important;
+    border-bottom-color: #60a5fa !important;
+}
 </style>
 
 <div class="row">
@@ -628,7 +670,7 @@ html.dark .cs-rows-box select {
                         <!-- Team Scope Toggle -->
                         <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
                             <label class="form-label extra-small fw-bold text-muted mb-1 text-uppercase" style="font-size: 11px;">Department Scope</label>
-                            <select name="team_scope" class="form-select form-select-sm">
+                            <select name="team_scope" id="teamScopeSelect" class="form-select form-select-sm" onchange="onTeamScopeChange(this.value)">
                                 <option value="ced_only" <?= $curTeamScope === 'ced_only' ? 'selected' : '' ?>>CED Team Only (Default)</option>
                                 <option value="ced_mgmt" <?= $curTeamScope === 'ced_mgmt' ? 'selected' : '' ?>>CED &amp; Management</option>
                                 <option value="all" <?= $curTeamScope === 'all' ? 'selected' : '' ?>>All Creators / Staff</option>
@@ -728,6 +770,34 @@ html.dark .cs-rows-box select {
             </div>
         </div>
     </div>
+
+    <?php if (!empty($collector_history_notice)): ?>
+    <div class="col-12 mb-3">
+        <div class="alert alert-info border-info d-flex align-items-center justify-content-between p-3 rounded-3 shadow-sm flex-wrap gap-3" role="alert" style="background: linear-gradient(135deg, #eff6ff 0%, #e0f2fe 100%); border-left: 5px solid #2563eb !important;">
+            <div class="d-flex align-items-center gap-3">
+                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm" style="width: 44px; height: 44px; font-size: 20px;">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                </div>
+                <div>
+                    <h6 class="mb-1 text-primary fw-bold" style="font-size: 15px;">
+                        No Collections Recorded in <?= htmlspecialchars($date_info['period_label']) ?> for <?= htmlspecialchars($collector_history_notice['collector_name']) ?>
+                    </h6>
+                    <div class="text-dark small">
+                        This executive has <strong><?= number_format($collector_history_notice['total_life_trx']) ?> collections</strong> totaling <strong>৳<?= number_format($collector_history_notice['total_life_amount'], 2) ?></strong> recorded in the system. Their most recent collections were in <strong><?= htmlspecialchars($collector_history_notice['latest_month_name']) ?></strong> (last payment date: <?= date('d M, Y', strtotime($collector_history_notice['latest_payment_date'])) ?>).
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap ms-auto">
+                <a href="<?= $base_url ?>/ced-collection-statement?view_mode=collectors&period_type=monthly&year=<?= $collector_history_notice['latest_year'] ?>&month=<?= $collector_history_notice['latest_month'] ?>&team_scope=<?= htmlspecialchars($curTeamScope) ?>&collector_id=<?= $collector_history_notice['collector_id'] ?>" class="btn btn-sm btn-primary fw-semibold px-3 shadow-sm text-nowrap">
+                    <i class="fa-solid fa-calendar-check me-1"></i>Switch to <?= htmlspecialchars($collector_history_notice['latest_month_name']) ?>
+                </a>
+                <a href="<?= $base_url ?>/ced-collection-statement?view_mode=collectors&period_type=all_time&team_scope=<?= htmlspecialchars($curTeamScope) ?>&collector_id=<?= $collector_history_notice['collector_id'] ?>" class="btn btn-sm btn-outline-primary fw-semibold px-3 shadow-sm text-nowrap">
+                    <i class="fa-solid fa-infinity me-1"></i>View All Time (<?= number_format($collector_history_notice['total_life_trx']) ?> Trx)
+                </a>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <!-- 6 KPI Summary Cards -->
     <div class="col-12 mb-3">
@@ -907,16 +977,16 @@ html.dark .cs-rows-box select {
                 <div>
                     <h5 class="mb-1 fw-bold text-dark d-flex align-items-center gap-2">
                         <span class="badge bg-primary text-white p-2 rounded-2"><i class="fa-solid fa-users-gear"></i></span>
-                        <span>Executive-wise Collection Performance Matrix</span>
+                        <span>Executive Collection Performance &amp; Project Assignment Matrix</span>
                     </h5>
                     <div class="text-muted small">
-                        Detailed breakdown of collections created by each executive: Development Charges, Regular EMIs, Due Settlements &amp; Down Payments
+                        Track collections by CED Assigned Officer Portfolio, Project-wise Inflows &amp; Software Voucher Creators
                     </div>
                 </div>
                 <div class="d-flex align-items-center gap-2">
                     <div class="input-group input-group-sm cs-table-search-box">
                         <span class="input-group-text bg-light border-end-0 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
-                        <input type="text" id="collectorTableSearch" onkeyup="filterCollectorTable()" class="form-control border-start-0" placeholder="Filter executive...">
+                        <input type="text" id="collectorTableSearch" onkeyup="filterCollectorTable()" class="form-control border-start-0" placeholder="Filter executive or project...">
                     </div>
                     <a href="<?= $exportColUrl ?>" class="btn btn-sm btn-outline-success d-flex align-items-center gap-1 shadow-sm">
                         <i class="fa-solid fa-file-excel"></i> <span>Export Matrix</span>
@@ -924,168 +994,502 @@ html.dark .cs-rows-box select {
                 </div>
             </div>
 
-            <div class="table-responsive">
-                <table class="table table-hover align-middle table-ced mb-0" id="collectorTable">
-                    <thead>
-                        <tr>
-                            <th class="text-center" style="width: 45px;">#</th>
-                            <th style="min-width: 200px;">Executive / Collector Name</th>
-                            <th class="text-center" style="width: 100px;">Total Trx</th>
-                            <th class="text-end col-dev-charge" style="min-width: 140px;">Dev Charge (BDT)</th>
-                            <th class="text-end col-emi" style="min-width: 140px;">Regular EMI (BDT)</th>
-                            <th class="text-end col-settlement" style="min-width: 140px;">Due Settled (BDT)</th>
-                            <th class="text-end col-booking" style="min-width: 130px;">Booking / Reg (BDT)</th>
-                            <th class="text-end col-total" style="min-width: 150px;">Total Collected (BDT)</th>
-                            <th style="min-width: 160px;">% Share</th>
-                            <th class="text-center" style="width: 90px;">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (empty($collector_summary['rows'])): ?>
-                            <tr>
-                                <td colspan="10" class="text-center py-5 text-muted">
-                                    <i class="fa-solid fa-users-slash fa-2x mb-2 text-secondary opacity-50"></i>
-                                    <div>No collection records found for the selected period &amp; filters.</div>
-                                </td>
-                            </tr>
-                        <?php else:
-                            $cSl = 1;
-                            $grandTotal = $collector_summary['grand']['total_amount'] ?? 0;
-                            foreach ($collector_summary['rows'] as $row):
-                                $colFilterUrl = '?' . http_build_query(array_merge($queryParams, [
-                                    'collector_id' => $row['created_by'],
-                                    'view_mode'    => 'transactions',
-                                    'page'         => 1
-                                ])) . '#section-transactions';
-                                $initials = strtoupper(substr($row['collector_name'], 0, 2));
-                        ?>
-                            <tr class="collector-row">
-                                <td class="text-center text-muted fw-bold"><?= $cSl++ ?></td>
-                                <td>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <div class="collector-avatar">
-                                            <?= htmlspecialchars($initials) ?>
-                                        </div>
-                                        <div>
-                                            <div class="fw-bold text-dark collector-name-cell">
-                                                <?= htmlspecialchars($row['collector_name']) ?>
-                                                <?php if (!empty($row['is_ced_member'])): ?>
-                                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle badge-ced ms-1">CED</span>
-                                                <?php elseif (!empty($row['is_management'])): ?>
-                                                    <span class="badge bg-warning-subtle text-dark border border-warning-subtle ms-1" style="font-size: 10px;">Management</span>
-                                                <?php endif; ?>
+            <!-- Sub-tab Pills for CED Portfolio, Project Breakdown & Voucher Creators -->
+            <div class="px-3 pt-2 pb-0 bg-light-subtle border-bottom">
+                <ul class="nav nav-tabs cs-matrix-tabs border-bottom-0" id="matrixSubTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="tab-portfolio-btn" data-bs-toggle="tab" data-bs-target="#tab-portfolio-pane" type="button" role="tab" aria-controls="tab-portfolio-pane" aria-selected="true">
+                            <i class="fa-solid fa-user-check me-1 text-primary"></i> CED Executive Portfolio (<?= count($collector_summary['portfolio_rows'] ?? []) ?>)
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-projects-btn" data-bs-toggle="tab" data-bs-target="#tab-projects-pane" type="button" role="tab" aria-controls="tab-projects-pane" aria-selected="false">
+                            <i class="fa-solid fa-city me-1 text-info"></i> Project-wise Inflows &amp; Assignments (<?= count($collector_summary['project_rows'] ?? []) ?>)
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-creators-btn" data-bs-toggle="tab" data-bs-target="#tab-creators-pane" type="button" role="tab" aria-controls="tab-creators-pane" aria-selected="false">
+                            <i class="fa-solid fa-keyboard me-1 text-success"></i> Software Voucher Creators (<?= count($collector_summary['creator_rows'] ?? []) ?>)
+                        </button>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="tab-content" id="matrixSubTabContent">
+                <!-- =========================================================================
+                     SUB-VIEW 1: CED Executive Portfolio Matrix (Default View)
+                     ========================================================================= -->
+                <div class="tab-pane fade show active" id="tab-portfolio-pane" role="tabpanel" aria-labelledby="tab-portfolio-btn">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle table-ced mb-0" id="collectorTable">
+                            <thead>
+                                <tr>
+                                    <th class="text-center" style="width: 45px;">#</th>
+                                    <th style="min-width: 220px;">Executive / Officer Name</th>
+                                    <th style="min-width: 260px;">Assigned Project Portfolio</th>
+                                    <th class="text-center" style="width: 90px;">Total Trx</th>
+                                    <th class="text-end col-dev-charge" style="min-width: 130px;">Dev Charge (BDT)</th>
+                                    <th class="text-end col-emi" style="min-width: 130px;">Regular EMI (BDT)</th>
+                                    <th class="text-end col-settlement" style="min-width: 130px;">Due Settled (BDT)</th>
+                                    <th class="text-end col-booking" style="min-width: 120px;">Booking/Reg (BDT)</th>
+                                    <th class="text-end col-total" style="min-width: 140px;">Total Collected (BDT)</th>
+                                    <th style="min-width: 140px;">% Share</th>
+                                    <th class="text-center" style="width: 85px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php 
+                                $portfolioList = $collector_summary['portfolio_rows'] ?? $collector_summary['rows'] ?? [];
+                                if (empty($portfolioList)): 
+                                ?>
+                                    <tr>
+                                        <td colspan="11" class="text-center py-5 text-muted">
+                                            <i class="fa-solid fa-users-slash fa-2x mb-2 text-secondary opacity-50"></i>
+                                            <div>No portfolio collection records found for the selected period &amp; filters.</div>
+                                        </td>
+                                    </tr>
+                                <?php else:
+                                    $pSl = 1;
+                                    $grandTotal = $collector_summary['grand']['total_amount'] ?? 0;
+                                    foreach ($portfolioList as $row):
+                                        $colFilterUrl = '?' . http_build_query(array_merge($queryParams, [
+                                            'collector_id' => $row['created_by'],
+                                            'view_mode'    => 'transactions',
+                                            'page'         => 1
+                                        ])) . '#section-transactions';
+                                        $initials = strtoupper(substr($row['collector_name'], 0, 2));
+                                ?>
+                                    <tr class="collector-row">
+                                        <td class="text-center text-muted fw-bold"><?= $pSl++ ?></td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="collector-avatar">
+                                                    <?= htmlspecialchars($initials) ?>
+                                                </div>
+                                                <div>
+                                                    <div class="fw-bold text-dark collector-name-cell">
+                                                        <?= htmlspecialchars($row['collector_name']) ?>
+                                                        <?php if (!empty($row['is_ced_member'])): ?>
+                                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle badge-ced ms-1">CED</span>
+                                                        <?php elseif (!empty($row['is_management'])): ?>
+                                                            <span class="badge bg-warning-subtle text-dark border border-warning-subtle ms-1" style="font-size: 10px;">Management</span>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                    <small class="text-muted extra-small">
+                                                        <?= htmlspecialchars($row['collector_role']) ?>
+                                                        <?= !empty($row['emp_code']) ? ' &bull; ID: ' . htmlspecialchars($row['emp_code']) : '' ?>
+                                                    </small>
+                                                </div>
                                             </div>
-                                            <small class="text-muted extra-small">
-                                                <?= htmlspecialchars($row['collector_role']) ?>
-                                                <?= !empty($row['emp_code']) ? ' &bull; ID: ' . htmlspecialchars($row['emp_code']) : '' ?>
-                                            </small>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="text-center font-monospace">
-                                    <span class="badge bg-light text-dark border px-2 py-1"><?= number_format($row['total_count']) ?></span>
-                                </td>
-                                <!-- Dev Charge -->
-                                <td class="text-end font-monospace text-warning fw-semibold col-dev-charge">
-                                    <?php if ($row['dev_charge_amount'] > 0): ?>
-                                        <div>৳<?= number_format($row['dev_charge_amount'], 2) ?></div>
-                                        <small class="text-muted extra-small">(<?= $row['dev_charge_count'] ?> Trx)</small>
-                                    <?php else: ?>
-                                        <span class="text-muted">-</span>
-                                    <?php endif; ?>
-                                </td>
-                                <!-- Regular EMI -->
-                                <td class="text-end font-monospace text-success fw-semibold col-emi">
-                                    <?php if ($row['emi_amount'] > 0): ?>
-                                        <div>৳<?= number_format($row['emi_amount'], 2) ?></div>
-                                        <small class="text-muted extra-small">(<?= $row['emi_count'] ?> Trx)</small>
-                                    <?php else: ?>
-                                        <span class="text-muted">-</span>
-                                    <?php endif; ?>
-                                </td>
-                                <!-- Due Settlement / Advance -->
-                                <td class="text-end font-monospace text-info fw-semibold col-settlement">
-                                    <?php if ($row['settlement_amount'] > 0): ?>
-                                        <div>৳<?= number_format($row['settlement_amount'], 2) ?></div>
-                                        <small class="text-muted extra-small">(<?= $row['settlement_count'] ?> Trx)</small>
-                                    <?php else: ?>
-                                        <span class="text-muted">-</span>
-                                    <?php endif; ?>
-                                </td>
-                                <!-- Booking & Reg (Rare) -->
-                                <td class="text-end font-monospace col-booking">
-                                    <?php 
-                                    $bookRegAmt = $row['booking_amount'] + $row['registration_amount'];
-                                    $bookRegCnt = $row['booking_count'] + $row['registration_count'];
-                                    if ($bookRegAmt > 0): 
-                                    ?>
-                                        <div class="text-purple fw-semibold" style="color: #9333ea;">৳<?= number_format($bookRegAmt, 2) ?></div>
-                                        <small class="text-muted extra-small">(<?= $bookRegCnt ?> Trx)</small>
-                                    <?php else: ?>
-                                        <span class="text-muted">-</span>
-                                    <?php endif; ?>
-                                </td>
-                                <!-- Total Amount -->
-                                <td class="text-end font-monospace fw-bold fs-13 col-total">
-                                    ৳<?= number_format($row['total_amount'], 2) ?>
-                                </td>
-                                <!-- % Share Progress Bar -->
-                                <td>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <div class="progress flex-grow-1" style="height: 6px;">
-                                            <div class="progress-bar bg-primary" role="progressbar" style="width: <?= min(100, $row['percentage']) ?>%"></div>
-                                        </div>
-                                        <span class="small font-monospace text-muted" style="width: 44px; font-size: 11px;"><?= number_format($row['percentage'], 1) ?>%</span>
-                                    </div>
-                                </td>
-                                <!-- Action -->
-                                <td class="text-center">
-                                    <a href="<?= $colFilterUrl ?>" class="btn btn-xs btn-outline-primary py-1 px-2 rounded-2" style="font-size: 11px;" title="View all transactions created by this executive">
-                                        <i class="fa-solid fa-list me-1"></i> Register
-                                    </a>
-                                </td>
-                            </tr>
-                        <?php endforeach; endif; ?>
-                    </tbody>
-                    <?php if (!empty($collector_summary['rows'])): 
-                        $g = $collector_summary['grand'];
-                    ?>
-                        <tfoot class="cs-tfoot">
-                            <tr class="fw-bold cs-tfoot-row" style="font-size: 13.5px;">
-                                <td class="text-center text-muted"><?= count($collector_summary['rows']) ?></td>
-                                <td class="text-uppercase cs-grand-label">
-                                    <i class="fa-solid fa-calculator text-primary me-1"></i> GRAND TOTAL:
-                                </td>
-                                <td class="text-center font-monospace">
-                                    <span class="badge bg-dark text-white px-2 py-1"><?= number_format($g['total_count']) ?></span>
-                                </td>
-                                <td class="text-end font-monospace text-warning col-dev-charge">
-                                    ৳<?= number_format($g['dev_charge_amount'], 2) ?>
-                                </td>
-                                <td class="text-end font-monospace text-success col-emi">
-                                    ৳<?= number_format($g['emi_amount'], 2) ?>
-                                </td>
-                                <td class="text-end font-monospace text-info col-settlement">
-                                    ৳<?= number_format($g['settlement_amount'], 2) ?>
-                                </td>
-                                <td class="text-end font-monospace text-purple col-booking" style="color: #9333ea;">
-                                    ৳<?= number_format($g['booking_amount'] + $g['registration_amount'], 2) ?>
-                                </td>
-                                <td class="text-end font-monospace text-primary fs-14 col-total cs-total-badge">
-                                    ৳<?= number_format($g['total_amount'], 2) ?>
-                                </td>
-                                <td>
-                                    <span class="badge bg-success-subtle text-success border border-success-subtle fw-bold">100.0%</span>
-                                </td>
-                                <td class="text-center">
-                                    <a href="<?= $printColUrl ?>" target="_blank" class="btn btn-xs btn-primary py-1 px-2" style="font-size: 11px;">
-                                        <i class="fa-solid fa-print"></i> Print
-                                    </a>
-                                </td>
-                            </tr>
-                        </tfoot>
-                    <?php endif; ?>
-                </table>
+                                        </td>
+                                        <!-- Assigned Project Portfolio & Voucher Creator Info -->
+                                        <td>
+                                            <?php if (!empty($row['assigned_projects'])): ?>
+                                                <div class="d-flex flex-wrap gap-1 mb-1">
+                                                    <?php foreach ($row['assigned_projects'] as $prj): ?>
+                                                        <a href="?<?= http_build_query(array_merge($queryParams, ['project_id' => $prj['id'], 'view_mode' => 'transactions', 'page' => 1])) ?>#section-transactions" class="badge bg-primary-subtle text-primary border border-primary-subtle text-decoration-none py-1 px-1.5" title="View all inflows for <?= htmlspecialchars($prj['name']) ?>">
+                                                            <i class="fa-solid fa-building me-1"></i><?= htmlspecialchars($prj['name']) ?>
+                                                        </a>
+                                                    <?php endforeach; ?>
+                                                </div>
+                                            <?php else: ?>
+                                                <span class="badge bg-light text-muted border py-1 px-1.5 extra-small">
+                                                    <?= ($row['created_by'] === 0) ? 'Company Unassigned Projects' : 'No Assigned Projects' ?>
+                                                </span>
+                                            <?php endif; ?>
+                                            <?php if (!empty($row['creators_list']) && $row['creators_list'] !== 'N/A'): ?>
+                                                <div class="extra-small text-muted mt-1" style="font-size: 10px;">
+                                                    <i class="fa-solid fa-keyboard text-secondary me-1"></i>Vouchers created in software by: <strong class="text-dark"><?= htmlspecialchars($row['creators_list']) ?></strong>
+                                                </div>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="text-center font-monospace">
+                                            <span class="badge bg-light text-dark border px-2 py-1"><?= number_format($row['total_count']) ?></span>
+                                        </td>
+                                        <!-- Dev Charge -->
+                                        <td class="text-end font-monospace text-warning fw-semibold col-dev-charge">
+                                            <?php if ($row['dev_charge_amount'] > 0): ?>
+                                                <div>৳<?= number_format($row['dev_charge_amount'], 2) ?></div>
+                                                <small class="text-muted extra-small">(<?= $row['dev_charge_count'] ?> Trx)</small>
+                                            <?php else: ?>
+                                                <span class="text-muted">-</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <!-- Regular EMI -->
+                                        <td class="text-end font-monospace text-success fw-semibold col-emi">
+                                            <?php if ($row['emi_amount'] > 0): ?>
+                                                <div>৳<?= number_format($row['emi_amount'], 2) ?></div>
+                                                <small class="text-muted extra-small">(<?= $row['emi_count'] ?> Trx)</small>
+                                            <?php else: ?>
+                                                <span class="text-muted">-</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <!-- Due Settlement / Advance -->
+                                        <td class="text-end font-monospace text-info fw-semibold col-settlement">
+                                            <?php if ($row['settlement_amount'] > 0): ?>
+                                                <div>৳<?= number_format($row['settlement_amount'], 2) ?></div>
+                                                <small class="text-muted extra-small">(<?= $row['settlement_count'] ?> Trx)</small>
+                                            <?php else: ?>
+                                                <span class="text-muted">-</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <!-- Booking & Reg (Rare) -->
+                                        <td class="text-end font-monospace col-booking">
+                                            <?php 
+                                            $bookRegAmt = $row['booking_amount'] + $row['registration_amount'];
+                                            $bookRegCnt = $row['booking_count'] + $row['registration_count'];
+                                            if ($bookRegAmt > 0): 
+                                            ?>
+                                                <div class="text-purple fw-semibold" style="color: #9333ea;">৳<?= number_format($bookRegAmt, 2) ?></div>
+                                                <small class="text-muted extra-small">(<?= $bookRegCnt ?> Trx)</small>
+                                            <?php else: ?>
+                                                <span class="text-muted">-</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <!-- Total Amount -->
+                                        <td class="text-end font-monospace fw-bold fs-13 col-total">
+                                            ৳<?= number_format($row['total_amount'], 2) ?>
+                                        </td>
+                                        <!-- % Share Progress Bar -->
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="progress flex-grow-1" style="height: 6px;">
+                                                    <div class="progress-bar bg-primary" role="progressbar" style="width: <?= min(100, $row['percentage']) ?>%"></div>
+                                                </div>
+                                                <span class="small font-monospace text-muted" style="width: 44px; font-size: 11px;"><?= number_format($row['percentage'], 1) ?>%</span>
+                                            </div>
+                                        </td>
+                                        <!-- Action -->
+                                        <td class="text-center">
+                                            <a href="<?= $colFilterUrl ?>" class="btn btn-xs btn-outline-primary py-1 px-2 rounded-2" style="font-size: 11px;" title="View all transactions for this executive/portfolio">
+                                                <i class="fa-solid fa-list me-1"></i> Register
+                                            </a>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; endif; ?>
+                            </tbody>
+                            <?php if (!empty($portfolioList)): 
+                                $g = $collector_summary['grand'];
+                            ?>
+                                <tfoot class="cs-tfoot">
+                                    <tr class="fw-bold cs-tfoot-row" style="font-size: 13.5px;">
+                                        <td class="text-center text-muted"><?= count($portfolioList) ?></td>
+                                        <td class="text-uppercase cs-grand-label" colspan="2">
+                                            <i class="fa-solid fa-calculator text-primary me-1"></i> GRAND TOTAL:
+                                        </td>
+                                        <td class="text-center font-monospace">
+                                            <span class="badge bg-dark text-white px-2 py-1"><?= number_format($g['total_count']) ?></span>
+                                        </td>
+                                        <td class="text-end font-monospace text-warning col-dev-charge">
+                                            ৳<?= number_format($g['dev_charge_amount'], 2) ?>
+                                        </td>
+                                        <td class="text-end font-monospace text-success col-emi">
+                                            ৳<?= number_format($g['emi_amount'], 2) ?>
+                                        </td>
+                                        <td class="text-end font-monospace text-info col-settlement">
+                                            ৳<?= number_format($g['settlement_amount'], 2) ?>
+                                        </td>
+                                        <td class="text-end font-monospace text-purple col-booking" style="color: #9333ea;">
+                                            ৳<?= number_format($g['booking_amount'] + $g['registration_amount'], 2) ?>
+                                        </td>
+                                        <td class="text-end font-monospace text-primary fs-14 col-total cs-total-badge">
+                                            ৳<?= number_format($g['total_amount'], 2) ?>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle fw-bold">100.0%</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <a href="<?= $printColUrl ?>" target="_blank" class="btn btn-xs btn-primary py-1 px-2" style="font-size: 11px;">
+                                                <i class="fa-solid fa-print"></i> Print
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            <?php endif; ?>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- =========================================================================
+                     SUB-VIEW 2: Project-wise Inflows & Assignments Breakdown
+                     ========================================================================= -->
+                <div class="tab-pane fade" id="tab-projects-pane" role="tabpanel" aria-labelledby="tab-projects-btn">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle table-ced mb-0" id="projectMatrixTable">
+                            <thead>
+                                <tr>
+                                    <th class="text-center" style="width: 45px;">#</th>
+                                    <th style="min-width: 220px;">Project Name</th>
+                                    <th style="min-width: 200px;">Assigned CED Executive</th>
+                                    <th class="text-center" style="width: 90px;">Inflow Trx</th>
+                                    <th class="text-end col-dev-charge" style="min-width: 130px;">Dev Charge (BDT)</th>
+                                    <th class="text-end col-emi" style="min-width: 130px;">Regular EMI (BDT)</th>
+                                    <th class="text-end col-settlement" style="min-width: 130px;">Due Settled (BDT)</th>
+                                    <th class="text-end col-total" style="min-width: 140px;">Total Inflow (BDT)</th>
+                                    <th style="min-width: 200px;">Voucher Entered In Software By</th>
+                                    <th class="text-center" style="width: 85px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php 
+                                $projectRows = $collector_summary['project_rows'] ?? [];
+                                if (empty($projectRows)): 
+                                ?>
+                                    <tr>
+                                        <td colspan="10" class="text-center py-5 text-muted">
+                                            <i class="fa-solid fa-city fa-2x mb-2 text-secondary opacity-50"></i>
+                                            <div>No project inflows recorded for this period.</div>
+                                        </td>
+                                    </tr>
+                                <?php else:
+                                    $pjSl = 1;
+                                    $prjTotalTrx = 0;
+                                    $prjTotalAmt = 0;
+                                    $prjDevAmt   = 0;
+                                    $prjEmiAmt   = 0;
+                                    $prjSetAmt   = 0;
+                                    foreach ($projectRows as $pr):
+                                        $prjTotalTrx += $pr['total_count'];
+                                        $prjTotalAmt += $pr['total_amount'];
+                                        $prjDevAmt   += $pr['dev_charge_amount'];
+                                        $prjEmiAmt   += $pr['emi_amount'];
+                                        $prjSetAmt   += $pr['settlement_amount'];
+
+                                        $prjFilterUrl = '?' . http_build_query(array_merge($queryParams, [
+                                            'project_id' => $pr['project_id'],
+                                            'view_mode'  => 'transactions',
+                                            'page'       => 1
+                                        ])) . '#section-transactions';
+                                ?>
+                                    <tr class="project-matrix-row">
+                                        <td class="text-center text-muted fw-bold"><?= $pjSl++ ?></td>
+                                        <td>
+                                            <div class="fw-bold text-dark project-name-cell">
+                                                <i class="fa-solid fa-building text-primary me-1"></i><?= htmlspecialchars($pr['project_name']) ?>
+                                            </div>
+                                            <small class="text-muted font-monospace">Project ID: #<?= $pr['project_id'] ?></small>
+                                        </td>
+                                        <td>
+                                            <?php if (!empty($pr['ced_officer_id'])): ?>
+                                                <div class="d-flex align-items-center gap-1">
+                                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle py-1 px-2">
+                                                        <i class="fa-solid fa-user-check me-1"></i><?= htmlspecialchars($pr['ced_officer_name']) ?>
+                                                    </span>
+                                                </div>
+                                                <small class="text-muted extra-small d-block mt-0.5">
+                                                    <?= htmlspecialchars($pr['ced_officer_role']) ?>
+                                                    <?= !empty($pr['ced_emp_code']) ? ' &bull; ID: ' . htmlspecialchars($pr['ced_emp_code']) : '' ?>
+                                                </small>
+                                            <?php else: ?>
+                                                <span class="badge bg-secondary-subtle text-muted border border-secondary-subtle py-1 px-2">
+                                                    <i class="fa-solid fa-circle-question me-1"></i>Unassigned
+                                                </span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="text-center font-monospace">
+                                            <span class="badge bg-light text-dark border px-2 py-1"><?= number_format($pr['total_count']) ?></span>
+                                        </td>
+                                        <td class="text-end font-monospace text-warning fw-semibold col-dev-charge">
+                                            <?= $pr['dev_charge_amount'] > 0 ? '৳' . number_format($pr['dev_charge_amount'], 2) : '<span class="text-muted">-</span>' ?>
+                                        </td>
+                                        <td class="text-end font-monospace text-success fw-semibold col-emi">
+                                            <?= $pr['emi_amount'] > 0 ? '৳' . number_format($pr['emi_amount'], 2) : '<span class="text-muted">-</span>' ?>
+                                        </td>
+                                        <td class="text-end font-monospace text-info fw-semibold col-settlement">
+                                            <?= $pr['settlement_amount'] > 0 ? '৳' . number_format($pr['settlement_amount'], 2) : '<span class="text-muted">-</span>' ?>
+                                        </td>
+                                        <td class="text-end font-monospace fw-bold fs-13 col-total">
+                                            ৳<?= number_format($pr['total_amount'], 2) ?>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-light text-dark border px-2 py-1 text-wrap" style="max-width: 250px;">
+                                                <i class="fa-solid fa-pen-to-square text-secondary me-1"></i><?= htmlspecialchars($pr['creators_list'] ?: 'N/A') ?>
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            <a href="<?= $prjFilterUrl ?>" class="btn btn-xs btn-outline-primary py-1 px-2 rounded-2" style="font-size: 11px;" title="View all transactions for this project">
+                                                <i class="fa-solid fa-list me-1"></i> Register
+                                            </a>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; endif; ?>
+                            </tbody>
+                            <?php if (!empty($projectRows)): ?>
+                                <tfoot class="cs-tfoot">
+                                    <tr class="fw-bold cs-tfoot-row" style="font-size: 13.5px;">
+                                        <td class="text-center text-muted"><?= count($projectRows) ?></td>
+                                        <td class="text-uppercase cs-grand-label" colspan="2">
+                                            <i class="fa-solid fa-calculator text-primary me-1"></i> TOTAL PROJECT INFLOWS:
+                                        </td>
+                                        <td class="text-center font-monospace">
+                                            <span class="badge bg-dark text-white px-2 py-1"><?= number_format($prjTotalTrx) ?></span>
+                                        </td>
+                                        <td class="text-end font-monospace text-warning col-dev-charge">
+                                            ৳<?= number_format($prjDevAmt, 2) ?>
+                                        </td>
+                                        <td class="text-end font-monospace text-success col-emi">
+                                            ৳<?= number_format($prjEmiAmt, 2) ?>
+                                        </td>
+                                        <td class="text-end font-monospace text-info col-settlement">
+                                            ৳<?= number_format($prjSetAmt, 2) ?>
+                                        </td>
+                                        <td class="text-end font-monospace text-primary fs-14 col-total cs-total-badge">
+                                            ৳<?= number_format($prjTotalAmt, 2) ?>
+                                        </td>
+                                        <td colspan="2"></td>
+                                    </tr>
+                                </tfoot>
+                            <?php endif; ?>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- =========================================================================
+                     SUB-VIEW 3: Software Voucher Creators (lp.created_by)
+                     ========================================================================= -->
+                <div class="tab-pane fade" id="tab-creators-pane" role="tabpanel" aria-labelledby="tab-creators-btn">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle table-ced mb-0" id="creatorMatrixTable">
+                            <thead>
+                                <tr>
+                                    <th class="text-center" style="width: 45px;">#</th>
+                                    <th style="min-width: 220px;">Staff Member (Software Creator)</th>
+                                    <th style="min-width: 170px;">Role &amp; Department</th>
+                                    <th class="text-center" style="width: 90px;">Total Trx</th>
+                                    <th class="text-end col-dev-charge" style="min-width: 130px;">Dev Charge (BDT)</th>
+                                    <th class="text-end col-emi" style="min-width: 130px;">Regular EMI (BDT)</th>
+                                    <th class="text-end col-settlement" style="min-width: 130px;">Due Settled (BDT)</th>
+                                    <th class="text-end col-booking" style="min-width: 120px;">Booking/Reg (BDT)</th>
+                                    <th class="text-end col-total" style="min-width: 140px;">Total Collected (BDT)</th>
+                                    <th style="min-width: 140px;">% Share</th>
+                                    <th class="text-center" style="width: 85px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php 
+                                $creatorList = $collector_summary['creator_rows'] ?? [];
+                                if (empty($creatorList)): 
+                                ?>
+                                    <tr>
+                                        <td colspan="11" class="text-center py-5 text-muted">
+                                            <i class="fa-solid fa-keyboard fa-2x mb-2 text-secondary opacity-50"></i>
+                                            <div>No voucher creators found for this period.</div>
+                                        </td>
+                                    </tr>
+                                <?php else:
+                                    $crSl = 1;
+                                    foreach ($creatorList as $crow):
+                                        $crFilterUrl = '?' . http_build_query(array_merge($queryParams, [
+                                            'collector_id' => $crow['created_by'],
+                                            'view_mode'    => 'transactions',
+                                            'page'         => 1
+                                        ])) . '#section-transactions';
+                                        $crInitials = strtoupper(substr($crow['collector_name'], 0, 2));
+                                ?>
+                                    <tr class="creator-matrix-row">
+                                        <td class="text-center text-muted fw-bold"><?= $crSl++ ?></td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="collector-avatar">
+                                                    <?= htmlspecialchars($crInitials) ?>
+                                                </div>
+                                                <div>
+                                                    <div class="fw-bold text-dark creator-name-cell">
+                                                        <?= htmlspecialchars($crow['collector_name']) ?>
+                                                        <?php if (!empty($crow['is_ced_member'])): ?>
+                                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle badge-ced ms-1">CED</span>
+                                                        <?php elseif (!empty($crow['is_management'])): ?>
+                                                            <span class="badge bg-warning-subtle text-dark border border-warning-subtle ms-1" style="font-size: 10px;">Management</span>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                    <small class="text-muted extra-small">
+                                                        <?= !empty($crow['emp_code']) ? 'ID: ' . htmlspecialchars($crow['emp_code']) : '' ?>
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="fw-semibold text-dark small"><?= htmlspecialchars($crow['collector_role']) ?></div>
+                                            <small class="text-muted extra-small"><?= htmlspecialchars($crow['dept_name'] ?? 'N/A') ?></small>
+                                        </td>
+                                        <td class="text-center font-monospace">
+                                            <span class="badge bg-light text-dark border px-2 py-1"><?= number_format($crow['total_count']) ?></span>
+                                        </td>
+                                        <td class="text-end font-monospace text-warning fw-semibold col-dev-charge">
+                                            <?= $crow['dev_charge_amount'] > 0 ? '৳' . number_format($crow['dev_charge_amount'], 2) : '<span class="text-muted">-</span>' ?>
+                                        </td>
+                                        <td class="text-end font-monospace text-success fw-semibold col-emi">
+                                            <?= $crow['emi_amount'] > 0 ? '৳' . number_format($crow['emi_amount'], 2) : '<span class="text-muted">-</span>' ?>
+                                        </td>
+                                        <td class="text-end font-monospace text-info fw-semibold col-settlement">
+                                            <?= $crow['settlement_amount'] > 0 ? '৳' . number_format($crow['settlement_amount'], 2) : '<span class="text-muted">-</span>' ?>
+                                        </td>
+                                        <td class="text-end font-monospace col-booking">
+                                            <?php 
+                                            $cBookReg = $crow['booking_amount'] + $crow['registration_amount'];
+                                            echo $cBookReg > 0 ? '<span class="text-purple fw-semibold" style="color: #9333ea;">৳' . number_format($cBookReg, 2) . '</span>' : '<span class="text-muted">-</span>';
+                                            ?>
+                                        </td>
+                                        <td class="text-end font-monospace fw-bold fs-13 col-total">
+                                            ৳<?= number_format($crow['total_amount'], 2) ?>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="progress flex-grow-1" style="height: 6px;">
+                                                    <div class="progress-bar bg-success" role="progressbar" style="width: <?= min(100, $crow['percentage']) ?>%"></div>
+                                                </div>
+                                                <span class="small font-monospace text-muted" style="width: 44px; font-size: 11px;"><?= number_format($crow['percentage'], 1) ?>%</span>
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            <a href="<?= $crFilterUrl ?>" class="btn btn-xs btn-outline-primary py-1 px-2 rounded-2" style="font-size: 11px;" title="View all records entered by this staff">
+                                                <i class="fa-solid fa-list me-1"></i> Register
+                                            </a>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; endif; ?>
+                            </tbody>
+                            <?php if (!empty($creatorList)): 
+                                $cg = $collector_summary['grand'];
+                            ?>
+                                <tfoot class="cs-tfoot">
+                                    <tr class="fw-bold cs-tfoot-row" style="font-size: 13.5px;">
+                                        <td class="text-center text-muted"><?= count($creatorList) ?></td>
+                                        <td class="text-uppercase cs-grand-label" colspan="2">
+                                            <i class="fa-solid fa-calculator text-primary me-1"></i> TOTAL ENTERED IN ERP:
+                                        </td>
+                                        <td class="text-center font-monospace">
+                                            <span class="badge bg-dark text-white px-2 py-1"><?= number_format($cg['total_count']) ?></span>
+                                        </td>
+                                        <td class="text-end font-monospace text-warning col-dev-charge">
+                                            ৳<?= number_format($cg['dev_charge_amount'], 2) ?>
+                                        </td>
+                                        <td class="text-end font-monospace text-success col-emi">
+                                            ৳<?= number_format($cg['emi_amount'], 2) ?>
+                                        </td>
+                                        <td class="text-end font-monospace text-info col-settlement">
+                                            ৳<?= number_format($cg['settlement_amount'], 2) ?>
+                                        </td>
+                                        <td class="text-end font-monospace text-purple col-booking" style="color: #9333ea;">
+                                            ৳<?= number_format($cg['booking_amount'] + $cg['registration_amount'], 2) ?>
+                                        </td>
+                                        <td class="text-end font-monospace text-primary fs-14 col-total cs-total-badge">
+                                            ৳<?= number_format($cg['total_amount'], 2) ?>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle fw-bold">100.0%</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <a href="<?= $printColUrl ?>" target="_blank" class="btn btn-xs btn-primary py-1 px-2" style="font-size: 11px;">
+                                                <i class="fa-solid fa-print"></i> Print
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            <?php endif; ?>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1141,13 +1545,13 @@ html.dark .cs-rows-box select {
                             <th class="text-center" style="width: 45px;">#</th>
                             <th style="min-width: 95px;">Payment Date</th>
                             <th style="min-width: 170px;">Client / Depositor</th>
-                            <th style="min-width: 160px;">Project &amp; Unit</th>
+                            <th style="min-width: 175px;">Project &amp; Unit</th>
                             <th style="min-width: 130px;">Payment Purpose</th>
                             <th style="min-width: 100px;">Method</th>
                             <th style="min-width: 175px;">Banking Details</th>
                             <th style="min-width: 130px;">Voucher / Ref</th>
                             <th class="text-end" style="min-width: 130px;">Amount (BDT)</th>
-                            <th style="min-width: 150px;">Collector (Created By)</th>
+                            <th style="min-width: 160px;">Voucher Creator (Created By)</th>
                             <th class="text-center" style="min-width: 110px;">Verification</th>
                             <th class="text-center" style="width: 70px;">Action</th>
                         </tr>
@@ -1181,6 +1585,17 @@ html.dark .cs-rows-box select {
                                 <td>
                                     <div class="fw-semibold text-dark"><?= htmlspecialchars($t['project_name'] ?? 'N/A') ?></div>
                                     <small class="text-muted"><?= htmlspecialchars($t['flat_name'] ?? 'N/A') ?></small>
+                                    <div class="mt-1">
+                                        <?php if (!empty($t['ced_assigned_user_id'])): ?>
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle py-0.5 px-1.5" style="font-size: 9.5px;" title="Assigned CED Executive">
+                                                <i class="fa-solid fa-user-check me-1"></i>Assigned: <?= htmlspecialchars($t['ced_assigned_name']) ?>
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="badge bg-secondary-subtle text-muted border border-secondary-subtle py-0.5 px-1.5" style="font-size: 9.5px;">
+                                                <i class="fa-solid fa-circle-question me-1"></i>Unassigned
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
                                 </td>
                                 <td>
                                     <span class="badge <?= $pInfo['badge_class'] ?> px-2 py-1" title="<?= htmlspecialchars($pInfo['full_label'] ?? $pInfo['label']) ?>">
@@ -1236,8 +1651,12 @@ html.dark .cs-rows-box select {
                                     ৳<?= number_format($amt, 2) ?>
                                 </td>
                                 <td>
-                                    <div class="fw-semibold text-dark small"><?= htmlspecialchars($t['collector_name']) ?></div>
-                                    <small class="text-muted extra-small"><?= htmlspecialchars($t['collector_role']) ?></small>
+                                    <div class="fw-semibold text-dark small">
+                                        <i class="fa-solid fa-pen-to-square text-secondary me-1"></i><?= htmlspecialchars($t['collector_name']) ?>
+                                    </div>
+                                    <small class="text-muted extra-small">
+                                        Voucher Creator &bull; <?= htmlspecialchars($t['collector_role']) ?>
+                                    </small>
                                 </td>
                                 <td class="text-center">
                                     <?php if (($t['verification_status'] ?? '') === 'verified'): ?>
@@ -1606,18 +2025,73 @@ function switchView(mode, updateUrl) {
     }
 }
 
+window.collectorsByScope = <?= json_encode($collectors_by_scope ?? []) ?>;
+
+function escapeHtml(text) {
+    if (!text) return '';
+    var map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.toString().replace(/[&<>"']/g, function(m) { return map[m]; });
+}
+
+function onTeamScopeChange(scope) {
+    var select = document.getElementById('collectorSelect');
+    if (!select) return;
+    
+    var curVal = (typeof jQuery !== 'undefined') ? jQuery(select).val() : select.value;
+    var list = (window.collectorsByScope && window.collectorsByScope[scope]) ? window.collectorsByScope[scope] : [];
+    
+    var placeholderText = (scope === 'ced_only') ? 'All CED Executives (' + list.length + ')' : 
+                          ((scope === 'ced_mgmt') ? 'CED & Management (' + list.length + ')' : 'All Staff (' + list.length + ')');
+    
+    var html = '<option value="">' + placeholderText + '</option>';
+    var valExists = false;
+    for (var i = 0; i < list.length; i++) {
+        var col = list[i];
+        var empCode = col.emp_code ? ' [ID: ' + col.emp_code + ']' : '';
+        var role = col.role_name ? ' (' + col.role_name + ')' : '';
+        var isSelected = (curVal && parseInt(curVal, 10) === parseInt(col.user_id, 10));
+        if (isSelected) valExists = true;
+        html += '<option value="' + col.user_id + '"' + (isSelected ? ' selected' : '') + '>' + 
+                escapeHtml(col.full_name + empCode + role) + '</option>';
+    }
+    select.innerHTML = html;
+    if (!valExists) {
+        select.value = '';
+    }
+    if (typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 === 'function') {
+        jQuery(select).trigger('change.select2');
+    }
+}
+
 function filterCollectorTable() {
     var input = document.getElementById('collectorTableSearch');
     var filter = input.value.toLowerCase().trim();
-    var rows = document.querySelectorAll('#collectorTable tbody tr.collector-row');
 
-    rows.forEach(function(row) {
-        var text = row.querySelector('.collector-name-cell') ? row.querySelector('.collector-name-cell').innerText.toLowerCase() : '';
-        if (text.indexOf(filter) > -1) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
-        }
+    // 1. Portfolio rows
+    var pRows = document.querySelectorAll('#collectorTable tbody tr.collector-row');
+    pRows.forEach(function(row) {
+        var text = row.innerText.toLowerCase();
+        row.style.display = (text.indexOf(filter) > -1) ? '' : 'none';
+    });
+
+    // 2. Project rows
+    var prRows = document.querySelectorAll('#projectMatrixTable tbody tr.project-matrix-row');
+    prRows.forEach(function(row) {
+        var text = row.innerText.toLowerCase();
+        row.style.display = (text.indexOf(filter) > -1) ? '' : 'none';
+    });
+
+    // 3. Creator rows
+    var crRows = document.querySelectorAll('#creatorMatrixTable tbody tr.creator-matrix-row');
+    crRows.forEach(function(row) {
+        var text = row.innerText.toLowerCase();
+        row.style.display = (text.indexOf(filter) > -1) ? '' : 'none';
     });
 }
 

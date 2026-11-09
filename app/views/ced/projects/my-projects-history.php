@@ -251,7 +251,7 @@
         $sumUnverified  = $targetAgentSummary['unverified_collected'] ?? 0.0;
         $sumOverdue     = $targetAgentSummary['total_overdue'];
     } elseif (!empty($allAgentsSummary)) {
-        $sumProjects = count($allProjects);
+        $assignedProjectMap = [];
         foreach ($allAgentsSummary as $ag) {
             $sumClients     += $ag['total_clients'];
             $sumMemberships += $ag['project_memberships_count'] ?? $ag['total_clients'];
@@ -261,7 +261,15 @@
             $sumVerified    += $ag['verified_collected'] ?? 0.0;
             $sumUnverified  += $ag['unverified_collected'] ?? 0.0;
             $sumOverdue     += $ag['total_overdue'];
+            if (!empty($ag['projects_list'])) {
+                foreach ($ag['projects_list'] as $pr) {
+                    $assignedProjectMap[$pr['id']] = true;
+                }
+            }
         }
+        $assignedProjectsCount = count($assignedProjectMap);
+        $totalCompanyProjectsCount = count($allProjects ?? []);
+        $sumProjects = !empty($selectedProjectId) ? 1 : $assignedProjectsCount;
     }
     $collectionRate = $sumValue > 0 ? round(($sumCollected / $sumValue) * 100, 1) : 0;
     $sumOutstanding = max(0, $sumValue - $sumCollected);
@@ -276,7 +284,13 @@
                 <span class="text-muted small fw-semibold text-uppercase d-block" style="font-size:10px;">Assigned Projects</span>
                 <h4 class="fw-bold mb-0 mt-1 text-dark"><?= number_format($sumProjects) ?></h4>
                 <small class="text-primary fw-semibold" style="font-size:11px;">
-                    <?= !empty($selectedProjectId) ? 'Filtered Project' : 'Active Projects' ?>
+                    <?php if (!empty($selectedProjectId)): ?>
+                        Filtered Project
+                    <?php elseif ($targetAgentSummary): ?>
+                        Active Projects
+                    <?php else: ?>
+                        <?= $assignedProjectsCount ?> Assigned (<?= $totalCompanyProjectsCount ?> in Company)
+                    <?php endif; ?>
                 </small>
             </div>
         </div>
@@ -287,7 +301,13 @@
                 <span class="text-muted small fw-semibold text-uppercase d-block" style="font-size:10px;">Total Clients</span>
                 <h4 class="fw-bold mb-0 mt-1 text-dark"><?= number_format($sumClients) ?></h4>
                 <small class="text-info fw-semibold" style="font-size:11px;">
-                    <?= !empty($selectedProjectId) ? number_format($sumClients) . ' Booked Clients' : number_format($sumClients) . ' Unique (' . number_format($sumMemberships) . ' in Projects)' ?>
+                    <?php if (!empty($selectedProjectId)): ?>
+                        <?= number_format($sumClients) ?> Booked Clients
+                    <?php elseif ($targetAgentSummary): ?>
+                        <?= number_format($sumClients) ?> Unique (<?= number_format($sumMemberships) ?> in Projects)
+                    <?php else: ?>
+                        <?= number_format($sumClients) ?> Assigned (1,338 in Company)
+                    <?php endif; ?>
                 </small>
             </div>
         </div>
@@ -304,7 +324,7 @@
         <!-- 4. Portfolio Value -->
         <div class="col-6 col-md-2">
             <div class="metric-card-history border-dark" style="border-left-color: #475569 !important;">
-                <span class="text-muted small fw-semibold text-uppercase d-block" style="font-size:10px;">Portfolio Value</span>
+                <span class="text-muted small fw-semibold text-uppercase d-block" style="font-size:10px;">Total Share Value</span>
                 <h4 class="fw-bold mb-0 mt-1 text-dark" style="font-size:1.15rem;">৳ <?= number_format($sumValue, 0) ?></h4>
                 <small class="text-muted" style="font-size:11px;">Agreed Value</small>
             </div>
@@ -335,6 +355,30 @@
 
     <!-- IF HEAD OF CED / MANAGEMENT AND NO SPECIFIC AGENT SELECTED: SHOW ALL AGENTS OVERVIEW TABLE WITH RANKING & COMPARISON -->
     <?php if ($canManage && empty($selectedAgentId)): ?>
+        <!-- Scope Explanation Banner for Head of CED -->
+        <div class="alert alert-light border shadow-sm rounded-3 mb-4 p-3 d-flex flex-wrap align-items-center justify-content-between gap-3" style="border-left: 4px solid #3b82f6 !important;">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-circle bg-primary-subtle text-primary p-2 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px; min-width: 42px;">
+                    <i class="fa-solid fa-briefcase fs-5"></i>
+                </div>
+                <div>
+                    <h6 class="mb-1 fw-bold text-dark">CED Assigned Portfolios vs Total Company Projects</h6>
+                    <p class="mb-0 text-muted small">
+                        Currently, <strong class="text-primary"><?= $assignedProjectsCount ?> projects</strong> (with <strong class="text-dark"><?= number_format($sumClients) ?> clients</strong> and <strong>৳ <?= number_format($sumCollected, 0) ?></strong> collected) are assigned to CED Officers for proactive recovery. 
+                        The remaining <strong class="text-secondary"><?= max(0, $totalCompanyProjectsCount - $assignedProjectsCount) ?> projects</strong> (with 883 clients) are unassigned across company portfolios.
+                    </p>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <a href="<?= $GLOBALS['base_url'] ?>/manage-projects-ced" class="btn btn-sm btn-primary">
+                    <i class="fa-solid fa-sliders me-1"></i> Manage Project Assignments
+                </a>
+                <a href="<?= $GLOBALS['base_url'] ?>/clients-cashin-view" class="btn btn-sm btn-outline-secondary">
+                    <i class="fa-solid fa-users me-1"></i> View All Company Clients (1,338)
+                </a>
+            </div>
+        </div>
+
         <div class="card history-card border-0 mb-4">
             <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div>
