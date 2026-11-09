@@ -159,12 +159,12 @@ $show_breadcrumb = true;
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
-                    <span><i class="fa-light fa-badge-check"></i></span>
+                    <span><i class="fa-light fa-building"></i></span>
                 </div>
                 <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Full Payment Completion</h6>
+                    <h6 class="card__sub-title mb-10">Units Booked</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title"><?= $paymentStats['full_payment_completed'] ?? 0 ?></h4>
+                        <h4 class="card__title" id="cedTopUnitsBooked"><?= number_format($paymentStats['units_booked'] ?? $paymentStats['total_units_booked'] ?? $paymentStats['approved_bookings'] ?? 0) ?></h4>
                     </div>
                 </div>
             </div>
@@ -179,7 +179,7 @@ $show_breadcrumb = true;
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Approved Bookings</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title"><?= $paymentStats['approved_bookings'] ?? 0 ?></h4>
+                        <h4 class="card__title" id="cedTopApprovedBookings"><?= number_format($paymentStats['approved_bookings'] ?? $paymentStats['units_booked'] ?? 0) ?></h4>
                     </div>
                 </div>
             </div>
@@ -2234,6 +2234,14 @@ function loadCedClientsPage(page) {
                 if (countEl) countEl.textContent = formattedCount;
                 const topCountEl = document.getElementById('cedTopTotalClients');
                 if (topCountEl) topCountEl.textContent = formattedCount;
+                if (data.units_booked !== undefined) {
+                    const unitsEl = document.getElementById('cedTopUnitsBooked');
+                    if (unitsEl) unitsEl.textContent = Number(data.units_booked).toLocaleString();
+                }
+                if (data.approved_bookings !== undefined) {
+                    const appEl = document.getElementById('cedTopApprovedBookings');
+                    if (appEl) appEl.textContent = Number(data.approved_bookings).toLocaleString();
+                }
                 const filterBadgeCount = document.getElementById('cedFilterFoundCount');
                 if (filterBadgeCount) filterBadgeCount.textContent = formattedCount;
             }

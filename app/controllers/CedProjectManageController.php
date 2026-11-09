@@ -154,6 +154,8 @@ class CedProjectManageController extends Controller
         $activeAgentId = $selectedAgentId ?: ($canManage ? null : $currentUserId);
 
         $allProjects = $this->assignmentModel->getAllProjects();
+        $companyOverallStats = $this->assignmentModel->getCompanyOverallStats();
+        $unassignedProjectsStats = $this->assignmentModel->getUnassignedProjectsStats();
 
         if ($activeAgentId) {
             $assignedProjectIds = $this->assignmentModel->getAgentAssignedProjectIds($activeAgentId);
@@ -164,19 +166,21 @@ class CedProjectManageController extends Controller
         }
 
         $this->view("ced/projects/my-projects-history", [
-            "current_route"       => "ced-projects-history",
-            "page_title"          => "CED Projects History",
-            "canManage"           => $canManage,
-            "agents"              => $agents,
-            "selectedAgentId"     => $selectedAgentId,
-            "selectedProjectId"   => $selectedProjectId,
-            "search"              => $search,
-            "allAgentsSummary"    => $allAgentsSummary,
-            "targetAgentSummary"  => $targetAgentSummary,
-            "projectDetails"      => $projectDetails,
-            "allProjects"         => $allProjects,
-            "assignedProjects"    => $assignedProjects,
-            "currentUserId"       => $currentUserId
+            "current_route"           => "ced-projects-history",
+            "page_title"              => "CED Projects History",
+            "canManage"               => $canManage,
+            "agents"                  => $agents,
+            "selectedAgentId"         => $selectedAgentId,
+            "selectedProjectId"       => $selectedProjectId,
+            "search"                  => $search,
+            "allAgentsSummary"        => $allAgentsSummary,
+            "targetAgentSummary"      => $targetAgentSummary,
+            "projectDetails"          => $projectDetails,
+            "allProjects"             => $allProjects,
+            "assignedProjects"        => $assignedProjects,
+            "companyOverallStats"     => $companyOverallStats,
+            "unassignedProjectsStats" => $unassignedProjectsStats,
+            "currentUserId"           => $currentUserId
         ]);
     }
 }

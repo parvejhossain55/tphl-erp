@@ -1235,6 +1235,9 @@ class AccountClient extends Model
         $sql = $this->db->prepare("
             SELECT 
                 COUNT(DISTINCT l.id) as total_clients,
+                COUNT(DISTINCT lb.id) as total_units_booked,
+                COUNT(DISTINCT lb.id) as units_booked,
+                COUNT(DISTINCT lb.id) as approved_bookings,
                 COUNT(DISTINCT CASE 
                     WHEN (SELECT SUM(lp.amount) 
                           FROM lead_payments lp 
@@ -1248,7 +1251,7 @@ class AccountClient extends Model
                           WHERE lp2.booking_id = lb.id 
                           AND lp2.payment_status = 'paid') > 0
                     THEN lb.id 
-                END) as approved_bookings,
+                END) as paid_bookings,
                 COUNT(DISTINCT CASE 
                     WHEN (SELECT COUNT(*) 
                           FROM lead_payments lp3 

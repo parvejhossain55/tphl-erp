@@ -494,5 +494,175 @@ class CedProjectAssignment
 
         return $projectDetails;
     }
+
+    /**
+     * Get Company Overall Portfolio Statistics across ALL active projects & bookings
+     */
+    public function getCompanyOverallStats(): array
+    {
+        // 1. Total unique clients & total units & total agreed value
+        $q1 = $this->db->query("
+            SELECT 
+                COUNT(DISTINCT lb.lead_id) AS total_clients,
+                COUNT(DISTINCT CONCAT(lb.project_id, '_', lb.lead_id)) AS project_memberships_count,
+                COUNT(lb.id) AS total_units,
+                COALESCE(SUM(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0)), 0) AS total_price_value,
+                COALESCE(SUM(lb.discount_amount), 0) AS total_discount,
+                COUNT(DISTINCT lb.project_id) AS total_active_projects
+            FROM lead_bookings lb
+            LEFT JOIN flats f ON lb.flat_id = f.id
+            WHERE lb.deleted_at IS NULL
+              AND lb.booking_status NOT IN ('cancelled', 'refunded')
+              AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
+              AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+        ");
+        $stats1 = $q1 ? $q1->fetch_assoc() : [];
+
+        // 2. Total collections matching AccountClient & Dashboard
+        $q2 = $this->db->query("
+            SELECT 
+                COALESCE(SUM(CASE WHEN (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                                       AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') 
+                                  THEN lp.amount ELSE 0 END), 0) AS total_collected,
+                COALESCE(SUM(CASE WHEN (lp.payment_status IN ('paid', 'partially_paid')) 
+                                       AND lp.verification_status = 'verified' 
+                                  THEN lp.amount ELSE 0 END), 0) AS verified_collected,
+                COALESCE(SUM(CASE WHEN (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                                       AND (lp.verification_status IS NULL OR lp.verification_status != 'verified') 
+                                       AND lp.verification_status != 'rejected' 
+                                  THEN lp.amount ELSE 0 END), 0) AS unverified_collected
+            FROM lead_payments lp
+            INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+            WHERE lb.deleted_at IS NULL
+              AND lb.booking_status NOT IN ('cancelled', 'refunded')
+              AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
+              AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+              AND lp.is_trashed = 0
+              AND COALESCE(lp.is_emi_discount, 0) = 0
+        ");
+        $stats2 = $q2 ? $q2->fetch_assoc() : [];
+
+        // 3. Overdue EMIs
+        $q3 = $this->db->query("
+            SELECT 
+                COALESCE(SUM(es.due_emi_amount), 0) AS total_overdue
+            FROM emi_schedules es
+            INNER JOIN lead_bookings lb ON es.lead_booking_id = lb.id
+            WHERE lb.deleted_at IS NULL
+              AND lb.booking_status NOT IN ('cancelled', 'refunded')
+              AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
+              AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+              AND es.due_date <= CURDATE()
+              AND es.status != 'paid'
+        ");
+        $stats3 = $q3 ? $q3->fetch_assoc() : [];
+
+        $totalVal = (float)($stats1['total_price_value'] ?? 0);
+        $totalDisc = (float)($stats1['total_discount'] ?? 0);
+        $netAgreedVal = max(0, $totalVal - $totalDisc);
+        $totalCollected = (float)($stats2['total_collected'] ?? 0);
+        $totalOutstanding = max(0, $netAgreedVal - $totalCollected);
+
+        return [
+            'total_projects'        => (int)($stats1['total_active_projects'] ?? 0),
+            'total_clients'         => (int)($stats1['total_clients'] ?? 0),
+            'project_memberships'   => (int)($stats1['project_memberships_count'] ?? 0),
+            'total_units'           => (int)($stats1['total_units'] ?? 0),
+            'total_price_value'     => $netAgreedVal,
+            'gross_price_value'     => $totalVal,
+            'total_discount'        => $totalDisc,
+            'total_collected'       => $totalCollected,
+            'verified_collected'    => (float)($stats2['verified_collected'] ?? 0),
+            'unverified_collected'  => (float)($stats2['unverified_collected'] ?? 0),
+            'total_overdue'         => (float)($stats3['total_overdue'] ?? 0),
+            'total_outstanding'     => $totalOutstanding,
+            'collection_rate'       => $netAgreedVal > 0 ? round(($totalCollected / $netAgreedVal) * 100, 1) : 0.0,
+            'due_rate'              => $netAgreedVal > 0 ? round(($totalOutstanding / $netAgreedVal) * 100, 1) : 0.0
+        ];
+    }
+
+    /**
+     * Get statistics for all unassigned company projects (not assigned to any CED officer)
+     */
+    public function getUnassignedProjectsStats(): array
+    {
+        $q1 = $this->db->query("
+            SELECT 
+                COUNT(DISTINCT lb.lead_id) AS total_clients,
+                COUNT(DISTINCT CONCAT(lb.project_id, '_', lb.lead_id)) AS project_memberships_count,
+                COUNT(lb.id) AS total_units,
+                COALESCE(SUM(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0)), 0) AS total_price_value,
+                COALESCE(SUM(lb.discount_amount), 0) AS total_discount,
+                COUNT(DISTINCT lb.project_id) AS unassigned_projects_count
+            FROM lead_bookings lb
+            LEFT JOIN flats f ON lb.flat_id = f.id
+            WHERE lb.project_id NOT IN (SELECT project_id FROM ced_project_assignments WHERE status = 'active')
+              AND lb.deleted_at IS NULL
+              AND lb.booking_status NOT IN ('cancelled', 'refunded')
+              AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
+              AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+        ");
+        $stats1 = $q1 ? $q1->fetch_assoc() : [];
+
+        $q2 = $this->db->query("
+            SELECT 
+                COALESCE(SUM(CASE WHEN (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                                       AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') 
+                                  THEN lp.amount ELSE 0 END), 0) AS total_collected,
+                COALESCE(SUM(CASE WHEN (lp.payment_status IN ('paid', 'partially_paid')) 
+                                       AND lp.verification_status = 'verified' 
+                                  THEN lp.amount ELSE 0 END), 0) AS verified_collected,
+                COALESCE(SUM(CASE WHEN (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                                       AND (lp.verification_status IS NULL OR lp.verification_status != 'verified') 
+                                       AND lp.verification_status != 'rejected' 
+                                  THEN lp.amount ELSE 0 END), 0) AS unverified_collected
+            FROM lead_payments lp
+            INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+            WHERE lb.project_id NOT IN (SELECT project_id FROM ced_project_assignments WHERE status = 'active')
+              AND lb.deleted_at IS NULL
+              AND lb.booking_status NOT IN ('cancelled', 'refunded')
+              AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
+              AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+              AND lp.is_trashed = 0
+              AND COALESCE(lp.is_emi_discount, 0) = 0
+        ");
+        $stats2 = $q2 ? $q2->fetch_assoc() : [];
+
+        $q3 = $this->db->query("
+            SELECT 
+                COALESCE(SUM(es.due_emi_amount), 0) AS total_overdue
+            FROM emi_schedules es
+            INNER JOIN lead_bookings lb ON es.lead_booking_id = lb.id
+            WHERE lb.project_id NOT IN (SELECT project_id FROM ced_project_assignments WHERE status = 'active')
+              AND lb.deleted_at IS NULL
+              AND lb.booking_status NOT IN ('cancelled', 'refunded')
+              AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
+              AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+              AND es.due_date <= CURDATE()
+              AND es.status != 'paid'
+        ");
+        $stats3 = $q3 ? $q3->fetch_assoc() : [];
+
+        $totalVal = (float)($stats1['total_price_value'] ?? 0);
+        $totalDisc = (float)($stats1['total_discount'] ?? 0);
+        $netAgreedVal = max(0, $totalVal - $totalDisc);
+        $totalCollected = (float)($stats2['total_collected'] ?? 0);
+        $totalOutstanding = max(0, $netAgreedVal - $totalCollected);
+
+        return [
+            'unassigned_projects_count' => (int)($stats1['unassigned_projects_count'] ?? 0),
+            'total_clients'             => (int)($stats1['total_clients'] ?? 0),
+            'project_memberships'       => (int)($stats1['project_memberships_count'] ?? 0),
+            'total_units'               => (int)($stats1['total_units'] ?? 0),
+            'total_price_value'         => $netAgreedVal,
+            'total_collected'           => $totalCollected,
+            'verified_collected'        => (float)($stats2['verified_collected'] ?? 0),
+            'unverified_collected'      => (float)($stats2['unverified_collected'] ?? 0),
+            'total_overdue'             => (float)($stats3['total_overdue'] ?? 0),
+            'total_outstanding'         => $totalOutstanding,
+            'collection_rate'           => $netAgreedVal > 0 ? round(($totalCollected / $netAgreedVal) * 100, 1) : 0.0,
+            'due_rate'                  => $netAgreedVal > 0 ? round(($totalOutstanding / $netAgreedVal) * 100, 1) : 0.0
+        ];
+    }
 }
 

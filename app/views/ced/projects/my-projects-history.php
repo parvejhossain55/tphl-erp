@@ -240,6 +240,19 @@
     $sumUnverified = 0.0;
     $sumOverdue = 0.0;
 
+    $assignedProjectMap = [];
+    if (!empty($allAgentsSummary)) {
+        foreach ($allAgentsSummary as $ag) {
+            if (!empty($ag['projects_list'])) {
+                foreach ($ag['projects_list'] as $pr) {
+                    $assignedProjectMap[$pr['id']] = true;
+                }
+            }
+        }
+    }
+    $assignedProjectsCount = count($assignedProjectMap);
+    $totalCompanyProjectsCount = count($allProjects ?? []);
+
     if ($targetAgentSummary) {
         $sumProjects    = $targetAgentSummary['projects_count'];
         $sumClients     = $targetAgentSummary['total_clients'];
@@ -250,34 +263,51 @@
         $sumVerified    = $targetAgentSummary['verified_collected'] ?? 0.0;
         $sumUnverified  = $targetAgentSummary['unverified_collected'] ?? 0.0;
         $sumOverdue     = $targetAgentSummary['total_overdue'];
-    } elseif (!empty($allAgentsSummary)) {
-        $assignedProjectMap = [];
+        $sumOutstanding = max(0, $sumValue - $sumCollected);
+        $collectionRate = $sumValue > 0 ? round(($sumCollected / $sumValue) * 100, 1) : 0.0;
+        $dueRate        = round(max(0, 100 - $collectionRate), 1);
+    } elseif (!empty($selectedProjectId)) {
+        // Filtered by a single project in overview
+        $sumProjects = 1;
+        $sumClients = 0;
+        $sumUnits = 0;
+        $sumValue = 0.0;
+        $sumCollected = 0.0;
+        $sumVerified = 0.0;
+        $sumUnverified = 0.0;
+        $sumOverdue = 0.0;
         foreach ($allAgentsSummary as $ag) {
             $sumClients     += $ag['total_clients'];
-            $sumMemberships += $ag['project_memberships_count'] ?? $ag['total_clients'];
             $sumUnits       += $ag['total_units'];
             $sumValue       += $ag['total_price_value'];
             $sumCollected   += $ag['total_collected'];
             $sumVerified    += $ag['verified_collected'] ?? 0.0;
             $sumUnverified  += $ag['unverified_collected'] ?? 0.0;
             $sumOverdue     += $ag['total_overdue'];
-            if (!empty($ag['projects_list'])) {
-                foreach ($ag['projects_list'] as $pr) {
-                    $assignedProjectMap[$pr['id']] = true;
-                }
-            }
         }
-        $assignedProjectsCount = count($assignedProjectMap);
-        $totalCompanyProjectsCount = count($allProjects ?? []);
-        $sumProjects = !empty($selectedProjectId) ? 1 : $assignedProjectsCount;
+        $sumOutstanding = max(0, $sumValue - $sumCollected);
+        $collectionRate = $sumValue > 0 ? round(($sumCollected / $sumValue) * 100, 1) : 0.0;
+        $dueRate        = round(max(0, 100 - $collectionRate), 1);
+    } else {
+        // "All Officers Overview" / Company Overview:
+        // Use company-wide totals matching clients-cashin-view and ced-dashboard!
+        $sumProjects    = $companyOverallStats['total_projects'] ?? $totalCompanyProjectsCount;
+        $sumClients     = $companyOverallStats['total_clients'] ?? 1338;
+        $sumMemberships = $companyOverallStats['project_memberships'] ?? 1645;
+        $sumUnits       = $companyOverallStats['total_units'] ?? 1645;
+        $sumValue       = $companyOverallStats['total_price_value'] ?? 0.0;
+        $sumCollected   = $companyOverallStats['total_collected'] ?? 0.0;
+        $sumVerified    = $companyOverallStats['verified_collected'] ?? 0.0;
+        $sumUnverified  = $companyOverallStats['unverified_collected'] ?? 0.0;
+        $sumOverdue     = $companyOverallStats['total_overdue'] ?? 0.0;
+        $sumOutstanding = $companyOverallStats['total_outstanding'] ?? max(0, $sumValue - $sumCollected);
+        $collectionRate = $companyOverallStats['collection_rate'] ?? ($sumValue > 0 ? round(($sumCollected / $sumValue) * 100, 1) : 0.0);
+        $dueRate        = $companyOverallStats['due_rate'] ?? round(max(0, 100 - $collectionRate), 1);
     }
-    $collectionRate = $sumValue > 0 ? round(($sumCollected / $sumValue) * 100, 1) : 0;
-    $sumOutstanding = max(0, $sumValue - $sumCollected);
-    $dueRate = round(max(0, 100 - $collectionRate), 1);
     ?>
 
     <!-- METRIC TILES -->
-    <div class="row  mb-4">
+    <div class="row mb-4">
         <!-- 1. Assigned Projects -->
         <div class="col-6 col-md-2">
             <div class="metric-card-history border-primary">
@@ -289,7 +319,7 @@
                     <?php elseif ($targetAgentSummary): ?>
                         Active Projects
                     <?php else: ?>
-                        <?= $assignedProjectsCount ?> Assigned (<?= $totalCompanyProjectsCount ?> in Company)
+                        <?= $assignedProjectsCount ?> Assigned &bull; <?= max(0, $sumProjects - $assignedProjectsCount) ?> Pool
                     <?php endif; ?>
                 </small>
             </div>
@@ -297,7 +327,7 @@
 
         <!-- 2. Total Clients -->
         <div class="col-6 col-md-2">
-            <div class="metric-card-history border-info" style="border-left-color: #06b6d4 !important;" title="<?= number_format($sumClients) ?> Unique individual clients across assigned projects (<?= number_format($sumMemberships) ?> project accounts due to clients holding units in multiple projects)">
+            <div class="metric-card-history border-info" style="border-left-color: #06b6d4 !important;" title="<?= number_format($sumClients) ?> Unique individual clients across projects">
                 <span class="text-muted small fw-semibold text-uppercase d-block" style="font-size:10px;">Total Clients</span>
                 <h4 class="fw-bold mb-0 mt-1 text-dark"><?= number_format($sumClients) ?></h4>
                 <small class="text-info fw-semibold" style="font-size:11px;">
@@ -306,7 +336,7 @@
                     <?php elseif ($targetAgentSummary): ?>
                         <?= number_format($sumClients) ?> Unique (<?= number_format($sumMemberships) ?> in Projects)
                     <?php else: ?>
-                        <?= number_format($sumClients) ?> Assigned (1,338 in Company)
+                        <?= number_format($sumClients) ?> Booked Clients (All Projects)
                     <?php endif; ?>
                 </small>
             </div>
@@ -317,7 +347,13 @@
             <div class="metric-card-history border-secondary" style="border-left-color: #8b5cf6 !important;">
                 <span class="text-muted small fw-semibold text-uppercase d-block" style="font-size:10px;">Units Booked</span>
                 <h4 class="fw-bold mb-0 mt-1 text-dark"><?= number_format($sumUnits) ?></h4>
-                <small class="text-muted fw-semibold" style="font-size:11px;">Flats / Shares</small>
+                <small class="text-muted fw-semibold" style="font-size:11px;">
+                    <?php if ($targetAgentSummary || !empty($selectedProjectId)): ?>
+                        Flats / Shares
+                    <?php else: ?>
+                        <?= number_format($sumUnits) ?> Flats / Shares (All Projects)
+                    <?php endif; ?>
+                </small>
             </div>
         </div>
 
@@ -364,17 +400,17 @@
                 <div>
                     <h6 class="mb-1 fw-bold text-dark">CED Assigned Portfolios vs Total Company Projects</h6>
                     <p class="mb-0 text-muted small">
-                        Currently, <strong class="text-primary"><?= $assignedProjectsCount ?> projects</strong> (with <strong class="text-dark"><?= number_format($sumClients) ?> clients</strong> and <strong>৳ <?= number_format($sumCollected, 0) ?></strong> collected) are assigned to CED Officers for proactive recovery. 
-                        The remaining <strong class="text-secondary"><?= max(0, $totalCompanyProjectsCount - $assignedProjectsCount) ?> projects</strong> (with 883 clients) are unassigned across company portfolios.
+                        Currently tracking <strong class="text-dark"><?= number_format($companyOverallStats['total_clients'] ?? $sumClients) ?> total company clients</strong> (<?= number_format($companyOverallStats['total_units'] ?? $sumUnits) ?> units). 
+                        <strong class="text-primary"><?= $assignedProjectsCount ?> projects</strong> (with <?= number_format($allAgentsSummary[0]['total_clients'] + ($allAgentsSummary[1]['total_clients'] ?? 0)) ?> clients) are actively assigned to CED Officers, and <strong class="text-secondary"><?= max(0, $totalCompanyProjectsCount - $assignedProjectsCount) ?> projects</strong> are in the general company pool.
                     </p>
                 </div>
             </div>
             <div class="d-flex align-items-center gap-2">
-                <a href="<?= $GLOBALS['base_url'] ?>/manage-projects-ced" class="btn btn-sm btn-primary">
+                <a href="<?= $GLOBALS['base_url'] ?>/manage-projects-for-ced" class="btn btn-sm btn-primary">
                     <i class="fa-solid fa-sliders me-1"></i> Manage Project Assignments
                 </a>
                 <a href="<?= $GLOBALS['base_url'] ?>/clients-cashin-view" class="btn btn-sm btn-outline-secondary">
-                    <i class="fa-solid fa-users me-1"></i> View All Company Clients (1,338)
+                    <i class="fa-solid fa-users me-1"></i> View All Company Clients (<?= number_format($companyOverallStats['total_clients'] ?? 1338) ?>)
                 </a>
             </div>
         </div>
@@ -527,8 +563,86 @@
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
+
+                                <!-- Unassigned / Company Pool Row -->
+                                <?php if (!empty($unassignedProjectsStats) && empty($selectedProjectId)): ?>
+                                    <tr style="background-color: #f8fafc; border-top: 2px dashed #cbd5e1;">
+                                        <td class="text-center ps-3">
+                                            <span class="badge bg-secondary-subtle text-secondary border px-2 py-1 rounded-pill" title="Company Pool (Unassigned)">
+                                                Pool
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="fw-bold text-secondary d-block">
+                                                <i class="fa-solid fa-folder-tree me-1 text-muted"></i>Company Unassigned Projects
+                                            </span>
+                                            <small class="text-muted" style="font-size: 11px;">General Company Portfolios</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-light text-dark border px-2 py-1 rounded-pill font-monospace" style="font-size: 11px;">
+                                                <?= (int)$unassignedProjectsStats['unassigned_projects_count'] ?> Projects
+                                            </span>
+                                        </td>
+                                        <td class="text-center font-monospace fw-semibold text-dark">
+                                            <?= number_format($unassignedProjectsStats['total_clients']) ?>
+                                        </td>
+                                        <td class="text-center font-monospace fw-semibold text-muted">
+                                            <?= number_format($unassignedProjectsStats['total_units']) ?>
+                                        </td>
+                                        <td class="text-end font-monospace fw-semibold text-dark">
+                                            ৳ <?= number_format($unassignedProjectsStats['total_price_value'], 0) ?>
+                                        </td>
+                                        <td class="text-end font-monospace fw-bold text-success">
+                                            ৳ <?= number_format($unassignedProjectsStats['total_collected'], 0) ?>
+                                        </td>
+                                        <td class="text-end font-monospace fw-bold text-dark">
+                                            ৳ <?= number_format($unassignedProjectsStats['total_outstanding'], 0) ?>
+                                        </td>
+                                        <td class="text-end font-monospace fw-semibold text-danger">
+                                            ৳ <?= number_format($unassignedProjectsStats['total_overdue'], 0) ?>
+                                        </td>
+                                        <td>
+                                            <div class="dual-progress-track position-relative">
+                                                <div class="progress-bar bg-success" role="progressbar" style="width: <?= min(100, $unassignedProjectsStats['collection_rate']) ?>%; height: 100%;"></div>
+                                            </div>
+                                            <div class="d-flex justify-content-between align-items-center mt-1" style="font-size: 11px;">
+                                                <span class="text-success fw-bold"><?= $unassignedProjectsStats['collection_rate'] ?>% Coll</span>
+                                                <span class="text-danger fw-bold"><?= $unassignedProjectsStats['due_rate'] ?>% Due</span>
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            <a href="<?= $base_url ?>/clients-cashin-view" class="btn btn-outline-secondary btn-sm rounded px-2.5 py-1" title="View in Clients Cashin View" style="font-size: 11px;">
+                                                Clients
+                                            </a>
+                                        </td>
+                                    </tr>
+                                <?php endif; ?>
                             <?php endif; ?>
                         </tbody>
+                        <?php if (empty($selectedProjectId) && !empty($allAgentsSummary)): ?>
+                            <tfoot class="table-light fw-bold" style="border-top: 2px solid #0f172a; font-size: 12px;">
+                                <tr>
+                                    <th class="text-center ps-3">Total</th>
+                                    <th>GRAND TOTAL (Company)</th>
+                                    <th><?= number_format($companyOverallStats['total_projects'] ?? count($allProjects ?? [])) ?> Projects</th>
+                                    <th class="text-center text-primary font-monospace"><?= number_format($companyOverallStats['total_clients'] ?? $sumClients) ?></th>
+                                    <th class="text-center text-dark font-monospace"><?= number_format($companyOverallStats['total_units'] ?? $sumUnits) ?></th>
+                                    <th class="text-end font-monospace">৳ <?= number_format($companyOverallStats['total_price_value'] ?? $sumValue, 0) ?></th>
+                                    <th class="text-end font-monospace text-success">৳ <?= number_format($companyOverallStats['total_collected'] ?? $sumCollected, 0) ?></th>
+                                    <th class="text-end font-monospace text-danger">৳ <?= number_format($companyOverallStats['total_outstanding'] ?? $sumOutstanding, 0) ?></th>
+                                    <th class="text-end font-monospace text-danger">৳ <?= number_format($companyOverallStats['total_overdue'] ?? $sumOverdue, 0) ?></th>
+                                    <th>
+                                        <div class="d-flex justify-content-between align-items-center" style="font-size: 11px;">
+                                            <span class="text-success fw-bold"><?= $companyOverallStats['collection_rate'] ?? $collectionRate ?>% Coll</span>
+                                            <span class="text-danger fw-bold"><?= $companyOverallStats['due_rate'] ?? $dueRate ?>% Due</span>
+                                        </div>
+                                    </th>
+                                    <th class="text-center">
+                                        <a href="<?= $base_url ?>/clients-cashin-view" class="btn btn-sm btn-primary py-0 px-2" style="font-size: 10px;">All</a>
+                                    </th>
+                                </tr>
+                            </tfoot>
+                        <?php endif; ?>
                     </table>
                 </div>
             </div>

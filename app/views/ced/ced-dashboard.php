@@ -164,12 +164,12 @@ $statusBadgeMap = [
         <div class="card__wrapper h-100">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
-                    <span><i class="fa-light fa-badge-check"></i></span>
+                    <span><i class="fa-light fa-building"></i></span>
                 </div>
                 <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Full Payment Completed</h6>
+                    <h6 class="card__sub-title mb-10">Units Booked</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title"><?= number_format($paymentStats['full_payment_completed'] ?? 0) ?></h4>
+                        <h4 class="card__title"><?= number_format($paymentStats['units_booked'] ?? $paymentStats['total_units_booked'] ?? $paymentStats['approved_bookings'] ?? 0) ?></h4>
                     </div>
                 </div>
             </div>

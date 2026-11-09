@@ -110,9 +110,15 @@ class CedCollectionStatementController extends Controller
                         DATE_FORMAT(MAX(lp.payment_date), '%m') as latest_month,
                         DATE_FORMAT(MAX(lp.payment_date), '%M %Y') as latest_month_name
                     FROM lead_payments lp
-                    WHERE lp.created_by = {$cId}
+                    INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+                    WHERE (lp.created_by = {$cId} OR lb.project_id IN (SELECT project_id FROM ced_project_assignments WHERE user_id = {$cId}))
                       AND lp.is_trashed = 0
+                      AND COALESCE(lp.is_emi_discount, 0) = 0
                       AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected')
+                      AND lb.deleted_at IS NULL
+                      AND lb.booking_status NOT IN ('refunded', 'cancelled')
+                      AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
+                      AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
                 ");
                 if ($qHist && $hRow = $qHist->fetch_assoc()) {
                     if ((int)$hRow['total_life_trx'] > 0) {
@@ -466,47 +472,56 @@ class CedCollectionStatementController extends Controller
         $today = date('Y-m-d');
 
         if ($pt === 'daily' || $pt === 'today') {
+            $lbl = 'Today (' . date('d M, Y') . ')';
             return [
-                'start_date' => $today,
-                'end_date'   => $today,
-                'label'      => 'Today (' . date('d M, Y') . ')'
+                'start_date'   => $today,
+                'end_date'     => $today,
+                'label'        => $lbl,
+                'period_label' => $lbl
             ];
         }
 
         if ($pt === 'weekly' || $pt === 'this_week') {
             $s = date('Y-m-d', strtotime('monday this week'));
             $e = date('Y-m-d', strtotime('sunday this week'));
+            $lbl = 'This Week (' . date('d M', strtotime($s)) . ' - ' . date('d M, Y', strtotime($e)) . ')';
             return [
-                'start_date' => $s,
-                'end_date'   => $e,
-                'label'      => 'This Week (' . date('d M', strtotime($s)) . ' - ' . date('d M, Y', strtotime($e)) . ')'
+                'start_date'   => $s,
+                'end_date'     => $e,
+                'label'        => $lbl,
+                'period_label' => $lbl
             ];
         }
 
         if ($pt === 'custom' && (!empty($filters['start_date']) || !empty($filters['end_date']))) {
             $s = !empty($filters['start_date']) ? $filters['start_date'] : '2015-01-01';
             $e = !empty($filters['end_date'])   ? $filters['end_date']   : date('Y-m-d');
+            $lbl = date('d M, Y', strtotime($s)) . ' to ' . date('d M, Y', strtotime($e));
             return [
-                'start_date' => $s,
-                'end_date'   => $e,
-                'label'      => date('d M, Y', strtotime($s)) . ' to ' . date('d M, Y', strtotime($e))
+                'start_date'   => $s,
+                'end_date'     => $e,
+                'label'        => $lbl,
+                'period_label' => $lbl
             ];
         }
 
         if ($pt === 'all_time') {
             return [
-                'start_date' => '2015-01-01',
-                'end_date'   => '2099-12-31',
-                'label'      => 'All Time'
+                'start_date'   => '2015-01-01',
+                'end_date'     => '2099-12-31',
+                'label'        => 'All Time',
+                'period_label' => 'All Time'
             ];
         }
 
         if ($pt === 'yearly' || $filters['month'] === 'all') {
             $y = $filters['year'];
+            $lbl = "Whole Year {$y}";
             return [
-                'start_date' => "{$y}-01-01",
-                'end_date'   => "{$y}-12-31",
-                'label'      => "Whole Year {$y}"
+                'start_date'   => "{$y}-01-01",
+                'end_date'     => "{$y}-12-31",
+                'label'        => $lbl,
+                'period_label' => $lbl
             ];
         }
 
@@ -521,10 +536,12 @@ class CedCollectionStatementController extends Controller
         }
         $s = "{$y}-{$m}-01";
         $e = date('Y-m-t', strtotime($s));
+        $lbl = date('F Y', strtotime($s));
         return [
-            'start_date' => $s,
-            'end_date'   => $e,
-            'label'      => date('F Y', strtotime($s))
+            'start_date'   => $s,
+            'end_date'     => $e,
+            'label'        => $lbl,
+            'period_label' => $lbl
         ];
     }
 
@@ -536,7 +553,11 @@ class CedCollectionStatementController extends Controller
         $conds = [
             "lp.payment_date BETWEEN '{$startDate}' AND '{$endDate}'",
             "lp.is_trashed = 0",
-            "COALESCE(lp.is_emi_discount, 0) = 0"
+            "COALESCE(lp.is_emi_discount, 0) = 0",
+            "lb.deleted_at IS NULL",
+            "lb.booking_status NOT IN ('refunded', 'cancelled')",
+            "(lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')",
+            "lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))"
         ];
 
         // Team scope: CED Only vs CED & Management vs All
@@ -723,7 +744,9 @@ class CedCollectionStatementController extends Controller
         // Total Sold Value & Bookings (from active bookings in lead_bookings)
         $condsSold = [
             "lb.deleted_at IS NULL",
-            "lb.booking_status IN ('booked', 'completed')"
+            "lb.booking_status NOT IN ('refunded', 'cancelled')",
+            "(lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')",
+            "lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))"
         ];
         if (!empty($filters['project_id'])) {
             $pId = (int)$filters['project_id'];
@@ -732,10 +755,11 @@ class CedCollectionStatementController extends Controller
         $whereSold = implode(" AND ", $condsSold);
         $sqlSold = "
             SELECT 
-                COUNT(*) as total_sold_units,
+                COUNT(DISTINCT lb.id) as total_sold_units,
                 COUNT(DISTINCT lb.lead_id) as total_sold_clients,
-                COALESCE(SUM(lb.agreement_value), 0) as total_sold_value
+                COALESCE(SUM(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0)), 0) - COALESCE(SUM(lb.discount_amount), 0) as total_sold_value
             FROM lead_bookings lb
+            LEFT JOIN flats f ON lb.flat_id = f.id
             WHERE {$whereSold}
         ";
         $resSold = $this->db->query($sqlSold);

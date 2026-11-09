@@ -780,7 +780,7 @@ html.dark .cs-matrix-tabs .nav-link.active {
                 </div>
                 <div>
                     <h6 class="mb-1 text-primary fw-bold" style="font-size: 15px;">
-                        No Collections Recorded in <?= htmlspecialchars($date_info['period_label']) ?> for <?= htmlspecialchars($collector_history_notice['collector_name']) ?>
+                        No Collections Recorded in <?= htmlspecialchars($date_info['label'] ?? $date_info['period_label'] ?? 'Selected Period') ?> for <?= htmlspecialchars($collector_history_notice['collector_name']) ?>
                     </h6>
                     <div class="text-dark small">
                         This executive has <strong><?= number_format($collector_history_notice['total_life_trx']) ?> collections</strong> totaling <strong>৳<?= number_format($collector_history_notice['total_life_amount'], 2) ?></strong> recorded in the system. Their most recent collections were in <strong><?= htmlspecialchars($collector_history_notice['latest_month_name']) ?></strong> (last payment date: <?= date('d M, Y', strtotime($collector_history_notice['latest_payment_date'])) ?>).

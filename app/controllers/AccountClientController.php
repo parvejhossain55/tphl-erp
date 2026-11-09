@@ -264,6 +264,7 @@ class AccountClientController extends Controller
                 'total_clients' => $totalClients,
                 'full_payment_completed' => (int)($paymentStats['full_payment_completed'] ?? 0),
                 'approved_bookings' => (int)($paymentStats['approved_bookings'] ?? 0),
+                'units_booked' => (int)($paymentStats['units_booked'] ?? $paymentStats['total_units_booked'] ?? $paymentStats['approved_bookings'] ?? 0),
                 'limit' => $limit,
                 'payment_type' => $paymentType,
                 'table_head_html' => $tableHeadHtml,
@@ -1251,6 +1252,7 @@ public function indexTwo($bookingId = null)
                 'total_clients' => $totalClients,
                 'full_payment_completed' => (int)($paymentStats['full_payment_completed'] ?? 0),
                 'approved_bookings' => (int)($paymentStats['approved_bookings'] ?? 0),
+                'units_booked' => (int)($paymentStats['units_booked'] ?? $paymentStats['total_units_booked'] ?? $paymentStats['approved_bookings'] ?? 0),
                 'limit' => $limit,
                 'table_html' => $tableHtml,
                 'pagination_html' => $paginationHtml,
@@ -3843,10 +3845,25 @@ public function viewPaymentInvoice($paymentId = null)
     }
 
     // Auto-detect batch if single payment requested and it is part of a multi-payment batch
-    if (count($payments) === 1 && !empty($payments[0]['batch_id'])) {
+    $forceSingle = !empty($_GET['single']) || !empty($_GET['individual']);
+    if (!$forceSingle && count($payments) === 1 && !empty($payments[0]['batch_id'])) {
         $batchPayments = $this->clientModel->getTransactionsByBatchId($payments[0]['batch_id'], $payments[0]['booking_id'] ?? null);
+        // Exclude trashed or rejected payments
+        $batchPayments = array_values(array_filter($batchPayments, function($p) {
+            $isTrashed = !empty($p['is_trashed']) && (int)$p['is_trashed'] === 1;
+            $isRejected = strtolower(trim($p['verification_status'] ?? '')) === 'rejected';
+            return !$isTrashed && !$isRejected;
+        }));
+
         if (count($batchPayments) > 1) {
-            $payments = $batchPayments;
+            // Only auto-merge if all payments in the batch share the same payment_type (e.g. split bulk EMI),
+            // or if batch receipt is explicitly requested via &batch=1.
+            // For distinct payment types (e.g. Booking Money vs Registration Money), keep individual receipt.
+            $types = array_unique(array_filter(array_map(fn($p) => $p['payment_type'] ?? '', $batchPayments)));
+            $isAllEmi = count($types) === 1 && in_array(reset($types), ['emi', 'emi_due_settlement']);
+            if ($isAllEmi || !empty($_GET['batch'])) {
+                $payments = $batchPayments;
+            }
         }
     }
 
@@ -3932,8 +3949,19 @@ public function verifyPublicReceipt($paymentId = null)
             if ($singlePay && (empty($singlePay['is_trashed']) || $singlePay['is_trashed'] == 0)) {
                 if (!empty($singlePay['batch_id'])) {
                     $batchPayments = $this->clientModel->getTransactionsByBatchId($singlePay['batch_id'], $singlePay['booking_id'] ?? null);
+                    $batchPayments = array_values(array_filter($batchPayments, function($p) {
+                        $isTrashed = !empty($p['is_trashed']) && (int)$p['is_trashed'] === 1;
+                        $isRejected = strtolower(trim($p['verification_status'] ?? '')) === 'rejected';
+                        return !$isTrashed && !$isRejected;
+                    }));
                     if (count($batchPayments) > 1) {
-                        $payments = $batchPayments;
+                        $types = array_unique(array_filter(array_map(fn($p) => $p['payment_type'] ?? '', $batchPayments)));
+                        $isAllEmi = count($types) === 1 && in_array(reset($types), ['emi', 'emi_due_settlement']);
+                        if ($isAllEmi || !empty($_GET['batch'])) {
+                            $payments = $batchPayments;
+                        } else {
+                            $payments = [$singlePay];
+                        }
                     } else {
                         $payments = [$singlePay];
                     }
@@ -3994,8 +4022,19 @@ public function downloadPublicReceiptPdf($paymentId = null)
             if ($singlePay && (empty($singlePay['is_trashed']) || $singlePay['is_trashed'] == 0)) {
                 if (!empty($singlePay['batch_id'])) {
                     $batchPayments = $this->clientModel->getTransactionsByBatchId($singlePay['batch_id'], $singlePay['booking_id'] ?? null);
+                    $batchPayments = array_values(array_filter($batchPayments, function($p) {
+                        $isTrashed = !empty($p['is_trashed']) && (int)$p['is_trashed'] === 1;
+                        $isRejected = strtolower(trim($p['verification_status'] ?? '')) === 'rejected';
+                        return !$isTrashed && !$isRejected;
+                    }));
                     if (count($batchPayments) > 1) {
-                        $payments = $batchPayments;
+                        $types = array_unique(array_filter(array_map(fn($p) => $p['payment_type'] ?? '', $batchPayments)));
+                        $isAllEmi = count($types) === 1 && in_array(reset($types), ['emi', 'emi_due_settlement']);
+                        if ($isAllEmi || !empty($_GET['batch'])) {
+                            $payments = $batchPayments;
+                        } else {
+                            $payments = [$singlePay];
+                        }
                     } else {
                         $payments = [$singlePay];
                     }
