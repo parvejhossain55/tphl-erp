@@ -1201,12 +1201,18 @@ $todayDateFormatted = date('j F');
 
     <!-- Scope Tabs (Single-page Ajax switching) -->
     <div class="mw-tabs-wrap">
+        <a class="mw-tab-item <?= $tab === 'all' ? 'active' : '' ?>" 
+           data-tab="all" href="javascript:void(0);">All</a>
         <a class="mw-tab-item <?= $tab === 'assigned_to_me' ? 'active' : '' ?>" 
            data-tab="assigned_to_me" href="javascript:void(0);">Assigned to me</a>
         <a class="mw-tab-item <?= $tab === 'assigned_by_me' ? 'active' : '' ?>" 
            data-tab="assigned_by_me" href="javascript:void(0);">Assigned by me</a>
         <a class="mw-tab-item <?= $tab === 'following' ? 'active' : '' ?>" 
            data-tab="following" href="javascript:void(0);">Following</a>
+        <a class="mw-tab-item <?= $tab === 'reviewer' ? 'active' : '' ?>" 
+           data-tab="reviewer" href="javascript:void(0);">Reviewer</a>
+        <a class="mw-tab-item <?= $tab === 'realestate_project' ? 'active' : '' ?>" 
+           data-tab="realestate_project" href="javascript:void(0);">Realestate Project</a>
     </div>
 
     <!-- 4 Summary Metric Cards (Instant Filter without reload) -->
