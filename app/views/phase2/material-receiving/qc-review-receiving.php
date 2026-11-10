@@ -14,8 +14,10 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) session_start();
 $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-// Roles: 1=Super Admin, 3=Admin, 13=QC Engineer, 22/23=Other Admins
-$canQC = in_array($roleId, [1, 3, 13, 22, 23]);
+// Roles: 1=Super Admin, 3=Admin, 13=QC Engineer, 20=Operation Head, 22=PM Head, 23=Purchase Exec, 24=QC & Audit Head, 25=QC Exec
+$canQC = in_array($roleId, [1, 3, 13, 20, 22, 23, 24, 25])
+         || hasPermission('QC & Internal Audit')
+         || hasPermission('QC Dashboard');
 $isPending = ($receiving['overall_status'] === 'Pending QC');
 ?>
 
@@ -56,6 +58,9 @@ $isPending = ($receiving['overall_status'] === 'Pending QC');
                             <span class="fw-bold">
                                 <?= date('d M Y', strtotime($receiving['receiving_date'])) ?>
                                 by <?= htmlspecialchars($receiving['received_by_name'] ?? '—') ?>
+                                <?php if (!empty($receiving['received_by_emp_id'])): ?>
+                                    <span class="badge bg-light text-dark border ms-1" style="font-size:10px;">ID: <?= htmlspecialchars($receiving['received_by_emp_id']) ?></span>
+                                <?php endif; ?>
                             </span>
                         </div>
                     </div>
@@ -245,21 +250,50 @@ $isPending = ($receiving['overall_status'] === 'Pending QC');
                         </div>
                     <?php endif; ?>
                     <!-- QC COMPLETED — Show Results -->
-                    <?php if (!empty($receiving['qc_note']) || !empty($receiving['qc_photo'])): ?>
-                    <div class="row  p-3 rounded mx-0 mb-4 border border-info">
-                        <div class="col-md-8">
-                            <label class="small text-uppercase text-muted d-block fw-bold text-info">QC Note</label>
-                            <p class="mb-0 small"><?= nl2br(htmlspecialchars($receiving['qc_note'] ?? '—')) ?></p>
+                    <?php if (!$isPending): ?>
+                    <div class="card__wrapper shadow-sm mb-4 border border-info" style="border-radius:12px; overflow:hidden;">
+                        <div class="card__header bg-light d-flex justify-content-between align-items-center py-2 px-3">
+                            <h6 class="card__title mb-0 text-info fw-bold">
+                                <i class="bi bi-shield-check me-2"></i>QC Inspection Details
+                            </h6>
+                            <span class="badge <?= $badge ?> px-3"><?= htmlspecialchars($receiving['overall_status']) ?></span>
                         </div>
-                        <div class="col-md-4">
-                            <label class="small text-uppercase text-muted d-block fw-bold text-info">QC Photo/Doc</label>
-                            <?php if (!empty($receiving['qc_photo'])): ?>
-                                <a href="<?= $base_url . $receiving['qc_photo'] ?>" target="_blank" class="btn btn-sm btn-info text-white">
-                                    <i class="bi bi-eye"></i> View QC Doc
-                                </a>
-                            <?php else: ?>
-                                <span class="text-muted small">—</span>
-                            <?php endif; ?>
+                        <div class="card__body p-3">
+                            <div class="row">
+                                <div class="col-md-4 mb-2">
+                                    <label class="small text-uppercase text-muted d-block fw-bold">Inspected &amp; Reviewed By</label>
+                                    <span class="fw-bold text-dark">
+                                        <i class="bi bi-person-check text-primary me-1"></i>
+                                        <?= htmlspecialchars($receiving['qc_checked_by_name'] ?? 'QC Inspector') ?>
+                                        <?php if (!empty($receiving['qc_checked_by_emp_id'])): ?>
+                                            <span class="badge bg-light text-dark border ms-1" style="font-size:11px;">ID: <?= htmlspecialchars($receiving['qc_checked_by_emp_id']) ?></span>
+                                        <?php endif; ?>
+                                    </span>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <label class="small text-uppercase text-muted d-block fw-bold">Inspection Date &amp; Time</label>
+                                    <span class="fw-bold text-dark">
+                                        <i class="bi bi-clock-history text-secondary me-1"></i>
+                                        <?= !empty($receiving['qc_checked_at']) ? date('d M Y, h:i A', strtotime($receiving['qc_checked_at'])) : (!empty($receiving['updated_at']) ? date('d M Y, h:i A', strtotime($receiving['updated_at'])) : '—') ?>
+                                    </span>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <label class="small text-uppercase text-muted d-block fw-bold">QC Document / Report</label>
+                                    <?php if (!empty($receiving['qc_photo'])): ?>
+                                        <a href="<?= $base_url . $receiving['qc_photo'] ?>" target="_blank" class="btn btn-sm btn-outline-info">
+                                            <i class="bi bi-eye me-1"></i> View Document
+                                        </a>
+                                    <?php else: ?>
+                                        <span class="text-muted small">—</span>
+                                    <?php endif; ?>
+                                </div>
+                                <?php if (!empty($receiving['qc_note'])): ?>
+                                <div class="col-12 mt-2 pt-2 border-top">
+                                    <label class="small text-uppercase text-muted d-block fw-bold">QC Inspection Note</label>
+                                    <p class="mb-0 text-secondary" style="font-size:13px;"><?= nl2br(htmlspecialchars($receiving['qc_note'])) ?></p>
+                                </div>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </div>
                     <?php endif; ?>
@@ -338,7 +372,81 @@ $isPending = ($receiving['overall_status'] === 'Pending QC');
                         </div>
                     </div>
 
-                    <!-- PM APPROVAL SECTION -->
+                    <!-- HEAD / AUDIT APPROVAL SECTION -->
+                    <?php if (!empty($receiving['head_approved_by'])): ?>
+                    <div class="card__wrapper shadow-sm mt-4 border border-success" style="border-radius:12px; overflow:hidden;">
+                        <div class="card__header bg-light d-flex justify-content-between align-items-center py-2 px-3">
+                            <h6 class="card__title mb-0 text-success fw-bold">
+                                <i class="bi bi-patch-check-fill me-2"></i>QC &amp; Internal Audit Head Approval
+                            </h6>
+                            <span class="badge bg-success px-3">Endorsed &amp; Approved</span>
+                        </div>
+                        <div class="card__body p-3">
+                            <div class="row">
+                                <div class="col-md-4 mb-2">
+                                    <label class="small text-uppercase text-muted d-block fw-bold">Head / Audit Approved By</label>
+                                    <span class="fw-bold text-dark">
+                                        <i class="bi bi-person-badge text-success me-1"></i>
+                                        <?= htmlspecialchars($receiving['head_approved_by_name'] ?? 'Audit Head') ?>
+                                        <?php if (!empty($receiving['head_approved_by_emp_id'])): ?>
+                                            <span class="badge bg-light text-dark border ms-1" style="font-size:11px;">ID: <?= htmlspecialchars($receiving['head_approved_by_emp_id']) ?></span>
+                                        <?php endif; ?>
+                                    </span>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <label class="small text-uppercase text-muted d-block fw-bold">Approval Date &amp; Time</label>
+                                    <span class="fw-bold text-dark">
+                                        <i class="bi bi-clock-history text-secondary me-1"></i>
+                                        <?= !empty($receiving['head_approved_at']) ? date('d M Y, h:i A', strtotime($receiving['head_approved_at'])) : '—' ?>
+                                    </span>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <label class="small text-uppercase text-muted d-block fw-bold">Approval Status</label>
+                                    <span class="badge bg-success px-3 py-1" style="font-size:12px;">
+                                        <i class="bi bi-check-all me-1"></i> Approved
+                                    </span>
+                                </div>
+                                <?php if (!empty($receiving['head_note'])): ?>
+                                <div class="col-12 mt-2 pt-2 border-top">
+                                    <label class="small text-uppercase text-muted d-block fw-bold">Head Remarks / Note</label>
+                                    <p class="mb-0 text-secondary" style="font-size:13px;"><?= nl2br(htmlspecialchars($receiving['head_note'])) ?></p>
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <?php elseif (!$isPending): ?>
+                        <?php 
+                        $canHeadApprove = in_array($roleId, [1, 3, 15, 20, 22, 24, 25, 33]) || (function_exists('hasPermission') && hasPermission('QC & Internal Audit'));
+                        if ($canHeadApprove): 
+                        ?>
+                        <div class="con-panel mt-4 shadow-sm" style="border:1.5px solid rgba(var(--clr-theme-secondary-rgb),.4); background:rgba(var(--clr-theme-secondary-rgb),.03); border-radius:12px; padding:20px;">
+                            <div class="d-flex align-items-center mb-3">
+                                <div style="width:42px;height:42px;border-radius:50%;background:rgba(var(--clr-theme-secondary-rgb),.15);display:flex;align-items:center;justify-content:center;margin-right:15px;flex-shrink:0;">
+                                    <i class="fal fa-user-check" style="color:var(--clr-theme-secondary);font-size:20px;"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold mb-1" style="color:#6d28d9;font-size:15px;">QC &amp; Internal Audit Head Endorsement / Approval</h6>
+                                    <p class="text-muted small mb-0">Initial QC review was completed by <strong><?= htmlspecialchars($receiving['qc_checked_by_name'] ?? 'QC Inspector') ?><?= !empty($receiving['qc_checked_by_emp_id']) ? ' (ID: ' . htmlspecialchars($receiving['qc_checked_by_emp_id']) . ')' : '' ?></strong>. As QC &amp; Internal Audit Head, you can endorse and approve this GRN.</p>
+                                </div>
+                            </div>
+                            
+                            <form action="<?= $GLOBALS['base_url'] ?>/con-material-receiving-head/<?= $receiving['id'] ?>" method="POST">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold" style="font-size:12px;color:#4b5563;">Head Approval / Audit Note (Optional)</label>
+                                    <textarea name="head_note" class="form-control" rows="2" placeholder="Remarks, audit comments or final sign-off note..." style="border-radius:8px;border:1px solid #cbd5e1;font-size:13px;"></textarea>
+                                </div>
+                                <div class="text-end">
+                                    <button type="submit" class="btn px-4 fw-bold" style="background:linear-gradient(135deg,var(--clr-theme-secondary),#6d28d9);color:#fff;border-radius:8px;font-size:13px;padding:9px 22px;border:none;box-shadow:0 4px 6px -1px rgba(var(--clr-theme-secondary-rgb),.3);" onclick="return confirm('Confirm Head Approval for this GRN?')">
+                                        <i class="fal fa-check-double me-1"></i> Approve as QC &amp; Internal Audit Head
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        <?php endif; ?>
+                    <?php endif; ?>
+
+                    <!-- PM APPROVAL SECTION (Optional) -->
                     <?php if ($receiving['overall_status'] === 'Pending PM'): ?>
                     <?php 
                         if (session_status() === PHP_SESSION_NONE) session_start();
@@ -369,17 +477,10 @@ $isPending = ($receiving['overall_status'] === 'Pending QC');
                             </div>
                         </form>
                     </div>
-                    <?php else: ?>
-                        <div class="con-panel mt-4" style="border-color:rgba(245,158,11,.3); background:rgba(245,158,11,.05); border-radius:10px; padding:15px;">
-                            <div class="d-flex align-items-center">
-                                <i class="fal fa-hourglass-half me-2" style="color:#d97706;font-size:16px;"></i>
-                                <span style="color:#b45309;font-size:13px;font-weight:600;">Waiting for PM Approval to update stock.</span>
-                            </div>
-                        </div>
                     <?php endif; ?>
-                    <?php elseif (in_array($receiving['overall_status'], ['Accepted', 'Partially Accepted', 'Rejected']) && !empty($receiving['pm_approved_at'])): ?>
+                    <?php elseif (!empty($receiving['pm_approved_at'])): ?>
                         <div class="mt-3 alert alert-success small mb-0">
-                           Fully Approved by PM on <?= date('d M Y h:i A', strtotime($receiving['pm_approved_at'])) ?>
+                           Fully Approved by PM <?= !empty($receiving['pm_checked_by_name']) ? '<strong>(' . htmlspecialchars($receiving['pm_checked_by_name']) . ')</strong>' : '' ?> on <?= date('d M Y h:i A', strtotime($receiving['pm_approved_at'])) ?>
                             <?php if(!empty($receiving['pm_note'])): ?>
                                 <br><strong class="mt-1 d-block">PM Note:</strong> <?= htmlspecialchars($receiving['pm_note']) ?>
                             <?php endif; ?>

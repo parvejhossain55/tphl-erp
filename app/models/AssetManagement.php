@@ -1140,7 +1140,7 @@ class AssetManagement
              FROM project_extra_assets pea
              LEFT JOIN office_branches ob ON ob.id = pea.office_branch_id
              LEFT JOIN office_procurement_categories cat ON cat.id = pea.item_category_id
-              LEFT JOIN vendors v ON v.id = pea.vendor_id
+             LEFT JOIN vendors v ON v.id = pea.vendor_id
              LEFT JOIN projects p ON p.id = pea.project_id
              LEFT JOIN users u_req ON u_req.id = pea.requested_by
              LEFT JOIN employees e_req ON e_req.user_id = u_req.id

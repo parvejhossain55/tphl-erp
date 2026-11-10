@@ -46,13 +46,27 @@ class Con_MaterialReceiving extends Model
         $stmt = $this->db->prepare(
             "SELECT mr.*, po.request_id, po.status AS po_status,
                     p.name AS project_name, w.name AS warehouse_name,
-                    u.full_name AS received_by_name
+                    u.full_name AS received_by_name,
+                    COALESCE(e_rec.employee_id, u.employee_id, CONCAT('EMP-', u.id)) AS received_by_emp_id,
+                    qcu.full_name AS qc_checked_by_name,
+                    COALESCE(e_qc.employee_id, qcu.employee_id, CONCAT('EMP-', qcu.id)) AS qc_checked_by_emp_id,
+                    pmu.full_name AS pm_checked_by_name,
+                    COALESCE(e_pm.employee_id, pmu.employee_id, CONCAT('EMP-', pmu.id)) AS pm_checked_by_emp_id,
+                    hdu.full_name AS head_approved_by_name,
+                    COALESCE(e_hd.employee_id, hdu.employee_id, CONCAT('EMP-', hdu.id)) AS head_approved_by_emp_id
              FROM {$this->table} mr
              JOIN purchase_orders po ON po.id = mr.purchase_order_id
              JOIN purchase_requests pr ON pr.id = po.request_id
              LEFT JOIN projects p ON p.id = pr.project_id
              LEFT JOIN con_warehouses w ON w.id = mr.warehouse_id
              LEFT JOIN users u ON u.id = mr.received_by
+             LEFT JOIN employees e_rec ON (e_rec.user_id = u.id OR e_rec.id = u.employee_id)
+             LEFT JOIN users qcu ON qcu.id = mr.qc_checked_by
+             LEFT JOIN employees e_qc ON (e_qc.user_id = qcu.id OR e_qc.id = qcu.employee_id)
+             LEFT JOIN users pmu ON pmu.id = mr.pm_checked_by
+             LEFT JOIN employees e_pm ON (e_pm.user_id = pmu.id OR e_pm.id = pmu.employee_id)
+             LEFT JOIN users hdu ON hdu.id = mr.head_approved_by
+             LEFT JOIN employees e_hd ON (e_hd.user_id = hdu.id OR e_hd.id = hdu.employee_id)
              WHERE mr.id = ?"
         );
         $stmt->bind_param('i', $id);
@@ -320,28 +334,44 @@ class Con_MaterialReceiving extends Model
                 ]);
             }
 
-            // 3. Update QC fields on header — set 'Pending PM' for PM approval step
-            $overallStatus = 'Pending PM';
+            // 3. Update QC fields on header
+            if ($acceptedCount === $totalCount && $totalCount > 0) {
+                $overallStatus = 'Accepted';
+            } elseif ($rejectedCount === $totalCount && $totalCount > 0) {
+                $overallStatus = 'Rejected';
+            } else {
+                $overallStatus = 'Partially Accepted';
+            }
             $qcNote  = $itemStatuses['qc_note'] ?? null;
             $qcPhoto = $itemStatuses['qc_photo'] ?? null;
 
             $oStmt = $this->db->prepare(
-                "UPDATE {$this->table} SET overall_status = ?, qc_checked_by = ?, qc_note = COALESCE(?, qc_note), qc_photo = COALESCE(?, qc_photo) WHERE id = ?"
+                "UPDATE {$this->table} 
+                 SET overall_status = ?, 
+                     qc_checked_by = ?, 
+                     qc_checked_at = NOW(), 
+                     qc_note = COALESCE(?, qc_note), 
+                     qc_photo = COALESCE(?, qc_photo),
+                     updated_at = NOW() 
+                 WHERE id = ?"
             );
             $oStmt->bind_param('sissi', $overallStatus, $userId, $qcNote, $qcPhoto, $receivingId);
             $oStmt->execute();
 
-            // Notify PMs
+            // 4. Update PO status & delivery tracker
+            $this->checkAndUpdatePOStatus($receiving['purchase_order_id']);
+
+            // Notify PMs / Management
             require_once __DIR__ . '/HeadNotification.php';
             $notifModel = new \HeadNotification($this->db);
-            $pmQuery = $this->db->query("SELECT id FROM users WHERE role_id IN (1, 3, 15, 20, 22, 23)");
+            $pmQuery = $this->db->query("SELECT id FROM users WHERE role_id IN (1, 3, 15, 20, 22, 23, 24)");
             while ($pm = $pmQuery->fetch_assoc()) {
                 $notifModel->create([
                     'user_id' => $pm['id'],
                     'project_id' => 0,
-                    'type' => 'GRN PM Approval',
-                    'title' => 'Pending PM Approval',
-                    'message' => "QC Review completed for GRN-{$receivingId}. Waiting for PM acknowledgement.",
+                    'type' => 'GRN QC Approval',
+                    'title' => 'QC Review Completed',
+                    'message' => "QC Review completed for GRN-{$receivingId} ({$overallStatus}). Stock updated.",
                     'url' => "/con-material-receiving-qc/{$receivingId}"
                 ]);
             }
@@ -351,6 +381,40 @@ class Con_MaterialReceiving extends Model
         } catch (\Throwable $e) {
             $this->db->rollback();
             error_log("QC Review failed: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // =========================================================================
+    // HEAD / AUDIT REVIEW (QC & Internal Audit Head / PM / Management)
+    // =========================================================================
+
+    public function headReview($receivingId, $userId, $headNote = '')
+    {
+        $receiving = $this->find($receivingId);
+        if (!$receiving) return false;
+
+        $this->db->begin_transaction();
+        try {
+            $stmt = $this->db->prepare(
+                "UPDATE {$this->table} 
+                 SET head_approved_by = ?, 
+                     head_approved_at = NOW(), 
+                     head_note = ?,
+                     pm_checked_by = COALESCE(pm_checked_by, ?),
+                     pm_approved_at = COALESCE(pm_approved_at, NOW()),
+                     pm_note = COALESCE(pm_note, ?),
+                     updated_at = NOW() 
+                 WHERE id = ?"
+            );
+            $stmt->bind_param('isisi', $userId, $headNote, $userId, $headNote, $receivingId);
+            $stmt->execute();
+
+            $this->db->commit();
+            return true;
+        } catch (\Throwable $e) {
+            $this->db->rollback();
+            error_log("Head Review failed: " . $e->getMessage());
             return false;
         }
     }

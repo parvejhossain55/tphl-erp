@@ -89,6 +89,8 @@
                                                 $details_url = $GLOBALS['base_url'] . "/con-contractor-bill/" . $req['id'];
                                             } elseif ($req['type'] === 'Purchase Order') {
                                                 $details_url = $GLOBALS['base_url'] . "/con-purchase-order/" . $req['id'];
+                                            } elseif ($req['type'] === 'Material Receiving (GRN)') {
+                                                $details_url = $GLOBALS['base_url'] . "/con-material-receiving-qc/" . $req['id'];
                                             }
                                             ?>
                                             <tr>
@@ -97,7 +99,7 @@
                                                 <td><?= htmlspecialchars($req['project_name'] ?? 'N/A') ?></td>
                                                 <td><span class="badge bg-warning text-dark border"><?= htmlspecialchars($req['type']) ?></span></td>
                                                 <td class="fw-bold">#<?= htmlspecialchars($req['id']) ?></td>
-                                                <td class="fw-semibold">৳<?= number_format((float)($req['amount'] ?? 0), 2) ?></td>
+                                                <td class="fw-semibold"><?= ($req['type'] === 'Material Receiving (GRN)') ? '<span class="text-muted small">GRN Items</span>' : '৳' . number_format((float)($req['amount'] ?? 0), 2) ?></td>
                                                 <td>
                                                     <span class="badge bg-secondary"><?= htmlspecialchars($req['status']) ?></span>
                                                     <?php if (!empty($req['pending_stage_label'])): ?>
@@ -105,22 +107,28 @@
                                                     <?php endif; ?>
                                                 </td>
                                                 <td>
-                                                    <a href="<?= $details_url ?>" target="_blank" class="btn btn-sm btn-outline-info me-1">
-                                                        <i class="bi bi-eye me-1"></i> Details
-                                                    </a>
-                                                    <?php $canQcAct = !isset($req['can_qc_approve']) || (int)$req['can_qc_approve'] === 1 || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3], true); ?>
-                                                    <?php if ($canQcAct): ?>
-                                                        <button class="btn btn-sm btn-success approve-btn" 
-                                                                data-id="<?= $req['id'] ?>" 
-                                                                data-type="<?= $req['type'] ?>"
-                                                                data-bs-toggle="modal" 
-                                                                data-bs-target="#approveModal">
-                                                            <i class="bi bi-check-circle me-1"></i> Review & Approve
-                                                        </button>
+                                                    <?php if ($req['type'] === 'Material Receiving (GRN)'): ?>
+                                                        <a href="<?= $details_url ?>" class="btn btn-sm btn-success">
+                                                            <i class="bi bi-shield-check me-1"></i> QC Inspection &amp; Approve
+                                                        </a>
                                                     <?php else: ?>
-                                                        <button class="btn btn-sm btn-secondary" disabled title="Waiting for <?= htmlspecialchars($req['pending_stage_label'] ?? 'prior approval') ?>">
-                                                            <i class="bi bi-lock me-1"></i> <?= htmlspecialchars($req['pending_stage_label'] ?? 'Awaiting Prior Step') ?>
-                                                        </button>
+                                                        <a href="<?= $details_url ?>" target="_blank" class="btn btn-sm btn-outline-info me-1">
+                                                            <i class="bi bi-eye me-1"></i> Details
+                                                        </a>
+                                                        <?php $canQcAct = !isset($req['can_qc_approve']) || (int)$req['can_qc_approve'] === 1 || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3], true); ?>
+                                                        <?php if ($canQcAct): ?>
+                                                            <button class="btn btn-sm btn-success approve-btn" 
+                                                                    data-id="<?= $req['id'] ?>" 
+                                                                    data-type="<?= $req['type'] ?>"
+                                                                    data-bs-toggle="modal" 
+                                                                    data-bs-target="#approveModal">
+                                                                <i class="bi bi-check-circle me-1"></i> Review & Approve
+                                                            </button>
+                                                        <?php else: ?>
+                                                            <button class="btn btn-sm btn-secondary" disabled title="Waiting for <?= htmlspecialchars($req['pending_stage_label'] ?? 'prior approval') ?>">
+                                                                <i class="bi bi-lock me-1"></i> <?= htmlspecialchars($req['pending_stage_label'] ?? 'Awaiting Prior Step') ?>
+                                                            </button>
+                                                        <?php endif; ?>
                                                     <?php endif; ?>
                                                 </td>
                                             </tr>

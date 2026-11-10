@@ -730,7 +730,7 @@
 
         <!-- 15. Total Visited Complete -->
         <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
-            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?last_action=visited" class="stat-card-link">
+            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter_card=visited" class="stat-card-link">
                 <div class="stat-card accent-slate shadow-xs h-100">
                     <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
                     <div class="d-flex justify-content-between align-items-center w-100">
@@ -749,7 +749,7 @@
 
         <!-- 16. Period / This Month Visited -->
         <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
-            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?last_action=visited<?= !empty($leadQueryDate) ? '&' . $leadQueryDate : (!empty($cycleBkStart) ? '&from_date=' . $cycleBkStart . '&to_date=' . $cycleBkEnd . '&date_type=lead_date' : '') ?>" class="stat-card-link">
+            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter_card=visited<?= !empty($leadQueryDate) ? '&' . $leadQueryDate : (!empty($cycleBkStart) ? '&from_date=' . $cycleBkStart . '&to_date=' . $cycleBkEnd . '&date_type=lead_date' : '') ?>" class="stat-card-link">
                 <div class="stat-card accent-tangerine shadow-xs h-100">
                     <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
                     <div class="d-flex justify-content-between align-items-center w-100">

@@ -2376,6 +2376,8 @@ public function indexTwoView($bookingId = null)
         $arStmt->close();
     }
 
+    $penaltyHistory = $this->clientModel->getPenaltyHistoryByBookingId($bookingId);
+
     $this->view("ced/clients-cash-in-history-view", [
         "current_route" => "clients-cash-in-history-view",
         "page_title" => "Transaction History - " . $clientDetails['client_name'],
@@ -2383,6 +2385,7 @@ public function indexTwoView($bookingId = null)
         "transactions" => $transactions,
         "virtualEmiSchedule" => $virtualEmiSchedule,
         "paymentSummary" => $paymentSummary,
+        "penaltyHistory" => $penaltyHistory,
         "refundDetails"   => $refundDetails,
         "refundPaidAmount"=> $refundPaidAmount,
         "banks"           => $banks,

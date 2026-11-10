@@ -19,6 +19,7 @@ $cashoutRequests = $cashoutRequests ?? [];
 $vendorPayments = $vendorPayments ?? [];
 $contractorBills = $contractorBills ?? [];
 $purchaseOrders = $purchaseOrders ?? [];
+$pendingGRNs = $pendingGRNs ?? [];
 ?>
 <div class="row">
     <div class="col-12">
@@ -233,7 +234,19 @@ $purchaseOrders = $purchaseOrders ?? [];
                 <div class="kpi-sub" style="color:var(--text-muted)">Purchase requests awaiting verify</div>
             </a>
 
-            <!-- 7. POs Pending Approval (2nd Approval - QC & Audit) -->
+            <!-- 7. Pending GRNs (Material Receiving) -->
+            <a href="<?= $base ?>/con-material-receivings" class="kpi-card card__wrapper">
+                <div class="kpi-accent" style="background:var(--cd-teal)"></div>
+                <div class="kpi-icon" style="background:rgba(20,184,166,.12);color:var(--cd-teal)"><i class="fal fa-box-check"></i></div>
+                <div class="kpi-label" style="color:var(--text-muted)">Pending GRNs (QC)</div>
+                <div class="kpi-value" style="color:var(--cd-teal)"><?= number_format($stats['grn_pending'] ?? 0) ?></div>
+                <div class="kpi-sub" style="color:var(--text-muted)">Material receivings awaiting QC</div>
+                <?php if (($stats['grn_pending'] ?? 0) > 0): ?>
+                    <span class="kpi-badge" style="background:rgba(20,184,166,.12);color:var(--cd-teal)">QC REVIEW</span>
+                <?php endif; ?>
+            </a>
+
+            <!-- 8. POs Pending Approval (2nd Approval - QC & Audit) -->
             <a href="<?= $base ?>/con-purchase-orders" class="kpi-card card__wrapper">
                 <div class="kpi-accent" style="background:var(--cd-pink)"></div>
                 <div class="kpi-icon" style="background:rgba(236,72,153,.12);color:var(--cd-pink)"><i class="fal fa-shopping-cart"></i></div>
@@ -258,7 +271,7 @@ $purchaseOrders = $purchaseOrders ?? [];
 
         <!-- ══════════════════════ BREAKDOWN SUMMARY PILLS ══════════════════════════════ -->
         <?php 
-        $totalTblPending = count($cashoutRequests) + count($vendorPayments) + count($contractorBills) + count($purchaseOrders);
+        $totalTblPending = count($cashoutRequests) + count($vendorPayments) + count($contractorBills) + count($purchaseOrders) + count($pendingGRNs);
         ?>
         <div class="panel-section mb-4">
             <div class="section-title d-flex justify-content-between align-items-center mb-3">
@@ -272,8 +285,24 @@ $purchaseOrders = $purchaseOrders ?? [];
             </div>
             
             <div class="row g-2">
+                <!-- Material Receiving (GRN) -->
+                <div class="col-xl-4 col-lg-4 col-sm-6">
+                    <div class="pending-pill" onclick="document.getElementById('grn-section').scrollIntoView({behavior: 'smooth'})">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="pill-icon" style="background: rgba(20,184,166,0.1); color: #14b8a6;"><i class="fa-solid fa-box-open"></i></div>
+                            <div>
+                                <div class="pill-title text-dark">Material Receiving (GRN)</div>
+                                <div class="pill-sub">Awaiting QC Review</div>
+                            </div>
+                        </div>
+                        <div class="pill-badge <?= count($pendingGRNs) > 0 ? 'bg-danger text-white' : 'bg-success text-white' ?>">
+                            <?= count($pendingGRNs) ?>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Cashouts -->
-                <div class="col-xl-3 col-lg-4 col-sm-6">
+                <div class="col-xl-4 col-lg-4 col-sm-6">
                     <div class="pending-pill" onclick="document.getElementById('cashout-section').scrollIntoView({behavior: 'smooth'})">
                         <div class="d-flex align-items-center gap-2">
                             <div class="pill-icon" style="background: rgba(20,184,166,0.1); color: #14b8a6;"><i class="fa-solid fa-wallet"></i></div>
@@ -289,7 +318,7 @@ $purchaseOrders = $purchaseOrders ?? [];
                 </div>
 
                 <!-- Vendor Payments -->
-                <div class="col-xl-3 col-lg-4 col-sm-6">
+                <div class="col-xl-4 col-lg-4 col-sm-6">
                     <div class="pending-pill" onclick="document.getElementById('vendor-section').scrollIntoView({behavior: 'smooth'})">
                         <div class="d-flex align-items-center gap-2">
                             <div class="pill-icon" style="background: rgba(245,158,11,0.1); color: #f59e0b;"><i class="fa-solid fa-file-invoice-dollar"></i></div>
@@ -305,7 +334,7 @@ $purchaseOrders = $purchaseOrders ?? [];
                 </div>
 
                 <!-- Contractor Bills -->
-                <div class="col-xl-3 col-lg-4 col-sm-6">
+                <div class="col-xl-6 col-lg-6 col-sm-6">
                     <div class="pending-pill" onclick="document.getElementById('contractor-section').scrollIntoView({behavior: 'smooth'})">
                         <div class="d-flex align-items-center gap-2">
                             <div class="pill-icon" style="background: rgba(139,92,246,0.1); color: #8b5cf6;"><i class="fa-solid fa-hard-hat"></i></div>
@@ -321,7 +350,7 @@ $purchaseOrders = $purchaseOrders ?? [];
                 </div>
 
                 <!-- Purchase Orders -->
-                <div class="col-xl-3 col-lg-4 col-sm-6">
+                <div class="col-xl-6 col-lg-6 col-sm-6">
                     <div class="pending-pill" onclick="document.getElementById('po-section').scrollIntoView({behavior: 'smooth'})">
                         <div class="d-flex align-items-center gap-2">
                             <div class="pill-icon" style="background: rgba(236,72,153,0.1); color: #ec4899;"><i class="fa-solid fa-shopping-cart"></i></div>
@@ -516,6 +545,54 @@ $purchaseOrders = $purchaseOrders ?? [];
                                     <span class="status-pill status-planning">
                                         <span class="status-pill-dot"></span><?= htmlspecialchars($po['status']) ?>
                                     </span>
+                                </td>
+                            </tr>
+                        <?php endforeach; endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 5. Material Receivings (GRN) Awaiting QC -->
+        <div id="grn-section" class="con-panel card__wrapper mb-4" style="border-color:rgba(20,184,166,.3);background:rgba(20,184,166,.03)">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="sec-title" style="margin-bottom:0">
+                    <div class="sec-title-dot" style="background:var(--cd-teal)"></div>
+                    <i class="fal fa-truck-loading me-2" style="color:var(--cd-teal)"></i>
+                    Material Receivings (GRN) Awaiting QC Review
+                    <span class="badge bg-danger rounded-pill ms-2" style="font-size:10px;"><?= count($pendingGRNs) ?></span>
+                </div>
+                <a href="<?= $base ?>/con-material-receivings" style="font-size:11px;color:var(--cd-teal);text-decoration:none">View All
+                <i class="fal fa-arrow-right ms-1"></i></a>
+            </div>
+            <div class="po-table-container">
+                <table class="po-table">
+                    <thead>
+                        <tr>
+                            <th>GRN #</th>
+                            <th>Project</th>
+                            <th>Warehouse</th>
+                            <th>Received Date</th>
+                            <th>Logged By</th>
+                            <th>Items</th>
+                            <th style="text-align:right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($pendingGRNs)): ?>
+                            <tr><td colspan="7" class="text-center py-4 text-muted">No pending material receivings awaiting QC.</td></tr>
+                        <?php else: foreach ($pendingGRNs as $grn): ?>
+                            <tr>
+                                <td class="fw-bold" style="color:var(--cd-teal)">GRN-<?= htmlspecialchars($grn['id']) ?></td>
+                                <td class="fw-bold"><?= htmlspecialchars($grn['project_name'] ?? 'N/A') ?></td>
+                                <td><?= htmlspecialchars($grn['warehouse_name'] ?? 'N/A') ?></td>
+                                <td style="font-size:11.5px;color:#64748b"><?= !empty($grn['receiving_date']) ? date('d M Y', strtotime($grn['receiving_date'])) : '—' ?></td>
+                                <td><?= htmlspecialchars($grn['received_by_name'] ?? '—') ?></td>
+                                <td><span class="badge bg-light text-dark border"><?= (int)($grn['item_count'] ?? 1) ?> Items</span></td>
+                                <td style="text-align:right">
+                                    <a href="<?= $base ?>/con-material-receiving-qc/<?= $grn['id'] ?>" class="btn btn-sm btn-success px-3" style="font-size:11px;border-radius:6px;text-decoration:none">
+                                        <i class="bi bi-shield-check me-1"></i> Review &amp; Approve
+                                    </a>
                                 </td>
                             </tr>
                         <?php endforeach; endif; ?>

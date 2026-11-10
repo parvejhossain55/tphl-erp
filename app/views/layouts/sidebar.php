@@ -575,6 +575,11 @@
                 ");
                 $sidebarPendingAdjCount = $adjRes ? (int)$adjRes->fetch_assoc()['c'] : 0;
             }
+
+            // 5. Pending Material Receiving (GRN) awaiting QC review
+            $sidebarPendingGRNCount = 0;
+            $grnRes = $db->query("SELECT COUNT(*) AS c FROM material_receiving WHERE overall_status = 'Pending QC'");
+            $sidebarPendingGRNCount = $grnRes ? (int)$grnRes->fetch_assoc()['c'] : 0;
         } catch (\Throwable $e) {
         }
     }
@@ -779,6 +784,15 @@
                                 </a>
                             </li>
                         <?php endif; ?>
+
+                        <!-- Team Overview Dashboard (Management, Sales Heads, SEAL CEO, Chief Officers) -->
+                        <li class="slide ">
+                            <a href="<?= $base_url ?>/team-dashboard"
+                                class="sidebar__menu-item <?= isActive('team-dashboard', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-people-roof text-info"></i></div>
+                                <span class="sidebar__menu-label">Team Overview Dashboard</span>
+                            </a>
+                        </li>
 
                         <?php if ((hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 9, 15, 33, 34, 35]))): ?>
                             <!-- Sales Activity Report -->
@@ -1240,6 +1254,14 @@
                             <a href="<?= $base_url ?>/my-dashboard"
                                 class="sidebar__menu-item <?= isActive('my-dashboard', $current_route) ?>">My Dashboard</a>
                         </li>
+                        <?php if (!empty($_SESSION['user']['is_team_leader']) || !empty($_SESSION['user']['is_sales_co_leader']) || in_array($_SESSION['user']['role_id'] ?? 0, [5, 8]) || !empty($_SESSION['user']['team_id'])): ?>
+                        <li class="slide">
+                            <a href="<?= $base_url ?>/team-dashboard"
+                                class="sidebar__menu-item <?= isActive('team-dashboard', $current_route) ?>">
+                                <i class="fa-solid fa-people-roof me-1 text-primary"></i> Team Overview
+                            </a>
+                        </li>
+                        <?php endif; ?>
                         <?php endif; ?>
                         <?php if (isSalesCoLeader()): ?>
                             <!-- Co-Leader: Lead List Access (team_id wise) -->
@@ -3340,11 +3362,14 @@
                     <!-- ====== QC MODULE ====== -->
                     <?php if (hasPermission('QC Dashboard')): ?>
                         <li
-                            class="slide has-sub <?= isActive(['qc-dashboard', 'con-weekly-reports', 'con-weekly-report', 'qc-inspection-create', 'qc-material-test-create', 'qc-checklists', 'qc-test-types', 'con-wastage', 'con-wastage-create'], $current_route) ? 'active' : '' ?>">
+                            class="slide has-sub <?= isActive(['qc-dashboard', 'con-material-receivings', 'con-material-receiving-qc', 'qc-inspection-create', 'qc-material-test-create', 'qc-checklists', 'qc-test-types', 'con-wastage', 'con-wastage-create'], $current_route) ? 'active' : '' ?>">
                             <a href="javascript:void(0);"
-                                class="sidebar__menu-item <?= isActive(['qc-dashboard', 'con-weekly-reports', 'con-weekly-report', 'qc-inspection-create', 'qc-material-test-create', 'qc-checklists', 'qc-test-types', 'con-wastage', 'con-wastage-create'], $current_route) ? 'menu-open active' : '' ?>">
+                                class="sidebar__menu-item <?= isActive(['qc-dashboard', 'con-material-receivings', 'con-material-receiving-qc', 'qc-inspection-create', 'qc-material-test-create', 'qc-checklists', 'qc-test-types', 'con-wastage', 'con-wastage-create'], $current_route) ? 'menu-open active' : '' ?>">
                                 <div class="side-menu__icon"><i class="bi bi-shield-check"></i></div>
                                 <span class="sidebar__menu-label">QC Module</span>
+                                <?php if (!empty($sidebarPendingGRNCount) && $sidebarPendingGRNCount > 0): ?>
+                                    <span class="badge bg-danger rounded-pill ms-auto me-4" style="font-size:9.5px; padding: 2px 6px;"><?= $sidebarPendingGRNCount ?></span>
+                                <?php endif; ?>
                                 <i class="fa-regular fa-angle-down side-menu__angle"></i>
                             </a>
                             <ul class="sidebar-menu child2" style="display:block;">
@@ -3354,9 +3379,18 @@
                                         Dashboard</a>
                                 </li>
                                 <li class="slide">
-                                    <a href="<?= $GLOBALS['base_url'] ?>/con-weekly-reports"
-                                        class="sidebar__menu-item <?= isActive(['con-weekly-reports', 'con-weekly-report'], $current_route) ?>">New
-                                        Inspection</a>
+                                    <a href="<?= $GLOBALS['base_url'] ?>/con-material-receivings"
+                                        class="sidebar__menu-item <?= isActive(['con-material-receivings', 'con-material-receiving-qc'], $current_route) ?>">
+                                        <span>Material Receiving (QC)</span>
+                                        <?php if (!empty($sidebarPendingGRNCount) && $sidebarPendingGRNCount > 0): ?>
+                                            <span class="badge bg-danger rounded-pill ms-auto me-2" style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingGRNCount ?></span>
+                                        <?php endif; ?>
+                                    </a>
+                                </li>
+                                <li class="slide">
+                                    <a href="<?= $GLOBALS['base_url'] ?>/qc-inspection-create"
+                                        class="sidebar__menu-item <?= isActive('qc-inspection-create', $current_route) ?>">Site
+                                        Work Inspection</a>
                                 </li>
 
                                 <li class="slide">
@@ -3724,20 +3758,27 @@
                     <?php endif; ?>
 
                     <!-- Module 7:Operation And  Receiving & QC -->
-                    <?php if (hasPermission('Material Issue')): ?>
+                    <?php if (hasPermission('Material Issue') || hasPermission('QC & Internal Audit') || hasPermission('QC Dashboard') || in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 13, 20, 22, 23, 24, 25])): ?>
                         <li
-                            class="slide has-sub <?= isActive(['con-material-receivings', 'con-stocks', 'con-material-returns', 'con-wastage', 'con-wastage-create'], $current_route) ? 'active' : '' ?>">
+                            class="slide has-sub <?= isActive(['con-material-receivings', 'con-material-receiving-qc', 'con-stocks', 'con-material-returns', 'con-wastage', 'con-wastage-create'], $current_route) ? 'active' : '' ?>">
                             <a href="javascript:void(0);"
-                                class="sidebar__menu-item <?= isActive(['con-material-receivings', 'con-stocks', 'con-material-returns', 'con-wastage', 'con-wastage-create'], $current_route) ? 'menu-open active' : '' ?>">
+                                class="sidebar__menu-item <?= isActive(['con-material-receivings', 'con-material-receiving-qc', 'con-stocks', 'con-material-returns', 'con-wastage', 'con-wastage-create'], $current_route) ? 'menu-open active' : '' ?>">
                                 <div class="side-menu__icon"><i class="fa-solid fa-box-open"></i></div>
                                 <span class="sidebar__menu-label">Receiving & QC</span>
+                                <?php if (!empty($sidebarPendingGRNCount) && $sidebarPendingGRNCount > 0): ?>
+                                    <span class="badge bg-danger rounded-pill ms-auto me-4" style="font-size:9.5px; padding: 2px 6px;"><?= $sidebarPendingGRNCount ?></span>
+                                <?php endif; ?>
                                 <i class="fa-regular fa-angle-down side-menu__angle"></i>
                             </a>
                             <ul class="sidebar-menu child2" style="display:block;">
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/con-material-receivings"
-                                        class="sidebar__menu-item <?= isActive('con-material-receivings', $current_route) ?>">Material
-                                        Receiving</a>
+                                        class="sidebar__menu-item <?= isActive(['con-material-receivings', 'con-material-receiving-qc'], $current_route) ?>">
+                                        <span>Material Receiving</span>
+                                        <?php if (!empty($sidebarPendingGRNCount) && $sidebarPendingGRNCount > 0): ?>
+                                            <span class="badge bg-danger rounded-pill ms-auto me-2" style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingGRNCount ?></span>
+                                        <?php endif; ?>
+                                    </a>
                                 </li>
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/con-material-returns"
@@ -4082,14 +4123,17 @@
                             <span class="category-name">Internal Audit</span>
                         </li>
                         <li
-                            class="slide has-sub <?= isActive(['qc-audit-dashboard', 'qc-requests', 'qc-advanced-audit'], $current_route) ? 'active' : '' ?>">
+                            class="slide has-sub <?= isActive(['qc-audit-dashboard', 'qc-requests', 'qc-advanced-audit', 'con-material-receivings', 'con-material-receiving-qc'], $current_route) ? 'active' : '' ?>">
                             <a href="javascript:void(0);"
-                                class="sidebar__menu-item <?= isActive(['qc-audit-dashboard', 'qc-requests', 'qc-advanced-audit'], $current_route) ? 'menu-open active' : '' ?>">
+                                class="sidebar__menu-item <?= isActive(['qc-audit-dashboard', 'qc-requests', 'qc-advanced-audit', 'con-material-receivings', 'con-material-receiving-qc'], $current_route) ? 'menu-open active' : '' ?>">
                                 <div class="side-menu__icon"><i class="bi bi-shield-check"></i></div>
                                 <span class="sidebar__menu-label">Internal Audit</span>
-                                <?php if (!empty($sidebarPendingPOCount) && $sidebarPendingPOCount > 0): ?>
+                                <?php 
+                                $totalAuditPending = ($sidebarPendingPOCount ?? 0) + ($sidebarPendingGRNCount ?? 0);
+                                if ($totalAuditPending > 0): 
+                                ?>
                                     <span class="badge bg-danger rounded-pill ms-auto me-4"
-                                        style="font-size:9.5px; padding: 2px 6px;"><?= $sidebarPendingPOCount ?></span>
+                                        style="font-size:9.5px; padding: 2px 6px;"><?= $totalAuditPending ?></span>
                                 <?php endif; ?>
                                 <i class="fa-regular fa-angle-down side-menu__angle"></i>
                             </a>
@@ -4114,6 +4158,16 @@
                                     <a href="<?= $base_url ?>/qc-requests"
                                         class="sidebar__menu-item <?= isActive('qc-requests', $current_route) ?>">
                                         <i class="bi bi-check2-square me-1"></i> QC Approvals
+                                    </a>
+                                </li>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/con-material-receivings"
+                                        class="sidebar__menu-item <?= isActive(['con-material-receivings', 'con-material-receiving-qc'], $current_route) ?>">
+                                        <span><i class="bi bi-box-seam me-1"></i> Material Receiving (GRN)</span>
+                                        <?php if (!empty($sidebarPendingGRNCount) && $sidebarPendingGRNCount > 0): ?>
+                                            <span class="badge bg-danger rounded-pill ms-auto me-2"
+                                                style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingGRNCount ?></span>
+                                        <?php endif; ?>
                                     </a>
                                 </li>
                                 <li class="slide">

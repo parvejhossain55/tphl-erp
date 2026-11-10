@@ -53,7 +53,8 @@ class LeadController extends Controller
         $from_date = $_GET['from_date'] ?? null;
         $to_date   = $_GET['to_date']   ?? null;
         $filter_card = $_GET['filter_card'] ?? null;
-        $date_type = (!empty($_GET['date_type']) && in_array($_GET['date_type'], ['created_at', 'assigned_at'], true)) ? $_GET['date_type'] : 'created_at';
+        $rawDateType = $_GET['date_type'] ?? 'created_at';
+        $date_type = ($rawDateType === 'assigned_date' || $rawDateType === 'assigned_at') ? 'assigned_at' : 'created_at';
         
         // For Role 35 (SEAL CEO), if no team filter is applied (initial load) and they have a team_id, default to their team
         if (in_array((int)$userRoleId, [35]) && !isset($_GET['team_id']) && !empty($userTeamId)) {
@@ -122,11 +123,16 @@ class LeadController extends Controller
         // Normalize filter_card and date_type aliases across lead-lists & my-all-assigned-leads
         if ($filter_card === 'booked') {
             $filter_card = 'total_booked';
-        }
-        if ($date_type === 'lead_date') {
-            $date_type = 'created_at';
-        } elseif ($date_type === 'assigned_date') {
-            $date_type = 'assigned_at';
+        } elseif ($filter_card === 'contacted') {
+            $filter_card = 'contacted_leads';
+        } elseif ($filter_card === 'not_contacted' || $filter_card === 'not_called') {
+            $filter_card = 'not_contacted_leads';
+        } elseif ($filter_card === 'visited') {
+            $filter_card = 'visited_leads';
+        } elseif ($filter_card === 'visit_scheduled') {
+            $filter_card = 'visit_scheduled';
+        } elseif ($filter_card === 'missing_followup' || $filter_card === 'missing_follow_ups') {
+            $filter_card = 'pending_follow_ups';
         }
 
         // Get total count for pagination
@@ -443,7 +449,8 @@ class LeadController extends Controller
         $from_date = $_GET['from_date'] ?? null;
         $to_date   = $_GET['to_date']   ?? null;
         $filter_card = $_GET['filter_card'] ?? null;
-        $date_type = (!empty($_GET['date_type']) && in_array($_GET['date_type'], ['created_at', 'assigned_at'], true)) ? $_GET['date_type'] : 'created_at';
+        $rawDateType = $_GET['date_type'] ?? 'created_at';
+        $date_type = ($rawDateType === 'assigned_date' || $rawDateType === 'assigned_at') ? 'assigned_at' : 'created_at';
 
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
@@ -487,6 +494,20 @@ class LeadController extends Controller
 
         // Co-leader & Team Leader get same team-scoped access as Sales Manager (role_id=5)
         $effectiveRoleId = ((isSalesCoLeader() || isTeamLeader()) && !in_array((int)$userRoleId, [1, 3, 5, 9, 32, 33, 34, 35])) ? 5 : (int)$userRoleId;
+
+        if ($filter_card === 'booked') {
+            $filter_card = 'total_booked';
+        } elseif ($filter_card === 'contacted') {
+            $filter_card = 'contacted_leads';
+        } elseif ($filter_card === 'not_contacted' || $filter_card === 'not_called') {
+            $filter_card = 'not_contacted_leads';
+        } elseif ($filter_card === 'visited') {
+            $filter_card = 'visited_leads';
+        } elseif ($filter_card === 'visit_scheduled') {
+            $filter_card = 'visit_scheduled';
+        } elseif ($filter_card === 'missing_followup' || $filter_card === 'missing_follow_ups') {
+            $filter_card = 'pending_follow_ups';
+        }
 
         $totalRecords = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
 
@@ -1023,7 +1044,22 @@ class LeadController extends Controller
         $from_date      = $_GET['from_date']      ?? null;
         $to_date        = $_GET['to_date']        ?? null;
         $filter_card    = $_GET['filter_card']    ?? null;
-        $date_type      = (!empty($_GET['date_type']) && in_array($_GET['date_type'], ['created_at', 'assigned_at'], true)) ? $_GET['date_type'] : 'created_at';
+        $rawDateType    = $_GET['date_type']      ?? 'created_at';
+        $date_type      = ($rawDateType === 'assigned_date' || $rawDateType === 'assigned_at') ? 'assigned_at' : 'created_at';
+
+        if ($filter_card === 'booked') {
+            $filter_card = 'total_booked';
+        } elseif ($filter_card === 'contacted') {
+            $filter_card = 'contacted_leads';
+        } elseif ($filter_card === 'not_contacted' || $filter_card === 'not_called') {
+            $filter_card = 'not_contacted_leads';
+        } elseif ($filter_card === 'visited') {
+            $filter_card = 'visited_leads';
+        } elseif ($filter_card === 'visit_scheduled') {
+            $filter_card = 'visit_scheduled';
+        } elseif ($filter_card === 'missing_followup' || $filter_card === 'missing_follow_ups') {
+            $filter_card = 'pending_follow_ups';
+        }
         $search         = !empty($_GET['search']) ? trim($_GET['search']) : null;
         $selected_ids   = !empty($_GET['selected_ids']) ? array_filter(array_map('intval', explode(',', $_GET['selected_ids']))) : [];
 

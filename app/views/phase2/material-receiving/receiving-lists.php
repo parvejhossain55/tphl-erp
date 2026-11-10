@@ -59,17 +59,23 @@
                                 <td><?= htmlspecialchars($r['received_by_name'] ?? '—') ?></td>
                                 <td class="text-muted small"><?= date('d M Y', strtotime($r['receiving_date'])) ?></td>
                                 <td class="text-center">
+                                    <?php 
+                                    $canPerformQC = in_array($currentRoleId, [1, 3, 13, 20, 22, 23, 24, 25]) 
+                                                    || (function_exists('hasPermission') && (hasPermission('QC & Internal Audit') || hasPermission('QC Dashboard')));
+                                    ?>
                                     <?php if ($r['overall_status'] === 'Pending QC'): ?>
-                                        <?php if (isset($currentRoleId) && $currentRoleId === 13): ?>
-                                            <a href="<?= $base_url ?>/con-material-receiving-qc/<?= $r['id'] ?>" class="btn btn-sm btn-warning" title="Perform QC Review">
-                                                <i class="bi bi-clipboard-check"></i> QC Review
+                                        <?php if ($canPerformQC): ?>
+                                            <a href="<?= $base_url ?>/con-material-receiving-qc/<?= $r['id'] ?>" class="btn btn-sm btn-warning fw-bold" title="Perform QC Review">
+                                                <i class="bi bi-clipboard-check me-1"></i> QC Review
                                             </a>
                                         <?php else: ?>
-                                            <span class="badge bg-secondary">Pending QC</span>
+                                            <a href="<?= $base_url ?>/con-material-receiving-qc/<?= $r['id'] ?>" class="btn btn-sm btn-outline-secondary" title="View GRN">
+                                                <i class="bi bi-eye me-1"></i> View
+                                            </a>
                                         <?php endif; ?>
                                     <?php else: ?>
                                         <a href="<?= $base_url ?>/con-material-receiving-qc/<?= $r['id'] ?>" class="btn btn-sm btn-outline-info" title="View QC Results">
-                                            <i class="bi bi-eye"></i> View QC Results
+                                            <i class="bi bi-eye me-1"></i> View Results
                                         </a>
                                     <?php endif; ?>
                                 </td>
