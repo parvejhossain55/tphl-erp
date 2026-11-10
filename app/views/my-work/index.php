@@ -1671,19 +1671,28 @@ $todayDateFormatted = date('j F');
                     </select>
                 </div>
                 <div class="mw-form-col">
+                    <label class="mw-form-label">&nbsp;</label>
+                    <label class="mw-checkbox-wrap" style="margin-top:8px;">
+                        <input type="checkbox" name="is_recurring" value="1" id="chkIsRecurring">
+                        <span>Is Recurring</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="mw-form-row mw-form-group" id="rowRecurrenceEnd" style="display:none;">
+                <div class="mw-form-col">
                     <label class="mw-form-label">Repeat</label>
                     <select name="recurrence_type" id="taskRecurrenceType" class="mw-form-select">
-                        <option value="">Does not repeat</option>
+                        <option value="">Select...</option>
                         <option value="daily">Daily</option>
                         <option value="weekly">Weekly</option>
                         <option value="monthly">Monthly</option>
                     </select>
                 </div>
-            </div>
-
-            <div class="mw-form-group" id="rowRecurrenceEnd" style="display:none;">
-                <label class="mw-form-label">Repeat until</label>
-                <input type="date" name="recurrence_end_date" class="mw-form-input">
+                <div class="mw-form-col">
+                    <label class="mw-form-label">Repeat until</label>
+                    <input type="date" name="recurrence_end_date" class="mw-form-input">
+                </div>
             </div>
 
 
@@ -2157,12 +2166,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Show "Repeat until" only when a repeat type is chosen
-    const selRecurrence = document.getElementById('taskRecurrenceType');
+    // Show Repeat options only when "Is Recurring" is ticked
+    const chkIsRecurring = document.getElementById('chkIsRecurring');
     const rowRecurrenceEnd = document.getElementById('rowRecurrenceEnd');
-    if (selRecurrence && rowRecurrenceEnd) {
-        selRecurrence.addEventListener('change', () => {
-            rowRecurrenceEnd.style.display = selRecurrence.value ? '' : 'none';
+    if (chkIsRecurring && rowRecurrenceEnd) {
+        chkIsRecurring.addEventListener('change', () => {
+            rowRecurrenceEnd.style.display = chkIsRecurring.checked ? 'flex' : 'none';
         });
     }
 

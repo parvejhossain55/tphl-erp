@@ -676,7 +676,8 @@ class MyWorkController extends Controller
         $projectId = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
         $assignedById = (int)($_POST['assigned_by_id'] ?? 0) ?: $userId;
         $recurrenceType = in_array($_POST['recurrence_type'] ?? '', ['daily', 'weekly', 'monthly'], true) ? $_POST['recurrence_type'] : null;
-        $isRecurring = $recurrenceType !== null ? 1 : 0;
+        $isRecurring = !empty($_POST['is_recurring']) ? 1 : 0;
+        if (!$isRecurring) { $recurrenceType = null; }
         $recurrenceEnd = ($isRecurring && !empty($_POST['recurrence_end_date'])) ? $_POST['recurrence_end_date'] : null;
 
         $reviewerId = !empty($_POST['reviewer_id']) ? (int)$_POST['reviewer_id'] : null;
