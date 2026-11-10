@@ -1660,11 +1660,18 @@ $todayDateFormatted = date('j F');
                 </div>
             </div>
 
-            <!-- Expected Output -->
+            <!-- Expected Output (multiple allowed) -->
             <div class="mw-form-group">
                 <label class="mw-form-label">Expected output <span class="req">*</span></label>
-                <textarea name="description" id="drawerDescription" class="mw-form-textarea" rows="3" 
-                          placeholder="Opening balances and verified transactions reconcile for five sample accounts. Attach the reconciliation evidence." required></textarea>
+                <div id="expectedOutputList">
+                    <div class="d-flex align-items-start gap-2 mb-2 mw-expected-row">
+                        <textarea name="description[]" id="drawerDescription" class="mw-form-textarea" rows="3" 
+                                  placeholder="Opening balances and verified transactions reconcile for five sample accounts." required></textarea>
+                        <button type="button" class="mw-btn-create" id="btnAddExpectedOutput" title="Add another expected output" style="white-space:nowrap;">
+                            <i class="fa-solid fa-plus"></i> Add
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- Checkbox: Review required before completion -->
@@ -2110,6 +2117,21 @@ document.addEventListener('DOMContentLoaded', function () {
             if (iconAccordion) {
                 iconAccordion.className = isHidden ? 'fa-solid fa-chevron-up me-2' : 'fa-solid fa-chevron-down me-2';
             }
+        });
+    }
+
+    // Expected output: add / remove extra rows
+    const expectedList = document.getElementById('expectedOutputList');
+    const btnAddExpected = document.getElementById('btnAddExpectedOutput');
+    if (expectedList && btnAddExpected) {
+        btnAddExpected.addEventListener('click', function () {
+            const row = document.createElement('div');
+            row.className = 'd-flex align-items-start gap-2 mb-2 mw-expected-row';
+            row.innerHTML = '<textarea name="description[]" class="mw-form-textarea" rows="3" placeholder="Another expected output" required></textarea>' +
+                '<button type="button" class="mw-btn-create" title="Remove" style="white-space:nowrap;background:#C92A2A;"><i class="fa-solid fa-xmark"></i></button>';
+            row.querySelector('button').addEventListener('click', () => row.remove());
+            expectedList.appendChild(row);
+            row.querySelector('textarea').focus();
         });
     }
 

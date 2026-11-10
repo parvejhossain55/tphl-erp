@@ -653,7 +653,11 @@ class MyWorkController extends Controller
 
         $deadline = !empty($_POST['deadline']) ? $_POST['deadline'] : null;
         $priority = in_array($_POST['priority'] ?? '', ['low', 'medium', 'high', 'urgent'], true) ? $_POST['priority'] : 'medium';
-        $description = trim($_POST['description'] ?? '');
+        // Expected output: one or many entries (description[]); several are stored as an HTML list
+        $descItems = array_values(array_filter(array_map('trim', (array)($_POST['description'] ?? [])), 'strlen'));
+        $description = count($descItems) > 1
+            ? '<ul>' . implode('', array_map(fn($d) => '<li>' . htmlspecialchars($d) . '</li>', $descItems)) . '</ul>'
+            : ($descItems[0] ?? '');
         $todoProjectId = !empty($_POST['todo_project_id']) ? (int)$_POST['todo_project_id'] : null;
         $startDate = !empty($_POST['start_date']) ? $_POST['start_date'] : null;
 
