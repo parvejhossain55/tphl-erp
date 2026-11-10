@@ -679,8 +679,7 @@ class MyWorkController extends Controller
         $isRecurring = $recurrenceType !== null ? 1 : 0;
         $recurrenceEnd = ($isRecurring && !empty($_POST['recurrence_end_date'])) ? $_POST['recurrence_end_date'] : null;
 
-        // Reviewer only counts when "Review required" is ticked
-        $reviewerId = (!empty($_POST['review_required']) && !empty($_POST['reviewer_id'])) ? (int)$_POST['reviewer_id'] : null;
+        $reviewerId = !empty($_POST['reviewer_id']) ? (int)$_POST['reviewer_id'] : null;
         $collaboratorIds = array_values(array_unique(array_filter(array_map('intval', array_merge(
             (array)($_POST['collaborator_ids'] ?? []),
             (array)($_POST['cc_ids'] ?? [])

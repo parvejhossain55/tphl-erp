@@ -1734,13 +1734,7 @@ $todayDateFormatted = date('j F');
                 </div>
             </div>
 
-            <!-- Checkbox: Review required before completion -->
-            <label class="mw-checkbox-wrap">
-                <input type="checkbox" name="review_required" value="1" id="chkReviewRequired" checked>
-                <span>Review required before completion</span>
-            </label>
-
-            <!-- Row 4: Reviewer & Collaborators (Shown when review is checked) -->
+            <!-- Row 4: Reviewer & Collaborators -->
             <div id="sectionReviewFields" class="mw-form-row mw-form-group">
                 <div class="mw-form-col">
                     <label class="mw-form-label">Reviewer</label>
@@ -2119,16 +2113,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Toggle Review Section
-    const chkReviewRequired = document.getElementById('chkReviewRequired');
-    const sectionReviewFields = document.getElementById('sectionReviewFields');
-    if (chkReviewRequired && sectionReviewFields) {
-        chkReviewRequired.addEventListener('change', function() {
-            sectionReviewFields.style.display = this.checked ? 'flex' : 'none';
-            updateNoticeBox();
-        });
-    }
-
     // Dynamic Notice Box Text
     const taskOwnerSelect = document.getElementById('taskOwnerSelect');
     const taskReviewerSelect = document.getElementById('taskReviewerSelect');
@@ -2142,8 +2126,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const firstName = fullName.trim().split(' ')[0];
             noticeOwnerText.innerText = `${firstName} will receive the assignment.`;
         }
-        if (taskReviewerSelect && noticeReviewerText && chkReviewRequired) {
-            if (chkReviewRequired.checked && taskReviewerSelect.value) {
+        if (taskReviewerSelect && noticeReviewerText) {
+            if (taskReviewerSelect.value) {
                 const optR = taskReviewerSelect.options[taskReviewerSelect.selectedIndex];
                 const fullNameR = optR ? (optR.getAttribute('data-name') || optR.text) : 'Reviewer';
                 const firstNameR = fullNameR.trim().split(' ')[0];
