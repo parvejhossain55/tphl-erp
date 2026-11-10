@@ -33,16 +33,33 @@ class AccountClient extends Model
         $params = [];
         $types = '';
 
-        if ($projectId) {
-            $whereParts[] = "lb.project_id = ?";
-            $params[] = (int) $projectId;
-            $types .= 'i';
+        if (!empty($projectId)) {
+            if (is_array($projectId)) {
+                $pIds = array_values(array_filter(array_map('intval', $projectId)));
+                if (!empty($pIds)) {
+                    $inPlaceholders = implode(',', array_fill(0, count($pIds), '?'));
+                    $whereParts[] = "lb.project_id IN ($inPlaceholders)";
+                    foreach ($pIds as $pId) {
+                        $params[] = $pId;
+                        $types .= 'i';
+                    }
+                }
+            } else {
+                $whereParts[] = "lb.project_id = ?";
+                $params[] = (int) $projectId;
+                $types .= 'i';
+            }
         }
 
         if (!empty($search)) {
             $searchTerm = '%' . trim($search) . '%';
-            $whereParts[] = "(l.full_name LIKE ? OR l.lead_name LIKE ? OR l.phone LIKE ? OR l.phone_number LIKE ? OR l.alt_phone_number LIKE ? OR l.`2nd_owner_phone` LIKE ? OR l.email LIKE ? OR l.company LIKE ? OR p.name LIKE ? OR f.flat_name LIKE ?)";
-            for ($i = 0; $i < 10; $i++) {
+            $whereParts[] = "(l.full_name LIKE ? OR l.lead_name LIKE ? OR l.phone LIKE ? OR l.phone_number LIKE ? OR l.alt_phone_number LIKE ? OR l.`2nd_owner_phone` LIKE ? OR l.email LIKE ? OR l.company LIKE ? OR p.name LIKE ? OR f.flat_name LIKE ? OR EXISTS (
+                SELECT 1 FROM lead_payments lp_s 
+                LEFT JOIN users u_s ON lp_s.created_by = u_s.id 
+                LEFT JOIN employees e_s ON (u_s.employee_id = e_s.id OR e_s.user_id = u_s.id)
+                WHERE lp_s.booking_id = lb.id AND lp_s.is_trashed = 0 AND (u_s.full_name LIKE ? OR e_s.full_name LIKE ? OR u_s.user_name LIKE ?)
+            ))";
+            for ($i = 0; $i < 13; $i++) {
                 $params[] = $searchTerm;
                 $types .= 's';
             }
@@ -163,7 +180,12 @@ class AccountClient extends Model
         $whereClause = "WHERE " . implode(" AND ", $whereParts);
         $havingClause = !empty($havingParts) ? "HAVING " . implode(" AND ", $havingParts) : "";
 
-        $projectSubFilter = $projectId ? " AND lb_sub.project_id = " . (int)$projectId : "";
+        if (is_array($projectId)) {
+            $pIds = array_values(array_filter(array_map('intval', $projectId)));
+            $projectSubFilter = !empty($pIds) ? " AND lb_sub.project_id IN (" . implode(',', $pIds) . ")" : "";
+        } else {
+            $projectSubFilter = $projectId ? " AND lb_sub.project_id = " . (int)$projectId : "";
+        }
 
         $dataSql ="SELECT
             l.id AS lead_id,
@@ -183,6 +205,8 @@ class AccountClient extends Model
             COALESCE(p_stats.total_paid_unverified, 0) AS total_paid_unverified,
             COALESCE(p_stats.total_paid, 0) AS total_paid,
             p_stats.last_payment_date,
+            p_stats.last_payment_creator_name,
+            p_stats.last_payment_created_by,
             MAX(lb.id) AS booking_id,
             COALESCE(MAX(lb.booking_date), DATE(MAX(lb.created_at))) AS booking_date,
             GROUP_CONCAT(
@@ -283,6 +307,20 @@ class AccountClient extends Model
                 SUM(CASE WHEN (lp.bulk_emi_discount > 0 OR COALESCE(lp.is_emi_discount, 0) = 1) AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') 
                          THEN CASE WHEN COALESCE(lp.is_emi_discount, 0) = 1 THEN lp.amount ELSE lp.bulk_emi_discount END ELSE 0 END) AS total_bulk_emi_discount,
                 MAX(CASE WHEN (lp.payment_status IN ('paid','partially_paid','pending')) AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.payment_date ELSE NULL END) AS last_payment_date,
+                SUBSTRING_INDEX(GROUP_CONCAT(
+                    CASE WHEN (lp.payment_status IN ('paid','partially_paid','pending')) AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') 
+                    THEN COALESCE(e_lp.full_name, u_lp.full_name, u_lp.user_name, CONCAT('User #', lp.created_by)) 
+                    ELSE NULL END 
+                    ORDER BY lp.payment_date DESC, lp.id DESC 
+                    SEPARATOR '|||'
+                ), '|||', 1) AS last_payment_creator_name,
+                SUBSTRING_INDEX(GROUP_CONCAT(
+                    CASE WHEN (lp.payment_status IN ('paid','partially_paid','pending')) AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') 
+                    THEN lp.created_by 
+                    ELSE NULL END 
+                    ORDER BY lp.payment_date DESC, lp.id DESC 
+                    SEPARATOR '|||'
+                ), '|||', 1) AS last_payment_created_by,
                 SUM(CASE WHEN lp.verification_status = 'pending' THEN 1 ELSE 0 END) AS total_pending_payments,
                 SUBSTRING_INDEX(GROUP_CONCAT(lp.verification_status ORDER BY lp.created_at DESC SEPARATOR ','), ',', 1) AS latest_verification_status,
 
@@ -351,6 +389,8 @@ class AccountClient extends Model
                 SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.verification_status ELSE NULL END ORDER BY lp.created_at DESC SEPARATOR ','), ',', 1) AS emi_latest_verification_status
             FROM lead_bookings lb_sub
             INNER JOIN lead_payments lp ON lp.booking_id = lb_sub.id
+            LEFT JOIN users u_lp ON lp.created_by = u_lp.id
+            LEFT JOIN employees e_lp ON (u_lp.employee_id = e_lp.id OR e_lp.user_id = u_lp.id)
             WHERE lb_sub.deleted_at IS NULL
                AND lb_sub.booking_status NOT IN ('refunded', 'cancelled')
                AND (lb_sub.landshare_status IS NULL OR lb_sub.landshare_status != 'cancelled')
@@ -421,16 +461,33 @@ class AccountClient extends Model
         $params = [];
         $types = '';
 
-        if ($projectId) {
-            $whereParts[] = "lb.project_id = ?";
-            $params[] = (int) $projectId;
-            $types .= 'i';
+        if (!empty($projectId)) {
+            if (is_array($projectId)) {
+                $pIds = array_values(array_filter(array_map('intval', $projectId)));
+                if (!empty($pIds)) {
+                    $inPlaceholders = implode(',', array_fill(0, count($pIds), '?'));
+                    $whereParts[] = "lb.project_id IN ($inPlaceholders)";
+                    foreach ($pIds as $pId) {
+                        $params[] = $pId;
+                        $types .= 'i';
+                    }
+                }
+            } else {
+                $whereParts[] = "lb.project_id = ?";
+                $params[] = (int) $projectId;
+                $types .= 'i';
+            }
         }
 
         if (!empty($search)) {
             $searchTerm = '%' . trim($search) . '%';
-            $whereParts[] = "(l.full_name LIKE ? OR l.lead_name LIKE ? OR l.phone LIKE ? OR l.phone_number LIKE ? OR l.alt_phone_number LIKE ? OR l.`2nd_owner_phone` LIKE ? OR l.email LIKE ? OR l.company LIKE ? OR p.name LIKE ? OR f.flat_name LIKE ?)";
-            for ($i = 0; $i < 10; $i++) {
+            $whereParts[] = "(l.full_name LIKE ? OR l.lead_name LIKE ? OR l.phone LIKE ? OR l.phone_number LIKE ? OR l.alt_phone_number LIKE ? OR l.`2nd_owner_phone` LIKE ? OR l.email LIKE ? OR l.company LIKE ? OR p.name LIKE ? OR f.flat_name LIKE ? OR EXISTS (
+                SELECT 1 FROM lead_payments lp_s 
+                LEFT JOIN users u_s ON lp_s.created_by = u_s.id 
+                LEFT JOIN employees e_s ON (u_s.employee_id = e_s.id OR e_s.user_id = u_s.id)
+                WHERE lp_s.booking_id = lb.id AND lp_s.is_trashed = 0 AND (u_s.full_name LIKE ? OR e_s.full_name LIKE ? OR u_s.user_name LIKE ?)
+            ))";
+            for ($i = 0; $i < 13; $i++) {
                 $params[] = $searchTerm;
                 $types .= 's';
             }
@@ -550,7 +607,12 @@ class AccountClient extends Model
         $whereClause = "WHERE " . implode(" AND ", $whereParts);
         $havingClause = !empty($havingParts) ? "HAVING " . implode(" AND ", $havingParts) : "";
 
-        $projectSubFilter = $projectId ? " AND lb_sub.project_id = " . (int)$projectId : "";
+        if (is_array($projectId)) {
+            $pIds = array_values(array_filter(array_map('intval', $projectId)));
+            $projectSubFilter = !empty($pIds) ? " AND lb_sub.project_id IN (" . implode(',', $pIds) . ")" : "";
+        } else {
+            $projectSubFilter = $projectId ? " AND lb_sub.project_id = " . (int)$projectId : "";
+        }
 
         $countSql = "
             SELECT COUNT(*) as total FROM (
@@ -676,10 +738,22 @@ class AccountClient extends Model
         $params = [];
         $types = "";
 
-        if ($projectId) {
-            $projectWhere = " AND lb.project_id = ?";
-            $params[] = (int)$projectId;
-            $types .= "i";
+        if (!empty($projectId)) {
+            if (is_array($projectId)) {
+                $pIds = array_values(array_filter(array_map('intval', $projectId)));
+                if (!empty($pIds)) {
+                    $inPlaceholders = implode(',', array_fill(0, count($pIds), '?'));
+                    $projectWhere = " AND lb.project_id IN ($inPlaceholders)";
+                    foreach ($pIds as $pId) {
+                        $params[] = $pId;
+                        $types .= "i";
+                    }
+                }
+            } else {
+                $projectWhere = " AND lb.project_id = ?";
+                $params[] = (int)$projectId;
+                $types .= "i";
+            }
         }
 
         $sql = "
@@ -743,10 +817,22 @@ class AccountClient extends Model
         $params = [];
         $types = "";
 
-        if ($projectId) {
-            $whereParts[] = "lb.project_id = ?";
-            $params[] = (int)$projectId;
-            $types .= "i";
+        if (!empty($projectId)) {
+            if (is_array($projectId)) {
+                $pIds = array_values(array_filter(array_map('intval', $projectId)));
+                if (!empty($pIds)) {
+                    $inPlaceholders = implode(',', array_fill(0, count($pIds), '?'));
+                    $whereParts[] = "lb.project_id IN ($inPlaceholders)";
+                    foreach ($pIds as $pId) {
+                        $params[] = $pId;
+                        $types .= "i";
+                    }
+                }
+            } else {
+                $whereParts[] = "lb.project_id = ?";
+                $params[] = (int)$projectId;
+                $types .= "i";
+            }
         }
 
         if (!empty($search)) {
@@ -860,10 +946,22 @@ class AccountClient extends Model
         $params = [];
         $types = '';
 
-        if ($projectId) {
-            $whereClause .= " AND lb.project_id = ?";
-            $params[] = (int) $projectId;
-            $types .= 'i';
+        if (!empty($projectId)) {
+            if (is_array($projectId)) {
+                $pIds = array_values(array_filter(array_map('intval', $projectId)));
+                if (!empty($pIds)) {
+                    $inPlaceholders = implode(',', array_fill(0, count($pIds), '?'));
+                    $whereClause .= " AND lb.project_id IN ($inPlaceholders)";
+                    foreach ($pIds as $pId) {
+                        $params[] = $pId;
+                        $types .= 'i';
+                    }
+                }
+            } else {
+                $whereClause .= " AND lb.project_id = ?";
+                $params[] = (int) $projectId;
+                $types .= 'i';
+            }
         }
 
         if (!empty($search)) {
@@ -958,10 +1056,22 @@ class AccountClient extends Model
         $params = [];
         $types = '';
 
-        if ($projectId) {
-            $whereClause .= " AND lb.project_id = ?";
-            $params[] = (int) $projectId;
-            $types .= 'i';
+        if (!empty($projectId)) {
+            if (is_array($projectId)) {
+                $pIds = array_values(array_filter(array_map('intval', $projectId)));
+                if (!empty($pIds)) {
+                    $inPlaceholders = implode(',', array_fill(0, count($pIds), '?'));
+                    $whereClause .= " AND lb.project_id IN ($inPlaceholders)";
+                    foreach ($pIds as $pId) {
+                        $params[] = $pId;
+                        $types .= 'i';
+                    }
+                }
+            } else {
+                $whereClause .= " AND lb.project_id = ?";
+                $params[] = (int) $projectId;
+                $types .= 'i';
+            }
         }
 
         if (!empty($search)) {
@@ -1063,7 +1173,17 @@ class AccountClient extends Model
                  WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
                  AND lp.payment_status IN ('paid','partially_paid')), 
                 NULL
-            ) as last_payment_date
+            ) as last_payment_date,
+            (SELECT COALESCE(e_lp.full_name, u_lp.full_name, u_lp.user_name, CONCAT('User #', lp.created_by))
+             FROM lead_payments lp
+             LEFT JOIN users u_lp ON lp.created_by = u_lp.id
+             LEFT JOIN employees e_lp ON (u_lp.employee_id = e_lp.id OR e_lp.user_id = u_lp.id)
+             WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
+               AND lp.payment_status IN ('paid','partially_paid','pending')
+               AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected')
+             ORDER BY lp.payment_date DESC, lp.id DESC
+             LIMIT 1
+            ) as last_payment_creator_name
         FROM lead_bookings lb
         LEFT JOIN projects p ON lb.project_id = p.id
         LEFT JOIN flats f ON lb.flat_id = f.id
@@ -1094,15 +1214,30 @@ class AccountClient extends Model
         $params = [];
         $types = "";
 
-        if ($projectId) {
-            $whereClause .= " AND lb.project_id = ?";
-            $params[] = (int) $projectId;
-            $types .= "i";
+        if (!empty($projectId)) {
+            if (is_array($projectId)) {
+                $pIds = array_values(array_filter(array_map('intval', $projectId)));
+                if (!empty($pIds)) {
+                    $inPlaceholders = implode(',', array_fill(0, count($pIds), '?'));
+                    $whereClause .= " AND lb.project_id IN ($inPlaceholders)";
+                    foreach ($pIds as $pId) {
+                        $params[] = $pId;
+                        $types .= 'i';
+                    }
+                }
+            } else {
+                $whereClause .= " AND lb.project_id = ?";
+                $params[] = (int) $projectId;
+                $types .= "i";
+            }
         }
 
         $sql = $this->db->prepare("
             SELECT 
                 COUNT(DISTINCT l.id) as total_clients,
+                COUNT(DISTINCT lb.id) as total_units_booked,
+                COUNT(DISTINCT lb.id) as units_booked,
+                COUNT(DISTINCT lb.id) as approved_bookings,
                 COUNT(DISTINCT CASE 
                     WHEN (SELECT SUM(lp.amount) 
                           FROM lead_payments lp 
@@ -1116,7 +1251,7 @@ class AccountClient extends Model
                           WHERE lp2.booking_id = lb.id 
                           AND lp2.payment_status = 'paid') > 0
                     THEN lb.id 
-                END) as approved_bookings,
+                END) as paid_bookings,
                 COUNT(DISTINCT CASE 
                     WHEN (SELECT COUNT(*) 
                           FROM lead_payments lp3 
@@ -1184,10 +1319,22 @@ class AccountClient extends Model
         $params = [];
         $types = "";
 
-        if ($projectId) {
-            $whereClause .= " AND lb.project_id = ?";
-            $params[] = (int) $projectId;
-            $types .= "i";
+        if (!empty($projectId)) {
+            if (is_array($projectId)) {
+                $pIds = array_values(array_filter(array_map('intval', $projectId)));
+                if (!empty($pIds)) {
+                    $inPlaceholders = implode(',', array_fill(0, count($pIds), '?'));
+                    $whereClause .= " AND lb.project_id IN ($inPlaceholders)";
+                    foreach ($pIds as $pId) {
+                        $params[] = $pId;
+                        $types .= 'i';
+                    }
+                }
+            } else {
+                $whereClause .= " AND lb.project_id = ?";
+                $params[] = (int) $projectId;
+                $types .= "i";
+            }
         }
 
         $sql = $this->db->prepare("
@@ -1264,8 +1411,20 @@ class AccountClient extends Model
     /**
      * Get project-wise collection breakdown (Total, Land Share, Dev Charge, EMI, Verified EMI, Unverified EMI per project)
      */
-    public function getProjectCollectionBreakdown()
+    public function getProjectCollectionBreakdown($allowedProjectIds = null)
     {
+        $projectFilter = "";
+        if (!empty($allowedProjectIds)) {
+            if (is_array($allowedProjectIds)) {
+                $pIds = array_values(array_filter(array_map('intval', $allowedProjectIds)));
+                if (!empty($pIds)) {
+                    $projectFilter = " AND p.id IN (" . implode(',', $pIds) . ")";
+                }
+            } else {
+                $projectFilter = " AND p.id = " . (int)$allowedProjectIds;
+            }
+        }
+
         $sql = "
             SELECT 
                 p.id AS project_id,
@@ -1312,7 +1471,7 @@ class AccountClient extends Model
                 AND lp.is_trashed = 0
                 AND COALESCE(lp.is_emi_discount, 0) = 0
                 AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected')
-            WHERE p.deleted_at IS NULL
+            WHERE p.deleted_at IS NULL {$projectFilter}
             GROUP BY p.id, p.name
             HAVING total_collected > 0
             ORDER BY total_collected DESC, p.name ASC
@@ -1623,6 +1782,28 @@ class AccountClient extends Model
                      AND lp.verification_status = 'verified'), 
                     NULL
                 ) as last_payment_date,
+                COALESCE(
+                    (SELECT SUM(lp.penalty_paid) 
+                     FROM lead_payments lp 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
+                     AND lp.payment_status IN ('paid','partially_paid')
+                     AND lp.verification_status != 'rejected'), 
+                    0
+                ) as total_penalty_paid,
+                COALESCE(
+                    (SELECT SUM(lp.penalty_amount) 
+                     FROM lead_payments lp 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
+                     AND lp.verification_status != 'rejected'), 
+                    0
+                ) as total_penalty_amount,
+                COALESCE(
+                    (SELECT SUM(lp.penalty_waived) 
+                     FROM lead_payments lp 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
+                     AND lp.verification_status != 'rejected'), 
+                    0
+                ) as total_penalty_waived,
                 {$transferCols}
                 {$totalEmiCol}
                 {$emiAuditCols}
@@ -1762,6 +1943,9 @@ class AccountClient extends Model
             $clientDetails['construction_fee_paid_after_service']  = $constructionFeePaid;
             $clientDetails['remaining_construction_fee']           = $remainingConstructionFee;
             $clientDetails['total_due']                            = $totalDue;
+            $clientDetails['total_penalty_paid']                   = (float) ($clientDetails['total_penalty_paid'] ?? 0);
+            $clientDetails['total_penalty_amount']                 = (float) ($clientDetails['total_penalty_amount'] ?? 0);
+            $clientDetails['total_penalty_waived']                 = (float) ($clientDetails['total_penalty_waived'] ?? 0);
             $clientDetails['others_paid']                          = $othersPaid;
             $clientDetails['others_paid_total']                    = $othersPaidTotal;
             $clientDetails['net_received']                         = $netReceived;
@@ -1971,14 +2155,24 @@ class AccountClient extends Model
         }
         if ($totalEmi <= 0) return [];
 
-        // Fetch all verified paid/partially paid EMIs
+        // 1. Fetch verified paid/partially paid EMIs via emi_schedules
         $paidEmiStmt = $this->db->prepare("
-            SELECT es.emi_no, es.emi_amount, es.due_emi_amount, es.due_date, es.status, lp.payment_date, lp.payment_status
+            SELECT 
+                es.emi_no, 
+                SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status != 'rejected' THEN es.emi_amount ELSE 0 END) as total_paid,
+                MIN(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status != 'rejected' THEN es.due_emi_amount ELSE NULL END) as min_due_emi,
+                MAX(lp.payment_date) as last_payment_date,
+                MIN(lp.payment_date) as first_payment_date,
+                MAX(es.due_date) as schedule_due_date,
+                SUBSTRING_INDEX(GROUP_CONCAT(lp.payment_status ORDER BY lp.id DESC), ',', 1) as latest_payment_status,
+                COUNT(lp.id) as payment_count
             FROM emi_schedules es
             INNER JOIN lead_payments lp ON lp.id = es.lead_payment_id
-            WHERE lp.is_trashed = 0 AND lp.booking_id = ? 
-            AND lp.payment_status IN ('paid','partially_paid')
-            AND lp.verification_status != 'rejected'
+            WHERE es.lead_booking_id = ? 
+              AND lp.is_trashed = 0 
+              AND lp.payment_status IN ('paid','partially_paid')
+              AND lp.verification_status != 'rejected'
+            GROUP BY es.emi_no
             ORDER BY es.emi_no ASC
         ");
         $paidEmiStmt->bind_param("i", $bookingId);
@@ -1990,12 +2184,37 @@ class AccountClient extends Model
         if ($paidResult) {
             while ($row = $paidResult->fetch_assoc()) {
                 $paidEmis[(int)$row['emi_no']] = $row;
-                if (!empty($row['due_date'])) {
-                    $lastPaidDueDate = $row['due_date'];
+                if (!empty($row['schedule_due_date'])) {
+                    $lastPaidDueDate = $row['schedule_due_date'];
                 }
             }
         }
+        $paidEmiStmt->close();
 
+        // 2. Fetch custom fixed dates set by CED
+        $fixedDates = [];
+        $fixedStmt = $this->db->prepare("
+            SELECT cef.emi_no, cef.due_date, cef.notes, cef.fixed_by, cef.fixed_at,
+                   u.full_name as fixed_by_name,
+                   COALESCE(NULLIF(e.employee_id, ''), NULLIF(u.employee_id, '')) as fixed_by_code
+            FROM client_emi_fixed_dates cef
+            LEFT JOIN users u ON u.id = cef.fixed_by
+            LEFT JOIN employees e ON e.user_id = u.id
+            WHERE cef.booking_id = ?
+        ");
+        if ($fixedStmt) {
+            $fixedStmt->bind_param("i", $bookingId);
+            $fixedStmt->execute();
+            $fRes = $fixedStmt->get_result();
+            if ($fRes) {
+                while ($frow = $fRes->fetch_assoc()) {
+                    $fixedDates[(int)$frow['emi_no']] = $frow;
+                }
+            }
+            $fixedStmt->close();
+        }
+
+        // 3. Followup counts
         $followupCounts = [];
         $followupStmt = $this->db->prepare("
             SELECT emi_no, COUNT(*) as cnt 
@@ -2012,18 +2231,19 @@ class AccountClient extends Model
                     $followupCounts[(int)$f['emi_no']] = (int)$f['cnt'];
                 }
             }
+            $followupStmt->close();
         }
 
         $schedule = [];
-        $currentDate = new \DateTime();
-        $currentMonth = (int)$currentDate->format('Ym'); // e.g., 202606
+        $today = new \DateTime();
+        $todayStr = $today->format('Y-m-d');
+        $currentMonth = (int)$today->format('Ym');
         
-        // Determine the anchor date for the very first EMI
+        // 4. Anchor date for the very first unanchored EMI
         $anchorDate = null;
         if (!empty($lastPaidDueDate)) {
             $anchorDate = new \DateTime($lastPaidDueDate);
         } else {
-            // No EMIs paid yet, anchor to the date of the last completed pre-EMI payment
             $lastPaymentStmt = $this->db->prepare("
                 SELECT MAX(payment_date) as last_payment_date 
                 FROM lead_payments 
@@ -2037,6 +2257,7 @@ class AccountClient extends Model
                 $lastPaymentStmt->execute();
                 $lastPaymentResult = $lastPaymentStmt->get_result();
                 $lastPaymentRow = $lastPaymentResult ? $lastPaymentResult->fetch_assoc() : null;
+                $lastPaymentStmt->close();
             }
             
             $anchorDateStr = !empty($lastPaymentRow['last_payment_date']) 
@@ -2050,86 +2271,279 @@ class AccountClient extends Model
         $runnerDate = clone $anchorDate;
         
         for ($i = 1; $i <= $totalEmi; $i++) {
-            $isPaid = isset($paidEmis[$i]);
+            $hasPayment = isset($paidEmis[$i]);
+            $hasFixedDate = isset($fixedDates[$i]);
             
-            if ($isPaid) {
-                $record = $paidEmis[$i];
-                $dueDateObj = new \DateTime($record['due_date']);
-                $dueMonth = (int)$dueDateObj->format('Ym');
+            // Determine due date & CED fixed metadata
+            $isDateCustom = false;
+            $fixedByName = null;
+            $fixedByCode = null;
+            $fixedAt = null;
+            $fixedNotes = null;
+            $dueDateStr = null;
+            $dueDateObj = null;
+            
+            if ($hasFixedDate) {
+                $dueDateStr = $fixedDates[$i]['due_date'];
+                $isDateCustom = true;
+                $fixedByName = $fixedDates[$i]['fixed_by_name'] ?? 'CED Team';
+                $fixedByCode = $fixedDates[$i]['fixed_by_code'] ?? null;
+                $fixedAt = $fixedDates[$i]['fixed_at'] ?? null;
+                $fixedNotes = $fixedDates[$i]['notes'] ?? null;
+                $dueDateObj = new \DateTime($dueDateStr);
+                $runnerDate = clone $dueDateObj;
+            } elseif ($hasPayment && !empty($paidEmis[$i]['schedule_due_date'])) {
+                $dueDateStr = $paidEmis[$i]['schedule_due_date'];
+                $dueDateObj = new \DateTime($dueDateStr);
+                $runnerDate = clone $dueDateObj;
+            } else {
+                // Unpaid & no custom fixed date by CED:
+                // Only project forward if CED or payment has anchored at least one date in this booking
+                if (!empty($fixedDates) || !empty($lastPaidDueDate)) {
+                    if (count($paidEmis) > 0 || count($fixedDates) > 0 || $i > 1) {
+                        $runnerDate->modify('+1 month');
+                    }
+                    $dueDateStr = $runnerDate->format('Y-m-d');
+                    $dueDateObj = clone $runnerDate;
+                } else {
+                    // No date has ever been scheduled by CED or recorded via payment.
+                    // Keep unassigned (Not Scheduled) so artificial past dates are never fabricated.
+                    $dueDateStr = null;
+                    $dueDateObj = null;
+                }
+            }
+
+            $dueMonth = $dueDateObj ? (int)$dueDateObj->format('Ym') : null;
+            $isOverdueDate = ($dueDateStr !== null && $dueDateStr < $todayStr);
+            
+            // Amounts & payment stats
+            $scheduledAmt = (float)($clientDetails['per_emi_amount'] ?? 0);
+            $paidAmt = 0.0;
+            $dueAmt = $scheduledAmt;
+            $lastPaymentDate = null;
+            $paymentStatus = 'unpaid';
+            $isFullyPaid = false;
+            
+            if ($hasPayment) {
+                $payRec = $paidEmis[$i];
+                $paidAmt = (float)($payRec['total_paid'] ?? 0);
+                $minDue = $payRec['min_due_emi'];
+                $dueAmt = ($minDue !== null) ? (float)$minDue : max(0, $scheduledAmt - $paidAmt);
+                $lastPaymentDate = $payRec['last_payment_date'] ?? null;
+                $paymentStatus = $payRec['latest_payment_status'] ?? ($dueAmt <= 0 ? 'paid' : 'partially_paid');
                 
-                $isPartiallyPaid = ($record['payment_status'] === 'partially_paid' && $record['due_emi_amount'] > 0);
+                if ($dueAmt <= 0.01 && $paidAmt > 0) {
+                    $isFullyPaid = true;
+                    $dueAmt = 0;
+                    $paymentStatus = 'paid';
+                }
                 
-                if ($isPartiallyPaid) {
-                    if ($dueMonth < $currentMonth) {
-                        $maturityStatus = 'due';
+                if ($paidAmt + $dueAmt > 0) {
+                    $scheduledAmt = $paidAmt + $dueAmt;
+                }
+            }
+
+            // Lock check (Best Practice #1): Locked if fully paid
+            $isLocked = $isFullyPaid;
+            
+            // Maturity & delay calculation
+            $delayDays = 0;
+            $overdueDays = 0;
+            $maturityStatus = '';
+            
+            if ($isFullyPaid) {
+                if (!empty($lastPaymentDate) && !empty($dueDateStr)) {
+                    if ($lastPaymentDate <= $dueDateStr) {
+                        $maturityStatus = 'paid_on_time';
+                        $delayDays = 0;
                     } else {
-                        $maturityStatus = 'pending';
+                        $maturityStatus = 'paid_late';
+                        $diff = (new \DateTime($lastPaymentDate))->diff($dueDateObj);
+                        $delayDays = (int)$diff->days;
                     }
                 } else {
-                    if ($dueMonth < $currentMonth) {
-                        $maturityStatus = 'matured';
-                    } else {
-                        $maturityStatus = 'paid';
-                    }
+                    $maturityStatus = ($dueMonth && $dueMonth < $currentMonth) ? 'matured' : 'paid';
                 }
-                
-                $paidAmt = (float)($record['emi_amount'] ?? 0);
-                $dueAmt  = (float)($record['due_emi_amount'] ?? 0);
-                $scheduledAmt = ($paidAmt + $dueAmt > 0) ? ($paidAmt + $dueAmt) : (float)($clientDetails['per_emi_amount'] ?? 0);
-
-                $penaltyCalc = $this->calculateCompoundedPenalty($scheduledAmt, $record['due_date']);
-                $schedule[] = [
-                    'emi_no' => $i,
-                    'due_date' => $record['due_date'],
-                    'amount' => $scheduledAmt,
-                    'paid_amount' => $paidAmt,
-                    'due_amount' => $dueAmt,
-                    'status' => $record['payment_status'],
-                    'maturity_status' => $maturityStatus,
-                    'is_virtual' => false,
-                    'followup_count' => $followupCounts[$i] ?? 0,
-                    'months_overdue' => ($maturityStatus === 'due') ? $penaltyCalc['months_overdue'] : 0,
-                    'penalty_amount' => ($maturityStatus === 'due') ? $penaltyCalc['penalty_amount'] : 0,
-                    'total_payable'  => ($maturityStatus === 'due') ? $penaltyCalc['total_payable'] : $dueAmt
-                ];
-                
-                $runnerDate = clone $dueDateObj;
-                
-            } else {
-                if (count($paidEmis) > 0 || $i > 1) {
-                    $runnerDate->modify('+1 month');
-                }
-                $projectedDueDate = $runnerDate->format('Y-m-d');
-                $dueMonth = (int)$runnerDate->format('Ym');
-                
-                if ($dueMonth < $currentMonth) {
+            } elseif ($paidAmt > 0 && $dueAmt > 0) {
+                // Partially Paid
+                if ($isOverdueDate) {
                     $maturityStatus = 'due';
-                } elseif ($dueMonth == $currentMonth) {
+                    $diff = $today->diff($dueDateObj);
+                    $overdueDays = (int)$diff->days;
+                } elseif ($dueMonth && $dueMonth == $currentMonth) {
                     $maturityStatus = 'pending';
                 } else {
                     $maturityStatus = 'future';
                 }
-                
-                $penaltyCalc = $this->calculateCompoundedPenalty($clientDetails['per_emi_amount'], $projectedDueDate);
-
-                $schedule[] = [
-                    'emi_no' => $i,
-                    'due_date' => $projectedDueDate,
-                    'amount' => $clientDetails['per_emi_amount'],
-                    'paid_amount' => 0,
-                    'due_amount' => $clientDetails['per_emi_amount'],
-                    'status' => 'unpaid',
-                    'maturity_status' => $maturityStatus,
-                    'is_virtual' => true,
-                    'followup_count' => $followupCounts[$i] ?? 0,
-                    'months_overdue' => ($maturityStatus === 'due') ? $penaltyCalc['months_overdue'] : 0,
-                    'penalty_amount' => ($maturityStatus === 'due') ? $penaltyCalc['penalty_amount'] : 0,
-                    'total_payable'  => ($maturityStatus === 'due') ? $penaltyCalc['total_payable'] : $clientDetails['per_emi_amount']
-                ];
+            } else {
+                // Unpaid (no payment)
+                if ($hasFixedDate) {
+                    // CED set an explicit due date for this unpaid EMI
+                    if ($isOverdueDate) {
+                        $maturityStatus = 'due';
+                        $diff = $today->diff($dueDateObj);
+                        $overdueDays = (int)$diff->days;
+                    } elseif ($dueMonth && $dueMonth == $currentMonth) {
+                        $maturityStatus = 'pending';
+                    } else {
+                        $maturityStatus = 'future';
+                    }
+                } else {
+                    // Unpaid and NOT scheduled by CED yet:
+                    // Cannot be overdue or penalized!
+                    $maturityStatus = !empty($dueDateStr) ? 'future' : 'unscheduled';
+                    $overdueDays = 0;
+                }
             }
+
+            $penaltyCalc = ($maturityStatus === 'due' && !empty($dueDateStr))
+                ? $this->calculateCompoundedPenalty($scheduledAmt, $dueDateStr)
+                : ['months_overdue' => 0, 'penalty_amount' => 0, 'total_payable' => $dueAmt];
+
+            $schedule[] = [
+                'emi_no'            => $i,
+                'due_date'          => $dueDateStr,
+                'amount'            => $scheduledAmt,
+                'paid_amount'       => $paidAmt,
+                'due_amount'        => $dueAmt,
+                'status'            => $paymentStatus,
+                'maturity_status'   => $maturityStatus,
+                'is_virtual'        => !$hasPayment,
+                'is_locked'         => $isLocked,
+                'is_date_custom'    => $isDateCustom,
+                'fixed_by_name'     => $fixedByName,
+                'fixed_by_code'     => $fixedByCode,
+                'fixed_at'          => $fixedAt,
+                'notes'             => $fixedNotes,
+                'last_payment_date' => $lastPaymentDate,
+                'delay_days'        => $delayDays,
+                'overdue_days'      => $overdueDays,
+                'followup_count'    => $followupCounts[$i] ?? 0,
+                'months_overdue'    => ($maturityStatus === 'due') ? $penaltyCalc['months_overdue'] : 0,
+                'penalty_amount'    => ($maturityStatus === 'due') ? $penaltyCalc['penalty_amount'] : 0,
+                'total_payable'     => ($maturityStatus === 'due') ? $penaltyCalc['total_payable'] : $dueAmt
+            ];
         }
         
         return $schedule;
+    }
+
+    /**
+     * Save custom EMI Due Date fixed by CED
+     * Enforces Best Practice #1: Fully paid EMIs are locked and cannot be edited.
+     */
+    public function saveEmiDueDate($bookingId, $emiNo, $dueDate, $notes = '', $userId = 0, $applySubsequent = 0)
+    {
+        $bookingId = (int)$bookingId;
+        $emiNo = (int)$emiNo;
+        $dueDate = trim($dueDate);
+        $userId = (int)$userId;
+        
+        if ($bookingId <= 0 || $emiNo <= 0 || empty($dueDate)) {
+            return ['success' => false, 'message' => 'Invalid parameters provided.'];
+        }
+
+        $d = \DateTime::createFromFormat('Y-m-d', $dueDate);
+        if (!$d || $d->format('Y-m-d') !== $dueDate) {
+            return ['success' => false, 'message' => 'Invalid date format (must be YYYY-MM-DD).'];
+        }
+
+        // Lock check: check if this EMI is already fully paid
+        $checkStmt = $this->db->prepare("
+            SELECT es.due_emi_amount, es.status
+            FROM emi_schedules es
+            INNER JOIN lead_payments lp ON lp.id = es.lead_payment_id
+            WHERE es.lead_booking_id = ? AND es.emi_no = ?
+              AND lp.is_trashed = 0
+              AND lp.verification_status != 'rejected'
+            ORDER BY es.id DESC LIMIT 1
+        ");
+        if ($checkStmt) {
+            $checkStmt->bind_param("ii", $bookingId, $emiNo);
+            $checkStmt->execute();
+            $chkRes = $checkStmt->get_result();
+            if ($chkRes && $chkRow = $chkRes->fetch_assoc()) {
+                if ($chkRow['status'] === 'paid' && (float)$chkRow['due_emi_amount'] <= 0.01) {
+                    $checkStmt->close();
+                    return [
+                        'success' => false, 
+                        'message' => "EMI #{$emiNo} is already fully paid. The due date is locked and cannot be modified."
+                    ];
+                }
+            }
+            $checkStmt->close();
+        }
+
+        // Save to client_emi_fixed_dates
+        $saveStmt = $this->db->prepare("
+            INSERT INTO client_emi_fixed_dates (booking_id, emi_no, due_date, notes, fixed_by, fixed_at)
+            VALUES (?, ?, ?, ?, ?, NOW())
+            ON DUPLICATE KEY UPDATE 
+                due_date = VALUES(due_date),
+                notes = VALUES(notes),
+                fixed_by = VALUES(fixed_by),
+                fixed_at = NOW()
+        ");
+        if (!$saveStmt) {
+            return ['success' => false, 'message' => 'Database error: ' . $this->db->error];
+        }
+        $saveStmt->bind_param("iissi", $bookingId, $emiNo, $dueDate, $notes, $userId);
+        if (!$saveStmt->execute()) {
+            $err = $saveStmt->error;
+            $saveStmt->close();
+            return ['success' => false, 'message' => 'Failed to save EMI due date: ' . $err];
+        }
+        $saveStmt->close();
+
+        // If applySubsequent is enabled, set following unpaid EMIs consecutively (+1 month)
+        if ($applySubsequent) {
+            $client = $this->getClientByBookingId($bookingId);
+            $totalEmi = (int)($client['total_emi'] ?? 0);
+            if ($totalEmi > 120) $totalEmi = 42;
+            
+            $baseDate = new \DateTime($dueDate);
+            for ($nextEmi = $emiNo + 1; $nextEmi <= $totalEmi; $nextEmi++) {
+                // Check if nextEmi is already paid
+                $pChk = $this->db->prepare("
+                    SELECT 1 FROM emi_schedules es
+                    INNER JOIN lead_payments lp ON lp.id = es.lead_payment_id
+                    WHERE es.lead_booking_id = ? AND es.emi_no = ?
+                      AND lp.is_trashed = 0 AND lp.verification_status != 'rejected'
+                      AND es.status = 'paid' AND es.due_emi_amount <= 0.01
+                    LIMIT 1
+                ");
+                $isPaid = false;
+                if ($pChk) {
+                    $pChk->bind_param("ii", $bookingId, $nextEmi);
+                    $pChk->execute();
+                    $isPaid = (bool)$pChk->get_result()->fetch_row();
+                    $pChk->close();
+                }
+                if ($isPaid) continue;
+
+                $nextDate = clone $baseDate;
+                $nextDate->modify('+' . ($nextEmi - $emiNo) . ' month');
+                $nextDateStr = $nextDate->format('Y-m-d');
+                $subNote = 'Auto-adjusted based on EMI #' . $emiNo;
+
+                $subStmt = $this->db->prepare("
+                    INSERT INTO client_emi_fixed_dates (booking_id, emi_no, due_date, notes, fixed_by, fixed_at)
+                    VALUES (?, ?, ?, ?, ?, NOW())
+                    ON DUPLICATE KEY UPDATE 
+                        due_date = VALUES(due_date),
+                        notes = VALUES(notes),
+                        fixed_by = VALUES(fixed_by),
+                        fixed_at = NOW()
+                ");
+                if ($subStmt) {
+                    $subStmt->bind_param("iissi", $bookingId, $nextEmi, $nextDateStr, $subNote, $userId);
+                    $subStmt->execute();
+                    $subStmt->close();
+                }
+            }
+        }
+
+        return ['success' => true, 'message' => "EMI #{$emiNo} Due Date saved successfully!"];
     }
 
     /**
@@ -2174,6 +2588,151 @@ class AccountClient extends Model
         } catch (\Exception $e) {
             return ['months_overdue' => 0, 'penalty_amount' => 0, 'total_payable' => $baseAmount];
         }
+    }
+
+    /**
+     * Get detailed late penalty history for a booking
+     * Calculates delay days, target installment, due dates, paid penalty, waived amount & approval status
+     */
+    public function getPenaltyHistoryByBookingId($bookingId)
+    {
+        $bookingId = (int)$bookingId;
+        if ($bookingId <= 0) {
+            return [];
+        }
+
+        $hasTrashed = $this->hasColumn('lead_payments', 'is_trashed');
+        $lpTrash = $hasTrashed ? "lp.is_trashed = 0 AND " : "";
+
+        $sql = "
+            SELECT 
+                lp.id,
+                lp.booking_id,
+                lp.batch_id,
+                lp.payment_date,
+                lp.amount,
+                lp.payment_type,
+                lp.settlement_type,
+                lp.parent_payment_id,
+                lp.payment_method,
+                lp.transaction_ref,
+                lp.bank_name,
+                lp.penalty_amount,
+                lp.penalty_paid,
+                lp.penalty_waived,
+                lp.waiver_reason,
+                lp.waiver_status,
+                lp.waiver_attachment,
+                lp.attachment_paths,
+                lp.verification_status,
+                u.full_name as created_by_name,
+                uv.full_name as verified_by_name,
+                COALESCE(es_curr.emi_no, es_parent.emi_no, lp.emi_no) as emi_no,
+                es_curr.due_date as curr_due_date,
+                es_parent.due_date as parent_due_date,
+                cef.due_date as fixed_due_date,
+                batch_lp.parent_payment_id as batch_parent_id,
+                batch_parent_es.due_date as batch_parent_due_date,
+                batch_parent_es.emi_no as batch_parent_emi_no,
+                COALESCE(es_curr.emi_amount, es_parent.emi_amount, lp.amount) as base_emi_amount
+            FROM lead_payments lp
+            LEFT JOIN emi_schedules es_curr ON es_curr.lead_payment_id = lp.id
+            LEFT JOIN emi_schedules es_parent ON (lp.parent_payment_id IS NOT NULL AND es_parent.lead_payment_id = lp.parent_payment_id)
+            LEFT JOIN client_emi_fixed_dates cef ON (cef.booking_id = lp.booking_id AND cef.emi_no = COALESCE(es_curr.emi_no, es_parent.emi_no))
+            LEFT JOIN lead_payments batch_lp ON (lp.batch_id IS NOT NULL AND lp.batch_id != '' AND batch_lp.batch_id = lp.batch_id AND batch_lp.parent_payment_id IS NOT NULL AND batch_lp.id != lp.id)
+            LEFT JOIN emi_schedules batch_parent_es ON (batch_lp.parent_payment_id IS NOT NULL AND batch_parent_es.lead_payment_id = batch_lp.parent_payment_id)
+            LEFT JOIN users u ON u.id = lp.created_by
+            LEFT JOIN users uv ON uv.id = lp.verified_by
+            WHERE {$lpTrash}lp.booking_id = ?
+              AND (lp.penalty_amount > 0 OR lp.penalty_paid > 0 OR lp.penalty_waived > 0)
+            ORDER BY lp.payment_date ASC, lp.id ASC
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return [];
+        }
+
+        $stmt->bind_param("i", $bookingId);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $history = [];
+
+        while ($r = $res->fetch_assoc()) {
+            $targetEmi = $r['batch_parent_emi_no'] ?: $r['emi_no'];
+            $dueDate = null;
+            if (!empty($r['batch_parent_due_date']) && $r['batch_parent_due_date'] < $r['payment_date']) {
+                $dueDate = $r['batch_parent_due_date'];
+            } elseif (!empty($r['parent_due_date']) && $r['parent_due_date'] < $r['payment_date']) {
+                $dueDate = $r['parent_due_date'];
+            } elseif (!empty($r['fixed_due_date']) && $r['fixed_due_date'] < $r['payment_date']) {
+                $dueDate = $r['fixed_due_date'];
+            } elseif (!empty($r['curr_due_date']) && $r['curr_due_date'] < $r['payment_date']) {
+                $dueDate = $r['curr_due_date'];
+            }
+
+            $daysLate = 0;
+            $monthsOverdue = 0;
+            if ($dueDate && $r['payment_date'] > $dueDate) {
+                try {
+                    $d1 = new \DateTime($dueDate);
+                    $d2 = new \DateTime($r['payment_date']);
+                    $diff = $d1->diff($d2);
+                    $daysLate = (int)$diff->days;
+                    $monthsOverdue = ($diff->y * 12) + $diff->m + ($diff->d > 0 ? 1 : 0);
+                } catch (\Exception $e) {
+                    $daysLate = 0;
+                    $monthsOverdue = 0;
+                }
+            } else {
+                // If explicit schedule due date wasn't stored, estimate from 5% compounded monthly rate
+                $base = (float)$r['base_emi_amount'];
+                $pen = (float)$r['penalty_amount'];
+                if ($base > 0 && $pen > 0) {
+                    $ratio = 1 + ($pen / $base);
+                    $monthsOverdue = max(1, (int)round(log($ratio) / log(1.05)));
+                    $daysLate = $monthsOverdue * 30;
+                    if (empty($dueDate) && !empty($r['payment_date'])) {
+                        try {
+                            $calcDue = new \DateTime($r['payment_date']);
+                            $calcDue->modify("-{$monthsOverdue} months");
+                            $dueDate = $calcDue->format('Y-m-d');
+                        } catch (\Exception $e) {}
+                    }
+                }
+            }
+
+            // Installment label
+            $installmentLabel = 'EMI Installment';
+            if ($targetEmi) {
+                $suffix = 'th';
+                if (!in_array($targetEmi % 100, [11, 12, 13])) {
+                    if ($targetEmi % 10 == 1) $suffix = 'st';
+                    elseif ($targetEmi % 10 == 2) $suffix = 'nd';
+                    elseif ($targetEmi % 10 == 3) $suffix = 'rd';
+                }
+                $installmentLabel = "{$targetEmi}{$suffix} Installment";
+            }
+            if ($r['settlement_type'] === 'emi_due_settlement') {
+                $installmentLabel .= ' (Settlement)';
+            }
+
+            $r['target_emi_no']     = $targetEmi;
+            $r['installment_label'] = $installmentLabel;
+            $r['scheduled_due_date']= $dueDate;
+            $r['days_late']         = $daysLate;
+            $r['months_overdue']    = $monthsOverdue;
+            $r['penalty_amount']    = (float)$r['penalty_amount'];
+            $r['penalty_paid']      = (float)$r['penalty_paid'];
+            $r['penalty_waived']    = (float)$r['penalty_waived'];
+            $r['amount']            = (float)$r['amount'];
+            $r['base_emi_amount']   = (float)$r['base_emi_amount'];
+
+            $history[] = $r;
+        }
+        $stmt->close();
+
+        return $history;
     }
 
     /**
@@ -2246,6 +2805,9 @@ class AccountClient extends Model
                 'remaining_construction_fee'           => 0,
                 'total_paid'                           => 0,
                 'total_due'                            => 0,
+                'total_penalty_paid'                   => 0,
+                'total_penalty_amount'                 => 0,
+                'total_penalty_waived'                 => 0,
                 'total_emi_due'                        => 0,
                 'total_emi'                            => 0,
                 'completed_emi'                        => 0,
@@ -2316,6 +2878,9 @@ class AccountClient extends Model
             'others_paid'                          => $clientDetails['others_paid'] ?? 0,
             'others_paid_total'                    => $clientDetails['others_paid_total'] ?? 0,
             'total_due'                            => $clientDetails['total_due'],
+            'total_penalty_paid'                   => $clientDetails['total_penalty_paid'] ?? 0,
+            'total_penalty_amount'                 => $clientDetails['total_penalty_amount'] ?? 0,
+            'total_penalty_waived'                 => $clientDetails['total_penalty_waived'] ?? 0,
             'total_emi_due'                        => $clientDetails['total_emi_due'] ?? 0,
             'total_bulk_emi_discount'              => $clientDetails['total_bulk_emi_discount'] ?? 0,
             'total_emi'                            => $clientDetails['total_emi'],
@@ -3749,6 +4314,237 @@ class AccountClient extends Model
     }
 
     /**
+     * Get date-wise aggregated payment summary grouped by batch_id (or single payment)
+     * For client date-wise ledger without internal payment_type breakdowns.
+     * Computes running balance (total due decreasing chronologically).
+     */
+    public function getDatewiseBatchPaymentSummary($bookingId)
+    {
+        $bookingId = (int)$bookingId;
+        $clientDetails = $this->getClientByBookingId($bookingId);
+        if (!$clientDetails) {
+            return null;
+        }
+
+        $totalPrice = (float)($clientDetails['total_price'] ?? 0);
+        if ($totalPrice <= 0) {
+            $totalPrice = (float)($clientDetails['agreement_value'] ?? 0);
+        }
+
+        $transactions = $this->getFilteredTransactionsByBookingId($bookingId);
+
+        // Include agreement booking money if not in lead_payments table
+        $hasBookingMoneyInDB = $this->hasBookingMoneyInDatabase($bookingId);
+        if (!$hasBookingMoneyInDB && !empty($clientDetails['booking_money'])) {
+            $bookingMoneyTxn = $this->getBookingMoneyTransaction($bookingId);
+            if (!$bookingMoneyTxn) {
+                $bookingMoneyTxn = [
+                    'id'                  => 'booking-' . $bookingId,
+                    'payment_date'        => $clientDetails['booking_date'],
+                    'formatted_date'      => date('d M, Y', strtotime($clientDetails['booking_date'])),
+                    'payment_type'        => 'booking_money',
+                    'amount'              => $clientDetails['booking_money'],
+                    'payment_status'      => 'paid',
+                    'payment_method'      => 'cash',
+                    'bank_name'           => '',
+                    'bank_display_name'   => '',
+                    'cheque_no'           => '',
+                    'transaction_ref'     => '',
+                    'created_by_name'     => $clientDetails['agent_name'] ?? 'System',
+                    'verification_status' => 'verified',
+                    'batch_id'            => 'booking_initial_' . $bookingId
+                ];
+            }
+            array_unshift($transactions, $bookingMoneyTxn);
+        }
+
+        // Group by batch_id (or fallback to single_{id})
+        $batches = [];
+        foreach ($transactions as $txn) {
+            if (!empty($txn['is_trashed'])) continue;
+
+            $batchKey = !empty($txn['batch_id']) ? $txn['batch_id'] : ('single_' . $txn['id']);
+
+            if (!isset($batches[$batchKey])) {
+                $bankDisplay = !empty($txn['bank_name']) ? $txn['bank_name'] : ($txn['bank_display_name'] ?? '');
+                $batches[$batchKey] = [
+                    'batch_id'            => $txn['batch_id'] ?? null,
+                    'primary_payment_id'  => $txn['id'],
+                    'payment_ids'         => [$txn['id']],
+                    'payment_date'        => $txn['payment_date'] ?? date('Y-m-d'),
+                    'payment_method'      => ucfirst(strtolower($txn['payment_method'] ?? 'cash')),
+                    'bank_name'           => $bankDisplay,
+                    'bank_account_no'     => $txn['bank_account_no'] ?? '',
+                    'cheque_no'           => $txn['cheque_no'] ?? '',
+                    'transaction_ref'     => $txn['transaction_ref'] ?? '',
+                    'created_by_name'     => !empty($txn['created_by_name']) ? $txn['created_by_name'] : 'System',
+                    'created_at'          => $txn['created_at'] ?? null,
+                    'verified_by_name'    => $txn['verified_by_name'] ?? null,
+                    'verification_status' => $txn['verification_status'] ?? 'pending',
+                    'total_paid'          => 0.0,
+                    'total_discount'      => 0.0,
+                    'item_count'          => 1,
+                    'is_bulk_batch'       => false,
+                    'other_purposes'      => []
+                ];
+            } else {
+                $batches[$batchKey]['payment_ids'][] = $txn['id'];
+                $batches[$batchKey]['item_count']++;
+                $batches[$batchKey]['is_bulk_batch'] = true;
+
+                if (empty($batches[$batchKey]['bank_name']) && !empty($txn['bank_name'])) {
+                    $batches[$batchKey]['bank_name'] = $txn['bank_name'];
+                }
+                if (empty($batches[$batchKey]['cheque_no']) && !empty($txn['cheque_no'])) {
+                    $batches[$batchKey]['cheque_no'] = $txn['cheque_no'];
+                }
+                if (empty($batches[$batchKey]['transaction_ref']) && !empty($txn['transaction_ref'])) {
+                    $batches[$batchKey]['transaction_ref'] = $txn['transaction_ref'];
+                }
+            }
+
+            if (!empty($txn['other_purpose'])) {
+                $batches[$batchKey]['other_purposes'][] = trim($txn['other_purpose']);
+            }
+
+            $amt = (float)($txn['amount'] ?? 0);
+            $isDiscount = !empty($txn['is_emi_discount']) && (int)$txn['is_emi_discount'] === 1;
+            if ($isDiscount) {
+                $batches[$batchKey]['total_discount'] += $amt;
+            } else {
+                $batches[$batchKey]['total_paid'] += $amt;
+            }
+        }
+
+        // Query database to get authoritative counts of total vs verified payments for every batch_id in this booking
+        $batchIdStats = [];
+        $batchIds = [];
+        foreach ($transactions as $txn) {
+            if (!empty($txn['batch_id'])) {
+                $batchIds[] = trim((string)$txn['batch_id']);
+            }
+        }
+        $batchIds = array_values(array_unique(array_filter($batchIds)));
+
+        if (!empty($batchIds)) {
+            $inClause = implode(',', array_fill(0, count($batchIds), '?'));
+            $types = str_repeat('s', count($batchIds));
+            $bSql = "SELECT batch_id,
+                            COUNT(*) as total_count,
+                            SUM(CASE WHEN LOWER(TRIM(verification_status)) = 'verified' THEN 1 ELSE 0 END) as verified_count
+                     FROM lead_payments
+                     WHERE batch_id IN ($inClause) AND (is_trashed = 0 OR is_trashed IS NULL)
+                     GROUP BY batch_id";
+            $bStmt = $this->db->prepare($bSql);
+            if ($bStmt) {
+                $bStmt->bind_param($types, ...$batchIds);
+                $bStmt->execute();
+                $bRes = $bStmt->get_result();
+                while ($bRow = $bRes->fetch_assoc()) {
+                    $batchIdStats[$bRow['batch_id']] = [
+                        'total_count'    => (int)$bRow['total_count'],
+                        'verified_count' => (int)$bRow['verified_count']
+                    ];
+                }
+                $bStmt->close();
+            }
+        }
+
+        // Determine strict batch verification: ALL payments in a batch_id MUST be verified
+        foreach ($batches as &$b) {
+            $batchId = $b['batch_id'] ?? null;
+            if (!empty($batchId) && isset($batchIdStats[$batchId])) {
+                $totalInDb = $batchIdStats[$batchId]['total_count'];
+                $verifiedInDb = $batchIdStats[$batchId]['verified_count'];
+                $b['total_payments_in_batch'] = $totalInDb;
+                $b['verified_payments_in_batch'] = $verifiedInDb;
+                $b['is_fully_verified'] = ($totalInDb > 0 && $totalInDb === $verifiedInDb);
+                if ($b['is_fully_verified']) {
+                    $b['verification_status'] = 'verified';
+                } elseif ($verifiedInDb > 0) {
+                    $b['verification_status'] = 'partially_verified';
+                } else {
+                    $b['verification_status'] = 'pending';
+                }
+            } else {
+                $isSingleVerified = (strtolower(trim($b['verification_status'] ?? '')) === 'verified');
+                $b['total_payments_in_batch'] = 1;
+                $b['verified_payments_in_batch'] = $isSingleVerified ? 1 : 0;
+                $b['is_fully_verified'] = $isSingleVerified;
+                $b['verification_status'] = $isSingleVerified ? 'verified' : 'pending';
+            }
+        }
+        unset($b);
+
+        // Sort chronologically: payment_date ASC, primary_payment_id ASC
+        usort($batches, function($a, $b) {
+            $tA = strtotime($a['payment_date']);
+            $tB = strtotime($b['payment_date']);
+            if ($tA === $tB) {
+                return ($a['primary_payment_id'] <=> $b['primary_payment_id']);
+            }
+            return ($tA <=> $tB);
+        });
+
+        // Compute running balance (Due decreasing chronologically)
+        $runningDue = $totalPrice;
+        $grandTotalPaid = 0.0;
+        $grandTotalDiscount = 0.0;
+
+        foreach ($batches as &$b) {
+            $paid = (float)$b['total_paid'];
+            $discount = (float)$b['total_discount'];
+
+            $grandTotalPaid += $paid;
+            $grandTotalDiscount += $discount;
+
+            $runningDue -= ($paid + $discount);
+            if ($runningDue < 0) $runningDue = 0;
+
+            $b['remaining_due'] = $runningDue;
+            $b['total_price_reference'] = $totalPrice;
+
+            // Receipt formatting
+            if (is_numeric($b['primary_payment_id'])) {
+                $b['receipt_no'] = 'REC-' . str_pad($b['primary_payment_id'], 6, '0', STR_PAD_LEFT);
+            } else {
+                $b['receipt_no'] = 'REC-' . strtoupper(str_replace('booking-', 'BKG-', (string)$b['primary_payment_id']));
+            }
+            $b['formatted_date'] = !empty($b['payment_date']) ? date('d M, Y', strtotime($b['payment_date'])) : '—';
+        }
+        unset($b);
+
+        // Construct batch verification lookup map
+        $batchMap = [];
+        foreach ($batches as $b) {
+            $mapVal = [
+                'is_fully_verified'           => !empty($b['is_fully_verified']),
+                'verification_status'         => $b['verification_status'] ?? 'pending',
+                'total_payments_in_batch'     => $b['total_payments_in_batch'] ?? 1,
+                'verified_payments_in_batch'  => $b['verified_payments_in_batch'] ?? 0
+            ];
+            if (!empty($b['batch_id'])) {
+                $batchMap[$b['batch_id']] = $mapVal;
+            }
+            if (!empty($b['primary_payment_id'])) {
+                $batchMap['single_' . $b['primary_payment_id']] = $mapVal;
+                $batchMap[(string)$b['primary_payment_id']] = $mapVal;
+            }
+        }
+
+        return [
+            'client_details'        => $clientDetails,
+            'total_agreement_value' => $totalPrice,
+            'total_price'           => $totalPrice,
+            'total_paid'            => $grandTotalPaid,
+            'total_discount'        => $grandTotalDiscount,
+            'current_due'           => max(0, $totalPrice - ($grandTotalPaid + $grandTotalDiscount)),
+            'batches'               => array_values($batches),
+            'batch_map'             => $batchMap
+        ];
+    }
+
+    /**
      * Delete transaction
      */
     public function deleteTransaction($paymentId)
@@ -4166,6 +4962,9 @@ class AccountClient extends Model
                         if (!$settleStmt->execute()) throw new Exception("Settlement insert failed: " . $settleStmt->error);
                         
                         $settlePaymentId = $this->db->insert_id;
+                        if (!$firstPaymentId) {
+                            $firstPaymentId = $settlePaymentId;
+                        }
 
                         if (!empty($handoverToId)) {
                             if (!class_exists('ApprovalRequest')) {
@@ -4292,48 +5091,6 @@ class AccountClient extends Model
                         }
                         if (!$firstPaymentId) {
                             $firstPaymentId = $paymentId;
-
-                            // Update penalty & waiver details on the primary payment record
-                            $penaltyAmount = (float)($transactionData['penalty_amount'] ?? 0);
-                            $penaltyPaid   = (float)($transactionData['penalty_paid'] ?? 0);
-                            $penaltyWaived = (float)($transactionData['penalty_waived'] ?? 0);
-                            $waiverReason  = $transactionData['waiver_reason'] ?? null;
-                            $waiverAtt     = $transactionData['waiver_attachment'] ?? null;
-                            $waiverStatus  = $transactionData['waiver_status'] ?? 'none';
-
-                            if ($penaltyAmount > 0 || $penaltyWaived > 0) {
-                                $pUpd = $this->db->prepare("UPDATE lead_payments SET penalty_amount = ?, penalty_paid = ?, penalty_waived = ?, waiver_reason = ?, waiver_attachment = ?, waiver_status = ? WHERE id = ?");
-                                $pUpd->bind_param("dddsssi", $penaltyAmount, $penaltyPaid, $penaltyWaived, $waiverReason, $waiverAtt, $waiverStatus, $firstPaymentId);
-                                $pUpd->execute();
-                                $pUpd->close();
-                            }
-
-                            if ($waiverStatus === 'pending' && $penaltyWaived > 0) {
-                                if (!class_exists('ApprovalRequest')) {
-                                    require_once __DIR__ . '/ApprovalRequest.php';
-                                }
-                                $approvalModel = new ApprovalRequest($this->db);
-                                $approvalModel->create([
-                                    'department'     => 'CED',
-                                    'request_type'   => 'Penalty Waiver Request',
-                                    'title'          => 'Penalty Waiver Request for Client Payment #' . $firstPaymentId,
-                                    'source_table'   => 'lead_payments',
-                                    'source_id'      => $firstPaymentId,
-                                    'requested_days' => 0,
-                                    'requested_by'   => $createdBy,
-                                    'approve_role'   => 'management',
-                                    'meta_data'      => json_encode([
-                                        'Project'          => $clientDetails['project_name'] ?? 'N/A',
-                                        'Client Name'      => $clientDetails['client_name'] ?? 'N/A',
-                                        'Penalty Amount'   => $penaltyAmount,
-                                        'Waived Amount'    => $penaltyWaived,
-                                        'Penalty Paid'     => $penaltyPaid,
-                                        'Waiver Reason'    => $waiverReason,
-                                        'Attachment Path'  => $waiverAtt
-                                    ]),
-                                    'request_amount' => $penaltyWaived
-                                ]);
-                            }
                         }
 
                         // Insert emi_schedule row
@@ -4361,6 +5118,50 @@ class AccountClient extends Model
                     }
                 } // end while pool > 0
             } // end foreach emiPaymentsToProcess
+
+            // Update penalty & waiver details on the primary payment record (whether settlement or new installment)
+            if ($firstPaymentId) {
+                $penaltyAmount = (float)($transactionData['penalty_amount'] ?? 0);
+                $penaltyPaid   = (float)($transactionData['penalty_paid'] ?? 0);
+                $penaltyWaived = (float)($transactionData['penalty_waived'] ?? 0);
+                $waiverReason  = $transactionData['waiver_reason'] ?? null;
+                $waiverAtt     = $transactionData['waiver_attachment'] ?? null;
+                $waiverStatus  = $transactionData['waiver_status'] ?? 'none';
+
+                if ($penaltyAmount > 0 || $penaltyWaived > 0) {
+                    $pUpd = $this->db->prepare("UPDATE lead_payments SET penalty_amount = ?, penalty_paid = ?, penalty_waived = ?, waiver_reason = ?, waiver_attachment = ?, waiver_status = ? WHERE id = ?");
+                    $pUpd->bind_param("dddsssi", $penaltyAmount, $penaltyPaid, $penaltyWaived, $waiverReason, $waiverAtt, $waiverStatus, $firstPaymentId);
+                    $pUpd->execute();
+                    $pUpd->close();
+                }
+
+                if ($waiverStatus === 'pending' && $penaltyWaived > 0) {
+                    if (!class_exists('ApprovalRequest')) {
+                        require_once __DIR__ . '/ApprovalRequest.php';
+                    }
+                    $approvalModel = new ApprovalRequest($this->db);
+                    $approvalModel->create([
+                        'department'     => 'CED',
+                        'request_type'   => 'Penalty Waiver Request',
+                        'title'          => 'Penalty Waiver Request for Client Payment #' . $firstPaymentId,
+                        'source_table'   => 'lead_payments',
+                        'source_id'      => $firstPaymentId,
+                        'requested_days' => 0,
+                        'requested_by'   => $createdBy,
+                        'approve_role'   => 'management',
+                        'meta_data'      => json_encode([
+                            'Project'          => $clientDetails['project_name'] ?? 'N/A',
+                            'Client Name'      => $clientDetails['client_name'] ?? 'N/A',
+                            'Penalty Amount'   => $penaltyAmount,
+                            'Waived Amount'    => $penaltyWaived,
+                            'Penalty Paid'     => $penaltyPaid,
+                            'Waiver Reason'    => $waiverReason,
+                            'Attachment Path'  => $waiverAtt
+                        ]),
+                        'request_amount' => $penaltyWaived
+                    ]);
+                }
+            }
 
             $this->db->commit();
 
@@ -4893,7 +5694,7 @@ class AccountClient extends Model
     /**
      * Get accurate collection statistics for the CED dashboard
      */
-    public function getDashboardCollectionStats()
+    public function getDashboardCollectionStats($projectId = null)
     {
         $currentMonthStart = date('Y-m-01');
         $currentMonthEnd = date('Y-m-t');
@@ -4904,66 +5705,214 @@ class AccountClient extends Model
             'weekly_data' => array_fill(0, 7, 0)
         ];
 
-        // This Month Collection
-        $stmt = $this->db->prepare("
-            SELECT COALESCE(SUM(amount), 0) as total
-            FROM lead_payments
-            WHERE payment_status = 'paid'
-            AND payment_date BETWEEN ? AND ?
-        ");
-        $stmt->bind_param("ss", $currentMonthStart, $currentMonthEnd);
-        $stmt->execute();
-        $res = $stmt->get_result();
-        if ($res && $row = $res->fetch_assoc()) {
-            $stats['this_month_collection'] = floatval($row['total']);
+        $joinLb = "";
+        $whereProject = "";
+        $projectParams = [];
+        $projectTypes = "";
+
+        if (!empty($projectId)) {
+            $joinLb = " INNER JOIN lead_bookings lb ON lp.booking_id = lb.id ";
+            if (is_array($projectId)) {
+                $pIds = array_values(array_filter(array_map('intval', $projectId)));
+                if (!empty($pIds)) {
+                    $inPlaceholders = implode(',', array_fill(0, count($pIds), '?'));
+                    $whereProject = " AND lb.project_id IN ($inPlaceholders)";
+                    foreach ($pIds as $pId) {
+                        $projectParams[] = $pId;
+                        $projectTypes .= "i";
+                    }
+                }
+            } else {
+                $whereProject = " AND lb.project_id = ?";
+                $projectParams[] = (int)$projectId;
+                $projectTypes .= "i";
+            }
         }
-        $stmt->close();
+
+        // This Month Collection
+        $sql1 = "
+            SELECT COALESCE(SUM(lp.amount), 0) as total
+            FROM lead_payments lp
+            {$joinLb}
+            WHERE lp.payment_status IN ('paid', 'partially_paid')
+            AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected')
+            AND lp.is_trashed = 0
+            AND COALESCE(lp.is_emi_discount, 0) = 0
+            AND lp.payment_date BETWEEN ? AND ?
+            {$whereProject}
+        ";
+        $stmt = $this->db->prepare($sql1);
+        if ($stmt) {
+            $types1 = "ss" . $projectTypes;
+            $params1 = array_merge([$currentMonthStart, $currentMonthEnd], $projectParams);
+            $stmt->bind_param($types1, ...$params1);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            if ($res && $row = $res->fetch_assoc()) {
+                $stats['this_month_collection'] = floatval($row['total']);
+            }
+            $stmt->close();
+        }
 
         // Monthly Data (last 6 months)
         $sixMonthsAgo = date('Y-m-01', strtotime('-5 months'));
-        $stmt2 = $this->db->prepare("
+        $sql2 = "
             SELECT 
-                DATE_FORMAT(payment_date, '%Y-%m') as month,
-                SUM(amount) as total
-            FROM lead_payments
-            WHERE payment_status = 'paid'
-            AND payment_date >= ?
-            GROUP BY DATE_FORMAT(payment_date, '%Y-%m')
-        ");
-        $stmt2->bind_param("s", $sixMonthsAgo);
-        $stmt2->execute();
-        $res2 = $stmt2->get_result();
-        if ($res2) {
-            while ($row = $res2->fetch_assoc()) {
-                $stats['monthly_data'][$row['month']] = floatval($row['total']);
+                DATE_FORMAT(lp.payment_date, '%Y-%m') as month,
+                SUM(lp.amount) as total
+            FROM lead_payments lp
+            {$joinLb}
+            WHERE lp.payment_status IN ('paid', 'partially_paid')
+            AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected')
+            AND lp.is_trashed = 0
+            AND COALESCE(lp.is_emi_discount, 0) = 0
+            AND lp.payment_date >= ?
+            {$whereProject}
+            GROUP BY DATE_FORMAT(lp.payment_date, '%Y-%m')
+        ";
+        $stmt2 = $this->db->prepare($sql2);
+        if ($stmt2) {
+            $types2 = "s" . $projectTypes;
+            $params2 = array_merge([$sixMonthsAgo], $projectParams);
+            $stmt2->bind_param($types2, ...$params2);
+            $stmt2->execute();
+            $res2 = $stmt2->get_result();
+            if ($res2) {
+                while ($row = $res2->fetch_assoc()) {
+                    $stats['monthly_data'][$row['month']] = floatval($row['total']);
+                }
             }
+            $stmt2->close();
         }
-        $stmt2->close();
 
         // Weekly Data (last 7 days, 0 is today, 6 is 6 days ago)
         $sevenDaysAgo = date('Y-m-d', strtotime('-6 days'));
-        $stmt3 = $this->db->prepare("
+        $sql3 = "
             SELECT 
-                DATE(payment_date) as day_date,
-                SUM(amount) as total
-            FROM lead_payments
-            WHERE payment_status = 'paid'
-            AND payment_date >= ?
-            GROUP BY DATE(payment_date)
-        ");
-        $stmt3->bind_param("s", $sevenDaysAgo);
-        $stmt3->execute();
-        $res3 = $stmt3->get_result();
-        if ($res3) {
-            while ($row = $res3->fetch_assoc()) {
-                $daysSince = (strtotime(date('Y-m-d')) - strtotime($row['day_date'])) / 86400;
-                $idx = max(0, min(6, 6 - (int)floor($daysSince)));
-                $stats['weekly_data'][$idx] += floatval($row['total']);
+                DATE(lp.payment_date) as day_date,
+                SUM(lp.amount) as total
+            FROM lead_payments lp
+            {$joinLb}
+            WHERE lp.payment_status IN ('paid', 'partially_paid')
+            AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected')
+            AND lp.is_trashed = 0
+            AND COALESCE(lp.is_emi_discount, 0) = 0
+            AND lp.payment_date >= ?
+            {$whereProject}
+            GROUP BY DATE(lp.payment_date)
+        ";
+        $stmt3 = $this->db->prepare($sql3);
+        if ($stmt3) {
+            $types3 = "s" . $projectTypes;
+            $params3 = array_merge([$sevenDaysAgo], $projectParams);
+            $stmt3->bind_param($types3, ...$params3);
+            $stmt3->execute();
+            $res3 = $stmt3->get_result();
+            if ($res3) {
+                while ($row = $res3->fetch_assoc()) {
+                    $daysSince = (strtotime(date('Y-m-d')) - strtotime($row['day_date'])) / 86400;
+                    $idx = max(0, min(6, 6 - (int)floor($daysSince)));
+                    $stats['weekly_data'][$idx] += floatval($row['total']);
+                }
             }
+            $stmt3->close();
         }
-        $stmt3->close();
 
         return $stats;
+    }
+
+    /**
+     * Get Payment Status Counts for Dashboard Pie Chart [On Track, Pending, Overdue, Completed]
+     *
+     * @param int|array|null $projectId
+     * @return array [on_track, pending, overdue, completed]
+     */
+    public function getPaymentStatusCounts($projectId = null)
+    {
+        $whereProject = "";
+        $params = [];
+        $types = "";
+
+        if (!empty($projectId)) {
+            if (is_array($projectId)) {
+                $pIds = array_values(array_filter(array_map('intval', $projectId)));
+                if (!empty($pIds)) {
+                    $inPlaceholders = implode(',', array_fill(0, count($pIds), '?'));
+                    $whereProject = " AND lb.project_id IN ($inPlaceholders)";
+                    foreach ($pIds as $pId) {
+                        $params[] = $pId;
+                        $types .= "i";
+                    }
+                }
+            } else {
+                $whereProject = " AND lb.project_id = ?";
+                $params[] = (int)$projectId;
+                $types .= "i";
+            }
+        }
+
+        $sql = "
+            SELECT 
+                COUNT(CASE WHEN calc.overall_due <= 0 THEN 1 END) AS completed,
+                COUNT(CASE WHEN calc.overall_due > 0 AND calc.overdue_emi_amount > 0 THEN 1 END) AS overdue,
+                COUNT(CASE WHEN calc.overall_due > 0 AND calc.overdue_emi_amount <= 0 AND calc.total_paid >= (calc.total_price * 0.5) THEN 1 END) AS on_track,
+                COUNT(CASE WHEN calc.overall_due > 0 AND calc.overdue_emi_amount <= 0 AND calc.total_paid < (calc.total_price * 0.5) THEN 1 END) AS pending
+            FROM (
+                SELECT 
+                    lb.id,
+                    COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) AS total_price,
+                    COALESCE(p_agg.total_paid, 0) AS total_paid,
+                    COALESCE(p_agg.overdue_emi_amount, 0) AS overdue_emi_amount,
+                    GREATEST(0, ROUND(COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) - COALESCE(p_agg.total_paid, 0))) AS overall_due
+                FROM lead_bookings lb
+                LEFT JOIN flats f ON lb.flat_id = f.id
+                LEFT JOIN (
+                    SELECT 
+                        lp.booking_id,
+                        SUM(CASE WHEN (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
+                                      AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') 
+                                      AND COALESCE(lp.is_emi_discount, 0) = 0 THEN lp.amount ELSE 0 END) AS total_paid,
+                        SUM(CASE WHEN lp.payment_type = 'emi' AND lp.due_emi_amount > 0 AND lp.verification_status = 'verified' AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement') THEN lp.due_emi_amount ELSE 0 END) AS overdue_emi_amount
+                    FROM lead_payments lp
+                    WHERE lp.is_trashed = 0
+                    GROUP BY lp.booking_id
+                ) p_agg ON p_agg.booking_id = lb.id
+                WHERE lb.deleted_at IS NULL
+                  AND lb.booking_status NOT IN ('cancelled', 'refunded')
+                  AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
+                  AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+                  $whereProject
+            ) calc
+        ";
+
+        if (!empty($params)) {
+            $stmt = $this->db->prepare($sql);
+            if ($stmt) {
+                $stmt->bind_param($types, ...$params);
+                $stmt->execute();
+                $res = $stmt->get_result();
+                if ($res && $row = $res->fetch_assoc()) {
+                    return [
+                        (int)$row['on_track'],
+                        (int)$row['pending'],
+                        (int)$row['overdue'],
+                        (int)$row['completed']
+                    ];
+                }
+            }
+        } else {
+            $res = $this->db->query($sql);
+            if ($res && $row = $res->fetch_assoc()) {
+                return [
+                    (int)$row['on_track'],
+                    (int)$row['pending'],
+                    (int)$row['overdue'],
+                    (int)$row['completed']
+                ];
+            }
+        }
+
+        return [0, 0, 0, 0];
     }
 
     public function saveTransferNote($bookingId, $transferDate, $transferNote, $transferStatus, $updatedBy)
@@ -6254,10 +7203,22 @@ class AccountClient extends Model
         $params = [];
         $types = "";
 
-        if ($projectId) {
-            $whereParts[] = "lb.project_id = ?";
-            $params[] = (int)$projectId;
-            $types .= "i";
+        if (!empty($projectId)) {
+            if (is_array($projectId)) {
+                $pIds = array_values(array_filter(array_map('intval', $projectId)));
+                if (!empty($pIds)) {
+                    $inPlaceholders = implode(',', array_fill(0, count($pIds), '?'));
+                    $whereParts[] = "lb.project_id IN ($inPlaceholders)";
+                    foreach ($pIds as $pId) {
+                        $params[] = $pId;
+                        $types .= "i";
+                    }
+                }
+            } else {
+                $whereParts[] = "lb.project_id = ?";
+                $params[] = (int)$projectId;
+                $types .= "i";
+            }
         }
 
         $whereClause = "WHERE " . implode(" AND ", $whereParts);
@@ -6591,14 +7552,21 @@ class AccountClient extends Model
      * @param string|null $search
      * @return array
      */
-    public function getProjectWiseDueBreakdown($search = null)
+    public function getProjectWiseDueBreakdown($search = null, ?array $projectIds = null)
     {
         $projectWhere = "";
         $params = [];
         $types = "";
 
+        if (!empty($projectIds)) {
+            $pIds = array_values(array_filter(array_map('intval', $projectIds)));
+            if (!empty($pIds)) {
+                $projectWhere .= " AND p.id IN (" . implode(',', $pIds) . ")";
+            }
+        }
+
         if (!empty($search)) {
-            $projectWhere = " AND p.name LIKE ?";
+            $projectWhere .= " AND p.name LIKE ?";
             $params[] = '%' . trim($search) . '%';
             $types .= "s";
         }
@@ -6853,7 +7821,7 @@ class AccountClient extends Model
      */
     public function getClientWiseDueList($filters = [], $limit = 20, $offset = 0)
     {
-        $projectId = !empty($filters['project_id']) ? (int)$filters['project_id'] : null;
+        $projectId = !empty($filters['project_id']) ? $filters['project_id'] : null;
         $dueType   = !empty($filters['due_type']) ? trim($filters['due_type']) : 'all';
         $search    = !empty($filters['search']) ? trim($filters['search']) : null;
         $dateType  = !empty($filters['date_type']) ? trim($filters['date_type']) : null;
@@ -6872,10 +7840,22 @@ class AccountClient extends Model
         $types = "";
         $currentEndOfMonth = date('Y-m-t');
 
-        if ($projectId) {
-            $whereParts[] = "lb.project_id = ?";
-            $params[] = $projectId;
-            $types .= "i";
+        if (!empty($projectId)) {
+            if (is_array($projectId)) {
+                $pIds = array_values(array_filter(array_map('intval', $projectId)));
+                if (!empty($pIds)) {
+                    $inPlaceholders = implode(',', array_fill(0, count($pIds), '?'));
+                    $whereParts[] = "lb.project_id IN ($inPlaceholders)";
+                    foreach ($pIds as $pId) {
+                        $params[] = $pId;
+                        $types .= "i";
+                    }
+                }
+            } else {
+                $whereParts[] = "lb.project_id = ?";
+                $params[] = (int)$projectId;
+                $types .= "i";
+            }
         }
 
         if (!empty($search)) {
@@ -7162,7 +8142,7 @@ class AccountClient extends Model
      */
     public function getClientWiseDueCount($filters = [])
     {
-        $projectId = !empty($filters['project_id']) ? (int)$filters['project_id'] : null;
+        $projectId = !empty($filters['project_id']) ? $filters['project_id'] : null;
         $dueType   = !empty($filters['due_type']) ? trim($filters['due_type']) : 'all';
         $search    = !empty($filters['search']) ? trim($filters['search']) : null;
         $dateType  = !empty($filters['date_type']) ? trim($filters['date_type']) : null;
@@ -7179,10 +8159,22 @@ class AccountClient extends Model
         $types = "";
         $currentEndOfMonth = date('Y-m-t');
 
-        if ($projectId) {
-            $whereParts[] = "lb.project_id = ?";
-            $params[] = $projectId;
-            $types .= "i";
+        if (!empty($projectId)) {
+            if (is_array($projectId)) {
+                $pIds = array_values(array_filter(array_map('intval', $projectId)));
+                if (!empty($pIds)) {
+                    $inPlaceholders = implode(',', array_fill(0, count($pIds), '?'));
+                    $whereParts[] = "lb.project_id IN ($inPlaceholders)";
+                    foreach ($pIds as $pId) {
+                        $params[] = $pId;
+                        $types .= "i";
+                    }
+                }
+            } else {
+                $whereParts[] = "lb.project_id = ?";
+                $params[] = (int)$projectId;
+                $types .= "i";
+            }
         }
 
         if (!empty($search)) {
@@ -7335,8 +8327,15 @@ class AccountClient extends Model
     {
         $currentEndOfMonth = date('Y-m-t'); // e.g. current month end
         $projectFilterLb = "";
-        if (!empty($projectId) && (int)$projectId > 0) {
-            $projectFilterLb = " AND lb.project_id = " . (int)$projectId;
+        if (!empty($projectId)) {
+            if (is_array($projectId)) {
+                $pIds = array_values(array_filter(array_map('intval', $projectId)));
+                if (!empty($pIds)) {
+                    $projectFilterLb = " AND lb.project_id IN (" . implode(',', $pIds) . ")";
+                }
+            } elseif ((int)$projectId > 0) {
+                $projectFilterLb = " AND lb.project_id = " . (int)$projectId;
+            }
         }
 
         $sql = "
@@ -7428,8 +8427,15 @@ class AccountClient extends Model
     {
         $currentEndOfMonth = date('Y-m-t'); // e.g. current month end
         $projectFilterLb = "";
-        if (!empty($projectId) && (int)$projectId > 0) {
-            $projectFilterLb = " AND lb.project_id = " . (int)$projectId;
+        if (!empty($projectId)) {
+            if (is_array($projectId)) {
+                $pIds = array_values(array_filter(array_map('intval', $projectId)));
+                if (!empty($pIds)) {
+                    $projectFilterLb = " AND lb.project_id IN (" . implode(',', $pIds) . ")";
+                }
+            } elseif ((int)$projectId > 0) {
+                $projectFilterLb = " AND lb.project_id = " . (int)$projectId;
+            }
         }
 
         $whereCategory = "";

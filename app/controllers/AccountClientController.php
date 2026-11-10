@@ -264,6 +264,7 @@ class AccountClientController extends Controller
                 'total_clients' => $totalClients,
                 'full_payment_completed' => (int)($paymentStats['full_payment_completed'] ?? 0),
                 'approved_bookings' => (int)($paymentStats['approved_bookings'] ?? 0),
+                'units_booked' => (int)($paymentStats['units_booked'] ?? $paymentStats['total_units_booked'] ?? $paymentStats['approved_bookings'] ?? 0),
                 'limit' => $limit,
                 'payment_type' => $paymentType,
                 'table_head_html' => $tableHeadHtml,
@@ -288,6 +289,8 @@ class AccountClientController extends Controller
             $projects = $this->clientModel->getProjectsForCED();
         }
 
+        $assignedProjectIds = [];
+
         $this->view("accounts/cashIn/clients", [
             "current_route" => "clients-cash-in",
             "page_title" => "Clients Management - Cash In",
@@ -302,6 +305,7 @@ class AccountClientController extends Controller
             "collectionStats" => $collectionStats,
             "projectCollectionBreakdown" => $projectCollectionBreakdown,
             "projects" => $projects,
+            "assignedProjectIds" => $assignedProjectIds,
             "selectedProjectId" => $selectedProjectId,
             "selectedVerificationStatus" => $verificationStatus,
             "dateType" => $dateType,
@@ -478,7 +482,8 @@ public function indexTwo($bookingId = null)
         "refundDetails"   => $refundDetails,
         "refundPaidAmount"=> $refundPaidAmount,
         "salesUsers"      => $salesUsers,
-        "accountModel"    => $this->clientModel
+        "accountModel"    => $this->clientModel,
+        "datewiseSummary" => $this->clientModel->getDatewiseBatchPaymentSummary($bookingId)
     ]);
 }
 
@@ -533,6 +538,53 @@ public function indexTwo($bookingId = null)
             "accountModel"       => $this->clientModel,
             "bookingId"          => $bookingId
         ]);
+    }
+
+    /**
+     * Dedicated printable view for EMI Maturity Schedule
+     */
+    public function printEmiSchedule($bookingId = null)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (!$bookingId) {
+            $bookingId = $_GET['booking_id'] ?? null;
+        }
+
+        if (!$bookingId) {
+            setError("No booking ID provided");
+            header("Location: {$GLOBALS['base_url']}/clients-cash-in");
+            exit;
+        }
+
+        $bookingId = (int)$bookingId;
+        $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
+
+        if (!$clientDetails) {
+            setError("Client booking not found");
+            header("Location: {$GLOBALS['base_url']}/clients-cash-in");
+            exit;
+        }
+
+        if (!empty($clientDetails['is_shop']) && $clientDetails['is_shop'] == 1) {
+            require_once dirname(__DIR__) . '/models/AccountShopClient.php';
+            $this->clientModel = new AccountShopClient($this->db);
+            $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
+        }
+
+        $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
+        $virtualEmiSchedule = $this->clientModel->getVirtualEmiSchedule($bookingId);
+
+        $this->view("accounts/cashIn/client-emi-schedule-print", [
+            "current_route"      => "client-emi-schedule-print",
+            "page_title"         => "EMI Maturity Schedule - " . htmlspecialchars($clientDetails['client_name'] ?? 'Client'),
+            "clientDetails"      => $clientDetails,
+            "paymentSummary"     => $paymentSummary,
+            "virtualEmiSchedule" => $virtualEmiSchedule,
+            "bookingId"          => $bookingId
+        ], false);
     }
 
     /**
@@ -972,22 +1024,68 @@ public function indexTwo($bookingId = null)
         exit;
     }
 
+    /**
+     * Get effective project filter for CED / Client Experience agent
+     * Returns: null (all allowed) OR int (specific project) OR array of ints (assigned projects)
+     */
+    protected function getEffectiveCedProjectFilter(?int $selectedProjectId, &$assignedProjectIds = [])
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $currentUserId = (int)($_SESSION['user']['id'] ?? 0);
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userSecRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $userPriRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
+        $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+
+        // Head of CED / Management check
+        $isHeadOrAdmin = in_array($userRoleId, [1, 3, 33, 38, 39], true)
+            || in_array($userSecRoleId, [1, 3, 38, 39], true)
+            || in_array($userPriRoleId, [1, 3, 38, 39], true)
+            || strpos($userRoleName, 'head of client experience') !== false
+            || (function_exists('isHeadOfClientExperience') && isHeadOfClientExperience());
+
+        if ($isHeadOrAdmin || $currentUserId <= 0) {
+            $assignedProjectIds = [];
+            return $selectedProjectId;
+        }
+
+        require_once dirname(__DIR__) . '/models/CedProjectAssignment.php';
+        $assignmentModel = new CedProjectAssignment($this->db);
+        $assignedProjectIds = $assignmentModel->getAgentAssignedProjectIds($currentUserId);
+
+        // If user has NO assigned projects, they see all projects
+        if (empty($assignedProjectIds)) {
+            return $selectedProjectId;
+        }
+
+        // If specific project requested and it's among assigned projects
+        if ($selectedProjectId !== null && in_array($selectedProjectId, $assignedProjectIds, true)) {
+            return $selectedProjectId;
+        }
+
+        // Default to all assigned projects
+        return $assignedProjectIds;
+    }
+
     public function indexView()
     {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
 
-        if (function_exists('isClientsCommunicated') && isClientsCommunicated()) {
-            header("Location: {$GLOBALS['base_url']}/client-wise-due-tracking");
-            exit;
-        }
+        $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int) $_GET['project_id'] : null;
+        $assignedProjectIds = [];
+        $effectiveProjectId = $this->getEffectiveCedProjectFilter($selectedProjectId, $assignedProjectIds);
 
         // Handle AJAX request for Due EMIs modal
         if (isset($_GET['ajax']) && $_GET['ajax'] === 'due_modal') {
-            $projectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
+            $modalProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
+            $modalAssignedIds = [];
+            $effectiveModalProjectId = $this->getEffectiveCedProjectFilter($modalProjectId, $modalAssignedIds);
             $search = trim($_GET['search'] ?? '');
-            $dueList = $this->clientModel->getDueClientsList($projectId, $search, 200);
+            $dueList = $this->clientModel->getDueClientsList($effectiveModalProjectId, $search, 200);
             $rowsHtml = $this->renderDueModalRowsHtml($dueList);
             header('Content-Type: application/json');
             echo json_encode([
@@ -1001,7 +1099,6 @@ public function indexTwo($bookingId = null)
         $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') 
                   || (isset($_GET['ajax']) && $_GET['ajax'] == '1');
 
-        $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int) $_GET['project_id'] : null;
         $verificationStatus = isset($_GET['verification_status']) && $_GET['verification_status'] !== '' ? $_GET['verification_status'] : null;
         $search = trim($_GET['search'] ?? '');
         $hasConflict = !empty($_GET['has_conflict']);
@@ -1020,14 +1117,14 @@ public function indexTwo($bookingId = null)
         $offset = ($page - 1) * $limit;
 
         // Get total count & paginated clients
-        $totalClients = $this->clientModel->getTotalClientsCount($selectedProjectId, $verificationStatus, $search, $hasConflict, $dateType, $startDate, $endDate);
+        $totalClients = $this->clientModel->getTotalClientsCount($effectiveProjectId, $verificationStatus, $search, $hasConflict, $dateType, $startDate, $endDate);
         $totalPages = $totalClients > 0 ? (int)ceil($totalClients / $limit) : 1;
         if ($page > $totalPages && $totalPages > 0) {
             $page = $totalPages;
             $offset = ($page - 1) * $limit;
         }
 
-        $clients = $this->clientModel->getAllClients($selectedProjectId, $verificationStatus, $search, $limit, $offset, $hasConflict, $dateType, $startDate, $endDate);
+        $clients = $this->clientModel->getAllClients($effectiveProjectId, $verificationStatus, $search, $limit, $offset, $hasConflict, $dateType, $startDate, $endDate);
 
         // Process virtual EMI schedule and dues ONLY for current page's clients
         $today = new \DateTime();
@@ -1121,6 +1218,10 @@ public function indexTwo($bookingId = null)
                             ];
                             $clientDueTotal += $dueAmt;
                         }
+                    } elseif (isset($clientDueEmis[$emiNo]) && ($maturity === 'future' || ($maturity === 'pending' && !$isExpired))) {
+                        // CED rescheduled this EMI to a future date — no longer overdue
+                        $clientDueTotal -= $clientDueEmis[$emiNo]['due_amount'];
+                        unset($clientDueEmis[$emiNo]);
                     }
                 }
             }
@@ -1142,7 +1243,7 @@ public function indexTwo($bookingId = null)
             $endEntry = min($totalClients, $page * $limit);
             $infoText = "Showing {$startEntry} to {$endEntry} of {$totalClients} entries";
 
-            $paymentStats = $this->clientModel->getPaymentStatistics($selectedProjectId);
+            $paymentStats = $this->clientModel->getPaymentStatistics($effectiveProjectId);
 
             header('Content-Type: application/json');
             echo json_encode([
@@ -1153,6 +1254,7 @@ public function indexTwo($bookingId = null)
                 'total_clients' => $totalClients,
                 'full_payment_completed' => (int)($paymentStats['full_payment_completed'] ?? 0),
                 'approved_bookings' => (int)($paymentStats['approved_bookings'] ?? 0),
+                'units_booked' => (int)($paymentStats['units_booked'] ?? $paymentStats['total_units_booked'] ?? $paymentStats['approved_bookings'] ?? 0),
                 'limit' => $limit,
                 'table_html' => $tableHtml,
                 'pagination_html' => $paginationHtml,
@@ -1162,14 +1264,17 @@ public function indexTwo($bookingId = null)
         }
 
         // Fast statistics for top cards
-        $dueStats = $this->clientModel->getDueStatsSummary($selectedProjectId);
-        $paymentStats = $this->clientModel->getPaymentStatistics($selectedProjectId);
-        $collectionStats = $this->clientModel->getCollectionStatsSummary($selectedProjectId);
-        $projectCollectionBreakdown = $this->clientModel->getProjectCollectionBreakdown();
+        $dueStats = $this->clientModel->getDueStatsSummary($effectiveProjectId);
+        $paymentStats = $this->clientModel->getPaymentStatistics($effectiveProjectId);
+        $collectionStats = $this->clientModel->getCollectionStatsSummary($effectiveProjectId);
+        $projectCollectionBreakdown = $this->clientModel->getProjectCollectionBreakdown(!empty($assignedProjectIds) ? $assignedProjectIds : null);
         $projectModel = new Project($this->db);
         $projects = $projectModel->getAll();
         if (empty($projects)) {
             $projects = $this->clientModel->getProjectsForCED();
+        }
+        if (!empty($assignedProjectIds)) {
+            $projects = array_values(array_filter($projects, fn($p) => in_array((int)$p['id'], $assignedProjectIds, true)));
         }
 
         $flatStats = null;
@@ -1203,6 +1308,7 @@ public function indexTwo($bookingId = null)
             "collectionStats" => $collectionStats,
             "projectCollectionBreakdown" => $projectCollectionBreakdown,
             "projects" => $projects,
+            "assignedProjectIds" => $assignedProjectIds,
             "selectedProjectId" => $selectedProjectId,
             "selectedVerificationStatus" => $verificationStatus,
             "dateType" => $dateType,
@@ -1539,6 +1645,8 @@ public function indexTwo($bookingId = null)
         }
 
         $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int) $_GET['project_id'] : null;
+        $printAssignedIds = [];
+        $effectivePrintProjectId = $this->getEffectiveCedProjectFilter($selectedProjectId, $printAssignedIds);
         $verificationStatus = isset($_GET['verification_status']) && $_GET['verification_status'] !== '' ? $_GET['verification_status'] : null;
         $search = trim($_GET['search'] ?? '');
         $hasConflict = !empty($_GET['has_conflict']);
@@ -1558,7 +1666,7 @@ public function indexTwo($bookingId = null)
         if (empty($endDate)) $endDate = null;
 
         // Fetch matching clients (up to 1500 for printing)
-        $clients = $this->clientModel->getAllClients($selectedProjectId, $verificationStatus, $search, null, 0, $hasConflict, $dateType, $startDate, $endDate, $paymentType);
+        $clients = $this->clientModel->getAllClients($effectivePrintProjectId, $verificationStatus, $search, null, 0, $hasConflict, $dateType, $startDate, $endDate, $paymentType);
 
         // Project Name
         $projectName = 'All Projects';
@@ -1739,7 +1847,16 @@ public function indexTwo($bookingId = null)
 
             $html .= '<td>TK.' . number_format($client['total_agreement_value'] ?? 0, 2) . '</td>';
             $html .= '<td>TK.' . number_format($client['total_paid'] ?? 0, 2) . '</td>';
-            $html .= '<td>' . ($client['last_payment_date'] ? date('d M, Y', strtotime($client['last_payment_date'])) : 'No Payment') . '</td>';
+            if (!empty($client['last_payment_date'])) {
+                $formattedDate = date('d M, Y', strtotime($client['last_payment_date']));
+                $creatorHtml = '';
+                if (!empty($client['last_payment_creator_name'])) {
+                    $creatorHtml = '<div class="extra-small text-muted mt-0.5 text-nowrap" style="font-size: 11px;"><i class="fa-solid fa-user-pen text-primary me-1"></i>By: ' . htmlspecialchars($client['last_payment_creator_name']) . '</div>';
+                }
+                $html .= '<td><span class="fw-semibold text-dark text-nowrap">' . $formattedDate . '</span>' . $creatorHtml . '</td>';
+            } else {
+                $html .= '<td><span class="text-muted extra-small">No Payment</span></td>';
+            }
 
             // Current Month / Due status
             $cms = $client['current_month_status'] ?? 'N/A';
@@ -1973,13 +2090,17 @@ public function indexTwo($bookingId = null)
         $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') 
                   || (isset($_GET['ajax']) && $_GET['ajax'] == '1');
 
+        $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
+        $assignedProjectIds = [];
+        $effectiveProjectId = $this->getEffectiveCedProjectFilter($selectedProjectId, $assignedProjectIds);
+
         $search = trim($_GET['search'] ?? '');
         $page = max(1, (int)($_GET['page'] ?? 1));
         $limit = min(100, max(5, (int)($_GET['limit'] ?? 10)));
         $offset = ($page - 1) * $limit;
 
         if ($isAjax) {
-            $totalClients = $this->clientModel->getTotalBookingsCount(null, $search);
+            $totalClients = $this->clientModel->getTotalBookingsCount($effectiveProjectId, $search);
             $totalPages = $totalClients > 0 ? (int)ceil($totalClients / $limit) : 1;
             
             if ($page > $totalPages && $totalPages > 0) {
@@ -1987,7 +2108,7 @@ public function indexTwo($bookingId = null)
                 $offset = ($page - 1) * $limit;
             }
 
-            $clients = $this->clientModel->getAllBookings(null, $search, $limit, $offset);
+            $clients = $this->clientModel->getAllBookings($effectiveProjectId, $search, $limit, $offset);
 
             foreach ($clients as &$client) {
                 $schedule = $this->clientModel->getVirtualEmiSchedule($client['booking_id']);
@@ -2015,18 +2136,38 @@ public function indexTwo($bookingId = null)
             exit;
         }
 
-        $paymentStats = $this->clientModel->getPaymentStatistics();
-        $collectionData = $this->clientModel->getDashboardCollectionStats();
+        $paymentStats = $this->clientModel->getPaymentStatistics($effectiveProjectId);
+        $collectionData = $this->clientModel->getDashboardCollectionStats($effectiveProjectId);
+        $collectionStats = $this->clientModel->getCollectionStatsSummary($effectiveProjectId);
+        $dueTrackingStats = $this->clientModel->getClientDueTrackingStats($effectiveProjectId);
+        $paymentStatusData = $this->clientModel->getPaymentStatusCounts($effectiveProjectId);
+
+        // Projects list for dropdown filter
+        $projectModel = new Project($this->db);
+        $projects = $projectModel->getAll();
+        if (empty($projects)) {
+            $projects = $this->clientModel->getProjectsForCED();
+        }
+        if (!empty($assignedProjectIds)) {
+            $projects = array_values(array_filter($projects, fn($p) => in_array((int)$p['id'], $assignedProjectIds, true)));
+        }
 
         // For initial load, do not load clients. Let AJAX load them.
         $clients = [];
 
         $this->view("ced/ced-dashboard", [
-            "current_route" => "ced-dashboard",
-            "page_title" => "CED Dashboard",
-            "clients" => $clients,
-            "paymentStats" => $paymentStats,
-            "collectionData" => $collectionData
+            "current_route"      => "ced-dashboard",
+            "page_title"         => "CED Dashboard",
+            "clients"            => $clients,
+            "paymentStats"       => $paymentStats,
+            "collectionData"     => $collectionData,
+            "collectionStats"    => $collectionStats,
+            "dueTrackingStats"   => $dueTrackingStats,
+            "paymentStatusData"  => $paymentStatusData,
+            "projects"           => $projects,
+            "selectedProjectId"  => $selectedProjectId,
+            "effectiveProjectId" => $effectiveProjectId,
+            "assignedProjectIds" => $assignedProjectIds
         ]);
     }
 
@@ -2035,11 +2176,6 @@ public function indexTwo($bookingId = null)
         global $config;
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
-        }
-
-        if (function_exists('isClientsCommunicated') && isClientsCommunicated()) {
-            header("Location: {$GLOBALS['base_url']}/client-wise-due-tracking");
-            exit;
         }
 
         $apiBaseUrl = $config['notices_api_base_url'] ?? 'https://api.dpremiumhomes.com/api';
@@ -2240,6 +2376,8 @@ public function indexTwoView($bookingId = null)
         $arStmt->close();
     }
 
+    $penaltyHistory = $this->clientModel->getPenaltyHistoryByBookingId($bookingId);
+
     $this->view("ced/clients-cash-in-history-view", [
         "current_route" => "clients-cash-in-history-view",
         "page_title" => "Transaction History - " . $clientDetails['client_name'],
@@ -2247,11 +2385,13 @@ public function indexTwoView($bookingId = null)
         "transactions" => $transactions,
         "virtualEmiSchedule" => $virtualEmiSchedule,
         "paymentSummary" => $paymentSummary,
+        "penaltyHistory" => $penaltyHistory,
         "refundDetails"   => $refundDetails,
         "refundPaidAmount"=> $refundPaidAmount,
         "banks"           => $banks,
         "salesUsers"      => $salesUsers,
         "accountModel"    => $this->clientModel,
+        "datewiseSummary" => $this->clientModel->getDatewiseBatchPaymentSummary($bookingId),
         "discountApprovalReq" => $discountApprovalReq,
         "db"              => $this->db
     ]);
@@ -3710,16 +3850,75 @@ public function viewPaymentInvoice($paymentId = null)
     }
 
     // Auto-detect batch if single payment requested and it is part of a multi-payment batch
-    if (count($payments) === 1 && !empty($payments[0]['batch_id'])) {
+    $forceSingle = !empty($_GET['single']) || !empty($_GET['individual']);
+    if (!$forceSingle && count($payments) === 1 && !empty($payments[0]['batch_id'])) {
         $batchPayments = $this->clientModel->getTransactionsByBatchId($payments[0]['batch_id'], $payments[0]['booking_id'] ?? null);
+        // Exclude trashed or rejected payments
+        $batchPayments = array_values(array_filter($batchPayments, function($p) {
+            $isTrashed = !empty($p['is_trashed']) && (int)$p['is_trashed'] === 1;
+            $isRejected = strtolower(trim($p['verification_status'] ?? '')) === 'rejected';
+            return !$isTrashed && !$isRejected;
+        }));
+
         if (count($batchPayments) > 1) {
-            $payments = $batchPayments;
+            // Only auto-merge if all payments in the batch share the same payment_type (e.g. split bulk EMI),
+            // or if batch receipt is explicitly requested via &batch=1.
+            // For distinct payment types (e.g. Booking Money vs Registration Money), keep individual receipt.
+            $types = array_unique(array_filter(array_map(fn($p) => $p['payment_type'] ?? '', $batchPayments)));
+            $isAllEmi = count($types) === 1 && in_array(reset($types), ['emi', 'emi_due_settlement']);
+            if ($isAllEmi || !empty($_GET['batch'])) {
+                $payments = $batchPayments;
+            }
         }
     }
 
     // Set $payment as the first one for header metadata compatibility
     $payment = $payments[0];
     $isBulk = count($payments) > 1;
+
+    // Check if ALL payments in this batch/request are verified
+    $allBatchVerified = true;
+    foreach ($payments as $p) {
+        if (strtolower(trim($p['verification_status'] ?? '')) !== 'verified') {
+            $allBatchVerified = false;
+            break;
+        }
+    }
+
+    $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+    $userRoleName = strtolower($_SESSION['user']['role_name'] ?? '');
+    $isCedUser = in_array($userRoleId, [7, 37, 39], true)
+        || in_array((int)($_SESSION['user']['secondary_role_id'] ?? 0), [7, 37, 39], true)
+        || strpos($userRoleName, 'client experience') !== false;
+
+    // CED restriction: Money receipt cannot be accessed unless TOTAL batch_id payments are verified!
+    if ($isCedUser && !$allBatchVerified) {
+        die("<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='utf-8'>
+    <title>Money Receipt Not Available</title>
+    <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'>
+</head>
+<body style='font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,sans-serif; background:#f8fafc; display:flex; align-items:center; justify-content:center; min-height:80vh; margin:0;'>
+    <div style='background:#ffffff; border:1px solid #fee2e2; border-radius:12px; padding:35px; max-width:480px; text-align:center; box-shadow:0 10px 25px rgba(0,0,0,0.06);'>
+        <div style='width:56px; height:56px; background:#fef2f2; color:#ef4444; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:24px; margin-bottom:16px;'>
+            <i class='fa-solid fa-lock'></i>
+        </div>
+        <h3 style='color:#1e293b; margin:0 0 8px 0; font-size:20px;'>Money Receipt Locked</h3>
+        <p style='color:#64748b; font-size:13.5px; line-height:1.6; margin-bottom:20px;'>
+            This money receipt cannot be viewed or printed by Client Experience (CED) because one or more payments in this transaction batch are still pending verification by Accounts.
+        </p>
+        <div style='background:#fefce8; border:1px solid #fef08a; padding:10px 14px; border-radius:6px; font-size:12.5px; color:#854d0e; margin-bottom:20px; text-align:left;'>
+            <i class='fa-solid fa-circle-info me-1'></i> <strong>Rule:</strong> All payments under the same <code>batch_id</code> must be verified before the receipt is issued.
+        </div>
+        <button onclick='window.close(); history.back();' style='background:#0ea5e9; color:#ffffff; border:none; padding:9px 22px; border-radius:6px; font-weight:600; cursor:pointer;'>
+            Close / Go Back
+        </button>
+    </div>
+</body>
+</html>");
+    }
 
     // Use absolute path from root
     $root = dirname(dirname(__DIR__)); // Go up to project root
@@ -3755,8 +3954,19 @@ public function verifyPublicReceipt($paymentId = null)
             if ($singlePay && (empty($singlePay['is_trashed']) || $singlePay['is_trashed'] == 0)) {
                 if (!empty($singlePay['batch_id'])) {
                     $batchPayments = $this->clientModel->getTransactionsByBatchId($singlePay['batch_id'], $singlePay['booking_id'] ?? null);
+                    $batchPayments = array_values(array_filter($batchPayments, function($p) {
+                        $isTrashed = !empty($p['is_trashed']) && (int)$p['is_trashed'] === 1;
+                        $isRejected = strtolower(trim($p['verification_status'] ?? '')) === 'rejected';
+                        return !$isTrashed && !$isRejected;
+                    }));
                     if (count($batchPayments) > 1) {
-                        $payments = $batchPayments;
+                        $types = array_unique(array_filter(array_map(fn($p) => $p['payment_type'] ?? '', $batchPayments)));
+                        $isAllEmi = count($types) === 1 && in_array(reset($types), ['emi', 'emi_due_settlement']);
+                        if ($isAllEmi || !empty($_GET['batch'])) {
+                            $payments = $batchPayments;
+                        } else {
+                            $payments = [$singlePay];
+                        }
                     } else {
                         $payments = [$singlePay];
                     }
@@ -3817,8 +4027,19 @@ public function downloadPublicReceiptPdf($paymentId = null)
             if ($singlePay && (empty($singlePay['is_trashed']) || $singlePay['is_trashed'] == 0)) {
                 if (!empty($singlePay['batch_id'])) {
                     $batchPayments = $this->clientModel->getTransactionsByBatchId($singlePay['batch_id'], $singlePay['booking_id'] ?? null);
+                    $batchPayments = array_values(array_filter($batchPayments, function($p) {
+                        $isTrashed = !empty($p['is_trashed']) && (int)$p['is_trashed'] === 1;
+                        $isRejected = strtolower(trim($p['verification_status'] ?? '')) === 'rejected';
+                        return !$isTrashed && !$isRejected;
+                    }));
                     if (count($batchPayments) > 1) {
-                        $payments = $batchPayments;
+                        $types = array_unique(array_filter(array_map(fn($p) => $p['payment_type'] ?? '', $batchPayments)));
+                        $isAllEmi = count($types) === 1 && in_array(reset($types), ['emi', 'emi_due_settlement']);
+                        if ($isAllEmi || !empty($_GET['batch'])) {
+                            $payments = $batchPayments;
+                        } else {
+                            $payments = [$singlePay];
+                        }
                     } else {
                         $payments = [$singlePay];
                     }
@@ -4450,6 +4671,40 @@ public function viewClientStatement($bookingId = null)
     }
     
     // Render the statement view
+    include $viewPath;
+    exit;
+}
+
+/**
+ * View Date-Wise Aggregated Payment Statement
+ * Shows total paid per batch/date without internal payment_type breakdowns.
+ * Accessible via /client-datewise-statement/{bookingId}
+ */
+public function viewClientDatewiseStatement($bookingId = null)
+{
+    if (session_status() === PHP_SESSION_NONE) session_start();
+
+    if (!$bookingId) {
+        $bookingId = $_GET['booking_id'] ?? null;
+    }
+
+    $bookingId = (int)$bookingId;
+    if ($bookingId <= 0) {
+        die("Invalid or missing booking ID.");
+    }
+
+    $summaryData = $this->clientModel->getDatewiseBatchPaymentSummary($bookingId);
+    if (!$summaryData || empty($summaryData['client_details'])) {
+        die("Booking details not found for ID: " . $bookingId);
+    }
+
+    $root = dirname(dirname(__DIR__));
+    $viewPath = $root . '/app/views/accounts/cashIn/client-datewise-statement.php';
+
+    if (!file_exists($viewPath)) {
+        die("View file not found at: " . $viewPath);
+    }
+
     include $viewPath;
     exit;
 }
@@ -5122,6 +5377,8 @@ public function discountStatement($bookingId = null)
                 lp.attachment_paths,
                 lp.attachment_image,
                 lp.attachment_image2,
+                lp.attachment_image3,
+                lp.attachment_image4,
                 lp.rejection_reason,
                 uv.full_name AS verified_by_name,
                 lp.verified_at
@@ -5163,6 +5420,18 @@ public function discountStatement($bookingId = null)
             $legacyPath2 = 'uploads/payments/' . $row['attachment_image2'];
             if (!in_array($legacyPath2, $files)) {
                 $files[] = $legacyPath2;
+            }
+        }
+        if (!empty($row['attachment_image3'])) {
+            $legacyPath3 = 'uploads/payments/' . $row['attachment_image3'];
+            if (!in_array($legacyPath3, $files)) {
+                $files[] = $legacyPath3;
+            }
+        }
+        if (!empty($row['attachment_image4'])) {
+            $legacyPath4 = 'uploads/payments/' . $row['attachment_image4'];
+            if (!in_array($legacyPath4, $files)) {
+                $files[] = $legacyPath4;
             }
         }
 
@@ -5677,6 +5946,62 @@ public function discountStatement($bookingId = null)
         exit;
     }
 
+    /**
+     * Save custom EMI Due Date fixed by CED (Client Experience Department)
+     * Permission: Only CED role (7, 37, Credit Recovery, Client Experience) & Admin (1, 3)
+     * Rejects Accounts roles and ensures lock check for fully paid EMIs.
+     */
+    public function saveEmiDueDate()
+    {
+        header('Content-Type: application/json');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Invalid request method.']);
+            exit;
+        }
+
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userSecRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+
+        // Permission check: only CED and Admin can set EMI due dates
+        $isCedUser = in_array($userRoleId, [1, 3, 7, 37, 39], true)
+            || in_array($userSecRoleId, [7, 37, 39], true)
+            || strpos($roleName, 'head of client experience') !== false
+            || strpos($roleName, 'client experience') !== false
+            || strpos($roleName, 'credit recovery') !== false
+            || strpos($roleName, 'client communication') !== false
+            || (function_exists('isCreditRecovery') && isCreditRecovery());
+
+        if (!$isCedUser) {
+            echo json_encode([
+                'success' => false, 
+                'message' => 'Permission denied. Only Client Experience Department (CED) can schedule or modify EMI due dates.'
+            ]);
+            exit;
+        }
+
+        $bookingId       = (int)($_POST['booking_id'] ?? 0);
+        $emiNo           = (int)($_POST['emi_no'] ?? 0);
+        $dueDate         = trim($_POST['due_date'] ?? '');
+        $notes           = trim($_POST['notes'] ?? '');
+        $applySubsequent = !empty($_POST['apply_subsequent']) ? 1 : 0;
+        $userId          = (int)($_SESSION['user']['id'] ?? 0);
+
+        if (!$bookingId || !$emiNo || empty($dueDate)) {
+            echo json_encode(['success' => false, 'message' => 'Booking ID, EMI number and due date are required.']);
+            exit;
+        }
+
+        $result = $this->clientModel->saveEmiDueDate($bookingId, $emiNo, $dueDate, $notes, $userId, $applySubsequent);
+        echo json_encode($result);
+        exit;
+    }
+
     public function getEmiFollowups()
     {
         header('Content-Type: application/json');
@@ -6162,7 +6487,7 @@ public function discountStatement($bookingId = null)
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
 
-        $allowedRoles = [1, 3, 6, 7, 30, 33, 34, 35, 36, 37];
+        $allowedRoles = [1, 3, 6, 7, 30, 33, 34, 35, 36, 37, 39];
         $isAuthorized = in_array($userRoleId, $allowedRoles, true)
             || in_array($userSecRoleId, $allowedRoles, true)
             || in_array($userPriRoleId, $allowedRoles, true)
@@ -6222,8 +6547,10 @@ public function discountStatement($bookingId = null)
 
         // Handle AJAX EMI Analytics summary
         if (isset($_GET['ajax']) && $_GET['ajax'] === 'emi_analytics_summary') {
-            $projectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
-            $summary = $this->clientModel->getEmiAnalyticsSummary($projectId);
+            $modalPrj = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
+            $mAssigned = [];
+            $effectiveModalPrj = $this->getEffectiveCedProjectFilter($modalPrj, $mAssigned);
+            $summary = $this->clientModel->getEmiAnalyticsSummary($effectiveModalPrj);
             header('Content-Type: application/json');
             echo json_encode([
                 'success' => true,
@@ -6234,14 +6561,16 @@ public function discountStatement($bookingId = null)
 
         // Handle AJAX EMI Analytics clients breakdown list
         if (isset($_GET['ajax']) && $_GET['ajax'] === 'emi_analytics_clients') {
-            $projectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
+            $modalPrj = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
+            $mAssigned = [];
+            $effectiveModalPrj = $this->getEffectiveCedProjectFilter($modalPrj, $mAssigned);
             $category = trim($_GET['category'] ?? 'all');
             if (!in_array($category, ['all', 'regular', 'advance', 'due'], true)) {
                 $category = 'all';
             }
             $search = trim($_GET['search'] ?? '');
-            $clients = $this->clientModel->getEmiAnalyticsClientsList($category, $projectId, $search ?: null, 500);
-            $summary = $this->clientModel->getEmiAnalyticsSummary($projectId);
+            $clients = $this->clientModel->getEmiAnalyticsClientsList($category, $effectiveModalPrj, $search ?: null, 500);
+            $summary = $this->clientModel->getEmiAnalyticsSummary($effectiveModalPrj);
             $html = $this->renderEmiAnalyticsModalRowsHtml($clients, $category);
             header('Content-Type: application/json');
             echo json_encode([
@@ -6258,6 +6587,9 @@ public function discountStatement($bookingId = null)
                   || (isset($_GET['ajax']) && $_GET['ajax'] == '1');
 
         $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
+        $assignedProjectIds = [];
+        $effectiveProjectId = $this->getEffectiveCedProjectFilter($selectedProjectId, $assignedProjectIds);
+
         $dueType = trim($_GET['due_type'] ?? 'all');
         if (!in_array($dueType, ['all', 'land_share_due', 'land_share_cleared', 'registered', 'dev_charge_due', 'shop_service_due', 'emi_due', 'overall_due', 'cleared'], true)) {
             $dueType = 'all';
@@ -6290,7 +6622,7 @@ public function discountStatement($bookingId = null)
         }
 
         $filters = [
-            'project_id' => $selectedProjectId,
+            'project_id' => $effectiveProjectId,
             'due_type'   => $dueType,
             'search'     => $search,
             'date_type'  => $dateType,
@@ -6308,8 +6640,8 @@ public function discountStatement($bookingId = null)
         }
 
         $clients = $this->clientModel->getClientWiseDueList($filters, $limit, $offset);
-        $stats = $this->clientModel->getClientDueTrackingStats($selectedProjectId);
-        $emiAnalytics = $this->clientModel->getEmiAnalyticsSummary($selectedProjectId);
+        $stats = $this->clientModel->getClientDueTrackingStats($effectiveProjectId);
+        $emiAnalytics = $this->clientModel->getEmiAnalyticsSummary($effectiveProjectId);
 
         if ($isAjax) {
             $tableHtml = $this->renderDueTrackingRowsHtml($clients);
@@ -6342,9 +6674,12 @@ public function discountStatement($bookingId = null)
         if (empty($projects)) {
             $projects = $this->clientModel->getProjectsForCED();
         }
+        if (!empty($assignedProjectIds)) {
+            $projects = array_values(array_filter($projects, fn($p) => in_array((int)$p['id'], $assignedProjectIds, true)));
+        }
 
         // Get Project-wise Due Breakdown
-        $projectBreakdown = $this->clientModel->getProjectWiseDueBreakdown();
+        $projectBreakdown = $this->clientModel->getProjectWiseDueBreakdown(null, !empty($assignedProjectIds) ? $assignedProjectIds : null);
 
         $selectedProjectName = '';
         if ($selectedProjectId) {
@@ -6369,6 +6704,7 @@ public function discountStatement($bookingId = null)
             "stats"               => $stats,
             "emiAnalytics"        => $emiAnalytics,
             "projects"            => $projects,
+            "assignedProjectIds"  => $assignedProjectIds,
             "projectBreakdown"    => $projectBreakdown,
             "selectedProjectId"   => $selectedProjectId,
             "selectedProjectName" => $selectedProjectName,
@@ -7074,7 +7410,7 @@ public function discountStatement($bookingId = null)
         $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
 
-        return in_array($userRoleId, [1, 3, 7, 33, 34, 35, 36, 37])
+        return in_array($userRoleId, [1, 3, 7, 33, 34, 35, 36, 37, 39])
             || strpos($roleName, 'account') !== false
             || strpos($roleName, 'client experience') !== false
             || strpos($roleName, 'clients experiment') !== false

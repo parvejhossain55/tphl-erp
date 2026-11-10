@@ -7,16 +7,16 @@ $show_breadcrumb = true;
 // $clients       = getAllBookings()
 // $paymentStats  = getPaymentStatistics()
 
-// ── Aggregate from $clients ───────────────────────────────────────────────────
-$totalAgreementValue  = 0;
-$totalCollected       = 0;
-$totalOutstanding     = 0;
-$overduePayments      = 0;
-$monthlyCollection    = 0;
+// ── Server-side aggregated metrics passed by CedView() ───────────────────────
+$totalAgreementValue  = (float)($dueTrackingStats['total_value'] ?? 0);
+$totalCollected       = (float)($collectionStats['total_collected'] ?? 0);
+$totalOutstanding     = max(0, $totalAgreementValue - $totalCollected);
+$collectionRate       = $totalAgreementValue > 0 ? round(($totalCollected / $totalAgreementValue) * 100, 1) : 0;
+$overduePayments      = (int)($dueTrackingStats['total_overdue_emi'] ?? 0);
 $currentMonth         = date('Y-m');
 
 // Payment status pie: [On Track, Pending, Overdue, Completed]
-$paymentStatusData = [0, 0, 0, 0];
+$paymentStatusData = !empty($paymentStatusData) && is_array($paymentStatusData) ? $paymentStatusData : [0, 0, 0, 0];
 
 // Monthly chart skeleton — last 6 months
 $monthlyChartLabels    = [];
@@ -28,61 +28,11 @@ for ($i = 5; $i >= 0; $i--) {
     $mk = date('Y-m', strtotime("-$i months"));
     $monthlyChartLabels[]       = date('M Y', strtotime($mk . '-01'));
     $monthlyCollectionMap[$mk]  = $collectionData['monthly_data'][$mk] ?? 0;
-    $monthlyOutstandingMap[$mk] = 0;
+    $monthlyOutstandingMap[$mk] = $totalOutstanding;
 }
 
 $monthlyCollection = $collectionData['this_month_collection'] ?? 0;
 $weeklyCollectionData = $collectionData['weekly_data'] ?? [0, 0, 0, 0, 0, 0, 0];
-
-if (!empty($clients)) {
-    foreach ($clients as $client) {
-        $price       = (float)($client['total_price'] ?? 0);
-        $paid        = (float)($client['total_paid']  ?? 0);
-        $outstanding = max(0, $price - $paid);
-        $payPct      = $price > 0 ? ($paid / $price) * 100 : 0;
-
-        $totalAgreementValue += $price;
-        $totalCollected      += $paid;
-        $totalOutstanding    += $outstanding;
-
-        $hasBeenCounted = false;
-
-        if ($payPct >= 100) { 
-            $paymentStatusData[3]++; 
-            $hasBeenCounted = true;
-        }
-
-        if (!empty($client['last_payment_date'])) {
-            $lpDate    = $client['last_payment_date'];
-            $lpMonth   = date('Y-m', strtotime($lpDate));
-            $daysSince = (strtotime(date('Y-m-d')) - strtotime($lpDate)) / 86400;
-
-            if (isset($monthlyOutstandingMap[$lpMonth])) {
-                $monthlyOutstandingMap[$lpMonth] = $totalOutstanding;
-            }
-            
-            if (!$hasBeenCounted && $daysSince > 60 && $outstanding > 0) {
-                $overduePayments++;
-                $paymentStatusData[2]++;
-                $hasBeenCounted = true;
-            }
-        } elseif ($outstanding > 0 && !$hasBeenCounted) {
-            $paymentStatusData[1]++;
-            $hasBeenCounted = true;
-        }
-        
-        // Fallback for remaining active payments
-        if (!$hasBeenCounted) {
-            if ($payPct >= 50) {
-                $paymentStatusData[0]++;
-            } else {
-                $paymentStatusData[1]++;
-            }
-        }
-    }
-}
-
-$collectionRate          = $totalAgreementValue > 0 ? ($totalCollected / $totalAgreementValue) * 100 : 0;
 $monthlyCollectionArray  = array_values($monthlyCollectionMap);
 $monthlyOutstandingArray = array_values($monthlyOutstandingMap);
 
@@ -164,6 +114,35 @@ $statusBadgeMap = [
 
 <div class="row">
 
+    <!-- ══ PROJECT FILTER BAR ══ -->
+    <div class="col-12 mb-3">
+        <div class="card__wrapper py-3 px-4 d-flex flex-wrap align-items-center justify-content-between gap-3 bg-white shadow-sm" style="border-radius:10px; border-left:4px solid #10b981;">
+            <div class="d-flex align-items-center gap-2">
+                <i class="fa-light fa-city text-success fs-5"></i>
+                <div>
+                    <h6 class="mb-0 fw-bold text-dark">CED Performance Dashboard</h6>
+                    <small class="text-muted">Real-time collections, dues, and payment track metrics</small>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2 ms-auto" style="min-width: 280px; max-width: 400px;">
+                <label for="cedDashboardProjectFilter" class="form-label mb-0 fw-semibold text-muted small text-nowrap">Filter Project:</label>
+                <select id="cedDashboardProjectFilter" class="form-select form-select-sm" onchange="window.location.href='<?= $GLOBALS['base_url'] ?>/ced-dashboard' + (this.value ? '?project_id=' + this.value : '')">
+                    <option value=""><?= !empty($assignedProjectIds) ? '-- All Assigned Projects (' . count($assignedProjectIds) . ') --' : '-- All Projects (' . count($projects ?? []) . ') --' ?></option>
+                    <?php if (!empty($projects)): ?>
+                        <?php foreach ($projects as $prj): ?>
+                            <option value="<?= $prj['id'] ?>" <?= (isset($selectedProjectId) && (int)$selectedProjectId === (int)$prj['id']) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($prj['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </select>
+                <?php if (!empty($selectedProjectId)): ?>
+                    <a href="<?= $GLOBALS['base_url'] ?>/ced-dashboard" class="btn btn-sm btn-outline-danger" title="Clear filter"><i class="fa-light fa-xmark"></i></a>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
     <!-- ══ STAT CARDS ══ -->
     <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
         <div class="card__wrapper h-100">
@@ -174,7 +153,7 @@ $statusBadgeMap = [
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Total Clients</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title"><?= $paymentStats['total_clients'] ?? 0 ?></h4>
+                        <h4 class="card__title"><?= number_format($paymentStats['total_clients'] ?? 0) ?></h4>
                     </div>
                 </div>
             </div>
@@ -185,19 +164,17 @@ $statusBadgeMap = [
         <div class="card__wrapper h-100">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
-                    <span><i class="fa-light fa-badge-check"></i></span>
+                    <span><i class="fa-light fa-building"></i></span>
                 </div>
                 <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Full Payment Completed</h6>
+                    <h6 class="card__sub-title mb-10">Units Booked</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title"><?= $paymentStats['full_payment_completed'] ?? 0 ?></h4>
+                        <h4 class="card__title"><?= number_format($paymentStats['units_booked'] ?? $paymentStats['total_units_booked'] ?? $paymentStats['approved_bookings'] ?? 0) ?></h4>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
-
 
     <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
         <div class="card__wrapper h-100">
@@ -208,7 +185,7 @@ $statusBadgeMap = [
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Total Collected</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title">TK.<?= number_format($totalCollected, 0) ?></h4>
+                        <h4 class="card__title">৳ <?= number_format($totalCollected, 0) ?></h4>
                     </div>
                 </div>
             </div>
@@ -396,6 +373,9 @@ $statusBadgeMap = [
             limit: limit,
             search: searchVal
         });
+        <?php if (!empty($selectedProjectId)): ?>
+        params.set('project_id', '<?= (int)$selectedProjectId ?>');
+        <?php endif; ?>
 
         fetch(`${base_url}/ced-dashboard?${params.toString()}`)
             .then(response => response.json())
@@ -444,7 +424,7 @@ $statusBadgeMap = [
         const weeklyCollection   = <?= json_encode($weeklyCollectionData) ?>;
         const paymentStatusData  = <?= json_encode($paymentStatusData) ?>;
 
-        const formatCurrency = (value) => 'TK.' + value.toLocaleString();
+        const formatCurrency = (value) => '৳ ' + value.toLocaleString();
 
         const colors = {
             primary:  '#6366f1',

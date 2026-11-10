@@ -2358,7 +2358,7 @@ class PayrollController extends Controller
                     $row['erp_att_late_unpaid_absent_days'] = $erpAtt['late_unpaid_absent_days'];
                 }
 
-                $mealPct = (isset($row['per_meal_percentage']) && (float) $row['per_meal_percentage'] > 0) ? (float) $row['per_meal_percentage'] : 100.00;
+                $mealPct = (isset($row['per_meal_percentage']) && $row['per_meal_percentage'] !== '' && (float) $row['per_meal_percentage'] >= 0) ? (float) $row['per_meal_percentage'] : 100.00;
                 if ($mealPct == 100.00 && !empty($row['per_meal_amount']) && (float) $row['per_meal_amount'] > 0 && (float) $row['per_meal_amount'] != $standardMealRate) {
                     $effectiveMealRate = (float) $row['per_meal_amount'];
                 } else {
@@ -2555,6 +2555,24 @@ class PayrollController extends Controller
             }
         }
 
+        // Check for active employees without a valid joining_date so project creation can warn/block
+        $missingJoiningDateEmployees = [];
+        $missingJoinRes = $this->db->query("
+            SELECT e.id, e.employee_id, e.full_name, d.name as department_name, desg.name as designation_name
+            FROM employees e
+            LEFT JOIN departments d ON e.department_id = d.id
+            LEFT JOIN designations desg ON e.designation_id = desg.id
+            WHERE e.employee_status = 'active'
+              AND e.deleted_at IS NULL
+              AND (e.joining_date IS NULL OR TRIM(e.joining_date) = '' OR e.joining_date = '0000-00-00')
+            ORDER BY e.employee_id ASC
+        ");
+        if ($missingJoinRes) {
+            while ($mjRow = $missingJoinRes->fetch_assoc()) {
+                $missingJoiningDateEmployees[] = $mjRow;
+            }
+        }
+
         $this->view('payrolls/payslips/workspace', [
             'current_route' => 'payroll-workspace',
             'page_title' => 'Payroll Workplace',
@@ -2571,7 +2589,8 @@ class PayrollController extends Controller
             'mealCountsByEmp' => $mealCountsByEmp,
             'selectedFromDate' => $targetStartDate,
             'selectedToDate' => $targetEndDate,
-            'cycleTotalDays' => max(1, (int) round((strtotime($targetEndDate) - strtotime($targetStartDate)) / 86400) + 1)
+            'cycleTotalDays' => max(1, (int) round((strtotime($targetEndDate) - strtotime($targetStartDate)) / 86400) + 1),
+            'missingJoiningDateEmployees' => $missingJoiningDateEmployees
         ]);
     }
 
@@ -2580,33 +2599,62 @@ class PayrollController extends Controller
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
+        // Release session lock early so concurrent requests or tabs are never blocked
+        session_write_close();
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $name = isset($_POST['name']) ? $this->db->real_escape_string($_POST['name']) : '';
+            // Block project creation if any active employee has no joining_date set
+            $missingJoinCheck = $this->db->query("
+                SELECT employee_id, full_name
+                FROM employees
+                WHERE employee_status = 'active'
+                  AND deleted_at IS NULL
+                  AND (joining_date IS NULL OR TRIM(joining_date) = '' OR joining_date = '0000-00-00')
+                ORDER BY employee_id ASC
+            ");
+            if ($missingJoinCheck && $missingJoinCheck->num_rows > 0) {
+                $missingNames = [];
+                while ($mRow = $missingJoinCheck->fetch_assoc()) {
+                    $missingNames[] = $mRow['full_name'] . ' (ID: ' . ($mRow['employee_id'] ?: 'N/A') . ')';
+                }
+                $listStr = addslashes(implode(', ', array_slice($missingNames, 0, 5)));
+                if (count($missingNames) > 5) {
+                    $listStr .= ' and ' . (count($missingNames) - 5) . ' more';
+                }
+                echo "<script>alert('Cannot create Payroll Project! Following active employee(s) do not have a Joining Date set: {$listStr}. Please set their Joining Date first.'); window.location.href='{$GLOBALS['base_url']}/payroll-workspace';</script>";
+                exit;
+            }
+
+            $rawName = isset($_POST['name']) ? trim($_POST['name']) : '';
+            $name = $this->db->real_escape_string($rawName);
             $project_type = isset($_POST['project_type']) ? $_POST['project_type'] : 'monthly';
-            $date = isset($_POST['date']) ? $this->db->real_escape_string($_POST['date']) : '';
-            $start_date = isset($_POST['start_date']) ? $this->db->real_escape_string($_POST['start_date']) : '';
-            $end_date = isset($_POST['end_date']) ? $this->db->real_escape_string($_POST['end_date']) : '';
+            $rawDate = isset($_POST['date']) ? trim($_POST['date']) : '';
+            $rawStart = isset($_POST['start_date']) ? trim($_POST['start_date']) : '';
+            $rawEnd = isset($_POST['end_date']) ? trim($_POST['end_date']) : '';
 
             $is_custom = ($project_type === 'custom') ? 1 : 0;
 
-            if (empty($name)) {
+            if (empty($rawName)) {
                 echo "<script>alert('Project name is required.'); window.location.href='{$GLOBALS['base_url']}/payroll-workspace';</script>";
                 exit;
             }
-            if ($is_custom && (empty($start_date) || empty($end_date))) {
+            if ($is_custom && (empty($rawStart) || empty($rawEnd))) {
                 echo "<script>alert('Start date and end date are required for custom projects.'); window.location.href='{$GLOBALS['base_url']}/payroll-workspace';</script>";
                 exit;
             }
-            if (!$is_custom && empty($date)) {
+            if (!$is_custom && empty($rawDate)) {
                 echo "<script>alert('Project date is required for monthly projects.'); window.location.href='{$GLOBALS['base_url']}/payroll-workspace';</script>";
                 exit;
             }
 
             if ($is_custom) {
-                // For custom projects, the 'date' field could be null or derived (e.g. from start_date month) to satisfy UI backward compatibility.
-                $date = date('Y-m', strtotime($start_date));
+                // For custom projects, derive 'date' from start_date month to satisfy UI backward compatibility.
+                $rawDate = date('Y-m', strtotime($rawStart));
             }
+
+            $date = $this->db->real_escape_string($rawDate);
+            $start_date = $this->db->real_escape_string($rawStart);
+            $end_date = $this->db->real_escape_string($rawEnd);
 
             $stmt = $this->db->prepare('INSERT INTO payroll_projects (name, date, is_custom_date, start_date, end_date) VALUES (?, ?, ?, ?, ?)');
 
@@ -2615,18 +2663,19 @@ class PayrollController extends Controller
                 exit;
             }
 
-            $stmt->bind_param('ssiss', $name, $date, $is_custom, $start_date, $end_date);
+            $stmt->bind_param('ssiss', $rawName, $rawDate, $is_custom, $rawStart, $rawEnd);
 
             if ($stmt->execute()) {
                 $newProjId = $stmt->insert_id;
+                $stmt->close();
 
                 // Auto-link or auto-create matching Meal Project based on date range
                 $meal_project_id = !empty($_POST['meal_project_id']) ? (int) $_POST['meal_project_id'] : 0;
-                $checkStart = $is_custom ? $start_date : '';
-                $checkEnd   = $is_custom ? $end_date : '';
+                $checkStart = $is_custom ? $rawStart : '';
+                $checkEnd   = $is_custom ? $rawEnd : '';
 
-                if (!$is_custom && !empty($date)) {
-                    $mParts = explode('-', $date);
+                if (!$is_custom && !empty($rawDate)) {
+                    $mParts = explode('-', $rawDate);
                     if (count($mParts) === 2) {
                         $cRange = $this->getCycleDateRange((int)$mParts[0], (int)$mParts[1]);
                         $checkStart = date('Y-m-d', strtotime($cRange['start']));
@@ -2634,28 +2683,39 @@ class PayrollController extends Controller
                     }
                 }
 
-                if ($newProjId > 0 && !empty($checkStart) && !empty($checkEnd)) {
-                    require_once dirname(__DIR__) . '/models/MealProject.php';
-                    $mProjModel = new MealProject($this->db);
-                    $autoMeal = $mProjModel->getOrCreateCycleForRange($checkStart, $checkEnd, $name, $newProjId, true);
-                    if ($autoMeal) {
-                        $meal_project_id = (int)$autoMeal['id'];
+                try {
+                    if ($newProjId > 0 && !empty($checkStart) && !empty($checkEnd)) {
+                        require_once dirname(__DIR__) . '/models/MealProject.php';
+                        $mProjModel = new MealProject($this->db);
+                        $autoMeal = $mProjModel->getOrCreateCycleForRange($checkStart, $checkEnd, $rawName, $newProjId, true);
+                        if ($autoMeal) {
+                            $meal_project_id = (int)$autoMeal['id'];
+                        }
                     }
+
+                    if ($meal_project_id > 0 && $newProjId > 0) {
+                        $this->db->query("UPDATE meal_projects SET payroll_project_id = $newProjId WHERE id = $meal_project_id");
+                    }
+
+                    // Sync project attendance using local DB cache first ($forceRefresh = false) so creation never hangs
+                    if ($newProjId > 0) {
+                        $this->syncProjectAttendanceFromTipsoi($newProjId, false);
+                    }
+                } catch (\Throwable $syncErr) {
+                    error_log("storePayrollProject auto-sync warning: " . $syncErr->getMessage());
                 }
 
-                if ($meal_project_id > 0 && $newProjId > 0) {
-                    $this->db->query("UPDATE meal_projects SET payroll_project_id = $newProjId WHERE id = $meal_project_id");
-                }
-
-                // Auto-sync project attendance from Tipsoi into attendance_monthly_update
-                if ($newProjId > 0) {
-                    $this->syncProjectAttendanceFromTipsoi($newProjId);
+                if (!headers_sent()) {
+                    header("Location: {$GLOBALS['base_url']}/payroll-workspace?payroll_project_id={$newProjId}");
+                    exit;
                 }
                 echo "<script>window.location.href='{$GLOBALS['base_url']}/payroll-workspace?payroll_project_id={$newProjId}';</script>";
+                exit;
             } else {
+                $stmt->close();
                 echo "<script>alert('Failed to create project.'); window.location.href='{$GLOBALS['base_url']}/payroll-workspace';</script>";
+                exit;
             }
-            $stmt->close();
         }
     }
 
@@ -2980,44 +3040,234 @@ class PayrollController extends Controller
             $tableHeaders = json_decode($_POST['table_headers'], true) ?: [];
             $tableFooters = !empty($_POST['table_footers']) ? (json_decode($_POST['table_footers'], true) ?: []) : [];
 
-            $projectTitleStr = !empty($projectName) ? ' &mdash; ' . htmlspecialchars($projectName) : '';
+            // Filter out redundant/cluttered columns in PDF so the sheet has clean breathing room
+            $skipCols = ['email', 'id check', 'amount'];
+            $keepIndices = [];
+            foreach ($tableHeaders as $idx => $th) {
+                $thClean = strtolower(trim($th));
+                if (!in_array($thClean, $skipCols, true)) {
+                    $keepIndices[] = $idx;
+                }
+            }
+
+            // Calculate Executive Summary KPIs from tableData
+            $kpiGross = 0.0;
+            $kpiAdditions = 0.0;
+            $kpiDeductions = 0.0;
+            $kpiNetPayable = 0.0;
+            $kpiBank = 0.0;
+            $kpiCash = 0.0;
+
+            foreach ($tableData as $row) {
+                foreach ($tableHeaders as $cIdx => $hName) {
+                    $hLow = strtolower(trim($hName));
+                    $rawVal = (string)($row[$cIdx] ?? '0');
+                    $numVal = (float)str_replace([',', '৳', 'TK', ' '], '', $rawVal);
+                    if ($hLow === 'gross') $kpiGross += $numVal;
+                    elseif ($hLow === 'total payable' || $hLow === 'net payable') $kpiNetPayable += $numVal;
+                    elseif ($hLow === 'bank') $kpiBank += $numVal;
+                    elseif ($hLow === 'cash') $kpiCash += $numVal;
+                    elseif (in_array($hLow, ['absent amount', 'late deduction', 'half day deduction', 'other deduction', 'advance salary', 'ait/tax'], true)) {
+                        $kpiDeductions += $numVal;
+                    } elseif (in_array($hLow, ['overtime', 'arrear', 'car allowance', 'ta/da', 'eid bonus', 'boishakhi bonus', 'other bonus', 'salary adjustment'], true)) {
+                        $kpiAdditions += $numVal;
+                    }
+                }
+            }
+
+            // Assign smart proportional widths (summing to 100%) and section groups for kept columns
+            $rawWeights = [];
+            $colGroups = [];
+            $totalWeight = 0.0;
+
+            foreach ($keepIndices as $idx) {
+                $thLow = strtolower(trim($tableHeaders[$idx] ?? ''));
+                $w = 2.4;
+                $grp = 'NET & BANK PAYOUT';
+
+                if ($thLow === 'sl') { $w = 1.3; $grp = 'EMPLOYEE INFO'; }
+                elseif ($thLow === 'id') { $w = 1.9; $grp = 'EMPLOYEE INFO'; }
+                elseif ($thLow === 'name') { $w = 5.4; $grp = 'EMPLOYEE INFO'; }
+                elseif ($thLow === 'department') { $w = 4.2; $grp = 'EMPLOYEE INFO'; }
+                elseif ($thLow === 'designation') { $w = 4.2; $grp = 'EMPLOYEE INFO'; }
+                elseif ($thLow === 'workplace') { $w = 3.0; $grp = 'EMPLOYEE INFO'; }
+                elseif (in_array($thLow, ['basic', 'house rent', 'medical', 'conveyance', 'gross', 'daily salary'], true)) {
+                    $w = ($thLow === 'gross') ? 2.8 : 2.3;
+                    $grp = 'SALARY & ALLOWANCES';
+                } elseif (in_array($thLow, ['days', 'absent days', 'absent amount', 'late days', 'late deduction', 'half day', 'half day deduction', 'other deduction', 'advance salary', 'ait/tax'], true)) {
+                    $w = (strpos($thLow, 'days') !== false || $thLow === 'half day') ? 1.7 : 2.3;
+                    $grp = 'ATTENDANCE & DEDUCTIONS';
+                } elseif (in_array($thLow, ['overtime', 'arrear', 'car allowance', 'ta/da', 'eid bonus', 'boishakhi bonus', 'other bonus', 'salary adjustment'], true)) {
+                    $w = 2.2;
+                    $grp = 'BONUSES & ADDITIONS';
+                } elseif (in_array($thLow, ['joining date', 'tenure', 'salary cycle'], true)) {
+                    $w = ($thLow === 'tenure') ? 3.2 : 2.5;
+                    $grp = 'SERVICE & CYCLE';
+                } elseif ($thLow === 'account name') {
+                    $w = 4.6; $grp = 'NET & BANK PAYOUT';
+                } elseif ($thLow === 'account no') {
+                    $w = 4.2; $grp = 'NET & BANK PAYOUT';
+                } elseif (strpos($thLow, 'remarks') !== false) {
+                    $w = 3.8; $grp = 'NET & BANK PAYOUT';
+                } elseif (in_array($thLow, ['total payable', 'bank', 'cash'], true)) {
+                    $w = 2.8; $grp = 'NET & BANK PAYOUT';
+                } elseif ($thLow === 'hold') {
+                    $w = 1.9; $grp = 'NET & BANK PAYOUT';
+                }
+
+                $rawWeights[$idx] = $w;
+                $colGroups[$idx] = $grp;
+                $totalWeight += $w;
+            }
+
+            $colWidthsPct = [];
+            $runningPct = 0.0;
+            $lastKeepPos = count($keepIndices) - 1;
+            foreach ($keepIndices as $pos => $idx) {
+                if ($pos === $lastKeepPos) {
+                    $colWidthsPct[$idx] = round(100.0 - $runningPct, 2);
+                } else {
+                    $pct = round(($rawWeights[$idx] / ($totalWeight ?: 1)) * 100.0, 2);
+                    $colWidthsPct[$idx] = $pct;
+                    $runningPct += $pct;
+                }
+            }
+
+            // Build contiguous group spans for top band header
+            $groupBands = [];
+            foreach ($keepIndices as $idx) {
+                $gName = $colGroups[$idx];
+                $wPct = $colWidthsPct[$idx];
+                $lastIdx = count($groupBands) - 1;
+                if ($lastIdx >= 0 && $groupBands[$lastIdx]['name'] === $gName) {
+                    $groupBands[$lastIdx]['colspan']++;
+                    $groupBands[$lastIdx]['width'] += $wPct;
+                } else {
+                    $groupBands[] = ['name' => $gName, 'colspan' => 1, 'width' => $wPct];
+                }
+            }
+
+            $groupColors = [
+                'EMPLOYEE INFO'           => ['bg' => '#1e293b', 'th' => '#334155'],
+                'SALARY & ALLOWANCES'     => ['bg' => '#065f46', 'th' => '#047857'],
+                'ATTENDANCE & DEDUCTIONS' => ['bg' => '#991b1b', 'th' => '#b91c1c'],
+                'BONUSES & ADDITIONS'     => ['bg' => '#1e40af', 'th' => '#1d4ed8'],
+                'SERVICE & CYCLE'         => ['bg' => '#3730a3', 'th' => '#4338ca'],
+                'NET & BANK PAYOUT'       => ['bg' => '#0f5132', 'th' => '#146c43'],
+            ];
+
+            $projectTitleStr = !empty($projectName) ? htmlspecialchars($projectName) : 'All Employees';
+            $periodStr = htmlspecialchars($monthName . ' ' . $selectedYear);
+
             $html = '
-            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 6px;">
+            <table width="100%" cellpadding="4" cellspacing="0" border="0" style="margin-bottom: 4px;">
                 <tr>
-                    <td style="text-align: center;">
-                        <h1 style="color: #078134; margin: 0; padding: 0; font-size: 16px; font-weight: bold;">The Premium Homes Ltd</h1>
-                        <h3 style="color: #1a5632; margin: 2px 0; font-size: 11px;">Payroll Workplace Report' . $projectTitleStr . ' (' . htmlspecialchars($monthName . ' ' . $selectedYear) . ')</h3>
-                        <p style="font-size: 9px; color: #555555; margin: 0;"><b>Total Employees: </b> ' . count($tableData) . '</p>
+                    <td width="55%" style="background-color: #0f5132; color: #ffffff; padding: 8px 12px;">
+                        <span style="font-size: 15px; font-weight: bold; letter-spacing: 0.5px;">THE PREMIUM HOMES LTD</span><br>
+                        <span style="font-size: 9.5px; color: #d1e7dd;">PAYROLL WORKPLACE MASTER SHEET &bull; ' . strtoupper($projectTitleStr) . ' (' . strtoupper($periodStr) . ')</span>
+                    </td>
+                    <td width="45%" style="background-color: #146c43; color: #ffffff; text-align: right; padding: 8px 12px; font-size: 8.5px;">
+                        <b>Payroll Period:</b> ' . $periodStr . ' &nbsp;|&nbsp; <b>Total Staff:</b> ' . count($tableData) . '<br>
+                        <span style="color: #d1e7dd; font-size: 7.5px;">Generated on: ' . date('d M Y, h:i A') . '</span>
                     </td>
                 </tr>
             </table>
-            <br>
-            <table border="1" cellpadding="2" cellspacing="0" width="100%" style="font-size: 6px; border-collapse: collapse;">
+            <table width="100%" cellpadding="4" cellspacing="2" border="0" style="margin-bottom: 6px;">
+                <tr>
+                    <td width="14%" style="background-color: #f8fafc; border: 1px solid #cbd5e1; text-align: center;">
+                        <span style="font-size: 7px; color: #64748b; font-weight: bold;">EMPLOYEES</span><br>
+                        <span style="font-size: 10px; color: #0f172a; font-weight: bold;">' . count($tableData) . ' Staff</span>
+                    </td>
+                    <td width="17%" style="background-color: #f0fdf4; border: 1px solid #bbf7d0; text-align: center;">
+                        <span style="font-size: 7px; color: #166534; font-weight: bold;">TOTAL GROSS SALARY</span><br>
+                        <span style="font-size: 10px; color: #15803d; font-weight: bold;">TK ' . number_format($kpiGross, 2) . '</span>
+                    </td>
+                    <td width="16%" style="background-color: #eff6ff; border: 1px solid #bfdbfe; text-align: center;">
+                        <span style="font-size: 7px; color: #1e40af; font-weight: bold;">TOTAL ADDITIONS</span><br>
+                        <span style="font-size: 10px; color: #1d4ed8; font-weight: bold;">+ TK ' . number_format($kpiAdditions, 2) . '</span>
+                    </td>
+                    <td width="16%" style="background-color: #fef2f2; border: 1px solid #fecaca; text-align: center;">
+                        <span style="font-size: 7px; color: #991b1b; font-weight: bold;">TOTAL DEDUCTIONS</span><br>
+                        <span style="font-size: 10px; color: #dc2626; font-weight: bold;">- TK ' . number_format($kpiDeductions, 2) . '</span>
+                    </td>
+                    <td width="19%" style="background-color: #ecfdf5; border: 1px solid #6ee7b7; text-align: center;">
+                        <span style="font-size: 7px; color: #065f46; font-weight: bold;">NET PAYABLE SALARY</span><br>
+                        <span style="font-size: 10.5px; color: #047857; font-weight: bold;">TK ' . number_format($kpiNetPayable, 2) . '</span>
+                    </td>
+                    <td width="18%" style="background-color: #f8fafc; border: 1px solid #cbd5e1; text-align: center;">
+                        <span style="font-size: 7px; color: #334155; font-weight: bold;">BANK vs CASH SPLIT</span><br>
+                        <span style="font-size: 8.5px; color: #0f172a; font-weight: bold;">Bank: ' . number_format($kpiBank, 0) . ' | Cash: ' . number_format($kpiCash, 0) . '</span>
+                    </td>
+                </tr>
+            </table>
+            <table border="1" cellpadding="2.5" cellspacing="0" width="100%" style="font-size: 6.5px; border-collapse: collapse; border-color: #cbd5e1;">
                 <thead>
-                    <tr style="background-color: #078134; color: #ffffff; text-align: center; font-weight: bold;">';
+                    <tr style="color: #ffffff; text-align: center; font-weight: bold; font-size: 6.5px;">';
 
-            foreach ($tableHeaders as $th) {
-                $html .= '<th style="padding: 3px 1px;">' . htmlspecialchars($th) . '</th>';
+            foreach ($groupBands as $gb) {
+                $gBg = $groupColors[$gb['name']]['bg'] ?? '#0f5132';
+                $html .= '<th colspan="' . $gb['colspan'] . '" width="' . round($gb['width'], 2) . '%" style="background-color: ' . $gBg . '; color: #ffffff; text-align: center; font-weight: bold;">' . htmlspecialchars($gb['name']) . '</th>';
+            }
+            $html .= '</tr><tr style="color: #ffffff; text-align: center; font-weight: bold; font-size: 6.2px;">';
+
+            foreach ($keepIndices as $idx) {
+                $th = $tableHeaders[$idx] ?? '';
+                $wPct = $colWidthsPct[$idx];
+                $gName = $colGroups[$idx];
+                $thBg = $groupColors[$gName]['th'] ?? '#146c43';
+                $html .= '<th width="' . $wPct . '%" style="background-color: ' . $thBg . '; color: #ffffff; text-align: center;">' . htmlspecialchars($th) . '</th>';
             }
             $html .= '</tr></thead><tbody>';
 
             if (empty($tableData)) {
-                $html .= '<tr><td colspan="' . count($tableHeaders) . '" style="text-align: center; padding: 10px;"><b>No employees found for this period.</b></td></tr>';
+                $html .= '<tr><td colspan="' . count($keepIndices) . '" style="text-align: center; padding: 12px;"><b>No employees found for this period.</b></td></tr>';
             } else {
-                foreach ($tableData as $row) {
-                    $html .= '<tr>';
-                    foreach ($row as $colIdx => $cell) {
+                foreach ($tableData as $rIdx => $row) {
+                    $rowBg = ($rIdx % 2 === 1) ? '#f8fafc' : '#ffffff';
+                    $html .= '<tr style="background-color: ' . $rowBg . ';">';
+                    foreach ($keepIndices as $colIdx) {
+                        $cell = $row[$colIdx] ?? '';
                         $th = $tableHeaders[$colIdx] ?? '';
-                        $thLower = strtolower($th);
+                        $thLower = strtolower(trim($th));
+                        $wPct = $colWidthsPct[$colIdx];
                         $align = 'center';
+                        $cellStyle = 'color: #1e293b;';
+                        $displayVal = trim((string)$cell);
 
                         if (strpos($thLower, 'name') !== false || strpos($thLower, 'department') !== false || strpos($thLower, 'designation') !== false || strpos($thLower, 'workplace') !== false || strpos($thLower, 'remarks') !== false) {
                             $align = 'left';
-                        } elseif (strpos($thLower, 'amount') !== false || strpos($thLower, 'salary') !== false || strpos($thLower, 'gross') !== false || strpos($thLower, 'daily') !== false || strpos($thLower, 'payable') !== false || strpos($thLower, 'bank') !== false || strpos($thLower, 'cash') !== false || strpos($thLower, 'allowance') !== false || strpos($thLower, 'deduction') !== false || strpos($thLower, 'lunch') !== false || strpos($thLower, 'bonus') !== false || strpos($thLower, 'overtime') !== false || strpos($thLower, 'arrear') !== false || strpos($thLower, 'tax') !== false) {
+                            if ($thLower === 'name') {
+                                $cellStyle = 'color: #0f172a; font-weight: bold;';
+                            }
+                        } elseif (in_array($thLower, ['basic', 'house rent', 'medical', 'conveyance', 'gross', 'daily salary', 'absent amount', 'late deduction', 'half day deduction', 'other deduction', 'advance salary', 'ait/tax', 'overtime', 'arrear', 'car allowance', 'ta/da', 'eid bonus', 'boishakhi bonus', 'other bonus', 'salary adjustment', 'total payable', 'bank', 'cash'], true)) {
                             $align = 'right';
+                            $cleanNum = (float)str_replace([',', '৳', 'TK', ' '], '', $displayVal);
+                            if (abs($cleanNum) < 0.005) {
+                                $displayVal = '-';
+                                $cellStyle = 'color: #94a3b8;';
+                            } else {
+                                $displayVal = number_format($cleanNum, 2);
+                                if ($thLower === 'gross') {
+                                    $cellStyle = 'background-color: #f0fdf4; color: #166534; font-weight: bold;';
+                                } elseif ($thLower === 'total payable') {
+                                    $cellStyle = 'background-color: #d1fae5; color: #065f46; font-weight: bold;';
+                                } elseif ($thLower === 'bank') {
+                                    $cellStyle = 'background-color: #eff6ff; color: #1e40af; font-weight: bold;';
+                                } elseif ($thLower === 'cash') {
+                                    $cellStyle = 'background-color: #fffbeb; color: #92400e; font-weight: bold;';
+                                } elseif (in_array($thLower, ['absent amount', 'late deduction', 'half day deduction', 'other deduction', 'advance salary', 'ait/tax'], true)) {
+                                    $cellStyle = 'color: #dc2626; font-weight: bold;';
+                                }
+                            }
+                        } elseif ($thLower === 'hold') {
+                            if (strtoupper($displayVal) === 'HOLD') {
+                                $cellStyle = 'background-color: #fee2e2; color: #991b1b; font-weight: bold;';
+                            } else {
+                                $cellStyle = 'color: #15803d;';
+                            }
                         }
 
-                        $html .= '<td style="text-align: ' . $align . '; padding: 2px 1px;">' . htmlspecialchars((string)($cell ?? '')) . '</td>';
+                        $html .= '<td width="' . $wPct . '%" style="text-align: ' . $align . '; ' . $cellStyle . '">' . htmlspecialchars($displayVal) . '</td>';
                     }
                     $html .= '</tr>';
                 }
@@ -3025,17 +3275,23 @@ class PayrollController extends Controller
             $html .= '</tbody>';
 
             if (!empty($tableFooters) && count($tableFooters) === count($tableHeaders)) {
-                $html .= '<tfoot><tr style="background-color: #d1e7dd; color: #0f5132; font-weight: bold; font-size: 6.5px;">';
-                foreach ($tableFooters as $colIdx => $fcell) {
+                $html .= '<tfoot><tr style="background-color: #e2e8f0; color: #0f172a; font-weight: bold; font-size: 6.5px;">';
+                foreach ($keepIndices as $colIdx) {
+                    $fcell = $tableFooters[$colIdx] ?? '';
                     $th = $tableHeaders[$colIdx] ?? '';
-                    $thLower = strtolower($th);
+                    $thLower = strtolower(trim($th));
+                    $wPct = $colWidthsPct[$colIdx];
                     $align = 'center';
+                    $displayFoot = trim((string)$fcell);
+
                     if (strpos($thLower, 'name') !== false || strpos($thLower, 'department') !== false || strpos($thLower, 'designation') !== false) {
                         $align = 'left';
-                    } elseif (strpos($thLower, 'amount') !== false || strpos($thLower, 'salary') !== false || strpos($thLower, 'gross') !== false || strpos($thLower, 'daily') !== false || strpos($thLower, 'payable') !== false || strpos($thLower, 'bank') !== false || strpos($thLower, 'cash') !== false || strpos($thLower, 'allowance') !== false || strpos($thLower, 'deduction') !== false || strpos($thLower, 'lunch') !== false || strpos($thLower, 'bonus') !== false || strpos($thLower, 'overtime') !== false || strpos($thLower, 'arrear') !== false || strpos($thLower, 'tax') !== false) {
+                    } elseif (in_array($thLower, ['basic', 'house rent', 'medical', 'conveyance', 'gross', 'daily salary', 'absent amount', 'late deduction', 'half day deduction', 'other deduction', 'advance salary', 'ait/tax', 'overtime', 'arrear', 'car allowance', 'ta/da', 'eid bonus', 'boishakhi bonus', 'other bonus', 'salary adjustment', 'total payable', 'bank', 'cash'], true)) {
                         $align = 'right';
+                        $cleanFootNum = (float)str_replace([',', '৳', 'TK', ' '], '', $displayFoot);
+                        $displayFoot = number_format($cleanFootNum, 2);
                     }
-                    $html .= '<td style="text-align: ' . $align . '; padding: 2px 1px;">' . htmlspecialchars((string)($fcell ?? '')) . '</td>';
+                    $html .= '<td width="' . $wPct . '%" style="text-align: ' . $align . '; background-color: #d1e7dd; color: #0f5132;">' . htmlspecialchars($displayFoot) . '</td>';
                 }
                 $html .= '</tr></tfoot>';
             }
@@ -3841,7 +4097,7 @@ class PayrollController extends Controller
     /**
      * Server-side Tipsoi Attendance Aggregation & DB Sync for a Payroll Project
      */
-    public function syncProjectAttendanceFromTipsoi($projectId)
+    public function syncProjectAttendanceFromTipsoi($projectId, $forceRefresh = true)
     {
         $projectId = (int)$projectId;
         if ($projectId <= 0) return false;
@@ -3872,7 +4128,7 @@ class PayrollController extends Controller
             require_once dirname(__DIR__) . '/services/ExternalApiService.php';
         }
         $extApi = new ExternalApiService($this->db);
-        $syncRes = $extApi->syncAndGetAttendanceFromDb($fromDateStr, $toDateStr, true);
+        $syncRes = $extApi->syncAndGetAttendanceFromDb($fromDateStr, $toDateStr, (bool)$forceRefresh);
         if (empty($syncRes['success']) || empty($syncRes['data'])) {
             return 0;
         }

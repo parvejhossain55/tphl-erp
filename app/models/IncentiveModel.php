@@ -89,7 +89,7 @@ class IncentiveModel extends Model
                 LEFT JOIN project_categories pc ON p.category_id = pc.id
                 LEFT JOIN flats f ON lb.flat_id = f.id
                 LEFT JOIN project_incentive_claims c ON (c.booking_id = lb.id AND c.is_external = 0)
-                WHERE (lb.sales_by_id = ? OR lb.created_by = ? OR l.assigned_id = ?)
+                WHERE (CASE WHEN lb.sales_by_id IS NOT NULL AND lb.sales_by_id > 0 THEN lb.sales_by_id = ? ELSE (lb.created_by = ? OR l.assigned_id = ?) END)
                   AND lb.deleted_at IS NULL
                   AND lb.booking_status NOT IN ('cancelled', 'refunded')
                   {$dateCondition}
@@ -203,37 +203,7 @@ class IncentiveModel extends Model
             ];
         }
 
-        // Also append designated credits (30% share) from outside sales
-        $currentCycleMonth = $this->getCycleForDate(date('Y-m-d'));
-        if (isset($monthlyStatsCache[$currentCycleMonth]['designated_credits'])) {
-            foreach ($monthlyStatsCache[$currentCycleMonth]['designated_credits'] as $dc) {
-                $dcBookingId = (int)$dc['booking_id'];
-                $bookings[] = [
-                    'id'                     => $dcBookingId,
-                    'booking_no'             => 'CR-' . str_pad($dcBookingId, 5, '0', STR_PAD_LEFT),
-                    'customer_name'          => 'Designated 30% Share (Sold by ' . ($dc['seller_name'] ?? 'Team Member') . ')',
-                    'phone'                  => 'N/A',
-                    'project_name'           => $dc['project_name'] ?? 'N/A',
-                    'flat_name'              => $dc['flat_name'] ?? 'N/A',
-                    'sqft'                   => 0,
-                    'flat_price'             => (float)$dc['land_share_value'],
-                    'land_share_value'       => (float)$dc['land_share_value'],
-                    'total_collected'        => (float)$dc['land_share_value'],
-                    'booking_money_collected'=> (float)$dc['land_share_value'],
-                    'category_name'          => 'Designated Share (30%)',
-                    'incentive_percentage'   => 0.21, // ~30% of base
-                    'calculated_incentive'   => (float)$dc['credit_amount'],
-                    'booking_completed'      => 1,
-                    'registration_completed' => 1,
-                    'claim_status'           => !empty($dc['is_eligible']) ? 'eligible' : 'ineligible',
-                    'is_on_hold'             => !empty($dc['is_eligible']) ? 0 : 1,
-                    'already_claimed'        => 0,
-                    'claimed_at'             => null,
-                    'approved_at'            => null,
-                    'remarks'                => !empty($dc['is_eligible']) ? 'Designated agent 30% credit' : 'Designated 30% credit (Unlock upon achieving your target)'
-                ];
-            }
-        }
+        // Note: 30% designated credits & 70% outside sales are managed in Tab 4 to avoid duplicate claiming confusion
 
         $stmt->close();
         return $bookings;
@@ -1627,5 +1597,67 @@ class IncentiveModel extends Model
             'message' => '30% Designated share claim (৳' . number_format($designatedAmount, 2) . ') submitted successfully! Sent to Management for approval.',
             'claim_id' => $claimId
         ];
+    }
+
+    /**
+     * Batch Claim all eligible Team Leader 0.05% Overrides for a month
+     */
+    public function claimAllTlOverrides($userId, $month = null, $remarks = '')
+    {
+        $userId = (int)$userId;
+        $month = $month ?: $this->getCycleForDate(date('Y-m-d'));
+        
+        $teamStats = $this->engine->getTeamMonthlyStats($userId, $month);
+        if (empty($teamStats['eligible']) || empty($teamStats['member_breakdown'])) {
+            return ['success' => false, 'message' => 'No eligible team or members found for TL override.'];
+        }
+
+        list($y, $m) = explode('-', $month);
+        $cycleRange = $this->getCycleDateRange($y, $m);
+        $cStart = substr($cycleRange['start'], 0, 10);
+        $cEnd   = substr($cycleRange['end'], 0, 10);
+
+        $claimedCount = 0;
+        $totalClaimedAmount = 0.00;
+        $errors = [];
+
+        foreach ($teamStats['member_breakdown'] as $mb) {
+            if (!empty($mb['is_self'])) continue;
+            if (empty($mb['is_qualified']) || (float)$mb['tl_contribution'] <= 0) continue;
+
+            $memUid = (int)$mb['user_id'];
+            
+            // Check if already claimed
+            $chk = $this->db->query("
+                SELECT id FROM project_incentive_claims 
+                WHERE user_id = {$userId} 
+                  AND original_sales_by = {$memUid} 
+                  AND split_type = 'tl_override' 
+                  AND (cycle_month = '{$month}' OR (created_at BETWEEN '{$cStart} 00:00:00' AND '{$cEnd} 23:59:59'))
+                  AND claim_status != 'rejected'
+                LIMIT 1
+            ");
+            if ($chk && $chk->num_rows > 0) {
+                continue; // Already claimed
+            }
+
+            $res = $this->claimTlOverride($userId, $memUid, $month, $remarks ?: 'Batch Claimed TL Override');
+            if (!empty($res['success'])) {
+                $claimedCount++;
+                $totalClaimedAmount += (float)$mb['tl_contribution'];
+            } else {
+                $errors[] = $mb['full_name'] . ': ' . ($res['message'] ?? 'Failed');
+            }
+        }
+
+        if ($claimedCount === 0) {
+            if (!empty($errors)) {
+                return ['success' => false, 'message' => implode('; ', $errors)];
+            }
+            return ['success' => false, 'message' => 'All qualified team member overrides for this cycle have already been claimed!'];
+        }
+
+        $msg = "Successfully claimed 0.05% override for {$claimedCount} qualified team member(s) (Total: ৳" . number_format($totalClaimedAmount, 2) . ")!";
+        return ['success' => true, 'message' => $msg, 'claimed_count' => $claimedCount, 'total_amount' => $totalClaimedAmount];
     }
 }

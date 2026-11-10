@@ -553,6 +553,7 @@ if ($totalPrice > 0) {
                         <th>Payment<br>Type</th>
                         <th>Bank Name</th>
                         <th>Cheque /<br>Txn ID</th>
+                        <th>Added By</th>
                         <th>Discount</th>
                         <th>Paid<br>Amount</th>
                         <th>Remaining<br>Balance<br><span style="text-transform:none; font-size:7px; font-weight:normal;">(Approximate)</span></th>
@@ -682,6 +683,7 @@ if ($totalPrice > 0) {
                             <td class="center"><?= $payTypeDisplay ?></td>
                             <td class="center"><?= htmlspecialchars($bankName) ?></td>
                             <td class="center"><?= htmlspecialchars($chequeOrRef) ?></td>
+                            <td class="center"><?= !empty($txn['created_by_name']) ? htmlspecialchars($txn['created_by_name']) : 'System' ?></td>
                             <td class="amount"><?= $discount > 0 ? number_format($discount, 0) : '' ?></td>
                             <td class="amount"><?= number_format($amount, 0) ?></td>
                             <td class="amount"><?= number_format($runningBalance, 0) ?></td>
@@ -697,6 +699,7 @@ if ($totalPrice > 0) {
                             <td class="center"><span style="background:#10b981; color:#fff; padding:3px 6px; border-radius:4px; font-size:9px; white-space:nowrap;">Booking Discount</span></td>
                             <td class="center">-</td>
                             <td class="center">-</td>
+                            <td class="center">-</td>
                             <td class="amount"><strong><?= number_format($bookingDiscount, 0) ?></strong></td>
                             <td class="amount">0</td>
                             <td class="amount"><?php $runningBalance -= $bookingDiscount; if ($runningBalance < 0) $runningBalance = 0; echo number_format($runningBalance, 0); ?></td>
@@ -707,7 +710,7 @@ if ($totalPrice > 0) {
                         <!-- Totals Row -->
                         <tr class="total-row">
                             <td colspan="4" style="text-align:right;"><strong>TOTAL</strong></td>
-                            <td></td><td></td><td></td>
+                            <td></td><td></td><td></td><td></td>
                             <td class="amount"><?= $totalDiscount > 0 ? number_format($totalDiscount, 0) : '' ?></td>
                             <td class="amount"><?= number_format($totalPaidCol, 0) ?></td>
                             <td class="amount"><strong><?= number_format(max(0, $runningBalance), 0) ?></strong></td>
@@ -715,7 +718,7 @@ if ($totalPrice > 0) {
 
                     <?php else: ?>
                         <tr>
-                            <td colspan="10" style="text-align:center; padding:20px;">
+                            <td colspan="11" style="text-align:center; padding:20px;">
                                 No transactions found for the selected period.
                             </td>
                         </tr>

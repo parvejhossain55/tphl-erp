@@ -580,6 +580,8 @@ class Lead extends Model
                           )
                     )
                 )";
+            } elseif (strtolower($lastAction) === 'visited') {
+                $sql .= " AND (LOWER(l.last_lead_action) = 'visited' OR l.lead_type IN ('Visit Completed', 'Visited') OR EXISTS (SELECT 1 FROM lead_follow_ups lf_v WHERE lf_v.lead_id = l.id AND lf_v.deleted_at IS NULL AND (lf_v.lead_status IN ('Visit Completed', 'Visited') OR LOWER(lf_v.follow_up_type) = 'visit')))";
             } else {
                 $sql .= " AND l.last_lead_action = ?";
                 $params[] = $lastAction;
@@ -618,12 +620,14 @@ class Lead extends Model
 
         // Search Filter
         if (!empty($search)) {
-            $sql .= " AND (l.full_name LIKE ? OR l.phone LIKE ? OR l.phone_number LIKE ?)";
-            $searchParam = "%{$search}%";
+            $sql .= " AND (l.full_name LIKE ? OR l.phone LIKE ? OR l.phone_number LIKE ? OR l.email LIKE ? OR l.company_name LIKE ?)";
+            $searchParam = "%" . trim($search) . "%";
             $params[] = $searchParam;
             $params[] = $searchParam;
             $params[] = $searchParam;
-            $types .= "sss";
+            $params[] = $searchParam;
+            $params[] = $searchParam;
+            $types .= "sssss";
         }
 
         // Quick Filter Card
@@ -756,7 +760,7 @@ class Lead extends Model
                 }
             } elseif ($filter_card === 'hot_leads' || $filter_card === 'high_potential') {
                 $sql .= " AND (l.lead_type IN ('High Potential', 'Hot', 'High Prospect') OR EXISTS (SELECT 1 FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.lead_status IN ('High Potential', 'Hot', 'High Prospect') AND lf_sub.deleted_at IS NULL))";
-            } elseif ($filter_card === 'contacted_leads') {
+            } elseif ($filter_card === 'contacted_leads' || $filter_card === 'contacted') {
                 $sql .= " AND l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND (
                     l.last_lead_action IN ('contacted', 'follow up', 'booked', 'visited')
                     OR l.call_status IN ('called', 'received')
@@ -772,7 +776,7 @@ class Lead extends Model
                           AND lb_sub.deleted_at IS NULL
                     )
                 )";
-            } elseif ($filter_card === 'not_contacted_leads') {
+            } elseif ($filter_card === 'not_contacted_leads' || $filter_card === 'not_contacted' || $filter_card === 'not_called') {
                 $sql .= " AND l.assigned_id IS NOT NULL AND l.assigned_id > 0
                           AND (l.last_lead_action IS NULL OR l.last_lead_action NOT IN ('contacted', 'follow up', 'booked', 'visited'))
                           AND (l.call_status IS NULL OR l.call_status NOT IN ('called', 'received'))
@@ -1100,6 +1104,7 @@ class Lead extends Model
         COALESCE(u_assigned_by.full_name, u_by.full_name, 'System') AS assigned_by_name,
         u_by.full_name AS creator_name,
         u_appr.full_name AS approved_by_name,
+        t.name AS team_name,
         COALESCE(p.name, lp.name) AS project_name,
         lpc.name AS project_category_name,
         lf.next_action,
@@ -1116,6 +1121,7 @@ class Lead extends Model
     LEFT JOIN users AS u_assigned_by ON l.assigned_by = u_assigned_by.id
     LEFT JOIN users AS u_by ON l.created_by = u_by.id
     LEFT JOIN users AS u_appr ON l.approved_by = u_appr.id
+    LEFT JOIN teams AS t ON l.team_id = t.id
     LEFT JOIN employees AS emp ON emp.user_id = l.assigned_id
     LEFT JOIN (
         SELECT lf1.lead_id, lf1.next_action, lf1.follow_up_type, lf1.next_follow_up_date, lf1.discussion_note, lf1.lead_status AS last_follow_up_lead_status, lf1.interested_location_name AS last_follow_up_interested_location
@@ -1266,6 +1272,8 @@ class Lead extends Model
                           )
                     )
                 )";
+            } elseif (strtolower($lastAction) === 'visited') {
+                $sql .= " AND (LOWER(l.last_lead_action) = 'visited' OR l.lead_type IN ('Visit Completed', 'Visited') OR EXISTS (SELECT 1 FROM lead_follow_ups lf_v WHERE lf_v.lead_id = l.id AND lf_v.deleted_at IS NULL AND (lf_v.lead_status IN ('Visit Completed', 'Visited') OR LOWER(lf_v.follow_up_type) = 'visit')))";
             } else {
                 $sql .= " AND l.last_lead_action = ?";
                 $params[] = $lastAction;
@@ -1303,12 +1311,14 @@ class Lead extends Model
 
         // Search Filter
         if (!empty($search)) {
-            $sql .= " AND (l.full_name LIKE ? OR l.phone LIKE ? OR l.phone_number LIKE ?)";
-            $searchParam = "%{$search}%";
+            $sql .= " AND (l.full_name LIKE ? OR l.phone LIKE ? OR l.phone_number LIKE ? OR l.email LIKE ? OR l.company_name LIKE ?)";
+            $searchParam = "%" . trim($search) . "%";
             $params[] = $searchParam;
             $params[] = $searchParam;
             $params[] = $searchParam;
-            $types .= "sss";
+            $params[] = $searchParam;
+            $params[] = $searchParam;
+            $types .= "sssss";
         }
 
         // Quick Filter Card
@@ -1441,7 +1451,7 @@ class Lead extends Model
                 }
             } elseif ($filter_card === 'hot_leads' || $filter_card === 'high_potential') {
                 $sql .= " AND (l.lead_type IN ('High Potential', 'Hot', 'High Prospect') OR EXISTS (SELECT 1 FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.lead_status IN ('High Potential', 'Hot', 'High Prospect') AND lf_sub.deleted_at IS NULL))";
-            } elseif ($filter_card === 'contacted_leads') {
+            } elseif ($filter_card === 'contacted_leads' || $filter_card === 'contacted') {
                 $sql .= " AND l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND (
                     l.last_lead_action IN ('contacted', 'follow up', 'booked', 'visited')
                     OR l.call_status IN ('called', 'received')
@@ -1457,7 +1467,7 @@ class Lead extends Model
                           AND lb_sub.deleted_at IS NULL
                     )
                 )";
-            } elseif ($filter_card === 'not_contacted_leads') {
+            } elseif ($filter_card === 'not_contacted_leads' || $filter_card === 'not_contacted' || $filter_card === 'not_called') {
                 $sql .= " AND l.assigned_id IS NOT NULL AND l.assigned_id > 0
                           AND (l.last_lead_action IS NULL OR l.last_lead_action NOT IN ('contacted', 'follow up', 'booked', 'visited'))
                           AND (l.call_status IS NULL OR l.call_status NOT IN ('called', 'received'))
@@ -2016,6 +2026,8 @@ class Lead extends Model
                 $sql .= " AND " . $contactedCond;
             } elseif (strtolower($lastAction) === 'not_contacted') {
                 $sql .= " AND NOT " . $contactedCond;
+            } elseif (strtolower($lastAction) === 'visited') {
+                $sql .= " AND (LOWER(leads.last_lead_action) = 'visited' OR lf.lead_status IN ('Visit Completed', 'Visited') OR LOWER(lf.follow_up_type) = 'visit' OR leads.lead_type IN ('Visit Completed', 'Visited'))";
             } else {
                 $sql .= " AND LOWER(leads.last_lead_action) = LOWER(?)";
                 $params[] = $lastAction;
@@ -2050,7 +2062,7 @@ class Lead extends Model
         if ($only_missing_followup) {
             $sql .= " AND lf.next_follow_up_date IS NOT NULL
                       AND lf.next_follow_up_date > '1000-01-01'
-                      AND DATE(lf.next_follow_up_date) <= CURDATE()
+                      AND DATE(lf.next_follow_up_date) < CURDATE()
                       AND lf.deleted_at IS NULL";
         }
 
@@ -2126,9 +2138,9 @@ class Lead extends Model
 
         // Card Quick Filter
         if (!empty($filter_card)) {
-            if ($filter_card === 'contacted') {
+            if ($filter_card === 'contacted' || $filter_card === 'contacted_leads') {
                 $sql .= " AND " . $contactedCond;
-            } elseif ($filter_card === 'not_called' || $filter_card === 'not_contacted') {
+            } elseif ($filter_card === 'not_called' || $filter_card === 'not_contacted' || $filter_card === 'not_contacted_leads') {
                 $sql .= " AND NOT " . $contactedCond;
             } elseif ($filter_card === 'booked' || $filter_card === 'total_booked') {
                 if (!empty($from_date) && !empty($to_date)) {
@@ -2201,6 +2213,18 @@ class Lead extends Model
                 )";
             } elseif (in_array($filter_card, ['interested_other_location', 'interested_in_other_location', 'other_location'])) {
                 $sql .= " AND (leads.lead_type = 'Interested in Other Location' OR lf.lead_status = 'Interested in Other Location')";
+            } elseif (in_array($filter_card, ['visited_leads', 'visited', 'visit_completed'])) {
+                $sql .= " AND (
+                    (lf.lead_status IN ('Visit Completed', 'Visited') OR LOWER(lf.follow_up_type) = 'visit')
+                    OR leads.lead_type IN ('Visit Completed', 'Visited')
+                    OR LOWER(leads.last_lead_action) = 'visited'
+                )";
+            } elseif (in_array($filter_card, ['visit_scheduled', 'visit_scheduled_leads'])) {
+                $sql .= " AND (
+                    (lf.lead_status IN ('Visit Scheduled', 'Will Visit') OR LOWER(lf.follow_up_type) LIKE '%schedule%')
+                    OR leads.lead_type IN ('Visit Scheduled', 'Will Visit')
+                    OR LOWER(leads.last_lead_action) LIKE '%schedule%'
+                )";
             }
         }
 
@@ -2325,6 +2349,8 @@ class Lead extends Model
                 $sql .= " AND " . $contactedCond;
             } elseif (strtolower($lastAction) === 'not_contacted') {
                 $sql .= " AND NOT " . $contactedCond;
+            } elseif (strtolower($lastAction) === 'visited') {
+                $sql .= " AND (LOWER(leads.last_lead_action) = 'visited' OR lf.lead_status IN ('Visit Completed', 'Visited') OR LOWER(lf.follow_up_type) = 'visit' OR leads.lead_type IN ('Visit Completed', 'Visited'))";
             } else {
                 $sql .= " AND LOWER(leads.last_lead_action) = LOWER(?)";
                 $params[] = $lastAction;
@@ -2359,7 +2385,7 @@ class Lead extends Model
         if ($only_missing_followup) {
             $sql .= " AND lf.next_follow_up_date IS NOT NULL
                       AND lf.next_follow_up_date > '1000-01-01'
-                      AND DATE(lf.next_follow_up_date) <= CURDATE()
+                      AND DATE(lf.next_follow_up_date) < CURDATE()
                       AND lf.deleted_at IS NULL";
         }
 
@@ -2432,9 +2458,9 @@ class Lead extends Model
         }
 
         if (!empty($filter_card)) {
-            if ($filter_card === 'contacted') {
+            if ($filter_card === 'contacted' || $filter_card === 'contacted_leads') {
                 $sql .= " AND " . $contactedCond;
-            } elseif ($filter_card === 'not_called' || $filter_card === 'not_contacted') {
+            } elseif ($filter_card === 'not_called' || $filter_card === 'not_contacted' || $filter_card === 'not_contacted_leads') {
                 $sql .= " AND NOT " . $contactedCond;
             } elseif ($filter_card === 'booked' || $filter_card === 'total_booked') {
                 if (!empty($from_date) && !empty($to_date)) {
@@ -2507,6 +2533,18 @@ class Lead extends Model
                 )";
             } elseif (in_array($filter_card, ['interested_other_location', 'interested_in_other_location', 'other_location'])) {
                 $sql .= " AND (leads.lead_type = 'Interested in Other Location' OR lf.lead_status = 'Interested in Other Location')";
+            } elseif (in_array($filter_card, ['visited_leads', 'visited', 'visit_completed'])) {
+                $sql .= " AND (
+                    (lf.lead_status IN ('Visit Completed', 'Visited') OR LOWER(lf.follow_up_type) = 'visit')
+                    OR leads.lead_type IN ('Visit Completed', 'Visited')
+                    OR LOWER(leads.last_lead_action) = 'visited'
+                )";
+            } elseif (in_array($filter_card, ['visit_scheduled', 'visit_scheduled_leads'])) {
+                $sql .= " AND (
+                    (lf.lead_status IN ('Visit Scheduled', 'Will Visit') OR LOWER(lf.follow_up_type) LIKE '%schedule%')
+                    OR leads.lead_type IN ('Visit Scheduled', 'Will Visit')
+                    OR LOWER(leads.last_lead_action) LIKE '%schedule%'
+                )";
             }
         }
 
@@ -2549,7 +2587,7 @@ class Lead extends Model
             SUM(CASE WHEN NOT {$contactedCond} THEN 1 ELSE 0 END) as not_contacted_leads,
             SUM(CASE WHEN LOWER(leads.last_lead_action) = 'booked' THEN 1 ELSE 0 END) as booked_leads,
             SUM(CASE WHEN lf.next_follow_up_date IS NOT NULL AND DATE(lf.next_follow_up_date) >= CURDATE() THEN 1 ELSE 0 END) as upcoming_follow_ups,
-            SUM(CASE WHEN lf.next_follow_up_date IS NOT NULL AND lf.next_follow_up_date > '1000-01-01' AND DATE(lf.next_follow_up_date) <= CURDATE() AND lf.deleted_at IS NULL THEN 1 ELSE 0 END) as missing_follow_ups,
+            SUM(CASE WHEN lf.next_follow_up_date IS NOT NULL AND lf.next_follow_up_date > '1000-01-01' AND DATE(lf.next_follow_up_date) < CURDATE() AND lf.deleted_at IS NULL THEN 1 ELSE 0 END) as missing_follow_ups,
             SUM(CASE WHEN (leads.lead_type IN ('Invalid Lead', 'Irrelevant') OR lf.lead_status IN ('Invalid Lead', 'Irrelevant')) THEN 1 ELSE 0 END) as irrelevant_leads,
             SUM(CASE WHEN {$noResponseCond} THEN 1 ELSE 0 END) as no_response_leads,
             SUM(CASE WHEN (leads.lead_type = 'Interested in Other Location' OR lf.lead_status = 'Interested in Other Location') THEN 1 ELSE 0 END) as interested_other_location_leads
@@ -2787,6 +2825,16 @@ class Lead extends Model
         $bkDelCond   = $bkHasDeletedAt ? "AND lb.deleted_at IS NULL" : "";
         $bkDelWhere  = $bkHasDeletedAt ? "AND deleted_at IS NULL" : "";
 
+        // Hide undistributed automated leads from sales users until approved (distribute = 1)
+        $loggedInRole = $_SESSION['user']['role_id'] ?? 0;
+        $autoFilter = "";
+        if (!in_array((int)$loggedInRole, [1, 10, 11])) {
+            [$hasAutomatedCol, $hasDistributeCol] = $this->getLeadAutomationColumnStatus();
+            if ($hasAutomatedCol && $hasDistributeCol) {
+                $autoFilter = " AND NOT (leads.is_automated = 1 AND leads.distribute = 0)";
+            }
+        }
+
         // Build contacted condition dynamically
         $orConds = [];
         if ($hasLastLeadAction) {
@@ -2803,7 +2851,7 @@ class Lead extends Model
         $contactedCond = "(" . implode(" OR ", $orConds) . ")";
 
         // 1. All-time Leads Assigned
-        $sql1 = "SELECT COUNT(*) as c FROM leads WHERE assigned_id = ? {$leadsDelSql}";
+        $sql1 = "SELECT COUNT(*) as c FROM leads WHERE assigned_id = ? {$leadsDelSql} {$autoFilter}";
         $allTimeLeadsAssigned = 0;
         if ($stmt1 = $this->db->prepare($sql1)) {
             $stmt1->bind_param("i", $userId);
@@ -2813,7 +2861,7 @@ class Lead extends Model
         }
 
         // 2. All-time Leads Contacted
-        $sql2 = "SELECT COUNT(*) as c FROM leads WHERE assigned_id = ? {$leadsDelSql} AND {$contactedCond}";
+        $sql2 = "SELECT COUNT(*) as c FROM leads WHERE assigned_id = ? {$leadsDelSql} {$autoFilter} AND {$contactedCond}";
         $allTimeLeadsContacted = 0;
         if ($stmt2 = $this->db->prepare($sql2)) {
             $stmt2->bind_param("i", $userId);
@@ -2826,7 +2874,7 @@ class Lead extends Model
         $allTimeNotContacted = max(0, $allTimeLeadsAssigned - $allTimeLeadsContacted);
 
         // Period Metrics (Assigned within date range)
-        $sqlPeriodAssigned = "SELECT COUNT(*) as c FROM leads WHERE assigned_id = ? {$leadsDelSql} AND DATE(created_at) BETWEEN ? AND ?";
+        $sqlPeriodAssigned = "SELECT COUNT(*) as c FROM leads WHERE assigned_id = ? {$leadsDelSql} {$autoFilter} AND DATE(created_at) BETWEEN ? AND ?";
         $periodLeadsAssigned = 0;
         if ($stmtP1 = $this->db->prepare($sqlPeriodAssigned)) {
             $stmtP1->bind_param("iss", $userId, $startDate, $endDate);
@@ -2835,7 +2883,7 @@ class Lead extends Model
             $stmtP1->close();
         }
 
-        $sqlPeriodContacted = "SELECT COUNT(*) as c FROM leads WHERE assigned_id = ? {$leadsDelSql} AND DATE(created_at) BETWEEN ? AND ? AND {$contactedCond}";
+        $sqlPeriodContacted = "SELECT COUNT(*) as c FROM leads WHERE assigned_id = ? {$leadsDelSql} {$autoFilter} AND DATE(created_at) BETWEEN ? AND ? AND {$contactedCond}";
         $periodLeadsContacted = 0;
         if ($stmtP2 = $this->db->prepare($sqlPeriodContacted)) {
             $stmtP2->bind_param("iss", $userId, $startDate, $endDate);
@@ -2861,7 +2909,7 @@ class Lead extends Model
         }
 
         // 5. Today Leads Assigned
-        $sql5 = "SELECT COUNT(*) as c FROM leads WHERE assigned_id = ? {$leadsDelSql} AND DATE({$assignedDateExprUnprefixed}) = CURDATE()";
+        $sql5 = "SELECT COUNT(*) as c FROM leads WHERE assigned_id = ? {$leadsDelSql} {$autoFilter} AND DATE({$assignedDateExprUnprefixed}) = CURDATE()";
         $todayLeadsAssigned = 0;
         if ($stmt5 = $this->db->prepare($sql5)) {
             $stmt5->bind_param("i", $userId);
@@ -3199,6 +3247,726 @@ class Lead extends Model
             'filterEndDate'          => $endDate,
         ];
     }
+
+    /**
+     * Fetch all active members (users and employees) for a team.
+     *
+     * @param int $teamId
+     * @return array
+     */
+    public function getTeamMemberUsers(int $teamId): array
+    {
+        $teamId = (int)$teamId;
+        if ($teamId <= 0) {
+            return [];
+        }
+
+        $sql = "
+            SELECT DISTINCT 
+                u.id as user_id, 
+                e.id as emp_id,
+                e.employee_id,
+                COALESCE(u.full_name, e.full_name) as full_name,
+                COALESCE(e.is_team_leader, 0) as is_team_leader,
+                COALESCE(e.is_sales_co_leader, 0) as is_sales_co_leader,
+                u.role_id,
+                r.name as role_name,
+                d.name as designation_name
+            FROM employees e
+            LEFT JOIN users u ON (u.id = e.user_id OR (e.user_id IS NULL AND u.employee_id = e.id))
+            LEFT JOIN roles r ON r.id = u.role_id
+            LEFT JOIN designations d ON d.id = e.designation_id
+            WHERE (e.team_id = ? OR u.team_id = ?)
+              AND (e.employee_status IS NULL OR e.employee_status NOT IN ('resigned', 'terminated', 'inactive'))
+            ORDER BY is_team_leader DESC, is_sales_co_leader DESC, full_name ASC
+        ";
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return [];
+        }
+        $stmt->bind_param("ii", $teamId, $teamId);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $members = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+        $stmt->close();
+        return $members;
+    }
+
+    /**
+     * Fetch Team Overview Dashboard metrics.
+     * If $selectedUserId is specified, returns individual executive dashboard metrics.
+     * Otherwise, returns team aggregate metrics across all active team members.
+     *
+     * @param int $teamId
+     * @param int|null $selectedUserId
+     * @param int|null $year
+     * @param int|null $startMonth
+     * @param int|null $endMonth
+     * @param bool $hasFilter
+     * @param string|null $customFromDate
+     * @param string|null $customToDate
+     * @return array
+     */
+    public function getTeamDashboardMetrics(
+        int $teamId, 
+        ?int $selectedUserId = null,
+        ?int $year = null, 
+        ?int $startMonth = null, 
+        ?int $endMonth = null, 
+        bool $hasFilter = false,
+        ?string $customFromDate = null,
+        ?string $customToDate = null
+    ): array {
+        // When an individual member is selected, delegate to getExecutiveDashboardMetrics
+        if (!empty($selectedUserId) && (int)$selectedUserId > 0) {
+            return $this->getExecutiveDashboardMetrics(
+                (int)$selectedUserId, 
+                $year, 
+                $startMonth, 
+                $endMonth, 
+                $hasFilter, 
+                $customFromDate, 
+                $customToDate
+            );
+        }
+
+        // Date range normalization
+        if (!empty($customFromDate) && !empty($customToDate)) {
+            $startDate = $customFromDate;
+            $endDate = $customToDate;
+            $year = (int)date('Y', strtotime($startDate));
+            $startMonth = (int)date('m', strtotime($startDate));
+            $endMonth = (int)date('m', strtotime($endDate));
+        } else {
+            $year = $year ?: (int)date('Y');
+            $startMonth = $startMonth ?: (int)date('m');
+            $endMonth = $endMonth ?: $startMonth;
+            $startDate = sprintf('%04d-%02d-01', $year, $startMonth);
+            $endDate = date('Y-m-t', strtotime(sprintf('%04d-%02d-01', $year, $endMonth)));
+        }
+
+        // Standard 26th-to-25th reporting cycle
+        $curDay = (int)date('j');
+        $curYear = (int)date('Y');
+        $curMonth = (int)date('n');
+        if ($curDay >= 26) {
+            $cMonth = $curMonth + 1;
+            $cYear = $curYear;
+            if ($cMonth > 12) { $cMonth = 1; $cYear++; }
+        } else {
+            $cMonth = $curMonth;
+            $cYear = $curYear;
+        }
+        $pMonth = $cMonth - 1;
+        $pYear = $cYear;
+        if ($pMonth < 1) { $pMonth = 12; $pYear--; }
+        $cycleBkStart = sprintf('%04d-%02d-26', $pYear, $pMonth);
+        $cycleBkEnd   = sprintf('%04d-%02d-25', $cYear, $cMonth);
+
+        $bkStart = $hasFilter ? $startDate : $cycleBkStart;
+        $bkEnd   = $hasFilter ? $endDate : $cycleBkEnd;
+
+        // Fetch team members user IDs
+        $members = $this->getTeamMemberUsers($teamId);
+        $memberIds = [];
+        foreach ($members as $m) {
+            if (!empty($m['user_id'])) {
+                $memberIds[] = (int)$m['user_id'];
+            }
+        }
+        $memberIdsList = !empty($memberIds) ? implode(',', $memberIds) : '0';
+
+        // Team Lead Scope condition (consistent with Lead::countAllWithFilter)
+        $leadScope = "((l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND (l.assigned_id IN ({$memberIdsList}) OR l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = {$teamId}))) OR ((l.assigned_id IS NULL OR l.assigned_id = 0) AND l.team_id = {$teamId}))";
+
+        // Hide undistributed automated leads from sales users until approved (distribute = 1)
+        $loggedInRole = $_SESSION['user']['role_id'] ?? 0;
+        $autoFilter = "";
+        if (!in_array((int)$loggedInRole, [1, 10, 11])) {
+            [$hasAutomatedCol, $hasDistributeCol] = $this->getLeadAutomationColumnStatus();
+            if ($hasAutomatedCol && $hasDistributeCol) {
+                $autoFilter = " AND NOT (l.is_automated = 1 AND l.distribute = 0)";
+            }
+        }
+
+        // Hide leads that belong to Role 33 and 35's teams from other sales users (like Role 5 and 9)
+        $roleIsolation = "";
+        if (!in_array((int)$loggedInRole, [1, 3, 9, 32, 33, 34, 35])) {
+            $roleIsolation = " AND (l.team_id IS NULL OR l.team_id = 0 OR l.team_id NOT IN (
+                SELECT e.team_id FROM employees e JOIN users u ON u.id = e.user_id WHERE u.role_id IN (33, 35) AND e.team_id IS NOT NULL AND e.team_id > 0
+            ))";
+        }
+
+        // Dynamic table column checks
+        $hasAssignedAt       = $this->hasTableColumn('leads', 'assigned_at');
+        $hasFirstContactedAt = $this->hasTableColumn('leads', 'first_contacted_at');
+        $hasLastLeadAction   = $this->hasTableColumn('leads', 'last_lead_action');
+        $hasCallStatus       = $this->hasTableColumn('leads', 'call_status');
+        $hasCommType         = $this->hasTableColumn('leads', 'communication_type');
+        $hasLeadType         = $this->hasTableColumn('leads', 'lead_type');
+        $hasDeletedAt        = $this->hasTableColumn('leads', 'deleted_at');
+        $fuHasDeletedAt      = $this->hasTableColumn('lead_follow_ups', 'deleted_at');
+        $bkHasDeletedAt      = $this->hasTableColumn('lead_bookings', 'deleted_at');
+
+        $assignedDateExpr = $hasAssignedAt 
+            ? "(CASE WHEN (l.assigned_at IS NOT NULL AND l.assigned_at > '1970-01-01 00:00:00') THEN l.assigned_at ELSE l.created_at END)"
+            : "l.created_at";
+
+        $leadsDelSql = $hasDeletedAt ? "AND l.deleted_at IS NULL" : "";
+        $fuDelCond   = $fuHasDeletedAt ? "AND lf.deleted_at IS NULL" : "";
+        $fuDelWhere  = $fuHasDeletedAt ? "WHERE deleted_at IS NULL" : "";
+        $bkDelCond   = $bkHasDeletedAt ? "AND lb.deleted_at IS NULL" : "";
+        $bkDelWhere  = $bkHasDeletedAt ? "AND deleted_at IS NULL" : "";
+
+        // Contacted condition (consistent with countAllWithFilter)
+        $orConds = [];
+        if ($hasLastLeadAction) {
+            $orConds[] = "LOWER(l.last_lead_action) IN ('contacted', 'follow up', 'visited', 'booked')";
+        }
+        if ($hasCallStatus) {
+            $orConds[] = "l.call_status IN ('called', 'received')";
+        }
+        if ($hasCommType) {
+            $orConds[] = "(l.communication_type IS NOT NULL AND l.communication_type != '' AND LOWER(l.communication_type) != 'not select')";
+        }
+        $orConds[] = "EXISTS (SELECT 1 FROM lead_follow_ups lf WHERE lf.lead_id = l.id {$fuDelCond})";
+        $orConds[] = "EXISTS (SELECT 1 FROM lead_bookings lb WHERE lb.lead_id = l.id {$bkDelCond})";
+        $contactedCond = "(l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND (" . implode(" OR ", $orConds) . "))";
+
+        $fuDelCondNc = $fuHasDeletedAt ? "AND lf_nc.deleted_at IS NULL" : "";
+        $bkDelCondNc = $bkHasDeletedAt ? "AND lb_nc.deleted_at IS NULL" : "";
+        $notContactedCond = "(l.assigned_id IS NOT NULL AND l.assigned_id > 0
+            AND (l.last_lead_action IS NULL OR l.last_lead_action NOT IN ('contacted', 'follow up', 'booked', 'visited'))
+            AND (l.call_status IS NULL OR l.call_status NOT IN ('called', 'received'))
+            AND (l.communication_type IS NULL OR l.communication_type = '' OR LOWER(l.communication_type) = 'not select')
+            AND NOT EXISTS (SELECT 1 FROM lead_follow_ups lf_nc WHERE lf_nc.lead_id = l.id {$fuDelCondNc})
+            AND NOT EXISTS (SELECT 1 FROM lead_bookings lb_nc WHERE lb_nc.lead_id = l.id {$bkDelCondNc}))";
+
+        // 1. All-time Leads Assigned
+        $sql1 = "SELECT COUNT(*) as c FROM leads l WHERE {$leadScope} {$leadsDelSql} {$autoFilter} {$roleIsolation}";
+        $allTimeLeadsAssigned = 0;
+        if ($res1 = $this->db->query($sql1)) {
+            $allTimeLeadsAssigned = (int)($res1->fetch_assoc()['c'] ?? 0);
+        }
+
+        // 2. All-time Leads Contacted
+        $sql2 = "SELECT COUNT(*) as c FROM leads l WHERE {$leadScope} {$leadsDelSql} {$autoFilter} {$roleIsolation} AND {$contactedCond}";
+        $allTimeLeadsContacted = 0;
+        if ($res2 = $this->db->query($sql2)) {
+            $allTimeLeadsContacted = (int)($res2->fetch_assoc()['c'] ?? 0);
+        }
+        $allTimeContactedPct = ($allTimeLeadsAssigned > 0) ? round(($allTimeLeadsContacted / $allTimeLeadsAssigned) * 100, 1) : 0;
+
+        // 3. All-time Leads Not Contacted
+        $sql3 = "SELECT COUNT(*) as c FROM leads l WHERE {$leadScope} {$leadsDelSql} {$autoFilter} {$roleIsolation} AND {$notContactedCond}";
+        $allTimeNotContacted = 0;
+        if ($res3 = $this->db->query($sql3)) {
+            $allTimeNotContacted = (int)($res3->fetch_assoc()['c'] ?? 0);
+        }
+
+        // Period Metrics
+        $sqlP1 = "SELECT COUNT(*) as c FROM leads l WHERE {$leadScope} {$leadsDelSql} {$autoFilter} {$roleIsolation} AND DATE(l.created_at) BETWEEN ? AND ?";
+        $periodLeadsAssigned = 0;
+        if ($stmtP1 = $this->db->prepare($sqlP1)) {
+            $stmtP1->bind_param("ss", $startDate, $endDate);
+            $stmtP1->execute();
+            $periodLeadsAssigned = (int)($stmtP1->get_result()->fetch_assoc()['c'] ?? 0);
+            $stmtP1->close();
+        }
+
+        $sqlP2 = "SELECT COUNT(*) as c FROM leads l WHERE {$leadScope} {$leadsDelSql} {$autoFilter} {$roleIsolation} AND DATE(l.created_at) BETWEEN ? AND ? AND {$contactedCond}";
+        $periodLeadsContacted = 0;
+        if ($stmtP2 = $this->db->prepare($sqlP2)) {
+            $stmtP2->bind_param("ss", $startDate, $endDate);
+            $stmtP2->execute();
+            $periodLeadsContacted = (int)($stmtP2->get_result()->fetch_assoc()['c'] ?? 0);
+            $stmtP2->close();
+        }
+
+        $sqlP3 = "SELECT COUNT(*) as c FROM leads l WHERE {$leadScope} {$leadsDelSql} {$autoFilter} {$roleIsolation} AND DATE(l.created_at) BETWEEN ? AND ? AND {$notContactedCond}";
+        $periodNotContacted = 0;
+        if ($stmtP3 = $this->db->prepare($sqlP3)) {
+            $stmtP3->bind_param("ss", $startDate, $endDate);
+            $stmtP3->execute();
+            $periodNotContacted = (int)($stmtP3->get_result()->fetch_assoc()['c'] ?? 0);
+            $stmtP3->close();
+        }
+
+        $periodContactedPct = ($periodLeadsAssigned > 0) ? round(($periodLeadsContacted / $periodLeadsAssigned) * 100, 1) : 0;
+
+        if ($hasFilter) {
+            $totalLeadsAssigned  = $periodLeadsAssigned;
+            $totalLeadsContacted = $periodLeadsContacted;
+            $totalNotContacted   = $periodNotContacted;
+            $totalContactedPct   = $periodContactedPct;
+        } else {
+            $totalLeadsAssigned  = $allTimeLeadsAssigned;
+            $totalLeadsContacted = $allTimeLeadsContacted;
+            $totalNotContacted   = $allTimeNotContacted;
+            $totalContactedPct   = $allTimeContactedPct;
+        }
+
+        // Today Leads Assigned
+        $sql5 = "SELECT COUNT(*) as c FROM leads l WHERE {$leadScope} {$leadsDelSql} {$autoFilter} {$roleIsolation} AND DATE({$assignedDateExpr}) = CURDATE()";
+        $todayLeadsAssigned = 0;
+        if ($res5 = $this->db->query($sql5)) {
+            $todayLeadsAssigned = (int)($res5->fetch_assoc()['c'] ?? 0);
+        }
+
+        // Today Leads Contacted
+        $firstContactCond = "";
+        if ($hasCallStatus) {
+            if ($hasFirstContactedAt) {
+                $firstContactCond = "OR (
+                    l.call_status IN ('called', 'received', 'contacted') 
+                    AND (
+                        (l.first_contacted_at IS NOT NULL AND l.first_contacted_at >= {$assignedDateExpr})
+                        OR (l.first_contacted_at IS NOT NULL AND DATE(l.first_contacted_at) = CURDATE())
+                    )
+                )";
+            } else {
+                $firstContactCond = "OR (l.call_status IN ('called', 'received', 'contacted') AND DATE(l.updated_at) = CURDATE())";
+            }
+        }
+        $todayContactedCond = "(
+            EXISTS (
+                SELECT 1 FROM lead_follow_ups lf 
+                WHERE lf.lead_id = l.id {$fuDelCond} 
+                  AND (lf.created_by IN ({$memberIdsList}) OR lf.assigned_with IN ({$memberIdsList}) OR lf.created_at >= {$assignedDateExpr})
+            )
+            OR EXISTS (
+                SELECT 1 FROM lead_bookings lb 
+                WHERE lb.lead_id = l.id {$bkDelCond} 
+                  AND (lb.sales_by_id IN ({$memberIdsList}) OR lb.created_by IN ({$memberIdsList}) OR lb.created_at >= {$assignedDateExpr})
+            )
+            {$firstContactCond}
+        )";
+        $sql6 = "SELECT COUNT(*) as c FROM leads l WHERE {$leadScope} {$leadsDelSql} {$autoFilter} {$roleIsolation} AND DATE({$assignedDateExpr}) = CURDATE() AND {$todayContactedCond}";
+        $todayLeadsContacted = 0;
+        if ($res6 = $this->db->query($sql6)) {
+            $todayLeadsContacted = (int)($res6->fetch_assoc()['c'] ?? 0);
+        }
+        $todayNotContacted = max(0, $todayLeadsAssigned - $todayLeadsContacted);
+
+        // Total Follow-up Complete
+        $sql8 = "SELECT COUNT(*) as c FROM lead_follow_ups lf JOIN leads l ON l.id = lf.lead_id WHERE {$leadScope} {$leadsDelSql} {$fuDelCond} {$autoFilter} {$roleIsolation}";
+        $totalFollowUpComplete = 0;
+        if ($res8 = $this->db->query($sql8)) {
+            $totalFollowUpComplete = (int)($res8->fetch_assoc()['c'] ?? 0);
+        }
+
+        // Follow-up Missing
+        $sql9 = "
+            SELECT COUNT(DISTINCT l.id) as c
+            FROM leads l
+            INNER JOIN (
+                SELECT t1.lead_id, t1.next_follow_up_date
+                FROM lead_follow_ups t1
+                INNER JOIN (
+                    SELECT lead_id, MAX(id) AS max_id
+                    FROM lead_follow_ups
+                    {$fuDelWhere}
+                    GROUP BY lead_id
+                ) t2 ON t1.id = t2.max_id
+                {$fuDelWhere}
+            ) lf ON lf.lead_id = l.id
+            WHERE {$leadScope}
+              {$leadsDelSql}
+              {$autoFilter}
+              {$roleIsolation}
+              AND lf.next_follow_up_date IS NOT NULL
+              AND lf.next_follow_up_date > '1000-01-01'
+              AND DATE(lf.next_follow_up_date) < CURDATE()
+        ";
+        $allTimeFollowUpMissing = 0;
+        if ($res9 = $this->db->query($sql9)) {
+            $allTimeFollowUpMissing = (int)($res9->fetch_assoc()['c'] ?? 0);
+        }
+
+        $periodFollowUpMissing = 0;
+        if ($hasFilter) {
+            $sql9Period = $sql9 . " AND DATE(l.created_at) BETWEEN ? AND ?";
+            if ($stmt9P = $this->db->prepare($sql9Period)) {
+                $stmt9P->bind_param("ss", $startDate, $endDate);
+                $stmt9P->execute();
+                $periodFollowUpMissing = (int)($stmt9P->get_result()->fetch_assoc()['c'] ?? 0);
+                $stmt9P->close();
+            }
+            $totalFollowUpMissing = $periodFollowUpMissing;
+        } else {
+            $totalFollowUpMissing = $allTimeFollowUpMissing;
+        }
+
+        // Today Follow-ups Scheduled
+        $sql10 = "
+            SELECT COUNT(DISTINCT l.id) as c
+            FROM leads l
+            INNER JOIN (
+                SELECT t1.lead_id, t1.next_follow_up_date
+                FROM lead_follow_ups t1
+                INNER JOIN (
+                    SELECT lead_id, MAX(id) AS max_id
+                    FROM lead_follow_ups
+                    {$fuDelWhere}
+                    GROUP BY lead_id
+                ) t2 ON t1.id = t2.max_id
+                {$fuDelWhere}
+            ) lf ON lf.lead_id = l.id
+            WHERE {$leadScope}
+              {$leadsDelSql}
+              {$autoFilter}
+              {$roleIsolation}
+              AND lf.next_follow_up_date IS NOT NULL
+              AND DATE(lf.next_follow_up_date) = CURDATE()
+        ";
+        $todayFollowUps = 0;
+        if ($res10 = $this->db->query($sql10)) {
+            $todayFollowUps = (int)($res10->fetch_assoc()['c'] ?? 0);
+        }
+
+        // Today Follow-up Complete
+        $sql11 = "
+            SELECT COUNT(DISTINCT l.id) as c
+            FROM leads l
+            WHERE {$leadScope}
+              {$leadsDelSql}
+              {$autoFilter}
+              {$roleIsolation}
+              AND EXISTS (
+                  SELECT 1 FROM lead_follow_ups f_sched 
+                  WHERE f_sched.lead_id = l.id 
+                    AND DATE(f_sched.next_follow_up_date) = CURDATE() 
+                    " . ($fuHasDeletedAt ? "AND f_sched.deleted_at IS NULL" : "") . "
+              )
+              AND EXISTS (
+                  SELECT 1 FROM lead_follow_ups f_done 
+                  WHERE f_done.lead_id = l.id 
+                    AND (DATE(f_done.created_at) = CURDATE() OR DATE(f_done.follow_up_date) = CURDATE())
+                    " . ($fuHasDeletedAt ? "AND f_done.deleted_at IS NULL" : "") . "
+              )
+        ";
+        $todayFollowUpComplete = 0;
+        if ($res11 = $this->db->query($sql11)) {
+            $todayFollowUpComplete = (int)($res11->fetch_assoc()['c'] ?? 0);
+        }
+        $remainingTodayFollowUp = max(0, $todayFollowUps - $todayFollowUpComplete);
+
+        // Total Sales / Booked (Units)
+        $sql13 = "SELECT COUNT(DISTINCT lb.id) as c 
+                  FROM lead_bookings lb 
+                  JOIN leads l ON l.id = lb.lead_id 
+                  WHERE lb.deleted_at IS NULL {$leadsDelSql} {$autoFilter} {$roleIsolation}
+                    AND ({$leadScope} OR lb.sales_by_id IN ({$memberIdsList}) OR lb.created_by IN ({$memberIdsList}))
+                    AND lb.booking_status IN ('completed', 'booked')";
+        $totalSalesBookedUnits = 0;
+        if ($res13 = $this->db->query($sql13)) {
+            $totalSalesBookedUnits = (int)($res13->fetch_assoc()['c'] ?? 0);
+        }
+
+        // Targets from sales_targets
+        if (!empty($startDate) && !empty($endDate) && date('j', strtotime($startDate)) == 26 && date('j', strtotime($endDate)) == 25) {
+            $targetStartMonth = date('Y-m-01', strtotime($endDate));
+            $targetEndMonth = date('Y-m-01', strtotime($endDate));
+        } else {
+            $targetStartMonth = !empty($startDate) ? date('Y-m-01', strtotime($startDate)) : sprintf('%04d-%02d-01', $year, $startMonth);
+            $targetEndMonth = !empty($endDate) ? date('Y-m-01', strtotime($endDate)) : sprintf('%04d-%02d-01', $year, $endMonth);
+        }
+        $monthlyBookingTarget = 0;
+        $monthlySiteVisitTarget = 0;
+        $sql14 = "SELECT SUM(booking_target) as booking_target, SUM(site_visit_target) as site_visit_target 
+                  FROM sales_targets 
+                  WHERE sales_user_id IN ({$memberIdsList}) AND month BETWEEN ? AND ?";
+        if ($stmt14 = $this->db->prepare($sql14)) {
+            $stmt14->bind_param("ss", $targetStartMonth, $targetEndMonth);
+            $stmt14->execute();
+            $tRow14 = $stmt14->get_result()->fetch_assoc();
+            $monthlyBookingTarget = (int)($tRow14['booking_target'] ?? 0);
+            $monthlySiteVisitTarget = (int)($tRow14['site_visit_target'] ?? 0);
+            $stmt14->close();
+        }
+
+        // Period / Current Month Booking
+        $sql15 = "SELECT COUNT(DISTINCT lb.id) as total_bookings, COUNT(DISTINCT lb.lead_id) as booked_leads 
+                  FROM lead_bookings lb 
+                  JOIN leads l ON l.id = lb.lead_id 
+                  WHERE lb.deleted_at IS NULL {$leadsDelSql} {$autoFilter} {$roleIsolation}
+                    AND ({$leadScope} OR lb.sales_by_id IN ({$memberIdsList}) OR lb.created_by IN ({$memberIdsList}))
+                    AND lb.booking_status IN ('completed', 'booked') 
+                    AND (DATE(lb.booking_date) BETWEEN ? AND ? OR (lb.booking_date IS NULL AND DATE(lb.created_at) BETWEEN ? AND ?))";
+        $currentMonthBooking = 0;
+        $currentMonthBookedLeads = 0;
+        if ($stmt15 = $this->db->prepare($sql15)) {
+            $stmt15->bind_param("ssss", $bkStart, $bkEnd, $bkStart, $bkEnd);
+            $stmt15->execute();
+            $bkRow15 = $stmt15->get_result()->fetch_assoc();
+            $currentMonthBooking = (int)($bkRow15['total_bookings'] ?? 0);
+            $currentMonthBookedLeads = (int)($bkRow15['booked_leads'] ?? 0);
+            $stmt15->close();
+        }
+        $bookingAchievement = $monthlyBookingTarget > 0 ? round(($currentMonthBooking / $monthlyBookingTarget) * 100, 1) : 0;
+
+        // Total Visited Complete (All-time)
+        $leadTypeCond = $hasLeadType ? "l.lead_type IN ('Visit Completed', 'Visited')" : "0=1";
+        $lastActionCond = $hasLastLeadAction ? "l.last_lead_action = 'visited'" : "0=1";
+        $sql16 = "
+            SELECT COUNT(DISTINCT l.id) as c
+            FROM leads l
+            LEFT JOIN lead_follow_ups lf ON lf.lead_id = l.id {$fuDelCond}
+            WHERE 1=1
+              {$leadsDelSql}
+              {$autoFilter}
+              {$roleIsolation}
+              AND (
+                  ({$leadScope} AND ({$leadTypeCond} OR {$lastActionCond}))
+                  OR (({$leadScope} OR lf.assigned_with IN ({$memberIdsList}) OR lf.created_by IN ({$memberIdsList})) 
+                      AND (lf.lead_status IN ('Visit Completed', 'Visited') OR lf.follow_up_type = 'visit') 
+                      AND lf.status != 'canceled')
+              )
+        ";
+        $totalVisitedComplete = 0;
+        if ($res16 = $this->db->query($sql16)) {
+            $totalVisitedComplete = (int)($res16->fetch_assoc()['c'] ?? 0);
+        }
+
+        // Period / This Month Visited
+        $vStart = $hasFilter ? $startDate : $cycleBkStart;
+        $vEnd   = $hasFilter ? $endDate : $cycleBkEnd;
+        $sql17 = "
+            SELECT COUNT(DISTINCT lf.id) as total_visits, COUNT(DISTINCT l.id) as visited_leads
+            FROM leads l
+            INNER JOIN lead_follow_ups lf ON lf.lead_id = l.id {$fuDelCond}
+            WHERE 1=1
+              {$leadsDelSql}
+              {$autoFilter}
+              {$roleIsolation}
+              AND ({$leadScope} OR lf.assigned_with IN ({$memberIdsList}) OR lf.created_by IN ({$memberIdsList}))
+              AND (lf.lead_status IN ('Visit Completed', 'Visited') OR LOWER(lf.follow_up_type) = 'visit')
+              AND lf.status != 'canceled'
+              AND (DATE(lf.follow_up_date) BETWEEN ? AND ? OR (lf.follow_up_date IS NULL AND DATE(lf.created_at) BETWEEN ? AND ?))
+        ";
+        $thisMonthVisited = 0;
+        $thisMonthVisitedLeads = 0;
+        if ($stmt17 = $this->db->prepare($sql17)) {
+            $stmt17->bind_param("ssss", $vStart, $vEnd, $vStart, $vEnd);
+            $stmt17->execute();
+            $vRow17 = $stmt17->get_result()->fetch_assoc();
+            $thisMonthVisited = (int)($vRow17['total_visits'] ?? 0);
+            $thisMonthVisitedLeads = (int)($vRow17['visited_leads'] ?? 0);
+            $stmt17->close();
+        }
+        $visitAchievement = $monthlySiteVisitTarget > 0 ? round(($thisMonthVisited / $monthlySiteVisitTarget) * 100, 1) : 0;
+
+        // Deals Lost
+        $sqlLost = "
+            SELECT COUNT(DISTINCT l.id) as c
+            FROM leads l
+            WHERE {$leadScope} {$leadsDelSql} {$autoFilter} {$roleIsolation}
+              AND (l.lead_type IN ('Not Interested', 'Lost', 'Dropped') OR l.last_lead_action = 'lost')
+              AND DATE(l.created_at) BETWEEN ? AND ?
+        ";
+        $dealsLost = 0;
+        if ($stmtLost = $this->db->prepare($sqlLost)) {
+            $stmtLost->bind_param("ss", $startDate, $endDate);
+            $stmtLost->execute();
+            $dealsLost = (int)($stmtLost->get_result()->fetch_assoc()['c'] ?? 0);
+            $stmtLost->close();
+        }
+
+        return [
+            'totalLeadsAssigned'     => $totalLeadsAssigned,
+            'allTimeLeadsAssigned'   => $allTimeLeadsAssigned,
+            'periodLeadsAssigned'    => $periodLeadsAssigned,
+            'totalLeadsContacted'    => $totalLeadsContacted,
+            'allTimeLeadsContacted'  => $allTimeLeadsContacted,
+            'periodLeadsContacted'   => $periodLeadsContacted,
+            'totalContactedPct'      => $totalContactedPct,
+            'allTimeContactedPct'    => $allTimeContactedPct,
+            'totalNotContacted'      => $totalNotContacted,
+            'allTimeNotContacted'    => $allTimeNotContacted,
+            'periodNotContacted'     => $periodNotContacted,
+            'todayLeadsAssigned'     => $todayLeadsAssigned,
+            'todayLeadsContacted'    => $todayLeadsContacted,
+            'todayNotContacted'      => $todayNotContacted,
+            'totalFollowUpComplete'  => $totalFollowUpComplete,
+            'totalFollowUpMissing'   => $totalFollowUpMissing,
+            'allTimeFollowUpMissing' => $allTimeFollowUpMissing,
+            'periodFollowUpMissing'  => $periodFollowUpMissing,
+            'todayFollowUps'         => $todayFollowUps,
+            'todayFollowUpComplete'  => $todayFollowUpComplete,
+            'remainingTodayFollowUp' => $remainingTodayFollowUp,
+            'totalSalesBookedUnits'  => $totalSalesBookedUnits,
+            'monthlyBookingTarget'   => $monthlyBookingTarget,
+            'monthlySiteVisitTarget' => $monthlySiteVisitTarget,
+            'currentMonthBooking'    => $currentMonthBooking,
+            'currentMonthBookedLeads'=> $currentMonthBookedLeads,
+            'bookingAchievement'     => $bookingAchievement,
+            'totalVisitedComplete'   => $totalVisitedComplete,
+            'thisMonthVisited'       => $thisMonthVisited,
+            'thisMonthVisitedLeads'  => $thisMonthVisitedLeads,
+            'visitAchievement'       => $visitAchievement,
+            'dealsLost'              => $dealsLost,
+            'cycleBkStart'           => $cycleBkStart,
+            'cycleBkEnd'             => $cycleBkEnd,
+            'hasFilter'              => $hasFilter,
+            'filterStartDate'        => $startDate,
+            'filterEndDate'          => $endDate,
+        ];
+    }
+
+    /**
+     * Get Sales and Leads Performance breakdown for each member of a team.
+     * Deducts refunded bookings (crr status IN ('pending', 'approved', 'refunded') or lb.booking_status IN ('refunded', 'cancelled')).
+     * Calculates Land Share Value and Payments collected.
+     */
+    public function getTeamMemberSalesPerformance(int $teamId, ?string $startDate = null, ?string $endDate = null, bool $hasFilter = false): array
+    {
+        $members = $this->getTeamMemberUsers($teamId);
+        $loggedInRole = $_SESSION['user']['role_id'] ?? 0;
+        $autoFilter = "";
+        if (!in_array((int)$loggedInRole, [1, 10, 11])) {
+            [$hasAutomatedCol, $hasDistributeCol] = $this->getLeadAutomationColumnStatus();
+            if ($hasAutomatedCol && $hasDistributeCol) {
+                $autoFilter = " AND NOT (l.is_automated = 1 AND l.distribute = 0)";
+            }
+        }
+
+        $perfData = [];
+        $teamTotals = [
+            'period_leads'     => 0,
+            'all_time_leads'   => 0,
+            'gross_sales'      => 0,
+            'refund_sales'     => 0,
+            'net_sales'        => 0,
+            'land_share_value' => 0,
+            'total_price_value'=> 0,
+            'land_share_paid'  => 0,
+            'total_paid'       => 0,
+        ];
+
+        $dateBookingCond = "";
+        if ($hasFilter && !empty($startDate) && !empty($endDate)) {
+            $dateBookingCond = "AND (DATE(lb.booking_date) BETWEEN '{$startDate}' AND '{$endDate}' OR (lb.booking_date IS NULL AND DATE(lb.created_at) BETWEEN '{$startDate}' AND '{$endDate}'))";
+        }
+
+        foreach ($members as $m) {
+            $uid = (int)($m['user_id'] ?? 0);
+            if (!$uid) continue;
+
+            // Leads assigned in period and all time
+            $leadDateSql = ($hasFilter && !empty($startDate) && !empty($endDate)) ? "AND DATE(l.created_at) BETWEEN '{$startDate}' AND '{$endDate}'" : "";
+            $periodLeads = (int)($this->db->query("SELECT COUNT(*) as c FROM leads l WHERE l.assigned_id = {$uid} AND l.deleted_at IS NULL {$autoFilter} {$leadDateSql}")->fetch_assoc()['c'] ?? 0);
+            $allTimeLeads = (int)($this->db->query("SELECT COUNT(*) as c FROM leads l WHERE l.assigned_id = {$uid} AND l.deleted_at IS NULL {$autoFilter}")->fetch_assoc()['c'] ?? 0);
+
+            // Bookings for this member
+            $bkSql = "
+                SELECT 
+                    lb.id,
+                    lb.booking_status,
+                    lb.agreement_value,
+                    COALESCE(NULLIF(f.land_share_value, 0), lb.agreement_value, 0) as land_share_val,
+                    COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) as total_price_val,
+                    CASE 
+                        WHEN lb.booking_status IN ('refunded', 'cancelled') THEN 1
+                        WHEN crr.id IS NOT NULL THEN 1
+                        ELSE 0
+                    END as is_refunded,
+                    crr.refund_amount
+                FROM lead_bookings lb
+                JOIN leads l ON l.id = lb.lead_id
+                LEFT JOIN flats f ON f.id = lb.flat_id
+                LEFT JOIN client_refund_requests crr ON crr.booking_id = lb.id AND crr.status IN ('pending', 'approved', 'refunded')
+                WHERE lb.deleted_at IS NULL
+                  AND l.deleted_at IS NULL
+                  {$autoFilter}
+                  AND (lb.sales_by_id = {$uid} OR (lb.sales_by_id IS NULL AND l.assigned_id = {$uid}))
+                  {$dateBookingCond}
+            ";
+            $bkRes = $this->db->query($bkSql);
+
+            $grossSales = 0;
+            $refundSales = 0;
+            $netSales = 0;
+            $memberLandShareValue = 0;
+            $memberTotalPriceValue = 0;
+            $validBkIds = [];
+
+            if ($bkRes) {
+                while ($bk = $bkRes->fetch_assoc()) {
+                    $grossSales++;
+                    if ((int)$bk['is_refunded'] === 1) {
+                        $refundSales++;
+                    } else {
+                        $netSales++;
+                        $memberLandShareValue += (float)$bk['land_share_val'];
+                        $memberTotalPriceValue += (float)$bk['total_price_val'];
+                        $validBkIds[] = (int)$bk['id'];
+                    }
+                }
+            }
+
+            $memberLandSharePaid = 0;
+            $memberTotalPaid = 0;
+            if (!empty($validBkIds)) {
+                $bList = implode(',', $validBkIds);
+                $paySql = "
+                    SELECT 
+                        SUM(CASE WHEN (lp.payment_status IN ('paid', 'partially_paid', 'pending')) AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.amount ELSE 0 END) as total_paid,
+                        SUM(CASE WHEN lp.payment_type IN ('booking_money', 'registration', 'land_share') AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected') THEN lp.amount ELSE 0 END) as land_share_paid
+                    FROM lead_payments lp
+                    WHERE lp.booking_id IN ($bList)
+                      AND (lp.is_trashed = 0 OR lp.is_trashed IS NULL)
+                ";
+                $pRow = $this->db->query($paySql)->fetch_assoc();
+                $memberTotalPaid = (float)($pRow['total_paid'] ?? 0);
+                $memberLandSharePaid = (float)($pRow['land_share_paid'] ?? 0);
+            }
+
+            $leadBase = ($hasFilter && $periodLeads > 0) ? $periodLeads : $allTimeLeads;
+            $conversionRate = $leadBase > 0 ? round(($netSales / $leadBase) * 100, 1) : 0;
+            $collectionRate = $memberLandShareValue > 0 ? round(($memberLandSharePaid / $memberLandShareValue) * 100, 1) : 0;
+
+            $perfData[] = [
+                'user_id'          => $uid,
+                'employee_id'      => $m['employee_id'] ?? '',
+                'full_name'        => $m['full_name'],
+                'role_name'        => $m['role_name'] ?? 'Executive',
+                'designation'      => !empty($m['designation_name']) ? $m['designation_name'] : ($m['role_name'] ?? 'Sales Executive'),
+                'designation_name' => !empty($m['designation_name']) ? $m['designation_name'] : ($m['role_name'] ?? 'Sales Executive'),
+                'is_team_leader'   => (int)($m['is_team_leader'] ?? 0),
+                'period_leads'     => $periodLeads,
+                'all_time_leads'   => $allTimeLeads,
+                'gross_sales'      => $grossSales,
+                'refund_sales'     => $refundSales,
+                'net_sales'        => $netSales,
+                'conversion_rate'  => $conversionRate,
+                'land_share_value' => $memberLandShareValue,
+                'total_price_value'=> $memberTotalPriceValue,
+                'land_share_paid'  => $memberLandSharePaid,
+                'total_paid'       => $memberTotalPaid,
+                'collection_rate'  => $collectionRate,
+            ];
+
+            $teamTotals['period_leads']     += $periodLeads;
+            $teamTotals['all_time_leads']   += $allTimeLeads;
+            $teamTotals['gross_sales']      += $grossSales;
+            $teamTotals['refund_sales']     += $refundSales;
+            $teamTotals['net_sales']        += $netSales;
+            $teamTotals['land_share_value'] += $memberLandShareValue;
+            $teamTotals['total_price_value']+= $memberTotalPriceValue;
+            $teamTotals['land_share_paid']  += $memberLandSharePaid;
+            $teamTotals['total_paid']       += $memberTotalPaid;
+        }
+
+        $teamLeadBase = ($hasFilter && $teamTotals['period_leads'] > 0) ? $teamTotals['period_leads'] : $teamTotals['all_time_leads'];
+        $teamTotals['conversion_rate'] = $teamLeadBase > 0 ? round(($teamTotals['net_sales'] / $teamLeadBase) * 100, 1) : 0;
+        $teamTotals['collection_rate'] = $teamTotals['land_share_value'] > 0 ? round(($teamTotals['land_share_paid'] / $teamTotals['land_share_value']) * 100, 1) : 0;
+
+        return [
+            'members' => $perfData,
+            'totals'  => $teamTotals,
+        ];
+    }
+
 
         public function getSalesTeamKpiData(array $options = [])
     {

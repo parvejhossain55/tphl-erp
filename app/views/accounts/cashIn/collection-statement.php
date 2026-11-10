@@ -787,6 +787,7 @@ $exportTrxUrl  = $base_url . '/collection-statement-export?' . http_build_query(
                             <th>Bank / Cheque Details</th>
                             <th>Ref / Voucher</th>
                             <th class="text-end">Amount (BDT)</th>
+                            <th style="min-width: 140px;">Added By</th>
                             <th style="min-width: 175px;">Verification &amp; Verifier</th>
                             <th class="text-center" style="width: 70px;">Action</th>
                         </tr>
@@ -794,7 +795,7 @@ $exportTrxUrl  = $base_url . '/collection-statement-export?' . http_build_query(
                     <tbody>
                         <?php if (empty($transactions)): ?>
                             <tr>
-                                <td colspan="11" class="text-center py-5 text-muted">
+                                <td colspan="12" class="text-center py-5 text-muted">
                                     <i class="fa-solid fa-inbox fa-3x mb-3 text-secondary opacity-50"></i>
                                     <div class="fw-semibold">No collection transactions found matching the selected filters.</div>
                                     <small>Try selecting a different date range or resetting filters.</small>
@@ -898,6 +899,12 @@ $exportTrxUrl  = $base_url . '/collection-statement-export?' . http_build_query(
                                     <td class="text-end text-nowrap fw-bold text-success fs-13">
                                         ৳<?= number_format($amt, 2) ?>
                                     </td>
+                                    <td class="text-start">
+                                        <div class="fw-semibold text-dark extra-small d-flex align-items-center gap-1" title="Added by: <?= htmlspecialchars($t['collector_name'] ?? 'System') ?>">
+                                            <i class="fa-solid fa-user-pen text-primary" style="font-size: 10px;"></i>
+                                            <span class="text-truncate" style="max-width: 135px;"><?= htmlspecialchars($t['collector_name'] ?? 'System') ?></span>
+                                        </div>
+                                    </td>
                                     <td class="text-start" style="min-width: 175px;">
                                         <?php if ($vStatus === 'verified'): ?>
                                             <div class="d-flex align-items-center gap-1 mb-1">
@@ -966,12 +973,12 @@ $exportTrxUrl  = $base_url . '/collection-statement-export?' . http_build_query(
                         <tr class="fw-bold">
                             <td colspan="8" class="text-end">PAGE SUBTOTAL:</td>
                             <td class="text-end font-monospace text-success fs-13">৳<?= number_format($pageTotal, 2) ?></td>
-                            <td colspan="2"></td>
+                            <td colspan="3"></td>
                         </tr>
                         <tr class="fw-bold bg-primary-subtle text-primary">
                             <td colspan="8" class="text-end">OVERALL FILTERED TOTAL COLLECTION:</td>
                             <td class="text-end font-monospace text-primary fs-14">৳<?= number_format($summary['total_amount'] ?? 0, 2) ?></td>
-                            <td colspan="2"></td>
+                            <td colspan="3"></td>
                         </tr>
                     </tfoot>
                     <?php endif; ?>

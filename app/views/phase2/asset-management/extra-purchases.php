@@ -623,7 +623,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                         <?= htmlspecialchars($dept['name']) ?>
                                     </option>
                                 <?php endforeach; ?>
-
+                            </select>
                         </div>
                         <div class="col-md-12 mt-2">
                             <?= renderCOADropdown($coaList ?? [], null, 'account_id', false, 'officeproc') ?>
@@ -635,7 +635,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                 <?php foreach ($officeBranches ?? [] as $b): ?>
                                     <option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['name']) ?></option>
                                 <?php endforeach; ?>
-
+                            </select>
                             <input type="hidden" name="asset_location" id="new_request_asset_location" value="">
                         </div>
                         <div class="col-md-6">
@@ -645,7 +645,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                 <?php foreach ($users ?? [] as $u): ?>
                                     <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
                                 <?php endforeach; ?>
-
+                            </select>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label mb-1">Item Category <span class="text-danger">*</span></label>
@@ -654,24 +654,13 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                 <?php foreach ($categories ?? [] as $cat): ?>
                                     <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['name']) ?></option>
                                 <?php endforeach; ?>
-
+                            </select>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label mb-1">Request Type <span class="text-danger">*</span></label>
                             <select name="request_type" class="form-select" required>
                                 <option value="Purchase">Purchase</option>
                                 <option value="Servicing">Servicing</option>
-
-                        </div>
-                        <div class="col-md-12">
-                            <label class="form-label mb-1"><i class="fa-solid fa-store me-1 text-primary"></i>Vendor <span class="text-muted fs-11">(Optional)</span></label>
-                            <select name="vendor_id" id="new_request_vendor_id" class="form-select select2-vendor" style="width: 100%;">
-                                <option value="">-- Optional: Select Vendor --</option>
-                                <?php foreach ($vendors ?? [] as $vnd): ?>
-                                    <option value="<?= $vnd['id'] ?>">
-                                        <?= htmlspecialchars($vnd['name']) ?><?= (!empty($vnd['company_name']) && $vnd['company_name'] !== $vnd['name']) ? ' (' . htmlspecialchars($vnd['company_name']) . ')' : '' ?>
-                                    </option>
-                                <?php endforeach; ?>
                             </select>
                         </div>
                         <div class="col-md-12">
@@ -683,11 +672,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                         <?= htmlspecialchars($vnd['name']) ?><?= (!empty($vnd['company_name']) && $vnd['company_name'] !== $vnd['name']) ? ' (' . htmlspecialchars($vnd['company_name']) . ')' : '' ?>
                                     </option>
                                 <?php endforeach; ?>
-
-                        </div>
-
-
-
+                            </select>
                         </div>
                         <div class="col-md-12">
                             <label class="form-label">Item Name <span class="text-danger">*</span></label>

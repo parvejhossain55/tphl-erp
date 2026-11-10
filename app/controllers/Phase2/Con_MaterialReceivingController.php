@@ -214,6 +214,14 @@ class Con_MaterialReceivingController extends Controller
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         $userId   = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId   = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        if (!in_array($roleId, [1, 3, 13, 20, 22, 23, 24, 25]) && !hasPermission('QC & Internal Audit') && !hasPermission('QC Dashboard')) {
+            setError('You do not have permission to submit QC reviews.');
+            header("Location: {$GLOBALS['base_url']}/con-material-receiving-qc/{$id}");
+            exit;
+        }
+
         $statuses = $_POST['item_status']   ?? [];
         $reasons  = $_POST['issue_reason']  ?? [];
         $accQtys  = $_POST['accepted_qty']  ?? [];
@@ -275,7 +283,7 @@ class Con_MaterialReceivingController extends Controller
                 $mailService->notifyAfterQCInspection((int)$grnRow['project_id'], $grnRow['name'], $id, $hasRejections);
             }
 
-            setSuccess('QC Review completed. Awaiting PM/Management Approval.');
+            setSuccess('QC Review completed successfully. Material stock updated.');
         } else {
             setError('QC Review failed. Please check the logs.');
         }
@@ -294,7 +302,7 @@ class Con_MaterialReceivingController extends Controller
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        if (!in_array($roleId, [1, 3, 33, 15, 20, 22, 23])) {
+        if (!in_array($roleId, [1, 3, 13, 15, 20, 22, 23, 24, 25, 33])) {
             setError('You do not have permission to approve GRNs.');
             header("Location: {$GLOBALS['base_url']}/con-material-receiving-qc/{$id}");
             exit;
@@ -317,6 +325,34 @@ class Con_MaterialReceivingController extends Controller
             setSuccess('PM/Management Approval completed. Stock has been updated.');
         } else {
             setError('PM Approval failed. Please check the logs.');
+        }
+        header("Location: {$GLOBALS['base_url']}/con-material-receiving-qc/{$id}");
+        exit;
+    }
+
+    // =========================================================================
+    // HEAD / AUDIT STORE
+    // =========================================================================
+
+    public function headStore($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        if (!in_array($roleId, [1, 3, 15, 20, 22, 24, 25, 33]) && !hasPermission('QC & Internal Audit')) {
+            setError('You do not have permission to approve as Head / Audit.');
+            header("Location: {$GLOBALS['base_url']}/con-material-receiving-qc/{$id}");
+            exit;
+        }
+
+        $headNote = trim($_POST['head_note'] ?? '');
+
+        if ($this->receivingModel->headReview($id, $userId, $headNote)) {
+            setSuccess('Head / Internal Audit Approval completed successfully.');
+        } else {
+            setError('Head Approval failed. Please check the logs.');
         }
         header("Location: {$GLOBALS['base_url']}/con-material-receiving-qc/{$id}");
         exit;

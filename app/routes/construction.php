@@ -301,6 +301,8 @@ return [
     'con-contractor-bill-delete/(\d+)' => ['controller' => 'Phase2\Con_ContractorBillController', 'method' => 'delete'],
     'con-contractor-bill/(\d+)' => ['controller' => 'Phase2\Con_ContractorBillController', 'method' => 'show'],
     'con-contractor-bill-verify/(\d+)' => ['controller' => 'Phase2\Con_ContractorBillController', 'method' => 'verify'],
+    'con-contractor-bill-tl-review/(\d+)' => ['controller' => 'Phase2\Con_ContractorBillController', 'method' => 'reviewTeamLeader'],
+    'con-contractor-bill-ph-approve/(\d+)' => ['controller' => 'Phase2\Con_ContractorBillController', 'method' => 'approvePurchaseHead'],
     'con-contractor-bill-approve/(\d+)' => ['controller' => 'Phase2\Con_ContractorBillController', 'method' => 'approve'],
     'con-contractor-bill-reject/(\d+)' => ['controller' => 'Phase2\Con_ContractorBillController', 'method' => 'reject'],
     'con-contractor-bill-payment/(\d+)' => ['controller' => 'Phase2\Con_ContractorBillController', 'method' => 'addPayment'],
@@ -437,6 +439,7 @@ return [
     'con-material-receiving-store' => ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'store'],
     'con-material-receiving-qc/(\d+)' => ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'qcReview'],
     'con-material-receiving-pm/(\d+)' => ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'pmStore'],
+    'con-material-receiving-head/(\d+)' => ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'headStore'],
 
     // =========================================================================
     // Controller: Phase2\Con_MaterialReceivingImportController
@@ -470,6 +473,9 @@ return [
     'con-vendor-payment-create' => ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'create'],
     'con-vendor-payment-store' => ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'store'],
     'con-vendor-payment-show/(\d+)' => ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'show'],
+    'con-vendor-payment-tl-review/(\d+)' => ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'reviewTeamLeader'],
+    'con-vendor-payment-ph-approve/(\d+)' => ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'approvePurchaseHead'],
+    'con-vendor-payment-ph-reject/(\d+)' => ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'rejectPurchaseHead'],
     'con-vendor-payment-approve/(\d+)' => ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'approve'],
     'con-vendor-payment-reject/(\d+)' => ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'reject'],
     'con-vendor-payment-qc-approve/(\d+)' => ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'approveQC'],

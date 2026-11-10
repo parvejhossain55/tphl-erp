@@ -35,15 +35,19 @@ class QcAuditController extends Controller
             'approved' => 0
         ];
         
-        // Pending
+        // Pending (Actionable for QC)
         $q1 = $this->db->query("SELECT COUNT(*) as c FROM cashout_requests WHERE status IN ('pending', 'submitted')");
         $stats['pending'] += $q1->fetch_assoc()['c'] ?? 0;
         
-        $q2 = $this->db->query("SELECT COUNT(*) as c FROM vendor_payment_requests WHERE status IN ('pending', 'submitted')");
-        $stats['pending'] += $q2->fetch_assoc()['c'] ?? 0;
+        $q2 = $this->db->query("SELECT COUNT(*) as c FROM vendor_payment_requests WHERE status IN ('pending', 'submitted', 'Submitted') AND purchase_head_approved_by_id IS NOT NULL");
+        $stats['pending'] += $q2 ? ($q2->fetch_assoc()['c'] ?? 0) : 0;
         
-        $q3 = $this->db->query("SELECT COUNT(*) as c FROM contractor_bill_requests WHERE status IN ('pending', 'submitted', 'verified')");
-        $stats['pending'] += $q3->fetch_assoc()['c'] ?? 0;
+        $q3 = $this->db->query("SELECT COUNT(*) as c FROM contractor_bill_requests WHERE status = 'verified' AND purchase_head_approved_by_id IS NOT NULL");
+        $stats['pending'] += $q3 ? ($q3->fetch_assoc()['c'] ?? 0) : 0;
+
+        $qGrn = $this->db->query("SELECT COUNT(*) as c FROM material_receiving WHERE overall_status = 'Pending QC'");
+        $stats['grn_pending'] = $qGrn ? (int)($qGrn->fetch_assoc()['c'] ?? 0) : 0;
+        $stats['pending'] += $stats['grn_pending'];
         
         // Approved (by QC)
         $a1 = $this->db->query("SELECT COUNT(*) as c FROM cashout_requests WHERE qc_approved_by_id IS NOT NULL");
@@ -85,14 +89,14 @@ class QcAuditController extends Controller
         $stats['month_cashout_total'] = $monthRow['total'] ?? 0;
 
         // Vendor Payments pending
-        $vpPending = $this->db->query("SELECT COUNT(*) as c, COALESCE(SUM(invoice_amount),0) as total FROM vendor_payment_requests WHERE status IN ('pending','submitted','Draft','Submitted')");
-        $vpRow = $vpPending->fetch_assoc();
+        $vpPending = $this->db->query("SELECT COUNT(*) as c, COALESCE(SUM(invoice_amount),0) as total FROM vendor_payment_requests WHERE status IN ('pending','submitted','Draft','Submitted') AND purchase_head_approved_by_id IS NOT NULL");
+        $vpRow = $vpPending ? $vpPending->fetch_assoc() : [];
         $stats['vendor_pending'] = $vpRow['c'] ?? 0;
         $stats['vendor_pending_total'] = $vpRow['total'] ?? 0;
 
         // Contractor Bills pending
-        $cbPending = $this->db->query("SELECT COUNT(*) as c, COALESCE(SUM(bill_amount),0) as total FROM contractor_bill_requests WHERE status IN ('pending','submitted','verified','draft')");
-        $cbRow = $cbPending->fetch_assoc();
+        $cbPending = $this->db->query("SELECT COUNT(*) as c, COALESCE(SUM(bill_amount),0) as total FROM contractor_bill_requests WHERE status = 'verified' AND purchase_head_approved_by_id IS NOT NULL");
+        $cbRow = $cbPending ? $cbPending->fetch_assoc() : [];
         $stats['contractor_pending'] = $cbRow['c'] ?? 0;
         $stats['contractor_pending_total'] = $cbRow['total'] ?? 0;
 
@@ -146,6 +150,21 @@ class QcAuditController extends Controller
             ORDER BY po.id DESC LIMIT 10
         ")->fetch_all(MYSQLI_ASSOC);
 
+        $pendingGRNs = $this->db->query("
+            SELECT mr.id, mr.receiving_date, mr.created_at,
+                   p.name AS project_name, w.name AS warehouse_name,
+                   u.full_name AS received_by_name,
+                   (SELECT COUNT(*) FROM material_receiving_items WHERE receiving_id = mr.id) AS item_count
+            FROM material_receiving mr
+            JOIN purchase_orders po ON po.id = mr.purchase_order_id
+            JOIN purchase_requests pr ON pr.id = po.request_id
+            LEFT JOIN projects p ON p.id = pr.project_id
+            LEFT JOIN con_warehouses w ON w.id = mr.warehouse_id
+            LEFT JOIN users u ON u.id = mr.received_by
+            WHERE mr.overall_status = 'Pending QC'
+            ORDER BY mr.id DESC LIMIT 10
+        ")->fetch_all(MYSQLI_ASSOC);
+
         $this->view('qc-audit/dashboard', [
             'current_route' => 'qc-audit-dashboard',
             'page_title' => 'QC & Internal Audit Overview',
@@ -153,7 +172,8 @@ class QcAuditController extends Controller
             'cashoutRequests' => $cashoutRequests,
             'vendorPayments' => $vendorPayments,
             'contractorBills' => $contractorBills,
-            'purchaseOrders' => $purchaseOrders
+            'purchaseOrders' => $purchaseOrders,
+            'pendingGRNs' => $pendingGRNs
         ]);
     }
 
@@ -532,7 +552,8 @@ class QcAuditController extends Controller
     {
         // 1. Pending Purchase Orders (awaiting QC)
         $q1 = "SELECT po.id, po.created_at, p.name as project_name, 'Purchase Order' as type, po.status, u.full_name as requester_name, 
-               (SELECT SUM(total_price) FROM purchase_order_items WHERE purchase_order_id = po.id) as amount
+               (SELECT SUM(total_price) FROM purchase_order_items WHERE purchase_order_id = po.id) as amount,
+               1 as can_qc_approve, 'Ready for QC' as pending_stage_label
                FROM purchase_orders po
                JOIN purchase_requests pr ON pr.id = po.request_id
                LEFT JOIN projects p ON pr.project_id = p.id 
@@ -540,27 +561,44 @@ class QcAuditController extends Controller
                WHERE po.status = 'Issued'";
 
         // 2. Pending Cashout Requests
-        $q2 = "SELECT c.id, c.created_at, p.name as project_name, 'Cashout Request' as type, c.status, u.full_name as requester_name, c.amount
+        $q2 = "SELECT c.id, c.created_at, p.name as project_name, 'Cashout Request' as type, c.status, u.full_name as requester_name, c.amount,
+               1 as can_qc_approve, 'Ready for QC' as pending_stage_label
                FROM cashout_requests c 
                LEFT JOIN projects p ON c.project_id = p.id 
                LEFT JOIN users u ON c.requested_by = u.id
                WHERE c.status IN ('submitted', 'pending')";
 
         // 3. Pending Vendor Payment Requests
-        $q3 = "SELECT v.id, v.created_at, p.name as project_name, 'Vendor Payment' as type, v.status, u.full_name as requester_name, v.net_payable as amount
+        $q3 = "SELECT v.id, v.created_at, p.name as project_name, 'Vendor Payment' as type, v.status, u.full_name as requester_name, v.net_payable as amount,
+               CASE WHEN v.purchase_head_approved_by_id IS NOT NULL THEN 1 ELSE 0 END as can_qc_approve,
+               CASE WHEN v.purchase_head_approved_by_id IS NOT NULL THEN 'Ready for QC' ELSE 'Pending Purchase Head' END as pending_stage_label
                FROM vendor_payment_requests v 
                LEFT JOIN projects p ON v.project_id = p.id 
                LEFT JOIN users u ON v.created_by = u.id
                WHERE v.status IN ('Submitted', 'pending')";
 
         // 4. Pending Contractor Bill Requests
-        $q4 = "SELECT b.id, b.created_at, p.name as project_name, 'Contractor Bill' as type, b.status, u.full_name as requester_name, b.bill_amount as amount
+        $q4 = "SELECT b.id, b.created_at, p.name as project_name, 'Contractor Bill' as type, b.status, u.full_name as requester_name, b.bill_amount as amount,
+               CASE WHEN b.status = 'verified' AND b.purchase_head_approved_by_id IS NOT NULL THEN 1 ELSE 0 END as can_qc_approve,
+               CASE WHEN b.status != 'verified' THEN 'Pending PM Verification'
+                    WHEN b.purchase_head_approved_by_id IS NULL THEN 'Pending Purchase Head'
+                    ELSE 'Ready for QC' END as pending_stage_label
                FROM contractor_bill_requests b 
                LEFT JOIN projects p ON b.project_id = p.id 
                LEFT JOIN users u ON b.created_by = u.id
-               WHERE b.status IN ('Submitted', 'pending')";
+               WHERE b.status IN ('Submitted', 'submitted', 'pending', 'verified')";
+
+        // 5. Pending Material Receiving (GRN)
+        $q5 = "SELECT mr.id, mr.created_at, p.name as project_name, 'Material Receiving (GRN)' as type, mr.overall_status as status, u.full_name as requester_name, 0 as amount,
+               1 as can_qc_approve, 'Ready for QC' as pending_stage_label
+               FROM material_receiving mr
+               JOIN purchase_orders po ON po.id = mr.purchase_order_id
+               JOIN purchase_requests pr ON pr.id = po.request_id
+               LEFT JOIN projects p ON pr.project_id = p.id
+               LEFT JOIN users u ON mr.received_by = u.id
+               WHERE mr.overall_status = 'Pending QC'";
                
-        $query = "$q1 UNION ALL $q2 UNION ALL $q3 UNION ALL $q4 ORDER BY created_at DESC";
+        $query = "$q1 UNION ALL $q2 UNION ALL $q3 UNION ALL $q4 UNION ALL $q5 ORDER BY created_at DESC";
         $result = $this->db->query($query);
         $requests = [];
         if ($result) {
@@ -606,17 +644,49 @@ class QcAuditController extends Controller
                 }
 
                 if ($table) {
+                    $isMgmtUser = in_array((int)$this->userRole, [1, 3], true);
+
+                    if ($type === 'Vendor Payment') {
+                        $vprRow = $this->db->query("SELECT * FROM vendor_payment_requests WHERE id = " . (int)$id)->fetch_assoc();
+                        if ($vprRow && empty($vprRow['purchase_head_approved_by_id']) && !$isMgmtUser) {
+                            setError("Sequential Approval Required: Head of Purchase (Role 17) must approve Vendor Payment #$id before QC & Internal Audit can approve.");
+                            header("Location: " . $GLOBALS['base_url'] . "/qc-requests");
+                            exit;
+                        }
+                        if ($vprRow && empty($vprRow['purchase_head_approved_by_id']) && $isMgmtUser) {
+                            $escNote = $this->db->real_escape_string(($note ?: 'Approved') . ' (Management Override)');
+                            $this->db->query("UPDATE vendor_payment_requests SET purchase_head_approved_by_id = " . (int)$qc_id . ", purchase_head_approved_at = NOW(), purchase_head_note = '{$escNote}' WHERE id = " . (int)$id);
+                        }
+                    } elseif ($type === 'Contractor Bill') {
+                        $cbrRow = $this->db->query("SELECT * FROM contractor_bill_requests WHERE id = " . (int)$id)->fetch_assoc();
+                        if ($cbrRow && ($cbrRow['status'] !== 'verified' || empty($cbrRow['purchase_head_approved_by_id'])) && !$isMgmtUser) {
+                            setError("Sequential Approval Required: PM Verification and Head of Purchase (Role 17) approval must be completed for Contractor Bill #$id before QC & Internal Audit can approve.");
+                            header("Location: " . $GLOBALS['base_url'] . "/qc-requests");
+                            exit;
+                        }
+                        if ($cbrRow && $isMgmtUser) {
+                            $escNote = $this->db->real_escape_string(($note ?: 'Approved') . ' (Management Override)');
+                            if ($cbrRow['status'] !== 'verified') {
+                                $this->db->query("UPDATE contractor_bill_requests SET verified_by = " . (int)$qc_id . ", verified_at = NOW(), verification_note = '{$escNote}' WHERE id = " . (int)$id);
+                            }
+                            if (empty($cbrRow['purchase_head_approved_by_id'])) {
+                                $this->db->query("UPDATE contractor_bill_requests SET purchase_head_approved_by_id = " . (int)$qc_id . ", purchase_head_approved_at = NOW(), purchase_head_note = '{$escNote}' WHERE id = " . (int)$id);
+                            }
+                        }
+                    }
+
                     $q = "UPDATE $table SET status = ?, qc_approved_by_id = ?, qc_note = ?, qc_approved_at = NOW() WHERE id = ?";
                     $stmt = $this->db->prepare($q);
                     if ($stmt) {
                         $stmt->bind_param('sisi', $qc_status, $qc_id, $note, $id);
                         $stmt->execute();
 
-                        // For Vendor Payments, update existing approval_request or create if missing (avoiding duplicates)
+                        // For Vendor Payments & Contractor Bills, forward approval_request to Operation Head ('operations')
                         if ($type === 'Vendor Payment') {
+                            $this->db->query("UPDATE vendor_payment_requests SET qc_verified = 1, qc_approved_amount = COALESCE(NULLIF(qc_approved_amount, 0), net_payable) WHERE id = " . (int)$id);
                             $checkApp = $this->db->query("SELECT id FROM approval_requests WHERE source_table = 'vendor_payment_requests' AND source_id = " . (int)$id)->fetch_assoc();
                             if ($checkApp) {
-                                $this->db->query("UPDATE approval_requests SET status = 'pending', approve_role = 'management' WHERE id = " . (int)$checkApp['id']);
+                                $this->db->query("UPDATE approval_requests SET status = 'pending', approve_role = 'operations' WHERE id = " . (int)$checkApp['id']);
                             } else {
                                 $reqStmt = $this->db->query("SELECT * FROM vendor_payment_requests WHERE id = " . (int)$id);
                                 $reqData = $reqStmt ? $reqStmt->fetch_assoc() : null;
@@ -634,12 +704,15 @@ class QcAuditController extends Controller
                                         'source_id'      => $id,
                                         'requested_days' => 0,
                                         'requested_by'   => $reqData['created_by'],
-                                        'approve_role'   => 'management',
+                                        'approve_role'   => 'operations',
                                         'meta_data'      => null,
                                         'request_amount' => $reqData['net_payable'],
                                     ]);
                                 }
                             }
+                        } elseif ($type === 'Contractor Bill') {
+                            $this->db->query("UPDATE contractor_bill_requests SET approved_amount = COALESCE(NULLIF(approved_amount, 0), bill_amount), due_amount = COALESCE(NULLIF(due_amount, 0), bill_amount) WHERE id = " . (int)$id);
+                            $this->db->query("UPDATE approval_requests SET status = 'pending', approve_role = 'operations' WHERE source_table = 'contractor_bill_requests' AND source_id = " . (int)$id);
                         }
 
                         $_SESSION['flash_success'] = "Request #$id successfully approved by QC!";
@@ -752,11 +825,15 @@ class QcAuditController extends Controller
         // --- VENDOR PAYMENT ---
         elseif ($type === 'Vendor Payment') {
             $sql = "SELECT v.*, u.full_name as requester_name,
+                    ptl.full_name as tl_approver_name,
+                    ph.full_name as ph_approver_name,
                     qc.full_name as qc_approver_name,
                     mgmt.full_name as mgmt_approver_name,
                     vn.name as vendor_name
                     FROM vendor_payment_requests v
                     LEFT JOIN users u ON v.created_by = u.id
+                    LEFT JOIN users ptl ON v.purchase_team_leader_by_id = ptl.id
+                    LEFT JOIN users ph ON v.purchase_head_approved_by_id = ph.id
                     LEFT JOIN users qc ON v.qc_approved_by_id = qc.id
                     LEFT JOIN users mgmt ON v.approved_by = mgmt.id
                     LEFT JOIN vendors vn ON v.vendor_id = vn.id
@@ -776,6 +853,28 @@ class QcAuditController extends Controller
                     'icon' => 'bi-plus-circle',
                     'color' => 'primary'
                 ];
+
+                if (!empty($req['purchase_team_leader_at'])) {
+                    $trail[] = [
+                        'date' => $req['purchase_team_leader_at'],
+                        'action' => 'Purchase Team Leader Reviewed',
+                        'details' => !empty($req['purchase_team_leader_note']) ? 'Note: ' . $req['purchase_team_leader_note'] : 'Reviewed & forwarded by Purchase Team Leader',
+                        'user' => $req['tl_approver_name'] ?? 'Purchase Team Leader',
+                        'icon' => 'bi-person-check',
+                        'color' => 'info'
+                    ];
+                }
+
+                if (!empty($req['purchase_head_approved_at'])) {
+                    $trail[] = [
+                        'date' => $req['purchase_head_approved_at'],
+                        'action' => 'Head of Purchase Approved',
+                        'details' => !empty($req['purchase_head_note']) ? 'Note: ' . $req['purchase_head_note'] : 'Approved by Head of Purchase',
+                        'user' => $req['ph_approver_name'] ?? 'Head of Purchase',
+                        'icon' => 'bi-check2-square',
+                        'color' => 'primary'
+                    ];
+                }
 
                 if (!empty($req['qc_approved_at'])) {
                     $trail[] = [
@@ -826,11 +925,17 @@ class QcAuditController extends Controller
         // --- CONTRACTOR BILL ---
         elseif ($type === 'Contractor Bill') {
             $sql = "SELECT b.*, u.full_name as requester_name,
+                    pm.full_name as pm_approver_name,
+                    ptl.full_name as tl_approver_name,
+                    ph.full_name as ph_approver_name,
                     qc.full_name as qc_approver_name,
                     mgmt.full_name as mgmt_approver_name,
                     c.name as contractor_name
                     FROM contractor_bill_requests b
                     LEFT JOIN users u ON b.created_by = u.id
+                    LEFT JOIN users pm ON b.verified_by = pm.id
+                    LEFT JOIN users ptl ON b.purchase_team_leader_by_id = ptl.id
+                    LEFT JOIN users ph ON b.purchase_head_approved_by_id = ph.id
                     LEFT JOIN users qc ON b.qc_approved_by_id = qc.id
                     LEFT JOIN users mgmt ON b.approved_by = mgmt.id
                     LEFT JOIN contractors c ON b.operator_id = c.id
@@ -850,6 +955,39 @@ class QcAuditController extends Controller
                     'icon' => 'bi-plus-circle',
                     'color' => 'primary'
                 ];
+
+                if (!empty($req['verified_at'])) {
+                    $trail[] = [
+                        'date' => $req['verified_at'],
+                        'action' => 'PM / Dept Verified',
+                        'details' => !empty($req['verification_note']) ? 'Note: ' . $req['verification_note'] : 'Verified by Project Manager',
+                        'user' => $req['pm_approver_name'] ?? 'Project Manager',
+                        'icon' => 'bi-person-check',
+                        'color' => 'info'
+                    ];
+                }
+
+                if (!empty($req['purchase_team_leader_at'])) {
+                    $trail[] = [
+                        'date' => $req['purchase_team_leader_at'],
+                        'action' => 'Purchase Team Leader Reviewed',
+                        'details' => !empty($req['purchase_team_leader_note']) ? 'Note: ' . $req['purchase_team_leader_note'] : 'Reviewed & forwarded by Purchase Team Leader',
+                        'user' => $req['tl_approver_name'] ?? 'Purchase Team Leader',
+                        'icon' => 'bi-person-check',
+                        'color' => 'info'
+                    ];
+                }
+
+                if (!empty($req['purchase_head_approved_at'])) {
+                    $trail[] = [
+                        'date' => $req['purchase_head_approved_at'],
+                        'action' => 'Head of Purchase Approved',
+                        'details' => !empty($req['purchase_head_note']) ? 'Note: ' . $req['purchase_head_note'] : 'Approved by Head of Purchase',
+                        'user' => $req['ph_approver_name'] ?? 'Head of Purchase',
+                        'icon' => 'bi-check2-square',
+                        'color' => 'primary'
+                    ];
+                }
 
                 if (!empty($req['qc_approved_at'])) {
                     $trail[] = [

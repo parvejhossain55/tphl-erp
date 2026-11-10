@@ -39,6 +39,13 @@ if (isset($transactions) && is_array($transactions) && method_exists($accountMod
 }
 $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
 
+// Fallback initialization for Date-Wise Unified Batch Summary if not already passed by controller
+if (!isset($datewiseSummary) || empty($datewiseSummary)) {
+    if (isset($accountModel) && method_exists($accountModel, 'getDatewiseBatchPaymentSummary')) {
+        $datewiseSummary = $accountModel->getDatewiseBatchPaymentSummary($clientDetails['booking_id'] ?? $bookingId);
+    }
+}
+
 $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
 $userRoleName = strtolower($_SESSION['user']['role_name'] ?? '');
 $isManagementUser = ($userRoleId === 1 || $userRoleId === 3 || strpos($userRoleName, 'management') !== false || strpos($userRoleName, 'admin') !== false);
@@ -50,9 +57,18 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                     || strpos($userRoleName, 'admin') !== false;
 
 $isClientsCommunicatedRole = (function_exists('isClientsCommunicated') && isClientsCommunicated())
-    || ($userRoleId === 37)
-    || ((int)($_SESSION['user']['secondary_role_id'] ?? 0) === 37)
+    || in_array($userRoleId, [7, 37, 39], true)
+    || in_array((int)($_SESSION['user']['secondary_role_id'] ?? 0), [7, 37, 39], true)
     || ((int)($_SESSION['user']['id'] ?? 0) === 359);
+
+$isCedUser = in_array($userRoleId, [1, 3, 7, 37, 39], true)
+    || in_array((int)($_SESSION['user']['secondary_role_id'] ?? 0), [7, 37, 39], true)
+    || strpos($userRoleName, 'head of client experience') !== false 
+    || strpos($userRoleName, 'client experience') !== false 
+    || strpos($userRoleName, 'credit recovery') !== false 
+    || strpos($userRoleName, 'communicat') !== false 
+    || (function_exists('isCreditRecovery') && isCreditRecovery())
+    || $isClientsCommunicatedRole;
 ?>
 
 <?php
@@ -375,6 +391,12 @@ if (!isset($discountApprovalReq)) {
                         <i class="fa-light fa-list me-1"></i> Follow Up List
                     </button>
 
+                    <?php if ($isCedUser): ?>
+                        <button type="button" class="btn btn-sm text-white fw-bold shadow-sm" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); border: none; padding: 6px 14px; border-radius: 6px;" onclick="openNextEmiScheduleModal()" title="Schedule or update EMI due date">
+                            <i class="fa-solid fa-calendar-check me-1"></i> Schedule EMI Date
+                        </button>
+                    <?php endif; ?>
+
                     <?php if (isset($clientDetails['transfer_status']) && $clientDetails['transfer_status'] == 1): ?>
                         <span class="badge bg-warning text-dark">Transferred</span>
                     <?php else: ?>
@@ -513,11 +535,52 @@ if (!isset($discountApprovalReq)) {
                         ];
                         $totalDueEmiAmount += $dueAmt;
                     }
+                } elseif (isset($dueEmisList[$emiNo]) && ($maturity === 'future' || ($maturity === 'pending' && !$isExpired))) {
+                    // CED rescheduled this EMI to a future date — remove from overdue card
+                    $totalDueEmiAmount -= $dueEmisList[$emiNo]['due_amount'];
+                    unset($dueEmisList[$emiNo]);
                 }
             }
         }
         ksort($dueEmisList);
+
+        $penaltyHistory = $penaltyHistory ?? (isset($accountModel) && method_exists($accountModel, 'getPenaltyHistoryByBookingId') ? $accountModel->getPenaltyHistoryByBookingId($clientDetails['booking_id'] ?? $bookingId) : []);
+        $totalPenaltyPaidCalculated = 0;
+        $totalPenaltyChargedCalculated = 0;
+        $totalPenaltyWaivedCalculated = 0;
+        foreach ($penaltyHistory as $phItem) {
+            $totalPenaltyPaidCalculated += (float)($phItem['penalty_paid'] ?? 0);
+            $totalPenaltyChargedCalculated += (float)($phItem['penalty_amount'] ?? 0);
+            $totalPenaltyWaivedCalculated += (float)($phItem['penalty_waived'] ?? 0);
+        }
+        $displayTotalPenaltyPaid = ($paymentSummary['total_penalty_paid'] ?? 0) > 0 ? (float)$paymentSummary['total_penalty_paid'] : $totalPenaltyPaidCalculated;
+
+        $isDevChargeCompleted = ($devRemain <= 0 && ($devTarget > 0 || $devPaid > 0));
+        $firstEmi = !empty($virtualEmiSchedule[0]) ? $virtualEmiSchedule[0] : null;
+        $needsFirstEmiScheduling = $isDevChargeCompleted && $firstEmi && empty($firstEmi['is_date_custom']) && ((float)($firstEmi['paid_amount'] ?? 0) <= 0);
     ?>
+
+    <?php if ($isCedUser && $needsFirstEmiScheduling): ?>
+    <div class="alert shadow-sm border-0 d-flex flex-wrap align-items-center justify-content-between p-3 mb-4 rounded-3 text-white" 
+         style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);">
+        <div class="d-flex align-items-center gap-3">
+            <div class="rounded-circle bg-white text-primary d-flex align-items-center justify-content-center shadow-sm" style="width: 44px; height: 44px; min-width: 44px;">
+                <i class="fa-solid fa-bell fs-5 text-primary"></i>
+            </div>
+            <div>
+                <h6 class="mb-1 text-white fw-bold"><i class="fa-solid fa-circle-check text-warning me-1"></i> Development Charge Completed!</h6>
+                <p class="mb-0 text-white-50 small">Development charges have been fully cleared for this client. Please schedule the <strong>1st EMI Due Date</strong>.</p>
+            </div>
+        </div>
+        <div class="mt-2 mt-sm-0">
+            <button type="button" class="btn btn-warning text-dark fw-bold btn-sm shadow px-3 py-2" 
+                    onclick="openSetEmiDateModal(<?= (int)($clientDetails['booking_id'] ?? $bookingId) ?>, 1, '<?= htmlspecialchars($firstEmi['due_date'] ?? date('Y-m-d')) ?>', '')">
+                <i class="fa-solid fa-calendar-plus me-1"></i> Schedule 1st EMI Date
+            </button>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <div class="row">
 
         <!-- ROW 1: Agreement Overview -->
@@ -1029,6 +1092,48 @@ if (!isset($discountApprovalReq)) {
         </div>
         <?php endif; ?>
 
+        <!-- 22. Total Late Penalty Paid -->
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper" data-bs-toggle="modal" data-bs-target="#clientPenaltyHistoryModal" style="cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease;" title="Click to view detailed late penalty breakdown">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon">
+                        <span style="color:#d97706; background: rgba(217, 119, 6, 0.1);"><i class="fa-solid fa-clock-rotate-left"></i></span>
+                    </div>
+                    <div class="card__title-wrap" style="width: 100%;">
+                        <div class="d-flex justify-content-between align-items-center mb-10">
+                            <h6 class="card__sub-title mb-0">Total Penalty Paid</h6>
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" style="font-size: 11px;">
+                                <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Breakdown
+                            </span>
+                        </div>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title" style="color:<?= $displayTotalPenaltyPaid > 0 ? '#d97706' : '#27ae60' ?>;">
+                                <?php if ($displayTotalPenaltyPaid > 0): ?>
+                                    TK.<?= number_format($displayTotalPenaltyPaid, 2) ?>
+                                <?php else: ?>
+                                    TK. 0.00
+                                <?php endif; ?>
+                            </h4>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-between mt-2 pt-1 border-top border-light-subtle">
+                            <small class="text-muted" style="font-size: 11px;">
+                                <?php if (!empty($penaltyHistory)): ?>
+                                    <i class="fa-solid fa-receipt text-warning me-1"></i><?= count($penaltyHistory) ?> penalty record(s)
+                                <?php else: ?>
+                                    <i class="fa-solid fa-circle-check text-success me-1"></i>No late penalty
+                                <?php endif; ?>
+                            </small>
+                            <?php if ($totalPenaltyWaivedCalculated > 0): ?>
+                                <small class="text-info fw-semibold" style="font-size: 11px;">
+                                    Waived: ৳<?= number_format($totalPenaltyWaivedCalculated, 2) ?>
+                                </small>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
 
@@ -1272,6 +1377,9 @@ if (!isset($discountApprovalReq)) {
                     <a href="<?= $GLOBALS['base_url'] ?>/discount-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn mb-3" style="background: linear-gradient(135deg, #6c5ffc, #8b5cf6); color:#fff; border:none;">
                         <i class="fa-light fa-tags me-2"></i> Discount Statement
                     </a>
+                    <a href="<?= $GLOBALS['base_url'] ?>/client-datewise-statement/<?= (int)$clientDetails['booking_id'] ?>" target="_blank" class="btn mb-3" style="background: linear-gradient(135deg, #0ea5e9, #0284c7); color:#fff; border:none; font-weight:600;">
+                        <i class="fa-solid fa-calendar-check me-1.5"></i> Date-Wise Statement
+                    </a>
                     <?php if ($canEditBookingInfo ?? false): ?>
                     <button type="button" class="btn btn-warning text-dark fw-bold mb-3" data-bs-toggle="modal" data-bs-target="#editBookingInfoModal">
                         <i class="fa-solid fa-pen-to-square me-1"></i> Edit Booking Info
@@ -1287,6 +1395,26 @@ if (!isset($discountApprovalReq)) {
                     </button>
                     <?php endif; ?>
                 </div>
+
+                <!-- Navigation Tabs: Detailed Ledger vs Date-Wise Aggregated Summary -->
+                <ul class="nav nav-pills mb-3 border-bottom pb-2 gap-2" id="trxViewTabsCed" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active px-3 py-1.5 fw-semibold" id="tabDetailedTrxCed" data-bs-toggle="pill" data-bs-target="#paneDetailedTrxCed" type="button" role="tab" style="border-radius: 6px;">
+                            <i class="fa-solid fa-list-check me-1.5"></i> Detailed Breakdown (Ledger)
+                            <span class="badge bg-secondary-subtle text-secondary rounded-pill ms-1"><?= count($transactions) ?></span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link px-3 py-1.5 fw-semibold" id="tabDatewiseTrxCed" data-bs-toggle="pill" data-bs-target="#paneDatewiseTrxCed" type="button" role="tab" style="border-radius: 6px;">
+                            <i class="fa-solid fa-calendar-days me-1.5"></i> Date-Wise Payment Summary (Unified Batches)
+                            <span class="badge bg-primary-subtle text-primary rounded-pill ms-1"><?= count($datewiseSummary['batches'] ?? []) ?></span>
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="trxViewTabsCedContent">
+                    <!-- Pane 1: Detailed Ledger (Existing) -->
+                    <div class="tab-pane fade show active" id="paneDetailedTrxCed" role="tabpanel">
 
                 <!-- Payment Type Filter -->
                 <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
@@ -1486,6 +1614,14 @@ if (!isset($discountApprovalReq)) {
                                                 $legacyPath2 = 'uploads/payments/' . $transaction['attachment_image2'];
                                                 if (!in_array($legacyPath2, $docFiles)) $docFiles[] = $legacyPath2;
                                             }
+                                            if (!empty($transaction['attachment_image3'])) {
+                                                $legacyPath3 = 'uploads/payments/' . $transaction['attachment_image3'];
+                                                if (!in_array($legacyPath3, $docFiles)) $docFiles[] = $legacyPath3;
+                                            }
+                                            if (!empty($transaction['attachment_image4'])) {
+                                                $legacyPath4 = 'uploads/payments/' . $transaction['attachment_image4'];
+                                                if (!in_array($legacyPath4, $docFiles)) $docFiles[] = $legacyPath4;
+                                            }
                                             $docCount = count($docFiles);
                                         ?>
                                         <?php if ($docCount > 0 && is_numeric($transaction['id'])): ?>
@@ -1549,8 +1685,12 @@ if (!isset($discountApprovalReq)) {
                                             <?php
                                                 $hasId = (!empty($transaction['id']) && strpos($transaction['id'], 'booking-') === false);
                                                 $isVerified = (($transaction['verification_status'] ?? 'pending') === 'verified');
+                                                $bKey = !empty($transaction['batch_id']) ? $transaction['batch_id'] : ('single_' . $transaction['id']);
+                                                $batchMapInfo = $datewiseSummary['batch_map'][$bKey] ?? null;
+                                                $isBatchFullyVerified = $batchMapInfo ? !empty($batchMapInfo['is_fully_verified']) : $isVerified;
+                                                $canViewReceipt = $hasId && $isVerified && $isBatchFullyVerified;
                                             ?>
-                                            <?php if ($hasId && $isVerified): ?>
+                                            <?php if ($canViewReceipt): ?>
                                                 <a href="<?= $GLOBALS['base_url'] ?>/payment-invoice?payment_id=<?= $transaction['id'] ?>"
                                                    class="table__icon invoice"
                                                    style="color:#fff;background-color:#6c5ffc;"
@@ -1559,9 +1699,9 @@ if (!isset($discountApprovalReq)) {
                                                 </a>
                                             <?php elseif ($hasId): ?>
                                                 <span class="table__icon disabled"
-                                                      title="Invoice available after verification"
+                                                      title="Receipt available after all batch payments are verified by Accounts"
                                                       style="background-color:#fef3cd;color:#856404;cursor:not-allowed;">
-                                                    <i class="fa-light fa-file-invoice"></i>
+                                                    <i class="fa-solid fa-lock"></i>
                                                 </span>
                                             <?php else: ?>
                                                 <span class="text-muted">—</span>
@@ -1651,33 +1791,233 @@ if (!isset($discountApprovalReq)) {
                         </tbody>
                     </table>
                 </div>
+            </div> <!-- End Pane 1: Detailed Ledger -->
 
-                <!-- VIRTUAL EMI SCHEDULE (Yield to Maturity) -->
+            <!-- Pane 2: Date-Wise Payment Summary (Unified Batches) -->
+            <div class="tab-pane fade" id="paneDatewiseTrxCed" role="tabpanel">
+                <!-- Top Summary Banner -->
+                <div class="d-flex align-items-center justify-content-between p-3 mb-3 rounded-3 flex-wrap gap-2" style="background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%); border: 1px solid #dbeafe;">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="badge bg-primary-subtle text-primary p-2" style="font-size: 18px; border-radius: 8px;">
+                            <i class="fa-solid fa-calendar-check"></i>
+                        </span>
+                        <div>
+                            <h6 class="mb-0 text-dark fw-bold">Date-Wise Payment Summary (Unified Batches)</h6>
+                            <small class="text-muted">
+                                Payments made on the same date/batch are combined together without internal split breakdown. Total: <strong><?= count($datewiseSummary['batches'] ?? []) ?></strong> transaction date(s).
+                            </small>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fw-bold" style="font-size: 12px;">
+                            <i class="fa-solid fa-sack-dollar me-1"></i> Total Paid: ৳<?= number_format($datewiseSummary['total_paid'] ?? 0, 2) ?>
+                        </span>
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 fw-bold" style="font-size: 12px;">
+                            <i class="fa-solid fa-clock-rotate-left me-1"></i> Current Due: ৳<?= number_format($datewiseSummary['current_due'] ?? 0, 2) ?>
+                        </span>
+                        <a href="<?= $GLOBALS['base_url'] ?>/client-datewise-statement/<?= (int)$clientDetails['booking_id'] ?>" target="_blank" class="btn btn-sm btn-primary shadow-sm" style="font-weight: 600;">
+                            <i class="fa-solid fa-print me-1"></i> Print This Statement
+                        </a>
+                    </div>
+                </div>
+
+                <div class="table__wrapper table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="datewiseBatchTableCed">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="text-center" style="width: 45px;">#</th>
+                                <th style="white-space:nowrap;">Payment Date</th>
+                                <th style="white-space:nowrap;">Receipt / Voucher</th>
+                                <th>Payment Method</th>
+                                <th>Bank &amp; Account Details</th>
+                                <th>Cheque / Txn Ref</th>
+                                <th>Added By</th>
+                                <th class="text-end" style="white-space:nowrap;">Paid Amount (BDT)</th>
+                                <th class="text-end" style="white-space:nowrap;">Remaining Due (BDT)</th>
+                                <th class="text-center">Status</th>
+                                <th class="text-center" style="width: 70px;">Receipt</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($datewiseSummary['batches'])): ?>
+                                <tr>
+                                    <td colspan="11" class="text-center py-4 text-muted">
+                                        <i class="fa-solid fa-inbox fa-2x mb-2 text-secondary opacity-50 d-block"></i>
+                                        No payment transactions recorded for this client.
+                                    </td>
+                                </tr>
+                            <?php else: ?>
+                                <?php 
+                                $dwSl = 1;
+                                foreach ($datewiseSummary['batches'] as $dw): 
+                                    $dwStatus = strtolower($dw['verification_status'] ?? 'pending');
+                                ?>
+                                    <tr>
+                                        <td class="text-center text-muted fw-bold"><?= $dwSl++ ?></td>
+                                        <td class="text-nowrap fw-semibold">
+                                            <i class="fa-regular fa-calendar text-primary me-1" style="font-size: 11px;"></i>
+                                            <?= $dw['formatted_date'] ?>
+                                        </td>
+                                        <td class="text-nowrap font-monospace fw-bold" style="color: #4f46e5;">
+                                            <?= htmlspecialchars($dw['receipt_no']) ?>
+                                            <?php if (!empty($dw['is_bulk_batch'])): ?>
+                                                <span class="badge bg-info-subtle text-info border border-info px-1 ms-1" style="font-size: 9px;" title="Combined Multi-head Batch">
+                                                    <?= $dw['item_count'] ?> heads
+                                                </span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-light text-dark border px-2 py-1 text-uppercase fw-semibold" style="font-size: 10.5px;">
+                                                <?= htmlspecialchars($dw['payment_method']) ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <?php if (!empty($dw['bank_name']) && strtolower($dw['bank_name']) !== 'cash'): ?>
+                                                <div class="fw-semibold text-dark text-truncate" style="max-width: 170px;" title="<?= htmlspecialchars($dw['bank_name']) ?>">
+                                                    <i class="fa-solid fa-building-columns text-secondary me-1" style="font-size: 10px;"></i><?= htmlspecialchars($dw['bank_name']) ?>
+                                                </div>
+                                                <?php if (!empty($dw['bank_account_no'])): ?>
+                                                    <div class="text-muted extra-small">A/C: <?= htmlspecialchars($dw['bank_account_no']) ?></div>
+                                                <?php endif; ?>
+                                            <?php else: ?>
+                                                <span class="text-muted extra-small"><i class="fa-solid fa-money-bill-wave text-success me-1"></i>Cash Office</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="text-nowrap">
+                                            <?php if (!empty($dw['cheque_no'])): ?>
+                                                <div class="text-muted extra-small"><strong>Chq:</strong> <?= htmlspecialchars($dw['cheque_no']) ?></div>
+                                            <?php elseif (!empty($dw['transaction_ref'])): ?>
+                                                <code style="font-size: 10.5px;"><?= htmlspecialchars($dw['transaction_ref']) ?></code>
+                                            <?php else: ?>
+                                                <span class="text-muted extra-small">—</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <div class="fw-semibold text-dark extra-small d-flex align-items-center gap-1" title="Added by: <?= htmlspecialchars($dw['created_by_name']) ?>">
+                                                <i class="fa-solid fa-user-pen text-primary" style="font-size: 10px;"></i>
+                                                <span class="text-truncate" style="max-width: 130px;"><?= htmlspecialchars($dw['created_by_name']) ?></span>
+                                            </div>
+                                        </td>
+                                        <td class="text-end text-nowrap font-monospace fw-bold text-success" style="font-size: 13px;">
+                                            ৳<?= number_format((float)$dw['total_paid'], 2) ?>
+                                            <?php if ((float)$dw['total_discount'] > 0): ?>
+                                                <div class="text-warning extra-small fw-normal" title="Bulk EMI Discount Applied">
+                                                    + Disc: ৳<?= number_format((float)$dw['total_discount'], 2) ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="text-end text-nowrap font-monospace fw-bold text-danger" style="font-size: 13px;">
+                                            ৳<?= number_format((float)$dw['remaining_due'], 2) ?>
+                                        </td>
+                                        <td class="text-center">
+                                            <?php if (!empty($dw['is_fully_verified'])): ?>
+                                                <span class="badge bg-success-subtle text-success border border-success px-2 py-1" style="font-size: 10.5px; font-weight: 600;">
+                                                    <i class="fa-solid fa-circle-check me-1"></i>Verified
+                                                </span>
+                                            <?php elseif (($dw['verified_payments_in_batch'] ?? 0) > 0): ?>
+                                                <span class="badge bg-warning-subtle text-warning border border-warning px-2 py-1" style="font-size: 10.5px; font-weight: 600;" title="<?= (int)$dw['verified_payments_in_batch'] ?> of <?= (int)$dw['total_payments_in_batch'] ?> payments verified">
+                                                    <i class="fa-solid fa-clock-rotate-left me-1"></i>Partial (<?= (int)$dw['verified_payments_in_batch'] ?>/<?= (int)$dw['total_payments_in_batch'] ?>)
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="badge bg-secondary-subtle text-secondary border px-2 py-1" style="font-size: 10.5px; font-weight: 600;">
+                                                    <i class="fa-solid fa-clock me-1"></i>Pending
+                                                </span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="text-center">
+                                            <?php if (!empty($dw['is_fully_verified']) && is_numeric($dw['primary_payment_id'])): ?>
+                                                <a href="<?= $GLOBALS['base_url'] ?>/payment-invoice/<?= (int)$dw['primary_payment_id'] ?>" target="_blank" class="btn btn-xs btn-outline-primary p-1 px-2 rounded-2 shadow-sm" title="View / Print Money Receipt">
+                                                    <i class="fa-solid fa-receipt"></i>
+                                                </a>
+                                            <?php else: ?>
+                                                <span class="table__icon disabled" title="Money receipt available only after all batch payments are verified by Accounts" style="background-color:#fef3cd;color:#856404;cursor:not-allowed; display:inline-flex; width:28px; height:28px; align-items:center; justify-content:center; border-radius:4px; font-size:12px;">
+                                                    <i class="fa-solid fa-lock"></i>
+                                                </span>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr class="fw-bold">
+                                <td colspan="7" class="text-end" style="font-size: 12px; text-transform: uppercase;">
+                                    TOTAL PAID AMOUNT ACROSS ALL DATES:
+                                </td>
+                                <td class="text-end text-nowrap font-monospace text-success fs-14">
+                                    ৳<?= number_format($datewiseSummary['total_paid'] ?? 0, 2) ?>
+                                </td>
+                                <td class="text-end text-nowrap font-monospace text-danger fs-14">
+                                    ৳<?= number_format($datewiseSummary['current_due'] ?? 0, 2) ?>
+                                </td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div> <!-- End Pane 2: Date-Wise Payment Summary -->
+        </div> <!-- End tab-content -->
+
+                <!-- VIRTUAL EMI SCHEDULE (Yield to Maturity & CED Scheduling) -->
                 <?php if (!empty($virtualEmiSchedule)): ?>
                 <div class="mt-10" id="emi-schedule-section">
-                    <h5 class="mb-3"><i class="fa-light fa-calendar-check me-2"></i>EMI Maturity Schedule</h5>
+                    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                        <h5 class="mb-0"><i class="fa-light fa-calendar-check me-2"></i>EMI Maturity Schedule</h5>
+                        <div class="d-flex align-items-center gap-2">
+                            <a href="<?= $GLOBALS['base_url'] ?>/client-emi-schedule-print/<?= htmlspecialchars($bookingId) ?>" target="_blank" class="btn btn-sm btn-outline-secondary shadow-sm" title="Print EMI Maturity Schedule">
+                                <i class="fa-solid fa-print me-1"></i> Print Schedule
+                            </a>
+                            <?php if ($isCedUser): ?>
+                                <button type="button" class="btn btn-sm btn-primary shadow-sm" onclick="openNextEmiScheduleModal()">
+                                    <i class="fa-solid fa-calendar-plus me-1"></i> Schedule Next EMI Date
+                                </button>
+                            <?php endif; ?>
+                        </div>
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-bordered table-striped" style="font-size: 14px;">
                             <thead style="background-color: #f8f9fa;">
                                 <tr>
                                     <th>EMI No</th>
-                                    <th>Projected/Actual Due Date</th>
+                                    <th>Scheduled / Due Date</th>
                                     <th>Amount</th>
                                     <th>Paid Amount</th>
                                     <th>Due Amount</th>
                                     <th>Payment Status</th>
                                     <th>Maturity Status</th>
+                                    <th>Schedule Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php foreach ($virtualEmiSchedule as $emi): 
                                     $maturityBadge = '';
                                     switch($emi['maturity_status']) {
-                                        case 'paid': $maturityBadge = '<span class="badge bg-success">Paid</span>'; break;
-                                        case 'matured': $maturityBadge = '<span class="badge bg-info text-dark" style="background-color: #0dcaf0; color: #000;">Matured</span>'; break;
-                                        case 'pending': $maturityBadge = '<span class="badge bg-warning text-dark">Pending (Current Month)</span>'; break;
-                                        case 'due': $maturityBadge = '<span class="badge bg-danger">Due (Overdue)</span>'; break;
-                                        case 'future': $maturityBadge = '<span class="badge bg-secondary">Future</span>'; break;
+                                        case 'paid_on_time':
+                                            $maturityBadge = '<span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>Paid On Time</span>';
+                                            break;
+                                        case 'paid_late':
+                                            $delayText = (!empty($emi['delay_days']) && $emi['delay_days'] > 0) ? ' (' . $emi['delay_days'] . 'd delay)' : '';
+                                            $maturityBadge = '<span class="badge text-white" style="background:#ea580c;"><i class="fa-solid fa-clock-rotate-left me-1"></i>Paid Late' . $delayText . '</span>';
+                                            break;
+                                        case 'matured': 
+                                            $maturityBadge = '<span class="badge bg-info text-dark" style="background-color: #0dcaf0; color: #000;"><i class="fa-solid fa-check me-1"></i>Matured</span>'; 
+                                            break;
+                                        case 'pending': 
+                                            $maturityBadge = '<span class="badge bg-warning text-dark"><i class="fa-solid fa-hourglass-half me-1"></i>Pending (Current Month)</span>'; 
+                                            break;
+                                        case 'due': 
+                                            $overdueText = (!empty($emi['overdue_days']) && $emi['overdue_days'] > 0) ? ' (' . $emi['overdue_days'] . 'd overdue)' : '';
+                                            $maturityBadge = '<span class="badge bg-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i>Overdue' . $overdueText . '</span>'; 
+                                            break;
+                                        case 'unscheduled':
+                                            $maturityBadge = '<span class="badge bg-light text-secondary border"><i class="fa-regular fa-clock me-1"></i>Unscheduled</span>';
+                                            break;
+                                        case 'future': 
+                                            $maturityBadge = '<span class="badge bg-secondary">Future</span>'; 
+                                            break;
+                                        default:
+                                            $maturityBadge = '<span class="badge bg-secondary">' . htmlspecialchars(ucfirst($emi['maturity_status'])) . '</span>';
+                                            break;
                                     }
                                     
                                     $statusBadge = '';
@@ -1686,13 +2026,66 @@ if (!isset($discountApprovalReq)) {
                                     else $statusBadge = '<span class="text-muted">Unpaid</span>';
                                 ?>
                                 <tr>
-                                    <td><strong>#<?= $emi['emi_no'] ?></strong> <?= $emi['is_virtual'] ? '<small class="text-muted">(Proj.)</small>' : '' ?></td>
-                                    <td><?= date('d M, Y', strtotime($emi['due_date'])) ?></td>
+                                    <td>
+                                        <strong>#<?= $emi['emi_no'] ?></strong> 
+                                        <?php if (!empty($emi['is_virtual']) && !empty($emi['due_date'])): ?>
+                                            <small class="text-muted">(Proj.)</small>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php if (!empty($emi['due_date'])): ?>
+                                            <div class="d-flex align-items-center gap-1 flex-wrap">
+                                                <span class="fw-semibold"><?= date('d M, Y', strtotime($emi['due_date'])) ?></span>
+                                                <?php if (!empty($emi['is_date_custom'])): ?>
+                                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 10px;" title="Fixed by <?= htmlspecialchars($emi['fixed_by_name'] ?? 'CED') ?> on <?= !empty($emi['fixed_at']) ? date('d M, Y', strtotime($emi['fixed_at'])) : '' ?>">
+                                                        <i class="fa-solid fa-user-check me-1"></i>Fixed
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="badge bg-light text-muted border" style="font-size: 10px;">(Proj.)</span>
+                                                <?php endif; ?>
+                                            </div>
+                                            <?php if (!empty($emi['fixed_by_name'])): ?>
+                                                <div class="small text-muted mt-1" style="font-size: 11px;">
+                                                    <i class="fa-light fa-user me-1"></i>By: <?= htmlspecialchars($emi['fixed_by_name']) ?>
+                                                </div>
+                                            <?php endif; ?>
+                                            <?php if (!empty($emi['notes'])): ?>
+                                                <div class="small text-muted fst-italic" style="font-size: 11px;">
+                                                    <i class="fa-light fa-comment-dots me-1"></i><?= htmlspecialchars($emi['notes']) ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <span class="badge bg-light text-secondary border px-2 py-1" style="font-size: 11px;">
+                                                <i class="fa-regular fa-calendar-xmark me-1"></i>Not Scheduled
+                                            </span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td>TK. <?= number_format($emi['amount'], 2) ?></td>
-                                    <td>TK. <?= number_format($emi['paid_amount'], 2) ?></td>
+                                    <td>
+                                        TK. <?= number_format($emi['paid_amount'], 2) ?>
+                                        <?php if (!empty($emi['last_payment_date'])): ?>
+                                            <div class="small text-muted" style="font-size: 11px;">
+                                                <i class="fa-light fa-calendar-check me-1"></i>Cleared: <?= date('d M, Y', strtotime($emi['last_payment_date'])) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </td>
                                     <td>TK. <?= number_format($emi['due_amount'], 2) ?></td>
                                     <td><?= $statusBadge ?></td>
                                     <td><?= $maturityBadge ?></td>
+                                    <td>
+                                        <?php if (!empty($emi['is_locked'])): ?>
+                                            <span class="badge bg-light text-muted border py-1 px-2" title="Payment fully completed. Due date is locked and cannot be changed.">
+                                                <i class="fa-solid fa-lock me-1 text-secondary"></i>Locked
+                                            </span>
+                                        <?php elseif ($isCedUser): ?>
+                                            <button type="button" class="btn btn-xs btn-outline-primary py-1 px-2" 
+                                                    onclick="openSetEmiDateModal(<?= (int)($clientDetails['booking_id'] ?? $bookingId) ?>, <?= $emi['emi_no'] ?>, '<?= $emi['due_date'] ?? '' ?>', '<?= htmlspecialchars(addslashes($emi['notes'] ?? '')) ?>')">
+                                                <i class="fa-solid fa-calendar-pen me-1"></i>Set Date
+                                            </button>
+                                        <?php else: ?>
+                                            <span class="text-muted small">-</span>
+                                        <?php endif; ?>
+                                    </td>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -1704,6 +2097,219 @@ if (!isset($discountApprovalReq)) {
             </div>
         </div>
     </div>
+
+<!-- ═══════════════════════════════════════════════════════
+     Late Penalty History & Delay Breakdown Modal (CED)
+     ═══════════════════════════════════════════════════════ -->
+<div class="modal fade" id="clientPenaltyHistoryModal" tabindex="-1" aria-labelledby="clientPenaltyHistoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 14px; overflow: hidden;">
+            <!-- Modal Header -->
+            <div class="modal-header text-white" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-bottom: 2px solid #f59e0b;">
+                <div class="d-flex align-items-center gap-3">
+                    <span class="p-2 rounded-3 text-warning" style="background: rgba(245, 158, 11, 0.15); font-size: 20px;">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                    </span>
+                    <div>
+                        <h5 class="modal-title fw-bold text-white mb-0" id="clientPenaltyHistoryModalLabel">
+                            Late Payment Penalty Breakdown
+                        </h5>
+                        <small class="text-white-50" style="font-size: 12px;">
+                            Client: <strong><?= htmlspecialchars($clientDetails['client_name'] ?? 'N/A') ?></strong> | 
+                            Unit: <strong><?= htmlspecialchars($clientDetails['unit_name'] ?? $clientDetails['flat_no'] ?? 'N/A') ?></strong> | 
+                            Project: <strong><?= htmlspecialchars($clientDetails['project_name'] ?? 'N/A') ?></strong>
+                        </small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body p-4" style="background: #f8fafc;">
+                <!-- Summary Metrics Bar -->
+                <div class="row  mb-4">
+                    <div class="col-md-3 col-sm-6">
+                        <div class="p-3 bg-white rounded-3 border shadow-sm h-100">
+                            <span class="text-muted text-uppercase fw-semibold extra-small d-block mb-1">Total Penalty Incurred</span>
+                            <h4 class="mb-0 text-dark fw-bold font-monospace">৳<?= number_format($totalPenaltyChargedCalculated, 2) ?></h4>
+                            <small class="text-muted extra-small">Calculated 5% compounded</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="p-3 bg-white rounded-3 border border-warning-subtle shadow-sm h-100" style="background: #fffbeb !important;">
+                            <span class="text-warning-emphasis text-uppercase fw-bold extra-small d-block mb-1">Total Penalty Paid</span>
+                            <h4 class="mb-0 text-warning-emphasis fw-bold font-monospace">৳<?= number_format($displayTotalPenaltyPaid, 2) ?></h4>
+                            <small class="text-muted extra-small">Received from client</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="p-3 bg-white rounded-3 border border-success-subtle shadow-sm h-100" style="background: #f0fdf4 !important;">
+                            <span class="text-success text-uppercase fw-semibold extra-small d-block mb-1">Total Penalty Waived</span>
+                            <h4 class="mb-0 text-success fw-bold font-monospace">৳<?= number_format($totalPenaltyWaivedCalculated, 2) ?></h4>
+                            <small class="text-muted extra-small">Approved / authorized waivers</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="p-3 bg-white rounded-3 border shadow-sm h-100">
+                            <span class="text-muted text-uppercase fw-semibold extra-small d-block mb-1">Penalty Transactions</span>
+                            <h4 class="mb-0 text-primary fw-bold font-monospace"><?= count($penaltyHistory) ?> Record(s)</h4>
+                            <small class="text-muted extra-small">Payments with late delay</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Penalty Rule Info Note -->
+                <div class="alert alert-warning border-0 d-flex align-items-start gap-2 mb-4 p-3 rounded-3" style="background: rgba(245, 158, 11, 0.12); color: #92400e;">
+                    <i class="fa-solid fa-circle-info fs-5 mt-0.5 text-warning"></i>
+                    <div style="font-size: 12.5px; line-height: 1.5;">
+                        <strong>Policy & Calculation:</strong> Overdue installments are charged a <strong>5% compounded monthly late penalty</strong> based on the scheduled EMI due date ($P \times [(1 + 0.05)^m - 1]$). Penalty payments are recorded separately and are <strong>never deducted</strong> from the unit's flat price or construction balance.
+                    </div>
+                </div>
+
+                <!-- Table of Records -->
+                <?php if (!empty($penaltyHistory)): ?>
+                <div class="table-responsive bg-white rounded-3 border shadow-sm">
+                    <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
+                        <thead class="table-light text-uppercase text-muted fw-semibold" style="font-size: 11px; letter-spacing: 0.5px;">
+                            <tr>
+                                <th class="text-center" style="width: 40px;">#</th>
+                                <th>Target Installment</th>
+                                <th>Scheduled Due</th>
+                                <th>Payment Date</th>
+                                <th>Late Delay</th>
+                                <th class="text-end">Base EMI</th>
+                                <th class="text-end">Penalty Charged</th>
+                                <th class="text-end">Penalty Paid</th>
+                                <th>Waiver & Status</th>
+                                <th>Collector / Created</th>
+                                <th class="text-center">Receipt</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($penaltyHistory as $idx => $ph): ?>
+                            <tr>
+                                <td class="text-center text-muted fw-bold"><?= $idx + 1 ?></td>
+                                <td>
+                                    <div class="fw-bold text-dark">
+                                        <i class="fa-solid fa-file-invoice text-primary me-1"></i>
+                                        <?= htmlspecialchars($ph['installment_label'] ?? 'Installment') ?>
+                                    </div>
+                                    <small class="text-muted extra-small">Trx ID: #<?= $ph['id'] ?></small>
+                                </td>
+                                <td class="text-nowrap">
+                                    <?php if (!empty($ph['scheduled_due_date'])): ?>
+                                        <div class="fw-semibold text-danger">
+                                            <i class="fa-regular fa-calendar-xmark me-1"></i>
+                                            <?= date('d M, Y', strtotime($ph['scheduled_due_date'])) ?>
+                                        </div>
+                                    <?php else: ?>
+                                        <span class="text-muted">Not specified</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-nowrap">
+                                    <div class="fw-semibold text-success">
+                                        <i class="fa-regular fa-calendar-check me-1"></i>
+                                        <?= date('d M, Y', strtotime($ph['payment_date'])) ?>
+                                    </div>
+                                </td>
+                                <td>
+                                    <?php if ($ph['days_late'] > 0): ?>
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle fw-semibold px-2 py-1" style="font-size: 11.5px;">
+                                            <i class="fa-solid fa-clock me-1"></i><?= $ph['days_late'] ?> Days Late
+                                            <?php if ($ph['months_overdue'] > 0): ?>
+                                                <small class="d-block fw-normal" style="font-size: 10px;">(<?= $ph['months_overdue'] ?> Month<?= $ph['months_overdue'] > 1 ? 's' : '' ?> Overdue)</small>
+                                            <?php endif; ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">On Time</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-end font-monospace">
+                                    ৳<?= number_format($ph['amount'], 2) ?>
+                                </td>
+                                <td class="text-end font-monospace fw-semibold text-danger">
+                                    ৳<?= number_format($ph['penalty_amount'], 2) ?>
+                                </td>
+                                <td class="text-end font-monospace fw-bold text-success" style="font-size: 13.5px;">
+                                    ৳<?= number_format($ph['penalty_paid'], 2) ?>
+                                </td>
+                                <td>
+                                    <?php if ($ph['penalty_waived'] > 0): ?>
+                                        <span class="badge bg-info-subtle text-info border border-info-subtle fw-semibold">
+                                            Waived: ৳<?= number_format($ph['penalty_waived'], 2) ?>
+                                        </span>
+                                        <div class="extra-small text-muted mt-1">
+                                            Status: <span class="badge bg-light text-dark border"><?= ucfirst($ph['waiver_status'] ?? 'pending') ?></span>
+                                        </div>
+                                        <?php if (!empty($ph['waiver_reason'])): ?>
+                                            <div class="extra-small text-muted mt-0.5" title="<?= htmlspecialchars($ph['waiver_reason']) ?>">
+                                                <i class="fa-solid fa-comment-dots me-1"></i><?= htmlspecialchars(mb_strimwidth($ph['waiver_reason'], 0, 25, '...')) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php if (!empty($ph['waiver_attachment'])): ?>
+                                            <a href="<?= $GLOBALS['base_url'] ?>/<?= htmlspecialchars($ph['waiver_attachment']) ?>" target="_blank" class="extra-small text-primary d-block mt-0.5">
+                                                <i class="fa-solid fa-paperclip me-1"></i>View Doc
+                                            </a>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <span class="text-muted extra-small">No Waiver</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <div class="text-truncate fw-semibold" style="max-width: 140px;" title="<?= htmlspecialchars($ph['created_by_name'] ?? 'System') ?>">
+                                        <?= htmlspecialchars($ph['created_by_name'] ?? 'System') ?>
+                                    </div>
+                                    <small class="text-muted extra-small text-capitalize"><?= htmlspecialchars($ph['payment_method'] ?? 'cash') ?></small>
+                                </td>
+                                <td class="text-center">
+                                    <?php 
+                                    $proofPaths = !empty($ph['attachment_paths']) ? json_decode($ph['attachment_paths'], true) : [];
+                                    if (!empty($proofPaths) && is_array($proofPaths)): 
+                                    ?>
+                                        <a href="<?= $GLOBALS['base_url'] ?>/<?= htmlspecialchars($proofPaths[0]) ?>" target="_blank" class="btn btn-xs btn-outline-secondary py-1 px-2" title="View Payment Proof">
+                                            <i class="fa-solid fa-image"></i>
+                                        </a>
+                                    <?php else: ?>
+                                        <span class="text-muted extra-small">-</span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                        <tfoot class="table-light border-top-2 fw-bold" style="font-size: 13px;">
+                            <tr>
+                                <td colspan="5" class="text-uppercase text-end">Total Across All Penalties:</td>
+                                <td class="text-end font-monospace">৳<?= number_format(array_sum(array_column($penaltyHistory, 'amount')), 2) ?></td>
+                                <td class="text-end font-monospace text-danger">৳<?= number_format($totalPenaltyChargedCalculated, 2) ?></td>
+                                <td class="text-end font-monospace text-success fs-14">৳<?= number_format($displayTotalPenaltyPaid, 2) ?></td>
+                                <td class="font-monospace text-info">৳<?= number_format($totalPenaltyWaivedCalculated, 2) ?></td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <?php else: ?>
+                <div class="bg-white rounded-3 border p-5 text-center shadow-sm">
+                    <div class="d-inline-flex align-items-center justify-content-center p-3 rounded-circle bg-success-subtle text-success mb-3" style="width: 60px; height: 60px;">
+                        <i class="fa-solid fa-circle-check fs-2"></i>
+                    </div>
+                    <h5 class="fw-bold text-dark mb-1">No Late Penalties Recorded</h5>
+                    <p class="text-muted mb-0" style="font-size: 13px; max-width: 480px; margin: 0 auto;">
+                        This client does not have any recorded late payment penalties. All installments have been settled on time or penalty was waived upon authorization.
+                    </p>
+                </div>
+                <?php endif; ?>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer bg-light border-top">
+                <button type="button" class="btn btn-secondary px-4 py-2" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-xmark me-1"></i>Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- ═══════════════════════════════════════════════════════
      Document Preview Modal  (CED — Read-Only)
@@ -2332,6 +2938,65 @@ if (!isset($discountApprovalReq)) {
                     <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-warning text-dark fw-bold px-4" id="btnSaveBookingInfoCed">
                         <i class="fa-solid fa-save me-1"></i> Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Set EMI Due Date (CED Scheduling) -->
+<div class="modal fade" id="setEmiDateModal" tabindex="-1" aria-labelledby="setEmiDateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 12px; overflow: hidden; border: none; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
+            <div class="modal-header" style="background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%); color: #fff;">
+                <h5 class="modal-title fw-bold" id="setEmiDateModalLabel">
+                    <i class="fa-solid fa-calendar-check me-2"></i>Schedule EMI Due Date
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="setEmiDateForm" onsubmit="handleSaveEmiDueDate(event)">
+                <input type="hidden" name="booking_id" id="cedModalBookingId" value="<?= (int)($clientDetails['booking_id'] ?? $bookingId) ?>">
+                <div class="modal-body p-4">
+                    <div class="alert alert-info border-0 py-2 px-3 small rounded-2 mb-3">
+                        <i class="fa-solid fa-circle-info me-1"></i>
+                        Set client-agreed EMI maturity date. Once an EMI is fully paid, its date will be permanently locked.
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="cedModalEmiNo" class="form-label fw-semibold">Select EMI Number <span class="text-danger">*</span></label>
+                        <select class="form-select" id="cedModalEmiNo" name="emi_no" required>
+                            <?php foreach ($virtualEmiSchedule as $schItem): ?>
+                                <option value="<?= $schItem['emi_no'] ?>" <?= !empty($schItem['is_locked']) ? 'disabled' : '' ?>>
+                                    EMI #<?= $schItem['emi_no'] ?> - <?= date('d M, Y', strtotime($schItem['due_date'])) ?> 
+                                    <?= !empty($schItem['is_locked']) ? '(Fully Paid - Locked 🔒)' : (($schItem['status'] === 'partially_paid') ? '(Partially Paid)' : '(Unpaid)') ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="cedModalDueDate" class="form-label fw-semibold">New Due Date <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="cedModalDueDate" name="due_date" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="cedModalNotes" class="form-label fw-semibold">Discussion / Scheduling Notes (Optional)</label>
+                        <textarea class="form-control" id="cedModalNotes" name="notes" rows="2" placeholder="e.g., Client requested 15th of month due to salary schedule"></textarea>
+                    </div>
+
+                    <div class="form-check form-switch p-0 ps-4 mb-2">
+                        <input class="form-check-input" type="checkbox" id="cedModalApplySubsequent" name="apply_subsequent" value="1" checked>
+                        <label class="form-check-label small" for="cedModalApplySubsequent">
+                            <strong>Auto-align subsequent unpaid EMIs</strong>
+                            <div class="text-muted" style="font-size: 11px;">Automatically sets upcoming unpaid EMIs at +1 month intervals from this date.</div>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light px-4 py-3">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm px-3 fw-bold" id="btnSaveEmiDueDate">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> Save Due Date
                     </button>
                 </div>
             </form>
@@ -3130,6 +3795,91 @@ function cedExecuteDiscountAction(action, stage, reqId, bookingId) {
             });
         } else {
             alert('Network Error: ' + err);
+        }
+    });
+}
+
+// ─── Set EMI Due Date Functions (CED) ──────────────────────────
+function openSetEmiDateModal(bookingId, emiNo, currentDate, notes) {
+    document.getElementById('cedModalBookingId').value = bookingId;
+    const emiSelect = document.getElementById('cedModalEmiNo');
+    if (emiSelect) {
+        emiSelect.value = emiNo;
+    }
+    document.getElementById('cedModalDueDate').value = currentDate || '';
+    document.getElementById('cedModalNotes').value = notes || '';
+    new bootstrap.Modal(document.getElementById('setEmiDateModal')).show();
+}
+
+function openNextEmiScheduleModal() {
+    const emiSelect = document.getElementById('cedModalEmiNo');
+    if (emiSelect) {
+        for (let i = 0; i < emiSelect.options.length; i++) {
+            if (!emiSelect.options[i].disabled) {
+                emiSelect.selectedIndex = i;
+                break;
+            }
+        }
+    }
+    new bootstrap.Modal(document.getElementById('setEmiDateModal')).show();
+}
+
+function handleSaveEmiDueDate(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnSaveEmiDueDate');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+
+    const form = document.getElementById('setEmiDateForm');
+    const formData = new FormData(form);
+
+    fetch('<?= $GLOBALS['base_url'] ?>/account-client/saveEmiDueDate', {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        if (data.success) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Scheduled!',
+                    text: data.message || 'EMI Due Date updated successfully.',
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => {
+                    location.reload();
+                });
+            } else {
+                alert(data.message || 'Saved successfully');
+                location.reload();
+            }
+        } else {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Action Failed',
+                    text: data.message || 'Failed to update EMI Due Date.'
+                });
+            } else {
+                alert(data.message || 'Failed to update EMI Due Date.');
+            }
+        }
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Network error: ' + err
+            });
+        } else {
+            alert('Network error: ' + err);
         }
     });
 }

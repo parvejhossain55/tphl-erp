@@ -24,27 +24,105 @@ class FundRequisitionController extends Controller {
         if ($checked) return;
         $checked = true;
 
+        @$this->db->query("
+            CREATE TABLE IF NOT EXISTS `fund_requisitions` (
+                `id` INT(11) NOT NULL AUTO_INCREMENT,
+                `department_id` INT(11) NOT NULL,
+                `project_id` INT(11) NULL DEFAULT NULL,
+                `asset_id` INT(11) NULL DEFAULT NULL,
+                `requested_by` INT(11) NOT NULL,
+                `requisition_type` VARCHAR(50) DEFAULT 'general',
+                `category` VARCHAR(100) DEFAULT 'Other Expense',
+                `account_id` INT(11) NULL DEFAULT NULL,
+                `location` VARCHAR(255) NULL DEFAULT NULL,
+                `purpose_to_visit` TEXT NULL DEFAULT NULL,
+                `mode_of_transport` VARCHAR(100) NULL DEFAULT NULL,
+                `amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                `approved_amount` DECIMAL(12,2) NULL DEFAULT NULL,
+                `paid_amount` DECIMAL(12,2) NULL DEFAULT 0.00,
+                `purpose` TEXT NOT NULL,
+                `receipt_path` TEXT NULL DEFAULT NULL,
+                `status` ENUM('pending_dept','pending_qc','pending','approved','rejected','paid','partially_approved','partially_paid') DEFAULT 'pending',
+                `is_dept_approval_required` TINYINT(1) NOT NULL DEFAULT 0,
+                `dept_head_status` ENUM('pending','approved','rejected','not_required') DEFAULT 'not_required',
+                `dept_head_approved_by` INT(11) NULL DEFAULT NULL,
+                `dept_head_approved_at` TIMESTAMP NULL DEFAULT NULL,
+                `dept_head_approval_note` TEXT NULL DEFAULT NULL,
+                `qc_approved_by` INT(11) NULL DEFAULT NULL,
+                `qc_approved_at` TIMESTAMP NULL DEFAULT NULL,
+                `qc_approval_note` TEXT NULL DEFAULT NULL,
+                `qc_approved_amount` DECIMAL(12,2) NULL DEFAULT NULL,
+                `approved_by` INT(11) NULL DEFAULT NULL,
+                `approved_at` TIMESTAMP NULL DEFAULT NULL,
+                `approval_note` TEXT NULL DEFAULT NULL,
+                `paid_by` INT(11) NULL DEFAULT NULL,
+                `paid_at` TIMESTAMP NULL DEFAULT NULL,
+                `payment_method` VARCHAR(50) NULL DEFAULT NULL,
+                `accounts_note` TEXT NULL DEFAULT NULL,
+                `payment_attachment_path` VARCHAR(255) NULL DEFAULT NULL,
+                `is_received` TINYINT(1) NOT NULL DEFAULT 0,
+                `received_at` TIMESTAMP NULL DEFAULT NULL,
+                `settlement_status` VARCHAR(50) DEFAULT 'pending',
+                `settled_at` TIMESTAMP NULL DEFAULT NULL,
+                `settled_by` INT(11) NULL DEFAULT NULL,
+                `balance_returned` TINYINT(1) NOT NULL DEFAULT 0,
+                `balance_returned_at` TIMESTAMP NULL DEFAULT NULL,
+                `accounts_settlement_verified` TINYINT(1) NOT NULL DEFAULT 0,
+                `accounts_verified_by` INT(11) NULL DEFAULT NULL,
+                `accounts_verified_at` TIMESTAMP NULL DEFAULT NULL,
+                `parent_requisition_id` INT(11) NULL DEFAULT NULL,
+                `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+                `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+
         $colsNeeded = [
+            'asset_id' => "INT(11) NULL DEFAULT NULL AFTER project_id",
+            'approved_amount' => "DECIMAL(12,2) NULL DEFAULT NULL AFTER amount",
+            'paid_amount' => "DECIMAL(12,2) NULL DEFAULT 0.00 AFTER approved_amount",
+            'is_dept_approval_required' => "TINYINT(1) NOT NULL DEFAULT 0 AFTER status",
+            'dept_head_status' => "ENUM('pending','approved','rejected','not_required') DEFAULT 'not_required' AFTER is_dept_approval_required",
+            'dept_head_approved_by' => "INT(11) NULL DEFAULT NULL AFTER dept_head_status",
+            'dept_head_approved_at' => "TIMESTAMP NULL DEFAULT NULL AFTER dept_head_approved_by",
+            'dept_head_approval_note' => "TEXT NULL DEFAULT NULL AFTER dept_head_approved_at",
             'qc_approved_by' => "INT(11) NULL DEFAULT NULL AFTER dept_head_approval_note",
             'qc_approved_at' => "TIMESTAMP NULL DEFAULT NULL AFTER qc_approved_by",
             'qc_approval_note' => "TEXT NULL DEFAULT NULL AFTER qc_approved_at",
             'qc_approved_amount' => "DECIMAL(12,2) NULL DEFAULT NULL AFTER qc_approval_note",
             'location' => "VARCHAR(255) NULL DEFAULT NULL AFTER category",
             'purpose_to_visit' => "TEXT NULL DEFAULT NULL AFTER location",
-            'mode_of_transport' => "VARCHAR(100) NULL DEFAULT NULL AFTER purpose_to_visit"
+            'mode_of_transport' => "VARCHAR(100) NULL DEFAULT NULL AFTER purpose_to_visit",
+            'account_id' => "INT(11) NULL DEFAULT NULL AFTER category",
+            'payment_attachment_path' => "VARCHAR(255) NULL DEFAULT NULL AFTER accounts_note",
+            'is_received' => "TINYINT(1) NOT NULL DEFAULT 0",
+            'received_at' => "TIMESTAMP NULL DEFAULT NULL",
+            'settlement_status' => "VARCHAR(50) DEFAULT 'pending'",
+            'settled_at' => "TIMESTAMP NULL DEFAULT NULL",
+            'settled_by' => "INT(11) NULL DEFAULT NULL",
+            'balance_returned' => "TINYINT(1) NOT NULL DEFAULT 0",
+            'balance_returned_at' => "TIMESTAMP NULL DEFAULT NULL",
+            'accounts_settlement_verified' => "TINYINT(1) NOT NULL DEFAULT 0",
+            'accounts_verified_by' => "INT(11) NULL DEFAULT NULL",
+            'accounts_verified_at' => "TIMESTAMP NULL DEFAULT NULL",
+            'parent_requisition_id' => "INT(11) NULL DEFAULT NULL"
         ];
 
         foreach ($colsNeeded as $col => $definition) {
             $chk = $this->db->query("SHOW COLUMNS FROM fund_requisitions LIKE '{$col}'");
             if ($chk && $chk->num_rows === 0) {
-                @$this->db->query("ALTER TABLE fund_requisitions ADD COLUMN {$col} {$definition}");
+                if (!@$this->db->query("ALTER TABLE fund_requisitions ADD COLUMN {$col} {$definition}")) {
+                    // Fallback without AFTER clause if reference column is missing
+                    $cleanDef = preg_replace('/\s+AFTER\s+\w+$/i', '', $definition);
+                    @$this->db->query("ALTER TABLE fund_requisitions ADD COLUMN {$col} {$cleanDef}");
+                }
             }
         }
 
-        // Ensure status ENUM includes pending_qc
+        // Ensure status ENUM includes pending_dept and pending_qc
         $colStatus = $this->db->query("SHOW COLUMNS FROM fund_requisitions LIKE 'status'");
         if ($colStatus && $r = $colStatus->fetch_assoc()) {
-            if (isset($r['Type']) && strpos($r['Type'], "'pending_qc'") === false) {
+            if (isset($r['Type']) && (strpos($r['Type'], "'pending_qc'") === false || strpos($r['Type'], "'pending_dept'") === false)) {
                 @$this->db->query("ALTER TABLE fund_requisitions MODIFY COLUMN status ENUM('pending_dept','pending_qc','pending','approved','rejected','paid','partially_approved','partially_paid') DEFAULT 'pending'");
             }
         }
@@ -1289,6 +1367,9 @@ class FundRequisitionController extends Controller {
             }
 
             $this->syncApprovalRequest($id);
+            if (in_array($status, ['approved', 'partially_approved'])) {
+                $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = COALESCE(op_head_by, {$approved_by}), op_head_at = COALESCE(op_head_at, NOW()) WHERE source_table = 'fund_requisitions' AND source_id = {$id}");
+            }
 
             // Additional tranche approved by Management (remaining balance) -> Accounts Head must verify the new amount again
             if ($status !== 'rejected' && $posted_amount > 0 && (float)($frData['approved_amount'] ?? 0) > 0) {
@@ -1996,14 +2077,39 @@ class FundRequisitionController extends Controller {
         // Mark parent as extra_requested
         $this->db->query("UPDATE fund_requisitions SET settlement_status = 'extra_requested' WHERE id = $id");
 
+        // Check employee record for requested_by user to see if Dept Head approval is required
+        $empRes = $this->db->query("
+            SELECT e.is_dept_head, e.reporting_user_id 
+            FROM employees e 
+            LEFT JOIN users u ON (u.employee_id = e.id OR e.user_id = u.id)
+            WHERE u.id = $userId 
+            LIMIT 1
+        ");
+        $empData = ($empRes && $empRes->num_rows > 0) ? $empRes->fetch_assoc() : null;
+
+        $isDeptHead = (int)($empData['is_dept_head'] ?? 0);
+        $reportingUserId = !empty($empData['reporting_user_id']) ? (int)$empData['reporting_user_id'] : null;
+
+        if ($isDeptHead === 0 && !empty($reportingUserId)) {
+            $isDeptApprovalRequired = 1;
+            $deptHeadStatus = 'pending';
+            $initialStatus = 'pending_dept';
+        } else {
+            $isDeptApprovalRequired = 0;
+            $deptHeadStatus = 'not_required';
+            $initialStatus = 'pending_qc';
+        }
+
+        $accountId = !empty($req['account_id']) ? (int)$req['account_id'] : null;
+
         $stmt = $this->db->prepare("
             INSERT INTO fund_requisitions
             (department_id, project_id, requested_by, requisition_type, category,
-             amount, purpose, status, parent_requisition_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+             amount, purpose, status, is_dept_approval_required, dept_head_status, account_id, parent_requisition_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->bind_param(
-            'iiisssdsi',
+            'iiissdssisii',
             $req['department_id'],
             $req['project_id'],
             $userId,
@@ -2011,11 +2117,17 @@ class FundRequisitionController extends Controller {
             $req['category'],
             $extraAmount,
             $reason,
+            $initialStatus,
+            $isDeptApprovalRequired,
+            $deptHeadStatus,
+            $accountId,
             $id
         );
 
         if ($stmt->execute()) {
-            setSuccess('Extra fund request submitted. Awaiting management approval.');
+            $newReqId = $stmt->insert_id;
+            $this->syncApprovalRequest($newReqId);
+            setSuccess('Extra fund request submitted. Awaiting approval.');
         } else {
             setError('Failed to create extra fund request: ' . $this->db->error);
         }
@@ -2107,7 +2219,12 @@ class FundRequisitionController extends Controller {
             $approveRole = 'management';
             $status = 'pending';
         } elseif ($frStatus === 'approved') {
-            $approveRole = 'accounts';
+            $isAhAppr = false;
+            if ($check && $check->num_rows > 0) {
+                $arCheckRow = $this->db->query("SELECT accounts_head_status FROM approval_requests WHERE source_table = 'fund_requisitions' AND source_id = $fundReqId ORDER BY id DESC LIMIT 1")->fetch_assoc();
+                $isAhAppr = (strtolower($arCheckRow['accounts_head_status'] ?? '') === 'approved');
+            }
+            $approveRole = $isAhAppr ? 'accounts' : 'accounts_head';
             $status = 'approved';
         } elseif ($frStatus === 'partially_approved') {
             // Management approved a part: approved part goes to Accounts Head / Accounts,
@@ -2115,7 +2232,7 @@ class FundRequisitionController extends Controller {
             $approveRole = 'management';
             $status = 'partially_approved';
         } elseif (in_array($frStatus, ['paid', 'partially_paid'])) {
-            $approveRole = 'accounts';
+            $approveRole = ($frStatus === 'paid') ? 'completed' : 'accounts';
             $status = ($frStatus === 'paid') ? 'approved' : 'partially_paid';
         } elseif ($frStatus === 'rejected') {
             $approveRole = 'management';

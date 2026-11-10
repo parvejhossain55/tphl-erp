@@ -47,6 +47,25 @@ class FormatHelper
     }
 
     /**
+     * Formats sqft (area) cleanly.
+     * Whole numbers are printed without decimals (e.g., 1550.0000 -> 1550).
+     * Decimals are formatted to 2 decimal places (e.g., 1550.5000 -> 1550.50).
+     */
+    public static function formatSqft($val, $withCommas = false)
+    {
+        if ($val === null || $val === '' || !is_numeric($val)) {
+            return '';
+        }
+
+        $num = (float)$val;
+        if (floor($num) == $num) {
+            return $withCommas ? number_format($num, 0) : (string)(int)$num;
+        }
+
+        return $withCommas ? number_format($num, 2) : number_format($num, 2, '.', '');
+    }
+
+    /**
      * Formats number to words in Bangladeshi / South Asian numbering format (Crore, Lakh, Thousand, Hundred).
      */
     public static function amountInWords($amount)

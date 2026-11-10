@@ -1207,7 +1207,7 @@ class MealRecord extends Model
         while ($row = $pRes->fetch_assoc()) {
             $payslipId = (int)$row['id'];
             $empId     = (int)$row['employee_id'];
-            $mealPct   = (isset($row['per_meal_percentage']) && (float)$row['per_meal_percentage'] > 0) ? (float)$row['per_meal_percentage'] : 100.00;
+            $mealPct   = (isset($row['per_meal_percentage']) && $row['per_meal_percentage'] !== '' && (float)$row['per_meal_percentage'] >= 0) ? (float)$row['per_meal_percentage'] : 100.00;
             if ($mealPct == 100.00 && !empty($row['per_meal_amount']) && (float)$row['per_meal_amount'] > 0 && (float)$row['per_meal_amount'] != $standardMealRate) {
                 $effectiveMealRate = (float)$row['per_meal_amount'];
             } else {

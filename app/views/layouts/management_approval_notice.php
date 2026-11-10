@@ -144,7 +144,6 @@ $noticeId = 'mgmtApprovalNotice_' . substr(md5(__FILE__ . ($noticeContext ?? 'ge
                     <div class="p-2 rounded-2 fs-11 mgmt-desc-box">
                         <?php if ($isMgmtUserNotice): ?>
                             <div class="d-flex align-items-start gap-1.5 mgmt-desc-text">
-                                <i class="fa-solid fa-user-tie text-primary mt-0.5 fs-12"></i>
                                 <div>
                                     <strong class="mgmt-desc-title">Management Desk (Management / DCEO / CEO):</strong> 
                                     Your designated routine approval hours are shown above. 

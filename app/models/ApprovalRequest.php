@@ -574,7 +574,8 @@ class ApprovalRequest extends Model
                 if ($sourceTable === 'project_incentive_claims') {
                     $this->db->query("UPDATE project_incentive_claims SET claim_status = 'approved', approved_by = {$userId}, approved_at = NOW() WHERE id = {$sourceId}");
                 } else {
-                    $this->syncSourceTableStatusDirect($sourceTable, $sourceId, 'approved', $userId, $reqAmount, $note);
+                    $actualApproverId = !empty($req['approved_by']) ? (int)$req['approved_by'] : (!empty($req['op_head_by']) ? (int)$req['op_head_by'] : $userId);
+                    $this->syncSourceTableStatusDirect($sourceTable, $sourceId, 'approved', $actualApproverId, $reqAmount, $note);
                 }
             }
         }
@@ -781,14 +782,28 @@ class ApprovalRequest extends Model
             $this->db->query("UPDATE project_extra_assets SET mgmt_status = 'approved', mgmt_by = {$userId}, mgmt_at = NOW(), mgmt_note = '{$note}' WHERE id = {$sourceId}");
         } elseif ($sourceTable === 'vendor_payment_requests') {
             $amtSql = ($amount !== null && (float)$amount > 0) ? (float)$amount : "COALESCE(qc_approved_amount, net_payable, invoice_amount, 0.00)";
-            $this->db->query("UPDATE vendor_payment_requests SET status = 'Approved', approved_by = {$userId}, approved_amount = {$amtSql}, due_amount = {$amtSql}, updated_at = NOW(), management_note = '{$note}' WHERE id = {$sourceId}");
+            $this->db->query("UPDATE vendor_payment_requests SET status = 'Approved', approved_by = COALESCE(approved_by, {$userId}), approved_amount = {$amtSql}, due_amount = {$amtSql}, updated_at = NOW(), management_note = CASE WHEN management_note IS NULL OR management_note = '' THEN '{$note}' ELSE management_note END WHERE id = {$sourceId}");
+            try {
+                require_once dirname(__DIR__) . '/services/JournalIntegrationService.php';
+                $journalService = new \Services\JournalIntegrationService($this->db);
+                $journalService->generateVendorAccrual($sourceId, $userId);
+            } catch (\Throwable $e) {
+                error_log("Failed to auto-generate vendor accrual journal in syncSourceTableStatusDirect: " . $e->getMessage());
+            }
         } elseif ($sourceTable === 'contractor_bill_requests') {
             $amtSql = ($amount !== null && (float)$amount > 0) ? (float)$amount : "COALESCE(approved_amount, bill_amount, 0.00)";
-            $this->db->query("UPDATE contractor_bill_requests SET status = 'approved', approved_by = {$userId}, approved_amount = {$amtSql}, due_amount = {$amtSql}, updated_at = NOW(), management_note = '{$note}' WHERE id = {$sourceId}");
+            $this->db->query("UPDATE contractor_bill_requests SET status = 'approved', approved_by = COALESCE(approved_by, {$userId}), approved_amount = {$amtSql}, due_amount = {$amtSql}, updated_at = NOW(), management_note = CASE WHEN management_note IS NULL OR management_note = '' THEN '{$note}' ELSE management_note END WHERE id = {$sourceId}");
+            try {
+                require_once dirname(__DIR__) . '/services/JournalIntegrationService.php';
+                $journalService = new \Services\JournalIntegrationService($this->db);
+                $journalService->generateContractorAccrual($sourceId, $userId);
+            } catch (\Throwable $e) {
+                error_log("Failed to auto-generate contractor accrual journal in syncSourceTableStatusDirect: " . $e->getMessage());
+            }
         } elseif ($sourceTable === 'project_other_costs') {
-            $this->db->query("UPDATE project_other_costs SET status = 'management_approved', management_apporved_by_id = {$userId}, management_apporved_at = NOW(), management_apporved_note = '{$note}' WHERE id = {$sourceId}");
+            $this->db->query("UPDATE project_other_costs SET status = 'management_approved', management_apporved_by_id = COALESCE(management_apporved_by_id, {$userId}), management_apporved_at = COALESCE(management_apporved_at, NOW()), management_apporved_note = CASE WHEN management_apporved_note IS NULL OR management_apporved_note = '' THEN '{$note}' ELSE management_apporved_note END WHERE id = {$sourceId}");
         } elseif ($sourceTable === 'con_labor_requisitions') {
-            $this->db->query("UPDATE con_labor_requisitions SET status = 'management_approved', management_approved_by = {$userId}, management_approved_at = NOW(), approved_amount = total_amount WHERE id = {$sourceId}");
+            $this->db->query("UPDATE con_labor_requisitions SET status = 'management_approved', management_approved_by = COALESCE(management_approved_by, {$userId}), management_approved_at = COALESCE(management_approved_at, NOW()), approved_amount = total_amount WHERE id = {$sourceId}");
         } elseif ($sourceTable === 'expense_adjustments') {
             $this->db->query("UPDATE expense_adjustments SET status = 'approved', approved_by = {$userId}, approved_at = NOW() WHERE id = {$sourceId}");
         } elseif ($sourceTable === 'advance_salaries') {
@@ -948,28 +963,40 @@ class ApprovalRequest extends Model
         $mgmtDoneStatuses = ['approved', 'partially_paid', 'paid', 'partially_approved'];
         $isMgmtApproved = in_array($reqStatus, $mgmtDoneStatuses);
 
+        $isVprOrCbr = in_array($sourceTable, ['vendor_payment_requests', 'contractor_bill_requests'], true);
+        $isReadyForOpHead = true;
+        if ($sourceTable === 'vendor_payment_requests') {
+            $vStRes = $db->query("SELECT status FROM vendor_payment_requests WHERE id = " . (int)$sourceId . " LIMIT 1");
+            $vSt = ($vStRes && ($vStRow = $vStRes->fetch_assoc())) ? strtolower(trim($vStRow['status'])) : '';
+            $isReadyForOpHead = in_array($vSt, ['qc approved', 'qc_approved', 'approved', 'partially_paid', 'paid', 'fully_paid'], true);
+        } elseif ($sourceTable === 'contractor_bill_requests') {
+            $cStRes = $db->query("SELECT status FROM contractor_bill_requests WHERE id = " . (int)$sourceId . " LIMIT 1");
+            $cSt = ($cStRes && ($cStRow = $cStRes->fetch_assoc())) ? strtolower(trim($cStRow['status'])) : '';
+            $isReadyForOpHead = in_array($cSt, ['qc_approved', 'approved', 'partially_paid', 'paid', 'fully_paid'], true);
+        }
+
         $isOpHeadApproved = ($opStatus === 'approved') || in_array($reqStatus, ['approved', 'partially_paid', 'paid']);
-        $isOpHeadBypassed = $isOver1Lac && !$isOpHeadApproved && $isMgmtApproved && $opStatus !== 'rejected';
-        $isPendingOpHead = $isOver1Lac && !$isOpHeadApproved && !$isOpHeadBypassed && !in_array($reqStatus, ['rejected', 'cancelled']);
+        $isOpHeadBypassed = ($isOver1Lac || $isVprOrCbr) && !$isOpHeadApproved && $isMgmtApproved && $opStatus !== 'rejected';
+        $isPendingOpHead = ($isOver1Lac || $isVprOrCbr) && $isReadyForOpHead && !$isOpHeadApproved && !$isOpHeadBypassed && !in_array($reqStatus, ['rejected', 'cancelled']);
 
         $ahStatus = strtolower($row['accounts_head_status'] ?? 'pending');
         $isAhApproved = ($ahStatus === 'approved');
         $isAhRejected = ($ahStatus === 'rejected');
 
         // NEW ORDER: Accounts Head stage is pending:
-        // For > 10k: as soon as Op Head approves (BEFORE Management)
-        // For <= 10k: as soon as Op Head OR Management approves, OR approve_role is accounts_head
+        // For > 10k or VPR/CBR: as soon as Op Head approves (BEFORE Management for > 10k, or as final step for <= 10k VPR/CBR)
+        // For <= 10k (other modules): as soon as Op Head OR Management approves, OR approve_role is accounts_head
         if ($sourceTable === 'payslips') {
             $isPendingAh = !$isAhApproved && !in_array($reqStatus, ['rejected', 'cancelled']);
-        } elseif ($isOver1Lac) {
+        } elseif ($isOver1Lac || $isVprOrCbr) {
             $isPendingAh = $isOpHeadApproved && !$isAhApproved && !in_array($reqStatus, ['rejected', 'cancelled']);
         } else {
             $isPendingAh = ($isOpHeadApproved || $isMgmtApproved || strtolower($row['approve_role'] ?? '') === 'accounts_head') && !$isAhApproved && !in_array($reqStatus, ['rejected', 'cancelled']);
         }
 
         // Management can approve:
-        // For > 10k: ONLY when BOTH Op Head AND Accounts Head have approved!
-        // For <= 10k: Op Head or Management directly
+        // Management (Role 1, 3) can always approve (with warning if earlier stage is pending),
+        // while standard sequential flow requires Op Head + Accounts Head for > 10k.
         $canMgmtApprove = !$isOver1Lac || ($isOpHeadApproved && $isAhApproved) || $isOpHeadBypassed;
         $isMgmtLocked = $isOver1Lac && (!$isOpHeadApproved || !$isAhApproved) && !$isOpHeadBypassed;
 
@@ -980,6 +1007,7 @@ class ApprovalRequest extends Model
             'approve_role'              => $row['approve_role'],
             'request_amount'            => $reqAmount,
             'is_over_1lac'              => $isOver1Lac,
+            'is_ready_for_op_head'      => $isReadyForOpHead,
             'op_head_status'            => $opStatus,
             'is_op_head_approved'       => $isOpHeadApproved,
             'is_op_head_bypassed'       => $isOpHeadBypassed,
@@ -1065,7 +1093,28 @@ class ApprovalRequest extends Model
             return $stmtForward->execute();
         }
 
-        if ($sourceTable === 'vendor_payment_requests' && (strpos(strtolower($request['approve_role'] ?? ''), 'purchase team leader') !== false || strtolower($request['approve_role'] ?? '') === 'qc') && $status === 'approved') {
+        $userRoleSession = (int)($_SESSION['user']['role_id'] ?? 0);
+        $isMgmtOverride = in_array($userRoleSession, [1, 3], true);
+
+        if ($sourceTable === 'vendor_payment_requests' && in_array(strtolower($request['approve_role'] ?? ''), ['purchase_head', 'purchase', 'purchase team leader', 'purchase_lead'], true) && $status === 'approved' && !$isMgmtOverride) {
+            $stmtPh = $this->db->prepare("UPDATE vendor_payment_requests SET purchase_head_approved_by_id = ?, purchase_head_approved_at = NOW(), purchase_head_note = ? WHERE id = ?");
+            if ($stmtPh) {
+                $stmtPh->bind_param('isi', $approvedBy, $approvalNote, $sourceId);
+                $stmtPh->execute();
+                $stmtPh->close();
+            }
+            $sqlForward = "UPDATE {$this->table}
+                SET approve_role = 'qc',
+                    status = 'pending',
+                    approval_note = ?
+                WHERE id = ?";
+            $stmtForward = $this->db->prepare($sqlForward);
+            $phNote = "Approved by Head of Purchase. Note: " . ($approvalNote ?? '');
+            $stmtForward->bind_param('si', $phNote, $id);
+            return $stmtForward->execute();
+        }
+
+        if ($sourceTable === 'vendor_payment_requests' && strtolower($request['approve_role'] ?? '') === 'qc' && $status === 'approved' && !$isMgmtOverride) {
             // Update source table to QC Approved
             $qcApprovedAmt = ($approvedAmount !== null && $approvedAmount > 0) ? (float)$approvedAmount : (float)($request['request_amount'] ?? 0);
             $stmtVpr = $this->db->prepare("UPDATE vendor_payment_requests SET status = 'QC Approved', qc_verified = 1, qc_approved_by_id = ?, qc_approved_at = NOW(), qc_approved_amount = ?, qc_note = ? WHERE id = ?");
@@ -1075,10 +1124,10 @@ class ApprovalRequest extends Model
                 $stmtVpr->close();
             }
 
-            // Forward to management instead of marking as completed
+            // Forward to Operation Head ('operations')
             $sqlForward = "UPDATE {$this->table}
                 SET 
-                    approve_role = 'management',
+                    approve_role = 'operations',
                     status = 'pending',
                     request_amount = ?,
                     approved_amount = NULL,
@@ -1092,7 +1141,7 @@ class ApprovalRequest extends Model
             return $stmtForward->execute();
         }
 
-        if ($sourceTable === 'contractor_bill_requests' && strtolower($request['approve_role'] ?? '') === 'pm' && $status === 'approved') {
+        if ($sourceTable === 'contractor_bill_requests' && strtolower($request['approve_role'] ?? '') === 'pm' && $status === 'approved' && !$isMgmtOverride) {
             $stmtCb = $this->db->prepare("UPDATE contractor_bill_requests SET status = 'verified', verified_by = ?, verified_at = NOW(), verification_note = ? WHERE id = ?");
             if ($stmtCb) {
                 $stmtCb->bind_param('isi', $approvedBy, $approvalNote, $sourceId);
@@ -1100,10 +1149,10 @@ class ApprovalRequest extends Model
                 $stmtCb->close();
             }
 
-            // Forward to QC
+            // Forward to Head of Purchase ('purchase_head')
             $sqlForward = "UPDATE {$this->table}
                 SET 
-                    approve_role = 'qc',
+                    approve_role = 'purchase_head',
                     status = 'pending',
                     approved_amount = NULL,
                     approved_by = NULL,
@@ -1116,7 +1165,25 @@ class ApprovalRequest extends Model
             return $stmtForward->execute();
         }
 
-        if ($sourceTable === 'contractor_bill_requests' && strtolower($request['approve_role'] ?? '') === 'qc' && $status === 'approved') {
+        if ($sourceTable === 'contractor_bill_requests' && in_array(strtolower($request['approve_role'] ?? ''), ['purchase_head', 'purchase', 'purchase team leader', 'purchase_lead'], true) && $status === 'approved' && !$isMgmtOverride) {
+            $stmtPh = $this->db->prepare("UPDATE contractor_bill_requests SET purchase_head_approved_by_id = ?, purchase_head_approved_at = NOW(), purchase_head_note = ? WHERE id = ?");
+            if ($stmtPh) {
+                $stmtPh->bind_param('isi', $approvedBy, $approvalNote, $sourceId);
+                $stmtPh->execute();
+                $stmtPh->close();
+            }
+            $sqlForward = "UPDATE {$this->table}
+                SET approve_role = 'qc',
+                    status = 'pending',
+                    approval_note = ?
+                WHERE id = ?";
+            $stmtForward = $this->db->prepare($sqlForward);
+            $phNote = "Approved by Head of Purchase. Note: " . ($approvalNote ?? '');
+            $stmtForward->bind_param('si', $phNote, $id);
+            return $stmtForward->execute();
+        }
+
+        if ($sourceTable === 'contractor_bill_requests' && strtolower($request['approve_role'] ?? '') === 'qc' && $status === 'approved' && !$isMgmtOverride) {
             // Update source table to QC Approved
             $qcApprovedAmt = ($approvedAmount !== null && $approvedAmount > 0) ? (float)$approvedAmount : (float)($request['request_amount'] ?? 0);
             $stmtCb = $this->db->prepare("UPDATE contractor_bill_requests SET status = 'qc_approved', qc_approved_by_id = ?, qc_approved_at = NOW(), qc_note = ?, approved_amount = ?, due_amount = ? WHERE id = ?");
@@ -1126,10 +1193,10 @@ class ApprovalRequest extends Model
                 $stmtCb->close();
             }
 
-            // Forward to management instead of marking as completed
+            // Forward to Operation Head ('operations')
             $sqlForward = "UPDATE {$this->table}
                 SET 
-                    approve_role = 'management',
+                    approve_role = 'operations',
                     status = 'pending',
                     request_amount = ?,
                     approved_amount = NULL,
@@ -1167,6 +1234,97 @@ class ApprovalRequest extends Model
             $qcNote = "Audited & Approved by QC. Note: " . ($approvalNote ?? '');
             $stmtForward->bind_param('dsi', $qcApprovedAmt, $qcNote, $id);
             return $stmtForward->execute();
+        }
+
+        // Intermediate stages for fund_requisitions (dept_head -> qc -> management)
+        if ($sourceTable === 'fund_requisitions' && strpos(strtolower($request['approve_role'] ?? ''), 'dept_head') === 0 && $status === 'approved' && !$isMgmtOverride) {
+            $stmtFr = $this->db->prepare("UPDATE fund_requisitions SET dept_head_status = 'approved', dept_head_approved_by = ?, dept_head_approval_note = ?, dept_head_approved_at = NOW(), status = 'pending_qc' WHERE id = ?");
+            if ($stmtFr) {
+                $stmtFr->bind_param('isi', $approvedBy, $approvalNote, $sourceId);
+                $stmtFr->execute();
+                $stmtFr->close();
+            }
+            $sqlForward = "UPDATE {$this->table} SET approve_role = 'qc', status = 'pending', approval_note = ? WHERE id = ?";
+            $stmtForward = $this->db->prepare($sqlForward);
+            $dhNote = "Approved by Dept Head. Note: " . ($approvalNote ?? '');
+            $stmtForward->bind_param('si', $dhNote, $id);
+            return $stmtForward->execute();
+        }
+
+        if ($sourceTable === 'fund_requisitions' && strtolower($request['approve_role'] ?? '') === 'qc' && $status === 'approved' && !$isMgmtOverride) {
+            $qcApprovedAmt = ($approvedAmount !== null && $approvedAmount > 0) ? (float)$approvedAmount : (float)($request['request_amount'] ?? 0);
+            $stmtFr = $this->db->prepare("UPDATE fund_requisitions SET status = 'pending', qc_approved_by = ?, qc_approved_at = NOW(), qc_approval_note = ?, qc_approved_amount = ? WHERE id = ?");
+            if ($stmtFr) {
+                $stmtFr->bind_param('isdi', $approvedBy, $approvalNote, $qcApprovedAmt, $sourceId);
+                $stmtFr->execute();
+                $stmtFr->close();
+            }
+            $sqlForward = "UPDATE {$this->table} SET approve_role = 'management', status = 'pending', request_amount = ?, approved_amount = NULL, approved_by = NULL, approval_note = ?, approved_at = NULL WHERE id = ?";
+            $stmtForward = $this->db->prepare($sqlForward);
+            $qcNote = "Audited & Approved by QC. Note: " . ($approvalNote ?? '');
+            $stmtForward->bind_param('dsi', $qcApprovedAmt, $qcNote, $id);
+            return $stmtForward->execute();
+        }
+
+        // Intermediate stages for project_other_costs (dept_head -> qc -> management)
+        if ($sourceTable === 'project_other_costs' && strpos(strtolower($request['approve_role'] ?? ''), 'dept_head') === 0 && $status === 'approved' && !$isMgmtOverride) {
+            $stmtPoc = $this->db->prepare("UPDATE project_other_costs SET dept_head_status = 'approved', dept_head_approved_by = ?, dept_head_approval_note = ?, dept_head_approved_at = NOW() WHERE id = ?");
+            if ($stmtPoc) {
+                $stmtPoc->bind_param('isi', $approvedBy, $approvalNote, $sourceId);
+                $stmtPoc->execute();
+                $stmtPoc->close();
+            }
+            $sqlForward = "UPDATE {$this->table} SET approve_role = 'qc', status = 'pending', approval_note = ? WHERE id = ?";
+            $stmtForward = $this->db->prepare($sqlForward);
+            $dhNote = "Approved by Dept Head. Note: " . ($approvalNote ?? '');
+            $stmtForward->bind_param('si', $dhNote, $id);
+            return $stmtForward->execute();
+        }
+
+        if ($sourceTable === 'project_other_costs' && strtolower($request['approve_role'] ?? '') === 'qc' && $status === 'approved' && !$isMgmtOverride) {
+            $qcApprovedAmt = ($approvedAmount !== null && $approvedAmount > 0) ? (float)$approvedAmount : (float)($request['request_amount'] ?? 0);
+            $stmtPoc = $this->db->prepare("UPDATE project_other_costs SET status = 'qc_approved', qc_audit_approved_id = ?, qc_audit_approved_at = NOW(), qc_audit_note = ?, approved_amount = ? WHERE id = ?");
+            if ($stmtPoc) {
+                $stmtPoc->bind_param('isdi', $approvedBy, $approvalNote, $qcApprovedAmt, $sourceId);
+                $stmtPoc->execute();
+                $stmtPoc->close();
+            }
+            $sqlForward = "UPDATE {$this->table} SET approve_role = 'management', status = 'pending', request_amount = ?, approved_amount = NULL, approved_by = NULL, approval_note = ?, approved_at = NULL WHERE id = ?";
+            $stmtForward = $this->db->prepare($sqlForward);
+            $qcNote = "Audited & Approved by QC. Note: " . ($approvalNote ?? '');
+            $stmtForward->bind_param('dsi', $qcApprovedAmt, $qcNote, $id);
+            return $stmtForward->execute();
+        }
+
+        // Intermediate stages for project_extra_assets (Office Procurement: dept_head -> it_head -> operations -> purchase_head -> qc -> management)
+        if ($sourceTable === 'project_extra_assets' && $status === 'approved') {
+            $peaRole = strtolower($request['approve_role'] ?? 'management');
+            $peaStep = null;
+            if (strpos($peaRole, 'dept_head') === 0) {
+                $peaStep = 'dept_head';
+            } elseif ($peaRole === 'it_head') {
+                $peaStep = 'it_head';
+            } elseif ($peaRole === 'operations') {
+                $peaStep = 'operations';
+            } elseif (in_array($peaRole, ['purchase_head', 'purchase'], true)) {
+                $peaStep = 'purchase_head';
+            } elseif ($peaRole === 'qc') {
+                $peaStep = 'qc_audit';
+            }
+            if ($peaStep !== null) {
+                $statusCol = $peaStep . '_status';
+                $byCol = $peaStep . '_by';
+                $atCol = $peaStep . '_at';
+                $noteCol = $peaStep . '_note';
+                $stmtPea = $this->db->prepare("UPDATE project_extra_assets SET {$statusCol} = 'approved', {$byCol} = ?, {$atCol} = NOW(), {$noteCol} = ?, overall_status = 'in_review' WHERE id = ?");
+                if ($stmtPea) {
+                    $stmtPea->bind_param('isi', $approvedBy, $approvalNote, $sourceId);
+                    $stmtPea->execute();
+                    $stmtPea->close();
+                }
+                $this->syncMissingOfficeProcurements();
+                return true;
+            }
         }
 
         if ($status === 'approved' && ($approvedAmount === null || (float)$approvedAmount <= 0)) {
@@ -1463,7 +1621,7 @@ class ApprovalRequest extends Model
                     require_once dirname(__DIR__) . '/services/AutoPostingService.php';
                     $autoService = new \AutoPostingService($this->db);
                     $officeExpenseAccId = $autoService->getAccountIdByCode('5220');
-                    $salaryPayableAccId = $autoService->getAccountIdByCode('2130');
+                    $accountsPayableAccId = $autoService->getAccountIdByCode('211000');
                     
                     $frData = $this->db->query("SELECT * FROM fund_requisitions WHERE id = {$sourceId} LIMIT 1")->fetch_assoc();
                     if ($frData) {
@@ -1473,7 +1631,7 @@ class ApprovalRequest extends Model
                                 'fund_requisition',
                                 $sourceId,
                                 !empty($frData['account_id']) ? $frData['account_id'] : $officeExpenseAccId,
-                                $salaryPayableAccId,
+                                $accountsPayableAccId,
                                 $postedAmount,
                                 "Fund Requisition (FR-{$sourceId}): " . ($frData['purpose'] ?: 'Operational Expense'),
                                 $frData['project_id'],
@@ -1490,30 +1648,106 @@ class ApprovalRequest extends Model
             return true;
         }
 
+        if ($sourceTable === 'vendor_payment_requests') {
+            $vprStatus = ($status === 'approved') ? 'Approved' : 'Rejected';
+            $vprAppAmt = ($status === 'approved')
+                ? ($approvedAmount !== null && (float)$approvedAmount > 0 ? (float)$approvedAmount : (float)($request['request_amount'] ?? 0))
+                : null;
+            $escVprNote = $this->db->real_escape_string($approvalNote ?? 'Approved by Management');
+
+            if ($status === 'approved') {
+                // Auto-populate any bypassed earlier stages on vendor_payment_requests & approval_requests
+                $this->db->query("
+                    UPDATE vendor_payment_requests
+                    SET status = 'Approved',
+                        approved_by = " . (int)$approvedBy . ",
+                        approved_amount = {$vprAppAmt},
+                        due_amount = {$vprAppAmt},
+                        management_note = '{$escVprNote}',
+                        purchase_head_approved_by_id = COALESCE(purchase_head_approved_by_id, " . (int)$approvedBy . "),
+                        purchase_head_approved_at = COALESCE(purchase_head_approved_at, NOW()),
+                        purchase_head_note = COALESCE(purchase_head_note, '{$escVprNote} (Management Override)'),
+                        qc_approved_by_id = COALESCE(qc_approved_by_id, " . (int)$approvedBy . "),
+                        qc_approved_at = COALESCE(qc_approved_at, NOW()),
+                        qc_verified = 1,
+                        qc_approved_amount = COALESCE(NULLIF(qc_approved_amount, 0), {$vprAppAmt}),
+                        qc_note = COALESCE(qc_note, '{$escVprNote} (Management Override)'),
+                        updated_at = NOW()
+                    WHERE id = {$sourceId}
+                ");
+
+                $this->db->query("
+                    UPDATE approval_requests
+                    SET approve_role = 'accounts',
+                        status = 'approved',
+                        op_head_status = 'approved',
+                        op_head_by = COALESCE(op_head_by, " . (int)$approvedBy . "),
+                        op_head_at = COALESCE(op_head_at, NOW()),
+                        op_head_note = COALESCE(op_head_note, '{$escVprNote} (Management Override)'),
+                        accounts_head_status = 'approved',
+                        accounts_head_by = COALESCE(accounts_head_by, " . (int)$approvedBy . "),
+                        accounts_head_at = COALESCE(accounts_head_at, NOW()),
+                        accounts_head_note = COALESCE(accounts_head_note, '{$escVprNote} (Management Override)')
+                    WHERE id = " . (int)$id . "
+                ");
+
+                try {
+                    require_once dirname(__DIR__) . '/services/JournalIntegrationService.php';
+                    $journalService = new \Services\JournalIntegrationService($this->db);
+                    $journalService->generateVendorAccrual($sourceId, $approvedBy);
+                } catch (\Throwable $e) {
+                    error_log("Failed to auto-generate vendor accrual journal via Central Approval: " . $e->getMessage());
+                }
+            } else {
+                $this->db->query("UPDATE vendor_payment_requests SET status = 'Rejected', approved_by = " . (int)$approvedBy . ", management_note = '{$escVprNote}', updated_at = NOW() WHERE id = {$sourceId}");
+                $this->db->query("UPDATE vendor_penalties SET payment_request_id = NULL WHERE payment_request_id = {$sourceId}");
+            }
+            return true;
+        }
+
         if ($sourceTable === 'contractor_bill_requests') {
             $cbStatus = ($status === 'approved') ? 'approved' : 'rejected';
             $cbAppAmt = ($status === 'approved') 
                 ? ($approvedAmount !== null && (float)$approvedAmount > 0 ? (float)$approvedAmount : (float)($request['request_amount'] ?? 0)) 
                 : null;
+            $escCbNote = $this->db->real_escape_string($approvalNote ?? 'Approved by Management');
             
-            $stmtCb = $this->db->prepare(
-                "UPDATE contractor_bill_requests 
-                 SET status = ?, 
-                     approved_by = ?, 
-                     approved_amount = ?, 
-                     due_amount = ?,
-                     management_note = ?,
-                     updated_at = NOW() 
-                 WHERE id = ?"
-            );
-            if ($stmtCb) {
-                $stmtCb->bind_param('siddsi', $cbStatus, $approvedBy, $cbAppAmt, $cbAppAmt, $approvalNote, $sourceId);
-                $stmtCb->execute();
-                $stmtCb->close();
-            }
-
             if ($status === 'approved') {
-                $this->db->query("UPDATE approval_requests SET approve_role = 'accounts_head', status = 'pending' WHERE id = " . (int)$id);
+                // Auto-populate any bypassed earlier stages on contractor_bill_requests & approval_requests
+                $this->db->query("
+                    UPDATE contractor_bill_requests
+                    SET status = 'approved',
+                        approved_by = " . (int)$approvedBy . ",
+                        approved_amount = {$cbAppAmt},
+                        due_amount = {$cbAppAmt},
+                        management_note = '{$escCbNote}',
+                        verified_by = COALESCE(verified_by, " . (int)$approvedBy . "),
+                        verified_at = COALESCE(verified_at, NOW()),
+                        verification_note = COALESCE(verification_note, '{$escCbNote} (Management Override)'),
+                        purchase_head_approved_by_id = COALESCE(purchase_head_approved_by_id, " . (int)$approvedBy . "),
+                        purchase_head_approved_at = COALESCE(purchase_head_approved_at, NOW()),
+                        purchase_head_note = COALESCE(purchase_head_note, '{$escCbNote} (Management Override)'),
+                        qc_approved_by_id = COALESCE(qc_approved_by_id, " . (int)$approvedBy . "),
+                        qc_approved_at = COALESCE(qc_approved_at, NOW()),
+                        qc_note = COALESCE(qc_note, '{$escCbNote} (Management Override)'),
+                        updated_at = NOW()
+                    WHERE id = {$sourceId}
+                ");
+
+                $this->db->query("
+                    UPDATE approval_requests
+                    SET approve_role = 'accounts',
+                        status = 'approved',
+                        op_head_status = 'approved',
+                        op_head_by = COALESCE(op_head_by, " . (int)$approvedBy . "),
+                        op_head_at = COALESCE(op_head_at, NOW()),
+                        op_head_note = COALESCE(op_head_note, '{$escCbNote} (Management Override)'),
+                        accounts_head_status = 'approved',
+                        accounts_head_by = COALESCE(accounts_head_by, " . (int)$approvedBy . "),
+                        accounts_head_at = COALESCE(accounts_head_at, NOW()),
+                        accounts_head_note = COALESCE(accounts_head_note, '{$escCbNote} (Management Override)')
+                    WHERE id = " . (int)$id . "
+                ");
 
                 try {
                     require_once dirname(__DIR__) . '/services/JournalIntegrationService.php';
@@ -1522,6 +1756,8 @@ class ApprovalRequest extends Model
                 } catch (\Throwable $e) {
                     error_log("Failed to auto-generate contractor accrual journal via Central Approval: " . $e->getMessage());
                 }
+            } else {
+                $this->db->query("UPDATE contractor_bill_requests SET status = 'rejected', approved_by = " . (int)$approvedBy . ", management_note = '{$escCbNote}', rejection_reason = '{$escCbNote}', updated_at = NOW() WHERE id = {$sourceId}");
             }
             return true;
         }
@@ -1533,6 +1769,8 @@ class ApprovalRequest extends Model
             $step = 'mgmt';
             if (strpos($approveRole, 'dept_head') === 0) {
                 $step = 'dept_head';
+            } elseif ($approveRole === 'it_head') {
+                $step = 'it_head';
             } elseif ($approveRole === 'operations') {
                 $step = 'operations';
             } elseif (in_array($approveRole, ['purchase_head', 'purchase'])) {
@@ -1579,6 +1817,7 @@ class ApprovalRequest extends Model
             } else {
                 $this->db->query("UPDATE project_extra_assets SET overall_status = 'in_review' WHERE id = {$sourceId}");
             }
+            $this->syncMissingOfficeProcurements();
 
             if ($step === 'mgmt' && $status === 'approved') {
                 try {
@@ -1818,7 +2057,9 @@ class ApprovalRequest extends Model
         $isAccountsHead = ($userRoleId === 30) || strpos($roleName, 'accounts head') !== false;
         $isAccounts = ($userRoleId === 6) || (strpos($roleName, 'account') !== false && !$isAccountsHead);
         $isQc = in_array($userRoleId, [13, 24, 25], true) || strpos($roleName, 'qc') !== false || strpos($roleName, 'audit') !== false;
+        $isPurchaseHead = ($userRoleId === 17) || strpos($roleName, 'purchase head') !== false || strpos($roleName, 'head of purchase') !== false;
         $isPurchase = in_array($userRoleId, [17, 23, 31], true) || strpos($roleName, 'purchase') !== false;
+        $isPM = in_array($userRoleId, [15, 22], true) || strpos($roleName, 'project manager') !== false;
         $isHr = ($userRoleId === 4) || strpos($roleName, 'hr') !== false;
 
         // Check if user has subordinates reporting directly to them
@@ -1844,7 +2085,8 @@ class ApprovalRequest extends Model
                         LOWER({$prefix}approve_role) = 'accounts_head'
                         OR {$prefix}source_table = 'payslips'
                         OR ({$prefix}request_amount > 10000.01 AND {$prefix}op_head_status = 'approved')
-                        OR ({$prefix}request_amount <= 10000.01 AND ({$prefix}op_head_status = 'approved' OR {$prefix}status = 'approved' OR LOWER({$prefix}approve_role) IN ('management', 'operations', 'accounts_head', '')))
+                        OR ({$prefix}source_table IN ('vendor_payment_requests', 'contractor_bill_requests') AND {$prefix}op_head_status = 'approved')
+                        OR ({$prefix}source_table NOT IN ('vendor_payment_requests', 'contractor_bill_requests') AND {$prefix}request_amount <= 10000.01 AND ({$prefix}op_head_status = 'approved' OR {$prefix}status = 'approved' OR LOWER({$prefix}approve_role) IN ('management', 'operations', 'accounts_head', '')))
                     ))
                     OR ({$prefix}status = 'approved' AND ({$prefix}accounts_head_status != 'approved' OR {$prefix}accounts_head_status IS NULL OR LOWER({$prefix}approve_role) = 'accounts_head'))
                     OR ({$prefix}status = 'partially_approved' AND {$prefix}source_table = 'fund_requisitions' AND ({$prefix}accounts_head_status != 'approved' OR {$prefix}accounts_head_status IS NULL))
@@ -1871,13 +2113,20 @@ class ApprovalRequest extends Model
         } elseif ($isManagement) {
             return "({$prefix}status IN ('pending', 'partially_approved', '') 
                     AND (LOWER({$prefix}approve_role) IN ('management', 'operations') OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = '' OR {$prefix}source_table = 'payslips')
-                    AND ({$prefix}source_table = 'payslips' OR {$prefix}request_amount <= 10000.01 OR ({$prefix}op_head_status = 'approved' AND {$prefix}accounts_head_status = 'approved')))";
+                    AND ({$prefix}source_table = 'payslips' OR ({$prefix}request_amount <= 10000.01 AND {$prefix}source_table NOT IN ('vendor_payment_requests', 'contractor_bill_requests')) OR ({$prefix}op_head_status = 'approved' AND {$prefix}accounts_head_status = 'approved')))";
         } elseif ($isQc) {
             return "({$prefix}status IN ('pending', 'partially_approved', '') 
                     AND LOWER({$prefix}approve_role) IN ('qc', 'qc_head'))";
+        } elseif ($isPurchaseHead) {
+            return "({$prefix}status IN ('pending', 'partially_approved', '') 
+                    AND LOWER({$prefix}approve_role) IN ('purchase_head', 'purchase', 'purchase team leader', 'purchase_lead'))";
         } elseif ($isPurchase) {
             return "({$prefix}status IN ('pending', 'partially_approved', '') 
                     AND LOWER({$prefix}approve_role) IN ('purchase', 'purchase team leader', 'purchase_lead'))";
+        } elseif ($isPM) {
+            $subCond = $isReportingBoss ? " OR ({$prefix}approve_role = 'dept_head' AND {$prefix}requested_by IN (" . implode(',', $subordinateIds) . "))" : "";
+            return "({$prefix}status IN ('pending', 'partially_approved', '') 
+                    AND (LOWER({$prefix}approve_role) IN ('pm', 'pm_head') OR {$prefix}approve_role = 'dept_head_" . $userId . "'{$subCond}))";
         } elseif ($isHr) {
             return "({$prefix}status IN ('pending', 'partially_approved', '') 
                     AND LOWER({$prefix}approve_role) IN ('hr', 'hr_head'))";
@@ -2272,7 +2521,11 @@ class ApprovalRequest extends Model
                             } elseif (in_array($appRole, ['management', '']) && ($amt <= 10000.01 || !$opDone)) {
                                 $isActionable = true;
                             }
-                        } elseif (in_array($appRole, ['management', '']) && ($amt <= 10000.01 || !$opDone)) {
+                        } elseif (in_array($srcTbl, ['vendor_payment_requests', 'contractor_bill_requests'], true)) {
+                            if (in_array($appRole, ['operations', 'management', '']) && !$opDone) {
+                                $isActionable = true;
+                            }
+                        } elseif (in_array($appRole, ['management', 'operations', '']) && ($amt <= 10000.01 || !$opDone)) {
                             $isActionable = true;
                         }
                     }
@@ -2280,7 +2533,7 @@ class ApprovalRequest extends Model
                     $isOver1L = ($amt > 10000.01);
                     $opDone = (strtolower($pRow['op_head_status'] ?? 'pending') === 'approved');
                     if (in_array($rowStatus, ['pending', 'partially_approved', '']) && (in_array($appRole, ['management', '']) || $srcTbl === 'payslips')) {
-                        if (!$isOver1L || $srcTbl === 'payslips' || ($opDone && $ahDone)) {
+                        if ($srcTbl === 'payslips' || ($isOver1L && $opDone && $ahDone) || (!$isOver1L && !in_array($srcTbl, ['vendor_payment_requests', 'contractor_bill_requests'], true))) {
                             $isActionable = true;
                         }
                     }
@@ -2290,9 +2543,9 @@ class ApprovalRequest extends Model
                     if (!$ahDone) {
                         if ($appRole === 'accounts_head' || $srcTbl === 'payslips' || $rowStatus === 'approved') {
                             $isActionable = true;
-                        } elseif ($isOver1L && $opDone) {
+                        } elseif (($isOver1L || in_array($srcTbl, ['vendor_payment_requests', 'contractor_bill_requests'], true)) && $opDone) {
                             $isActionable = true;
-                        } elseif (!$isOver1L && in_array($appRole, ['management', 'operations', 'accounts_head', ''])) {
+                        } elseif (!$isOver1L && !in_array($srcTbl, ['vendor_payment_requests', 'contractor_bill_requests'], true) && in_array($appRole, ['management', 'operations', 'accounts_head', ''])) {
                             $isActionable = true;
                         }
                     } elseif ($appRole === 'accounts') {
@@ -2301,11 +2554,15 @@ class ApprovalRequest extends Model
                 } elseif ($isQC) {
                     if (in_array($appRole, ['qc', 'qc_head'])) $isActionable = true;
                 } elseif ($isPurchase) {
-                    if (in_array($appRole, ['purchase team leader', 'purchase', 'purchase_lead'])) $isActionable = true;
+                    if ($userRoleId === 17 && in_array($appRole, ['purchase_head', 'purchase team leader', 'purchase', 'purchase_lead'])) {
+                        $isActionable = true;
+                    } elseif (in_array($appRole, ['purchase team leader', 'purchase', 'purchase_lead'])) {
+                        $isActionable = true;
+                    }
                 } elseif ($isHR) {
                     if (in_array($appRole, ['hr', 'hr_head'])) $isActionable = true;
                 } elseif ($isDeptHead) {
-                    if ($appRole === 'dept_head' || $appRole === 'dept_head_' . $userId) $isActionable = true;
+                    if ($appRole === 'dept_head' || $appRole === 'dept_head_' . $userId || (in_array($userRoleId, [15, 22], true) && in_array($appRole, ['pm', 'pm_head']))) $isActionable = true;
                 }
 
                 if ($isActionable) {
@@ -2723,12 +2980,18 @@ class ApprovalRequest extends Model
             } elseif (in_array($appRole, ['hr', 'hr_head'])) {
                 $pendingStageLabel = 'Pending HR Approval';
                 $pendingForText = 'HR Head';
+            } elseif ($appRole === 'purchase_head') {
+                $pendingStageLabel = 'Pending Purchase Head';
+                $pendingForText = 'Head of Purchase';
             } elseif (in_array($appRole, ['purchase', 'purchase team leader', 'purchase_lead'])) {
                 $pendingStageLabel = 'Pending Purchase Lead';
                 $pendingForText = 'Purchase Team Leader';
             } elseif ($appRole === 'pm') {
                 $pendingStageLabel = 'Pending PM Verification';
                 $pendingForText = 'Project Manager';
+            } elseif ($appRole === 'it_head') {
+                $pendingStageLabel = 'Pending IT Head';
+                $pendingForText = 'IT Head';
             } else {
                 $isOver1Lac = ((float)($row['request_amount'] ?? 0) > 10000.01);
                 $rowOpStatus = strtolower($row['op_head_status'] ?? 'pending');
@@ -2939,7 +3202,7 @@ class ApprovalRequest extends Model
                     }
                 }
             } else if ($sourceTable === 'vendor_payment_requests') {
-                $vSql = "SELECT status, approved_amount, qc_approved_amount, 
+                $vSql = "SELECT status, approved_amount, qc_approved_amount, purchase_head_approved_by_id,
                                 COALESCE(approved_amount, qc_approved_amount, net_payable, invoice_amount, 0.00) AS app_amt,
                                 net_payable, invoice_amount, updated_at, payment_type, purchase_order_id 
                          FROM vendor_payment_requests WHERE id = ? LIMIT 1";
@@ -2961,28 +3224,41 @@ class ApprovalRequest extends Model
                         $row['po_number'] = $vRow['purchase_order_id'] ?? null;
 
                         if (in_array($vStatus, ['submitted', 'pending', 'draft'])) {
-                            $row['approve_role'] = 'qc';
-                            $row['status'] = 'pending';
-                            $pendingStageLabel = 'Pending QC & Audit';
-                            $pendingForText = 'QC & Internal Audit Head';
+                            if (empty($vRow['purchase_head_approved_by_id'])) {
+                                $row['approve_role'] = 'purchase_head';
+                                $row['status'] = 'pending';
+                                $pendingStageLabel = 'Pending Purchase Head';
+                                $pendingForText = 'Head of Purchase';
+                            } else {
+                                $row['approve_role'] = 'qc';
+                                $row['status'] = 'pending';
+                                $pendingStageLabel = 'Pending QC & Audit';
+                                $pendingForText = 'QC & Internal Audit Head';
+                            }
                         } elseif (in_array($vStatus, ['qc approved', 'qc_approved'])) {
                             $isOver100k = ((float)($row['request_amount'] ?? 0) > 10000.01);
                             $isOpHeadApproved = (!empty($row['op_head_status']) && strtolower($row['op_head_status']) === 'approved');
                             $rowAhStatus = strtolower($row['accounts_head_status'] ?? 'pending');
-                            if (!$isOver100k && $isOpHeadApproved) {
-                                $row['status'] = 'approved';
-                                if ($rowAhStatus !== 'approved') {
+                            if (!$isOver100k) {
+                                if (!$isOpHeadApproved) {
+                                    $row['approve_role'] = 'operations';
+                                    $row['status'] = 'pending';
+                                    $pendingStageLabel = 'Pending Op Head (≤10K)';
+                                    $pendingForText = 'Admin & Operation Head';
+                                } elseif ($rowAhStatus !== 'approved') {
                                     $row['approve_role'] = 'accounts_head';
-                                    $pendingStageLabel = 'Pending Accounts Head';
+                                    $row['status'] = 'pending';
+                                    $pendingStageLabel = 'Pending Accounts Head (≤10K)';
                                     $pendingForText = 'Accounts Head';
                                 } else {
+                                    $row['status'] = 'approved';
                                     $row['approve_role'] = 'accounts';
                                     $pendingStageLabel = 'Pending Accounts Payout';
                                     $pendingForText = 'Accounts & Finance';
                                 }
-                            } elseif ($isOver100k) {
+                            } else {
                                 if (!$isOpHeadApproved) {
-                                    $row['approve_role'] = 'management';
+                                    $row['approve_role'] = 'operations';
                                     $row['status'] = 'pending';
                                     $pendingStageLabel = 'Pending Op Head (>10K)';
                                     $pendingForText = 'Admin & Operation Head';
@@ -2997,11 +3273,6 @@ class ApprovalRequest extends Model
                                     $pendingStageLabel = 'Pending Management (>10K)';
                                     $pendingForText = 'Management';
                                 }
-                            } else {
-                                $row['approve_role'] = 'management';
-                                $row['status'] = 'pending';
-                                $pendingStageLabel = 'Pending Management';
-                                $pendingForText = 'Management / Operation Head';
                             }
                         } elseif (in_array($vStatus, ['approved', 'management approved', 'management_approved'])) {
                             $row['status'] = 'approved';
@@ -3366,7 +3637,7 @@ class ApprovalRequest extends Model
                     $pendingForText = 'Management Approved';
                 }
             } else if ($sourceTable === 'project_extra_assets') {
-                $peaSql = "SELECT payment_status, paid_amount, paid_at, reporting_user_id, dept_head_status, operations_status, purchase_head_status, qc_audit_status, mgmt_status, overall_status FROM project_extra_assets WHERE id = ? LIMIT 1";
+                $peaSql = "SELECT payment_status, paid_amount, paid_at, reporting_user_id, dept_head_status, it_head_status, operations_status, purchase_head_status, qc_audit_status, mgmt_status, overall_status FROM project_extra_assets WHERE id = ? LIMIT 1";
                 $peaStmt = $this->db->prepare($peaSql);
                 if ($peaStmt) {
                     $peaStmt->bind_param("i", $sourceId);
@@ -3375,6 +3646,7 @@ class ApprovalRequest extends Model
                     $peaStmt->close();
                     if ($peaRow) {
                         $dhStatus = strtolower($peaRow['dept_head_status'] ?? 'not_required');
+                        $itStatus = strtolower($peaRow['it_head_status'] ?? 'not_required');
                         $opStatus = strtolower($peaRow['operations_status'] ?? 'pending');
                         $phStatus = strtolower($peaRow['purchase_head_status'] ?? 'pending');
                         $qcStatus = strtolower($peaRow['qc_audit_status'] ?? 'pending');
@@ -3392,7 +3664,7 @@ class ApprovalRequest extends Model
                             $row['status'] = 'approved';
                             $pendingStageLabel = 'Pending Accounts Payout';
                             $pendingForText = 'Accounts & Finance';
-                        } elseif ($peaMgmtStatus === 'rejected' || $peaOverall === 'rejected' || $qcStatus === 'rejected' || $phStatus === 'rejected' || $opStatus === 'rejected' || $dhStatus === 'rejected') {
+                        } elseif ($peaMgmtStatus === 'rejected' || $peaOverall === 'rejected' || $qcStatus === 'rejected' || $phStatus === 'rejected' || $opStatus === 'rejected' || $itStatus === 'rejected' || $dhStatus === 'rejected') {
                             $row['status'] = 'rejected';
                             $row['approve_role'] = 'rejected';
                             $pendingStageLabel = 'Rejected';
@@ -3403,6 +3675,11 @@ class ApprovalRequest extends Model
                             $row['status'] = 'pending';
                             $pendingStageLabel = 'Pending Dept Head';
                             $pendingForText = 'Department Head / Reporting Boss';
+                        } elseif ($itStatus === 'pending') {
+                            $row['approve_role'] = 'it_head';
+                            $row['status'] = 'pending';
+                            $pendingStageLabel = 'Pending IT Head';
+                            $pendingForText = 'IT Head';
                         } elseif ($opStatus === 'pending') {
                             $row['approve_role'] = 'operations';
                             $row['status'] = 'pending';
@@ -3442,13 +3719,16 @@ class ApprovalRequest extends Model
                 }
             } else if ($sourceTable === 'contractor_bill_requests') {
                 $cbSql = "SELECT cbr.status, IFNULL(cbr.approved_amount, cbr.bill_amount) AS app_amt, cbr.updated_at,
-                                 cbr.verified_by, cbr.verified_at, cbr.qc_approved_by_id, cbr.qc_approved_at, cbr.approved_by,
+                                 cbr.verified_by, cbr.verified_at, cbr.purchase_head_approved_by_id, cbr.purchase_head_approved_at,
+                                 cbr.qc_approved_by_id, cbr.qc_approved_at, cbr.approved_by,
                                  u_v.full_name AS verified_by_name,
+                                 u_ph.full_name AS ph_approved_by_name,
                                  u_qc.full_name AS qc_approved_by_name,
                                  u_mgmt.full_name AS mgmt_approver_name,
                                  des_mgmt.name AS mgmt_approver_des
                           FROM contractor_bill_requests cbr 
                           LEFT JOIN users u_v ON u_v.id = cbr.verified_by
+                          LEFT JOIN users u_ph ON u_ph.id = cbr.purchase_head_approved_by_id
                           LEFT JOIN users u_qc ON u_qc.id = cbr.qc_approved_by_id
                           LEFT JOIN users u_mgmt ON u_mgmt.id = cbr.approved_by
                           LEFT JOIN employees e_mgmt ON (e_mgmt.user_id = u_mgmt.id OR e_mgmt.id = u_mgmt.employee_id)
@@ -3472,21 +3752,55 @@ class ApprovalRequest extends Model
                             $pendingStageLabel = 'Pending PM Approval';
                             $pendingForText = 'Project Manager Head';
                         } elseif ($cbStatus === 'verified') {
-                            $row['approve_role'] = 'qc';
-                            $row['status'] = 'pending';
-                            $pendingStageLabel = 'Pending QC & Audit';
-                            $pendingForText = 'QC & Internal Audit Head';
+                            if (empty($cbRow['purchase_head_approved_by_id'])) {
+                                $row['approve_role'] = 'purchase_head';
+                                $row['status'] = 'pending';
+                                $pendingStageLabel = 'Pending Purchase Head';
+                                $pendingForText = 'Head of Purchase';
+                            } else {
+                                $row['approve_role'] = 'qc';
+                                $row['status'] = 'pending';
+                                $pendingStageLabel = 'Pending QC & Audit';
+                                $pendingForText = 'QC & Internal Audit Head';
+                            }
                         } elseif ($cbStatus === 'qc_approved') {
-                            $row['approve_role'] = 'management';
-                            $row['status'] = 'pending';
                             $isOver1Lac = ((float)($row['request_amount'] ?? 0) > 10000.01);
                             $rowOpStatus = strtolower($row['op_head_status'] ?? 'pending');
-                            if ($isOver1Lac && $rowOpStatus !== 'approved' && empty($row['op_head_by'])) {
-                                $pendingStageLabel = 'Pending Op Head (>10K)';
-                                $pendingForText = 'Admin & Operation Head';
+                            $rowAhStatus = strtolower($row['accounts_head_status'] ?? 'pending');
+                            if (!$isOver1Lac) {
+                                if ($rowOpStatus !== 'approved') {
+                                    $row['approve_role'] = 'operations';
+                                    $row['status'] = 'pending';
+                                    $pendingStageLabel = 'Pending Op Head (≤10K)';
+                                    $pendingForText = 'Admin & Operation Head';
+                                } elseif ($rowAhStatus !== 'approved') {
+                                    $row['approve_role'] = 'accounts_head';
+                                    $row['status'] = 'pending';
+                                    $pendingStageLabel = 'Pending Accounts Head (≤10K)';
+                                    $pendingForText = 'Accounts Head';
+                                } else {
+                                    $row['status'] = 'approved';
+                                    $row['approve_role'] = 'accounts';
+                                    $pendingStageLabel = 'Pending Accounts Payout';
+                                    $pendingForText = 'Accounts & Finance';
+                                }
                             } else {
-                                $pendingStageLabel = 'Pending Management';
-                                $pendingForText = 'Management';
+                                if ($rowOpStatus !== 'approved') {
+                                    $row['approve_role'] = 'operations';
+                                    $row['status'] = 'pending';
+                                    $pendingStageLabel = 'Pending Op Head (>10K)';
+                                    $pendingForText = 'Admin & Operation Head';
+                                } elseif ($rowAhStatus !== 'approved') {
+                                    $row['approve_role'] = 'accounts_head';
+                                    $row['status'] = 'pending';
+                                    $pendingStageLabel = 'Pending Accounts Head (>10K)';
+                                    $pendingForText = 'Accounts Head';
+                                } else {
+                                    $row['approve_role'] = 'management';
+                                    $row['status'] = 'pending';
+                                    $pendingStageLabel = 'Pending Management (>10K)';
+                                    $pendingForText = 'Management';
+                                }
                             }
                         } elseif ($cbStatus === 'approved') {
                             if (($row['accounts_head_status'] ?? '') === 'approved') {
@@ -3829,6 +4143,7 @@ class ApprovalRequest extends Model
 
         // Purchase Lead: Role 17, 23, 31
         $isPurchase = in_array($userRoleId, [17, 23, 31], true) || strpos($sessionRoleName, 'purchase') !== false;
+        $isPurchaseHead = ($userRoleId === 17);
 
         // PM / PM Head: Role 15, 22
         $isPM = in_array($userRoleId, [15, 22], true) || strpos($sessionRoleName, 'project manager') !== false;
@@ -3849,7 +4164,7 @@ class ApprovalRequest extends Model
         $isReportingBoss = !empty($subordinateUserIds);
         $isDesignatedDeptHead = in_array($userRoleId, [5, 9, 10, 14], true) || (strpos($sessionRoleName, 'head') !== false && !in_array($userRoleId, [8, 11, 12, 16, 18, 19, 21, 23, 25]));
 
-        $isActionableByCurrentUser = function($item) use ($isChiefOfficer, $isFullManagement, $isRole20, $isAccountsHead, $isAccounts, $isHR, $isQC, $isPurchase, $isPM, $isReportingBoss, $isDesignatedDeptHead, $subordinateUserIds, $userId) {
+        $isActionableByCurrentUser = function($item) use ($isChiefOfficer, $isFullManagement, $isRole20, $isAccountsHead, $isAccounts, $isHR, $isQC, $isPurchase, $isPurchaseHead, $isPM, $isReportingBoss, $isDesignatedDeptHead, $subordinateUserIds, $userId) {
             // Chief Officer cannot approve anything
             if ($isChiefOfficer) {
                 return false;
@@ -3867,6 +4182,7 @@ class ApprovalRequest extends Model
 
             $opStatus = strtolower($item['op_head_status'] ?? 'pending');
             $isOver10k = ($amount > 10000.01);
+            $srcTbl = strtolower($item['source_table'] ?? '');
 
             // 1. Accounts Head (Role 30): Actionable = items pending Accounts Head approval OR approved and awaiting payout
             if ($isAccountsHead) {
@@ -3875,7 +4191,13 @@ class ApprovalRequest extends Model
                 }
                 // Pending Accounts Head approval (Step 2)
                 if ($ahStatus !== 'approved') {
-                    if ($approveRole === 'accounts_head' || ($item['source_table'] ?? '') === 'payslips') {
+                    if ($srcTbl === 'payslips') {
+                        return true;
+                    }
+                    if (in_array($srcTbl, ['vendor_payment_requests', 'contractor_bill_requests'], true)) {
+                        return ($opStatus === 'approved' || $approveRole === 'accounts_head' || $status === 'approved');
+                    }
+                    if ($approveRole === 'accounts_head') {
                         return true;
                     }
                     if ($isOver10k && $opStatus === 'approved') {
@@ -3916,7 +4238,7 @@ class ApprovalRequest extends Model
             // 2. Role 20 (DGM / Admin & Operation Head):
             if ($isRole20) {
                 if (!$isPending) return false;
-                if (($item['source_table'] ?? '') === 'payslips') return false;
+                if ($srcTbl === 'payslips') return false;
                 if (!in_array($approveRole, ['management', 'operations', 'accounts_head', ''])) return false;
                 return ($opStatus !== 'approved');
             }
@@ -3924,11 +4246,15 @@ class ApprovalRequest extends Model
             // 3. Full Management (Super Admin 3, Admin 1):
             if ($isFullManagement) {
                 if (!$isPending) return false;
-                if (!in_array($approveRole, ['management', 'operations', '']) && ($item['source_table'] ?? '') !== 'payslips') return false;
+                if (!in_array($approveRole, ['management', 'operations', '']) && $srcTbl !== 'payslips') return false;
                 
+                // For VPR / CBR <= 10,000: goes Op Head -> Accounts Head -> Disburse (no DCEO step unless overriding via All Pending)
+                if (!$isOver10k && in_array($srcTbl, ['vendor_payment_requests', 'contractor_bill_requests'], true)) {
+                    return false;
+                }
                 // For requests > ৳10,000 (except payslips which use 2-tier Management + Accounts Head approval):
-                // Management is ONLY actionable after BOTH Op Head AND Accounts Head have approved!
-                if ($isOver10k && ($item['source_table'] ?? '') !== 'payslips') {
+                // Management is ONLY actionable in My Actionable after BOTH Op Head AND Accounts Head have approved!
+                if ($isOver10k && $srcTbl !== 'payslips') {
                     return ($opStatus === 'approved' && $ahStatus === 'approved');
                 }
                 return true;
@@ -3944,7 +4270,10 @@ class ApprovalRequest extends Model
                 return ($isPending && in_array($approveRole, ['pm', 'pm_head']));
             }
 
-            // 5. Purchase Lead (Role 17, 23, 31):
+            // 5. Purchase Head (Role 17) & Purchase Team Leader / Executive (Role 23, 31):
+            if ($isPurchaseHead) {
+                return ($isPending && in_array($approveRole, ['purchase_head', 'purchase team leader', 'purchase', 'purchase_lead']));
+            }
             if ($isPurchase) {
                 return ($isPending && in_array($approveRole, ['purchase team leader', 'purchase', 'purchase_lead']));
             }
@@ -4145,6 +4474,12 @@ class ApprovalRequest extends Model
 
     public function syncMissingOfficeProcurements()
     {
+        if (class_exists('AssetManagement')) {
+            $am = new AssetManagement($this->db);
+            if (method_exists($am, 'ensureExtraPurchasesTableSchema')) {
+                $am->ensureExtraPurchasesTableSchema();
+            }
+        }
         // 1. Insert missing office procurement requests into approval_requests
         $sql = "
             SELECT pea.*, d.name AS dept_name
@@ -4170,7 +4505,7 @@ class ApprovalRequest extends Model
                     $approvedAmount = $amount;
                     $approvedBy = !empty($row['mgmt_by']) ? (int)$row['mgmt_by'] : null;
                     $approvedAt = !empty($row['mgmt_at']) ? $row['mgmt_at'] : null;
-                } elseif ($row['mgmt_status'] === 'rejected' || $row['overall_status'] === 'rejected') {
+                } elseif ($row['mgmt_status'] === 'rejected' || $row['overall_status'] === 'rejected' || ($row['qc_audit_status'] ?? '') === 'rejected' || ($row['purchase_head_status'] ?? '') === 'rejected' || ($row['operations_status'] ?? '') === 'rejected' || ($row['it_head_status'] ?? '') === 'rejected' || ($row['dept_head_status'] ?? '') === 'rejected') {
                     $status = 'rejected';
                     $approveRole = 'management';
                     $approvedAmount = null;
@@ -4184,6 +4519,8 @@ class ApprovalRequest extends Model
                     
                     if (($row['dept_head_status'] ?? 'not_required') === 'pending') {
                         $approveRole = (!empty($row['reporting_user_id']) && (int)$row['reporting_user_id'] > 0) ? ('dept_head_' . $row['reporting_user_id']) : 'dept_head';
+                    } elseif (($row['it_head_status'] ?? 'not_required') === 'pending') {
+                        $approveRole = 'it_head';
                     } elseif (($row['operations_status'] ?? 'pending') === 'pending') {
                         $approveRole = 'operations';
                     } elseif (($row['purchase_head_status'] ?? 'pending') === 'pending') {
@@ -4224,22 +4561,23 @@ class ApprovalRequest extends Model
             SET ar.status = CASE 
                     WHEN pea.payment_status = 'paid' OR pea.overall_status = 'purchased' THEN 'approved'
                     WHEN pea.mgmt_status = 'approved' THEN 'approved' 
-                    WHEN pea.mgmt_status = 'rejected' OR pea.overall_status = 'rejected' OR pea.qc_audit_status = 'rejected' OR pea.purchase_head_status = 'rejected' OR pea.operations_status = 'rejected' OR pea.dept_head_status = 'rejected' THEN 'rejected' 
+                    WHEN pea.mgmt_status = 'rejected' OR pea.overall_status = 'rejected' OR pea.qc_audit_status = 'rejected' OR pea.purchase_head_status = 'rejected' OR pea.operations_status = 'rejected' OR pea.it_head_status = 'rejected' OR pea.dept_head_status = 'rejected' THEN 'rejected' 
                     ELSE 'pending' 
                 END,
                 ar.approve_role = CASE
                     WHEN pea.payment_status = 'paid' OR pea.overall_status = 'purchased' THEN 'completed'
                     WHEN pea.mgmt_status = 'approved' THEN CASE WHEN ar.accounts_head_status = 'approved' THEN 'accounts' ELSE 'accounts_head' END
-                    WHEN pea.mgmt_status = 'rejected' OR pea.overall_status = 'rejected' OR pea.qc_audit_status = 'rejected' OR pea.purchase_head_status = 'rejected' OR pea.operations_status = 'rejected' OR pea.dept_head_status = 'rejected' THEN 'rejected'
+                    WHEN pea.mgmt_status = 'rejected' OR pea.overall_status = 'rejected' OR pea.qc_audit_status = 'rejected' OR pea.purchase_head_status = 'rejected' OR pea.operations_status = 'rejected' OR pea.it_head_status = 'rejected' OR pea.dept_head_status = 'rejected' THEN 'rejected'
                     WHEN pea.dept_head_status = 'pending' THEN IF(pea.reporting_user_id IS NOT NULL AND pea.reporting_user_id > 0, CONCAT('dept_head_', pea.reporting_user_id), 'dept_head')
+                    WHEN pea.it_head_status = 'pending' THEN 'it_head'
                     WHEN pea.operations_status = 'pending' THEN 'operations'
                     WHEN pea.purchase_head_status = 'pending' THEN 'purchase_head'
                     WHEN pea.qc_audit_status = 'pending' THEN 'qc'
                     ELSE 'management'
                 END,
-                ar.approved_by = COALESCE(pea.mgmt_by, pea.qc_audit_by, pea.purchase_head_by, pea.operations_by, pea.dept_head_by, ar.approved_by),
-                ar.approved_at = COALESCE(pea.mgmt_at, pea.qc_audit_at, pea.purchase_head_at, pea.operations_at, pea.dept_head_at, ar.approved_at),
-                ar.approval_note = COALESCE(pea.mgmt_note, pea.qc_audit_note, pea.purchase_head_note, pea.operations_note, pea.dept_head_note, ar.approval_note),
+                ar.approved_by = COALESCE(pea.mgmt_by, pea.qc_audit_by, pea.purchase_head_by, pea.operations_by, pea.it_head_by, pea.dept_head_by, ar.approved_by),
+                ar.approved_at = COALESCE(pea.mgmt_at, pea.qc_audit_at, pea.purchase_head_at, pea.operations_at, pea.it_head_at, pea.dept_head_at, ar.approved_at),
+                ar.approval_note = COALESCE(pea.mgmt_note, pea.qc_audit_note, pea.purchase_head_note, pea.operations_note, pea.it_head_note, pea.dept_head_note, ar.approval_note),
                 ar.request_amount = pea.total_price,
                 ar.approved_amount = CASE WHEN pea.mgmt_status = 'approved' THEN pea.total_price ELSE ar.approved_amount END
         ";
@@ -4359,6 +4697,9 @@ class ApprovalRequest extends Model
 
     public function syncMissingProjectOtherCosts()
     {
+        if (class_exists('ProjectOtherCost')) {
+            new ProjectOtherCost($this->db);
+        }
         // 1. Insert missing project other costs into approval_requests
         $sql = "
             SELECT poc.*, p.name AS project_name, e.reporting_user_id
@@ -4465,7 +4806,11 @@ class ApprovalRequest extends Model
                     WHEN poc.status IN ('management_approved', 'approved', 'paid') THEN 'approved'
                     ELSE 'pending'
                 END,
-                ar.approved_by = COALESCE(poc.management_apporved_by_id, poc.qc_audit_approved_id, poc.dept_head_approved_by, ar.approved_by),
+                ar.approved_by = CASE
+                    WHEN poc.management_apporved_by_id IS NOT NULL AND poc.management_apporved_by_id != ar.accounts_head_by THEN poc.management_apporved_by_id
+                    WHEN ar.op_head_by IS NOT NULL THEN ar.op_head_by
+                    ELSE COALESCE(ar.approved_by, poc.management_apporved_by_id, poc.qc_audit_approved_id, poc.dept_head_approved_by)
+                END,
                 ar.approved_at = COALESCE(poc.management_apporved_at, poc.qc_audit_approved_at, poc.dept_head_approved_at, poc.updated_at, ar.approved_at),
                 ar.approval_note = COALESCE(poc.management_apporved_note, poc.qc_audit_note, poc.dept_head_approval_note, ar.approval_note),
                 ar.request_amount = poc.request_amount,
@@ -4485,6 +4830,9 @@ class ApprovalRequest extends Model
 
     public function syncMissingVendorPaymentRequests()
     {
+        if (class_exists('Con_VendorPaymentRequest')) {
+            new Con_VendorPaymentRequest();
+        }
         // 1. Insert missing vendor_payment_requests into approval_requests
         $sql = "
             SELECT vpr.*, p.name AS project_name, v.name AS vendor_name
@@ -4510,7 +4858,7 @@ class ApprovalRequest extends Model
                 $vStatus = strtolower(trim(str_replace('_', ' ', $row['status'] ?? '')));
 
                 $status = 'pending';
-                $approveRole = 'qc';
+                $approveRole = !empty($row['purchase_head_approved_by_id']) ? 'qc' : 'purchase_head';
                 $requestAmount = $netPayable;
                 $approvedAmount = null;
                 $approvedBy = null;
@@ -4524,10 +4872,10 @@ class ApprovalRequest extends Model
                     $approvedAt = !empty($row['updated_at']) ? $row['updated_at'] : null;
                 } elseif (in_array($vStatus, ['submitted', 'pending', 'draft', ''])) {
                     $status = 'pending';
-                    $approveRole = 'qc';
+                    $approveRole = !empty($row['purchase_head_approved_by_id']) ? 'qc' : 'purchase_head';
                 } elseif (in_array($vStatus, ['qc approved', 'qc_approved'])) {
                     $status = 'pending';
-                    $approveRole = 'management';
+                    $approveRole = 'operations';
                     $requestAmount = $qcAppAmt;
                     $approvedBy = !empty($row['qc_approved_by_id']) ? (int)$row['qc_approved_by_id'] : null;
                     $approvedAt = !empty($row['qc_approved_at']) ? $row['qc_approved_at'] : (!empty($row['updated_at']) ? $row['updated_at'] : null);
@@ -4574,19 +4922,20 @@ class ApprovalRequest extends Model
             }
         }
 
-        // 1.5. Auto-heal vendor_payment_requests approved by Operation Head (<= 100k)
+        // 1.5. Auto-heal vendor_payment_requests approved by BOTH Operation Head AND Accounts Head (<= 10k)
         $autoHealSql = "
             UPDATE vendor_payment_requests vpr
             INNER JOIN approval_requests ar ON (ar.source_table = 'vendor_payment_requests' AND ar.source_id = vpr.id)
             SET 
                 vpr.status = 'Approved',
-                vpr.approved_by = COALESCE(ar.op_head_by, ar.approved_by, 200),
+                vpr.approved_by = COALESCE(ar.accounts_head_by, ar.op_head_by, ar.approved_by, 200),
                 vpr.approved_amount = COALESCE(vpr.qc_approved_amount, vpr.net_payable, vpr.invoice_amount, ar.request_amount),
                 vpr.due_amount = COALESCE(vpr.qc_approved_amount, vpr.net_payable, vpr.invoice_amount, ar.request_amount),
-                vpr.management_note = COALESCE(NULLIF(ar.op_head_note, ''), NULLIF(ar.approval_note, ''), vpr.management_note, 'Approved by Admin & Operation Head'),
+                vpr.management_note = COALESCE(NULLIF(ar.accounts_head_note, ''), NULLIF(ar.op_head_note, ''), NULLIF(ar.approval_note, ''), vpr.management_note, 'Approved by Operation Head & Accounts Head'),
                 vpr.updated_at = NOW()
             WHERE vpr.status = 'QC Approved'
               AND ar.op_head_status = 'approved'
+              AND ar.accounts_head_status = 'approved'
               AND ar.request_amount <= 10000.01
         ";
         @$this->db->query($autoHealSql);
@@ -4598,17 +4947,20 @@ class ApprovalRequest extends Model
             SET 
                 ar.approve_role = CASE
                     WHEN vpr.status = 'Rejected' THEN 'rejected'
-                    WHEN vpr.status IN ('Submitted', 'Draft') THEN 'qc'
-                    WHEN vpr.status = 'QC Approved' AND ar.op_head_status = 'approved' AND ar.request_amount <= 10000.01 THEN 
-                        CASE WHEN ar.accounts_head_status = 'approved' THEN 'accounts' ELSE 'accounts_head' END
-                    WHEN vpr.status = 'QC Approved' THEN 'management'
+                    WHEN vpr.status IN ('Submitted', 'Draft') THEN IF(vpr.purchase_head_approved_by_id IS NULL, 'purchase_head', 'qc')
+                    WHEN vpr.status = 'QC Approved' AND ar.op_head_status = 'approved' THEN 
+                        CASE 
+                            WHEN ar.accounts_head_status = 'approved' THEN (CASE WHEN ar.request_amount <= 10000.01 THEN 'accounts' ELSE 'management' END)
+                            ELSE 'accounts_head' 
+                        END
+                    WHEN vpr.status = 'QC Approved' THEN 'operations'
                     WHEN vpr.status = 'Approved' THEN CASE WHEN ar.accounts_head_status = 'approved' THEN 'accounts' ELSE 'accounts_head' END
                     WHEN vpr.status IN ('Paid', 'Partially_Paid', 'Fully_Paid') THEN 'completed'
                     ELSE ar.approve_role
                 END,
                 ar.status = CASE
                     WHEN vpr.status = 'Rejected' THEN 'rejected'
-                    WHEN vpr.status = 'QC Approved' AND ar.op_head_status = 'approved' AND ar.request_amount <= 10000.01 THEN 'approved'
+                    WHEN vpr.status = 'QC Approved' AND ar.op_head_status = 'approved' AND ar.accounts_head_status = 'approved' AND ar.request_amount <= 10000.01 THEN 'approved'
                     WHEN vpr.status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid') THEN 'approved'
                     ELSE 'pending'
                 END,
@@ -4619,38 +4971,39 @@ class ApprovalRequest extends Model
                 END,
                 ar.approved_amount = CASE
                     WHEN vpr.status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid') THEN COALESCE(vpr.approved_amount, vpr.net_payable, ar.request_amount)
-                    WHEN vpr.status = 'QC Approved' AND ar.op_head_status = 'approved' AND ar.request_amount <= 10000.01 THEN COALESCE(vpr.approved_amount, vpr.qc_approved_amount, vpr.net_payable, ar.request_amount)
+                    WHEN vpr.status = 'QC Approved' AND ar.op_head_status = 'approved' AND ar.accounts_head_status = 'approved' AND ar.request_amount <= 10000.01 THEN COALESCE(vpr.approved_amount, vpr.qc_approved_amount, vpr.net_payable, ar.request_amount)
                     ELSE ar.approved_amount
                 END,
                 ar.approved_by = CASE
                     WHEN vpr.status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid') THEN COALESCE(vpr.approved_by, ar.approved_by)
-                    WHEN vpr.status = 'QC Approved' AND ar.op_head_status = 'approved' AND ar.request_amount <= 10000.01 THEN COALESCE(ar.op_head_by, ar.approved_by, 200)
+                    WHEN vpr.status = 'QC Approved' AND ar.op_head_status = 'approved' AND ar.accounts_head_status = 'approved' AND ar.request_amount <= 10000.01 THEN COALESCE(ar.accounts_head_by, ar.op_head_by, ar.approved_by, 200)
                     WHEN vpr.status = 'QC Approved' THEN COALESCE(vpr.qc_approved_by_id, ar.approved_by)
                     ELSE ar.approved_by
                 END,
                 ar.approved_at = CASE
                     WHEN vpr.status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid') THEN COALESCE(vpr.updated_at, ar.approved_at)
-                    WHEN vpr.status = 'QC Approved' AND ar.op_head_status = 'approved' AND ar.request_amount <= 10000.01 THEN COALESCE(ar.op_head_at, vpr.updated_at, ar.approved_at)
+                    WHEN vpr.status = 'QC Approved' AND ar.op_head_status = 'approved' AND ar.accounts_head_status = 'approved' AND ar.request_amount <= 10000.01 THEN COALESCE(ar.accounts_head_at, ar.op_head_at, vpr.updated_at, ar.approved_at)
                     WHEN vpr.status = 'QC Approved' THEN COALESCE(vpr.qc_approved_at, ar.approved_at)
                     ELSE ar.approved_at
                 END,
                 ar.approval_note = CASE
-                    WHEN vpr.status = 'QC Approved' AND ar.op_head_status = 'approved' AND ar.request_amount <= 10000.01 AND ar.op_head_note IS NOT NULL AND ar.op_head_note != '' THEN ar.op_head_note
+                    WHEN vpr.status = 'QC Approved' AND ar.op_head_status = 'approved' AND ar.op_head_note IS NOT NULL AND ar.op_head_note != '' THEN ar.op_head_note
                     WHEN vpr.status = 'QC Approved' AND vpr.qc_note IS NOT NULL AND vpr.qc_note != '' THEN vpr.qc_note
                     WHEN vpr.status = 'Approved' AND vpr.management_note IS NOT NULL AND vpr.management_note != '' THEN vpr.management_note
                     ELSE ar.approval_note
                 END
             WHERE 
-                -- Items where QC has approved, but approval_request is still in 'purchase team leader' or 'qc'
-                (vpr.status = 'QC Approved' AND ar.approve_role != 'management' AND NOT (ar.op_head_status = 'approved' AND ar.request_amount <= 10000.01))
+                -- Items where QC has approved, but approval_request is not aligned with Op Head / Accounts Head / Management
+                (vpr.status = 'QC Approved' AND ar.approve_role NOT IN ('operations', 'management', 'accounts_head', 'accounts'))
+                OR (vpr.status = 'QC Approved' AND ar.op_head_status = 'approved' AND ar.accounts_head_status != 'approved' AND ar.approve_role != 'accounts_head')
                 -- Items where Management has approved, but approval_request is not in accounts / approved
                 OR (vpr.status = 'Approved' AND (ar.approve_role NOT IN ('accounts', 'accounts_head') OR ar.status != 'approved'))
                 -- Items paid
                 OR (vpr.status IN ('Paid', 'Partially_Paid', 'Fully_Paid') AND ar.approve_role != 'completed')
                 -- Items rejected
                 OR (vpr.status = 'Rejected' AND ar.status != 'rejected')
-                -- Items submitted but stuck in purchase team leader
-                OR (vpr.status IN ('Submitted', 'Draft') AND ar.approve_role = 'purchase team leader')
+                -- Items submitted
+                OR (vpr.status IN ('Submitted', 'Draft') AND ar.approve_role != IF(vpr.purchase_head_approved_by_id IS NULL, 'purchase_head', 'qc'))
                 -- Empty status
                 OR ar.status = '' OR ar.status IS NULL
         ";
@@ -4659,6 +5012,9 @@ class ApprovalRequest extends Model
 
     public function syncMissingContractorBills()
     {
+        if (class_exists('Con_ContractorBill')) {
+            new Con_ContractorBill();
+        }
         // 1. Insert missing contractor_bill_requests into approval_requests
         $sql = "
             SELECT cbr.*, p.name AS project_name, c.name AS contractor_name
@@ -4696,12 +5052,15 @@ class ApprovalRequest extends Model
                     $approveRole = 'rejected';
                     $approvedBy = !empty($row['approved_by']) ? (int)$row['approved_by'] : null;
                     $approvedAt = !empty($row['updated_at']) ? $row['updated_at'] : null;
-                } elseif (in_array($cbStatus, ['submitted', 'verified', 'pending', 'draft', ''])) {
+                } elseif (in_array($cbStatus, ['submitted', 'pending', 'draft', ''])) {
                     $status = 'pending';
-                    $approveRole = 'qc';
+                    $approveRole = 'pm';
+                } elseif ($cbStatus === 'verified') {
+                    $status = 'pending';
+                    $approveRole = !empty($row['purchase_head_approved_by_id']) ? 'qc' : 'purchase_head';
                 } elseif ($cbStatus === 'qc_approved') {
                     $status = 'pending';
-                    $approveRole = 'management';
+                    $approveRole = 'operations';
                     $requestAmount = $approvedAmt;
                     $approvedBy = !empty($row['qc_approved_by_id']) ? (int)$row['qc_approved_by_id'] : null;
                     $approvedAt = !empty($row['qc_approved_at']) ? $row['qc_approved_at'] : (!empty($row['updated_at']) ? $row['updated_at'] : null);
@@ -4748,19 +5107,20 @@ class ApprovalRequest extends Model
             }
         }
 
-        // 1.5. Auto-heal contractor_bill_requests approved by Operation Head (<= 100k)
+        // 1.5. Auto-heal contractor_bill_requests approved by BOTH Operation Head AND Accounts Head (<= 10k)
         $autoHealCbSql = "
             UPDATE contractor_bill_requests cbr
             INNER JOIN approval_requests ar ON (ar.source_table = 'contractor_bill_requests' AND ar.source_id = cbr.id)
             SET 
                 cbr.status = 'approved',
-                cbr.approved_by = COALESCE(ar.op_head_by, ar.approved_by, 200),
+                cbr.approved_by = COALESCE(ar.accounts_head_by, ar.op_head_by, ar.approved_by, 200),
                 cbr.approved_amount = COALESCE(cbr.approved_amount, cbr.bill_amount, ar.request_amount),
                 cbr.due_amount = COALESCE(cbr.approved_amount, cbr.bill_amount, ar.request_amount),
-                cbr.management_note = COALESCE(NULLIF(ar.op_head_note, ''), NULLIF(ar.approval_note, ''), cbr.management_note, 'Approved by Admin & Operation Head'),
+                cbr.management_note = COALESCE(NULLIF(ar.accounts_head_note, ''), NULLIF(ar.op_head_note, ''), NULLIF(ar.approval_note, ''), cbr.management_note, 'Approved by Operation Head & Accounts Head'),
                 cbr.updated_at = NOW()
             WHERE cbr.status = 'qc_approved'
               AND ar.op_head_status = 'approved'
+              AND ar.accounts_head_status = 'approved'
               AND ar.request_amount <= 10000.01
         ";
         @$this->db->query($autoHealCbSql);
@@ -4771,10 +5131,14 @@ class ApprovalRequest extends Model
             INNER JOIN contractor_bill_requests cbr ON (ar.source_table = 'contractor_bill_requests' AND ar.source_id = cbr.id)
             SET 
                 ar.approve_role = CASE
-                    WHEN cbr.status IN ('submitted', 'verified', 'pending') AND cbr.qc_approved_at IS NULL THEN 'qc'
-                    WHEN cbr.status = 'qc_approved' AND ar.op_head_status = 'approved' AND ar.request_amount <= 10000.01 THEN 
-                        CASE WHEN ar.accounts_head_status = 'approved' THEN 'accounts' ELSE 'accounts_head' END
-                    WHEN cbr.status = 'qc_approved' THEN 'management'
+                    WHEN cbr.status IN ('submitted', 'pending', 'draft') AND cbr.qc_approved_at IS NULL THEN 'pm'
+                    WHEN cbr.status = 'verified' AND cbr.qc_approved_at IS NULL THEN IF(cbr.purchase_head_approved_by_id IS NULL, 'purchase_head', 'qc')
+                    WHEN cbr.status = 'qc_approved' AND ar.op_head_status = 'approved' THEN 
+                        CASE 
+                            WHEN ar.accounts_head_status = 'approved' THEN (CASE WHEN ar.request_amount <= 10000.01 THEN 'accounts' ELSE 'management' END)
+                            ELSE 'accounts_head' 
+                        END
+                    WHEN cbr.status = 'qc_approved' THEN 'operations'
                     WHEN cbr.status = 'approved' THEN CASE WHEN ar.accounts_head_status = 'approved' THEN 'accounts' ELSE 'accounts_head' END
                     WHEN cbr.status IN ('paid', 'fully_paid', 'partially_paid') THEN 'completed'
                     WHEN cbr.status = 'rejected' THEN 'rejected'
@@ -4782,7 +5146,7 @@ class ApprovalRequest extends Model
                 END,
                 ar.status = CASE
                     WHEN cbr.status = 'rejected' THEN 'rejected'
-                    WHEN cbr.status = 'qc_approved' AND ar.op_head_status = 'approved' AND ar.request_amount <= 10000.01 THEN 'approved'
+                    WHEN cbr.status = 'qc_approved' AND ar.op_head_status = 'approved' AND ar.accounts_head_status = 'approved' AND ar.request_amount <= 10000.01 THEN 'approved'
                     WHEN cbr.status IN ('approved', 'paid', 'fully_paid', 'partially_paid') THEN 'approved'
                     ELSE 'pending'
                 END,
@@ -4793,32 +5157,34 @@ class ApprovalRequest extends Model
                 END,
                 ar.approved_amount = CASE
                     WHEN cbr.status IN ('approved', 'paid', 'fully_paid', 'partially_paid') THEN COALESCE(cbr.approved_amount, cbr.bill_amount, ar.request_amount)
-                    WHEN cbr.status = 'qc_approved' AND ar.op_head_status = 'approved' AND ar.request_amount <= 10000.01 THEN COALESCE(cbr.approved_amount, cbr.bill_amount, ar.request_amount)
+                    WHEN cbr.status = 'qc_approved' AND ar.op_head_status = 'approved' AND ar.accounts_head_status = 'approved' AND ar.request_amount <= 10000.01 THEN COALESCE(cbr.approved_amount, cbr.bill_amount, ar.request_amount)
                     ELSE ar.approved_amount
                 END,
                 ar.approved_by = CASE
                     WHEN cbr.status IN ('approved', 'paid', 'fully_paid', 'partially_paid') THEN COALESCE(cbr.approved_by, ar.approved_by)
-                    WHEN cbr.status = 'qc_approved' AND ar.op_head_status = 'approved' AND ar.request_amount <= 10000.01 THEN COALESCE(ar.op_head_by, ar.approved_by, 200)
+                    WHEN cbr.status = 'qc_approved' AND ar.op_head_status = 'approved' AND ar.accounts_head_status = 'approved' AND ar.request_amount <= 10000.01 THEN COALESCE(ar.accounts_head_by, ar.op_head_by, ar.approved_by, 200)
                     WHEN cbr.status = 'qc_approved' THEN COALESCE(cbr.qc_approved_by_id, ar.approved_by)
                     ELSE ar.approved_by
                 END,
                 ar.approved_at = CASE
                     WHEN cbr.status IN ('approved', 'paid', 'fully_paid', 'partially_paid') THEN COALESCE(cbr.updated_at, ar.approved_at)
-                    WHEN cbr.status = 'qc_approved' AND ar.op_head_status = 'approved' AND ar.request_amount <= 10000.01 THEN COALESCE(ar.op_head_at, cbr.updated_at, ar.approved_at)
+                    WHEN cbr.status = 'qc_approved' AND ar.op_head_status = 'approved' AND ar.accounts_head_status = 'approved' AND ar.request_amount <= 10000.01 THEN COALESCE(ar.accounts_head_at, ar.op_head_at, cbr.updated_at, ar.approved_at)
                     WHEN cbr.status = 'qc_approved' THEN COALESCE(cbr.qc_approved_at, ar.approved_at)
                     ELSE ar.approved_at
                 END,
                 ar.approval_note = CASE
-                    WHEN cbr.status = 'qc_approved' AND ar.op_head_status = 'approved' AND ar.request_amount <= 10000.01 AND ar.op_head_note IS NOT NULL AND ar.op_head_note != '' THEN ar.op_head_note
+                    WHEN cbr.status = 'qc_approved' AND ar.op_head_status = 'approved' AND ar.op_head_note IS NOT NULL AND ar.op_head_note != '' THEN ar.op_head_note
                     WHEN cbr.status = 'qc_approved' AND cbr.qc_note IS NOT NULL AND cbr.qc_note != '' THEN cbr.qc_note
                     WHEN cbr.status = 'approved' AND cbr.management_note IS NOT NULL AND cbr.management_note != '' THEN cbr.management_note
                     ELSE ar.approval_note
                 END
             WHERE 
-                -- Items where QC has not approved yet, but approval_request is set to 'management'
-                (cbr.status IN ('submitted', 'verified', 'pending') AND cbr.qc_approved_at IS NULL AND ar.approve_role != 'qc')
-                -- Items where QC has approved, but approval_request is not in management
-                OR (cbr.status = 'qc_approved' AND ar.approve_role != 'management' AND NOT (ar.op_head_status = 'approved' AND ar.request_amount <= 10000.01))
+                -- Items where PM has not verified yet, or verified but QC has not approved yet
+                (cbr.status IN ('submitted', 'pending', 'draft') AND cbr.qc_approved_at IS NULL AND ar.approve_role != 'pm')
+                OR (cbr.status = 'verified' AND cbr.qc_approved_at IS NULL AND ar.approve_role != IF(cbr.purchase_head_approved_by_id IS NULL, 'purchase_head', 'qc'))
+                -- Items where QC has approved, but approval_request is not aligned with Op Head / Accounts Head / Management
+                OR (cbr.status = 'qc_approved' AND ar.approve_role NOT IN ('operations', 'management', 'accounts_head', 'accounts'))
+                OR (cbr.status = 'qc_approved' AND ar.op_head_status = 'approved' AND ar.accounts_head_status != 'approved' AND ar.approve_role != 'accounts_head')
                 -- Items where Management has approved, but approval_request is not in accounts / approved
                 OR (cbr.status = 'approved' AND (ar.approve_role NOT IN ('accounts', 'accounts_head') OR ar.status != 'approved'))
                 -- Items paid

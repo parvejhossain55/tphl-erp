@@ -4,7 +4,7 @@ $page = 'My Onboarding Projects';
 $show_breadcrumb = true;
 ?>
 <!-- TOP SUMMARY METRIC CARDS -->
-<div class="row g-3 mb-3 align-items-stretch">
+<div class="row  mb-3 align-items-stretch">
     <!-- 1. Total Clients Card -->
     <div class="col-6 col-md-3">
         <div class="card__wrapper p-3 h-100 border-0 shadow-sm" style="border-radius: 12px; border-left: 4px solid #2563eb !important; background: #ffffff;">
@@ -90,7 +90,7 @@ $show_breadcrumb = true;
 <div class="alert alert-light border shadow-xs d-flex align-items-center justify-content-between flex-wrap gap-2 py-2 px-3 mb-3" style="border-radius: 8px; font-size: 12.5px; background: #ffffff;">
     <div class="text-muted d-flex align-items-center gap-2">
         <i class="fa-solid fa-circle-info text-primary fs-6"></i>
-        <span><strong>ব্যাখ্যা:</strong> একজন ক্লায়েন্ট একাধিক ফ্ল্যাট/শেয়ার বুক করতে পারেন। <strong>Total Units Sold</strong> টেবিলে থাকা সর্বমোট বুকিং/ইউনিট সংখ্যা এবং <strong>Total Clients</strong> মোট ইউনিক ক্লায়েন্ট সংখ্যা নির্দেশ করে।</span>
+        <span><strong>Explain:</strong> One client can booked multiple units<strong>Total Units Sold</stromeans total unit booked by client and <strong>Total Clients</strong> means total unique clients.</span>
     </div>
     <?php if (!empty($targetUserName)): ?>
         <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1.5" style="border-radius: 6px; font-size: 12px;">
@@ -229,7 +229,7 @@ $show_breadcrumb = true;
                                         <td>
                                             <?= esc($lead['flat_name'] ?? '-') ?>
                                             <?php if (!empty($lead['sqft'])): ?>
-                                                <small class="text-muted"> - <?= esc($lead['sqft']) ?> sqft</small>
+                                                <small class="text-muted"> - <?= format_sqft($lead['sqft']) ?> sqft</small>
                                             <?php endif; ?>
                                         </td>
 
@@ -353,7 +353,7 @@ $show_breadcrumb = true;
                             <?= esc($lead['full_name'] ?? '-') ?>
                         </div>
                         <div class="small text-muted">
-                            📞 <?= esc($lead['phone'] ?? '-') ?>
+                             <?= esc($lead['phone'] ?? '-') ?>
                         </div>
                         <div class="small text-muted">
                             ✉ <?= esc($lead['email'] ?? '-') ?>
@@ -371,7 +371,7 @@ $show_breadcrumb = true;
                             <strong>Unit:</strong>
                             <?= esc($lead['flat_name'] ?? '-') ?>
                             <?php if (!empty($lead['sqft'])): ?>
-                                (<?= esc($lead['sqft']) ?> sqft)
+                                (<?= format_sqft($lead['sqft']) ?> sqft)
                             <?php endif; ?>
                         </div>
                     </div>

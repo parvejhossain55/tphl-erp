@@ -790,6 +790,74 @@ class AssetManagement
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         ");
 
+        // 1.5 Ensure project_extra_assets table exists
+        @$this->db->query("
+            CREATE TABLE IF NOT EXISTS `project_extra_assets` (
+                `id` INT(11) NOT NULL AUTO_INCREMENT,
+                `project_id` INT(11) NULL DEFAULT NULL,
+                `department_id` INT(11) NULL DEFAULT NULL,
+                `office_branch_id` INT(11) NULL DEFAULT NULL,
+                `asset_location` VARCHAR(255) NULL DEFAULT 'Head Office',
+                `assigned_to` INT(11) NULL DEFAULT NULL,
+                `item_category_id` INT(11) NULL DEFAULT 1,
+                `request_type` ENUM('Purchase','Servicing') DEFAULT 'Purchase',
+                `account_id` INT(11) NULL DEFAULT NULL,
+                `product_id` INT(11) NULL DEFAULT NULL,
+                `item_name` VARCHAR(255) NOT NULL,
+                `quantity` INT(11) NOT NULL DEFAULT 1,
+                `unit_price` DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+                `total_price` DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+                `justification` TEXT NULL DEFAULT NULL,
+                `attachment` VARCHAR(255) NULL DEFAULT NULL,
+                `requested_by` INT(11) NOT NULL,
+                `reporting_user_id` INT(11) NULL DEFAULT NULL,
+                `vendor_id` INT(11) NULL DEFAULT NULL,
+                `vendor_name` VARCHAR(255) NULL DEFAULT NULL,
+                `dept_head_status` ENUM('pending','approved','rejected','not_required') DEFAULT 'not_required',
+                `dept_head_by` INT(11) NULL DEFAULT NULL,
+                `dept_head_at` DATETIME NULL DEFAULT NULL,
+                `dept_head_note` TEXT NULL DEFAULT NULL,
+                `it_head_status` ENUM('pending','approved','rejected','not_required') DEFAULT 'not_required',
+                `it_head_by` INT(11) NULL DEFAULT NULL,
+                `it_head_at` DATETIME NULL DEFAULT NULL,
+                `it_head_note` TEXT NULL DEFAULT NULL,
+                `operations_status` ENUM('pending','approved','rejected') DEFAULT 'pending',
+                `operations_by` INT(11) NULL DEFAULT NULL,
+                `operations_at` TIMESTAMP NULL DEFAULT NULL,
+                `operations_note` TEXT NULL DEFAULT NULL,
+                `purchase_head_status` ENUM('pending','approved','rejected') DEFAULT 'pending',
+                `purchase_head_by` INT(11) NULL DEFAULT NULL,
+                `purchase_head_at` TIMESTAMP NULL DEFAULT NULL,
+                `purchase_head_note` TEXT NULL DEFAULT NULL,
+                `purchase_head_document` VARCHAR(255) NULL DEFAULT NULL,
+                `qc_audit_status` ENUM('pending','approved','rejected') DEFAULT 'pending',
+                `qc_audit_by` INT(11) NULL DEFAULT NULL,
+                `qc_audit_at` TIMESTAMP NULL DEFAULT NULL,
+                `qc_audit_note` TEXT NULL DEFAULT NULL,
+                `mgmt_status` ENUM('pending','approved','rejected') DEFAULT 'pending',
+                `mgmt_by` INT(11) NULL DEFAULT NULL,
+                `mgmt_at` TIMESTAMP NULL DEFAULT NULL,
+                `mgmt_note` TEXT NULL DEFAULT NULL,
+                `payment_status` ENUM('unpaid','paid') DEFAULT 'unpaid',
+                `paid_by` INT(11) NULL DEFAULT NULL,
+                `paid_at` TIMESTAMP NULL DEFAULT NULL,
+                `payment_method` VARCHAR(100) NULL DEFAULT NULL,
+                `paid_amount` DECIMAL(15,2) NULL DEFAULT NULL,
+                `payment_attachment` VARCHAR(255) NULL DEFAULT NULL,
+                `overall_status` VARCHAR(50) DEFAULT 'pending',
+                `purchase_document` VARCHAR(255) NULL DEFAULT NULL,
+                `purchase_note` TEXT NULL DEFAULT NULL,
+                `purchase_date` DATE NULL DEFAULT NULL,
+                `return_amount` DECIMAL(15,2) NULL DEFAULT 0.00,
+                `return_note` TEXT NULL DEFAULT NULL,
+                `purchase_confirmed_by` INT(11) NULL DEFAULT NULL,
+                `purchase_confirmed_at` TIMESTAMP NULL DEFAULT NULL,
+                `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+                `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+
         // 2. Ensure project_id allows NULL
         $res = $this->db->query("SHOW COLUMNS FROM `project_extra_assets` LIKE 'project_id'");
         if ($res && $col = $res->fetch_assoc()) {
@@ -801,33 +869,42 @@ class AssetManagement
         
         // 3. Ensure required extra columns exist
         $colsToAdd = [
-            'request_type'      => "ENUM('Purchase', 'Servicing') DEFAULT 'Purchase' AFTER `item_category_id`",
-            'department_id'     => "INT NULL DEFAULT NULL AFTER `project_id`",
-            'office_branch_id'  => "INT NULL DEFAULT NULL AFTER `department_id`",
-            'asset_location'    => "VARCHAR(255) NULL DEFAULT 'Head Office' AFTER `office_branch_id`",
-            'assigned_to'       => "INT NULL DEFAULT NULL AFTER `asset_location`",
-            'item_category_id'  => "INT NULL DEFAULT 1 AFTER `assigned_to`",
-            'reporting_user_id' => "INT NULL DEFAULT NULL AFTER `requested_by`",
-            'dept_head_status'  => "ENUM('pending','approved','rejected','not_required') DEFAULT 'not_required' AFTER `attachment`",
-            'dept_head_by'      => "INT NULL DEFAULT NULL AFTER `dept_head_status`",
-            'dept_head_at'      => "DATETIME NULL DEFAULT NULL AFTER `dept_head_by`",
-            'dept_head_note'    => "TEXT NULL DEFAULT NULL AFTER `dept_head_at`",
-            'it_head_status'    => "ENUM('pending','approved','rejected','not_required') DEFAULT 'not_required' AFTER `dept_head_note`",
-            'it_head_by'        => "INT NULL DEFAULT NULL AFTER `it_head_status`",
-            'it_head_at'        => "DATETIME NULL DEFAULT NULL AFTER `it_head_by`",
-            'it_head_note'      => "TEXT NULL DEFAULT NULL AFTER `it_head_at`",
-            'operations_status' => "ENUM('pending','approved','rejected') DEFAULT 'approved' AFTER `dept_head_note`",
-            'operations_by'     => "INT DEFAULT NULL AFTER `operations_status`",
-            'operations_at'     => "TIMESTAMP NULL DEFAULT NULL AFTER `operations_by`",
-            'operations_note'   => "TEXT DEFAULT NULL AFTER `operations_at`",
-            'vendor_id'         => "INT NULL DEFAULT NULL AFTER `requested_by`",
-            'vendor_name'       => "VARCHAR(255) NULL DEFAULT NULL AFTER `vendor_id`",
+            'department_id'          => "INT NULL DEFAULT NULL AFTER `project_id`",
+            'office_branch_id'       => "INT NULL DEFAULT NULL AFTER `department_id`",
+            'asset_location'         => "VARCHAR(255) NULL DEFAULT 'Head Office' AFTER `office_branch_id`",
+            'assigned_to'            => "INT NULL DEFAULT NULL AFTER `asset_location`",
+            'item_category_id'       => "INT NULL DEFAULT 1 AFTER `assigned_to`",
+            'request_type'           => "ENUM('Purchase', 'Servicing') DEFAULT 'Purchase' AFTER `item_category_id`",
+            'account_id'             => "INT NULL DEFAULT NULL AFTER `request_type`",
+            'reporting_user_id'      => "INT NULL DEFAULT NULL AFTER `requested_by`",
+            'vendor_id'              => "INT NULL DEFAULT NULL AFTER `requested_by`",
+            'vendor_name'            => "VARCHAR(255) NULL DEFAULT NULL AFTER `vendor_id`",
+            'dept_head_status'       => "ENUM('pending','approved','rejected','not_required') DEFAULT 'not_required' AFTER `attachment`",
+            'dept_head_by'           => "INT NULL DEFAULT NULL AFTER `dept_head_status`",
+            'dept_head_at'           => "DATETIME NULL DEFAULT NULL AFTER `dept_head_by`",
+            'dept_head_note'         => "TEXT NULL DEFAULT NULL AFTER `dept_head_at`",
+            'it_head_status'         => "ENUM('pending','approved','rejected','not_required') DEFAULT 'not_required' AFTER `dept_head_note`",
+            'it_head_by'             => "INT NULL DEFAULT NULL AFTER `it_head_status`",
+            'it_head_at'             => "DATETIME NULL DEFAULT NULL AFTER `it_head_by`",
+            'it_head_note'           => "TEXT NULL DEFAULT NULL AFTER `it_head_at`",
+            'operations_status'      => "ENUM('pending','approved','rejected') DEFAULT 'pending' AFTER `it_head_note`",
+            'operations_by'          => "INT DEFAULT NULL AFTER `operations_status`",
+            'operations_at'          => "TIMESTAMP NULL DEFAULT NULL AFTER `operations_by`",
+            'operations_note'        => "TEXT DEFAULT NULL AFTER `operations_at`",
+            'purchase_head_status'   => "ENUM('pending','approved','rejected') DEFAULT 'pending' AFTER `operations_note`",
+            'purchase_head_by'       => "INT DEFAULT NULL AFTER `purchase_head_status`",
+            'purchase_head_at'       => "TIMESTAMP NULL DEFAULT NULL AFTER `purchase_head_by`",
+            'purchase_head_note'     => "TEXT DEFAULT NULL AFTER `purchase_head_at`",
+            'purchase_head_document' => "VARCHAR(255) NULL DEFAULT NULL AFTER `purchase_head_note`"
         ];
 
         foreach ($colsToAdd as $colName => $colDef) {
             $check = $this->db->query("SHOW COLUMNS FROM `project_extra_assets` LIKE '{$colName}'");
             if ($check && $check->num_rows == 0) {
-                $this->db->query("ALTER TABLE `project_extra_assets` ADD COLUMN `{$colName}` {$colDef}");
+                if (!@$this->db->query("ALTER TABLE `project_extra_assets` ADD COLUMN `{$colName}` {$colDef}")) {
+                    $cleanDef = preg_replace('/\s+AFTER\s+`?\w+`?$/i', '', $colDef);
+                    @$this->db->query("ALTER TABLE `project_extra_assets` ADD COLUMN `{$colName}` {$cleanDef}");
+                }
             }
         }
     }
@@ -1063,7 +1140,7 @@ class AssetManagement
              FROM project_extra_assets pea
              LEFT JOIN office_branches ob ON ob.id = pea.office_branch_id
              LEFT JOIN office_procurement_categories cat ON cat.id = pea.item_category_id
-              LEFT JOIN vendors v ON v.id = pea.vendor_id
+             LEFT JOIN vendors v ON v.id = pea.vendor_id
              LEFT JOIN projects p ON p.id = pea.project_id
              LEFT JOIN users u_req ON u_req.id = pea.requested_by
              LEFT JOIN employees e_req ON e_req.user_id = u_req.id

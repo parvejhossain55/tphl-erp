@@ -783,7 +783,7 @@ $hasTransactions = !empty($recentTransactions);
                                         <td>
                                             <strong class="d-inline-flex align-items-center gap-2 px-3 py-2 rounded bg-primary text-light text-nowrap">
                                                 <?= $item['flat_name'] ?>
-                                                <span class="fw-normal"><?= $item['sqft'] ?? '' ?> Sqft</span>
+                                                <span class="fw-normal"><?= !empty($item['sqft']) ? format_sqft($item['sqft']) : '' ?> Sqft</span>
                                             </strong>
                                         </td>
 

@@ -183,140 +183,139 @@ window.executeDeleteProject = function(projId) {
 </script>
 
 
-<!-- Filter Section -->
-<div class="row mb-3">
-    <div class="col-12">
-        <div class="filters card__wrapper p-3 bg-white rounded shadow-sm">
-            <form method="GET" action="<?= $GLOBALS['base_url'] ?>/payroll-workspace" class="row gx-3 gy-2 align-items-end" id="workspaceFilterForm">
+<!-- Filter Section (Compact Single-Line Bar) -->
+<div class="bg-white rounded-3 px-3 py-2 mb-3" style="border: 1px solid #e9ecef; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+    <form method="GET" action="<?= $GLOBALS['base_url'] ?>/payroll-workspace" class="d-flex align-items-end justify-content-between flex-wrap" style="gap: 10px;" id="workspaceFilterForm">
 
-                <!-- Hidden: carries filter_type on submit -->
-                <input type="hidden" name="filter_type" id="filterTypeInput" value="<?= htmlspecialchars($_filterType) ?>">
+        <!-- Hidden: carries filter_type on submit -->
+        <input type="hidden" name="filter_type" id="filterTypeInput" value="<?= htmlspecialchars($_filterType) ?>">
+        <input type="hidden" name="meal_project_id" id="mealProjectInput" value="<?= htmlspecialchars($selectedMealProjectId ?? '') ?>">
 
-                <!-- Filter Type Toggle -->
-                <div class="col-sm-2">
-                    <label class="form-label fw-semibold text-muted mb-1">Filter Type</label>
-                    <select class="form-select" id="filterTypeSelect">
-                        <option value="monthly" <?= $_filterType === 'monthly' ? 'selected' : '' ?>>Monthly</option>
-                        <option value="custom"  <?= $_filterType === 'custom'  ? 'selected' : '' ?>>Custom Range</option>
-                    </select>
-                </div>
+        <div class="d-flex align-items-end flex-wrap" style="gap: 10px; flex: 1 1 auto;">
+            <!-- Filter Type Toggle -->
+            <div style="width: 125px;">
+                <label class="form-label fw-semibold text-muted mb-1" style="font-size: 11.5px;">Filter Type</label>
+                <select class="form-select form-select-sm text-dark fw-medium" id="filterTypeSelect" style="height: 32px; font-size: 12.5px; border-color: #dee2e6;">
+                    <option value="monthly" <?= $_filterType === 'monthly' ? 'selected' : '' ?>>Monthly</option>
+                    <option value="custom"  <?= $_filterType === 'custom'  ? 'selected' : '' ?>>Custom Range</option>
+                </select>
+            </div>
 
-                <!-- Monthly: Year + Month -->
-                <div class="col-sm-4" id="monthlyContainer" <?= $_filterType === 'custom' ? 'style="display:none;"' : '' ?>>
-                    <div class="row gx-2">
-                        <div class="col-6">
-                            <label class="form-label fw-semibold text-muted mb-1">Year</label>
-                            <select class="form-select" name="year" id="year">
-                                <?php
-                                $startYear = 2020;
-                                $endYear   = 2035;
-                                for ($y = $startYear; $y <= $endYear; $y++): ?>
-                                    <option value="<?= $y ?>" <?= $y == $_selectedYear ? 'selected' : '' ?>><?= $y ?></option>
-                                <?php endfor; ?>
-                            </select>
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold text-muted mb-1">Month</label>
-                            <select class="form-select" name="month" id="month">
-                                <?php
-                                for ($m = 1; $m <= 12; $m++):
-                                    $monthNum  = str_pad($m, 2, "0", STR_PAD_LEFT);
-                                    $monthName = date('F', mktime(0, 0, 0, $m, 1)); ?>
-                                    <option value="<?= $monthNum ?>" <?= $monthNum == str_pad($_selectedMonth, 2, "0", STR_PAD_LEFT) ? 'selected' : '' ?>><?= $monthName ?></option>
-                                <?php endfor; ?>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Custom Range: From Date + To Date -->
-                <div class="col-sm-4" id="customContainer" <?= $_filterType !== 'custom' ? 'style="display:none;"' : '' ?>>
-                    <div class="row gx-2">
-                        <div class="col-6">
-                            <label class="form-label fw-semibold text-muted mb-1">From Date</label>
-                            <input type="date" class="form-control" name="from_date" id="fromDate" value="<?= htmlspecialchars($_fromDate) ?>">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold text-muted mb-1">To Date</label>
-                            <input type="date" class="form-control" name="to_date" id="toDate" value="<?= htmlspecialchars($_toDate) ?>">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Payroll Project -->
-                <div class="col-xl-3 col-md-4">
-                    <label class="form-label fw-semibold text-muted mb-1" for="payrollProject">Payroll Project</label>
-                    <div class="d-flex align-items-center gap-2">
-                        <select class="form-select w-100" name="payroll_project_id" id="payrollProject">
-                            <option value="">Select Payroll Project</option>
-                            <?php if (!empty($payroll_projects)): ?>
-                                <?php foreach ($payroll_projects as $proj): ?>
-                                    <option value="<?= htmlspecialchars($proj['id']) ?>"
-                                        data-date="<?= htmlspecialchars($proj['date'] ?? '') ?>"
-                                        data-iscustom="<?= htmlspecialchars($proj['is_custom_date'] ?? '0') ?>"
-                                        data-start="<?= htmlspecialchars($proj['start_date'] ?? '') ?>"
-                                        data-end="<?= htmlspecialchars($proj['end_date'] ?? '') ?>"
-                                        <?= (!empty($_selectedProject) && (int)$_selectedProject == (int)$proj['id']) ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($proj['name']) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
+            <!-- Monthly: Year + Month -->
+            <div id="monthlyContainer" <?= $_filterType === 'custom' ? 'style="display:none;"' : '' ?>>
+                <div class="d-flex align-items-end" style="gap: 6px;">
+                    <div style="width: 92px;">
+                        <label class="form-label fw-semibold text-muted mb-1" style="font-size: 11.5px;">Year</label>
+                        <select class="form-select form-select-sm text-dark fw-medium" name="year" id="year" style="height: 32px; font-size: 12.5px; border-color: #dee2e6;">
+                            <?php
+                            $startYear = 2020;
+                            $endYear   = 2035;
+                            for ($y = $startYear; $y <= $endYear; $y++): ?>
+                                <option value="<?= $y ?>" <?= $y == $_selectedYear ? 'selected' : '' ?>><?= $y ?></option>
+                            <?php endfor; ?>
                         </select>
-                        <button type="button" class="btn btn-primary text-nowrap" data-bs-toggle="modal"
-                            data-bs-target="#createProjectModal" style="height: 38px;">
-                            <i class="fa-solid fa-plus me-1"></i> Create
-                        </button>
-                        <?php if ($isManagement): ?>
-                            <button type="button" class="btn btn-outline-secondary text-nowrap" data-bs-toggle="modal"
-                                data-bs-target="#manageProjectsModal" style="height: 38px;" title="Manage & Delete Payroll Projects">
-                                <i class="fa-solid fa-folder-tree me-1"></i> Manage
-                            </button>
-                            <?php if (!empty($_selectedProject) && !empty($selectedProjectName)): ?>
-                                <button type="button" class="btn btn-outline-danger text-nowrap btn-delete-payroll-proj"
-                                    data-id="<?= (int)$_selectedProject ?>"
-                                    data-name="<?= htmlspecialchars($selectedProjectName, ENT_QUOTES) ?>"
-                                    onclick="confirmDeletePayrollProject(<?= (int)$_selectedProject ?>, '<?= htmlspecialchars(addslashes($selectedProjectName), ENT_QUOTES) ?>')"
-                                    style="height: 38px;" title="Delete this Payroll Project">
-                                    <i class="fa-solid fa-trash-can me-1"></i> Delete
-                                </button>
-                            <?php endif; ?>
-                        <?php endif; ?>
+                    </div>
+                    <div style="width: 125px;">
+                        <label class="form-label fw-semibold text-muted mb-1" style="font-size: 11.5px;">Month</label>
+                        <select class="form-select form-select-sm text-dark fw-medium" name="month" id="month" style="height: 32px; font-size: 12.5px; border-color: #dee2e6;">
+                            <?php
+                            for ($m = 1; $m <= 12; $m++):
+                                $monthNum  = str_pad($m, 2, "0", STR_PAD_LEFT);
+                                $monthName = date('F', mktime(0, 0, 0, $m, 1)); ?>
+                                <option value="<?= $monthNum ?>" <?= $monthNum == str_pad($_selectedMonth, 2, "0", STR_PAD_LEFT) ? 'selected' : '' ?>><?= $monthName ?></option>
+                            <?php endfor; ?>
+                        </select>
                     </div>
                 </div>
+            </div>
 
-                <input type="hidden" name="meal_project_id" id="mealProjectInput" value="<?= htmlspecialchars($selectedMealProjectId ?? '') ?>">
-
-                <!-- Linked Meal Tracker (Auto-linked) -->
-                <div class="col-xl-3 col-md-4">
-                    <label class="form-label fw-semibold text-muted mb-1"><i class="fa-solid fa-utensils me-1 text-primary"></i> Linked Meal Tracker</label>
-                    <div class="d-flex align-items-center" style="height: 38px;">
-                        <?php if (!empty($activeMealProject)): ?>
-                            <div class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 text-truncate w-100 fs-13 text-start d-flex align-items-center justify-content-between" title="Auto-linked Meal Project: <?= htmlspecialchars($activeMealProject['name']) ?> (<?= date('d M', strtotime($activeMealProject['from_date'])) ?> - <?= date('d M Y', strtotime($activeMealProject['to_date'])) ?>)">
-                                <span class="text-truncate fw-semibold"><i class="fa-solid fa-circle-check me-1"></i> <?= htmlspecialchars($activeMealProject['name']) ?></span>
-                                <span class="badge bg-success text-white ms-2" style="font-size: 10px;">Linked</span>
-                            </div>
-                        <?php else: ?>
-                            <div class="badge bg-light text-muted border px-3 py-2 text-truncate w-100 fs-13 text-start d-flex align-items-center justify-content-between" title="No Meal Tracker matched for this cycle">
-                                <span class="text-truncate"><i class="fa-solid fa-circle-info me-1"></i> No Meal Tracker Linked</span>
-                                <span class="badge bg-secondary text-white ms-2" style="font-size: 10px;">None</span>
-                            </div>
-                        <?php endif; ?>
+            <!-- Custom Range: From Date + To Date -->
+            <div id="customContainer" <?= $_filterType !== 'custom' ? 'style="display:none;"' : '' ?>>
+                <div class="d-flex align-items-end" style="gap: 6px;">
+                    <div style="width: 132px;">
+                        <label class="form-label fw-semibold text-muted mb-1" style="font-size: 11.5px;">From Date</label>
+                        <input type="date" class="form-control form-control-sm text-dark" name="from_date" id="fromDate" value="<?= htmlspecialchars($_fromDate) ?>" style="height: 32px; font-size: 12px; border-color: #dee2e6;">
+                    </div>
+                    <div style="width: 132px;">
+                        <label class="form-label fw-semibold text-muted mb-1" style="font-size: 11.5px;">To Date</label>
+                        <input type="date" class="form-control form-control-sm text-dark" name="to_date" id="toDate" value="<?= htmlspecialchars($_toDate) ?>" style="height: 32px; font-size: 12px; border-color: #dee2e6;">
                     </div>
                 </div>
+            </div>
 
-                <!-- Search Button -->
-                <div class="col-xl-2 col-md-auto">
-                    <button type="submit" class="btn btn-primary" style="height:38px;">
-                        <i class="fa-solid fa-search me-1"></i> Search
+            <!-- Payroll Project + Actions -->
+            <div>
+                <label class="form-label fw-semibold text-muted mb-1" for="payrollProject" style="font-size: 11.5px;">Payroll Project</label>
+                <div class="d-flex align-items-center flex-wrap" style="gap: 6px;">
+                    <select class="form-select form-select-sm text-dark fw-medium" name="payroll_project_id" id="payrollProject" style="width: 175px; height: 32px; font-size: 12.5px; border-color: #dee2e6;">
+                        <option value="">Select Payroll Project</option>
+                        <?php if (!empty($payroll_projects)): ?>
+                            <?php foreach ($payroll_projects as $proj): ?>
+                                <option value="<?= htmlspecialchars($proj['id']) ?>"
+                                    data-date="<?= htmlspecialchars($proj['date'] ?? '') ?>"
+                                    data-iscustom="<?= htmlspecialchars($proj['is_custom_date'] ?? '0') ?>"
+                                    data-start="<?= htmlspecialchars($proj['start_date'] ?? '') ?>"
+                                    data-end="<?= htmlspecialchars($proj['end_date'] ?? '') ?>"
+                                    <?= (!empty($_selectedProject) && (int)$_selectedProject == (int)$proj['id']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($proj['name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </select>
+                    <button type="button" class="btn btn-sm btn-primary fw-semibold d-inline-flex align-items-center text-nowrap" data-bs-toggle="modal"
+                        data-bs-target="#createProjectModal" style="height: 32px; font-size: 12px; padding: 0 9px; gap: 4px;">
+                        <i class="fa-solid fa-plus"></i><span>Create</span>
                     </button>
-                    <a href="<?= $GLOBALS['base_url'] ?>/payroll-workspace" class="btn btn-outline-secondary ms-1" style="height:38px;">
-                        <i class="fa-solid fa-rotate-left me-1"></i> Reset
-                    </a>
+                    <?php if ($isManagement): ?>
+                        <button type="button" class="btn btn-sm btn-outline-secondary fw-semibold d-inline-flex align-items-center text-nowrap" data-bs-toggle="modal"
+                            data-bs-target="#manageProjectsModal" style="height: 32px; font-size: 12px; padding: 0 9px; gap: 4px;" title="Manage & Delete Payroll Projects">
+                            <i class="fa-solid fa-folder-tree"></i><span>Manage</span>
+                        </button>
+                        <?php if (!empty($_selectedProject) && !empty($selectedProjectName)): ?>
+                            <button type="button" class="btn btn-sm btn-outline-danger fw-semibold d-inline-flex align-items-center text-nowrap btn-delete-payroll-proj"
+                                data-id="<?= (int)$_selectedProject ?>"
+                                data-name="<?= htmlspecialchars($selectedProjectName, ENT_QUOTES) ?>"
+                                onclick="confirmDeletePayrollProject(<?= (int)$_selectedProject ?>, '<?= htmlspecialchars(addslashes($selectedProjectName), ENT_QUOTES) ?>')"
+                                style="height: 32px; font-size: 12px; padding: 0 9px; gap: 4px;" title="Delete this Payroll Project">
+                                <i class="fa-regular fa-trash-can"></i><span>Delete</span>
+                            </button>
+                        <?php endif; ?>
+                    <?php endif; ?>
                 </div>
+            </div>
 
-            </form>
+            <!-- Linked Meal Tracker (Auto-linked) -->
+            <div style="min-width: 190px; max-width: 245px; flex: 1 1 190px;">
+                <label class="form-label fw-semibold text-muted mb-1" style="font-size: 11.5px;"><i class="fa-solid fa-utensils me-1 text-primary"></i>Linked Meal Tracker</label>
+                <?php if (!empty($activeMealProject)): ?>
+                    <div class="rounded px-2.5 d-flex align-items-center justify-content-between"
+                         style="height: 32px; padding: 0 10px; font-size: 12px; background-color: #f0fdf4; color: #166534; border: 1px solid #bbf7d0;"
+                         title="Auto-linked Meal Project: <?= htmlspecialchars($activeMealProject['name']) ?> (<?= date('d M', strtotime($activeMealProject['from_date'])) ?> - <?= date('d M Y', strtotime($activeMealProject['to_date'])) ?>)">
+                        <span class="text-truncate fw-semibold"><i class="fa-solid fa-circle-check me-1"></i><?= htmlspecialchars($activeMealProject['name']) ?></span>
+                        <span class="badge bg-success text-white ms-2" style="font-size: 9.5px; padding: 2px 6px;">Linked</span>
+                    </div>
+                <?php else: ?>
+                    <div class="rounded px-2.5 d-flex align-items-center justify-content-between"
+                         style="height: 32px; padding: 0 10px; font-size: 12px; background-color: #f8fafc; color: #64748b; border: 1px solid #e2e8f0;"
+                         title="No Meal Tracker matched for this cycle">
+                        <span class="text-truncate"><i class="fa-solid fa-circle-info me-1"></i>No Meal Tracker</span>
+                        <span class="badge bg-secondary text-white ms-2" style="font-size: 9.5px; padding: 2px 6px;">None</span>
+                    </div>
+                <?php endif; ?>
+            </div>
         </div>
-    </div>
+
+        <!-- Search & Reset Buttons -->
+        <div class="d-flex align-items-center" style="gap: 6px;">
+            <button type="submit" class="btn btn-sm btn-primary fw-semibold d-inline-flex align-items-center" style="height: 32px; font-size: 12px; padding: 0 12px; gap: 5px;">
+                <i class="fa-solid fa-magnifying-glass"></i><span>Search</span>
+            </button>
+            <a href="<?= $GLOBALS['base_url'] ?>/payroll-workspace" class="btn btn-sm btn-outline-secondary fw-semibold d-inline-flex align-items-center" style="height: 32px; font-size: 12px; padding: 0 10px; gap: 5px;">
+                <i class="fa-solid fa-rotate-left"></i><span>Reset</span>
+            </a>
+        </div>
+
+    </form>
 </div>
 
 <script>
@@ -399,26 +398,76 @@ window.executeDeleteProject = function(projId) {
 </script>
 
 <!-- Create Project Modal -->
+<?php $hasMissingJoinDates = !empty($missingJoiningDateEmployees) && is_array($missingJoiningDateEmployees); ?>
 <div class="modal fade" id="createProjectModal" tabindex="-1" aria-labelledby="createProjectModalLabel"
     aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog <?= $hasMissingJoinDates ? 'modal-lg' : '' ?>">
         <div class="modal-content">
-            <form action="<?= $GLOBALS['base_url'] ?>/payroll-project-store" method="POST">
+            <form id="createPayrollProjectForm" action="<?= $GLOBALS['base_url'] ?>/payroll-project-store" method="POST" <?= $hasMissingJoinDates ? 'onsubmit="alert(\'Joining Date ছাড়া নতুন Payroll Project তৈরি করা যাবে না। অনুগ্রহ করে তালিকাভুক্ত এমপ্লয়িদের Joining Date সেট করুন।\'); return false;"' : '' ?>>
                 <div class="modal-header">
                     <h5 class="modal-title" id="createProjectModalLabel"><i
                             class="fa-solid fa-folder-plus me-2"></i>Create Payroll Project</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body text-start">
+                    <?php if ($hasMissingJoinDates): ?>
+                        <div class="rounded-3 p-3 mb-3" style="display: block !important; width: 100%; background-color: #fef2f2; border: 1px solid #fecaca; border-left: 4px solid #dc2626;">
+                            <div class="d-flex align-items-start justify-content-between mb-2" style="gap: 10px;">
+                                <div class="d-flex align-items-start" style="gap: 10px; flex: 1 1 auto;">
+                                    <i class="fa-solid fa-triangle-exclamation text-danger mt-1" style="font-size: 16px; flex-shrink: 0;"></i>
+                                    <div style="flex: 1 1 auto;">
+                                        <div class="fw-bold text-danger mb-1" style="font-size: 13.5px; line-height: 1.3;">
+                                            Joining Date Missing (<?= count($missingJoiningDateEmployees) ?> Employee<?= count($missingJoiningDateEmployees) > 1 ? 's' : '' ?>)!
+                                        </div>
+                                        <div class="text-dark" style="font-size: 12px; line-height: 1.45;">
+                                            নিচের অ্যাক্টিভ এমপ্লয়িদের প্রোফাইলে <strong>Joining Date</strong> সেট করা নেই (NULL)। ভুল সাইকেলে এমপ্লয়ি চলে আসা রোধ করতে তাদের Joining Date সেট না করা পর্যন্ত নতুন Payroll Project তৈরি করা যাবে না:
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" onclick="window.location.reload();" class="btn btn-sm btn-outline-secondary bg-white d-inline-flex align-items-center fw-semibold flex-shrink-0" style="height: 26px; font-size: 11px; padding: 0 8px; gap: 4px;" title="Joining Date সেট করার পর রিফ্রেশ করুন">
+                                    <i class="fa-solid fa-arrows-rotate" style="font-size: 10px;"></i><span>Refresh</span>
+                                </button>
+                            </div>
+                            <div class="bg-white rounded border" style="width: 100%; max-height: 185px; overflow-y: auto; border-color: #f1f5f9 !important;">
+                                <table class="table table-sm table-hover mb-0 align-middle" style="width: 100%; font-size: 12px;">
+                                    <thead class="table-light" style="position: sticky; top: 0; z-index: 2;">
+                                        <tr>
+                                            <th class="ps-3 py-1.5" style="width: 16%; white-space: nowrap;">Emp ID</th>
+                                            <th class="py-1.5" style="width: 30%;">Full Name</th>
+                                            <th class="py-1.5" style="width: 36%;">Department / Designation</th>
+                                            <th class="text-end pe-3 py-1.5" style="width: 18%; white-space: nowrap;">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($missingJoiningDateEmployees as $mjEmp): ?>
+                                            <tr>
+                                                <td class="ps-3 fw-bold text-danger" style="white-space: nowrap;"><?= htmlspecialchars($mjEmp['employee_id'] ?: 'N/A') ?></td>
+                                                <td class="fw-semibold text-dark"><?= htmlspecialchars($mjEmp['full_name']) ?></td>
+                                                <td class="text-muted" style="font-size: 11.5px;"><?= htmlspecialchars(($mjEmp['department_name'] ?? 'N/A') . ' • ' . ($mjEmp['designation_name'] ?? 'N/A')) ?></td>
+                                                <td class="text-end pe-3" style="white-space: nowrap;">
+                                                    <a href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= (int)$mjEmp['id'] ?>?return_url=<?= urlencode($GLOBALS['base_url'] . '/payroll-workspace') ?>" target="_blank"
+                                                       onclick="window.__pendingJoinDateFix = true;"
+                                                       class="btn btn-sm btn-outline-danger d-inline-flex align-items-center fw-semibold"
+                                                       style="height: 24px; font-size: 11px; padding: 0 8px; gap: 4px; white-space: nowrap;">
+                                                        <i class="fa-solid fa-user-pen" style="font-size: 10px;"></i><span>Set Date</span>
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                     <div class="form__group mb-3">
                         <label class="form-label" style="font-weight: 600;">Project Name <span
                                 class="text-danger">*</span></label>
-                        <input type="text" name="name" class="form-control" placeholder="Enter project name" required>
+                        <input type="text" name="name" class="form-control" placeholder="Enter project name" required <?= $hasMissingJoinDates ? 'disabled' : '' ?>>
                     </div>
                     <div class="form__group mb-3">
                         <label class="form-label" style="font-weight: 600;">Project Type <span
                                 class="text-danger">*</span></label>
-                        <select name="project_type" id="createProjectType" class="form-select" required>
+                        <select name="project_type" id="createProjectType" class="form-select" required <?= $hasMissingJoinDates ? 'disabled' : '' ?>>
                             <option value="monthly">Monthly</option>
                             <option value="custom">Custom Date Range</option>
                         </select>
@@ -428,18 +477,18 @@ window.executeDeleteProject = function(projId) {
                     <div class="form__group mb-3" id="createMonthlyContainer">
                         <label class="form-label" style="font-weight: 600;">Project Month/Year <span
                                 class="text-danger">*</span></label>
-                        <input type="month" name="date" id="createProjectDate" class="form-control">
+                        <input type="month" name="date" id="createProjectDate" class="form-control" <?= $hasMissingJoinDates ? 'disabled' : '' ?>>
                     </div>
 
                     <!-- Custom Range -->
                     <div class="row mb-3" id="createCustomContainer" style="display: none;">
                         <div class="col-6">
                             <label class="form-label" style="font-weight: 600;">Start Date <span class="text-danger">*</span></label>
-                            <input type="date" name="start_date" id="createProjectStart" class="form-control">
+                            <input type="date" name="start_date" id="createProjectStart" class="form-control" <?= $hasMissingJoinDates ? 'disabled' : '' ?>>
                         </div>
                         <div class="col-6">
                             <label class="form-label" style="font-weight: 600;">End Date <span class="text-danger">*</span></label>
-                            <input type="date" name="end_date" id="createProjectEnd" class="form-control">
+                            <input type="date" name="end_date" id="createProjectEnd" class="form-control" <?= $hasMissingJoinDates ? 'disabled' : '' ?>>
                         </div>
                     </div>
 
@@ -456,6 +505,9 @@ window.executeDeleteProject = function(projId) {
 
                     <script>
                         document.addEventListener("DOMContentLoaded", function() {
+                            const hasMissingJoinDates = <?= $hasMissingJoinDates ? 'true' : 'false' ?>;
+                            const pForm = document.getElementById('createPayrollProjectForm');
+                            const pBtn = document.getElementById('btnSavePayrollProject');
                             const pType = document.getElementById('createProjectType');
                             const mCont = document.getElementById('createMonthlyContainer');
                             const cCont = document.getElementById('createCustomContainer');
@@ -464,6 +516,16 @@ window.executeDeleteProject = function(projId) {
                             const pEnd = document.getElementById('createProjectEnd');
                             const mTitle = document.getElementById('createMealCycleTitle');
                             const mDesc = document.getElementById('createMealCycleDesc');
+
+                            // If user clicked "Set Date" (opened in new tab) and returns to this tab, auto-reload so updated joining dates take effect immediately
+                            if (hasMissingJoinDates) {
+                                window.addEventListener('focus', function() {
+                                    if (window.__pendingJoinDateFix) {
+                                        window.__pendingJoinDateFix = false;
+                                        window.location.reload();
+                                    }
+                                });
+                            }
 
                             // Default to current year-month
                             if (!pDate.value) {
@@ -522,15 +584,18 @@ window.executeDeleteProject = function(projId) {
                                 if(this.value === 'monthly') {
                                     mCont.style.display = 'block';
                                     cCont.style.display = 'none';
-                                    pDate.required = true;
+                                    pDate.required = !hasMissingJoinDates;
+                                    pDate.disabled = hasMissingJoinDates;
                                     pStart.required = false;
                                     pEnd.required = false;
                                 } else {
                                     mCont.style.display = 'none';
                                     cCont.style.display = 'flex';
                                     pDate.required = false;
-                                    pStart.required = true;
-                                    pEnd.required = true;
+                                    pStart.required = !hasMissingJoinDates;
+                                    pEnd.required = !hasMissingJoinDates;
+                                    pStart.disabled = hasMissingJoinDates;
+                                    pEnd.disabled = hasMissingJoinDates;
 
                                     // Pre-fill custom start and end from monthly cycle if empty
                                     if (!pStart.value || !pEnd.value) {
@@ -551,6 +616,20 @@ window.executeDeleteProject = function(projId) {
                             pEnd.addEventListener('change', updateMealCyclePreview);
                             pEnd.addEventListener('input', updateMealCyclePreview);
 
+                            if (pForm && !hasMissingJoinDates) {
+                                pForm.addEventListener('submit', function(e) {
+                                    if (pForm.dataset.submitting === '1') {
+                                        e.preventDefault();
+                                        return false;
+                                    }
+                                    pForm.dataset.submitting = '1';
+                                    if (pBtn) {
+                                        pBtn.disabled = true;
+                                        pBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Saving Project...';
+                                    }
+                                });
+                            }
+
                             // Initialize
                             pType.dispatchEvent(new Event('change'));
                         });
@@ -559,8 +638,8 @@ window.executeDeleteProject = function(projId) {
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary border" style="background:#fff; color:#000;"
                         data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary"
-                        style="background-color: #0f766e; border-color: #0f766e;">
+                    <button type="submit" id="btnSavePayrollProject" class="btn btn-primary"
+                        style="background-color: #0f766e; border-color: #0f766e;" <?= $hasMissingJoinDates ? 'disabled title="Please set Joining Date for all active employees first"' : '' ?>>
                         <i class="fa-solid fa-save me-2"></i> Save Project
                     </button>
                 </div>
@@ -653,32 +732,37 @@ window.executeDeleteProject = function(projId) {
     <div class="col-xxl-12">
 
         <div class="card__wrapper border-0">
-            <div class="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
-                <h4 class="fw-bold text-dark mb-0">
-                    <i class="fa-solid fa-file-invoice-dollar text-primary me-2"></i>Payroll Workplace
-                </h4>
-                <div>
-                    <button type="button" class="btn btn-outline-primary fw-semibold shadow-sm me-2"
+            <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 border-bottom pb-3" style="gap: 12px;">
+                <h6 class="fw-bold text-dark mb-0 d-inline-flex align-items-center" style="font-size: 15px; gap: 7px;">
+                    <i class="fa-solid fa-file-invoice-dollar text-primary"></i>
+                    <span>Payroll Workplace</span>
+                </h6>
+                <div class="d-flex align-items-center flex-wrap" style="gap: 8px;">
+                    <button type="button" class="btn btn-sm btn-outline-primary fw-semibold d-inline-flex align-items-center"
+                        style="height: 32px; font-size: 12px; padding: 0 11px; gap: 5px;"
                         id="btnSyncTipsoiAttendance" onclick="syncTipsoiAttendance(this)" title="Fetch and sync live attendance from Tipsoi for unsynced employees">
-                        <i class="fa-solid fa-arrows-rotate me-1"></i> Sync Tipsoi
+                        <i class="fa-solid fa-arrows-rotate"></i><span>Sync Tipsoi</span>
                     </button>
-                    <button type="button" class="btn btn-info fw-semibold shadow-sm me-2 text-white"
-                        style="background-color: #0f766e; border-color: #0f766e;"
+                    <button type="button" class="btn btn-sm btn-info fw-semibold d-inline-flex align-items-center text-white shadow-sm"
+                        style="height: 32px; font-size: 12px; padding: 0 11px; gap: 5px; background-color: #0f766e; border-color: #0f766e;"
                         onclick="saveWorkspaceData(this)">
-                        <i class="fa-solid fa-save me-1"></i> Save Data
+                        <i class="fa-solid fa-save"></i><span>Save Data</span>
                     </button>
-                    <button type="button" class="btn btn-success fw-semibold shadow-sm me-2"
-                        onclick="$('#workspaceTable').DataTable().button('.buttons-csv').trigger();">
-                        <i class="fa-solid fa-file-csv me-1"></i> Export CSV
+                    <button type="button" class="btn btn-sm btn-success fw-semibold d-inline-flex align-items-center shadow-sm"
+                        style="height: 32px; font-size: 12px; padding: 0 11px; gap: 5px;"
+                        onclick="exportFormattedWorkspaceExcel();">
+                        <i class="fa-solid fa-file-excel"></i><span>Export Excel</span>
                     </button>
-                    <button type="button" class="btn btn-danger fw-semibold shadow-sm me-2" onclick="
+                    <button type="button" class="btn btn-sm btn-danger fw-semibold d-inline-flex align-items-center shadow-sm"
+                        style="height: 32px; font-size: 12px; padding: 0 11px; gap: 5px;"
+                        onclick="
                         if ($.fn.DataTable && $.fn.DataTable.isDataTable('#workspaceTable')) {
                             $('#workspaceTable').DataTable().button('.buttons-pdf').trigger();
                         } else {
                             alert('Table is loading, please wait a moment.');
                         }
                     ">
-                        <i class="fa-solid fa-file-pdf me-1"></i> Export PDF
+                        <i class="fa-solid fa-file-pdf"></i><span>Export PDF</span>
                     </button>
                 </div>
             </div>
@@ -871,7 +955,7 @@ window.executeDeleteProject = function(projId) {
 
                                 // Meal tracking and deduction
                                 $isMealDeductible = isset($p['is_meal_deduction']) ? (int)$p['is_meal_deduction'] : 1;
-                                $mealPct = (isset($p['per_meal_percentage']) && (float)$p['per_meal_percentage'] > 0) ? (float)$p['per_meal_percentage'] : 100.00;
+                                $mealPct = (isset($p['per_meal_percentage']) && $p['per_meal_percentage'] !== '' && (float)$p['per_meal_percentage'] >= 0) ? (float)$p['per_meal_percentage'] : 100.00;
                                 $standardMealRate = isset($activeMealProject['standard_meal_amount']) && $activeMealProject['standard_meal_amount'] > 0 
                                     ? (float)$activeMealProject['standard_meal_amount'] 
                                     : 120.00;
@@ -1082,7 +1166,8 @@ window.executeDeleteProject = function(projId) {
                 function recalcRow(e) {
                     const basic = parseFloat(row.querySelector('.cell-basic').dataset.val) || 0;
                     const daily = parseFloat(row.querySelector('.cell-daily').dataset.val) || 0;
-                    const perMeal = parseFloat(row.querySelector('.in-mealcount').dataset.permeal) || <?= (float)($activeMealProject['standard_meal_amount'] ?? 120) ?>;
+                    const rawPerMeal = parseFloat(row.querySelector('.in-mealcount').dataset.permeal);
+                    const perMeal = !isNaN(rawPerMeal) ? rawPerMeal : <?= (float)($activeMealProject['standard_meal_amount'] ?? 120) ?>;
 
                     if (e && e.target.classList.contains('in-mealcount')) {
                         const mealCount = parseFloat(row.querySelector('.in-mealcount').value) || 0;
@@ -1597,6 +1682,231 @@ window.executeDeleteProject = function(projId) {
                 form.submit();
                 document.body.removeChild(form);
             }
+
+            // Rich, Color-Coded, Visually Grouped Excel (.xls) Export for Payroll Workplace
+            window.exportFormattedWorkspaceExcel = function () {
+                var yearSel = document.getElementById('year');
+                var monthSel = document.getElementById('month');
+                var year = yearSel ? yearSel.value : '<?= htmlspecialchars($_selectedYear) ?>';
+                var month = monthSel ? monthSel.value : '<?= htmlspecialchars($_selectedMonth) ?>';
+                var monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                var monthLabel = monthNames[(parseInt(month, 10) || 1) - 1] + ' ' + year;
+
+                var projectSelect = document.getElementById('payrollProject');
+                var projectName = 'All Employees';
+                if (projectSelect && projectSelect.selectedIndex >= 0) {
+                    var pText = projectSelect.options[projectSelect.selectedIndex].text.trim();
+                    if (pText && !pText.toLowerCase().includes('select')) {
+                        projectName = pText;
+                    }
+                }
+
+                var headers = [];
+                $(table.table().header()).find('th').each(function (idx) {
+                    if (idx === 0) return;
+                    headers.push($(this).text().trim());
+                });
+
+                var rows = [];
+                var dtNodes = table.rows().nodes();
+                var slCounter = 1;
+
+                var sumGross = 0, sumNetPayable = 0, sumBank = 0, sumCash = 0, sumDeductions = 0, sumAdditions = 0;
+                var colTotals = new Array(headers.length).fill(0);
+                var colIsNumeric = new Array(headers.length).fill(false);
+
+                $(dtNodes).each(function () {
+                    var tr = $(this);
+                    if (tr.find('.emp-checkbox').length > 0 && !tr.find('.emp-checkbox').is(':checked')) {
+                        return;
+                    }
+
+                    var rowCells = [];
+                    tr.find('td').each(function (index) {
+                        if (index === 0) return;
+                        var colIdx = index - 1;
+                        var hName = (headers[colIdx] || '').toLowerCase();
+                        var cell = $(this);
+                        var rawVal = '';
+
+                        if (index === 1) {
+                            rawVal = String(slCounter++);
+                        } else if (cell.find('input[type="hidden"].in-salary-hold-string').length > 0) {
+                            rawVal = cell.find('input[type="hidden"].in-salary-hold-string').val() === 'Hold' ? 'Hold' : 'Active';
+                        } else if (cell.find('input:not([type="hidden"])').length > 0) {
+                            rawVal = cell.find('input:not([type="hidden"])').val();
+                        } else {
+                            rawVal = cell.clone().children('input').remove().end().text().trim();
+                        }
+
+                        var isTextCol = (colIdx <= 6) || hName.includes('date') || hName.includes('remark') || hName.includes('account') || hName.includes('id check') || hName.includes('salary hold');
+                        if (!isTextCol) {
+                            var numVal = parseFloat(String(rawVal).replace(/,/g, '')) || 0;
+                            colTotals[colIdx] += numVal;
+                            colIsNumeric[colIdx] = true;
+
+                            if (hName === 'gross') sumGross += numVal;
+                            else if (hName === 'net payable') sumNetPayable += numVal;
+                            else if (hName === 'bank') sumBank += numVal;
+                            else if (hName === 'cash') sumCash += numVal;
+                            else if (hName.includes('advance') || hName.includes('lunch') || hName.includes('absent (amount)') || hName.includes('arrears') || hName.includes('others deduction') || hName === 'tax') {
+                                sumDeductions += numVal;
+                            } else if (hName.includes('special') || hName.includes('punctuality') || hName.includes('overtime') || hName === 'arrear' || hName.includes('duty/food')) {
+                                sumAdditions += numVal;
+                            }
+                            rowCells.push({ val: numVal, type: (hName.includes('days') || hName.includes('meal count')) ? 'qty' : 'num', hName: hName });
+                        } else {
+                            rowCells.push({ val: rawVal, type: 'text', hName: hName });
+                        }
+                    });
+                    rows.push(rowCells);
+                });
+
+                if (rows.length === 0) {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire('No Rows Selected', 'Please select at least one employee row to export.', 'warning');
+                    } else {
+                        alert('Please select at least one employee row to export.');
+                    }
+                    return;
+                }
+
+                var esc = function (s) {
+                    return String(s === null || s === undefined ? '' : s)
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;');
+                };
+                var fmtMoney = function (n) {
+                    return (parseFloat(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                };
+
+                var totalCols = headers.length;
+                var nowStr = new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+                var html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+                html += '<head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Payroll Workplace</x:Name><x:WorksheetOptions><x:DisplayGridlines/><x:FreezePanes/><x:FrozenNoSplit/><x:SplitHorizontal>6</x:SplitHorizontal><x:TopRowBottomPane>6</x:TopRowBottomPane><x:SplitVertical>4</x:SplitVertical><x:LeftColumnRightPane>4</x:LeftColumnRightPane><x:ActivePane>0</x:ActivePane></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
+                html += '<style>';
+                html += 'body, table { font-family: "Segoe UI", Calibri, Arial, sans-serif; font-size: 10pt; }';
+                html += 'table { border-collapse: collapse; }';
+                html += 'td, th { border: 1px solid #cbd5e1; padding: 6px 8px; vertical-align: middle; white-space: nowrap; }';
+                html += '.num { mso-number-format:"\\#\\,\\#\\#0\\.00"; text-align: right; }';
+                html += '.qty { mso-number-format:"0\\.00"; text-align: center; }';
+                html += '.txt { mso-number-format:"\\@"; text-align: left; }';
+                html += '.txt-c { mso-number-format:"\\@"; text-align: center; }';
+                html += '</style></head><body>';
+
+                html += '<table>';
+                // Row 1: Company Title
+                html += '<tr><td colspan="' + totalCols + '" style="background:#0f766e; color:#ffffff; font-size:15pt; font-weight:bold; text-align:left; padding:10px 14px; border:none;">THE PREMIUM HOMES LTD &mdash; PAYROLL WORKPLACE SHEET</td></tr>';
+                // Row 2: Project & Period Subtitle
+                html += '<tr><td colspan="' + totalCols + '" style="background:#f0fdf4; color:#115e59; font-size:10.5pt; font-weight:600; text-align:left; padding:6px 14px; border-bottom:2px solid #0f766e;">Project: ' + esc(projectName) + ' &nbsp;|&nbsp; Period: ' + esc(monthLabel) + ' &nbsp;|&nbsp; Active Staff: ' + rows.length + ' &nbsp;|&nbsp; Exported: ' + esc(nowStr) + '</td></tr>';
+                // Row 3: Visual Summary KPI Strip
+                html += '<tr>';
+                html += '<td colspan="5" style="background:#f8fafc; font-weight:bold; color:#334155; padding:8px 10px;">Employees: <span style="color:#0f172a; font-size:11pt;">' + rows.length + ' Staff</span></td>';
+                html += '<td colspan="6" style="background:#f0fdf4; font-weight:bold; color:#166534; padding:8px 10px;">Total Gross: ৳ ' + fmtMoney(sumGross) + '</td>';
+                html += '<td colspan="6" style="background:#eff6ff; font-weight:bold; color:#1e40af; padding:8px 10px;">Total Additions: ৳ ' + fmtMoney(sumAdditions) + '</td>';
+                html += '<td colspan="7" style="background:#fff1f2; font-weight:bold; color:#9f1239; padding:8px 10px;">Total Deductions: ৳ ' + fmtMoney(sumDeductions) + '</td>';
+                html += '<td colspan="6" style="background:#ecfdf5; font-weight:bold; color:#065f46; padding:8px 10px;">Net Payable: ৳ ' + fmtMoney(sumNetPayable) + '</td>';
+                html += '<td colspan="' + Math.max(1, totalCols - 30) + '" style="background:#f5f3ff; font-weight:bold; color:#4c1d95; padding:8px 10px;">Bank: ৳ ' + fmtMoney(sumBank) + ' &nbsp;|&nbsp; Cash: ৳ ' + fmtMoney(sumCash) + '</td>';
+                html += '</tr>';
+                // Row 4: Blank Spacer
+                html += '<tr><td colspan="' + totalCols + '" style="border:none; height:6px; padding:0;"></td></tr>';
+
+                // Row 5: Section Group Header Band
+                html += '<tr>';
+                headers.forEach(function (h) {
+                    var hl = h.toLowerCase();
+                    var grpBg = '#1e293b', grpLabel = 'EMPLOYEE INFO';
+                    if (hl.includes('basic') || hl.includes('recreation') || hl.includes('conveyance') || hl.includes('medical') || hl.includes('house rent') || hl.includes('special') || hl === 'gross' || hl.includes('daily')) {
+                        grpBg = '#0f766e'; grpLabel = 'SALARY & ALLOWANCES';
+                    } else if (hl.includes('advance') || hl.includes('meal') || hl.includes('lunch') || hl.includes('absent') || hl.includes('hold') || hl.includes('arrears') || hl.includes('others deduction')) {
+                        grpBg = '#b45309'; grpLabel = 'ATTENDANCE & DEDUCTIONS';
+                    } else if (hl.includes('punctuality') || hl.includes('overtime') || hl === 'arrear' || hl.includes('duty/food')) {
+                        grpBg = '#1d4ed8'; grpLabel = 'BONUSES & ADDITIONS';
+                    } else if (hl.includes('joining') || hl.includes('resignation') || hl.includes('effective days')) {
+                        grpBg = '#475569'; grpLabel = 'SERVICE & CYCLE';
+                    } else if (hl.includes('net') || hl === 'tax' || hl === 'bank' || hl === 'cash' || hl.includes('account') || hl === 'amount' || hl.includes('remark') || hl.includes('id check')) {
+                        grpBg = '#15803d'; grpLabel = 'NET PAYABLE & DISBURSEMENT';
+                    }
+                    html += '<th style="background:' + grpBg + '; color:#e2e8f0; font-size:8pt; font-weight:bold; text-align:center; padding:3px 6px; letter-spacing:0.4px;">' + grpLabel + '</th>';
+                });
+                html += '</tr>';
+
+                // Row 6: Column Headers
+                html += '<tr>';
+                headers.forEach(function (h) {
+                    var hl = h.toLowerCase();
+                    var thBg = '#334155';
+                    if (hl === 'gross' || hl === 'net salary' || hl === 'net payable') thBg = '#065f46';
+                    else if (hl === 'bank' || hl === 'cash' || hl === 'amount') thBg = '#1e3a8a';
+                    else if (hl.includes('deduct') || hl.includes('absent') || hl.includes('advance') || hl.includes('lunch') || hl === 'tax') thBg = '#9a3412';
+                    html += '<th style="background:' + thBg + '; color:#ffffff; font-size:9.5pt; font-weight:bold; text-align:center; padding:7px 8px;">' + esc(h) + '</th>';
+                });
+                html += '</tr>';
+
+                // Data Rows
+                rows.forEach(function (r, rIdx) {
+                    var rowBg = (rIdx % 2 === 0) ? '#ffffff' : '#f8fafc';
+                    html += '<tr>';
+                    r.forEach(function (cell, cIdx) {
+                        var h = cell.hName;
+                        var bg = rowBg;
+                        var fw = 'normal';
+                        var color = '#0f172a';
+
+                        if (h === 'gross') { bg = '#f0fdf4'; fw = 'bold'; color = '#166534'; }
+                        else if (h === 'net salary' || h === 'net payable') { bg = '#dcfce7'; fw = 'bold'; color = '#065f46'; }
+                        else if (h === 'bank' || h === 'amount') { bg = '#eff6ff'; fw = 'bold'; color = '#1e40af'; }
+                        else if (h === 'cash') { bg = '#fefce8'; fw = 'bold'; color = '#854d0e'; }
+                        else if (h === 'salary hold' && cell.val === 'Hold') { bg = '#fee2e2'; fw = 'bold'; color = '#b91c1c'; }
+
+                        if (cell.type === 'num') {
+                            html += '<td class="num" style="background:' + bg + '; font-weight:' + fw + '; color:' + color + ';">' + fmtMoney(cell.val) + '</td>';
+                        } else if (cell.type === 'qty') {
+                            html += '<td class="qty" style="background:' + bg + '; font-weight:' + fw + '; color:' + color + ';">' + (parseFloat(cell.val) || 0) + '</td>';
+                        } else {
+                            var cls = (cIdx === 0 || cIdx === 4 || h.includes('date') || h === 'salary hold') ? 'txt-c' : 'txt';
+                            html += '<td class="' + cls + '" style="background:' + bg + '; font-weight:' + (cIdx === 2 ? '600' : fw) + '; color:' + color + ';">' + esc(cell.val) + '</td>';
+                        }
+                    });
+                    html += '</tr>';
+                });
+
+                // Grand Total Footer Row
+                html += '<tr>';
+                headers.forEach(function (h, cIdx) {
+                    if (cIdx < 6) {
+                        html += '<td style="background:#0f766e; color:#ffffff; font-weight:bold;"></td>';
+                    } else if (cIdx === 6) {
+                        html += '<td style="background:#0f766e; color:#ffffff; font-weight:bold; text-align:right;">GRAND TOTAL:</td>';
+                    } else if (colIsNumeric[cIdx]) {
+                        var hl = h.toLowerCase();
+                        if (hl.includes('days') || hl.includes('meal count')) {
+                            html += '<td class="qty" style="background:#0f766e; color:#ffffff; font-weight:bold;">' + (Math.round(colTotals[cIdx] * 100) / 100) + '</td>';
+                        } else {
+                            html += '<td class="num" style="background:#0f766e; color:#ffffff; font-weight:bold;">' + fmtMoney(colTotals[cIdx]) + '</td>';
+                        }
+                    } else {
+                        html += '<td style="background:#0f766e; color:#ffffff; font-weight:bold;"></td>';
+                    }
+                });
+                html += '</tr>';
+                html += '</table></body></html>';
+
+                var cleanProj = projectName.replace(/[^a-zA-Z0-9_-]/g, '_');
+                var fileName = 'Payroll_Workplace_' + cleanProj + '_' + monthLabel.replace(/\s+/g, '_') + '.xls';
+                var blob = new Blob(['\ufeff', html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+            };
             
             // Assign save function to window so the button can access it
             window.saveWorkspaceData = function(btn) {

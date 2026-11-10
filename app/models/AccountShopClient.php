@@ -236,6 +236,28 @@ class AccountShopClient extends AccountClient
                      AND lp.verification_status = 'verified'), 
                     NULL
                 ) as last_payment_date,
+                COALESCE(
+                    (SELECT SUM(lp.penalty_paid) 
+                     FROM lead_payments lp 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
+                     AND lp.payment_status IN ('paid','partially_paid')
+                     AND lp.verification_status != 'rejected'), 
+                    0
+                ) as total_penalty_paid,
+                COALESCE(
+                    (SELECT SUM(lp.penalty_amount) 
+                     FROM lead_payments lp 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
+                     AND lp.verification_status != 'rejected'), 
+                    0
+                ) as total_penalty_amount,
+                COALESCE(
+                    (SELECT SUM(lp.penalty_waived) 
+                     FROM lead_payments lp 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
+                     AND lp.verification_status != 'rejected'), 
+                    0
+                ) as total_penalty_waived,
                 {$transferCols}
             FROM lead_bookings lb
             LEFT JOIN leads l ON lb.lead_id = l.id
@@ -435,6 +457,9 @@ class AccountShopClient extends AccountClient
             $clientDetails['construction_fee_paid_after_service']  = $constructionFeePaid;
             $clientDetails['remaining_construction_fee']           = $remainingConstructionFee;
             $clientDetails['total_due']                            = $totalDue;
+            $clientDetails['total_penalty_paid']                   = (float) ($clientDetails['total_penalty_paid'] ?? 0);
+            $clientDetails['total_penalty_amount']                 = (float) ($clientDetails['total_penalty_amount'] ?? 0);
+            $clientDetails['total_penalty_waived']                 = (float) ($clientDetails['total_penalty_waived'] ?? 0);
             $clientDetails['others_paid']                          = $othersPaid;
             $clientDetails['others_paid_total']                    = $othersPaidTotal;
             $clientDetails['net_received']                         = $netReceived;
@@ -482,6 +507,9 @@ class AccountShopClient extends AccountClient
                 'remaining_construction_fee'           => 0,
                 'total_paid'                           => 0,
                 'total_due'                            => 0,
+                'total_penalty_paid'                   => 0,
+                'total_penalty_amount'                 => 0,
+                'total_penalty_waived'                 => 0,
                 'total_emi_due'                        => 0,
                 'total_emi'                            => 0,
                 'completed_emi'                        => 0,
@@ -548,6 +576,9 @@ class AccountShopClient extends AccountClient
             'others_paid'                          => $clientDetails['others_paid'] ?? 0,
             'others_paid_total'                    => $clientDetails['others_paid_total'] ?? 0,
             'total_due'                            => $clientDetails['total_due'],
+            'total_penalty_paid'                   => $clientDetails['total_penalty_paid'] ?? 0,
+            'total_penalty_amount'                 => $clientDetails['total_penalty_amount'] ?? 0,
+            'total_penalty_waived'                 => $clientDetails['total_penalty_waived'] ?? 0,
             'total_emi_due'                        => $clientDetails['total_emi_due'],
             'total_bulk_emi_discount'              => $clientDetails['total_bulk_emi_discount'],
             'total_emi'                            => $clientDetails['total_emi'],

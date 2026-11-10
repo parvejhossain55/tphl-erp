@@ -62,35 +62,40 @@ $isMgmtUser = in_array((int)$userRole, [1, 3], true);
 $isOpHeadApproved = !empty($ahInfo['is_op_head_approved']);
 $isAhApproved = !empty($ahInfo['is_accounts_head_approved']);
 
+$isPurchaseHeadApproved = !empty($request['purchase_head_approved_by_id']) || !$isSubmitted;
+$isTeamLeaderReviewed = !empty($request['purchase_team_leader_by_id']);
+$canApprovePurchaseHead = $canApprovePurchaseHead ?? false;
+$canReviewTeamLeader = $canReviewTeamLeader ?? false;
+
 $isOpHeadAction = false;
 $isMgmtLocked = false;
 $mgmtLockReason = '';
+$mgmtOverrideWarningStage = '';
 
-if ($isOver1Lac) {
-    if (!$isOpHeadApproved) {
-        if ($isOpHeadUser && !$isMgmtUser) {
-            $canApproveReq = ($isSubmitted || $isQCApproved || ($isApproved && $unapprovedAmt > 0.01));
-            $isOpHeadAction = true;
-        } else {
-            $canApproveReq = false;
-            $isMgmtLocked = $isMgmtUser;
-            $mgmtLockReason = 'op_head';
-        }
-    } elseif (!$isAhApproved) {
-        $canApproveReq = false;
-        $isMgmtLocked = $isMgmtUser;
-        $mgmtLockReason = 'accounts_head';
+if ($isMgmtUser) {
+    // Management / CEO / DCEO (Role 1, 3) can always approve at any pending stage (with warning modal if bypassing prior stages)
+    $canApproveReq = ($isSubmitted || $isQCApproved || ($isApproved && $unapprovedAmt > 0.01));
+    if ($isSubmitted && !$isPurchaseHeadApproved) {
+        $mgmtOverrideWarningStage = 'Purchase Head';
+    } elseif ($isSubmitted && $isPurchaseHeadApproved) {
+        $mgmtOverrideWarningStage = 'QC & Internal Audit';
+    } elseif ($isQCApproved && !$isOpHeadApproved) {
+        $mgmtOverrideWarningStage = 'Head of Operation';
+    } elseif ($isQCApproved && $isOpHeadApproved && !$isAhApproved) {
+        $mgmtOverrideWarningStage = 'Accounts Head';
+    }
+} elseif ($isOpHeadUser) {
+    // Head of Operation (Role 20, 32) approves after QC Approved (for both <= 10,000 and > 10,000)
+    if ($isQCApproved && !$isOpHeadApproved) {
+        $canApproveReq = true;
+        $isOpHeadAction = true;
     } else {
-        if ($isMgmtUser) {
-            $canApproveReq = ($isSubmitted || $isQCApproved || ($isApproved && $unapprovedAmt > 0.01));
-        } else {
-            $canApproveReq = false;
-        }
+        $canApproveReq = false;
     }
 } else {
-    $canApproveReq = ($canApprove ?? false) && ($isSubmitted || $isQCApproved || ($isApproved && $unapprovedAmt > 0.01));
+    $canApproveReq = false;
 }
-$canReject = ($canApproveReq || ($canApprove ?? false)) && in_array($status, ['Submitted', 'QC Approved', 'Approved']) && ($totalPaid <= 0);
+$canReject = ($canApproveReq || ($canApprove ?? false) || $canApprovePurchaseHead) && in_array($status, ['Submitted', 'QC Approved', 'Approved']) && ($totalPaid <= 0);
 
 // Payment type badge
 $typeBadge = match ($request['payment_type'] ?? 'Final') {
@@ -223,9 +228,13 @@ $isImg = function($file) {
 
 <?php
 // Compute status timeline details
+$phApproved = $isPurchaseHeadApproved && ($status !== 'Draft' && ($status !== 'Rejected' || !empty($request['purchase_head_approved_by_id']) || $request['qc_verified']));
+$phRejected = ($status === 'Rejected' && empty($request['purchase_head_approved_by_id']) && !$request['qc_verified']);
+$phPending = ($status === 'Submitted' && empty($request['purchase_head_approved_by_id']));
+
 $qcApproved = ($status !== 'Draft' && $status !== 'Submitted' && ($status !== 'Rejected' || $request['qc_verified']));
-$qcRejected = ($status === 'Rejected' && !$request['qc_verified']);
-$qcPending = ($status === 'Submitted');
+$qcRejected = ($status === 'Rejected' && !$request['qc_verified'] && !empty($request['purchase_head_approved_by_id']));
+$qcPending = ($status === 'Submitted' && !empty($request['purchase_head_approved_by_id']));
 
 $mgmtApproved = in_array($status, ['Approved', 'Partially_Paid', 'Fully_Paid', 'Paid']);
 $mgmtRejected = ($status === 'Rejected' && $request['qc_verified']);
@@ -241,17 +250,33 @@ $nextActionRole = '';
 $nextActionColor = 'secondary';
 
 if ($status === 'Draft') {
-    $nextActionText = 'Submit the payment request for QC review.';
+    $nextActionText = 'Submit the payment request for Purchase Head & QC review.';
     $nextActionRole = 'Creator / Purchase Executive';
     $nextActionColor = 'warning';
 } elseif ($status === 'Submitted') {
-    $nextActionText = 'Verify materials/delivery and approve QC status.';
-    $nextActionRole = 'QC & Internal Audit Team';
-    $nextActionColor = 'info';
+    if (empty($request['purchase_head_approved_by_id'])) {
+        $nextActionText = 'Verify vendor payment request and approve as Head of Purchase (Role 17) to forward to QC.';
+        $nextActionRole = 'Head of Purchase (Role 17)';
+        $nextActionColor = 'primary';
+    } else {
+        $nextActionText = 'Verify materials/delivery and approve QC status.';
+        $nextActionRole = 'QC & Internal Audit Team (Role 24)';
+        $nextActionColor = 'info';
+    }
 } elseif ($status === 'QC Approved') {
-    $nextActionText = 'Review the QC-verified request and approve for payment.';
-    $nextActionRole = 'Management / Admin';
-    $nextActionColor = 'primary';
+    if (!$isOpHeadApproved) {
+        $nextActionText = 'Review the QC-verified request and approve as Head of Operation (Role 20/32).';
+        $nextActionRole = 'Head of Operation (Role 20/32)';
+        $nextActionColor = 'primary';
+    } elseif (!$isAhApproved) {
+        $nextActionText = 'Verify COA & payment details and approve as Accounts Head (Role 30).';
+        $nextActionRole = 'Accounts Head (Role 30)';
+        $nextActionColor = 'warning';
+    } else {
+        $nextActionText = 'Review the verified request and approve as Management / DCEO (Role 1/3).';
+        $nextActionRole = 'Management / DCEO (Role 1/3)';
+        $nextActionColor = 'primary';
+    }
 } elseif ($status === 'Approved') {
     if ($isOver1Lac && empty($ahInfo['is_mgmt_approved'])) {
         $nextActionText = 'Step 2 completed by Accounts Head. Awaiting Management (Role 1/3) final sign-off.';
@@ -306,10 +331,56 @@ if (!empty($ahInfo['has_request'])) {
             </div>
         </div>
 
-        <!-- 3-Step Approval Timeline -->
+        <!-- 4-Step Approval Timeline -->
         <div class="row text-center timeline-steps">
-            <!-- Step 1: QC Verification -->
-            <div class="col-md-4 mb-3 mb-md-0 position-relative">
+            <!-- Step 1: Head of Purchase Approval -->
+            <div class="col-md-3 mb-3 mb-md-0 position-relative">
+                <div class="p-3 border rounded h-100 <?= $phApproved ? 'border-success bg-success-transparent' : ($phRejected ? 'border-danger bg-danger-transparent' : ($phPending ? 'border-primary bg-info-transparent' : 'bg-light')) ?>">
+                    <div class="fs-4 mb-2">
+                        <?php if ($phApproved): ?>
+                            <i class="bi bi-bag-check-fill text-success fs-2"></i>
+                        <?php elseif ($phRejected): ?>
+                            <i class="bi bi-bag-x-fill text-danger fs-2"></i>
+                        <?php else: ?>
+                            <i class="bi bi-bag-dash text-muted fs-2 <?= $phPending ? 'animate-pulse' : '' ?>"></i>
+                        <?php endif; ?>
+                    </div>
+                    <h6 class="fw-bold mb-1">1. Head of Purchase</h6>
+                    <div class="mt-2">
+                        <?php if ($isTeamLeaderReviewed): ?>
+                            <div class="mb-1">
+                                <span class="badge bg-info-subtle text-info border border-info-subtle" style="font-size:10px;">
+                                    <i class="bi bi-check2-circle me-1"></i>TL Reviewed: <?= htmlspecialchars($request['purchase_team_leader_name'] ?? 'Sr. Exec') ?>
+                                </span>
+                            </div>
+                        <?php endif; ?>
+                        <?php if ($phApproved): ?>
+                            <span class="badge bg-success">Purchase Head Approved</span>
+                            <div class="small mt-2 text-muted">
+                                <strong>By:</strong> <?= htmlspecialchars($request['purchase_head_approved_by_name'] ?? 'Head of Purchase') ?><br>
+                                <?php if (!empty($request['purchase_head_approved_at'])): ?>
+                                    <strong>On:</strong> <?= date('d M Y h:i A', strtotime($request['purchase_head_approved_at'])) ?>
+                                <?php endif; ?>
+                            </div>
+                        <?php elseif ($phRejected): ?>
+                            <span class="badge bg-danger">Rejected</span>
+                        <?php elseif ($phPending): ?>
+                            <span class="badge bg-primary animate-blink">Pending Purchase Head</span>
+                            <div class="small mt-2 text-muted">Awaiting Head of Purchase (Role 17) approval.</div>
+                        <?php else: ?>
+                            <span class="badge bg-secondary">Awaiting Submission</span>
+                        <?php endif; ?>
+                    </div>
+                    <?php if (!empty($request['purchase_head_note'])): ?>
+                        <div class="mt-2 p-2 bg-white rounded border text-start small">
+                            <strong>Note:</strong> <?= htmlspecialchars($request['purchase_head_note']) ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- Step 2: QC Verification -->
+            <div class="col-md-3 mb-3 mb-md-0 position-relative">
                 <div class="p-3 border rounded h-100 <?= $qcApproved ? 'border-success bg-success-transparent' : ($qcRejected ? 'border-danger bg-danger-transparent' : ($qcPending ? 'border-info bg-info-transparent' : 'bg-light')) ?>">
                     <div class="fs-4 mb-2">
                         <?php if ($qcApproved): ?>
@@ -320,7 +391,7 @@ if (!empty($ahInfo['has_request'])) {
                             <i class="bi bi-shield text-muted fs-2 <?= $qcPending ? 'animate-pulse' : '' ?>"></i>
                         <?php endif; ?>
                     </div>
-                    <h6 class="fw-bold mb-1">1. QC Audit & Verification</h6>
+                    <h6 class="fw-bold mb-1">2. QC Audit & Verification</h6>
                     
                     <div class="mt-2">
                         <?php if ($qcApproved): ?>
@@ -350,7 +421,7 @@ if (!empty($ahInfo['has_request'])) {
                             <span class="badge bg-info animate-blink">Pending Review</span>
                             <div class="small mt-2 text-muted">Awaiting QC audit & material verification.</div>
                         <?php else: ?>
-                            <span class="badge bg-secondary">Awaiting Submission</span>
+                            <span class="badge bg-secondary">Awaiting Purchase Head First</span>
                         <?php endif; ?>
                     </div>
                     <?php if (!empty($request['qc_note'])): ?>
@@ -361,8 +432,8 @@ if (!empty($ahInfo['has_request'])) {
                 </div>
             </div>
 
-            <!-- Step 2: Management Approval -->
-            <div class="col-md-4 mb-3 mb-md-0">
+            <!-- Step 3: Operation Head, Accounts Head & Management Approval -->
+            <div class="col-md-3 mb-3 mb-md-0">
                 <div class="p-3 border rounded h-100 <?= $mgmtApproved ? 'border-success bg-success-transparent' : ($mgmtRejected ? 'border-danger bg-danger-transparent' : ($mgmtPending ? 'border-info bg-info-transparent' : 'bg-light')) ?>">
                     <div class="fs-4 mb-2">
                         <?php if ($mgmtApproved): ?>
@@ -373,9 +444,19 @@ if (!empty($ahInfo['has_request'])) {
                             <i class="bi bi-person text-muted fs-2 <?= $mgmtPending ? 'animate-pulse' : '' ?>"></i>
                         <?php endif; ?>
                     </div>
-                    <h6 class="fw-bold mb-1">2. Management Final Approval</h6>
+                    <h6 class="fw-bold mb-1">3. Op Head, Accts &amp; Mgmt</h6>
                     
                     <div class="mt-2">
+                        <?php if ($isOpHeadApproved && !empty($ahInfo['op_head_name'])): ?>
+                            <div class="small text-success mb-1">
+                                <i class="bi bi-check-circle-fill me-1"></i><strong>Op Head:</strong> <?= htmlspecialchars($ahInfo['op_head_name']) ?>
+                            </div>
+                        <?php endif; ?>
+                        <?php if ($isAhApproved && !empty($ahInfo['accounts_head_name'])): ?>
+                            <div class="small text-primary mb-1">
+                                <i class="bi bi-check-circle-fill me-1"></i><strong>Accts Head:</strong> <?= htmlspecialchars($ahInfo['accounts_head_name']) ?>
+                            </div>
+                        <?php endif; ?>
                         <?php if ($mgmtApproved): ?>
                             <div class="d-flex align-items-center justify-content-center gap-2">
                                 <span class="badge bg-success">Approved</span>
@@ -386,7 +467,7 @@ if (!empty($ahInfo['has_request'])) {
                                 <?php endif; ?>
                             </div>
                             <div class="small mt-2 text-muted">
-                                <strong>By:</strong> <?= htmlspecialchars($request['approved_by_name'] ?? 'Management') ?><br>
+                                <strong>Final By:</strong> <?= htmlspecialchars($request['approved_by_name'] ?? 'Management') ?><br>
                                 <?php if (!empty($approval_request['approved_at'])): ?>
                                     <strong>On:</strong> <?= date('d M Y h:i A', strtotime($approval_request['approved_at'])) ?>
                                 <?php elseif (!empty($request['updated_at']) && $status !== 'Submitted' && $status !== 'QC Approved'): ?>
@@ -402,11 +483,13 @@ if (!empty($ahInfo['has_request'])) {
                                 <?php endif; ?>
                             </div>
                         <?php elseif ($mgmtPending): ?>
-                            <span class="badge bg-info animate-blink">Pending Review</span>
-                            <div class="small mt-2 text-muted">QC verification completed. Awaiting Management final decision.</div>
-                        <?php elseif ($qcRejected): ?>
+                            <span class="badge bg-info animate-blink">Pending Approval</span>
+                            <div class="small mt-2 text-muted">
+                                <?= !$isOpHeadApproved ? 'Awaiting Head of Operation (Role 20/32).' : (!$isAhApproved ? 'Awaiting Accounts Head (Role 30).' : 'Awaiting Management / DCEO (Role 1/3).') ?>
+                            </div>
+                        <?php elseif ($qcRejected || $phRejected): ?>
                             <span class="badge bg-secondary">Bypassed</span>
-                            <div class="small mt-2 text-muted">Request was rejected during QC stage.</div>
+                            <div class="small mt-2 text-muted">Request was rejected during earlier stage.</div>
                         <?php else: ?>
                             <span class="badge bg-secondary">Awaiting QC First</span>
                         <?php endif; ?>
@@ -419,8 +502,8 @@ if (!empty($ahInfo['has_request'])) {
                 </div>
             </div>
 
-            <!-- Step 3: Accounts Payment -->
-            <div class="col-md-4">
+            <!-- Step 4: Accounts Payment -->
+            <div class="col-md-3">
                 <div class="p-3 border rounded h-100 <?= $payApproved ? 'border-success bg-success-transparent' : ($payPartial ? 'border-info bg-info-transparent' : ($payPending ? 'border-warning bg-warning-transparent' : 'bg-light')) ?>">
                     <div class="fs-4 mb-2">
                         <?php if ($payApproved): ?>
@@ -433,7 +516,7 @@ if (!empty($ahInfo['has_request'])) {
                             <i class="bi bi-wallet2 text-muted fs-2"></i>
                         <?php endif; ?>
                     </div>
-                    <h6 class="fw-bold mb-1">3. Accounts Disbursement</h6>
+                    <h6 class="fw-bold mb-1">4. Accounts Disbursement</h6>
                     
                     <div class="mt-2">
                         <?php if ($payApproved): ?>
@@ -459,7 +542,7 @@ if (!empty($ahInfo['has_request'])) {
                             <div class="small mt-2 text-muted">Request was rejected. No payment will be processed.</div>
                         <?php else: ?>
                             <span class="badge bg-secondary">Awaiting Approvals</span>
-                            <div class="small mt-2 text-muted">Payment will be enabled once approved by Management.</div>
+                            <div class="small mt-2 text-muted">Payment will be enabled once all required approvals are completed.</div>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -469,29 +552,29 @@ if (!empty($ahInfo['has_request'])) {
 </div>
 
 <!-- ROW 1: Request Information & Additional Documents & Notes -->
-<div class="row mb-3">
+<div class="row g-4 mb-4">
     <!-- Left: Request Information Card -->
     <div class="col-lg-6 d-flex mb-3 mb-lg-0">
         <div class="card custom-card mb-0 w-100">
-            <div class="card-header">
+            <div class="card-header py-3 px-4">
                 <h6 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>Request Information</h6>
             </div>
-            <div class="card-body">
-                <div class="row">
+            <div class="card-body p-4">
+                <div class="row g-3">
                     <div class="col-md-6">
-                        <div class="info-label text-uppercase text-muted small fw-bold">Project</div>
-                        <div class=""><?= htmlspecialchars($request['project_name'] ?? '—') ?></div>
+                        <div class="info-label text-uppercase text-muted small fw-bold mb-1">Project</div>
+                        <div class="fw-semibold text-dark"><?= htmlspecialchars($request['project_name'] ?? '—') ?></div>
                     </div>
                     <div class="col-md-6">
-                        <div class="info-label text-uppercase text-muted small fw-bold">Vendor</div>
+                        <div class="info-label text-uppercase text-muted small fw-bold mb-1">Vendor</div>
                         <div class=""><span
-                                class="badge bg-secondary"><?= htmlspecialchars($request['vendor_name'] ?? '—') ?></span>
+                                class="badge bg-secondary px-2.5 py-1"><?= htmlspecialchars($request['vendor_name'] ?? '—') ?></span>
                         </div>
                     </div>
                     <?php if (!empty($request['purchase_order_id']) && $request['purchase_order_id'] > 0): ?>
-                        <div class="col-md-6 mb-2">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Purchase Order (PO)</div>
-                            <div class="d-flex align-items-center gap-2 mt-0.5">
+                        <div class="col-md-6">
+                            <div class="info-label text-uppercase text-muted small fw-bold mb-1">Purchase Order (PO)</div>
+                            <div class="d-flex align-items-center gap-2">
                                 <a href="<?= $base_url ?>/con-purchase-order/<?= $request['purchase_order_id'] ?>" class="fw-bold text-primary text-decoration-none" target="_blank">
                                     <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 font-monospace" style="font-size: 12px;">
                                         <i class="bi bi-file-earmark-check me-1"></i>PO-<?= $request['purchase_order_id'] ?>
@@ -508,9 +591,9 @@ if (!empty($ahInfo['has_request'])) {
                     $linkedPrId = $poDetails['request_id'] ?? null;
                     if (!empty($linkedPrId)): 
                     ?>
-                        <div class="col-md-6 mb-2">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Purchase Request (Requisition)</div>
-                            <div class="d-flex align-items-center gap-2 mt-0.5 flex-wrap">
+                        <div class="col-md-6">
+                            <div class="info-label text-uppercase text-muted small fw-bold mb-1">Purchase Request (Requisition)</div>
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
                                 <a href="<?= $base_url ?>/con-purchase-request/<?= $linkedPrId ?>" class="fw-bold text-dark text-decoration-none" target="_blank">
                                     <span class="badge bg-warning text-dark px-2 py-1 font-monospace" style="font-size: 12px;">
                                         <i class="bi bi-file-earmark-text me-1"></i>PR #<?= htmlspecialchars($linkedPrId) ?>
@@ -533,11 +616,11 @@ if (!empty($ahInfo['has_request'])) {
                         </div>
                     <?php endif; ?>
                     <div class="col-md-6">
-                        <div class="info-label text-uppercase text-muted small fw-bold">Invoice Number</div>
-                        <div class=""><?= htmlspecialchars($request['invoice_number'] ?? '—') ?></div>
+                        <div class="info-label text-uppercase text-muted small fw-bold mb-1">Invoice Number</div>
+                        <div class="fw-semibold text-dark"><?= htmlspecialchars($request['invoice_number'] ?? '—') ?></div>
                     </div>
                     <div class="col-md-6">
-                        <div class="info-label text-uppercase text-muted small fw-bold">Delivery Verified</div>
+                        <div class="info-label text-uppercase text-muted small fw-bold mb-1">Delivery Verified</div>
                         <div class="">
                             <?php if ($request['delivery_verified']): ?>
                                 <span class="badge bg-success">Yes</span>
@@ -547,7 +630,7 @@ if (!empty($ahInfo['has_request'])) {
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="info-label text-uppercase text-muted small fw-bold">QC Verified</div>
+                        <div class="info-label text-uppercase text-muted small fw-bold mb-1">QC Verified</div>
                         <div class="">
                             <?php if ($request['qc_verified']): ?>
                                 <span class="badge bg-success">Yes</span>
@@ -557,13 +640,13 @@ if (!empty($ahInfo['has_request'])) {
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="info-label text-uppercase text-muted small fw-bold">Payment Paid Status</div>
+                        <div class="info-label text-uppercase text-muted small fw-bold mb-1">Payment Paid Status</div>
                         <div class="">
                             <span class="badge <?= $paidStatusClass ?>"><?= $paidStatusLabel ?></span>
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="info-label text-uppercase text-muted small fw-bold">Material Log Received</div>
+                        <div class="info-label text-uppercase text-muted small fw-bold mb-1">Material Log Received</div>
                         <div class="">
                             <?php if (!empty($materialLogs)): ?>
                                 <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i> Received (<?= count($materialLogs) ?> Log<?= count($materialLogs) > 1 ? 's' : '' ?>)</span>
@@ -574,27 +657,27 @@ if (!empty($ahInfo['has_request'])) {
                     </div>
 
                     <!-- Financial Summary Row -->
-                    <div class="col-md-12">
-                        <div class="d-grid gap-2 mt-1" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
-                            <div class="border rounded p-3 text-center">
+                    <div class="col-md-12 mt-3 pt-2">
+                        <div class="d-grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
+                            <div class="border rounded-3 p-3 text-center">
                                 <small class="text-muted d-block mb-1">Invoice Amount</small>
                                 <h5 class="text-primary mb-0 fw-bold">tk <?= number_format($invoiceAmt, 2) ?>
                                 </h5>
                             </div>
                             <?php if ($penaltyAmt > 0): ?>
-                                <div class="border rounded p-3 text-center">
+                                <div class="border rounded-3 p-3 text-center">
                                     <small class="text-muted d-block mb-1">Penalty Deducted</small>
                                     <h5 class="text-danger mb-0 fw-bold">- tk <?= number_format($penaltyAmt, 2) ?>
                                     </h5>
                                 </div>
                             <?php endif; ?>
-                            <div class="border rounded p-3 text-center">
+                            <div class="border rounded-3 p-3 text-center">
                                 <small class="text-muted d-block mb-1">Net Payable</small>
                                 <h5 class="text-success mb-0 fw-bold">tk <?= number_format($netPayable, 2) ?>
                                 </h5>
                             </div>
                             <?php if (!empty($request['approved_amount'])): ?>
-                                <div class="border rounded p-3 text-center border-success">
+                                <div class="border rounded-3 p-3 text-center border-success">
                                     <small class="text-muted d-block mb-1">Approved Amount</small>
                                     <h5 class="text-success mb-0 fw-bold">tk
                                         <?= number_format($request['approved_amount'], 2) ?>
@@ -602,11 +685,11 @@ if (!empty($ahInfo['has_request'])) {
                                 </div>
                             <?php endif; ?>
                             <?php if ($isApproved || $isFullyPaid): ?>
-                                <div class="border rounded p-3 text-center">
+                                <div class="border rounded-3 p-3 text-center">
                                     <small class="text-muted d-block mb-1">Total Paid</small>
                                     <h5 class="text-success mb-0 fw-bold">tk <?= number_format($totalPaid, 2) ?></h5>
                                 </div>
-                                <div class="border rounded p-3 text-center">
+                                <div class="border rounded-3 p-3 text-center">
                                     <small class="text-muted d-block mb-1">Due Amount</small>
                                     <?php if ($dueAmount > 0): ?>
                                         <h5 class="text-danger mb-0 fw-bold">tk <?= number_format($dueAmount, 2) ?></h5>
@@ -616,7 +699,7 @@ if (!empty($ahInfo['has_request'])) {
                                 </div>
                             <?php endif; ?>
                         </div>
-                        <div class="mt-2 py-2 px-3 bg-light rounded text-muted small d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <div class="mt-3 py-2.5 px-3 bg-light rounded-2 border text-muted small d-flex align-items-center justify-content-between flex-wrap gap-2" style="padding-top: 10px; padding-bottom: 10px;">
                             <span><strong class="text-dark">Net Payable in Words:</strong> <?= class_exists('FormatHelper') ? FormatHelper::amountInWords($netPayable) : (function_exists('amountInWords') ? amountInWords($netPayable) : '') ?></span>
                             <?php if ($totalPaid > 0): ?>
                                 <span><strong class="text-dark">Total Paid in Words:</strong> <span class="text-success fw-semibold"><?= class_exists('FormatHelper') ? FormatHelper::amountInWords($totalPaid) : (function_exists('amountInWords') ? amountInWords($totalPaid) : '') ?></span></span>
@@ -624,22 +707,22 @@ if (!empty($ahInfo['has_request'])) {
                         </div>
                     </div>
 
-                    <div class="col-md-6">
-                        <div class="info-label text-uppercase text-muted small fw-bold">Created By</div>
-                        <span class="text-muted">
+                    <div class="col-md-6 border-top pt-3 mt-3">
+                        <div class="info-label text-uppercase text-muted small fw-bold mb-1">Created By</div>
+                        <strong class="text-dark">
                             <?= htmlspecialchars($request['created_by_name'] ?? '—') ?>
-                        </span>
-                        <div class="">
+                        </strong>
+                        <div class="mt-0.5">
                             <?php if (!empty($request['created_at'])): ?>
                                 <small
-                                    class="text-muted">(<?= date('d M Y h:i A', strtotime($request['created_at'])) ?>)</small>
+                                    class="text-muted"><?= date('d M Y h:i A', strtotime($request['created_at'])) ?></small>
                             <?php endif; ?>
                         </div>
                     </div>
                     <?php if (!empty($request['approved_by_name'])): ?>
-                        <div class="col-md-6">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Approved By</div>
-                            <div class=""><strong><?= htmlspecialchars($request['approved_by_name']) ?></strong></div>
+                        <div class="col-md-6 border-top pt-3 mt-3">
+                            <div class="info-label text-uppercase text-muted small fw-bold mb-1">Approved By</div>
+                            <div class=""><strong class="text-dark"><?= htmlspecialchars($request['approved_by_name']) ?></strong></div>
                         </div>
                     <?php endif; ?>
 
@@ -1489,29 +1572,53 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
     </div>
 
     <!-- Right: Status Info, Actions, Alerts, and Payment processing -->
-    <div class="col-lg-6 d-flex flex-column gap-3">
+    <div class="col-lg-6 d-flex flex-column gap-4">
         <!-- Status Info Card -->
         <div class="card custom-card mb-0">
-            <div class="card-header">
+            <div class="card-header py-3 px-4">
                 <h6 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>Status Info</h6>
             </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6 mb-2">
-                        <small class="text-muted d-block">Current Status</small>
-                        <span class="badge bg-<?= $statusInfo['color'] ?> fs-6"><?= $statusInfo['label'] ?></span>
+            <div class="card-body p-4">
+                <div class="row g-3">
+                    <div class="col-md-6 pb-2 border-bottom">
+                        <small class="text-muted d-block mb-1">Current Status</small>
+                        <span class="badge bg-<?= $statusInfo['color'] ?> fs-6 px-2.5 py-1.5"><?= $statusInfo['label'] ?></span>
                     </div>
-                    <div class="col-md-6 mb-2">
-                        <small class="text-muted d-block">Created At</small>
-                        <strong><?= date('d M Y h:i A', strtotime($request['created_at'])) ?></strong>
+                    <div class="col-md-6 pb-2 border-bottom">
+                        <small class="text-muted d-block mb-1">Created At</small>
+                        <strong class="text-dark"><?= date('d M Y h:i A', strtotime($request['created_at'])) ?></strong>
                     </div>
+                    <?php if ($isTeamLeaderReviewed): ?>
+                        <div class="col-md-12 pb-2 border-bottom lh-base">
+                            <small class="text-muted d-block mb-1">Reviewed By Purchase Team Leader / Sr. Executive</small>
+                            <strong class="text-dark"><?= htmlspecialchars($request['purchase_team_leader_name'] ?? 'Team Leader') ?></strong>
+                            <?php if (!empty($request['purchase_team_leader_at'])): ?>
+                                <small class="text-muted ms-1">(<?= date('d M Y h:i A', strtotime($request['purchase_team_leader_at'])) ?>)</small>
+                            <?php endif; ?>
+                            <?php if (!empty($request['purchase_team_leader_note'])): ?>
+                                <p class="small text-muted mt-1 fst-italic mb-0">"<?= nl2br(htmlspecialchars($request['purchase_team_leader_note'])) ?>"</p>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+                    <?php if (!empty($request['purchase_head_approved_by_id'])): ?>
+                        <div class="col-md-12 pb-2 border-bottom lh-base">
+                            <small class="text-muted d-block mb-1">Head of Purchase Approved By</small>
+                            <strong class="text-dark"><?= htmlspecialchars($request['purchase_head_approved_by_name'] ?? 'Head of Purchase') ?></strong>
+                            <?php if (!empty($request['purchase_head_approved_at'])): ?>
+                                <small class="text-muted ms-1">(<?= date('d M Y h:i A', strtotime($request['purchase_head_approved_at'])) ?>)</small>
+                            <?php endif; ?>
+                            <?php if (!empty($request['purchase_head_note'])): ?>
+                                <p class="small text-muted mt-1 fst-italic mb-0">"<?= nl2br(htmlspecialchars($request['purchase_head_note'])) ?>"</p>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
                     <?php if (!empty($request['qc_approved_by_id'])): ?>
-                        <div class="col-md-12 mb-2">
-                            <small class="text-muted d-block">QC Approved By</small>
-                            <strong><?= htmlspecialchars($request['qc_approved_by_name'] ?? 'QC User') ?></strong>
-                            <small class="text-muted">(<?= date('d M Y h:i A', strtotime($request['qc_approved_at'])) ?>)</small>
+                        <div class="col-md-12 pb-2 border-bottom lh-base">
+                            <small class="text-muted d-block mb-1">QC Approved By</small>
+                            <strong class="text-dark"><?= htmlspecialchars($request['qc_approved_by_name'] ?? 'QC User') ?></strong>
+                            <small class="text-muted ms-1">(<?= date('d M Y h:i A', strtotime($request['qc_approved_at'])) ?>)</small>
                             <?php if (isset($request['qc_approved_amount']) && (float)$request['qc_approved_amount'] > 0): ?>
-                                <div class="mt-1">
+                                <div class="mt-1.5">
                                     <span class="badge bg-info text-white">QC Approved Amount: tk <?= number_format((float)$request['qc_approved_amount'], 2) ?></span>
                                 </div>
                             <?php endif; ?>
@@ -1520,10 +1627,28 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                             <?php endif; ?>
                         </div>
                     <?php endif; ?>
+                    <?php if ($isOpHeadApproved && !empty($ahInfo['op_head_name'])): ?>
+                        <div class="col-md-12 pb-2 border-bottom lh-base">
+                            <small class="text-muted d-block mb-1">Head of Operation Approved By</small>
+                            <strong class="text-dark"><?= htmlspecialchars($ahInfo['op_head_name']) ?></strong>
+                            <?php if (!empty($ahInfo['op_head_at'])): ?>
+                                <small class="text-muted ms-1">(<?= date('d M Y h:i A', strtotime($ahInfo['op_head_at'])) ?>)</small>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+                    <?php if ($isAhApproved && !empty($ahInfo['accounts_head_name'])): ?>
+                        <div class="col-md-12 pb-2 border-bottom lh-base">
+                            <small class="text-muted d-block mb-1">Accounts Head Approved By</small>
+                            <strong class="text-dark"><?= htmlspecialchars($ahInfo['accounts_head_name']) ?></strong>
+                            <?php if (!empty($ahInfo['accounts_head_at'])): ?>
+                                <small class="text-muted ms-1">(<?= date('d M Y h:i A', strtotime($ahInfo['accounts_head_at'])) ?>)</small>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
                     <?php if (!empty($request['approved_by_name'])): ?>
-                        <div class="col-md-12 mb-2">
-                            <small class="text-muted d-block">Approved By</small>
-                            <strong><?= htmlspecialchars($request['approved_by_name']) ?></strong>
+                        <div class="col-md-12 lh-base">
+                            <small class="text-muted d-block mb-1">Final Approved By</small>
+                            <strong class="text-dark"><?= htmlspecialchars($request['approved_by_name']) ?></strong>
                             <?php if (!empty($request['management_note'])): ?>
                                 <p class="small text-muted mt-1 fst-italic mb-0">"<?= nl2br(htmlspecialchars($request['management_note'])) ?>"</p>
                             <?php endif; ?>
@@ -1533,92 +1658,155 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
             </div>
         </div>
 
-        <!-- Approval Actions (QC & Internal Audit) -->
-        <?php if (($canApproveQC ?? false) && $isSubmitted): ?>
-            <div class="card custom-card border-info mb-0 shadow-sm">
-                <div class="card-header bg-info bg-opacity-10 d-flex align-items-center justify-content-between">
-                    <h6 class="card-title mb-0 text-info fw-bold">
-                        <i class="bi bi-shield-check me-2"></i>QC Audit & Verification Action
+        <!-- Optional Review Card: Purchase Team Leader / Sr. Executive (Role 31) -->
+        <?php if ($isSubmitted && !$isPurchaseHeadApproved && !$isTeamLeaderReviewed && $canReviewTeamLeader && (int)$userRole === 31): ?>
+            <div class="card custom-card border-secondary mb-0 shadow-sm">
+                <div class="card-header bg-secondary bg-opacity-10 d-flex align-items-center justify-content-between flex-wrap gap-2 py-3 px-4">
+                    <h6 class="card-title mb-0 text-dark fw-bold">
+                        <i class="bi bi-eye-fill me-2"></i>Purchase Team Leader / Sr. Executive Review (Optional)
                     </h6>
-                    <span class="badge bg-info text-white">Step 1 of 3</span>
+                    <span class="badge bg-secondary text-white">Optional Review</span>
                 </div>
-                <div class="card-body">
-                    <p class="small text-muted mb-3">
-                        Review delivery details, materials received, invoice amount and submit your QC verification to forward to Management.
+                <div class="card-body p-4">
+                    <p class="small text-muted mb-3 lh-base">
+                        Review this payment request submitted by Purchase Executive and forward with your remarks to Head of Purchase (Role 17).
                     </p>
-                    <form action="<?= $base_url ?>/con-vendor-payment-qc-approve/<?= $request['id'] ?>" method="POST" id="qcApproveVprForm" class="mb-3">
+                    <form action="<?= $base_url ?>/con-vendor-payment-tl-review/<?= $request['id'] ?>" method="POST">
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">QC Approved Amount (tk) <span class="text-danger">*</span></label>
-                            <input type="number" name="qc_approved_amount" id="qcApprovedAmtInput" class="form-control"
-                                value="<?= number_format($netPayable, 2, '.', '') ?>" step="0.01" min="0.01"
-                                max="<?= number_format($netPayable, 2, '.', '') ?>" required>
-                            <small class="text-muted">Net payable: tk <?= number_format($netPayable, 2) ?> (You can adjust this amount)</small>
+                            <label class="form-label fw-semibold small mb-1.5">Review Remarks (Optional)</label>
+                            <textarea name="tl_note" class="form-control form-control-sm" rows="2" placeholder="Write review note for Head of Purchase..."></textarea>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">QC & Audit Observation Note <span class="text-muted">(Optional)</span></label>
-                            <textarea name="qc_note" class="form-control" rows="2" placeholder="Write observation, material verification notes or comments..."></textarea>
-                        </div>
-                        <div class="d-flex gap-2">
-                            <button type="button" id="btnQcApprove" class="btn btn-info text-white flex-grow-1 fw-bold">
-                                <i class="bi bi-shield-check me-1"></i> Approve & Verify as QC
-                            </button>
-                            <button type="button" id="btnQcReject" class="btn btn-danger flex-grow-1 fw-bold">
-                                <i class="bi bi-x-circle me-1"></i> Reject
-                            </button>
-                        </div>
-                    </form>
-                    <form action="<?= $base_url ?>/con-vendor-payment-qc-reject/<?= $request['id'] ?>" method="POST" id="qcRejectVprForm" style="display:none;">
-                        <input type="hidden" name="qc_note" id="qcRejectNoteHidden" value="">
+                        <button type="submit" class="btn btn-secondary btn-sm w-100 fw-bold py-2">
+                            <i class="bi bi-send-check me-1"></i> Review &amp; Forward to Head of Purchase
+                        </button>
                     </form>
                 </div>
             </div>
         <?php endif; ?>
 
-        <!-- Management Approval Locked Banner for > 10K -->
-        <?php if ($isMgmtLocked): ?>
-            <div class="card custom-card border-warning mb-3 shadow-sm">
-                <div class="card-header bg-warning bg-opacity-10 d-flex align-items-center justify-content-between">
-                    <h6 class="card-title mb-0 fw-bold text-warning">
-                        <i class="bi bi-lock-fill me-2"></i>Management Approval Locked (&gt; tk10,000)
+        <!-- Step 1: Head of Purchase Approval Action (Role 17) -->
+        <?php if ($isSubmitted && !$isPurchaseHeadApproved && $canApprovePurchaseHead): ?>
+            <div class="card custom-card border-primary mb-0 shadow-sm">
+                <div class="card-header bg-primary bg-opacity-10 d-flex align-items-center justify-content-between flex-wrap gap-2 py-3 px-4">
+                    <h6 class="card-title mb-0 text-primary fw-bold">
+                        <i class="bi bi-bag-check-fill me-2"></i>Head of Purchase Approval Action
                     </h6>
-                    <span class="badge bg-warning text-dark"><?= $mgmtLockReason === 'accounts_head' ? 'Awaiting Accounts Head' : 'Awaiting Op Head' ?></span>
+                    <span class="badge bg-primary text-white">Step 1 — Purchase Head (Role 17)</span>
                 </div>
-                <div class="card-body">
-                    <p class="mb-0 text-muted small">
-                        <?php if ($mgmtLockReason === 'accounts_head'): ?>
-                            This request exceeds <strong>tk10,000</strong>. Admin & Operation Head has approved. <strong>Accounts Head (Role 30)</strong> must verify and approve this request before Management final sign-off.
-                        <?php else: ?>
-                            This request exceeds <strong>tk10,000</strong>. In accordance with policy, <strong>Admin & Operation Head (Role 20)</strong> must verify and approve this request first before Management sign-off.
-                        <?php endif; ?>
+                <div class="card-body p-4">
+                    <p class="small text-muted mb-3 lh-base">
+                        Verify PO, CST, and invoice details and approve as Head of Purchase to forward this request to QC &amp; Internal Audit.
                     </p>
+                    <form action="<?= $base_url ?>/con-vendor-payment-ph-approve/<?= $request['id'] ?>" method="POST" id="phApproveVprForm" class="mb-0">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold mb-1.5">Head of Purchase Note <span class="text-muted">(Optional)</span></label>
+                            <textarea name="purchase_head_note" class="form-control" rows="2" placeholder="Write departmental approval note..."></textarea>
+                        </div>
+                        <div class="d-flex gap-2 pt-1">
+                            <button type="button" id="btnPhApprove" class="btn btn-primary flex-grow-1 fw-bold py-2">
+                                <i class="bi bi-check-circle me-1"></i> Approve as Head of Purchase
+                            </button>
+                            <button type="button" id="btnPhReject" class="btn btn-danger flex-grow-1 fw-bold py-2">
+                                <i class="bi bi-x-circle me-1"></i> Reject
+                            </button>
+                        </div>
+                    </form>
+                    <form action="<?= $base_url ?>/con-vendor-payment-ph-reject/<?= $request['id'] ?>" method="POST" id="phRejectVprForm" style="display:none;">
+                        <input type="hidden" name="purchase_head_note" id="phRejectNoteHidden" value="">
+                    </form>
                 </div>
             </div>
+        <?php endif; ?>
+
+        <!-- Step 2: Approval Actions (QC & Internal Audit) -->
+        <?php if (($canApproveQC ?? false) && $isSubmitted): ?>
+            <?php if (!$isPurchaseHeadApproved && !$isMgmtUser): ?>
+                <div class="card custom-card border-warning mb-0 shadow-sm">
+                    <div class="card-header bg-warning bg-opacity-10 d-flex align-items-center justify-content-between flex-wrap gap-2 py-3 px-4">
+                        <h6 class="card-title mb-0 text-dark fw-bold">
+                            <i class="bi bi-lock-fill text-warning me-2"></i>QC Audit Locked — Awaiting Head of Purchase
+                        </h6>
+                        <span class="badge bg-warning text-dark">Pending Step 1</span>
+                    </div>
+                    <div class="card-body p-4">
+                        <p class="mb-0 small text-muted lh-base">
+                            This bill is currently pending <strong>Head of Purchase (Role 17)</strong> approval. You can inspect all bill documents, CST quotations, and GRN logs now, and the QC approval button will unlock automatically once Head of Purchase approves.
+                        </p>
+                    </div>
+                </div>
+            <?php else: ?>
+                <div class="card custom-card border-info mb-0 shadow-sm">
+                    <div class="card-header bg-info bg-opacity-10 d-flex align-items-center justify-content-between flex-wrap gap-2 py-3 px-4">
+                        <h6 class="card-title mb-0 text-info fw-bold">
+                            <i class="bi bi-shield-check me-2"></i>QC Audit & Verification Action
+                        </h6>
+                        <span class="badge bg-info text-white">Step 2 — QC Audit</span>
+                    </div>
+                    <div class="card-body p-4">
+                        <p class="small text-muted mb-3 lh-base">
+                            Review delivery details, materials received, invoice amount and submit your QC verification to forward to Head of Operation.
+                        </p>
+                        <form action="<?= $base_url ?>/con-vendor-payment-qc-approve/<?= $request['id'] ?>" method="POST" id="qcApproveVprForm" class="mb-0">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold mb-1.5">QC Approved Amount (tk) <span class="text-danger">*</span></label>
+                                <input type="number" name="qc_approved_amount" id="qcApprovedAmtInput" class="form-control"
+                                    value="<?= number_format($netPayable, 2, '.', '') ?>" step="0.01" min="0.01"
+                                    max="<?= number_format($netPayable, 2, '.', '') ?>" required>
+                                <small class="text-muted d-block mt-1">Net payable: tk <?= number_format($netPayable, 2) ?> (You can adjust this amount)</small>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold mb-1.5">QC & Audit Observation Note <span class="text-muted">(Optional)</span></label>
+                                <textarea name="qc_note" class="form-control" rows="2" placeholder="Write observation, material verification notes or comments..."></textarea>
+                            </div>
+                            <div class="d-flex gap-2 pt-1">
+                                <button type="button" id="btnQcApprove" class="btn btn-info text-white flex-grow-1 fw-bold py-2">
+                                    <i class="bi bi-shield-check me-1"></i> Approve & Verify as QC
+                                </button>
+                                <button type="button" id="btnQcReject" class="btn btn-danger flex-grow-1 fw-bold py-2">
+                                    <i class="bi bi-x-circle me-1"></i> Reject
+                                </button>
+                            </div>
+                        </form>
+                        <form action="<?= $base_url ?>/con-vendor-payment-qc-reject/<?= $request['id'] ?>" method="POST" id="qcRejectVprForm" style="display:none;">
+                            <input type="hidden" name="qc_note" id="qcRejectNoteHidden" value="">
+                        </form>
+                    </div>
+                </div>
+            <?php endif; ?>
         <?php endif; ?>
 
         <!-- Approval Actions (Operation Head / Management) -->
         <?php if ($canApproveReq): ?>
             <div class="card custom-card <?= $isOpHeadAction ? 'border-primary' : 'border-warning' ?> mb-0 shadow-sm">
-                <div class="card-header <?= $isOpHeadAction ? 'bg-primary bg-opacity-10' : 'bg-warning bg-opacity-10' ?> d-flex align-items-center justify-content-between">
+                <div class="card-header <?= $isOpHeadAction ? 'bg-primary bg-opacity-10' : 'bg-warning bg-opacity-10' ?> d-flex align-items-center justify-content-between flex-wrap gap-2 py-3 px-4">
                     <h6 class="card-title mb-0 fw-bold">
                         <i class="bi <?= $isOpHeadAction ? 'bi-shield-check text-primary' : 'bi-shield-lock' ?> me-2"></i>
-                        <?= $isOpHeadAction ? 'Operation Head Verification Action (Step 1 of 3)' : (($isApproved) ? 'Additional Approval Action' : 'Management Final Approval Action') ?>
+                        <?= $isOpHeadAction ? 'Head of Operation Approval Action' : (($isApproved) ? 'Additional Approval Action' : ($mgmtOverrideWarningStage !== '' ? 'Management Override / Direct Approval Action' : 'Management Final Approval Action')) ?>
                     </h6>
-                    <span class="badge <?= $isOpHeadAction ? 'bg-primary' : 'bg-warning text-dark' ?>">
-                        <?= $isOpHeadAction ? 'Step 1 of 3' : 'Step 3 of 3' ?>
+                    <span class="badge <?= $isOpHeadAction ? 'bg-primary' : 'bg-warning text-dark' ?> px-2.5 py-1">
+                        <?= $isOpHeadAction ? 'Operation Head (Role 20/32)' : ($mgmtOverrideWarningStage !== '' ? 'Pending: ' . htmlspecialchars($mgmtOverrideWarningStage) : 'Management / DCEO') ?>
                     </span>
                 </div>
-                <div class="card-body">
-                    <!-- Management Approval Form -->
+                <div class="card-body p-4">
+                    <?php if ($mgmtOverrideWarningStage !== ''): ?>
+                        <div class="d-flex align-items-start gap-2.5 p-3 mb-3 rounded-2 border border-warning bg-warning-subtle text-dark small lh-base">
+                            <i class="bi bi-exclamation-triangle-fill text-warning fs-6 flex-shrink-0 mt-0.5"></i>
+                            <div>
+                                <strong>Pending for <?= htmlspecialchars($mgmtOverrideWarningStage) ?>:</strong> As Management / CEO / DCEO, if you approve now, your approval will also cover the pending prior stage(s) (<strong><?= htmlspecialchars($mgmtOverrideWarningStage) ?></strong>) under your responsibility.
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                    <!-- Management / Operation Head Approval Form -->
                     <form action="<?= $base_url ?>/con-vendor-payment-approve/<?= $request['id'] ?>" method="POST"
-                        id="approveVprForm" class="mb-3">
+                        id="approveVprForm" class="mb-0">
                         <input type="hidden" name="status" value="Approved">
                         <div class="mb-3">
                             <?php if ($isApproved): ?>
-                                <div class="alert alert-info py-2 px-3 mb-3 small">
+                                <div class="p-3 mb-3 rounded-2 border border-info bg-info-subtle text-dark small lh-base">
                                     Approved so far: <strong>tk <?= number_format($approvedAmtSoFar, 2) ?></strong><br>
                                     Remaining unapproved: <strong>tk <?= number_format($unapprovedAmt, 2) ?></strong>
                                 </div>
-                                <label class="form-label fw-semibold">Approve Additional Amount (TK)</label>
+                                <label class="form-label fw-semibold mb-1.5">Approve Additional Amount (TK)</label>
                                 <input type="number" name="approved_amount" id="approveAmtInput" class="form-control"
                                     value="<?= number_format($unapprovedAmt, 2, '.', '') ?>" step="0.01" min="0.01"
                                     max="<?= number_format($unapprovedAmt, 2, '.', '') ?>" required>
@@ -1629,36 +1817,38 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                                         : $netPayable;
                                 ?>
                                 <?php if (isset($request['qc_approved_amount']) && (float)$request['qc_approved_amount'] > 0): ?>
-                                    <div class="alert alert-info py-2 px-3 mb-3 small">
-                                        <i class="bi bi-shield-check me-1"></i>
-                                        QC Audited & Approved Amount: <strong>tk <?= number_format((float)$request['qc_approved_amount'], 2) ?></strong>
-                                        <?php if ((float)$request['qc_approved_amount'] < $netPayable): ?>
-                                            <span class="text-muted">(Adjusted from Net Payable tk <?= number_format($netPayable, 2) ?>)</span>
-                                        <?php endif; ?>
-                                        <?php if (!empty($request['qc_note'])): ?>
-                                            <div class="fst-italic mt-1">"<?= htmlspecialchars($request['qc_note']) ?>"</div>
-                                        <?php endif; ?>
+                                    <div class="d-flex align-items-start gap-2.5 p-3 mb-3 rounded-2 border border-info bg-info-subtle text-dark small lh-base">
+                                        <i class="bi bi-shield-check text-info fs-6 flex-shrink-0 mt-0.5"></i>
+                                        <div>
+                                            QC Audited & Approved Amount: <strong>tk <?= number_format((float)$request['qc_approved_amount'], 2) ?></strong>
+                                            <?php if ((float)$request['qc_approved_amount'] < $netPayable): ?>
+                                                <span class="text-muted">(Adjusted from Net Payable tk <?= number_format($netPayable, 2) ?>)</span>
+                                            <?php endif; ?>
+                                            <?php if (!empty($request['qc_note'])): ?>
+                                                <div class="fst-italic mt-1">"<?= htmlspecialchars($request['qc_note']) ?>"</div>
+                                            <?php endif; ?>
+                                        </div>
                                     </div>
                                 <?php endif; ?>
-                                <label class="form-label fw-semibold">Approved Amount (tk)</label>
+                                <label class="form-label fw-semibold mb-1.5">Approved Amount (tk)</label>
                                 <input type="number" name="approved_amount" id="approveAmtInput" class="form-control"
                                     value="<?= number_format($defaultApprovedAmt, 2, '.', '') ?>" step="0.01" min="0.01"
                                     max="<?= number_format($netPayable, 2, '.', '') ?>" required>
-                                <small class="text-muted">Net payable: tk <?= number_format($netPayable, 2) ?><?= (isset($request['qc_approved_amount']) && (float)$request['qc_approved_amount'] > 0) ? ' | QC Recommended: tk ' . number_format((float)$request['qc_approved_amount'], 2) : '' ?></small>
+                                <small class="text-muted d-block mt-1">Net payable: tk <?= number_format($netPayable, 2) ?><?= (isset($request['qc_approved_amount']) && (float)$request['qc_approved_amount'] > 0) ? ' | QC Recommended: tk ' . number_format((float)$request['qc_approved_amount'], 2) : '' ?></small>
                             <?php endif; ?>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Management Note (Optional)</label>
+                            <label class="form-label fw-semibold mb-1.5">Management Note (Optional)</label>
                             <textarea name="approval_note" class="form-control" rows="2"
                                 placeholder="Leave a note..."></textarea>
                         </div>
-                        <div class="d-flex gap-2">
-                            <button type="button" id="approveVprBtn" class="btn <?= $isOpHeadAction ? 'btn-primary' : 'btn-success' ?> flex-grow-1 fw-bold">
+                        <div class="d-flex gap-2 pt-1">
+                            <button type="button" id="approveVprBtn" class="btn <?= $isOpHeadAction ? 'btn-primary' : 'btn-success' ?> flex-grow-1 fw-bold py-2">
                                 <i class="bi bi-check-circle me-1"></i>
                                 <?= $isOpHeadAction ? 'Approve as Operation Head' : (($isApproved) ? 'Approve Additional' : 'Approve Payment') ?>
                             </button>
                             <?php if ($canReject): ?>
-                                <button type="button" id="rejectVprBtn" class="btn btn-danger flex-grow-1 fw-bold">
+                                <button type="button" id="rejectVprBtn" class="btn btn-danger flex-grow-1 fw-bold py-2">
                                     <i class="bi bi-x-circle me-1"></i> Reject
                                 </button>
                             <?php endif; ?>
@@ -1686,7 +1876,6 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                         </button>
                     </div>
                 <?php endif; ?>
-            </div>
             </div>
         <?php elseif ($isFullyPaid): ?>
             <div class="alert alert-secondary text-center mb-0">
@@ -1991,9 +2180,61 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
             toggleBankField();
         }
 
+        // ── Head of Purchase Approve / Reject Buttons ──────────────────────────
+        var btnPhApprove = document.getElementById('btnPhApprove');
+        var phApproveForm = document.getElementById('phApproveVprForm');
+        if (btnPhApprove && phApproveForm) {
+            btnPhApprove.addEventListener('click', function () {
+                Swal.fire({
+                    title: 'Approve as Head of Purchase?',
+                    text: 'This will approve the vendor payment request and forward it to QC & Internal Audit.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#0d6efd',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Yes, Approve & Forward to QC',
+                    cancelButtonText: 'Cancel'
+                }).then(function (result) {
+                    if (result.isConfirmed) {
+                        phApproveForm.submit();
+                    }
+                });
+            });
+        }
+
+        var btnPhReject = document.getElementById('btnPhReject');
+        var phRejectForm = document.getElementById('phRejectVprForm');
+        if (btnPhReject && phRejectForm) {
+            btnPhReject.addEventListener('click', function () {
+                Swal.fire({
+                    title: 'Reject Payment Request (Head of Purchase)?',
+                    text: 'Please enter rejection reason:',
+                    input: 'textarea',
+                    inputPlaceholder: 'Reason for rejection...',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Yes, Reject',
+                    cancelButtonText: 'Cancel',
+                    inputValidator: function (val) {
+                        if (!val || !val.trim()) {
+                            return 'Rejection reason is required!';
+                        }
+                    }
+                }).then(function (result) {
+                    if (result.isConfirmed) {
+                        document.getElementById('phRejectNoteHidden').value = result.value;
+                        phRejectForm.submit();
+                    }
+                });
+            });
+        }
+
         // ── QC Approve Button ──────────────────────────────────────────────────
         var btnQcApprove = document.getElementById('btnQcApprove');
         var qcApproveForm = document.getElementById('qcApproveVprForm');
+        var isPhPendingForQc = <?= json_encode($isSubmitted && !$isPurchaseHeadApproved) ?>;
         if (btnQcApprove && qcApproveForm) {
             btnQcApprove.addEventListener('click', function () {
                 var amtInput = document.getElementById('qcApprovedAmtInput');
@@ -2009,9 +2250,26 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                         return;
                     }
                 }
+                if (isPhPendingForQc) {
+                    Swal.fire({
+                        title: 'Pending Purchase Head Approval',
+                        html: 'This bill is pending for <strong>Purchase Head\'s</strong> approval.<br>Are you ready to approve for Purchase Head first and complete QC verification?',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#0dcaf0',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Yes, Approve Both',
+                        cancelButtonText: 'Cancel'
+                    }).then(function (result) {
+                        if (result.isConfirmed) {
+                            qcApproveForm.submit();
+                        }
+                    });
+                    return;
+                }
                 Swal.fire({
                     title: 'Approve QC Verification?',
-                    text: 'This will verify and forward this payment request to Management for final approval.',
+                    text: 'This will verify and forward this payment request to Head of Operation for approval.',
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonColor: '#0dcaf0',
@@ -2056,14 +2314,32 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
             });
         }
 
-        // ── Management Approve Button ──────────────────────────────────────────
+        // ── Management / Operation Head Approve Button ─────────────────────────
         var approveBtn = document.getElementById('approveVprBtn');
         var approveForm = document.getElementById('approveVprForm');
+        var mgmtOverrideStage = <?= json_encode($mgmtOverrideWarningStage) ?>;
         if (approveBtn && approveForm) {
             approveBtn.addEventListener('click', function () {
                 var amt = document.getElementById('approveAmtInput');
                 if (!amt || !amt.value || parseFloat(amt.value) <= 0) {
                     Swal.fire({ icon: 'warning', title: 'Amount Required', text: 'Please enter a valid approved amount.', confirmButtonColor: '#198754' });
+                    return;
+                }
+                if (mgmtOverrideStage) {
+                    Swal.fire({
+                        title: 'Pending ' + mgmtOverrideStage + ' Approval!',
+                        html: 'This bill is pending for <strong>' + mgmtOverrideStage + '\'s</strong> approval.<br>Are you ready to approve for <strong>' + mgmtOverrideStage + '</strong> first?<br><small class="text-muted">(Your name will be recorded across all bypassed stages and final Management approval)</small>',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#198754',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Yes, Approve & Override',
+                        cancelButtonText: 'Cancel'
+                    }).then(function (result) {
+                        if (result.isConfirmed) {
+                            approveForm.submit();
+                        }
+                    });
                     return;
                 }
                 Swal.fire({

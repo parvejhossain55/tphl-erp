@@ -821,8 +821,28 @@ class UserDashboardController extends Controller
             session_start();
         }
 
-        $userId     = $_SESSION['user']['id']     ?? 0;
-        $userTeamId = $_SESSION['user']['team_id'] ?? null;
+        $loggedUserId = (int)($_SESSION['user']['id'] ?? 0);
+        $userRoleId   = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userTeamId   = $_SESSION['user']['team_id'] ?? null;
+        $requestedUserId = isset($_GET['assigned_user']) ? (int)$_GET['assigned_user'] : (isset($_GET['user_id']) ? (int)$_GET['user_id'] : 0);
+
+        $userId = $loggedUserId;
+        if ($requestedUserId > 0 && $requestedUserId !== $loggedUserId) {
+            if (in_array($userRoleId, [1, 3, 9, 32, 33, 34, 35])) {
+                $userId = $requestedUserId;
+            } elseif ($userRoleId === 5 && !empty($userTeamId)) {
+                $stmtCheck = $this->db->prepare("SELECT id FROM users WHERE id = ? AND team_id = ?");
+                if ($stmtCheck) {
+                    $stmtCheck->bind_param("ii", $requestedUserId, $userTeamId);
+                    $stmtCheck->execute();
+                    if ($stmtCheck->get_result()->num_rows > 0) {
+                        $userId = $requestedUserId;
+                    }
+                    $stmtCheck->close();
+                }
+            }
+        }
+
         $year                 = $_GET['year']          ?? null;
         $month                = $_GET['month']         ?? null;
         $lastAction           = $_GET['last_action']   ?? null;
@@ -839,14 +859,24 @@ class UserDashboardController extends Controller
         // Parameter normalization across lead-lists & my-all-assigned-leads
         if ($filterCard === 'total_booked') {
             $filterCard = 'booked';
+        } elseif ($filterCard === 'contacted_leads') {
+            $filterCard = 'contacted';
+        } elseif ($filterCard === 'not_contacted_leads' || $filterCard === 'not_called') {
+            $filterCard = 'not_contacted';
+        } elseif ($filterCard === 'visited_leads' || $filterCard === 'visit_completed') {
+            $filterCard = 'visited';
+        } elseif ($filterCard === 'visit_scheduled_leads') {
+            $filterCard = 'visit_scheduled';
         }
+
         if ($date_type === 'created_at') {
             $date_type = 'lead_date';
         } elseif ($date_type === 'assigned_at') {
             $date_type = 'assigned_date';
         }
 
-        $onlyMissingFollowup = isset($_GET['filter']) && $_GET['filter'] === 'missing_followup';
+        $onlyMissingFollowup = (isset($_GET['filter']) && $_GET['filter'] === 'missing_followup')
+            || in_array($filterCard, ['missing_followup', 'missing_follow_ups'], true);
 
         $filterProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
         $filterCategoryId = isset($_GET['project_category_id']) && $_GET['project_category_id'] !== '' ? (int)$_GET['project_category_id'] : null;

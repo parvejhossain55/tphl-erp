@@ -129,7 +129,7 @@ $show_breadcrumb = true;
                             <i class="fa-solid fa-expand fa-2x text-primary"></i>
                         </div>
                         <label class="text-muted mb-1"><small>Total Area</small></label>
-                        <p class="mb-0 fw-bold fs-5"><?= $flat['sqft'] ?? 'N/A' ?> sqft</p>
+                        <p class="mb-0 fw-bold fs-5"><?= !empty($flat['sqft']) ? format_sqft($flat['sqft']) : 'N/A' ?> sqft</p>
                     </div>
                 </div>
 
@@ -232,7 +232,7 @@ $show_breadcrumb = true;
                                 <ul class="list-unstyled mb-0">
                                     <li class="mb-2">
                                         <i class="fa-solid fa-check-circle text-success me-2"></i>
-                                        <strong>Area:</strong> <?= $flat['sqft'] ?? 'N/A' ?> sqft
+                                        <strong>Area:</strong> <?= !empty($flat['sqft']) ? format_sqft($flat['sqft']) : 'N/A' ?> sqft
                                     </li>
                                     <li class="mb-2">
                                         <i class="fa-solid fa-check-circle text-success me-2"></i>

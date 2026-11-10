@@ -7,6 +7,64 @@ class ProjectOtherCost extends Model
     public function __construct($db = null)
     {
         parent::__construct($db);
+        $this->ensureSchema();
+    }
+
+    private function ensureSchema()
+    {
+        static $checked = false;
+        if ($checked || !$this->db) return;
+        $checked = true;
+
+        @$this->db->query("
+            CREATE TABLE IF NOT EXISTS `project_other_costs` (
+                `id` INT(11) NOT NULL AUTO_INCREMENT,
+                `project_id` INT(11) NULL DEFAULT NULL,
+                `rcost_type` VARCHAR(100) NULL DEFAULT NULL,
+                `purpose` TEXT NULL DEFAULT NULL,
+                `request_amount` DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+                `approved_amount` DECIMAL(15,2) NULL DEFAULT NULL,
+                `payment_amount` DECIMAL(15,2) NULL DEFAULT NULL,
+                `created_by_id` INT(11) NOT NULL,
+                `attachment` VARCHAR(255) NULL DEFAULT NULL,
+                `creator_attachment` VARCHAR(255) NULL DEFAULT NULL,
+                `dept_head_status` ENUM('pending','approved','rejected','not_required') DEFAULT 'not_required',
+                `dept_head_approved_by` INT(11) NULL DEFAULT NULL,
+                `dept_head_approved_at` DATETIME NULL DEFAULT NULL,
+                `dept_head_approval_note` TEXT NULL DEFAULT NULL,
+                `qc_audit_approved_id` INT(11) NULL DEFAULT NULL,
+                `qc_audit_approved_at` DATETIME NULL DEFAULT NULL,
+                `qc_audit_note` TEXT NULL DEFAULT NULL,
+                `management_apporved_by_id` INT(11) NULL DEFAULT NULL,
+                `management_apporved_at` DATETIME NULL DEFAULT NULL,
+                `management_apporved_note` TEXT NULL DEFAULT NULL,
+                `pc_approved_id` INT(11) NULL DEFAULT NULL,
+                `payment_by_id` INT(11) NULL DEFAULT NULL,
+                `payment_at` DATETIME NULL DEFAULT NULL,
+                `account_id` INT(11) NULL DEFAULT NULL,
+                `status` VARCHAR(50) NOT NULL DEFAULT 'pending',
+                `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+                `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+
+        $cols = [
+            'dept_head_status' => "ENUM('pending','approved','rejected','not_required') DEFAULT 'not_required'",
+            'dept_head_approved_by' => "INT(11) NULL DEFAULT NULL",
+            'dept_head_approved_at' => "DATETIME NULL DEFAULT NULL",
+            'dept_head_approval_note' => "TEXT NULL DEFAULT NULL",
+            'qc_audit_approved_at' => "DATETIME NULL DEFAULT NULL",
+            'management_apporved_at' => "DATETIME NULL DEFAULT NULL",
+            'pc_approved_id' => "INT(11) NULL DEFAULT NULL",
+            'account_id' => "INT(11) NULL DEFAULT NULL"
+        ];
+        foreach ($cols as $col => $def) {
+            $chk = @$this->db->query("SHOW COLUMNS FROM `project_other_costs` LIKE '{$col}'");
+            if ($chk && $chk->num_rows === 0) {
+                @$this->db->query("ALTER TABLE `project_other_costs` ADD COLUMN `{$col}` {$def}");
+            }
+        }
     }
 
     /* =========================

@@ -892,6 +892,9 @@ class AssetManagementController extends Controller
                     require_once dirname(dirname(__DIR__)) . '/models/ApprovalRequest.php';
                     $appModel = new \ApprovalRequest($this->db);
                     $appModel->syncMissingOfficeProcurements();
+                    if ($step === 'mgmt' && $status === 'approved') {
+                        $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = COALESCE(op_head_by, {$userId}), op_head_at = COALESCE(op_head_at, NOW()) WHERE source_table IN ('project_extra_assets', 'purchase_requests') AND source_id = {$id}");
+                    }
                 } catch (\Throwable $e) {
                     error_log("Failed syncing approval_requests on extra purchase approval: " . $e->getMessage());
                 }

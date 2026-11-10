@@ -159,12 +159,12 @@ $show_breadcrumb = true;
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
-                    <span><i class="fa-light fa-badge-check"></i></span>
+                    <span><i class="fa-light fa-building"></i></span>
                 </div>
                 <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Full Payment Completion</h6>
+                    <h6 class="card__sub-title mb-10">Units Booked</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title"><?= $paymentStats['full_payment_completed'] ?? 0 ?></h4>
+                        <h4 class="card__title" id="cedTopUnitsBooked"><?= number_format($paymentStats['units_booked'] ?? $paymentStats['total_units_booked'] ?? $paymentStats['approved_bookings'] ?? 0) ?></h4>
                     </div>
                 </div>
             </div>
@@ -179,7 +179,7 @@ $show_breadcrumb = true;
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Approved Bookings</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title"><?= $paymentStats['approved_bookings'] ?? 0 ?></h4>
+                        <h4 class="card__title" id="cedTopApprovedBookings"><?= number_format($paymentStats['approved_bookings'] ?? $paymentStats['units_booked'] ?? 0) ?></h4>
                     </div>
                 </div>
             </div>
@@ -338,8 +338,8 @@ $show_breadcrumb = true;
 
                     <!-- Project Filter (Same as flat-lists) -->
                     <div style="min-width: 220px; max-width: 280px; flex: 1;">
-                        <select class="form-control form-control-sm select2" name="project_id" id="cedProjectFilter">
-                            <option value="">All Projects</option>
+                        <select class="form-control form-control-sm select2" name="project_id" id="cedProjectFilter" data-placeholder="<?= !empty($assignedProjectIds) ? 'All Assigned Projects (' . count($projects) . ')' : 'All Projects' ?>">
+                            <option value=""><?= !empty($assignedProjectIds) ? 'All Assigned Projects (' . count($projects) . ')' : 'All Projects' ?></option>
                             <?php if (!empty($projects)): ?>
                                 <?php foreach ($projects as $project): ?>
                                     <option value="<?= $project['id'] ?>"
@@ -501,7 +501,7 @@ $show_breadcrumb = true;
                             <th>Project &amp; Flats</th>
                             <th>Total Agreement Value</th>
                             <th>Total Paid</th>
-                            <th>Last Payment Date</th>
+                            <th style="min-width: 140px;">Last Payment Date &amp; Creator</th>
                             <th>Current Month</th>
                             <th>Profile</th>
                             <th>Action</th>
@@ -562,7 +562,7 @@ $show_breadcrumb = true;
                                     <th>Service Fee</th>
                                     <th>Booking Status</th>
                                     <th>Land Share Status</th>
-                                    <th>Last Payment</th>
+                                    <th style="min-width: 140px;">Last Payment &amp; Creator</th>
                                     <th>Current Month</th>
                                     <th>Action</th>
                                 </tr>
@@ -955,7 +955,7 @@ $show_breadcrumb = true;
         const tbody = document.getElementById('projects_table_body');
         tbody.innerHTML = '';
 
-        const isManagement = <?= in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 7, 30, 33, 35]) ? 'true' : 'false' ?>;
+        const isManagement = <?= in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 7, 30, 33, 35, 39]) ? 'true' : 'false' ?>;
 
         lands.forEach(land => {
             const row = document.createElement('tr');
@@ -1031,7 +1031,8 @@ $show_breadcrumb = true;
                 </span>
             </td>
             <td>
-                ${land.last_payment_date ? formatDate(land.last_payment_date) : 'No Payment'}
+                <div>${land.last_payment_date ? `<span class="fw-semibold text-dark text-nowrap">${formatDate(land.last_payment_date)}</span>` : '<span class="text-muted extra-small">No Payment</span>'}</div>
+                ${land.last_payment_creator_name ? `<div class="extra-small text-muted mt-0.5 text-nowrap" style="font-size: 11px;"><i class="fa-solid fa-user-pen text-primary me-1"></i>By: ${escapeHtml(land.last_payment_creator_name)}</div>` : ''}
             </td>
             <td>
                 ${getCurrentMonthBadge(land.current_month_status)}
@@ -2171,7 +2172,7 @@ function loadCedClientsPage(page) {
     const tbody = document.getElementById('clientsCedTableBody');
     const pagContainer = document.getElementById('clientsCedPaginationContainer');
     const searchVal = document.getElementById('cedSearchInput') ? document.getElementById('cedSearchInput').value.trim() : '';
-    const projectId = document.getElementById('cedProjectFilter') ? document.getElementById('cedProjectFilter').value : '';
+    const projectId = document.getElementById('cedProjectFilter') ? document.getElementById('cedProjectFilter').value : '<?= $selectedProjectId ?? '' ?>';
     const verificationStatus = document.getElementById('cedStatusFilter') ? document.getElementById('cedStatusFilter').value : '';
     const limit = document.getElementById('cedLimitSelect') ? document.getElementById('cedLimitSelect').value : '20';
     const dateTypeVal = document.getElementById('cedDateType') ? document.getElementById('cedDateType').value : '';
@@ -2233,6 +2234,14 @@ function loadCedClientsPage(page) {
                 if (countEl) countEl.textContent = formattedCount;
                 const topCountEl = document.getElementById('cedTopTotalClients');
                 if (topCountEl) topCountEl.textContent = formattedCount;
+                if (data.units_booked !== undefined) {
+                    const unitsEl = document.getElementById('cedTopUnitsBooked');
+                    if (unitsEl) unitsEl.textContent = Number(data.units_booked).toLocaleString();
+                }
+                if (data.approved_bookings !== undefined) {
+                    const appEl = document.getElementById('cedTopApprovedBookings');
+                    if (appEl) appEl.textContent = Number(data.approved_bookings).toLocaleString();
+                }
                 const filterBadgeCount = document.getElementById('cedFilterFoundCount');
                 if (filterBadgeCount) filterBadgeCount.textContent = formattedCount;
             }
@@ -2310,9 +2319,17 @@ function initCedAjaxControls() {
         }
     });
 
-    // Listen on Project Filter change (fires when Select2 or native select changes)
+    // Listen on Project Filter change: Reload page so top financial summary cards & flat stats update
     $(document).on('change', '#cedProjectFilter', function() {
-        triggerCedFilterChange();
+        const pId = $(this).val();
+        const currentPId = '<?= $selectedProjectId ?? '' ?>';
+        if (String(pId || '') !== String(currentPId || '')) {
+            if (pId) {
+                window.location.href = '<?= $GLOBALS['base_url'] ?>/clients-cashin-view?project_id=' + encodeURIComponent(pId);
+            } else {
+                window.location.href = '<?= $GLOBALS['base_url'] ?>/clients-cashin-view';
+            }
+        }
     });
 
     // 4. Conflict filter toggle buttons

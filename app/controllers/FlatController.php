@@ -156,7 +156,7 @@ class FlatController extends Controller
                 $typeBadge,
                 $uploadFromText,
                 htmlspecialchars($flat['facing_site'] ?? 'N/A'),
-                htmlspecialchars($flat['sqft'] ?? 'N/A'),
+                !empty($flat['sqft']) ? format_sqft($flat['sqft']) : 'N/A',
                 format_bdt($flat['land_share_value'] ?? 0),
                 !empty($flat['development_charges']) ? format_bdt($flat['development_charges'] ?? 0) : 'N/A',
                 format_bdt($flat['price_value'] ?? 0),

@@ -1377,8 +1377,8 @@ $show_breadcrumb = true;
 
                     <!-- Project Filter Dropdown (Searchable Select2) -->
                     <div class="col-xxl-3 col-xl-3 col-lg-4 col-md-6 col-sm-12">
-                        <select class="form-control form-control-sm select2" id="dueProjectFilter" style="width: 100%;">
-                            <option value="">All Projects (All Sites)</option>
+                        <select class="form-control form-control-sm select2" id="dueProjectFilter" style="width: 100%;" data-placeholder="<?= !empty($assignedProjectIds) ? 'All Assigned Projects (' . count($projects) . ')' : 'All Projects (All Sites)' ?>">
+                            <option value=""><?= !empty($assignedProjectIds) ? 'All Assigned Projects (' . count($projects) . ')' : 'All Projects (All Sites)' ?></option>
                             <?php if (!empty($projects)): foreach ($projects as $p): 
                                 $prjId = $p['id'] ?? $p['project_id'] ?? '';
                                 $prjName = $p['name'] ?? $p['project_name'] ?? '';
