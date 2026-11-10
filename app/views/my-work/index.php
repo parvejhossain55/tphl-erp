@@ -1634,17 +1634,8 @@ $todayDateFormatted = date('j F');
                 </div>
             </div>
 
-            <!-- Row 2: Work initiative & Priority -->
+            <!-- Row 2: Priority -->
             <div class="mw-form-row mw-form-group">
-                <div class="mw-form-col">
-                    <label class="mw-form-label">Work initiative</label>
-                    <select name="todo_project_id" class="mw-form-select">
-                        <option value="">Select Initiative...</option>
-                        <?php foreach (($todoProjectsList ?? []) as $tp): ?>
-                            <option value="<?= (int)$tp['id'] ?>"><?= htmlspecialchars($tp['name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
                 <div class="mw-form-col">
                     <label class="mw-form-label">Priority</label>
                     <select name="priority" class="mw-form-select">
@@ -1656,17 +1647,8 @@ $todayDateFormatted = date('j F');
                 </div>
             </div>
 
-            <!-- Row 3: Department & Real estate project -->
+            <!-- Row 3: Real estate project -->
             <div class="mw-form-row mw-form-group">
-                <div class="mw-form-col">
-                    <label class="mw-form-label">Department</label>
-                    <select name="department_id" class="mw-form-select">
-                        <option value="">Select Department...</option>
-                        <?php foreach (($departmentsList ?? []) as $d): ?>
-                            <option value="<?= (int)$d['id'] ?>"><?= htmlspecialchars($d['name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
                 <div class="mw-form-col">
                     <label class="mw-form-label">Real estate project</label>
                     <select name="project_id" class="mw-form-select">
