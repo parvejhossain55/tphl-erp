@@ -103,30 +103,49 @@ class MyWorkController extends Controller
         $waitingReviewCount = (int) $stmtReviewCount->get_result()->fetch_row()[0];
 
         // 5. Open & Completed Totals for active scope
-        $scopeUserCol = ($tab === 'assigned_by_me') ? 'assigned_by' : 'user_id';
-        if ($tab === 'following') {
-            $stmtTotals = $this->db->prepare("
-                SELECT 
-                    SUM(CASE WHEN status != 'completed' THEN 1 ELSE 0 END) AS open_count,
-                    SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_count
-                FROM tasks 
-                WHERE (FIND_IN_SET(?, mentioned_user_ids) OR FIND_IN_SET(?, cc_user_ids))
-            ");
-            $stmtTotals->bind_param("ii", $userId, $userId);
+        // mentioned_user_ids / cc_user_ids are stored as JSON ("[12,15]"); strip brackets so FIND_IN_SET works (also for legacy CSV).
+        $followSql = "(FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.mentioned_user_ids,'[',''),']',''),' ','')) OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.cc_user_ids,'[',''),']',''),' ','')))";
+        $allScopeSql = "(t.user_id = ? OR t.assigned_by = ? OR {$followSql})";
+        if ($tab === 'all') {
+            $scopeSql = $allScopeSql;
+            $scopeParams = [$userId, $userId, $userId, $userId];
+        } elseif ($tab === 'following') {
+            $scopeSql = $followSql;
+            $scopeParams = [$userId, $userId];
         } else {
-            $stmtTotals = $this->db->prepare("
-                SELECT 
-                    SUM(CASE WHEN status != 'completed' THEN 1 ELSE 0 END) AS open_count,
-                    SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_count
-                FROM tasks 
-                WHERE {$scopeUserCol} = ?
-            ");
-            $stmtTotals->bind_param("i", $userId);
+            $scopeSql = ($tab === 'assigned_by_me') ? "t.assigned_by = ?" : "t.user_id = ?";
+            $scopeParams = [$userId];
         }
+        $scopeTypes = str_repeat('i', count($scopeParams));
+
+        $stmtTotals = $this->db->prepare("
+            SELECT 
+                SUM(CASE WHEN t.status != 'completed' THEN 1 ELSE 0 END) AS open_count,
+                SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) AS completed_count
+            FROM tasks t
+            WHERE {$scopeSql}
+        ");
+        $stmtTotals->bind_param($scopeTypes, ...$scopeParams);
         $stmtTotals->execute();
         $totals = $stmtTotals->get_result()->fetch_assoc();
         $openTasksCount = (int) ($totals['open_count'] ?? 0);
         $completedTasksCount = (int) ($totals['completed_count'] ?? 0);
+
+        // 5b. "All" tab summary cards (scope = every task related to me)
+        $stmtAll = $this->db->prepare("
+            SELECT 
+                COUNT(*) AS total,
+                COALESCE(SUM(t.status = 'in_progress'), 0) AS in_progress,
+                COALESCE(SUM(t.status = 'completed'), 0) AS completed,
+                COALESCE(SUM(t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) = CURDATE()), 0) AS deadline_today,
+                COALESCE(SUM(t.status != 'completed' AND t.deadline IS NOT NULL AND t.deadline < NOW()), 0) AS deadline_missed
+            FROM tasks t
+            WHERE {$allScopeSql}
+        ");
+        $stmtAll->bind_param("iiii", $userId, $userId, $userId, $userId);
+        $stmtAll->execute();
+        $allStats = array_map('intval', $stmtAll->get_result()->fetch_assoc());
+        $allStats['completion_rate'] = $allStats['total'] > 0 ? (int) round($allStats['completed'] * 100 / $allStats['total']) : 0;
 
         // 6. Build Query for Tasks List
         $where = [];
@@ -159,22 +178,25 @@ class MyWorkController extends Controller
             $params[] = $userId;
             $types .= "ii";
             $where[] = "t.status != 'completed' AND (t.progress >= 80 OR t.employee_accept = 1)";
+        } elseif (in_array($metricFilter, ['all_total', 'all_in_progress', 'all_completed', 'all_deadline_today', 'all_deadline_missed'], true)) {
+            // "All" tab cards: same scope as the card counts
+            $where[] = $allScopeSql;
+            $params = array_merge($params, [$userId, $userId, $userId, $userId]);
+            $types .= "iiii";
+            $metricSql = [
+                'all_in_progress'    => "t.status = 'in_progress'",
+                'all_completed'      => "t.status = 'completed'",
+                'all_deadline_today' => "t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) = CURDATE()",
+                'all_deadline_missed' => "t.status != 'completed' AND t.deadline IS NOT NULL AND t.deadline < NOW()",
+            ];
+            if (isset($metricSql[$metricFilter])) {
+                $where[] = $metricSql[$metricFilter];
+            }
         } else {
             // Standard Tab Scope
-            if ($tab === 'assigned_by_me') {
-                $where[] = "t.assigned_by = ?";
-                $params[] = $userId;
-                $types .= "i";
-            } elseif ($tab === 'following') {
-                $where[] = "(FIND_IN_SET(?, t.mentioned_user_ids) OR FIND_IN_SET(?, t.cc_user_ids))";
-                $params[] = $userId;
-                $params[] = $userId;
-                $types .= "ii";
-            } else {
-                $where[] = "t.user_id = ?";
-                $params[] = $userId;
-                $types .= "i";
-            }
+            $where[] = $scopeSql;
+            $params = array_merge($params, $scopeParams);
+            $types .= $scopeTypes;
         }
 
         // Search
@@ -298,6 +320,7 @@ class MyWorkController extends Controller
             $tableHtml = $this->renderTaskRowsHtml($tasks, $tab, $userId, $baseUrl);
             echo json_encode([
                 'status' => 'success',
+                'all_stats' => $allStats,
                 'counts' => [
                     'overdue'        => $overdueCount,
                     'due_today'      => $dueTodayCount,
@@ -361,6 +384,7 @@ class MyWorkController extends Controller
             "statusFilter"           => $statusFilter,
             "metricFilter"           => $metricFilter,
             "overdueCount"           => $overdueCount,
+            "allStats"               => $allStats,
             "dueTodayCount"          => $dueTodayCount,
             "next7DaysCount"         => $next7DaysCount,
             "waitingReviewCount"     => $waitingReviewCount,

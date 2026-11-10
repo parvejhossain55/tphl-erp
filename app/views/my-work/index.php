@@ -141,6 +141,26 @@ $todayDateFormatted = date('j F');
     }
 }
 
+.mw-stats-row.mw-stats-all {
+    grid-template-columns: repeat(6, 1fr);
+}
+
+@media (max-width: 1199px) {
+    .mw-stats-row.mw-stats-all {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 575px) {
+    .mw-stats-row.mw-stats-all {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.mw-stats-row.mw-stats-all .mw-stat-card:not([data-metric]) {
+    cursor: default;
+}
+
 @media (max-width: 575px) {
     .mw-stats-row {
         grid-template-columns: 1fr;
@@ -1215,8 +1235,19 @@ $todayDateFormatted = date('j F');
            data-tab="realestate_project" href="javascript:void(0);">Realestate Project</a>
     </div>
 
+    <!-- "All" tab: 6 summary cards -->
+    <?php $as = $allStats ?? []; ?>
+    <div class="mw-stats-row mw-stats-all" id="mwStatsAll" style="<?= $tab === 'all' ? '' : 'display:none;' ?>">
+        <div class="mw-stat-card <?= $metricFilter === 'all_total' ? 'active-metric' : '' ?>" data-metric="all_total"><span class="mw-stat-label">TOTAL TASKS</span><span class="mw-stat-count" id="allTotal"><?= (int)($as['total'] ?? 0) ?></span></div>
+        <div class="mw-stat-card <?= $metricFilter === 'all_in_progress' ? 'active-metric' : '' ?>" data-metric="all_in_progress"><span class="mw-stat-label">IN PROGRESS</span><span class="mw-stat-count next7" id="allInProgress"><?= (int)($as['in_progress'] ?? 0) ?></span></div>
+        <div class="mw-stat-card <?= $metricFilter === 'all_completed' ? 'active-metric' : '' ?>" data-metric="all_completed"><span class="mw-stat-label">COMPLETED</span><span class="mw-stat-count review" id="allCompleted"><?= (int)($as['completed'] ?? 0) ?></span></div>
+        <div class="mw-stat-card <?= $metricFilter === 'all_deadline_today' ? 'active-metric' : '' ?>" data-metric="all_deadline_today"><span class="mw-stat-label">DEADLINE TODAY</span><span class="mw-stat-count today" id="allDeadlineToday"><?= (int)($as['deadline_today'] ?? 0) ?></span></div>
+        <div class="mw-stat-card <?= $metricFilter === 'all_deadline_missed' ? 'active-metric' : '' ?>" data-metric="all_deadline_missed"><span class="mw-stat-label">DEADLINE MISSED</span><span class="mw-stat-count overdue" id="allDeadlineMissed"><?= (int)($as['deadline_missed'] ?? 0) ?></span></div>
+        <div class="mw-stat-card"><span class="mw-stat-label">COMPLETION RATE</span><span class="mw-stat-count" id="allCompletionRate"><?= (int)($as['completion_rate'] ?? 0) ?>%</span></div>
+    </div>
+
     <!-- 4 Summary Metric Cards (Instant Filter without reload) -->
-    <div class="mw-stats-row">
+    <div class="mw-stats-row" id="mwStatsMetric" style="<?= $tab === 'all' ? 'display:none;' : '' ?>">
         <!-- Card 1: Overdue -->
         <div class="mw-stat-card <?= $metricFilter === 'overdue' ? 'active-metric' : '' ?>" data-metric="overdue">
             <span class="mw-stat-label">Overdue</span>
@@ -1788,6 +1819,21 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (footerInfo && data.footer_info) {
                     footerInfo.innerText = data.footer_info;
                 }
+                if (data.all_stats) {
+                    const s = data.all_stats;
+                    const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
+                    setTxt('allTotal', s.total);
+                    setTxt('allInProgress', s.in_progress);
+                    setTxt('allCompleted', s.completed);
+                    setTxt('allDeadlineToday', s.deadline_today);
+                    setTxt('allDeadlineMissed', s.deadline_missed);
+                    setTxt('allCompletionRate', s.completion_rate + '%');
+                }
+                const isAll = currentTab === 'all';
+                const rowAll = document.getElementById('mwStatsAll');
+                const rowMetric = document.getElementById('mwStatsMetric');
+                if (rowAll) rowAll.style.display = isAll ? '' : 'none';
+                if (rowMetric) rowMetric.style.display = isAll ? 'none' : '';
                 if (data.counts) {
                     if (badgeOpen) badgeOpen.innerText = `${data.counts.open} open`;
                     if (textCompleted) textCompleted.innerText = `${data.counts.completed} completed`;
@@ -1829,7 +1875,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // 2. Metric Cards Click Event (Overdue, Due today, Next 7 days, Review)
-    document.querySelectorAll('.mw-stat-card').forEach(cardEl => {
+    document.querySelectorAll('#mwStatsMetric .mw-stat-card, #mwStatsAll .mw-stat-card[data-metric]').forEach(cardEl => {
         cardEl.addEventListener('click', function (e) {
             e.preventDefault();
             const metric = this.getAttribute('data-metric');
