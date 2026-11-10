@@ -44,6 +44,10 @@ class QcAuditController extends Controller
         
         $q3 = $this->db->query("SELECT COUNT(*) as c FROM contractor_bill_requests WHERE status = 'verified' AND purchase_head_approved_by_id IS NOT NULL");
         $stats['pending'] += $q3 ? ($q3->fetch_assoc()['c'] ?? 0) : 0;
+
+        $qGrn = $this->db->query("SELECT COUNT(*) as c FROM material_receiving WHERE overall_status = 'Pending QC'");
+        $stats['grn_pending'] = $qGrn ? (int)($qGrn->fetch_assoc()['c'] ?? 0) : 0;
+        $stats['pending'] += $stats['grn_pending'];
         
         // Approved (by QC)
         $a1 = $this->db->query("SELECT COUNT(*) as c FROM cashout_requests WHERE qc_approved_by_id IS NOT NULL");
@@ -146,6 +150,21 @@ class QcAuditController extends Controller
             ORDER BY po.id DESC LIMIT 10
         ")->fetch_all(MYSQLI_ASSOC);
 
+        $pendingGRNs = $this->db->query("
+            SELECT mr.id, mr.receiving_date, mr.created_at,
+                   p.name AS project_name, w.name AS warehouse_name,
+                   u.full_name AS received_by_name,
+                   (SELECT COUNT(*) FROM material_receiving_items WHERE receiving_id = mr.id) AS item_count
+            FROM material_receiving mr
+            JOIN purchase_orders po ON po.id = mr.purchase_order_id
+            JOIN purchase_requests pr ON pr.id = po.request_id
+            LEFT JOIN projects p ON p.id = pr.project_id
+            LEFT JOIN con_warehouses w ON w.id = mr.warehouse_id
+            LEFT JOIN users u ON u.id = mr.received_by
+            WHERE mr.overall_status = 'Pending QC'
+            ORDER BY mr.id DESC LIMIT 10
+        ")->fetch_all(MYSQLI_ASSOC);
+
         $this->view('qc-audit/dashboard', [
             'current_route' => 'qc-audit-dashboard',
             'page_title' => 'QC & Internal Audit Overview',
@@ -153,7 +172,8 @@ class QcAuditController extends Controller
             'cashoutRequests' => $cashoutRequests,
             'vendorPayments' => $vendorPayments,
             'contractorBills' => $contractorBills,
-            'purchaseOrders' => $purchaseOrders
+            'purchaseOrders' => $purchaseOrders,
+            'pendingGRNs' => $pendingGRNs
         ]);
     }
 
@@ -567,8 +587,18 @@ class QcAuditController extends Controller
                LEFT JOIN projects p ON b.project_id = p.id 
                LEFT JOIN users u ON b.created_by = u.id
                WHERE b.status IN ('Submitted', 'submitted', 'pending', 'verified')";
+
+        // 5. Pending Material Receiving (GRN)
+        $q5 = "SELECT mr.id, mr.created_at, p.name as project_name, 'Material Receiving (GRN)' as type, mr.overall_status as status, u.full_name as requester_name, 0 as amount,
+               1 as can_qc_approve, 'Ready for QC' as pending_stage_label
+               FROM material_receiving mr
+               JOIN purchase_orders po ON po.id = mr.purchase_order_id
+               JOIN purchase_requests pr ON pr.id = po.request_id
+               LEFT JOIN projects p ON pr.project_id = p.id
+               LEFT JOIN users u ON mr.received_by = u.id
+               WHERE mr.overall_status = 'Pending QC'";
                
-        $query = "$q1 UNION ALL $q2 UNION ALL $q3 UNION ALL $q4 ORDER BY created_at DESC";
+        $query = "$q1 UNION ALL $q2 UNION ALL $q3 UNION ALL $q4 UNION ALL $q5 ORDER BY created_at DESC";
         $result = $this->db->query($query);
         $requests = [];
         if ($result) {

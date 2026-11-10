@@ -439,6 +439,7 @@ return [
     'con-material-receiving-store' => ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'store'],
     'con-material-receiving-qc/(\d+)' => ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'qcReview'],
     'con-material-receiving-pm/(\d+)' => ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'pmStore'],
+    'con-material-receiving-head/(\d+)' => ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'headStore'],
 
     // =========================================================================
     // Controller: Phase2\Con_MaterialReceivingImportController

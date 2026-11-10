@@ -665,7 +665,7 @@ class FollowUp extends Model
             WHERE l.assigned_id = ?
               AND lf.next_follow_up_date IS NOT NULL
               AND lf.next_follow_up_date > '1000-01-01'
-              AND DATE(lf.next_follow_up_date) <= ?
+              AND DATE(lf.next_follow_up_date) < ?
               AND l.deleted_at IS NULL
         ";
         $stmt = $this->db->prepare($sql);

@@ -544,6 +544,17 @@ if (!isset($discountApprovalReq)) {
         }
         ksort($dueEmisList);
 
+        $penaltyHistory = $penaltyHistory ?? (isset($accountModel) && method_exists($accountModel, 'getPenaltyHistoryByBookingId') ? $accountModel->getPenaltyHistoryByBookingId($clientDetails['booking_id'] ?? $bookingId) : []);
+        $totalPenaltyPaidCalculated = 0;
+        $totalPenaltyChargedCalculated = 0;
+        $totalPenaltyWaivedCalculated = 0;
+        foreach ($penaltyHistory as $phItem) {
+            $totalPenaltyPaidCalculated += (float)($phItem['penalty_paid'] ?? 0);
+            $totalPenaltyChargedCalculated += (float)($phItem['penalty_amount'] ?? 0);
+            $totalPenaltyWaivedCalculated += (float)($phItem['penalty_waived'] ?? 0);
+        }
+        $displayTotalPenaltyPaid = ($paymentSummary['total_penalty_paid'] ?? 0) > 0 ? (float)$paymentSummary['total_penalty_paid'] : $totalPenaltyPaidCalculated;
+
         $isDevChargeCompleted = ($devRemain <= 0 && ($devTarget > 0 || $devPaid > 0));
         $firstEmi = !empty($virtualEmiSchedule[0]) ? $virtualEmiSchedule[0] : null;
         $needsFirstEmiScheduling = $isDevChargeCompleted && $firstEmi && empty($firstEmi['is_date_custom']) && ((float)($firstEmi['paid_amount'] ?? 0) <= 0);
@@ -1080,6 +1091,48 @@ if (!isset($discountApprovalReq)) {
             </div>
         </div>
         <?php endif; ?>
+
+        <!-- 22. Total Late Penalty Paid -->
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper" data-bs-toggle="modal" data-bs-target="#clientPenaltyHistoryModal" style="cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease;" title="Click to view detailed late penalty breakdown">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon">
+                        <span style="color:#d97706; background: rgba(217, 119, 6, 0.1);"><i class="fa-solid fa-clock-rotate-left"></i></span>
+                    </div>
+                    <div class="card__title-wrap" style="width: 100%;">
+                        <div class="d-flex justify-content-between align-items-center mb-10">
+                            <h6 class="card__sub-title mb-0">Total Penalty Paid</h6>
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" style="font-size: 11px;">
+                                <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Breakdown
+                            </span>
+                        </div>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title" style="color:<?= $displayTotalPenaltyPaid > 0 ? '#d97706' : '#27ae60' ?>;">
+                                <?php if ($displayTotalPenaltyPaid > 0): ?>
+                                    TK.<?= number_format($displayTotalPenaltyPaid, 2) ?>
+                                <?php else: ?>
+                                    TK. 0.00
+                                <?php endif; ?>
+                            </h4>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-between mt-2 pt-1 border-top border-light-subtle">
+                            <small class="text-muted" style="font-size: 11px;">
+                                <?php if (!empty($penaltyHistory)): ?>
+                                    <i class="fa-solid fa-receipt text-warning me-1"></i><?= count($penaltyHistory) ?> penalty record(s)
+                                <?php else: ?>
+                                    <i class="fa-solid fa-circle-check text-success me-1"></i>No late penalty
+                                <?php endif; ?>
+                            </small>
+                            <?php if ($totalPenaltyWaivedCalculated > 0): ?>
+                                <small class="text-info fw-semibold" style="font-size: 11px;">
+                                    Waived: ৳<?= number_format($totalPenaltyWaivedCalculated, 2) ?>
+                                </small>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
     </div>
 
@@ -2044,6 +2097,219 @@ if (!isset($discountApprovalReq)) {
             </div>
         </div>
     </div>
+
+<!-- ═══════════════════════════════════════════════════════
+     Late Penalty History & Delay Breakdown Modal (CED)
+     ═══════════════════════════════════════════════════════ -->
+<div class="modal fade" id="clientPenaltyHistoryModal" tabindex="-1" aria-labelledby="clientPenaltyHistoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 14px; overflow: hidden;">
+            <!-- Modal Header -->
+            <div class="modal-header text-white" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-bottom: 2px solid #f59e0b;">
+                <div class="d-flex align-items-center gap-3">
+                    <span class="p-2 rounded-3 text-warning" style="background: rgba(245, 158, 11, 0.15); font-size: 20px;">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                    </span>
+                    <div>
+                        <h5 class="modal-title fw-bold text-white mb-0" id="clientPenaltyHistoryModalLabel">
+                            Late Payment Penalty Breakdown
+                        </h5>
+                        <small class="text-white-50" style="font-size: 12px;">
+                            Client: <strong><?= htmlspecialchars($clientDetails['client_name'] ?? 'N/A') ?></strong> | 
+                            Unit: <strong><?= htmlspecialchars($clientDetails['unit_name'] ?? $clientDetails['flat_no'] ?? 'N/A') ?></strong> | 
+                            Project: <strong><?= htmlspecialchars($clientDetails['project_name'] ?? 'N/A') ?></strong>
+                        </small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body p-4" style="background: #f8fafc;">
+                <!-- Summary Metrics Bar -->
+                <div class="row  mb-4">
+                    <div class="col-md-3 col-sm-6">
+                        <div class="p-3 bg-white rounded-3 border shadow-sm h-100">
+                            <span class="text-muted text-uppercase fw-semibold extra-small d-block mb-1">Total Penalty Incurred</span>
+                            <h4 class="mb-0 text-dark fw-bold font-monospace">৳<?= number_format($totalPenaltyChargedCalculated, 2) ?></h4>
+                            <small class="text-muted extra-small">Calculated 5% compounded</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="p-3 bg-white rounded-3 border border-warning-subtle shadow-sm h-100" style="background: #fffbeb !important;">
+                            <span class="text-warning-emphasis text-uppercase fw-bold extra-small d-block mb-1">Total Penalty Paid</span>
+                            <h4 class="mb-0 text-warning-emphasis fw-bold font-monospace">৳<?= number_format($displayTotalPenaltyPaid, 2) ?></h4>
+                            <small class="text-muted extra-small">Received from client</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="p-3 bg-white rounded-3 border border-success-subtle shadow-sm h-100" style="background: #f0fdf4 !important;">
+                            <span class="text-success text-uppercase fw-semibold extra-small d-block mb-1">Total Penalty Waived</span>
+                            <h4 class="mb-0 text-success fw-bold font-monospace">৳<?= number_format($totalPenaltyWaivedCalculated, 2) ?></h4>
+                            <small class="text-muted extra-small">Approved / authorized waivers</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="p-3 bg-white rounded-3 border shadow-sm h-100">
+                            <span class="text-muted text-uppercase fw-semibold extra-small d-block mb-1">Penalty Transactions</span>
+                            <h4 class="mb-0 text-primary fw-bold font-monospace"><?= count($penaltyHistory) ?> Record(s)</h4>
+                            <small class="text-muted extra-small">Payments with late delay</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Penalty Rule Info Note -->
+                <div class="alert alert-warning border-0 d-flex align-items-start gap-2 mb-4 p-3 rounded-3" style="background: rgba(245, 158, 11, 0.12); color: #92400e;">
+                    <i class="fa-solid fa-circle-info fs-5 mt-0.5 text-warning"></i>
+                    <div style="font-size: 12.5px; line-height: 1.5;">
+                        <strong>Policy & Calculation:</strong> Overdue installments are charged a <strong>5% compounded monthly late penalty</strong> based on the scheduled EMI due date ($P \times [(1 + 0.05)^m - 1]$). Penalty payments are recorded separately and are <strong>never deducted</strong> from the unit's flat price or construction balance.
+                    </div>
+                </div>
+
+                <!-- Table of Records -->
+                <?php if (!empty($penaltyHistory)): ?>
+                <div class="table-responsive bg-white rounded-3 border shadow-sm">
+                    <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
+                        <thead class="table-light text-uppercase text-muted fw-semibold" style="font-size: 11px; letter-spacing: 0.5px;">
+                            <tr>
+                                <th class="text-center" style="width: 40px;">#</th>
+                                <th>Target Installment</th>
+                                <th>Scheduled Due</th>
+                                <th>Payment Date</th>
+                                <th>Late Delay</th>
+                                <th class="text-end">Base EMI</th>
+                                <th class="text-end">Penalty Charged</th>
+                                <th class="text-end">Penalty Paid</th>
+                                <th>Waiver & Status</th>
+                                <th>Collector / Created</th>
+                                <th class="text-center">Receipt</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($penaltyHistory as $idx => $ph): ?>
+                            <tr>
+                                <td class="text-center text-muted fw-bold"><?= $idx + 1 ?></td>
+                                <td>
+                                    <div class="fw-bold text-dark">
+                                        <i class="fa-solid fa-file-invoice text-primary me-1"></i>
+                                        <?= htmlspecialchars($ph['installment_label'] ?? 'Installment') ?>
+                                    </div>
+                                    <small class="text-muted extra-small">Trx ID: #<?= $ph['id'] ?></small>
+                                </td>
+                                <td class="text-nowrap">
+                                    <?php if (!e mpty($ph['scheduled_due_date'])): ?>
+                                        <div class="fw-semibold text-danger">
+                                            <i class="fa-regular fa-calendar-xmark me-1"></i>
+                                            <?= date('d M, Y', strtotime($ph['scheduled_due_date'])) ?>
+                                        </div>
+                                    <?php else: ?>
+                                        <span class="text-muted">Not specified</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-nowrap">
+                                    <div class="fw-semibold text-success">
+                                        <i class="fa-regular fa-calendar-check me-1"></i>
+                                        <?= date('d M, Y', strtotime($ph['payment_date'])) ?>
+                                    </div>
+                                </td>
+                                <td>
+                                    <?php if ($ph['days_late'] > 0): ?>
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle fw-semibold px-2 py-1" style="font-size: 11.5px;">
+                                            <i class="fa-solid fa-clock me-1"></i><?= $ph['days_late'] ?> Days Late
+                                            <?php if ($ph['months_overdue'] > 0): ?>
+                                                <small class="d-block fw-normal" style="font-size: 10px;">(<?= $ph['months_overdue'] ?> Month<?= $ph['months_overdue'] > 1 ? 's' : '' ?> Overdue)</small>
+                                            <?php endif; ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">On Time</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-end font-monospace">
+                                    ৳<?= number_format($ph['amount'], 2) ?>
+                                </td>
+                                <td class="text-end font-monospace fw-semibold text-danger">
+                                    ৳<?= number_format($ph['penalty_amount'], 2) ?>
+                                </td>
+                                <td class="text-end font-monospace fw-bold text-success" style="font-size: 13.5px;">
+                                    ৳<?= number_format($ph['penalty_paid'], 2) ?>
+                                </td>
+                                <td>
+                                    <?php if ($ph['penalty_waived'] > 0): ?>
+                                        <span class="badge bg-info-subtle text-info border border-info-subtle fw-semibold">
+                                            Waived: ৳<?= number_format($ph['penalty_waived'], 2) ?>
+                                        </span>
+                                        <div class="extra-small text-muted mt-1">
+                                            Status: <span class="badge bg-light text-dark border"><?= ucfirst($ph['waiver_status'] ?? 'pending') ?></span>
+                                        </div>
+                                        <?php if (!empty($ph['waiver_reason'])): ?>
+                                            <div class="extra-small text-muted mt-0.5" title="<?= htmlspecialchars($ph['waiver_reason']) ?>">
+                                                <i class="fa-solid fa-comment-dots me-1"></i><?= htmlspecialchars(mb_strimwidth($ph['waiver_reason'], 0, 25, '...')) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php if (!empty($ph['waiver_attachment'])): ?>
+                                            <a href="<?= $GLOBALS['base_url'] ?>/<?= htmlspecialchars($ph['waiver_attachment']) ?>" target="_blank" class="extra-small text-primary d-block mt-0.5">
+                                                <i class="fa-solid fa-paperclip me-1"></i>View Doc
+                                            </a>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <span class="text-muted extra-small">No Waiver</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <div class="text-truncate fw-semibold" style="max-width: 140px;" title="<?= htmlspecialchars($ph['created_by_name'] ?? 'System') ?>">
+                                        <?= htmlspecialchars($ph['created_by_name'] ?? 'System') ?>
+                                    </div>
+                                    <small class="text-muted extra-small text-capitalize"><?= htmlspecialchars($ph['payment_method'] ?? 'cash') ?></small>
+                                </td>
+                                <td class="text-center">
+                                    <?php 
+                                    $proofPaths = !empty($ph['attachment_paths']) ? json_decode($ph['attachment_paths'], true) : [];
+                                    if (!empty($proofPaths) && is_array($proofPaths)): 
+                                    ?>
+                                        <a href="<?= $GLOBALS['base_url'] ?>/<?= htmlspecialchars($proofPaths[0]) ?>" target="_blank" class="btn btn-xs btn-outline-secondary py-1 px-2" title="View Payment Proof">
+                                            <i class="fa-solid fa-image"></i>
+                                        </a>
+                                    <?php else: ?>
+                                        <span class="text-muted extra-small">-</span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                        <tfoot class="table-light border-top-2 fw-bold" style="font-size: 13px;">
+                            <tr>
+                                <td colspan="5" class="text-uppercase text-end">Total Across All Penalties:</td>
+                                <td class="text-end font-monospace">৳<?= number_format(array_sum(array_column($penaltyHistory, 'amount')), 2) ?></td>
+                                <td class="text-end font-monospace text-danger">৳<?= number_format($totalPenaltyChargedCalculated, 2) ?></td>
+                                <td class="text-end font-monospace text-success fs-14">৳<?= number_format($displayTotalPenaltyPaid, 2) ?></td>
+                                <td class="font-monospace text-info">৳<?= number_format($totalPenaltyWaivedCalculated, 2) ?></td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <?php else: ?>
+                <div class="bg-white rounded-3 border p-5 text-center shadow-sm">
+                    <div class="d-inline-flex align-items-center justify-content-center p-3 rounded-circle bg-success-subtle text-success mb-3" style="width: 60px; height: 60px;">
+                        <i class="fa-solid fa-circle-check fs-2"></i>
+                    </div>
+                    <h5 class="fw-bold text-dark mb-1">No Late Penalties Recorded</h5>
+                    <p class="text-muted mb-0" style="font-size: 13px; max-width: 480px; margin: 0 auto;">
+                        This client does not have any recorded late payment penalties. All installments have been settled on time or penalty was waived upon authorization.
+                    </p>
+                </div>
+                <?php endif; ?>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer bg-light border-top">
+                <button type="button" class="btn btn-secondary px-4 py-2" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-xmark me-1"></i>Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- ═══════════════════════════════════════════════════════
      Document Preview Modal  (CED — Read-Only)

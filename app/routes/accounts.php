@@ -5,6 +5,8 @@ return [
     // Controller: UserDashboardController
     // =========================================================================
     'my-dashboard' => ['controller' => 'UserDashboardController', 'method' => 'dashboard'],
+    'team-dashboard' => ['controller' => 'TeamDashboardController', 'method' => 'index'],
+    'team-overview-dashboard' => ['controller' => 'TeamDashboardController', 'method' => 'index'],
     'today-leads' => ['controller' => 'UserDashboardController', 'method' => 'todayLead'],
     'update-call-status' => ['controller' => 'UserDashboardController', 'method' => 'updateCallStatus'],
     'update-communication-type' => ['controller' => 'UserDashboardController', 'method' => 'updateCommunicationStatus'],

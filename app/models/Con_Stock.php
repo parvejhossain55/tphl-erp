@@ -207,7 +207,7 @@ class Con_Stock extends Model
                          JOIN con_materials m ON m.id = poi.material_id
                          LEFT JOIN con_material_categories cat ON cat.id = m.category_id
                          WHERE mri.status = 'Accepted' 
-                           AND mr.overall_status IN ('Accepted', 'Partially Accepted')
+                           AND mr.overall_status IN ('Accepted', 'Partially Accepted', 'Pending PM')
                            AND po.status != 'Cancelled'
                          GROUP BY pr.project_id, poi.material_id, m.name, m.unit, cat.name
                          ORDER BY pr.project_id ASC, total_value DESC";
@@ -424,7 +424,7 @@ class Con_Stock extends Model
                 JOIN purchase_orders po       ON po.id  = mr.purchase_order_id
                 JOIN purchase_requests pr     ON pr.id  = po.request_id
                 WHERE mri.status = 'Accepted'
-                  AND mr.overall_status IN ('Accepted', 'Partially Accepted')
+                  AND mr.overall_status IN ('Accepted', 'Partially Accepted', 'Pending PM')
                 GROUP BY pr.project_id, poi.material_id
             ) received ON received.project_id = p.id AND received.material_id = iei.material_id
             WHERE ieb.status = 'approved' AND p.deleted_at IS NULL

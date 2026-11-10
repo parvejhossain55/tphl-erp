@@ -989,6 +989,169 @@ public function getExecutiveFullStats($executiveId = null, $startDate = null, $e
         ];
     }
 
+    /**
+     * Get aggregate target and performance stats for a team
+     */
+    public function getTeamRangeStats($teamId, array $memberUserIds, $year = null, $startMonth = null, $endMonth = null, $customFromDate = null, $customToDate = null)
+    {
+        $teamId = (int)$teamId;
+        $memberUserIdsClean = array_values(array_filter(array_map('intval', $memberUserIds)));
+        $memberList = !empty($memberUserIdsClean) ? implode(',', $memberUserIdsClean) : '0';
+
+        if (!empty($customFromDate) && !empty($customToDate)) {
+            $startDate = $customFromDate;
+            $endDate = $customToDate;
+            if (date('j', strtotime($startDate)) == 26 && date('j', strtotime($endDate)) == 25) {
+                $targetStartMonth = date('Y-m-01', strtotime($endDate));
+                $targetEndMonth = date('Y-m-01', strtotime($endDate));
+            } else {
+                $targetStartMonth = !empty($year) && !empty($startMonth) ? sprintf('%04d-%02d-01', $year, $startMonth) : date('Y-m-01', strtotime($startDate));
+                $targetEndMonth = !empty($year) && !empty($endMonth) ? sprintf('%04d-%02d-01', $year, $endMonth) : date('Y-m-01', strtotime($endDate));
+            }
+        } elseif ($year === null && $startMonth === null) {
+            // All Time
+            $startDate = '1970-01-01';
+            $endDate = '2099-12-31';
+            $targetStartMonth = '1970-01-01';
+            $targetEndMonth = '2099-12-31';
+        } else {
+            $year = $year ?: (int)date('Y');
+            $startMonth = $startMonth ?: (int)date('m');
+            $endMonth = $endMonth ?: $startMonth;
+            $startDate = sprintf('%04d-%02d-01', $year, $startMonth);
+            $endDate = date('Y-m-t', strtotime(sprintf('%04d-%02d-01', $year, $endMonth)));
+            $targetStartMonth = sprintf('%04d-%02d-01', $year, $startMonth);
+            $targetEndMonth = sprintf('%04d-%02d-01', $year, $endMonth);
+        }
+
+        // 1. Targets (across team members)
+        $sql = "SELECT 
+                    SUM(site_visit_target) AS site_visit_target,
+                    SUM(booking_target) AS booking_target,
+                    SUM(booking_value_target) AS booking_value_target
+                FROM sales_targets
+                WHERE sales_user_id IN ($memberList)
+                  AND month BETWEEN ? AND ?";
+        $target = ['site_visit_target' => 0, 'booking_target' => 0, 'booking_value_target' => 0];
+        if ($stmt = $this->db->prepare($sql)) {
+            $stmt->bind_param("ss", $targetStartMonth, $targetEndMonth);
+            $stmt->execute();
+            $target = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+        }
+
+        $teamScope = "((l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND (l.assigned_id IN ($memberList) OR l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = $teamId))) OR ((l.assigned_id IS NULL OR l.assigned_id = 0) AND l.team_id = $teamId))";
+
+        $loggedInRole = $_SESSION['user']['role_id'] ?? 0;
+        $autoFilter = "";
+        if (!in_array((int)$loggedInRole, [1, 10, 11])) {
+            $autoFilter = " AND NOT (l.is_automated = 1 AND l.distribute = 0)";
+        }
+        $roleIsolation = "";
+        if (!in_array((int)$loggedInRole, [1, 3, 9, 32, 33, 34, 35])) {
+            $roleIsolation = " AND (l.team_id IS NULL OR l.team_id = 0 OR l.team_id NOT IN (
+                SELECT e.team_id FROM employees e JOIN users u ON u.id = e.user_id WHERE u.role_id IN (33, 35) AND e.team_id IS NOT NULL AND e.team_id > 0
+            ))";
+        }
+
+        // 2. Visits Completed
+        $sql = "SELECT COUNT(DISTINCT lf.id) as completed 
+                FROM lead_follow_ups lf
+                JOIN leads l ON l.id = lf.lead_id
+                WHERE lf.deleted_at IS NULL AND l.deleted_at IS NULL
+                  AND ($teamScope OR lf.assigned_with IN ($memberList) OR lf.created_by IN ($memberList))
+                  {$autoFilter} {$roleIsolation}
+                  AND (lf.lead_status IN ('Visit Completed', 'Visited') OR LOWER(lf.follow_up_type) = 'visit')
+                  AND lf.status != 'canceled'
+                  AND (DATE(lf.follow_up_date) BETWEEN ? AND ? OR (lf.follow_up_date IS NULL AND DATE(lf.created_at) BETWEEN ? AND ?))";
+        $visits = ['completed' => 0];
+        if ($stmt = $this->db->prepare($sql)) {
+            $stmt->bind_param("ssss", $startDate, $endDate, $startDate, $endDate);
+            $stmt->execute();
+            $visits = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+        }
+
+        // 3. Bookings Completed
+        $sql = "SELECT COUNT(DISTINCT lb.id) AS total
+                FROM lead_bookings lb
+                JOIN leads l ON l.id = lb.lead_id
+                WHERE lb.deleted_at IS NULL AND l.deleted_at IS NULL
+                  AND ($teamScope OR lb.sales_by_id IN ($memberList) OR lb.created_by IN ($memberList))
+                  {$autoFilter} {$roleIsolation}
+                  AND lb.booking_status IN ('completed','booked')
+                  AND (DATE(lb.booking_date) BETWEEN ? AND ? OR DATE(lb.created_at) BETWEEN ? AND ?)";
+        $bookings = ['total' => 0];
+        if ($stmt = $this->db->prepare($sql)) {
+            $stmt->bind_param("ssss", $startDate, $endDate, $startDate, $endDate);
+            $stmt->execute();
+            $bookings = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+        }
+
+        // 4. Deals Closed (Distinct unique leads visited in period)
+        $sql = "SELECT COUNT(DISTINCT lf.lead_id) AS total
+                FROM lead_follow_ups lf
+                JOIN leads l ON l.id = lf.lead_id
+                WHERE lf.deleted_at IS NULL AND l.deleted_at IS NULL
+                  AND ($teamScope OR lf.assigned_with IN ($memberList) OR lf.created_by IN ($memberList))
+                  {$autoFilter} {$roleIsolation}
+                  AND (lf.lead_status IN ('Visit Completed', 'Visited') OR LOWER(lf.follow_up_type) = 'visit')
+                  AND lf.status != 'canceled'
+                  AND (DATE(lf.follow_up_date) BETWEEN ? AND ? OR (lf.follow_up_date IS NULL AND DATE(lf.created_at) BETWEEN ? AND ?))";
+        $dealsClosed = ['total' => 0];
+        if ($stmt = $this->db->prepare($sql)) {
+            $stmt->bind_param("ssss", $startDate, $endDate, $startDate, $endDate);
+            $stmt->execute();
+            $dealsClosed = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+        }
+
+        // 5. Deals Won (Distinct unique leads booked in period)
+        $sql = "SELECT COUNT(DISTINCT lb.lead_id) AS total
+                FROM lead_bookings lb
+                JOIN leads l ON l.id = lb.lead_id
+                WHERE lb.deleted_at IS NULL AND l.deleted_at IS NULL
+                  AND ($teamScope OR lb.sales_by_id IN ($memberList) OR lb.created_by IN ($memberList))
+                  {$autoFilter} {$roleIsolation}
+                  AND lb.booking_status IN ('completed','booked')
+                  AND (DATE(lb.booking_date) BETWEEN ? AND ? OR DATE(lb.created_at) BETWEEN ? AND ?)";
+        $dealsWon = ['total' => 0];
+        if ($stmt = $this->db->prepare($sql)) {
+            $stmt->bind_param("ssss", $startDate, $endDate, $startDate, $endDate);
+            $stmt->execute();
+            $dealsWon = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+        }
+
+        // 6. Deals Lost
+        $sql = "SELECT COUNT(DISTINCT l.id) AS total
+                FROM leads l
+                WHERE $teamScope
+                  AND l.deleted_at IS NULL
+                  {$autoFilter} {$roleIsolation}
+                  AND (l.lead_type IN ('Not Interested', 'Lost', 'Dropped') OR l.last_lead_action = 'lost')
+                  AND DATE(l.created_at) BETWEEN ? AND ?";
+        $dealsLost = ['total' => 0];
+        if ($stmt = $this->db->prepare($sql)) {
+            $stmt->bind_param("ss", $startDate, $endDate);
+            $stmt->execute();
+            $dealsLost = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+        }
+
+        return [
+            'site_visit_target'    => (int)($target['site_visit_target'] ?? 0),
+            'booking_target'       => (int)($target['booking_target'] ?? 0),
+            'booking_value_target' => (float)($target['booking_value_target'] ?? 0.00),
+            'visit_completed'      => (int)($visits['completed'] ?? 0),
+            'booking_completed'    => (int)($bookings['total'] ?? 0),
+            'deals_closed'         => (int)($dealsClosed['total'] ?? 0),
+            'deals_won'            => (int)($dealsWon['total'] ?? 0),
+            'deals_lost'           => (int)($dealsLost['total'] ?? 0),
+        ];
+    }
+
     public function getSalesTeamsBookingStatsByRange($year, $startMonth, $endMonth)
     {
         $sql = "

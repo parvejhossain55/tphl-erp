@@ -260,6 +260,8 @@ return [
     // Controller: SalesHeadDashboardController
     // =========================================================================
     'sales-team-head-dashboard' => ['controller' => 'SalesHeadDashboardController', 'method' => 'index'],
+    'team-dashboard' => ['controller' => 'TeamDashboardController', 'method' => 'index'],
+    'team-overview-dashboard' => ['controller' => 'TeamDashboardController', 'method' => 'index'],
     'sales-team-view' => ['controller' => 'SalesHeadDashboardController', 'method' => 'salesTeamView'],
     'sales-report' => ['controller' => 'SalesHeadDashboardController', 'method' => 'salesReport'],
 

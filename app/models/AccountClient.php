@@ -1782,6 +1782,28 @@ class AccountClient extends Model
                      AND lp.verification_status = 'verified'), 
                     NULL
                 ) as last_payment_date,
+                COALESCE(
+                    (SELECT SUM(lp.penalty_paid) 
+                     FROM lead_payments lp 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
+                     AND lp.payment_status IN ('paid','partially_paid')
+                     AND lp.verification_status != 'rejected'), 
+                    0
+                ) as total_penalty_paid,
+                COALESCE(
+                    (SELECT SUM(lp.penalty_amount) 
+                     FROM lead_payments lp 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
+                     AND lp.verification_status != 'rejected'), 
+                    0
+                ) as total_penalty_amount,
+                COALESCE(
+                    (SELECT SUM(lp.penalty_waived) 
+                     FROM lead_payments lp 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
+                     AND lp.verification_status != 'rejected'), 
+                    0
+                ) as total_penalty_waived,
                 {$transferCols}
                 {$totalEmiCol}
                 {$emiAuditCols}
@@ -1921,6 +1943,9 @@ class AccountClient extends Model
             $clientDetails['construction_fee_paid_after_service']  = $constructionFeePaid;
             $clientDetails['remaining_construction_fee']           = $remainingConstructionFee;
             $clientDetails['total_due']                            = $totalDue;
+            $clientDetails['total_penalty_paid']                   = (float) ($clientDetails['total_penalty_paid'] ?? 0);
+            $clientDetails['total_penalty_amount']                 = (float) ($clientDetails['total_penalty_amount'] ?? 0);
+            $clientDetails['total_penalty_waived']                 = (float) ($clientDetails['total_penalty_waived'] ?? 0);
             $clientDetails['others_paid']                          = $othersPaid;
             $clientDetails['others_paid_total']                    = $othersPaidTotal;
             $clientDetails['net_received']                         = $netReceived;
@@ -2566,6 +2591,151 @@ class AccountClient extends Model
     }
 
     /**
+     * Get detailed late penalty history for a booking
+     * Calculates delay days, target installment, due dates, paid penalty, waived amount & approval status
+     */
+    public function getPenaltyHistoryByBookingId($bookingId)
+    {
+        $bookingId = (int)$bookingId;
+        if ($bookingId <= 0) {
+            return [];
+        }
+
+        $hasTrashed = $this->hasColumn('lead_payments', 'is_trashed');
+        $lpTrash = $hasTrashed ? "lp.is_trashed = 0 AND " : "";
+
+        $sql = "
+            SELECT 
+                lp.id,
+                lp.booking_id,
+                lp.batch_id,
+                lp.payment_date,
+                lp.amount,
+                lp.payment_type,
+                lp.settlement_type,
+                lp.parent_payment_id,
+                lp.payment_method,
+                lp.transaction_ref,
+                lp.bank_name,
+                lp.penalty_amount,
+                lp.penalty_paid,
+                lp.penalty_waived,
+                lp.waiver_reason,
+                lp.waiver_status,
+                lp.waiver_attachment,
+                lp.attachment_paths,
+                lp.verification_status,
+                u.full_name as created_by_name,
+                uv.full_name as verified_by_name,
+                COALESCE(es_curr.emi_no, es_parent.emi_no, lp.emi_no) as emi_no,
+                es_curr.due_date as curr_due_date,
+                es_parent.due_date as parent_due_date,
+                cef.due_date as fixed_due_date,
+                batch_lp.parent_payment_id as batch_parent_id,
+                batch_parent_es.due_date as batch_parent_due_date,
+                batch_parent_es.emi_no as batch_parent_emi_no,
+                COALESCE(es_curr.emi_amount, es_parent.emi_amount, lp.amount) as base_emi_amount
+            FROM lead_payments lp
+            LEFT JOIN emi_schedules es_curr ON es_curr.lead_payment_id = lp.id
+            LEFT JOIN emi_schedules es_parent ON (lp.parent_payment_id IS NOT NULL AND es_parent.lead_payment_id = lp.parent_payment_id)
+            LEFT JOIN client_emi_fixed_dates cef ON (cef.booking_id = lp.booking_id AND cef.emi_no = COALESCE(es_curr.emi_no, es_parent.emi_no))
+            LEFT JOIN lead_payments batch_lp ON (lp.batch_id IS NOT NULL AND lp.batch_id != '' AND batch_lp.batch_id = lp.batch_id AND batch_lp.parent_payment_id IS NOT NULL AND batch_lp.id != lp.id)
+            LEFT JOIN emi_schedules batch_parent_es ON (batch_lp.parent_payment_id IS NOT NULL AND batch_parent_es.lead_payment_id = batch_lp.parent_payment_id)
+            LEFT JOIN users u ON u.id = lp.created_by
+            LEFT JOIN users uv ON uv.id = lp.verified_by
+            WHERE {$lpTrash}lp.booking_id = ?
+              AND (lp.penalty_amount > 0 OR lp.penalty_paid > 0 OR lp.penalty_waived > 0)
+            ORDER BY lp.payment_date ASC, lp.id ASC
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return [];
+        }
+
+        $stmt->bind_param("i", $bookingId);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $history = [];
+
+        while ($r = $res->fetch_assoc()) {
+            $targetEmi = $r['batch_parent_emi_no'] ?: $r['emi_no'];
+            $dueDate = null;
+            if (!empty($r['batch_parent_due_date']) && $r['batch_parent_due_date'] < $r['payment_date']) {
+                $dueDate = $r['batch_parent_due_date'];
+            } elseif (!empty($r['parent_due_date']) && $r['parent_due_date'] < $r['payment_date']) {
+                $dueDate = $r['parent_due_date'];
+            } elseif (!empty($r['fixed_due_date']) && $r['fixed_due_date'] < $r['payment_date']) {
+                $dueDate = $r['fixed_due_date'];
+            } elseif (!empty($r['curr_due_date']) && $r['curr_due_date'] < $r['payment_date']) {
+                $dueDate = $r['curr_due_date'];
+            }
+
+            $daysLate = 0;
+            $monthsOverdue = 0;
+            if ($dueDate && $r['payment_date'] > $dueDate) {
+                try {
+                    $d1 = new \DateTime($dueDate);
+                    $d2 = new \DateTime($r['payment_date']);
+                    $diff = $d1->diff($d2);
+                    $daysLate = (int)$diff->days;
+                    $monthsOverdue = ($diff->y * 12) + $diff->m + ($diff->d > 0 ? 1 : 0);
+                } catch (\Exception $e) {
+                    $daysLate = 0;
+                    $monthsOverdue = 0;
+                }
+            } else {
+                // If explicit schedule due date wasn't stored, estimate from 5% compounded monthly rate
+                $base = (float)$r['base_emi_amount'];
+                $pen = (float)$r['penalty_amount'];
+                if ($base > 0 && $pen > 0) {
+                    $ratio = 1 + ($pen / $base);
+                    $monthsOverdue = max(1, (int)round(log($ratio) / log(1.05)));
+                    $daysLate = $monthsOverdue * 30;
+                    if (empty($dueDate) && !empty($r['payment_date'])) {
+                        try {
+                            $calcDue = new \DateTime($r['payment_date']);
+                            $calcDue->modify("-{$monthsOverdue} months");
+                            $dueDate = $calcDue->format('Y-m-d');
+                        } catch (\Exception $e) {}
+                    }
+                }
+            }
+
+            // Installment label
+            $installmentLabel = 'EMI Installment';
+            if ($targetEmi) {
+                $suffix = 'th';
+                if (!in_array($targetEmi % 100, [11, 12, 13])) {
+                    if ($targetEmi % 10 == 1) $suffix = 'st';
+                    elseif ($targetEmi % 10 == 2) $suffix = 'nd';
+                    elseif ($targetEmi % 10 == 3) $suffix = 'rd';
+                }
+                $installmentLabel = "{$targetEmi}{$suffix} Installment";
+            }
+            if ($r['settlement_type'] === 'emi_due_settlement') {
+                $installmentLabel .= ' (Settlement)';
+            }
+
+            $r['target_emi_no']     = $targetEmi;
+            $r['installment_label'] = $installmentLabel;
+            $r['scheduled_due_date']= $dueDate;
+            $r['days_late']         = $daysLate;
+            $r['months_overdue']    = $monthsOverdue;
+            $r['penalty_amount']    = (float)$r['penalty_amount'];
+            $r['penalty_paid']      = (float)$r['penalty_paid'];
+            $r['penalty_waived']    = (float)$r['penalty_waived'];
+            $r['amount']            = (float)$r['amount'];
+            $r['base_emi_amount']   = (float)$r['base_emi_amount'];
+
+            $history[] = $r;
+        }
+        $stmt->close();
+
+        return $history;
+    }
+
+    /**
      * Get client by lead ID
      */
     public function getClientByLeadId($leadId)
@@ -2635,6 +2805,9 @@ class AccountClient extends Model
                 'remaining_construction_fee'           => 0,
                 'total_paid'                           => 0,
                 'total_due'                            => 0,
+                'total_penalty_paid'                   => 0,
+                'total_penalty_amount'                 => 0,
+                'total_penalty_waived'                 => 0,
                 'total_emi_due'                        => 0,
                 'total_emi'                            => 0,
                 'completed_emi'                        => 0,
@@ -2705,6 +2878,9 @@ class AccountClient extends Model
             'others_paid'                          => $clientDetails['others_paid'] ?? 0,
             'others_paid_total'                    => $clientDetails['others_paid_total'] ?? 0,
             'total_due'                            => $clientDetails['total_due'],
+            'total_penalty_paid'                   => $clientDetails['total_penalty_paid'] ?? 0,
+            'total_penalty_amount'                 => $clientDetails['total_penalty_amount'] ?? 0,
+            'total_penalty_waived'                 => $clientDetails['total_penalty_waived'] ?? 0,
             'total_emi_due'                        => $clientDetails['total_emi_due'] ?? 0,
             'total_bulk_emi_discount'              => $clientDetails['total_bulk_emi_discount'] ?? 0,
             'total_emi'                            => $clientDetails['total_emi'],
