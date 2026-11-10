@@ -590,7 +590,9 @@ class IncentiveController extends Controller
      */
     public function configSettings()
     {
-        if (!in_array($_SESSION['user']['role_id'], [1, 3, 33, 6, 30, 2, 9, 5])) { // Added 9 (Sales Head) and 5 (Sales Manager)
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $allowedRoles = [1, 2, 3, 5, 6, 9, 20, 30, 32, 33, 34, 35, 36, 38];
+        if (!in_array($roleId, $allowedRoles)) {
             header("Location: {$GLOBALS['base_url']}/home");
             exit;
         }
