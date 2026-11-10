@@ -18,6 +18,94 @@ class Con_LaborRequisition extends Model
     protected $table = 'con_labor_requisitions';
     protected $lastError = null;
 
+    public function __construct($db = null)
+    {
+        parent::__construct($db);
+        $this->ensureSchema();
+    }
+
+    private function ensureSchema()
+    {
+        static $checked = false;
+        if ($checked || !$this->db) return;
+        $checked = true;
+
+        @$this->db->query("
+            CREATE TABLE IF NOT EXISTS `con_labor_requisitions` (
+              `id` int unsigned NOT NULL AUTO_INCREMENT,
+              `requisition_no` varchar(30) DEFAULT NULL,
+              `project_id` int NOT NULL,
+              `phase_id` int unsigned DEFAULT NULL,
+              `phase_target_id` int unsigned DEFAULT NULL,
+              `account_id` int DEFAULT NULL,
+              `requested_by` int NOT NULL,
+              `requisition_date` date NOT NULL,
+              `work_date_from` date DEFAULT NULL,
+              `work_date_to` date DEFAULT NULL,
+              `labor_type` enum('General','Skilled','Unskilled','Supervisor','Mason','Helper','Other') DEFAULT 'General',
+              `labor_count` int NOT NULL DEFAULT '1',
+              `per_labor_rate` decimal(10,2) NOT NULL DEFAULT '0.00',
+              `working_days` decimal(5,2) NOT NULL DEFAULT '1.00',
+              `total_amount` decimal(15,2) GENERATED ALWAYS AS (((`labor_count` * `per_labor_rate`) * `working_days`)) STORED,
+              `purpose` text NOT NULL,
+              `remarks` text,
+              `attachment` varchar(255) DEFAULT NULL,
+              `pm_approved_by` int DEFAULT NULL,
+              `pm_approved_at` datetime DEFAULT NULL,
+              `pm_note` text,
+              `qc_approved_by` int DEFAULT NULL,
+              `qc_approved_at` datetime DEFAULT NULL,
+              `qc_approved_amount` decimal(12,2) DEFAULT NULL,
+              `qc_note` text,
+              `pm_payment_approved_by` int DEFAULT NULL,
+              `pm_payment_approved_at` datetime DEFAULT NULL,
+              `pm_verified_amount` decimal(12,2) DEFAULT NULL,
+              `pm_payment_note` text,
+              `payment_requested_by` int DEFAULT NULL,
+              `payment_requested_at` datetime DEFAULT NULL,
+              `management_approved_by` int DEFAULT NULL,
+              `management_approved_at` datetime DEFAULT NULL,
+              `management_note` text,
+              `approved_amount` decimal(15,2) DEFAULT NULL,
+              `paid_amount` decimal(15,2) DEFAULT NULL,
+              `total_paid` decimal(15,2) NOT NULL DEFAULT '0.00',
+              `paid_by` int DEFAULT NULL,
+              `labor_disbursed_by` int DEFAULT NULL,
+              `labor_disbursed_at` datetime DEFAULT NULL,
+              `labor_disbursement_proof` varchar(255) DEFAULT NULL,
+              `labor_disbursement_note` text,
+              `payment_date` date DEFAULT NULL,
+              `payment_method` enum('Cash','Bank Transfer','Mobile Banking','Cheque') DEFAULT NULL,
+              `payment_reference` varchar(100) DEFAULT NULL,
+              `payment_note` text,
+              `status` enum('pending','pm_approved','rejected','work_completed','payment_requested','qc_approved','pm_payment_approved','management_approved','partially_paid','paid','labor_disbursed') NOT NULL DEFAULT 'pending',
+              `rejection_reason` text,
+              `created_by` int NOT NULL,
+              `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              UNIQUE KEY `uq_requisition_no` (`requisition_no`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+
+        @$this->db->query("
+            CREATE TABLE IF NOT EXISTS `con_labor_payment_logs` (
+              `id` int unsigned NOT NULL AUTO_INCREMENT,
+              `requisition_id` int unsigned NOT NULL,
+              `amount` decimal(15,2) NOT NULL,
+              `paid_by` int NOT NULL,
+              `payment_date` date NOT NULL,
+              `payment_method` enum('Cash','Bank Transfer','Mobile Banking','Cheque') DEFAULT 'Cash',
+              `reference` varchar(100) DEFAULT NULL,
+              `note` text,
+              `proof_image` varchar(255) DEFAULT NULL,
+              `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              KEY `idx_clpl_req` (`requisition_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+    }
+
     public function getLastError()
     {
         return $this->lastError;

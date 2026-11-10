@@ -833,7 +833,7 @@
                                 $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
                                 $isChiefOfficer = (in_array($userRoleId, [33, 34, 35], true) || in_array($sessionRoleName, ['chief officer', 'management viewer', 'seal ceo'], true));
 
-                                $isManagementUser = (in_array($userRoleId, [1, 3], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management'], true)) && !$isChiefOfficer;
+                                $isManagementUser = (in_array($userRoleId, [1, 3, 38], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management', 'board of director', 'board of directors', 'director', 'dceo'], true) || strpos($sessionRoleName, 'director') !== false || strpos($sessionRoleName, 'dceo') !== false) && !$isChiefOfficer;
                                 $isSiteOperator = in_array($userRoleId, [20, 32], true) || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false;
                                 $isAccountsHeadUser = ($userRoleId === 30) || strpos($sessionRoleName, 'accounts head') !== false;
                                 $isAccountsStaffUser = ($userRoleId === 6) || (strpos($sessionRoleName, 'account') !== false && !$isAccountsHeadUser);
@@ -1465,7 +1465,7 @@
                                         <?php endif; ?>
 
                                         <?php if ($isPartiallyPaid): ?>
-                                            <?php if ($isAccountsUser && $isAccountsHeadApproved): ?>
+                                            <?php if (($isAccountsUser || $isManagementUser) && $isAccountsHeadApproved): ?>
                                                 <a href="<?= $targetUrl ?>" class="btn btn-sm btn-success rounded-2 px-2 shadow-sm fw-semibold me-1" title="Disburse remaining amount">
                                                     <i class="fa-solid fa-money-check-dollar me-1"></i>Pay
                                                 </a>
@@ -1514,7 +1514,7 @@
                                                 </a>
                                             <?php endif; ?>
 
-                                        <?php elseif ($isAccountsUser && in_array($payoutStatus, ['Pending Accounts Payout']) && $isAccountsHeadApproved): ?>
+                                        <?php elseif (($isAccountsUser || $isManagementUser) && in_array($payoutStatus, ['Pending Accounts Payout']) && $isAccountsHeadApproved): ?>
                                             <a href="<?= $targetUrl ?>" class="btn btn-sm btn-success rounded-2 px-3 shadow-sm fw-semibold">
                                                 <i class="fa-solid fa-money-check-dollar me-1"></i>Pay / Disburse
                                             </a>

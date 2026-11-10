@@ -509,52 +509,55 @@ class ExpenseAdjustmentController extends Controller
         }
 
         $isOver1Lac = ($approvedAmount > 10000);
-        $isOpHeadUser = (in_array((int)$this->userRole, [20, 32], true) || str_contains(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head'));
-        $isMgmtUser = in_array((int)$this->userRole, [1, 3], true);
+        $roleNameLc = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $isOpHeadUser = (in_array((int)$this->userRole, [20, 32], true) || str_contains($roleNameLc, 'operation head') || str_contains($roleNameLc, 'admin & operation'));
+        $isMgmtUser = in_array((int)$this->userRole, [1, 3, 38], true) || in_array($roleNameLc, ['super admin', 'admin', 'management', 'board of director', 'board of directors'], true) || str_contains($roleNameLc, 'director') || str_contains($roleNameLc, 'dceo');
 
         // Fetch approval request record
         $arCheck = $this->db->query("SELECT id, op_head_status, accounts_head_status FROM approval_requests WHERE source_table = 'expense_adjustments' AND source_id = " . (int)$id . " ORDER BY id DESC LIMIT 1");
         $arRow = $arCheck ? $arCheck->fetch_assoc() : null;
-        $opHeadStatus = strtolower($arRow['op_head_status'] ?? 'pending');
-        $ahStatus = strtolower($arRow['accounts_head_status'] ?? 'pending');
 
-        if ($isOver1Lac) {
-            if ($isOpHeadUser && !$isMgmtUser) {
-                $arId = (int)($arRow['id'] ?? 0);
-                $escNote = $this->db->real_escape_string($mgmtNote ?: 'Verified and approved by Admin & Operation Head');
-                if (!class_exists('ApprovalRequest')) {
-                    require_once __DIR__ . '/../models/ApprovalRequest.php';
-                }
-                $approvalModel = new \ApprovalRequest($this->db);
-                if ($arId > 0) {
-                    $approvalModel->approveOperationHead($arId, $this->userId, $escNote);
-                } else {
-                    $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'accounts_head' WHERE source_table = 'expense_adjustments' AND source_id = " . (int)$id);
-                }
-                setSuccess("Adjustment request verified & approved by Admin & Operation Head (Role 20). Forwarded to Accounts Head (Role 30) for payment verification.");
-                header("Location: {$GLOBALS['base_url']}/expense-adjustments/show?id=$id");
-                exit;
+        if ($isOpHeadUser && !$isMgmtUser) {
+            $arId = (int)($arRow['id'] ?? 0);
+            $escNote = $this->db->real_escape_string($mgmtNote ?: 'Verified and approved by Admin & Operation Head');
+            if (!class_exists('ApprovalRequest')) {
+                require_once __DIR__ . '/../models/ApprovalRequest.php';
             }
-
-            if ($isMgmtUser) {
-                if ($opHeadStatus !== 'approved') {
-                    setError("Access Denied: Adjustments exceeding ৳10,000 must be approved by Admin & Operation Head (Role 20) first.");
-                    header("Location: {$GLOBALS['base_url']}/expense-adjustments/show?id=$id");
-                    exit;
-                }
-                if ($ahStatus !== 'approved') {
-                    setError("Access Denied: Adjustments exceeding ৳10,000 must be verified & approved by Accounts Head (Role 30) before Management can approve.");
-                    header("Location: {$GLOBALS['base_url']}/expense-adjustments/show?id=$id");
-                    exit;
-                }
+            $approvalModel = new \ApprovalRequest($this->db);
+            if ($arId > 0) {
+                $approvalModel->approveOperationHead($arId, $this->userId, $escNote);
+            } else {
+                $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'accounts_head' WHERE source_table = 'expense_adjustments' AND source_id = " . (int)$id);
             }
+            setSuccess("Adjustment request verified & approved by Admin & Operation Head (Role 20). Forwarded to Accounts Head (Role 30) for payment verification.");
+            header("Location: {$GLOBALS['base_url']}/expense-adjustments/show?id=$id");
+            exit;
         }
 
         if ($this->model->mgmtApprove($id, $this->userId, $approvedAmount, $mgmtNote)) {
             try {
                 require_once __DIR__ . '/../models/ApprovalRequest.php';
                 (new ApprovalRequest($this->db))->syncMissingExpenseAdjustments();
-                $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', request_amount = {$approvedAmount} WHERE source_table = 'expense_adjustments' AND source_id = " . (int)$id);
+                if ($isMgmtUser) {
+                    $escBypassNote = $this->db->real_escape_string(($mgmtNote ?: 'Approved by Management') . ' (Management Override)');
+                    $this->db->query("
+                        UPDATE approval_requests
+                        SET status = 'approved',
+                            approve_role = 'accounts',
+                            request_amount = {$approvedAmount},
+                            op_head_status = 'approved',
+                            op_head_by = COALESCE(op_head_by, {$this->userId}),
+                            op_head_at = COALESCE(op_head_at, NOW()),
+                            op_head_note = COALESCE(NULLIF(op_head_note, ''), '{$escBypassNote}'),
+                            accounts_head_status = 'approved',
+                            accounts_head_by = COALESCE(accounts_head_by, {$this->userId}),
+                            accounts_head_at = COALESCE(accounts_head_at, NOW()),
+                            accounts_head_note = COALESCE(NULLIF(accounts_head_note, ''), '{$escBypassNote}')
+                        WHERE source_table = 'expense_adjustments' AND source_id = " . (int)$id . "
+                    ");
+                } else {
+                    $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', request_amount = {$approvedAmount} WHERE source_table = 'expense_adjustments' AND source_id = " . (int)$id);
+                }
             } catch (\Throwable $e) {}
 
             // Send email notification

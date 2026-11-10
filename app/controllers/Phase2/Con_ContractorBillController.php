@@ -64,7 +64,7 @@ class Con_ContractorBillController extends Controller
         );
     }
 
-    /** Final Management Approval: Roles 20 (Admin & Operation Head), 32 (Admin Operation), 1 (Admin), 3 (Super Admin) */
+    /** Final Management Approval: Roles 20 (Admin & Operation Head), 32 (Admin Operation), 1 (Admin), 3 (Super Admin), 38 (Board of Director / DCEO) */
     private function canApproveManagement()
     {
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
@@ -72,9 +72,12 @@ class Con_ContractorBillController extends Controller
             return false;
         }
         return (
-            in_array($this->userRole, [1, 3, 20, 32])
+            in_array($this->userRole, [1, 3, 38, 20, 32])
             || str_contains($roleName, 'operation head')
             || str_contains($roleName, 'admin & operation head')
+            || str_contains($roleName, 'director')
+            || str_contains($roleName, 'dceo')
+            || str_contains($roleName, 'management')
             || (str_contains($roleName, 'admin') && !str_contains($roleName, 'project'))
         );
     }
@@ -130,13 +133,14 @@ class Con_ContractorBillController extends Controller
         );
     }
 
-    /** Roles 1, 3, 6 (Accounts) can process payments */
+    /** Roles 1, 3, 6, 30, 38 (Accounts / Management) can process payments */
     private function canProcessPayment()
     {
-        if (in_array($this->userRole, [33, 34, 35], true) || in_array(strtolower($_SESSION['user']['role_name'] ?? ''), ['chief officer', 'management viewer', 'seal ceo'], true)) {
+        $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        if (in_array($this->userRole, [33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true)) {
             return false;
         }
-        return in_array($this->userRole, [1, 3, 6, 30]);
+        return in_array($this->userRole, [1, 3, 6, 30, 38]) || str_contains($roleName, 'account') || str_contains($roleName, 'management') || str_contains($roleName, 'director') || str_contains($roleName, 'dceo') || str_contains($roleName, 'admin');
     }
 
     // =========================================================================
@@ -225,21 +229,24 @@ class Con_ContractorBillController extends Controller
         // Fetch distinct filter options (always populated with all valid options for filtering)
         $projects = $this->billModel->getDistinctProjects();
         if (empty($projects)) {
-            $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+            $resP = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC");
+            $projects = $resP ? $resP->fetch_all(MYSQLI_ASSOC) : [];
         }
 
         $creators = $this->billModel->getDistinctCreators();
         if (empty($creators)) {
-            $creators = $this->db->query("SELECT DISTINCT u.id, u.full_name FROM users u JOIN contractor_bill_requests cbr ON cbr.created_by = u.id ORDER BY u.full_name ASC")->fetch_all(MYSQLI_ASSOC);
+            $resC = $this->db->query("SELECT DISTINCT u.id, u.full_name FROM users u JOIN contractor_bill_requests cbr ON cbr.created_by = u.id ORDER BY u.full_name ASC");
+            $creators = $resC ? $resC->fetch_all(MYSQLI_ASSOC) : [];
         }
 
         // Fetch contractors with trade/expertise for search & filter
-        $contractors = $this->db->query("
+        $resCon = $this->db->query("
             SELECT id, name, role, trade 
             FROM contractors 
             WHERE status = 'active' OR id IN (SELECT DISTINCT operator_id FROM contractor_bill_requests WHERE operator_id IS NOT NULL)
             ORDER BY name ASC
-        ")->fetch_all(MYSQLI_ASSOC);
+        ");
+        $contractors = $resCon ? $resCon->fetch_all(MYSQLI_ASSOC) : [];
 
         $paginationHtml = $this->generateAjaxPagination($page, $totalPages, $totalRecords, $limit > 0 ? $limit : $totalRecords, 'loadBillsPage');
 
@@ -709,7 +716,8 @@ class Con_ContractorBillController extends Controller
         $approvalReq = $this->getApprovalRequest($id);
 
         // Get banks for payment modal
-        $banks = $this->db->query("SELECT id, bank_name, CONCAT(account_name, IF(account_number != '', CONCAT(' (', account_number, ')'), '')) as branch_name FROM company_bank_accounts WHERE status = 'active' ORDER BY is_default DESC, bank_name ASC")->fetch_all(MYSQLI_ASSOC);
+        $resBanks = $this->db->query("SELECT id, bank_name, CONCAT(account_name, IF(account_number != '', CONCAT(' (', account_number, ')'), '')) as branch_name FROM company_bank_accounts WHERE status = 'active' ORDER BY is_default DESC, bank_name ASC");
+        $banks = $resBanks ? $resBanks->fetch_all(MYSQLI_ASSOC) : [];
 
         // Fetch weekly progress items for the target if linked
         $targetItems = [];
@@ -722,9 +730,12 @@ class Con_ContractorBillController extends Controller
                 LEFT JOIN contractors c ON c.id = pwpi.contractor_id
                 WHERE pwpi.weekly_progress_id = ?
             ");
-            $stmt->bind_param('i', $bill['target_id']);
-            $stmt->execute();
-            $targetItems = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            if ($stmt) {
+                $stmt->bind_param('i', $bill['target_id']);
+                $stmt->execute();
+                $resTi = $stmt->get_result();
+                $targetItems = $resTi ? $resTi->fetch_all(MYSQLI_ASSOC) : [];
+            }
 
             // Fetch monthly target items
             $stmtM = $this->db->prepare("
@@ -734,9 +745,12 @@ class Con_ContractorBillController extends Controller
                 WHERE pmti.target_id = (SELECT target_id FROM phase_weekly_progress WHERE id = ? LIMIT 1)
                 ORDER BY pmti.sort_order ASC, pmti.id ASC
             ");
-            $stmtM->bind_param('i', $bill['target_id']);
-            $stmtM->execute();
-            $monthlyTargetItems = $stmtM->get_result()->fetch_all(MYSQLI_ASSOC);
+            if ($stmtM) {
+                $stmtM->bind_param('i', $bill['target_id']);
+                $stmtM->execute();
+                $resMti = $stmtM->get_result();
+                $monthlyTargetItems = $resMti ? $resMti->fetch_all(MYSQLI_ASSOC) : [];
+            }
         }
 
         // Load settlements for this bill
@@ -1043,8 +1057,9 @@ class Con_ContractorBillController extends Controller
             }
             $managementNote = trim($_POST['management_note'] ?? '');
 
-            $isOpHeadUser = (in_array((int)$this->userRole, [20, 32], true) || str_contains(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head'));
-            $isMgmtUser = in_array((int)$this->userRole, [1, 3], true);
+            $roleNameLc = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+            $isOpHeadUser = (in_array((int)$this->userRole, [20, 32], true) || str_contains($roleNameLc, 'operation head') || str_contains($roleNameLc, 'admin & operation'));
+            $isMgmtUser = in_array((int)$this->userRole, [1, 3, 38], true) || in_array($roleNameLc, ['super admin', 'admin', 'management', 'board of director', 'board of directors'], true) || str_contains($roleNameLc, 'director') || str_contains($roleNameLc, 'dceo');
 
             // Fetch approval request record
             $arCheck = $this->db->query("SELECT id, op_head_status, accounts_head_status FROM approval_requests WHERE source_table IN ('contractor_bill_requests', 'con_contractor_bills') AND source_id = {$id} ORDER BY id DESC LIMIT 1");

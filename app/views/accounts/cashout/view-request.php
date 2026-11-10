@@ -411,32 +411,41 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                     <?php 
                                     $userRoleId = (int) ($userRole ?? 0);
                                     $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
-                                    $isChiefOfficer = ($userRoleId === 33 || $sessionRoleName === 'chief officer');
-                                    $isFullManagement = (in_array($userRoleId, [1, 3], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management'], true)) && !$isChiefOfficer;
+                                    $isChiefOfficer = (in_array($userRoleId, [33, 34, 35], true) || in_array($sessionRoleName, ['chief officer', 'management viewer', 'seal ceo'], true));
+                                    $isFullManagement = (in_array($userRoleId, [1, 3, 38], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management', 'board of director', 'board of directors'], true) || strpos($sessionRoleName, 'director') !== false || strpos($sessionRoleName, 'dceo') !== false) && !$isChiefOfficer;
                                     $isSiteOperatorUser = (in_array($userRoleId, [20, 32], true) || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false) && !$isChiefOfficer;
 
                                     $reqAmount = (float)($request['amount'] ?? 0);
                                     $isOver1Lac = ($reqAmount > 10000.01);
-                                    $isOpHeadApproved = (!empty($approvalRequest['op_head_status']) && strtolower($approvalRequest['op_head_status']) === 'approved');
-                                    $isAhApproved = (!empty($approvalRequest['accounts_head_status']) && strtolower($approvalRequest['accounts_head_status']) === 'approved');
+                                    $arRecord = $approval_request ?? $approvalRequest ?? [];
+                                    $isOpHeadApproved = (!empty($ahInfo['is_op_head_approved']) || strtolower($ahInfo['op_head_status'] ?? '') === 'approved' || (!empty($arRecord['op_head_status']) && strtolower($arRecord['op_head_status']) === 'approved'));
+                                    $isAhApproved = (empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_head_approved']) || (!empty($arRecord['accounts_head_status']) && strtolower($arRecord['accounts_head_status']) === 'approved'));
                                     $canDirectApprove = !$isChiefOfficer && (
-                                        (!$isOver1Lac && ($isFullManagement || $isSiteOperatorUser)) ||
-                                        ($isOver1Lac && $isFullManagement && $isOpHeadApproved && $isAhApproved)
+                                        $isFullManagement ||
+                                        ($isSiteOperatorUser && !$isOpHeadApproved)
                                     );
                                     $isQCOnlyUser = $canApproveQC && !$isFullManagement && !$isSiteOperatorUser && !$isChiefOfficer;
+                                    $cashoutOverrideStage = '';
+                                    if ($isFullManagement) {
+                                        if (!$isOpHeadApproved) {
+                                            $cashoutOverrideStage = 'Head of Operation';
+                                        } elseif (!$isAhApproved) {
+                                            $cashoutOverrideStage = 'Accounts Head';
+                                        }
+                                    }
                                     ?>
 
-                                    <?php if ($isPending && $isOver1Lac && !$isOpHeadApproved && $isSiteOperatorUser && !$isAlreadyApproved): ?>
-                                        <!-- Operation Head Approval Step for > 10K -->
+                                    <?php if (($isPending || $isQCApproved) && $isSiteOperatorUser && !$isFullManagement && !$isOpHeadApproved && !$isAlreadyApproved): ?>
+                                        <!-- Operation Head Approval Step -->
                                         <form action="<?= $GLOBALS['base_url'] ?>/approve-cashout-request" method="POST" class="mb-2">
                                             <input type="hidden" name="id" value="<?= $request['id'] ?>">
                                             <input type="hidden" name="status" value="approved">
                                             <div class="alert alert-info py-2 mb-3">
-                                                <small><i class="fa-solid fa-layer-group me-1"></i> <strong>Step 1 of 3:</strong> As Admin &amp; Operation Head, your sign-off is required to forward this request to Accounts Head (Role 30).</small>
+                                                <small><i class="fa-solid fa-layer-group me-1"></i> <strong>Step 1:</strong> As Admin &amp; Operation Head, your sign-off forwards this request to Accounts Head (Role 30).</small>
                                             </div>
                                             <div class="mb-3">
                                                 <label class="form-label fw-semibold">Approval Note (Optional)</label>
-                                                <textarea name="approval_note" class="form-control" rows="2" placeholder="Leave a note for management..."></textarea>
+                                                <textarea name="approval_note" class="form-control" rows="2" placeholder="Leave a note for Accounts Head..."></textarea>
                                             </div>
                                             <button type="submit" class="btn btn-primary w-100 mb-2">
                                                 <i class="fa-solid fa-stamp me-2"></i> Approve as Operation Head
@@ -447,23 +456,12 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                             <i class="fa-light fa-times me-2"></i> Reject Request
                                         </button>
 
-                                    <?php elseif ($isPending && $isOver1Lac && (!$isOpHeadApproved || !$isAhApproved) && $isFullManagement && !$isAlreadyApproved): ?>
-                                        <!-- Threshold lock notice for Management -->
-                                        <div class="alert alert-warning mb-2 py-3">
-                                            <div class="fw-bold text-dark"><i class="fa-solid fa-lock text-warning me-1"></i> Management Approval Locked</div>
-                                            <?php if (!$isOpHeadApproved): ?>
-                                                <small class="text-secondary">Amount (৳<?= number_format($reqAmount, 2) ?>) exceeds ৳10,000 threshold. Admin &amp; Operation Head (Role 20) must approve first.</small>
-                                            <?php else: ?>
-                                                <small class="text-secondary">Amount (৳<?= number_format($reqAmount, 2) ?>) exceeds ৳10,000 threshold. Operation Head approved; Accounts Head (Role 30) must verify &amp; approve before Management final sign-off.</small>
-                                            <?php endif; ?>
-                                        </div>
-
-                                    <?php elseif ($isPending && $canDirectApprove && !$isAlreadyApproved): ?>
-                                        <!-- Management / Operation Head Direct Approval -->
-                                        <form action="<?= $GLOBALS['base_url'] ?>/approve-cashout-request" method="POST" class="mb-2">
+                                    <?php elseif (($isPending || $isQCApproved) && $isFullManagement && !$isAlreadyApproved): ?>
+                                        <!-- Management Direct Approval -->
+                                        <form id="cashoutMgmtApproveForm" action="<?= $GLOBALS['base_url'] ?>/approve-cashout-request" method="POST" class="mb-2">
                                             <input type="hidden" name="id" value="<?= $request['id'] ?>">
                                             <input type="hidden" name="status" value="approved">
-                                            <?php if ($isOver1Lac && $isOpHeadApproved): ?>
+                                            <?php if ($isOver1Lac && $isOpHeadApproved && $isAhApproved): ?>
                                                 <div class="alert alert-success py-2 mb-3">
                                                     <small><i class="fa-solid fa-circle-check text-success me-1"></i> Steps 1 &amp; 2 Completed: Operation Head &amp; Accounts Head Approved. Ready for Management final approval.</small>
                                                 </div>
@@ -480,6 +478,38 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                                 <i class="fa-light fa-check me-2"></i> Approve Request
                                             </button>
                                         </form>
+                                        <script>
+                                        document.addEventListener('DOMContentLoaded', function() {
+                                            var coForm = document.getElementById('cashoutMgmtApproveForm');
+                                            if (coForm) {
+                                                coForm.addEventListener('submit', function(e) {
+                                                    var overrideStage = <?= json_encode($cashoutOverrideStage ?? '') ?>;
+                                                    if (overrideStage !== '' && !coForm.getAttribute('data-confirmed-override')) {
+                                                        e.preventDefault();
+                                                        if (typeof Swal !== 'undefined') {
+                                                            Swal.fire({
+                                                                title: 'Pending ' + overrideStage + "'s Approval",
+                                                                html: 'This cashout request is pending for <strong>' + overrideStage + "'s</strong> approval. Are you ready to approve for <strong>" + overrideStage + '</strong> first?<br><small class="text-muted d-block mt-2">Your name will be recorded as the approver for all bypassed stages as well as final Management approval.</small>',
+                                                                icon: 'warning',
+                                                                showCancelButton: true,
+                                                                confirmButtonColor: '#198754',
+                                                                cancelButtonColor: '#6c757d',
+                                                                confirmButtonText: 'Yes, Approve All Stages'
+                                                            }).then(function(result) {
+                                                                if (result.isConfirmed) {
+                                                                    coForm.setAttribute('data-confirmed-override', '1');
+                                                                    coForm.submit();
+                                                                }
+                                                            });
+                                                        } else if (confirm("Pending " + overrideStage + "'s Approval. Are you ready to approve all bypassed stages and complete final Management approval?")) {
+                                                            coForm.setAttribute('data-confirmed-override', '1');
+                                                            coForm.submit();
+                                                        }
+                                                    }
+                                                });
+                                            }
+                                        });
+                                        </script>
                                         <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal"
                                             data-bs-target="#rejectModal">
                                             <i class="fa-light fa-times me-2"></i> Reject Request
@@ -496,28 +526,6 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                             </div>
                                             <button type="submit" class="btn btn-warning w-100 mb-2">
                                                 <i class="fa-light fa-shield-check me-2"></i> QC Approve
-                                            </button>
-                                        </form>
-                                        <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal"
-                                            data-bs-target="#rejectModal">
-                                            <i class="fa-light fa-times me-2"></i> Reject Request
-                                        </button>
-
-                                    <?php elseif ($isQCApproved && $canDirectApprove && !$isAlreadyApproved): ?>
-                                        <!-- Management / Operation Head Approval (after QC has approved) -->
-                                        <form action="<?= $GLOBALS['base_url'] ?>/approve-cashout-request" method="POST" class="mb-2">
-                                            <input type="hidden" name="id" value="<?= $request['id'] ?>">
-                                            <input type="hidden" name="status" value="approved">
-                                            <div class="mb-3">
-                                                <label class="form-label fw-semibold">Approved Amount (Optional)</label>
-                                                <input type="number" step="0.01" name="approved_amount" class="form-control" value="<?= htmlspecialchars($request['amount']) ?>" max="<?= htmlspecialchars($request['amount']) ?>">
-                                            </div>
-                                            <div class="mb-3">
-                                                <label class="form-label fw-semibold">Approval Note (Optional)</label>
-                                                <textarea name="approval_note" class="form-control" rows="2" placeholder="Leave a note..."></textarea>
-                                            </div>
-                                            <button type="submit" class="btn btn-success w-100 mb-2">
-                                                <i class="fa-light fa-check me-2"></i> Approve Request
                                             </button>
                                         </form>
                                         <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal"

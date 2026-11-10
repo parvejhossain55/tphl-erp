@@ -4,18 +4,19 @@ $userId = (int)($_SESSION['user']['id'] ?? 0);
 
 $canCreate = true; // Enable New Request button for all logged in users
 
-$isChiefOfficer = (in_array($roleId, [33, 34, 35], true) || in_array(strtolower(trim($_SESSION['user']['role_name'] ?? '')), ['chief officer', 'management viewer', 'seal ceo'], true));
+$roleNameSession = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+$isChiefOfficer = (in_array($roleId, [33, 34, 35], true) || in_array($roleNameSession, ['chief officer', 'management viewer', 'seal ceo'], true));
 
-// Approval Pipeline Role Permissions (Admin=1, super Admin=3)
-$isAdminOrMgmt = in_array($roleId, [1, 3]) && !$isChiefOfficer; 
-$isOperations   = ($isAdminOrMgmt || in_array((int)$roleId, [20, 32], true) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head') !== false || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'admin & operation') !== false) && !$isChiefOfficer; // Admin & Operation Step: Role 20, 32
+// Approval Pipeline Role Permissions (Admin=1, Super Admin=3, Board/DCEO=38)
+$isAdminOrMgmt = (in_array($roleId, [1, 3, 38], true) || in_array($roleNameSession, ['super admin', 'admin', 'management', 'board of director', 'board of directors'], true) || strpos($roleNameSession, 'director') !== false || strpos($roleNameSession, 'dceo') !== false) && !$isChiefOfficer; 
+$isOperations   = ($isAdminOrMgmt || in_array((int)$roleId, [20, 32], true) || strpos($roleNameSession, 'operation head') !== false || strpos($roleNameSession, 'admin & operation') !== false) && !$isChiefOfficer; // Admin & Operation Step: Role 20, 32
 $isPurchaseHead = ($isAdminOrMgmt || in_array($roleId, [17, 31])) && !$isChiefOfficer; // Purchase Head Step: Role 17, 31
 $isQcAudit      = ($isAdminOrMgmt || in_array($roleId, [24, 25])) && !$isChiefOfficer; // QC & Internal Audit Step
 $isManagement   = $isAdminOrMgmt;                               // Management Step
-$isAccounts     = ($isAdminOrMgmt || in_array($roleId, [6, 30])) && !$isChiefOfficer;  // Accounts Payment
+$isAccounts     = ($isAdminOrMgmt || in_array($roleId, [6, 30]) || strpos($roleNameSession, 'account') !== false) && !$isChiefOfficer;  // Accounts Payment
 
 // Global approvers / viewers include Management, Operations, Purchase, QC/Audit, Accounts roles
-$isGlobalViewer = in_array($roleId, [1, 3, 33, 34, 35, 6, 17, 20, 24, 25, 30, 31, 32]);
+$isGlobalViewer = in_array($roleId, [1, 3, 38, 33, 34, 35, 6, 17, 20, 24, 25, 30, 31, 32]);
 $isApprover     = ($isGlobalViewer || $userId === 242) && !$isChiefOfficer;
 $activeTab      = $_GET['tab'] ?? ($isApprover ? 'pending_approval' : 'all_requests');
 
@@ -51,14 +52,16 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
     </div>
 
     <!-- Service Manual Note & Approval Flow -->
-    <div class="alert alert-warning-transparent border fs-12 mb-3">
-        <i class="fa-solid fa-triangle-exclamation me-1"></i>
-        <strong>Service Manual:</strong> No construction materials requisition is allowed here for this system.
+    <div class="d-flex align-items-start gap-2.5 p-3 mb-3 rounded-3 border bg-warning-transparent fs-12 lh-base">
+        <i class="fa-solid fa-triangle-exclamation text-warning mt-0.5 flex-shrink-0"></i>
+        <div><strong>Service Manual:</strong> No construction materials requisition is allowed here for this system.</div>
     </div>
-    <div class="alert alert-info-transparent border fs-12 mb-4">
-        <i class="fa-solid fa-circle-info me-1"></i>
-        <strong>Approval Flow:</strong> 
-        Requisition → Department Head / Reporting Boss (if applicable) → Admin & Operation (Role 20/32) → Purchase Head → QC & Internal Audit → Management → Accounts (Payment) → Purchased (Asset Inventory)
+    <div class="d-flex align-items-start gap-2.5 p-3 mb-4 rounded-3 border bg-info-transparent fs-12 lh-base">
+        <i class="fa-solid fa-circle-info text-info mt-0.5 flex-shrink-0"></i>
+        <div>
+            <strong>Approval Flow:</strong> 
+            Requisition → Department Head / Reporting Boss (if applicable) → Admin &amp; Operation (Role 20/32) → Purchase Head → QC &amp; Internal Audit → Management → Accounts (Payment) → Purchased (Asset Inventory)
+        </div>
     </div>
 
     <!-- Filter Card Wrapper (Matching flat-lists) -->
@@ -473,13 +476,33 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                                 $reqTotal = (float)($r['total_price'] ?? 0);
                                                 $isOver1Lac = ($reqTotal > 10000);
                                                 $isOpHeadUser = (in_array((int)$roleId, [20, 32], true) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head') !== false || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'admin & operation') !== false);
-                                                $isOpHeadApproved = (!empty($r['op_head_status']) && $r['op_head_status'] === 'approved');
+                                                $isOpHeadApproved = (!empty($r['op_head_status']) && $r['op_head_status'] === 'approved') || (!$isOver1Lac && $r['mgmt_status'] === 'approved');
+                                                $isAhApproved = (empty($r['approval_request_id']) || ($r['accounts_head_status'] ?? '') === 'approved');
                                                 $rowDhStatus = $r['dept_head_status'] ?? 'not_required';
+                                                $overrideWarningStage = '';
                                                 
-                                                if (!$isCreator && $r['overall_status'] !== 'rejected') {
-                                                    if (($isReporterBoss || $isAdminOrMgmt) && $rowDhStatus === 'pending') {
+                                                if ($isAdminOrMgmt && $r['mgmt_status'] === 'pending' && $r['overall_status'] !== 'rejected') {
+                                                    // Management (DCEO / CEO / Director / Super Admin) can approve at any stage (auto-fills prior stages with Management Override)
+                                                    $canApprove = true; $step = 'mgmt';
+                                                    if ($rowDhStatus === 'pending') {
+                                                        $overrideWarningStage = 'Department Head';
+                                                    } elseif (($r['it_head_status'] ?? 'not_required') === 'pending') {
+                                                        $overrideWarningStage = 'IT Head';
+                                                    } elseif (($r['operations_status'] ?? 'pending') === 'pending') {
+                                                        $overrideWarningStage = 'Admin & Operation';
+                                                    } elseif (($r['purchase_head_status'] ?? 'pending') === 'pending') {
+                                                        $overrideWarningStage = 'Purchase Head';
+                                                    } elseif (($r['qc_audit_status'] ?? 'pending') === 'pending') {
+                                                        $overrideWarningStage = 'QC & Internal Audit';
+                                                    } elseif (!$isOpHeadApproved) {
+                                                        $overrideWarningStage = 'Head of Operation';
+                                                    } elseif (!$isAhApproved) {
+                                                        $overrideWarningStage = 'Accounts Head';
+                                                    }
+                                                } elseif (!$isCreator && $r['overall_status'] !== 'rejected') {
+                                                    if ($isReporterBoss && $rowDhStatus === 'pending') {
                                                         $canApprove = true; $step = 'dept_head';
-                                                    } elseif (($userId === 242 || $isAdminOrMgmt) && in_array($rowDhStatus, ['approved', 'not_required']) && ($r['it_head_status'] ?? '') === 'pending') {
+                                                    } elseif ($userId === 242 && in_array($rowDhStatus, ['approved', 'not_required']) && ($r['it_head_status'] ?? '') === 'pending') {
                                                         $canApprove = true; $step = 'it_head';
                                                     } elseif ($isOperations && in_array($rowDhStatus, ['approved', 'not_required']) && in_array(($r['it_head_status'] ?? 'not_required'), ['approved', 'not_required']) && $r['operations_status'] === 'pending') {
                                                         $canApprove = true; $step = 'operations';
@@ -488,28 +511,15 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                                     } elseif ($isQcAudit && $r['purchase_head_status'] === 'approved' && $r['qc_audit_status'] === 'pending') {
                                                         $canApprove = true; $step = 'qc_audit';
                                                     } elseif ($r['qc_audit_status'] === 'approved' && $r['mgmt_status'] === 'pending') {
-                                                        if ($isOver1Lac) {
-                                                            if (!$isOpHeadApproved) {
-                                                                if ($isOpHeadUser) {
-                                                                    $canApprove = true; $step = 'mgmt';
-                                                                }
-                                                            } else {
-                                                                if ($isManagement) {
-                                                                    $canApprove = true; $step = 'mgmt';
-                                                                }
-                                                            }
-                                                        } else {
-                                                            if ($isManagement || $isOpHeadUser) {
-                                                                $canApprove = true; $step = 'mgmt';
-                                                            }
+                                                        if (!$isOpHeadApproved && $isOpHeadUser) {
+                                                            $canApprove = true; $step = 'mgmt';
                                                         }
                                                     }
                                                 }
                                                 
-                                                $isAhApproved = (empty($r['approval_request_id']) || ($r['accounts_head_status'] ?? '') === 'approved');
-                                                $canPay = !empty($isAccounts) && $r['mgmt_status'] === 'approved' && $r['payment_status'] === 'unpaid' && $isAhApproved;
-                                                $isWaitingAccountsHead = !empty($isAccounts) && $r['mgmt_status'] === 'approved' && $r['payment_status'] === 'unpaid' && !$isAhApproved;
-                                                $canApproveAh = in_array((int)($_SESSION['user']['role_id'] ?? 0), [30, 1, 3]) && $r['mgmt_status'] === 'approved' && $r['payment_status'] === 'unpaid' && !$isAhApproved && !empty($r['approval_request_id']);
+                                                $canPay = !empty($isAccounts) && ($r['mgmt_status'] === 'approved' || $r['overall_status'] === 'approved') && $r['payment_status'] === 'unpaid' && $isAhApproved;
+                                                $isWaitingAccountsHead = ($r['qc_audit_status'] === 'approved' && $isOpHeadApproved && $r['payment_status'] === 'unpaid' && !$isAhApproved);
+                                                $canApproveAh = (in_array((int)($_SESSION['user']['role_id'] ?? 0), [30, 1, 3, 38]) || strpos($roleNameSession, 'accounts head') !== false) && $r['qc_audit_status'] === 'approved' && $isOpHeadApproved && $r['payment_status'] === 'unpaid' && !$isAhApproved && !empty($r['approval_request_id']);
                                                 $canConfirmPurchase = !empty($isOperations) && $r['payment_status'] === 'paid' && $r['overall_status'] === 'paid';
 
                                                 // Creator or Admin can delete BEFORE any approval step has passed
@@ -517,6 +527,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                                 $canDelete = ($isCreator || $isAdminOrMgmt) && $isInitialPending;
                                                 $r['can_approve'] = $canApprove;
                                                 $r['approval_step'] = $step;
+                                                $r['override_warning_stage'] = $overrideWarningStage;
                                                 $r['can_pay'] = $canPay;
                                                 $r['can_approve_ah'] = $canApproveAh;
                                                 $r['is_waiting_ah'] = $isWaitingAccountsHead;
@@ -540,36 +551,32 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                                     </a>
                                                 <?php endif; ?>
 
-                                                <?php if ($canApprove): ?>
-                                                    <button type="button" class="btn btn-sm btn-outline-success btn-icon" title="Approve"
-                                                        onclick="openApprovalModal(<?= $r['id'] ?>, 'approved', '<?= $step ?>')">
-                                                        <i class="fa-solid fa-check"></i>
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-outline-danger btn-icon" title="Reject"
-                                                        onclick="openApprovalModal(<?= $r['id'] ?>, 'rejected', '<?= $step ?>')">
-                                                        <i class="fa-solid fa-xmark"></i>
-                                                    </button>
-                                                <?php elseif ($isOver1Lac && !$isOpHeadApproved && $r['qc_audit_status'] === 'approved' && $r['mgmt_status'] === 'pending' && $isManagement): ?>
-                                                    <span class="badge bg-light text-muted border px-2 py-1 extra-small" title="Requests over ৳10,000 require Admin & Operation Head approval first">
-                                                        <i class="fa-solid fa-lock me-1 text-warning"></i> Awaiting Op Head (>10K)
-                                                    </span>
-                                                <?php elseif ($isOver1Lac && $isOpHeadApproved && !$isAhApproved && $r['qc_audit_status'] === 'approved' && $r['mgmt_status'] === 'pending' && $isManagement): ?>
-                                                    <span class="badge bg-light text-muted border px-2 py-1 extra-small" title="Requests over ৳10,000 require Accounts Head verification first">
-                                                        <i class="fa-solid fa-lock me-1 text-warning"></i> Awaiting Accounts Head
-                                                    </span>
-                                                <?php elseif ($canApproveAh): ?>
+                                                <?php if ($canApproveAh): ?>
                                                     <button type="button" class="btn btn-sm btn-primary" title="Approve as Accounts Head"
                                                         onclick="triggerAhApprove(<?= (int)$r['approval_request_id'] ?>)">
                                                         <i class="fa-solid fa-stamp me-1"></i> AH Approve
                                                     </button>
-                                                <?php elseif ($isWaitingAccountsHead): ?>
-                                                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1 extra-small" title="Pending Accounts Head approval (Md. Mamunoor Rashid [1309])">
+                                                <?php endif; ?>
+
+                                                <?php if ($canApprove): ?>
+                                                    <button type="button" class="btn btn-sm btn-outline-success btn-icon" title="Approve"
+                                                        onclick="openApprovalModal(<?= $r['id'] ?>, 'approved', '<?= $step ?>', '<?= htmlspecialchars($overrideWarningStage, ENT_QUOTES, 'UTF-8') ?>')">
+                                                        <i class="fa-solid fa-check"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger btn-icon" title="Reject"
+                                                        onclick="openApprovalModal(<?= $r['id'] ?>, 'rejected', '<?= $step ?>', '')">
+                                                        <i class="fa-solid fa-xmark"></i>
+                                                    </button>
+                                                <?php elseif ($isWaitingAccountsHead && !$canApproveAh): ?>
+                                                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1 extra-small" title="Pending Accounts Head approval (Role 30)">
                                                         <i class="fa-solid fa-lock me-1"></i> Pending AH
                                                     </span>
-                                                <?php elseif ($canPay): ?>
-                                                    <button type="button" class="btn btn-sm btn-outline-primary" title="Process Payment"
+                                                <?php endif; ?>
+
+                                                <?php if ($canPay): ?>
+                                                    <button type="button" class="btn btn-sm btn-success" title="Disburse / Process Payment"
                                                         onclick="openPaymentModal(<?= $r['id'] ?>, <?= (float)$r['total_price'] ?>)">
-                                                        <i class="fa-solid fa-money-bill me-1"></i> Pay
+                                                        <i class="fa-solid fa-money-bill-wave me-1"></i> Pay / Disburse
                                                     </button>
                                                 <?php elseif ($canConfirmPurchase): ?>
                                                     <button type="button" class="btn btn-sm btn-outline-success" title="Mark as Purchased"
@@ -596,6 +603,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
             </div>
         </div>
     </div>
+</div>
 
 <?php if (!empty($canCreate)): ?>
 <!-- ========================================================================= -->
@@ -609,10 +617,10 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                     <h5 class="modal-title">New Office Procurement Request</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
-                    <div class="row ">
+                <div class="modal-body p-4">
+                    <div class="row g-3">
                         <div class="col-md-12">
-                            <label class="form-label">Department</label>
+                            <label class="form-label mb-1">Department</label>
                             <select name="department_id" class="form-select">
                                 <option value="">-- Select Department --</option>
                                 <?php 
@@ -625,7 +633,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div class="col-md-12 mt-2">
+                        <div class="col-md-12">
                             <?= renderCOADropdown($coaList ?? [], null, 'account_id', false, 'officeproc') ?>
                         </div>
                         <div class="col-md-6">
@@ -941,43 +949,42 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
 <!-- MODAL: DETAIL VIEW (Professional) -->
 <!-- ========================================================================= -->
 <div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header border-0 pb-0">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable" style="max-width: 1180px;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 14px;">
+            <div class="modal-header border-bottom py-3 px-4 bg-light" style="border-radius: 14px 14px 0 0;">
                 <div>
                     <h5 class="modal-title fw-bold mb-0" id="detailTitle">Purchase Request #1</h5>
                     <small class="text-muted" id="detailDate"></small>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body pt-2" id="detailModalBody">
+            <div class="modal-body p-4" id="detailModalBody">
                 <!-- Filled by JS -->
             </div>
-            <div class="modal-footer border-0 pt-0">
-                <button type="button" class="btn btn-light btn-sm px-4" data-bs-dismiss="modal">Close</button>
+            <div class="modal-footer border-top py-2.5 px-4 bg-light" style="border-radius: 0 0 14px 14px;">
+                <button type="button" class="btn btn-secondary btn-sm px-4 fw-semibold" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
 </div>
 
 <style>
-.approval-pipeline { display: flex; align-items: flex-start; justify-content: space-between; position: relative; padding: 0 10px; margin: 20px 0 10px; }
-.approval-pipeline::before { content: ''; position: absolute; top: 20px; left: 40px; right: 40px; height: 3px; background: #e9ecef; z-index: 0; }
-.approval-step { text-align: center; position: relative; z-index: 1; flex: 1; }
-.step-circle { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; font-weight: 700; font-size: 14px; border: 3px solid #e9ecef; background: #fff; transition: all 0.3s; }
-.step-circle.pending { border-color: #ffc107; color: #ffc107; background: #fff8e1; }
-.step-circle.approved { border-color: #198754; color: #fff; background: #198754; }
-.step-circle.rejected { border-color: #dc3545; color: #fff; background: #dc3545; }
-.step-circle.waiting { border-color: #0d6efd; color: #0d6efd; background: #e7f1ff; animation: pulse-ring 1.5s infinite; }
-@keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(13,110,253,0.4); } 70% { box-shadow: 0 0 0 8px rgba(13,110,253,0); } 100% { box-shadow: 0 0 0 0 rgba(13,110,253,0); } }
-.step-label { font-size: 11px; font-weight: 600; color: #495057; }
-.step-person { font-size: 10px; color: #6c757d; margin-top: 2px; }
-.step-time { font-size: 9px; color: #adb5bd; margin-top: 1px; }
-.detail-info-card { background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%); border: 1px solid #e9ecef; border-radius: 10px; padding: 16px; }
-.detail-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #6c757d; margin-bottom: 2px; }
-.detail-value { font-size: 13px; font-weight: 600; color: #212529; }
-.next-step-banner { border-radius: 8px; padding: 10px 16px; display: flex; align-items: center; gap: 10px; }
+.detail-info-card { background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%); border: 1px solid #e9ecef; border-radius: 12px; padding: 20px; }
+.detail-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #6c757d; margin-bottom: 4px; }
+.detail-value { font-size: 13px; font-weight: 600; color: #212529; line-height: 1.4; }
+.next-step-banner { border-radius: 10px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
 .next-step-banner i { font-size: 18px; }
+.ep-timeline-card { background: #fff; border: 1px solid #e9ecef; border-radius: 12px; padding: 20px; }
+.ep-timeline-item { display: flex; gap: 14px; position: relative; padding-bottom: 18px; align-items: flex-start; }
+.ep-timeline-item:last-child { padding-bottom: 0; }
+.ep-timeline-item:not(:last-child)::before { content: ''; position: absolute; left: 16px; top: 34px; bottom: 0; width: 2px; background: #e9ecef; z-index: 0; }
+.ep-timeline-item.ep-step-approved:not(:last-child)::before { background: #198754; }
+.ep-timeline-circle { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; z-index: 1; font-size: 13px; font-weight: 700; border: 2px solid #dee2e6; background: #f8f9fa; color: #6c757d; }
+.ep-timeline-circle.approved { background: #198754; border-color: #198754; color: #fff; }
+.ep-timeline-circle.rejected { background: #dc3545; border-color: #dc3545; color: #fff; }
+.ep-timeline-circle.waiting { background: #fff8e1; border-color: #ffc107; color: #d97706; animation: ep-pulse-ring 1.5s infinite; }
+.ep-timeline-circle.pending { background: #f8f9fa; border-color: #dee2e6; color: #adb5bd; }
+@keyframes ep-pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(245,158,11,0.45); } 70% { box-shadow: 0 0 0 7px rgba(245,158,11,0); } 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); } }
 </style>
 
 <script>
@@ -1015,9 +1022,10 @@ function openDeleteRequestModal(id) {
     new bootstrap.Modal(document.getElementById('deleteRequestModal')).show();
 }
 
-function openApprovalModal(id, status, step) {
+function openApprovalModal(id, status, step, overrideStage) {
     var form = document.getElementById('approvalForm');
     form.action = '<?= $GLOBALS['base_url'] ?>/asset-extra-purchases/approve/' + id;
+    form.setAttribute('data-override-stage', overrideStage || '');
     document.getElementById('approvalStatus').value = status;
     document.getElementById('approvalStep').value = step;
     
@@ -1035,6 +1043,65 @@ function openApprovalModal(id, status, step) {
     btn.textContent = status === 'approved' ? 'Approve' : 'Reject';
     
     new bootstrap.Modal(document.getElementById('approvalModal')).show();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var approvalFormEl = document.getElementById('approvalForm');
+    if (approvalFormEl) {
+        approvalFormEl.addEventListener('submit', function(e) {
+            var statusVal = document.getElementById('approvalStatus').value;
+            var overrideStage = approvalFormEl.getAttribute('data-override-stage') || '';
+            if (statusVal === 'approved' && overrideStage !== '' && !approvalFormEl.getAttribute('data-confirmed-override')) {
+                e.preventDefault();
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Pending ' + overrideStage + "'s Approval",
+                        html: 'This purchase request is pending for <strong>' + overrideStage + "'s</strong> approval. Are you ready to approve for <strong>" + overrideStage + '</strong> first?<br><small class="text-muted d-block mt-2">Your name will be recorded as the approver for all bypassed stages as well as final Management approval.</small>',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#198754',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Yes, Approve All Stages'
+                    }).then(function(result) {
+                        if (result.isConfirmed) {
+                            approvalFormEl.setAttribute('data-confirmed-override', '1');
+                            approvalFormEl.submit();
+                        }
+                    });
+                } else if (confirm("Pending " + overrideStage + "'s Approval. Are you ready to approve all bypassed stages and complete final Management approval?")) {
+                    approvalFormEl.setAttribute('data-confirmed-override', '1');
+                    approvalFormEl.submit();
+                }
+            }
+        });
+    }
+});
+
+function submitDetailInlineApproval(id, overrideStage) {
+    document.getElementById('detailApprovalStatus_' + id).value = 'approved';
+    var form = document.getElementById('detailInlineApprovalForm');
+    if (!form) return;
+    if (overrideStage && overrideStage !== '') {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Pending ' + overrideStage + "'s Approval",
+                html: 'This purchase request is pending for <strong>' + overrideStage + "'s</strong> approval. Are you ready to approve for <strong>" + overrideStage + '</strong> first?<br><small class="text-muted d-block mt-2">Your name will be recorded as the approver for all bypassed stages as well as final Management approval.</small>',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#198754',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, Approve All Stages'
+            }).then(function(result) {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+            return;
+        } else if (!confirm("Pending " + overrideStage + "'s Approval. Are you ready to approve all bypassed stages and complete final Management approval?")) {
+            return;
+        }
+    }
+    form.submit();
 }
 
 function openPaymentModal(id, amount) {
@@ -1057,7 +1124,8 @@ function getStepClass(status) {
 function getStepIcon(status) {
     if (status === 'approved') return '<i class="fa-solid fa-check"></i>';
     if (status === 'rejected') return '<i class="fa-solid fa-xmark"></i>';
-    return '<i class="fa-solid fa-clock"></i>';
+    if (status === 'waiting') return '<i class="fa-solid fa-clock"></i>';
+    return '<i class="fa-solid fa-hourglass-start"></i>';
 }
 
 function formatDate(dateStr) {
@@ -1067,6 +1135,12 @@ function formatDate(dateStr) {
 }
 
 function getNextStep(data) {
+    var isOver10K = parseFloat(data.total_price || 0) > 10000.01;
+    var isPaidOrDone = (data.payment_status === 'paid' || data.overall_status === 'paid' || data.overall_status === 'purchased');
+    var isOpHeadPostQcApproved = (data.op_head_status === 'approved') || (!isOver10K && data.mgmt_status === 'approved') || isPaidOrDone;
+    var isAhApproved = (data.accounts_head_status === 'approved') || isPaidOrDone;
+    var isMgmtApproved = (data.mgmt_status === 'approved') || isPaidOrDone;
+
     var isRejected = (data.overall_status === 'rejected' || data.dept_head_status === 'rejected' || data.it_head_status === 'rejected' || data.operations_status === 'rejected' || data.purchase_head_status === 'rejected' || data.qc_audit_status === 'rejected' || data.mgmt_status === 'rejected' || data.op_head_status === 'rejected' || data.accounts_head_status === 'rejected');
     
     if (isRejected) {
@@ -1100,7 +1174,7 @@ function getNextStep(data) {
             rejAt = data.qc_audit_at;
             rejNote = data.qc_audit_note;
         } else if (data.op_head_status === 'rejected') {
-            rejStep = 'Admin & Operation Head (>10K)';
+            rejStep = 'Operation Head';
             rejBy = data.op_head_by_name || 'Operation Head';
             rejAt = data.op_head_at;
             rejNote = data.op_head_note;
@@ -1110,7 +1184,7 @@ function getNextStep(data) {
             rejAt = data.accounts_head_at;
             rejNote = data.accounts_head_note;
         } else if (data.mgmt_status === 'rejected') {
-            rejStep = 'Management';
+            rejStep = 'Management / DCEO';
             rejBy = data.mgmt_by_name || 'Management';
             rejAt = data.mgmt_at;
             rejNote = data.mgmt_note;
@@ -1137,12 +1211,15 @@ function getNextStep(data) {
     }
     if (data.overall_status === 'purchased') return { text: 'Completed — Payment processed & assets registered', color: 'success', icon: 'fa-circle-check' };
     if (data.dept_head_status === 'pending') return { text: 'Waiting for Department Head / Reporting Boss approval', color: 'info', icon: 'fa-hourglass-half' };
-    if (data.operations_status === 'pending') return { text: 'Waiting for Admin & Operation (Role 20 / 32) approval', color: 'secondary', icon: 'fa-hourglass-half' };
+    if (data.it_head_status === 'pending') return { text: 'Waiting for IT Head approval', color: 'info', icon: 'fa-hourglass-half' };
+    if (data.operations_status === 'pending') return { text: 'Waiting for Admin & Operation (Role 20 / 32) initial review', color: 'secondary', icon: 'fa-hourglass-half' };
     if (data.purchase_head_status === 'pending') return { text: 'Waiting for Purchase Head (Role 17, 31) approval', color: 'primary', icon: 'fa-hourglass-half' };
     if (data.qc_audit_status === 'pending') return { text: 'Waiting for QC & Internal Audit review', color: 'info', icon: 'fa-hourglass-half' };
-    if (data.mgmt_status === 'pending') return { text: 'Waiting for Management approval', color: 'warning', icon: 'fa-hourglass-half' };
+    if (!isOpHeadPostQcApproved) return { text: 'Waiting for Operation Head (Role 20 / 32) approval', color: 'warning', icon: 'fa-hourglass-half' };
+    if (!isAhApproved) return { text: 'Waiting for Accounts Head (Role 30) verification & approval', color: 'warning', icon: 'fa-hourglass-half' };
+    if (isOver10K && !isMgmtApproved) return { text: 'Waiting for DCEO / Management final approval (> ৳10,000)', color: 'warning', icon: 'fa-hourglass-half' };
     if (data.payment_status === 'unpaid') return { text: 'Approved — Waiting for Accounts to process payment', color: 'success', icon: 'fa-money-bill-wave' };
-    return { text: 'Processing', color: 'info', icon: 'fa-clock' };
+    return { text: 'Payment Disbursed — Waiting for Purchase & Asset Confirmation', color: 'primary', icon: 'fa-box-open' };
 }
 
 function getStepTitle(step, data) {
@@ -1150,17 +1227,17 @@ function getStepTitle(step, data) {
         var isOver1L = data && (parseFloat(data.total_price) > 10000.01);
         var opDone = data && (String(data.op_head_status).toLowerCase() === 'approved');
         if (isOver1L) {
-            if (!opDone) return 'Admin & Operation Head Approval (Stage 1: > ৳10,000)';
-            return 'Management Final Approval (Stage 2: > ৳10,000)';
+            if (!opDone) return 'Operation Head Approval (Post-QC)';
+            return 'DCEO / Management Final Approval (> ৳10,000)';
         }
-        return 'Management / Operation Head Approval (Within ৳10,000)';
+        return 'Operation Head Approval (≤ ৳10,000)';
     }
     var titles = {
         'dept_head': 'Department Head / Reporting Boss Approval',
-        'operations': 'Admin & Operation Approval (Role 20 / 32)',
+        'operations': 'Admin & Operation Initial Review (Role 20 / 32)',
         'purchase_head': 'Purchase Head Approval (Role 17, 31)',
         'qc_audit': 'QC & Internal Audit Review',
-        'mgmt': 'Management Approval'
+        'mgmt': 'DCEO / Management Approval'
     };
     return titles[step] || 'Step Approval';
 }
@@ -1175,28 +1252,57 @@ function renderDetailModal(data) {
     document.getElementById('detailDate').textContent = 'Submitted on ' + formatDate(data.created_at);
 
     var nextStep = getNextStep(data);
-    
+    var isOver10K = parseFloat(data.total_price || 0) > 10000.01;
+    var isPaidOrDone = (data.payment_status === 'paid' || data.overall_status === 'paid' || data.overall_status === 'purchased');
+
+    // Post-QC Operation Head resolution (for <= 10K, Operation Head approval may have populated mgmt_status/mgmt_by_name)
+    var isOpHeadPostQcApproved = (data.op_head_status === 'approved') || (!isOver10K && data.mgmt_status === 'approved') || isPaidOrDone;
+    var isOpHeadPostQcRejected = (data.op_head_status === 'rejected') || (!isOver10K && data.mgmt_status === 'rejected');
+    var opPostQcName = data.op_head_by_name || (!isOver10K ? data.mgmt_by_name : '') || (isOpHeadPostQcApproved ? 'Admin & Operation Head' : '');
+    var opPostQcAt = data.op_head_at || (!isOver10K ? data.mgmt_at : '') || '';
+    var opPostQcNote = data.op_head_note || (!isOver10K ? data.mgmt_note : '') || '';
+
+    var isAhApproved = (data.accounts_head_status === 'approved') || isPaidOrDone;
+    var isAhRejected = (data.accounts_head_status === 'rejected');
+    var ahName = data.accounts_head_by_name || (isAhApproved ? 'Accounts Head' : '');
+    var ahAt = data.accounts_head_at || '';
+    var ahNote = data.accounts_head_note || '';
+
+    // Management / DCEO step: shown for > 10,000, or if a distinct Management user approved/rejected
+    var showMgmtStep = isOver10K || (data.op_head_status === 'approved' && (data.mgmt_status === 'approved' || data.mgmt_status === 'rejected'));
+    var isMgmtApproved = (data.mgmt_status === 'approved') || (isOver10K && isPaidOrDone);
+    var isMgmtRejected = (data.mgmt_status === 'rejected');
+
     var dhClass = getStepClass(data.dept_head_status);
+    var itClass = getStepClass(data.it_head_status);
     var opClass = getStepClass(data.operations_status);
     var phClass = getStepClass(data.purchase_head_status);
     var qcClass = getStepClass(data.qc_audit_status);
-    var mgClass = getStepClass(data.mgmt_status);
-    var ahClass = (data.accounts_head_status === 'approved') ? 'approved' : ((data.accounts_head_status === 'rejected') ? 'rejected' : 'pending');
-    var pyClass = data.payment_status === 'paid' ? 'approved' : 'pending';
+    var opPostQcClass = isOpHeadPostQcApproved ? 'approved' : (isOpHeadPostQcRejected ? 'rejected' : 'pending');
+    var ahClass = isAhApproved ? 'approved' : (isAhRejected ? 'rejected' : 'pending');
+    var mgClass = isMgmtApproved ? 'approved' : (isMgmtRejected ? 'rejected' : 'pending');
+    var pyClass = isPaidOrDone ? 'approved' : 'pending';
     var pcClass = data.overall_status === 'purchased' ? 'approved' : 'pending';
-    
-    // Add "waiting" animation to the current active step
-    var itClass = getStepClass(data.it_head_status);
+
+    // Highlight current waiting step in the sequence
     if (data.overall_status !== 'rejected' && data.overall_status !== 'purchased') {
         if (data.dept_head_status === 'pending') dhClass = 'waiting';
         else if (data.it_head_status === 'pending') itClass = 'waiting';
         else if (data.operations_status === 'pending') opClass = 'waiting';
         else if (data.purchase_head_status === 'pending') phClass = 'waiting';
         else if (data.qc_audit_status === 'pending') qcClass = 'waiting';
-        else if (data.mgmt_status === 'pending') mgClass = 'waiting';
-        else if (data.mgmt_status === 'approved' && data.accounts_head_status !== 'approved') ahClass = 'waiting';
-        else if (data.payment_status === 'unpaid') pyClass = 'waiting';
-        else if (data.overall_status !== 'purchased' && data.payment_status === 'paid') pcClass = 'waiting';
+        else if (!isOpHeadPostQcApproved) opPostQcClass = 'waiting';
+        else if (!isAhApproved) ahClass = 'waiting';
+        else if (showMgmtStep && !isMgmtApproved) mgClass = 'waiting';
+        else if (!isPaidOrDone) pyClass = 'waiting';
+        else if (data.overall_status !== 'purchased') pcClass = 'waiting';
+    }
+
+    function buildStepBadge(cls, customText) {
+        if (cls === 'approved') return `<span class="badge bg-success-subtle text-success border border-success-subtle fs-10">${customText || 'Approved'}</span>`;
+        if (cls === 'rejected') return `<span class="badge bg-danger-subtle text-danger border border-danger-subtle fs-10">${customText || 'Rejected'}</span>`;
+        if (cls === 'waiting') return `<span class="badge bg-warning-subtle text-dark border border-warning-subtle fs-10">${customText || 'Awaiting Action'}</span>`;
+        return `<span class="badge bg-light text-muted border fs-10">${customText || 'Pending'}</span>`;
     }
 
     var body = document.getElementById('detailModalBody');
@@ -1211,173 +1317,306 @@ function renderDetailModal(data) {
             </div>
         </div>
 
-        <!-- Request Info Card -->
-        <div class="detail-info-card mb-3">
-            <div class="row g-2">
-                <div class="col-md-4">
-                    <div class="detail-label">Project</div>
-                    <div class="detail-value"><i class="fa-solid fa-building text-primary me-1 fs-11"></i>${data.project_name || '—'}</div>
-                </div>
-                <div class="col-md-4">
-                    <div class="detail-label">Location</div>
-                    <div class="detail-value"><i class="fa-solid fa-location-dot text-info me-1 fs-11"></i>${data.branch_name || data.asset_location || '—'}</div>
-                </div>
-                <div class="col-md-4">
-                    <div class="detail-label">Requested By</div>
-                    <div class="detail-value"><i class="fa-solid fa-user text-secondary me-1 fs-11"></i>${data.requested_by_name || '—'}</div>
-                </div>
-                <div class="col-md-4 mt-2">
-                    <div class="detail-label">Assign To</div>
-                    <div class="detail-value"><i class="fa-solid fa-user-check text-success me-1 fs-11"></i>${data.assigned_to_name || '—'}</div>
-                </div>
-                <div class="col-md-4 mt-2">
-                    <div class="detail-label">Vendor</div>
-                    <div class="detail-value"><i class="fa-solid fa-store text-warning me-1 fs-11"></i>${data.vendor_name || '—'}</div>
-                </div>
-                <div class="col-md-8 mt-2">
-                    <div class="detail-label">Item</div>
-                    <div class="detail-value">
-                        ${data.item_name || '—'}
-                        ${data.category_name ? `<br><small class="text-muted fs-10">${data.category_name}</small>` : ''}
+        <div class="row g-4 align-items-start">
+            <!-- LEFT COLUMN: Request Info + Documents + Notes -->
+            <div class="col-lg-6">
+                <div class="detail-info-card">
+                    <div class="d-flex align-items-center justify-content-between border-bottom pb-2 mb-3">
+                        <span class="fw-bold fs-13 text-dark"><i class="fa-solid fa-circle-info text-primary me-1.5"></i>Request Information</span>
+                        <span class="badge ${isOver10K ? 'bg-warning-subtle text-dark border border-warning-subtle' : 'bg-info-subtle text-info border border-info-subtle'} fs-10">
+                            ${isOver10K ? '> ৳10,000 Flow (DCEO / Mgmt Required)' : '≤ ৳10,000 Flow'}
+                        </span>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <div class="detail-label">Project</div>
+                            <div class="detail-value"><i class="fa-solid fa-building text-primary me-1 fs-11"></i>${data.project_name || '—'}</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="detail-label">Location</div>
+                            <div class="detail-value"><i class="fa-solid fa-location-dot text-info me-1 fs-11"></i>${data.branch_name || data.asset_location || '—'}</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="detail-label">Requested By</div>
+                            <div class="detail-value"><i class="fa-solid fa-user text-secondary me-1 fs-11"></i>${data.requested_by_name || '—'}</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="detail-label">Assign To</div>
+                            <div class="detail-value"><i class="fa-solid fa-user-check text-success me-1 fs-11"></i>${data.assigned_to_name || '—'}</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="detail-label">Vendor</div>
+                            <div class="detail-value"><i class="fa-solid fa-store text-warning me-1 fs-11"></i>${data.vendor_name || '—'}</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="detail-label">Item & Category</div>
+                            <div class="detail-value">
+                                ${data.item_name || '—'}
+                                ${data.category_name ? `<br><small class="text-muted fs-10">${data.category_name}</small>` : ''}
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="detail-label">Quantity</div>
+                            <div class="detail-value">${data.quantity} pcs</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="detail-label">Total Amount</div>
+                            <div class="detail-value text-success fs-15 fw-bold">৳ ${parseFloat(data.total_price || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
+                        </div>
+                        ${isPaidOrDone ? `
+                        <div class="col-sm-6">
+                            <div class="detail-label text-success">Paid Amount</div>
+                            <div class="detail-value text-success fw-bold">৳ ${parseFloat(data.paid_amount || data.total_price || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="detail-label text-muted">Payment Method</div>
+                            <div class="detail-value text-muted"><span class="badge bg-light text-dark border">${data.payment_method || 'Cash'}</span></div>
+                        </div>
+                        ` : ''}
+                        ${parseFloat(data.return_amount || 0) > 0 ? `
+                        <div class="col-sm-6">
+                            <div class="detail-label text-danger">Returned Bal.</div>
+                            <div class="detail-value text-danger">৳ ${parseFloat(data.return_amount || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="detail-label text-primary">Spent Amount</div>
+                            <div class="detail-value text-primary">৳ ${(parseFloat(data.paid_amount || 0) - parseFloat(data.return_amount || 0)).toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
+                        </div>
+                        ` : ''}
+                        <div class="col-12">
+                            <div class="detail-label">Justification</div>
+                            <div class="bg-white border rounded-2 p-2.5 px-3 fs-12 mt-1 lh-base">${data.justification || 'No justification provided.'}</div>
+                        </div>
                     </div>
                 </div>
-                <div class="col-md-3 mt-2">
-                    <div class="detail-label">Quantity</div>
-                    <div class="detail-value">${data.quantity} pcs</div>
-                </div>
-                <div class="col-md-3 mt-2">
-                    <div class="detail-label">Total Amount</div>
-                    <div class="detail-value text-success">৳ ${parseFloat(data.total_price || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
-                </div>
-                ${(data.payment_status === 'paid' || data.overall_status === 'paid' || data.overall_status === 'purchased') ? `
-                <div class="col-md-3 mt-2">
-                    <div class="detail-label text-success">Paid Amount</div>
-                    <div class="detail-value text-success fw-bold">৳ ${parseFloat(data.paid_amount || data.total_price || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
-                </div>
-                <div class="col-md-3 mt-2">
-                    <div class="detail-label text-muted">Payment Method</div>
-                    <div class="detail-value text-muted"><span class="badge bg-light text-dark border">${data.payment_method || 'Cash'}</span></div>
+
+                <!-- Approval Notes (if any) -->
+                ${(data.dept_head_note || data.it_head_note || data.operations_note || data.op_head_note || data.purchase_head_note || data.qc_audit_note || data.mgmt_note || data.accounts_head_note || data.purchase_note || data.return_note) ? `
+                <div class="detail-info-card mt-3">
+                    <div class="detail-label mb-2">APPROVAL / REJECTION NOTES</div>
+                    <div class="d-flex flex-column gap-1.5 lh-base">
+                        ${data.dept_head_note ? '<div class="fs-12"><strong class="text-info">Dept Head:</strong> ' + data.dept_head_note + '</div>' : ''}
+                        ${data.it_head_note ? '<div class="fs-12"><strong class="text-info">IT Head:</strong> ' + data.it_head_note + '</div>' : ''}
+                        ${data.operations_note ? '<div class="fs-12"><strong class="text-secondary">Admin & Operation (Initial):</strong> ' + data.operations_note + '</div>' : ''}
+                        ${data.purchase_head_note ? '<div class="fs-12"><strong class="text-primary">Purchase Head:</strong> ' + data.purchase_head_note + '</div>' : ''}
+                        ${data.qc_audit_note ? '<div class="fs-12"><strong class="text-info">QC & Audit:</strong> ' + data.qc_audit_note + '</div>' : ''}
+                        ${opPostQcNote ? '<div class="fs-12"><strong class="text-primary">Operation Head:</strong> ' + opPostQcNote + '</div>' : ''}
+                        ${ahNote ? '<div class="fs-12"><strong class="text-dark">Accounts Head:</strong> ' + ahNote + '</div>' : ''}
+                        ${(showMgmtStep && data.mgmt_note) ? '<div class="fs-12"><strong class="text-warning">DCEO / Management:</strong> ' + data.mgmt_note + '</div>' : ''}
+                        ${data.purchase_note ? '<div class="fs-12"><strong class="text-success">Operations / Purchaser:</strong> ' + data.purchase_note + '</div>' : ''}
+                        ${data.return_note ? '<div class="fs-12"><strong class="text-danger">Return Note:</strong> ' + data.return_note + '</div>' : ''}
+                    </div>
                 </div>
                 ` : ''}
-                ${parseFloat(data.return_amount || 0) > 0 ? `
-                <div class="col-md-3 mt-2">
-                    <div class="detail-label text-danger">Returned Bal.</div>
-                    <div class="detail-value text-danger">৳ ${parseFloat(data.return_amount || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
-                </div>
-                <div class="col-md-3 mt-2">
-                    <div class="detail-label text-primary">Spent Amount</div>
-                    <div class="detail-value text-primary">৳ ${(parseFloat(data.paid_amount || 0) - parseFloat(data.return_amount || 0)).toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
+
+                <!-- Documents & Vouchers -->
+                ${(data.attachment || data.payment_attachment || data.purchase_document || data.purchase_head_document || isPaidOrDone) ? `
+                <div class="detail-info-card mt-3">
+                    <div class="detail-label mb-2">SUBMITTED DOCUMENTS & VOUCHERS</div>
+                    <div class="d-flex flex-wrap gap-2">
+                        ${isPaidOrDone ? '<a href="<?= $GLOBALS['base_url'] ?>/expense-adjustments/create?parent_type=extra_purchase&cashout_request_id=' + data.id + '&project_id=' + (data.project_id || '') + '" class="btn btn-sm btn-warning shadow-sm"><i class="fa-solid fa-sliders me-1"></i> Settlement / Adjustment</a>' : ''}
+                        ${isPaidOrDone ? '<a href="<?= $GLOBALS['base_url'] ?>/print-debit-voucher?module=project_extra_assets&id=' + data.id + '" target="_blank" class="btn btn-sm btn-primary shadow-sm"><i class="fa-solid fa-file-invoice-dollar me-1"></i> Print Debit Voucher</a>' : ''}
+                        ${data.attachment ? '<a href="<?= $GLOBALS['base_url'] ?>/' + data.attachment + '" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-file-pdf me-1"></i> Request Doc</a>' : ''}
+                        ${data.purchase_head_document ? '<a href="<?= $GLOBALS['base_url'] ?>/' + data.purchase_head_document + '" target="_blank" class="btn btn-sm btn-outline-info"><i class="fa-solid fa-file-invoice me-1"></i> Purchase Head Doc</a>' : ''}
+                        ${data.payment_attachment ? '<a href="<?= $GLOBALS['base_url'] ?>/' + data.payment_attachment + '" target="_blank" class="btn btn-sm btn-outline-success"><i class="fa-solid fa-receipt me-1"></i> Payment Receipt</a>' : ''}
+                        ${data.purchase_document ? '<a href="<?= $GLOBALS['base_url'] ?>/' + data.purchase_document + '" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fa-solid fa-file-invoice me-1"></i> Purchase Document</a>' : ''}
+                    </div>
                 </div>
                 ` : ''}
-                <div class="col-12 mt-2">
-                    <div class="detail-label">Justification</div>
-                    <div class="bg-white border rounded p-2 fs-12 mt-1">${data.justification || 'No justification provided.'}</div>
+            </div>
+
+            <!-- RIGHT COLUMN: Vertical Approval & Payment Timeline -->
+            <div class="col-lg-6">
+                <div class="ep-timeline-card">
+                    <div class="d-flex align-items-center justify-content-between border-bottom pb-2 mb-3">
+                        <span class="fw-bold fs-13 text-dark"><i class="fa-solid fa-timeline text-primary me-1.5"></i>Approval & Payment Timeline</span>
+                        <span class="text-muted fs-11">Sequential Verification Flow</span>
+                    </div>
+
+                    <!-- 1. Requested -->
+                    <div class="ep-timeline-item ep-step-approved">
+                        <div class="ep-timeline-circle approved"><i class="fa-solid fa-paper-plane"></i></div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center justify-content-between gap-2">
+                                <span class="fw-bold fs-13 text-dark">Requisition Submitted</span>
+                                ${buildStepBadge('approved', 'Submitted')}
+                            </div>
+                            <div class="fs-12 text-muted mt-0.5">
+                                Submitted by <strong>${data.requested_by_name || '—'}</strong>
+                                ${data.created_at ? ' • ' + formatDate(data.created_at) : ''}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Department Head -->
+                    ${data.dept_head_status !== 'not_required' ? `
+                    <div class="ep-timeline-item ${dhClass === 'approved' ? 'ep-step-approved' : ''}">
+                        <div class="ep-timeline-circle ${dhClass}">${getStepIcon(dhClass)}</div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center justify-content-between gap-2">
+                                <span class="fw-bold fs-13 text-dark">Department Head Approval</span>
+                                ${buildStepBadge(dhClass)}
+                            </div>
+                            <div class="fs-12 text-muted mt-0.5">
+                                ${data.dept_head_by_name ? `By <strong>${data.dept_head_by_name}</strong>` : (data.reporting_boss_name ? `Designated: <strong>${data.reporting_boss_name}</strong>` : 'Awaiting Department Head / Reporting Boss')}
+                                ${data.dept_head_at ? ' • ' + formatDate(data.dept_head_at) : ''}
+                            </div>
+                        </div>
+                    </div>
+                    ` : ''}
+
+                    <!-- 3. IT Head (if required) -->
+                    ${data.it_head_status !== 'not_required' ? `
+                    <div class="ep-timeline-item ${itClass === 'approved' ? 'ep-step-approved' : ''}">
+                        <div class="ep-timeline-circle ${itClass}">${getStepIcon(itClass)}</div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center justify-content-between gap-2">
+                                <span class="fw-bold fs-13 text-dark">IT Head Review</span>
+                                ${buildStepBadge(itClass)}
+                            </div>
+                            <div class="fs-12 text-muted mt-0.5">
+                                ${data.it_head_by_name ? `By <strong>${data.it_head_by_name}</strong>` : 'Awaiting IT Head verification'}
+                                ${data.it_head_at ? ' • ' + formatDate(data.it_head_at) : ''}
+                            </div>
+                        </div>
+                    </div>
+                    ` : ''}
+
+                    <!-- 4. Admin & Operation (Initial Review) -->
+                    <div class="ep-timeline-item ${opClass === 'approved' ? 'ep-step-approved' : ''}">
+                        <div class="ep-timeline-circle ${opClass}">${getStepIcon(opClass)}</div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center justify-content-between gap-2">
+                                <span class="fw-bold fs-13 text-dark">Admin & Operation Initial Review</span>
+                                ${buildStepBadge(opClass)}
+                            </div>
+                            <div class="fs-12 text-muted mt-0.5">
+                                ${data.operations_by_name ? `Verified by <strong>${data.operations_by_name}</strong>` : 'Awaiting Admin & Operation (Role 20 / 32) initial check'}
+                                ${data.operations_at ? ' • ' + formatDate(data.operations_at) : ''}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5. Purchase Head -->
+                    <div class="ep-timeline-item ${phClass === 'approved' ? 'ep-step-approved' : ''}">
+                        <div class="ep-timeline-circle ${phClass}">${getStepIcon(phClass)}</div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center justify-content-between gap-2">
+                                <span class="fw-bold fs-13 text-dark">Purchase Head Approval</span>
+                                ${buildStepBadge(phClass)}
+                            </div>
+                            <div class="fs-12 text-muted mt-0.5">
+                                ${data.purchase_head_by_name ? `Approved by <strong>${data.purchase_head_by_name}</strong>` : 'Awaiting Purchase Head (Role 17 / 31) quotation & approval'}
+                                ${data.purchase_head_at ? ' • ' + formatDate(data.purchase_head_at) : ''}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 6. QC & Internal Audit -->
+                    <div class="ep-timeline-item ${qcClass === 'approved' ? 'ep-step-approved' : ''}">
+                        <div class="ep-timeline-circle ${qcClass}">${getStepIcon(qcClass)}</div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center justify-content-between gap-2">
+                                <span class="fw-bold fs-13 text-dark">QC & Internal Audit Review</span>
+                                ${buildStepBadge(qcClass)}
+                            </div>
+                            <div class="fs-12 text-muted mt-0.5">
+                                ${data.qc_audit_by_name ? `Verified by <strong>${data.qc_audit_by_name}</strong>` : 'Awaiting QC & Internal Audit verification'}
+                                ${data.qc_audit_at ? ' • ' + formatDate(data.qc_audit_at) : ''}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 7. Operation Head Approval (Post-QC) -->
+                    <div class="ep-timeline-item ${opPostQcClass === 'approved' ? 'ep-step-approved' : ''}">
+                        <div class="ep-timeline-circle ${opPostQcClass}">${getStepIcon(opPostQcClass)}</div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center justify-content-between gap-2">
+                                <span class="fw-bold fs-13 text-dark">Operation Head Approval</span>
+                                ${buildStepBadge(opPostQcClass)}
+                            </div>
+                            <div class="fs-12 text-muted mt-0.5">
+                                ${isOpHeadPostQcApproved
+                                    ? `Approved by <strong>${opPostQcName}</strong>${opPostQcAt ? ' • ' + formatDate(opPostQcAt) : ''}`
+                                    : (isOpHeadPostQcRejected
+                                        ? `Rejected by <strong>${opPostQcName || 'Operation Head'}</strong>${opPostQcAt ? ' • ' + formatDate(opPostQcAt) : ''}`
+                                        : 'Awaiting Head of Operation (Role 20 / 32) post-QC approval')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 8. Accounts Head Approval -->
+                    <div class="ep-timeline-item ${ahClass === 'approved' ? 'ep-step-approved' : ''}">
+                        <div class="ep-timeline-circle ${ahClass}">${getStepIcon(ahClass)}</div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center justify-content-between gap-2">
+                                <span class="fw-bold fs-13 text-dark">Accounts Head Approval</span>
+                                ${buildStepBadge(ahClass)}
+                            </div>
+                            <div class="fs-12 text-muted mt-0.5">
+                                ${isAhApproved
+                                    ? `Verified & Approved by <strong>${ahName}</strong>${ahAt ? ' • ' + formatDate(ahAt) : ''}`
+                                    : (isAhRejected
+                                        ? `Rejected by <strong>${ahName || 'Accounts Head'}</strong>${ahAt ? ' • ' + formatDate(ahAt) : ''}`
+                                        : 'Awaiting Accounts Head (Role 30) verification & sign-off')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 9. DCEO / Management Final Approval (Shown if amount > 10,000 or Management acted) -->
+                    ${showMgmtStep ? `
+                    <div class="ep-timeline-item ${mgClass === 'approved' ? 'ep-step-approved' : ''}">
+                        <div class="ep-timeline-circle ${mgClass}">${getStepIcon(mgClass)}</div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center justify-content-between gap-2">
+                                <span class="fw-bold fs-13 text-dark">DCEO / Management Approval <span class="text-muted fw-normal fs-11">(&gt; ৳10,000)</span></span>
+                                ${buildStepBadge(mgClass)}
+                            </div>
+                            <div class="fs-12 text-muted mt-0.5">
+                                ${isMgmtApproved
+                                    ? `Approved by <strong>${data.mgmt_by_name || 'Management'}</strong>${data.mgmt_at ? ' • ' + formatDate(data.mgmt_at) : ''}`
+                                    : (isMgmtRejected
+                                        ? `Rejected by <strong>${data.mgmt_by_name || 'Management'}</strong>${data.mgmt_at ? ' • ' + formatDate(data.mgmt_at) : ''}`
+                                        : 'Awaiting DCEO / Management (Role 1 / 3) final approval')}
+                            </div>
+                        </div>
+                    </div>
+                    ` : ''}
+
+                    <!-- 10. Accounts Payment -->
+                    <div class="ep-timeline-item ${pyClass === 'approved' ? 'ep-step-approved' : ''}">
+                        <div class="ep-timeline-circle ${pyClass}">${isPaidOrDone ? '<i class="fa-solid fa-bangladeshi-taka-sign"></i>' : getStepIcon(pyClass)}</div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center justify-content-between gap-2">
+                                <span class="fw-bold fs-13 text-dark">Accounts Disbursement</span>
+                                ${buildStepBadge(pyClass, isPaidOrDone ? 'Paid' : null)}
+                            </div>
+                            <div class="fs-12 text-muted mt-0.5">
+                                ${isPaidOrDone
+                                    ? `Disbursed by <strong>${data.paid_by_name || 'Accounts'}</strong>${data.paid_at ? ' • ' + formatDate(data.paid_at) : ''}`
+                                    : 'Awaiting payment disbursement by Accounts'}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 11. Asset Purchased -->
+                    <div class="ep-timeline-item ${pcClass === 'approved' ? 'ep-step-approved' : ''}">
+                        <div class="ep-timeline-circle ${pcClass}">${data.overall_status === 'purchased' ? '<i class="fa-solid fa-box-open"></i>' : getStepIcon(pcClass)}</div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center justify-content-between gap-2">
+                                <span class="fw-bold fs-13 text-dark">Asset Purchased & Registered</span>
+                                ${buildStepBadge(pcClass, data.overall_status === 'purchased' ? 'Purchased' : null)}
+                            </div>
+                            <div class="fs-12 text-muted mt-0.5">
+                                ${data.overall_status === 'purchased'
+                                    ? `Confirmed by <strong>${data.purchased_by_name || 'Operations'}</strong>${data.purchase_confirmed_at ? ' • ' + formatDate(data.purchase_confirmed_at) : ''}`
+                                    : 'Awaiting purchase confirmation & asset registration'}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-
-        <!-- Approval Pipeline -->
-        <div class="detail-label mb-1 px-1">APPROVAL PIPELINE</div>
-        <div class="approval-pipeline">
-            <div class="approval-step">
-                <div class="step-circle approved"><i class="fa-solid fa-paper-plane" style="font-size:14px"></i></div>
-                <div class="step-label">Requested</div>
-                <div class="step-person">${data.requested_by_name || '—'}</div>
-                <div class="step-time">${data.created_at ? formatDate(data.created_at) : ''}</div>
-            </div>
-            ${data.dept_head_status !== 'not_required' ? `
-            <div class="approval-step">
-                <div class="step-circle ${dhClass}">${getStepIcon(data.dept_head_status)}</div>
-                <div class="step-label">Dept Head</div>
-                <div class="step-person">${data.dept_head_by_name || (data.reporting_boss_name ? data.reporting_boss_name : '<span class="text-muted">Awaiting</span>')}</div>
-                <div class="step-time">${data.dept_head_at ? formatDate(data.dept_head_at) : ''}</div>
-            </div>
-            ` : ''}
-            ${data.it_head_status !== 'not_required' ? `
-            <div class="approval-step">
-                <div class="step-circle ${itClass}">${getStepIcon(data.it_head_status)}</div>
-                <div class="step-label">IT Head</div>
-                <div class="step-person">${data.it_head_by_name || '<span class="text-muted">Awaiting</span>'}</div>
-                <div class="step-time">${data.it_head_at ? formatDate(data.it_head_at) : ''}</div>
-            </div>
-            ` : ''}
-            <div class="approval-step">
-                <div class="step-circle ${opClass}">${getStepIcon(data.operations_status)}</div>
-                <div class="step-label">Admin & Operation</div>
-                <div class="step-person">${data.operations_by_name || '<span class="text-muted">Awaiting</span>'}</div>
-                <div class="step-time">${data.operations_at ? formatDate(data.operations_at) : ''}</div>
-            </div>
-            <div class="approval-step">
-                <div class="step-circle ${phClass}">${getStepIcon(data.purchase_head_status)}</div>
-                <div class="step-label">Purchase Head</div>
-                <div class="step-person">${data.purchase_head_by_name || '<span class="text-muted">Awaiting</span>'}</div>
-                <div class="step-time">${data.purchase_head_at ? formatDate(data.purchase_head_at) : ''}</div>
-            </div>
-            <div class="approval-step">
-                <div class="step-circle ${qcClass}">${getStepIcon(data.qc_audit_status)}</div>
-                <div class="step-label">QC & Audit</div>
-                <div class="step-person">${data.qc_audit_by_name || '<span class="text-muted">Awaiting</span>'}</div>
-                <div class="step-time">${data.qc_audit_at ? formatDate(data.qc_audit_at) : ''}</div>
-            </div>
-            <div class="approval-step">
-                <div class="step-circle ${mgClass}">${getStepIcon(data.mgmt_status)}</div>
-                <div class="step-label">Management</div>
-                <div class="step-person">${data.mgmt_by_name || '<span class="text-muted">Awaiting</span>'}</div>
-                <div class="step-time">${data.mgmt_at ? formatDate(data.mgmt_at) : ''}</div>
-            </div>
-            <div class="approval-step">
-                <div class="step-circle ${ahClass}">${data.accounts_head_status === 'approved' ? '<i class="fa-solid fa-check"></i>' : (data.accounts_head_status === 'rejected' ? '<i class="fa-solid fa-xmark"></i>' : '<i class="fa-solid fa-user-tie"></i>')}</div>
-                <div class="step-label">Accounts Head</div>
-                <div class="step-person">${data.accounts_head_by_name || 'Md. Mamunoor Rashid [1309]'}</div>
-                <div class="step-time">${data.accounts_head_at ? formatDate(data.accounts_head_at) : (data.mgmt_status === 'approved' && data.accounts_head_status !== 'approved' ? '<span class="badge bg-warning-subtle text-warning extra-small">Pending</span>' : '')}</div>
-            </div>
-            <div class="approval-step">
-                <div class="step-circle ${pyClass}">${data.payment_status === 'paid' ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-bangladeshi-taka-sign" style="font-size:14px"></i>'}</div>
-                <div class="step-label">Payment</div>
-                <div class="step-person">${data.paid_by_name || '<span class="text-muted">Awaiting</span>'}</div>
-                <div class="step-time">${data.paid_at ? formatDate(data.paid_at) : ''}</div>
-            </div>
-            <div class="approval-step">
-                <div class="step-circle ${pcClass}">${data.overall_status === 'purchased' ? '<i class="fa-solid fa-box-open"></i>' : '<i class="fa-solid fa-box" style="font-size:14px"></i>'}</div>
-                <div class="step-label">Purchased</div>
-                <div class="step-person">${data.purchased_by_name || '<span class="text-muted">Awaiting</span>'}</div>
-                <div class="step-time">${data.purchase_confirmed_at ? formatDate(data.purchase_confirmed_at) : ''}</div>
-            </div>
-        </div>
-
-        <!-- Approval Notes (if any) -->
-        ${(data.dept_head_note || data.it_head_note || data.operations_note || data.op_head_note || data.purchase_head_note || data.qc_audit_note || data.mgmt_note || data.accounts_head_note || data.purchase_note || data.return_note) ? `
-        <div class="mt-3">
-            <div class="detail-label mb-1 px-1">APPROVAL / REJECTION NOTES</div>
-            <div class="bg-light rounded p-2">
-                ${data.dept_head_note ? '<div class="fs-11 mb-1"><strong class="text-info">Dept Head:</strong> ' + data.dept_head_note + '</div>' : ''}
-                ${data.it_head_note ? '<div class="fs-11 mb-1"><strong class="text-info">IT Head:</strong> ' + data.it_head_note + '</div>' : ''}
-                ${data.operations_note ? '<div class="fs-11 mb-1"><strong class="text-secondary">Admin & Operation Head:</strong> ' + data.operations_note + '</div>' : ''}
-                ${data.op_head_note ? '<div class="fs-11 mb-1"><strong class="text-secondary">Admin & Operation Head (>10K):</strong> ' + data.op_head_note + '</div>' : ''}
-                ${data.purchase_head_note ? '<div class="fs-11 mb-1"><strong class="text-primary">Purchase Head:</strong> ' + data.purchase_head_note + '</div>' : ''}
-                ${data.qc_audit_note ? '<div class="fs-11 mb-1"><strong class="text-info">QC & Audit:</strong> ' + data.qc_audit_note + '</div>' : ''}
-                ${data.mgmt_note ? '<div class="fs-11 mb-1"><strong class="text-warning">Management:</strong> ' + data.mgmt_note + '</div>' : ''}
-                ${data.accounts_head_note ? '<div class="fs-11 mb-1"><strong class="text-dark">Accounts Head:</strong> ' + data.accounts_head_note + '</div>' : ''}
-                ${data.purchase_note ? '<div class="fs-11 mb-1"><strong class="text-success">Operations / Purchaser:</strong> ' + data.purchase_note + '</div>' : ''}
-                ${data.return_note ? '<div class="fs-11"><strong class="text-danger">Return Note:</strong> ' + data.return_note + '</div>' : ''}
-            </div>
-        </div>
-        ` : ''}
-
-        <!-- Documents & Vouchers -->
-        ${(data.attachment || data.payment_attachment || data.purchase_document || data.purchase_head_document || data.payment_status === 'paid' || data.overall_status === 'paid' || data.overall_status === 'purchased') ? `
-        <div class="mt-3">
-            <div class="detail-label mb-1 px-1">SUBMITTED DOCUMENTS & VOUCHERS</div>
-            <div class="d-flex flex-wrap gap-2">
-                ${(data.payment_status === 'paid' || data.overall_status === 'paid' || data.overall_status === 'purchased') ? '<a href="<?= $GLOBALS['base_url'] ?>/expense-adjustments/create?parent_type=extra_purchase&cashout_request_id=' + data.id + '&project_id=' + (data.project_id || '') + '" class="btn btn-sm btn-warning shadow-sm"><i class="fa-solid fa-sliders me-1"></i> Settlement / Adjustment</a>' : ''}
-                ${(data.payment_status === 'paid' || data.overall_status === 'paid' || data.overall_status === 'purchased') ? '<a href="<?= $GLOBALS['base_url'] ?>/print-debit-voucher?module=project_extra_assets&id=' + data.id + '" target="_blank" class="btn btn-sm btn-primary shadow-sm"><i class="fa-solid fa-file-invoice-dollar me-1"></i> Print Debit Voucher</a>' : ''}
-                ${data.attachment ? '<a href="<?= $GLOBALS['base_url'] ?>/' + data.attachment + '" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-file-pdf me-1"></i> Request Doc</a>' : ''}
-                ${data.purchase_head_document ? '<a href="<?= $GLOBALS['base_url'] ?>/' + data.purchase_head_document + '" target="_blank" class="btn btn-sm btn-outline-info"><i class="fa-solid fa-file-invoice me-1"></i> Purchase Head Doc</a>' : ''}
-                ${data.payment_attachment ? '<a href="<?= $GLOBALS['base_url'] ?>/' + data.payment_attachment + '" target="_blank" class="btn btn-sm btn-outline-success"><i class="fa-solid fa-receipt me-1"></i> Payment Receipt</a>' : ''}
-                ${data.purchase_document ? '<a href="<?= $GLOBALS['base_url'] ?>/' + data.purchase_document + '" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fa-solid fa-file-invoice me-1"></i> Purchase Document</a>' : ''}
-            </div>
-        </div>
-        ` : ''}
 
         <!-- Action / Approval Section if User Can Approve -->
         ${data.can_approve ? `
@@ -1408,13 +1647,53 @@ function renderDetailModal(data) {
                     <button type="submit" class="btn btn-sm btn-outline-danger px-3" onclick="document.getElementById('detailApprovalStatus_${data.id}').value='rejected'; return confirm('Are you sure you want to REJECT this purchase request?');">
                         <i class="fa-solid fa-xmark me-1"></i> Reject Request
                     </button>
-                    <button type="submit" class="btn btn-sm btn-success px-4 fw-semibold" onclick="document.getElementById('detailApprovalStatus_${data.id}').value='approved';">
+                    <button type="button" class="btn btn-sm btn-success px-4 fw-semibold" onclick="submitDetailInlineApproval(${data.id}, '${(data.override_warning_stage || '').replace(/'/g, "\\'")}')">
                         <i class="fa-solid fa-check me-1"></i> Approve Request
                     </button>
                 </div>
             </form>
         </div>
         ` : ''}
+
+        <!-- Action: Accounts Head Verification inside Detail Modal -->
+        ${(data.can_approve_ah && data.approval_request_id) ? `
+        <div class="mt-4 p-3 border border-primary rounded-3 bg-primary-subtle shadow-sm d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <span class="fw-bold fs-13 text-primary d-block">
+                    <i class="fa-solid fa-stamp me-1"></i> Ready for Accounts Head Verification & Approval
+                </span>
+                <small class="text-muted">Operation Head has approved this request. Verify and approve as Accounts Head (Role 30)${isOver10K ? ' to forward to DCEO / Management for final sign-off' : ' to authorize payment disbursement'}.</small>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm px-3 fw-bold shadow-sm" onclick="bootstrap.Modal.getInstance(document.getElementById('detailModal'))?.hide(); triggerAhApprove(${data.approval_request_id});">
+                <i class="fa-solid fa-stamp me-1"></i> Verify & Approve (Accounts Head)
+            </button>
+        </div>
+        ` : ''}
+
+        <!-- Action: Accounts Disbursement / Process Payment inside Detail Modal -->
+        ${data.can_pay ? `
+        <div class="mt-4 p-3 border border-success rounded-3 bg-success-subtle shadow-sm d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <span class="fw-bold fs-13 text-success d-block">
+                    <i class="fa-solid fa-money-bill-wave me-1"></i> Ready for Payment Disbursement
+                </span>
+                <small class="text-muted">All required approvals are complete. Process and disburse payment (৳ ${parseFloat(data.total_price || 0).toLocaleString(undefined, {minimumFractionDigits:2})}) for this procurement request.</small>
+            </div>
+            <button type="button" class="btn btn-success btn-sm px-4 fw-bold shadow-sm" onclick="closeDetailModalAndPay(${data.id}, ${parseFloat(data.total_price || 0)})">
+                <i class="fa-solid fa-money-bill-wave me-1"></i> Disburse / Process Payment
+            </button>
+        </div>
+        ` : (data.is_waiting_ah && !data.can_approve_ah && data.payment_status === 'unpaid' ? `
+        <div class="mt-4 p-3 border border-warning rounded-3 bg-warning-subtle shadow-sm d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <span class="fw-bold fs-13 text-dark d-block">
+                    <i class="fa-solid fa-lock me-1 text-warning"></i> Payment Locked — Awaiting Accounts Head Verification
+                </span>
+                <small class="text-muted">Accounts Head (Role 30) verification is required before payment can be disbursed.</small>
+            </div>
+            <span class="badge bg-warning text-dark px-2 py-1"><i class="fa-solid fa-hourglass-half me-1"></i>Pending AH</span>
+        </div>
+        ` : '')}
 
         <!-- Action: Confirm Purchase Received & Register in Asset Tracker (When Paid) -->
         ${(data.payment_status === 'paid' && data.overall_status !== 'purchased') ? `
@@ -1455,6 +1734,17 @@ function renderDetailModal(data) {
             $(modalEl).modal('show');
         }
     }
+}
+
+function closeDetailModalAndPay(id, amount) {
+    var detailModalEl = document.getElementById('detailModal');
+    if (detailModalEl) {
+        var modal = bootstrap.Modal.getInstance(detailModalEl);
+        if (modal) modal.hide();
+    }
+    setTimeout(function() {
+        openPaymentModal(id, amount);
+    }, 200);
 }
 
 function closeDetailModalAndConfirm(id) {

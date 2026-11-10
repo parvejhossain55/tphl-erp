@@ -57,8 +57,9 @@ $unapprovedAmt = max(0, $netPayable - $approvedAmtSoFar);
 $isOver1Lac = ($netPayable > 10000);
 $canPayReq = $canProcessPayment && $isApproved && $dueAmount > 0 && $isAccountsHeadApproved && (!$isOver1Lac || !empty($ahInfo['is_mgmt_approved']));
 $showPaymentForm = $canPayReq;
-$isOpHeadUser = (in_array((int)$userRole, [20, 32], true) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head') !== false || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'admin & operation') !== false);
-$isMgmtUser = in_array((int)$userRole, [1, 3], true);
+$vprRoleNameLower = strtolower($_SESSION['user']['role_name'] ?? '');
+$isOpHeadUser = (in_array((int)$userRole, [20, 32], true) || strpos($vprRoleNameLower, 'operation head') !== false || strpos($vprRoleNameLower, 'admin & operation') !== false);
+$isMgmtUser = (in_array((int)$userRole, [1, 3, 38], true) || strpos($vprRoleNameLower, 'director') !== false || strpos($vprRoleNameLower, 'dceo') !== false || strpos($vprRoleNameLower, 'management') !== false) && !in_array((int)$userRole, [33, 34, 35], true);
 $isOpHeadApproved = !empty($ahInfo['is_op_head_approved']);
 $isAhApproved = !empty($ahInfo['is_accounts_head_approved']);
 
@@ -324,17 +325,17 @@ if (!empty($ahInfo['has_request'])) {
     </div>
     <div class="card-body">
         <!-- Next Action Description banner -->
-        <div class="alert alert-<?= $nextActionColor ?> d-flex align-items-center mb-4" role="alert">
-            <i class="bi bi-info-circle-fill fs-5 me-2"></i>
+        <div class="d-flex align-items-center gap-2.5 p-3 mb-4 rounded-3 border border-<?= $nextActionColor ?> bg-<?= $nextActionColor ?>-subtle text-dark" role="alert">
+            <i class="bi bi-info-circle-fill fs-5 text-<?= $nextActionColor === 'secondary' ? 'dark' : $nextActionColor ?> flex-shrink-0"></i>
             <div>
                 <strong>Current State Description:</strong> <?= $nextActionText ?>
             </div>
         </div>
 
-        <!-- 4-Step Approval Timeline -->
-        <div class="row text-center timeline-steps">
+        <!-- 6-Step Approval Timeline -->
+        <div class="row row-cols-1 row-cols-md-3 row-cols-xl-6 g-3 text-center timeline-steps">
             <!-- Step 1: Head of Purchase Approval -->
-            <div class="col-md-3 mb-3 mb-md-0 position-relative">
+            <div class="col position-relative">
                 <div class="p-3 border rounded h-100 <?= $phApproved ? 'border-success bg-success-transparent' : ($phRejected ? 'border-danger bg-danger-transparent' : ($phPending ? 'border-primary bg-info-transparent' : 'bg-light')) ?>">
                     <div class="fs-4 mb-2">
                         <?php if ($phApproved): ?>
@@ -380,7 +381,7 @@ if (!empty($ahInfo['has_request'])) {
             </div>
 
             <!-- Step 2: QC Verification -->
-            <div class="col-md-3 mb-3 mb-md-0 position-relative">
+            <div class="col position-relative">
                 <div class="p-3 border rounded h-100 <?= $qcApproved ? 'border-success bg-success-transparent' : ($qcRejected ? 'border-danger bg-danger-transparent' : ($qcPending ? 'border-info bg-info-transparent' : 'bg-light')) ?>">
                     <div class="fs-4 mb-2">
                         <?php if ($qcApproved): ?>
@@ -391,13 +392,13 @@ if (!empty($ahInfo['has_request'])) {
                             <i class="bi bi-shield text-muted fs-2 <?= $qcPending ? 'animate-pulse' : '' ?>"></i>
                         <?php endif; ?>
                     </div>
-                    <h6 class="fw-bold mb-1">2. QC Audit & Verification</h6>
+                    <h6 class="fw-bold mb-1">2. QC Audit &amp; Verification</h6>
                     
                     <div class="mt-2">
                         <?php if ($qcApproved): ?>
                             <div class="d-flex align-items-center justify-content-center gap-2">
                                 <span class="badge bg-success">QC Approved</span>
-                                <?php if (($canApproveQC || in_array($userRole, [1, 3, 20, 32])) && $totalPaid <= 0 && !in_array($status, ['Rejected', 'Fully_Paid', 'Paid'])): ?>
+                                <?php if ($canApproveQC && !$isOpHeadApproved && $totalPaid <= 0 && !in_array($status, ['Rejected', 'Fully_Paid', 'Paid', 'Approved'])): ?>
                                     <button type="button" class="btn btn-xs btn-outline-danger py-0 px-2 shadow-sm" onclick="triggerQcRejectModal()">
                                         <i class="bi bi-x-circle me-1"></i> Reject
                                     </button>
@@ -419,7 +420,7 @@ if (!empty($ahInfo['has_request'])) {
                             </div>
                         <?php elseif ($qcPending): ?>
                             <span class="badge bg-info animate-blink">Pending Review</span>
-                            <div class="small mt-2 text-muted">Awaiting QC audit & material verification.</div>
+                            <div class="small mt-2 text-muted">Awaiting QC audit &amp; material verification.</div>
                         <?php else: ?>
                             <span class="badge bg-secondary">Awaiting Purchase Head First</span>
                         <?php endif; ?>
@@ -432,35 +433,114 @@ if (!empty($ahInfo['has_request'])) {
                 </div>
             </div>
 
-            <!-- Step 3: Operation Head, Accounts Head & Management Approval -->
-            <div class="col-md-3 mb-3 mb-md-0">
-                <div class="p-3 border rounded h-100 <?= $mgmtApproved ? 'border-success bg-success-transparent' : ($mgmtRejected ? 'border-danger bg-danger-transparent' : ($mgmtPending ? 'border-info bg-info-transparent' : 'bg-light')) ?>">
+            <!-- Step 3: Admin & Operation Head Approval -->
+            <?php
+            $opHeadRejected = (strtolower($ahInfo['op_head_status'] ?? '') === 'rejected');
+            $opHeadPendingNow = ($qcApproved && !$isOpHeadApproved && !$opHeadRejected && $status !== 'Rejected');
+            ?>
+            <div class="col position-relative">
+                <div class="p-3 border rounded h-100 <?= $isOpHeadApproved ? 'border-success bg-success-transparent' : ($opHeadRejected ? 'border-danger bg-danger-transparent' : ($opHeadPendingNow ? 'border-warning bg-warning-transparent' : 'bg-light')) ?>">
+                    <div class="fs-4 mb-2">
+                        <?php if ($isOpHeadApproved): ?>
+                            <i class="bi bi-person-badge-fill text-success fs-2"></i>
+                        <?php elseif ($opHeadRejected): ?>
+                            <i class="bi bi-person-x-fill text-danger fs-2"></i>
+                        <?php else: ?>
+                            <i class="bi bi-person-badge text-muted fs-2 <?= $opHeadPendingNow ? 'animate-pulse' : '' ?>"></i>
+                        <?php endif; ?>
+                    </div>
+                    <h6 class="fw-bold mb-1">3. Admin &amp; Operation Head</h6>
+                    <div class="mt-2">
+                        <?php if ($isOpHeadApproved): ?>
+                            <span class="badge bg-success">Op Head Approved</span>
+                            <div class="small mt-2 text-muted">
+                                <strong>By:</strong> <?= htmlspecialchars($ahInfo['op_head_name'] ?? 'Admin & Operation Head') ?><br>
+                                <?php if (!empty($ahInfo['op_head_at'])): ?>
+                                    <strong>On:</strong> <?= date('d M Y h:i A', strtotime($ahInfo['op_head_at'])) ?>
+                                <?php endif; ?>
+                            </div>
+                        <?php elseif ($opHeadRejected): ?>
+                            <span class="badge bg-danger">Op Head Rejected</span>
+                        <?php elseif ($opHeadPendingNow): ?>
+                            <span class="badge bg-warning text-dark animate-blink">Pending Op Head</span>
+                            <div class="small mt-2 text-muted">Awaiting Admin &amp; Operation Head (Role 20/32).</div>
+                        <?php else: ?>
+                            <span class="badge bg-secondary">Awaiting QC First</span>
+                        <?php endif; ?>
+                    </div>
+                    <?php if (!empty($ahInfo['op_head_note'])): ?>
+                        <div class="mt-2 p-2 bg-white rounded border text-start small">
+                            <strong>Note:</strong> <?= htmlspecialchars($ahInfo['op_head_note']) ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- Step 4: Accounts Head Approval -->
+            <?php
+            $ahRejected = !empty($ahInfo['is_accounts_head_rejected']);
+            $ahPendingNow = ($isOpHeadApproved && !$isAhApproved && !$ahRejected && $status !== 'Rejected');
+            ?>
+            <div class="col position-relative">
+                <div class="p-3 border rounded h-100 <?= $isAhApproved ? 'border-success bg-success-transparent' : ($ahRejected ? 'border-danger bg-danger-transparent' : ($ahPendingNow ? 'border-primary bg-info-transparent' : 'bg-light')) ?>">
+                    <div class="fs-4 mb-2">
+                        <?php if ($isAhApproved): ?>
+                            <i class="bi bi-patch-check-fill text-success fs-2"></i>
+                        <?php elseif ($ahRejected): ?>
+                            <i class="bi bi-patch-exclamation-fill text-danger fs-2"></i>
+                        <?php else: ?>
+                            <i class="bi bi-patch-check text-muted fs-2 <?= $ahPendingNow ? 'animate-pulse' : '' ?>"></i>
+                        <?php endif; ?>
+                    </div>
+                    <h6 class="fw-bold mb-1">4. Accounts Head</h6>
+                    <div class="mt-2">
+                        <?php if ($isAhApproved): ?>
+                            <span class="badge bg-success">Accounts Head Approved</span>
+                            <div class="small mt-2 text-muted">
+                                <strong>By:</strong> <?= htmlspecialchars($ahInfo['approved_by_name'] ?? $ahInfo['accounts_head_name'] ?? $ahInfo['designated_name'] ?? 'Accounts Head') ?><br>
+                                <?php if (!empty($ahInfo['approved_at']) || !empty($ahInfo['accounts_head_at'])): ?>
+                                    <strong>On:</strong> <?= date('d M Y h:i A', strtotime($ahInfo['approved_at'] ?? $ahInfo['accounts_head_at'])) ?>
+                                <?php endif; ?>
+                            </div>
+                        <?php elseif ($ahRejected): ?>
+                            <span class="badge bg-danger">Accounts Head Rejected</span>
+                        <?php elseif ($ahPendingNow): ?>
+                            <span class="badge bg-primary animate-blink">Pending Accounts Head</span>
+                            <div class="small mt-2 text-muted">Awaiting <?= htmlspecialchars($ahInfo['designated_name'] ?? 'Accounts Head') ?> (Role 30).</div>
+                        <?php else: ?>
+                            <span class="badge bg-secondary">Awaiting Op Head First</span>
+                        <?php endif; ?>
+                    </div>
+                    <?php if (!empty($ahInfo['approval_note']) || !empty($ahInfo['accounts_head_note'])): ?>
+                        <div class="mt-2 p-2 bg-white rounded border text-start small">
+                            <strong>Note:</strong> <?= htmlspecialchars($ahInfo['approval_note'] ?? $ahInfo['accounts_head_note']) ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- Step 5: Management Approval -->
+            <?php
+            $mgmtReadyPending = ($mgmtPending && $isOpHeadApproved && $isAhApproved);
+            ?>
+            <div class="col position-relative">
+                <div class="p-3 border rounded h-100 <?= $mgmtApproved ? 'border-success bg-success-transparent' : ($mgmtRejected ? 'border-danger bg-danger-transparent' : ($mgmtReadyPending ? 'border-info bg-info-transparent' : 'bg-light')) ?>">
                     <div class="fs-4 mb-2">
                         <?php if ($mgmtApproved): ?>
                             <i class="bi bi-person-check text-success fs-2"></i>
                         <?php elseif ($mgmtRejected): ?>
                             <i class="bi bi-person-x text-danger fs-2"></i>
                         <?php else: ?>
-                            <i class="bi bi-person text-muted fs-2 <?= $mgmtPending ? 'animate-pulse' : '' ?>"></i>
+                            <i class="bi bi-person text-muted fs-2 <?= $mgmtReadyPending ? 'animate-pulse' : '' ?>"></i>
                         <?php endif; ?>
                     </div>
-                    <h6 class="fw-bold mb-1">3. Op Head, Accts &amp; Mgmt</h6>
+                    <h6 class="fw-bold mb-1">5. Management Approval</h6>
                     
                     <div class="mt-2">
-                        <?php if ($isOpHeadApproved && !empty($ahInfo['op_head_name'])): ?>
-                            <div class="small text-success mb-1">
-                                <i class="bi bi-check-circle-fill me-1"></i><strong>Op Head:</strong> <?= htmlspecialchars($ahInfo['op_head_name']) ?>
-                            </div>
-                        <?php endif; ?>
-                        <?php if ($isAhApproved && !empty($ahInfo['accounts_head_name'])): ?>
-                            <div class="small text-primary mb-1">
-                                <i class="bi bi-check-circle-fill me-1"></i><strong>Accts Head:</strong> <?= htmlspecialchars($ahInfo['accounts_head_name']) ?>
-                            </div>
-                        <?php endif; ?>
                         <?php if ($mgmtApproved): ?>
                             <div class="d-flex align-items-center justify-content-center gap-2">
                                 <span class="badge bg-success">Approved</span>
-                                <?php if ((($canApprove ?? false) || in_array($userRole, [1, 3, 20, 32])) && $totalPaid <= 0 && !in_array($status, ['Rejected', 'Fully_Paid', 'Paid'])): ?>
+                                <?php if (in_array($userRole, [1, 3]) && $totalPaid <= 0 && !in_array($status, ['Rejected', 'Fully_Paid', 'Paid'])): ?>
                                     <button type="button" class="btn btn-xs btn-outline-danger py-0 px-2 shadow-sm" onclick="triggerMgmtRejectModal()">
                                         <i class="bi bi-x-circle me-1"></i> Reject
                                     </button>
@@ -482,16 +562,14 @@ if (!empty($ahInfo['has_request'])) {
                                     <strong>On:</strong> <?= date('d M Y h:i A', strtotime($approval_request['approved_at'])) ?>
                                 <?php endif; ?>
                             </div>
-                        <?php elseif ($mgmtPending): ?>
-                            <span class="badge bg-info animate-blink">Pending Approval</span>
-                            <div class="small mt-2 text-muted">
-                                <?= !$isOpHeadApproved ? 'Awaiting Head of Operation (Role 20/32).' : (!$isAhApproved ? 'Awaiting Accounts Head (Role 30).' : 'Awaiting Management / DCEO (Role 1/3).') ?>
-                            </div>
-                        <?php elseif ($qcRejected || $phRejected): ?>
+                        <?php elseif ($mgmtReadyPending): ?>
+                            <span class="badge bg-info animate-blink">Pending Management</span>
+                            <div class="small mt-2 text-muted">Awaiting Management / DCEO (Role 1/3).</div>
+                        <?php elseif ($qcRejected || $phRejected || $opHeadRejected || $ahRejected): ?>
                             <span class="badge bg-secondary">Bypassed</span>
                             <div class="small mt-2 text-muted">Request was rejected during earlier stage.</div>
                         <?php else: ?>
-                            <span class="badge bg-secondary">Awaiting QC First</span>
+                            <span class="badge bg-secondary">Awaiting Accounts Head</span>
                         <?php endif; ?>
                     </div>
                     <?php if (!empty($request['management_note'])): ?>
@@ -502,8 +580,8 @@ if (!empty($ahInfo['has_request'])) {
                 </div>
             </div>
 
-            <!-- Step 4: Accounts Payment -->
-            <div class="col-md-3">
+            <!-- Step 6: Accounts Payment -->
+            <div class="col">
                 <div class="p-3 border rounded h-100 <?= $payApproved ? 'border-success bg-success-transparent' : ($payPartial ? 'border-info bg-info-transparent' : ($payPending ? 'border-warning bg-warning-transparent' : 'bg-light')) ?>">
                     <div class="fs-4 mb-2">
                         <?php if ($payApproved): ?>
@@ -516,7 +594,7 @@ if (!empty($ahInfo['has_request'])) {
                             <i class="bi bi-wallet2 text-muted fs-2"></i>
                         <?php endif; ?>
                     </div>
-                    <h6 class="fw-bold mb-1">4. Accounts Disbursement</h6>
+                    <h6 class="fw-bold mb-1">6. Accounts Disbursement</h6>
                     
                     <div class="mt-2">
                         <?php if ($payApproved): ?>

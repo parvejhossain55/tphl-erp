@@ -309,16 +309,9 @@ class ApprovalRequestController extends Controller
                     continue;
                 }
 
-                // If Management (Role 3 / 1) is approving:
-                if ($isManagement) {
-                    // For > 10,000, BOTH Op Head AND Accounts Head must have approved first (except payslips when Management approves directly)!
-                    if ($isOver1Lac && $action === 'approve' && $sourceTable !== 'payslips') {
-                        if ($reqOpStatus !== 'approved' || $reqAhStatus !== 'approved') {
-                            $failedCount++;
-                            continue; // Cannot approve > 10K request until Op Head & Accounts Head approve
-                        }
-                    }
-                } elseif ($req && $reqAppRole === 'management' && !$isManagement && !$isSiteOperator) {
+                // If Management (Role 3 / 1 / 38) is approving:
+                // Management Direct Override allows Management / DCEO / Directors to approve directly at any stage.
+                if (!$isManagement && $req && $reqAppRole === 'management' && !$isSiteOperator) {
                     $failedCount++;
                     continue; // Accounts/non-management users cannot approve Management requests
                 }
@@ -741,20 +734,7 @@ class ApprovalRequestController extends Controller
             exit;
         }
 
-        // For > ৳10,000: Admin & Operation Head (Role 20 / 32) must approve first (unless force_approve or payslips override confirmed by Management)
-        $isOver1Lac = ((float)($req['request_amount'] ?? 0) > 10000.01);
-        $allowDirectMgmtOverride = !empty($payload['force_approve']) || (($req['source_table'] ?? '') === 'payslips');
-        if ($isOver1Lac && !$allowDirectMgmtOverride && strtolower($req['op_head_status'] ?? 'pending') !== 'approved') {
-            ob_clean();
-            echo json_encode(['success' => false, 'message' => 'Requests exceeding ৳10,000 must be approved by Admin & Operation Head (Role 20) first.']);
-            exit;
-        }
-        if ($isOver1Lac && !$allowDirectMgmtOverride && strtolower($req['accounts_head_status'] ?? 'pending') !== 'approved') {
-            ob_clean();
-            echo json_encode(['success' => false, 'message' => 'Requests exceeding ৳10,000 must be verified & approved by Accounts Head (Role 30) before Management can approve.']);
-            exit;
-        }
-
+        // Management (Role 1, 3, 38 / DCEO / Directors) is allowed to directly approve via Management Override even if prior stages are pending.
         $res = $this->approvalModel->updateStatus($reqId, 'approved', $approvedAmount, null, $note);
         ob_clean();
         if ($res) {

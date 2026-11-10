@@ -8,6 +8,98 @@ class Con_PurchaseRequest extends Model
     protected $table     = 'purchase_requests';
     protected $itemTable = 'purchase_request_items';
 
+    public function __construct($db = null)
+    {
+        parent::__construct($db);
+        $this->db = $db ?? ($GLOBALS['db'] ?? null);
+        self::ensureSchema($this->db);
+    }
+
+    public static function ensureSchema($db)
+    {
+        static $checked = false;
+        if ($checked || !$db) {
+            return;
+        }
+        $checked = true;
+
+        @$db->query("
+            CREATE TABLE IF NOT EXISTS `po_negotiation_notes` (
+              `id` int unsigned NOT NULL AUTO_INCREMENT,
+              `purchase_order_id` int unsigned DEFAULT NULL,
+              `request_id` int unsigned NOT NULL,
+              `user_id` int NOT NULL,
+              `note_text` text NOT NULL,
+              `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+
+        $prCols = [
+            'pr_type'                    => "VARCHAR(50) NOT NULL DEFAULT 'boq_linked' AFTER `bom_id`",
+            'required_date'              => "DATE NULL DEFAULT NULL AFTER `pr_type`",
+            'purpose'                    => "VARCHAR(500) NULL DEFAULT NULL AFTER `required_date`",
+            'is_urgent'                  => "TINYINT(1) NOT NULL DEFAULT 0",
+            'urgent_reason'              => "TEXT NULL DEFAULT NULL",
+            'attachment'                 => "VARCHAR(255) NULL DEFAULT NULL",
+            'approved_by_id'             => "BIGINT UNSIGNED NULL DEFAULT NULL",
+            'qc_approved_by_id'          => "INT NULL DEFAULT NULL",
+            'qc_approved_at'             => "DATETIME NULL DEFAULT NULL",
+            'qc_note'                    => "TEXT NULL DEFAULT NULL",
+            'management_note'            => "TEXT NULL DEFAULT NULL",
+            'management_approved_amount' => "DECIMAL(15,2) NULL DEFAULT NULL",
+            'assigned_executive_id'      => "INT NULL DEFAULT NULL",
+            'approved_at'                => "TIMESTAMP NULL DEFAULT NULL",
+            'mgmt_approved_by_id'        => "INT NULL DEFAULT NULL",
+            'mgmt_approved_at'           => "DATETIME NULL DEFAULT NULL",
+            'upload_from'                => "VARCHAR(50) NULL DEFAULT NULL",
+        ];
+        foreach ($prCols as $col => $def) {
+            $chk = @$db->query("SHOW COLUMNS FROM `purchase_requests` LIKE '{$col}'");
+            if ($chk && $chk->num_rows === 0) {
+                if (!@$db->query("ALTER TABLE `purchase_requests` ADD COLUMN `{$col}` {$def}")) {
+                    $cleanDef = preg_replace('/\s+AFTER\s+`\w+`$/i', '', $def);
+                    @$db->query("ALTER TABLE `purchase_requests` ADD COLUMN `{$col}` {$cleanDef}");
+                }
+            }
+        }
+
+        $priCols = [
+            'required_date'    => "DATE NULL DEFAULT NULL",
+            'current_stock'    => "DECIMAL(12,3) NULL DEFAULT 0",
+            'month_1_forecast' => "DECIMAL(12,3) NULL DEFAULT 0",
+            'month_2_forecast' => "DECIMAL(12,3) NULL DEFAULT 0",
+            'month_3_forecast' => "DECIMAL(12,3) NULL DEFAULT 0",
+        ];
+        foreach ($priCols as $col => $def) {
+            $chk = @$db->query("SHOW COLUMNS FROM `purchase_request_items` LIKE '{$col}'");
+            if ($chk && $chk->num_rows === 0) {
+                @$db->query("ALTER TABLE `purchase_request_items` ADD COLUMN `{$col}` {$def}");
+            }
+        }
+
+        $catCols = [
+            'total_lead_days'  => "INT NOT NULL DEFAULT 0",
+            'pr_to_qtn_days'   => "INT NOT NULL DEFAULT 0",
+            'cs_analysis_days' => "INT NOT NULL DEFAULT 0",
+            'approval_days'    => "INT NOT NULL DEFAULT 0",
+            'wo_po_days'       => "INT NOT NULL DEFAULT 0",
+            'adv_payment_days' => "INT NOT NULL DEFAULT 0",
+            'transport_days'   => "INT NOT NULL DEFAULT 0",
+        ];
+        foreach ($catCols as $col => $def) {
+            $chk = @$db->query("SHOW COLUMNS FROM `con_material_categories` LIKE '{$col}'");
+            if ($chk && $chk->num_rows === 0) {
+                @$db->query("ALTER TABLE `con_material_categories` ADD COLUMN `{$col}` {$def}");
+            }
+        }
+
+        $chkBi = @$db->query("SHOW COLUMNS FROM `boq_items` LIKE 'required_date'");
+        if ($chkBi && $chkBi->num_rows === 0) {
+            @$db->query("ALTER TABLE `boq_items` ADD COLUMN `required_date` DATE NULL DEFAULT NULL");
+        }
+    }
+
     // =========================================================================
     // READ
     // =========================================================================
@@ -120,9 +212,13 @@ class Con_PurchaseRequest extends Model
              {$poRejJoin}
              WHERE pr.id = ?"
         );
+        if (!$stmt) {
+            return null;
+        }
         $stmt->bind_param('i', $id);
         $stmt->execute();
-        return $stmt->get_result()->fetch_assoc();
+        $res = $stmt->get_result();
+        return $res ? $res->fetch_assoc() : null;
     }
 
     public function getItems($requestId)
@@ -147,9 +243,13 @@ class Con_PurchaseRequest extends Model
              WHERE pri.request_id = ?
              ORDER BY pri.id ASC"
         );
+        if (!$stmt) {
+            return [];
+        }
         $stmt->bind_param('i', $requestId);
         $stmt->execute();
-        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $res = $stmt->get_result();
+        return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
     }
 
     /** Get approved PRs without PO (for PO generation dropdown) */

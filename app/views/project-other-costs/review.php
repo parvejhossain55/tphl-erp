@@ -9,7 +9,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
 ?>
 
 <main id="main" class="main">
-    <div class="pagetitle d-flex justify-content-between align-items-center">
+    <div class="pagetitle d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
         <div>
             <h1>Review Project Other Cost Request</h1>
             <nav>
@@ -89,14 +89,14 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
             </div>
         <?php endif; ?>
 
-        <div class="row">
+        <div class="row g-4">
             <div class="col-lg-8">
                 <!-- Request Details Card -->
                 <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-white pb-0 border-bottom-0">
-                        <h5 class="card-title mb-0">Request Details</h5>
+                    <div class="card-header bg-white py-3 px-4 border-bottom">
+                        <h5 class="card-title mb-0 p-0">Request Details</h5>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body p-4">
                         <?php 
                         $creatorAttachment = !empty($request['creator_attachment']) ? $request['creator_attachment'] : (!empty($request['attachment']) ? $request['attachment'] : null);
                         $creatorFileDetails = getProjectOtherCostFileDetails($creatorAttachment);
@@ -104,7 +104,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                             $fileExists = $creatorFileDetails['exists'];
                             $downloadLink = $creatorFileDetails['url'];
                         ?>
-                        <div class="alert <?= $fileExists ? 'alert-info' : 'alert-warning' ?> border d-flex flex-wrap align-items-center justify-content-between mt-3 mb-3 p-3" style="background: <?= $fileExists ? 'rgba(13, 202, 240, 0.08)' : 'rgba(255, 193, 7, 0.08)' ?>; border-color: <?= $fileExists ? 'rgba(13, 202, 240, 0.3)' : 'rgba(255, 193, 7, 0.3)' ?> !important; border-radius: 10px; gap: 15px;">
+                        <div class="alert <?= $fileExists ? 'alert-info' : 'alert-warning' ?> border d-flex flex-wrap align-items-center justify-content-between mb-3 p-3" style="background: <?= $fileExists ? 'rgba(13, 202, 240, 0.08)' : 'rgba(255, 193, 7, 0.08)' ?>; border-color: <?= $fileExists ? 'rgba(13, 202, 240, 0.3)' : 'rgba(255, 193, 7, 0.3)' ?> !important; border-radius: 10px; gap: 15px;">
                             <div class="d-flex align-items-center gap-3">
                                 <i class="fa-solid fa-file-invoice fs-4 <?= $fileExists ? 'text-info' : 'text-warning' ?> flex-shrink-0"></i>
                                 <div>
@@ -124,10 +124,10 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                         </div>
                         <?php endif; ?>
 
-                        <table class="table table-bordered mt-3">
+                        <table class="table table-bordered align-middle mb-0">
                             <tbody>
                                 <tr>
-                                    <th style="width: 30%; bg-light">Project Name</th>
+                                    <th class="bg-light" style="width: 30%;">Project Name</th>
                                     <td><?= htmlspecialchars($request['project_name']) ?></td>
                                 </tr>
                                 <tr>
@@ -221,12 +221,12 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
 
                 <!-- Timeline / History Card -->
                 <div class="card shadow-sm">
-                    <div class="card-header bg-white pb-0 border-bottom-0">
-                        <h5 class="card-title mb-0">Approval History</h5>
+                    <div class="card-header bg-white py-3 px-4 border-bottom">
+                        <h5 class="card-title mb-0 p-0">Approval History</h5>
                     </div>
-                    <div class="card-body">
-                        <ul class="list-group list-group-flush mt-3">
-                            <li class="list-group-item">
+                    <div class="card-body p-4">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item py-3 px-0 lh-base">
                                 <strong>Created By:</strong> <?= htmlspecialchars($request['creator_name'] ?? 'N/A') ?><br>
                                 <small class="text-muted"><?= date('d M Y h:i A', strtotime($request['created_at'])) ?></small>
                                 <?php if (!empty($creatorAttachment)): ?>
@@ -243,13 +243,13 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                     <?php endif; ?>
                                 <?php endif; ?>
                             </li>
-                            <li class="list-group-item">
+                            <li class="list-group-item py-3 px-0 lh-base">
                                 <strong>Dept Head Approval:</strong> 
                                 <?php if($request['dept_head_status'] === 'not_required'): ?>
                                     <span class="text-muted"><i class="bi bi-dash-circle"></i> Not Required (No Dept Head Added)</span>
                                 <?php elseif($request['dept_head_status'] === 'approved'): ?>
                                     <span class="text-success"><i class="bi bi-check-circle"></i> Approved</span> by <?= htmlspecialchars($request['dh_name'] ?? 'N/A') ?>
-                                    <?php if ($request['status'] !== 'paid' && $request['status'] !== 'rejected' && ((int)($request['creator_reporting_user_id'] ?? 0) === (int)$userId || in_array($roleId, [1, 3, 20, 32, 38]))): ?>
+                                    <?php if ($request['status'] === 'pending' && empty($request['qc_audit_approved_id']) && ((int)($request['creator_reporting_user_id'] ?? 0) === (int)$userId || (int)($request['dept_head_approved_by'] ?? 0) === (int)$userId)): ?>
                                         <button type="button" class="btn btn-xs btn-outline-danger ms-2 py-0 px-2" data-bs-toggle="collapse" data-bs-target="#deptHeadRejectCollapse">
                                             <i class="bi bi-x-circle me-1"></i> Reject
                                         </button>
@@ -284,7 +284,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                     <?php endif; ?>
                                 <?php endif; ?>
                             </li>
-                            <li class="list-group-item">
+                            <li class="list-group-item py-3 px-0 lh-base">
                                 <strong>QC Approval:</strong> 
                                 <?php if($request['qc_audit_approved_id']): ?>
                                     <?php if($request['status'] === 'rejected' && empty($request['management_apporved_by_id'])): ?>
@@ -292,7 +292,9 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                     <?php else: ?>
                                         <span class="text-success"><i class="bi bi-check-circle"></i> Approved</span> by <?= htmlspecialchars($request['qc_name'] ?? 'N/A') ?>
                                     <?php endif; ?>
-                                    <?php if ($request['status'] !== 'paid' && $request['status'] !== 'rejected' && in_array($roleId, [1, 3, 13, 24, 25, 20, 32, 38])): ?>
+                                    <?php 
+                                    $isOpHeadDoneForQc = !empty($ahInfo['is_op_head_approved']) || (strtolower($ahInfo['op_head_status'] ?? '') === 'approved');
+                                    if ($request['status'] === 'qc_approved' && !$isOpHeadDoneForQc && (in_array($roleId, [13, 24, 25]) || (int)($request['qc_audit_approved_id'] ?? 0) === (int)$userId)): ?>
                                         <button type="button" class="btn btn-xs btn-outline-danger ms-2 py-0 px-2" data-bs-toggle="collapse" data-bs-target="#qcRejectCollapse">
                                             <i class="bi bi-x-circle me-1"></i> Reject
                                         </button>
@@ -318,7 +320,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                 <?php endif; ?>
                             </li>
                             <!-- Admin & Operation Head Approval -->
-                            <li class="list-group-item">
+                            <li class="list-group-item py-3 px-0 lh-base">
                                 <strong>Admin &amp; Operation Head Approval:</strong>
                                 <?php 
                                 $isOpHeadApproved = !empty($ahInfo['is_op_head_approved']) || (strtolower($ahInfo['op_head_status'] ?? '') === 'approved');
@@ -331,7 +333,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                     <?php if (!empty($ahInfo['op_head_code'])): ?>
                                         <span class="badge bg-light text-secondary border ms-1">[<?= htmlspecialchars($ahInfo['op_head_code']) ?>]</span>
                                     <?php endif; ?>
-                                    <?php if ($request['status'] !== 'paid' && $request['status'] !== 'rejected' && in_array($roleId, [1, 3, 20, 32, 38])): ?>
+                                    <?php if ($request['status'] === 'qc_approved' && empty($ahInfo['is_accounts_head_approved']) && (in_array($roleId, [20, 32]) || (int)($ahInfo['op_head_by'] ?? 0) === (int)$userId)): ?>
                                         <button type="button" class="btn btn-xs btn-outline-danger ms-2 py-0 px-2" data-bs-toggle="collapse" data-bs-target="#opHeadRejectCollapse">
                                             <i class="bi bi-x-circle me-1"></i> Reject
                                         </button>
@@ -369,7 +371,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                             </li>
 
                             <!-- Accounts Head Approval -->
-                            <li class="list-group-item">
+                            <li class="list-group-item py-3 px-0 lh-base">
                                 <strong>Accounts Head Approval:</strong>
                                 <?php if (!empty($ahInfo['is_accounts_head_approved'])): ?>
                                     <span class="text-success"><i class="bi bi-check-circle"></i> Approved</span> by <?= htmlspecialchars($ahInfo['approved_by_name'] ?? 'Accounts Head') ?>
@@ -398,22 +400,23 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                 <?php endif; ?>
                             </li>
 
-                            <!-- Management Final Approval -->
-                            <li class="list-group-item">
+                            <?php
+                            $isUnder10k = ((float)($request['approved_amount'] ?? $request['request_amount']) <= 10000.01);
+                            $isDistinctMgmtUser = !empty($request['management_apporved_by_id']) 
+                                && stripos($request['mgmt_name'] ?? '', 'accounts') === false
+                                && (empty($ahInfo['op_head_name']) || strtolower(trim($request['mgmt_name'] ?? '')) !== strtolower(trim($ahInfo['op_head_name'] ?? '')));
+                            ?>
+                            <?php if (!$isUnder10k || $isDistinctMgmtUser): ?>
+                            <!-- Management Final Approval (> ৳10,000) -->
+                            <li class="list-group-item py-3 px-0 lh-base">
                                 <strong>Management Approval:</strong>
-                                <?php
-                                $isUnder10k = ((float)($request['approved_amount'] ?? $request['request_amount']) <= 10000.01);
-                                $isDistinctMgmtUser = !empty($request['management_apporved_by_id']) 
-                                    && stripos($request['mgmt_name'] ?? '', 'accounts') === false
-                                    && (empty($ahInfo['op_head_name']) || strtolower(trim($request['mgmt_name'] ?? '')) !== strtolower(trim($ahInfo['op_head_name'] ?? '')));
-                                ?>
                                 <?php if ($isDistinctMgmtUser): ?>
                                     <?php if ($request['status'] === 'rejected'): ?>
                                         <span class="text-danger"><i class="bi bi-x-circle"></i> Rejected</span> by <?= htmlspecialchars($request['mgmt_name'] ?? 'Management') ?>
                                     <?php else: ?>
                                         <span class="text-success"><i class="bi bi-check-circle"></i> Approved</span> by <?= htmlspecialchars($request['mgmt_name'] ?? 'Management') ?>
                                     <?php endif; ?>
-                                    <?php if ($request['status'] !== 'paid' && $request['status'] !== 'rejected' && in_array($roleId, [1, 3, 15, 20, 22, 32, 38])): ?>
+                                    <?php if ($request['status'] !== 'paid' && $request['status'] !== 'rejected' && in_array($roleId, [1, 3, 38])): ?>
                                         <button type="button" class="btn btn-xs btn-outline-danger ms-2 py-0 px-2" data-bs-toggle="collapse" data-bs-target="#mgmtRejectCollapse">
                                             <i class="bi bi-x-circle me-1"></i> Reject
                                         </button>
@@ -432,19 +435,15 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                         <small class="text-muted"><?= date('d M Y h:i A', strtotime($request['management_apporved_at'])) ?></small><br>
                                     <?php endif; ?>
                                     <?php if ($request['management_apporved_note']): ?><small>Note: <?= htmlspecialchars($request['management_apporved_note']) ?></small><?php endif; ?>
-                                <?php elseif ($isUnder10k && $isOpHeadApproved): ?>
-                                    <span class="text-success"><i class="bi bi-shield-check"></i> Authorized by Admin &amp; Operation Head (&le; ৳10,000 Tier)</span><br>
-                                    <small class="text-muted">Separate Executive Management sign-off not required for expenses &le; ৳10,000.</small>
                                 <?php elseif ($request['dept_head_status'] === 'rejected' || ($request['status'] === 'rejected' && empty($request['management_apporved_by_id']))): ?>
                                     <span class="text-muted"><i class="bi bi-dash-circle"></i> Skipped (Rejected at Earlier Stage)</span>
                                 <?php else: ?>
                                     <span class="text-warning"><i class="bi bi-clock"></i> Pending</span>
-                                    <?php if (!$isUnder10k): ?>
-                                        <span class="text-danger small fw-semibold ms-1">(Mandatory for &gt; ৳10,000)</span>
-                                    <?php endif; ?>
+                                    <span class="text-danger small fw-semibold ms-1">(Mandatory for &gt; ৳10,000)</span>
                                 <?php endif; ?>
                             </li>
-                            <li class="list-group-item">
+                            <?php endif; ?>
+                            <li class="list-group-item py-3 px-0 lh-base">
                                 <strong>Payment Status:</strong>
                                 <?php if($request['payment_by_id']): ?>
                                     <span class="text-success"><i class="bi bi-check-circle"></i> Paid & Settled</span> by <?= htmlspecialchars($request['pay_name'] ?? 'N/A') ?><br>
@@ -489,56 +488,49 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
             <div class="col-lg-4">
                 <?php
                 $userId = $_SESSION['user']['id'] ?? ($userId ?? null);
+                $roleNameLc = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
                 $creatorReportingUserId = (int)($request['creator_reporting_user_id'] ?? 0);
-                $canDeptHeadApprove = ($request['dept_head_status'] === 'pending' && ($userId == $creatorReportingUserId || $roleId == 1));
-                $canQCApprove = ($request['status'] == 'pending' && $request['dept_head_status'] !== 'pending' && in_array($roleId, [13, 24, 25, 1]));
+                $canDeptHeadApprove = ($request['dept_head_status'] === 'pending' && ($userId == $creatorReportingUserId));
+                $canQCApprove = ($request['status'] == 'pending' && $request['dept_head_status'] !== 'pending' && in_array($roleId, [13, 24, 25]));
                 $reqAmt = (float)($request['approved_amount'] ?? $request['request_amount'] ?? 0);
                 $isOver1Lac = ($reqAmt > 10000);
-                $isOpHeadUser = (in_array($roleId, [20, 32], true) || str_contains(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head'));
-                $isMgmtUser = in_array($roleId, [1, 3], true);
+                $isOpHeadUser = (in_array($roleId, [20, 32], true) || str_contains($roleNameLc, 'operation head') || str_contains($roleNameLc, 'admin & operation'));
+                $isMgmtUser = in_array($roleId, [1, 3, 38], true) || in_array($roleNameLc, ['super admin', 'admin', 'management', 'board of director', 'board of directors'], true) || str_contains($roleNameLc, 'director') || str_contains($roleNameLc, 'dceo');
                 $isOpHeadApproved = !empty($ahInfo['is_op_head_approved']);
 
                 $isOpHeadAction = false;
                 $isMgmtLocked = false;
                 $canMgmtApprove = false;
+                $pocOverrideStage = '';
 
-                if ($request['status'] == 'qc_approved') {
-                    if ($isOver1Lac) {
-                        if (!$isOpHeadApproved) {
-                            if ($isOpHeadUser && !$isMgmtUser) {
-                                $canMgmtApprove = true;
-                                $isOpHeadAction = true;
-                            } else {
-                                $isMgmtLocked = $isMgmtUser;
-                                $mgmtLockReason = 'op_head';
-                            }
+                if (in_array($request['status'], ['pending', 'qc_approved', 'in_review'], true)) {
+                    if ($isMgmtUser) {
+                        // Management / DCEO / CEO / Director can always approve directly (auto-fills any pending prior steps with Management Override)
+                        $canMgmtApprove = true;
+                        if (($request['dept_head_status'] ?? 'not_required') === 'pending') {
+                            $pocOverrideStage = 'Department Head';
+                        } elseif ($request['status'] === 'pending') {
+                            $pocOverrideStage = 'QC & Internal Audit';
+                        } elseif (!$isOpHeadApproved) {
+                            $pocOverrideStage = 'Head of Operation';
                         } elseif (!$isAhApproved) {
-                            $isMgmtLocked = $isMgmtUser;
-                            $mgmtLockReason = 'accounts_head';
-                        } else {
-                            if ($isMgmtUser) {
-                                $canMgmtApprove = true;
-                            }
+                            $pocOverrideStage = 'Accounts Head';
                         }
-                    } else {
-                        if ($isMgmtUser || $isOpHeadUser) {
-                            $canMgmtApprove = true;
-                            if ($isOpHeadUser && !$isMgmtUser) {
-                                $isOpHeadAction = true;
-                            }
-                        }
+                    } elseif ($request['status'] == 'qc_approved' && !$isOpHeadApproved && $isOpHeadUser) {
+                        $canMgmtApprove = true;
+                        $isOpHeadAction = true;
                     }
                 }
-                $canPay = ($request['status'] == 'management_approved' && in_array($roleId, [6, 30, 1]) && $isAhApproved);
-                $isWaitingAccountsHead = ($request['status'] == 'management_approved' && in_array($roleId, [6, 30, 1]) && !$isAhApproved);
+                $canPay = ($request['status'] == 'management_approved' && (in_array($roleId, [6, 30]) || $isMgmtUser) && $isAhApproved);
+                $isWaitingAccountsHead = (in_array($request['status'], ['management_approved', 'in_review', 'qc_approved']) && $isOpHeadApproved && (in_array($roleId, [6, 30]) || $isMgmtUser) && !$isAhApproved);
                 ?>
 
                 <?php if ($canDeptHeadApprove || $canQCApprove || $canMgmtApprove || $isMgmtLocked || $canPay || $isWaitingAccountsHead): ?>
-                    <div class="card shadow-sm border-0 border-top border-3 border-primary">
-                        <div class="card-header bg-white pb-0 border-bottom-0">
-                            <h5 class="card-title text-primary mb-0"><i class="bi bi-pencil-square me-2"></i>Process Request</h5>
+                    <div class="card shadow-sm border-0 border-top border-3 border-primary mb-4">
+                        <div class="card-header bg-white py-3 px-4 border-bottom">
+                            <h5 class="card-title text-primary mb-0 p-0"><i class="bi bi-pencil-square me-2"></i>Process Request</h5>
                         </div>
-                        <div class="card-body mt-3">
+                        <div class="card-body p-4">
                             
                             <?php if ($canDeptHeadApprove): ?>
                                 <form method="POST" action="<?= $GLOBALS['base_url'] ?>/project-other-costs/approve-dept-head/<?= $request['id'] ?>">
@@ -579,24 +571,29 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                             <?php endif; ?>
 
                             <?php if ($isMgmtLocked): ?>
-                                <div class="alert alert-warning py-3 px-3 border-warning text-center mb-0">
-                                    <i class="fa-solid fa-lock me-1"></i>
-                                    <strong>Management Approval Locked (&gt; ৳10,000)</strong><br>
-                                    <span class="fs-12">
+                                <div class="p-3 rounded-2 border border-warning bg-warning-subtle text-dark text-center mb-0 lh-base">
+                                    <div class="fw-bold mb-1">
+                                        <i class="fa-solid fa-lock text-warning me-1"></i>Management Approval Locked (&gt; ৳10,000)
+                                    </div>
+                                    <div class="fs-12">
                                         <?php if (!empty($mgmtLockReason) && $mgmtLockReason === 'accounts_head'): ?>
-                                            Admin & Operation Head has approved. Awaiting <strong>Accounts Head (Role 30)</strong> payment verification &amp; approval before Management can sign off.
+                                            Admin &amp; Operation Head has approved. Awaiting <strong>Accounts Head (Role 30)</strong> payment verification &amp; approval before Management can sign off.
                                         <?php else: ?>
-                                            Requires <strong>Admin & Operation Head (Role 20)</strong> verification and approval first.
+                                            Requires <strong>Admin &amp; Operation Head (Role 20)</strong> verification and approval first.
                                         <?php endif; ?>
-                                    </span>
+                                    </div>
                                 </div>
                             <?php endif; ?>
 
                             <?php if ($canMgmtApprove): ?>
-                                <form method="POST" action="<?= $GLOBALS['base_url'] ?>/project-other-costs/approve-management/<?= $request['id'] ?>">
+                                <form id="pocMgmtApproveForm" method="POST" action="<?= $GLOBALS['base_url'] ?>/project-other-costs/approve-management/<?= $request['id'] ?>">
+                                    <input type="hidden" name="action" id="pocMgmtActionInput" value="approve">
                                     <?php if ($isOpHeadAction): ?>
-                                        <div class="alert alert-primary py-2 px-3 small mb-3">
-                                            <i class="bi bi-shield-check me-1"></i><strong>Admin &amp; Operation Head Approval<?= $isOver1Lac ? ' (Step 1 of 3)' : ' (≤ ৳10,000 Tier)' ?>:</strong> Your approval verifies and forwards this request to Accounts Head (Role 30).
+                                        <div class="d-flex align-items-start gap-2 p-3 mb-3 rounded-2 border border-primary bg-primary-subtle text-dark small lh-base">
+                                            <i class="bi bi-shield-check text-primary flex-shrink-0 mt-1"></i>
+                                            <div>
+                                                <strong>Admin &amp; Operation Head Approval<?= $isOver1Lac ? ' (Step 1 of 3)' : ' (≤ ৳10,000 Tier)' ?>:</strong> Your approval verifies and forwards this request to Accounts Head (Role 30).
+                                            </div>
                                         </div>
                                     <?php endif; ?>
                                     <div class="mb-3">
@@ -608,14 +605,52 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                         <textarea class="form-control" name="management_apporved_note" rows="3" placeholder="Enter remarks..."></textarea>
                                     </div>
                                     <div class="d-flex gap-2">
-                                        <button type="submit" name="action" value="approve" class="btn <?= $isOpHeadAction ? 'btn-primary' : 'btn-success' ?> btn-lg flex-grow-1" onclick="return confirm('<?= $isOpHeadAction ? 'Approve as Operation Head?' : 'Are you sure you want to approve this request?' ?>');">
+                                        <button type="button" id="btnPocMgmtApprove" class="btn <?= $isOpHeadAction ? 'btn-primary' : 'btn-success' ?> btn-lg flex-grow-1">
                                             <i class="bi bi-check-circle me-1"></i> <?= $isOpHeadAction ? 'Submit Op Head Approval' : 'Submit Mgmt Approval' ?>
                                         </button>
-                                        <button type="submit" name="action" value="reject" class="btn btn-danger btn-lg flex-grow-1" onclick="return confirm('Are you sure you want to reject this request?');">
+                                        <button type="submit" name="action" value="reject" class="btn btn-danger btn-lg flex-grow-1" onclick="document.getElementById('pocMgmtActionInput').value='reject'; return confirm('Are you sure you want to reject this request?');">
                                             <i class="bi bi-x-circle me-1"></i> Reject
                                         </button>
                                     </div>
                                 </form>
+                                <script>
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    var btnPoc = document.getElementById('btnPocMgmtApprove');
+                                    var formPoc = document.getElementById('pocMgmtApproveForm');
+                                    if (btnPoc && formPoc) {
+                                        btnPoc.addEventListener('click', function() {
+                                            document.getElementById('pocMgmtActionInput').value = 'approve';
+                                            var overrideStage = <?= json_encode($pocOverrideStage ?? '') ?>;
+                                            var isOpHead = <?= !empty($isOpHeadAction) ? 'true' : 'false' ?>;
+                                            var title = overrideStage !== ''
+                                                ? 'Pending ' + overrideStage + "'s Approval"
+                                                : (isOpHead ? 'Approve as Head of Operation?' : 'Final Management Approval?');
+                                            var htmlMsg = overrideStage !== ''
+                                                ? 'This request is pending for <strong>' + overrideStage + "'s</strong> approval. Are you ready to approve for <strong>" + overrideStage + '</strong> first?<br><small class="text-muted d-block mt-2">Your name will be recorded as the approver for all bypassed stages as well as final Management approval.</small>'
+                                                : (isOpHead
+                                                    ? 'Confirm Head of Operation approval and forward to Accounts Head?'
+                                                    : 'Confirm final Management approval for this request?');
+                                            if (typeof Swal !== 'undefined') {
+                                                Swal.fire({
+                                                    title: title,
+                                                    html: htmlMsg,
+                                                    icon: overrideStage !== '' ? 'warning' : 'question',
+                                                    showCancelButton: true,
+                                                    confirmButtonColor: isOpHead ? '#0d6efd' : '#198754',
+                                                    cancelButtonColor: '#6c757d',
+                                                    confirmButtonText: overrideStage !== '' ? 'Yes, Approve All Stages' : 'Yes, Approve'
+                                                }).then(function(result) {
+                                                    if (result.isConfirmed) {
+                                                        formPoc.submit();
+                                                    }
+                                                });
+                                            } else if (confirm(title)) {
+                                                formPoc.submit();
+                                            }
+                                        });
+                                    }
+                                });
+                                </script>
                             <?php endif; ?>
 
                             <?php if ($canPay): ?>
@@ -642,31 +677,34 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                             <?php endif; ?>
 
                             <?php if ($isWaitingAccountsHead): ?>
-                                <div class="alert alert-warning py-3 px-3 border-warning text-center mb-0">
-                                    <i class="fa-solid fa-lock me-1"></i>
-                                    <strong>Payment Locked</strong><br>
-                                    <span class="fs-12">Pending Accounts Head approval.</span>
+                                <div class="p-3 rounded-2 border border-warning bg-warning-subtle text-dark text-center mb-0 lh-base">
+                                    <div class="fw-bold mb-1">
+                                        <i class="fa-solid fa-lock text-warning me-1"></i>Payment Locked
+                                    </div>
+                                    <div class="fs-12">Pending Accounts Head approval.</div>
                                 </div>
                             <?php endif; ?>
 
                         </div>
                     </div>
                 <?php else: ?>
-                    <div class="alert alert-secondary text-center shadow-sm">
+                    <div class="p-4 rounded-3 border bg-light text-center shadow-sm mb-4 lh-base">
                         <i class="bi bi-info-circle fs-4 d-block mb-2 text-muted"></i>
-                        <?php if ($request['dept_head_status'] === 'pending'): ?>
-                            Currently waiting for Department Head approval from <strong><?= htmlspecialchars($request['designated_dh_name'] ?? 'Reporting Boss') ?></strong>.
-                        <?php elseif ($request['status'] === 'pending'): ?>
-                            Currently waiting for QC & Audit approval.
-                        <?php elseif ($request['status'] === 'qc_approved'): ?>
-                            Currently waiting for Management approval.
-                        <?php elseif ($request['status'] === 'management_approved'): ?>
-                            Currently waiting for Accounts Payout.
-                        <?php elseif ($request['status'] === 'paid'): ?>
-                            Request has been paid and completed.
-                        <?php else: ?>
-                            No actions required from your end at this stage.
-                        <?php endif; ?>
+                        <div class="text-dark">
+                            <?php if ($request['dept_head_status'] === 'pending'): ?>
+                                Currently waiting for Department Head approval from <strong><?= htmlspecialchars($request['designated_dh_name'] ?? 'Reporting Boss') ?></strong>.
+                            <?php elseif ($request['status'] === 'pending'): ?>
+                                Currently waiting for QC &amp; Audit approval.
+                            <?php elseif ($request['status'] === 'qc_approved'): ?>
+                                Currently waiting for Management approval.
+                            <?php elseif ($request['status'] === 'management_approved'): ?>
+                                Currently waiting for Accounts Payout.
+                            <?php elseif ($request['status'] === 'paid'): ?>
+                                Request has been paid and completed.
+                            <?php else: ?>
+                                No actions required from your end at this stage.
+                            <?php endif; ?>
+                        </div>
                     </div>
                 <?php endif; ?>
 

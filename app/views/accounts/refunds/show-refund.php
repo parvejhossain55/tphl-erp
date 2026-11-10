@@ -639,7 +639,8 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
             <?php endif; ?>
 
             <!-- Accounts Payout Action (Approved status) -->
-            <?php if ($status === 'approved' && in_array($userRole, [1, 3, 6, 10, 30])): ?>
+            <?php $canDisburseRefund = in_array((int)$userRole, [1, 3, 6, 10, 30, 38], true) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'account') !== false; ?>
+            <?php if ($status === 'approved' && $canDisburseRefund): ?>
             <div class="card custom-card border-0 shadow-sm mb-3" style="border-left: 4px solid #198754 !important; background: #f4fbf7;">
                 <div class="card-body p-3">
                     <div class="d-flex align-items-center mb-2.5">
@@ -713,7 +714,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
             <!-- ========================================================================= -->
             <!-- Modal: Accounts Refund Disbursement Payout (Matching Image 2) -->
             <!-- ========================================================================= -->
-            <?php if ($status === 'approved' && in_array($userRole, [1, 3, 6, 10, 30])): ?>
+            <?php if ($status === 'approved' && $canDisburseRefund): ?>
             <?php
                 $preMethod = !empty($refund['preferred_payment_method']) ? strtolower($refund['preferred_payment_method']) : 'bank';
                 $clientBankVal = $refund['client_bank_name'] ?? '';

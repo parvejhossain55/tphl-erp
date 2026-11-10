@@ -37,7 +37,8 @@ class Con_FundRequest extends Model
 
         $sql .= " GROUP BY ofr.id ORDER BY ofr.created_at DESC";
 
-        return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
+        $res = $this->db->query($sql);
+        return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
     }
 
     public function findWithRelations($id)
@@ -56,17 +57,25 @@ class Con_FundRequest extends Model
                 LEFT JOIN roles ab_r              ON ab_r.id = ab.role_id
                 WHERE ofr.id = ?";
         $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return null;
+        }
         $stmt->bind_param('i', $id);
         $stmt->execute();
-        return $stmt->get_result()->fetch_assoc();
+        $res = $stmt->get_result();
+        return $res ? $res->fetch_assoc() : null;
     }
 
     public function find($id)
     {
         $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE id=?");
+        if (!$stmt) {
+            return null;
+        }
         $stmt->bind_param('i', $id);
         $stmt->execute();
-        return $stmt->get_result()->fetch_assoc();
+        $res = $stmt->get_result();
+        return $res ? $res->fetch_assoc() : null;
     }
 
     public function create($data)
