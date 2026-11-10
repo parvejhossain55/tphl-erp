@@ -1768,20 +1768,11 @@ $todayDateFormatted = date('j F');
                 <input type="file" name="attachment" id="drawerAttachment" class="mw-form-input">
             </div>
 
-            <!-- More Details Accordion -->
-            <div class="mw-accordion-toggle" id="btnToggleMoreDetails">
-                <div>
-                    <i class="fa-solid fa-chevron-down me-2" id="iconAccordion" style="font-size: 11px;"></i>
-                    <strong>More details</strong>
-                </div>
-                <span class="text-muted small">Checklist · start date · dependency</span>
-            </div>
-            <div class="mw-accordion-body" id="bodyMoreDetails" style="display: none; padding: 14px 0 4px;">
-                <div class="mw-form-group">
+            <!-- Start Date -->
+            <div class="mw-form-group">
                     <label class="mw-form-label">Start Date</label>
                     <input type="date" name="start_date" class="mw-form-input">
                 </div>
-            </div>
 
             <!-- Callout Notice Box -->
             <div class="mw-callout-box" id="mwTaskNoticeBox">
@@ -2151,20 +2142,6 @@ document.addEventListener('DOMContentLoaded', function () {
     if (taskOwnerSelect) taskOwnerSelect.addEventListener('change', updateNoticeBox);
     if (taskReviewerSelect) taskReviewerSelect.addEventListener('change', updateNoticeBox);
     updateNoticeBox();
-
-    // Accordion Toggle
-    const btnToggleMoreDetails = document.getElementById('btnToggleMoreDetails');
-    const bodyMoreDetails = document.getElementById('bodyMoreDetails');
-    const iconAccordion = document.getElementById('iconAccordion');
-    if (btnToggleMoreDetails && bodyMoreDetails) {
-        btnToggleMoreDetails.addEventListener('click', function() {
-            const isHidden = (bodyMoreDetails.style.display === 'none');
-            bodyMoreDetails.style.display = isHidden ? 'block' : 'none';
-            if (iconAccordion) {
-                iconAccordion.className = isHidden ? 'fa-solid fa-chevron-up me-2' : 'fa-solid fa-chevron-down me-2';
-            }
-        });
-    }
 
     // Show Repeat options only when "Is Recurring" is ticked
     const chkIsRecurring = document.getElementById('chkIsRecurring');
