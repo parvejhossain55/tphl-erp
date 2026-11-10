@@ -352,6 +352,10 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                                                                     <i class="fa-solid fa-clock me-1"></i>Please Confirm Receipt
                                                                 </div>
                                                             <?php endif; ?>
+                                                        <?php elseif (!empty($sale['remarks']) && strpos($sale['remarks'], 'Target or minimum 25 Lakh') !== false): ?>
+                                                            <span class="badge bg-warning-subtle text-dark border border-warning-subtle rounded-pill px-3 py-1 extra-small shadow-sm" title="Achieve target or minimum 25 Lakh sales in this cycle to unlock claim">
+                                                                <i class="fa-solid fa-lock me-1 text-warning"></i>Target Pending (Need 25L)
+                                                            </span>
                                                         <?php elseif (empty($sale['booking_completed'])): ?>
                                                             <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-1 extra-small" title="<?= htmlspecialchars($sale['remarks'] ?: 'Booking Money pending verification by Accounts') ?>">
                                                                 <i class="fa-solid fa-clock-rotate-left me-1"></i>Payment Verification Pending
@@ -405,6 +409,10 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                                                                     <i class="fa-solid fa-hand-holding-dollar me-1"></i>Confirm Received
                                                                 </button>
                                                             <?php endif; ?>
+                                                        <?php elseif (!empty($sale['remarks']) && strpos($sale['remarks'], 'Target or minimum 25 Lakh') !== false): ?>
+                                                            <button class="btn btn-sm btn-light text-warning border rounded-2 px-2 disabled" disabled title="Need 25 Lakh land share sales or target achievement to unlock claim">
+                                                                <i class="fa-solid fa-lock me-1"></i>Pending 25L
+                                                            </button>
                                                         <?php elseif (empty($sale['booking_completed'])): ?>
                                                             <button class="btn btn-sm btn-light text-warning rounded-2 disabled" disabled title="Waiting for Accounts to verify booking payment before claiming">
                                                                 <i class="fa-solid fa-clock-rotate-left me-1"></i>Pending Verify
@@ -766,16 +774,38 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
 
             <!-- Team Members Breakdown Table Card -->
             <div class="card border-0 shadow-sm rounded-3">
-                <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+                <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
                     <div>
                         <h5 class="fw-bold mb-0 text-dark">
                             <i class="fa-solid fa-people-arrows text-warning me-2"></i>Team Members Performance & TL 0.05% Gain
                         </h5>
                         <span class="text-muted extra-small">When any team member achieves ≥ ৳25,00,000 in land share sales, you gain 0.05% override incentive from their sales.</span>
                     </div>
-                    <span class="badge bg-warning-subtle text-dark border px-3 py-2 rounded-pill fw-semibold">
-                        Cycle: <?= $displayMonthName ?>
-                    </span>
+                    <div class="d-flex align-items-center gap-2">
+                        <?php 
+                        $unclaimedTlOverrides = 0;
+                        $unclaimedTlAmount = 0.00;
+                        if (!empty($teamMetrics['member_breakdown'])) {
+                            foreach ($teamMetrics['member_breakdown'] as $tmb) {
+                                if (!empty($tmb['is_self'])) continue;
+                                if (!empty($tmb['is_qualified']) && (float)$tmb['tl_contribution'] > 0 && empty($tmb['claim_status'])) {
+                                    $unclaimedTlOverrides++;
+                                    $unclaimedTlAmount += (float)$tmb['tl_contribution'];
+                                }
+                            }
+                        }
+                        ?>
+                        <?php if ($unclaimedTlOverrides > 0): ?>
+                            <button type="button" 
+                                    class="btn btn-sm btn-success rounded-pill px-3 shadow-sm"
+                                    onclick="claimAllTlOverrides('<?= htmlspecialchars($selectedMonth) ?>', <?= $unclaimedTlOverrides ?>, <?= $unclaimedTlAmount ?>)">
+                                <i class="fa-solid fa-paper-plane me-1"></i>Claim All Overrides (<?= $unclaimedTlOverrides ?>) — ৳<?= number_format($unclaimedTlAmount, 2) ?>
+                            </button>
+                        <?php endif; ?>
+                        <span class="badge bg-warning-subtle text-dark border px-3 py-2 rounded-pill fw-semibold">
+                            Cycle: <?= $displayMonthName ?>
+                        </span>
+                    </div>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -1506,6 +1536,54 @@ window.openClaimTlModal = function(btn) {
             $('#claimTlOverrideModal').modal('show');
         }
     }
+};
+
+window.claimAllTlOverrides = function(month, count, amount) {
+    if (!confirm('Are you sure you want to claim all ' + count + ' qualified team member overrides (Total: ৳' + Number(amount).toLocaleString('en-US', {minimumFractionDigits: 2}) + ') for ' + month + '?')) {
+        return;
+    }
+    const remarks = prompt('Optional remarks for this batch claim:', 'Batch claim for qualified team member overrides');
+    if (remarks === null) return;
+
+    const submitBtn = event && event.target ? event.target.closest('button') : null;
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Processing...';
+    }
+
+    const payload = new URLSearchParams();
+    payload.append('month', month);
+    payload.append('remarks', remarks);
+
+    fetch('<?= BASE_URL ?>/incentives/claim-all-tl-overrides', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: payload.toString()
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            alert('Success! ' + res.message);
+            window.location.reload();
+        } else {
+            alert('Error: ' + (res.message || 'Failed to submit batch claims.'));
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i>Claim All Overrides (' + count + ')';
+            }
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Network error while claiming overrides.');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i>Claim All Overrides (' + count + ')';
+        }
+    });
 };
 
 window.openClaimDesignatedModal = function(btn) {

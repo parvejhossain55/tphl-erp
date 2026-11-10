@@ -4962,6 +4962,9 @@ class AccountClient extends Model
                         if (!$settleStmt->execute()) throw new Exception("Settlement insert failed: " . $settleStmt->error);
                         
                         $settlePaymentId = $this->db->insert_id;
+                        if (!$firstPaymentId) {
+                            $firstPaymentId = $settlePaymentId;
+                        }
 
                         if (!empty($handoverToId)) {
                             if (!class_exists('ApprovalRequest')) {
@@ -5088,48 +5091,6 @@ class AccountClient extends Model
                         }
                         if (!$firstPaymentId) {
                             $firstPaymentId = $paymentId;
-
-                            // Update penalty & waiver details on the primary payment record
-                            $penaltyAmount = (float)($transactionData['penalty_amount'] ?? 0);
-                            $penaltyPaid   = (float)($transactionData['penalty_paid'] ?? 0);
-                            $penaltyWaived = (float)($transactionData['penalty_waived'] ?? 0);
-                            $waiverReason  = $transactionData['waiver_reason'] ?? null;
-                            $waiverAtt     = $transactionData['waiver_attachment'] ?? null;
-                            $waiverStatus  = $transactionData['waiver_status'] ?? 'none';
-
-                            if ($penaltyAmount > 0 || $penaltyWaived > 0) {
-                                $pUpd = $this->db->prepare("UPDATE lead_payments SET penalty_amount = ?, penalty_paid = ?, penalty_waived = ?, waiver_reason = ?, waiver_attachment = ?, waiver_status = ? WHERE id = ?");
-                                $pUpd->bind_param("dddsssi", $penaltyAmount, $penaltyPaid, $penaltyWaived, $waiverReason, $waiverAtt, $waiverStatus, $firstPaymentId);
-                                $pUpd->execute();
-                                $pUpd->close();
-                            }
-
-                            if ($waiverStatus === 'pending' && $penaltyWaived > 0) {
-                                if (!class_exists('ApprovalRequest')) {
-                                    require_once __DIR__ . '/ApprovalRequest.php';
-                                }
-                                $approvalModel = new ApprovalRequest($this->db);
-                                $approvalModel->create([
-                                    'department'     => 'CED',
-                                    'request_type'   => 'Penalty Waiver Request',
-                                    'title'          => 'Penalty Waiver Request for Client Payment #' . $firstPaymentId,
-                                    'source_table'   => 'lead_payments',
-                                    'source_id'      => $firstPaymentId,
-                                    'requested_days' => 0,
-                                    'requested_by'   => $createdBy,
-                                    'approve_role'   => 'management',
-                                    'meta_data'      => json_encode([
-                                        'Project'          => $clientDetails['project_name'] ?? 'N/A',
-                                        'Client Name'      => $clientDetails['client_name'] ?? 'N/A',
-                                        'Penalty Amount'   => $penaltyAmount,
-                                        'Waived Amount'    => $penaltyWaived,
-                                        'Penalty Paid'     => $penaltyPaid,
-                                        'Waiver Reason'    => $waiverReason,
-                                        'Attachment Path'  => $waiverAtt
-                                    ]),
-                                    'request_amount' => $penaltyWaived
-                                ]);
-                            }
                         }
 
                         // Insert emi_schedule row
@@ -5157,6 +5118,50 @@ class AccountClient extends Model
                     }
                 } // end while pool > 0
             } // end foreach emiPaymentsToProcess
+
+            // Update penalty & waiver details on the primary payment record (whether settlement or new installment)
+            if ($firstPaymentId) {
+                $penaltyAmount = (float)($transactionData['penalty_amount'] ?? 0);
+                $penaltyPaid   = (float)($transactionData['penalty_paid'] ?? 0);
+                $penaltyWaived = (float)($transactionData['penalty_waived'] ?? 0);
+                $waiverReason  = $transactionData['waiver_reason'] ?? null;
+                $waiverAtt     = $transactionData['waiver_attachment'] ?? null;
+                $waiverStatus  = $transactionData['waiver_status'] ?? 'none';
+
+                if ($penaltyAmount > 0 || $penaltyWaived > 0) {
+                    $pUpd = $this->db->prepare("UPDATE lead_payments SET penalty_amount = ?, penalty_paid = ?, penalty_waived = ?, waiver_reason = ?, waiver_attachment = ?, waiver_status = ? WHERE id = ?");
+                    $pUpd->bind_param("dddsssi", $penaltyAmount, $penaltyPaid, $penaltyWaived, $waiverReason, $waiverAtt, $waiverStatus, $firstPaymentId);
+                    $pUpd->execute();
+                    $pUpd->close();
+                }
+
+                if ($waiverStatus === 'pending' && $penaltyWaived > 0) {
+                    if (!class_exists('ApprovalRequest')) {
+                        require_once __DIR__ . '/ApprovalRequest.php';
+                    }
+                    $approvalModel = new ApprovalRequest($this->db);
+                    $approvalModel->create([
+                        'department'     => 'CED',
+                        'request_type'   => 'Penalty Waiver Request',
+                        'title'          => 'Penalty Waiver Request for Client Payment #' . $firstPaymentId,
+                        'source_table'   => 'lead_payments',
+                        'source_id'      => $firstPaymentId,
+                        'requested_days' => 0,
+                        'requested_by'   => $createdBy,
+                        'approve_role'   => 'management',
+                        'meta_data'      => json_encode([
+                            'Project'          => $clientDetails['project_name'] ?? 'N/A',
+                            'Client Name'      => $clientDetails['client_name'] ?? 'N/A',
+                            'Penalty Amount'   => $penaltyAmount,
+                            'Waived Amount'    => $penaltyWaived,
+                            'Penalty Paid'     => $penaltyPaid,
+                            'Waiver Reason'    => $waiverReason,
+                            'Attachment Path'  => $waiverAtt
+                        ]),
+                        'request_amount' => $penaltyWaived
+                    ]);
+                }
+            }
 
             $this->db->commit();
 

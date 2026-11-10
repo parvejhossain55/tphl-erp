@@ -2197,7 +2197,7 @@ if (!isset($discountApprovalReq)) {
                                     <small class="text-muted extra-small">Trx ID: #<?= $ph['id'] ?></small>
                                 </td>
                                 <td class="text-nowrap">
-                                    <?php if (!e mpty($ph['scheduled_due_date'])): ?>
+                                    <?php if (!empty($ph['scheduled_due_date'])): ?>
                                         <div class="fw-semibold text-danger">
                                             <i class="fa-regular fa-calendar-xmark me-1"></i>
                                             <?= date('d M, Y', strtotime($ph['scheduled_due_date'])) ?>

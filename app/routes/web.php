@@ -233,6 +233,7 @@ return [
     'incentives/save-slab' => ['controller' => 'IncentiveController', 'method' => 'saveSlab'],
     'incentives/save-hierarchy' => ['controller' => 'IncentiveController', 'method' => 'saveHierarchy'],
     'incentives/claim-tl-override' => ['controller' => 'IncentiveController', 'method' => 'claimTlOverride'],
+    'incentives/claim-all-tl-overrides' => ['controller' => 'IncentiveController', 'method' => 'claimAllTlOverrides'],
     'incentives/claim-designated' => ['controller' => 'IncentiveController', 'method' => 'claimDesignatedIncentive'],
     'incentives/confirm-receipt' => ['controller' => 'IncentiveController', 'method' => 'confirmReceipt'],
 
