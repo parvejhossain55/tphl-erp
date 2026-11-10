@@ -15,23 +15,29 @@ $defaultToDate = date('Y-m-25');
 /* Meal Tracker Aesthetics (Automatic Light & Dark Mode Compatibility) */
 .meal-tracker-wrapper .nav-pills .nav-link {
     font-weight: 600;
-    padding: 9px 18px;
-    border-radius: 8px;
-    border: 1px solid var(--clr-border-1, #e5e7eb);
-    color: inherit;
-    margin-right: 8px;
-    background: var(--clr-bg-card, transparent);
-    transition: all 0.2s ease;
+    font-size: 12.5px;
+    padding: 5px 11px;
+    border-radius: 6px;
+    border: 1px solid #dce1e7;
+    color: #334155;
+    margin-right: 0;
+    background: #ffffff;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 30px;
 }
 .meal-tracker-wrapper .nav-pills .nav-link:hover {
-    background: var(--clr-bg-secondary, rgba(0, 0, 0, 0.05));
-    color: inherit;
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #0f172a;
 }
 .meal-tracker-wrapper .nav-pills .nav-link.active {
     background: #0f766e !important;
     color: #ffffff !important;
     border-color: #0f766e !important;
-    box-shadow: 0 4px 6px -1px rgba(15, 118, 110, 0.25);
+    box-shadow: 0 2px 4px rgba(15, 118, 110, 0.2);
 }
 
 .meal-table-container {
@@ -232,20 +238,20 @@ $defaultToDate = date('Y-m-25');
 </style>
 
 <div class="meal-tracker-wrapper mb-4">
-    <!-- Top Filter & Action Header -->
-    <div class="card__wrapper p-3 mb-3">
-        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-            <!-- Left: Project Selector -->
-            <div class="d-flex align-items-center gap-2 flex-wrap">
-                <label class="form-label fw-bold mb-0 text-muted">Meal Project:</label>
-                <form method="GET" action="<?= $GLOBALS['base_url'] ?>/meal-tracker" class="d-flex align-items-center gap-2" id="projectSelectForm">
-                    <select name="project_id" class="form-select custom-select2" style="min-width: 260px;" onchange="this.form.submit()">
+    <!-- Top Filter & Action Header (Compact Single-Line Bar) -->
+    <div class="bg-white rounded-3 px-3 py-2 mb-2" style="border: 1px solid #e9ecef; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+        <div class="d-flex align-items-center justify-content-between flex-wrap" style="gap: 10px;">
+            <!-- Left: Project Selector & Project Actions -->
+            <div class="d-flex align-items-center flex-wrap" style="gap: 8px;">
+                <span class="fw-semibold text-secondary" style="font-size: 12.5px; white-space: nowrap;">Meal Project:</span>
+                <form method="GET" action="<?= $GLOBALS['base_url'] ?>/meal-tracker" class="d-inline-flex align-items-center m-0" id="projectSelectForm">
+                    <select name="project_id" class="form-select form-select-sm text-dark fw-medium" style="width: 240px; height: 32px; font-size: 12.5px; border-color: #dee2e6;" onchange="this.form.submit()">
                         <?php if (empty($mealProjects)): ?>
                             <option value="">No Meal Projects Found</option>
                         <?php else: ?>
                             <?php foreach ($mealProjects as $p): ?>
                                 <option value="<?= (int)$p['id'] ?>" <?= ($selectedProjectId == $p['id']) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($p['name']) ?> (<?= date('d M', strtotime($p['from_date'])) ?> - <?= date('d M Y', strtotime($p['to_date'])) ?>)
+                                    <?= htmlspecialchars($p['name']) ?> (<?= date('d M', strtotime($p['from_date'])) ?> - <?= date('d M y', strtotime($p['to_date'])) ?>)
                                 </option>
                             <?php endforeach; ?>
                         <?php endif; ?>
@@ -253,71 +259,111 @@ $defaultToDate = date('Y-m-25');
                     <input type="hidden" name="branch_id" value="<?= (int)$selectedBranchId ?>">
                 </form>
 
-                <button type="button" class="btn btn-outline-primary fw-semibold btn-open-meal-modal" data-bs-toggle="modal" data-bs-target="#createMealProjectModal">
-                    <i class="fa-solid fa-plus me-1"></i> New Project
+                <button type="button" class="btn btn-sm btn-outline-primary fw-semibold d-inline-flex align-items-center btn-open-meal-modal"
+                        data-bs-toggle="modal" data-bs-target="#createMealProjectModal"
+                        style="height: 32px; font-size: 12px; padding: 0 10px; gap: 5px;">
+                    <i class="fa-solid fa-plus"></i><span>New</span>
                 </button>
 
                 <?php if (!empty($mealProjects)): ?>
-                    <button type="button" class="btn btn-outline-danger fw-semibold btn-open-delete-meal-modal" 
+                    <button type="button" class="btn btn-sm btn-outline-danger fw-semibold d-inline-flex align-items-center btn-open-delete-meal-modal" 
                             data-bs-toggle="modal" data-bs-target="#deleteMealProjectModal"
+                            style="height: 32px; font-size: 12px; padding: 0 10px; gap: 5px;"
                             title="Delete meal projects and all associated data">
-                        <i class="fa-solid fa-trash-can me-1"></i> Delete Project
+                        <i class="fa-regular fa-trash-can"></i><span>Delete</span>
                     </button>
                 <?php endif; ?>
             </div>
 
-            <!-- Middle: Info Badges -->
-            <div class="d-flex align-items-center gap-2 flex-wrap">
-                <?php if ($activeProject): ?>
-                    <span class="badge bg-teal  p-2 px-3" style="background-color:#0f766e;">
-                        <i class="fa-solid fa-calendar-days me-1"></i> 
-                        <?= date('d M Y', strtotime($activeProject['from_date'])) ?> &rarr; <?= date('d M Y', strtotime($activeProject['to_date'])) ?> (<?= $totalDaysInPeriod ?> Days)
+            <!-- Middle: Compact Cycle & Rate Pills -->
+            <?php if ($activeProject): ?>
+                <div class="d-flex align-items-center flex-wrap" style="gap: 8px;">
+                    <span class="d-inline-flex align-items-center px-2.5 rounded fw-semibold"
+                          style="height: 32px; font-size: 12px; padding: 0 10px; gap: 6px; background-color: #f0fdfa; color: #0f766e; border: 1px solid #99f6e4;">
+                        <i class="fa-regular fa-calendar-days"></i>
+                        <span><?= date('d M Y', strtotime($activeProject['from_date'])) ?> &rarr; <?= date('d M Y', strtotime($activeProject['to_date'])) ?> (<?= $totalDaysInPeriod ?>d)</span>
                     </span>
-                    <button type="button" class="btn btn-sm border p-2 px-3 d-inline-flex align-items-center gap-2 shadow-sm btn-open-edit-rate-modal"
+                    <button type="button" class="btn btn-sm d-inline-flex align-items-center btn-open-edit-rate-modal"
                             data-bs-toggle="modal" data-bs-target="#editStandardRateModal"
                             title="Click to edit Standard Meal Rate for this project"
-                            style="background: var(--clr-bg-card, #ffffff); color: inherit; border-color: var(--clr-border-1, #e5e7eb) !important; cursor: pointer; border-radius: 6px; font-weight: 500;">
-                        <i class="fa-solid fa-utensils text-primary"></i> 
-                        <span>Standard Rate: <strong class="text-dark">৳<?= number_format($standardAmount, 2) ?></strong></span>
-                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-1 ms-1" style="font-size: 0.72rem; font-weight: 600;">
+                            style="height: 32px; font-size: 12px; padding: 0 10px; gap: 6px; background: #f8fafc; color: #334155; border: 1px solid #dce1e7; border-radius: 6px; font-weight: 500;">
+                        <i class="fa-solid fa-utensils text-primary" style="font-size: 11px;"></i>
+                        <span>Rate: <strong class="text-dark">৳<?= number_format($standardAmount, 2) ?></strong></span>
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2" style="font-size: 10.5px; font-weight: 600;">
                             <i class="fa-solid fa-pen-to-square me-1"></i>Edit
                         </span>
                     </button>
-                <?php endif; ?>
-            </div>
+                </div>
+            <?php endif; ?>
 
             <!-- Right: Action Buttons -->
-            <div class="d-flex align-items-center gap-2">
-                <button type="button" class="btn btn-outline-success fw-semibold" id="btnSyncAttendance" title="Sync Present Attendance & Opt-Outs from Tipsoi and Manual Attendance">
-                    <i class="fa-solid fa-arrows-rotate me-1"></i> Sync Attendance
+            <div class="d-flex align-items-center flex-wrap" style="gap: 8px;">
+                <button type="button" class="btn btn-sm btn-outline-success fw-semibold d-inline-flex align-items-center" id="btnSyncAttendance"
+                        style="height: 32px; font-size: 12px; padding: 0 10px; gap: 5px;"
+                        title="Sync Present Attendance & Opt-Outs from Tipsoi and Manual Attendance">
+                    <i class="fa-solid fa-arrows-rotate"></i><span>Sync Attendance</span>
                 </button>
-                <a href="<?= $GLOBALS['base_url'] ?>/meal-tracker-history" class="btn btn-outline-secondary fw-semibold">
-                    <i class="fa-solid fa-chart-line me-1"></i> Branch History
+                <a href="<?= $GLOBALS['base_url'] ?>/meal-tracker-history" class="btn btn-sm btn-outline-secondary fw-semibold d-inline-flex align-items-center"
+                   style="height: 32px; font-size: 12px; padding: 0 10px; gap: 5px;">
+                    <i class="fa-solid fa-chart-line"></i><span>History</span>
                 </a>
-                <button type="button" class="btn btn-success fw-bold shadow-sm" id="btnSaveMealGrid" style="background-color: #0f766e; border-color: #0f766e;">
-                    <i class="fa-solid fa-floppy-disk me-1"></i> Save Meal Records
+                <button type="button" class="btn btn-sm btn-success fw-semibold d-inline-flex align-items-center shadow-sm" id="btnSaveMealGrid"
+                        style="height: 32px; font-size: 12px; padding: 0 12px; gap: 5px; background-color: #0f766e; border-color: #0f766e;">
+                    <i class="fa-solid fa-floppy-disk"></i><span>Save Meal Records</span>
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Office Branch Navigation Tabs -->
-    <div class="card__wrapper p-3 mb-3">
-        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-            <ul class="nav nav-pills flex-wrap mb-0" id="branchTabs">
+    <!-- Office Branch Navigation Tabs & Export Toolbar -->
+    <div class="bg-white rounded-3 px-3 py-2 mb-2" style="border: 1px solid #e9ecef; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+        <div class="d-flex align-items-center justify-content-between flex-wrap" style="gap: 10px;">
+            <ul class="nav nav-pills flex-wrap mb-0" id="branchTabs" style="gap: 6px;">
                 <?php foreach ($branches as $branch): ?>
                     <?php $bId = (int)$branch['id']; ?>
                     <li class="nav-item">
                         <a class="nav-link <?= ($selectedBranchId === $bId) ? 'active' : '' ?>" 
                            href="<?= $GLOBALS['base_url'] ?>/meal-tracker?project_id=<?= (int)$selectedProjectId ?>&branch_id=<?= $bId ?>">
-                            <i class="fa-solid fa-building me-1"></i> <?= htmlspecialchars($branch['name']) ?>
+                            <i class="fa-solid fa-building" style="font-size: 11px;"></i>
+                            <span><?= htmlspecialchars($branch['name']) ?></span>
                         </a>
                     </li>
                 <?php endforeach; ?>
             </ul>
 
-            <div class="text-muted small">
-                Active Employees on Meal: <strong><?= count($employees) ?></strong>
+            <div class="d-flex align-items-center flex-wrap" style="gap: 10px;">
+                <?php if ($activeProject): ?>
+                    <div class="d-inline-flex align-items-center flex-wrap rounded"
+                         style="gap: 6px; padding: 3px 8px; background-color: #f8fafc !important; border: 1px solid #dce1e7 !important;">
+                        <span class="fw-semibold" style="font-size: 11.5px; color: #475569; white-space: nowrap;">
+                            <i class="fa-regular fa-calendar text-success me-1"></i>Export Range:
+                        </span>
+                        <input type="date" id="mealExportFromDate" class="form-control form-control-sm"
+                               value="<?= htmlspecialchars($activeProject['from_date'] ?? '') ?>"
+                               min="<?= htmlspecialchars($activeProject['from_date'] ?? '') ?>"
+                               max="<?= htmlspecialchars($activeProject['to_date'] ?? '') ?>"
+                               style="width: 122px; height: 26px; font-size: 11.5px; padding: 1px 6px; background-color: #ffffff !important; color: #1e293b !important; border: 1px solid #cbd5e1 !important; border-radius: 4px;"
+                               title="Export From Date (Default: Project Start Date)">
+                        <span class="text-muted fw-bold" style="font-size: 11px;">&rarr;</span>
+                        <input type="date" id="mealExportToDate" class="form-control form-control-sm"
+                               value="<?= htmlspecialchars($activeProject['to_date'] ?? '') ?>"
+                               min="<?= htmlspecialchars($activeProject['from_date'] ?? '') ?>"
+                               max="<?= htmlspecialchars($activeProject['to_date'] ?? '') ?>"
+                               style="width: 122px; height: 26px; font-size: 11.5px; padding: 1px 6px; background-color: #ffffff !important; color: #1e293b !important; border: 1px solid #cbd5e1 !important; border-radius: 4px;"
+                               title="Export To Date (Default: Project End Date)">
+                        <button type="button" id="btnExportMealExcel" onclick="if(window.exportMealWorkspaceExcel) window.exportMealWorkspaceExcel();" class="btn btn-sm btn-success fw-semibold d-inline-flex align-items-center"
+                                style="height: 26px; font-size: 11.5px; gap: 5px; padding: 0 10px; background-color: #15803d; border-color: #15803d; border-radius: 4px;"
+                                title="Export formatted Excel sheet for the selected date range">
+                            <i class="fa-solid fa-file-excel"></i>
+                            <span>Export Excel</span>
+                        </button>
+                    </div>
+                <?php endif; ?>
+                <span class="d-inline-flex align-items-center px-2 rounded"
+                      style="height: 30px; font-size: 12px; gap: 5px; background: #f8fafc; border: 1px solid #e2e8f0; color: #475569;">
+                    <span>Active on Meal:</span>
+                    <strong class="text-dark"><?= count($employees) ?></strong>
+                </span>
             </div>
         </div>
     </div>
@@ -337,7 +383,12 @@ $defaultToDate = date('Y-m-25');
                         <th class="sticky-col-6">Total Meals</th>
                         <th class="sticky-col-7">Deduction (৳)</th>
                         <?php foreach ($dateColumns as $col): ?>
-                            <th class="text-center <?= $col['is_weekend'] ? 'weekend-col' : '' ?>" style="min-width: 48px;">
+                            <th class="text-center meal-date-th <?= $col['is_weekend'] ? 'weekend-col' : '' ?>"
+                                data-date="<?= htmlspecialchars($col['date']) ?>"
+                                data-label="<?= htmlspecialchars($col['day_num'] . ' ' . $col['month_short']) ?>"
+                                data-dayname="<?= htmlspecialchars($col['day_name']) ?>"
+                                data-weekend="<?= $col['is_weekend'] ? '1' : '0' ?>"
+                                style="min-width: 48px;">
                                 <?= $col['day_num'] ?> <?= $col['month_short'] ?>
                             </th>
                         <?php endforeach; ?>
@@ -383,7 +434,13 @@ $defaultToDate = date('Y-m-25');
                             // Effective daily rate = standardAmount * (pct / 100)
                             $effectiveRate = round($standardAmount * ($pct / 100), 2);
                         ?>
-                            <tr class="emp-meal-row" data-emp-id="<?= $empId ?>" data-rate="<?= $effectiveRate ?>">
+                            <tr class="emp-meal-row"
+                                data-emp-id="<?= $empId ?>"
+                                data-rate="<?= $effectiveRate ?>"
+                                data-pct="<?= number_format($pct, 0) ?>"
+                                data-emp-name="<?= htmlspecialchars($emp['full_name'], ENT_QUOTES) ?>"
+                                data-emp-code="<?= htmlspecialchars($emp['employee_id'], ENT_QUOTES) ?>"
+                                data-designation="<?= htmlspecialchars($emp['designation_name'] ?? '', ENT_QUOTES) ?>">
                                 <td class="sticky-col-1 text-muted"><?= $sl++ ?></td>
                                 <td class="sticky-col-2 fw-semibold">
                                     <?= htmlspecialchars($emp['full_name']) ?>
@@ -1007,6 +1064,281 @@ $defaultToDate = date('Y-m-25');
                     }
                 });
             });
+
+            // Formatted Excel Export for Selected / Custom Date Range
+            window.exportMealWorkspaceExcel = function() {
+                const fromInput = document.getElementById('mealExportFromDate');
+                const toInput = document.getElementById('mealExportToDate');
+                const fromDate = fromInput ? fromInput.value : '';
+                const toDate = toInput ? toInput.value : '';
+
+                if (!fromDate || !toDate) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Select Date Range',
+                        text: 'Please select both From Date and To Date for exporting.'
+                    });
+                    return;
+                }
+                if (fromDate > toDate) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Invalid Date Range',
+                        text: 'From Date cannot be later than To Date.'
+                    });
+                    return;
+                }
+
+                // Collect matching date columns from the table header
+                const activeDateCols = [];
+                $('#mealTrackerTable thead th.meal-date-th').each(function() {
+                    const d = $(this).attr('data-date') || '';
+                    if (d >= fromDate && d <= toDate) {
+                        activeDateCols.push({
+                            date: d,
+                            label: $(this).attr('data-label') || d,
+                            dayName: $(this).attr('data-dayname') || '',
+                            isWeekend: $(this).attr('data-weekend') === '1'
+                        });
+                    }
+                });
+
+                if (activeDateCols.length === 0) {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'No Dates in Range',
+                        text: 'The selected date range does not overlap with any dates in the current Meal Project.'
+                    });
+                    return;
+                }
+
+                const projectName = <?= json_encode($activeProject['name'] ?? 'Meal Project') ?>;
+                const branchName = $('#branchTabs .nav-link.active').text().trim() || 'Office Branch';
+                const esc = function(str) {
+                    return String(str === null || str === undefined ? '' : str)
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;');
+                };
+                const fmtMoney = function(n) {
+                    const val = parseFloat(n) || 0;
+                    return val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                };
+
+                // Collect employee row data for the selected date range
+                const empRows = [];
+                const dailyEmpTotals = {};
+                const dailyGuestTotals = {};
+                activeDateCols.forEach(c => {
+                    dailyEmpTotals[c.date] = 0;
+                    dailyGuestTotals[c.date] = 0;
+                });
+
+                let grandEmpMeals = 0;
+                let grandEmpDeduction = 0;
+
+                $('.emp-meal-row').each(function(idx) {
+                    const row = $(this);
+                    const empName = row.attr('data-emp-name') || row.find('.sticky-col-2').clone().children().remove().end().text().trim();
+                    const designation = row.attr('data-designation') || row.find('.sticky-col-2 .small').text().trim();
+                    const empCode = row.attr('data-emp-code') || row.find('.sticky-col-3').text().trim();
+                    const ratePct = row.attr('data-pct') || row.find('.sticky-col-4').text().replace('%', '').trim();
+                    const rateAmt = parseFloat(row.attr('data-rate')) || 0;
+
+                    let empRangeMeals = 0;
+                    const dayCells = [];
+
+                    activeDateCols.forEach(c => {
+                        const cb = row.find(`.meal-checkbox[data-date="${c.date}"]`);
+                        const isChecked = cb.is(':checked');
+                        const isOptOut = cb.attr('data-opt-out') === '1';
+                        if (isChecked) {
+                            empRangeMeals += 1;
+                            dailyEmpTotals[c.date] += 1;
+                            dayCells.push({ status: '1', isOptOut: false, isWeekend: c.isWeekend });
+                        } else if (isOptOut) {
+                            dayCells.push({ status: 'OFF', isOptOut: true, isWeekend: c.isWeekend });
+                        } else {
+                            dayCells.push({ status: '0', isOptOut: false, isWeekend: c.isWeekend });
+                        }
+                    });
+
+                    const empRangeDeduction = Math.round(empRangeMeals * rateAmt * 100) / 100;
+                    grandEmpMeals += empRangeMeals;
+                    grandEmpDeduction += empRangeDeduction;
+
+                    empRows.push({
+                        sl: idx + 1,
+                        name: empName,
+                        designation: designation,
+                        empCode: empCode,
+                        ratePct: ratePct + '%',
+                        rateAmt: rateAmt,
+                        meals: empRangeMeals,
+                        deduction: empRangeDeduction,
+                        days: dayCells
+                    });
+                });
+
+                // Collect Guest row data for the selected date range
+                let grandGuestMeals = 0;
+                const guestDayCells = [];
+                activeDateCols.forEach(c => {
+                    const gVal = parseInt($(`.guest-meal-input[data-date="${c.date}"]`).val(), 10) || 0;
+                    dailyGuestTotals[c.date] = gVal;
+                    grandGuestMeals += gVal;
+                    guestDayCells.push({ count: gVal, isWeekend: c.isWeekend });
+                });
+                const grandGuestCost = Math.round(grandGuestMeals * standardMealAmount * 100) / 100;
+                const totalCombinedMeals = grandEmpMeals + grandGuestMeals;
+
+                const totalCols = 8 + activeDateCols.length;
+                const nowStr = new Date().toLocaleString('en-GB', {
+                    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                });
+
+                let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+                html += '<head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>';
+                html += '<x:Name>Meal Workspace</x:Name>';
+                html += '<x:WorksheetOptions><x:DisplayGridlines/><x:FreezePanes/><x:FrozenNoSplit/>';
+                html += '<x:SplitHorizontal>7</x:SplitHorizontal><x:TopRowBottomPane>7</x:TopRowBottomPane>';
+                html += '<x:SplitVertical>8</x:SplitVertical><x:LeftColumnRightPane>8</x:LeftColumnRightPane>';
+                html += '<x:ActivePane>0</x:ActivePane></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
+                html += '<style>';
+                html += 'body, table { font-family: "Segoe UI", Calibri, Arial, sans-serif; font-size: 9.5pt; border-collapse: collapse; }';
+                html += 'td, th { border: 1px solid #cbd5e1; padding: 5px 7px; vertical-align: middle; white-space: nowrap; }';
+                html += '.num { mso-number-format:"#,##0.00"; text-align: right; }';
+                html += '.qty { mso-number-format:"0"; text-align: center; }';
+                html += '.txt { mso-number-format:"\\@"; text-align: left; }';
+                html += '.txt-c { mso-number-format:"\\@"; text-align: center; }';
+                html += '</style></head><body><table>';
+
+                // Row 1: Company Banner
+                html += '<tr><td colspan="' + totalCols + '" style="background:#0f766e; color:#ffffff; font-size:14pt; font-weight:bold; padding:10px 14px; border:none;">';
+                html += 'THE PREMIUM HOMES LTD &mdash; MEAL TRACKER WORKSPACE REPORT</td></tr>';
+
+                // Row 2: Project, Branch & Selected Date Range Metadata
+                html += '<tr><td colspan="' + totalCols + '" style="background:#115e59; color:#ccfbf1; font-size:10pt; font-weight:600; padding:6px 14px; border:none;">';
+                html += 'Meal Project: ' + esc(projectName) + ' &nbsp;&bull;&nbsp; Branch: ' + esc(branchName) + ' &nbsp;&bull;&nbsp; Export Range: ' + esc(fromDate) + ' to ' + esc(toDate) + ' (' + activeDateCols.length + ' Days) &nbsp;&bull;&nbsp; Generated: ' + esc(nowStr);
+                html += '</td></tr>';
+
+                // Row 3: Blank spacer
+                html += '<tr><td colspan="' + totalCols + '" style="border:none; height:6px; background:#ffffff;"></td></tr>';
+
+                // Row 4: Executive Summary KPI Strip
+                const remCols = Math.max(1, totalCols - 12);
+                html += '<tr>';
+                html += '<td colspan="2" style="background:#f8fafc; border:1px solid #94a3b8; padding:6px 8px;"><b>Staff Count:</b> ' + empRows.length + ' Employees</td>';
+                html += '<td colspan="2" style="background:#f0fdf4; border:1px solid #86efac; color:#166534; padding:6px 8px;"><b>Standard Rate:</b> TK ' + fmtMoney(standardMealAmount) + '</td>';
+                html += '<td colspan="2" style="background:#eff6ff; border:1px solid #93c5fd; color:#1e40af; padding:6px 8px;"><b>Emp Meals:</b> ' + grandEmpMeals + '</td>';
+                html += '<td colspan="2" style="background:#fffbeb; border:1px solid #fde047; color:#92400e; padding:6px 8px;"><b>Guest Meals:</b> ' + grandGuestMeals + ' (TK ' + fmtMoney(grandGuestCost) + ')</td>';
+                html += '<td colspan="2" style="background:#ecfdf5; border:1px solid #6ee7b7; color:#065f46; padding:6px 8px;"><b>Total Combined Meals:</b> ' + totalCombinedMeals + '</td>';
+                html += '<td colspan="2" style="background:#fef2f2; border:1px solid #fca5a5; color:#991b1b; padding:6px 8px;"><b>Total Emp Deduction:</b> TK ' + fmtMoney(grandEmpDeduction) + '</td>';
+                if (totalCols > 12) {
+                    html += '<td colspan="' + remCols + '" style="border:none; background:#ffffff;"></td>';
+                }
+                html += '</tr>';
+
+                // Row 5: Blank spacer
+                html += '<tr><td colspan="' + totalCols + '" style="border:none; height:6px; background:#ffffff;"></td></tr>';
+
+                // Row 6: Table Header Row 1 (Identity + Summary + Date Labels)
+                html += '<tr>';
+                html += '<th rowspan="2" style="background:#0f766e; color:#ffffff; font-weight:bold; text-align:center;">SL</th>';
+                html += '<th rowspan="2" style="background:#0f766e; color:#ffffff; font-weight:bold; text-align:left;">Employee Name</th>';
+                html += '<th rowspan="2" style="background:#0f766e; color:#ffffff; font-weight:bold; text-align:left;">Designation</th>';
+                html += '<th rowspan="2" style="background:#0f766e; color:#ffffff; font-weight:bold; text-align:center;">Emp ID</th>';
+                html += '<th rowspan="2" style="background:#0f766e; color:#ffffff; font-weight:bold; text-align:center;">Rate %</th>';
+                html += '<th rowspan="2" style="background:#0f766e; color:#ffffff; font-weight:bold; text-align:right;">Rate (TK)</th>';
+                html += '<th style="background:#065f46; color:#ffffff; font-weight:bold; text-align:center;">Total Meals</th>';
+                html += '<th style="background:#991b1b; color:#ffffff; font-weight:bold; text-align:right;">Deduction (TK)</th>';
+                activeDateCols.forEach(c => {
+                    const hdrBg = c.isWeekend ? '#475569' : '#0f766e';
+                    html += '<th style="background:' + hdrBg + '; color:#ffffff; font-weight:bold; text-align:center;">' + esc(c.label) + '</th>';
+                });
+                html += '</tr>';
+
+                // Row 7: Table Header Row 2 (Totals + Day of Week & Daily Meal Count)
+                html += '<tr>';
+                html += '<th class="qty" style="background:#047857; color:#ffffff; font-weight:bold;">' + grandEmpMeals + '</th>';
+                html += '<th class="num" style="background:#b91c1c; color:#ffffff; font-weight:bold;">' + fmtMoney(grandEmpDeduction) + '</th>';
+                activeDateCols.forEach(c => {
+                    const subBg = c.isWeekend ? '#64748b' : '#115e59';
+                    const dayTot = (dailyEmpTotals[c.date] || 0) + (dailyGuestTotals[c.date] || 0);
+                    html += '<th style="background:' + subBg + '; color:#f0fdfa; font-size:8.5pt; text-align:center;">' + esc(c.dayName) + ' (' + dayTot + ')</th>';
+                });
+                html += '</tr>';
+
+                // Employee Data Rows
+                empRows.forEach((r, idx) => {
+                    const rowBg = (idx % 2 === 0) ? '#ffffff' : '#f8fafc';
+                    html += '<tr>';
+                    html += '<td class="qty" style="background:' + rowBg + '; color:#475569;">' + r.sl + '</td>';
+                    html += '<td class="txt" style="background:' + rowBg + '; font-weight:600; color:#0f172a;">' + esc(r.name) + '</td>';
+                    html += '<td class="txt" style="background:' + rowBg + '; color:#475569;">' + esc(r.designation) + '</td>';
+                    html += '<td class="txt-c" style="background:' + rowBg + '; font-weight:600; color:#1e293b;">' + esc(r.empCode) + '</td>';
+                    html += '<td class="txt-c" style="background:' + rowBg + '; color:#0369a1; font-weight:600;">' + esc(r.ratePct) + '</td>';
+                    html += '<td class="num" style="background:' + rowBg + '; color:#334155;">' + fmtMoney(r.rateAmt) + '</td>';
+                    html += '<td class="qty" style="background:#eff6ff; color:#1d4ed8; font-weight:bold;">' + r.meals + '</td>';
+                    html += '<td class="num" style="background:#fef2f2; color:#dc2626; font-weight:bold;">' + fmtMoney(r.deduction) + '</td>';
+
+                    r.days.forEach(dCell => {
+                        if (dCell.status === '1') {
+                            const cBg = dCell.isWeekend ? '#dcfce7' : '#f0fdf4';
+                            html += '<td class="qty" style="background:' + cBg + '; color:#15803d; font-weight:bold;">1</td>';
+                        } else if (dCell.status === 'OFF') {
+                            html += '<td class="txt-c" style="background:#fee2e2; color:#b91c1c; font-weight:bold; font-size:8.5pt;">OFF</td>';
+                        } else {
+                            const cBg = dCell.isWeekend ? '#f1f5f9' : rowBg;
+                            html += '<td class="qty" style="background:' + cBg + '; color:#94a3b8;">0</td>';
+                        }
+                    });
+                    html += '</tr>';
+                });
+
+                // Guest / Visitor Row
+                html += '<tr>';
+                html += '<td class="txt-c" style="background:#fef9c3; font-weight:bold; color:#854d0e;">G</td>';
+                html += '<td class="txt" style="background:#fef9c3; font-weight:bold; color:#854d0e;">Guest / Visitor Meals</td>';
+                html += '<td class="txt" style="background:#fef9c3; color:#854d0e;">Branch Guests</td>';
+                html += '<td class="txt-c" style="background:#fef9c3; color:#854d0e;">-</td>';
+                html += '<td class="txt-c" style="background:#fef9c3; color:#854d0e;">100%</td>';
+                html += '<td class="num" style="background:#fef9c3; font-weight:600; color:#854d0e;">' + fmtMoney(standardMealAmount) + '</td>';
+                html += '<td class="qty" style="background:#fef08a; font-weight:bold; color:#854d0e;">' + grandGuestMeals + '</td>';
+                html += '<td class="num" style="background:#fef08a; font-weight:bold; color:#854d0e;">' + fmtMoney(grandGuestCost) + '</td>';
+                guestDayCells.forEach(gCell => {
+                    html += '<td class="qty" style="background:#fef9c3; font-weight:' + (gCell.count > 0 ? 'bold' : 'normal') + '; color:' + (gCell.count > 0 ? '#854d0e' : '#a1a1aa') + ';">' + gCell.count + '</td>';
+                });
+                html += '</tr>';
+
+                // Grand Total Footer Row
+                html += '<tr>';
+                html += '<td colspan="6" style="background:#0f766e; color:#ffffff; font-weight:bold; text-align:right; padding-right:10px;">GRAND TOTAL (EMPLOYEES + GUESTS):</td>';
+                html += '<td class="qty" style="background:#065f46; color:#ffffff; font-weight:bold;">' + totalCombinedMeals + '</td>';
+                html += '<td class="num" style="background:#991b1b; color:#ffffff; font-weight:bold;">' + fmtMoney(grandEmpDeduction) + '</td>';
+                activeDateCols.forEach(c => {
+                    const dayTot = (dailyEmpTotals[c.date] || 0) + (dailyGuestTotals[c.date] || 0);
+                    html += '<td class="qty" style="background:#0f766e; color:#ffffff; font-weight:bold;">' + dayTot + '</td>';
+                });
+                html += '</tr>';
+
+                html += '</table></body></html>';
+
+                const cleanProj = String(projectName).replace(/[^a-zA-Z0-9_-]/g, '_');
+                const cleanBranch = String(branchName).replace(/[^a-zA-Z0-9_-]/g, '_');
+                const fileName = `Meal_Workspace_${cleanProj}_${cleanBranch}_${fromDate}_to_${toDate}.xls`;
+
+                const blob = new Blob(['\ufeff', html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 1500);
+            };
         });
     }
 
