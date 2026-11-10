@@ -2358,7 +2358,7 @@ class PayrollController extends Controller
                     $row['erp_att_late_unpaid_absent_days'] = $erpAtt['late_unpaid_absent_days'];
                 }
 
-                $mealPct = (isset($row['per_meal_percentage']) && (float) $row['per_meal_percentage'] > 0) ? (float) $row['per_meal_percentage'] : 100.00;
+                $mealPct = (isset($row['per_meal_percentage']) && $row['per_meal_percentage'] !== '' && (float) $row['per_meal_percentage'] >= 0) ? (float) $row['per_meal_percentage'] : 100.00;
                 if ($mealPct == 100.00 && !empty($row['per_meal_amount']) && (float) $row['per_meal_amount'] > 0 && (float) $row['per_meal_amount'] != $standardMealRate) {
                     $effectiveMealRate = (float) $row['per_meal_amount'];
                 } else {
@@ -2555,6 +2555,24 @@ class PayrollController extends Controller
             }
         }
 
+        // Check for active employees without a valid joining_date so project creation can warn/block
+        $missingJoiningDateEmployees = [];
+        $missingJoinRes = $this->db->query("
+            SELECT e.id, e.employee_id, e.full_name, d.name as department_name, desg.name as designation_name
+            FROM employees e
+            LEFT JOIN departments d ON e.department_id = d.id
+            LEFT JOIN designations desg ON e.designation_id = desg.id
+            WHERE e.employee_status = 'active'
+              AND e.deleted_at IS NULL
+              AND (e.joining_date IS NULL OR TRIM(e.joining_date) = '' OR e.joining_date = '0000-00-00')
+            ORDER BY e.employee_id ASC
+        ");
+        if ($missingJoinRes) {
+            while ($mjRow = $missingJoinRes->fetch_assoc()) {
+                $missingJoiningDateEmployees[] = $mjRow;
+            }
+        }
+
         $this->view('payrolls/payslips/workspace', [
             'current_route' => 'payroll-workspace',
             'page_title' => 'Payroll Workplace',
@@ -2571,7 +2589,8 @@ class PayrollController extends Controller
             'mealCountsByEmp' => $mealCountsByEmp,
             'selectedFromDate' => $targetStartDate,
             'selectedToDate' => $targetEndDate,
-            'cycleTotalDays' => max(1, (int) round((strtotime($targetEndDate) - strtotime($targetStartDate)) / 86400) + 1)
+            'cycleTotalDays' => max(1, (int) round((strtotime($targetEndDate) - strtotime($targetStartDate)) / 86400) + 1),
+            'missingJoiningDateEmployees' => $missingJoiningDateEmployees
         ]);
     }
 
@@ -2580,33 +2599,62 @@ class PayrollController extends Controller
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
+        // Release session lock early so concurrent requests or tabs are never blocked
+        session_write_close();
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $name = isset($_POST['name']) ? $this->db->real_escape_string($_POST['name']) : '';
+            // Block project creation if any active employee has no joining_date set
+            $missingJoinCheck = $this->db->query("
+                SELECT employee_id, full_name
+                FROM employees
+                WHERE employee_status = 'active'
+                  AND deleted_at IS NULL
+                  AND (joining_date IS NULL OR TRIM(joining_date) = '' OR joining_date = '0000-00-00')
+                ORDER BY employee_id ASC
+            ");
+            if ($missingJoinCheck && $missingJoinCheck->num_rows > 0) {
+                $missingNames = [];
+                while ($mRow = $missingJoinCheck->fetch_assoc()) {
+                    $missingNames[] = $mRow['full_name'] . ' (ID: ' . ($mRow['employee_id'] ?: 'N/A') . ')';
+                }
+                $listStr = addslashes(implode(', ', array_slice($missingNames, 0, 5)));
+                if (count($missingNames) > 5) {
+                    $listStr .= ' and ' . (count($missingNames) - 5) . ' more';
+                }
+                echo "<script>alert('Cannot create Payroll Project! Following active employee(s) do not have a Joining Date set: {$listStr}. Please set their Joining Date first.'); window.location.href='{$GLOBALS['base_url']}/payroll-workspace';</script>";
+                exit;
+            }
+
+            $rawName = isset($_POST['name']) ? trim($_POST['name']) : '';
+            $name = $this->db->real_escape_string($rawName);
             $project_type = isset($_POST['project_type']) ? $_POST['project_type'] : 'monthly';
-            $date = isset($_POST['date']) ? $this->db->real_escape_string($_POST['date']) : '';
-            $start_date = isset($_POST['start_date']) ? $this->db->real_escape_string($_POST['start_date']) : '';
-            $end_date = isset($_POST['end_date']) ? $this->db->real_escape_string($_POST['end_date']) : '';
+            $rawDate = isset($_POST['date']) ? trim($_POST['date']) : '';
+            $rawStart = isset($_POST['start_date']) ? trim($_POST['start_date']) : '';
+            $rawEnd = isset($_POST['end_date']) ? trim($_POST['end_date']) : '';
 
             $is_custom = ($project_type === 'custom') ? 1 : 0;
 
-            if (empty($name)) {
+            if (empty($rawName)) {
                 echo "<script>alert('Project name is required.'); window.location.href='{$GLOBALS['base_url']}/payroll-workspace';</script>";
                 exit;
             }
-            if ($is_custom && (empty($start_date) || empty($end_date))) {
+            if ($is_custom && (empty($rawStart) || empty($rawEnd))) {
                 echo "<script>alert('Start date and end date are required for custom projects.'); window.location.href='{$GLOBALS['base_url']}/payroll-workspace';</script>";
                 exit;
             }
-            if (!$is_custom && empty($date)) {
+            if (!$is_custom && empty($rawDate)) {
                 echo "<script>alert('Project date is required for monthly projects.'); window.location.href='{$GLOBALS['base_url']}/payroll-workspace';</script>";
                 exit;
             }
 
             if ($is_custom) {
-                // For custom projects, the 'date' field could be null or derived (e.g. from start_date month) to satisfy UI backward compatibility.
-                $date = date('Y-m', strtotime($start_date));
+                // For custom projects, derive 'date' from start_date month to satisfy UI backward compatibility.
+                $rawDate = date('Y-m', strtotime($rawStart));
             }
+
+            $date = $this->db->real_escape_string($rawDate);
+            $start_date = $this->db->real_escape_string($rawStart);
+            $end_date = $this->db->real_escape_string($rawEnd);
 
             $stmt = $this->db->prepare('INSERT INTO payroll_projects (name, date, is_custom_date, start_date, end_date) VALUES (?, ?, ?, ?, ?)');
 
@@ -2615,18 +2663,19 @@ class PayrollController extends Controller
                 exit;
             }
 
-            $stmt->bind_param('ssiss', $name, $date, $is_custom, $start_date, $end_date);
+            $stmt->bind_param('ssiss', $rawName, $rawDate, $is_custom, $rawStart, $rawEnd);
 
             if ($stmt->execute()) {
                 $newProjId = $stmt->insert_id;
+                $stmt->close();
 
                 // Auto-link or auto-create matching Meal Project based on date range
                 $meal_project_id = !empty($_POST['meal_project_id']) ? (int) $_POST['meal_project_id'] : 0;
-                $checkStart = $is_custom ? $start_date : '';
-                $checkEnd   = $is_custom ? $end_date : '';
+                $checkStart = $is_custom ? $rawStart : '';
+                $checkEnd   = $is_custom ? $rawEnd : '';
 
-                if (!$is_custom && !empty($date)) {
-                    $mParts = explode('-', $date);
+                if (!$is_custom && !empty($rawDate)) {
+                    $mParts = explode('-', $rawDate);
                     if (count($mParts) === 2) {
                         $cRange = $this->getCycleDateRange((int)$mParts[0], (int)$mParts[1]);
                         $checkStart = date('Y-m-d', strtotime($cRange['start']));
@@ -2634,28 +2683,39 @@ class PayrollController extends Controller
                     }
                 }
 
-                if ($newProjId > 0 && !empty($checkStart) && !empty($checkEnd)) {
-                    require_once dirname(__DIR__) . '/models/MealProject.php';
-                    $mProjModel = new MealProject($this->db);
-                    $autoMeal = $mProjModel->getOrCreateCycleForRange($checkStart, $checkEnd, $name, $newProjId, true);
-                    if ($autoMeal) {
-                        $meal_project_id = (int)$autoMeal['id'];
+                try {
+                    if ($newProjId > 0 && !empty($checkStart) && !empty($checkEnd)) {
+                        require_once dirname(__DIR__) . '/models/MealProject.php';
+                        $mProjModel = new MealProject($this->db);
+                        $autoMeal = $mProjModel->getOrCreateCycleForRange($checkStart, $checkEnd, $rawName, $newProjId, true);
+                        if ($autoMeal) {
+                            $meal_project_id = (int)$autoMeal['id'];
+                        }
                     }
+
+                    if ($meal_project_id > 0 && $newProjId > 0) {
+                        $this->db->query("UPDATE meal_projects SET payroll_project_id = $newProjId WHERE id = $meal_project_id");
+                    }
+
+                    // Sync project attendance using local DB cache first ($forceRefresh = false) so creation never hangs
+                    if ($newProjId > 0) {
+                        $this->syncProjectAttendanceFromTipsoi($newProjId, false);
+                    }
+                } catch (\Throwable $syncErr) {
+                    error_log("storePayrollProject auto-sync warning: " . $syncErr->getMessage());
                 }
 
-                if ($meal_project_id > 0 && $newProjId > 0) {
-                    $this->db->query("UPDATE meal_projects SET payroll_project_id = $newProjId WHERE id = $meal_project_id");
-                }
-
-                // Auto-sync project attendance from Tipsoi into attendance_monthly_update
-                if ($newProjId > 0) {
-                    $this->syncProjectAttendanceFromTipsoi($newProjId);
+                if (!headers_sent()) {
+                    header("Location: {$GLOBALS['base_url']}/payroll-workspace?payroll_project_id={$newProjId}");
+                    exit;
                 }
                 echo "<script>window.location.href='{$GLOBALS['base_url']}/payroll-workspace?payroll_project_id={$newProjId}';</script>";
+                exit;
             } else {
+                $stmt->close();
                 echo "<script>alert('Failed to create project.'); window.location.href='{$GLOBALS['base_url']}/payroll-workspace';</script>";
+                exit;
             }
-            $stmt->close();
         }
     }
 
@@ -4037,7 +4097,7 @@ class PayrollController extends Controller
     /**
      * Server-side Tipsoi Attendance Aggregation & DB Sync for a Payroll Project
      */
-    public function syncProjectAttendanceFromTipsoi($projectId)
+    public function syncProjectAttendanceFromTipsoi($projectId, $forceRefresh = true)
     {
         $projectId = (int)$projectId;
         if ($projectId <= 0) return false;
@@ -4068,7 +4128,7 @@ class PayrollController extends Controller
             require_once dirname(__DIR__) . '/services/ExternalApiService.php';
         }
         $extApi = new ExternalApiService($this->db);
-        $syncRes = $extApi->syncAndGetAttendanceFromDb($fromDateStr, $toDateStr, true);
+        $syncRes = $extApi->syncAndGetAttendanceFromDb($fromDateStr, $toDateStr, (bool)$forceRefresh);
         if (empty($syncRes['success']) || empty($syncRes['data'])) {
             return 0;
         }
