@@ -33,7 +33,7 @@ class MyWorkController extends Controller
         $baseUrl = $GLOBALS['base_url'] ?? '';
 
         // Active Scope Tab
-        $validTabs = ['all', 'assigned_to_me', 'assigned_by_me', 'following'];
+        $validTabs = ['all', 'assigned_to_me', 'assigned_by_me', 'following', 'reviewer', 'realestate_project', 'self_initiated', 'recurring'];
         $tab = $_GET['tab'] ?? 'all';
         if (!in_array($tab, $validTabs, true)) {
             $tab = 'all';
@@ -111,6 +111,18 @@ class MyWorkController extends Controller
             $scopeParams = [$userId, $userId, $userId, $userId];
         } elseif ($tab === 'following') {
             $scopeSql = $followSql;
+            $scopeParams = [$userId, $userId];
+        } elseif ($tab === 'reviewer') {
+            $scopeSql = "FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.mentioned_user_ids,'[',''),']',''),' ',''))";
+            $scopeParams = [$userId];
+        } elseif ($tab === 'realestate_project') {
+            $scopeSql = "(t.project_id IS NOT NULL AND (t.user_id = ? OR t.assigned_by = ?))";
+            $scopeParams = [$userId, $userId];
+        } elseif ($tab === 'self_initiated') {
+            $scopeSql = "(t.user_id = ? AND t.assigned_by = ?)";
+            $scopeParams = [$userId, $userId];
+        } elseif ($tab === 'recurring') {
+            $scopeSql = "(t.is_recurring = 1 AND (t.user_id = ? OR t.assigned_by = ?))";
             $scopeParams = [$userId, $userId];
         } else {
             $scopeSql = ($tab === 'assigned_by_me') ? "t.assigned_by = ?" : "t.user_id = ?";
@@ -661,7 +673,14 @@ class MyWorkController extends Controller
         $todoProjectId = !empty($_POST['todo_project_id']) ? (int)$_POST['todo_project_id'] : null;
         $startDate = !empty($_POST['start_date']) ? $_POST['start_date'] : null;
 
-        $reviewerId = !empty($_POST['reviewer_id']) ? (int)$_POST['reviewer_id'] : null;
+        $projectId = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
+        $assignedById = (int)($_POST['assigned_by_id'] ?? 0) ?: $userId;
+        $recurrenceType = in_array($_POST['recurrence_type'] ?? '', ['daily', 'weekly', 'monthly'], true) ? $_POST['recurrence_type'] : null;
+        $isRecurring = $recurrenceType !== null ? 1 : 0;
+        $recurrenceEnd = ($isRecurring && !empty($_POST['recurrence_end_date'])) ? $_POST['recurrence_end_date'] : null;
+
+        // Reviewer only counts when "Review required" is ticked
+        $reviewerId = (!empty($_POST['review_required']) && !empty($_POST['reviewer_id'])) ? (int)$_POST['reviewer_id'] : null;
         $collaboratorIds = array_values(array_unique(array_filter(array_map('intval', array_merge(
             (array)($_POST['collaborator_ids'] ?? []),
             (array)($_POST['cc_ids'] ?? [])
@@ -694,15 +713,16 @@ class MyWorkController extends Controller
                 title, user_id, assigned_by, todo_project_id,
                 description, start_date, deadline, priority,
                 status, progress, employee_accept, mentioned_user_ids,
-                cc_user_ids, attachment_image, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, 0, ?, ?, ?, NOW())
+                cc_user_ids, attachment_image, project_id,
+                is_recurring, recurrence_type, recurrence_end_date, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, 0, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
 
         $stmt->bind_param(
-            "siiisssssss",
+            "siiisssssssiiss",
             $title,
             $ownerId,
-            $userId,
+            $assignedById,
             $todoProjectId,
             $description,
             $startDate,
@@ -710,7 +730,11 @@ class MyWorkController extends Controller
             $priority,
             $mentionedJson,
             $ccJson,
-            $attachmentImage
+            $attachmentImage,
+            $projectId,
+            $isRecurring,
+            $recurrenceType,
+            $recurrenceEnd
         );
 
         if ($stmt->execute()) {

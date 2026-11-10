@@ -1241,6 +1241,10 @@ $todayDateFormatted = date('j F');
            data-tab="reviewer" href="javascript:void(0);">Reviewer</a>
         <a class="mw-tab-item <?= $tab === 'realestate_project' ? 'active' : '' ?>" 
            data-tab="realestate_project" href="javascript:void(0);">Realestate Project</a>
+        <a class="mw-tab-item <?= $tab === 'self_initiated' ? 'active' : '' ?>" 
+           data-tab="self_initiated" href="javascript:void(0);">Self-Initiated Task</a>
+        <a class="mw-tab-item <?= $tab === 'recurring' ? 'active' : '' ?>" 
+           data-tab="recurring" href="javascript:void(0);">Recurring Task</a>
     </div>
 
     <!-- "All" tab: 6 summary cards -->
@@ -1666,7 +1670,22 @@ $todayDateFormatted = date('j F');
                         <?php endforeach; ?>
                     </select>
                 </div>
+                <div class="mw-form-col">
+                    <label class="mw-form-label">Repeat</label>
+                    <select name="recurrence_type" id="taskRecurrenceType" class="mw-form-select">
+                        <option value="">Does not repeat</option>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                    </select>
+                </div>
             </div>
+
+            <div class="mw-form-group" id="rowRecurrenceEnd" style="display:none;">
+                <label class="mw-form-label">Repeat until</label>
+                <input type="date" name="recurrence_end_date" class="mw-form-input">
+            </div>
+
 
             <!-- Expected Output (multiple allowed) -->
             <div class="mw-form-group">
@@ -1717,7 +1736,7 @@ $todayDateFormatted = date('j F');
 
             <!-- Checkbox: Review required before completion -->
             <label class="mw-checkbox-wrap">
-                <input type="checkbox" id="chkReviewRequired" checked>
+                <input type="checkbox" name="review_required" value="1" id="chkReviewRequired" checked>
                 <span>Review required before completion</span>
             </label>
 
@@ -2151,6 +2170,15 @@ document.addEventListener('DOMContentLoaded', function () {
             if (iconAccordion) {
                 iconAccordion.className = isHidden ? 'fa-solid fa-chevron-up me-2' : 'fa-solid fa-chevron-down me-2';
             }
+        });
+    }
+
+    // Show "Repeat until" only when a repeat type is chosen
+    const selRecurrence = document.getElementById('taskRecurrenceType');
+    const rowRecurrenceEnd = document.getElementById('rowRecurrenceEnd');
+    if (selRecurrence && rowRecurrenceEnd) {
+        selRecurrence.addEventListener('change', () => {
+            rowRecurrenceEnd.style.display = selRecurrence.value ? '' : 'none';
         });
     }
 
