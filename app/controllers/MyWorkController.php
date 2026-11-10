@@ -662,9 +662,10 @@ class MyWorkController extends Controller
         $startDate = !empty($_POST['start_date']) ? $_POST['start_date'] : null;
 
         $reviewerId = !empty($_POST['reviewer_id']) ? (int)$_POST['reviewer_id'] : null;
-        $collaboratorIds = !empty($_POST['collaborator_ids']) && is_array($_POST['collaborator_ids'])
-            ? array_values(array_filter(array_map('intval', $_POST['collaborator_ids'])))
-            : [];
+        $collaboratorIds = array_values(array_unique(array_filter(array_map('intval', array_merge(
+            (array)($_POST['collaborator_ids'] ?? []),
+            (array)($_POST['cc_ids'] ?? [])
+        )))));
 
         $mentionedUserIds = [];
         if ($reviewerId) {

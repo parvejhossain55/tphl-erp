@@ -127,6 +127,14 @@ $todayDateFormatted = date('j F');
     background-color: #087F5B;
 }
 
+/* Multi-select dropdown */
+.mw-multi { position: relative; }
+.mw-multi-btn { text-align: left; width: 100%; cursor: pointer; }
+.mw-multi-panel { display: none; position: absolute; z-index: 50; left: 0; right: 0; top: 100%; margin-top: 4px; background: #fff; border: 1px solid #E2EAE5; border-radius: 8px; box-shadow: 0 6px 16px rgba(0,0,0,.08); max-height: 240px; overflow-y: auto; padding: 8px; }
+.mw-multi.open .mw-multi-panel { display: block; }
+.mw-multi-search { margin-bottom: 6px; }
+.mw-multi-item { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 6px; cursor: pointer; font-size: 13px; margin: 0; }
+.mw-multi-item:hover { background: #F4FAF7; }
 /* Summary Metric Cards */
 .mw-stats-row {
     display: grid;
@@ -1674,6 +1682,22 @@ $todayDateFormatted = date('j F');
                 </div>
             </div>
 
+            <?php
+            // Multi-select dropdown (checkbox list) styled like .mw-form-select
+            $mwMulti = function (string $name, string $placeholder) use ($usersList) { ?>
+                <div class="mw-multi" data-placeholder="<?= htmlspecialchars($placeholder) ?>">
+                    <button type="button" class="mw-form-select mw-multi-btn"><span class="mw-multi-text"><?= htmlspecialchars($placeholder) ?></span></button>
+                    <div class="mw-multi-panel">
+                        <input type="text" class="mw-form-input mw-multi-search" placeholder="Search...">
+                        <?php foreach (($usersList ?? []) as $u): if (trim((string)$u['full_name']) === '') continue; ?>
+                            <label class="mw-multi-item">
+                                <input type="checkbox" name="<?= htmlspecialchars($name) ?>" value="<?= (int)$u['id'] ?>" data-name="<?= htmlspecialchars($u['full_name']) ?>">
+                                <span><?= htmlspecialchars($u['full_name']) ?></span>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php }; ?>
             <!-- Assigned by & CC -->
             <div class="mw-form-row mw-form-group">
                 <div class="mw-form-col">
@@ -1687,12 +1711,7 @@ $todayDateFormatted = date('j F');
                 </div>
                 <div class="mw-form-col">
                     <label class="mw-form-label">CC</label>
-                    <select name="cc_id" id="taskCcSelect" class="mw-form-select">
-                        <option value="">Select CC...</option>
-                        <?php foreach (($usersList ?? []) as $u): ?>
-                            <option value="<?= (int)$u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <?php $mwMulti('cc_ids[]', 'Select CC...'); ?>
                 </div>
             </div>
 
@@ -1717,14 +1736,7 @@ $todayDateFormatted = date('j F');
                 </div>
                 <div class="mw-form-col">
                     <label class="mw-form-label">Collaborators</label>
-                    <select name="collaborator_ids[]" id="taskCollaboratorSelect" class="mw-form-select">
-                        <option value="">Select Collaborator...</option>
-                        <?php foreach (($usersList ?? []) as $u): ?>
-                            <option value="<?= (int)$u['id'] ?>">
-                                <?= htmlspecialchars($u['full_name']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
+                    <?php $mwMulti('collaborator_ids[]', 'Select Collaborators...'); ?>
                 </div>
             </div>
 
@@ -2141,6 +2153,30 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
+
+    // Multi-select dropdowns (CC, Collaborators)
+    document.querySelectorAll('.mw-multi').forEach(box => {
+        const txt = box.querySelector('.mw-multi-text');
+        const checks = box.querySelectorAll('input[type=checkbox]');
+        const refresh = () => {
+            const names = [...checks].filter(i => i.checked).map(i => i.dataset.name);
+            txt.innerText = names.length === 0 ? box.dataset.placeholder : (names.length <= 2 ? names.join(', ') : names.length + ' selected');
+        };
+        box.querySelector('.mw-multi-btn').addEventListener('click', () => {
+            const wasOpen = box.classList.contains('open');
+            document.querySelectorAll('.mw-multi.open').forEach(b => b.classList.remove('open'));
+            if (!wasOpen) box.classList.add('open');
+        });
+        checks.forEach(i => i.addEventListener('change', refresh));
+        box.querySelector('.mw-multi-search').addEventListener('input', function () {
+            const q = this.value.toLowerCase();
+            box.querySelectorAll('.mw-multi-item').forEach(l => l.style.display = l.innerText.toLowerCase().includes(q) ? '' : 'none');
+        });
+    });
+    // Capture phase: still fires when the drawer stops click propagation
+    document.addEventListener('click', e => {
+        document.querySelectorAll('.mw-multi.open').forEach(b => { if (!b.contains(e.target)) b.classList.remove('open'); });
+    }, true);
 
     // Expected output: add / remove extra rows
     const expectedList = document.getElementById('expectedOutputList');
