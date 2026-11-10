@@ -895,7 +895,16 @@ class AssetManagement
             'purchase_head_by'       => "INT DEFAULT NULL AFTER `purchase_head_status`",
             'purchase_head_at'       => "TIMESTAMP NULL DEFAULT NULL AFTER `purchase_head_by`",
             'purchase_head_note'     => "TEXT DEFAULT NULL AFTER `purchase_head_at`",
-            'purchase_head_document' => "VARCHAR(255) NULL DEFAULT NULL AFTER `purchase_head_note`"
+            'purchase_head_document' => "VARCHAR(255) NULL DEFAULT NULL AFTER `purchase_head_note`",
+            'paid_amount'            => "DECIMAL(15,2) NULL DEFAULT NULL AFTER `payment_method`",
+            'payment_attachment'     => "VARCHAR(255) NULL DEFAULT NULL AFTER `paid_amount`",
+            'purchase_document'      => "VARCHAR(255) NULL DEFAULT NULL AFTER `overall_status`",
+            'purchase_note'          => "TEXT NULL DEFAULT NULL AFTER `purchase_document`",
+            'purchase_date'          => "DATE NULL DEFAULT NULL AFTER `purchase_note`",
+            'return_amount'          => "DECIMAL(15,2) NULL DEFAULT 0.00 AFTER `purchase_date`",
+            'return_note'            => "TEXT NULL DEFAULT NULL AFTER `return_amount`",
+            'purchase_confirmed_by'  => "INT NULL DEFAULT NULL AFTER `return_note`",
+            'purchase_confirmed_at'  => "TIMESTAMP NULL DEFAULT NULL AFTER `purchase_confirmed_by`"
         ];
 
         foreach ($colsToAdd as $colName => $colDef) {
@@ -1052,13 +1061,13 @@ class AssetManagement
                         $conds[] = "(pea.purchase_head_status = 'approved' AND pea.qc_audit_status = 'pending')";
                     }
                     if (!empty($filters['is_management'])) {
-                        $conds[] = "(pea.qc_audit_status = 'approved' AND pea.mgmt_status = 'pending' AND (pea.total_price <= 10000.01 OR ar.op_head_status = 'approved'))";
+                        $conds[] = "(pea.qc_audit_status = 'approved' AND pea.mgmt_status = 'pending' AND (pea.total_price <= 10000.01 OR (ar.op_head_status = 'approved' AND ar.accounts_head_status = 'approved')))";
                     }
                     if ($isOpHead) {
-                        $conds[] = "(pea.qc_audit_status = 'approved' AND pea.mgmt_status = 'pending' AND (pea.total_price <= 10000.01 OR ar.op_head_status IS NULL OR ar.op_head_status != 'approved'))";
+                        $conds[] = "(pea.qc_audit_status = 'approved' AND pea.mgmt_status = 'pending' AND (ar.op_head_status IS NULL OR ar.op_head_status != 'approved'))";
                     }
                     if (!empty($filters['is_accounts'])) {
-                        $conds[] = "(pea.mgmt_status = 'approved' AND pea.payment_status = 'unpaid')";
+                        $conds[] = "((pea.qc_audit_status = 'approved' AND ar.op_head_status = 'approved' AND (ar.accounts_head_status IS NULL OR ar.accounts_head_status != 'approved') AND pea.payment_status = 'unpaid') OR (pea.mgmt_status = 'approved' AND pea.payment_status = 'unpaid'))";
                     }
 
                     if (!empty($conds)) {

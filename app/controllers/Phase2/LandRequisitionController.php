@@ -328,8 +328,10 @@ class LandRequisitionController extends Controller {
         $note = $_POST['mgmt_note'] ?? '';
         $mgmt_by = (int)$_SESSION['user']['id'];
 
-        $isMgmt = in_array($roleId, [1, 3, 33]);
-        $isOpHead = in_array($roleId, [20, 32]);
+        $roleNameLc = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $isChiefOfficer = in_array($roleId, [33, 34, 35], true) || in_array($roleNameLc, ['chief officer', 'management viewer', 'seal ceo'], true);
+        $isMgmt = !$isChiefOfficer && (in_array($roleId, [1, 3, 38], true) || in_array($roleNameLc, ['super admin', 'admin', 'management', 'board of director', 'board of directors'], true) || strpos($roleNameLc, 'director') !== false || strpos($roleNameLc, 'dceo') !== false);
+        $isOpHead = !$isChiefOfficer && (in_array($roleId, [20, 32], true) || strpos($roleNameLc, 'operation head') !== false || strpos($roleNameLc, 'admin & operation') !== false);
 
         if (!$isMgmt && !$isOpHead) {
             setError('You do not have permission to approve requisitions.');
@@ -364,8 +366,8 @@ class LandRequisitionController extends Controller {
         $opHeadStatus = strtolower($arRow['op_head_status'] ?? 'pending');
         $ahStatus = strtolower($arRow['accounts_head_status'] ?? 'pending');
 
-        // Flow for > 10K: Role 20 must approve first before Management
-        if ($isOver1Lac && $isOpHead && !$isMgmt) {
+        // Step 1 after QC (for both <= 10K and > 10K): Operation Head (Role 20/32) approves and forwards to Accounts Head
+        if ($isOpHead && !$isMgmt) {
             $arId = (int)($arRow['id'] ?? 0);
             $newOpStatus = ($status === 'Approved') ? 'approved' : 'rejected';
             $escNote = $this->db->real_escape_string($note);
@@ -397,21 +399,19 @@ class LandRequisitionController extends Controller {
             exit;
         }
 
-        // Management gating for > 10K: Op Head & Accounts Head must have approved
-        if ($isOver1Lac && $isMgmt) {
-            if ($opHeadStatus !== 'approved') {
-                setError("Access Denied: Requests exceeding ৳10,000 must be approved by Admin & Operation Head (Role 20) first.");
-                header("Location: " . $GLOBALS['base_url'] . "/con-land-requisitions");
-                exit;
-            }
-            if ($ahStatus !== 'approved') {
-                setError("Access Denied: Requests exceeding ৳10,000 must be verified & approved by Accounts Head (Role 30) before Management can approve.");
-                header("Location: " . $GLOBALS['base_url'] . "/con-land-requisitions");
-                exit;
-            }
+        // Management Direct Override: auto-fill any bypassed earlier stages in Management's name
+        if ($isMgmt && $status === 'Approved') {
+            $escBypassNote = $this->db->real_escape_string(($note ?: 'Approved by Management') . ' (Management Override)');
+            $this->db->query("
+                UPDATE land_fund_requisitions
+                SET qc_status = 'Approved',
+                    qc_by = COALESCE(qc_by, {$mgmt_by}),
+                    qc_approved_at = COALESCE(qc_approved_at, CURRENT_TIMESTAMP),
+                    qc_note = COALESCE(NULLIF(qc_note, ''), '{$escBypassNote}')
+                WHERE id = {$id}
+            ");
         }
 
-        // Standard approval for <= 1L or Management sign-off for > 1L (after Op Head approved)
         $stmt = $this->db->prepare("
             UPDATE land_fund_requisitions 
             SET mgmt_status = ?, mgmt_by = ?, mgmt_note = ?, mgmt_approved_at = CURRENT_TIMESTAMP
@@ -420,19 +420,40 @@ class LandRequisitionController extends Controller {
         $stmt->bind_param("sisi", $status, $mgmt_by, $note, $id);
 
         if ($stmt->execute()) {
-            $nextRoleLr = ($ahStatus === 'approved') ? 'accounts' : 'accounts_head';
-            $newAppRole = ($status === 'Approved') ? $nextRoleLr : 'rejected';
-            $newArStatus = ($status === 'Approved') ? 'approved' : 'rejected';
-            $stmtAr = $this->db->prepare("
-                UPDATE approval_requests 
-                SET approve_role = ?, status = ?, approved_by = ?, approved_at = NOW(), approval_note = ?,
-                    op_head_status = (CASE WHEN op_head_status = 'approved' THEN op_head_status ELSE 'approved' END)
-                WHERE source_table IN ('land_fund_requisitions', 'con_land_requisitions') AND source_id = ?
-            ");
-            if ($stmtAr) {
-                $stmtAr->bind_param("ssisi", $newAppRole, $newArStatus, $mgmt_by, $note, $id);
-                $stmtAr->execute();
-                $stmtAr->close();
+            $escBypassNote = $this->db->real_escape_string(($note ?: 'Approved by Management') . ' (Management Override)');
+            if ($isMgmt && $status === 'Approved') {
+                $this->db->query("
+                    UPDATE approval_requests
+                    SET approve_role = 'accounts',
+                        status = 'approved',
+                        approved_by = {$mgmt_by},
+                        approved_at = NOW(),
+                        approval_note = '{$this->db->real_escape_string($note)}',
+                        op_head_status = 'approved',
+                        op_head_by = COALESCE(op_head_by, {$mgmt_by}),
+                        op_head_at = COALESCE(op_head_at, NOW()),
+                        op_head_note = COALESCE(NULLIF(op_head_note, ''), '{$escBypassNote}'),
+                        accounts_head_status = 'approved',
+                        accounts_head_by = COALESCE(accounts_head_by, {$mgmt_by}),
+                        accounts_head_at = COALESCE(accounts_head_at, NOW()),
+                        accounts_head_note = COALESCE(NULLIF(accounts_head_note, ''), '{$escBypassNote}')
+                    WHERE source_table IN ('land_fund_requisitions', 'con_land_requisitions') AND source_id = {$id}
+                ");
+            } else {
+                $nextRoleLr = ($ahStatus === 'approved') ? 'accounts' : 'accounts_head';
+                $newAppRole = ($status === 'Approved') ? $nextRoleLr : 'rejected';
+                $newArStatus = ($status === 'Approved') ? 'approved' : 'rejected';
+                $stmtAr = $this->db->prepare("
+                    UPDATE approval_requests 
+                    SET approve_role = ?, status = ?, approved_by = ?, approved_at = NOW(), approval_note = ?,
+                        op_head_status = (CASE WHEN op_head_status = 'approved' THEN op_head_status ELSE 'approved' END)
+                    WHERE source_table IN ('land_fund_requisitions', 'con_land_requisitions') AND source_id = ?
+                ");
+                if ($stmtAr) {
+                    $stmtAr->bind_param("ssisi", $newAppRole, $newArStatus, $mgmt_by, $note, $id);
+                    $stmtAr->execute();
+                    $stmtAr->close();
+                }
             }
             setSuccess("Requisition status updated to " . $status);
         } else {
@@ -445,7 +466,9 @@ class LandRequisitionController extends Controller {
 
     public function pay() {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        if (!in_array($roleId, [1, 6, 30])) {
+        $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $isAllowedToPay = in_array($roleId, [1, 3, 6, 30, 38]) || strpos($roleName, 'account') !== false || in_array($roleName, ['super admin', 'admin', 'management', 'board of director', 'board of directors'], true) || strpos($roleName, 'director') !== false || strpos($roleName, 'dceo') !== false;
+        if (!$isAllowedToPay) {
             setError('Only Accounts can record payments.');
             header("Location: " . $GLOBALS['base_url'] . "/con-land-requisitions");
             exit;

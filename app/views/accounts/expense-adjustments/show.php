@@ -625,15 +625,17 @@ if (!empty($ahInfo['has_request'])) {
                                                     </div>
                                                 </div>
                                             </div>
-                                        <?php else: ?>
+                                        <?php elseif (!$canMgmtApprove): ?>
                                             <div class="alert alert-warning text-center border mb-0" style="background:rgba(245,158,11,.08); border-color:rgba(245,158,11,.3) !important;">
                                                 <i class="fa-light fa-magnifying-glass-chart fa-2x d-block mb-2 text-warning"></i>
                                                 <strong>Pending QC & Internal Audit</strong>
                                                 <div class="text-muted small mt-1">Awaiting audit review by QC / Internal Audit before Management approval.</div>
                                             </div>
                                         <?php endif; ?>
+                                    <?php endif; ?>
 
-                                    <?php elseif ($adj['status'] == 'qc_approved'): ?>
+                                    <?php if (in_array($adj['status'], ['pending', 'qc_approved'])): ?>
+                                        <?php if ($adj['status'] == 'qc_approved'): ?>
                                         <!-- Step 2: Management / Role 20 Final Approval -->
                                         <div class="alert alert-primary border mb-3">
                                             <div class="d-flex align-items-center mb-1">
@@ -648,6 +650,7 @@ if (!empty($ahInfo['has_request'])) {
                                                 <div class="small mt-1 fst-italic text-muted">"<?= htmlspecialchars($adj['qc_note']) ?>"</div>
                                             <?php endif; ?>
                                         </div>
+                                        <?php endif; ?>
 
                                         <?php if ($canMgmtApprove): ?>
                                             <?php
@@ -655,27 +658,31 @@ if (!empty($ahInfo['has_request'])) {
                                             $isOver1LacAdj = ($adjAmtToCheck > 10000);
                                             $isOpHeadApprovedAdj = (!empty($ahInfo['is_op_head_approved']) || ($ahInfo['op_head_status'] ?? '') === 'approved');
                                             $isAhApprovedAdj = (!empty($ahInfo['is_accounts_head_approved']) || ($ahInfo['accounts_head_status'] ?? '') === 'approved');
-                                            $isOpHeadUserAdj = (in_array((int)($_SESSION['user']['role_id'] ?? 0), [20, 32], true) || str_contains(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head'));
-                                            $isMgmtUserAdj = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3], true);
-                                            $isMgmtLockedAdj = ($isOver1LacAdj && (!$isOpHeadApprovedAdj || !$isAhApprovedAdj) && $isMgmtUserAdj && !$isOpHeadUserAdj);
-                                            $mgmtLockMsgAdj = (!$isOpHeadApprovedAdj)
-                                                ? 'This expense adjustment exceeds ৳10,000 and must be verified and approved by <strong>Admin &amp; Operation Head (Role 20)</strong> before Management can authorize it.'
-                                                : 'Admin &amp; Operation Head has approved. Awaiting <strong>Accounts Head (Role 30)</strong> payment verification &amp; approval before Management can authorize it.';
+                                            $adjRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+                                            $adjRoleNameLc = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+                                            $isOpHeadUserAdj = (in_array($adjRoleId, [20, 32], true) || str_contains($adjRoleNameLc, 'operation head'));
+                                            $isMgmtUserAdj = (in_array($adjRoleId, [1, 3, 38], true) || str_contains($adjRoleNameLc, 'director') || str_contains($adjRoleNameLc, 'dceo') || str_contains($adjRoleNameLc, 'management')) && !in_array($adjRoleId, [33, 34, 35], true);
+                                            $isMgmtLockedAdj = false;
+                                            $eaOverrideStage = '';
+                                            if ($isMgmtUserAdj) {
+                                                if ($adj['status'] === 'pending') {
+                                                    $eaOverrideStage = 'QC & Internal Audit';
+                                                } elseif (!$isOpHeadApprovedAdj) {
+                                                    $eaOverrideStage = 'Head of Operation';
+                                                } elseif (!$isAhApprovedAdj) {
+                                                    $eaOverrideStage = 'Accounts Head';
+                                                }
+                                            }
                                             ?>
+                                            <?php if ($isMgmtUserAdj || ($adj['status'] === 'qc_approved' && $isOpHeadUserAdj && !$isOpHeadApprovedAdj)): ?>
                                             <div class="p-3 bg-light rounded border mb-3">
                                                 <h6 class="fw-bold text-primary mb-2">
-                                                    <i class="fa-light fa-stamp me-1"></i> Management Final Approval
+                                                    <i class="fa-light fa-stamp me-1"></i> <?= ($isOpHeadUserAdj && !$isMgmtUserAdj) ? 'Operation Head Approval' : 'Management Final Approval' ?>
                                                 </h6>
-                                                <?php if ($isMgmtLockedAdj): ?>
-                                                    <div class="alert alert-warning mb-3">
-                                                        <i class="fa-solid fa-lock me-2"></i><strong>Management Approval Locked (> ৳10,000):</strong> <?= $mgmtLockMsgAdj ?>
-                                                    </div>
-                                                <?php else: ?>
-                                                    <p class="small text-muted mb-3">
-                                                        Review the QC recommendation and authorize final disbursement approval.
-                                                    </p>
-                                                <?php endif; ?>
-                                                <form action="<?= $GLOBALS['base_url'] ?>/expense-adjustments/approve" method="POST" class="mb-3">
+                                                <p class="small text-muted mb-3">
+                                                    Review the recommendation and authorize disbursement approval.
+                                                </p>
+                                                <form id="eaMgmtApproveForm" action="<?= $GLOBALS['base_url'] ?>/expense-adjustments/approve" method="POST" class="mb-3">
                                                     <input type="hidden" name="id" value="<?= $adj['id'] ?>">
                                                     <div class="mb-3">
                                                         <label class="form-label small fw-bold">Final Approved Amount (TK.) <span class="text-danger">*</span></label>
@@ -685,11 +692,7 @@ if (!empty($ahInfo['has_request'])) {
                                                         <label class="form-label small fw-bold">Management Note</label>
                                                         <textarea name="mgmt_note" class="form-control" rows="2" placeholder="Management approval remarks..."></textarea>
                                                     </div>
-                                                    <?php if ($isMgmtLockedAdj): ?>
-                                                        <button type="button" class="btn btn-secondary w-100 fw-bold shadow-sm disabled" title="Awaiting Admin & Operation Head approval">
-                                                            <i class="fa-solid fa-lock me-1"></i> Locked (> ৳10,000)
-                                                        </button>
-                                                    <?php elseif ($isOver1LacAdj && !$isOpHeadApprovedAdj && $isOpHeadUserAdj): ?>
+                                                    <?php if ($isOpHeadUserAdj && !$isMgmtUserAdj && !$isOpHeadApprovedAdj): ?>
                                                         <button type="submit" class="btn btn-success w-100 fw-bold shadow-sm">
                                                             <i class="fa-solid fa-check-double me-1"></i> Verify &amp; Approve (Op Head)
                                                         </button>
@@ -699,6 +702,38 @@ if (!empty($ahInfo['has_request'])) {
                                                         </button>
                                                     <?php endif; ?>
                                                 </form>
+                                                <script>
+                                                document.addEventListener('DOMContentLoaded', function() {
+                                                    var eaForm = document.getElementById('eaMgmtApproveForm');
+                                                    if (eaForm) {
+                                                        eaForm.addEventListener('submit', function(e) {
+                                                            var overrideStage = <?= json_encode($eaOverrideStage ?? '') ?>;
+                                                            if (overrideStage !== '' && !eaForm.getAttribute('data-confirmed-override')) {
+                                                                e.preventDefault();
+                                                                if (typeof Swal !== 'undefined') {
+                                                                    Swal.fire({
+                                                                        title: 'Pending ' + overrideStage + "'s Approval",
+                                                                        html: 'This expense adjustment is pending for <strong>' + overrideStage + "'s</strong> approval. Are you ready to approve for <strong>" + overrideStage + '</strong> first?<br><small class="text-muted d-block mt-2">Your name will be recorded as the approver for all bypassed stages as well as final Management approval.</small>',
+                                                                        icon: 'warning',
+                                                                        showCancelButton: true,
+                                                                        confirmButtonColor: '#198754',
+                                                                        cancelButtonColor: '#6c757d',
+                                                                        confirmButtonText: 'Yes, Approve All Stages'
+                                                                    }).then(function(result) {
+                                                                        if (result.isConfirmed) {
+                                                                            eaForm.setAttribute('data-confirmed-override', '1');
+                                                                            eaForm.submit();
+                                                                        }
+                                                                    });
+                                                                } else if (confirm("Pending " + overrideStage + "'s Approval. Are you ready to approve all bypassed stages and complete final Management approval?")) {
+                                                                    eaForm.setAttribute('data-confirmed-override', '1');
+                                                                    eaForm.submit();
+                                                                }
+                                                            }
+                                                        });
+                                                    }
+                                                });
+                                                </script>
 
                                                 <div class="border-top pt-2">
                                                     <button type="button" class="btn btn-outline-danger btn-sm w-100" data-bs-toggle="collapse" data-bs-target="#rejectMgmtBox">
@@ -715,6 +750,7 @@ if (!empty($ahInfo['has_request'])) {
                                                     </div>
                                                 </div>
                                             </div>
+                                            <?php endif; ?>
                                         <?php else: ?>
                                             <div class="alert alert-warning text-center border mb-0" style="background:rgba(245,158,11,.08); border-color:rgba(245,158,11,.3) !important;">
                                                 <i class="fa-light fa-hourglass-half fa-2x d-block mb-2 text-warning"></i>

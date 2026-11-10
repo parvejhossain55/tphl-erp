@@ -7,6 +7,47 @@ class Con_ContractorBillSettlement
     public function __construct($db)
     {
         $this->db = $db;
+        $this->ensureSchema();
+    }
+
+    private function ensureSchema(): void
+    {
+        static $checked = false;
+        if ($checked || !$this->db) {
+            return;
+        }
+        $checked = true;
+
+        @$this->db->query("
+            CREATE TABLE IF NOT EXISTS `con_contractor_bill_settlements` (
+              `id` int unsigned NOT NULL AUTO_INCREMENT,
+              `bill_id` int unsigned NOT NULL,
+              `project_id` int NOT NULL,
+              `contractor_id` int unsigned NOT NULL,
+              `submitted_by` int NOT NULL,
+              `paid_amount` decimal(15,2) NOT NULL,
+              `paid_date` date NOT NULL,
+              `payment_method` enum('Cash','Cheque','BankTransfer','MobileWallet','Other') DEFAULT 'Cash',
+              `reference_no` varchar(100) DEFAULT NULL,
+              `labour_count` int DEFAULT '0',
+              `work_note` text,
+              `proof_images` text,
+              `received_amount` decimal(15,2) DEFAULT '0.00',
+              `balance_amount` decimal(15,2) DEFAULT '0.00',
+              `balance_returned` tinyint(1) DEFAULT '0',
+              `balance_returned_at` datetime DEFAULT NULL,
+              `balance_verified` tinyint(1) DEFAULT '0',
+              `balance_verified_by` int DEFAULT NULL,
+              `balance_verified_at` datetime DEFAULT NULL,
+              `status` enum('submitted','accounts_received','verified') DEFAULT 'submitted',
+              `accounts_note` text,
+              `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              KEY `idx_bill_id` (`bill_id`),
+              KEY `idx_project_id` (`project_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
     }
 
     // -------------------------------------------------------------------------
@@ -23,9 +64,13 @@ class Con_ContractorBillSettlement
             WHERE s.bill_id = ?
             ORDER BY s.created_at ASC
         ");
+        if (!$stmt) {
+            return [];
+        }
         $stmt->bind_param('i', $billId);
         $stmt->execute();
-        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $res = $stmt->get_result();
+        return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
     }
 
     public function find(int $id): ?array
@@ -37,9 +82,13 @@ class Con_ContractorBillSettlement
             LEFT JOIN users v ON v.id = s.balance_verified_by
             WHERE s.id = ?
         ");
+        if (!$stmt) {
+            return null;
+        }
         $stmt->bind_param('i', $id);
         $stmt->execute();
-        $row = $stmt->get_result()->fetch_assoc();
+        $res = $stmt->get_result();
+        $row = $res ? $res->fetch_assoc() : null;
         return $row ?: null;
     }
 

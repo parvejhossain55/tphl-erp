@@ -55,6 +55,14 @@ class ProjectOtherCost extends Model
             'dept_head_approved_at' => "DATETIME NULL DEFAULT NULL",
             'dept_head_approval_note' => "TEXT NULL DEFAULT NULL",
             'qc_audit_approved_at' => "DATETIME NULL DEFAULT NULL",
+            'op_head_status' => "VARCHAR(30) NULL DEFAULT 'pending'",
+            'op_head_by' => "INT(11) NULL DEFAULT NULL",
+            'op_head_at' => "DATETIME NULL DEFAULT NULL",
+            'op_head_note' => "TEXT NULL DEFAULT NULL",
+            'accounts_head_status' => "VARCHAR(30) NULL DEFAULT 'pending'",
+            'accounts_head_by' => "INT(11) NULL DEFAULT NULL",
+            'accounts_head_at' => "DATETIME NULL DEFAULT NULL",
+            'accounts_head_note' => "TEXT NULL DEFAULT NULL",
             'management_apporved_at' => "DATETIME NULL DEFAULT NULL",
             'pc_approved_id' => "INT(11) NULL DEFAULT NULL",
             'account_id' => "INT(11) NULL DEFAULT NULL"
@@ -64,6 +72,11 @@ class ProjectOtherCost extends Model
             if ($chk && $chk->num_rows === 0) {
                 @$this->db->query("ALTER TABLE `project_other_costs` ADD COLUMN `{$col}` {$def}");
             }
+        }
+
+        $chkEa = @$this->db->query("SHOW COLUMNS FROM `expense_adjustments` LIKE 'parent_type'");
+        if ($chkEa && $chkEa->num_rows === 0) {
+            @$this->db->query("ALTER TABLE `expense_adjustments` ADD COLUMN `parent_type` VARCHAR(50) NOT NULL DEFAULT 'cashout'");
         }
     }
 
@@ -326,6 +339,9 @@ class ProjectOtherCost extends Model
 
         $query = "UPDATE project_other_costs SET " . implode(", ", $fields) . " WHERE id = ?";
         $sql = $this->db->prepare($query);
+        if (!$sql) {
+            return false;
+        }
 
         $sql->bind_param($types, ...$params);
 

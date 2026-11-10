@@ -7,6 +7,69 @@ class ExpenseAdjustment
     public function __construct($db)
     {
         $this->db = $db;
+        self::ensureSchema($this->db);
+    }
+
+    public static function ensureSchema($db)
+    {
+        static $checked = false;
+        if ($checked || !$db) {
+            return;
+        }
+        $checked = true;
+
+        @$db->query("
+            CREATE TABLE IF NOT EXISTS `expense_adjustments` (
+              `id` int unsigned NOT NULL AUTO_INCREMENT,
+              `user_id` int NOT NULL,
+              `cashout_request_id` int NOT NULL,
+              `parent_type` varchar(50) NOT NULL DEFAULT 'cashout',
+              `adjustment_type` enum('return','extra') NOT NULL,
+              `title` varchar(255) NOT NULL,
+              `description` text,
+              `amount` decimal(15,2) NOT NULL DEFAULT '0.00',
+              `approved_amount` decimal(15,2) DEFAULT NULL,
+              `due_amount` decimal(15,2) DEFAULT NULL,
+              `document` text,
+              `note` text,
+              `project_id` int DEFAULT NULL,
+              `office` varchar(255) DEFAULT NULL,
+              `status` varchar(50) NOT NULL DEFAULT 'pending',
+              `qc_approved_by` int DEFAULT NULL,
+              `qc_approved_at` datetime DEFAULT NULL,
+              `qc_note` text,
+              `approved_by` int DEFAULT NULL,
+              `approved_at` datetime DEFAULT NULL,
+              `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              KEY `idx_user` (`user_id`),
+              KEY `idx_cashout` (`cashout_request_id`),
+              KEY `idx_status` (`status`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+
+        $cols = [
+            'parent_type'     => "VARCHAR(50) NOT NULL DEFAULT 'cashout' AFTER `cashout_request_id`",
+            'approved_amount' => "DECIMAL(15,2) NULL DEFAULT NULL",
+            'due_amount'      => "DECIMAL(15,2) NULL DEFAULT NULL",
+            'document'        => "TEXT NULL DEFAULT NULL",
+            'note'            => "TEXT NULL DEFAULT NULL",
+            'project_id'      => "INT NULL DEFAULT NULL",
+            'office'          => "VARCHAR(255) NULL DEFAULT NULL",
+            'qc_approved_by'  => "INT NULL DEFAULT NULL",
+            'qc_approved_at'  => "DATETIME NULL DEFAULT NULL",
+            'qc_note'         => "TEXT NULL DEFAULT NULL",
+        ];
+        foreach ($cols as $col => $def) {
+            $chk = @$db->query("SHOW COLUMNS FROM `expense_adjustments` LIKE '{$col}'");
+            if ($chk && $chk->num_rows === 0) {
+                if (!@$db->query("ALTER TABLE `expense_adjustments` ADD COLUMN `{$col}` {$def}")) {
+                    $cleanDef = preg_replace('/\s+AFTER\s+`\w+`$/i', '', $def);
+                    @$db->query("ALTER TABLE `expense_adjustments` ADD COLUMN `{$col}` {$cleanDef}");
+                }
+            }
+        }
     }
 
     public function getAll($userId = null, $actionableRole = null, $customWhere = null)

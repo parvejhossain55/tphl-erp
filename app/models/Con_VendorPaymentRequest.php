@@ -70,6 +70,11 @@ class Con_VendorPaymentRequest extends Model
         if (!$accColCheck || $accColCheck->num_rows === 0) {
             @$this->db->query("ALTER TABLE `{$this->table}` ADD COLUMN `account_id` INT(11) DEFAULT NULL");
         }
+
+        $chkEa = @$this->db->query("SHOW COLUMNS FROM `expense_adjustments` LIKE 'parent_type'");
+        if ($chkEa && $chkEa->num_rows === 0) {
+            @$this->db->query("ALTER TABLE `expense_adjustments` ADD COLUMN `parent_type` VARCHAR(50) NOT NULL DEFAULT 'cashout'");
+        }
     }
 
     /**
@@ -366,9 +371,13 @@ class Con_VendorPaymentRequest extends Model
              LEFT JOIN users qc           ON qc.id  = pr.qc_approved_by_id
              WHERE pr.id = ?"
         );
+        if (!$stmt) {
+            return null;
+        }
         $stmt->bind_param('i', $id);
         $stmt->execute();
-        return $stmt->get_result()->fetch_assoc();
+        $res = $stmt->get_result();
+        return $res ? $res->fetch_assoc() : null;
     }
 
     /** Get all payment requests for a specific Purchase Order */
@@ -391,9 +400,13 @@ class Con_VendorPaymentRequest extends Model
              WHERE pr.purchase_order_id = ?
              ORDER BY pr.id ASC"
         );
+        if (!$stmt) {
+            return [];
+        }
         $stmt->bind_param('i', $poId);
         $stmt->execute();
-        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $res = $stmt->get_result();
+        return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
     }
 
     // =========================================================================
@@ -407,9 +420,14 @@ class Con_VendorPaymentRequest extends Model
              FROM vendor_penalties
              WHERE vendor_id = ? AND payment_request_id IS NULL"
         );
+        if (!$stmt) {
+            return 0.0;
+        }
         $stmt->bind_param('i', $vendorId);
         $stmt->execute();
-        return (float) $stmt->get_result()->fetch_assoc()['total_penalty'];
+        $res = $stmt->get_result();
+        $row = $res ? $res->fetch_assoc() : null;
+        return (float)($row['total_penalty'] ?? 0);
     }
 
     // =========================================================================
@@ -426,9 +444,14 @@ class Con_VendorPaymentRequest extends Model
                AND vpr.purchase_order_id = ?
                AND cft.payment_type = 'Advance'"
         );
+        if (!$stmt) {
+            return 0.0;
+        }
         $stmt->bind_param('i', $poId);
         $stmt->execute();
-        return (float) $stmt->get_result()->fetch_assoc()['total_advance'];
+        $res = $stmt->get_result();
+        $row = $res ? $res->fetch_assoc() : null;
+        return (float)($row['total_advance'] ?? 0);
     }
 
     // =========================================================================

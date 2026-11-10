@@ -65,7 +65,7 @@ $canUserApproveOpHead = $isOpHeadUser || in_array($currentUserRoleId, [1, 3], tr
 
 $isOver1Lac = !empty($ahInfo['is_over_1lac']);
 $isVprOrCbrCard = in_array(strtolower($sourceTable ?? ''), ['vendor_payment_requests', 'contractor_bill_requests'], true);
-$requiresOpHeadStage = ($isOver1Lac || $isVprOrCbrCard) && ($sourceTable ?? '') !== 'payslips';
+$requiresOpHeadStage = ($sourceTable ?? '') !== 'payslips';
 $isReadyForOpHead = isset($ahInfo['is_ready_for_op_head']) ? (bool)$ahInfo['is_ready_for_op_head'] : true;
 $reqAmount = (float)($ahInfo['request_amount'] ?? 0);
 $reqStatus = strtolower($ahInfo['status'] ?? 'pending');
@@ -108,7 +108,7 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
         <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2 py-2.5 px-4 <?= $isOpHeadApproved ? 'bg-success-subtle border-success-subtle' : ($isOpHeadRejected ? 'bg-danger-subtle border-danger-subtle' : 'bg-warning-subtle border-warning-subtle') ?>" style="padding-top: 10px; padding-bottom: 10px;">
             <div class="d-flex flex-wrap align-items-center gap-2">
                 <span class="badge bg-dark text-white rounded-pill px-2.5 py-1 extra-small fw-bold">
-                    <i class="fa-solid fa-layer-group me-1"></i><?= $isOver1Lac ? 'Step 1 of 3 (> ৳10,000 Flow)' : 'Operation Head Approval (≤ ৳10,000 Flow)' ?>
+                    <i class="fa-solid fa-layer-group me-1"></i><?= $isOver1Lac ? 'Step 1 of 3 (> ৳10,000 Flow)' : 'Step 1 of 2 (≤ ৳10,000 Flow)' ?>
                 </span>
                 <?php if ($isOpHeadApproved): ?>
                     <span class="badge bg-success text-white rounded-pill px-3 py-1 extra-small fw-bold">
@@ -253,7 +253,7 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
                     </span>
                 <?php else: ?>
                     <span class="badge bg-secondary text-white rounded-pill px-2.5 py-1 extra-small fw-bold">
-                        <i class="fa-solid fa-shield-halved me-1"></i>Payment Approval (≤ ৳10,000)
+                        <i class="fa-solid fa-shield-halved me-1"></i>Step 2 of 2 (Accounts Head Approval ≤ ৳10,000)
                     </span>
                 <?php endif; ?>
 
