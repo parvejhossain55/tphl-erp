@@ -3,7 +3,7 @@
  * View: My Work - Personal Workspace (Single Page, Zero Reload AJAX)
  */
 
-$tab = $tab ?? 'assigned_to_me';
+$tab = $tab ?? 'all';
 $search = $search ?? '';
 $priorityFilter = $priorityFilter ?? '';
 $statusFilter = $statusFilter ?? '';

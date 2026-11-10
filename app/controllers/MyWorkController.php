@@ -33,10 +33,10 @@ class MyWorkController extends Controller
         $baseUrl = $GLOBALS['base_url'] ?? '';
 
         // Active Scope Tab
-        $validTabs = ['assigned_to_me', 'assigned_by_me', 'following'];
-        $tab = $_GET['tab'] ?? 'assigned_to_me';
+        $validTabs = ['all', 'assigned_to_me', 'assigned_by_me', 'following'];
+        $tab = $_GET['tab'] ?? 'all';
         if (!in_array($tab, $validTabs, true)) {
-            $tab = 'assigned_to_me';
+            $tab = 'all';
         }
 
         // Search & Filters
