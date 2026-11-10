@@ -501,9 +501,7 @@ $show_breadcrumb = true;
             ?>
         </div>
     </div>
-</div></div>
-    </div>
-
+</div>
 </div>
 
 <!-- Projects Modal -->

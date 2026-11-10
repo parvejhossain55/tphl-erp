@@ -1109,6 +1109,14 @@ window.openEditPaymentDateModal = function(target) {
                                                 $legacyPath2 = 'uploads/payments/' . $transaction['attachment_image2'];
                                                 if (!in_array($legacyPath2, $docFiles)) $docFiles[] = $legacyPath2;
                                             }
+                                            if (!empty($transaction['attachment_image3'])) {
+                                                $legacyPath3 = 'uploads/payments/' . $transaction['attachment_image3'];
+                                                if (!in_array($legacyPath3, $docFiles)) $docFiles[] = $legacyPath3;
+                                            }
+                                            if (!empty($transaction['attachment_image4'])) {
+                                                $legacyPath4 = 'uploads/payments/' . $transaction['attachment_image4'];
+                                                if (!in_array($legacyPath4, $docFiles)) $docFiles[] = $legacyPath4;
+                                            }
                                             $docCount = count($docFiles);
                                         ?>
                                         <?php if ($docCount > 0 && is_numeric($transaction['id'])): ?>

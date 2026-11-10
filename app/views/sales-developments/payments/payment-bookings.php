@@ -149,7 +149,7 @@ $isAssignedSalesPerson = (
 
                                 <label class="form__input-title">Flat Size</label>
                             </div>
-                            <input type="text" class="form-control" value="<?= $booking['sqft'] ?>" readonly>
+                            <input type="text" class="form-control" value="<?= format_sqft($booking['sqft'] ?? '') ?>" readonly>
                         </div>
                         <?php if ($form_mode !== 'registration'): ?>
                             <div class="col-lg-6">
@@ -324,10 +324,10 @@ $isAssignedSalesPerson = (
                             <input type="text" name="transaction_ref" class="form-control" placeholder="Required reference number" required>
                         </div>
 
-                        <!-- Attachment Image -->
+                        <!-- Attachment Image 1 -->
                         <div class="col-lg-6">
                             <div class="form__input-title">
-                                <label class="form__input-title">Attachment Image</label>
+                                <label class="form__input-title">Attachment 1 (JPG, PNG, PDF)</label>
                             </div>
                             <input type="file" name="attachment_image" class="form-control" accept="image/*,application/pdf">
                         </div>
@@ -335,9 +335,33 @@ $isAssignedSalesPerson = (
                         <!-- Attachment Image 2 -->
                         <div class="col-lg-6">
                             <div class="form__input-title">
-                                <label class="form__input-title">Attachment Image 2 (Optional)</label>
+                                <label class="form__input-title">Attachment 2 (Optional)</label>
                             </div>
                             <input type="file" name="attachment_image2" class="form-control" accept="image/*,application/pdf">
+                        </div>
+
+                        <!-- Attachment Image 3 -->
+                        <div class="col-lg-6" id="container_attachment_image3" style="display: none;">
+                            <div class="form__input-title">
+                                <label class="form__input-title">Attachment 3 (Optional)</label>
+                            </div>
+                            <input type="file" name="attachment_image3" class="form-control" accept="image/*,application/pdf">
+                        </div>
+
+                        <!-- Attachment Image 4 -->
+                        <div class="col-lg-6" id="container_attachment_image4" style="display: none;">
+                            <div class="form__input-title">
+                                <label class="form__input-title">Attachment 4 (Optional)</label>
+                            </div>
+                            <input type="file" name="attachment_image4" class="form-control" accept="image/*,application/pdf">
+                        </div>
+
+                        <!-- Add More Image / Attachment Button -->
+                        <div class="col-lg-12 mb-2" id="container_add_more_btn">
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="btn_add_more_attachments">
+                                <i class="fa-solid fa-plus me-1"></i> Add More Image / Document
+                            </button>
+                            <small class="text-muted ms-2">(Add 3rd &amp; 4th attachment; JPG, PNG, WEBP, PDF accepted)</small>
                         </div>
 
                         <!-- Status -->
@@ -601,24 +625,25 @@ function generateCombinedReceipt() {
                                                 </a>
                                             <?php endif; ?>
 
-                                            <!-- Attachments -->
-                                            <?php if (!empty($p['attachment_image'])): ?>
-                                                <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/payments/<?= $p['attachment_image'] ?>" 
+                                            <!-- Attachments (1 to 4) -->
+                                            <?php 
+                                            for ($attIdx = 1; $attIdx <= 4; $attIdx++):
+                                                $attCol = ($attIdx === 1) ? 'attachment_image' : 'attachment_image' . $attIdx;
+                                                $attFile = $p[$attCol] ?? '';
+                                                if (!empty($attFile)):
+                                                    $isPdf = strtolower(pathinfo($attFile, PATHINFO_EXTENSION)) === 'pdf';
+                                            ?>
+                                                <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/payments/<?= htmlspecialchars($attFile) ?>" 
                                                    target="_blank" 
                                                    class="btn btn-outline-info btn-sm"
-                                                   title="View Attachment 1">
-                                                    <i class="fa-solid fa-paperclip"></i>
+                                                   style="padding: 2px 7px; font-size: 11px;"
+                                                   title="View Attachment <?= $attIdx ?> <?= $isPdf ? '(PDF)' : '' ?>">
+                                                    <i class="fa-solid <?= $isPdf ? 'fa-file-pdf text-danger' : 'fa-paperclip' ?>"></i> <?= $attIdx ?>
                                                 </a>
-                                            <?php endif; ?>
-                                            
-                                            <?php if (!empty($p['attachment_image2'])): ?>
-                                                <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/payments/<?= $p['attachment_image2'] ?>" 
-                                                   target="_blank" 
-                                                   class="btn btn-outline-info btn-sm"
-                                                   title="View Attachment 2">
-                                                    <i class="fa-solid fa-paperclip"></i>
-                                                </a>
-                                            <?php endif; ?>
+                                            <?php 
+                                                endif;
+                                            endfor; 
+                                            ?>
 
                                             <!-- Edit Payment -->
                                             <?php 
@@ -661,6 +686,8 @@ function generateCombinedReceipt() {
                                                     data-online="<?= htmlspecialchars($p['online_type'] ?? '') ?>"
                                                     data-image1="<?= htmlspecialchars($p['attachment_image'] ?? '') ?>"
                                                     data-image2="<?= htmlspecialchars($p['attachment_image2'] ?? '') ?>"
+                                                    data-image3="<?= htmlspecialchars($p['attachment_image3'] ?? '') ?>"
+                                                    data-image4="<?= htmlspecialchars($p['attachment_image4'] ?? '') ?>"
                                                     data-verified="<?= $pIsVerified ? 'true' : 'false' ?>"
                                                     title="Edit Payment Record">
                                                     <i class="fa-solid fa-pen-to-square"></i>
@@ -982,14 +1009,30 @@ function generateCombinedReceipt() {
                             <small id="edit_p_status_note" class="text-muted mt-1 d-block" style="font-size:11px;"></small>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Update Attachment Image 1 (Optional)</label>
+                            <label class="form-label">Update Attachment 1 (Optional)</label>
                             <input type="file" name="attachment_image" class="form-control" accept="image/*,application/pdf">
                             <div id="edit_p_image1_preview" class="mt-1 small"></div>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Update Attachment Image 2 (Optional)</label>
+                            <label class="form-label">Update Attachment 2 (Optional)</label>
                             <input type="file" name="attachment_image2" class="form-control" accept="image/*,application/pdf">
                             <div id="edit_p_image2_preview" class="mt-1 small"></div>
+                        </div>
+                        <div class="col-md-6 mb-3" id="edit_container_attachment3" style="display:none;">
+                            <label class="form-label">Update Attachment 3 (Optional)</label>
+                            <input type="file" name="attachment_image3" class="form-control" accept="image/*,application/pdf">
+                            <div id="edit_p_image3_preview" class="mt-1 small"></div>
+                        </div>
+                        <div class="col-md-6 mb-3" id="edit_container_attachment4" style="display:none;">
+                            <label class="form-label">Update Attachment 4 (Optional)</label>
+                            <input type="file" name="attachment_image4" class="form-control" accept="image/*,application/pdf">
+                            <div id="edit_p_image4_preview" class="mt-1 small"></div>
+                        </div>
+                        <div class="col-md-12 mb-2" id="edit_container_add_more_btn">
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="btn_edit_add_more_attachments">
+                                <i class="fa-solid fa-plus me-1"></i> Add More Image / Document
+                            </button>
+                            <small class="text-muted ms-2">(Add 3rd &amp; 4th attachment; JPG, PNG, WEBP, PDF accepted)</small>
                         </div>
                     </div>
                     <div class="text-end mt-3">
@@ -1266,6 +1309,8 @@ function generateCombinedReceipt() {
         const online = btn.dataset.online || btn.getAttribute('data-online') || '';
         const img1 = btn.dataset.image1 || btn.getAttribute('data-image1') || '';
         const img2 = btn.dataset.image2 || btn.getAttribute('data-image2') || '';
+        const img3 = btn.dataset.image3 || btn.getAttribute('data-image3') || '';
+        const img4 = btn.dataset.image4 || btn.getAttribute('data-image4') || '';
         const isVerified = (btn.dataset.verified === 'true' || btn.getAttribute('data-verified') === 'true');
 
         const elId = document.getElementById('edit_p_id');
@@ -1294,15 +1339,30 @@ function generateCombinedReceipt() {
         if (elCheque) elCheque.value = cheque;
         if (elOnline) elOnline.value = online;
 
-        // Attachment previews
+        // Attachment previews (1 to 4)
+        function formatPreviewLink(fileName, num) {
+            if (!fileName) return `<span class="text-muted">No attachment ${num} uploaded</span>`;
+            const isPdf = fileName.toLowerCase().endsWith('.pdf');
+            const icon = isPdf ? 'fa-file-pdf text-danger' : 'fa-paperclip';
+            return `<a href="<?= $GLOBALS['base_url'] ?>/public/uploads/payments/${encodeURIComponent(fileName)}" target="_blank" class="text-primary"><i class="fa-solid ${icon} me-1"></i>View Current Attachment ${num} ${isPdf ? '(PDF)' : ''}</a>`;
+        }
+
         const p1 = document.getElementById('edit_p_image1_preview');
-        if (p1) {
-            p1.innerHTML = img1 ? `<a href="<?= $GLOBALS['base_url'] ?>/public/uploads/payments/${img1}" target="_blank" class="text-primary"><i class="fa-solid fa-paperclip me-1"></i>View Current Attachment 1</a>` : '<span class="text-muted">No attachment 1 uploaded</span>';
-        }
+        if (p1) p1.innerHTML = formatPreviewLink(img1, 1);
         const p2 = document.getElementById('edit_p_image2_preview');
-        if (p2) {
-            p2.innerHTML = img2 ? `<a href="<?= $GLOBALS['base_url'] ?>/public/uploads/payments/${img2}" target="_blank" class="text-primary"><i class="fa-solid fa-paperclip me-1"></i>View Current Attachment 2</a>` : '<span class="text-muted">No attachment 2 uploaded</span>';
-        }
+        if (p2) p2.innerHTML = formatPreviewLink(img2, 2);
+        const p3 = document.getElementById('edit_p_image3_preview');
+        if (p3) p3.innerHTML = formatPreviewLink(img3, 3);
+        const p4 = document.getElementById('edit_p_image4_preview');
+        if (p4) p4.innerHTML = formatPreviewLink(img4, 4);
+
+        const editC3 = document.getElementById('edit_container_attachment3');
+        const editC4 = document.getElementById('edit_container_attachment4');
+        const editBtnMore = document.getElementById('btn_edit_add_more_attachments');
+
+        if (editC3) editC3.style.display = img3 ? 'block' : 'none';
+        if (editC4) editC4.style.display = img4 ? 'block' : 'none';
+        if (editBtnMore) editBtnMore.style.display = (img3 && img4) ? 'none' : 'inline-block';
 
         // Client Bank setup
         const editBankSelect = document.getElementById('edit_p_bank_name');
@@ -1444,6 +1504,36 @@ function generateCombinedReceipt() {
             const elMethod = document.getElementById('edit_p_method');
             const curMethod = elMethod ? elMethod.value : 'cash';
             toggleEditMethodFields(curMethod);
+        });
+    }
+
+    // Dynamic Add More Attachment in Add Payment Form
+    const btnAddMore = document.getElementById('btn_add_more_attachments');
+    const c3 = document.getElementById('container_attachment_image3');
+    const c4 = document.getElementById('container_attachment_image4');
+    if (btnAddMore) {
+        btnAddMore.addEventListener('click', function() {
+            if (c3 && c3.style.display === 'none') {
+                c3.style.display = 'block';
+            } else if (c4 && c4.style.display === 'none') {
+                c4.style.display = 'block';
+                btnAddMore.style.display = 'none';
+            }
+        });
+    }
+
+    // Dynamic Add More Attachment in Edit Payment Modal
+    const btnEditAddMore = document.getElementById('btn_edit_add_more_attachments');
+    if (btnEditAddMore) {
+        btnEditAddMore.addEventListener('click', function() {
+            const editC3 = document.getElementById('edit_container_attachment3');
+            const editC4 = document.getElementById('edit_container_attachment4');
+            if (editC3 && editC3.style.display === 'none') {
+                editC3.style.display = 'block';
+            } else if (editC4 && editC4.style.display === 'none') {
+                editC4.style.display = 'block';
+                btnEditAddMore.style.display = 'none';
+            }
         });
     }
 </script>

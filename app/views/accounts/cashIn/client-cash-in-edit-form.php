@@ -65,6 +65,14 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
                         $legacyPath2 = 'uploads/payments/' . $transaction['attachment_image2'];
                         if (!in_array($legacyPath2, $existingFiles)) $existingFiles[] = $legacyPath2;
                     }
+                    if (!empty($transaction['attachment_image3'])) {
+                        $legacyPath3 = 'uploads/payments/' . $transaction['attachment_image3'];
+                        if (!in_array($legacyPath3, $existingFiles)) $existingFiles[] = $legacyPath3;
+                    }
+                    if (!empty($transaction['attachment_image4'])) {
+                        $legacyPath4 = 'uploads/payments/' . $transaction['attachment_image4'];
+                        if (!in_array($legacyPath4, $existingFiles)) $existingFiles[] = $legacyPath4;
+                    }
                     $refererUrl = $_SERVER['HTTP_REFERER'] ?? '';
                     $cameFromCed = (strpos($refererUrl, 'clients-cash-in-history-view') !== false);
                     $redirectTo = $cameFromCed

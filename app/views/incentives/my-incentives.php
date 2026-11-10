@@ -260,7 +260,7 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                                                     <!-- Project & Unit -->
                                                     <td>
                                                         <span class="fw-bold text-dark d-block"><?= htmlspecialchars($sale['project_name']) ?></span>
-                                                        <span class="text-primary extra-small fw-semibold"><?= htmlspecialchars($sale['flat_name']) ?> (<?= $sale['sqft'] ?> sqft)</span>
+                                                        <span class="text-primary extra-small fw-semibold"><?= htmlspecialchars($sale['flat_name']) ?> (<?= !empty($sale['sqft']) ? format_sqft($sale['sqft']) : 'N/A' ?> sqft)</span>
                                                     </td>
 
                                                     <!-- Land Share (Base) & Flat Price -->

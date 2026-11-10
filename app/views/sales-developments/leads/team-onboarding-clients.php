@@ -130,7 +130,7 @@ $show_breadcrumb = true;
                                     <?= $lead['project_name'] ?>
                                 </td>
                                 <td>
-                                    <?= $lead['flat_name'] ?> - <span><?= $lead['sqft'] ?></span>
+                                    <?= $lead['flat_name'] ?> - <span><?= !empty($lead['sqft']) ? format_sqft($lead['sqft']) : '-' ?></span>
                                 </td>
                                 <td>
                                     <?= !empty($lead['price_value']) ? format_bdt($lead['price_value']) : '-' ?>
@@ -233,7 +233,7 @@ $show_breadcrumb = true;
             <!-- Project & Flat -->
             <div class="d-flex flex-column gap-1 mb-2">
                 <span class="text-truncate"><i class="bi bi-building me-1"></i> <?= $lead['project_name'] ?? '-' ?></span>
-                <span class="text-truncate"><i class="bi bi-house me-1"></i> <?= $lead['flat_name'] ?? '-' ?> - <?= $lead['sqft'] ?? '' ?></span>
+                <span class="text-truncate"><i class="bi bi-house me-1"></i> <?= $lead['flat_name'] ?? '-' ?> - <?= !empty($lead['sqft']) ? format_sqft($lead['sqft']) : '' ?></span>
             </div>
 
             <!-- Flat Value & Booking Amount -->

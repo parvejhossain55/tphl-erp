@@ -2862,11 +2862,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         let option = document.createElement('option');
                         option.value = flatId;
                         if (flat.is_booked == 1 && (!selectedFlatId || flatId != selectedFlatId)) {
-                            option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft [Booked]`;
+                            option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${parseFloat(flat.sqft || 0)} sqft [Booked]`;
                             option.classList.add('booked-option');
                             option.disabled = true;
                         } else {
-                            option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft`;
+                            option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${parseFloat(flat.sqft || 0)} sqft`;
                         }
                         if (selectedFlatId && Number(flatId) === Number(selectedFlatId)) {
                             option.selected = true;
