@@ -50,85 +50,54 @@ class MyWorkController extends Controller
             $statusFilter = '';
         }
 
-        // 1. Metric: Overdue Tasks (Open & past deadline for this user)
-        $stmtOverdue = $this->db->prepare("
-            SELECT COUNT(*) 
-            FROM tasks 
-            WHERE (user_id = ? OR assigned_by = ?) 
-              AND status != 'completed' 
-              AND deadline IS NOT NULL 
-              AND deadline < NOW()
-        ");
-        $stmtOverdue->bind_param("ii", $userId, $userId);
-        $stmtOverdue->execute();
-        $overdueCount = (int) $stmtOverdue->get_result()->fetch_row()[0];
-
-        // 2. Metric: Due Today
-        $stmtToday = $this->db->prepare("
-            SELECT COUNT(*) 
-            FROM tasks 
-            WHERE (user_id = ? OR assigned_by = ?) 
-              AND status != 'completed' 
-              AND deadline IS NOT NULL 
-              AND DATE(deadline) = CURDATE()
-        ");
-        $stmtToday->bind_param("ii", $userId, $userId);
-        $stmtToday->execute();
-        $dueTodayCount = (int) $stmtToday->get_result()->fetch_row()[0];
-
-        // 3. Metric: Next 7 Days
-        $stmtNext7 = $this->db->prepare("
-            SELECT COUNT(*) 
-            FROM tasks 
-            WHERE (user_id = ? OR assigned_by = ?) 
-              AND status != 'completed' 
-              AND deadline IS NOT NULL 
-              AND DATE(deadline) > CURDATE() 
-              AND DATE(deadline) <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)
-        ");
-        $stmtNext7->bind_param("ii", $userId, $userId);
-        $stmtNext7->execute();
-        $next7DaysCount = (int) $stmtNext7->get_result()->fetch_row()[0];
-
-        // 4. Metric: Waiting for Review (Tasks in review submitted by user or to user)
-        $stmtReviewCount = $this->db->prepare("
-            SELECT COUNT(*) 
-            FROM tasks 
-            WHERE (assigned_by = ? OR user_id = ?)
-              AND status != 'completed' 
-              AND (progress >= 80 OR employee_accept = 1)
-        ");
-        $stmtReviewCount->bind_param("ii", $userId, $userId);
-        $stmtReviewCount->execute();
-        $waitingReviewCount = (int) $stmtReviewCount->get_result()->fetch_row()[0];
-
-        // 5. Open & Completed Totals for active scope
-        // mentioned_user_ids / cc_user_ids are stored as JSON ("[12,15]"); strip brackets so FIND_IN_SET works (also for legacy CSV).
-        $followSql = "(FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.mentioned_user_ids,'[',''),']',''),' ','')) OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.cc_user_ids,'[',''),']',''),' ','')))";
-        $allScopeSql = "(t.user_id = ? OR t.assigned_by = ? OR {$followSql})";
+        // Scope per tab. mentioned_user_ids (reviewer) / cc_user_ids are stored as JSON ("[12,15]"); strip brackets so FIND_IN_SET works (also for legacy CSV).
+        $mentionSql = "FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.mentioned_user_ids,'[',''),']',''),' ',''))";
+        $ccSql = "FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.cc_user_ids,'[',''),']',''),' ',''))";
+        $allScopeSql = "(t.user_id = ? OR t.assigned_by = ? OR {$mentionSql} OR {$ccSql})";
         if ($tab === 'all') {
             $scopeSql = $allScopeSql;
             $scopeParams = [$userId, $userId, $userId, $userId];
         } elseif ($tab === 'following') {
-            $scopeSql = $followSql;
-            $scopeParams = [$userId, $userId];
+            $scopeSql = $ccSql;
+            $scopeParams = [$userId];
         } elseif ($tab === 'reviewer') {
-            $scopeSql = "FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.mentioned_user_ids,'[',''),']',''),' ',''))";
+            $scopeSql = $mentionSql;
             $scopeParams = [$userId];
         } elseif ($tab === 'realestate_project') {
-            $scopeSql = "(t.project_id IS NOT NULL AND (t.user_id = ? OR t.assigned_by = ?))";
-            $scopeParams = [$userId, $userId];
+            $scopeSql = "(t.project_id IS NOT NULL AND t.user_id = ?)";
+            $scopeParams = [$userId];
         } elseif ($tab === 'self_initiated') {
             $scopeSql = "(t.user_id = ? AND t.assigned_by = ?)";
             $scopeParams = [$userId, $userId];
         } elseif ($tab === 'recurring') {
-            $scopeSql = "(t.is_recurring = 1 AND (t.user_id = ? OR t.assigned_by = ?))";
+            $scopeSql = "(t.is_recurring = 1 AND t.user_id = ?)";
+            $scopeParams = [$userId];
+        } elseif ($tab === 'assigned_by_me') {
+            $scopeSql = "(t.assigned_by = ? AND t.user_id != ?)";
             $scopeParams = [$userId, $userId];
         } else {
-            $scopeSql = ($tab === 'assigned_by_me') ? "t.assigned_by = ?" : "t.user_id = ?";
+            $scopeSql = "t.user_id = ?";
             $scopeParams = [$userId];
         }
         $scopeTypes = str_repeat('i', count($scopeParams));
+
+        // Metric cards: counted inside the active tab's scope
+        $metricCond = [
+            'overdue'   => "t.status != 'completed' AND t.deadline IS NOT NULL AND t.deadline < NOW()",
+            'due_today' => "t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) = CURDATE()",
+            'next7'     => "t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) > CURDATE() AND DATE(t.deadline) <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)",
+            'review'    => "t.status != 'completed' AND (t.progress >= 80 OR t.employee_accept = 1)",
+        ];
+        $countMetric = function (string $cond) use ($scopeSql, $scopeParams, $scopeTypes): int {
+            $st = $this->db->prepare("SELECT COUNT(*) FROM tasks t WHERE {$scopeSql} AND {$cond}");
+            $st->bind_param($scopeTypes, ...$scopeParams);
+            $st->execute();
+            return (int) $st->get_result()->fetch_row()[0];
+        };
+        $overdueCount = $countMetric($metricCond['overdue']);
+        $dueTodayCount = $countMetric($metricCond['due_today']);
+        $next7DaysCount = $countMetric($metricCond['next7']);
+        $waitingReviewCount = $countMetric($metricCond['review']);
 
         $stmtTotals = $this->db->prepare("
             SELECT 
@@ -164,32 +133,12 @@ class MyWorkController extends Controller
         $params = [];
         $types = "";
 
-        if ($metricFilter === 'overdue') {
-            // Card filter: Overdue matches exactly what was counted
-            $where[] = "(t.user_id = ? OR t.assigned_by = ?)";
-            $params[] = $userId;
-            $params[] = $userId;
-            $types .= "ii";
-            $where[] = "t.status != 'completed' AND t.deadline IS NOT NULL AND t.deadline < NOW()";
-        } elseif ($metricFilter === 'due_today') {
-            $where[] = "(t.user_id = ? OR t.assigned_by = ?)";
-            $params[] = $userId;
-            $params[] = $userId;
-            $types .= "ii";
-            $where[] = "t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) = CURDATE()";
-        } elseif ($metricFilter === 'next7') {
-            $where[] = "(t.user_id = ? OR t.assigned_by = ?)";
-            $params[] = $userId;
-            $params[] = $userId;
-            $types .= "ii";
-            $where[] = "t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) > CURDATE() AND DATE(t.deadline) <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)";
-        } elseif ($metricFilter === 'review') {
-            // Card filter: Waiting for review matches exactly what was counted
-            $where[] = "(t.assigned_by = ? OR t.user_id = ?)";
-            $params[] = $userId;
-            $params[] = $userId;
-            $types .= "ii";
-            $where[] = "t.status != 'completed' AND (t.progress >= 80 OR t.employee_accept = 1)";
+        if (isset($metricCond[$metricFilter])) {
+            // Card filter: matches exactly what was counted (same tab scope)
+            $where[] = $scopeSql;
+            $params = array_merge($params, $scopeParams);
+            $types .= $scopeTypes;
+            $where[] = $metricCond[$metricFilter];
         } elseif (in_array($metricFilter, ['all_total', 'all_in_progress', 'all_completed', 'all_deadline_today', 'all_deadline_missed'], true)) {
             // "All" tab cards: same scope as the card counts
             $where[] = $allScopeSql;
