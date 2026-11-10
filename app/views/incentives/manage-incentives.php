@@ -32,6 +32,9 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                 
                 <button type="submit" class="btn btn-sm btn-primary ms-1"><i class="fa-solid fa-search"></i></button>
             </form>
+            <a href="<?= $GLOBALS['base_url'] ?>/incentive-config" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-xs">
+                <i class="fa-solid fa-sliders me-1"></i>Modality Settings & Rates (%)
+            </a>
             <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill fs-7 fw-semibold">
                 <i class="fa-solid fa-building-columns me-1"></i> Management View
             </span>
@@ -158,6 +161,11 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                     <button class="nav-link fw-bold py-2 px-3 border-0 rounded-top-2 text-info" id="cross-splits-tab" data-bs-toggle="tab" data-bs-target="#cross-splits" type="button" role="tab">
                         <i class="fa-solid fa-arrows-split-up-and-left me-2 text-info"></i>Unassigned (70/30) Splits
                     </button>
+                </li>
+                <li class="nav-item ms-auto" role="presentation">
+                    <a href="<?= $GLOBALS['base_url'] ?>/incentive-config" class="btn btn-sm btn-light border text-primary fw-semibold rounded-pill px-3 py-1 my-1">
+                        <i class="fa-solid fa-sliders me-1"></i>Configure Modality & Rates (%)
+                    </a>
                 </li>
             </ul>
         </div>
