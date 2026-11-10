@@ -1665,12 +1665,34 @@ $todayDateFormatted = date('j F');
                 <label class="mw-form-label">Expected output <span class="req">*</span></label>
                 <div id="expectedOutputList">
                     <div class="d-flex align-items-start gap-2 mb-2 mw-expected-row">
-                        <textarea name="description[]" id="drawerDescription" class="mw-form-textarea" rows="3" 
+                        <textarea name="description[]" id="drawerDescription" class="mw-form-textarea" rows="1" 
                                   placeholder="Opening balances and verified transactions reconcile for five sample accounts." required></textarea>
                         <button type="button" class="mw-btn-create" id="btnAddExpectedOutput" title="Add another expected output" style="white-space:nowrap;">
                             <i class="fa-solid fa-plus"></i> Add
                         </button>
                     </div>
+                </div>
+            </div>
+
+            <!-- Assigned by & CC -->
+            <div class="mw-form-row mw-form-group">
+                <div class="mw-form-col">
+                    <label class="mw-form-label">Assigned by <span class="req">*</span></label>
+                    <select name="assigned_by_id" id="taskAssignedBySelect" class="mw-form-select" required>
+                        <option value="">Select Assigned by...</option>
+                        <?php foreach (($usersList ?? []) as $u): ?>
+                            <option value="<?= (int)$u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="mw-form-col">
+                    <label class="mw-form-label">CC</label>
+                    <select name="cc_id" id="taskCcSelect" class="mw-form-select">
+                        <option value="">Select CC...</option>
+                        <?php foreach (($usersList ?? []) as $u): ?>
+                            <option value="<?= (int)$u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
             </div>
 
@@ -1683,9 +1705,9 @@ $todayDateFormatted = date('j F');
             <!-- Row 4: Reviewer & Collaborators (Shown when review is checked) -->
             <div id="sectionReviewFields" class="mw-form-row mw-form-group">
                 <div class="mw-form-col">
-                    <label class="mw-form-label">Reviewer <span class="req">*</span></label>
+                    <label class="mw-form-label">Reviewer</label>
                     <select name="reviewer_id" id="taskReviewerSelect" class="mw-form-select">
-                        <option value="">Select Reviewer...</option>
+                        <option value="">Select Reviewer (optional)...</option>
                         <?php foreach (($usersList ?? []) as $u): ?>
                             <option value="<?= (int)$u['id'] ?>" data-name="<?= htmlspecialchars($u['full_name']) ?>">
                                 <?= htmlspecialchars($u['full_name']) ?><?= !empty($u['designation']) ? ' (' . htmlspecialchars($u['designation']) . ')' : '' ?>
