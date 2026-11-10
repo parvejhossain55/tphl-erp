@@ -449,7 +449,7 @@ $show_breadcrumb = true;
                                 <div class="card h-100 border shadow-sm p-3">
                                     <div class="d-flex align-items-center justify-content-between mb-2">
                                         <span class="fw-bold text-dark fs-6"><?= htmlspecialchars($u['unit_name'] ?? 'Unit') ?></span>
-                                        <span class="badge bg-primary"><?= htmlspecialchars($u['sqft'] ?? 0) ?> Sqft</span>
+                                        <span class="badge bg-primary"><?= !empty($u['sqft']) ? format_sqft($u['sqft']) : 0 ?> Sqft</span>
                                     </div>
                                     <div class="d-flex flex-wrap gap-1 mb-2">
                                         <?php if (!empty($u['bedrooms'])): ?>

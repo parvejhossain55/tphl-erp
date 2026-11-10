@@ -229,7 +229,7 @@ $show_breadcrumb = true;
                                         <td>
                                             <?= esc($lead['flat_name'] ?? '-') ?>
                                             <?php if (!empty($lead['sqft'])): ?>
-                                                <small class="text-muted"> - <?= esc($lead['sqft']) ?> sqft</small>
+                                                <small class="text-muted"> - <?= format_sqft($lead['sqft']) ?> sqft</small>
                                             <?php endif; ?>
                                         </td>
 
@@ -371,7 +371,7 @@ $show_breadcrumb = true;
                             <strong>Unit:</strong>
                             <?= esc($lead['flat_name'] ?? '-') ?>
                             <?php if (!empty($lead['sqft'])): ?>
-                                (<?= esc($lead['sqft']) ?> sqft)
+                                (<?= format_sqft($lead['sqft']) ?> sqft)
                             <?php endif; ?>
                         </div>
                     </div>

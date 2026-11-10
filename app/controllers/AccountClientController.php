@@ -289,6 +289,8 @@ class AccountClientController extends Controller
             $projects = $this->clientModel->getProjectsForCED();
         }
 
+        $assignedProjectIds = [];
+
         $this->view("accounts/cashIn/clients", [
             "current_route" => "clients-cash-in",
             "page_title" => "Clients Management - Cash In",
@@ -5372,6 +5374,8 @@ public function discountStatement($bookingId = null)
                 lp.attachment_paths,
                 lp.attachment_image,
                 lp.attachment_image2,
+                lp.attachment_image3,
+                lp.attachment_image4,
                 lp.rejection_reason,
                 uv.full_name AS verified_by_name,
                 lp.verified_at
@@ -5413,6 +5417,18 @@ public function discountStatement($bookingId = null)
             $legacyPath2 = 'uploads/payments/' . $row['attachment_image2'];
             if (!in_array($legacyPath2, $files)) {
                 $files[] = $legacyPath2;
+            }
+        }
+        if (!empty($row['attachment_image3'])) {
+            $legacyPath3 = 'uploads/payments/' . $row['attachment_image3'];
+            if (!in_array($legacyPath3, $files)) {
+                $files[] = $legacyPath3;
+            }
+        }
+        if (!empty($row['attachment_image4'])) {
+            $legacyPath4 = 'uploads/payments/' . $row['attachment_image4'];
+            if (!in_array($legacyPath4, $files)) {
+                $files[] = $legacyPath4;
             }
         }
 

@@ -797,6 +797,12 @@ function format_bdt($number)
     return FormatHelper::formatBdt($number);
 }
 
+// format sqft (removes .0000; preserves decimals like 1550.50)
+function format_sqft($number, $withCommas = false)
+{
+    return FormatHelper::formatSqft($number, $withCommas);
+}
+
 // video url create 
 function renderReviewVideo($url, $width = '100%', $height = '315')
 {

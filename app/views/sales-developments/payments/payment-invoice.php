@@ -794,7 +794,7 @@ if (!empty($invoice['2nd_owner_phone'])) {
 
                         <div class="field-group">
                             <label class="field-label">Flat Size (SQFT)</label>
-                            <input type="text" class="field-input numeric" value="<?= $invoice['sqft'] ?>">
+                            <input type="text" class="field-input numeric" value="<?= format_sqft($invoice['sqft'] ?? '') ?>">
                         </div>
 
                         <div class="field-group">

@@ -75,17 +75,13 @@ class PaymentBookingController extends Controller
             'verification_status' => 'pending', // always pending until accounts verifies
         ];
 
-        // Handle attachment upload
-        if (isset($_FILES['attachment_image']) && $_FILES['attachment_image']['error'] === UPLOAD_ERR_OK) {
-            $uploadedFileName = uploadImage('attachment_image', 'payments');
-            if ($uploadedFileName) {
-                $data['attachment_image'] = $uploadedFileName;
-            }
-        }
-        if (isset($_FILES['attachment_image2']) && $_FILES['attachment_image2']['error'] === UPLOAD_ERR_OK) {
-            $uploadedFileName2 = uploadImage('attachment_image2', 'payments');
-            if ($uploadedFileName2) {
-                $data['attachment_image2'] = $uploadedFileName2;
+        // Handle attachment uploads (1 to 4) - Supports JPG, PNG, WEBP, GIF, PDF
+        foreach (['attachment_image', 'attachment_image2', 'attachment_image3', 'attachment_image4'] as $attField) {
+            if (isset($_FILES[$attField]) && $_FILES[$attField]['error'] === UPLOAD_ERR_OK) {
+                $uploadedFileName = $this->uploadPaymentFile($attField);
+                if ($uploadedFileName) {
+                    $data[$attField] = $uploadedFileName;
+                }
             }
         }
 
@@ -1347,19 +1343,13 @@ class PaymentBookingController extends Controller
             $allowVerified = false;
         }
 
-        // Handle attachment upload 1
-        if (isset($_FILES['attachment_image']) && $_FILES['attachment_image']['error'] === UPLOAD_ERR_OK) {
-            $uploadedFileName = uploadImage('attachment_image', 'payments');
-            if ($uploadedFileName) {
-                $data['attachment_image'] = $uploadedFileName;
-            }
-        }
-
-        // Handle attachment upload 2
-        if (isset($_FILES['attachment_image2']) && $_FILES['attachment_image2']['error'] === UPLOAD_ERR_OK) {
-            $uploadedFileName2 = uploadImage('attachment_image2', 'payments');
-            if ($uploadedFileName2) {
-                $data['attachment_image2'] = $uploadedFileName2;
+        // Handle attachment uploads (1 to 4) - Supports JPG, PNG, WEBP, GIF, PDF
+        foreach (['attachment_image', 'attachment_image2', 'attachment_image3', 'attachment_image4'] as $attField) {
+            if (isset($_FILES[$attField]) && $_FILES[$attField]['error'] === UPLOAD_ERR_OK) {
+                $uploadedFileName = $this->uploadPaymentFile($attField);
+                if ($uploadedFileName) {
+                    $data[$attField] = $uploadedFileName;
+                }
             }
         }
 
@@ -1450,5 +1440,70 @@ class PaymentBookingController extends Controller
 
         header("Location: {$GLOBALS['base_url']}/payments-booking/{$bookingId}");
         exit;
+    }
+
+    /**
+     * Upload a payment document (JPG, PNG, WEBP, GIF, PDF) into public/uploads/payments/
+     * and mirror to staging/production if both directories exist.
+     */
+    protected function uploadPaymentFile(string $inputName): ?string
+    {
+        if (!isset($_FILES[$inputName]) || $_FILES[$inputName]['error'] !== UPLOAD_ERR_OK) {
+            return null;
+        }
+
+        $allowedExts = ['jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp', 'pdf'];
+        $origName = basename(trim((string)$_FILES[$inputName]['name']));
+        $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+        if ($ext === 'jfif') {
+            $ext = 'jpg';
+        }
+
+        if (!in_array($ext, $allowedExts, true)) {
+            return null;
+        }
+
+        $tmpName = $_FILES[$inputName]['tmp_name'];
+        if (empty($tmpName) || !is_uploaded_file($tmpName)) {
+            return null;
+        }
+
+        // Security: abort if file contains PHP tags
+        $head = (string)@file_get_contents($tmpName, false, null, 0, 1024);
+        if (stripos($head, '<?php') !== false || stripos($head, '<?=') !== false) {
+            return null;
+        }
+
+        $uploadDir = dirname(__DIR__, 2) . '/public/uploads/payments/';
+        if (!is_dir($uploadDir)) {
+            @mkdir($uploadDir, 0777, true);
+        }
+
+        $fileName = uniqid('payments_') . '.' . $ext;
+        $destPath = $uploadDir . $fileName;
+
+        if (@move_uploaded_file($tmpName, $destPath)) {
+            @chmod($destPath, 0644);
+
+            // Mirror between VPS Staging & Production uploads if both coexist
+            foreach (['/var/www/html/TPHL-ERP/public/uploads', '/var/www/staging/TPHL-ERP/public/uploads'] as $vpsUploadsBase) {
+                if (@is_dir($vpsUploadsBase) && @is_writable($vpsUploadsBase)) {
+                    $mirrorDir = $vpsUploadsBase . '/payments/';
+                    if (rtrim(str_replace('\\', '/', $mirrorDir), '/') !== rtrim(str_replace('\\', '/', $uploadDir), '/')) {
+                        if (!@is_dir($mirrorDir)) {
+                            @mkdir($mirrorDir, 0755, true);
+                        }
+                        if (@is_dir($mirrorDir) && @is_writable($mirrorDir)) {
+                            @copy($destPath, $mirrorDir . $fileName);
+                            @chmod($mirrorDir . $fileName, 0644);
+                        }
+                    }
+                }
+            }
+
+            return $fileName;
+        }
+
+        return null;
     }
 }

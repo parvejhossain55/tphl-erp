@@ -89,17 +89,29 @@ class PaymentLeadBooking extends Model
             INSERT INTO lead_payments
             (booking_id, bank_id, bank_name, bank_account_no, cheque_no, online_type, 
              payment_type, amount, payment_method, payment_status, verification_status,
-             payment_date, transaction_ref, total_emi_no, created_by, attachment_image, attachment_image2, batch_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             payment_date, transaction_ref, total_emi_no, created_by, attachment_image, attachment_image2, batch_id,
+             attachment_image3, attachment_image4, attachment_paths)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
             $verificationStatus = $data['verification_status'] ?? 'pending';
             $attachment_image = $data['attachment_image'] ?? '';
             $attachment_image2 = $data['attachment_image2'] ?? '';
+            $attachment_image3 = $data['attachment_image3'] ?? null;
+            $attachment_image4 = $data['attachment_image4'] ?? null;
             $batch_id = $data['batch_id'] ?? null;
 
+            // Also build attachment_paths JSON array so modern views see all attachments seamlessly
+            $allAttachments = [];
+            foreach ([$attachment_image, $attachment_image2, $attachment_image3, $attachment_image4] as $fName) {
+                if (!empty($fName)) {
+                    $allAttachments[] = 'uploads/payments/' . $fName;
+                }
+            }
+            $attachment_paths = !empty($allAttachments) ? json_encode($allAttachments) : null;
+
             $stmt->bind_param(
-                "iisssssdsssssissss",
+                "iisssssdsssssisssssss",
                 $data['booking_id'],
                 $data['bank_id'],
                 $data['bank_name'],
@@ -117,7 +129,10 @@ class PaymentLeadBooking extends Model
                 $data['created_by'],
                 $attachment_image,
                 $attachment_image2,
-                $batch_id
+                $batch_id,
+                $attachment_image3,
+                $attachment_image4,
+                $attachment_paths
             );
 
             if (!$stmt->execute()) {
@@ -430,6 +445,39 @@ class PaymentLeadBooking extends Model
             $fields[] = "attachment_image2 = ?";
             $params[] = $data['attachment_image2'];
             $types .= "s";
+        }
+
+        if (!empty($data['attachment_image3'])) {
+            $fields[] = "attachment_image3 = ?";
+            $params[] = $data['attachment_image3'];
+            $types .= "s";
+        }
+
+        if (!empty($data['attachment_image4'])) {
+            $fields[] = "attachment_image4 = ?";
+            $params[] = $data['attachment_image4'];
+            $types .= "s";
+        }
+
+        // Keep attachment_paths in sync if any image changed
+        if (!empty($data['attachment_image']) || !empty($data['attachment_image2']) || !empty($data['attachment_image3']) || !empty($data['attachment_image4'])) {
+            $paymentId = (int)($data['id'] ?? 0);
+            if ($paymentId > 0) {
+                $chkExisting = $this->db->query("SELECT attachment_image, attachment_image2, attachment_image3, attachment_image4 FROM lead_payments WHERE id = {$paymentId}")->fetch_assoc();
+                $cur1 = !empty($data['attachment_image']) ? $data['attachment_image'] : ($chkExisting['attachment_image'] ?? '');
+                $cur2 = !empty($data['attachment_image2']) ? $data['attachment_image2'] : ($chkExisting['attachment_image2'] ?? '');
+                $cur3 = !empty($data['attachment_image3']) ? $data['attachment_image3'] : ($chkExisting['attachment_image3'] ?? '');
+                $cur4 = !empty($data['attachment_image4']) ? $data['attachment_image4'] : ($chkExisting['attachment_image4'] ?? '');
+                $newPaths = [];
+                foreach ([$cur1, $cur2, $cur3, $cur4] as $f) {
+                    if (!empty($f)) $newPaths[] = 'uploads/payments/' . $f;
+                }
+                if (!empty($newPaths)) {
+                    $fields[] = "attachment_paths = ?";
+                    $params[] = json_encode($newPaths);
+                    $types .= "s";
+                }
+            }
         }
 
         if (isset($data['updated_by'])) {
