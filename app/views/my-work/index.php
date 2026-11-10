@@ -1629,8 +1629,8 @@ $todayDateFormatted = date('j F');
                     </select>
                 </div>
                 <div class="mw-form-col">
-                    <label class="mw-form-label">Due date <span class="req">*</span></label>
-                    <input type="datetime-local" name="deadline" id="drawerDeadline" class="mw-form-input" required>
+                    <label class="mw-form-label">Deadline <span class="req">*</span></label>
+                    <input type="date" name="deadline" id="drawerDeadline" class="mw-form-input" required>
                 </div>
             </div>
 
