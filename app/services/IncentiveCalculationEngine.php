@@ -205,8 +205,10 @@ class IncentiveCalculationEngine extends Model
         $targetRows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
 
+        $isInherited = false;
         // If no target specifically created for this month, inherit the latest active target on record
         if (empty($targetRows)) {
+            $isInherited = true;
             $stmtPrior = $this->db->prepare("SELECT booking_value_target, category_id, category_ids, project_ids, flat_ids, from_date, to_date, month 
                                              FROM sales_targets 
                                              WHERE sales_user_id = ? AND DATE_FORMAT(month, '%Y-%m') <= ? 
@@ -254,7 +256,9 @@ class IncentiveCalculationEngine extends Model
             foreach ($targetRows as $tr) {
                 $targetAmount += (float)$tr['booking_value_target'];
 
-                if (!empty($tr['from_date']) && !empty($tr['to_date'])) {
+                // ONLY apply custom date range if target was explicitly created for this month ($isInherited is false)
+                // Inherited targets from previous months MUST NOT overwrite the current cycle dates!
+                if (!$isInherited && !empty($tr['from_date']) && !empty($tr['to_date'])) {
                     $hasCustomRange = true;
                     if ($minFromDate === null || $tr['from_date'] < $minFromDate) {
                         $minFromDate = $tr['from_date'];
@@ -310,8 +314,8 @@ class IncentiveCalculationEngine extends Model
                 JOIN projects p ON lb.project_id = p.id
                 JOIN flats f ON lb.flat_id = f.id
                 LEFT JOIN leads l ON lb.lead_id = l.id
-                WHERE (lb.sales_by_id = ? OR lb.created_by = ? OR l.assigned_id = ?) 
-                  AND lb.booking_date BETWEEN ? AND ?
+                WHERE (CASE WHEN lb.sales_by_id IS NOT NULL AND lb.sales_by_id > 0 THEN lb.sales_by_id = ? ELSE (lb.created_by = ? OR l.assigned_id = ?) END) 
+                  AND DATE(COALESCE(lb.booking_date, lb.created_at)) BETWEEN ? AND ?
                   AND lb.deleted_at IS NULL
                   AND lb.booking_status NOT IN ('cancelled', 'refunded')
                 ORDER BY lb.booking_date ASC, lb.id ASC";
@@ -694,8 +698,8 @@ class IncentiveCalculationEngine extends Model
                 FROM lead_payments lp
                 JOIN lead_bookings lb ON lp.booking_id = lb.id
                 LEFT JOIN leads l ON lb.lead_id = l.id
-                WHERE (lb.sales_by_id = ? OR lb.created_by = ? OR l.assigned_id = ?)
-                  AND lb.booking_date BETWEEN ? AND ?
+                WHERE (CASE WHEN lb.sales_by_id IS NOT NULL AND lb.sales_by_id > 0 THEN lb.sales_by_id = ? ELSE (lb.created_by = ? OR l.assigned_id = ?) END)
+                  AND DATE(COALESCE(lb.booking_date, lb.created_at)) BETWEEN ? AND ?
                   AND lp.verification_status = 'verified'
                   AND lp.payment_status IN ('paid', 'partially_paid')
                   AND COALESCE(lp.is_trashed, 0) = 0

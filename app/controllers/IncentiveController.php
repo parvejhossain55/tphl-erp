@@ -62,8 +62,8 @@ class IncentiveController extends Controller
             FROM lead_payments lp
             JOIN lead_bookings lb ON lp.booking_id = lb.id
             LEFT JOIN leads l ON lb.lead_id = l.id
-            WHERE (lb.sales_by_id = ? OR lb.created_by = ? OR l.assigned_id = ?)
-              AND lb.booking_date BETWEEN ? AND ?
+            WHERE (CASE WHEN lb.sales_by_id IS NOT NULL AND lb.sales_by_id > 0 THEN lb.sales_by_id = ? ELSE (lb.created_by = ? OR l.assigned_id = ?) END)
+              AND DATE(COALESCE(lb.booking_date, lb.created_at)) BETWEEN ? AND ?
               AND lp.verification_status = 'verified'
               AND lp.payment_status IN ('paid', 'partially_paid')
               AND COALESCE(lp.is_trashed, 0) = 0
@@ -785,6 +785,35 @@ class IncentiveController extends Controller
         }
 
         $result = $this->incentiveModel->confirmReceipt($userId, $claimId, $paymentId, $note);
+        echo json_encode($result);
+        exit;
+    }
+
+    /**
+     * AJAX Endpoint: Batch Claim All Eligible Team Leader 0.05% Overrides
+     */
+    public function claimAllTlOverrides()
+    {
+        header('Content-Type: application/json');
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+            exit;
+        }
+
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (empty($_SESSION['user']['id'])) {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized session. Please login.']);
+            exit;
+        }
+
+        $userId = (int)$_SESSION['user']['id'];
+        $month = trim($_POST['month'] ?? '');
+        $remarks = trim($_POST['remarks'] ?? '');
+
+        $result = $this->incentiveModel->claimAllTlOverrides($userId, $month, $remarks);
         echo json_encode($result);
         exit;
     }
