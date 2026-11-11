@@ -53,10 +53,14 @@ class MyWorkController extends Controller
         // Scope per tab. mentioned_user_ids (reviewer) / cc_user_ids are stored as JSON ("[12,15]"); strip brackets so FIND_IN_SET works (also for legacy CSV).
         $mentionSql = "FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.mentioned_user_ids,'[',''),']',''),' ',''))";
         $ccSql = "FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.cc_user_ids,'[',''),']',''),' ',''))";
-        $allScopeSql = "(t.user_id = ? OR t.assigned_by = ? OR {$mentionSql} OR {$ccSql})";
+        $collabSql = "FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.collaborator_user_ids,'[',''),']',''),' ',''))";
+        // "Assigned to me" = I am the owner or a collaborator
+        $assignedToMeSql = "(t.user_id = ? OR {$collabSql})";
+        $allScopeSql = "(t.user_id = ? OR t.assigned_by = ? OR {$collabSql} OR {$mentionSql} OR {$ccSql})";
+        $allScopeParams = array_fill(0, 5, $userId);
         if ($tab === 'all') {
             $scopeSql = $allScopeSql;
-            $scopeParams = [$userId, $userId, $userId, $userId];
+            $scopeParams = $allScopeParams;
         } elseif ($tab === 'following') {
             $scopeSql = $ccSql;
             $scopeParams = [$userId];
@@ -64,19 +68,22 @@ class MyWorkController extends Controller
             $scopeSql = $mentionSql;
             $scopeParams = [$userId];
         } elseif ($tab === 'realestate_project') {
-            $scopeSql = "(t.project_id IS NOT NULL AND t.user_id = ?)";
+            +
++            $scopeParams = [$userId];
             $scopeParams = [$userId];
         } elseif ($tab === 'self_initiated') {
             $scopeSql = "(t.user_id = ? AND t.assigned_by = ?)";
             $scopeParams = [$userId, $userId];
         } elseif ($tab === 'recurring') {
-            $scopeSql = "(t.is_recurring = 1 AND t.user_id = ?)";
+            +
++            $scopeParams = [$userId];
             $scopeParams = [$userId];
         } elseif ($tab === 'assigned_by_me') {
             $scopeSql = "(t.assigned_by = ? AND t.user_id != ?)";
             $scopeParams = [$userId, $userId];
         } else {
-            $scopeSql = "t.user_id = ?";
++
++            $scopeParams = [$userId];
             $scopeParams = [$userId];
         }
         $scopeTypes = str_repeat('i', count($scopeParams));
@@ -123,7 +130,7 @@ class MyWorkController extends Controller
             FROM tasks t
             WHERE {$allScopeSql}
         ");
-        $stmtAll->bind_param("iiii", $userId, $userId, $userId, $userId);
+        $stmtAll->bind_param(str_repeat('i', count($allScopeParams)), ...$allScopeParams);
         $stmtAll->execute();
         $allStats = array_map('intval', $stmtAll->get_result()->fetch_assoc());
         $allStats['completion_rate'] = $allStats['total'] > 0 ? (int) round($allStats['completed'] * 100 / $allStats['total']) : 0;
@@ -142,7 +149,8 @@ class MyWorkController extends Controller
         } elseif (in_array($metricFilter, ['all_total', 'all_in_progress', 'all_completed', 'all_deadline_today', 'all_deadline_missed'], true)) {
             // "All" tab cards: same scope as the card counts
             $where[] = $allScopeSql;
-            $params = array_merge($params, [$userId, $userId, $userId, $userId]);
+            +
++            $types .= "iiii";
             $types .= "iiii";
             $metricSql = [
                 'all_in_progress'    => "t.status = 'in_progress'",
@@ -626,21 +634,31 @@ class MyWorkController extends Controller
         $assignedById = (int)($_POST['assigned_by_id'] ?? 0) ?: $userId;
         $recurrenceType = in_array($_POST['recurrence_type'] ?? '', ['daily', 'weekly', 'monthly'], true) ? $_POST['recurrence_type'] : null;
         $isRecurring = !empty($_POST['is_recurring']) ? 1 : 0;
+        if ($isRecurring && $recurrenceType === null) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Please select a repeat type for the recurring task.']);
+                exit;
+            }
+            if (function_exists('setError')) setError("Please select a repeat type for the recurring task.");
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            exit;
+        }
         if (!$isRecurring) { $recurrenceType = null; }
         $recurrenceEnd = ($isRecurring && !empty($_POST['recurrence_end_date'])) ? $_POST['recurrence_end_date'] : null;
 
         $reviewerId = !empty($_POST['reviewer_id']) ? (int)$_POST['reviewer_id'] : null;
-        $collaboratorIds = array_values(array_unique(array_filter(array_map('intval', array_merge(
-            (array)($_POST['collaborator_ids'] ?? []),
-            (array)($_POST['cc_ids'] ?? [])
-        )))));
+        $toIdList = fn($v) => array_values(array_unique(array_filter(array_map('intval', (array)$v))));
+        $ccIds = $toIdList($_POST['cc_ids'] ?? []);
+        $collaboratorIds = $toIdList($_POST['collaborator_ids'] ?? []);
 
         $mentionedUserIds = [];
         if ($reviewerId) {
             $mentionedUserIds[] = $reviewerId;
         }
         $mentionedJson = !empty($mentionedUserIds) ? json_encode($mentionedUserIds) : null;
-        $ccJson = !empty($collaboratorIds) ? json_encode($collaboratorIds) : null;
+        $ccJson = !empty($ccIds) ? json_encode($ccIds) : null;
+        $collaboratorJson = !empty($collaboratorIds) ? json_encode($collaboratorIds) : null;
 
         // Attachment handling
         $attachmentImage = null;
@@ -663,12 +681,12 @@ class MyWorkController extends Controller
                 description, start_date, deadline, priority,
                 status, progress, employee_accept, mentioned_user_ids,
                 cc_user_ids, attachment_image, project_id,
-                is_recurring, recurrence_type, recurrence_end_date, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, 0, ?, ?, ?, ?, ?, ?, ?, NOW())
+                is_recurring, recurrence_type, recurrence_end_date, collaborator_user_ids, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, 0, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
 
         $stmt->bind_param(
-            "siiisssssssiiss",
+            "siiisssssssiisss",
             $title,
             $ownerId,
             $assignedById,
@@ -683,7 +701,8 @@ class MyWorkController extends Controller
             $projectId,
             $isRecurring,
             $recurrenceType,
-            $recurrenceEnd
+            $recurrenceEnd,
+            $collaboratorJson
         );
 
         if ($stmt->execute()) {

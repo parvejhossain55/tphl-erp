@@ -1729,11 +1729,10 @@ $todayDateFormatted = date('j F');
             <!-- Assigned by & CC -->
             <div class="mw-form-row mw-form-group">
                 <div class="mw-form-col">
-                    <label class="mw-form-label">Assigned by <span class="req">*</span></label>
-                    <select name="assigned_by_id" id="taskAssignedBySelect" class="mw-form-select" required>
-                        <option value="">Select Assigned by...</option>
+                    <label class="mw-form-label">Assigned by</label>
+                    <select name="assigned_by_id" id="taskAssignedBySelect" class="mw-form-select">
                         <?php foreach (($usersList ?? []) as $u): ?>
-                            <option value="<?= (int)$u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
+                            <option value="<?= (int)$u['id'] ?>" <?= ((int)$u['id'] === (int)$userId) ? 'selected' : '' ?>><?= htmlspecialchars($u['full_name']) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -2149,6 +2148,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (chkIsRecurring && rowRecurrenceEnd) {
         chkIsRecurring.addEventListener('change', () => {
             rowRecurrenceEnd.style.display = chkIsRecurring.checked ? 'flex' : 'none';
+            const selRec = document.getElementById('taskRecurrenceType');
+            if (selRec) selRec.required = chkIsRecurring.checked;
         });
     }
 
@@ -2195,6 +2196,12 @@ document.addEventListener('DOMContentLoaded', function () {
     if (formCreateTask) {
         formCreateTask.addEventListener('submit', function(e) {
             e.preventDefault();
+            const ownerVal = document.getElementById('taskOwnerSelect')?.value;
+            const reviewerVal = document.getElementById('taskReviewerSelect')?.value;
+            if (reviewerVal && ownerVal && reviewerVal === ownerVal &&
+                !confirm('Owner and Reviewer are the same person. Continue?')) {
+                return;
+            }
             if (btnSubmitDrawer) {
                 btnSubmitDrawer.disabled = true;
                 btnSubmitDrawer.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Creating...';
