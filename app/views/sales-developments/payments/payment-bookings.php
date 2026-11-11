@@ -232,7 +232,14 @@ $isAssignedSalesPerson = (
                                 <label class="form__input-title">Transfer To / Company Bank *</label>
                                 <div class="input-group">
                                     <select name="bank_id" id="bankSelect" class="form-select">
-                                        <option value="">-- Loading banks... --</option>
+                                        <option value="">-- Select Transfer To / Company Bank --</option>
+                                        <?php if (!empty($companyBanks)): ?>
+                                            <?php foreach ($companyBanks as $cb): ?>
+                                                <option value="<?= $cb['id'] ?>">
+                                                    <?= htmlspecialchars($cb['bank_name']) ?> - <?= htmlspecialchars($cb['account_name'] ?? '') ?><?= !empty($cb['account_number']) ? ' (' . htmlspecialchars($cb['account_number']) . ')' : '' ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
                                     </select>
                                     <button type="button" class="btn btn-outline-primary" id="addCompanyBankBtn" title="Add Company Bank"><i class="fa-light fa-plus"></i></button>
                                     <button type="button" class="btn btn-outline-secondary" id="editCompanyBankBtn" title="Edit Selected Bank" style="display:none;"><i class="fa-light fa-pen-to-square"></i></button>
@@ -1039,40 +1046,46 @@ function generateCombinedReceipt() {
 </div>
 
 <script>
-    // Load banks on page load
-    fetch('<?= $GLOBALS['base_url'] ?>/get-company-banks')
-        .then(r => r.json())
-        .then(data => {
-            window.companyBanksList = data.banks || [];
-            const sel = document.getElementById('bankSelect');
-            const editSel = document.getElementById('edit_p_bank_id');
-            if (sel) {
-                const curSelVal = sel.value;
-                sel.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
-                window.companyBanksList.forEach(b => {
-                    const opt = document.createElement('option');
-                    opt.value = b.id;
-                    opt.textContent = b.bank_name + ' - ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
-                    sel.appendChild(opt);
-                });
-                if (curSelVal) sel.value = curSelVal;
-            }
-            if (editSel) {
-                const curEditVal = editSel.value;
-                editSel.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
-                window.companyBanksList.forEach(b => {
-                    const opt = document.createElement('option');
-                    opt.value = b.id;
-                    opt.textContent = b.bank_name + ' - ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
-                    editSel.appendChild(opt);
-                });
-                if (curEditVal) editSel.value = curEditVal;
-            }
-        })
-        .catch(() => {
-            const sel = document.getElementById('bankSelect');
-            if (sel) sel.innerHTML = '<option value="">Bank Registry unavailable</option>';
-        });
+    // Initialize company banks list
+    window.companyBanksList = <?= json_encode($companyBanks ?? []) ?>;
+
+    // Load banks on page load if not pre-populated
+    const existingSalesBankOptions = document.getElementById('bankSelect')?.querySelectorAll('option');
+    if (!existingSalesBankOptions || existingSalesBankOptions.length <= 1) {
+        fetch('<?= $GLOBALS['base_url'] ?>/get-company-banks')
+            .then(r => r.json())
+            .then(data => {
+                window.companyBanksList = data.banks || [];
+                const sel = document.getElementById('bankSelect');
+                const editSel = document.getElementById('edit_p_bank_id');
+                if (sel) {
+                    const curSelVal = sel.value;
+                    sel.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
+                    window.companyBanksList.forEach(b => {
+                        const opt = document.createElement('option');
+                        opt.value = b.id;
+                        opt.textContent = b.bank_name + ' - ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
+                        sel.appendChild(opt);
+                    });
+                    if (curSelVal) sel.value = curSelVal;
+                }
+                if (editSel) {
+                    const curEditVal = editSel.value;
+                    editSel.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
+                    window.companyBanksList.forEach(b => {
+                        const opt = document.createElement('option');
+                        opt.value = b.id;
+                        opt.textContent = b.bank_name + ' - ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
+                        editSel.appendChild(opt);
+                    });
+                    if (curEditVal) editSel.value = curEditVal;
+                }
+            })
+            .catch(() => {
+                const sel = document.getElementById('bankSelect');
+                if (sel && sel.options.length <= 1) sel.innerHTML = '<option value="">Bank Registry unavailable</option>';
+            });
+    }
 
     // Company Bank Add/Edit Logic
     const bankSelect = document.getElementById('bankSelect');

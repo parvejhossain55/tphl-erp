@@ -38,10 +38,20 @@ class AccountShopClientController extends AccountClientController
 
         $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
 
+        // Get active company bank accounts
+        $companyBanks = [];
+        $cbQuery = $this->db->query("SELECT id, bank_name, account_name, account_number, status FROM company_bank_accounts WHERE status = 'active' ORDER BY bank_name ASC");
+        if ($cbQuery) {
+            while ($row = $cbQuery->fetch_assoc()) {
+                $companyBanks[] = $row;
+            }
+        }
+
         $this->view("accounts/cashIn/shop-client-cash-in-form", [
             "current_route"  => "clients-cash-in-history",
             "page_title"     => "Add Shop Transaction - " . $clientDetails['client_name'],
             "clientDetails"  => $clientDetails,
+            "companyBanks"   => $companyBanks,
             "paymentSummary" => $paymentSummary
         ]);
     }

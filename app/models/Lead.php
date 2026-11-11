@@ -628,9 +628,24 @@ class Lead extends Model
         
         // Assigned User filter
         if (isset($assigned_user) && $assigned_user !== '') {
-            $sql .= " AND l.assigned_id = ?";
-            $params[] = $assigned_user;
-            $types .= "i";
+            $isBookedCard = in_array($filter_card, ['total_booked', 'booked'], true);
+            if ($isBookedCard) {
+                $sql .= " AND (l.assigned_id = ? OR EXISTS (
+                    SELECT 1 FROM lead_bookings lb_usr 
+                    WHERE lb_usr.lead_id = l.id 
+                      AND lb_usr.deleted_at IS NULL 
+                      AND lb_usr.booking_status IN ('completed', 'booked') 
+                      AND lb_usr.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))
+                      AND COALESCE(NULLIF(lb_usr.sales_by_id, 0), l.assigned_id) = ?
+                ))";
+                $params[] = (int)$assigned_user;
+                $params[] = (int)$assigned_user;
+                $types .= "ii";
+            } else {
+                $sql .= " AND l.assigned_id = ?";
+                $params[] = (int)$assigned_user;
+                $types .= "i";
+            }
         }
 
         // Assigned Hours filter (Last 1, 2, 3, 4, 5, 6, etc. hours)
@@ -662,6 +677,7 @@ class Lead extends Model
         if (!empty($filter_card)) {
             $teamSub = !empty($teamId) ? " AND COALESCE(lb_sub.team_id, l.team_id) = " . (int)$teamId : "";
             $projectSub = !empty($projectId) ? " AND (lb_sub.project_id = " . (int)$projectId . " OR EXISTS (SELECT 1 FROM flats f_sub WHERE f_sub.id = lb_sub.flat_id AND f_sub.project_id = " . (int)$projectId . "))" : "";
+            $userSub = (isset($assigned_user) && $assigned_user !== '') ? " AND COALESCE(NULLIF(lb_sub.sales_by_id, 0), l.assigned_id) = " . (int)$assigned_user : "";
             $refundSub = " AND lb_sub.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))";
             if ($filter_card === 'total_booked' || $filter_card === 'booked') {
                 if (!empty($from_date) && !empty($to_date)) {
@@ -673,6 +689,7 @@ class Lead extends Model
                           {$refundSub}
                           {$teamSub}
                           {$projectSub}
+                          {$userSub}
                           AND (DATE(lb_sub.booking_date) BETWEEN ? AND ? OR DATE(lb_sub.created_at) BETWEEN ? AND ?)
                     )";
                     $params[] = $from_date;
@@ -689,6 +706,7 @@ class Lead extends Model
                           {$refundSub}
                           {$teamSub}
                           {$projectSub}
+                          {$userSub}
                           AND (DATE(lb_sub.booking_date) >= ? OR DATE(lb_sub.created_at) >= ?)
                     )";
                     $params[] = $from_date;
@@ -703,6 +721,7 @@ class Lead extends Model
                           {$refundSub}
                           {$teamSub}
                           {$projectSub}
+                          {$userSub}
                           AND (DATE(lb_sub.booking_date) <= ? OR DATE(lb_sub.created_at) <= ?)
                     )";
                     $params[] = $to_date;
@@ -719,6 +738,7 @@ class Lead extends Model
                           {$refundSub}
                           {$teamSub}
                           {$projectSub}
+                          {$userSub}
                           $ySub $mSub
                     )";
                 } else {
@@ -730,6 +750,7 @@ class Lead extends Model
                           {$refundSub}
                           {$teamSub}
                           {$projectSub}
+                          {$userSub}
                     )";
                 }
             } elseif ($filter_card === 'today_follow_up') {
@@ -1011,12 +1032,11 @@ class Lead extends Model
             $types .= "i";
         }
 
-        // Assigned user filter
+        // Assigned user filter: credit to sales_by_id, fallback to lead owner (reconciled with Onboarding & Performance)
         if (!empty($assigned_user)) {
-            $sql .= " AND (l.assigned_id = ? OR lb.sales_by_id = ?)";
+            $sql .= " AND (COALESCE(NULLIF(lb.sales_by_id, 0), l.assigned_id) = ?)";
             $params[] = (int)$assigned_user;
-            $params[] = (int)$assigned_user;
-            $types .= "ii";
+            $types .= "i";
         }
 
         // Date filter on booking_date or created_at
@@ -1356,9 +1376,24 @@ class Lead extends Model
         }
         // Assigned User filter
         if (isset($assigned_user) && $assigned_user !== '') {
-            $sql .= " AND l.assigned_id = ?";
-            $params[] = $assigned_user;
-            $types .= "i";
+            $isBookedCard = in_array($filter_card, ['total_booked', 'booked'], true);
+            if ($isBookedCard) {
+                $sql .= " AND (l.assigned_id = ? OR EXISTS (
+                    SELECT 1 FROM lead_bookings lb_usr 
+                    WHERE lb_usr.lead_id = l.id 
+                      AND lb_usr.deleted_at IS NULL 
+                      AND lb_usr.booking_status IN ('completed', 'booked') 
+                      AND lb_usr.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))
+                      AND COALESCE(NULLIF(lb_usr.sales_by_id, 0), l.assigned_id) = ?
+                ))";
+                $params[] = (int)$assigned_user;
+                $params[] = (int)$assigned_user;
+                $types .= "ii";
+            } else {
+                $sql .= " AND l.assigned_id = ?";
+                $params[] = (int)$assigned_user;
+                $types .= "i";
+            }
         }
 
         // Assigned Hours filter (Last 1, 2, 3, 4, 5, 6, etc. hours)
@@ -1390,6 +1425,7 @@ class Lead extends Model
         if (!empty($filter_card)) {
             $teamSub = !empty($teamId) ? " AND COALESCE(lb_sub.team_id, l.team_id) = " . (int)$teamId : "";
             $projectSub = !empty($projectId) ? " AND (lb_sub.project_id = " . (int)$projectId . " OR EXISTS (SELECT 1 FROM flats f_sub WHERE f_sub.id = lb_sub.flat_id AND f_sub.project_id = " . (int)$projectId . "))" : "";
+            $userSub = (isset($assigned_user) && $assigned_user !== '') ? " AND COALESCE(NULLIF(lb_sub.sales_by_id, 0), l.assigned_id) = " . (int)$assigned_user : "";
             $refundSub = " AND lb_sub.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))";
             if ($filter_card === 'total_booked' || $filter_card === 'booked') {
                 if (!empty($from_date) && !empty($to_date)) {
@@ -1401,6 +1437,7 @@ class Lead extends Model
                           {$refundSub}
                           {$teamSub}
                           {$projectSub}
+                          {$userSub}
                           AND (DATE(lb_sub.booking_date) BETWEEN ? AND ? OR DATE(lb_sub.created_at) BETWEEN ? AND ?)
                     )";
                     $params[] = $from_date;
@@ -1417,6 +1454,7 @@ class Lead extends Model
                           {$refundSub}
                           {$teamSub}
                           {$projectSub}
+                          {$userSub}
                           AND (DATE(lb_sub.booking_date) >= ? OR DATE(lb_sub.created_at) >= ?)
                     )";
                     $params[] = $from_date;
@@ -1431,6 +1469,7 @@ class Lead extends Model
                           {$refundSub}
                           {$teamSub}
                           {$projectSub}
+                          {$userSub}
                           AND (DATE(lb_sub.booking_date) <= ? OR DATE(lb_sub.created_at) <= ?)
                     )";
                     $params[] = $to_date;
@@ -1447,6 +1486,7 @@ class Lead extends Model
                           {$refundSub}
                           {$teamSub}
                           {$projectSub}
+                          {$userSub}
                           $ySub $mSub
                     )";
                 } else {
@@ -1458,6 +1498,7 @@ class Lead extends Model
                           {$refundSub}
                           {$teamSub}
                           {$projectSub}
+                          {$userSub}
                     )";
                 }
             } elseif ($filter_card === 'today_follow_up') {
