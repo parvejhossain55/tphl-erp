@@ -236,7 +236,7 @@ class PaymentBookingController extends Controller
                 $smsResult = $smsService->sendPaymentReceivedSms($created, $isTestingMode, $smsAmount, $smsPaymentType);
 
                 if ($isTestingMode) {
-                    setSuccess("Payment created successfully! (Testing Mode: SMS Skipped)");
+                    setSuccess("Payment created successfully! (Testing Mode: SMS & Email Skipped)");
                 } elseif (!empty($smsResult['success'])) {
                     setSuccess("Payment created successfully & SMS dispatched to client (" . htmlspecialchars($clientPhone ?? '') . ")!");
                 } else {
@@ -244,13 +244,14 @@ class PaymentBookingController extends Controller
                     setError("Payment created, BUT SMS dispatch failed for (" . htmlspecialchars($clientPhone ?? '') . "): " . htmlspecialchars($errMsg));
                 }
             } else {
-                setSuccess("Payment created successfully! (SMS Notification Disabled)");
+                setSuccess("Payment created successfully! (SMS & Email Notification Disabled)");
             }
         } else {
             setError("Failed to create payment!");
         }
 
-        if (!empty($created) && !$isTestingMode) {
+        // EMAIL SENDING LOGIC - Only send if SMS is enabled and testing mode is off
+        if (!empty($created) && $sendSms && !$isTestingMode) {
             // Get Lead info and send email
             $leadInfoQuery = $this->db->query("
                 SELECT l.full_name, l.email, p.name AS project_name, f.flat_name
@@ -474,9 +475,13 @@ class PaymentBookingController extends Controller
         }
 
         // Trigger 2: Send Payment Verified SMS
-        require_once dirname(__DIR__) . '/services/SmsService.php';
-        $smsService = new SmsService($this->db);
-        $smsService->sendBatchPaymentVerifiedSmsIfComplete($id);
+        $sendSms = isset($_POST['send_sms']) ? filter_var($_POST['send_sms'], FILTER_VALIDATE_BOOLEAN) : (isset($_GET['send_sms']) ? filter_var($_GET['send_sms'], FILTER_VALIDATE_BOOLEAN) : false);
+        $isTestingMode = isset($_POST['is_testing_mode']) ? filter_var($_POST['is_testing_mode'], FILTER_VALIDATE_BOOLEAN) : (isset($_GET['is_testing_mode']) ? filter_var($_GET['is_testing_mode'], FILTER_VALIDATE_BOOLEAN) : false);
+        if ($sendSms && !$isTestingMode) {
+            require_once dirname(__DIR__) . '/services/SmsService.php';
+            $smsService = new SmsService($this->db);
+            $smsService->sendBatchPaymentVerifiedSmsIfComplete($id);
+        }
 
         setSuccess("Payment verified! Booking status: " . ucfirst($newBookingStatus));
         header("Location: " . $_SERVER['HTTP_REFERER']);

@@ -2459,7 +2459,10 @@ public function showCedTransactionForm($bookingId = null)
     $agreementValue = (float)($paymentSummary['agreement_value'] ?? $clientDetails['agreement_value'] ?? 0);
     $effectiveBookingTarget = ($agreementValue > 0) ? max(0, $agreementValue - $discountAmount) : 300000;
 
-    $formRemainingRegistration = max(0, $totalLandShare - $discountAmount - $effectiveBookingTarget - $allRegistrationAndLandshare);
+    $effectiveLandShareTarget = max(0, $totalLandShare - $discountAmount);
+    $landShareRemaining = max(0, (float)($paymentSummary['remaining_land_share_total'] ?? $paymentSummary['remaining_land_share'] ?? ($effectiveLandShareTarget - $bookingMoneyTotal - $allRegistrationAndLandshare)));
+    $bookingDeduction = max($effectiveBookingTarget, $bookingMoneyTotal);
+    $formRemainingRegistration = min($landShareRemaining, max(0, $effectiveLandShareTarget - $bookingDeduction - $allRegistrationAndLandshare));
     $formRemainingBooking = max(0, $effectiveBookingTarget - $bookingMoneyTotal);
 
     // Get management users for handover dropdown
@@ -2697,7 +2700,7 @@ public function addCedTransaction()
                     : null;
                 $smsResult = $smsService->sendPaymentReceivedSms($result['payment_id'], $isTestingMode, $overrideAmount, $overridePaymentType);
                 if ($isTestingMode) {
-                    $smsMsg = " (Testing Mode: SMS Skipped)";
+                    $smsMsg = " (Testing Mode: SMS & Email Skipped)";
                 } elseif (!empty($smsResult['success'])) {
                     $smsMsg = " & SMS dispatched to client!";
                 } else {
@@ -2705,12 +2708,12 @@ public function addCedTransaction()
                     $smsMsg = " (Warning: SMS dispatch failed: " . htmlspecialchars($errMsg) . ")";
                 }
             } else {
-                $smsMsg = " (SMS Notification Disabled)";
+                $smsMsg = " (SMS & Email Notification Disabled)";
             }
         }
         
-        // EMAIL SENDING LOGIC
-        if (!$isTestingMode) {
+        // EMAIL SENDING LOGIC - Only send if SMS is enabled and testing mode is off
+        if ($sendSms && !$isTestingMode) {
             $leadInfoQuery = $this->db->query("
                 SELECT l.full_name, l.email, l.alt_email, l.2nd_owner_email, p.name AS project_name, f.flat_name
                 FROM lead_bookings lb
@@ -2894,7 +2897,10 @@ public function showAddTransactionForm($bookingId = null)
     $agreementValue = (float)($clientDetails['agreement_value'] ?? 0);
     $effectiveBookingTarget = ($agreementValue > 0) ? max(0, $agreementValue - $discountAmount) : 300000;
 
-    $formRemainingRegistration = max(0, $totalLandShare - $discountAmount - $effectiveBookingTarget - $allRegistrationAndLandshare);
+    $effectiveLandShareTarget = max(0, $totalLandShare - $discountAmount);
+    $landShareRemaining = max(0, (float)($clientDetails['remaining_land_share_total'] ?? $clientDetails['remaining_land_share'] ?? ($effectiveLandShareTarget - $bookingMoneyTotal - $allRegistrationAndLandshare)));
+    $bookingDeduction = max($effectiveBookingTarget, $bookingMoneyTotal);
+    $formRemainingRegistration = min($landShareRemaining, max(0, $effectiveLandShareTarget - $bookingDeduction - $allRegistrationAndLandshare));
     $formRemainingBooking = max(0, $effectiveBookingTarget - $bookingMoneyTotal);
 
     // Get management users for handover dropdown
@@ -3032,7 +3038,7 @@ public function addTransaction()
                         : null;
                     $smsResult = $smsService->sendPaymentReceivedSms($result['payment_id'], $isTestingMode, $overrideAmount, $overridePaymentType);
                     if ($isTestingMode) {
-                        $smsMsg = " (Testing Mode: SMS Skipped)";
+                        $smsMsg = " (Testing Mode: SMS & Email Skipped)";
                     } elseif (!empty($smsResult['success'])) {
                         $smsMsg = " & SMS dispatched to client (" . htmlspecialchars($clientPhone ?? '') . ")!";
                     } else {
@@ -3040,11 +3046,11 @@ public function addTransaction()
                         $smsMsg = " (Warning: SMS dispatch failed for " . htmlspecialchars($clientPhone ?? '') . ": " . htmlspecialchars($errMsg) . ")";
                     }
                 } else {
-                    $smsMsg = " (SMS Notification Disabled)";
+                    $smsMsg = " (SMS & Email Notification Disabled)";
                 }
             }
-            // EMAIL SENDING LOGIC
-            if (!$isTestingMode) {
+            // EMAIL SENDING LOGIC - Only send if SMS is enabled and testing mode is off
+            if ($sendSms && !$isTestingMode) {
                 $leadInfoQuery = $this->db->query("
                     SELECT l.full_name, l.email, l.alt_email, l.2nd_owner_email, p.name AS project_name, f.flat_name
                     FROM lead_bookings lb
@@ -4941,7 +4947,8 @@ public function discountStatement($bookingId = null)
 
                     // ====== TRIGGER 2: SMS VERIFIED NOTIFICATION ======
                     $sendSms = isset($_POST['send_sms']) ? filter_var($_POST['send_sms'], FILTER_VALIDATE_BOOLEAN) : false;
-                    if ($sendSms) {
+                    $isTestingMode = isset($_POST['is_testing_mode']) ? filter_var($_POST['is_testing_mode'], FILTER_VALIDATE_BOOLEAN) : false;
+                    if ($sendSms && !$isTestingMode) {
                         require_once dirname(__DIR__) . '/services/SmsService.php';
                         $smsService = new SmsService($this->db);
                         $smsService->sendBatchPaymentVerifiedSmsIfComplete($paymentId);

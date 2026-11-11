@@ -317,16 +317,7 @@ if (!empty($virtualEmiSchedule)) {
                             </div>
                         </div>
 
-                        <?php if (!$isShop): ?>
-                        <!-- Total Booking Money (Shown only for Booking Money & Registration on Flats) -->
-                        <div class="col-md-6" id="totalBookingMoneyContainer" style="display: none;">
-                            <div class="from__input-box">
-                                <label class="form__input-title">Total Booking Money (Target) <span>*</span></label>
-                                <input type="number" name="total_booking_money" id="totalBookingMoneyField" class="form-control" step="1" min="0" value="<?= ($agreementValue > 0) ? $agreementValue : 300000 ?>">
-                                <small class="text-muted">Default is 3,00,000. Updating this adjusts the booking money &amp; registration balances.</small>
-                            </div>
-                        </div>
-                        <?php endif; ?>
+
 
                         <!-- Amount -->
                         <div class="col-md-6">
@@ -787,8 +778,6 @@ if (!empty($virtualEmiSchedule)) {
 
         const settleDueFields       = document.querySelectorAll('.settle-due-fields');
         const parentPaymentIdSelect = document.getElementById('parentPaymentId');
-        const totalBookingMoneyContainer = document.getElementById('totalBookingMoneyContainer');
-        const totalBookingMoneyField     = document.getElementById('totalBookingMoneyField');
         const otherPurposeContainer      = document.getElementById('otherPurposeContainer');
         const otherPurposeInput          = document.getElementById('otherPurpose');
 
@@ -825,9 +814,13 @@ if (!empty($virtualEmiSchedule)) {
                 return { remBooking, remReg, target };
             }
 
-            const target = totalBookingMoneyField ? (parseFloat(totalBookingMoneyField.value) || 0) : <?= json_encode((float)$effectiveBookingTarget) ?>;
+            const target = <?= json_encode((float)$effectiveBookingTarget) ?>;
             const remBooking = Math.max(0, target - bookingMoneyTotal);
-            const remReg = Math.max(0, totalLandShare - discountAmount - target - allRegistrationAndLandshare);
+            const effectiveLSTarget = Math.max(0, totalLandShare - discountAmount);
+            const totalLSPaid = bookingMoneyTotal + allRegistrationAndLandshare;
+            const remLandShareTotal = Math.max(0, effectiveLSTarget - totalLSPaid);
+            const bookingDeduction = Math.max(target, bookingMoneyTotal);
+            const remReg = Math.min(remLandShareTotal, Math.max(0, effectiveLSTarget - bookingDeduction - allRegistrationAndLandshare));
 
             const bmOption = paymentType ? paymentType.querySelector('option[value="booking_money"]') : null;
             if (bmOption) {
@@ -855,13 +848,20 @@ if (!empty($virtualEmiSchedule)) {
                 }
             }
 
-            return { remBooking, remReg, target };
-        }
+            const mutOption = paymentType ? paymentType.querySelector('option[value="mutation_cost"]') : null;
+            if (mutOption) {
+                if (remLandShareTotal > 0) {
+                    mutOption.disabled = false;
+                    mutOption.style.color = '';
+                    mutOption.textContent = 'Mutation Cost';
+                } else {
+                    mutOption.disabled = true;
+                    mutOption.style.color = '#6c757d';
+                    mutOption.textContent = 'Mutation Cost (Completed ✓)';
+                }
+            }
 
-        if (totalBookingMoneyField) {
-            totalBookingMoneyField.addEventListener('input', function() {
-                updateAmountField();
-            });
+            return { remBooking, remReg, target };
         }
 
         // Auto-calculate due_emi_amount from entered amount vs suggested per-EMI
@@ -907,24 +907,13 @@ if (!empty($virtualEmiSchedule)) {
                 }
             }
 
-            // Toggle Total Booking Money container (for non-shop booking_money & registration)
-            if (totalBookingMoneyContainer) {
-                if (paymentTypeValue === 'booking_money' || paymentTypeValue === 'registration') {
-                    totalBookingMoneyContainer.style.display = 'block';
-                } else {
-                    totalBookingMoneyContainer.style.display = 'none';
-                }
-            }
-
             switch (paymentTypeValue) {
                 case 'booking_money':
                     var remBooking = balances.remBooking;
                     if (remBooking > 0) {
                         helpText = 'Booking Money balance: TK.' + remBooking.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + '. Any surplus amount will automatically cascade to Registration -> Dev Charge -> EMI.';
                         amountField.setAttribute('placeholder', 'Suggested: TK.' + remBooking.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' (Surplus cascades)');
-                        if (document.activeElement !== totalBookingMoneyField) {
-                            amountField.value = remBooking.toFixed(2);
-                        }
+                        amountField.value = remBooking.toFixed(2);
                         amountField.removeAttribute('max');
                         amountField.removeAttribute('disabled');
                     } else {
@@ -935,10 +924,16 @@ if (!empty($virtualEmiSchedule)) {
                     break;
                 case 'registration':
                     var remaining = balances.remReg;
-                    helpText = 'Remaining Registration amount: TK.' + remaining.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
-                    amountField.setAttribute('placeholder', 'Max: TK.' + remaining.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}));
-                    amountField.setAttribute('max', remaining);
-                    amountField.removeAttribute('disabled');
+                    if (remaining > 0) {
+                        helpText = 'Remaining Registration amount: TK.' + remaining.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + '. Any surplus cascades to Dev Charge -> EMI.';
+                        amountField.setAttribute('placeholder', 'Suggested: TK.' + remaining.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' (Surplus cascades)');
+                        amountField.removeAttribute('max');
+                        amountField.removeAttribute('disabled');
+                    } else {
+                        helpText = 'Land share / Registration is already completed.';
+                        amountField.value = '';
+                        amountField.setAttribute('disabled', 'disabled');
+                    }
                     break;
                 case 'mutation_cost':
                     helpText = 'Enter mutation cost amount';
