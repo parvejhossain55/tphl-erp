@@ -1247,9 +1247,9 @@ $todayDateFormatted = date('j F');
            data-tab="recurring" href="javascript:void(0);">Recurring Task</a>
     </div>
 
-    <!-- "All" tab: 6 summary cards -->
+    <!-- Summary cards (all tabs, scoped to the active tab) -->
     <?php $as = $allStats ?? []; ?>
-    <div class="mw-stats-row mw-stats-all" id="mwStatsAll" style="<?= $tab === 'all' ? '' : 'display:none;' ?>">
+    <div class="mw-stats-row mw-stats-all" id="mwStatsAll">
         <div class="mw-stat-card <?= $metricFilter === 'all_total' ? 'active-metric' : '' ?>" data-metric="all_total"><span class="mw-stat-label">TOTAL TASKS</span><span class="mw-stat-count" id="allTotal"><?= (int)($as['total'] ?? 0) ?></span></div>
         <div class="mw-stat-card <?= $metricFilter === 'all_in_progress' ? 'active-metric' : '' ?>" data-metric="all_in_progress"><span class="mw-stat-label">IN PROGRESS</span><span class="mw-stat-count next7" id="allInProgress"><?= (int)($as['in_progress'] ?? 0) ?></span></div>
         <div class="mw-stat-card <?= $metricFilter === 'all_completed' ? 'active-metric' : '' ?>" data-metric="all_completed"><span class="mw-stat-label">COMPLETED</span><span class="mw-stat-count review" id="allCompleted"><?= (int)($as['completed'] ?? 0) ?></span></div>
@@ -1258,36 +1258,7 @@ $todayDateFormatted = date('j F');
         <div class="mw-stat-card"><span class="mw-stat-label">COMPLETION RATE</span><span class="mw-stat-count" id="allCompletionRate"><?= (int)($as['completion_rate'] ?? 0) ?>%</span></div>
     </div>
 
-    <!-- 4 Summary Metric Cards (Instant Filter without reload) -->
-    <div class="mw-stats-row" id="mwStatsMetric" style="<?= $tab === 'all' ? 'display:none;' : '' ?>">
-        <!-- Card 1: Overdue -->
-        <div class="mw-stat-card <?= $metricFilter === 'overdue' ? 'active-metric' : '' ?>" data-metric="overdue">
-            <span class="mw-stat-label">Overdue</span>
-            <span class="mw-stat-count overdue" id="statOverdue"><?= $overdueCount ?></span>
-            <span class="mw-stat-desc">Open tasks past their deadline</span>
-        </div>
 
-        <!-- Card 2: Due today -->
-        <div class="mw-stat-card <?= $metricFilter === 'due_today' ? 'active-metric' : '' ?>" data-metric="due_today">
-            <span class="mw-stat-label">Due today</span>
-            <span class="mw-stat-count today" id="statDueToday"><?= $dueTodayCount ?></span>
-            <span class="mw-stat-desc">Scheduled for <?= $todayDateFormatted ?></span>
-        </div>
-
-        <!-- Card 3: Next 7 days -->
-        <div class="mw-stat-card <?= $metricFilter === 'next7' ? 'active-metric' : '' ?>" data-metric="next7">
-            <span class="mw-stat-label">Next 7 days</span>
-            <span class="mw-stat-count next7" id="statNext7"><?= $next7DaysCount ?></span>
-            <span class="mw-stat-desc"><?= $next7Start ?> – <?= $next7End ?></span>
-        </div>
-
-        <!-- Card 4: Waiting for review -->
-        <div class="mw-stat-card <?= $metricFilter === 'review' ? 'active-metric' : '' ?>" data-metric="review">
-            <span class="mw-stat-label">Waiting for review</span>
-            <span class="mw-stat-count review" id="statReview"><?= $waitingReviewCount ?></span>
-            <span class="mw-stat-desc">Your submitted work</span>
-        </div>
-    </div>
 
     <!-- Main Grid Layout -->
     <div class="mw-grid-layout">
@@ -1864,11 +1835,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     setTxt('allDeadlineMissed', s.deadline_missed);
                     setTxt('allCompletionRate', s.completion_rate + '%');
                 }
-                const isAll = currentTab === 'all';
-                const rowAll = document.getElementById('mwStatsAll');
-                const rowMetric = document.getElementById('mwStatsMetric');
-                if (rowAll) rowAll.style.display = isAll ? '' : 'none';
-                if (rowMetric) rowMetric.style.display = isAll ? 'none' : '';
                 if (data.counts) {
                     if (badgeOpen) badgeOpen.innerText = `${data.counts.open} open`;
                     if (textCompleted) textCompleted.innerText = `${data.counts.completed} completed`;

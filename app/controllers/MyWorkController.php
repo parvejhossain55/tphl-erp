@@ -119,7 +119,7 @@ class MyWorkController extends Controller
         $openTasksCount = (int) ($totals['open_count'] ?? 0);
         $completedTasksCount = (int) ($totals['completed_count'] ?? 0);
 
-        // 5b. "All" tab summary cards (scope = every task related to me)
+        // 5b. Summary cards (scope = active tab)
         $stmtAll = $this->db->prepare("
             SELECT 
                 COUNT(*) AS total,
@@ -128,9 +128,9 @@ class MyWorkController extends Controller
                 COALESCE(SUM(t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) = CURDATE()), 0) AS deadline_today,
                 COALESCE(SUM(t.status != 'completed' AND t.deadline IS NOT NULL AND t.deadline < NOW()), 0) AS deadline_missed
             FROM tasks t
-            WHERE {$allScopeSql}
+            WHERE {$scopeSql}
         ");
-        $stmtAll->bind_param(str_repeat('i', count($allScopeParams)), ...$allScopeParams);
+        $stmtAll->bind_param($scopeTypes, ...$scopeParams);
         $stmtAll->execute();
         $allStats = array_map('intval', $stmtAll->get_result()->fetch_assoc());
         $allStats['completion_rate'] = $allStats['total'] > 0 ? (int) round($allStats['completed'] * 100 / $allStats['total']) : 0;
@@ -147,11 +147,10 @@ class MyWorkController extends Controller
             $types .= $scopeTypes;
             $where[] = $metricCond[$metricFilter];
         } elseif (in_array($metricFilter, ['all_total', 'all_in_progress', 'all_completed', 'all_deadline_today', 'all_deadline_missed'], true)) {
-            // "All" tab cards: same scope as the card counts
-            $where[] = $allScopeSql;
-            +
-+            $types .= "iiii";
-            $types .= "iiii";
+            // Summary cards: same scope as the card counts
+            $where[] = $scopeSql;
+            $params = array_merge($params, $scopeParams);
+            $types .= $scopeTypes;
             $metricSql = [
                 'all_in_progress'    => "t.status = 'in_progress'",
                 'all_completed'      => "t.status = 'completed'",
