@@ -34,6 +34,23 @@ return [
     'delete-task/(\d+)' => ['controller' => 'TaskController', 'method' => 'delete'],
 
     // =========================================================================
+    // Controller: MyWorkController (Personal Workspace)
+    // =========================================================================
+    'my-work' => ['controller' => 'MyWorkController', 'method' => 'index'],
+    'my-work-dashboard' => ['controller' => 'MyWorkController', 'method' => 'index'],
+    'my-work/delete/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'deleteTask'],
+    'my-work/store-task' => ['controller' => 'MyWorkController', 'method' => 'storeTask'],
+    'my-work/task-detail/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'taskDetail'],
+    'my-work/task-data/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'taskEditData'],
+    'my-work/update-task/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'updateTask'],
+    'my-work/complete-task/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'completeTask'],
+    'my-work/start-task/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'startTask'],
+    'my-work/reviewer-action/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'reviewerAction'],
+    'my-work/toggle-checklist/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'toggleChecklist'],
+    'my-work/add-comment/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'addComment'],
+    'my-work/request-extension/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'requestExtension'],
+
+    // =========================================================================
     // Controller: EmployeeController
     // =========================================================================
     'employee-lists' => ['controller' => 'EmployeeController', 'method' => 'index'],
