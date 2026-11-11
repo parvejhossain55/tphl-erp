@@ -40,6 +40,25 @@ $statusColors = [
 $statusClass = $statusColors[$req['status']] ?? 'bg-secondary text-white';
 $statusLabel = ($req['status'] === 'pending_dept') ? 'Pending Dept Head' : (($req['status'] === 'pending_qc') ? 'Pending QC Head' : (($req['status'] === 'pending') ? 'Pending Management' : ucwords(str_replace('_', ' ', $req['status']))));
 
+// Purchase Head stage (between Dept Head and QC). 'not_required' => legacy / skipped, step hidden.
+$phStatus = strtolower($req['purchase_head_status'] ?? 'not_required');
+$isPurchaseHeadPending = ($req['status'] === 'pending_qc' && $phStatus === 'pending');
+$showPurchaseHeadStep = in_array($phStatus, ['pending', 'approved', 'rejected'], true);
+$canPurchaseHeadApprove = $isPurchaseHeadPending && ($sessionRoleId === 17 || $isAdmin) && !in_array($sessionRoleId, [33, 34, 35], true);
+if ($isPurchaseHeadPending) {
+    $statusLabel = 'Pending Purchase Head';
+}
+$phByName = '';
+if (!empty($req['purchase_head_by'])) {
+    $phDb = $GLOBALS['db'] ?? ($this->db ?? null);
+    if ($phDb) {
+        $phUserRes = $phDb->query("SELECT u.full_name, des.name AS designation_name FROM users u LEFT JOIN designations des ON des.id = u.designation_id WHERE u.id = " . (int)$req['purchase_head_by'] . " LIMIT 1");
+        if ($phUserRes && $phUserRow = $phUserRes->fetch_assoc()) {
+            $phByName = $phUserRow['full_name'] . (!empty($phUserRow['designation_name']) ? ' (' . $phUserRow['designation_name'] . ')' : '');
+        }
+    }
+}
+
 // Management / Operation Head approval breakdown (who approved how much)
 $mgmtApprovals = (isset($mgmtApprovals) && is_array($mgmtApprovals)) ? $mgmtApprovals : [];
 $mgmtApprovedTotal = (float)($req['approved_amount'] ?? 0);
@@ -597,9 +616,90 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
                             <?php endif; ?>
                         </div>
 
+                        <?php if ($showPurchaseHeadStep): ?>
+                        <!-- Step 2.2: Purchase Head Approval -->
+                        <div class="d-flex gap-3 mb-4 position-relative align-items-start">
+                            <?php if ($phStatus === 'approved'): ?>
+                                <div class="avatar avatar-sm bg-success text-white rounded-circle flex-shrink-0 z-1 fs-12">
+                                    <i class="fa-solid fa-check"></i>
+                                </div>
+                                <div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <h6 class="fw-bold fs-13 mb-0 text-dark">Purchase Head Approved</h6>
+                                        <span class="badge bg-success-transparent text-success fs-10">Approved</span>
+                                    </div>
+                                    <p class="fs-12 text-muted mb-0 mt-1">
+                                        Approved by <strong><?php echo htmlspecialchars($phByName !== '' ? $phByName : 'Purchase Head'); ?></strong>
+                                        <?php echo !empty($req['purchase_head_at']) ? 'on ' . date('d M Y, h:i A', strtotime($req['purchase_head_at'])) : ''; ?>
+                                    </p>
+                                    <?php if (!empty($req['purchase_head_note'])): ?>
+                                        <div class="bg-light p-2 rounded fs-12 mt-2 text-dark border">
+                                            <i class="fa-solid fa-quote-left text-muted me-1 fs-11"></i><?php echo htmlspecialchars($req['purchase_head_note']); ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            <?php elseif ($phStatus === 'rejected'): ?>
+                                <div class="avatar avatar-sm bg-danger text-white rounded-circle flex-shrink-0 z-1 fs-12">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold fs-13 mb-0 text-danger">Purchase Head Rejected</h6>
+                                    <p class="fs-12 text-muted mb-0 mt-1">
+                                        Rejected by <strong><?php echo htmlspecialchars($phByName !== '' ? $phByName : 'Purchase Head'); ?></strong>
+                                        <?php echo !empty($req['purchase_head_at']) ? 'on ' . date('d M Y, h:i A', strtotime($req['purchase_head_at'])) : ''; ?>
+                                    </p>
+                                    <?php if (!empty($req['purchase_head_note'])): ?>
+                                        <p class="fs-12 text-muted mb-0 mt-1 bg-light p-2 rounded border"><?php echo htmlspecialchars($req['purchase_head_note']); ?></p>
+                                    <?php endif; ?>
+                                </div>
+                            <?php elseif ($req['status'] === 'pending_dept'): ?>
+                                <div class="avatar avatar-sm bg-light text-muted rounded-circle flex-shrink-0 z-1 fs-12 border">
+                                    <i class="fa-solid fa-hourglass-start"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold fs-13 mb-0 text-muted">Purchase Head Approval</h6>
+                                    <p class="fs-12 text-muted mb-0 mt-1">Will be reviewed by the Purchase Head after Department Head approval.</p>
+                                </div>
+                            <?php else: ?>
+                                <div class="avatar avatar-sm bg-warning text-dark rounded-circle flex-shrink-0 z-1 fs-12">
+                                    <i class="fa-solid fa-clock"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold fs-13 mb-0 text-dark">Pending Purchase Head Approval</h6>
+                                    <p class="fs-12 text-muted mb-0 mt-1">
+                                        Awaiting approval from Purchase Head (Role 17).
+                                    </p>
+                                    <?php if ($canPurchaseHeadApprove): ?>
+                                        <?php if ($sessionRoleId !== 17): ?>
+                                            <div class="alert alert-warning py-1 px-2 fs-11 mt-2 mb-0">
+                                                <i class="fa-solid fa-triangle-exclamation me-1"></i>You are acting as Management Override for the <strong>Purchase Head</strong> stage.
+                                            </div>
+                                        <?php endif; ?>
+                                        <div class="d-flex gap-2 mt-2">
+                                            <button class="btn btn-sm btn-success shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#phApproveModal">
+                                                <i class="fa-solid fa-check me-1"></i> Approve as Purchase Head
+                                            </button>
+                                            <button class="btn btn-sm btn-danger shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#phRejectModal">
+                                                <i class="fa-solid fa-xmark me-1"></i> Reject
+                                            </button>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                        <?php endif; ?>
+
                         <!-- Step 2.5: QC & Internal Audit Head Approval -->
                         <div class="d-flex gap-3 mb-4 position-relative align-items-start">
-                            <?php if ($req['status'] === 'pending_qc'): ?>
+                            <?php if ($isPurchaseHeadPending): ?>
+                                <div class="avatar avatar-sm bg-light text-muted rounded-circle flex-shrink-0 z-1 fs-12 border">
+                                    <i class="fa-solid fa-hourglass-start"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold fs-13 mb-0 text-muted">QC &amp; Internal Audit Head Approval</h6>
+                                    <p class="fs-12 text-muted mb-0 mt-1">Will be reviewed by QC &amp; Internal Audit Head after Purchase Head approval.</p>
+                                </div>
+                            <?php elseif ($req['status'] === 'pending_qc'): ?>
                                 <div class="avatar avatar-sm bg-warning text-dark rounded-circle flex-shrink-0 z-1 fs-12">
                                     <i class="fa-solid fa-clock"></i>
                                 </div>
@@ -619,7 +719,7 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
                                         </div>
                                     <?php endif; ?>
                                 </div>
-                            <?php elseif (!empty($req['qc_approved_by']) || ($req['status'] === 'rejected' && $req['dept_head_status'] === 'approved' && empty($req['approved_by']))): ?>
+                            <?php elseif (!empty($req['qc_approved_by']) || ($req['status'] === 'rejected' && $req['dept_head_status'] === 'approved' && empty($req['approved_by']) && $phStatus !== 'rejected')): ?>
                                 <?php $qcStatus = ($req['status'] === 'rejected' && empty($req['approved_by'])) ? 'rejected' : 'approved'; ?>
                                 <?php if ($qcStatus === 'approved'): ?>
                                     <div class="avatar avatar-sm bg-success text-white rounded-circle flex-shrink-0 z-1 fs-12">
@@ -1369,6 +1469,27 @@ if (!in_array($req['status'], ['paid', 'partially_paid']) && $canApproveDept):
                     <small class="text-muted d-block fs-11 text-uppercase fw-semibold">Requested Amount</small>
                     <div class="fs-15 text-dark fw-bold mt-1">&#2547; <?php echo number_format($req['amount'], 2); ?></div>
                 </div>
+                <?php if ($isAdmin): ?>
+                <div class="mb-3 p-3 bg-warning-subtle rounded border border-warning-subtle text-start">
+                    <label class="form-label fw-bold d-block mb-2 text-dark fs-12">
+                        <i class="fa-solid fa-user-shield text-warning me-1"></i> Management Approval Scope:
+                    </label>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="approval_scope" id="fr_dept_scope_normal" value="dept_head_only" checked>
+                        <label class="form-check-label fw-semibold text-dark fs-12" for="fr_dept_scope_normal">
+                            <i class="fa-solid fa-user-check text-success me-1"></i> Approve as Department Head Only
+                            <small class="text-muted d-block fw-normal mt-0.5">Recommended: Forwards request to next reviewer (Purchase Head / QC) without bypassing downstream stages.</small>
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="approval_scope" id="fr_dept_scope_override" value="full_override">
+                        <label class="form-check-label fw-semibold text-danger fs-12" for="fr_dept_scope_override">
+                            <i class="fa-solid fa-stamp text-danger me-1"></i> Direct Management Approval (Override All Stages)
+                            <small class="text-muted d-block fw-normal mt-0.5">Bypasses Purchase Head, QC, Op Head, and Accounts Head; grants final Management approval immediately.</small>
+                        </label>
+                    </div>
+                </div>
+                <?php endif; ?>
                 <div class="mb-3"><label class="form-label fw-semibold">Remarks / Note (Optional)</label>
                     <textarea name="approval_note" class="form-control" rows="3" placeholder="Enter remarks..."></textarea></div>
             </div>
@@ -1376,38 +1497,6 @@ if (!in_array($req['status'], ['paid', 'partially_paid']) && $canApproveDept):
         </div>
     </form></div>
 </div>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    var frForm = document.getElementById('frMgmtApproveForm');
-    if (frForm) {
-        frForm.addEventListener('submit', function(e) {
-            var overrideStage = <?php echo json_encode($frOverrideStage ?? ''); ?>;
-            if (overrideStage !== '' && !frForm.getAttribute('data-confirmed-override')) {
-                e.preventDefault();
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        title: 'Pending ' + overrideStage + "'s Approval",
-                        html: 'This fund requisition is pending for <strong>' + overrideStage + "'s</strong> approval. Are you ready to approve for <strong>" + overrideStage + '</strong> first?<br><small class="text-muted d-block mt-2">Your name will be recorded as the approver for all bypassed stages as well as final Management approval.</small>',
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonColor: '#198754',
-                        cancelButtonColor: '#6c757d',
-                        confirmButtonText: 'Yes, Approve All Stages'
-                    }).then(function(result) {
-                        if (result.isConfirmed) {
-                            frForm.setAttribute('data-confirmed-override', '1');
-                            frForm.submit();
-                        }
-                    });
-                } else if (confirm("Pending " + overrideStage + "'s Approval. Are you ready to approve all bypassed stages and complete final Management approval?")) {
-                    frForm.setAttribute('data-confirmed-override', '1');
-                    frForm.submit();
-                }
-            }
-        });
-    }
-});
-</script>
 <?php endif; ?>
 
 <!-- Department Head Rejection Modal -->
@@ -1416,6 +1505,55 @@ document.addEventListener('DOMContentLoaded', function() {
         <div class="modal-content">
             <div class="modal-header bg-danger bg-opacity-10">
                 <h5 class="modal-title text-danger"><i class="fa-solid fa-xmark me-1"></i> Reject Requisition (Department Head)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
+                <input type="hidden" name="status" value="rejected">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Reason for Rejection <span class="text-danger">*</span></label>
+                    <textarea name="approval_note" class="form-control" rows="3" placeholder="Enter reason for rejection..." required></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-danger btn-sm fw-bold" onclick="return confirm('Are you sure you want to REJECT this requisition?');"><i class="fa-solid fa-xmark me-1"></i> Confirm Rejection</button>
+            </div>
+        </div>
+    </form></div>
+</div>
+
+<!-- Purchase Head Approval Modal -->
+<div class="modal fade" id="phApproveModal" tabindex="-1">
+    <div class="modal-dialog"><form action="<?php echo $base; ?>/fund-requisitions/approve-purchase-head" method="POST">
+        <div class="modal-content">
+            <div class="modal-header bg-success bg-opacity-10"><h5 class="modal-title text-success"><i class="fa-solid fa-cart-check me-1"></i> Purchase Head Approval</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
+                <input type="hidden" name="status" value="approved">
+                <div class="mb-3 p-3 bg-light rounded border">
+                    <small class="text-muted d-block fs-11 text-uppercase fw-semibold">Requested Amount</small>
+                    <div class="fs-15 text-dark fw-bold mt-1">&#2547; <?php echo number_format($req['amount'], 2); ?></div>
+                </div>
+                <?php if ($sessionRoleId !== 17): ?>
+                    <div class="alert alert-warning py-2 px-3 fs-12 mb-3">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i> You are acting as <strong>Management Override</strong> for the Purchase Head stage. Your approval will forward this request to QC &amp; Internal Audit.
+                    </div>
+                <?php endif; ?>
+                <div class="mb-3"><label class="form-label fw-semibold">Remarks / Note (Optional)</label>
+                    <textarea name="approval_note" class="form-control" rows="3" placeholder="Enter remarks..."></textarea></div>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-success btn-sm fw-bold"><i class="fa-solid fa-check me-1"></i> Confirm Approval</button></div>
+        </div>
+    </form></div>
+</div>
+
+<!-- Purchase Head Rejection Modal -->
+<div class="modal fade" id="phRejectModal" tabindex="-1">
+    <div class="modal-dialog"><form action="<?php echo $base; ?>/fund-requisitions/approve-purchase-head" method="POST">
+        <div class="modal-content">
+            <div class="modal-header bg-danger bg-opacity-10">
+                <h5 class="modal-title text-danger"><i class="fa-solid fa-xmark me-1"></i> Reject Requisition (Purchase Head)</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -1448,6 +1586,8 @@ $frOverrideStage = '';
 if ($isAdmin) {
     if ($req['status'] === 'pending_dept' || ($hasDeptHeadStep && ($req['dept_head_status'] ?? 'pending') === 'pending')) {
         $frOverrideStage = 'Department Head';
+    } elseif ($isPurchaseHeadPending) {
+        $frOverrideStage = 'Purchase Head';
     } elseif ($req['status'] === 'pending_qc' || empty($req['qc_approved_by'])) {
         $frOverrideStage = 'QC & Internal Audit';
     } elseif (!$isOpHeadApproved) {
@@ -1482,6 +1622,29 @@ if ($canApprove && $dueToApprove > 0 && $req['status'] !== 'rejected' && ($isAdm
                 <div class="mb-2 p-3 bg-light rounded border">
                     <div class="fs-15 text-dark fw-bold mt-1">Due to Approve: &#2547; <?php echo number_format($dueToApprove, 2); ?></div>
                 </div>
+
+                <?php if ($isAdmin && !empty($frOverrideStage)): ?>
+                <div class="mb-3 p-3 bg-warning-subtle rounded border border-warning-subtle text-start">
+                    <label class="form-label fw-bold d-block mb-2 text-dark fs-12">
+                        <i class="fa-solid fa-user-shield text-warning me-1"></i> Pending <?php echo htmlspecialchars($frOverrideStage); ?> Approval:
+                    </label>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="approval_scope" id="fr_mgmt_scope_step" value="step_only" <?php echo in_array($frOverrideStage, ['Department Head', 'Purchase Head'], true) ? 'checked' : ''; ?>>
+                        <label class="form-check-label fw-semibold text-dark fs-12" for="fr_mgmt_scope_step">
+                            <i class="fa-solid fa-user-check text-success me-1"></i> Approve as <?php echo htmlspecialchars($frOverrideStage); ?> Only
+                            <small class="text-muted d-block fw-normal mt-0.5">Only approve this pending stage and forward to next reviewer in sequence.</small>
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="approval_scope" id="fr_mgmt_scope_override" value="full_override" <?php echo !in_array($frOverrideStage, ['Department Head', 'Purchase Head'], true) ? 'checked' : ''; ?>>
+                        <label class="form-check-label fw-semibold text-danger fs-12" for="fr_mgmt_scope_override">
+                            <i class="fa-solid fa-stamp text-danger me-1"></i> Direct Management Approval (Override All Stages)
+                            <small class="text-muted d-block fw-normal mt-0.5">Bypass all remaining stages and complete final Management approval immediately.</small>
+                        </label>
+                    </div>
+                </div>
+                <?php endif; ?>
+
                 <div class="mb-3"><label class="form-label fw-semibold">Action</label>
                     <select name="status" id="approve_action_select" class="form-select" required>
                         <option value="approved">Approve (Full Due Amount - &#2547; <?php echo number_format($dueToApprove, 2); ?>)</option>
@@ -1504,6 +1667,12 @@ document.addEventListener('DOMContentLoaded', function() {
     var frForm = document.getElementById('frMgmtApproveForm');
     if (frForm) {
         frForm.addEventListener('submit', function(e) {
+            var scopeRadio = frForm.querySelector('input[name="approval_scope"]:checked');
+            var isStepOnly = scopeRadio && (scopeRadio.value === 'dept_head_only' || scopeRadio.value === 'step_only');
+            if (isStepOnly) {
+                // Step-by-step approval explicitly selected: no full override warning needed
+                return;
+            }
             var overrideStage = <?php echo json_encode($frOverrideStage ?? ''); ?>;
             if (overrideStage !== '' && !frForm.getAttribute('data-confirmed-override')) {
                 e.preventDefault();

@@ -31,6 +31,16 @@ $statusLabel = [
 $st = $req['status'];
 $isOwner = ($req['requested_by'] == $userId);
 
+// Purchase Head stage (after PM approval). 'not_required' for legacy rows / skipped requesters.
+$phStatus     = $req['purchase_head_status'] ?? 'not_required';
+$isPhPending  = ($st === 'pm_approved' && $phStatus === 'pending');
+$showPhStep   = ($phStatus !== 'not_required') || !empty($req['purchase_head_by']);
+$isPurchaseHead = !empty($isPurchaseHead) || (int)$userRole === 17;
+if ($isPhPending) {
+    $statusBadge['pm_approved'] = 'bg-warning text-dark';
+    $statusLabel['pm_approved'] = 'Pending Purchase Head Approval';
+}
+
 require_once __DIR__ . '/../../../models/ApprovalRequest.php';
 $ahInfo = ApprovalRequest::getAccountsHeadApprovalInfo($GLOBALS['db'] ?? null, 'con_labor_requisitions', (int)$req['id']);
 $isOpHeadApprovedTimeline = !empty($ahInfo['is_op_head_approved']) || in_array($st, ['management_approved','partially_paid','paid','labor_disbursed']);
@@ -39,7 +49,7 @@ $lrEffectiveAmount = (float)($req['qc_approved_amount'] ?? $req['total_amount'] 
 $isLrOver10K = ($lrEffectiveAmount > 10000.01);
 $showLrMgmtStep = $isLrOver10K || (!empty($req['management_approved_by']) && (int)$req['management_approved_by'] !== (int)($ahInfo['op_head_by'] ?? 0) && (int)$req['management_approved_by'] !== (int)($ahInfo['accounts_head_by'] ?? 0));
 
-// Timeline steps (Submitted -> PM -> Work Completed -> Payment Requested -> QC -> Admin & Operation Head -> Accounts Head -> [Management if > 10K] -> Paid)
+// Timeline steps (Submitted -> PM -> [Purchase Head] -> Work Completed -> Payment Requested -> QC -> Admin & Operation Head -> Accounts Head -> [Management if > 10K] -> Paid)
 $steps = [
     [
         'icon'       => 'fa-file-pen',
@@ -115,6 +125,21 @@ $steps = [
         'note'       => $ahInfo['approval_note'] ?? null
     ],
 ];
+// Purchase Head step right after "PM Approved" (hidden for legacy / not-required rows)
+if ($showPhStep) {
+    array_splice($steps, 2, 0, [[
+        'icon'       => 'fa-cart-shopping',
+        'title'      => $phStatus === 'rejected' ? 'Purchase Head Rejected' : 'Purchase Head Approved',
+        'done'       => in_array($phStatus, ['approved', 'rejected'], true),
+        'color'      => $phStatus === 'rejected' ? 'secondary' : 'indigo',
+        'user'       => $req['purchase_head_by_name'] ?? null,
+        'role'       => $req['purchase_head_by_role'] ?? null,
+        'department' => null,
+        'at'         => $req['purchase_head_at'] ?? null,
+        'amount'     => null,
+        'note'       => $req['purchase_head_note'] ?? null
+    ]]);
+}
 if ($showLrMgmtStep) {
     $steps[] = [
         'icon'       => 'fa-building-circle-check',
@@ -453,8 +478,44 @@ $steps[] = [
             </div>
             <?php endif; ?>
 
+            <!-- STEP 1b: Purchase Head Approve (status=pm_approved, purchase_head_status=pending; Role 17 / Management) -->
+            <?php if ($isPhPending && $isPurchaseHead): ?>
+            <div class="card custom-card mb-3 border border-warning border-opacity-50">
+                <div class="card-header bg-warning-transparent">
+                    <div class="card-title fs-13 text-warning"><i class="fa-solid fa-cart-shopping me-2"></i> Purchase Head Action</div>
+                </div>
+                <div class="card-body">
+                    <p class="fs-13 text-muted mb-3">PM has approved this labor requisition. Review and approve or reject it as Purchase Head before work starts.</p>
+                    <?php if ((int)$userRole !== 17): ?>
+                    <div class="alert alert-warning py-2 fs-12 mb-3"><i class="fa-solid fa-triangle-exclamation me-1"></i> Pending for Purchase Head's approval. Your action will be recorded as a <strong>Management Override</strong>.</div>
+                    <?php endif; ?>
+                    <div class="action-btn-group">
+                        <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#phApproveModal">
+                            <i class="fa-solid fa-thumbs-up me-1"></i> Approve
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#phRejectModal">
+                            <i class="fa-solid fa-thumbs-down me-1"></i> Reject
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <!-- STEP 2: SE marks work complete (status=pm_approved, owner only) -->
-            <?php if ($st === 'pm_approved' && ($isOwner || $isSE)): ?>
+            <?php if ($st === 'pm_approved' && ($isOwner || $isSE) && $isPhPending): ?>
+            <div class="card custom-card mb-3 border border-secondary border-opacity-50">
+                <div class="card-header bg-light">
+                    <div class="card-title fs-13 text-muted"><i class="fa-solid fa-lock me-2"></i> Mark Work as Completed</div>
+                </div>
+                <div class="card-body">
+                    <p class="fs-13 text-muted mb-3"><i class="fa-solid fa-hourglass-half me-1 text-warning"></i> Awaiting Purchase Head approval. You can mark work complete and request payment once the Purchase Head approves this requisition.</p>
+                    <button type="button" class="btn btn-secondary btn-sm" disabled>
+                        <i class="fa-solid fa-lock me-1"></i> Mark Work Complete
+                    </button>
+                </div>
+            </div>
+            <?php endif; ?>
+            <?php if ($st === 'pm_approved' && ($isOwner || $isSE) && !$isPhPending): ?>
             <div class="card custom-card mb-3 border border-primary border-opacity-50">
                 <div class="card-header bg-primary-transparent">
                     <div class="card-title fs-13 text-primary"><i class="fa-solid fa-hammer me-2"></i> Mark Work as Completed</div>
@@ -974,6 +1035,35 @@ $steps[] = [
 </div>
 <?php endif; ?>
 
+<!-- Purchase Head Approve / Reject (Role 17 / Management) -->
+<?php if ($isPhPending && $isPurchaseHead): ?>
+<div class="modal fade" id="phApproveModal" tabindex="-1">
+    <div class="modal-dialog"><form action="<?php echo $base; ?>/con-labor-req-purchase-head-approve/<?php echo $req['id']; ?>" method="POST">
+        <div class="modal-content">
+            <div class="modal-header bg-success bg-opacity-10"><h5 class="modal-title text-success"><i class="fa-solid fa-cart-shopping me-2"></i>Purchase Head Approve</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="alert alert-info py-2 fs-12 mb-3">
+                    Approving: <strong><?php echo $req['labor_count']; ?> laborers</strong> × ৳<?php echo number_format($req['per_labor_rate'],0); ?> × <?php echo $req['working_days']; ?> days = <strong>৳ <?php echo number_format($req['total_amount'],2); ?></strong>
+                </div>
+                <div class="mb-3"><label class="form-label">Note (Optional)</label><textarea name="purchase_head_note" class="form-control" rows="2" placeholder="Any remarks..."></textarea></div>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-success btn-sm">Approve</button></div>
+        </div>
+    </form></div>
+</div>
+<div class="modal fade" id="phRejectModal" tabindex="-1">
+    <div class="modal-dialog"><form action="<?php echo $base; ?>/con-labor-req-purchase-head-reject/<?php echo $req['id']; ?>" method="POST">
+        <div class="modal-content">
+            <div class="modal-header bg-danger bg-opacity-10"><h5 class="modal-title text-danger"><i class="fa-solid fa-thumbs-down me-2"></i>Reject Requisition (Purchase Head)</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-3"><label class="form-label">Rejection Reason <span class="text-danger">*</span></label><textarea name="purchase_head_note" class="form-control" rows="3" required></textarea></div>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-danger btn-sm">Reject</button></div>
+        </div>
+    </form></div>
+</div>
+<?php endif; ?>
+
 <!-- QC Approve Modal (Strictly Role 24 & Super Admin) -->
 <?php if ($st === 'payment_requested' && $isQC): ?>
 <div class="modal fade" id="qcApproveModal" tabindex="-1">
@@ -1014,6 +1104,8 @@ $laborOverrideStage = '';
 if (!empty($isMgmtUserLabor)) {
     if ($st === 'pending') {
         $laborOverrideStage = 'PM / Dept Head';
+    } elseif ($isPhPending) {
+        $laborOverrideStage = 'Purchase Head';
     } elseif (in_array($st, ['pm_approved', 'work_completed', 'payment_requested'], true)) {
         $laborOverrideStage = 'QC & Internal Audit';
     } elseif (!$isOpHeadApprovedLabor) {

@@ -65,7 +65,12 @@ class ProjectOtherCost extends Model
             'accounts_head_note' => "TEXT NULL DEFAULT NULL",
             'management_apporved_at' => "DATETIME NULL DEFAULT NULL",
             'pc_approved_id' => "INT(11) NULL DEFAULT NULL",
-            'account_id' => "INT(11) NULL DEFAULT NULL"
+            'account_id' => "INT(11) NULL DEFAULT NULL",
+            // Purchase Head approval stage (after Dept Head, before QC). Existing rows keep 'not_required'.
+            'purchase_head_status' => "ENUM('not_required','pending','approved','rejected') NOT NULL DEFAULT 'not_required'",
+            'purchase_head_by' => "INT(11) NULL DEFAULT NULL",
+            'purchase_head_at' => "DATETIME NULL DEFAULT NULL",
+            'purchase_head_note' => "TEXT NULL DEFAULT NULL"
         ];
         foreach ($cols as $col => $def) {
             $chk = @$this->db->query("SHOW COLUMNS FROM `project_other_costs` LIKE '{$col}'");
@@ -260,6 +265,7 @@ class ProjectOtherCost extends Model
                 qc.full_name AS qc_name,
                 mb.full_name AS mgmt_name,
                 pb.full_name AS pay_name,
+                phb.full_name AS ph_name,
                 creator_emp.is_dept_head AS creator_is_dept_head,
                 creator_emp.reporting_user_id AS creator_reporting_user_id,
                 boss_user.full_name AS designated_dh_name,
@@ -275,6 +281,7 @@ class ProjectOtherCost extends Model
             LEFT JOIN users qc ON poc.qc_audit_approved_id = qc.id
             LEFT JOIN users mb ON poc.management_apporved_by_id = mb.id
             LEFT JOIN users pb ON poc.payment_by_id = pb.id
+            LEFT JOIN users phb ON poc.purchase_head_by = phb.id
             WHERE poc.id = ?
         ");
         $sql->bind_param("i", $id);

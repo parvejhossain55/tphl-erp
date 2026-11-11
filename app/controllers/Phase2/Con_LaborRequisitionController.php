@@ -34,6 +34,8 @@ class Con_LaborRequisitionController extends Controller
         return in_array($this->userRole, [3, 1, 38], true) || str_contains($roleName, 'director') || str_contains($roleName, 'dceo') || str_contains($roleName, 'management') || str_contains($roleName, 'super admin');
     }
     private function isAccounts()     { return in_array($this->userRole, [6, 30, 1, 3, 38]);  }
+    // 17 = Purchase Head (Head of Purchase). Management can override.
+    private function isPurchaseHead() { return $this->userRole === 17 || $this->isManagement(); }
 
     // Checks whether current user can approve management step (Roles 1, 3, 38, 20, 32, 22 or Admin/Operation/Management/Director/PM Head)
     private function canApproveManagement($amount = 0)
@@ -260,6 +262,7 @@ class Con_LaborRequisitionController extends Controller
             'canApproveManagement' => $this->canApproveManagement((float)($req['qc_approved_amount'] ?? $req['pm_verified_amount'] ?? $req['total_amount'])),
             'isAccounts'           => $this->isAccounts(),
             'isSE'                 => $this->isSiteEngineer(),
+            'isPurchaseHead'       => $this->isPurchaseHead(),
         ]);
     }
 
@@ -271,7 +274,61 @@ class Con_LaborRequisitionController extends Controller
         if (!$this->isPM()) { $_SESSION['error'] = 'Access denied.'; $this->back($id); }
         $note = trim($_POST['pm_note'] ?? '');
         $this->model->pmApprove((int)$id, $this->userId, $note);
-        $_SESSION['success'] = 'Labor Requisition approved by Project Manager.';
+        if ($this->userRole === 17) {
+            // PM approver IS Purchase Head -> Auto-approve Purchase Head stage immediately
+            $this->model->purchaseHeadApprove((int)$id, $this->userId, ($note ?: 'Auto-approved as Purchase Head (PM Verified)'));
+        }
+        if ($this->model->isPurchaseHeadPending((int)$id)) {
+            $this->syncToApprovalRequests((int)$id);
+            $_SESSION['success'] = 'Labor Requisition approved by Project Manager. Forwarded to Purchase Head for approval.';
+        } else {
+            $this->syncToApprovalRequests((int)$id);
+            $_SESSION['success'] = 'Labor Requisition approved by Project Manager' . ($this->userRole === 17 ? ' & Purchase Head.' : '.');
+        }
+        $this->back($id);
+    }
+
+    // =========================================================================
+    // PURCHASE HEAD APPROVE / REJECT (Role 17; Management can override)
+    // =========================================================================
+    public function purchaseHeadApprove($id)
+    {
+        if (!$this->isPurchaseHead()) { $_SESSION['error'] = 'Access denied. Only Purchase Head can approve this stage.'; $this->back($id); }
+        if (!$this->model->isPurchaseHeadPending((int)$id)) {
+            $_SESSION['error'] = 'This requisition is not awaiting Purchase Head approval.';
+            $this->back($id);
+        }
+        $note = trim($_POST['purchase_head_note'] ?? '');
+        if ($this->userRole !== 17) {
+            $note = ($note ?: 'Approved by Management') . ' (Management Override)';
+        }
+        if ($this->model->purchaseHeadApprove((int)$id, $this->userId, $note)) {
+            $this->syncToApprovalRequests((int)$id);
+            $_SESSION['success'] = 'Labor Requisition approved by Purchase Head. Site Engineer can now proceed with the work.';
+        } else {
+            $_SESSION['error'] = 'Failed to record Purchase Head approval.';
+        }
+        $this->back($id);
+    }
+
+    public function purchaseHeadReject($id)
+    {
+        if (!$this->isPurchaseHead()) { $_SESSION['error'] = 'Access denied. Only Purchase Head can reject at this stage.'; $this->back($id); }
+        if (!$this->model->isPurchaseHeadPending((int)$id)) {
+            $_SESSION['error'] = 'This requisition is not awaiting Purchase Head approval.';
+            $this->back($id);
+        }
+        $reason = trim($_POST['purchase_head_note'] ?? $_POST['rejection_reason'] ?? '');
+        if ($reason === '') {
+            $_SESSION['error'] = 'Rejection reason is required.';
+            $this->back($id);
+        }
+        if ($this->model->purchaseHeadReject((int)$id, $this->userId, $reason)) {
+            $this->syncToApprovalRequests((int)$id, 'rejected', null, $reason);
+            $_SESSION['error'] = 'Labor Requisition rejected by Purchase Head.';
+        } else {
+            $_SESSION['error'] = 'Failed to reject labor requisition.';
+        }
         $this->back($id);
     }
 
@@ -289,6 +346,10 @@ class Con_LaborRequisitionController extends Controller
     // =========================================================================
     public function markWorkComplete($id)
     {
+        if ($this->model->isPurchaseHeadPending((int)$id)) {
+            $_SESSION['error'] = 'Awaiting Purchase Head approval. Work cannot be marked complete until the Purchase Head approves this requisition.';
+            $this->back($id);
+        }
         $this->model->markWorkComplete((int)$id, $this->userId);
         $this->syncToApprovalRequests((int)$id);
         $_SESSION['success'] = 'Work marked as completed. Payment approval request submitted to Management.';
@@ -297,6 +358,10 @@ class Con_LaborRequisitionController extends Controller
 
     public function requestPayment($id)
     {
+        if ($this->model->isPurchaseHeadPending((int)$id)) {
+            $_SESSION['error'] = 'Awaiting Purchase Head approval. Payment cannot be requested until the Purchase Head approves this requisition.';
+            $this->back($id);
+        }
         $this->model->requestPayment((int)$id, $this->userId);
         $this->syncToApprovalRequests((int)$id);
         $_SESSION['success'] = 'Payment request submitted successfully.';
@@ -311,6 +376,10 @@ class Con_LaborRequisitionController extends Controller
         if (!$this->isQC()) { $_SESSION['error'] = 'Access denied.'; $this->back($id); }
         $req = $this->model->find((int)$id);
         if (!$req) { $_SESSION['error'] = 'Requisition not found.'; $this->back($id); }
+        if (($req['purchase_head_status'] ?? '') === 'pending') {
+            $_SESSION['error'] = 'Awaiting Purchase Head approval. QC approval is not allowed yet.';
+            $this->back($id);
+        }
 
         $qcAmount = isset($_POST['qc_approved_amount']) && $_POST['qc_approved_amount'] !== '' 
             ? (float)$_POST['qc_approved_amount'] 
@@ -423,6 +492,15 @@ class Con_LaborRequisitionController extends Controller
                     qc_approved_amount = COALESCE(NULLIF(qc_approved_amount, 0), {$finalApprovedAmount}),
                     qc_remarks = COALESCE(NULLIF(qc_remarks, ''), '{$escBypassNote}')
                 WHERE id = " . (int)$id . "
+            ");
+            // Auto-fill bypassed Purchase Head stage (separate query so it never affects the update above)
+            $this->db->query("
+                UPDATE con_labor_requisitions
+                SET purchase_head_status = 'approved',
+                    purchase_head_by = COALESCE(purchase_head_by, {$this->userId}),
+                    purchase_head_at = COALESCE(purchase_head_at, NOW()),
+                    purchase_head_note = COALESCE(NULLIF(purchase_head_note, ''), '{$escBypassNote}')
+                WHERE id = " . (int)$id . " AND purchase_head_status = 'pending'
             ");
         }
 
@@ -537,6 +615,8 @@ class Con_LaborRequisitionController extends Controller
                     $targetRole = 'management';
                     if ($lrStatus === 'pending') {
                         $targetRole = 'pm';
+                    } elseif ($lrStatus === 'pm_approved' && ($req['purchase_head_status'] ?? '') === 'pending') {
+                        $targetRole = 'purchase_head';
                     } elseif ($lrStatus === 'payment_requested') {
                         $targetRole = 'qc';
                     } elseif (in_array($lrStatus, ['qc_approved', 'pm_payment_approved'])) {
@@ -547,6 +627,13 @@ class Con_LaborRequisitionController extends Controller
                     $stmt->execute();
                 }
             } else {
+                // Central approval rows are only created once work is completed (see
+                // ApprovalRequest::syncMissingLaborRequisitions). Do not create a row for the
+                // Purchase Head stage (pm_approved) or a Purchase Head rejection; that stage
+                // is handled on the Labor Requisition page itself.
+                if ($lrStatus === 'pm_approved' || ($lrStatus === 'rejected' && ($req['purchase_head_status'] ?? '') === 'rejected' && empty($req['payment_requested_at']))) {
+                    return;
+                }
                 $status = ($action === 'approved' || $action === 'paid') ? 'approved' : (($action === 'partially_paid') ? 'partially_paid' : (($action === 'rejected') ? 'rejected' : 'pending'));
                 $appRole = ($action === 'paid') ? 'completed' : (($action === 'rejected') ? 'rejected' : (($action === 'approved' || $action === 'partially_paid') ? 'accounts' : ($lrStatus === 'payment_requested' ? 'qc' : ($lrStatus === 'pending' ? 'pm' : 'management'))));
                 $appAmt = ($status === 'approved' || $status === 'partially_paid') ? ($approvedAmount ?: $appAmount) : $appAmount;

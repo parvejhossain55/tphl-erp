@@ -812,29 +812,39 @@ class Con_ContractorBillController extends Controller
         }
 
         $note = trim($_POST['verification_note'] ?? '');
+        $isPurchaseHead = ((int)$this->userRole === 17);
         $data = [
             'status'            => 'verified',
             'verified_by'       => $this->userId,
             'verified_at'       => date('Y-m-d H:i:s'),
             'verification_note' => $note,
         ];
+        if ($isPurchaseHead) {
+            // PM verifier IS Head of Purchase (Role 17) -> Auto-approve Purchase Head stage immediately
+            $data['purchase_head_approved_by_id'] = $this->userId;
+            $data['purchase_head_approved_at'] = date('Y-m-d H:i:s');
+            $data['purchase_head_note'] = $note ?: 'Auto-approved as Head of Purchase (PM Verified)';
+        }
 
         if ($this->billModel->updateStatus($id, $data)) {
-            // Forward approval request to Head of Purchase (Role 17)
+            // Forward approval request: directly to QC if approver is Purchase Head, else purchase_head
+            $nextRole = $isPurchaseHead ? 'qc' : 'purchase_head';
             $stmtAr = $this->db->prepare("
                 UPDATE approval_requests 
-                SET approve_role = 'purchase_head', 
+                SET approve_role = ?, 
                     status = 'pending', 
                     approval_note = ?
                 WHERE source_table = 'contractor_bill_requests' AND source_id = ?
             ");
             if ($stmtAr) {
-                $pmNote = "PM Approved" . (!empty($note) ? ": {$note}" : "");
-                $stmtAr->bind_param('si', $pmNote, $id);
+                $pmNote = "PM Approved" . ($isPurchaseHead ? " & Head of Purchase" : "") . (!empty($note) ? ": {$note}" : "");
+                $stmtAr->bind_param('ssi', $nextRole, $pmNote, $id);
                 $stmtAr->execute();
                 $stmtAr->close();
             }
-            setSuccess('Bill approved by Project Manager & forwarded to Head of Purchase (Role 17)!');
+            setSuccess($isPurchaseHead 
+                ? 'Bill approved by PM & Head of Purchase (Role 17) & forwarded to QC & Internal Audit!' 
+                : 'Bill approved by Project Manager & forwarded to Head of Purchase (Role 17)!');
         } else {
             setError('Verification failed.');
         }
