@@ -41,6 +41,8 @@ return [
     'my-work/delete/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'deleteTask'],
     'my-work/store-task' => ['controller' => 'MyWorkController', 'method' => 'storeTask'],
     'my-work/task-detail/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'taskDetail'],
+    'my-work/task-data/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'taskEditData'],
+    'my-work/update-task/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'updateTask'],
 
     // =========================================================================
     // Controller: EmployeeController

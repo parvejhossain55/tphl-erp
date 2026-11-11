@@ -454,6 +454,19 @@ class MyWorkController extends Controller
             $dueClass = $isOverdue ? 'overdue' : '';
             $dueSubHtml = !empty($dueSub) ? "<div class=\"mw-due-sub {$dueClass}\">{$dueSub}</div>" : '';
 
+            $isOwner = ((int)$t['assigned_by'] === (int)$userId);
+            $actionButtonsHtml = '';
+            if ($isOwner) {
+                $actionButtonsHtml = "
+                    <button type=\"button\" class=\"mw-action-btn edit\" onclick=\"openEditTaskDrawer({$taskId}, event)\" title=\"Edit task\">
+                        <i class=\"fa-solid fa-pen\"></i>
+                    </button>
+                    <button type=\"button\" class=\"mw-action-btn delete\" onclick=\"deleteMyWorkTask({$taskId}, this)\" title=\"Delete task\">
+                        <i class=\"fa-solid fa-trash-can\"></i>
+                    </button>
+                ";
+            }
+
             $html .= "<tr class=\"{$rowClass}\" data-task-id=\"{$taskId}\">
                 <td>
                     <div class=\"d-flex align-items-start\">
@@ -492,15 +505,7 @@ class MyWorkController extends Controller
                 </td>
                 <td style=\"text-align: right;\">
                     <div class=\"mw-actions-group\">
-                        <a href=\"{$baseUrl}/show-task/{$taskId}\" class=\"mw-action-btn view\" title=\"View task\">
-                            <i class=\"fa-solid fa-eye\"></i>
-                        </a>
-                        <a href=\"{$baseUrl}/edit-task/{$taskId}\" class=\"mw-action-btn edit\" title=\"Edit task\">
-                            <i class=\"fa-solid fa-pen\"></i>
-                        </a>
-                        <button type=\"button\" class=\"mw-action-btn delete\" onclick=\"deleteMyWorkTask({$taskId}, this)\" title=\"Delete task\">
-                            <i class=\"fa-solid fa-trash-can\"></i>
-                        </button>
+                        {$actionButtonsHtml}
                     </div>
                 </td>
             </tr>";
@@ -548,13 +553,14 @@ class MyWorkController extends Controller
         }
 
         // Permission check: Task creator (assigned_by), assignee (user_id), or Admin/Management (roles 1, 3, 33)
-        if ((int)$task['assigned_by'] !== $userId && (int)$task['user_id'] !== $userId && !in_array($roleId, [1, 3, 33])) {
+        $isOwner = ((int)$task['assigned_by'] === $userId);
+        if (!$isOwner && !in_array($roleId, [1, 3, 33], true)) {
             if ($isAjax) {
                 header('Content-Type: application/json');
-                echo json_encode(['status' => 'error', 'message' => "You don't have permission to delete this task."]);
+                echo json_encode(['status' => 'error', 'message' => "Only the task owner can delete this task."]);
                 exit;
             }
-            if (function_exists('setError')) setError("You don't have permission to delete this task.");
+            if (function_exists('setError')) setError("Only the task owner can delete this task.");
             header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
             exit;
         }
@@ -834,5 +840,267 @@ class MyWorkController extends Controller
             ],
         ]);
         exit;
+    }
+
+    /**
+     * Fetch raw data for the edit drawer (only owner can edit)
+     */
+    public function taskEditData($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        header('Content-Type: application/json');
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $id = (int)$id;
+
+        if (!$userId) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        $st = $this->db->prepare("SELECT * FROM tasks WHERE id = ?");
+        $st->bind_param("i", $id);
+        $st->execute();
+        $t = $st->get_result()->fetch_assoc();
+
+        if (!$t) {
+            echo json_encode(['status' => 'error', 'message' => 'Task not found.']);
+            exit;
+        }
+
+        $isOwner = ((int)$t['assigned_by'] === $userId);
+        if (!$isOwner && !in_array($roleId, [1, 3, 33], true)) {
+            echo json_encode(['status' => 'error', 'message' => "Only the task owner can edit this task."]);
+            exit;
+        }
+
+        // Parse expected output items from HTML <ul><li> or single text
+        $descRaw = (string)($t['description'] ?? '');
+        $descItems = [];
+        if (preg_match_all('/<li>(.*?)<\/li>/is', $descRaw, $matches)) {
+            foreach ($matches[1] as $item) {
+                $itemClean = trim(html_entity_decode(strip_tags($item)));
+                if ($itemClean !== '') $descItems[] = $itemClean;
+            }
+        }
+        if (empty($descItems) && trim(strip_tags($descRaw)) !== '') {
+            $descItems[] = trim(html_entity_decode(strip_tags($descRaw)));
+        }
+
+        $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
+        $reviewerIds = $ids($t['mentioned_user_ids'] ?? '');
+        $ccIds = $ids($t['cc_user_ids'] ?? '');
+        $collabIds = $ids($t['collaborator_user_ids'] ?? '');
+
+        $deadlineDate = !empty($t['deadline']) ? date('Y-m-d', strtotime($t['deadline'])) : '';
+        $startDate = !empty($t['start_date']) ? date('Y-m-d', strtotime($t['start_date'])) : '';
+        $recurrenceEnd = !empty($t['recurrence_end_date']) ? date('Y-m-d', strtotime($t['recurrence_end_date'])) : '';
+
+        echo json_encode([
+            'status' => 'success',
+            'task' => [
+                'id' => (int)$t['id'],
+                'title' => $t['title'],
+                'assigned_to_id' => (int)$t['user_id'],
+                'deadline' => $deadlineDate,
+                'priority' => $t['priority'] ?? 'medium',
+                'project_id' => !empty($t['project_id']) ? (int)$t['project_id'] : '',
+                'is_recurring' => (int)($t['is_recurring'] ?? 0),
+                'recurrence_type' => $t['recurrence_type'] ?? '',
+                'recurrence_end_date' => $recurrenceEnd,
+                'descriptions' => $descItems,
+                'reviewer_id' => !empty($reviewerIds[0]) ? (int)$reviewerIds[0] : null,
+                'cc_ids' => $ccIds,
+                'collaborator_ids' => $collabIds,
+                'start_date' => $startDate,
+            ]
+        ]);
+        exit;
+    }
+
+    /**
+     * Update task via drawer (AJAX) - only owner can update
+     */
+    public function updateTask($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $id = (int)$id;
+        $isAjax = !empty($_GET['ajax']) || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
+
+        if (!$userId) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+                exit;
+            }
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/login");
+            exit;
+        }
+
+        $stCheck = $this->db->prepare("SELECT * FROM tasks WHERE id = ?");
+        $stCheck->bind_param("i", $id);
+        $stCheck->execute();
+        $existingTask = $stCheck->get_result()->fetch_assoc();
+
+        if (!$existingTask) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Task not found.']);
+                exit;
+            }
+            if (function_exists('setError')) setError("Task not found.");
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            exit;
+        }
+
+        $isOwner = ((int)$existingTask['assigned_by'] === $userId);
+        if (!$isOwner && !in_array($roleId, [1, 3, 33], true)) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => "Only the task owner can edit this task."]);
+                exit;
+            }
+            if (function_exists('setError')) setError("Only the task owner can edit this task.");
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            exit;
+        }
+
+        $title = trim($_POST['title'] ?? '');
+        $assignedToId = (int)($_POST['assigned_to_id'] ?? 0) ?: (int)$existingTask['user_id'];
+
+        if (empty($title)) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Task title is required.']);
+                exit;
+            }
+            if (function_exists('setError')) setError("Task title is required.");
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            exit;
+        }
+
+        $deadline = !empty($_POST['deadline']) ? $_POST['deadline'] : null;
+        $priority = in_array($_POST['priority'] ?? '', ['low', 'medium', 'high', 'urgent'], true) ? $_POST['priority'] : 'medium';
+        $descItems = array_values(array_filter(array_map('trim', (array)($_POST['description'] ?? [])), 'strlen'));
+        $description = count($descItems) > 1
+            ? '<ul>' . implode('', array_map(fn($d) => '<li>' . htmlspecialchars($d) . '</li>', $descItems)) . '</ul>'
+            : ($descItems[0] ?? '');
+        $startDate = !empty($_POST['start_date']) ? $_POST['start_date'] : null;
+
+        $projectId = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
+        $recurrenceType = in_array($_POST['recurrence_type'] ?? '', ['daily', 'weekly', 'monthly'], true) ? $_POST['recurrence_type'] : null;
+        $isRecurring = !empty($_POST['is_recurring']) ? 1 : 0;
+        if ($isRecurring && $recurrenceType === null) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Please select a repeat type for the recurring task.']);
+                exit;
+            }
+            if (function_exists('setError')) setError("Please select a repeat type for the recurring task.");
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            exit;
+        }
+        if (!$isRecurring) { $recurrenceType = null; }
+        $recurrenceEnd = ($isRecurring && !empty($_POST['recurrence_end_date'])) ? $_POST['recurrence_end_date'] : null;
+
+        $reviewerId = !empty($_POST['reviewer_id']) ? (int)$_POST['reviewer_id'] : null;
+        $toIdList = fn($v) => array_values(array_unique(array_filter(array_map('intval', (array)$v))));
+        $ccIds = $toIdList($_POST['cc_ids'] ?? []);
+        $collaboratorIds = $toIdList($_POST['collaborator_ids'] ?? []);
+
+        $mentionedUserIds = [];
+        if ($reviewerId) {
+            $mentionedUserIds[] = $reviewerId;
+        }
+        $mentionedJson = !empty($mentionedUserIds) ? json_encode($mentionedUserIds) : null;
+        $ccJson = !empty($ccIds) ? json_encode($ccIds) : null;
+        $collaboratorJson = !empty($collaboratorIds) ? json_encode($collaboratorIds) : null;
+
+        // Attachment handling (keep existing if none uploaded)
+        $attachmentImage = $existingTask['attachment_image'];
+        if (!empty($_FILES['attachment']['name'])) {
+            $uploadDir = __DIR__ . '/../../public/uploads/tasks/';
+            if (!is_dir($uploadDir)) {
+                @mkdir($uploadDir, 0777, true);
+            }
+            $ext = pathinfo($_FILES['attachment']['name'], PATHINFO_EXTENSION);
+            $fileName = time() . '_' . uniqid() . '.' . $ext;
+            $targetPath = $uploadDir . $fileName;
+            if (@move_uploaded_file($_FILES['attachment']['tmp_name'], $targetPath)) {
+                $attachmentImage = $fileName;
+            }
+        }
+
+        $stmt = $this->db->prepare("
+            UPDATE tasks SET
+                title = ?,
+                user_id = ?,
+                description = ?,
+                start_date = ?,
+                deadline = ?,
+                priority = ?,
+                mentioned_user_ids = ?,
+                cc_user_ids = ?,
+                attachment_image = ?,
+                project_id = ?,
+                is_recurring = ?,
+                recurrence_type = ?,
+                recurrence_end_date = ?,
+                collaborator_user_ids = ?,
+                updated_at = NOW()
+            WHERE id = ?
+        ");
+
+        $stmt->bind_param(
+            "sisssssssiisssi",
+            $title,
+            $assignedToId,
+            $description,
+            $startDate,
+            $deadline,
+            $priority,
+            $mentionedJson,
+            $ccJson,
+            $attachmentImage,
+            $projectId,
+            $isRecurring,
+            $recurrenceType,
+            $recurrenceEnd,
+            $collaboratorJson,
+            $id
+        );
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'Task updated successfully.',
+                    'task_id' => $id
+                ]);
+                exit;
+            }
+            if (function_exists('setSuccess')) setSuccess("Task updated successfully.");
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            exit;
+        } else {
+            $err = $stmt->error;
+            $stmt->close();
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Failed to update task: ' . $err]);
+                exit;
+            }
+            if (function_exists('setError')) setError("Failed to update task.");
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            exit;
+        }
     }
 }

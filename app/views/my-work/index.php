@@ -1510,15 +1510,14 @@ $todayDateFormatted = date('j F');
                                     </td>
                                     <td style="text-align: right;">
                                         <div class="mw-actions-group">
-                                            <a href="<?= $base_url ?>/show-task/<?= $taskId ?>" class="mw-action-btn view" title="View task">
-                                                <i class="fa-solid fa-eye"></i>
-                                            </a>
-                                            <a href="<?= $base_url ?>/edit-task/<?= $taskId ?>" class="mw-action-btn edit" title="Edit task">
-                                                <i class="fa-solid fa-pen"></i>
-                                            </a>
-                                            <button type="button" class="mw-action-btn delete" onclick="deleteMyWorkTask(<?= $taskId ?>, this)" title="Delete task">
-                                                <i class="fa-solid fa-trash-can"></i>
-                                            </button>
+                                            <?php if ((int)$t['assigned_by'] === (int)$userId): ?>
+                                                <button type="button" class="mw-action-btn edit" onclick="openEditTaskDrawer(<?= $taskId ?>, event)" title="Edit task">
+                                                    <i class="fa-solid fa-pen"></i>
+                                                </button>
+                                                <button type="button" class="mw-action-btn delete" onclick="deleteMyWorkTask(<?= $taskId ?>, this)" title="Delete task">
+                                                    <i class="fa-solid fa-trash-can"></i>
+                                                </button>
+                                            <?php endif; ?>
                                         </div>
                                     </td>
                                 </tr>
@@ -1623,22 +1622,23 @@ $todayDateFormatted = date('j F');
     <!-- Header -->
     <div class="mw-drawer-header">
         <div class="mw-drawer-title-row">
-            <h3 class="mw-drawer-title">Create task</h3>
+            <h3 class="mw-drawer-title" id="mwDrawerTitle">Create task</h3>
             <button type="button" class="mw-drawer-close" id="btnCloseCreateTask" title="Close">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
-        <p class="mw-drawer-subtitle">Define the output, owner and deadline.</p>
+        <p class="mw-drawer-subtitle" id="mwDrawerSubtitle">Define the output, owner and deadline.</p>
     </div>
 
     <!-- Status & Required Meta Bar -->
     <div class="mw-drawer-meta-bar">
-        <span class="mw-status-badge-todo">Status: To do</span>
+        <span class="mw-status-badge-todo" id="mwDrawerStatusBadge">Status: To do</span>
         <span class="mw-required-note">Required fields marked <span class="text-danger">*</span></span>
     </div>
 
     <!-- Form & Body -->
     <form id="mwCreateTaskForm" enctype="multipart/form-data" class="d-flex flex-column flex-grow-1 overflow-hidden" style="margin: 0;">
+        <input type="hidden" name="edit_task_id" id="drawerEditTaskId" value="">
         <div class="mw-drawer-body">
             <!-- Task Title -->
             <div class="mw-form-group">
@@ -2099,8 +2099,21 @@ document.addEventListener('DOMContentLoaded', function () {
     const btnSubmitDrawer = document.getElementById('btnSubmitDrawer');
     const btnSaveDraft = document.getElementById('btnSaveDraft');
 
-    function openDrawer() {
+    function openDrawer(mode = 'create') {
         if (drawer && backdrop) {
+            const isEdit = (mode === 'edit');
+            const drawerTitle = document.getElementById('mwDrawerTitle');
+            const drawerSubtitle = document.getElementById('mwDrawerSubtitle');
+            const editIdInput = document.getElementById('drawerEditTaskId');
+            if (drawerTitle) drawerTitle.innerText = isEdit ? 'Edit task' : 'Create task';
+            if (drawerSubtitle) drawerSubtitle.innerText = isEdit ? 'Update details, owner and deadline.' : 'Define the output, owner and deadline.';
+            if (btnSubmitDrawer) {
+                btnSubmitDrawer.innerHTML = isEdit ? '<i class="fa-solid fa-check me-1"></i> Update task' : '<i class="fa-solid fa-plus me-1"></i> Create & assign';
+            }
+            if (btnSaveDraft) {
+                btnSaveDraft.style.display = isEdit ? 'none' : '';
+            }
+
             drawer.classList.add('show');
             backdrop.classList.add('show');
             document.body.style.overflow = 'hidden';
@@ -2109,18 +2122,168 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    function resetDrawerForm() {
+        if (!formCreateTask) return;
+        formCreateTask.reset();
+        const editIdInput = document.getElementById('drawerEditTaskId');
+        if (editIdInput) editIdInput.value = '';
+        if (expectedList) {
+            expectedList.querySelectorAll('.mw-expected-row').forEach((r, idx) => { if (idx > 0) r.remove(); });
+        }
+        if (rowRecurrenceEnd) rowRecurrenceEnd.style.display = 'none';
+        const selRec = document.getElementById('taskRecurrenceType');
+        if (selRec) selRec.required = false;
+        document.querySelectorAll('.mw-multi').forEach(b => {
+            const s = b.querySelector('.mw-multi-search');
+            if (s) s.value = '';
+            b.querySelectorAll('.mw-multi-item').forEach(l => l.style.display = '');
+            if (b._refresh) b._refresh();
+        });
+        updateNoticeBox();
+    }
+
     function closeDrawer() {
         if (drawer && backdrop) {
             drawer.classList.remove('show');
             backdrop.classList.remove('show');
             document.body.style.overflow = '';
+            resetDrawerForm();
+            const drawerTitle = document.getElementById('mwDrawerTitle');
+            if (drawerTitle) drawerTitle.innerText = 'Create task';
+            if (btnSubmitDrawer) btnSubmitDrawer.innerHTML = '<i class="fa-solid fa-plus me-1"></i> Create & assign';
+            if (btnSaveDraft) btnSaveDraft.style.display = '';
         }
     }
 
-    if (btnOpenCreateTask) btnOpenCreateTask.addEventListener('click', openDrawer);
+    if (btnOpenCreateTask) {
+        btnOpenCreateTask.addEventListener('click', function() {
+            resetDrawerForm();
+            openDrawer('create');
+        });
+    }
     if (btnCloseCreateTask) btnCloseCreateTask.addEventListener('click', closeDrawer);
     if (btnCancelDrawer) btnCancelDrawer.addEventListener('click', closeDrawer);
     if (backdrop) backdrop.addEventListener('click', closeDrawer);
+
+    // Global function to open Edit Drawer for a Task
+    window.openEditTaskDrawer = function(taskId, event) {
+        if (event) {
+            event.stopPropagation();
+            event.preventDefault();
+        }
+        resetDrawerForm();
+        const editIdInput = document.getElementById('drawerEditTaskId');
+        if (editIdInput) editIdInput.value = taskId;
+        openDrawer('edit');
+
+        // Show loading state in title field
+        const titleInput = document.getElementById('drawerTaskTitle');
+        if (titleInput) titleInput.placeholder = 'Loading task details...';
+
+        fetch(`${baseUrl}/my-work/task-data/${taskId}`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success' && data.task) {
+                const t = data.task;
+                if (titleInput) {
+                    titleInput.value = t.title || '';
+                    titleInput.placeholder = 'Client ledger: verify opening balances';
+                }
+                const deadlineInput = document.getElementById('drawerDeadline');
+                if (deadlineInput) deadlineInput.value = t.deadline || '';
+
+                const startDateInput = formCreateTask.querySelector('input[name="start_date"]');
+                if (startDateInput) startDateInput.value = t.start_date || '';
+
+                const prioritySelect = formCreateTask.querySelector('select[name="priority"]');
+                if (prioritySelect && t.priority) prioritySelect.value = t.priority;
+
+                const projectSelect = formCreateTask.querySelector('select[name="project_id"]');
+                if (projectSelect) projectSelect.value = t.project_id || '';
+
+                // Recurring
+                const chkRec = document.getElementById('chkIsRecurring');
+                if (chkRec) {
+                    chkRec.checked = (t.is_recurring === 1);
+                    if (rowRecurrenceEnd) rowRecurrenceEnd.style.display = chkRec.checked ? 'flex' : 'none';
+                    const selRec = document.getElementById('taskRecurrenceType');
+                    if (selRec) {
+                        selRec.value = t.recurrence_type || '';
+                        selRec.required = chkRec.checked;
+                    }
+                    const recEndInput = formCreateTask.querySelector('input[name="recurrence_end_date"]');
+                    if (recEndInput) recEndInput.value = t.recurrence_end_date || '';
+                }
+
+                // Expected output rows
+                if (expectedList) {
+                    expectedList.querySelectorAll('.mw-expected-row').forEach((r, idx) => { if (idx > 0) r.remove(); });
+                    const firstTextarea = expectedList.querySelector('textarea');
+                    const descs = Array.isArray(t.descriptions) && t.descriptions.length ? t.descriptions : [''];
+                    if (firstTextarea) firstTextarea.value = descs[0] || '';
+                    for (let i = 1; i < descs.length; i++) {
+                        const row = document.createElement('div');
+                        row.className = 'd-flex align-items-start gap-2 mb-2 mw-expected-row';
+                        row.innerHTML = `<textarea name="description[]" class="mw-form-textarea" rows="1" placeholder="Another expected output" required></textarea>
+                            <button type="button" class="mw-btn-create" title="Remove" style="white-space:nowrap;background:#C92A2A;"><i class="fa-solid fa-xmark"></i></button>`;
+                        row.querySelector('textarea').value = descs[i];
+                        row.querySelector('button').addEventListener('click', () => row.remove());
+                        expectedList.appendChild(row);
+                    }
+                }
+
+                // Assigned To (single select radio)
+                const boxAssignedTo = document.getElementById('taskAssignedToSelect');
+                if (boxAssignedTo && t.assigned_to_id) {
+                    boxAssignedTo.querySelectorAll('input[type=radio]').forEach(r => {
+                        r.checked = (parseInt(r.value, 10) === parseInt(t.assigned_to_id, 10));
+                    });
+                    if (boxAssignedTo._refresh) boxAssignedTo._refresh();
+                }
+
+                // Reviewer (single select radio)
+                const boxReviewer = document.getElementById('taskReviewerSelect');
+                if (boxReviewer) {
+                    boxReviewer.querySelectorAll('input[type=radio]').forEach(r => {
+                        r.checked = (t.reviewer_id && parseInt(r.value, 10) === parseInt(t.reviewer_id, 10));
+                    });
+                    if (boxReviewer._refresh) boxReviewer._refresh();
+                }
+
+                // CC (multiple select checkbox)
+                const boxCc = document.querySelector('.mw-multi[data-placeholder="Select CC..."]');
+                if (boxCc) {
+                    const ccIds = Array.isArray(t.cc_ids) ? t.cc_ids.map(Number) : [];
+                    boxCc.querySelectorAll('input[type=checkbox]').forEach(c => {
+                        c.checked = ccIds.includes(parseInt(c.value, 10));
+                    });
+                    if (boxCc._refresh) boxCc._refresh();
+                }
+
+                // Collaborators (multiple select checkbox)
+                const boxCollab = document.querySelector('.mw-multi[data-placeholder="Select Collaborators..."]');
+                if (boxCollab) {
+                    const colIds = Array.isArray(t.collaborator_ids) ? t.collaborator_ids.map(Number) : [];
+                    boxCollab.querySelectorAll('input[type=checkbox]').forEach(c => {
+                        c.checked = colIds.includes(parseInt(c.value, 10));
+                    });
+                    if (boxCollab._refresh) boxCollab._refresh();
+                }
+
+                updateNoticeBox();
+            } else {
+                showMwToast(data.message || 'Failed to load task details.', 'error');
+                closeDrawer();
+            }
+        })
+        .catch(err => {
+            console.error('Error fetching edit task data:', err);
+            showMwToast('Could not load task details for editing.', 'error');
+            closeDrawer();
+        });
+    };
 
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && drawer && drawer.classList.contains('show')) {
@@ -2358,14 +2521,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 !confirm('Assignee and Reviewer are the same person. Continue?')) {
                 return;
             }
+            const editTaskId = document.getElementById('drawerEditTaskId')?.value;
+            const isEditing = !!(editTaskId && editTaskId.trim() !== '');
+
             if (btnSubmitDrawer) {
                 btnSubmitDrawer.disabled = true;
-                btnSubmitDrawer.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Creating...';
+                btnSubmitDrawer.innerHTML = isEditing
+                    ? '<i class="fa-solid fa-spinner fa-spin me-1"></i> Updating...'
+                    : '<i class="fa-solid fa-spinner fa-spin me-1"></i> Creating...';
             }
 
             const formData = new FormData(formCreateTask);
+            const targetUrl = isEditing
+                ? `${baseUrl}/my-work/update-task/${encodeURIComponent(editTaskId)}?ajax=1`
+                : `${baseUrl}/my-work/store-task?ajax=1`;
 
-            fetch(`${baseUrl}/my-work/store-task?ajax=1`, {
+            fetch(targetUrl, {
                 method: 'POST',
                 body: formData,
                 headers: {
@@ -2380,35 +2551,23 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(data => {
                 if (data.status === 'success') {
                     closeDrawer();
-                    formCreateTask.reset();
-                    if (expectedList) {
-                        expectedList.querySelectorAll('.mw-expected-row').forEach((r, idx) => { if (idx > 0) r.remove(); });
-                    }
-                    if (rowRecurrenceEnd) rowRecurrenceEnd.style.display = 'none';
-                    const selRec = document.getElementById('taskRecurrenceType');
-                    if (selRec) selRec.required = false;
-                    document.querySelectorAll('.mw-multi').forEach(b => {
-                        const s = b.querySelector('.mw-multi-search');
-                        if (s) s.value = '';
-                        b.querySelectorAll('.mw-multi-item').forEach(l => l.style.display = '');
-                        if (b._refresh) b._refresh();
-                    });
-                    updateNoticeBox();
-                    showMwToast(data.message || 'Task created and assigned successfully.', 'success');
+                    showMwToast(data.message || (isEditing ? 'Task updated successfully.' : 'Task created and assigned successfully.'), 'success');
                     // Instant live refresh of workspace table & counters
                     fetchWorkspaceData();
                 } else {
-                    showMwToast(data.message || 'Failed to create task.', 'error');
+                    showMwToast(data.message || (isEditing ? 'Failed to update task.' : 'Failed to create task.'), 'error');
                 }
             })
             .catch(err => {
-                console.error('Error creating task:', err);
-                showMwToast(err.message || 'An error occurred while creating the task.', 'error');
+                console.error(isEditing ? 'Error updating task:' : 'Error creating task:', err);
+                showMwToast(err.message || (isEditing ? 'An error occurred while updating the task.' : 'An error occurred while creating the task.'), 'error');
             })
             .finally(() => {
                 if (btnSubmitDrawer) {
                     btnSubmitDrawer.disabled = false;
-                    btnSubmitDrawer.innerHTML = '<i class="fa-solid fa-plus me-1"></i> Create & assign';
+                    btnSubmitDrawer.innerHTML = isEditing
+                        ? '<i class="fa-solid fa-check me-1"></i> Update task'
+                        : '<i class="fa-solid fa-plus me-1"></i> Create & assign';
                 }
             });
         });
