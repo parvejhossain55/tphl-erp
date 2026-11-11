@@ -2474,6 +2474,15 @@ public function showCedTransactionForm($bookingId = null)
         }
     }
 
+    // Get active company bank accounts
+    $companyBanks = [];
+    $cbQuery = $this->db->query("SELECT id, bank_name, account_name, account_number, status FROM company_bank_accounts WHERE status = 'active' ORDER BY bank_name ASC");
+    if ($cbQuery) {
+        while ($row = $cbQuery->fetch_assoc()) {
+            $companyBanks[] = $row;
+        }
+    }
+
     $this->view("ced/ced-cash-in-form", [
         "current_route"               => "ced-add-transaction-form",
         "page_title"                  => "CED Add Transaction - " . $clientDetails['client_name'],
@@ -2484,6 +2493,7 @@ public function showCedTransactionForm($bookingId = null)
         "virtualEmiSchedule"          => $virtualEmiSchedule,
         "registrationPaid"            => $registrationPaid,
         "managementUsers"             => $managementUsers,
+        "companyBanks"                => $companyBanks,
         "formRemainingRegistration"   => $formRemainingRegistration,
         "formRemainingBooking"        => $formRemainingBooking,
         "allRegistrationAndLandshare" => $allRegistrationAndLandshare,
@@ -2912,6 +2922,15 @@ public function showAddTransactionForm($bookingId = null)
         }
     }
 
+    // Get active company bank accounts
+    $companyBanks = [];
+    $cbQuery = $this->db->query("SELECT id, bank_name, account_name, account_number, status FROM company_bank_accounts WHERE status = 'active' ORDER BY bank_name ASC");
+    if ($cbQuery) {
+        while ($row = $cbQuery->fetch_assoc()) {
+            $companyBanks[] = $row;
+        }
+    }
+
     $this->view("accounts/cashIn/client-cash-in-form", [
         "current_route" => "client-cash-in-form",
         "page_title" => "Add Transaction - " . $clientDetails['client_name'],
@@ -2919,6 +2938,7 @@ public function showAddTransactionForm($bookingId = null)
         "bookingId" => $bookingId,
         "registrationPaid" => $registrationPaid,
         "managementUsers" => $managementUsers,
+        "companyBanks" => $companyBanks,
         "formRemainingRegistration" => $formRemainingRegistration,
         "formRemainingBooking" => $formRemainingBooking,
         "allRegistrationAndLandshare" => $allRegistrationAndLandshare

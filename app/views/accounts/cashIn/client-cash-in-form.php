@@ -346,7 +346,12 @@ if (!empty($outstandingDues)) {
                             <div class="from__input-box">
                                 <label class="form__input-title">Transfer To / Company Bank <span>*</span></label>
                                 <select name="bank_id" id="bankSelect" class="form-select">
-                                    <option value="">-- Loading company banks... --</option>
+                                    <option value="">-- Select Transfer To / Company Bank --</option>
+                                    <?php if (!empty($companyBanks)): ?>
+                                        <?php foreach ($companyBanks as $b): ?>
+                                            <option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['bank_name'] . ' — ' . $b['account_name'] . (!empty($b['account_number']) ? ' (' . $b['account_number'] . ')' : '')) ?></option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
                                 </select>
                                 <small class="text-muted">Managed in <a href="<?= $GLOBALS['base_url'] ?>/company-bank-accounts" target="_blank">Company Bank Manage</a></small>
                             </div>
@@ -1078,38 +1083,39 @@ if (!empty($outstandingDues)) {
         }
 
         // Initialize on page load
-        if (totalBookingMoneyInput) {
-            totalBookingMoneyInput.addEventListener('input', function() {
-                updateAmountField();
-            });
-        }
         updateAmountField();
         controlPartiallyPaidStatus();
-
 
         // Trigger payment method change to set initial state
         if (paymentMethod) {
             paymentMethod.dispatchEvent(new Event('change'));
         }
 
-        // Load company banks for AJAX dropdown
-        fetch('<?= $GLOBALS['base_url'] ?>/get-company-banks')
-            .then(r => r.json())
-            .then(data => {
-                const sel = document.getElementById('bankSelect');
-                if (!sel) return;
-                sel.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
-                (data.banks || []).forEach(b => {
-                    const opt = document.createElement('option');
-                    opt.value = b.id;
-                    opt.textContent = b.bank_name + ' — ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
-                    sel.appendChild(opt);
+        // Initialize company banks list
+        window.companyBanksList = <?= json_encode($companyBanks ?? []) ?>;
+
+        // If not already populated server-side, load company banks via AJAX
+        const existingBankOptions = document.getElementById('bankSelect')?.querySelectorAll('option');
+        if (!existingBankOptions || existingBankOptions.length <= 1) {
+            fetch('<?= $GLOBALS['base_url'] ?>/get-company-banks')
+                .then(r => r.json())
+                .then(data => {
+                    window.companyBanksList = data.banks || [];
+                    const sel = document.getElementById('bankSelect');
+                    if (!sel) return;
+                    sel.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
+                    (data.banks || []).forEach(b => {
+                        const opt = document.createElement('option');
+                        opt.value = b.id;
+                        opt.textContent = b.bank_name + ' — ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
+                        sel.appendChild(opt);
+                    });
+                })
+                .catch(() => {
+                    const sel = document.getElementById('bankSelect');
+                    if (sel && sel.options.length <= 1) sel.innerHTML = '<option value="">Company Bank Accounts unavailable</option>';
                 });
-            })
-            .catch(() => {
-                const sel = document.getElementById('bankSelect');
-                if (sel) sel.innerHTML = '<option value="">Company Bank Accounts unavailable</option>';
-            });
+        }
 
         // File preview thumbnails
         const proofFilesInput = document.getElementById('proofFiles');

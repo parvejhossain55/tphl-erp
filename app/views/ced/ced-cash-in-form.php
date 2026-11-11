@@ -583,7 +583,12 @@ if (!empty($virtualEmiSchedule)) {
                                 <label class="form__input-title">Transfer To / Company Bank <span>*</span></label>
                                 <div class="input-group">
                                     <select name="bank_id" id="bankSelect" class="form-select">
-                                        <option value="">-- Loading banks... --</option>
+                                        <option value="">-- Select Transfer To / Company Bank --</option>
+                                        <?php if (!empty($companyBanks)): ?>
+                                            <?php foreach ($companyBanks as $b): ?>
+                                                <option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['bank_name'] . ' - ' . $b['account_name'] . (!empty($b['account_number']) ? ' (' . $b['account_number'] . ')' : '')) ?></option>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
                                     </select>
                                     <button type="button" class="btn btn-outline-primary" id="addCompanyBankBtn" title="Add Company Bank"><i class="fa-light fa-plus"></i></button>
                                     <button type="button" class="btn btn-outline-secondary" id="editCompanyBankBtn" title="Edit Selected Bank" style="display:none;"><i class="fa-light fa-pen-to-square"></i></button>
@@ -1457,25 +1462,31 @@ if (!empty($virtualEmiSchedule)) {
             paymentMethod.dispatchEvent(new Event('change'));
         }
 
-        // Load banks
-        fetch('<?= $GLOBALS['base_url'] ?>/get-company-banks')
-            .then(r => r.json())
-            .then(data => {
-                window.companyBanksList = data.banks || [];
-                const sel = document.getElementById('bankSelect');
-                if (!sel) return;
-                sel.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
-                window.companyBanksList.forEach(b => {
-                    const opt = document.createElement('option');
-                    opt.value = b.id;
-                    opt.textContent = b.bank_name + ' - ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
-                    sel.appendChild(opt);
+        // Initialize company banks list
+        window.companyBanksList = <?= json_encode($companyBanks ?? []) ?>;
+
+        // If not already populated server-side, load company banks via AJAX
+        const existingCedBankOptions = document.getElementById('bankSelect')?.querySelectorAll('option');
+        if (!existingCedBankOptions || existingCedBankOptions.length <= 1) {
+            fetch('<?= $GLOBALS['base_url'] ?>/get-company-banks')
+                .then(r => r.json())
+                .then(data => {
+                    window.companyBanksList = data.banks || [];
+                    const sel = document.getElementById('bankSelect');
+                    if (!sel) return;
+                    sel.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
+                    window.companyBanksList.forEach(b => {
+                        const opt = document.createElement('option');
+                        opt.value = b.id;
+                        opt.textContent = b.bank_name + ' - ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
+                        sel.appendChild(opt);
+                    });
+                })
+                .catch(() => {
+                    const sel = document.getElementById('bankSelect');
+                    if (sel && sel.options.length <= 1) sel.innerHTML = '<option value="">Bank Registry unavailable</option>';
                 });
-            })
-            .catch(() => {
-                const sel = document.getElementById('bankSelect');
-                if (sel) sel.innerHTML = '<option value="">Bank Registry unavailable</option>';
-            });
+        }
 
         // File preview thumbnails
         const proofFilesInput = document.getElementById('proofFiles');
