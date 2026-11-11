@@ -212,6 +212,8 @@ $todayDateFormatted = date('j F');
 .mw-td-btn.primary { margin-left: auto; background: #EDF2EF; border-color: #EDF2EF; color: #8A9992; }
 .mw-td-btn.green { background: #087F5B; border-color: #087F5B; color: #FFFFFF; }
 .mw-td-btn.green:hover { background: #076b4d; }
+.mw-td-btn:disabled,
+.mw-td-btn[disabled] { background: #F5F7F6 !important; border-color: #E2EAE5 !important; color: #A3B3AA !important; cursor: not-allowed !important; opacity: 0.75; box-shadow: none !important; }
 .mw-td-note { font-family: 'Inter', sans-serif; font-size: 11.5px; line-height: 15px; color: #65776F; margin-top: 8px; }
 /* Reviewer specific styling */
 .mw-rev-banner { background: #F4EFFA; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; }
