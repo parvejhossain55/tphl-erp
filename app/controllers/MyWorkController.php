@@ -952,9 +952,6 @@ class MyWorkController extends Controller
                 $userPhoto = $base . '/public/uploads/employees/' . rawurlencode($ar['emp_photo']);
             } elseif (!empty($ar['user_photo']) && file_exists(dirname(__DIR__, 2) . '/public/uploads/users/' . $ar['user_photo'])) {
                 $userPhoto = $base . '/public/uploads/users/' . rawurlencode($ar['user_photo']);
-            } else {
-                // Default avatar photo
-                $userPhoto = $base . '/public/assets/images/avatar/avatar.png';
             }
 
             $attachmentUrl = null;

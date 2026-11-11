@@ -1668,8 +1668,8 @@ $todayDateFormatted = date('j F');
                         Next action: <?= htmlspecialchars($blockedTask['assigned_by_name'] ?? 'Team') ?> · <?= !empty($blockedTask['deadline']) ? date('j M', strtotime($blockedTask['deadline'])) : 'Soon' ?>
                     </div>
 
-                    <a href="<?= $base_url ?>/show-task/<?= (int)$blockedTask['id'] ?>" class="mw-btn-opentask">
-                        <i class="fa-solid  fa-arrow-right"></i>
+                    <a href="javascript:void(0);" onclick="openTaskDetail(<?= (int)$blockedTask['id'] ?>); return false;" class="mw-btn-opentask">
+                        <i class="fa-solid fa-arrow-right"></i>
                         <span>Open task</span>
                     </a>
                 <?php else: ?>
@@ -2798,28 +2798,25 @@ document.addEventListener('DOMContentLoaded', function () {
                             </div>`;
                     }
                     
-                    if (isSystem) {
-                        return `
-                            <div class="mw-act-system">
-                                ${tdEsc(act.activity)}
-                            </div>`;
-                    } else {
-                        const avatarHtml = act.user_photo
-                            ? `<img src="${tdEsc(act.user_photo)}" alt="${tdEsc(act.user_name)}" class="mw-act-avatar" style="object-fit:cover;" onerror="this.outerHTML='<span class=\\'mw-act-avatar\\'>${tdEsc(initial)}</span>'">`
-                            : `<span class="mw-act-avatar">${tdEsc(initial)}</span>`;
+                    const avatarHtml = act.user_photo
+                        ? `<img src="${tdEsc(act.user_photo)}" alt="${tdEsc(act.user_name)}" class="mw-act-avatar" style="object-fit:cover;" onerror="this.outerHTML='<span class=\\'mw-act-avatar\\'>${tdEsc(initial)}</span>'">`
+                        : `<span class="mw-act-avatar">${tdEsc(initial)}</span>`;
 
-                        return `
-                            <div class="mw-activity-item">
-                                ${avatarHtml}
-                                <div style="flex:1;">
-                                    <div class="mw-act-head">
-                                        ${tdEsc(act.user_name)} <span class="mw-act-time">· ${tdEsc(act.created_at)}</span>
-                                    </div>
-                                    <div class="mw-act-comment">${formattedActivity}</div>
-                                    ${attachChip}
+                    const bodyContent = isSystem
+                        ? `<div class="mw-act-comment" style="color:#65776F; font-style:italic;">${formattedActivity}</div>`
+                        : `<div class="mw-act-comment">${formattedActivity}</div>`;
+
+                    return `
+                        <div class="mw-activity-item">
+                            ${avatarHtml}
+                            <div style="flex:1;">
+                                <div class="mw-act-head">
+                                    ${tdEsc(act.user_name)} <span class="mw-act-time">· ${tdEsc(act.created_at)}</span>
                                 </div>
-                            </div>`;
-                    }
+                                ${bodyContent}
+                                ${attachChip}
+                            </div>
+                        </div>`;
                 }).join('') +
                 `</div>`;
         } else {
