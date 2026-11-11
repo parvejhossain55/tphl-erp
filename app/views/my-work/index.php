@@ -1471,7 +1471,7 @@ $todayDateFormatted = date('j F');
                                         <div class="d-flex align-items-start">
                                             <input type="checkbox" class="mw-task-check" <?= $isCompleted ? 'checked' : '' ?> disabled>
                                             <div>
-                                                <a href="<?= $base_url ?>/show-task/<?= $taskId ?>" class="mw-task-name">
+                                                <a href="javascript:void(0);" onclick="openTaskDetail(<?= $taskId ?>); return false;" class="mw-task-name">
                                                     <?= htmlspecialchars($t['title']) ?>
                                                 </a>
                                                 <?php if ($isBlocked): ?>
@@ -1817,7 +1817,9 @@ $todayDateFormatted = date('j F');
         <div class="mw-td-foot-actions">
             <button type="button" class="mw-td-btn" disabled><i class="fa-regular fa-clock me-1"></i> Log work</button>
             <button type="button" class="mw-td-btn" disabled>Request extension</button>
-            <button type="button" class="mw-td-btn primary" disabled>Submit for review</button>
+            <button type="button" class="mw-td-btn primary" id="btnDrawerCompleteTask" disabled>
+                <i class="fa-solid fa-check me-1"></i> Complete Task
+            </button>
         </div>
         <div class="mw-td-note" id="mwTdNote"></div>
     </div>
@@ -2311,7 +2313,11 @@ document.addEventListener('DOMContentLoaded', function () {
         tdEl.setAttribute('aria-hidden', 'true');
     }
 
+    const btnDrawerCompleteTask = document.getElementById('btnDrawerCompleteTask');
+    let currentDetailTaskId = null;
+
     function renderTaskDetail(t) {
+        currentDetailTaskId = t.id;
         const tabsHtml = ['Overview', 'Activity', 'Work log'].map((n, i) =>
             `<button type="button" class="mw-td-tab ${i === 0 ? 'active' : ''}" data-pane="${i}">${n}</button>`).join('');
         const blocked = t.blocked ? `
@@ -2356,9 +2362,65 @@ document.addEventListener('DOMContentLoaded', function () {
             tdBody.querySelectorAll('.mw-td-tab').forEach(x => x.classList.toggle('active', x === b));
             tdBody.querySelectorAll('[data-td-pane]').forEach(p => p.style.display = p.dataset.tdPane === b.dataset.pane ? '' : 'none');
         }));
+
+        // Enable / Disable Complete Task Button
+        if (btnDrawerCompleteTask) {
+            if (t.is_completed) {
+                btnDrawerCompleteTask.disabled = true;
+                btnDrawerCompleteTask.innerHTML = '<i class="fa-solid fa-check-double me-1"></i> Completed';
+                btnDrawerCompleteTask.style.background = '#EDF2EF';
+                btnDrawerCompleteTask.style.color = '#087F5B';
+                btnDrawerCompleteTask.style.borderColor = '#EDF2EF';
+            } else if (t.can_complete) {
+                btnDrawerCompleteTask.disabled = false;
+                const hasReviewers = (Array.isArray(t.reviewers) && t.reviewers.length > 0);
+                btnDrawerCompleteTask.innerHTML = hasReviewers
+                    ? '<i class="fa-solid fa-check me-1"></i> Submit for review'
+                    : '<i class="fa-solid fa-check me-1"></i> Complete Task';
+                btnDrawerCompleteTask.style.background = '#087F5B';
+                btnDrawerCompleteTask.style.color = '#fff';
+                btnDrawerCompleteTask.style.borderColor = '#087F5B';
+            } else {
+                btnDrawerCompleteTask.disabled = true;
+                btnDrawerCompleteTask.innerHTML = '<i class="fa-solid fa-check me-1"></i> Complete Task';
+                btnDrawerCompleteTask.style.background = '#EDF2EF';
+                btnDrawerCompleteTask.style.color = '#8A9992';
+                btnDrawerCompleteTask.style.borderColor = '#EDF2EF';
+            }
+        }
     }
 
-    function openTaskDetail(taskId) {
+    if (btnDrawerCompleteTask) {
+        btnDrawerCompleteTask.addEventListener('click', function() {
+            if (!currentDetailTaskId) return;
+            btnDrawerCompleteTask.disabled = true;
+            btnDrawerCompleteTask.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Updating...';
+
+            fetch(`${baseUrl}/my-work/complete-task/${currentDetailTaskId}?ajax=1`, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showMwToast(data.message || 'Task marked as completed successfully.', 'success');
+                    openTaskDetail(currentDetailTaskId);
+                    fetchWorkspaceData();
+                } else {
+                    showMwToast(data.message || 'Failed to complete task.', 'error');
+                    btnDrawerCompleteTask.disabled = false;
+                    btnDrawerCompleteTask.innerHTML = '<i class="fa-solid fa-check me-1"></i> Complete Task';
+                }
+            })
+            .catch(err => {
+                console.error('Error completing task:', err);
+                showMwToast('An error occurred while updating the task status.', 'error');
+                btnDrawerCompleteTask.disabled = false;
+                btnDrawerCompleteTask.innerHTML = '<i class="fa-solid fa-check me-1"></i> Complete Task';
+            });
+        });
+    }
+    window.openTaskDetail = function(taskId) {
         if (!tdEl) return;
         tdBody.innerHTML = '<div class="mw-td-empty" style="padding:24px 0;">Loading…</div>';
         tdEl.classList.add('show');
@@ -2371,7 +2433,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 else tdBody.innerHTML = `<div class="mw-td-empty" style="padding:24px 0;">${tdEsc(d.message || 'Could not load task.')}</div>`;
             })
             .catch(() => { tdBody.innerHTML = '<div class="mw-td-empty" style="padding:24px 0;">Could not load task.</div>'; });
-    }
+    };
 
     if (tbody) {
         tbody.addEventListener('click', function (e) {

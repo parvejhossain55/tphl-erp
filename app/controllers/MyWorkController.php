@@ -471,7 +471,7 @@ class MyWorkController extends Controller
                     <div class=\"d-flex align-items-start\">
                         <input type=\"checkbox\" class=\"mw-task-check\" {$checkedAttr} disabled>
                         <div>
-                            <a href=\"{$baseUrl}/show-task/{$taskId}\" class=\"mw-task-name\">
+                            <a href=\"javascript:void(0);\" onclick=\"openTaskDetail({$taskId}); return false;\" class=\"mw-task-name\">
                                 {$titleSafe}
                             </a>
                             {$blockedBadge}
@@ -820,6 +820,9 @@ class MyWorkController extends Controller
                 'code' => 'T-' . (int)$t['id'],
                 'project' => $t['project_name'] ?: 'General',
                 'title' => $t['title'],
+                'status' => $t['status'],
+                'is_completed' => $isCompleted,
+                'can_complete' => (!$isCompleted && ((int)$t['user_id'] === $userId || in_array($userId, $collabIds, true) || (int)$t['assigned_by'] === $userId || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33], true))),
                 'status_label' => $statusLabel,
                 'status_class' => $statusClass,
                 'priority' => ucfirst($t['priority'] ?? 'medium'),
@@ -1098,6 +1101,88 @@ class MyWorkController extends Controller
                 exit;
             }
             if (function_exists('setError')) setError("Failed to update task.");
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            exit;
+        }
+    }
+
+    /**
+     * Mark task as completed (Assignee / Collaborator / Owner / Admin)
+     */
+    public function completeTask($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $id = (int)$id;
+        $isAjax = !empty($_GET['ajax']) || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
+
+        if (!$userId) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+                exit;
+            }
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/login");
+            exit;
+        }
+
+        $st = $this->db->prepare("SELECT * FROM tasks WHERE id = ?");
+        $st->bind_param("i", $id);
+        $st->execute();
+        $task = $st->get_result()->fetch_assoc();
+
+        if (!$task) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Task not found.']);
+                exit;
+            }
+            if (function_exists('setError')) setError("Task not found.");
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            exit;
+        }
+
+        $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
+        $collabIds = $ids($task['collaborator_user_ids'] ?? '');
+
+        // Can complete if Assignee (user_id), Collaborator, Owner (assigned_by), or Admin
+        $canComplete = ((int)$task['user_id'] === $userId || in_array($userId, $collabIds, true) || (int)$task['assigned_by'] === $userId || in_array($roleId, [1, 3, 33], true));
+
+        if (!$canComplete) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => "You don't have permission to complete this task."]);
+                exit;
+            }
+            if (function_exists('setError')) setError("You don't have permission to complete this task.");
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            exit;
+        }
+
+        $taskModel = new Task($this->db);
+        if ($taskModel->updateProgress($id, 100, $task['remarks'] ?? null)) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'Task marked as completed successfully.',
+                    'task_id' => $id
+                ]);
+                exit;
+            }
+            if (function_exists('setSuccess')) setSuccess("Task marked as completed successfully.");
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            exit;
+        } else {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Failed to mark task as completed.']);
+                exit;
+            }
+            if (function_exists('setError')) setError("Failed to mark task as completed.");
             header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
             exit;
         }
