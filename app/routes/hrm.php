@@ -40,6 +40,7 @@ return [
     'my-work-dashboard' => ['controller' => 'MyWorkController', 'method' => 'index'],
     'my-work/delete/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'deleteTask'],
     'my-work/store-task' => ['controller' => 'MyWorkController', 'method' => 'storeTask'],
+    'my-work/task-detail/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'taskDetail'],
 
     // =========================================================================
     // Controller: EmployeeController

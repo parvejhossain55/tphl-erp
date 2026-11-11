@@ -603,10 +603,8 @@ class MyWorkController extends Controller
         }
 
         $title = trim($_POST['title'] ?? '');
-        $ownerId = (int)($_POST['user_id'] ?? 0);
-        if ($ownerId <= 0) {
-            $ownerId = $userId;
-        }
+        // user_id = the person the task is assigned to (defaults to the creator); assigned_by = creator (Owner)
+        $ownerId = (int)($_POST['assigned_to_id'] ?? 0) ?: $userId;
 
         if (empty($title)) {
             if ($isAjax) {
@@ -630,7 +628,7 @@ class MyWorkController extends Controller
         $startDate = !empty($_POST['start_date']) ? $_POST['start_date'] : null;
 
         $projectId = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
-        $assignedById = (int)($_POST['assigned_by_id'] ?? 0) ?: $userId;
+        $assignedById = $userId;
         $recurrenceType = in_array($_POST['recurrence_type'] ?? '', ['daily', 'weekly', 'monthly'], true) ? $_POST['recurrence_type'] : null;
         $isRecurring = !empty($_POST['is_recurring']) ? 1 : 0;
         if ($isRecurring && $recurrenceType === null) {
@@ -732,5 +730,109 @@ class MyWorkController extends Controller
             header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
             exit;
         }
+    }
+
+    /**
+     * JSON detail for the task detail drawer (only for tasks related to the logged-in user)
+     */
+    public function taskDetail($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        header('Content-Type: application/json');
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $id = (int)$id;
+        if (!$userId) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        $st = $this->db->prepare("
+            SELECT t.*, tp.name AS project_name,
+                   u_o.full_name AS owner_name, u_b.full_name AS assigned_by_name
+            FROM tasks t
+            LEFT JOIN todo_projects tp ON t.todo_project_id = tp.id
+            LEFT JOIN users u_o ON t.user_id = u_o.id
+            LEFT JOIN users u_b ON t.assigned_by = u_b.id
+            WHERE t.id = ?
+        ");
+        $st->bind_param("i", $id);
+        $st->execute();
+        $t = $st->get_result()->fetch_assoc();
+
+        $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
+        $reviewerIds = $t ? $ids($t['mentioned_user_ids'] ?? '') : [];
+        $ccIds = $t ? $ids($t['cc_user_ids'] ?? '') : [];
+        $collabIds = $t ? $ids($t['collaborator_user_ids'] ?? '') : [];
+
+        $related = $t && (
+            (int)$t['user_id'] === $userId || (int)$t['assigned_by'] === $userId ||
+            in_array($userId, $reviewerIds, true) || in_array($userId, $ccIds, true) || in_array($userId, $collabIds, true)
+        );
+        if (!$related) {
+            echo json_encode(['status' => 'error', 'message' => 'Task not found.']);
+            exit;
+        }
+
+        $names = [];
+        $allIds = array_values(array_unique(array_merge($reviewerIds, $ccIds, $collabIds)));
+        if ($allIds) {
+            $in = implode(',', $allIds); // ints only
+            $res = $this->db->query("SELECT id, full_name FROM users WHERE id IN ({$in})");
+            while ($res && ($r = $res->fetch_assoc())) {
+                $names[(int)$r['id']] = $r['full_name'];
+            }
+        }
+        $nameList = fn(array $list) => array_values(array_filter(array_map(fn($i) => $names[$i] ?? null, $list)));
+
+        $isCompleted = $t['status'] === 'completed';
+        $statusLabel = ['pending' => 'To do', 'in_progress' => 'In progress', 'completed' => 'Completed', 'expired' => 'Expired'][$t['status']] ?? 'To do';
+        $statusClass = $t['status'];
+        if (!$isCompleted && (int)$t['progress'] >= 80) {
+            $statusLabel = 'In review';
+            $statusClass = 'in_review';
+        }
+
+        $deadlineText = null;
+        $overdueText = null;
+        if (!empty($t['deadline'])) {
+            $dl = strtotime($t['deadline']);
+            $deadlineText = date('j M Y', $dl);
+            if (!$isCompleted && $dl < time()) {
+                $days = (int) ceil((time() - $dl) / 86400);
+                $overdueText = $days <= 1 ? '1 day overdue' : "{$days} days overdue";
+            }
+        }
+
+        $blocked = !empty($t['remarks']) && stripos($t['remarks'], 'block') !== false;
+        $base = $GLOBALS['base_url'] ?? '';
+
+        echo json_encode([
+            'status' => 'success',
+            'task' => [
+                'id' => (int)$t['id'],
+                'code' => 'T-' . (int)$t['id'],
+                'project' => $t['project_name'] ?: 'General',
+                'title' => $t['title'],
+                'status_label' => $statusLabel,
+                'status_class' => $statusClass,
+                'priority' => ucfirst($t['priority'] ?? 'medium'),
+                'deadline' => $deadlineText,
+                'overdue' => $overdueText,
+                'owner' => $t['assigned_by_name'] ?: '—',
+                'assigned_to' => $t['owner_name'] ?: '—',
+                'reviewers' => $nameList($reviewerIds),
+                'collaborators' => $nameList($collabIds),
+                'cc' => $nameList($ccIds),
+                'description_html' => strip_tags((string)$t['description'], '<p><br><ul><ol><li><strong><b><em><i>'),
+                'remarks' => $t['remarks'],
+                'blocked' => $blocked,
+                'attachment_name' => $t['attachment_image'] ?: null,
+                'attachment_url' => !empty($t['attachment_image']) ? $base . '/public/uploads/tasks/' . rawurlencode($t['attachment_image']) : null,
+                'show_url' => $base . '/show-task/' . (int)$t['id'],
+            ],
+        ]);
+        exit;
     }
 }

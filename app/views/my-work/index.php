@@ -127,12 +127,60 @@ $todayDateFormatted = date('j F');
     background-color: #087F5B;
 }
 
+/* Task detail drawer (right side) */
+.mw-td-backdrop { position: fixed; inset: 0; background: rgba(20,45,38,.35); z-index: 9996; opacity: 0; visibility: hidden; transition: opacity .25s ease, visibility .25s ease; }
+.mw-td-backdrop.show { opacity: 1; visibility: visible; }
+.mw-td { position: fixed; top: 0; right: 0; bottom: 0; left: 51.25%; background: #fff; z-index: 9997; border-left: 1px solid #E2EAE5; box-shadow: -12px 0 40px rgba(0,0,0,.12); display: flex; flex-direction: column; transform: translateX(100%); transition: transform .32s cubic-bezier(.16,1,.3,1); font-family: 'Inter', sans-serif; }
+.mw-td.show { transform: translateX(0); }
+@media (max-width: 1100px) { .mw-td { left: 35%; } }
+@media (max-width: 768px) { .mw-td { left: 0; } }
+.mw-td-body { flex: 1; overflow-y: auto; padding: 14px 1.75% 16px 1.75%; }
+.mw-td-top { display: flex; justify-content: space-between; align-items: center; font-size: 12px; line-height: 15px; color: #65776F; }
+.mw-td-close { background: none; border: 0; color: #65776F; font-size: 16px; cursor: pointer; padding: 4px; }
+.mw-td-title { font-size: 24px; line-height: 29px; font-weight: 700; color: #142D26; margin: 14px 0 12px; }
+.mw-td-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.mw-td-pill { font-size: 11.5px; line-height: 14px; font-weight: 700; padding: 5px 10px; border-radius: 6px; background: #EDF2EF; color: #65776F; }
+.mw-td-pill.status { background: #EEF3FC; color: #4364A5; }
+.mw-td-pill.overdue { background: #FFF5E2; color: #9A6216; }
+.mw-td-tabs { display: flex; gap: 22px; border-bottom: 1px solid #E2EAE5; margin-bottom: 16px; }
+.mw-td-tab { background: none; border: 0; padding: 0 0 9px; font-size: 13px; line-height: 16px; font-weight: 700; color: #65776F; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.mw-td-tab.active { color: #087F5B; border-bottom-color: #087F5B; }
+.mw-td-blocked { background: #FFF5E2; color: #9A6216; border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; }
+.mw-td-blocked strong { display: block; font-size: 14px; line-height: 17px; }
+.mw-td-blocked span { font-size: 12px; line-height: 15px; }
+.mw-td-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 24px; margin-bottom: 18px; }
+.mw-td-label { font-size: 11.5px; line-height: 14px; color: #65776F; margin-bottom: 6px; }
+.mw-td-val { font-size: 13px; line-height: 16px; font-weight: 700; color: #142D26; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mw-td-val.plain { font-weight: 400; }
+.mw-td-val.late { color: #9A6216; }
+.mw-td-avatar { width: 24px; height: 24px; border-radius: 50%; background: #E9F5EF; color: #087F5B; font-size: 10.5px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.mw-td-sec { border-top: 1px solid #E2EAE5; padding-top: 16px; margin-top: 4px; margin-bottom: 18px; }
+.mw-td-sec h4 { font-size: 16px; line-height: 19px; font-weight: 700; color: #142D26; margin: 0 0 10px; }
+.mw-td-text { font-size: 13px; line-height: 16px; color: #65776F; }
+.mw-td-text ul, .mw-td-text ol { padding-left: 18px; margin: 0; }
+.mw-td-empty { font-size: 12.5px; color: #8A9992; }
+.mw-td-file { display: flex; justify-content: space-between; align-items: center; background: #F5F7F6; border-radius: 8px; padding: 12px 14px; font-size: 12.5px; color: #142D26; text-decoration: none; }
+.mw-td-file small { font-size: 11px; color: #65776F; }
+.mw-td-comment { border: 1px solid #E2EAE5; border-radius: 8px; padding: 12px 14px; font-size: 12.5px; color: #8A9992; margin-top: 14px; }
+.mw-td-foot { border-top: 1px solid #E2EAE5; padding: 12px 1.75% 10px; }
+.mw-td-foot-actions { display: flex; gap: 10px; align-items: center; }
+.mw-td-btn { background: #fff; border: 1px solid #E2EAE5; border-radius: 8px; padding: 9px 16px; font-size: 12.5px; line-height: 15px; font-weight: 700; color: #142D26; cursor: pointer; }
+.mw-td-btn.primary { margin-left: auto; background: #EDF2EF; border-color: #EDF2EF; color: #8A9992; }
+.mw-td-note { font-size: 11px; line-height: 13px; color: #65776F; text-align: right; margin-top: 8px; }
+/* Toast notification */
+.mw-toast-wrap { position: fixed; top: 20px; right: 24px; z-index: 10050; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+.mw-toast { pointer-events: auto; min-width: 280px; max-width: 420px; padding: 12px 16px; border-radius: 8px; background: #fff; border: 1px solid #E2EAE5; border-left: 4px solid #087F5B; box-shadow: 0 10px 28px rgba(20,45,38,.14); display: flex; align-items: center; gap: 10px; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; color: #142D26; animation: mwToastIn .22s ease; }
+.mw-toast.error { border-left-color: #C92A2A; }
+.mw-toast .mw-toast-icon { font-size: 16px; color: #087F5B; flex-shrink: 0; }
+.mw-toast.error .mw-toast-icon { color: #C92A2A; }
+.mw-toast .mw-toast-close { margin-left: auto; background: none; border: 0; color: #65776F; cursor: pointer; padding: 2px 4px; font-size: 13px; }
+@keyframes mwToastIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 /* Multi-select dropdown */
 .mw-multi { position: relative; }
 .mw-multi-btn { text-align: left; width: 100%; cursor: pointer; }
 .mw-multi-panel { display: none; position: absolute; z-index: 50; left: 0; right: 0; top: 100%; margin-top: 4px; background: #fff; border: 1px solid #E2EAE5; border-radius: 8px; box-shadow: 0 6px 16px rgba(0,0,0,.08); max-height: 240px; overflow-y: auto; padding: 8px; }
 .mw-multi.open .mw-multi-panel { display: block; }
-.mw-multi-search { margin-bottom: 6px; }
+.mw-multi-search { margin-bottom: 6px; position: sticky; top: 0; z-index: 1; background: #fff; }
 .mw-multi-item { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 6px; cursor: pointer; font-size: 13px; margin: 0; }
 .mw-multi-item:hover { background: #F4FAF7; }
 /* Summary Metric Cards */
@@ -1599,17 +1647,33 @@ $todayDateFormatted = date('j F');
                        placeholder="Client ledger: verify opening balances" required>
             </div>
 
+            <?php
+            // Searchable dropdown (checkbox list) styled like .mw-form-select. $single = pick one (click again to clear).
+            $mwMulti = function (string $name, string $placeholder, bool $single = false, ?int $selectedId = null, string $id = '') use ($usersList) { ?>
+                <div class="mw-multi" <?= $id !== '' ? 'id="' . htmlspecialchars($id) . '"' : '' ?> data-single="<?= $single ? '1' : '0' ?>" data-clearable="<?= ($single && $selectedId === null) ? '1' : '0' ?>" data-placeholder="<?= htmlspecialchars($placeholder) ?>">
+                    <button type="button" class="mw-form-select mw-multi-btn"><span class="mw-multi-text"><?= htmlspecialchars($placeholder) ?></span></button>
+                    <div class="mw-multi-panel">
+                        <input type="text" class="mw-form-input mw-multi-search" placeholder="Search...">
+                        <?php foreach (($usersList ?? []) as $u): if (trim((string)$u['full_name']) === '') continue; ?>
+                            <label class="mw-multi-item">
+                                <input type="<?= $single ? 'radio' : 'checkbox' ?>" name="<?= htmlspecialchars($name) ?>" value="<?= (int)$u['id'] ?>" data-name="<?= htmlspecialchars($u['full_name']) ?>" <?= ($selectedId !== null && (int)$u['id'] === $selectedId) ? 'checked' : '' ?>>
+                                <span><?= htmlspecialchars($u['full_name']) ?></span>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php }; ?>
             <!-- Row 1: Owner & Due Date -->
             <div class="mw-form-row mw-form-group">
                 <div class="mw-form-col">
-                    <label class="mw-form-label">Owner <span class="req">*</span></label>
-                    <select name="user_id" id="taskOwnerSelect" class="mw-form-select" required>
-                        <?php foreach (($usersList ?? []) as $u): ?>
-                            <option value="<?= (int)$u['id'] ?>" <?= ((int)$u['id'] === (int)$userId) ? 'selected' : '' ?> data-name="<?= htmlspecialchars($u['full_name']) ?>">
-                                <?= htmlspecialchars($u['full_name']) ?><?= !empty($u['designation']) ? ' (' . htmlspecialchars($u['designation']) . ')' : '' ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
+                    <label class="mw-form-label">Owner</label>
+                    <?php
+                    $ownerName = $_SESSION['user']['full_name'] ?? ($_SESSION['user']['name'] ?? '');
+                    foreach (($usersList ?? []) as $u) { if ((int)$u['id'] === (int)$userId) { $ownerName = $u['full_name']; break; } }
+                    ?>
+                    <div id="taskOwnerSelect">
+                        <input type="text" class="mw-form-input" value="<?= htmlspecialchars($ownerName) ?>" readonly style="background:#F5F7F6;cursor:not-allowed;">
+                                            </div>
                 </div>
                 <div class="mw-form-col">
                     <label class="mw-form-label">Deadline <span class="req">*</span></label>
@@ -1681,31 +1745,11 @@ $todayDateFormatted = date('j F');
                 </div>
             </div>
 
-            <?php
-            // Multi-select dropdown (checkbox list) styled like .mw-form-select
-            $mwMulti = function (string $name, string $placeholder) use ($usersList) { ?>
-                <div class="mw-multi" data-placeholder="<?= htmlspecialchars($placeholder) ?>">
-                    <button type="button" class="mw-form-select mw-multi-btn"><span class="mw-multi-text"><?= htmlspecialchars($placeholder) ?></span></button>
-                    <div class="mw-multi-panel">
-                        <input type="text" class="mw-form-input mw-multi-search" placeholder="Search...">
-                        <?php foreach (($usersList ?? []) as $u): if (trim((string)$u['full_name']) === '') continue; ?>
-                            <label class="mw-multi-item">
-                                <input type="checkbox" name="<?= htmlspecialchars($name) ?>" value="<?= (int)$u['id'] ?>" data-name="<?= htmlspecialchars($u['full_name']) ?>">
-                                <span><?= htmlspecialchars($u['full_name']) ?></span>
-                            </label>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            <?php }; ?>
-            <!-- Assigned by & CC -->
+            <!-- Assigned to & CC -->
             <div class="mw-form-row mw-form-group">
                 <div class="mw-form-col">
-                    <label class="mw-form-label">Assigned by</label>
-                    <select name="assigned_by_id" id="taskAssignedBySelect" class="mw-form-select">
-                        <?php foreach (($usersList ?? []) as $u): ?>
-                            <option value="<?= (int)$u['id'] ?>" <?= ((int)$u['id'] === (int)$userId) ? 'selected' : '' ?>><?= htmlspecialchars($u['full_name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <label class="mw-form-label">Assigned to</label>
+                    <?php $mwMulti('assigned_to_id', 'Select Assigned to...', true, (int)$userId, 'taskAssignedToSelect'); ?>
                 </div>
                 <div class="mw-form-col">
                     <label class="mw-form-label">CC</label>
@@ -1717,14 +1761,7 @@ $todayDateFormatted = date('j F');
             <div id="sectionReviewFields" class="mw-form-row mw-form-group">
                 <div class="mw-form-col">
                     <label class="mw-form-label">Reviewer</label>
-                    <select name="reviewer_id" id="taskReviewerSelect" class="mw-form-select">
-                        <option value="">Select Reviewer (optional)...</option>
-                        <?php foreach (($usersList ?? []) as $u): ?>
-                            <option value="<?= (int)$u['id'] ?>" data-name="<?= htmlspecialchars($u['full_name']) ?>">
-                                <?= htmlspecialchars($u['full_name']) ?><?= !empty($u['designation']) ? ' (' . htmlspecialchars($u['designation']) . ')' : '' ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
+                    <?php $mwMulti('reviewer_id', 'Select Reviewer...', true, null, 'taskReviewerSelect'); ?>
                 </div>
                 <div class="mw-form-col">
                     <label class="mw-form-label">Collaborators</label>
@@ -1772,6 +1809,19 @@ $todayDateFormatted = date('j F');
     </form>
 </div>
 
+<!-- Task detail drawer (UI preview; filled via AJAX on row click) -->
+<div class="mw-td-backdrop" id="mwTdBackdrop"></div>
+<div class="mw-td" id="mwTd" aria-hidden="true">
+    <div class="mw-td-body" id="mwTdBody"></div>
+    <div class="mw-td-foot">
+        <div class="mw-td-foot-actions">
+            <button type="button" class="mw-td-btn" disabled><i class="fa-regular fa-clock me-1"></i> Log work</button>
+            <button type="button" class="mw-td-btn" disabled>Request extension</button>
+            <button type="button" class="mw-td-btn primary" disabled>Submit for review</button>
+        </div>
+        <div class="mw-td-note" id="mwTdNote"></div>
+    </div>
+</div>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const baseUrl = '<?= $base_url ?>';
@@ -2078,24 +2128,121 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // =========================================================================
+    // Task detail drawer (right side) - opens when a task row is clicked
+    // =========================================================================
+    const tdEl = document.getElementById('mwTd');
+    const tdBackdrop = document.getElementById('mwTdBackdrop');
+    const tdBody = document.getElementById('mwTdBody');
+    const tdNote = document.getElementById('mwTdNote');
+    const tdEsc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    const tdInitials = n => String(n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase();
+    const tdPeople = list => list && list.length
+        ? list.map(n => `<span class="mw-td-val"><span class="mw-td-avatar">${tdEsc(tdInitials(n))}</span>${tdEsc(n)}</span>`).join('')
+        : '<span class="mw-td-val plain">—</span>';
+
+    function closeTaskDetail() {
+        if (!tdEl) return;
+        tdEl.classList.remove('show');
+        tdBackdrop.classList.remove('show');
+        tdEl.setAttribute('aria-hidden', 'true');
+    }
+
+    function renderTaskDetail(t) {
+        const tabsHtml = ['Overview', 'Activity', 'Work log'].map((n, i) =>
+            `<button type="button" class="mw-td-tab ${i === 0 ? 'active' : ''}" data-pane="${i}">${n}</button>`).join('');
+        const blocked = t.blocked ? `
+            <div class="mw-td-blocked"><strong><i class="fa-solid fa-triangle-exclamation me-1"></i> Blocked</strong><span>${tdEsc(t.remarks || '')}</span></div>` : '';
+        const desc = t.description_html && t.description_html.trim()
+            ? `<div class="mw-td-text">${t.description_html}</div>` : '<div class="mw-td-empty">No expected output added.</div>';
+        const file = t.attachment_url
+            ? `<a class="mw-td-file" href="${tdEsc(t.attachment_url)}" target="_blank"><span><i class="fa-regular fa-file me-2"></i>${tdEsc(t.attachment_name)}</span><small>Open</small></a>`
+            : '<div class="mw-td-empty">No attachments.</div>';
+        tdBody.innerHTML = `
+            <div class="mw-td-top"><span>${tdEsc(t.code)} · ${tdEsc(t.project)}</span>
+                <button type="button" class="mw-td-close" id="mwTdClose" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
+            <h2 class="mw-td-title">${tdEsc(t.title)}</h2>
+            <div class="mw-td-pills">
+                <span class="mw-td-pill status">${tdEsc(t.status_label)}</span>
+                <span class="mw-td-pill">${tdEsc(t.priority)} priority</span>
+                ${t.overdue ? `<span class="mw-td-pill overdue">${tdEsc(t.overdue)}</span>` : ''}
+            </div>
+            <div class="mw-td-tabs">${tabsHtml}</div>
+            <div data-td-pane="0">
+                ${blocked}
+                <div class="mw-td-grid">
+                    <div><div class="mw-td-label">Owner</div><div class="mw-td-val"><span class="mw-td-avatar">${tdEsc(tdInitials(t.owner))}</span>${tdEsc(t.owner)}</div></div>
+                    <div><div class="mw-td-label">Reviewer</div><div>${tdPeople(t.reviewers)}</div></div>
+                    <div><div class="mw-td-label">Deadline</div><div class="mw-td-val ${t.overdue ? 'late' : ''}">${tdEsc(t.deadline || 'No deadline')}</div></div>
+                    <div><div class="mw-td-label">Collaborators</div><div class="mw-td-val plain">${t.collaborators.length ? tdEsc(t.collaborators.join(' · ')) : '—'}</div></div>
+                    <div><div class="mw-td-label">Assigned to</div><div class="mw-td-val plain">${tdEsc(t.assigned_to)}</div></div>
+                    <div><div class="mw-td-label">CC</div><div class="mw-td-val plain">${t.cc.length ? tdEsc(t.cc.join(' · ')) : '—'}</div></div>
+                </div>
+                <div class="mw-td-sec"><h4>Expected output</h4>${desc}</div>
+                <div class="mw-td-sec"><h4>Acceptance checklist</h4><div class="mw-td-empty">No checklist items yet.</div></div>
+                <div class="mw-td-sec"><h4>Attachments</h4>${file}</div>
+                <div class="mw-td-sec"><h4>Latest activity</h4><div class="mw-td-empty">No activity yet.</div>
+                    <div class="mw-td-comment">Write a comment or @mention a teammate…</div></div>
+            </div>
+            <div data-td-pane="1" style="display:none;"><div class="mw-td-empty">Activity will appear here.</div></div>
+            <div data-td-pane="2" style="display:none;"><div class="mw-td-empty">Work log will appear here.</div></div>
+            <div class="mt-3"><a href="${tdEsc(t.show_url)}" class="mw-td-text" style="text-decoration:underline;">Open full task page</a></div>`;
+        tdNote.innerText = t.blocked ? 'Resolve the blocker before submitting for review.' : '';
+        tdBody.querySelector('#mwTdClose').addEventListener('click', closeTaskDetail);
+        tdBody.querySelectorAll('.mw-td-tab').forEach(b => b.addEventListener('click', () => {
+            tdBody.querySelectorAll('.mw-td-tab').forEach(x => x.classList.toggle('active', x === b));
+            tdBody.querySelectorAll('[data-td-pane]').forEach(p => p.style.display = p.dataset.tdPane === b.dataset.pane ? '' : 'none');
+        }));
+    }
+
+    function openTaskDetail(taskId) {
+        if (!tdEl) return;
+        tdBody.innerHTML = '<div class="mw-td-empty" style="padding:24px 0;">Loading…</div>';
+        tdEl.classList.add('show');
+        tdBackdrop.classList.add('show');
+        tdEl.setAttribute('aria-hidden', 'false');
+        fetch(`${baseUrl}/my-work/task-detail/${taskId}`, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => r.json())
+            .then(d => {
+                if (d.status === 'success') renderTaskDetail(d.task);
+                else tdBody.innerHTML = `<div class="mw-td-empty" style="padding:24px 0;">${tdEsc(d.message || 'Could not load task.')}</div>`;
+            })
+            .catch(() => { tdBody.innerHTML = '<div class="mw-td-empty" style="padding:24px 0;">Could not load task.</div>'; });
+    }
+
+    if (tbody) {
+        tbody.addEventListener('click', function (e) {
+            if (e.target.closest('.mw-actions-group')) return;
+            const row = e.target.closest('tr[data-task-id]');
+            if (!row) return;
+            e.preventDefault();
+            openTaskDetail(row.getAttribute('data-task-id'));
+        });
+        tbody.style.cursor = 'pointer';
+    }
+    if (tdBackdrop) tdBackdrop.addEventListener('click', closeTaskDetail);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeTaskDetail(); });
     // Dynamic Notice Box Text
-    const taskOwnerSelect = document.getElementById('taskOwnerSelect');
+    // Single-select dropdown helper: { value, name } of the ticked user
+    const mwPicked = id => {
+        const i = document.querySelector('#' + id + ' input:checked');
+        return { value: i ? i.value : '', name: i ? i.dataset.name : '' };
+    };
+    const taskOwnerSelect = document.getElementById('taskAssignedToSelect');
     const taskReviewerSelect = document.getElementById('taskReviewerSelect');
     const noticeOwnerText = document.getElementById('noticeOwnerText');
     const noticeReviewerText = document.getElementById('noticeReviewerText');
 
     function updateNoticeBox() {
         if (taskOwnerSelect && noticeOwnerText) {
-            const opt = taskOwnerSelect.options[taskOwnerSelect.selectedIndex];
-            const fullName = opt ? (opt.getAttribute('data-name') || opt.text) : 'Owner';
-            const firstName = fullName.trim().split(' ')[0];
+            const o = mwPicked('taskAssignedToSelect');
+            const firstName = (o.name || 'Owner').trim().split(' ')[0];
             noticeOwnerText.innerText = `${firstName} will receive the assignment.`;
         }
         if (taskReviewerSelect && noticeReviewerText) {
-            if (taskReviewerSelect.value) {
-                const optR = taskReviewerSelect.options[taskReviewerSelect.selectedIndex];
-                const fullNameR = optR ? (optR.getAttribute('data-name') || optR.text) : 'Reviewer';
-                const firstNameR = fullNameR.trim().split(' ')[0];
+            const r = mwPicked('taskReviewerSelect');
+            if (r.value) {
+                const firstNameR = r.name.trim().split(' ')[0];
                 noticeReviewerText.innerText = `${firstNameR} will be notified when the task is submitted for review.`;
                 noticeReviewerText.style.display = 'block';
             } else {
@@ -2122,17 +2269,40 @@ document.addEventListener('DOMContentLoaded', function () {
     // Multi-select dropdowns (CC, Collaborators)
     document.querySelectorAll('.mw-multi').forEach(box => {
         const txt = box.querySelector('.mw-multi-text');
-        const checks = box.querySelectorAll('input[type=checkbox]');
+        const checks = box.querySelectorAll('input[type=checkbox], input[type=radio]');
         const refresh = () => {
             const names = [...checks].filter(i => i.checked).map(i => i.dataset.name);
             txt.innerText = names.length === 0 ? box.dataset.placeholder : (names.length <= 2 ? names.join(', ') : names.length + ' selected');
         };
+        box._refresh = refresh;
         box.querySelector('.mw-multi-btn').addEventListener('click', () => {
             const wasOpen = box.classList.contains('open');
             document.querySelectorAll('.mw-multi.open').forEach(b => b.classList.remove('open'));
             if (!wasOpen) box.classList.add('open');
         });
-        checks.forEach(i => i.addEventListener('change', refresh));
+        checks.forEach(i => i.addEventListener('change', () => {
+            if (box.dataset.single === '1' && i.checked) {
+                checks.forEach(o => { if (o !== i) o.checked = false; });
+                box.classList.remove('open');
+            }
+            refresh();
+            box.dispatchEvent(new Event('change', { bubbles: true }));
+        }));
+        // Optional single-select (e.g. Reviewer): clicking the ticked radio again clears it
+        checks.forEach(i => i.addEventListener('click', () => {
+            if (i.type !== 'radio' || box.dataset.clearable !== '1') return;
+            if (i.dataset.was === '1') {
+                i.checked = false;
+                i.dataset.was = '0';
+                box.classList.remove('open');
+                refresh();
+                box.dispatchEvent(new Event('change', { bubbles: true }));
+            } else {
+                checks.forEach(o => o.dataset.was = '0');
+                i.dataset.was = '1';
+            }
+        }));
+        refresh();
         box.querySelector('.mw-multi-search').addEventListener('input', function () {
             const q = this.value.toLowerCase();
             box.querySelectorAll('.mw-multi-item').forEach(l => l.style.display = l.innerText.toLowerCase().includes(q) ? '' : 'none');
@@ -2150,7 +2320,7 @@ document.addEventListener('DOMContentLoaded', function () {
         btnAddExpected.addEventListener('click', function () {
             const row = document.createElement('div');
             row.className = 'd-flex align-items-start gap-2 mb-2 mw-expected-row';
-            row.innerHTML = '<textarea name="description[]" class="mw-form-textarea" rows="3" placeholder="Another expected output" required></textarea>' +
+            row.innerHTML = '<textarea name="description[]" class="mw-form-textarea" rows="1" placeholder="Another expected output" required></textarea>' +
                 '<button type="button" class="mw-btn-create" title="Remove" style="white-space:nowrap;background:#C92A2A;"><i class="fa-solid fa-xmark"></i></button>';
             row.querySelector('button').addEventListener('click', () => row.remove());
             expectedList.appendChild(row);
@@ -2158,14 +2328,34 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Toast notification helper
+    function showMwToast(message, type = 'success') {
+        let wrap = document.getElementById('mwToastWrap');
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.id = 'mwToastWrap';
+            wrap.className = 'mw-toast-wrap';
+            document.body.appendChild(wrap);
+        }
+        const el = document.createElement('div');
+        const isErr = type === 'error';
+        el.className = 'mw-toast' + (isErr ? ' error' : '');
+        const icon = isErr ? 'fa-circle-exclamation' : 'fa-circle-check';
+        el.innerHTML = `<i class="fa-solid ${icon} mw-toast-icon"></i><span></span><button type="button" class="mw-toast-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>`;
+        el.querySelector('span').textContent = message;
+        el.querySelector('.mw-toast-close').addEventListener('click', () => el.remove());
+        wrap.appendChild(el);
+        setTimeout(() => { if (el.parentNode) el.remove(); }, 4500);
+    }
+
     // AJAX Form Submit
     if (formCreateTask) {
         formCreateTask.addEventListener('submit', function(e) {
             e.preventDefault();
-            const ownerVal = document.getElementById('taskOwnerSelect')?.value;
-            const reviewerVal = document.getElementById('taskReviewerSelect')?.value;
+            const ownerVal = mwPicked('taskAssignedToSelect').value || '<?= (int)$userId ?>';
+            const reviewerVal = mwPicked('taskReviewerSelect').value;
             if (reviewerVal && ownerVal && reviewerVal === ownerVal &&
-                !confirm('Owner and Reviewer are the same person. Continue?')) {
+                !confirm('Assignee and Reviewer are the same person. Continue?')) {
                 return;
             }
             if (btnSubmitDrawer) {
@@ -2182,21 +2372,38 @@ document.addEventListener('DOMContentLoaded', function () {
                     'X-Requested-With': 'XMLHttpRequest'
                 }
             })
-            .then(res => res.json())
+            .then(async res => {
+                const text = await res.text();
+                try { return JSON.parse(text); }
+                catch (_) { throw new Error('Invalid server response.'); }
+            })
             .then(data => {
                 if (data.status === 'success') {
                     closeDrawer();
                     formCreateTask.reset();
+                    if (expectedList) {
+                        expectedList.querySelectorAll('.mw-expected-row').forEach((r, idx) => { if (idx > 0) r.remove(); });
+                    }
+                    if (rowRecurrenceEnd) rowRecurrenceEnd.style.display = 'none';
+                    const selRec = document.getElementById('taskRecurrenceType');
+                    if (selRec) selRec.required = false;
+                    document.querySelectorAll('.mw-multi').forEach(b => {
+                        const s = b.querySelector('.mw-multi-search');
+                        if (s) s.value = '';
+                        b.querySelectorAll('.mw-multi-item').forEach(l => l.style.display = '');
+                        if (b._refresh) b._refresh();
+                    });
                     updateNoticeBox();
+                    showMwToast(data.message || 'Task created and assigned successfully.', 'success');
                     // Instant live refresh of workspace table & counters
                     fetchWorkspaceData();
                 } else {
-                    alert(data.message || 'Failed to create task.');
+                    showMwToast(data.message || 'Failed to create task.', 'error');
                 }
             })
             .catch(err => {
                 console.error('Error creating task:', err);
-                alert('An error occurred while creating the task.');
+                showMwToast(err.message || 'An error occurred while creating the task.', 'error');
             })
             .finally(() => {
                 if (btnSubmitDrawer) {
