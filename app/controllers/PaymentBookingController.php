@@ -121,11 +121,15 @@ class PaymentBookingController extends Controller
         $createdRegistration = null;
 
         if ($data['payment_type'] === 'booking_money') {
-            $finalAmount = !empty($bookingLead['approved_amount'])
-                ? (float)$bookingLead['agreement_value'] - (float)$bookingLead['approved_amount']
-                : (float)$bookingLead['agreement_value'];
+            $approvedDiscount = 0;
+            if (!empty($bookingLead['approved_amount'])) {
+                $approvedDiscount = (float)$bookingLead['approved_amount'];
+            } elseif (!empty($bookingLead['discount_amount']) && in_array(strtolower($bookingLead['approval_status'] ?? ''), ['approved', 'not_required'])) {
+                $approvedDiscount = (float)$bookingLead['discount_amount'];
+            }
+            $finalAmount = max(0, (float)$bookingLead['agreement_value'] - $approvedDiscount);
 
-            if ($finalAmount <= 0) {
+            if ($finalAmount <= 0 && empty($approvedDiscount)) {
                 $finalAmount = (float)$bookingLead['agreement_value'];
             }
 
@@ -244,13 +248,14 @@ class PaymentBookingController extends Controller
         // Final payable amount:
         // Use agreement_value minus approved_amount (discount)
         $agreementValue = (float)($booking['agreement_value'] ?? 0);
-        $discountApproved = !empty($booking['approved_amount']) ? (float)$booking['approved_amount'] : 0;
-        
-        $finalAmount = $agreementValue - $discountApproved;
-        
-        if ($finalAmount <= 0) {
-            $finalAmount = $agreementValue;
+        $discountApproved = 0;
+        if (!empty($booking['approved_amount'])) {
+            $discountApproved = (float)$booking['approved_amount'];
+        } elseif (!empty($booking['discount_amount']) && in_array(strtolower($booking['approval_status'] ?? ''), ['approved', 'not_required'])) {
+            $discountApproved = (float)$booking['discount_amount'];
         }
+        
+        $finalAmount = max(0, $agreementValue - $discountApproved);
 
         // SUM of ALL verified payments (all payment types)
         $sum = $this->db->query("

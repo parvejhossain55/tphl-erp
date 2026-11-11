@@ -634,6 +634,12 @@ class LeadController extends Controller
                     'is_automated'     => (int)($lead['is_automated'] ?? 0),
                     'approved_by_name' => $lead['approved_by_name'] ?? '',
                     'approved_at'      => $lead['approved_at'] ?? '',
+                    'booking_team_id'  => $lead['booking_team_id'] ?? null,
+                    'booking_team_name' => $lead['booking_team_name'] ?? '',
+                    'booking_agent_name' => $lead['booking_agent_name'] ?? '',
+                    'booking_sales_current_team_name' => $lead['booking_sales_current_team_name'] ?? '',
+                    'booking_sales_current_team_id'   => $lead['booking_sales_current_team_id'] ?? null,
+                    'booking_sales_status' => $lead['booking_sales_status'] ?? '',
                 ];
             }
             echo json_encode([
@@ -843,8 +849,27 @@ class LeadController extends Controller
                 
                 $assignedDateHtml = '';
             } else {
-                $agentBadge = '<span class="bd-badge bg-primary text-truncate" style="max-width: 150px;">' . htmlspecialchars($lead['agent_name']) . '</span>';
+                $agentNameDisplay = htmlspecialchars($lead['agent_name']);
+                $agentBadge = '<span class="bd-badge bg-primary text-truncate" style="max-width: 150px;">' . $agentNameDisplay . '</span>';
                 
+                // If booked, display the team under which the booking occurred and current team if switched
+                if (!empty($lead['booking_team_name'])) {
+                    $bTeamBadge = '<div class="mt-1 d-flex flex-wrap gap-1 align-items-center">';
+                    $bTeamBadge .= '<span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 10px;" title="Booked under team"><i class="bi bi-people-fill me-1"></i>Sale: ' . htmlspecialchars($lead['booking_team_name']) . '</span>';
+                    
+                    $bTid = !empty($lead['booking_team_id']) ? (int)$lead['booking_team_id'] : 0;
+                    $bCurrTid = !empty($lead['booking_sales_current_team_id']) ? (int)$lead['booking_sales_current_team_id'] : 0;
+                    $bResigned = in_array(strtolower($lead['booking_sales_status'] ?? ''), ['resigned', 'terminated']);
+                    
+                    if ($bTid > 0 && $bCurrTid > 0 && $bTid !== $bCurrTid && !empty($lead['booking_sales_current_team_name'])) {
+                        $bTeamBadge .= '<span class="badge bg-warning-subtle text-dark border border-warning" style="font-size: 10px;" title="Currently in another team"><i class="bi bi-arrow-right me-0.5"></i>Now: ' . htmlspecialchars($lead['booking_sales_current_team_name']) . '</span>';
+                    } elseif ($bResigned) {
+                        $bTeamBadge .= '<span class="badge bg-secondary-subtle text-muted border" style="font-size: 10px;"><i class="bi bi-person-x me-1"></i>Resigned</span>';
+                    }
+                    $bTeamBadge .= '</div>';
+                    $agentBadge .= $bTeamBadge;
+                }
+
                 $assignedRaw = (!empty($lead['assigned_at']) && $lead['assigned_at'] !== '0000-00-00 00:00:00' && $lead['assigned_at'] !== '0000-00-00')
                     ? $lead['assigned_at']
                     : (!empty($lead['updated_at']) && $lead['updated_at'] !== '0000-00-00 00:00:00' ? $lead['updated_at'] : $lead['created_at']);
@@ -1542,13 +1567,13 @@ class LeadController extends Controller
                     $targetTid = $userTeamRes && $userTeamRes['team_id'] !== null ? (int)$userTeamRes['team_id'] : $leadObj['team_id'];
                 }
                 
-                // Keep original created_by intact (only set if NULL); update assigned_by
+                // Keep original created_by intact (only set if NULL); update assigned_by; set initial_team_id if not set yet
                 $stmtUpdate = $this->db->prepare("
                     UPDATE leads 
-                    SET assigned_id = ?, team_id = ?, assigned_at = ?, assigned_by = ?, created_by = COALESCE(created_by, ?) 
+                    SET assigned_id = ?, team_id = ?, initial_team_id = COALESCE(initial_team_id, ?), assigned_at = ?, assigned_by = ?, created_by = COALESCE(created_by, ?) 
                     WHERE id = ?
                 ");
-                $stmtUpdate->bind_param("iisiii", $targetUid, $targetTid, $assignedAt, $assignedBy, $assignedBy, $leadId);
+                $stmtUpdate->bind_param("iiisiii", $targetUid, $targetTid, $targetTid, $assignedAt, $assignedBy, $assignedBy, $leadId);
                 $stmtUpdate->execute();
 
                 // Log into lead_assignment_history
@@ -1576,14 +1601,14 @@ class LeadController extends Controller
                 }
             }
 
-            // Update leads preserving created_by, setting assigned_by
+            // Update leads preserving created_by, setting assigned_by, preserving initial_team_id
             if ($userTeamId !== null) {
                 $stmtUpdate = $this->db->prepare("
                     UPDATE leads 
-                    SET assigned_id = ?, team_id = ?, assigned_at = ?, assigned_by = ?, created_by = COALESCE(created_by, ?) 
+                    SET assigned_id = ?, team_id = ?, initial_team_id = COALESCE(initial_team_id, ?), assigned_at = ?, assigned_by = ?, created_by = COALESCE(created_by, ?) 
                     WHERE id IN ($idsStr)
                 ");
-                $stmtUpdate->bind_param("iisii", $userId, $userTeamId, $assignedAt, $assignedBy, $assignedBy);
+                $stmtUpdate->bind_param("iiisii", $userId, $userTeamId, $userTeamId, $assignedAt, $assignedBy, $assignedBy);
             } else {
                 $stmtUpdate = $this->db->prepare("
                     UPDATE leads 
@@ -1625,34 +1650,92 @@ class LeadController extends Controller
 
     public function showOnboardClient()
     {
-        $year  = $_GET['year']  ?? null;
-        $month = $_GET['month'] ?? null;
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $loggedInUser        = $_SESSION['user'] ?? [];
+        $userId              = (int)($loggedInUser['id'] ?? 0);
+        $userRoleId          = (int)($loggedInUser['role_id'] ?? 0);
+        $userSecondaryRoleId = (int)($loggedInUser['secondary_role_id'] ?? 0);
+        $userRoleName        = strtolower(trim($loggedInUser['role_name'] ?? ''));
+        $sessionTeamId       = (int)($loggedInUser['team_id'] ?? 0);
+
+        // Fetch team_id & employee flags from employees table if missing in session
+        $empTeamId = 0;
+        $empCheck = $this->db->query("SELECT team_id, is_team_leader, is_sales_co_leader FROM employees WHERE user_id = {$userId} LIMIT 1");
+        if ($empCheck && $empRow = $empCheck->fetch_assoc()) {
+            $empTeamId = (int)($empRow['team_id'] ?? 0);
+        }
+        $actualTeamId = !empty($sessionTeamId) ? $sessionTeamId : $empTeamId;
+
+        // 1. Role-wise check for Global/Unrestricted access:
+        // Management (1, 3, 20, 32, 33, 34, 35, 38), Sales Head (9)
+        // CRITICAL: Sales Head (Role 9) might ALSO have is_team_leader = 1 in employees table.
+        // Role check takes absolute precedence over is_team_leader flag so Sales Head can view all teams!
+        $isSalesTeamHead = ($userRoleId === 9 || $userSecondaryRoleId === 9 || strpos($userRoleName, 'team head') !== false || strpos($userRoleName, 'sales head') !== false || strpos($userRoleName, 'sales team head') !== false);
+        $isManagementRole = in_array($userRoleId, [1, 3, 20, 32, 33, 34, 35, 38], true)
+            || in_array($userSecondaryRoleId, [1, 3, 20, 32, 33, 34, 35, 38], true)
+            || strpos($userRoleName, 'admin') !== false
+            || strpos($userRoleName, 'management') !== false
+            || strpos($userRoleName, 'chief') !== false
+            || strpos($userRoleName, 'ceo') !== false;
+
+        $canViewAllTeams = ($isSalesTeamHead || $isManagementRole);
+
+        // Determine team for query:
+        // - Top-level roles can see all by default, or filter by requested team_id
+        // - Sales Manager (5), Team Leader, and other team members are strictly scoped to their own team
+        $teamIdForQuery = null;
+        if ($canViewAllTeams) {
+            $teamIdForQuery = !empty($_GET['team_id']) ? (int)$_GET['team_id'] : null;
+        } else {
+            $teamIdForQuery = $actualTeamId > 0 ? $actualTeamId : null;
+        }
+
+        $year       = $_GET['year']  ?? null;
+        $month      = $_GET['month'] ?? null;
         $project_id = $_GET['project_id'] ?? null;
-        $leads = $this->leadBookedModel->getAllOnboardClientBooking($year, $month, $project_id);
+
+        $leads = $this->leadBookedModel->getAllOnboardClientBooking($year, $month, $project_id, $teamIdForQuery);
         $leadCounts = count($leads);
         $bookingCount = $this->leadBookedModel->getBookingCountByLead();
         $todayFollowUp = (new FollowUp($this->db))->getTodayFollowUpCountByLead();
         $totalTodayFollowUps = array_sum($todayFollowUp);
         $followUpCounts = (new FollowUp($this->db))->getFollowUpCountByLead();
         $paymentCount = (new PaymentLeadBooking($this->db))->getpaymentCount();
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
 
         $projects = $this->projectModel->getProjectsWithActiveBookings();
+        $allTeams = $this->teamsModel->getAll();
+
+        // Resolve current team name for header display
+        $currentTeamName = null;
+        if (!empty($teamIdForQuery)) {
+            foreach ($allTeams as $t) {
+                if ((int)$t['id'] === (int)$teamIdForQuery) {
+                    $currentTeamName = $t['name'] ?? null;
+                    break;
+                }
+            }
+        }
+
+        $pageTitle = ($canViewAllTeams && empty($teamIdForQuery)) ? "All Onboard Clients" : "Team Onboarding Clients";
 
         $this->view("sales-developments/leads/onboard-clients", [
-            "current_route" => "onboarding-clients",
-            "page_title" => "All Onboard Clients",
-            "followUpCounts" => $followUpCounts,
-            "bookingCount" => $bookingCount,
-            "paymentCount" => $paymentCount,
-            "leadCounts" => $leadCounts,
-            "totalPeriodLeadsCount" => $totalPeriodLeadsCount,
+            "current_route"       => "onboarding-clients",
+            "page_title"          => $pageTitle,
+            "followUpCounts"      => $followUpCounts,
+            "bookingCount"        => $bookingCount,
+            "paymentCount"        => $paymentCount,
+            "leadCounts"          => $leadCounts,
             "totalTodayFollowUps" => $totalTodayFollowUps,
-            "leads" => $leads,
-            "projects" => $projects,
+            "leads"               => $leads,
+            "projects"            => $projects,
             "selected_project_id" => $project_id,
+            "allTeams"            => $allTeams,
+            "canViewAllTeams"     => $canViewAllTeams,
+            "teamIdForQuery"      => $teamIdForQuery,
+            "currentTeamName"     => $currentTeamName,
         ]);
     }
 
@@ -1742,6 +1825,7 @@ class LeadController extends Controller
             'lead_quality' => $optStr('lead_quality') ?? 'Pending',
             'created_by' => $_SESSION['user']['id'] ?? null,
             'team_id' => $optInt('team_id'),
+            'initial_team_id' => $optInt('initial_team_id') ?? $optInt('team_id'),
             'country' => $optStr('country'),
             '2nd_lead_owner_name' => $optStr('2nd_lead_owner_name'),
             '2nd_owner_phone' => $optStr('2nd_owner_phone'),

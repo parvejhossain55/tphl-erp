@@ -750,29 +750,35 @@ public function indexTwo($bookingId = null)
         $uStmt->close();
 
         $teamId = $uRow['team_id'] ?? null;
+        if (empty($teamId)) {
+            $eQ = $this->db->query("SELECT team_id FROM employees WHERE user_id = {$salesById} LIMIT 1");
+            if ($eQ && $eR = $eQ->fetch_assoc()) {
+                $teamId = !empty($eR['team_id']) ? (int)$eR['team_id'] : null;
+            }
+        }
         $agentName = $uRow['full_name'] ?? 'Selected Agent';
 
         $this->db->begin_transaction();
         try {
-            // 1. Update lead_bookings (booking_date, sales_by_id, and optionally total_emi_no + audit)
+            // 1. Update lead_bookings (booking_date, sales_by_id, team_id, and optionally total_emi_no + audit)
             if ($newTotalEmi !== null) {
                 $oldTotalEmi = isset($booking['total_emi_no']) && $booking['total_emi_no'] !== null ? (int)$booking['total_emi_no'] : null;
                 $emiActuallyChanged = ($oldTotalEmi === null || $oldTotalEmi !== $newTotalEmi || empty($booking['emi_updated_by']));
 
                 if ($emiActuallyChanged) {
-                    $updB = $this->db->prepare("UPDATE lead_bookings SET booking_date = ?, sales_by_id = ?, total_emi_no = ?, emi_updated_by = ?, emi_updated_at = NOW(), updated_at = NOW() WHERE id = ?");
+                    $updB = $this->db->prepare("UPDATE lead_bookings SET booking_date = ?, sales_by_id = ?, team_id = COALESCE(?, team_id), total_emi_no = ?, emi_updated_by = ?, emi_updated_at = NOW(), updated_at = NOW() WHERE id = ?");
                     if (!$updB) {
                         throw new Exception("Prepare lead_bookings update failed: " . $this->db->error);
                     }
-                    $updB->bind_param("siiii", $formattedBookingDate, $salesById, $newTotalEmi, $currentUserId, $bookingId);
+                    $updB->bind_param("siiiii", $formattedBookingDate, $salesById, $teamId, $newTotalEmi, $currentUserId, $bookingId);
                     $updB->execute();
                     $updB->close();
                 } else {
-                    $updB = $this->db->prepare("UPDATE lead_bookings SET booking_date = ?, sales_by_id = ?, total_emi_no = ?, updated_at = NOW() WHERE id = ?");
+                    $updB = $this->db->prepare("UPDATE lead_bookings SET booking_date = ?, sales_by_id = ?, team_id = COALESCE(?, team_id), total_emi_no = ?, updated_at = NOW() WHERE id = ?");
                     if (!$updB) {
                         throw new Exception("Prepare lead_bookings update failed: " . $this->db->error);
                     }
-                    $updB->bind_param("siii", $formattedBookingDate, $salesById, $newTotalEmi, $bookingId);
+                    $updB->bind_param("siiii", $formattedBookingDate, $salesById, $teamId, $newTotalEmi, $bookingId);
                     $updB->execute();
                     $updB->close();
                 }
@@ -785,11 +791,11 @@ public function indexTwo($bookingId = null)
                     $updEmiP->close();
                 }
             } else {
-                $updB = $this->db->prepare("UPDATE lead_bookings SET booking_date = ?, sales_by_id = ?, updated_at = NOW() WHERE id = ?");
+                $updB = $this->db->prepare("UPDATE lead_bookings SET booking_date = ?, sales_by_id = ?, team_id = COALESCE(?, team_id), updated_at = NOW() WHERE id = ?");
                 if (!$updB) {
                     throw new Exception("Prepare lead_bookings update failed: " . $this->db->error);
                 }
-                $updB->bind_param("sii", $formattedBookingDate, $salesById, $bookingId);
+                $updB->bind_param("siii", $formattedBookingDate, $salesById, $teamId, $bookingId);
                 $updB->execute();
                 $updB->close();
             }
@@ -806,11 +812,11 @@ public function indexTwo($bookingId = null)
             // 3. Update leads (assigned_id and team_id for this lead_id)
             if ($leadId > 0) {
                 if (!empty($teamId)) {
-                    $updL = $this->db->prepare("UPDATE leads SET assigned_id = ?, team_id = ?, updated_at = NOW() WHERE id = ?");
+                    $updL = $this->db->prepare("UPDATE leads SET assigned_id = ?, team_id = ?, initial_team_id = COALESCE(initial_team_id, ?), updated_at = NOW() WHERE id = ?");
                     if (!$updL) {
                         throw new Exception("Prepare leads update failed: " . $this->db->error);
                     }
-                    $updL->bind_param("iii", $salesById, $teamId, $leadId);
+                    $updL->bind_param("iiii", $salesById, $teamId, $teamId, $leadId);
                 } else {
                     $updL = $this->db->prepare("UPDATE leads SET assigned_id = ?, updated_at = NOW() WHERE id = ?");
                     if (!$updL) {
@@ -2451,7 +2457,7 @@ public function showCedTransactionForm($bookingId = null)
     $totalLandShare = (float)($paymentSummary['total_land_share'] ?? $clientDetails['total_land_share'] ?? 0);
     $discountAmount = (float)($paymentSummary['discount_amount'] ?? $clientDetails['discount_amount'] ?? 0);
     $agreementValue = (float)($paymentSummary['agreement_value'] ?? $clientDetails['agreement_value'] ?? 0);
-    $effectiveBookingTarget = ($agreementValue > 0) ? $agreementValue : 300000;
+    $effectiveBookingTarget = ($agreementValue > 0) ? max(0, $agreementValue - $discountAmount) : 300000;
 
     $formRemainingRegistration = max(0, $totalLandShare - $discountAmount - $effectiveBookingTarget - $allRegistrationAndLandshare);
     $formRemainingBooking = max(0, $effectiveBookingTarget - $bookingMoneyTotal);
@@ -2886,7 +2892,7 @@ public function showAddTransactionForm($bookingId = null)
     $totalLandShare = (float)($clientDetails['total_land_share'] ?? 0);
     $discountAmount = (float)($clientDetails['discount_amount'] ?? 0);
     $agreementValue = (float)($clientDetails['agreement_value'] ?? 0);
-    $effectiveBookingTarget = ($agreementValue > 0) ? $agreementValue : 300000;
+    $effectiveBookingTarget = ($agreementValue > 0) ? max(0, $agreementValue - $discountAmount) : 300000;
 
     $formRemainingRegistration = max(0, $totalLandShare - $discountAmount - $effectiveBookingTarget - $allRegistrationAndLandshare);
     $formRemainingBooking = max(0, $effectiveBookingTarget - $bookingMoneyTotal);

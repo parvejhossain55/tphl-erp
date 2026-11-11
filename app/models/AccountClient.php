@@ -1922,7 +1922,10 @@ class AccountClient extends Model
 
             // Add calculated fields to response
             $agreementValForTarget = (float) ($clientDetails['agreement_value'] ?? 0);
-            $clientDetails['effective_booking_target']             = ($agreementValForTarget > 0) ? $agreementValForTarget : 300000;
+            $discountValForTarget  = (float) ($clientDetails['discount_amount'] ?? 0);
+            $clientDetails['effective_booking_target']             = ($agreementValForTarget > 0) 
+                ? max(0, $agreementValForTarget - $discountValForTarget) 
+                : 300000;
             $clientDetails['total_land_share_paid']                = $totalLandSharePaid;
             $clientDetails['landshare_paid']                       = $totalLandSharePaid;
             $clientDetails['total_land_share_paid_total']          = $totalLandSharePaidTotal;
@@ -2931,7 +2934,8 @@ class AccountClient extends Model
                     if ($summary['is_booking_fully_paid']) {
                         throw new Exception("Booking money has already been fully paid for this booking.");
                     }
-                    $remainingBooking = $summary['agreement_value'] - $summary['booking_money_paid'];
+                    $effectiveBookingTarget = (float) ($summary['effective_booking_target'] ?? max(0, (float)($summary['agreement_value'] ?? 0) - (float)($summary['discount_amount'] ?? 0)));
+                    $remainingBooking = max(0, $effectiveBookingTarget - (float)($summary['booking_money_paid'] ?? 0));
                     if ($amount > $remainingBooking) {
                         throw new Exception("Amount exceeds outstanding booking balance: Tk. " . number_format($remainingBooking, 2));
                     }
@@ -4651,7 +4655,10 @@ class AccountClient extends Model
             
             // Calculate remaining targets
             $agreementValForBooking = (float) ($summary['agreement_value'] ?? 0);
-            $bookingTargetForTx     = ($agreementValForBooking > 0) ? $agreementValForBooking : (float) ($summary['effective_booking_target'] ?? 300000);
+            $discountForBooking     = (float) ($summary['discount_amount'] ?? 0);
+            $bookingTargetForTx     = ($agreementValForBooking > 0) 
+                ? max(0, $agreementValForBooking - $discountForBooking) 
+                : (float) ($summary['effective_booking_target'] ?? 300000);
             $bookingMoneyRemaining  = max(0, $bookingTargetForTx - (float) ($summary['booking_money_total'] ?? 0));
             $landShareRemaining = max(0, $summary['remaining_land_share']);
             $isShop = !empty($clientDetails['is_shop']);
