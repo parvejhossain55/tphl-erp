@@ -1823,10 +1823,20 @@ class MyWorkController extends Controller
         $progress = $totalItems > 0 ? (int)round(($completedItems / $totalItems) * 100) : (int)($task['progress'] ?? 0);
 
         // Status update logic: if all items are done, mark as completed (or ready for review)
+        $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
+        $reviewerIds = $ids($task['mentioned_user_ids'] ?? '');
+        $hasReviewers = count($reviewerIds) > 0;
+
         $newStatus = $task['status'];
         if ($allDone) {
-            $newStatus = 'completed';
-            $progress = 100;
+            if ($hasReviewers) {
+                // If reviewers exist, keep in_progress with review readiness (85% progress)
+                $newStatus = 'in_progress';
+                $progress = max($progress, 85);
+            } else {
+                $newStatus = 'completed';
+                $progress = 100;
+            }
         } elseif ($task['status'] === 'completed' && !$allDone) {
             // Unchecking any item reverts status back to in_progress
             $newStatus = 'in_progress';

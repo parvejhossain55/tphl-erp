@@ -3018,13 +3018,18 @@ document.addEventListener('DOMContentLoaded', function () {
         if (revNoteWrap) revNoteWrap.style.display = 'none';
 
         // Wire up checklist item click handlers (Figma custom checkbox)
+        let isChecklistToggling = false;
         tdBody.querySelectorAll('.mw-cl-item').forEach(itemEl => {
             itemEl.addEventListener('click', function() {
-                if (!t.can_check) return;
+                if (!t.can_check || isChecklistToggling) return;
                 const itemIdx = parseInt(this.getAttribute('data-cl-idx'), 10);
                 const box = this.querySelector('.mw-cl-box');
                 const textSpan = this.querySelector('.mw-cl-item-text');
                 const willBeChecked = !box.classList.contains('checked');
+
+                isChecklistToggling = true;
+                this.style.opacity = '0.6';
+                this.style.pointerEvents = 'none';
 
                 // Optimistic UI toggle
                 box.classList.toggle('checked', willBeChecked);
@@ -3033,6 +3038,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (textSpan) {
                     textSpan.classList.toggle('checked', willBeChecked);
                     textSpan.classList.toggle('unchecked', !willBeChecked);
+                }
+
+                // Update local task checklist model and progress counter immediately
+                if (Array.isArray(t.checklist) && t.checklist[itemIdx]) {
+                    t.checklist[itemIdx].completed = willBeChecked;
+                    const doneCount = t.checklist.filter(c => !!c.completed).length;
+                    const totalCount = t.checklist.length;
+                    const pct = Math.round((doneCount / totalCount) * 100);
+
+                    const badgeEl = tdBody.querySelector('.mw-cl-counter-badge');
+                    if (badgeEl) badgeEl.textContent = `${doneCount} of ${totalCount} complete`;
+
+                    const barEl = tdBody.querySelector('.mw-cl-progress-fill');
+                    if (barEl) barEl.style.width = `${pct}%`;
                 }
 
                 // Send AJAX toggle request
@@ -3049,12 +3068,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(data => {
                     if (data.status === 'success') {
                         if (data.all_completed) {
-                            showMwToast(data.message || 'Task completed!', 'success');
+                            showMwToast(data.message || 'All checklist items completed!', 'success');
+                            if (window.openTaskDetail && currentDetailTaskId) {
+                                window.openTaskDetail(currentDetailTaskId);
+                            }
                         }
-                        // Refresh task detail and list to sync status, progress bar, badges & cards
-                        if (window.openTaskDetail && currentDetailTaskId) {
-                            window.openTaskDetail(currentDetailTaskId);
-                        }
+                        // Refresh background workspace tables and count cards without destroying open drawer
                         if (typeof fetchWorkspaceData === 'function') {
                             fetchWorkspaceData();
                         }
@@ -3080,6 +3099,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         textSpan.classList.toggle('checked', !willBeChecked);
                         textSpan.classList.toggle('unchecked', willBeChecked);
                     }
+                })
+                .finally(() => {
+                    this.style.opacity = '1';
+                    this.style.pointerEvents = 'auto';
+                    isChecklistToggling = false;
                 });
             });
         });
