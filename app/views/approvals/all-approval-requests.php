@@ -897,10 +897,7 @@
                                         $canUserApprove = true;
                                         $reqOpStatus = strtolower($req['op_head_status'] ?? 'pending');
                                         $isOver10k = ((float)($req['request_amount'] ?? 0) > 10000.01);
-                                        if (strpos($reqApproveRole, 'dept_head') === 0) {
-                                            // Management user acting as Department Head / Reporting Boss
-                                            $isActionableByMe = true;
-                                        } elseif ((in_array($reqApproveRole, ['management', 'operations', '']) || $sourceTable === 'payslips')) {
+                                        if ((in_array($reqApproveRole, ['management', 'operations', '']) || $sourceTable === 'payslips')) {
                                             if ($isOver10k && $sourceTable !== 'payslips' && ($reqOpStatus !== 'approved' || !$isAccountsHeadApproved)) {
                                                 $isActionableByMe = false;
                                             } elseif (!$isOver10k && in_array($sourceTable, ['vendor_payment_requests', 'contractor_bill_requests'], true)) {
