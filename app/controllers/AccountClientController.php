@@ -4506,47 +4506,6 @@ public function addPayment()
             'created_by' => $_SESSION['user']['id'] ?? 1
         ];
         
-        // For land share payments, validate remaining amount
-        if ($data['payment_type'] === 'land_share') {
-            $remainingLandShare = $accountModel->getRemainingLandShare($data['booking_id']);
-            
-            if ($remainingLandShare <= 0) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Land share payment is already completed!'
-                ]);
-                return;
-            }
-            
-            if ($data['amount'] > $remainingLandShare) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Land share amount cannot exceed remaining: Tk. ' . number_format($remainingLandShare, 2)
-                ]);
-                return;
-            }
-        }
-        
-        $isTestingMode = !empty($data['is_testing_mode']);
-
-        require_once dirname(__DIR__) . '/services/SmsService.php';
-        $smsService = new SmsService($this->db);
-
-        if (!$isTestingMode) {
-            $clientDetails = $accountModel->getClientByBookingId($data['booking_id']);
-            $clientPhone   = !empty($clientDetails['phone']) ? trim($clientDetails['phone']) : (!empty($clientDetails['phone_number']) ? trim($clientDetails['phone_number']) : '');
-            $phoneCheck    = $smsService->validatePhoneNumber($clientPhone);
-
-            if (!$phoneCheck['valid']) {
-                // Do not block payment. It will gracefully show a warning instead.
-                // echo json_encode([
-                //     'success' => false,
-                //     'message' => 'Cannot process payment: ' . $phoneCheck['message'] . '. Please update the client\'s phone number first or enable Testing Mode.'
-                // ]);
-                // return;
-            }
-        }
-
         // Prepare EMI schedule data if applicable
         $emiScheduleData = null;
         if ($data['payment_type'] === 'emi') {
@@ -4556,7 +4515,12 @@ public function addPayment()
             ];
         }
         
-        $result = $accountModel->addTransaction($transactionData, $emiScheduleData);
+        // Route to correct model method (waterfall for flat price components, single for others)
+        if ($transactionData['payment_type'] === 'others') {
+            $result = $accountModel->addTransaction($transactionData, null);
+        } else {
+            $result = $accountModel->addTransactionWithEMI($transactionData, $emiScheduleData);
+        }
         
         if (!empty($result['success']) && !empty($result['payment_id'])) {
             $overrideAmount = $data['amount'] ?? null;
@@ -5134,8 +5098,8 @@ public function discountStatement($bookingId = null)
 
                     // 3. Sync Booking Status
                     $newBookingStatus = $paymentController->updateBookingPaymentStatus($bookingId);
-                    $paymentStatusMap = ['paid' => 'paid', 'partial' => 'partially_paid', 'unpaid' => 'pending'];
-                    $newPaymentStatus = $paymentStatusMap[$newBookingStatus] ?? 'paid';
+                    $isPartial = !empty($paymentData['due_emi_amount']) && (float)$paymentData['due_emi_amount'] > 0;
+                    $newPaymentStatus = $isPartial ? 'partially_paid' : 'paid';
 
                     $updStatus = $this->db->prepare("UPDATE lead_payments SET payment_status = ? WHERE id = ?");
                     $updStatus->bind_param('si', $newPaymentStatus, $paymentId);

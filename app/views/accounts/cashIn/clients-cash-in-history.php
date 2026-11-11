@@ -272,6 +272,14 @@ window.openEditPaymentDateModal = function(target) {
                                 <h4 class="card__title <?= $landRemain > 0 ? 'text-danger' : 'text-success' ?>">
                                     TK.<?= number_format($landRemain, 2) ?>
                                 </h4>
+                                <?php 
+                                    $pendingLS = max(0, (float)($paymentSummary['total_land_share_paid_total'] ?? 0) - (float)($paymentSummary['landshare_paid'] ?? 0));
+                                    if ($pendingLS > 0): 
+                                ?>
+                                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle fs-11" title="Unverified/Pending in ledger: TK. <?= number_format($pendingLS, 2) ?>">
+                                        <i class="fa-light fa-clock me-1"></i>Pending: TK. <?= number_format($pendingLS, 2) ?>
+                                    </span>
+                                <?php endif; ?>
                             <?php endif; ?>
                         </div>
                     </div>

@@ -1693,12 +1693,34 @@ class LeadController extends Controller
             $teamIdForQuery = $actualTeamId > 0 ? $actualTeamId : null;
         }
 
-        $year       = $_GET['year']  ?? null;
-        $month      = $_GET['month'] ?? null;
-        $project_id = $_GET['project_id'] ?? null;
+        $year        = $_GET['year']        ?? null;
+        $month       = $_GET['month']       ?? null;
+        $project_id  = $_GET['project_id']  ?? null;
+        $from_date   = !empty($_GET['from_date']) ? trim($_GET['from_date']) : null;
+        $to_date     = !empty($_GET['to_date'])   ? trim($_GET['to_date'])   : null;
+        $sales_by_id = !empty($_GET['sales_by_id']) ? (int)$_GET['sales_by_id'] : null;
 
-        $leads = $this->leadBookedModel->getAllOnboardClientBooking($year, $month, $project_id, $teamIdForQuery);
+        $leads = $this->leadBookedModel->getAllOnboardClientBooking($year, $month, $project_id, $teamIdForQuery, $from_date, $to_date, $sales_by_id);
         $leadCounts = count($leads);
+
+        // Fetch salespersons and their client counts for the filter dropdown
+        $salesPersonsWithCounts = $this->leadBookedModel->getOnboardSalespersonCounts($teamIdForQuery, $year, $month, $project_id, $from_date, $to_date);
+
+        // Resolve selected salesperson display name
+        $selectedSalesPersonName = null;
+        if (!empty($sales_by_id)) {
+            foreach ($salesPersonsWithCounts as $sp) {
+                if ((int)$sp['user_id'] === $sales_by_id) {
+                    $selectedSalesPersonName = $sp['sales_name'];
+                    break;
+                }
+            }
+            if (!$selectedSalesPersonName) {
+                $uRow = $this->userModel->getById($sales_by_id);
+                $selectedSalesPersonName = $uRow['full_name'] ?? null;
+            }
+        }
+
         $bookingCount = $this->leadBookedModel->getBookingCountByLead();
         $todayFollowUp = (new FollowUp($this->db))->getTodayFollowUpCountByLead();
         $totalTodayFollowUps = array_sum($todayFollowUp);
@@ -1722,20 +1744,27 @@ class LeadController extends Controller
         $pageTitle = ($canViewAllTeams && empty($teamIdForQuery)) ? "All Onboard Clients" : "Team Onboarding Clients";
 
         $this->view("sales-developments/leads/onboard-clients", [
-            "current_route"       => "onboarding-clients",
-            "page_title"          => $pageTitle,
-            "followUpCounts"      => $followUpCounts,
-            "bookingCount"        => $bookingCount,
-            "paymentCount"        => $paymentCount,
-            "leadCounts"          => $leadCounts,
-            "totalTodayFollowUps" => $totalTodayFollowUps,
-            "leads"               => $leads,
-            "projects"            => $projects,
-            "selected_project_id" => $project_id,
-            "allTeams"            => $allTeams,
-            "canViewAllTeams"     => $canViewAllTeams,
-            "teamIdForQuery"      => $teamIdForQuery,
-            "currentTeamName"     => $currentTeamName,
+            "current_route"             => "onboarding-clients",
+            "page_title"                => $pageTitle,
+            "followUpCounts"            => $followUpCounts,
+            "bookingCount"              => $bookingCount,
+            "paymentCount"              => $paymentCount,
+            "leadCounts"                => $leadCounts,
+            "totalTodayFollowUps"       => $totalTodayFollowUps,
+            "leads"                     => $leads,
+            "projects"                  => $projects,
+            "selected_project_id"       => $project_id,
+            "allTeams"                  => $allTeams,
+            "canViewAllTeams"           => $canViewAllTeams,
+            "teamIdForQuery"            => $teamIdForQuery,
+            "currentTeamName"           => $currentTeamName,
+            "salesPersonsWithCounts"    => $salesPersonsWithCounts,
+            "selected_sales_by_id"      => $sales_by_id,
+            "selected_sales_person_name"=> $selectedSalesPersonName,
+            "from_date"                 => $from_date,
+            "to_date"                   => $to_date,
+            "selected_year"             => $year,
+            "selected_month"            => $month,
         ]);
     }
 

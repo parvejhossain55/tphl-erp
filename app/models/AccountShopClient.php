@@ -549,7 +549,7 @@ class AccountShopClient extends AccountClient
             'total_land_share_paid'                => $clientDetails['total_land_share_paid'],
             'total_land_share_paid_total'          => $clientDetails['total_land_share_paid_total'] ?? $clientDetails['total_land_share_paid'],
             'landshare_paid'                       => $clientDetails['landshare_paid'],
-            'remaining_land_share'                 => $clientDetails['remaining_land_share_total'] ?? $clientDetails['remaining_land_share'],
+            'remaining_land_share'                 => $clientDetails['remaining_land_share'],
             'remaining_land_share_total'           => $clientDetails['remaining_land_share_total'] ?? $clientDetails['remaining_land_share'],
             'discount_amount'                      => $clientDetails['discount_amount'],
             'registration_paid'                    => $clientDetails['registration_paid'],

@@ -2858,7 +2858,7 @@ class AccountClient extends Model
             'total_land_share_paid'                => $clientDetails['total_land_share_paid'],  // booking+landshare+registration (verified)
             'total_land_share_paid_total'          => $clientDetails['total_land_share_paid_total'] ?? $clientDetails['total_land_share_paid'], // unrejected total
             'landshare_paid'                       => $clientDetails['landshare_paid'],          // alias
-            'remaining_land_share'                 => $clientDetails['remaining_land_share_total'] ?? $clientDetails['remaining_land_share'],
+            'remaining_land_share'                 => $clientDetails['remaining_land_share'],
             'remaining_land_share_total'           => $clientDetails['remaining_land_share_total'] ?? $clientDetails['remaining_land_share'],
             'discount_amount'                      => $clientDetails['discount_amount'],
             'registration_paid'                    => $clientDetails['registration_paid'],
@@ -2943,11 +2943,12 @@ class AccountClient extends Model
                     break;
 
                 case 'land_share':
-                    if ($summary['remaining_land_share'] <= 0) {
+                    $remLSTarget = (float)($summary['remaining_land_share_total'] ?? $summary['remaining_land_share']);
+                    if ($remLSTarget <= 0) {
                         throw new Exception("Land share payment is already completed!");
                     }
-                    if ($amount > $summary['remaining_land_share']) {
-                        throw new Exception("Land share amount cannot exceed remaining land share: Tk. " . number_format($summary['remaining_land_share'], 2));
+                    if ($amount > $remLSTarget) {
+                        throw new Exception("Land share amount cannot exceed remaining land share: Tk. " . number_format($remLSTarget, 2));
                     }
                     $landShareAmount = $amount;
                     break;
@@ -3965,7 +3966,8 @@ class AccountClient extends Model
                     (float) $oldTransaction['amount'] : 0;
 
                 $effectiveAmountChange = $newAmount - $oldAmount;
-                $remainingAfterChange = $summary['remaining_land_share'] - $effectiveAmountChange;
+                $remLSTarget = (float)($summary['remaining_land_share_total'] ?? $summary['remaining_land_share']);
+                $remainingAfterChange = $remLSTarget - $effectiveAmountChange;
 
                 if ($remainingAfterChange < 0) {
                     throw new Exception("Land share amount would exceed remaining land share by: Tk. " .
@@ -4660,7 +4662,7 @@ class AccountClient extends Model
                 ? max(0, $agreementValForBooking - $discountForBooking) 
                 : (float) ($summary['effective_booking_target'] ?? 300000);
             $bookingMoneyRemaining  = max(0, $bookingTargetForTx - (float) ($summary['booking_money_total'] ?? 0));
-            $landShareRemaining = max(0, $summary['remaining_land_share']);
+            $landShareRemaining = max(0, (float)($summary['remaining_land_share_total'] ?? $summary['remaining_land_share']));
             $isShop = !empty($clientDetails['is_shop']);
             // Development Charge (flats.development_charges) — applies to both flats and shops
             $flatDevTarget    = (float) ($summary['flat_development_charges'] ?? 0);

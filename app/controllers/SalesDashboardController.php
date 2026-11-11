@@ -106,9 +106,10 @@ class SalesDashboardController extends Controller
         $overall = $serviceData['overall'];
 
         // Scope SQL conditions for secondary queries
-        $teamB = $effectiveTeamId ? " AND (l.team_id = {$effectiveTeamId} OR l.assigned_id IN (SELECT id FROM users WHERE team_id = {$effectiveTeamId}) OR lb.sales_by_id IN (SELECT id FROM users WHERE team_id = {$effectiveTeamId}))" : "";
+        $teamB = $effectiveTeamId ? " AND COALESCE(lb.team_id, l.team_id) = {$effectiveTeamId}" : "";
         $projB = $filterProjectId ? " AND lb.project_id = {$filterProjectId}" : "";
         $execB = $filterExecutiveId ? " AND (lb.sales_by_id = {$filterExecutiveId} OR (COALESCE(lb.sales_by_id, 0) = 0 AND l.assigned_id = {$filterExecutiveId}))" : "";
+        $refundExclude = " AND lb.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))";
 
         // -----------------------------------------------------------------
         // 1. TOP METRICS (8 KPI CARDS)
@@ -132,6 +133,7 @@ class SalesDashboardController extends Controller
             LEFT JOIN flats f ON f.id = lb.flat_id
             WHERE lb.deleted_at IS NULL
               AND lb.booking_date BETWEEN '{$startD}' AND '{$endD}'
+              {$refundExclude}
               {$teamB} {$projB} {$execB}
         ";
         $bkgSummary = $this->db->query($bkgSummaryQ)->fetch_assoc() ?: [];
@@ -158,6 +160,7 @@ class SalesDashboardController extends Controller
             WHERE lb.deleted_at IS NULL
               AND lb.booking_status IN ('booked', 'completed')
               AND lb.booking_date BETWEEN '{$startD}' AND '{$endD}'
+              {$refundExclude}
               AND NOT EXISTS (
                   SELECT 1 FROM lead_payments lp 
                   WHERE lp.booking_id = lb.id 
@@ -421,6 +424,7 @@ class SalesDashboardController extends Controller
                 WHERE lb.deleted_at IS NULL
                   AND lb.booking_status IN ('booked', 'completed')
                   AND lb.booking_date BETWEEN '{$startD}' AND '{$endD}'
+                  {$refundExclude}
                   {$teamB} {$execB}
                 GROUP BY lb.project_id
             ) cur ON cur.project_id = p.id
@@ -662,7 +666,8 @@ class SalesDashboardController extends Controller
                 WHERE lb.deleted_at IS NULL
                   AND lb.booking_status IN ('booked', 'completed')
                   AND lb.booking_date BETWEEN '{$startD}' AND '{$endD}'
-                  AND (l.team_id = {$teamId} OR lb.sales_by_id IN (SELECT id FROM users WHERE team_id = {$teamId}))
+                  AND COALESCE(lb.team_id, l.team_id) = {$teamId}
+                  AND lb.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))
             ";
             $tbRow = $this->db->query($teamBkgQ)->fetch_assoc() ?: [];
             $team['units'] = (int) ($tbRow['units_sold'] ?? 0);
@@ -797,9 +802,10 @@ class SalesDashboardController extends Controller
             LEFT JOIN flats f ON f.id = lb.flat_id
             LEFT JOIN projects p ON p.id = lb.project_id
             LEFT JOIN users u ON u.id = COALESCE(NULLIF(lb.sales_by_id, 0), l.assigned_id)
-            LEFT JOIN teams t ON t.id = u.team_id
+            LEFT JOIN teams t ON t.id = COALESCE(lb.team_id, l.team_id)
             WHERE lb.deleted_at IS NULL
               AND lb.booking_date BETWEEN '{$startD}' AND '{$endD}'
+              {$refundExclude}
               {$teamB} {$projB} {$execB}
             ORDER BY lb.id DESC
         ";
@@ -863,7 +869,7 @@ class SalesDashboardController extends Controller
             LEFT JOIN flats f ON f.id = lb.flat_id
             LEFT JOIN projects p ON p.id = lb.project_id
             LEFT JOIN users u ON u.id = COALESCE(NULLIF(lb.sales_by_id, 0), l.assigned_id)
-            LEFT JOIN teams t ON t.id = u.team_id
+            LEFT JOIN teams t ON t.id = COALESCE(lb.team_id, l.team_id)
             WHERE lb.deleted_at IS NULL
               AND lb.booking_status IN ('booked', 'completed')
               AND NOT EXISTS (
@@ -873,6 +879,7 @@ class SalesDashboardController extends Controller
                     AND COALESCE(lp.is_trashed, 0) = 0
               )
               AND lb.booking_date BETWEEN '{$startD}' AND '{$endD}'
+              {$refundExclude}
               {$teamB} {$projB} {$execB}
             ORDER BY lb.id DESC
         ";
@@ -905,7 +912,7 @@ class SalesDashboardController extends Controller
             LEFT JOIN flats f ON f.id = lb.flat_id
             LEFT JOIN projects proj ON proj.id = lb.project_id
             LEFT JOIN users u ON u.id = COALESCE(NULLIF(lb.sales_by_id, 0), l.assigned_id)
-            LEFT JOIN teams t ON t.id = u.team_id
+            LEFT JOIN teams t ON t.id = COALESCE(lb.team_id, l.team_id)
             WHERE COALESCE(p.is_trashed, 0) = 0
               AND p.verification_status = 'verified'
               AND p.payment_date BETWEEN '{$startD}' AND '{$endD}'

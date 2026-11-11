@@ -46,20 +46,20 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         return $result->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function getAllBooking($year = null, $month = null, $project_id = null, $teamId = null)
+    public function getAllBooking($year = null, $month = null, $project_id = null, $teamId = null, $from_date = null, $to_date = null, $sales_by_id = null)
     {
-        return $this->getAllOnboardClientBooking($year, $month, $project_id, $teamId);
+        return $this->getAllOnboardClientBooking($year, $month, $project_id, $teamId, $from_date, $to_date, $sales_by_id);
     }
 
-    public function getAllBookings($year = null, $month = null, $project_id = null, $teamId = null)
+    public function getAllBookings($year = null, $month = null, $project_id = null, $teamId = null, $from_date = null, $to_date = null, $sales_by_id = null)
     {
-        return $this->getAllOnboardClientBooking($year, $month, $project_id, $teamId);
+        return $this->getAllOnboardClientBooking($year, $month, $project_id, $teamId, $from_date, $to_date, $sales_by_id);
     }
 
 
 
 
-    public function getAllOnboardClientBooking($year = null, $month = null, $project_id = null, $teamId = null)
+    public function getAllOnboardClientBooking($year = null, $month = null, $project_id = null, $teamId = null, $from_date = null, $to_date = null, $sales_by_id = null)
     {
         $sql = "SELECT 
                 lb.*, 
@@ -116,16 +116,37 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         $params = [];
         $types  = "";
 
-        if (!empty($year)) {
-            $sql .= " AND YEAR(lb.booking_date) = ?";
-            $params[] = (int)$year;
-            $types   .= "i";
-        }
-
-        if (!empty($month)) {
-            $sql .= " AND MONTH(lb.booking_date) = ?";
-            $params[] = (int)$month;
-            $types   .= "i";
+        // Custom date range takes priority over year/month
+        if (!empty($from_date) && !empty($to_date)) {
+            $sql .= " AND (DATE(lb.booking_date) BETWEEN ? AND ? OR (lb.booking_date IS NULL AND DATE(lb.created_at) BETWEEN ? AND ?))";
+            $params[] = $from_date;
+            $params[] = $to_date;
+            $params[] = $from_date;
+            $params[] = $to_date;
+            $types   .= "ssss";
+        } elseif (!empty($from_date)) {
+            $sql .= " AND (DATE(lb.booking_date) >= ? OR (lb.booking_date IS NULL AND DATE(lb.created_at) >= ?))";
+            $params[] = $from_date;
+            $params[] = $from_date;
+            $types   .= "ss";
+        } elseif (!empty($to_date)) {
+            $sql .= " AND (DATE(lb.booking_date) <= ? OR (lb.booking_date IS NULL AND DATE(lb.created_at) <= ?))";
+            $params[] = $to_date;
+            $params[] = $to_date;
+            $types   .= "ss";
+        } elseif (!empty($year) || !empty($month)) {
+            if (!empty($year)) {
+                $sql .= " AND (YEAR(lb.booking_date) = ? OR (lb.booking_date IS NULL AND YEAR(lb.created_at) = ?))";
+                $params[] = (int)$year;
+                $params[] = (int)$year;
+                $types   .= "ii";
+            }
+            if (!empty($month)) {
+                $sql .= " AND (MONTH(lb.booking_date) = ? OR (lb.booking_date IS NULL AND MONTH(lb.created_at) = ?))";
+                $params[] = (int)$month;
+                $params[] = (int)$month;
+                $types   .= "ii";
+            }
         }
 
         if (!empty($project_id)) {
@@ -140,10 +161,17 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             $sql .= " AND COALESCE(lb.team_id, l.team_id) = {$teamIdInt}";
         }
 
+        // Salesperson filter
+        if (!empty($sales_by_id)) {
+            $sql .= " AND (lb.sales_by_id = ? OR (lb.sales_by_id IS NULL AND l.assigned_id = ?))";
+            $params[] = (int)$sales_by_id;
+            $params[] = (int)$sales_by_id;
+            $types   .= "ii";
+        }
+
         $sql .= " ORDER BY lb.booking_date DESC, lb.id DESC";
 
         $stmt = $this->db->prepare($sql);
-
         if (!$stmt) {
             return [];
         }
@@ -158,6 +186,94 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
 
         $result = $stmt->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+    /**
+     * Get unique salespersons and their active onboarding client counts
+     * Used for the Sales Executive filter dropdown and pill counts
+     */
+    public function getOnboardSalespersonCounts($teamId = null, $year = null, $month = null, $project_id = null, $from_date = null, $to_date = null)
+    {
+        $sql = "SELECT 
+                    COALESCE(u.id, u_assigned.id, 0) AS user_id,
+                    COALESCE(u.full_name, u_assigned.full_name, lb.sales_agent_old, 'Unknown Sales Person') AS sales_name,
+                    COUNT(DISTINCT lb.id) AS client_count
+                FROM lead_bookings lb
+                JOIN leads l ON l.id = lb.lead_id
+                LEFT JOIN users u ON u.id = lb.sales_by_id
+                LEFT JOIN users u_assigned ON u_assigned.id = l.assigned_id
+                WHERE lb.deleted_at IS NULL AND l.deleted_at IS NULL
+                  AND lb.booking_status IN ('booked', 'completed')
+                  AND lb.booking_status NOT IN ('cancelled', 'refunded')
+                  AND lb.id NOT IN (
+                      SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded')
+                  )";
+
+        $params = [];
+        $types  = "";
+
+        if (!empty($teamId)) {
+            $sql .= " AND COALESCE(lb.team_id, l.team_id) = ?";
+            $params[] = (int)$teamId;
+            $types   .= "i";
+        }
+
+        if (!empty($project_id)) {
+            $sql .= " AND lb.project_id = ?";
+            $params[] = (int)$project_id;
+            $types   .= "i";
+        }
+
+        if (!empty($from_date) && !empty($to_date)) {
+            $sql .= " AND (DATE(lb.booking_date) BETWEEN ? AND ? OR (lb.booking_date IS NULL AND DATE(lb.created_at) BETWEEN ? AND ?))";
+            $params[] = $from_date;
+            $params[] = $to_date;
+            $params[] = $from_date;
+            $params[] = $to_date;
+            $types   .= "ssss";
+        } elseif (!empty($from_date)) {
+            $sql .= " AND (DATE(lb.booking_date) >= ? OR (lb.booking_date IS NULL AND DATE(lb.created_at) >= ?))";
+            $params[] = $from_date;
+            $params[] = $from_date;
+            $types   .= "ss";
+        } elseif (!empty($to_date)) {
+            $sql .= " AND (DATE(lb.booking_date) <= ? OR (lb.booking_date IS NULL AND DATE(lb.created_at) <= ?))";
+            $params[] = $to_date;
+            $params[] = $to_date;
+            $types   .= "ss";
+        } elseif (!empty($year) || !empty($month)) {
+            if (!empty($year)) {
+                $sql .= " AND (YEAR(lb.booking_date) = ? OR (lb.booking_date IS NULL AND YEAR(lb.created_at) = ?))";
+                $params[] = (int)$year;
+                $params[] = (int)$year;
+                $types   .= "ii";
+            }
+            if (!empty($month)) {
+                $sql .= " AND (MONTH(lb.booking_date) = ? OR (lb.booking_date IS NULL AND MONTH(lb.created_at) = ?))";
+                $params[] = (int)$month;
+                $params[] = (int)$month;
+                $types   .= "ii";
+            }
+        }
+
+        $sql .= " GROUP BY user_id, sales_name ORDER BY client_count DESC, sales_name ASC";
+
+        if (!empty($params)) {
+            $stmt = $this->db->prepare($sql);
+            if ($stmt) {
+                $stmt->bind_param($types, ...$params);
+                $stmt->execute();
+                $res = $stmt->get_result();
+                $rows = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+                $stmt->close();
+                return $rows;
+            }
+        } else {
+            $res = $this->db->query($sql);
+            return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+        }
+
+        return [];
     }
 
     public function getAllOnboardClient($year = null, $month = null)
@@ -206,7 +322,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
 
 
 
-    public function getAllMyOnboardProject($userId, $year = null, $month = null)
+    public function getAllMyOnboardProject($userId, $year = null, $month = null, $from_date = null, $to_date = null)
     {
         $sql = "SELECT 
             lb.*, 
@@ -238,28 +354,52 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                 SUM(CASE WHEN payment_type = 'registration' THEN IFNULL(amount, 0) ELSE 0 END) AS registration_money,
                 SUM(IFNULL(amount, 0)) AS amount
             FROM lead_payments
+            WHERE payment_status = 'paid'
             GROUP BY booking_id
         ) AS lp_sum ON lp_sum.booking_id = lb.id
         WHERE lb.deleted_at IS NULL
-          AND lb.booking_status IN ('booked', 'completed')
           AND (l.deleted_at IS NULL OR l.id IS NULL)
-          AND (lb.sales_by_id = ? OR l.assigned_id = ?)";
+          AND lb.booking_status IN ('booked', 'completed')
+          AND lb.booking_status NOT IN ('cancelled', 'refunded')
+          AND lb.id NOT IN (
+              SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded')
+          )
+          AND (lb.sales_by_id = ? OR (lb.sales_by_id IS NULL AND l.assigned_id = ?))";
 
         $params = [(int)$userId, (int)$userId];
         $types  = "ii";
 
-        if (!empty($year)) {
-            $sql .= " AND (YEAR(lb.booking_date) = ? OR (lb.booking_date IS NULL AND YEAR(lb.created_at) = ?))";
-            $params[] = (int)$year;
-            $params[] = (int)$year;
-            $types   .= "ii";
-        }
-
-        if (!empty($month)) {
-            $sql .= " AND (MONTH(lb.booking_date) = ? OR (lb.booking_date IS NULL AND MONTH(lb.created_at) = ?))";
-            $params[] = (int)$month;
-            $params[] = (int)$month;
-            $types   .= "ii";
+        // Custom date range takes priority over year/month
+        if (!empty($from_date) && !empty($to_date)) {
+            $sql .= " AND (DATE(lb.booking_date) BETWEEN ? AND ? OR (lb.booking_date IS NULL AND DATE(lb.created_at) BETWEEN ? AND ?))";
+            $params[] = $from_date;
+            $params[] = $to_date;
+            $params[] = $from_date;
+            $params[] = $to_date;
+            $types   .= "ssss";
+        } elseif (!empty($from_date)) {
+            $sql .= " AND (DATE(lb.booking_date) >= ? OR (lb.booking_date IS NULL AND DATE(lb.created_at) >= ?))";
+            $params[] = $from_date;
+            $params[] = $from_date;
+            $types   .= "ss";
+        } elseif (!empty($to_date)) {
+            $sql .= " AND (DATE(lb.booking_date) <= ? OR (lb.booking_date IS NULL AND DATE(lb.created_at) <= ?))";
+            $params[] = $to_date;
+            $params[] = $to_date;
+            $types   .= "ss";
+        } elseif (!empty($year) || !empty($month)) {
+            if (!empty($year)) {
+                $sql .= " AND (YEAR(lb.booking_date) = ? OR (lb.booking_date IS NULL AND YEAR(lb.created_at) = ?))";
+                $params[] = (int)$year;
+                $params[] = (int)$year;
+                $types   .= "ii";
+            }
+            if (!empty($month)) {
+                $sql .= " AND (MONTH(lb.booking_date) = ? OR (lb.booking_date IS NULL AND MONTH(lb.created_at) = ?))";
+                $params[] = (int)$month;
+                $params[] = (int)$month;
+                $types   .= "ii";
+            }
         }
 
         $sql .= " ORDER BY lb.booking_date DESC, lb.id DESC";
