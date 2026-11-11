@@ -44,6 +44,7 @@ return [
     'my-work/task-data/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'taskEditData'],
     'my-work/update-task/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'updateTask'],
     'my-work/complete-task/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'completeTask'],
+    'my-work/reviewer-action/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'reviewerAction'],
 
     // =========================================================================
     // Controller: EmployeeController

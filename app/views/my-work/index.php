@@ -1814,9 +1814,33 @@ $todayDateFormatted = date('j F');
 <div class="mw-td" id="mwTd" aria-hidden="true">
     <div class="mw-td-body" id="mwTdBody"></div>
     <div class="mw-td-foot">
+        <!-- Reviewer note input box (shown when Reviewer clicks "Request changes") -->
+        <div id="mwReviewNoteWrap" style="display:none; margin-bottom: 12px; background: #F8FAF9; border: 1px solid #E2EAE5; border-radius: 8px; padding: 12px;">
+            <label class="mw-form-label" style="font-weight: 600; color: #9A6216; margin-bottom: 6px;">
+                <i class="fa-solid fa-pen-to-square me-1"></i> Reviewer Improvement Note
+            </label>
+            <textarea id="mwReviewNoteText" class="mw-form-textarea" rows="2" placeholder="Write what needs to be improved or revised before completion..."></textarea>
+            <div class="d-flex justify-content-end gap-2 mt-2">
+                <button type="button" class="mw-td-btn" id="btnCancelReviewNote" style="padding: 6px 12px;">Cancel</button>
+                <button type="button" class="mw-td-btn" id="btnSubmitReviewNote" style="padding: 6px 14px; background: #9A6216; color: #fff; border-color: #9A6216;">
+                    <i class="fa-solid fa-paper-plane me-1"></i> Send Note
+                </button>
+            </div>
+        </div>
+
         <div class="mw-td-foot-actions">
             <button type="button" class="mw-td-btn" disabled><i class="fa-regular fa-clock me-1"></i> Log work</button>
             <button type="button" class="mw-td-btn" disabled>Request extension</button>
+
+            <!-- Reviewer specific action buttons (shown only to Reviewer) -->
+            <button type="button" class="mw-td-btn" id="btnReviewerRequestChanges" style="display:none; border-color: #9A6216; color: #9A6216; font-weight: 700;">
+                <i class="fa-solid fa-rotate-left me-1"></i> Request Changes
+            </button>
+            <button type="button" class="mw-td-btn" id="btnReviewerApprove" style="display:none; background: #087F5B; color: #fff; border-color: #087F5B; font-weight: 700;">
+                <i class="fa-solid fa-circle-check me-1"></i> Approve & Done
+            </button>
+
+            <!-- Assignee complete button -->
             <button type="button" class="mw-td-btn primary" id="btnDrawerCompleteTask" disabled>
                 <i class="fa-solid fa-check me-1"></i> Complete Task
             </button>
@@ -2363,6 +2387,23 @@ document.addEventListener('DOMContentLoaded', function () {
             tdBody.querySelectorAll('[data-td-pane]').forEach(p => p.style.display = p.dataset.tdPane === b.dataset.pane ? '' : 'none');
         }));
 
+        // Reviewer controls vs Assignee complete controls
+        const btnRevApprove = document.getElementById('btnReviewerApprove');
+        const btnRevChanges = document.getElementById('btnReviewerRequestChanges');
+        const revNoteWrap = document.getElementById('mwReviewNoteWrap');
+        if (revNoteWrap) revNoteWrap.style.display = 'none';
+
+        if (t.is_reviewer && t.is_completed) {
+            // Task completed / submitted, and current user is reviewer -> show Reviewer actions
+            if (btnDrawerCompleteTask) btnDrawerCompleteTask.style.display = 'none';
+            if (btnRevApprove) btnRevApprove.style.display = '';
+            if (btnRevChanges) btnRevChanges.style.display = '';
+        } else {
+            if (btnRevApprove) btnRevApprove.style.display = 'none';
+            if (btnRevChanges) btnRevChanges.style.display = 'none';
+            if (btnDrawerCompleteTask) btnDrawerCompleteTask.style.display = '';
+        }
+
         // Enable / Disable Complete Task Button
         if (btnDrawerCompleteTask) {
             if (t.is_completed) {
@@ -2388,6 +2429,116 @@ document.addEventListener('DOMContentLoaded', function () {
                 btnDrawerCompleteTask.style.borderColor = '#EDF2EF';
             }
         }
+    }
+
+    // Reviewer Action Handlers
+    const btnRevApprove = document.getElementById('btnReviewerApprove');
+    const btnRevChanges = document.getElementById('btnReviewerRequestChanges');
+    const revNoteWrap = document.getElementById('mwReviewNoteWrap');
+    const revNoteText = document.getElementById('mwReviewNoteText');
+    const btnCancelReviewNote = document.getElementById('btnCancelReviewNote');
+    const btnSubmitReviewNote = document.getElementById('btnSubmitReviewNote');
+
+    if (btnRevChanges) {
+        btnRevChanges.addEventListener('click', function() {
+            if (revNoteWrap) {
+                revNoteWrap.style.display = 'block';
+                if (revNoteText) {
+                    revNoteText.focus();
+                }
+            }
+        });
+    }
+
+    if (btnCancelReviewNote) {
+        btnCancelReviewNote.addEventListener('click', function() {
+            if (revNoteWrap) revNoteWrap.style.display = 'none';
+            if (revNoteText) revNoteText.value = '';
+        });
+    }
+
+    if (btnSubmitReviewNote) {
+        btnSubmitReviewNote.addEventListener('click', function() {
+            if (!currentDetailTaskId) return;
+            const note = revNoteText ? revNoteText.value.trim() : '';
+            if (!note) {
+                alert('Please enter a note explaining what needs improvement.');
+                if (revNoteText) revNoteText.focus();
+                return;
+            }
+
+            btnSubmitReviewNote.disabled = true;
+            btnSubmitReviewNote.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Sending...';
+
+            const formData = new FormData();
+            formData.append('review_action', 'request_changes');
+            formData.append('review_note', note);
+
+            fetch(`${baseUrl}/my-work/reviewer-action/${currentDetailTaskId}`, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showMwToast(data.message || 'Review note sent successfully.', 'success');
+                    if (revNoteWrap) revNoteWrap.style.display = 'none';
+                    if (revNoteText) revNoteText.value = '';
+                    openTaskDetail(currentDetailTaskId);
+                    fetchWorkspaceData();
+                } else {
+                    showMwToast(data.message || 'Failed to submit review note.', 'error');
+                }
+            })
+            .catch(err => {
+                console.error('Review note error:', err);
+                showMwToast('An error occurred while submitting the review note.', 'error');
+            })
+            .finally(() => {
+                btnSubmitReviewNote.disabled = false;
+                btnSubmitReviewNote.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Send Note';
+            });
+        });
+    }
+
+    if (btnRevApprove) {
+        btnRevApprove.addEventListener('click', function() {
+            if (!currentDetailTaskId) return;
+            if (!confirm('Are you sure everything is verified and you want to approve this task as Done?')) {
+                return;
+            }
+
+            btnRevApprove.disabled = true;
+            btnRevApprove.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Approving...';
+
+            const formData = new FormData();
+            formData.append('review_action', 'approve');
+
+            fetch(`${baseUrl}/my-work/reviewer-action/${currentDetailTaskId}`, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showMwToast(data.message || 'Task approved as completed.', 'success');
+                    openTaskDetail(currentDetailTaskId);
+                    fetchWorkspaceData();
+                } else {
+                    showMwToast(data.message || 'Failed to approve task.', 'error');
+                }
+            })
+            .catch(err => {
+                console.error('Approve task error:', err);
+                showMwToast('An error occurred while approving the task.', 'error');
+            })
+            .finally(() => {
+                btnRevApprove.disabled = false;
+                btnRevApprove.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i> Approve & Done';
+            });
+        });
     }
 
     if (btnDrawerCompleteTask) {

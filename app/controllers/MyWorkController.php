@@ -822,6 +822,7 @@ class MyWorkController extends Controller
                 'title' => $t['title'],
                 'status' => $t['status'],
                 'is_completed' => $isCompleted,
+                'is_reviewer' => in_array($userId, $reviewerIds, true),
                 'can_complete' => (!$isCompleted && ((int)$t['user_id'] === $userId || in_array($userId, $collabIds, true) || (int)$t['assigned_by'] === $userId || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33], true))),
                 'status_label' => $statusLabel,
                 'status_class' => $statusClass,
@@ -1184,6 +1185,93 @@ class MyWorkController extends Controller
             }
             if (function_exists('setError')) setError("Failed to mark task as completed.");
             header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            exit;
+        }
+    }
+
+    /**
+     * Reviewer Action: either approve (Done) or request improvements (add note & return to in_progress)
+     */
+    public function reviewerAction($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        header('Content-Type: application/json');
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $id = (int)$id;
+
+        if (!$userId) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        $st = $this->db->prepare("SELECT * FROM tasks WHERE id = ?");
+        $st->bind_param("i", $id);
+        $st->execute();
+        $task = $st->get_result()->fetch_assoc();
+
+        if (!$task) {
+            echo json_encode(['status' => 'error', 'message' => 'Task not found.']);
+            exit;
+        }
+
+        $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
+        $reviewerIds = $ids($task['mentioned_user_ids'] ?? '');
+
+        $isReviewer = in_array($userId, $reviewerIds, true) || in_array($roleId, [1, 3, 33], true);
+        if (!$isReviewer) {
+            echo json_encode(['status' => 'error', 'message' => "Only an assigned reviewer can review this task."]);
+            exit;
+        }
+
+        $action = trim($_POST['review_action'] ?? '');
+        $note = trim($_POST['review_note'] ?? '');
+
+        if ($action === 'approve') {
+            // Mark task as fully approved / completed
+            $taskModel = new Task($this->db);
+            $remarks = !empty($task['remarks']) ? $task['remarks'] : 'Approved by reviewer.';
+            if ($taskModel->updateProgress($id, 100, $remarks)) {
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'Task reviewed and approved as completed.',
+                    'task_id' => $id
+                ]);
+                exit;
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'Failed to approve task.']);
+                exit;
+            }
+        } elseif ($action === 'request_changes') {
+            if ($note === '') {
+                echo json_encode(['status' => 'error', 'message' => 'Please write a review note explaining the needed improvements.']);
+                exit;
+            }
+            $reviewerName = $_SESSION['user']['full_name'] ?? 'Reviewer';
+            $datedNote = "[" . date('d M Y, h:i A') . "] Reviewer Note (" . $reviewerName . "): " . $note;
+            $newRemarks = !empty($task['remarks']) ? $task['remarks'] . "\n\n" . $datedNote : $datedNote;
+
+            // Revert status to in_progress and progress to 60%
+            $stmt = $this->db->prepare("UPDATE tasks SET status = 'in_progress', progress = 60, remarks = ?, updated_at = NOW() WHERE id = ?");
+            $stmt->bind_param("si", $newRemarks, $id);
+            if ($stmt->execute()) {
+                $stmt->close();
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'Review note added and task sent back for improvement.',
+                    'task_id' => $id
+                ]);
+                exit;
+            } else {
+                $err = $stmt->error;
+                $stmt->close();
+                echo json_encode(['status' => 'error', 'message' => 'Failed to update task: ' . $err]);
+                exit;
+            }
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Invalid review action.']);
             exit;
         }
     }
