@@ -448,6 +448,19 @@ class Lead extends Model
             }
         }
 
+        // Also match leads who have an active booking in this project
+        $clauses[] = "EXISTS (
+            SELECT 1 FROM lead_bookings lb_pj 
+            WHERE lb_pj.lead_id = {$tablePrefix}id 
+              AND lb_pj.deleted_at IS NULL 
+              AND lb_pj.booking_status IN ('completed', 'booked')
+              AND (lb_pj.project_id = ? OR EXISTS (SELECT 1 FROM flats f_pj WHERE f_pj.id = lb_pj.flat_id AND f_pj.project_id = ?))
+              AND lb_pj.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))
+        )";
+        $params[] = $projectId;
+        $params[] = $projectId;
+        $types .= "ii";
+
         return [
             'sql' => " AND (" . implode(" OR ", $clauses) . ")",
             'params' => $params,
@@ -648,6 +661,7 @@ class Lead extends Model
         // Quick Filter Card
         if (!empty($filter_card)) {
             $teamSub = !empty($teamId) ? " AND COALESCE(lb_sub.team_id, l.team_id) = " . (int)$teamId : "";
+            $projectSub = !empty($projectId) ? " AND (lb_sub.project_id = " . (int)$projectId . " OR EXISTS (SELECT 1 FROM flats f_sub WHERE f_sub.id = lb_sub.flat_id AND f_sub.project_id = " . (int)$projectId . "))" : "";
             $refundSub = " AND lb_sub.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))";
             if ($filter_card === 'total_booked' || $filter_card === 'booked') {
                 if (!empty($from_date) && !empty($to_date)) {
@@ -658,6 +672,7 @@ class Lead extends Model
                           AND lb_sub.booking_status IN ('completed', 'booked') 
                           {$refundSub}
                           {$teamSub}
+                          {$projectSub}
                           AND (DATE(lb_sub.booking_date) BETWEEN ? AND ? OR DATE(lb_sub.created_at) BETWEEN ? AND ?)
                     )";
                     $params[] = $from_date;
@@ -673,6 +688,7 @@ class Lead extends Model
                           AND lb_sub.booking_status IN ('completed', 'booked') 
                           {$refundSub}
                           {$teamSub}
+                          {$projectSub}
                           AND (DATE(lb_sub.booking_date) >= ? OR DATE(lb_sub.created_at) >= ?)
                     )";
                     $params[] = $from_date;
@@ -686,6 +702,7 @@ class Lead extends Model
                           AND lb_sub.booking_status IN ('completed', 'booked') 
                           {$refundSub}
                           {$teamSub}
+                          {$projectSub}
                           AND (DATE(lb_sub.booking_date) <= ? OR DATE(lb_sub.created_at) <= ?)
                     )";
                     $params[] = $to_date;
@@ -701,6 +718,7 @@ class Lead extends Model
                           AND lb_sub.booking_status IN ('completed', 'booked')
                           {$refundSub}
                           {$teamSub}
+                          {$projectSub}
                           $ySub $mSub
                     )";
                 } else {
@@ -711,6 +729,7 @@ class Lead extends Model
                           AND lb_sub.booking_status IN ('completed', 'booked')
                           {$refundSub}
                           {$teamSub}
+                          {$projectSub}
                     )";
                 }
             } elseif ($filter_card === 'today_follow_up') {
@@ -1033,9 +1052,9 @@ class Lead extends Model
             }
         }
 
-        // Project filter
+        // Project filter: count bookings for this project (via lb.project_id or flat's project_id)
         if (!empty($projectId)) {
-            $sql .= " AND (lb.project_id = ? OR l.project_id = ?)";
+            $sql .= " AND (lb.project_id = ? OR EXISTS (SELECT 1 FROM flats f_proj WHERE f_proj.id = lb.flat_id AND f_proj.project_id = ?))";
             $params[] = (int)$projectId;
             $params[] = (int)$projectId;
             $types .= "ii";
@@ -1370,6 +1389,7 @@ class Lead extends Model
         // Quick Filter Card
         if (!empty($filter_card)) {
             $teamSub = !empty($teamId) ? " AND COALESCE(lb_sub.team_id, l.team_id) = " . (int)$teamId : "";
+            $projectSub = !empty($projectId) ? " AND (lb_sub.project_id = " . (int)$projectId . " OR EXISTS (SELECT 1 FROM flats f_sub WHERE f_sub.id = lb_sub.flat_id AND f_sub.project_id = " . (int)$projectId . "))" : "";
             $refundSub = " AND lb_sub.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))";
             if ($filter_card === 'total_booked' || $filter_card === 'booked') {
                 if (!empty($from_date) && !empty($to_date)) {
@@ -1380,6 +1400,7 @@ class Lead extends Model
                           AND lb_sub.booking_status IN ('completed', 'booked') 
                           {$refundSub}
                           {$teamSub}
+                          {$projectSub}
                           AND (DATE(lb_sub.booking_date) BETWEEN ? AND ? OR DATE(lb_sub.created_at) BETWEEN ? AND ?)
                     )";
                     $params[] = $from_date;
@@ -1395,6 +1416,7 @@ class Lead extends Model
                           AND lb_sub.booking_status IN ('completed', 'booked') 
                           {$refundSub}
                           {$teamSub}
+                          {$projectSub}
                           AND (DATE(lb_sub.booking_date) >= ? OR DATE(lb_sub.created_at) >= ?)
                     )";
                     $params[] = $from_date;
@@ -1408,6 +1430,7 @@ class Lead extends Model
                           AND lb_sub.booking_status IN ('completed', 'booked') 
                           {$refundSub}
                           {$teamSub}
+                          {$projectSub}
                           AND (DATE(lb_sub.booking_date) <= ? OR DATE(lb_sub.created_at) <= ?)
                     )";
                     $params[] = $to_date;
@@ -1423,6 +1446,7 @@ class Lead extends Model
                           AND lb_sub.booking_status IN ('completed', 'booked')
                           {$refundSub}
                           {$teamSub}
+                          {$projectSub}
                           $ySub $mSub
                     )";
                 } else {
@@ -1433,6 +1457,7 @@ class Lead extends Model
                           AND lb_sub.booking_status IN ('completed', 'booked')
                           {$refundSub}
                           {$teamSub}
+                          {$projectSub}
                     )";
                 }
             } elseif ($filter_card === 'today_follow_up') {

@@ -222,15 +222,7 @@ if (!empty($outstandingDues)) {
                             </small>
                         </div>
 
-                        <!-- Total Booking Money (shown for Booking Money or Registration) -->
-                        <div class="col-md-6" id="totalBookingMoneyContainer" style="display:none;">
-                            <div class="from__input-box">
-                                <label class="form__input-title">Total Booking Money Target <span>*</span></label>
-                                <input type="number" name="total_booking_money" id="totalBookingMoney" class="form-control" step="1"
-                                    min="0" placeholder="Enter target amount" value="<?= $effectiveBookingTarget ?>" required>
-                                <small class="text-muted">Remaining amounts will auto-calculate based on this</small>
-                            </div>
-                        </div>
+
 
                         <!-- Other Purpose (shown when Others is selected) -->
                         <div class="col-md-6" id="otherPurposeContainer" style="display:none;">
@@ -581,16 +573,55 @@ if (!empty($outstandingDues)) {
         const bookingMoneyTotalPaid  = <?= json_encode((float)($clientDetails['booking_money_total'] ?? 0)) ?>;
         const formRemainingRegistrationPHP = <?= json_encode((float)($formRemainingRegistration ?? 0)) ?>;
 
-        const totalBookingMoneyInput = document.getElementById('totalBookingMoney');
-        const totalBookingMoneyContainer = document.getElementById('totalBookingMoneyContainer');
-
         // Function to calculate dynamic remaining amounts
         function getDynamicBalances() {
-            const totalBM = parseFloat(totalBookingMoneyInput.value) || 0;
-            const remainingBooking = Math.max(0, totalBM - bookingMoneyTotalPaid);
-            // Registration Target = Total Land Share - Discount - Total Booking Money Target
-            // Then subtract all registration/land_share payments (pending + verified)
-            const remainingReg = Math.max(0, totalLandShare - discountAmount - totalBM - allRegistrationAndLandshare);
+            const target = <?= json_encode((float)$effectiveBookingTarget) ?>;
+            const remainingBooking = Math.max(0, target - bookingMoneyTotalPaid);
+            const effectiveLSTarget = Math.max(0, totalLandShare - discountAmount);
+            const totalLSPaid = bookingMoneyTotalPaid + allRegistrationAndLandshare;
+            const remainingLandShareTotal = Math.max(0, effectiveLSTarget - totalLSPaid);
+            const bookingDeduction = Math.max(target, bookingMoneyTotalPaid);
+            const remainingReg = Math.min(remainingLandShareTotal, Math.max(0, effectiveLSTarget - bookingDeduction - allRegistrationAndLandshare));
+
+            const bmOption = paymentType ? paymentType.querySelector('option[value="booking_money"]') : null;
+            if (bmOption) {
+                if (remainingBooking > 0) {
+                    bmOption.disabled = false;
+                    bmOption.style.color = '';
+                    bmOption.textContent = 'Booking Money' + (bookingMoneyTotalPaid > 0 ? ' (Remaining: TK.' + remainingBooking.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ')' : '');
+                } else {
+                    bmOption.disabled = true;
+                    bmOption.style.color = '#6c757d';
+                    bmOption.textContent = 'Booking Money (Fully Paid — TK.' + bookingMoneyTotalPaid.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ')';
+                }
+            }
+
+            const regOption = paymentType ? paymentType.querySelector('option[value="registration"]') : null;
+            if (regOption) {
+                if (remainingReg > 0) {
+                    regOption.disabled = false;
+                    regOption.style.color = '';
+                    regOption.textContent = 'Registration (Remaining: TK.' + remainingReg.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ')';
+                } else {
+                    regOption.disabled = true;
+                    regOption.style.color = '#6c757d';
+                    regOption.textContent = 'Registration (Completed ✓)';
+                }
+            }
+
+            const mutOption = paymentType ? paymentType.querySelector('option[value="mutation_cost"]') : null;
+            if (mutOption) {
+                if (remainingLandShareTotal > 0) {
+                    mutOption.disabled = false;
+                    mutOption.style.color = '';
+                    mutOption.textContent = 'Mutation Cost';
+                } else {
+                    mutOption.disabled = true;
+                    mutOption.style.color = '#6c757d';
+                    mutOption.textContent = 'Mutation Cost (Completed ✓)';
+                }
+            }
+
             return { remainingBooking, remainingReg };
         }
 
@@ -600,13 +631,6 @@ if (!empty($outstandingDues)) {
             let helpText = '';
             
             const { remainingBooking, remainingReg } = getDynamicBalances();
-
-            // Show Total Booking Money input for Booking Money and Registration
-            if (paymentTypeValue === 'booking_money' || paymentTypeValue === 'registration') {
-                totalBookingMoneyContainer.style.display = 'block';
-            } else {
-                totalBookingMoneyContainer.style.display = 'none';
-            }
 
             // Show Other Purpose input when Others is selected
             const otherPurposeContainer = document.getElementById('otherPurposeContainer');
