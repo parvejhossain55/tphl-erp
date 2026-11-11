@@ -61,6 +61,12 @@ class MyWorkController extends Controller
         if ($tab === 'all') {
             $scopeSql = $allScopeSql;
             $scopeParams = $allScopeParams;
+        } elseif ($tab === 'assigned_to_me') {
+            $scopeSql = $assignedToMeSql;
+            $scopeParams = [$userId, $userId];
+        } elseif ($tab === 'assigned_by_me') {
+            $scopeSql = "t.assigned_by = ?";
+            $scopeParams = [$userId];
         } elseif ($tab === 'following') {
             $scopeSql = $ccSql;
             $scopeParams = [$userId];
@@ -68,23 +74,17 @@ class MyWorkController extends Controller
             $scopeSql = $mentionSql;
             $scopeParams = [$userId];
         } elseif ($tab === 'realestate_project') {
-            +
-+            $scopeParams = [$userId];
-            $scopeParams = [$userId];
+            $scopeSql = "(t.project_id IS NOT NULL AND (t.user_id = ? OR t.assigned_by = ?))";
+            $scopeParams = [$userId, $userId];
         } elseif ($tab === 'self_initiated') {
             $scopeSql = "(t.user_id = ? AND t.assigned_by = ?)";
             $scopeParams = [$userId, $userId];
         } elseif ($tab === 'recurring') {
-            +
-+            $scopeParams = [$userId];
-            $scopeParams = [$userId];
-        } elseif ($tab === 'assigned_by_me') {
-            $scopeSql = "(t.assigned_by = ? AND t.user_id != ?)";
+            $scopeSql = "(t.is_recurring = 1 AND (t.user_id = ? OR t.assigned_by = ?))";
             $scopeParams = [$userId, $userId];
         } else {
-+
-+            $scopeParams = [$userId];
-            $scopeParams = [$userId];
+            $scopeSql = $assignedToMeSql;
+            $scopeParams = [$userId, $userId];
         }
         $scopeTypes = str_repeat('i', count($scopeParams));
 
