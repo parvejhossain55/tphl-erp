@@ -980,9 +980,9 @@ class MyWorkController extends Controller
             FROM users u
             LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
             LEFT JOIN designations des ON u.designation_id = des.id
-            WHERE (e.employee_status IS NULL OR (e.deleted_at IS NULL AND LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
+            WHERE u.full_name IS NOT NULL AND TRIM(u.full_name) != ''
+              AND (e.employee_status IS NULL OR (e.deleted_at IS NULL AND LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
             ORDER BY u.full_name ASC
-            LIMIT 100
         ");
         while ($resTeam && ($tm = $resTeam->fetch_assoc())) {
             $tmPhoto = null;

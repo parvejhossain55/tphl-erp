@@ -2772,6 +2772,24 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="mw-td-empty">No checklist items added.</div>`;
         }
 
+        // Precompile sorted teammates regex for full-name @mentions
+        const teammatesList = Array.isArray(t.teammates) ? t.teammates : [];
+        const sortedTeammateNames = teammatesList
+            .map(tm => (tm.name || '').trim())
+            .filter(Boolean)
+            .sort((a, b) => b.length - a.length);
+
+        const formatMentions = (rawText) => {
+            let escaped = tdEsc(rawText);
+            if (sortedTeammateNames.length > 0) {
+                const escapeReg = s => s.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+                const exactPattern = new RegExp('@(' + sortedTeammateNames.map(escapeReg).join('|') + ')(?=[.,!?]|$|\\s)', 'g');
+                escaped = escaped.replace(exactPattern, '<span class="mw-act-mention">@$1</span>');
+            }
+            // Fallback for any other single-word or hyphenated @mention not in team list
+            return escaped.replace(/(^|\s)@([a-zA-Z0-9_.-]+)(?=[.,!?]|$|\s)/g, '$1<span class="mw-act-mention">@$2</span>');
+        };
+
         // Render Latest Activity matching Figma spec
         let activitiesHtml = '';
         if (Array.isArray(t.activities) && t.activities.length > 0) {
@@ -2781,9 +2799,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     const isSystem = (act.type === 'system');
                     const initial = tdInitials(act.user_name || 'U');
 
-                    // Highlight @mentions in comments
-                    let formattedActivity = tdEsc(act.activity);
-                    formattedActivity = formattedActivity.replace(/@([a-zA-Z0-9_.\s]+?)(?=\s|[.,!?]|$)/g, '<span class="mw-act-mention">@$1</span>');
+                    // Highlight full name @mentions in comments
+                    let formattedActivity = formatMentions(act.activity);
 
                     // Render attached file if present
                     let attachChip = '';
