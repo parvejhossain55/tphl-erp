@@ -727,6 +727,9 @@ class MyWorkController extends Controller
             $newTaskId = $stmt->insert_id;
             $stmt->close();
 
+            // Log creation activity
+            $this->logTaskActivity($newTaskId, $userId, 'system', "Task created and assigned to " . ($ownerId === $userId ? "self" : "user #{$ownerId}"));
+
             if ($isAjax) {
                 header('Content-Type: application/json');
                 echo json_encode([
@@ -863,6 +866,43 @@ class MyWorkController extends Controller
 
         $canCheckChecklist = ((int)$t['user_id'] === $userId || in_array($userId, $collabIds, true) || (int)$t['assigned_by'] === $userId || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33], true));
 
+        // Fetch recent activities for this task
+        $activities = [];
+        $actStmt = $this->db->prepare("
+            SELECT a.id, a.type, a.activity, a.created_at, u.id AS user_id, u.full_name, u.photo AS user_photo, e.photo AS emp_photo
+            FROM task_activities a
+            LEFT JOIN users u ON a.user_id = u.id
+            LEFT JOIN employees e ON e.user_id = u.id
+            WHERE a.task_id = ?
+            ORDER BY a.id ASC
+            LIMIT 50
+        ");
+        $actStmt->bind_param("i", $id);
+        $actStmt->execute();
+        $actRes = $actStmt->get_result();
+        while ($ar = $actRes->fetch_assoc()) {
+            $userPhoto = null;
+            if (!empty($ar['emp_photo']) && file_exists(dirname(__DIR__, 2) . '/public/uploads/employees/' . $ar['emp_photo'])) {
+                $userPhoto = $base . '/public/uploads/employees/' . rawurlencode($ar['emp_photo']);
+            } elseif (!empty($ar['user_photo']) && file_exists(dirname(__DIR__, 2) . '/public/uploads/users/' . $ar['user_photo'])) {
+                $userPhoto = $base . '/public/uploads/users/' . rawurlencode($ar['user_photo']);
+            } else {
+                // Default avatar photo
+                $userPhoto = $base . '/public/assets/images/avatar/avatar.png';
+            }
+
+            $activities[] = [
+                'id' => (int)$ar['id'],
+                'type' => $ar['type'],
+                'activity' => $ar['activity'],
+                'created_at' => date('d M Y, h:i A', strtotime($ar['created_at'])),
+                'user_id' => (int)$ar['user_id'],
+                'user_name' => $ar['full_name'] ?: 'User',
+                'user_photo' => $userPhoto,
+            ];
+        }
+        $actStmt->close();
+
         echo json_encode([
             'status' => 'success',
             'task' => [
@@ -888,6 +928,7 @@ class MyWorkController extends Controller
                 'expected_output' => $t['expected_output'] ?? '',
                 'description_html' => strip_tags((string)$t['description'], '<p><br><ul><ol><li><strong><b><em><i>'),
                 'checklist' => $checklistItems,
+                'activities' => $activities,
                 'remarks' => $t['remarks'],
                 'blocked' => $blocked,
                 'attachment_name' => $t['attachment_image'] ?: null,
@@ -1248,6 +1289,10 @@ class MyWorkController extends Controller
 
         $taskModel = new Task($this->db);
         if ($taskModel->updateProgress($id, 100, $task['remarks'] ?? null)) {
+            $hasReviewers = !empty($task['mentioned_user_ids']) && count($ids($task['mentioned_user_ids'])) > 0;
+            $actMsg = $hasReviewers ? "Completed task and submitted for review." : "Marked task as completed.";
+            $this->logTaskActivity($id, $userId, 'system', $actMsg);
+
             if ($isAjax) {
                 header('Content-Type: application/json');
                 echo json_encode([
@@ -1317,6 +1362,7 @@ class MyWorkController extends Controller
             $taskModel = new Task($this->db);
             $remarks = !empty($task['remarks']) ? $task['remarks'] : 'Approved by reviewer.';
             if ($taskModel->updateProgress($id, 100, $remarks)) {
+                $this->logTaskActivity($id, $userId, 'system', "Approved task as completed (Done).");
                 echo json_encode([
                     'status' => 'success',
                     'message' => 'Task reviewed and approved as completed.',
@@ -1341,6 +1387,7 @@ class MyWorkController extends Controller
             $stmt->bind_param("si", $newRemarks, $id);
             if ($stmt->execute()) {
                 $stmt->close();
+                $this->logTaskActivity($id, $userId, 'system', "Requested changes with note: \"{$note}\"");
                 echo json_encode([
                     'status' => 'success',
                     'message' => 'Review note added and task sent back for improvement.',
@@ -1461,6 +1508,16 @@ class MyWorkController extends Controller
         $stmt->bind_param("sisi", $jsonChecklist, $progress, $newStatus, $id);
         if ($stmt->execute()) {
             $stmt->close();
+
+            // Log activity event
+            $itemText = $checklist[$itemIndex]['text'] ?? 'item';
+            $actMsg = $completed ? "Completed checklist item: \"{$itemText}\"" : "Unchecked checklist item: \"{$itemText}\"";
+            $this->logTaskActivity($id, $userId, 'system', $actMsg);
+
+            if ($allDone && $task['status'] !== 'completed') {
+                $this->logTaskActivity($id, $userId, 'system', "All acceptance checklist items completed. Task marked as completed.");
+            }
+
             echo json_encode([
                 'status' => 'success',
                 'task_id' => $id,
@@ -1477,5 +1534,63 @@ class MyWorkController extends Controller
             echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $err]);
             exit;
         }
+    }
+
+    /**
+     * Add a comment to a task
+     */
+    public function addComment($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        header('Content-Type: application/json');
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $id = (int)$id;
+
+        if (!$userId) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        $comment = trim($_POST['comment'] ?? '');
+        if ($comment === '') {
+            echo json_encode(['status' => 'error', 'message' => 'Comment cannot be empty.']);
+            exit;
+        }
+
+        $st = $this->db->prepare("SELECT id FROM tasks WHERE id = ?");
+        $st->bind_param("i", $id);
+        $st->execute();
+        $task = $st->get_result()->fetch_assoc();
+        if (!$task) {
+            echo json_encode(['status' => 'error', 'message' => 'Task not found.']);
+            exit;
+        }
+
+        if ($this->logTaskActivity($id, $userId, 'comment', $comment)) {
+            echo json_encode([
+                'status' => 'success',
+                'message' => 'Comment added successfully.',
+                'task_id' => $id
+            ]);
+            exit;
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Failed to save comment.']);
+            exit;
+        }
+    }
+
+    /**
+     * Helper to log an activity/comment to task_activities
+     */
+    private function logTaskActivity($taskId, $userId, $type, $activity)
+    {
+        $stmt = $this->db->prepare("INSERT INTO task_activities (task_id, user_id, type, activity, created_at) VALUES (?, ?, ?, ?, NOW())");
+        if (!$stmt) return false;
+        $stmt->bind_param("iiss", $taskId, $userId, $type, $activity);
+        $res = $stmt->execute();
+        $stmt->close();
+        return $res;
     }
 }

@@ -46,6 +46,7 @@ return [
     'my-work/complete-task/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'completeTask'],
     'my-work/reviewer-action/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'reviewerAction'],
     'my-work/toggle-checklist/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'toggleChecklist'],
+    'my-work/add-comment/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'addComment'],
 
     // =========================================================================
     // Controller: EmployeeController

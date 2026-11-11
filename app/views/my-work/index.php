@@ -154,19 +154,46 @@ $todayDateFormatted = date('j F');
 .mw-td-val.plain { font-weight: 400; }
 .mw-td-val.late { color: #9A6216; }
 .mw-td-avatar { width: 24px; height: 24px; border-radius: 50%; background: #E9F5EF; color: #087F5B; font-size: 10.5px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
-.mw-td-sec { border-top: 1px solid #E2EAE5; padding-top: 16px; margin-top: 4px; margin-bottom: 18px; }
-.mw-td-sec h4 { font-size: 16px; line-height: 19px; font-weight: 700; color: #142D26; margin: 0 0 10px; }
+.mw-td-sec { border-top: 1px solid #E2EAE5; padding-top: 16px; margin-top: 4px; margin-bottom: 20px; }
+.mw-td-sec h4 { font-family: 'Inter', sans-serif; font-size: 16px; line-height: 19px; font-weight: 700; color: #142D26; margin: 0; }
+.mw-td-sec-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.mw-cl-counter-badge { font-family: 'Inter', sans-serif; font-style: normal; font-weight: 700; font-size: 12px; line-height: 15px; text-align: right; color: #087F5B; }
+.mw-cl-progress-bar { width: 100%; height: 5px; background: #EDF2EF; border-radius: 99px; overflow: hidden; margin-bottom: 16px; }
+.mw-cl-progress-fill { height: 100%; background: #087F5B; border-radius: 99px; transition: width 0.25s ease; }
+.mw-cl-item { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; cursor: pointer; user-select: none; outline: none !important; }
+.mw-cl-item:focus, .mw-cl-item:focus-visible, .mw-cl-item:active { outline: none !important; box-shadow: none !important; }
+.mw-cl-box { width: 16px; height: 16px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s ease; outline: none !important; }
+.mw-cl-box:focus, .mw-cl-box:focus-visible, .mw-cl-box:active { outline: none !important; box-shadow: none !important; }
+.mw-cl-box.checked { background: #087F5B; border: 1px solid #087F5B; color: #FFFFFF; }
+.mw-cl-box.unchecked { background: #FFFFFF; border: 1.5px solid #CCD7D0; }
+.mw-cl-item-text { font-family: 'Inter', sans-serif; font-style: normal; font-size: 13.5px; line-height: 16px; font-weight: 400; transition: color 0.15s ease; border: none !important; outline: none !important; box-shadow: none !important; display: inline-block; }
+.mw-cl-item-text:focus, .mw-cl-item-text:focus-visible, .mw-cl-item-text:active { outline: none !important; border: none !important; box-shadow: none !important; }
+.mw-cl-item-text.checked { color: #65776F; border: none !important; outline: none !important; }
+.mw-cl-item-text.unchecked { color: #142D26; border: none !important; outline: none !important; }
 .mw-td-text { font-size: 13px; line-height: 16px; color: #65776F; }
 .mw-td-text ul, .mw-td-text ol { padding-left: 18px; margin: 0; }
 .mw-td-empty { font-size: 12.5px; color: #8A9992; }
-.mw-td-file { display: flex; justify-content: space-between; align-items: center; background: #F5F7F6; border-radius: 8px; padding: 12px 14px; font-size: 12.5px; color: #142D26; text-decoration: none; }
-.mw-td-file small { font-size: 11px; color: #65776F; }
+.mw-td-file { display: flex; justify-content: space-between; align-items: center; background: #F5F7F6; border-radius: 6px; padding: 12px 14px; font-size: 12.5px; color: #142D26; text-decoration: none; }
+.mw-td-file-left { display: flex; align-items: center; gap: 10px; font-family: 'Inter', sans-serif; font-size: 12.5px; line-height: 15px; color: #142D26; }
+.mw-td-file-icon { color: #65776F; font-size: 15px; }
+.mw-td-file-size { font-family: 'Inter', sans-serif; font-size: 11px; line-height: 13px; text-align: right; color: #65776F; }
+.mw-activity-item { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px; }
+.mw-act-avatar { width: 24px; height: 24px; border-radius: 50%; background: #E9F5EF; color: #087F5B; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 10.5px; line-height: 13px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.mw-act-head { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 11.5px; line-height: 14px; color: #142D26; margin-bottom: 3px; }
+.mw-act-time { font-weight: 400; color: #65776F; }
+.mw-act-comment { font-family: 'Inter', sans-serif; font-weight: 400; font-size: 12.5px; line-height: 15px; color: #65776F; }
+.mw-act-system { font-family: 'Inter', sans-serif; font-style: normal; font-weight: 400; font-size: 11.5px; line-height: 14px; color: #65776F; margin-bottom: 12px; }
+.mw-figma-comment-box { position: relative; background: #FFFFFF; border: 1px solid #E2EAE5; border-radius: 8px; padding: 10px 38px 10px 14px; margin-top: 14px; }
+.mw-figma-comment-input { width: 100%; border: none; outline: none; background: transparent; font-family: 'Inter', sans-serif; font-weight: 400; font-size: 12.5px; line-height: 15px; color: #142D26; resize: none; padding: 0; }
+.mw-figma-comment-input::placeholder { color: #8A9992; }
+.mw-figma-comment-btn { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); border: none; background: transparent; color: #65776F; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.mw-figma-comment-btn:hover { color: #087F5B; }
 .mw-td-comment { border: 1px solid #E2EAE5; border-radius: 8px; padding: 12px 14px; font-size: 12.5px; color: #8A9992; margin-top: 14px; }
-.mw-td-foot { border-top: 1px solid #E2EAE5; padding: 12px 1.75% 10px; }
+.mw-td-foot { border-top: 1px solid #E2EAE5; padding: 14px 20px; }
 .mw-td-foot-actions { display: flex; gap: 10px; align-items: center; }
-.mw-td-btn { background: #fff; border: 1px solid #E2EAE5; border-radius: 8px; padding: 9px 16px; font-size: 12.5px; line-height: 15px; font-weight: 700; color: #142D26; cursor: pointer; }
+.mw-td-btn { background: #FFFFFF; border: 1px solid #E2EAE5; border-radius: 8px; padding: 9px 16px; font-family: 'Inter', sans-serif; font-size: 12.5px; line-height: 15px; font-weight: 700; color: #142D26; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .mw-td-btn.primary { margin-left: auto; background: #EDF2EF; border-color: #EDF2EF; color: #8A9992; }
-.mw-td-note { font-size: 11px; line-height: 13px; color: #65776F; text-align: right; margin-top: 8px; }
+.mw-td-note { font-family: 'Inter', sans-serif; font-size: 11px; line-height: 13px; color: #65776F; text-align: right; margin-top: 8px; }
 /* Toast notification */
 .mw-toast-wrap { position: fixed; top: 20px; right: 24px; z-index: 10050; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
 .mw-toast { pointer-events: auto; min-width: 280px; max-width: 420px; padding: 12px 16px; border-radius: 8px; background: #fff; border: 1px solid #E2EAE5; border-left: 4px solid #087F5B; box-shadow: 0 10px 28px rgba(20,45,38,.14); display: flex; align-items: center; gap: 10px; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; color: #142D26; animation: mwToastIn .22s ease; }
@@ -2360,34 +2387,94 @@ document.addEventListener('DOMContentLoaded', function () {
         const expectedOut = t.expected_output && t.expected_output.trim()
             ? `<div class="mw-td-text">${tdEsc(t.expected_output).replace(/\n/g, '<br>')}</div>` : '<div class="mw-td-empty">No expected output specified.</div>';
 
-        // Render Acceptance Checklist as interactive checkboxes
+        // Render Acceptance Checklist matching Figma spec
         let checklistHtml = '';
         if (Array.isArray(t.checklist) && t.checklist.length > 0) {
             const completedCount = t.checklist.filter(c => !!c.completed).length;
             const pct = Math.round((completedCount / t.checklist.length) * 100);
             checklistHtml = `
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <small class="text-muted fw-semibold" id="mwClCounter">${completedCount} of ${t.checklist.length} completed (${pct}%)</small>
+                <div class="mw-td-sec-head">
+                    <h4>Acceptance checklist</h4>
+                    <span class="mw-cl-counter-badge">${completedCount} of ${t.checklist.length} complete</span>
                 </div>
-                <div class="mw-checklist-list" style="display:flex; flex-direction:column; gap:8px;">` +
+                <div class="mw-cl-progress-bar">
+                    <div class="mw-cl-progress-fill" style="width: ${pct}%;"></div>
+                </div>
+                <div class="mw-cl-items-wrap">` +
                 t.checklist.map((item, idx) => {
                     const isChecked = !!item.completed;
                     const canCheck = !!t.can_check;
-                    const textStyle = isChecked ? 'text-decoration:line-through; color:#8A9992;' : 'color:#1E2B24;';
+                    const boxClass = isChecked ? 'checked' : 'unchecked';
+                    const textClass = isChecked ? 'checked' : 'unchecked';
                     return `
-                        <label class="d-flex align-items-start gap-2 mw-checklist-item" style="cursor:${canCheck ? 'pointer' : 'default'}; margin:0; padding:6px 10px; background:#F8FAFA; border:1px solid #E3ECE7; border-radius:6px; font-size:13.5px;">
-                            <input type="checkbox" class="mw-cl-chk" data-cl-idx="${idx}" ${isChecked ? 'checked' : ''} ${canCheck ? '' : 'disabled'} style="margin-top:3px; accent-color:#087F5B; cursor:${canCheck ? 'pointer' : 'default'};">
-                            <span class="mw-cl-text" style="flex:1; line-height:1.45; ${textStyle}">${tdEsc(item.text)}</span>
-                        </label>`;
+                        <div class="mw-cl-item" data-cl-idx="${idx}" style="cursor:${canCheck ? 'pointer' : 'default'};">
+                            <span class="mw-cl-box ${boxClass}">
+                                ${isChecked ? '<svg width="10" height="8" viewBox="0 0 10 8" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1.25 4L3.75 6.5L8.75 1.5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' : ''}
+                            </span>
+                            <span class="mw-cl-item-text ${textClass}">${tdEsc(item.text)}</span>
+                        </div>`;
                 }).join('') +
                 `</div>`;
         } else {
-            checklistHtml = '<div class="mw-td-empty">No checklist items added.</div>';
+            checklistHtml = `
+                <div class="mw-td-sec-head">
+                    <h4>Acceptance checklist</h4>
+                </div>
+                <div class="mw-td-empty">No checklist items added.</div>`;
         }
 
+        // Render Latest Activity matching Figma spec
+        let activitiesHtml = '';
+        if (Array.isArray(t.activities) && t.activities.length > 0) {
+            activitiesHtml = `
+                <div class="mw-activity-timeline" style="margin-bottom:12px;">` +
+                t.activities.map(act => {
+                    const isSystem = (act.type === 'system');
+                    const initial = tdInitials(act.user_name || 'U');
+                    
+                    if (isSystem) {
+                        return `
+                            <div class="mw-act-system">
+                                ${tdEsc(act.activity)}
+                            </div>`;
+                    } else {
+                        return `
+                            <div class="mw-activity-item">
+                                <span class="mw-act-avatar">${tdEsc(initial)}</span>
+                                <div style="flex:1;">
+                                    <div class="mw-act-head">
+                                        ${tdEsc(act.user_name)} <span class="mw-act-time">· ${tdEsc(act.created_at)}</span>
+                                    </div>
+                                    <div class="mw-act-comment">${tdEsc(act.activity)}</div>
+                                </div>
+                            </div>`;
+                    }
+                }).join('') +
+                `</div>`;
+        } else {
+            activitiesHtml = '<div class="mw-td-empty mb-2">No activity yet.</div>';
+        }
+
+        // Figma input box with trailing plus icon
+        const commentBoxHtml = `
+            <div class="mw-figma-comment-box">
+                <input type="text" id="mwCommentInput" class="mw-figma-comment-input" placeholder="Write a comment or @mention a teammate…" autocomplete="off">
+                <button type="button" class="mw-figma-comment-btn" id="mwBtnSendComment" title="Add comment">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+            </div>`;
+
+        // Attachments row matching Figma
         const file = t.attachment_url
-            ? `<a class="mw-td-file" href="${tdEsc(t.attachment_url)}" target="_blank"><span><i class="fa-regular fa-file me-2"></i>${tdEsc(t.attachment_name)}</span><small>Open</small></a>`
+            ? `<a class="mw-td-file" href="${tdEsc(t.attachment_url)}" target="_blank">
+                <span class="mw-td-file-left">
+                    <i class="fa-regular fa-file-lines mw-td-file-icon"></i>
+                    <span>${tdEsc(t.attachment_name)}</span>
+                </span>
+                <span class="mw-td-file-size">Open</span>
+               </a>`
             : '<div class="mw-td-empty">No attachments.</div>';
+
         tdBody.innerHTML = `
             <div class="mw-td-top"><span>${tdEsc(t.code)} · ${tdEsc(t.project)}</span>
                 <button type="button" class="mw-td-close" id="mwTdClose" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
@@ -2408,15 +2495,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div><div class="mw-td-label">Assigned to</div><div class="mw-td-val plain">${tdEsc(t.assigned_to)}</div></div>
                     <div><div class="mw-td-label">CC</div><div class="mw-td-val plain">${t.cc.length ? tdEsc(t.cc.join(' · ')) : '—'}</div></div>
                 </div>
-                <div class="mw-td-sec"><h4>Expected output</h4>${expectedOut}</div>
-                <div class="mw-td-sec"><h4>Acceptance checklist</h4>${checklistHtml}</div>
+                ${t.expected_output && t.expected_output.trim() ? `<div class="mw-td-sec"><h4>Expected output</h4>${expectedOut}</div>` : ''}
+                <div class="mw-td-sec">${checklistHtml}</div>
                 <div class="mw-td-sec"><h4>Attachments</h4>${file}</div>
-                <div class="mw-td-sec"><h4>Latest activity</h4><div class="mw-td-empty">No activity yet.</div>
-                    <div class="mw-td-comment">Write a comment or @mention a teammate…</div></div>
+                <div class="mw-td-sec"><h4>Latest activity</h4>${activitiesHtml}${commentBoxHtml}</div>
             </div>
-            <div data-td-pane="1" style="display:none;"><div class="mw-td-empty">Activity will appear here.</div></div>
-            <div data-td-pane="2" style="display:none;"><div class="mw-td-empty">Work log will appear here.</div></div>
-            <div class="mt-3"><a href="${tdEsc(t.show_url)}" class="mw-td-text" style="text-decoration:underline;">Open full task page</a></div>`;
+            <div data-td-pane="1" style="display:none;"><div class="mw-td-sec">${activitiesHtml}${commentBoxHtml}</div></div>
+            <div data-td-pane="2" style="display:none;"><div class="mw-td-empty">Work log will appear here.</div></div>`;
         tdNote.innerText = t.blocked ? 'Resolve the blocker before submitting for review.' : '';
         tdBody.querySelector('#mwTdClose').addEventListener('click', closeTaskDetail);
         tdBody.querySelectorAll('.mw-td-tab').forEach(b => b.addEventListener('click', () => {
@@ -2441,22 +2526,28 @@ document.addEventListener('DOMContentLoaded', function () {
             if (btnDrawerCompleteTask) btnDrawerCompleteTask.style.display = '';
         }
 
-        // Wire up checklist checkbox click handlers
-        tdBody.querySelectorAll('.mw-cl-chk').forEach(chk => {
-            chk.addEventListener('change', function() {
+        // Wire up checklist item click handlers (Figma custom checkbox)
+        tdBody.querySelectorAll('.mw-cl-item').forEach(itemEl => {
+            itemEl.addEventListener('click', function() {
+                if (!t.can_check) return;
                 const itemIdx = parseInt(this.getAttribute('data-cl-idx'), 10);
-                const isChecked = this.checked;
-                const label = this.closest('.mw-checklist-item');
-                const textSpan = label ? label.querySelector('.mw-cl-text') : null;
+                const box = this.querySelector('.mw-cl-box');
+                const textSpan = this.querySelector('.mw-cl-item-text');
+                const willBeChecked = !box.classList.contains('checked');
+
+                // Optimistic UI toggle
+                box.classList.toggle('checked', willBeChecked);
+                box.classList.toggle('unchecked', !willBeChecked);
+                box.innerHTML = willBeChecked ? '<i class="fa-solid fa-check" style="font-size:9px;"></i>' : '';
                 if (textSpan) {
-                    textSpan.style.textDecoration = isChecked ? 'line-through' : 'none';
-                    textSpan.style.color = isChecked ? '#8A9992' : '#1E2B24';
+                    textSpan.classList.toggle('checked', willBeChecked);
+                    textSpan.classList.toggle('unchecked', !willBeChecked);
                 }
 
                 // Send AJAX toggle request
                 const fd = new FormData();
                 fd.append('index', itemIdx);
-                fd.append('completed', isChecked ? 1 : 0);
+                fd.append('completed', willBeChecked ? 1 : 0);
 
                 fetch(`${baseUrl}/my-work/toggle-checklist/${t.id}`, {
                     method: 'POST',
@@ -2469,7 +2560,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (data.all_completed) {
                             showMwToast(data.message || 'Task completed!', 'success');
                         }
-                        // Refresh task detail and list to sync status, badges & cards
+                        // Refresh task detail and list to sync status, progress bar, badges & cards
                         if (window.openTaskDetail && currentDetailTaskId) {
                             window.openTaskDetail(currentDetailTaskId);
                         }
@@ -2478,20 +2569,81 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
                     } else {
                         showMwToast(data.message || 'Failed to update checklist item.', 'error');
-                        chk.checked = !isChecked; // rollback
+                        // Rollback
+                        box.classList.toggle('checked', !willBeChecked);
+                        box.classList.toggle('unchecked', willBeChecked);
+                        box.innerHTML = !willBeChecked ? '<i class="fa-solid fa-check" style="font-size:9px;"></i>' : '';
                         if (textSpan) {
-                            textSpan.style.textDecoration = !isChecked ? 'line-through' : 'none';
-                            textSpan.style.color = !isChecked ? '#8A9992' : '#1E2B24';
+                            textSpan.classList.toggle('checked', !willBeChecked);
+                            textSpan.classList.toggle('unchecked', willBeChecked);
                         }
                     }
                 })
                 .catch(err => {
                     console.error('Error toggling checklist:', err);
                     showMwToast('Network error while updating checklist.', 'error');
-                    chk.checked = !isChecked;
+                    box.classList.toggle('checked', !willBeChecked);
+                    box.classList.toggle('unchecked', willBeChecked);
+                    box.innerHTML = !willBeChecked ? '<i class="fa-solid fa-check" style="font-size:9px;"></i>' : '';
+                    if (textSpan) {
+                        textSpan.classList.toggle('checked', !willBeChecked);
+                        textSpan.classList.toggle('unchecked', willBeChecked);
+                    }
                 });
             });
         });
+        // Wire up comment send handlers (Enter or Plus icon button)
+        tdBody.querySelectorAll('.mw-figma-comment-box').forEach(box => {
+            const input = box.querySelector('#mwCommentInput');
+            const btnSend = box.querySelector('#mwBtnSendComment');
+            if (!input || !btnSend) return;
+
+            const doSendComment = () => {
+                const commentText = input.value.trim();
+                if (!commentText) return;
+
+                btnSend.disabled = true;
+                btnSend.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+                const fd = new FormData();
+                fd.append('comment', commentText);
+
+                fetch(`${baseUrl}/my-work/add-comment/${t.id}`, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: fd
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showMwToast('Comment posted.', 'success');
+                        input.value = '';
+                        if (window.openTaskDetail && currentDetailTaskId) {
+                            window.openTaskDetail(currentDetailTaskId);
+                        }
+                    } else {
+                        showMwToast(data.message || 'Failed to post comment.', 'error');
+                    }
+                })
+                .catch(err => {
+                    console.error('Error posting comment:', err);
+                    showMwToast('Network error while posting comment.', 'error');
+                })
+                .finally(() => {
+                    btnSend.disabled = false;
+                    btnSend.innerHTML = '<i class="fa-solid fa-plus"></i>';
+                });
+            };
+
+            btnSend.addEventListener('click', doSendComment);
+            input.addEventListener('keydown', e => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    doSendComment();
+                }
+            });
+        });
+
         if (btnDrawerCompleteTask) {
             if (t.is_completed) {
                 btnDrawerCompleteTask.disabled = true;
