@@ -1015,6 +1015,7 @@ class MyWorkController extends Controller
                 'status_class' => $statusClass,
                 'priority' => ucfirst($t['priority'] ?? 'medium'),
                 'deadline' => $deadlineText,
+                'raw_deadline' => !empty($t['deadline']) ? $t['deadline'] : null,
                 'overdue' => $overdueText,
                 'owner' => $t['assigned_by_name'] ?: '—',
                 'assigned_to' => $t['owner_name'] ?: '—',
@@ -1308,6 +1309,31 @@ class MyWorkController extends Controller
 
         if ($stmt->execute()) {
             $stmt->close();
+
+            // Detect changes and log system activities
+            $oldDl = !empty($existingTask['deadline']) ? date('Y-m-d', strtotime($existingTask['deadline'])) : null;
+            $newDl = !empty($deadline) ? date('Y-m-d', strtotime($deadline)) : null;
+
+            if ($oldDl !== $newDl) {
+                $oldDlText = $oldDl ? date('d M Y', strtotime($oldDl)) : 'none';
+                $newDlText = $newDl ? date('d M Y', strtotime($newDl)) : 'none';
+                $actText = "Updated deadline from {$oldDlText} to {$newDlText}.";
+                $this->logTaskActivity($id, $userId, 'system', $actText);
+
+                // Notify assignee about the deadline update
+                $assigneeId = (int)$existingTask['user_id'];
+                if ($assigneeId && $assigneeId !== $userId) {
+                    $actorName = $_SESSION['user']['full_name'] ?? 'Task owner';
+                    $notifMsg = "{$actorName} updated the deadline for task T-{$id} to {$newDlText}.";
+                    $stNotif = $this->db->prepare("INSERT INTO notifications (user_id, task_id, assigned_by, message, created_at) VALUES (?, ?, ?, ?, NOW())");
+                    if ($stNotif) {
+                        $stNotif->bind_param("iiis", $assigneeId, $id, $userId, $notifMsg);
+                        $stNotif->execute();
+                        $stNotif->close();
+                    }
+                }
+            }
+
             if ($isAjax) {
                 header('Content-Type: application/json');
                 echo json_encode([
@@ -1737,6 +1763,82 @@ class MyWorkController extends Controller
             exit;
         } else {
             echo json_encode(['status' => 'error', 'message' => 'Failed to save comment.']);
+            exit;
+        }
+    }
+
+    /**
+     * Request a deadline extension for a task
+     * POST /my-work/request-extension/{id}
+     */
+    public function requestExtension($id)
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        $id = (int)$id;
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        if (!$userId) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        $newDeadline = trim($_POST['new_deadline'] ?? '');
+        $reason = trim($_POST['reason'] ?? '');
+
+        if (empty($newDeadline)) {
+            echo json_encode(['status' => 'error', 'message' => 'Please select a proposed new deadline date.']);
+            exit;
+        }
+        if (empty($reason)) {
+            echo json_encode(['status' => 'error', 'message' => 'Please provide a reason for the extension request.']);
+            exit;
+        }
+
+        $st = $this->db->prepare("SELECT id, title, assigned_by, user_id, deadline, mentioned_user_ids, collaborator_user_ids FROM tasks WHERE id = ?");
+        $st->bind_param("i", $id);
+        $st->execute();
+        $task = $st->get_result()->fetch_assoc();
+        if (!$task) {
+            echo json_encode(['status' => 'error', 'message' => 'Task not found.']);
+            exit;
+        }
+
+        $formattedDate = date('d M Y', strtotime($newDeadline));
+        $activityText = "Requested deadline extension to {$formattedDate}. Reason: \"{$reason}\"";
+
+        if ($this->logTaskActivity($id, $userId, 'system', $activityText)) {
+            // Notify task owner / assigned_by
+            $actorName = $_SESSION['user']['full_name'] ?? 'Assignee';
+            $notifMsg = "{$actorName} requested a deadline extension for task T-{$id} to {$formattedDate}. Reason: {$reason}";
+
+            $notifyRecipients = array_filter([(int)$task['assigned_by']]);
+            // Also notify reviewers if defined
+            if (!empty($task['mentioned_user_ids'])) {
+                $revs = explode(',', (string)$task['mentioned_user_ids']);
+                foreach ($revs as $rId) {
+                    $rId = (int)trim($rId);
+                    if ($rId) $notifyRecipients[] = $rId;
+                }
+            }
+
+            foreach (array_unique($notifyRecipients) as $recipientId) {
+                if ($recipientId !== $userId) {
+                    $stNotif = $this->db->prepare("INSERT INTO notifications (user_id, task_id, assigned_by, message, created_at) VALUES (?, ?, ?, ?, NOW())");
+                    if ($stNotif) {
+                        $stNotif->bind_param("iiis", $recipientId, $id, $userId, $notifMsg);
+                        $stNotif->execute();
+                        $stNotif->close();
+                    }
+                }
+            }
+
+            echo json_encode([
+                'status' => 'success',
+                'message' => 'Extension request submitted successfully.',
+                'task_id' => $id
+            ]);
+            exit;
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Failed to log extension request.']);
             exit;
         }
     }

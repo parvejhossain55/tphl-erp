@@ -1945,6 +1945,38 @@ $todayDateFormatted = date('j F');
     </div>
 </div>
 
+<!-- Request Extension Modal -->
+<div class="mw-confirm-backdrop" id="mwExtensionModalBackdrop"></div>
+<div class="mw-confirm-modal" id="mwExtensionModal" role="dialog" aria-modal="true" aria-hidden="true" style="max-width: 440px;">
+    <div class="mw-confirm-icon" style="background: #E9F5EF; color: #087F5B;">
+        <i class="fa-regular fa-calendar-plus"></i>
+    </div>
+    <h3 class="mw-confirm-title" style="margin-bottom: 4px;">Request Deadline Extension</h3>
+    <p class="mw-confirm-desc" style="margin-bottom: 12px;">Propose a new deadline and explain why additional time is required.</p>
+    
+    <div style="background: #F5F7F6; border: 1px solid #E2EAE5; border-radius: 6px; padding: 8px 12px; margin-bottom: 14px; text-align: left; font-size: 12.5px;">
+        <span style="color: #65776F;">Current Deadline:</span>
+        <strong id="mwExtCurrentDeadline" style="color: #142D26; margin-left: 6px;">—</strong>
+    </div>
+
+    <div style="text-align: left; margin-bottom: 14px;">
+        <label class="mw-form-label">Proposed New Deadline <span class="req">*</span></label>
+        <input type="date" id="mwExtNewDeadline" class="mw-form-input" required>
+    </div>
+
+    <div style="text-align: left; margin-bottom: 16px;">
+        <label class="mw-form-label">Reason for Extension <span class="req">*</span></label>
+        <textarea id="mwExtReason" class="mw-form-textarea" rows="3" placeholder="Explain why extension is needed (e.g. waiting for dependencies, extra revisions required)..." required></textarea>
+    </div>
+
+    <div class="mw-confirm-actions">
+        <button type="button" class="mw-confirm-btn cancel" id="btnCancelExtension">Cancel</button>
+        <button type="button" class="mw-confirm-btn" id="btnSubmitExtension" style="background: #087F5B; color: #FFFFFF;">
+            <i class="fa-solid fa-paper-plane me-1"></i> Submit Request
+        </button>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const baseUrl = '<?= $base_url ?>';
@@ -2910,9 +2942,10 @@ document.addEventListener('DOMContentLoaded', function () {
         // Reviewer controls vs Assignee complete controls for standard view
         const footActions = document.querySelector('.mw-td-foot-actions');
         if (footActions) {
+            const extBtnDisabled = t.is_completed ? 'disabled' : '';
             footActions.innerHTML = `
                 <button type="button" class="mw-td-btn" disabled><i class="fa-regular fa-clock me-1"></i> Log work</button>
-                <button type="button" class="mw-td-btn" disabled>Request extension</button>
+                <button type="button" class="mw-td-btn" id="btnDrawerRequestExtension" ${extBtnDisabled}>Request extension</button>
                 <button type="button" class="mw-td-btn primary" id="btnDrawerCompleteTask" disabled>
                     <i class="fa-solid fa-check me-1"></i> Complete Task
                 </button>
@@ -3199,6 +3232,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 btnDrawerCompleteTask.style.borderColor = '#EDF2EF';
             }
         }
+
+        // Wire up Request Extension button
+        const btnDrawerReqExt = document.getElementById('btnDrawerRequestExtension');
+        if (btnDrawerReqExt) {
+            btnDrawerReqExt.addEventListener('click', () => {
+                if (t.is_completed) return;
+                openExtensionModal(t);
+            });
+        }
     }
 
     // Reviewer Action Handlers
@@ -3341,6 +3383,112 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     }
+    // Extension Modal Logic
+    const extModal = document.getElementById('mwExtensionModal');
+    const extBackdrop = document.getElementById('mwExtensionModalBackdrop');
+    const extNewDeadlineInput = document.getElementById('mwExtNewDeadline');
+    const extReasonInput = document.getElementById('mwExtReason');
+    const btnCancelExt = document.getElementById('btnCancelExtension');
+    const btnSubmitExt = document.getElementById('btnSubmitExtension');
+    let extTaskId = null;
+
+    function openExtensionModal(task) {
+        if (!extModal || !extBackdrop) return;
+        extTaskId = task.id;
+
+        // Display current deadline clearly
+        const curDlSpan = document.getElementById('mwExtCurrentDeadline');
+        if (curDlSpan) {
+            curDlSpan.textContent = task.deadline || 'No deadline';
+        }
+
+        if (extNewDeadlineInput) {
+            // Set default date picker based on task's actual deadline + 2 days, or today + 2 days (Date only)
+            let baseDate = new Date();
+            if (task.raw_deadline) {
+                const parsedDl = new Date(task.raw_deadline.replace(' ', 'T'));
+                if (!isNaN(parsedDl.getTime())) {
+                    baseDate = parsedDl;
+                }
+            }
+            baseDate.setDate(baseDate.getDate() + 2);
+
+            const pad = n => String(n).padStart(2, '0');
+            const defaultDateStr = `${baseDate.getFullYear()}-${pad(baseDate.getMonth() + 1)}-${pad(baseDate.getDate())}`;
+            extNewDeadlineInput.value = defaultDateStr;
+
+            // Set minimum date to tomorrow
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            extNewDeadlineInput.min = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`;
+        }
+        if (extReasonInput) extReasonInput.value = '';
+        extModal.classList.add('show');
+        extBackdrop.classList.add('show');
+    }
+
+    function closeExtensionModal() {
+        if (extModal) extModal.classList.remove('show');
+        if (extBackdrop) extBackdrop.classList.remove('show');
+        extTaskId = null;
+    }
+
+    if (btnCancelExt) btnCancelExt.addEventListener('click', closeExtensionModal);
+    if (extBackdrop) extBackdrop.addEventListener('click', closeExtensionModal);
+
+    if (btnSubmitExt) {
+        btnSubmitExt.addEventListener('click', function() {
+            if (!extTaskId) return;
+            const newDeadline = extNewDeadlineInput ? extNewDeadlineInput.value.trim() : '';
+            const reason = extReasonInput ? extReasonInput.value.trim() : '';
+
+            if (!newDeadline) {
+                showMwToast('Please select a proposed new deadline.', 'error');
+                if (extNewDeadlineInput) extNewDeadlineInput.focus();
+                return;
+            }
+            if (!reason) {
+                showMwToast('Please provide a reason for the extension request.', 'error');
+                if (extReasonInput) extReasonInput.focus();
+                return;
+            }
+
+            btnSubmitExt.disabled = true;
+            btnSubmitExt.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Submitting...';
+
+            const fd = new FormData();
+            fd.append('new_deadline', newDeadline);
+            fd.append('reason', reason);
+
+            fetch(`${baseUrl}/my-work/request-extension/${extTaskId}`, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: fd
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showMwToast(data.message || 'Extension request submitted.', 'success');
+                    closeExtensionModal();
+                    if (window.openTaskDetail && currentDetailTaskId) {
+                        window.openTaskDetail(currentDetailTaskId);
+                    }
+                    fetchWorkspaceData();
+                } else {
+                    showMwToast(data.message || 'Failed to submit extension request.', 'error');
+                }
+            })
+            .catch(err => {
+                console.error('Error requesting extension:', err);
+                showMwToast('Network error while requesting extension.', 'error');
+            })
+            .finally(() => {
+                btnSubmitExt.disabled = false;
+                btnSubmitExt.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Submit Request';
+            });
+        });
+    }
+
     window.openTaskDetail = function(taskId) {
         if (!tdEl) return;
         tdBody.innerHTML = '<div class="mw-td-empty" style="padding:24px 0;">Loading…</div>';
