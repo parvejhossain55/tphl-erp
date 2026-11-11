@@ -718,28 +718,6 @@ class ApprovalRequest extends Model
     }
 
     /**
-     * Ensure fund_requisitions Purchase Head stage columns exist (idempotent, checked once per request).
-     */
-    private function ensureFundReqPurchaseHeadColumns()
-    {
-        static $frPhChecked = false;
-        if ($frPhChecked) return;
-        $frPhChecked = true;
-        $frPhCols = [
-            'purchase_head_status' => "ENUM('not_required','pending','approved','rejected') NOT NULL DEFAULT 'not_required'",
-            'purchase_head_by'     => "INT(11) NULL DEFAULT NULL",
-            'purchase_head_at'     => "DATETIME NULL DEFAULT NULL",
-            'purchase_head_note'   => "TEXT NULL",
-        ];
-        foreach ($frPhCols as $frPhCol => $frPhDef) {
-            $chk = @$this->db->query("SHOW COLUMNS FROM fund_requisitions LIKE '{$frPhCol}'");
-            if ($chk && $chk->num_rows === 0) {
-                @$this->db->query("ALTER TABLE fund_requisitions ADD COLUMN {$frPhCol} {$frPhDef}");
-            }
-        }
-    }
-
-    /**
      * Helper to directly sync source table when approved by Role 20 or Management
      */
     public function syncSourceTableStatusDirect($sourceTable, $sourceId, $status, $userId, $amount = null, $note = '')
@@ -747,9 +725,6 @@ class ApprovalRequest extends Model
         $sourceId = (int)$sourceId;
         $userId = (int)$userId;
         $note = $this->db->real_escape_string($note);
-        if ($sourceTable === 'fund_requisitions') {
-            $this->ensureFundReqPurchaseHeadColumns();
-        }
 
         if ($status === 'rejected') {
             if ($sourceTable === 'vendor_payment_requests') {
@@ -758,17 +733,9 @@ class ApprovalRequest extends Model
             } elseif ($sourceTable === 'contractor_bill_requests') {
                 $this->db->query("UPDATE contractor_bill_requests SET status = 'rejected', approved_by = {$userId}, management_note = '{$note}', rejection_reason = '{$note}', updated_at = NOW() WHERE id = {$sourceId}");
             } elseif ($sourceTable === 'fund_requisitions') {
-                // Note: purchase_head_status is assigned last because MySQL evaluates single-table SET assignments left to right
-                $this->db->query("UPDATE fund_requisitions SET status = 'rejected', approved_by = {$userId}, approval_note = '{$note}', updated_at = NOW(), purchase_head_by = IF(purchase_head_status = 'pending', {$userId}, purchase_head_by), purchase_head_at = IF(purchase_head_status = 'pending', NOW(), purchase_head_at), purchase_head_note = IF(purchase_head_status = 'pending', '{$note}', purchase_head_note), purchase_head_status = IF(purchase_head_status = 'pending', 'rejected', purchase_head_status) WHERE id = {$sourceId}");
+                $this->db->query("UPDATE fund_requisitions SET status = 'rejected', approved_by = {$userId}, approval_note = '{$note}', updated_at = NOW() WHERE id = {$sourceId}");
             } elseif ($sourceTable === 'project_other_costs') {
-                // If rejected at the Purchase Head stage, record it there instead of the Management fields
-                $pocRjRes = $this->db->query("SELECT purchase_head_status, dept_head_status FROM project_other_costs WHERE id = {$sourceId} LIMIT 1");
-                $pocRjRow = $pocRjRes ? $pocRjRes->fetch_assoc() : null;
-                if ($pocRjRow && ($pocRjRow['purchase_head_status'] ?? '') === 'pending' && ($pocRjRow['dept_head_status'] ?? '') !== 'pending') {
-                    $this->db->query("UPDATE project_other_costs SET status = 'rejected', purchase_head_status = 'rejected', purchase_head_by = {$userId}, purchase_head_at = NOW(), purchase_head_note = '{$note}' WHERE id = {$sourceId}");
-                } else {
-                    $this->db->query("UPDATE project_other_costs SET status = 'rejected', management_apporved_by_id = {$userId}, management_apporved_note = '{$note}', management_apporved_at = NOW() WHERE id = {$sourceId}");
-                }
+                $this->db->query("UPDATE project_other_costs SET status = 'rejected', management_apporved_by_id = {$userId}, management_apporved_note = '{$note}', management_apporved_at = NOW() WHERE id = {$sourceId}");
             } elseif ($sourceTable === 'cashout_requests') {
                 $this->db->query("UPDATE cashout_requests SET status = 'rejected', approved_by = {$userId}, approved_at = NOW(), approval_note = '{$note}' WHERE id = {$sourceId}");
             } elseif ($sourceTable === 'land_fund_requisitions') {
@@ -776,14 +743,7 @@ class ApprovalRequest extends Model
             } elseif ($sourceTable === 'project_extra_assets') {
                 $this->db->query("UPDATE project_extra_assets SET overall_status = 'rejected', mgmt_status = 'rejected', mgmt_by = {$userId}, mgmt_at = NOW(), mgmt_note = '{$note}' WHERE id = {$sourceId}");
             } elseif ($sourceTable === 'con_labor_requisitions') {
-                // If rejected at the Purchase Head stage, record it there instead of the Management fields
-                $lrRjRes = $this->db->query("SELECT status, purchase_head_status FROM con_labor_requisitions WHERE id = {$sourceId} LIMIT 1");
-                $lrRjRow = $lrRjRes ? $lrRjRes->fetch_assoc() : null;
-                if ($lrRjRow && ($lrRjRow['purchase_head_status'] ?? '') === 'pending' && ($lrRjRow['status'] ?? '') === 'pm_approved') {
-                    $this->db->query("UPDATE con_labor_requisitions SET status = 'rejected', purchase_head_status = 'rejected', purchase_head_by = {$userId}, purchase_head_at = NOW(), purchase_head_note = '{$note}', rejection_reason = '{$note}' WHERE id = {$sourceId}");
-                } else {
-                    $this->db->query("UPDATE con_labor_requisitions SET status = 'rejected', management_approved_by = {$userId}, management_approved_at = NOW() WHERE id = {$sourceId}");
-                }
+                $this->db->query("UPDATE con_labor_requisitions SET status = 'rejected', management_approved_by = {$userId}, management_approved_at = NOW() WHERE id = {$sourceId}");
             } elseif ($sourceTable === 'expense_adjustments') {
                 $this->db->query("UPDATE expense_adjustments SET status = 'rejected', approved_by = {$userId}, approved_at = NOW() WHERE id = {$sourceId}");
             } elseif ($sourceTable === 'advance_salaries') {
@@ -808,7 +768,7 @@ class ApprovalRequest extends Model
             if ($frPrev) {
                 try { \FundRequisitionApprovalLog::backfillIfMissing($this->db, $frPrev); } catch (\Throwable $t) {}
             }
-            $this->db->query("UPDATE fund_requisitions SET status = 'approved', approved_by = {$userId}, approved_at = NOW(), approved_amount = amount, approval_note = '{$note}', purchase_head_by = IF(purchase_head_status = 'pending', COALESCE(purchase_head_by, {$userId}), purchase_head_by), purchase_head_at = IF(purchase_head_status = 'pending', COALESCE(purchase_head_at, NOW()), purchase_head_at), purchase_head_note = IF(purchase_head_status = 'pending', COALESCE(purchase_head_note, CONCAT('{$note}', ' (Management Override)')), purchase_head_note), purchase_head_status = IF(purchase_head_status = 'pending', 'approved', purchase_head_status) WHERE id = {$sourceId}");
+            $this->db->query("UPDATE fund_requisitions SET status = 'approved', approved_by = {$userId}, approved_at = NOW(), approved_amount = amount, approval_note = '{$note}' WHERE id = {$sourceId}");
             if ($frPrev) {
                 $frAmt = (float)($frPrev['amount'] ?? 0);
                 $frPosted = max(0, $frAmt - (float)($frPrev['approved_amount'] ?? 0));
@@ -844,7 +804,6 @@ class ApprovalRequest extends Model
             $this->db->query("UPDATE project_other_costs SET status = 'management_approved', management_apporved_by_id = COALESCE(management_apporved_by_id, {$userId}), management_apporved_at = COALESCE(management_apporved_at, NOW()), management_apporved_note = CASE WHEN management_apporved_note IS NULL OR management_apporved_note = '' THEN '{$note}' ELSE management_apporved_note END WHERE id = {$sourceId}");
         } elseif ($sourceTable === 'con_labor_requisitions') {
             $this->db->query("UPDATE con_labor_requisitions SET status = 'management_approved', management_approved_by = COALESCE(management_approved_by, {$userId}), management_approved_at = COALESCE(management_approved_at, NOW()), approved_amount = total_amount WHERE id = {$sourceId}");
-            $this->db->query("UPDATE con_labor_requisitions SET purchase_head_status = 'approved', purchase_head_by = COALESCE(purchase_head_by, {$userId}), purchase_head_at = COALESCE(purchase_head_at, NOW()), purchase_head_note = COALESCE(NULLIF(purchase_head_note, ''), 'Approved (Management Override)') WHERE id = {$sourceId} AND purchase_head_status = 'pending'");
         } elseif ($sourceTable === 'expense_adjustments') {
             $this->db->query("UPDATE expense_adjustments SET status = 'approved', approved_by = {$userId}, approved_at = NOW() WHERE id = {$sourceId}");
         } elseif ($sourceTable === 'advance_salaries') {
@@ -1166,17 +1125,7 @@ class ApprovalRequest extends Model
 
         $userRoleSession = (int)($_SESSION['user']['role_id'] ?? 0);
         $roleNameSession = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
-        $isMgmtUserRole = (in_array($userRoleSession, [1, 3, 38], true) || strpos($roleNameSession, 'director') !== false || strpos($roleNameSession, 'dceo') !== false || strpos($roleNameSession, 'management') !== false) && !in_array($userRoleSession, [33, 34, 35], true);
-
-        $approvalScope = $_POST['approval_scope'] ?? null;
-        $reqAppRole = strtolower($request['approve_role'] ?? '');
-        $isDeptHeadOrPmRole = (strpos($reqAppRole, 'dept_head') === 0 || in_array($reqAppRole, ['pm', 'pm_head'], true));
-
-        // When request is at Department Head or PM stage:
-        // Do NOT treat as Management Override unless user explicitly selected 'full_override'.
-        // This ensures that when a Management user approves as Reporting Boss/Dept Head,
-        // it approves only that stage and forwards to Purchase Head / QC as intended.
-        $isMgmtOverride = $isMgmtUserRole && ($approvalScope === 'full_override' || (!$isDeptHeadOrPmRole && $approvalScope !== 'dept_head_only'));
+        $isMgmtOverride = (in_array($userRoleSession, [1, 3, 38], true) || strpos($roleNameSession, 'director') !== false || strpos($roleNameSession, 'dceo') !== false || strpos($roleNameSession, 'management') !== false) && !in_array($userRoleSession, [33, 34, 35], true);
 
         if ($sourceTable === 'vendor_payment_requests' && in_array(strtolower($request['approve_role'] ?? ''), ['purchase_head', 'purchase', 'purchase team leader', 'purchase_lead'], true) && $status === 'approved' && !$isMgmtOverride) {
             $stmtPh = $this->db->prepare("UPDATE vendor_payment_requests SET purchase_head_approved_by_id = ?, purchase_head_approved_at = NOW(), purchase_head_note = ? WHERE id = ?");
@@ -1193,24 +1142,6 @@ class ApprovalRequest extends Model
             $stmtForward = $this->db->prepare($sqlForward);
             $phNote = "Approved by Head of Purchase. Note: " . ($approvalNote ?? '');
             $stmtForward->bind_param('si', $phNote, $id);
-            return $stmtForward->execute();
-        }
-
-        // Labor Requisition: Purchase Head stage (after PM approval, before work completion)
-        if ($sourceTable === 'con_labor_requisitions' && in_array(strtolower($request['approve_role'] ?? ''), ['purchase_head', 'purchase', 'purchase team leader', 'purchase_lead'], true) && $status === 'approved' && !$isMgmtOverride) {
-            $stmtLrPh = $this->db->prepare("UPDATE con_labor_requisitions SET purchase_head_status = 'approved', purchase_head_by = ?, purchase_head_at = NOW(), purchase_head_note = ?, updated_at = NOW() WHERE id = ? AND purchase_head_status = 'pending'");
-            if ($stmtLrPh) {
-                $stmtLrPh->bind_param('isi', $approvedBy, $approvalNote, $sourceId);
-                $stmtLrPh->execute();
-                $stmtLrPh->close();
-            }
-            // Next stage follows the normal labor sync mapping (pending -> pm, payment_requested -> qc, otherwise management)
-            $lrNextRes = $this->db->query("SELECT status FROM con_labor_requisitions WHERE id = " . (int)$sourceId . " LIMIT 1");
-            $lrNextSt = ($lrNextRes && ($lrNextRow = $lrNextRes->fetch_assoc())) ? $lrNextRow['status'] : '';
-            $lrNextRole = ($lrNextSt === 'pending') ? 'pm' : (($lrNextSt === 'payment_requested') ? 'qc' : 'management');
-            $stmtForward = $this->db->prepare("UPDATE {$this->table} SET approve_role = ?, status = 'pending', approval_note = ? WHERE id = ?");
-            $phNote = "Approved by Head of Purchase. Note: " . ($approvalNote ?? '');
-            $stmtForward->bind_param('ssi', $lrNextRole, $phNote, $id);
             return $stmtForward->execute();
         }
 
@@ -1241,50 +1172,18 @@ class ApprovalRequest extends Model
             return $stmtForward->execute();
         }
 
-        if ($sourceTable === 'con_labor_requisitions' && in_array(strtolower($request['approve_role'] ?? ''), ['pm', 'pm_head'], true) && $status === 'approved' && !$isMgmtOverride) {
-            $stmtLrPm = $this->db->prepare("UPDATE con_labor_requisitions SET status = 'pm_approved', pm_approved_by = ?, pm_approved_at = NOW(), pm_note = ?, updated_at = NOW() WHERE id = ?");
-            if ($stmtLrPm) {
-                $stmtLrPm->bind_param('isi', $approvedBy, $approvalNote, $sourceId);
-                $stmtLrPm->execute();
-                $stmtLrPm->close();
-            }
-            $isApproverPurchaseHead = ($userRoleSession === 17);
-            if ($isApproverPurchaseHead) {
-                $this->ensureLaborPurchaseHeadColumn();
-                $this->db->query("UPDATE con_labor_requisitions SET purchase_head_status = 'approved', purchase_head_by = {$approvedBy}, purchase_head_at = NOW(), purchase_head_note = 'Auto-approved as Purchase Head (PM Verified)' WHERE id = {$sourceId}");
-                $lrNextRole = 'qc';
-            } else {
-                $this->ensureLaborPurchaseHeadColumn();
-                $this->db->query("UPDATE con_labor_requisitions SET purchase_head_status = 'pending' WHERE id = {$sourceId} AND purchase_head_status = 'not_required'");
-                $lrNextRole = 'purchase_head';
-            }
-            $sqlForward = "UPDATE {$this->table} SET approve_role = ?, status = 'pending', approval_note = ? WHERE id = ?";
-            $stmtForward = $this->db->prepare($sqlForward);
-            $pmNote = "PM Approved" . ($isApproverPurchaseHead ? " & Purchase Head" : "") . ". Note: " . ($approvalNote ?? '');
-            $stmtForward->bind_param('ssi', $lrNextRole, $pmNote, $id);
-            return $stmtForward->execute();
-        }
-
         if ($sourceTable === 'contractor_bill_requests' && strtolower($request['approve_role'] ?? '') === 'pm' && $status === 'approved' && !$isMgmtOverride) {
-            $isApproverPurchaseHead = ($userRoleSession === 17);
-            if ($isApproverPurchaseHead) {
-                $escCbNote = $this->db->real_escape_string($approvalNote ?? 'PM Approved');
-                $this->db->query("UPDATE contractor_bill_requests SET status = 'verified', verified_by = {$approvedBy}, verified_at = NOW(), verification_note = '{$escCbNote}', purchase_head_approved_by_id = {$approvedBy}, purchase_head_approved_at = NOW(), purchase_head_note = 'Auto-approved as Head of Purchase (PM Verified)' WHERE id = {$sourceId}");
-                $cbNextRole = 'qc';
-            } else {
-                $stmtCb = $this->db->prepare("UPDATE contractor_bill_requests SET status = 'verified', verified_by = ?, verified_at = NOW(), verification_note = ? WHERE id = ?");
-                if ($stmtCb) {
-                    $stmtCb->bind_param('isi', $approvedBy, $approvalNote, $sourceId);
-                    $stmtCb->execute();
-                    $stmtCb->close();
-                }
-                $cbNextRole = 'purchase_head';
+            $stmtCb = $this->db->prepare("UPDATE contractor_bill_requests SET status = 'verified', verified_by = ?, verified_at = NOW(), verification_note = ? WHERE id = ?");
+            if ($stmtCb) {
+                $stmtCb->bind_param('isi', $approvedBy, $approvalNote, $sourceId);
+                $stmtCb->execute();
+                $stmtCb->close();
             }
 
-            // Forward to QC or Head of Purchase
+            // Forward to Head of Purchase ('purchase_head')
             $sqlForward = "UPDATE {$this->table}
                 SET 
-                    approve_role = ?,
+                    approve_role = 'purchase_head',
                     status = 'pending',
                     approved_amount = NULL,
                     approved_by = NULL,
@@ -1292,8 +1191,8 @@ class ApprovalRequest extends Model
                     approved_at = NULL
                 WHERE id = ?";
             $stmtForward = $this->db->prepare($sqlForward);
-            $pmNote = "PM Approved" . ($isApproverPurchaseHead ? " & Head of Purchase" : "") . ". Note: " . ($approvalNote ?? '');
-            $stmtForward->bind_param('ssi', $cbNextRole, $pmNote, $id);
+            $pmNote = "PM Approved. Note: " . ($approvalNote ?? '');
+            $stmtForward->bind_param('si', $pmNote, $id);
             return $stmtForward->execute();
         }
 
@@ -1368,40 +1267,9 @@ class ApprovalRequest extends Model
             return $stmtForward->execute();
         }
 
-        // Intermediate stages for fund_requisitions (dept_head -> purchase_head -> qc -> management)
+        // Intermediate stages for fund_requisitions (dept_head -> qc -> management)
         if ($sourceTable === 'fund_requisitions' && strpos(strtolower($request['approve_role'] ?? ''), 'dept_head') === 0 && $status === 'approved' && !$isMgmtOverride) {
-            $this->ensureFundReqPurchaseHeadColumns();
             $stmtFr = $this->db->prepare("UPDATE fund_requisitions SET dept_head_status = 'approved', dept_head_approved_by = ?, dept_head_approval_note = ?, dept_head_approved_at = NOW(), status = 'pending_qc' WHERE id = ?");
-            if ($stmtFr) {
-                $stmtFr->bind_param('isi', $approvedBy, $approvalNote, $sourceId);
-                $stmtFr->execute();
-                $stmtFr->close();
-            }
-            $isApproverPurchaseHead = ($userRoleSession === 17);
-            if ($isApproverPurchaseHead) {
-                // Dept Head approver IS Purchase Head (Role 17) -> Auto-approve Purchase Head stage immediately
-                $escPhNote = $this->db->real_escape_string(($approvalNote ?: 'Approved by Department Head') . ' (Auto-approved as Purchase Head)');
-                $this->db->query("UPDATE fund_requisitions SET purchase_head_status = 'approved', purchase_head_by = {$approvedBy}, purchase_head_at = NOW(), purchase_head_note = '{$escPhNote}' WHERE id = " . (int)$sourceId);
-                $frNextRole = 'qc';
-            } else {
-                // Purchase Head stage follows Dept Head (skipped when requester is Purchase Head 17 / Management 1, 3, 38)
-                $this->db->query("UPDATE fund_requisitions fr SET fr.purchase_head_status = 'pending' WHERE fr.id = " . (int)$sourceId . " AND fr.status = 'pending_qc' AND fr.purchase_head_status = 'not_required' AND NOT EXISTS (SELECT 1 FROM users u_ph WHERE u_ph.id = fr.requested_by AND u_ph.role_id IN (17, 1, 3, 38))");
-                $frPhRow = $this->db->query("SELECT purchase_head_status FROM fund_requisitions WHERE id = " . (int)$sourceId . " LIMIT 1");
-                $frNextRole = ($frPhRow && ($frPhData = $frPhRow->fetch_assoc()) && ($frPhData['purchase_head_status'] ?? '') === 'pending') ? 'purchase_head' : 'qc';
-            }
-            $sqlForward = "UPDATE {$this->table} SET approve_role = ?, status = 'pending', approval_note = ? WHERE id = ?";
-            $stmtForward = $this->db->prepare($sqlForward);
-            $dhNote = "Approved by Dept Head" . ($isApproverPurchaseHead ? " & Purchase Head" : "") . ". Note: " . ($approvalNote ?? '');
-            $stmtForward->bind_param('ssi', $frNextRole, $dhNote, $id);
-            return $stmtForward->execute();
-        }
-
-        if ($sourceTable === 'fund_requisitions' && strtolower($request['approve_role'] ?? '') === 'purchase_head' && $status === 'approved' && !$isMgmtOverride) {
-            $this->ensureFundReqPurchaseHeadColumns();
-            if ((int)($_SESSION['user']['role_id'] ?? 0) !== 17) {
-                return false;
-            }
-            $stmtFr = $this->db->prepare("UPDATE fund_requisitions SET purchase_head_status = 'approved', purchase_head_by = ?, purchase_head_at = NOW(), purchase_head_note = ? WHERE id = ? AND purchase_head_status = 'pending'");
             if ($stmtFr) {
                 $stmtFr->bind_param('isi', $approvedBy, $approvalNote, $sourceId);
                 $stmtFr->execute();
@@ -1409,19 +1277,12 @@ class ApprovalRequest extends Model
             }
             $sqlForward = "UPDATE {$this->table} SET approve_role = 'qc', status = 'pending', approval_note = ? WHERE id = ?";
             $stmtForward = $this->db->prepare($sqlForward);
-            $phNote = "Approved by Purchase Head. Note: " . ($approvalNote ?? '');
-            $stmtForward->bind_param('si', $phNote, $id);
+            $dhNote = "Approved by Dept Head. Note: " . ($approvalNote ?? '');
+            $stmtForward->bind_param('si', $dhNote, $id);
             return $stmtForward->execute();
         }
 
         if ($sourceTable === 'fund_requisitions' && strtolower($request['approve_role'] ?? '') === 'qc' && $status === 'approved' && !$isMgmtOverride) {
-            // QC cannot act while the Purchase Head stage is still pending
-            $this->ensureFundReqPurchaseHeadColumns();
-            $frPhChk = $this->db->query("SELECT purchase_head_status FROM fund_requisitions WHERE id = " . (int)$sourceId . " LIMIT 1");
-            if ($frPhChk && ($frPhChkRow = $frPhChk->fetch_assoc()) && ($frPhChkRow['purchase_head_status'] ?? '') === 'pending') {
-                $this->db->query("UPDATE {$this->table} SET approve_role = 'purchase_head' WHERE id = " . (int)$id);
-                return false;
-            }
             $qcApprovedAmt = ($approvedAmount !== null && $approvedAmount > 0) ? (float)$approvedAmount : (float)($request['request_amount'] ?? 0);
             $stmtFr = $this->db->prepare("UPDATE fund_requisitions SET status = 'pending', qc_approved_by = ?, qc_approved_at = NOW(), qc_approval_note = ?, qc_approved_amount = ? WHERE id = ?");
             if ($stmtFr) {
@@ -1436,7 +1297,7 @@ class ApprovalRequest extends Model
             return $stmtForward->execute();
         }
 
-        // Intermediate stages for project_other_costs (dept_head -> purchase_head -> qc -> management)
+        // Intermediate stages for project_other_costs (dept_head -> qc -> management)
         if ($sourceTable === 'project_other_costs' && strpos(strtolower($request['approve_role'] ?? ''), 'dept_head') === 0 && $status === 'approved' && !$isMgmtOverride) {
             $stmtPoc = $this->db->prepare("UPDATE project_other_costs SET dept_head_status = 'approved', dept_head_approved_by = ?, dept_head_approval_note = ?, dept_head_approved_at = NOW() WHERE id = ?");
             if ($stmtPoc) {
@@ -1444,47 +1305,10 @@ class ApprovalRequest extends Model
                 $stmtPoc->execute();
                 $stmtPoc->close();
             }
-            $isApproverPurchaseHead = ($userRoleSession === 17);
-            if ($isApproverPurchaseHead) {
-                // Dept Head approver IS Purchase Head (Role 17) -> Auto-approve Purchase Head stage immediately
-                $escPhNote = $this->db->real_escape_string(($approvalNote ?: 'Approved by Department Head') . ' (Auto-approved as Purchase Head)');
-                $this->db->query("UPDATE project_other_costs SET purchase_head_status = 'approved', purchase_head_by = {$approvedBy}, purchase_head_at = NOW(), purchase_head_note = '{$escPhNote}' WHERE id = " . (int)$sourceId);
-                $pocNextRole = 'qc';
-            } else {
-                // Purchase Head (Role 17) stage after Dept Head (skipped if requester is Purchase Head / Management 1,3,38)
-                $pocNextRole = 'qc';
-                $pocPhRes = $this->db->query("SELECT poc.purchase_head_status, poc.purchase_head_by, u.role_id AS creator_role_id FROM project_other_costs poc LEFT JOIN users u ON u.id = poc.created_by_id WHERE poc.id = " . (int)$sourceId . " LIMIT 1");
-                $pocPhRow = $pocPhRes ? $pocPhRes->fetch_assoc() : null;
-                if ($pocPhRow) {
-                    $pocPhSt = $pocPhRow['purchase_head_status'] ?? 'not_required';
-                    if ($pocPhSt === 'pending') {
-                        $pocNextRole = 'purchase_head';
-                    } elseif ($pocPhSt === 'not_required' && empty($pocPhRow['purchase_head_by']) && !in_array((int)($pocPhRow['creator_role_id'] ?? 0), [17, 1, 3, 38], true)) {
-                        $this->db->query("UPDATE project_other_costs SET purchase_head_status = 'pending' WHERE id = " . (int)$sourceId);
-                        $pocNextRole = 'purchase_head';
-                    }
-                }
-            }
-            $sqlForward = "UPDATE {$this->table} SET approve_role = ?, status = 'pending', approval_note = ? WHERE id = ?";
-            $stmtForward = $this->db->prepare($sqlForward);
-            $dhNote = "Approved by Dept Head" . ($isApproverPurchaseHead ? " & Purchase Head" : "") . ". Note: " . ($approvalNote ?? '');
-            $stmtForward->bind_param('ssi', $pocNextRole, $dhNote, $id);
-            return $stmtForward->execute();
-        }
-
-        // project_other_costs: Purchase Head (Role 17) approval -> forward to QC
-        if ($sourceTable === 'project_other_costs' && in_array(strtolower($request['approve_role'] ?? ''), ['purchase_head', 'purchase', 'purchase team leader', 'purchase_lead'], true) && $status === 'approved' && !$isMgmtOverride) {
-            $stmtPoc = $this->db->prepare("UPDATE project_other_costs SET purchase_head_status = 'approved', purchase_head_by = ?, purchase_head_at = NOW(), purchase_head_note = ? WHERE id = ? AND purchase_head_status = 'pending'");
-            if ($stmtPoc) {
-                $phNoteSrc = $approvalNote ?: 'Approved by Purchase Head';
-                $stmtPoc->bind_param('isi', $approvedBy, $phNoteSrc, $sourceId);
-                $stmtPoc->execute();
-                $stmtPoc->close();
-            }
             $sqlForward = "UPDATE {$this->table} SET approve_role = 'qc', status = 'pending', approval_note = ? WHERE id = ?";
             $stmtForward = $this->db->prepare($sqlForward);
-            $phNote = "Approved by Purchase Head. Note: " . ($approvalNote ?? '');
-            $stmtForward->bind_param('si', $phNote, $id);
+            $dhNote = "Approved by Dept Head. Note: " . ($approvalNote ?? '');
+            $stmtForward->bind_param('si', $dhNote, $id);
             return $stmtForward->execute();
         }
 
@@ -1528,16 +1352,6 @@ class ApprovalRequest extends Model
                     $stmtPea->bind_param('isi', $approvedBy, $approvalNote, $sourceId);
                     $stmtPea->execute();
                     $stmtPea->close();
-                }
-                if ($peaStep === 'dept_head') {
-                    // Auto-pass if Dept Head approver is also Purchase Head (17) or Operation Head (20/32)
-                    $escPeaAutoNote = $this->db->real_escape_string(($approvalNote ?: 'Approved by Department Head') . ' (Auto-approved via Department Head Approval)');
-                    if ($userRoleSession === 17) {
-                        $this->db->query("UPDATE project_extra_assets SET purchase_head_status = 'approved', purchase_head_by = {$approvedBy}, purchase_head_at = NOW(), purchase_head_note = '{$escPeaAutoNote}' WHERE id = {$sourceId}");
-                    }
-                    if (in_array($userRoleSession, [20, 32], true)) {
-                        $this->db->query("UPDATE project_extra_assets SET operations_status = 'approved', operations_by = {$approvedBy}, operations_at = NOW(), operations_note = '{$escPeaAutoNote}' WHERE id = {$sourceId}");
-                    }
                 }
                 $this->syncMissingOfficeProcurements();
                 return true;
@@ -1718,15 +1532,6 @@ class ApprovalRequest extends Model
                         updated_at = NOW()
                     WHERE id = {$sourceId}
                 ");
-                // Auto-fill bypassed Purchase Head stage (separate query; no-op when not pending)
-                $this->db->query("
-                    UPDATE con_labor_requisitions
-                    SET purchase_head_status = 'approved',
-                        purchase_head_by = COALESCE(purchase_head_by, " . (int)$approvedBy . "),
-                        purchase_head_at = COALESCE(purchase_head_at, NOW()),
-                        purchase_head_note = COALESCE(NULLIF(purchase_head_note, ''), '{$escLrNote} (Management Override)')
-                    WHERE id = {$sourceId} AND purchase_head_status = 'pending'
-                ");
             } else {
                 $stmtLr = $this->db->prepare(
                     "UPDATE con_labor_requisitions
@@ -1767,26 +1572,10 @@ class ApprovalRequest extends Model
                         qc_audit_approved_id = COALESCE(qc_audit_approved_id, " . (int)$approvedBy . "),
                         qc_audit_approved_at = COALESCE(qc_audit_approved_at, NOW()),
                         qc_audit_note = COALESCE(qc_audit_note, '{$escPocNote} (Management Override)'),
-                        purchase_head_by = IF(purchase_head_status = 'pending', COALESCE(purchase_head_by, " . (int)$approvedBy . "), purchase_head_by),
-                        purchase_head_at = IF(purchase_head_status = 'pending', COALESCE(purchase_head_at, NOW()), purchase_head_at),
-                        purchase_head_note = IF(purchase_head_status = 'pending', COALESCE(NULLIF(purchase_head_note, ''), '{$escPocNote} (Management Override)'), purchase_head_note),
-                        purchase_head_status = IF(purchase_head_status = 'pending', 'approved', purchase_head_status),
                         updated_at = NOW() 
                     WHERE id = {$sourceId}
                 ");
             } else {
-                // Rejection while at the Purchase Head stage is recorded on the Purchase Head fields
-                $pocPhRjRes = $this->db->query("SELECT purchase_head_status, dept_head_status FROM project_other_costs WHERE id = {$sourceId} LIMIT 1");
-                $pocPhRjRow = $pocPhRjRes ? $pocPhRjRes->fetch_assoc() : null;
-                if ($pocPhRjRow && ($pocPhRjRow['purchase_head_status'] ?? '') === 'pending' && ($pocPhRjRow['dept_head_status'] ?? '') !== 'pending' && !$isMgmtOverride) {
-                    $stmtPocPh = $this->db->prepare("UPDATE project_other_costs SET status = 'rejected', purchase_head_status = 'rejected', purchase_head_by = ?, purchase_head_at = NOW(), purchase_head_note = ?, updated_at = NOW() WHERE id = ?");
-                    if ($stmtPocPh) {
-                        $stmtPocPh->bind_param('isi', $approvedBy, $approvalNote, $sourceId);
-                        $stmtPocPh->execute();
-                        $stmtPocPh->close();
-                    }
-                    return true;
-                }
                 $stmtPoc = $this->db->prepare(
                     "UPDATE project_other_costs 
                      SET status = ?, 
@@ -1904,7 +1693,6 @@ class ApprovalRequest extends Model
 
             if ($status === 'approved') {
                 $escFrNote = $this->db->real_escape_string($approvalNote ?? 'Approved by Management');
-                $this->ensureFundReqPurchaseHeadColumns();
                 $this->db->query("
                     UPDATE fund_requisitions 
                     SET status = '{$frStatus}', 
@@ -1916,10 +1704,6 @@ class ApprovalRequest extends Model
                         dept_head_approved_by = COALESCE(dept_head_approved_by, " . (int)$approvedBy . "),
                         dept_head_approved_at = COALESCE(dept_head_approved_at, NOW()),
                         dept_head_approval_note = COALESCE(dept_head_approval_note, '{$escFrNote} (Management Override)'),
-                        purchase_head_by = IF(purchase_head_status = 'pending', COALESCE(purchase_head_by, " . (int)$approvedBy . "), purchase_head_by),
-                        purchase_head_at = IF(purchase_head_status = 'pending', COALESCE(purchase_head_at, NOW()), purchase_head_at),
-                        purchase_head_note = IF(purchase_head_status = 'pending', COALESCE(purchase_head_note, '{$escFrNote} (Management Override)'), purchase_head_note),
-                        purchase_head_status = IF(purchase_head_status = 'pending', 'approved', purchase_head_status),
                         qc_approved_by = COALESCE(qc_approved_by, " . (int)$approvedBy . "),
                         qc_approved_at = COALESCE(qc_approved_at, NOW()),
                         qc_approved_amount = COALESCE(NULLIF(qc_approved_amount, 0), {$targetAmt}),
@@ -1928,7 +1712,6 @@ class ApprovalRequest extends Model
                     WHERE id = {$sourceId}
                 ");
             } else {
-                $this->ensureFundReqPurchaseHeadColumns();
                 $stmtFr = $this->db->prepare(
                     "UPDATE fund_requisitions 
                      SET status = ?, 
@@ -1936,7 +1719,6 @@ class ApprovalRequest extends Model
                          approved_at = NOW(), 
                          approved_amount = COALESCE(?, NULLIF(qc_approved_amount, 0), amount), 
                          approval_note = ?,
-                         purchase_head_status = IF(purchase_head_status = 'pending', 'rejected', purchase_head_status),
                          updated_at = NOW() 
                      WHERE id = ?"
                 );
@@ -3736,11 +3518,6 @@ class ApprovalRequest extends Model
                             $row['status'] = 'pending';
                             $pendingStageLabel = 'Pending Dept Head';
                             $pendingForText = !empty($pocRow['dh_boss_name']) ? 'Dept Head (' . $pocRow['dh_boss_name'] . ')' : 'Department Head';
-                        } elseif (in_array($pocStatus, ['submitted', 'pending', '']) && strtolower($pocRow['purchase_head_status'] ?? 'not_required') === 'pending') {
-                            $row['approve_role'] = 'purchase_head';
-                            $row['status'] = 'pending';
-                            $pendingStageLabel = 'Pending Purchase Head';
-                            $pendingForText = 'Purchase Head';
                         } elseif (in_array($pocStatus, ['submitted', 'pending', ''])) {
                             $row['approve_role'] = 'qc';
                             $row['status'] = 'pending';
@@ -3822,8 +3599,7 @@ class ApprovalRequest extends Model
                     }
                 }
             } else if ($sourceTable === 'fund_requisitions') {
-                $this->ensureFundReqPurchaseHeadColumns();
-                $frSql = "SELECT status, amount, approved_amount, qc_approved_amount, paid_amount, paid_at, paid_by, purchase_head_status FROM fund_requisitions WHERE id = ? LIMIT 1";
+                $frSql = "SELECT status, amount, approved_amount, qc_approved_amount, paid_amount, paid_at, paid_by FROM fund_requisitions WHERE id = ? LIMIT 1";
                 $frStmt = $this->db->prepare($frSql);
                 if ($frStmt) {
                     $frStmt->bind_param("i", $sourceId);
@@ -3843,11 +3619,6 @@ class ApprovalRequest extends Model
                             $row['status'] = 'pending';
                             $pendingStageLabel = 'Pending Dept Head';
                             $pendingForText = 'Department Head / Reporting Boss';
-                        } elseif ($frStatus === 'pending_qc' && strtolower($frRow['purchase_head_status'] ?? '') === 'pending') {
-                            $row['approve_role'] = 'purchase_head';
-                            $row['status'] = 'pending';
-                            $pendingStageLabel = 'Pending Purchase Head';
-                            $pendingForText = 'Purchase Head';
                         } elseif ($frStatus === 'pending_qc') {
                             $row['approve_role'] = 'qc';
                             $row['status'] = 'pending';
@@ -4746,7 +4517,6 @@ class ApprovalRequest extends Model
 
     public function syncMissingFundRequisitions()
     {
-        $this->ensureFundReqPurchaseHeadColumns();
         // 1. Insert missing requisitions
         $sql = "
             SELECT fr.*, d.name AS dept_name
@@ -4769,9 +4539,6 @@ class ApprovalRequest extends Model
                 $approveRole = 'management';
                 if ($frStatus === 'pending_dept') {
                     $approveRole = 'dept_head';
-                    $status = 'pending';
-                } elseif ($frStatus === 'pending_qc' && ($row['purchase_head_status'] ?? 'not_required') === 'pending') {
-                    $approveRole = 'purchase_head';
                     $status = 'pending';
                 } elseif ($frStatus === 'pending_qc') {
                     $approveRole = 'qc';
@@ -4828,7 +4595,6 @@ class ApprovalRequest extends Model
             INNER JOIN fund_requisitions fr ON (ar.source_table = 'fund_requisitions' AND ar.source_id = fr.id)
             SET ar.approve_role = CASE 
                     WHEN fr.status = 'pending_dept' THEN 'dept_head'
-                    WHEN fr.status = 'pending_qc' AND fr.purchase_head_status = 'pending' THEN 'purchase_head'
                     WHEN fr.status = 'pending_qc' THEN 'qc'
                     WHEN fr.status = 'pending' THEN CASE WHEN ar.op_head_status = 'approved' AND (ar.accounts_head_status IS NULL OR ar.accounts_head_status != 'approved') THEN 'accounts_head' ELSE 'management' END
                     WHEN fr.status = 'approved' THEN CASE WHEN ar.accounts_head_status = 'approved' THEN 'accounts' ELSE 'accounts_head' END
@@ -4974,10 +4740,6 @@ class ApprovalRequest extends Model
 
     public function syncMissingLaborRequisitions()
     {
-        // Ensure con_labor_requisitions schema (incl. purchase_head_* columns) exists before syncing
-        if (class_exists('Con_LaborRequisition')) {
-            new Con_LaborRequisition($this->db);
-        }
         // 1. Insert missing labor bills (only when work_completed or beyond, so initial pending planning is not flooded)
         $sql = "
             SELECT lr.*, p.name AS project_name
@@ -5060,7 +4822,6 @@ class ApprovalRequest extends Model
             INNER JOIN con_labor_requisitions lr ON (ar.source_table = 'con_labor_requisitions' AND ar.source_id = lr.id)
             SET ar.approve_role = CASE 
                     WHEN lr.status = 'pending' THEN 'pm'
-                    WHEN lr.status = 'pm_approved' AND lr.purchase_head_status = 'pending' THEN 'purchase_head'
                     WHEN lr.status = 'payment_requested' THEN 'qc'
                     WHEN lr.status IN ('qc_approved', 'pm_payment_approved') THEN CASE WHEN ar.op_head_status = 'approved' AND (ar.accounts_head_status IS NULL OR ar.accounts_head_status != 'approved') THEN 'accounts_head' ELSE 'management' END
                     WHEN lr.status = 'management_approved' THEN CASE WHEN ar.accounts_head_status = 'approved' THEN 'accounts' ELSE 'accounts_head' END
@@ -5136,7 +4897,7 @@ class ApprovalRequest extends Model
                         $approveRole = !empty($row['reporting_user_id']) ? 'dept_head_' . $row['reporting_user_id'] : 'dept_head';
                     } else {
                         $status = 'pending';
-                        $approveRole = (strtolower($row['purchase_head_status'] ?? 'not_required') === 'pending') ? 'purchase_head' : 'qc';
+                        $approveRole = 'qc';
                         if ($dhStatus === 'approved') {
                             $approvedBy = !empty($row['dept_head_approved_by']) ? (int)$row['dept_head_approved_by'] : null;
                             $approvedAt = !empty($row['dept_head_approved_at']) ? $row['dept_head_approved_at'] : null;
@@ -5188,7 +4949,6 @@ class ApprovalRequest extends Model
             SET ar.approve_role = CASE 
                     WHEN poc.status = 'rejected' OR poc.dept_head_status = 'rejected' THEN 'rejected'
                     WHEN poc.status = 'pending' AND poc.dept_head_status = 'pending' THEN 'dept_head'
-                    WHEN poc.status = 'pending' AND poc.purchase_head_status = 'pending' THEN 'purchase_head'
                     WHEN poc.status = 'pending' THEN 'qc'
                     WHEN poc.status = 'qc_approved' THEN CASE WHEN ar.op_head_status = 'approved' AND (ar.accounts_head_status IS NULL OR ar.accounts_head_status != 'approved') THEN 'accounts_head' ELSE 'management' END
                     WHEN poc.status = 'management_approved' THEN CASE WHEN ar.accounts_head_status = 'approved' THEN 'accounts' ELSE 'accounts_head' END
@@ -5218,8 +4978,6 @@ class ApprovalRequest extends Model
                OR (poc.status = 'management_approved' AND ar.status != 'approved')
                OR (poc.status = 'rejected' AND ar.status != 'rejected')
                OR (poc.status = 'qc_approved' AND ar.approve_role NOT IN ('management', 'accounts_head'))
-               OR (poc.status = 'pending' AND poc.dept_head_status != 'pending' AND poc.purchase_head_status = 'pending' AND ar.approve_role != 'purchase_head')
-               OR (poc.status = 'pending' AND poc.dept_head_status != 'pending' AND poc.purchase_head_status != 'pending' AND ar.approve_role = 'purchase_head')
         ";
         @$this->db->query($syncSql);
     }

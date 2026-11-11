@@ -111,17 +111,6 @@ class Con_VendorPaymentRequest extends Model
      */
     public function getAll($userId = null, $assignedProjectIds = [], $filters = [])
     {
-        // Auto-heal / sync missing records in central approval_requests before querying
-        try {
-            if (!class_exists('ApprovalRequest')) {
-                require_once __DIR__ . '/ApprovalRequest.php';
-            }
-            $appReqModel = new \ApprovalRequest($this->db);
-            $appReqModel->syncMissingVendorPayments();
-        } catch (\Throwable $t) {
-            // graceful fail
-        }
-
         $sql = "SELECT pr.*,
                        v.name       AS vendor_name,
                        p.name       AS project_name,
@@ -135,14 +124,8 @@ class Con_VendorPaymentRequest extends Model
                        qc.full_name AS qc_approved_by_name,
                        qc_r.name    AS qc_approved_by_role,
                        pb.full_name AS payment_by_name,
-                       COALESCE(txn_sum.total_paid, 0) AS already_paid,
-                       ar.id AS approval_request_id,
-                       ar.approve_role,
-                       ar.op_head_status,
-                       ar.accounts_head_status,
-                       ar.status AS approval_request_status
+                       COALESCE(txn_sum.total_paid, 0) AS already_paid
                 FROM {$this->table} pr
-                LEFT JOIN approval_requests ar ON (ar.source_table = 'vendor_payment_requests' AND ar.source_id = pr.id)
                 LEFT JOIN vendors v          ON v.id  = pr.vendor_id
                 LEFT JOIN projects p         ON p.id  = pr.project_id
                 LEFT JOIN purchase_orders po ON po.id = pr.purchase_order_id
@@ -206,62 +189,7 @@ class Con_VendorPaymentRequest extends Model
         // 4. Status / Workflow Stage filter (Pending, Apex Approved, Payment done)
         if (!empty($filters['status'])) {
             $st = trim($filters['status']);
-            if ($st === 'my_applicable') {
-                $sessionUserRole = (int)($_SESSION['user']['role_id'] ?? 0);
-                $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
-                $isChiefOfficer = (in_array($sessionUserRole, [33, 34, 35], true) || in_array($sessionRoleName, ['chief officer', 'management viewer', 'seal ceo'], true));
-
-                $isFullManagement = (in_array($sessionUserRole, [1, 3, 38], true)
-                    || strpos($sessionRoleName, 'director') !== false
-                    || strpos($sessionRoleName, 'dceo') !== false
-                    || strpos($sessionRoleName, 'management') !== false
-                    || strpos($sessionRoleName, 'super admin') !== false)
-                    && !$isChiefOfficer;
-
-                $isRole20 = (in_array($sessionUserRole, [20, 32], true)
-                    || strpos($sessionRoleName, 'operation head') !== false
-                    || strpos($sessionRoleName, 'admin & operation') !== false)
-                    && !$isChiefOfficer;
-
-                $isAccountsHead = ($sessionUserRole === 30 || strpos($sessionRoleName, 'accounts head') !== false) && !$isChiefOfficer;
-                $isAccountsStaff = ($sessionUserRole === 6 || (strpos($sessionRoleName, 'account') !== false && !$isAccountsHead)) && !$isChiefOfficer;
-
-                $isQC = ($sessionUserRole === 24
-                    || strpos($sessionRoleName, 'qc') !== false
-                    || strpos($sessionRoleName, 'quality controller') !== false)
-                    && !$isChiefOfficer;
-
-                $isPurchaseHead = (in_array($sessionUserRole, [17, 31], true)
-                    || strpos($sessionRoleName, 'purchase head') !== false
-                    || strpos($sessionRoleName, 'head of purchase') !== false
-                    || strpos($sessionRoleName, 'purchase team leader') !== false)
-                    && !$isChiefOfficer;
-
-                if ($isPurchaseHead) {
-                    $whereClauses[] = "(pr.status = 'Submitted' AND pr.purchase_head_approved_by_id IS NULL)";
-                } elseif ($isQC) {
-                    $whereClauses[] = "(pr.status = 'Submitted' AND pr.purchase_head_approved_by_id IS NOT NULL)";
-                } elseif ($isRole20) {
-                    $whereClauses[] = "(pr.status = 'QC Approved' AND (ar.op_head_status IS NULL OR ar.op_head_status != 'approved'))";
-                } elseif ($isAccountsHead) {
-                    $whereClauses[] = "((pr.status = 'QC Approved' AND ar.op_head_status = 'approved' AND (ar.accounts_head_status IS NULL OR ar.accounts_head_status != 'approved')) OR (pr.status = 'Approved' AND (ar.accounts_head_status IS NULL OR ar.accounts_head_status != 'approved')))";
-                } elseif ($isFullManagement) {
-                    // For Management: either items waiting on final management sign-off, or requests awaiting Op Head / Accounts Head that they can act on
-                    $whereClauses[] = "(
-                        (pr.status = 'QC Approved' AND (
-                            (ar.op_head_status = 'approved' AND ar.accounts_head_status = 'approved' AND (ar.request_amount > 10000.01 OR pr.net_payable > 10000.01))
-                            OR (ar.op_head_status IS NULL OR ar.op_head_status != 'approved')
-                            OR (ar.accounts_head_status IS NULL OR ar.accounts_head_status != 'approved')
-                        ))
-                        OR (pr.status = 'Submitted')
-                    )";
-                } elseif ($isAccountsStaff) {
-                    $whereClauses[] = "(pr.status IN ('Approved', 'Partially_Paid') AND ar.accounts_head_status = 'approved' AND (pr.due_amount > 0 OR (pr.net_payable - COALESCE(txn_sum.total_paid, 0)) > 0))";
-                } else {
-                    // Other creators / viewers: their own pending requests
-                    $whereClauses[] = "(pr.status IN ('Submitted', 'QC Approved'))";
-                }
-            } elseif ($st === 'pending' || $st === 'all_pending') {
+            if ($st === 'pending' || $st === 'all_pending') {
                 $whereClauses[] = "pr.status IN ('Submitted', 'QC Approved')";
             } elseif ($st === 'pending_purchase_head') {
                 $whereClauses[] = "pr.status = 'Submitted' AND pr.purchase_head_approved_by_id IS NULL";
@@ -388,7 +316,7 @@ class Con_VendorPaymentRequest extends Model
                 FROM {$this->table} {$whereUser}";
 
         $res = $this->db->query($sql);
-        $counts = $res ? $res->fetch_assoc() : [
+        return $res ? $res->fetch_assoc() : [
             'total'                 => 0,
             'pending_purchase_head' => 0,
             'pending_qc'            => 0,
@@ -400,81 +328,6 @@ class Con_VendorPaymentRequest extends Model
             'fully_paid'            => 0,
             'rejected'              => 0
         ];
-
-        // Dynamic count for My Applicable
-        $myAppCond = "";
-        $sessionUserRole = (int)($_SESSION['user']['role_id'] ?? 0);
-        $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
-        $isChiefOfficer = (in_array($sessionUserRole, [33, 34, 35], true) || in_array($sessionRoleName, ['chief officer', 'management viewer', 'seal ceo'], true));
-
-        $isFullManagement = (in_array($sessionUserRole, [1, 3, 38], true)
-            || strpos($sessionRoleName, 'director') !== false
-            || strpos($sessionRoleName, 'dceo') !== false
-            || strpos($sessionRoleName, 'management') !== false
-            || strpos($sessionRoleName, 'super admin') !== false)
-            && !$isChiefOfficer;
-
-        $isRole20 = (in_array($sessionUserRole, [20, 32], true)
-            || strpos($sessionRoleName, 'operation head') !== false
-            || strpos($sessionRoleName, 'admin & operation') !== false)
-            && !$isChiefOfficer;
-
-        $isAccountsHead = ($sessionUserRole === 30 || strpos($sessionRoleName, 'accounts head') !== false) && !$isChiefOfficer;
-        $isAccountsStaff = ($sessionUserRole === 6 || (strpos($sessionRoleName, 'account') !== false && !$isAccountsHead)) && !$isChiefOfficer;
-
-        $isQC = ($sessionUserRole === 24
-            || strpos($sessionRoleName, 'qc') !== false
-            || strpos($sessionRoleName, 'quality controller') !== false)
-            && !$isChiefOfficer;
-
-        $isPurchaseHead = (in_array($sessionUserRole, [17, 31], true)
-            || strpos($sessionRoleName, 'purchase head') !== false
-            || strpos($sessionRoleName, 'head of purchase') !== false
-            || strpos($sessionRoleName, 'purchase team leader') !== false)
-            && !$isChiefOfficer;
-
-        if ($isPurchaseHead) {
-            $myAppCond = "pr.status = 'Submitted' AND pr.purchase_head_approved_by_id IS NULL";
-        } elseif ($isQC) {
-            $myAppCond = "pr.status = 'Submitted' AND pr.purchase_head_approved_by_id IS NOT NULL";
-        } elseif ($isRole20) {
-            $myAppCond = "pr.status = 'QC Approved' AND (ar.op_head_status IS NULL OR ar.op_head_status != 'approved')";
-        } elseif ($isAccountsHead) {
-            $myAppCond = "((pr.status = 'QC Approved' AND ar.op_head_status = 'approved' AND (ar.accounts_head_status IS NULL OR ar.accounts_head_status != 'approved')) OR (pr.status = 'Approved' AND (ar.accounts_head_status IS NULL OR ar.accounts_head_status != 'approved')))";
-        } elseif ($isFullManagement) {
-            $myAppCond = "(
-                (pr.status = 'QC Approved' AND (
-                    (ar.op_head_status = 'approved' AND ar.accounts_head_status = 'approved' AND (ar.request_amount > 10000.01 OR pr.net_payable > 10000.01))
-                    OR (ar.op_head_status IS NULL OR ar.op_head_status != 'approved')
-                    OR (ar.accounts_head_status IS NULL OR ar.accounts_head_status != 'approved')
-                ))
-                OR (pr.status = 'Submitted')
-            )";
-        } elseif ($isAccountsStaff) {
-            $myAppCond = "pr.status IN ('Approved', 'Partially_Paid') AND ar.accounts_head_status = 'approved' AND (pr.due_amount > 0 OR pr.due_amount IS NULL)";
-        } else {
-            $myAppCond = "pr.status IN ('Submitted', 'QC Approved')";
-        }
-
-        $myAppUserWhere = "";
-        if ($userId !== null) {
-            $userCond = "pr.created_by = " . (int)$userId;
-            if (!empty($assignedProjectIds)) {
-                $idList = implode(',', array_map('intval', $assignedProjectIds));
-                $myAppUserWhere = " AND ($userCond OR pr.project_id IN ($idList))";
-            } else {
-                $myAppUserWhere = " AND $userCond";
-            }
-        }
-
-        $myAppSql = "SELECT COUNT(*) as cnt 
-                     FROM {$this->table} pr
-                     LEFT JOIN approval_requests ar ON (ar.source_table = 'vendor_payment_requests' AND ar.source_id = pr.id)
-                     WHERE {$myAppCond} {$myAppUserWhere}";
-        $myAppRes = @$this->db->query($myAppSql);
-        $counts['my_applicable'] = ($myAppRes && $myAppRow = $myAppRes->fetch_assoc()) ? (int)$myAppRow['cnt'] : 0;
-
-        return $counts;
     }
 
     /**

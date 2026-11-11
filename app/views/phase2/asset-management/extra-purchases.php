@@ -1081,12 +1081,6 @@ function submitDetailInlineApproval(id, overrideStage) {
     document.getElementById('detailApprovalStatus_' + id).value = 'approved';
     var form = document.getElementById('detailInlineApprovalForm');
     if (!form) return;
-    var scopeRadio = form.querySelector('input[name="approval_scope"]:checked');
-    var isDeptOnly = scopeRadio && scopeRadio.value === 'dept_head_only';
-    if (isDeptOnly) {
-        form.submit();
-        return;
-    }
     if (overrideStage && overrideStage !== '') {
         if (typeof Swal !== 'undefined') {
             Swal.fire({
@@ -1636,28 +1630,6 @@ function renderDetailModal(data) {
             <form id="detailInlineApprovalForm" action="<?= $GLOBALS['base_url'] ?>/asset-extra-purchases/approve/${data.id}" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="step" value="${data.approval_step}">
                 <input type="hidden" name="approval_status" id="detailApprovalStatus_${data.id}" value="approved">
-
-                <?= !empty($isManagement) ? `
-                <div class="mb-3 p-2.5 bg-warning-subtle rounded border border-warning-subtle text-start">
-                    <label class="form-label fw-bold d-block mb-1.5 text-dark fs-11">
-                        <i class="fa-solid fa-user-shield text-warning me-1"></i> Management Approval Scope:
-                    </label>
-                    <div class="form-check mb-1.5">
-                        <input class="form-check-input" type="radio" name="approval_scope" id="ep_scope_step_\${data.id}" value="dept_head_only" checked>
-                        <label class="form-check-label fw-semibold text-dark fs-11" for="ep_scope_step_\${data.id}">
-                            <i class="fa-solid fa-user-check text-success me-1"></i> Approve Current Step (\${getStepTitle(data.approval_step, data)}) Only
-                            <small class="text-muted d-block fw-normal">Recommended: Forwards request to next reviewer without bypassing downstream stages.</small>
-                        </label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="approval_scope" id="ep_scope_override_\${data.id}" value="full_override">
-                        <label class="form-check-label fw-semibold text-danger fs-11" for="ep_scope_override_\${data.id}">
-                            <i class="fa-solid fa-stamp text-danger me-1"></i> Direct Management Approval (Override All Stages)
-                            <small class="text-muted d-block fw-normal">Bypasses all intermediate reviewers and grants final Management approval immediately.</small>
-                        </label>
-                    </div>
-                </div>
-                ` : '' ?>
 
                 ${data.approval_step === 'purchase_head' ? `
                 <div class="mb-2">

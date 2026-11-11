@@ -6,7 +6,6 @@
  *
  * Status Flow:
  *  pending -> pm_approved / rejected
- *  pm_approved (purchase_head_status=pending) -> Purchase Head (role 17) approves / rejects
  *  pm_approved -> work_completed (SE marks done)
  *  work_completed -> payment_requested
  *  payment_requested -> qc_approved / rejected
@@ -54,10 +53,6 @@ class Con_LaborRequisition extends Model
               `pm_approved_by` int DEFAULT NULL,
               `pm_approved_at` datetime DEFAULT NULL,
               `pm_note` text,
-              `purchase_head_status` enum('not_required','pending','approved','rejected') NOT NULL DEFAULT 'not_required',
-              `purchase_head_by` int DEFAULT NULL,
-              `purchase_head_at` datetime DEFAULT NULL,
-              `purchase_head_note` text,
               `qc_approved_by` int DEFAULT NULL,
               `qc_approved_at` datetime DEFAULT NULL,
               `qc_approved_amount` decimal(12,2) DEFAULT NULL,
@@ -109,37 +104,6 @@ class Con_LaborRequisition extends Model
               KEY `idx_clpl_req` (`requisition_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
-
-        // Purchase Head approval stage (after PM approval). Existing rows keep 'not_required'.
-        $phColumns = [
-            'purchase_head_status' => "ENUM('not_required','pending','approved','rejected') NOT NULL DEFAULT 'not_required' AFTER `pm_note`",
-            'purchase_head_by'     => "INT NULL DEFAULT NULL AFTER `purchase_head_status`",
-            'purchase_head_at'     => "DATETIME NULL DEFAULT NULL AFTER `purchase_head_by`",
-            'purchase_head_note'   => "TEXT NULL AFTER `purchase_head_at`",
-        ];
-        foreach ($phColumns as $col => $def) {
-            $chk = @$this->db->query("SHOW COLUMNS FROM `con_labor_requisitions` LIKE '{$col}'");
-            if ($chk && $chk->num_rows === 0) {
-                @$this->db->query("ALTER TABLE `con_labor_requisitions` ADD COLUMN `{$col}` {$def}");
-            }
-        }
-    }
-
-    /**
-     * Roles that skip the Purchase Head stage when they are the requester
-     * (Purchase Head itself, Super Admin and Management).
-     */
-    const PURCHASE_HEAD_SKIP_ROLES = [17, 1, 3, 38];
-
-    /**
-     * Returns true when the given requisition is awaiting Purchase Head approval.
-     */
-    public function isPurchaseHeadPending($id)
-    {
-        $res = @$this->db->query("SELECT purchase_head_status FROM {$this->table} WHERE id = " . (int)$id . " LIMIT 1");
-        if (!$res) return false;
-        $row = $res->fetch_assoc();
-        return $row && ($row['purchase_head_status'] ?? '') === 'pending';
     }
 
     public function getLastError()
@@ -207,12 +171,7 @@ class Con_LaborRequisition extends Model
                 WHERE 1=1";
 
         if ($projectId)   $sql .= " AND lr.project_id = ".(int)$projectId;
-        if ($status === 'pending_purchase_head') {
-            // Pseudo-status: PM approved, awaiting Purchase Head approval
-            $sql .= " AND lr.status = 'pm_approved' AND lr.purchase_head_status = 'pending'";
-        } elseif ($status) {
-            $sql .= " AND lr.status = '".$this->db->real_escape_string($status)."'";
-        }
+        if ($status)      $sql .= " AND lr.status = '".$this->db->real_escape_string($status)."'";
         if ($requestedBy) $sql .= " AND lr.requested_by = ".(int)$requestedBy;
 
         $sql .= " ORDER BY lr.id DESC";
@@ -245,9 +204,7 @@ class Con_LaborRequisition extends Model
                        COALESCE(d_paid.name, 'Accounts & Finance') AS paid_by_dept,
                        u_disb.full_name     AS labor_disbursed_by_name,
                        r_disb.name          AS labor_disbursed_by_role,
-                       COALESCE(d_disb.name, 'Engineering, Construction, & Design') AS labor_disbursed_by_dept,
-                       u_ph.full_name       AS purchase_head_by_name,
-                       r_ph.name            AS purchase_head_by_role
+                       COALESCE(d_disb.name, 'Engineering, Construction, & Design') AS labor_disbursed_by_dept
                 FROM {$this->table} lr
                 LEFT JOIN projects p              ON p.id   = lr.project_id
                 LEFT JOIN project_phases ph       ON ph.id  = lr.phase_id
@@ -286,8 +243,6 @@ class Con_LaborRequisition extends Model
                 LEFT JOIN employees emp_disb      ON (emp_disb.user_id = u_disb.id OR emp_disb.id = u_disb.employee_id)
                 LEFT JOIN designations des_disb   ON des_disb.id = COALESCE(emp_disb.designation_id, u_disb.designation_id)
                 LEFT JOIN departments d_disb      ON d_disb.id = COALESCE(emp_disb.department_id, des_disb.department_id)
-                LEFT JOIN users u_ph              ON u_ph.id = lr.purchase_head_by
-                LEFT JOIN roles r_ph              ON r_ph.id = u_ph.role_id
                 WHERE lr.id = ?";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param('i', $id);
@@ -417,39 +372,7 @@ class Con_LaborRequisition extends Model
     {
         $stmt = $this->db->prepare("UPDATE {$this->table} SET status='pm_approved', pm_approved_by=?, pm_approved_at=NOW(), pm_note=?, updated_at=NOW() WHERE id=? AND status='pending'");
         $stmt->bind_param('isi', $userId, $note, $id);
-        $ok = $stmt->execute();
-        if ($ok && $stmt->affected_rows > 0) {
-            // Purchase Head stage: required after PM approval unless the requester is
-            // Purchase Head (17) or Management/Super Admin (1, 3, 38).
-            $skipRoles = implode(',', array_map('intval', self::PURCHASE_HEAD_SKIP_ROLES));
-            @$this->db->query("
-                UPDATE {$this->table} lr
-                LEFT JOIN users u ON u.id = lr.requested_by
-                SET lr.purchase_head_status = CASE WHEN COALESCE(u.role_id, 0) IN ({$skipRoles}) THEN 'not_required' ELSE 'pending' END
-                WHERE lr.id = " . (int)$id . " AND lr.status = 'pm_approved' AND lr.purchase_head_status = 'not_required' AND lr.purchase_head_by IS NULL
-            ");
-        }
-        return $ok;
-    }
-
-    public function purchaseHeadApprove($id, $userId, $note = null)
-    {
-        $stmt = $this->db->prepare("UPDATE {$this->table} SET purchase_head_status='approved', purchase_head_by=?, purchase_head_at=NOW(), purchase_head_note=?, updated_at=NOW() WHERE id=? AND status='pm_approved' AND purchase_head_status='pending'");
-        if (!$stmt) { $this->lastError = $this->db->error; return false; }
-        $stmt->bind_param('isi', $userId, $note, $id);
-        $ok = $stmt->execute() && $stmt->affected_rows > 0;
-        $stmt->close();
-        return $ok;
-    }
-
-    public function purchaseHeadReject($id, $userId, $reason)
-    {
-        $stmt = $this->db->prepare("UPDATE {$this->table} SET status='rejected', purchase_head_status='rejected', purchase_head_by=?, purchase_head_at=NOW(), purchase_head_note=?, rejection_reason=?, updated_at=NOW() WHERE id=? AND status='pm_approved' AND purchase_head_status='pending'");
-        if (!$stmt) { $this->lastError = $this->db->error; return false; }
-        $stmt->bind_param('issi', $userId, $reason, $reason, $id);
-        $ok = $stmt->execute() && $stmt->affected_rows > 0;
-        $stmt->close();
-        return $ok;
+        return $stmt->execute();
     }
 
     public function pmReject($id, $userId, $reason)
@@ -461,10 +384,6 @@ class Con_LaborRequisition extends Model
 
     public function markWorkComplete($id, $userId)
     {
-        if ($this->isPurchaseHeadPending($id)) {
-            $this->lastError = 'Awaiting Purchase Head approval. Work cannot be marked complete yet.';
-            return false;
-        }
         $stmt = $this->db->prepare("UPDATE {$this->table} SET status='work_completed', updated_at=NOW() WHERE id=? AND status='pm_approved'");
         $stmt->bind_param('i', $id);
         return $stmt->execute();
@@ -472,10 +391,6 @@ class Con_LaborRequisition extends Model
 
     public function requestPayment($id, $userId)
     {
-        if ($this->isPurchaseHeadPending($id)) {
-            $this->lastError = 'Awaiting Purchase Head approval. Payment cannot be requested yet.';
-            return false;
-        }
         $stmt = $this->db->prepare("UPDATE {$this->table} SET status='payment_requested', payment_requested_by=?, payment_requested_at=NOW(), updated_at=NOW() WHERE id=? AND status='work_completed'");
         $stmt->bind_param('ii', $userId, $id);
         return $stmt->execute();
@@ -483,10 +398,6 @@ class Con_LaborRequisition extends Model
 
     public function qcApprove($id, $userId, $amount = null, $note = null)
     {
-        if ($this->isPurchaseHeadPending($id)) {
-            $this->lastError = 'Awaiting Purchase Head approval. QC approval is not allowed yet.';
-            return false;
-        }
         $amount = $amount !== null && $amount !== '' ? (float)$amount : null;
 
         // Auto-check and create qc_approved_amount column if missing
