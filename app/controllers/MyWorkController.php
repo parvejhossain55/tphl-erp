@@ -1072,6 +1072,7 @@ class MyWorkController extends Controller
                 'is_completed' => $isCompleted,
                 'is_reviewer' => in_array($userId, $reviewerIds, true),
                 'can_complete' => (!$isCompleted && $canCheckChecklist),
+                'can_request_extension' => (!$isCompleted && ((int)$t['user_id'] === $userId || in_array($userId, $collabIds, true))),
                 'can_check' => $canCheckChecklist,
                 'status_label' => $statusLabel,
                 'status_class' => $statusClass,
@@ -1998,6 +1999,15 @@ class MyWorkController extends Controller
         $task = $st->get_result()->fetch_assoc();
         if (!$task) {
             echo json_encode(['status' => 'error', 'message' => 'Task not found.']);
+            exit;
+        }
+
+        $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
+        $collabIds = $ids($task['collaborator_user_ids'] ?? '');
+        $isAssignee = ((int)$task['user_id'] === $userId || in_array($userId, $collabIds, true));
+
+        if (!$isAssignee) {
+            echo json_encode(['status' => 'error', 'message' => 'Only the task assignee can request a deadline extension.']);
             exit;
         }
 

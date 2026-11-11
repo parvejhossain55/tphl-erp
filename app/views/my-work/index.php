@@ -1812,20 +1812,14 @@ $todayDateFormatted = date('j F');
                 </div>
             </div>
 
-            <div class="mw-form-row mw-form-group" id="rowRecurrenceEnd" style="display:none;">
-                <div class="mw-form-col">
-                    <label class="mw-form-label">Repeat</label>
-                    <select name="recurrence_type" id="taskRecurrenceType" class="mw-form-select">
-                        <option value="">Select...</option>
-                        <option value="daily">Daily</option>
-                        <option value="weekly">Weekly</option>
-                        <option value="monthly">Monthly</option>
-                    </select>
-                </div>
-                <div class="mw-form-col">
-                    <label class="mw-form-label">Repeat until</label>
-                    <input type="date" name="recurrence_end_date" class="mw-form-input">
-                </div>
+            <div class="mw-form-group" id="rowRecurrenceEnd" style="display:none;">
+                <label class="mw-form-label">Repeat</label>
+                <select name="recurrence_type" id="taskRecurrenceType" class="mw-form-select">
+                    <option value="">Select...</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                </select>
             </div>
 
 
@@ -2438,14 +2432,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 const chkRec = document.getElementById('chkIsRecurring');
                 if (chkRec) {
                     chkRec.checked = (t.is_recurring === 1);
-                    if (rowRecurrenceEnd) rowRecurrenceEnd.style.display = chkRec.checked ? 'flex' : 'none';
+                    if (rowRecurrenceEnd) rowRecurrenceEnd.style.display = chkRec.checked ? 'block' : 'none';
                     const selRec = document.getElementById('taskRecurrenceType');
                     if (selRec) {
                         selRec.value = t.recurrence_type || '';
                         selRec.required = chkRec.checked;
                     }
-                    const recEndInput = formCreateTask.querySelector('input[name="recurrence_end_date"]');
-                    if (recEndInput) recEndInput.value = t.recurrence_end_date || '';
                 }
 
                 // Expected output field
@@ -2967,7 +2959,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Reviewer controls vs Assignee complete controls for standard view
         const footActions = document.querySelector('.mw-td-foot-actions');
         if (footActions) {
-            const extBtnDisabled = t.is_completed ? 'disabled' : '';
+            const extBtnDisabled = (!t.can_request_extension || t.is_completed) ? 'disabled' : '';
             const hasReviewers = (Array.isArray(t.reviewers) && t.reviewers.length > 0);
             const isPending = (t.status === 'pending');
             
@@ -3312,7 +3304,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const btnDrawerReqExt = document.getElementById('btnDrawerRequestExtension');
         if (btnDrawerReqExt) {
             btnDrawerReqExt.addEventListener('click', () => {
-                if (t.is_completed) return;
+                if (t.is_completed || !t.can_request_extension) return;
                 openExtensionModal(t);
             });
         }
@@ -3651,7 +3643,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const rowRecurrenceEnd = document.getElementById('rowRecurrenceEnd');
     if (chkIsRecurring && rowRecurrenceEnd) {
         chkIsRecurring.addEventListener('change', () => {
-            rowRecurrenceEnd.style.display = chkIsRecurring.checked ? 'flex' : 'none';
+            rowRecurrenceEnd.style.display = chkIsRecurring.checked ? 'block' : 'none';
             const selRec = document.getElementById('taskRecurrenceType');
             if (selRec) selRec.required = chkIsRecurring.checked;
         });
