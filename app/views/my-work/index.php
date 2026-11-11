@@ -195,6 +195,21 @@ $todayDateFormatted = date('j F');
 .mw-td-btn { background: #FFFFFF; border: 1px solid #E2EAE5; border-radius: 8px; padding: 9px 16px; font-family: 'Inter', sans-serif; font-size: 12.5px; line-height: 15px; font-weight: 700; color: #142D26; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .mw-td-btn.primary { margin-left: auto; background: #EDF2EF; border-color: #EDF2EF; color: #8A9992; }
 .mw-td-note { font-family: 'Inter', sans-serif; font-size: 11px; line-height: 13px; color: #65776F; text-align: right; margin-top: 8px; }
+/* Delete Confirmation Modal */
+.mw-confirm-backdrop { position: fixed; inset: 0; background: rgba(20,45,38,.45); z-index: 10040; opacity: 0; visibility: hidden; transition: opacity .2s ease, visibility .2s ease; backdrop-filter: blur(2px); }
+.mw-confirm-backdrop.show { opacity: 1; visibility: visible; }
+.mw-confirm-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(.95); background: #ffffff; border: 1px solid #E2EAE5; border-radius: 12px; box-shadow: 0 20px 48px rgba(20,45,38,.2); z-index: 10045; width: 92%; max-width: 440px; padding: 24px; opacity: 0; visibility: hidden; transition: transform .22s cubic-bezier(.16,1,.3,1), opacity .22s ease, visibility .22s ease; font-family: 'Inter', sans-serif; }
+.mw-confirm-modal.show { opacity: 1; visibility: visible; transform: translate(-50%, -50%) scale(1); }
+.mw-confirm-icon { width: 44px; height: 44px; border-radius: 50%; background: #FFE3E3; color: #E03131; display: inline-flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 14px; }
+.mw-confirm-title { font-size: 17px; font-weight: 700; color: #142D26; margin: 0 0 8px 0; }
+.mw-confirm-desc { font-size: 13px; line-height: 19px; color: #65776F; margin: 0 0 20px 0; }
+.mw-confirm-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.mw-confirm-btn { border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: all .15s ease; font-family: 'Inter', sans-serif; }
+.mw-confirm-btn.cancel { background: #FFFFFF; border-color: #E2EAE5; color: #142D26; }
+.mw-confirm-btn.cancel:hover { background: #F5F7F6; }
+.mw-confirm-btn.danger { background: #E03131; color: #FFFFFF; }
+.mw-confirm-btn.danger:hover { background: #C92A2A; }
+.mw-confirm-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 /* Toast notification */
 .mw-toast-wrap { position: fixed; top: 20px; right: 24px; z-index: 10050; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
 .mw-toast { pointer-events: auto; min-width: 280px; max-width: 420px; padding: 12px 16px; border-radius: 8px; background: #fff; border: 1px solid #E2EAE5; border-left: 4px solid #087F5B; box-shadow: 0 10px 28px rgba(20,45,38,.14); display: flex; align-items: center; gap: 10px; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; color: #142D26; animation: mwToastIn .22s ease; }
@@ -1883,6 +1898,23 @@ $todayDateFormatted = date('j F');
         <div class="mw-td-note" id="mwTdNote"></div>
     </div>
 </div>
+
+<!-- Modern Delete Confirmation Modal -->
+<div class="mw-confirm-backdrop" id="mwDeleteModalBackdrop"></div>
+<div class="mw-confirm-modal" id="mwDeleteModal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="mw-confirm-icon">
+        <i class="fa-solid fa-trash-can"></i>
+    </div>
+    <h3 class="mw-confirm-title">Delete Task?</h3>
+    <p class="mw-confirm-desc">Are you sure you want to delete this task? All related comments, activities, and attachments will be permanently removed.</p>
+    <div class="mw-confirm-actions">
+        <button type="button" class="mw-confirm-btn cancel" id="btnCancelDeleteTask">Cancel</button>
+        <button type="button" class="mw-confirm-btn danger" id="btnConfirmDeleteTask">
+            <i class="fa-solid fa-trash-can me-1"></i> Delete Task
+        </button>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const baseUrl = '<?= $base_url ?>';
@@ -2104,49 +2136,100 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // 4. Delete Task (Single-Page AJAX)
+    // 4. Delete Task with Custom Confirmation Modal
+    const deleteModal = document.getElementById('mwDeleteModal');
+    const deleteModalBackdrop = document.getElementById('mwDeleteModalBackdrop');
+    const btnCancelDelete = document.getElementById('btnCancelDeleteTask');
+    const btnConfirmDelete = document.getElementById('btnConfirmDeleteTask');
+
+    let pendingDeleteTaskId = null;
+    let pendingDeleteRow = null;
+
+    function closeDeleteModal() {
+        if (!deleteModal || !deleteModalBackdrop) return;
+        deleteModal.classList.remove('show');
+        deleteModalBackdrop.classList.remove('show');
+        deleteModal.setAttribute('aria-hidden', 'true');
+        pendingDeleteTaskId = null;
+        pendingDeleteRow = null;
+        if (btnConfirmDelete) {
+            btnConfirmDelete.disabled = false;
+            btnConfirmDelete.innerHTML = '<i class="fa-solid fa-trash-can me-1"></i> Delete Task';
+        }
+    }
+
+    if (btnCancelDelete) {
+        btnCancelDelete.addEventListener('click', closeDeleteModal);
+    }
+    if (deleteModalBackdrop) {
+        deleteModalBackdrop.addEventListener('click', closeDeleteModal);
+    }
+
     window.deleteMyWorkTask = function(taskId, btnEl) {
-        if (!confirm('Are you sure you want to delete this task?')) {
-            return;
-        }
+        pendingDeleteTaskId = taskId;
+        pendingDeleteRow = btnEl ? btnEl.closest('tr') : document.querySelector(`tr[data-task-id="${taskId}"]`);
 
-        const row = btnEl ? btnEl.closest('tr') : document.querySelector(`tr[data-task-id="${taskId}"]`);
-        if (row) {
-            row.style.opacity = '0.35';
-            row.style.pointerEvents = 'none';
+        if (deleteModal && deleteModalBackdrop) {
+            deleteModal.classList.add('show');
+            deleteModalBackdrop.classList.add('show');
+            deleteModal.setAttribute('aria-hidden', 'false');
         }
+    };
 
-        fetch(`${baseUrl}/my-work/delete/${taskId}?ajax=1`, {
-            method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
+    if (btnConfirmDelete) {
+        btnConfirmDelete.addEventListener('click', function() {
+            if (!pendingDeleteTaskId) return;
+
+            const taskId = pendingDeleteTaskId;
+            const row = pendingDeleteRow;
+
+            btnConfirmDelete.disabled = true;
+            btnConfirmDelete.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Deleting...';
+
+            if (row) {
+                row.style.opacity = '0.35';
+                row.style.pointerEvents = 'none';
             }
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === 'success') {
-                if (row) {
-                    row.remove();
+
+            fetch(`${baseUrl}/my-work/delete/${taskId}?ajax=1`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
                 }
-                // Refresh statistics and data seamlessly
-                fetchWorkspaceData();
-            } else {
-                alert(data.message || 'Failed to delete task.');
+            })
+            .then(res => res.json())
+            .then(data => {
+                closeDeleteModal();
+                if (data.status === 'success') {
+                    showMwToast(data.message || 'Task deleted successfully.', 'success');
+                    if (row) {
+                        row.remove();
+                    }
+                    // Close drawer if this task is currently open in drawer
+                    if (typeof currentDetailTaskId !== 'undefined' && currentDetailTaskId === taskId) {
+                        if (typeof closeTaskDetail === 'function') closeTaskDetail();
+                    }
+                    // Refresh statistics and data seamlessly
+                    fetchWorkspaceData();
+                } else {
+                    showMwToast(data.message || 'Failed to delete task.', 'error');
+                    if (row) {
+                        row.style.opacity = '1';
+                        row.style.pointerEvents = 'auto';
+                    }
+                }
+            })
+            .catch(err => {
+                console.error('Delete error:', err);
+                closeDeleteModal();
+                showMwToast('An error occurred while deleting the task.', 'error');
                 if (row) {
                     row.style.opacity = '1';
                     row.style.pointerEvents = 'auto';
                 }
-            }
-        })
-        .catch(err => {
-            console.error('Delete error:', err);
-            alert('An error occurred while deleting the task.');
-            if (row) {
-                row.style.opacity = '1';
-                row.style.pointerEvents = 'auto';
-            }
+            });
         });
-    };
+    }
 
     // =========================================================================
     // 5. Create Task Slide Modal (Right Drawer) Logic
