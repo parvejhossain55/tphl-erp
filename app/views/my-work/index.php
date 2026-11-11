@@ -1619,7 +1619,7 @@ $todayDateFormatted = date('j F');
         <!-- Right: Focus Panel -->
         <div>
             <!-- Card 1: Needs your review -->
-            <div class="mw-focus-card">
+            <div class="mw-focus-card" id="mwCardNeedsReview">
                 <h4 class="mw-focus-title">Needs your review</h4>
                 <div class="mw-focus-subtitle">
                     <?= count($reviewTasks) ?> completed task<?= count($reviewTasks) === 1 ? '' : 's' ?> waiting for your review
@@ -2052,6 +2052,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 tbody.innerHTML = data.table_html;
                 if (footerInfo && data.footer_info) {
                     footerInfo.innerText = data.footer_info;
+                }
+                const cardNeedsReview = document.getElementById('mwCardNeedsReview');
+                if (cardNeedsReview && data.review_card_html) {
+                    cardNeedsReview.innerHTML = data.review_card_html;
                 }
                 if (data.all_stats) {
                     const s = data.all_stats;
@@ -2625,7 +2629,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <h2 class="mw-td-title" style="font-size:25px; line-height:30px; margin:14px 0 12px;">${tdEsc(t.title)}</h2>
                 <div class="mw-td-pills" style="margin-bottom:18px;">
                     <span class="mw-td-pill in-review">In review</span>
-                    <span class="mw-td-pill">${tdEsc(t.overdue || 'Due today')}</span>
+                    ${t.due_badge ? `<span class="mw-td-pill ${t.overdue ? 'overdue' : ''}">${tdEsc(t.due_badge)}</span>` : ''}
                 </div>
 
                 <!-- Your review is needed banner -->

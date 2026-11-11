@@ -261,7 +261,13 @@ class MyWorkController extends Controller
             JOIN users u ON t.user_id = u.id
             LEFT JOIN designations des ON u.designation_id = des.id
             WHERE FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.mentioned_user_ids, '[', ''), ']', ''), ' ', ''))
-              AND t.status = 'completed'
+              AND (
+                  (t.status = 'completed' AND NOT EXISTS (
+                      SELECT 1 FROM task_activities a 
+                      WHERE a.task_id = t.id AND a.activity LIKE 'Approved task as completed%'
+                  ))
+                  OR (t.status != 'completed' AND t.progress >= 80)
+              )
             ORDER BY COALESCE(t.updated_at, t.created_at) DESC
             LIMIT 2
         ");
@@ -349,6 +355,7 @@ class MyWorkController extends Controller
             } else {
                 $footerInfoText = 'Showing ' . count($tasks) . ' of ' . $openTasksCount . ' open tasks · Sorted by deadline';
             }
+            $reviewCardHtml = $this->renderReviewCardHtml($reviewTasks);
             echo json_encode([
                 'status' => 'success',
                 'all_stats' => $allStats,
@@ -362,6 +369,7 @@ class MyWorkController extends Controller
                     'showing'        => count($tasks)
                 ],
                 'table_html' => $tableHtml,
+                'review_card_html' => $reviewCardHtml,
                 'footer_info' => $footerInfoText
             ]);
             exit;
@@ -434,6 +442,39 @@ class MyWorkController extends Controller
     /**
      * Helper to render task rows HTML for seamless AJAX
      */
+    private function renderReviewCardHtml($reviewTasks)
+    {
+        $count = count($reviewTasks);
+        $s = $count === 1 ? '' : 's';
+        $out = '<h4 class="mw-focus-title">Needs your review</h4>';
+        $out .= '<div class="mw-focus-subtitle">' . $count . ' completed task' . $s . ' waiting for your review</div>';
+
+        if (!empty($reviewTasks)) {
+            foreach ($reviewTasks as $idx => $rt) {
+                $time = date('j M, g:i A', strtotime($rt['updated_at'] ?? $rt['created_at']));
+                $empName = htmlspecialchars($rt['employee_name'] ?? 'Team Member');
+                $title = htmlspecialchars($rt['title']);
+                $taskId = (int)$rt['id'];
+
+                $out .= '<div class="mw-review-item">';
+                $out .= '<div class="mw-review-item-title">' . $title . '</div>';
+                $out .= '<div class="mw-review-item-meta">' . $empName . ' · Completed ' . $time . '</div>';
+                if ($idx === 0) {
+                    $out .= '<button type="button" class="mw-btn-review" onclick="openTaskDetail(' . $taskId . ')">Review submission</button>';
+                } else {
+                    $out .= '<div class="mw-review-divider"></div>';
+                    $out .= '<a href="javascript:void(0);" onclick="openTaskDetail(' . $taskId . ')" class="mw-review-link-row">';
+                    $out .= '<span class="mw-review-item-title" style="font-size: 12.5px;">View details</span>';
+                    $out .= '<i class="fa-solid fa-arrow-right mw-arrow-icon"></i></a>';
+                }
+                $out .= '</div>';
+            }
+        } else {
+            $out .= '<div class="text-muted small py-2"><i class="fa-regular fa-circle-check text-success me-1"></i> No completed tasks pending your review.</div>';
+        }
+        return $out;
+    }
+
     private function renderTaskRowsHtml($tasks, $tab, $userId, $baseUrl)
     {
         if (empty($tasks)) {
@@ -953,12 +994,19 @@ class MyWorkController extends Controller
 
         $deadlineText = null;
         $overdueText = null;
+        $dueBadge = null;
         if (!empty($t['deadline'])) {
             $dl = strtotime($t['deadline']);
             $deadlineText = date('j M Y', $dl);
-            if (!$isCompleted && $dl < time()) {
-                $days = (int) ceil((time() - $dl) / 86400);
+            $now = time();
+            if (!$isCompleted && $dl < $now) {
+                $days = (int) ceil(($now - $dl) / 86400);
                 $overdueText = $days <= 1 ? '1 day overdue' : "{$days} days overdue";
+                $dueBadge = $overdueText;
+            } elseif (date('Y-m-d', $dl) === date('Y-m-d')) {
+                $dueBadge = 'Due today';
+            } else {
+                $dueBadge = 'Due ' . date('j M', $dl);
             }
         }
 
@@ -1085,6 +1133,7 @@ class MyWorkController extends Controller
                 'deadline' => $deadlineText,
                 'raw_deadline' => !empty($t['deadline']) ? $t['deadline'] : null,
                 'overdue' => $overdueText,
+                'due_badge' => $dueBadge,
                 'owner' => $t['assigned_by_name'] ?: '—',
                 'assigned_to' => $t['owner_name'] ?: '—',
                 'owner_user' => $personObj($ownerId, $t['assigned_by_name'] ?: '—'),
