@@ -104,9 +104,9 @@
                                     $hasHrPerm = (function_exists('hasPermission') && hasPermission('Hr Manage'));
 
                                     $canHrApprove = ($userRole === 1 || $userRole === 4 || $userRole === 18 || $roleName === 'hr');
-                                    $canMgmtApprove = (in_array($userRole, [1, 3, 20, 32]) || strpos($roleName, 'management') !== false || $roleName === 'admin' || $roleName === 'super admin');
-                                    $canAccountsDisburse = (in_array($userRole, [1, 6, 30]) || strpos($roleName, 'account') !== false);
-                                    $canAhApproveRow = ($userRole === 30 || in_array($userRole, [1, 3]) || strpos($roleName, 'accounts head') !== false || strpos($roleName, 'super admin') !== false || strpos($roleName, 'admin') !== false);
+                                    $canMgmtApprove = (in_array($userRole, [1, 3, 20, 32, 38]) || strpos($roleName, 'management') !== false || strpos($roleName, 'director') !== false || strpos($roleName, 'dceo') !== false || $roleName === 'admin' || $roleName === 'super admin');
+                                    $canAccountsDisburse = (in_array($userRole, [1, 3, 6, 30, 38]) || strpos($roleName, 'account') !== false || strpos($roleName, 'management') !== false || strpos($roleName, 'director') !== false || strpos($roleName, 'dceo') !== false || $roleName === 'admin' || $roleName === 'super admin');
+                                    $canAhApproveRow = ($userRole === 30 || in_array($userRole, [1, 3, 38]) || strpos($roleName, 'accounts head') !== false || strpos($roleName, 'super admin') !== false || strpos($roleName, 'admin') !== false);
 
                                     $isOver1LacAdv = ((float)$adv['amount'] > 10000);
                                     $isOpHeadApprovedAdv = (!empty($ahInfoRow['is_op_head_approved']) || ($ahInfoRow['op_head_status'] ?? '') === 'approved');
@@ -211,13 +211,7 @@
                                                 data-bs-toggle="modal" data-bs-target="#payModal<?= $adv['id'] ?>">
                                                 Pending Payment
                                             </button>
-                                        <?php elseif ($isPayActive && !$isAhApprovedRow): ?>
-                                            <span class="btn btn-sm btn-light text-muted rounded-2 border shadow-sm"
-                                                style="padding: 5px 12px; font-weight: 500;"
-                                                title="Payment Locked: Accounts Head approval required">
-                                                <i class="fa-solid fa-lock me-1 text-danger"></i> Pay Locked
-                                            </span>
-                                            
+
                                             <!-- Pay Advance Modal for this Request -->
                                             <div class="modal fade" id="payModal<?= $adv['id'] ?>" tabindex="-1">
                                                 <div class="modal-dialog modal-dialog-centered">
@@ -267,6 +261,12 @@
                                                     </div>
                                                 </div>
                                             </div>
+                                        <?php elseif ($isPayActive && !$isAhApprovedRow): ?>
+                                            <span class="btn btn-sm btn-light text-muted rounded-2 border shadow-sm"
+                                                style="padding: 5px 12px; font-weight: 500;"
+                                                title="Payment Locked: Accounts Head approval required">
+                                                <i class="fa-solid fa-lock me-1 text-danger"></i> Pay Locked
+                                            </span>
                                         <?php elseif ($adv['status'] === 'paid'): ?>
                                             <span class="btn btn-sm btn-success text-white shadow-sm rounded"
                                                 style="padding: 5px 12px; font-weight: 500; cursor: default;">

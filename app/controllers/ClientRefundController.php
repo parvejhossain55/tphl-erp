@@ -848,8 +848,9 @@ class ClientRefundController extends Controller
 
     public function disbursePayment($id)
     {
-        // Authorized: Accounts (6, 10, 30) or Admin (1, 3)
-        if (!in_array($this->userRole, [1, 3, 6, 10, 30])) {
+        // Authorized: Accounts (6, 10, 30) or Admin/Management (1, 3, 38)
+        $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        if (!in_array((int)$this->userRole, [1, 3, 6, 10, 30, 38], true) && strpos($roleName, 'account') === false) {
             setError('You are not authorized to disburse refund payments.');
             $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
         header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");

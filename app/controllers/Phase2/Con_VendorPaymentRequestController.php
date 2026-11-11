@@ -45,7 +45,7 @@ class Con_VendorPaymentRequestController extends Controller
     // ROLE HELPERS
     // =========================================================================
 
-    /** Roles 1 (Admin), 3 (Super Admin), 20 (Operation Head/Site Operator), 32 (Admin Operation) can approve */
+    /** Roles 1 (Admin), 3 (Super Admin), 38 (DCEO/Directors), 20 (Operation Head/Site Operator), 32 (Admin Operation) can approve */
     private function canApprove()
     {
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
@@ -53,9 +53,11 @@ class Con_VendorPaymentRequestController extends Controller
             return false;
         }
         return (
-            in_array($this->userRole, [1, 3, 20, 32]) 
+            in_array($this->userRole, [1, 3, 20, 32, 38]) 
             || strpos($roleName, 'admin') !== false 
             || strpos($roleName, 'management') !== false
+            || strpos($roleName, 'director') !== false
+            || strpos($roleName, 'dceo') !== false
             || strpos($roleName, 'operation') !== false
             || strpos($roleName, 'operator') !== false
         );
@@ -70,14 +72,14 @@ class Con_VendorPaymentRequestController extends Controller
             return false;
         }
         return (
-            in_array($roleId, [31, 17, 1, 3], true)
+            in_array($roleId, [31, 17, 1, 3, 38], true)
             || strpos($roleName, 'purchase team leader') !== false
             || strpos($roleName, 'senior purchase') !== false
             || $this->canApprovePurchaseHead()
         );
     }
 
-    /** Roles that can do Purchase Head Approval (Role 17 only + Management 1, 3) */
+    /** Roles that can do Purchase Head Approval (Role 17 only + Management 1, 3, 38) */
     private function canApprovePurchaseHead()
     {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
@@ -86,9 +88,11 @@ class Con_VendorPaymentRequestController extends Controller
             return false;
         }
         return (
-            in_array($roleId, [17, 1, 3], true)
+            in_array($roleId, [17, 1, 3, 38], true)
             || strpos($roleName, 'purchase head') !== false
             || strpos($roleName, 'head of purchase') !== false
+            || strpos($roleName, 'director') !== false
+            || strpos($roleName, 'dceo') !== false
         );
     }
 
@@ -554,7 +558,8 @@ class Con_VendorPaymentRequestController extends Controller
         $approvalReq = $this->getApprovalRequest($id);
 
         // Get banks for payment modal dropdown
-        $banks = $this->db->query("SELECT id, bank_name, CONCAT(account_name, IF(account_number != '', CONCAT(' (', account_number, ')'), '')) as branch_name FROM company_bank_accounts WHERE status = 'active' ORDER BY is_default DESC, bank_name ASC")->fetch_all(MYSQLI_ASSOC);
+        $resBanks = $this->db->query("SELECT id, bank_name, CONCAT(account_name, IF(account_number != '', CONCAT(' (', account_number, ')'), '')) as branch_name FROM company_bank_accounts WHERE status = 'active' ORDER BY is_default DESC, bank_name ASC");
+        $banks = $resBanks ? $resBanks->fetch_all(MYSQLI_ASSOC) : [];
 
         // Fetch extra documents/notes added post-approval
         $this->model->ensureDocumentsTable();
@@ -991,8 +996,9 @@ class Con_VendorPaymentRequestController extends Controller
             }
 
             $mgtNote = trim($_POST['approval_note'] ?? '');
-            $isOpHeadUser = (in_array((int)$this->userRole, [20, 32], true) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head') !== false || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'admin & operation') !== false);
-            $isMgmtUser = in_array((int)$this->userRole, [1, 3], true);
+            $roleNameLower = strtolower($_SESSION['user']['role_name'] ?? '');
+            $isOpHeadUser = (in_array((int)$this->userRole, [20, 32], true) || strpos($roleNameLower, 'operation head') !== false || strpos($roleNameLower, 'admin & operation') !== false);
+            $isMgmtUser = (in_array((int)$this->userRole, [1, 3, 38], true) || strpos($roleNameLower, 'director') !== false || strpos($roleNameLower, 'dceo') !== false || strpos($roleNameLower, 'management') !== false) && !in_array((int)$this->userRole, [33, 34, 35], true);
 
             // Fetch approval request record
             $arCheck = $this->db->query("SELECT id, op_head_status, accounts_head_status FROM approval_requests WHERE source_table = 'vendor_payment_requests' AND source_id = {$id} ORDER BY id DESC LIMIT 1");

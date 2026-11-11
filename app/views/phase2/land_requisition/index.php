@@ -390,56 +390,44 @@ $canRequest = in_array($roleId, [1, 3, 14, 15, 20, 22, 32, 33]);
                                             <div class="d-flex justify-content-end gap-1">
                                                 <!-- Management & Operation Head (Role 20) Action -->
                                                 <?php 
-                                                    $isMgmt = in_array($roleId, [1, 3, 33]);
-                                                    $isOpHead = in_array($roleId, [20, 32]);
+                                                    $landRoleNameLc = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+                                                    $isChiefLand = in_array((int)$roleId, [33, 34, 35], true) || in_array($landRoleNameLc, ['chief officer', 'management viewer', 'seal ceo'], true);
+                                                    $isMgmt = !$isChiefLand && (in_array((int)$roleId, [1, 3, 38], true) || strpos($landRoleNameLc, 'director') !== false || strpos($landRoleNameLc, 'dceo') !== false || strpos($landRoleNameLc, 'management') !== false);
+                                                    $isOpHead = !$isChiefLand && (in_array((int)$roleId, [20, 32], true) || strpos($landRoleNameLc, 'operation head') !== false || strpos($landRoleNameLc, 'admin & operation') !== false);
                                                     $reqAmt = (float)($row['requested_amount'] ?? 0);
                                                     $isOver1LacRow = !empty($ahInfoRow['is_over_1lac']) || ($reqAmt > 10000);
                                                     $isOpHeadApprovedRow = !empty($ahInfoRow['is_op_head_approved']);
+                                                    $landOverrideStage = '';
+                                                    if ($isMgmt) {
+                                                        if (($row['qc_status'] ?? 'Not Required') === 'Pending') {
+                                                            $landOverrideStage = 'QC & Internal Audit';
+                                                        } elseif (!$isOpHeadApprovedRow) {
+                                                            $landOverrideStage = 'Head of Operation';
+                                                        } elseif (!$isAhApprovedRow) {
+                                                            $landOverrideStage = 'Accounts Head';
+                                                        }
+                                                    }
                                                 ?>
                                                 <?php if ($row['mgmt_status'] === 'Pending'): ?>
-                                                    <?php if (!$isOver1LacRow): ?>
-                                                        <!-- <= 10K: Both Op Head and Management can approve directly -->
-                                                        <?php if ($isMgmt || $isOpHead): ?>
+                                                    <?php if ($isMgmt): ?>
+                                                        <button type="button" class="btn btn-sm btn-success" 
+                                                                data-bs-toggle="modal" data-bs-target="#mgmtApproveModal"
+                                                                data-id="<?= $row['id'] ?>" data-amount="<?= $row['requested_amount'] ?>"
+                                                                data-override-stage="<?= htmlspecialchars($landOverrideStage, ENT_QUOTES, 'UTF-8') ?>">
+                                                            <i class="fa-light fa-check-double me-1"></i>Approve (Mgmt)
+                                                        </button>
+                                                    <?php elseif ($isOpHead && ($row['qc_status'] ?? 'Not Required') !== 'Pending'): ?>
+                                                        <?php if (!$isOpHeadApprovedRow): ?>
                                                             <button type="button" class="btn btn-sm btn-outline-success" 
                                                                     data-bs-toggle="modal" data-bs-target="#mgmtApproveModal"
-                                                                    data-id="<?= $row['id'] ?>" data-amount="<?= $row['requested_amount'] ?>">
-                                                                <i class="fa-light fa-check-to-slot me-1"></i>Approve/Reject
+                                                                    data-id="<?= $row['id'] ?>" data-amount="<?= $row['requested_amount'] ?>"
+                                                                    data-ophead="1" data-override-stage="">
+                                                                <i class="fa-light fa-check-to-slot me-1"></i>Approve (Op Head)
                                                             </button>
-                                                        <?php endif; ?>
-                                                    <?php else: ?>
-                                                        <!-- > 1 Lac: Op Head must approve first -->
-                                                        <?php if (!$isOpHeadApprovedRow): ?>
-                                                            <?php if ($isOpHead): ?>
-                                                                <button type="button" class="btn btn-sm btn-outline-success" 
-                                                                        data-bs-toggle="modal" data-bs-target="#mgmtApproveModal"
-                                                                        data-id="<?= $row['id'] ?>" data-amount="<?= $row['requested_amount'] ?>"
-                                                                        data-ophead="1">
-                                                                    <i class="fa-light fa-check-to-slot me-1"></i>Approve (Op Head)
-                                                                </button>
-                                                            <?php elseif ($isMgmt): ?>
-                                                                <span class="badge bg-light text-muted border py-1 px-2" style="font-size:10px;" title="Requests over ৳10,000 require Admin & Operation Head approval first">
-                                                                    <i class="fa-light fa-lock me-1 text-warning"></i>Locked (Awaiting Op Head)
-                                                                </span>
-                                                            <?php endif; ?>
                                                         <?php else: ?>
-                                                            <!-- Op Head approved, check Accounts Head then Management -->
-                                                            <?php if ($isMgmt): ?>
-                                                                <?php if (!$isAhApprovedRow): ?>
-                                                                    <span class="badge bg-light text-muted border py-1 px-2" style="font-size:10px;" title="Requests over ৳10,000 require Accounts Head verification first">
-                                                                        <i class="fa-light fa-lock me-1 text-warning"></i>Locked (Awaiting Accounts Head)
-                                                                    </span>
-                                                                <?php else: ?>
-                                                                    <button type="button" class="btn btn-sm btn-success" 
-                                                                            data-bs-toggle="modal" data-bs-target="#mgmtApproveModal"
-                                                                            data-id="<?= $row['id'] ?>" data-amount="<?= $row['requested_amount'] ?>">
-                                                                        <i class="fa-light fa-check-double me-1"></i>Approve (Mgmt)
-                                                                    </button>
-                                                                <?php endif; ?>
-                                                            <?php elseif ($isOpHead): ?>
-                                                                <span class="badge bg-success-subtle text-success border border-success-subtle py-1 px-2" style="font-size:10px;">
-                                                                    <i class="fa-light fa-check me-1"></i>Op Head Done (Pending Mgmt)
-                                                                </span>
-                                                            <?php endif; ?>
+                                                            <span class="badge bg-success-subtle text-success border border-success-subtle py-1 px-2" style="font-size:10px;">
+                                                                <i class="fa-light fa-check me-1"></i>Op Head Done
+                                                            </span>
                                                         <?php endif; ?>
                                                     <?php endif; ?>
                                                 <?php endif; ?>
@@ -459,7 +447,7 @@ $canRequest = in_array($roleId, [1, 3, 14, 15, 20, 22, 32, 33]);
                                                 <?php endif; ?>
 
                                                 <!-- Accounts Action (Allowed only after Accounts Head approved) -->
-                                                <?php if ($row['mgmt_status'] === 'Approved' && $row['accounts_status'] === 'Pending' && $isAhApprovedRow && in_array($roleId, [1, 6, 30])): ?>
+                                                <?php if ($row['mgmt_status'] === 'Approved' && $row['accounts_status'] === 'Pending' && $isAhApprovedRow && (in_array($roleId, [1, 3, 6, 30, 38]) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'account') !== false)): ?>
                                                     <button type="button" class="btn btn-sm btn-success" 
                                                             data-bs-toggle="modal" data-bs-target="#accountsPayModal"
                                                             data-id="<?= $row['id'] ?>" data-amount="<?= $row['requested_amount'] ?>">
@@ -703,7 +691,7 @@ $canRequest = in_array($roleId, [1, 3, 14, 15, 20, 22, 32, 33]);
                 </button>
             </div>
             <div class="modal-body">
-                <form action="<?= $base_url ?>/con-land-requisitions/approve" method="POST">
+                <form id="landMgmtApproveForm" action="<?= $base_url ?>/con-land-requisitions/approve" method="POST">
                     <input type="hidden" name="id" id="mgmt_req_id">
                     <div class="row gy-10">
                         <div class="col-xl-12">
@@ -857,14 +845,47 @@ $page_script = "(function() {
     function init() {
         // Set up event listeners for modal data binding
         const mgmtApproveModal = document.getElementById('mgmtApproveModal');
+        const landMgmtForm = document.getElementById('landMgmtApproveForm');
         if (mgmtApproveModal) {
             mgmtApproveModal.addEventListener('show.bs.modal', function (event) {
                 const button = event.relatedTarget;
                 const id = button.getAttribute('data-id');
                 const amount = button.getAttribute('data-amount');
-                
+                const overrideStage = button.getAttribute('data-override-stage') || '';
+                if (landMgmtForm) {
+                    landMgmtForm.setAttribute('data-override-stage', overrideStage);
+                    landMgmtForm.removeAttribute('data-confirmed-override');
+                }
                 document.getElementById('mgmt_req_id').value = id;
                 document.getElementById('mgmt_req_amount').textContent = parseFloat(amount).toLocaleString('en-US', {minimumFractionDigits: 2});
+            });
+        }
+        if (landMgmtForm) {
+            landMgmtForm.addEventListener('submit', function (e) {
+                const statusSel = landMgmtForm.querySelector('select[name=\"status\"]');
+                const overrideStage = landMgmtForm.getAttribute('data-override-stage') || '';
+                if ((!statusSel || statusSel.value === 'Approved') && overrideStage !== '' && !landMgmtForm.getAttribute('data-confirmed-override')) {
+                    e.preventDefault();
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            title: 'Pending ' + overrideStage + \"'s Approval\",
+                            html: 'This land requisition is pending for <strong>' + overrideStage + \"'s</strong> approval. Are you ready to approve for <strong>\" + overrideStage + '</strong> first?<br><small class=\"text-muted d-block mt-2\">Your name will be recorded as the approver for all bypassed stages as well as final Management approval.</small>',
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonColor: '#198754',
+                            cancelButtonColor: '#6c757d',
+                            confirmButtonText: 'Yes, Approve All Stages'
+                        }).then(function(result) {
+                            if (result.isConfirmed) {
+                                landMgmtForm.setAttribute('data-confirmed-override', '1');
+                                landMgmtForm.submit();
+                            }
+                        });
+                    } else if (confirm('Pending ' + overrideStage + \"'s Approval. Are you ready to approve all bypassed stages and complete final Management approval?\")) {
+                        landMgmtForm.setAttribute('data-confirmed-override', '1');
+                        landMgmtForm.submit();
+                    }
+                }
             });
         }
 

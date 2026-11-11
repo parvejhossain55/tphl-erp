@@ -8,6 +8,88 @@ class Con_PurchaseOrder extends Model
     protected $table     = 'purchase_orders';
     protected $itemTable = 'purchase_order_items';
 
+    public function __construct($db = null)
+    {
+        parent::__construct($db);
+        $this->db = $db ?? ($GLOBALS['db'] ?? null);
+        self::ensureSchema($this->db);
+    }
+
+    public static function ensureSchema($db)
+    {
+        static $checked = false;
+        if ($checked || !$db) {
+            return;
+        }
+        $checked = true;
+
+        if (!class_exists('Con_PurchaseRequest') && file_exists(__DIR__ . '/Con_PurchaseRequest.php')) {
+            require_once __DIR__ . '/Con_PurchaseRequest.php';
+        }
+        if (class_exists('Con_PurchaseRequest')) {
+            Con_PurchaseRequest::ensureSchema($db);
+        }
+
+        @$db->query("
+            CREATE TABLE IF NOT EXISTS `po_negotiation_notes` (
+              `id` int unsigned NOT NULL AUTO_INCREMENT,
+              `purchase_order_id` int unsigned DEFAULT NULL,
+              `request_id` int unsigned NOT NULL,
+              `user_id` int NOT NULL,
+              `note_text` text NOT NULL,
+              `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+
+        @$db->query("
+            CREATE TABLE IF NOT EXISTS `po_item_qty_logs` (
+              `id` int unsigned NOT NULL AUTO_INCREMENT,
+              `purchase_order_id` int unsigned NOT NULL,
+              `purchase_order_item_id` int unsigned NOT NULL,
+              `old_quantity` decimal(12,3) NOT NULL DEFAULT '0.000',
+              `new_quantity` decimal(12,3) NOT NULL DEFAULT '0.000',
+              `reason` text,
+              `changed_by` int NOT NULL,
+              `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              KEY `idx_po_qty_log` (`purchase_order_item_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+
+        $poCols = [
+            'vendor_id'                    => "INT UNSIGNED NULL DEFAULT NULL AFTER `request_id`",
+            'order_date'                   => "DATE NULL DEFAULT NULL",
+            'approved_by_se'               => "INT DEFAULT 0",
+            'approved_by_pm'               => "INT DEFAULT 0",
+            'se_approved_at'               => "DATETIME NULL DEFAULT NULL",
+            'pm_approved_at'               => "DATETIME NULL DEFAULT NULL",
+            'qc_approved_by_id'            => "INT NULL DEFAULT NULL",
+            'qc_approved_at'               => "DATETIME NULL DEFAULT NULL",
+            'qc_note'                      => "TEXT NULL DEFAULT NULL",
+            'mgmt_approved_by_id'          => "INT NULL DEFAULT NULL",
+            'mgmt_approved_at'             => "DATETIME NULL DEFAULT NULL",
+            'mgmt_note'                    => "TEXT NULL DEFAULT NULL",
+            'purchase_head_approved_by_id' => "INT NULL DEFAULT NULL",
+            'purchase_head_approved_at'    => "DATETIME NULL DEFAULT NULL",
+            'purchase_head_note'           => "TEXT NULL DEFAULT NULL",
+            'op_head_approved_by_id'       => "INT NULL DEFAULT NULL",
+            'op_head_approved_at'          => "DATETIME NULL DEFAULT NULL",
+            'op_head_note'                 => "TEXT NULL DEFAULT NULL",
+            'upload_from'                  => "VARCHAR(50) NULL DEFAULT NULL",
+            'remarks'                      => "TEXT NULL DEFAULT NULL",
+        ];
+        foreach ($poCols as $col => $def) {
+            $chk = @$db->query("SHOW COLUMNS FROM `purchase_orders` LIKE '{$col}'");
+            if ($chk && $chk->num_rows === 0) {
+                if (!@$db->query("ALTER TABLE `purchase_orders` ADD COLUMN `{$col}` {$def}")) {
+                    $cleanDef = preg_replace('/\s+AFTER\s+`\w+`$/i', '', $def);
+                    @$db->query("ALTER TABLE `purchase_orders` ADD COLUMN `{$col}` {$cleanDef}");
+                }
+            }
+        }
+    }
+
     // =========================================================================
     // READ
     // =========================================================================

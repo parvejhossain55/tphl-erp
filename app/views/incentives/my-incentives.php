@@ -14,10 +14,13 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
             </h3>
             <p class="text-muted small mb-0">Track your monthly targets, sales performance, incentive calculations, and claims.</p>
         </div>
-        <div class="d-flex align-items-center gap-2">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
             <span class="badge bg-light text-dark border px-3 py-2 rounded-pill fs-7 fw-semibold">
                 <i class="fa-regular fa-calendar-days text-primary me-1"></i> Cycle: <?= $cycleStartStr ?> – <?= $cycleEndStr ?>
             </span>
+            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-xs fw-semibold" data-bs-toggle="modal" data-bs-target="#incentivePolicyModal">
+                <i class="fa-solid fa-percent me-1"></i> Incentive Rates & Policy
+            </button>
             <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill fs-7 fw-semibold">
                 <i class="fa-solid fa-user-tie me-1"></i> Sales Portal
             </span>
@@ -1426,6 +1429,119 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Incentive Policy & Rate Slabs -->
+<div class="modal fade" id="incentivePolicyModal" tabindex="-1" aria-labelledby="incentivePolicyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            <div class="modal-header bg-primary text-white py-3">
+                <h5 class="modal-title fw-bold text-white mb-0" id="incentivePolicyModalLabel">
+                    <i class="fa-solid fa-sliders me-2"></i>Sales Incentive Modality & Percentage Rates
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-primary bg-primary-subtle border-primary-subtle text-primary py-2 px-3 mb-3 rounded-2 small">
+                    <i class="fa-solid fa-circle-info me-2"></i><strong>Company Policy:</strong> Incentive calculations are based on verified bookings during the monthly cycle (26th of previous month to 25th of current month).
+                </div>
+
+                <!-- 1. Minimum Threshold -->
+                <div class="card border-0 shadow-2xs bg-light mb-3">
+                    <div class="card-body p-3">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle fw-semibold px-2 py-1 mb-1">
+                                    <i class="fa-solid fa-lock me-1"></i>Minimum Qualification
+                                </span>
+                                <h6 class="fw-bold mb-0 text-dark">৳25,00,000 (25 Lakh) Land Share Sales</h6>
+                                <span class="text-muted extra-small">Sales executives must achieve at least ৳25 Lakh in land share sales (or achieve 100% of their assigned target) to unlock incentive claims.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Rate Slabs Table -->
+                <h6 class="fw-bold text-dark mb-2"><i class="fa-solid fa-percent text-success me-1"></i>Incentive Percentage by Category / Floor / Target</h6>
+                <div class="table-responsive mb-3">
+                    <table class="table table-bordered table-sm align-middle mb-0">
+                        <thead class="bg-light extra-small text-uppercase text-muted">
+                            <tr>
+                                <th>Category / Condition</th>
+                                <th class="text-center">Rate (%)</th>
+                                <th>Calculation Basis / Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody class="small">
+                            <tr>
+                                <td>
+                                    <strong>General Flat Base Rate</strong>
+                                    <div class="extra-small text-muted">Standard flats (non-floor special)</div>
+                                </td>
+                                <td class="text-center fw-bold text-primary fs-6">0.70%</td>
+                                <td class="extra-small text-muted">Calculated on Land Share Value</td>
+                            </tr>
+                            <tr class="table-info bg-opacity-25">
+                                <td>
+                                    <strong>Floor Special Rate</strong>
+                                    <div class="extra-small text-muted">2nd Floor & Below Top Floor</div>
+                                </td>
+                                <td class="text-center fw-bold text-success fs-6">0.80%</td>
+                                <td class="extra-small text-muted">Calculated on Land Share Value for designated floors</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Super Achievement (200% - 299%)</strong>
+                                    <div class="extra-small text-muted">When target achievement reaches 200% to 299%</div>
+                                </td>
+                                <td class="text-center fw-bold text-success fs-6">1.00%</td>
+                                <td class="extra-small text-muted">Applies to all eligible flat sales when target is over-achieved</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Top Tier Achievement (300%+)</strong>
+                                    <div class="extra-small text-muted">When target achievement reaches 300% or above</div>
+                                </td>
+                                <td class="text-center fw-bold text-success fs-6">1.20%</td>
+                                <td class="extra-small text-muted">Highest tier slab rate on all eligible sales</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Speed Bonus (Timely Closure)</strong>
+                                    <div class="extra-small text-muted">Closed within 2 months deadline</div>
+                                </td>
+                                <td class="text-center fw-bold text-info fs-6">+0.20%</td>
+                                <td class="extra-small text-muted">Additional bonus on assigned project closures within deadline</td>
+                            </tr>
+                            <tr class="table-warning bg-opacity-25">
+                                <td>
+                                    <strong>Team Leader Override</strong>
+                                    <div class="extra-small text-muted">For Team Leaders on eligible member sales</div>
+                                </td>
+                                <td class="text-center fw-bold text-warning-emphasis fs-6">0.05%</td>
+                                <td class="extra-small text-muted">0.05% on total land share sales of members achieving ≥ 25L</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Unassigned Project (Cross-Project Split)</strong>
+                                    <div class="extra-small text-muted">When selling outside assigned project</div>
+                                </td>
+                                <td class="text-center fw-bold text-dark fs-6">70% / 30%</td>
+                                <td class="extra-small text-muted"><strong>70%</strong> to Seller (unlocked when own 25L achieved), <strong>30%</strong> to Designated Project Holder</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="extra-small text-muted">
+                    <i class="fa-solid fa-lock me-1"></i>Note: Modality rates can be updated by Management and Accounts under <strong>Incentive Settings & Rates</strong> menu.
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2">
+                <button type="button" class="btn btn-secondary btn-sm rounded-pill px-4" data-bs-dismiss="modal">Close</button>
+            </div>
         </div>
     </div>
 </div>

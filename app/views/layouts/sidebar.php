@@ -1132,6 +1132,15 @@
                                     <span class="sidebar__menu-label">Sales Incentive Target</span>
                                 </a>
                             </li>
+
+                            <!-- Incentive Modality Settings / Rates: Accessible to Management, Accounts, Role 20, Sales Head -->
+                            <li class="slide <?= isActive('incentive-config', $current_route) ?>">
+                                <a href="<?= $base_url ?>/incentive-config"
+                                    class="sidebar__menu-item <?= isActive('incentive-config', $current_route) ?>">
+                                    <div class="side-menu__icon"><i class="fa-solid fa-sliders text-info"></i></div>
+                                    <span class="sidebar__menu-label">Incentive Settings & Rates</span>
+                                </a>
+                            </li>
                         <?php endif; ?>
 
                         <?php if (!$isManagement && !in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 9, 20, 30, 32, 33, 34, 35, 38])): ?>
@@ -2712,6 +2721,13 @@
                             <?php if ($pendingIncentiveClaimsCount > 0): ?>
                                 <span class="badge bg-warning text-dark rounded-pill ms-auto me-2"><?= $pendingIncentiveClaimsCount ?></span>
                             <?php endif; ?>
+                        </a>
+                    </li>
+                    <li class="slide <?= isActive('incentive-config', $current_route) ?>">
+                        <a href="<?= $base_url ?>/incentive-config"
+                            class="sidebar__menu-item <?= isActive('incentive-config', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-sliders text-info"></i></div>
+                            <span class="sidebar__menu-label">Incentive Settings & Rates</span>
                         </a>
                     </li>
                     <li class="slide d-none <?= isActive('projects-cashout', $current_route) ?>">

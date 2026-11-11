@@ -31,7 +31,15 @@ $statusLabel = [
 $st = $req['status'];
 $isOwner = ($req['requested_by'] == $userId);
 
-// Timeline steps (PM verification between QC and Management removed)
+require_once __DIR__ . '/../../../models/ApprovalRequest.php';
+$ahInfo = ApprovalRequest::getAccountsHeadApprovalInfo($GLOBALS['db'] ?? null, 'con_labor_requisitions', (int)$req['id']);
+$isOpHeadApprovedTimeline = !empty($ahInfo['is_op_head_approved']) || in_array($st, ['management_approved','partially_paid','paid','labor_disbursed']);
+$isAhApprovedTimeline = !empty($ahInfo['is_accounts_head_approved']) || in_array($st, ['paid','labor_disbursed']);
+$lrEffectiveAmount = (float)($req['qc_approved_amount'] ?? $req['total_amount'] ?? 0);
+$isLrOver10K = ($lrEffectiveAmount > 10000.01);
+$showLrMgmtStep = $isLrOver10K || (!empty($req['management_approved_by']) && (int)$req['management_approved_by'] !== (int)($ahInfo['op_head_by'] ?? 0) && (int)$req['management_approved_by'] !== (int)($ahInfo['accounts_head_by'] ?? 0));
+
+// Timeline steps (Submitted -> PM -> Work Completed -> Payment Requested -> QC -> Admin & Operation Head -> Accounts Head -> [Management if > 10K] -> Paid)
 $steps = [
     [
         'icon'       => 'fa-file-pen',
@@ -83,8 +91,34 @@ $steps = [
         'note'       => $req['qc_note'] ?? null
     ],
     [
+        'icon'       => 'fa-user-shield',
+        'title'      => 'Admin & Operation Head Approved',
+        'done'       => $isOpHeadApprovedTimeline,
+        'color'      => 'indigo',
+        'user'       => $isOpHeadApprovedTimeline ? ($ahInfo['op_head_name'] ?? 'Admin & Operation Head') : null,
+        'role'       => $isOpHeadApprovedTimeline ? ($ahInfo['op_head_designation'] ?? 'Admin & Operation Head') : null,
+        'department' => null,
+        'at'         => $ahInfo['op_head_at'] ?? null,
+        'amount'     => null,
+        'note'       => $ahInfo['op_head_note'] ?? null
+    ],
+    [
+        'icon'       => 'fa-stamp',
+        'title'      => 'Accounts Head Approved',
+        'done'       => $isAhApprovedTimeline,
+        'color'      => 'primary',
+        'user'       => $isAhApprovedTimeline ? ($ahInfo['approved_by_name'] ?? $ahInfo['designated_name'] ?? 'Accounts Head') : null,
+        'role'       => $isAhApprovedTimeline ? ($ahInfo['approved_by_designation'] ?? 'Accounts Head') : null,
+        'department' => null,
+        'at'         => $ahInfo['approved_at'] ?? null,
+        'amount'     => null,
+        'note'       => $ahInfo['approval_note'] ?? null
+    ],
+];
+if ($showLrMgmtStep) {
+    $steps[] = [
         'icon'       => 'fa-building-circle-check',
-        'title'      => 'Management Approved',
+        'title'      => 'Management Approved (> ৳10,000)',
         'done'       => in_array($st, ['management_approved','partially_paid','paid','labor_disbursed']),
         'color'      => 'success',
         'user'       => $req['management_approved_by_name'] ?? null,
@@ -93,19 +127,19 @@ $steps = [
         'at'         => $req['management_approved_at'] ?? null,
         'amount'     => $req['approved_amount'] ?? null,
         'note'       => $req['management_note'] ?? null
-    ],
-    [
-        'icon'       => 'fa-money-bill-wave',
-        'title'      => 'Paid / Disbursed',
-        'done'       => in_array($st, ['paid','labor_disbursed']),
-        'color'      => 'success',
-        'user'       => $req['paid_by_name'] ?? null,
-        'role'       => $req['paid_by_role'] ?? null,
-        'department' => $req['paid_by_dept'] ?? null,
-        'at'         => in_array($st, ['paid','labor_disbursed']) ? ($req['updated_at'] ?? $req['payment_date'] ?? null) : null,
-        'amount'     => $req['total_paid'] ?? $req['paid_amount'] ?? null,
-        'note'       => $req['payment_note'] ?? null
-    ],
+    ];
+}
+$steps[] = [
+    'icon'       => 'fa-money-bill-wave',
+    'title'      => 'Paid / Disbursed',
+    'done'       => in_array($st, ['paid','labor_disbursed']),
+    'color'      => 'success',
+    'user'       => $req['paid_by_name'] ?? null,
+    'role'       => $req['paid_by_role'] ?? null,
+    'department' => $req['paid_by_dept'] ?? null,
+    'at'         => in_array($st, ['paid','labor_disbursed']) ? ($req['updated_at'] ?? $req['payment_date'] ?? null) : null,
+    'amount'     => $req['total_paid'] ?? $req['paid_amount'] ?? null,
+    'note'       => $req['payment_note'] ?? null
 ];
 ?>
 
@@ -153,9 +187,9 @@ $steps = [
         <div class="alert alert-danger alert-dismissible fade show"><?php echo $_SESSION['error']; unset($_SESSION['error']); ?><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
     <?php endif; ?>
     <?php if ($st === 'rejected'): ?>
-        <div class="alert alert-danger">
-            <i class="fa-solid fa-circle-xmark me-2"></i>
-            <strong>Rejected:</strong> <?php echo htmlspecialchars($req['rejection_reason'] ?? 'No reason provided.'); ?>
+        <div class="d-flex align-items-start gap-2.5 p-3 mb-4 rounded-3 border border-danger bg-danger-subtle text-dark lh-base">
+            <i class="fa-solid fa-circle-xmark text-danger mt-1 flex-shrink-0"></i>
+            <div><strong>Rejected:</strong> <?php echo htmlspecialchars($req['rejection_reason'] ?? 'No reason provided.'); ?></div>
         </div>
     <?php endif; ?>
 
@@ -170,44 +204,44 @@ $steps = [
     }
     ?>
 
-    <div class="row ">
+    <div class="row g-4">
 
         <!-- LEFT: Details -->
         <div class="col-lg-4">
 
             <!-- Summary Card -->
             <div class="card custom-card mb-3">
-                <div class="card-header"><div class="card-title fs-13"><i class="fa-solid fa-hard-hat me-2 text-warning"></i> Requisition Info</div></div>
-                <div class="card-body">
-                    <div class="row g-2 fs-13">
+                <div class="card-header py-3 px-4"><div class="card-title fs-13"><i class="fa-solid fa-hard-hat me-2 text-warning"></i> Requisition Info</div></div>
+                <div class="card-body p-4">
+                    <div class="row g-3 fs-13">
                         <div class="col-6">
-                            <div class="text-muted fs-11 fw-semibold text-uppercase">Req. No</div>
+                            <div class="text-muted fs-11 fw-semibold text-uppercase mb-1">Req. No</div>
                             <div class="fw-bold"><?php echo $req['requisition_no']; ?></div>
                         </div>
                         <div class="col-6">
-                            <div class="text-muted fs-11 fw-semibold text-uppercase">Date</div>
+                            <div class="text-muted fs-11 fw-semibold text-uppercase mb-1">Date</div>
                             <div><?php echo date('d M Y', strtotime($req['requisition_date'])); ?></div>
                         </div>
                         <div class="col-6">
-                            <div class="text-muted fs-11 fw-semibold text-uppercase">Project</div>
+                            <div class="text-muted fs-11 fw-semibold text-uppercase mb-1">Project</div>
                             <div class="fw-semibold"><?php echo htmlspecialchars($req['project_name'] ?? '---'); ?></div>
                         </div>
                         <div class="col-6">
-                            <div class="text-muted fs-11 fw-semibold text-uppercase">Phase</div>
+                            <div class="text-muted fs-11 fw-semibold text-uppercase mb-1">Phase</div>
                             <div><?php echo htmlspecialchars($req['phase_name'] ?? '---'); ?></div>
                         </div>
                         <div class="col-6">
-                            <div class="text-muted fs-11 fw-semibold text-uppercase">Requested By</div>
+                            <div class="text-muted fs-11 fw-semibold text-uppercase mb-1">Requested By</div>
                             <div class="fw-semibold"><?php echo htmlspecialchars($req['requested_by_name'] ?? '---'); ?></div>
                         </div>
                         <div class="col-6">
-                            <div class="text-muted fs-11 fw-semibold text-uppercase">Labor Type</div>
+                            <div class="text-muted fs-11 fw-semibold text-uppercase mb-1">Labor Type</div>
                             <div><span class="badge bg-secondary-transparent text-dark"><?php echo $req['labor_type']; ?></span></div>
                         </div>
 
                         <?php if (!empty($req['work_date_from']) || !empty($req['work_date_to'])): ?>
                         <div class="col-12">
-                            <div class="text-muted fs-11 fw-semibold text-uppercase">Work Period</div>
+                            <div class="text-muted fs-11 fw-semibold text-uppercase mb-1">Work Period</div>
                             <div>
                                 <?php echo !empty($req['work_date_from']) ? date('d M', strtotime($req['work_date_from'])) : '—'; ?>
                                 —
@@ -220,21 +254,21 @@ $steps = [
 
                         <!-- Amounts -->
                         <div class="col-4 text-center">
-                            <div class="text-muted fs-11 fw-semibold text-uppercase">Laborers</div>
+                            <div class="text-muted fs-11 fw-semibold text-uppercase mb-1">Laborers</div>
                             <div class="fw-bold fs-18"><?php echo $req['labor_count']; ?></div>
                         </div>
                         <div class="col-4 text-center">
-                            <div class="text-muted fs-11 fw-semibold text-uppercase">Rate</div>
+                            <div class="text-muted fs-11 fw-semibold text-uppercase mb-1">Rate</div>
                             <div class="fw-bold fs-15">৳<?php echo number_format($req['per_labor_rate'], 0); ?></div>
                         </div>
                         <div class="col-4 text-center">
-                            <div class="text-muted fs-11 fw-semibold text-uppercase">Days</div>
+                            <div class="text-muted fs-11 fw-semibold text-uppercase mb-1">Days</div>
                             <div class="fw-bold fs-18"><?php echo $req['working_days']; ?></div>
                         </div>
 
                         <div class="col-12">
-                            <div class="p-2 rounded text-center" style="background:linear-gradient(135deg,#e8f5e9,#f0f7ff)">
-                                <div class="text-muted fs-11 fw-semibold text-uppercase">Total Requested</div>
+                            <div class="p-3 rounded-2 text-center" style="background:linear-gradient(135deg,#e8f5e9,#f0f7ff)">
+                                <div class="text-muted fs-11 fw-semibold text-uppercase mb-1">Total Requested</div>
                                 <div class="fw-bold fs-20 text-success">৳ <?php echo number_format($req['total_amount'], 2); ?></div>
                             </div>
                         </div>
@@ -300,20 +334,20 @@ $steps = [
                         <?php endif; ?>
 
                         <div class="col-12">
-                            <div class="p-2 rounded bg-light border text-muted fs-11">
+                            <div class="p-2.5 px-3 rounded-2 bg-light border text-muted fs-11 lh-base">
                                 <strong class="text-dark">Amount in Words:</strong>
-                                <div><?= class_exists('FormatHelper') ? FormatHelper::amountInWords($req['approved_amount'] ?? $req['total_amount'] ?? 0) : (function_exists('amountInWords') ? amountInWords($req['approved_amount'] ?? $req['total_amount'] ?? 0) : '') ?></div>
+                                <div class="mt-0.5"><?= class_exists('FormatHelper') ? FormatHelper::amountInWords($req['approved_amount'] ?? $req['total_amount'] ?? 0) : (function_exists('amountInWords') ? amountInWords($req['approved_amount'] ?? $req['total_amount'] ?? 0) : '') ?></div>
                             </div>
                         </div>
 
                         <div class="col-12">
-                            <div class="text-muted fs-11 fw-semibold text-uppercase">Purpose</div>
-                            <p class="mb-0 bg-light p-2 rounded fs-12"><?php echo nl2br(htmlspecialchars($req['purpose'])); ?></p>
+                            <div class="text-muted fs-11 fw-semibold text-uppercase mb-1">Purpose</div>
+                            <p class="mb-0 bg-light p-2.5 px-3 rounded-2 border fs-12 lh-base"><?php echo nl2br(htmlspecialchars($req['purpose'])); ?></p>
                         </div>
                         <?php if (!empty($req['remarks'])): ?>
                         <div class="col-12">
-                            <div class="text-muted fs-11 fw-semibold text-uppercase">Remarks</div>
-                            <p class="mb-0 fs-12 text-muted"><?php echo nl2br(htmlspecialchars($req['remarks'])); ?></p>
+                            <div class="text-muted fs-11 fw-semibold text-uppercase mb-1">Remarks</div>
+                            <p class="mb-0 fs-12 text-muted lh-base"><?php echo nl2br(htmlspecialchars($req['remarks'])); ?></p>
                         </div>
                         <?php endif; ?>
                         <?php if (!empty($req['attachment'])): ?>
@@ -333,8 +367,8 @@ $steps = [
 
             <!-- Progress Timeline -->
             <div class="card custom-card mb-3">
-                <div class="card-header"><div class="card-title fs-14"><i class="fa-solid fa-timeline me-2 text-primary"></i> Approval Timeline</div></div>
-                <div class="card-body">
+                <div class="card-header py-3 px-4"><div class="card-title fs-14"><i class="fa-solid fa-timeline me-2 text-primary"></i> Approval Timeline</div></div>
+                <div class="card-body p-4">
                     <div class="ps-1">
                         <?php foreach ($steps as $step): ?>
                         <div class="timeline-step <?php echo $step['done'] ? 'done' : ''; ?>">
@@ -485,16 +519,16 @@ $steps = [
             $isOver1LacLabor = ($mgmtBaseAmount > 10000);
             $isOpHeadApprovedLabor = (!empty($ahInfo['is_op_head_approved']) || ($ahInfo['op_head_status'] ?? '') === 'approved');
             $isAhApprovedLabor = (!empty($ahInfo['is_accounts_head_approved']) || ($ahInfo['accounts_head_status'] ?? '') === 'approved');
-            $isOpHeadUserLabor = (in_array((int)$userRole, [20, 32], true) || str_contains(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head'));
-            $isMgmtUserLabor = in_array((int)$userRole, [1, 3], true);
-            $isMgmtLockedLabor = ($isOver1LacLabor && (!$isOpHeadApprovedLabor || !$isAhApprovedLabor) && $isMgmtUserLabor && !$isOpHeadUserLabor);
-            $mgmtLockMsgLabor = (!$isOpHeadApprovedLabor)
-                ? 'This requisition exceeds ৳10,000 and must be verified and approved by <strong>Admin &amp; Operation Head (Role 20)</strong> before Management can authorize payment.'
-                : 'Admin &amp; Operation Head has approved. Awaiting <strong>Accounts Head (Role 30)</strong> payment verification &amp; approval before Management can authorize payment.';
+            $roleNameLaborLc = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+            $isOpHeadUserLabor = (in_array((int)$userRole, [20, 32], true) || str_contains($roleNameLaborLc, 'operation head') || str_contains($roleNameLaborLc, 'admin & operation'));
+            $isMgmtUserLabor = in_array((int)$userRole, [1, 3, 38], true) || in_array($roleNameLaborLc, ['super admin', 'admin', 'management', 'board of director', 'board of directors'], true) || str_contains($roleNameLaborLc, 'director') || str_contains($roleNameLaborLc, 'dceo');
+            $isMgmtLockedLabor = false;
+            $showMgmtCardLabor = ($isMgmtUserLabor && in_array($st, ['pending', 'pm_approved', 'work_completed', 'payment_requested', 'qc_approved', 'pm_payment_approved'], true))
+                || (in_array($st, ['qc_approved', 'pm_payment_approved'], true) && $canApproveMgmt && (!$isOpHeadUserLabor || !$isOpHeadApprovedLabor));
             ?>
-            <?php if (in_array($st, ['qc_approved', 'pm_payment_approved']) && $canApproveMgmt): ?>
+            <?php if ($showMgmtCardLabor): ?>
             <div class="card custom-card mb-3 border border-success border-opacity-50">
-                <div class="card-header bg-success-transparent d-flex justify-content-between align-items-center">
+                <div class="card-header py-3 px-4 bg-success-transparent d-flex justify-content-between align-items-center">
                     <div class="card-title fs-13 text-success mb-0"><i class="fa-solid fa-building-circle-check me-2"></i> Management / Role 20 Approval</div>
                     <?php if ($st === 'qc_approved'): ?>
                         <span class="badge bg-teal text-white fs-11"><i class="fa-solid fa-shield-check me-1"></i> QC Verified</span>
@@ -502,7 +536,7 @@ $steps = [
                         <span class="badge bg-indigo text-white fs-11"><i class="fa-solid fa-user-check me-1"></i> PM Payment Verified</span>
                     <?php endif; ?>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-4">
                     <?php if (!empty($req['qc_approved_by_name'])): ?>
                     <!-- QC Approval Details Highlight -->
                     <div class="p-3 mb-3 rounded border" style="background:#f4fbf7;border-color:#bbf7d0!important">
@@ -555,8 +589,9 @@ $steps = [
                     </div>
 
                     <?php if ($isMgmtLockedLabor): ?>
-                        <div class="alert alert-warning mb-3">
-                            <i class="fa-solid fa-lock me-2"></i><strong>Management Approval Locked (> ৳10,000):</strong> <?= $mgmtLockMsgLabor ?>
+                        <div class="d-flex align-items-start gap-2.5 p-3 mb-3 rounded-2 border border-warning bg-warning-subtle text-dark fs-12 lh-base">
+                            <i class="fa-solid fa-lock text-warning mt-0.5 flex-shrink-0"></i>
+                            <div><strong>Management Approval Locked (&gt; ৳10,000):</strong> <?= $mgmtLockMsgLabor ?></div>
                         </div>
                     <?php else: ?>
                         <p class="fs-13 text-muted mb-3">Review and authorize payment disbursement for Accounts. You may adjust the approved amount if needed.</p>
@@ -973,11 +1008,24 @@ $steps = [
 </div>
 <?php endif; ?>
 
-<!-- Management Approve Modal (After QC Approval) -->
-<?php if (in_array($st, ['qc_approved', 'pm_payment_approved']) && (!empty($canApproveManagement) || !empty($isManagement))): ?>
+<!-- Management Approve Modal (After QC Approval or Management Direct Override) -->
+<?php
+$laborOverrideStage = '';
+if (!empty($isMgmtUserLabor)) {
+    if ($st === 'pending') {
+        $laborOverrideStage = 'PM / Dept Head';
+    } elseif (in_array($st, ['pm_approved', 'work_completed', 'payment_requested'], true)) {
+        $laborOverrideStage = 'QC & Internal Audit';
+    } elseif (!$isOpHeadApprovedLabor) {
+        $laborOverrideStage = 'Head of Operation';
+    } elseif (!$isAhApprovedLabor) {
+        $laborOverrideStage = 'Accounts Head';
+    }
+}
+if ((!empty($isMgmtUserLabor) && in_array($st, ['pending', 'pm_approved', 'work_completed', 'payment_requested', 'qc_approved', 'pm_payment_approved'], true)) || (in_array($st, ['qc_approved', 'pm_payment_approved']) && (!empty($canApproveManagement) || !empty($isManagement)))): ?>
 <?php $mgmtDefaultAmount = (float)($req['qc_approved_amount'] ?? $req['pm_verified_amount'] ?? $req['total_amount']); ?>
 <div class="modal fade" id="mgmtApproveModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered"><form action="<?php echo $base; ?>/con-labor-req-mgmt-approve/<?php echo $req['id']; ?>" method="POST">
+    <div class="modal-dialog modal-dialog-centered"><form id="laborMgmtApproveForm" action="<?php echo $base; ?>/con-labor-req-mgmt-approve/<?php echo $req['id']; ?>" method="POST">
         <div class="modal-content" style="border-radius:16px;border:none;box-shadow:0 10px 40px rgba(0,0,0,.15)">
             <div class="modal-header border-0 pb-0"><h5 class="modal-title text-success fw-bold"><i class="fa-solid fa-building-circle-check me-2"></i>Management / Role 20 Payment Approval</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
@@ -1001,6 +1049,38 @@ $steps = [
         </div>
     </form></div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var laborForm = document.getElementById('laborMgmtApproveForm');
+    if (laborForm) {
+        laborForm.addEventListener('submit', function(e) {
+            var overrideStage = <?php echo json_encode($laborOverrideStage ?? ''); ?>;
+            if (overrideStage !== '' && !laborForm.getAttribute('data-confirmed-override')) {
+                e.preventDefault();
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Pending ' + overrideStage + "'s Approval",
+                        html: 'This labor requisition is pending for <strong>' + overrideStage + "'s</strong> approval. Are you ready to approve for <strong>" + overrideStage + '</strong> first?<br><small class="text-muted d-block mt-2">Your name will be recorded as the approver for all bypassed stages as well as final Management approval.</small>',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#198754',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Yes, Approve All Stages'
+                    }).then(function(result) {
+                        if (result.isConfirmed) {
+                            laborForm.setAttribute('data-confirmed-override', '1');
+                            laborForm.submit();
+                        }
+                    });
+                } else if (confirm("Pending " + overrideStage + "'s Approval. Are you ready to approve all bypassed stages and complete final Management approval?")) {
+                    laborForm.setAttribute('data-confirmed-override', '1');
+                    laborForm.submit();
+                }
+            }
+        });
+    }
+});
+</script>
 <div class="modal fade" id="mgmtRejectModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered"><form action="<?php echo $base; ?>/con-labor-req-mgmt-reject/<?php echo $req['id']; ?>" method="POST">
         <div class="modal-content" style="border-radius:16px;border:none;box-shadow:0 10px 40px rgba(0,0,0,.15)">

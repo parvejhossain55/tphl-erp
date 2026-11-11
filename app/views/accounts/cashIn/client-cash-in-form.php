@@ -222,15 +222,7 @@ if (!empty($outstandingDues)) {
                             </small>
                         </div>
 
-                        <!-- Total Booking Money (shown for Booking Money or Registration) -->
-                        <div class="col-md-6" id="totalBookingMoneyContainer" style="display:none;">
-                            <div class="from__input-box">
-                                <label class="form__input-title">Total Booking Money Target <span>*</span></label>
-                                <input type="number" name="total_booking_money" id="totalBookingMoney" class="form-control" step="1"
-                                    min="0" placeholder="Enter target amount" value="<?= $effectiveBookingTarget ?>" required>
-                                <small class="text-muted">Remaining amounts will auto-calculate based on this</small>
-                            </div>
-                        </div>
+
 
                         <!-- Other Purpose (shown when Others is selected) -->
                         <div class="col-md-6" id="otherPurposeContainer" style="display:none;">
@@ -354,7 +346,12 @@ if (!empty($outstandingDues)) {
                             <div class="from__input-box">
                                 <label class="form__input-title">Transfer To / Company Bank <span>*</span></label>
                                 <select name="bank_id" id="bankSelect" class="form-select">
-                                    <option value="">-- Loading company banks... --</option>
+                                    <option value="">-- Select Transfer To / Company Bank --</option>
+                                    <?php if (!empty($companyBanks)): ?>
+                                        <?php foreach ($companyBanks as $b): ?>
+                                            <option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['bank_name'] . ' — ' . $b['account_name'] . (!empty($b['account_number']) ? ' (' . $b['account_number'] . ')' : '')) ?></option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
                                 </select>
                                 <small class="text-muted">Managed in <a href="<?= $GLOBALS['base_url'] ?>/company-bank-accounts" target="_blank">Company Bank Manage</a></small>
                             </div>
@@ -581,16 +578,55 @@ if (!empty($outstandingDues)) {
         const bookingMoneyTotalPaid  = <?= json_encode((float)($clientDetails['booking_money_total'] ?? 0)) ?>;
         const formRemainingRegistrationPHP = <?= json_encode((float)($formRemainingRegistration ?? 0)) ?>;
 
-        const totalBookingMoneyInput = document.getElementById('totalBookingMoney');
-        const totalBookingMoneyContainer = document.getElementById('totalBookingMoneyContainer');
-
         // Function to calculate dynamic remaining amounts
         function getDynamicBalances() {
-            const totalBM = parseFloat(totalBookingMoneyInput.value) || 0;
-            const remainingBooking = Math.max(0, totalBM - bookingMoneyTotalPaid);
-            // Registration Target = Total Land Share - Discount - Total Booking Money Target
-            // Then subtract all registration/land_share payments (pending + verified)
-            const remainingReg = Math.max(0, totalLandShare - discountAmount - totalBM - allRegistrationAndLandshare);
+            const target = <?= json_encode((float)$effectiveBookingTarget) ?>;
+            const remainingBooking = Math.max(0, target - bookingMoneyTotalPaid);
+            const effectiveLSTarget = Math.max(0, totalLandShare - discountAmount);
+            const totalLSPaid = bookingMoneyTotalPaid + allRegistrationAndLandshare;
+            const remainingLandShareTotal = Math.max(0, effectiveLSTarget - totalLSPaid);
+            const bookingDeduction = Math.max(target, bookingMoneyTotalPaid);
+            const remainingReg = Math.min(remainingLandShareTotal, Math.max(0, effectiveLSTarget - bookingDeduction - allRegistrationAndLandshare));
+
+            const bmOption = paymentType ? paymentType.querySelector('option[value="booking_money"]') : null;
+            if (bmOption) {
+                if (remainingBooking > 0) {
+                    bmOption.disabled = false;
+                    bmOption.style.color = '';
+                    bmOption.textContent = 'Booking Money' + (bookingMoneyTotalPaid > 0 ? ' (Remaining: TK.' + remainingBooking.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ')' : '');
+                } else {
+                    bmOption.disabled = true;
+                    bmOption.style.color = '#6c757d';
+                    bmOption.textContent = 'Booking Money (Fully Paid — TK.' + bookingMoneyTotalPaid.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ')';
+                }
+            }
+
+            const regOption = paymentType ? paymentType.querySelector('option[value="registration"]') : null;
+            if (regOption) {
+                if (remainingReg > 0) {
+                    regOption.disabled = false;
+                    regOption.style.color = '';
+                    regOption.textContent = 'Registration (Remaining: TK.' + remainingReg.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ')';
+                } else {
+                    regOption.disabled = true;
+                    regOption.style.color = '#6c757d';
+                    regOption.textContent = 'Registration (Completed ✓)';
+                }
+            }
+
+            const mutOption = paymentType ? paymentType.querySelector('option[value="mutation_cost"]') : null;
+            if (mutOption) {
+                if (remainingLandShareTotal > 0) {
+                    mutOption.disabled = false;
+                    mutOption.style.color = '';
+                    mutOption.textContent = 'Mutation Cost';
+                } else {
+                    mutOption.disabled = true;
+                    mutOption.style.color = '#6c757d';
+                    mutOption.textContent = 'Mutation Cost (Completed ✓)';
+                }
+            }
+
             return { remainingBooking, remainingReg };
         }
 
@@ -600,13 +636,6 @@ if (!empty($outstandingDues)) {
             let helpText = '';
             
             const { remainingBooking, remainingReg } = getDynamicBalances();
-
-            // Show Total Booking Money input for Booking Money and Registration
-            if (paymentTypeValue === 'booking_money' || paymentTypeValue === 'registration') {
-                totalBookingMoneyContainer.style.display = 'block';
-            } else {
-                totalBookingMoneyContainer.style.display = 'none';
-            }
 
             // Show Other Purpose input when Others is selected
             const otherPurposeContainer = document.getElementById('otherPurposeContainer');
@@ -1054,38 +1083,39 @@ if (!empty($outstandingDues)) {
         }
 
         // Initialize on page load
-        if (totalBookingMoneyInput) {
-            totalBookingMoneyInput.addEventListener('input', function() {
-                updateAmountField();
-            });
-        }
         updateAmountField();
         controlPartiallyPaidStatus();
-
 
         // Trigger payment method change to set initial state
         if (paymentMethod) {
             paymentMethod.dispatchEvent(new Event('change'));
         }
 
-        // Load company banks for AJAX dropdown
-        fetch('<?= $GLOBALS['base_url'] ?>/get-company-banks')
-            .then(r => r.json())
-            .then(data => {
-                const sel = document.getElementById('bankSelect');
-                if (!sel) return;
-                sel.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
-                (data.banks || []).forEach(b => {
-                    const opt = document.createElement('option');
-                    opt.value = b.id;
-                    opt.textContent = b.bank_name + ' — ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
-                    sel.appendChild(opt);
+        // Initialize company banks list
+        window.companyBanksList = <?= json_encode($companyBanks ?? []) ?>;
+
+        // If not already populated server-side, load company banks via AJAX
+        const existingBankOptions = document.getElementById('bankSelect')?.querySelectorAll('option');
+        if (!existingBankOptions || existingBankOptions.length <= 1) {
+            fetch('<?= $GLOBALS['base_url'] ?>/get-company-banks')
+                .then(r => r.json())
+                .then(data => {
+                    window.companyBanksList = data.banks || [];
+                    const sel = document.getElementById('bankSelect');
+                    if (!sel) return;
+                    sel.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
+                    (data.banks || []).forEach(b => {
+                        const opt = document.createElement('option');
+                        opt.value = b.id;
+                        opt.textContent = b.bank_name + ' — ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
+                        sel.appendChild(opt);
+                    });
+                })
+                .catch(() => {
+                    const sel = document.getElementById('bankSelect');
+                    if (sel && sel.options.length <= 1) sel.innerHTML = '<option value="">Company Bank Accounts unavailable</option>';
                 });
-            })
-            .catch(() => {
-                const sel = document.getElementById('bankSelect');
-                if (sel) sel.innerHTML = '<option value="">Company Bank Accounts unavailable</option>';
-            });
+        }
 
         // File preview thumbnails
         const proofFilesInput = document.getElementById('proofFiles');

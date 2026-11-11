@@ -26,22 +26,30 @@ class Con_LaborRequisitionController extends Controller
     private function isSiteEngineer() { return in_array($this->userRole, [12, 1]); }
     private function isPM()           { return in_array($this->userRole, [15, 22, 1]); }
     private function isQC()           { return in_array($this->userRole, [24, 1]); }
-    private function isManagement()   { return in_array($this->userRole, [3, 1]);  }
-    private function isAccounts()     { return in_array($this->userRole, [6, 30, 1, 3]);  }
+    private function isManagement()   {
+        $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        if (in_array($this->userRole, [33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true)) {
+            return false;
+        }
+        return in_array($this->userRole, [3, 1, 38], true) || str_contains($roleName, 'director') || str_contains($roleName, 'dceo') || str_contains($roleName, 'management') || str_contains($roleName, 'super admin');
+    }
+    private function isAccounts()     { return in_array($this->userRole, [6, 30, 1, 3, 38]);  }
 
-    // Checks whether current user can approve management step (Roles 1, 3, 20, 22 or Admin/Operation/Management/PM Head)
+    // Checks whether current user can approve management step (Roles 1, 3, 38, 20, 32, 22 or Admin/Operation/Management/Director/PM Head)
     private function canApproveManagement($amount = 0)
     {
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
         if (in_array($this->userRole, [33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true)) {
             return false;
         }
-        if (in_array($this->userRole, [1, 3, 20, 22])) {
+        if (in_array($this->userRole, [1, 3, 38, 20, 32, 22])) {
             return true;
         }
         return (
             str_contains($roleName, 'admin')
             || str_contains($roleName, 'management')
+            || str_contains($roleName, 'director')
+            || str_contains($roleName, 'dceo')
             || str_contains($roleName, 'operation')
             || str_contains($roleName, 'pm head')
         );
@@ -362,8 +370,12 @@ class Con_LaborRequisitionController extends Controller
         $req = $this->model->find((int)$id);
         if (!$req) { $_SESSION['error'] = 'Requisition not found.'; $this->back($id); }
 
-        if (!in_array($req['status'], ['qc_approved', 'pm_payment_approved'])) {
-            $_SESSION['error'] = 'Requisition must be approved by QC & Internal Audit before Management approval.';
+        $roleNameLc = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $isOpHeadUser = (in_array((int)$this->userRole, [20, 32], true) || str_contains($roleNameLc, 'operation head') || str_contains($roleNameLc, 'admin & operation'));
+        $isMgmtUser = $this->isManagement();
+
+        if (!in_array($req['status'], ['qc_approved', 'pm_payment_approved']) && !$isMgmtUser) {
+            $_SESSION['error'] = 'Requisition must be approved by QC & Internal Audit before Operation Head / Management approval.';
             $this->back($id);
         }
 
@@ -376,48 +388,65 @@ class Con_LaborRequisitionController extends Controller
         $approvedAmount = (float)($_POST['approved_amount'] ?? 0);
         $note = trim($_POST['management_note'] ?? '');
         $finalApprovedAmount = $approvedAmount > 0 ? $approvedAmount : $baseAmount;
-        $isOver1Lac = ($finalApprovedAmount > 10000);
-        $isOpHeadUser = (in_array((int)$this->userRole, [20, 32], true) || str_contains(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head'));
-        $isMgmtUser = in_array((int)$this->userRole, [1, 3], true);
 
         // Fetch approval request record
         $arCheck = $this->db->query("SELECT id, op_head_status, accounts_head_status FROM approval_requests WHERE source_table = 'con_labor_requisitions' AND source_id = " . (int)$id . " ORDER BY id DESC LIMIT 1");
         $arRow = $arCheck ? $arCheck->fetch_assoc() : null;
-        $opHeadStatus = strtolower($arRow['op_head_status'] ?? 'pending');
-        $ahStatus = strtolower($arRow['accounts_head_status'] ?? 'pending');
 
-        if ($isOver1Lac) {
-            if ($isOpHeadUser && !$isMgmtUser) {
-                $arId = (int)($arRow['id'] ?? 0);
-                $escNote = $this->db->real_escape_string($note ?: 'Verified and approved by Admin & Operation Head');
-                if (!class_exists('ApprovalRequest')) {
-                    require_once __DIR__ . '/../../models/ApprovalRequest.php';
-                }
-                $approvalModel = new \ApprovalRequest($this->db);
-                if ($arId > 0) {
-                    $approvalModel->approveOperationHead($arId, $this->userId, $escNote);
-                } else {
-                    $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'accounts_head' WHERE source_table = 'con_labor_requisitions' AND source_id = " . (int)$id);
-                }
-                $_SESSION['success'] = "Labor requisition verified & approved by Admin & Operation Head (Role 20). Forwarded to Accounts Head (Role 30) for payment verification.";
-                $this->back($id);
+        // Step 1 after QC (for both <= 10K and > 10K): Operation Head (Role 20/32) approves and forwards to Accounts Head (Role 30)
+        if ($isOpHeadUser && !$isMgmtUser) {
+            $arId = (int)($arRow['id'] ?? 0);
+            $escNote = $this->db->real_escape_string($note ?: 'Verified and approved by Admin & Operation Head');
+            if (!class_exists('ApprovalRequest')) {
+                require_once __DIR__ . '/../../models/ApprovalRequest.php';
             }
+            $approvalModel = new \ApprovalRequest($this->db);
+            if ($arId > 0) {
+                $approvalModel->approveOperationHead($arId, $this->userId, $escNote);
+            } else {
+                $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'accounts_head' WHERE source_table = 'con_labor_requisitions' AND source_id = " . (int)$id);
+            }
+            $_SESSION['success'] = "Labor requisition verified & approved by Admin & Operation Head (Role 20). Forwarded to Accounts Head (Role 30) for payment verification.";
+            $this->back($id);
+        }
 
-            if ($isMgmtUser) {
-                if ($opHeadStatus !== 'approved') {
-                    $_SESSION['error'] = "Access Denied: Labor requisitions exceeding ৳10,000 must be approved by Admin & Operation Head (Role 20) first.";
-                    $this->back($id);
-                }
-                if ($ahStatus !== 'approved') {
-                    $_SESSION['error'] = "Access Denied: Labor requisitions exceeding ৳10,000 must be verified & approved by Accounts Head (Role 30) before Management can approve.";
-                    $this->back($id);
-                }
-            }
+        // Management Direct Override: auto-fill any bypassed earlier stages in Management's name
+        if ($isMgmtUser) {
+            $escBypassNote = $this->db->real_escape_string(($note ?: 'Approved by Management') . ' (Management Override)');
+            $this->db->query("
+                UPDATE con_labor_requisitions
+                SET pm_approved_by = COALESCE(pm_approved_by, {$this->userId}),
+                    pm_approved_at = COALESCE(pm_approved_at, NOW()),
+                    pm_remarks = COALESCE(NULLIF(pm_remarks, ''), '{$escBypassNote}'),
+                    qc_approved_by = COALESCE(qc_approved_by, {$this->userId}),
+                    qc_approved_at = COALESCE(qc_approved_at, NOW()),
+                    qc_approved_amount = COALESCE(NULLIF(qc_approved_amount, 0), {$finalApprovedAmount}),
+                    qc_remarks = COALESCE(NULLIF(qc_remarks, ''), '{$escBypassNote}')
+                WHERE id = " . (int)$id . "
+            ");
         }
 
         if ($this->model->managementApprove((int)$id, $this->userId, $finalApprovedAmount, $note)) {
             $this->syncToApprovalRequests((int)$id, 'approved', $finalApprovedAmount, $note);
-            $this->db->query("UPDATE approval_requests SET op_head_status = 'approved' WHERE source_table = 'con_labor_requisitions' AND source_id = " . (int)$id);
+            $escBypassNote = $this->db->real_escape_string(($note ?: 'Approved by Management') . ' (Management Override)');
+            if ($isMgmtUser) {
+                $this->db->query("
+                    UPDATE approval_requests
+                    SET status = 'approved',
+                        approve_role = 'accounts',
+                        op_head_status = 'approved',
+                        op_head_by = COALESCE(op_head_by, {$this->userId}),
+                        op_head_at = COALESCE(op_head_at, NOW()),
+                        op_head_note = COALESCE(NULLIF(op_head_note, ''), '{$escBypassNote}'),
+                        accounts_head_status = 'approved',
+                        accounts_head_by = COALESCE(accounts_head_by, {$this->userId}),
+                        accounts_head_at = COALESCE(accounts_head_at, NOW()),
+                        accounts_head_note = COALESCE(NULLIF(accounts_head_note, ''), '{$escBypassNote}')
+                    WHERE source_table = 'con_labor_requisitions' AND source_id = " . (int)$id . "
+                ");
+            } else {
+                $this->db->query("UPDATE approval_requests SET op_head_status = 'approved' WHERE source_table = 'con_labor_requisitions' AND source_id = " . (int)$id);
+            }
             $_SESSION['success'] = 'Labor requisition approved for ৳' . number_format($finalApprovedAmount, 2) . '. Ready for payment by Accounts.';
         } else {
             $_SESSION['error'] = 'Failed to approve labor requisition.';
@@ -430,8 +459,8 @@ class Con_LaborRequisitionController extends Controller
         $req = $this->model->find((int)$id);
         if (!$req) { $_SESSION['error'] = 'Requisition not found.'; $this->back($id); }
 
-        if (!in_array($req['status'], ['qc_approved', 'pm_payment_approved'])) {
-            $_SESSION['error'] = 'Requisition must be approved by QC & Internal Audit before Management rejection.';
+        if (!in_array($req['status'], ['qc_approved', 'pm_payment_approved']) && !$this->isManagement()) {
+            $_SESSION['error'] = 'Requisition must be approved by QC & Internal Audit before rejection.';
             $this->back($id);
         }
 

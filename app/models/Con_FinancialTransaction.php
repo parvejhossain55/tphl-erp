@@ -50,9 +50,13 @@ class Con_FinancialTransaction extends Model
              LEFT JOIN users    u ON u.id = cft.processed_by
              WHERE cft.id = ?"
         );
+        if (!$stmt) {
+            return null;
+        }
         $stmt->bind_param('i', $id);
         $stmt->execute();
-        return $stmt->get_result()->fetch_assoc();
+        $res = $stmt->get_result();
+        return $res ? $res->fetch_assoc() : null;
     }
 
     /** Transactions for a specific referenced record */
@@ -65,9 +69,13 @@ class Con_FinancialTransaction extends Model
              WHERE cft.ref_type = ? AND cft.ref_id = ?
              ORDER BY cft.created_at DESC"
         );
+        if (!$stmt) {
+            return [];
+        }
         $stmt->bind_param('si', $refType, $refId);
         $stmt->execute();
-        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $res = $stmt->get_result();
+        return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
     }
 
     /** Total amount already paid for a specific source record */
@@ -78,9 +86,13 @@ class Con_FinancialTransaction extends Model
              FROM {$this->table}
              WHERE ref_type = ? AND ref_id = ?"
         );
+        if (!$stmt) {
+            return 0.0;
+        }
         $stmt->bind_param('si', $refType, $refId);
         $stmt->execute();
-        $row = $stmt->get_result()->fetch_assoc();
+        $res = $stmt->get_result();
+        $row = $res ? $res->fetch_assoc() : null;
         return (float)($row['total_paid'] ?? 0);
     }
 

@@ -81,6 +81,11 @@ class Con_ContractorBill extends Model
         if (!$accColCheck || $accColCheck->num_rows === 0) {
             @$this->db->query("ALTER TABLE `{$this->table}` ADD COLUMN `account_id` INT(11) DEFAULT NULL");
         }
+
+        $chkEa = @$this->db->query("SHOW COLUMNS FROM `expense_adjustments` LIKE 'parent_type'");
+        if ($chkEa && $chkEa->num_rows === 0) {
+            @$this->db->query("ALTER TABLE `expense_adjustments` ADD COLUMN `parent_type` VARCHAR(50) NOT NULL DEFAULT 'cashout'");
+        }
     }
 
     /**
@@ -516,17 +521,25 @@ class Con_ContractorBill extends Model
                 LEFT JOIN phase_monthly_targets pmt ON pmt.id = pwp.target_id
                 WHERE cbr.id = ?";
         $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return null;
+        }
         $stmt->bind_param('i', $id);
         $stmt->execute();
-        return $stmt->get_result()->fetch_assoc();
+        $res = $stmt->get_result();
+        return $res ? $res->fetch_assoc() : null;
     }
 
     public function find($id)
     {
         $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE id=?");
+        if (!$stmt) {
+            return null;
+        }
         $stmt->bind_param('i', $id);
         $stmt->execute();
-        return $stmt->get_result()->fetch_assoc();
+        $res = $stmt->get_result();
+        return $res ? $res->fetch_assoc() : null;
     }
 
     public function create($data)

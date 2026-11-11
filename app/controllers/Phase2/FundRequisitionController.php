@@ -134,6 +134,56 @@ class FundRequisitionController extends Controller {
                 @$this->db->query("ALTER TABLE fund_requisitions MODIFY COLUMN receipt_path TEXT NULL DEFAULT NULL");
             }
         }
+
+        // Ensure fund_requisition_expenses table exists
+        @$this->db->query("
+            CREATE TABLE IF NOT EXISTS `fund_requisition_expenses` (
+              `id` int unsigned NOT NULL AUTO_INCREMENT,
+              `fund_requisition_id` int NOT NULL,
+              `project_id` int DEFAULT NULL,
+              `other_project_name` varchar(255) DEFAULT NULL,
+              `amount` decimal(12,2) NOT NULL DEFAULT 0.00,
+              `purpose` text NOT NULL,
+              `attachment_path` varchar(500) DEFAULT NULL,
+              `created_by` int NOT NULL DEFAULT 0,
+              `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              KEY `idx_fre_req` (`fund_requisition_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+
+        // Ensure office_assets table and item_name column exist for LEFT JOIN in showPage()
+        @$this->db->query("
+            CREATE TABLE IF NOT EXISTS `office_assets` (
+              `id` int unsigned NOT NULL AUTO_INCREMENT,
+              `asset_code` varchar(50) NOT NULL,
+              `product_id` int unsigned DEFAULT NULL,
+              `item_name` varchar(255) DEFAULT NULL,
+              `project_id` int DEFAULT NULL,
+              `office_branch_id` int DEFAULT NULL,
+              `department_id` int DEFAULT NULL,
+              `assigned_to` int DEFAULT NULL,
+              `location` varchar(255) DEFAULT 'Head Office',
+              `purchase_date` date DEFAULT NULL,
+              `purchase_price` decimal(15,2) DEFAULT '0.00',
+              `warranty_expiry` date DEFAULT NULL,
+              `serial_no` varchar(100) DEFAULT NULL,
+              `condition_status` varchar(50) DEFAULT 'new',
+              `asset_status` varchar(50) DEFAULT 'in_store',
+              `remarks` text,
+              `created_by` int NOT NULL DEFAULT 1,
+              `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+        foreach (['asset_code' => "VARCHAR(50) NULL DEFAULT NULL", 'item_name' => "VARCHAR(255) NULL DEFAULT NULL"] as $oaCol => $oaDef) {
+            $chkOa = @$this->db->query("SHOW COLUMNS FROM `office_assets` LIKE '{$oaCol}'");
+            if ($chkOa && $chkOa->num_rows === 0) {
+                @$this->db->query("ALTER TABLE `office_assets` ADD COLUMN `{$oaCol}` {$oaDef}");
+            }
+        }
     }
 
     /**
@@ -536,12 +586,17 @@ class FundRequisitionController extends Controller {
                 OR operator_id        = ?
                 OR purchase_user_id   = ?)
         ");
+        if (!$stmt) {
+            return [];
+        }
         $stmt->bind_param('iiiiiiiiiii', $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId);
         $stmt->execute();
         $result = $stmt->get_result();
         $ids = [];
-        while ($row = $result->fetch_assoc()) {
-            $ids[] = (int)$row['id'];
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $ids[] = (int)$row['id'];
+            }
         }
         return $ids;
     }
@@ -596,7 +651,8 @@ class FundRequisitionController extends Controller {
             LEFT JOIN designations des_boss ON des_boss.id = COALESCE(e_boss.designation_id, u_boss.designation_id)
             WHERE fr.id = $id
         ";
-        $req = $this->db->query($sql)->fetch_assoc();
+        $resReq = $this->db->query($sql);
+        $req = $resReq ? $resReq->fetch_assoc() : null;
         if (!$req) {
             setError('Requisition not found.');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
@@ -632,14 +688,15 @@ class FundRequisitionController extends Controller {
         }
 
         // Expenses
-        $expenses = $this->db->query("
+        $resExp = $this->db->query("
             SELECT fre.*, p.name AS project_name, u.full_name AS creator_name
             FROM fund_requisition_expenses fre
             LEFT JOIN projects p ON fre.project_id = p.id
             LEFT JOIN users u    ON fre.created_by = u.id
             WHERE fre.fund_requisition_id = $id
             ORDER BY fre.id DESC
-        ")->fetch_all(MYSQLI_ASSOC);
+        ");
+        $expenses = $resExp ? $resExp->fetch_all(MYSQLI_ASSOC) : [];
 
         $effectiveApprovedAmount = (!empty($req['approved_amount']) && (float)$req['approved_amount'] > 0)
             ? (float)$req['approved_amount']
@@ -655,12 +712,14 @@ class FundRequisitionController extends Controller {
             $assignedIds = $this->getAssignedProjectIds($sessionUserId);
             if (!empty($assignedIds)) {
                 $idList   = implode(',', $assignedIds);
-                $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND id IN ($idList) ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+                $pResShow = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND id IN ($idList) ORDER BY name ASC");
+                $projects = $pResShow ? $pResShow->fetch_all(MYSQLI_ASSOC) : [];
             } else {
                 $projects = [];
             }
         } else {
-            $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+            $pResShow = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC");
+            $projects = $pResShow ? $pResShow->fetch_all(MYSQLI_ASSOC) : [];
         }
 
         // Management / Operation Head approval breakdown (who approved how much)
@@ -1246,11 +1305,12 @@ class FundRequisitionController extends Controller {
 
         $amount = (float)($frData['amount'] ?? 0);
         $isOver1Lac = ($amount > 10000.01);
-        $isSiteOperator = in_array($roleId, [20, 32], true);
-        $isManagement = in_array($roleId, [1, 3], true);
+        $roleNameLc = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $isSiteOperator = in_array($roleId, [20, 32], true) || strpos($roleNameLc, 'operation head') !== false || strpos($roleNameLc, 'admin & operation') !== false;
+        $isManagement = in_array($roleId, [1, 3, 38], true) || in_array($roleNameLc, ['super admin', 'admin', 'management', 'board of director', 'board of directors'], true) || strpos($roleNameLc, 'director') !== false || strpos($roleNameLc, 'dceo') !== false;
 
-        if ($isOver1Lac && $isSiteOperator && !$isManagement) {
-            // Operation Head is processing the > 10K prerequisite step
+        if ($isSiteOperator && !$isManagement) {
+            // Operation Head is processing Step 1 after QC (for both <= 10K and > 10K)
             if (!class_exists('ApprovalRequest')) {
                 require_once __DIR__ . '/../../models/ApprovalRequest.php';
             }
@@ -1279,23 +1339,7 @@ class FundRequisitionController extends Controller {
             exit;
         }
 
-        if ($isOver1Lac && $isManagement && $status !== 'rejected') {
-            $arRow = $this->db->query("SELECT op_head_status, accounts_head_status FROM approval_requests WHERE source_table = 'fund_requisitions' AND source_id = {$id} ORDER BY id DESC LIMIT 1")->fetch_assoc();
-            $opStatus = strtolower($arRow['op_head_status'] ?? 'pending');
-            $ahStatus = strtolower($arRow['accounts_head_status'] ?? 'pending');
-            if ($opStatus !== 'approved') {
-                setError("Access Denied: Requisitions exceeding ৳10,000 must be approved by Admin & Operation Head (Role 20) first.");
-                header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
-                exit;
-            }
-            if ($ahStatus !== 'approved') {
-                setError("Access Denied: Requisitions exceeding ৳10,000 must be verified & approved by Accounts Head (Role 30) before Management can approve.");
-                header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
-                exit;
-            }
-        }
-
-        if (in_array($roleId, [1, 3, 20, 32])) {
+        if ($isManagement || in_array($roleId, [20, 32])) {
             $effectiveMax = (float)$frData['amount'];
         } else {
             $effectiveMax = ($frData['qc_approved_amount'] !== null && (float)$frData['qc_approved_amount'] > 0)
@@ -1366,14 +1410,42 @@ class FundRequisitionController extends Controller {
                 error_log("FR approval log error: " . $t->getMessage());
             }
 
-            $this->syncApprovalRequest($id);
-            if (in_array($status, ['approved', 'partially_approved'])) {
-                $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = COALESCE(op_head_by, {$approved_by}), op_head_at = COALESCE(op_head_at, NOW()) WHERE source_table = 'fund_requisitions' AND source_id = {$id}");
+            if (in_array($status, ['approved', 'partially_approved']) && $isManagement) {
+                $escBypassNote = $this->db->real_escape_string(($approval_note ?: 'Approved by Management') . ' (Management Override)');
+                $this->db->query("
+                    UPDATE fund_requisitions
+                    SET dept_head_status = IF(dept_head_status = 'pending', 'approved', dept_head_status),
+                        dept_head_approved_by = IF(dept_head_status = 'pending' OR (dept_head_status = 'approved' AND dept_head_approved_by IS NULL), {$approved_by}, dept_head_approved_by),
+                        dept_head_approved_at = IF(dept_head_status = 'pending' OR (dept_head_status = 'approved' AND dept_head_approved_at IS NULL), NOW(), dept_head_approved_at),
+                        dept_head_approval_note = IF(dept_head_status = 'pending' OR (dept_head_status = 'approved' AND (dept_head_approval_note IS NULL OR dept_head_approval_note = '')), '{$escBypassNote}', dept_head_approval_note),
+                        qc_approved_by = COALESCE(qc_approved_by, {$approved_by}),
+                        qc_approved_at = COALESCE(qc_approved_at, NOW()),
+                        qc_approved_amount = COALESCE(NULLIF(qc_approved_amount, 0), {$cumulative_approved_amount}),
+                        qc_approval_note = COALESCE(NULLIF(qc_approval_note, ''), '{$escBypassNote}')
+                    WHERE id = {$id}
+                ");
             }
 
-            // Additional tranche approved by Management (remaining balance) -> Accounts Head must verify the new amount again
-            if ($status !== 'rejected' && $posted_amount > 0 && (float)($frData['approved_amount'] ?? 0) > 0) {
-                $this->db->query("UPDATE approval_requests SET accounts_head_status = 'pending' WHERE source_table = 'fund_requisitions' AND source_id = {$id} AND accounts_head_status = 'approved'");
+            $this->syncApprovalRequest($id);
+            if (in_array($status, ['approved', 'partially_approved'])) {
+                $escBypassNote = $this->db->real_escape_string(($approval_note ?: 'Approved by Management') . ' (Management Override)');
+                if ($isManagement) {
+                    $this->db->query("
+                        UPDATE approval_requests
+                        SET op_head_status = 'approved',
+                            op_head_by = COALESCE(op_head_by, {$approved_by}),
+                            op_head_at = COALESCE(op_head_at, NOW()),
+                            op_head_note = COALESCE(NULLIF(op_head_note, ''), '{$escBypassNote}'),
+                            accounts_head_status = 'approved',
+                            accounts_head_by = COALESCE(accounts_head_by, {$approved_by}),
+                            accounts_head_at = COALESCE(accounts_head_at, NOW()),
+                            accounts_head_note = COALESCE(NULLIF(accounts_head_note, ''), '{$escBypassNote}'),
+                            approve_role = IF('{$status}' = 'approved', 'accounts', approve_role)
+                        WHERE source_table = 'fund_requisitions' AND source_id = {$id}
+                    ");
+                } else {
+                    $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = COALESCE(op_head_by, {$approved_by}), op_head_at = COALESCE(op_head_at, NOW()) WHERE source_table = 'fund_requisitions' AND source_id = {$id}");
+                }
             }
 
             // ====== AUTO POSTING JOURNAL ENTRY (Batch 2/3) ======
@@ -1454,7 +1526,9 @@ class FundRequisitionController extends Controller {
 
     public function pay() {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        if (!in_array($roleId, [1, 6, 30])) {
+        $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $isAllowedToPay = in_array($roleId, [1, 3, 6, 30, 38]) || strpos($roleName, 'account') !== false || in_array($roleName, ['super admin', 'admin', 'management', 'board of director', 'board of directors'], true) || strpos($roleName, 'director') !== false || strpos($roleName, 'dceo') !== false;
+        if (!$isAllowedToPay) {
             setError('Only Accounts or Admins can pay requisitions.');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
             exit;

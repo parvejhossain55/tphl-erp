@@ -635,35 +635,52 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                         <?php endif; ?>
                     </div>
                     <?php endif; ?>
-                    <?php if ($isOpHeadApproved): ?>
                     <div class="pb-3 mb-3 border-bottom lh-base">
-                        <small class="text-muted d-block mb-1">Operation Head Approved By</small>
-                        <div class="d-flex align-items-center flex-wrap gap-1">
-                            <strong class="text-dark"><?= htmlspecialchars($ahInfo['op_head_name'] ?? 'Admin & Operation Head') ?></strong>
-                            <?php if (!empty($ahInfo['op_head_designation'])): ?>
-                                <span class="badge bg-light text-secondary border extra-small d-inline-block"><?= htmlspecialchars($ahInfo['op_head_designation']) ?></span>
+                        <small class="text-muted d-block mb-1">Admin &amp; Operation Head Approval</small>
+                        <?php if ($isOpHeadApproved): ?>
+                            <div class="d-flex align-items-center flex-wrap gap-1">
+                                <span class="badge bg-success-subtle text-success border border-success-subtle extra-small"><i class="bi bi-check-circle me-1"></i>Approved</span>
+                                <strong class="text-dark"><?= htmlspecialchars($ahInfo['op_head_name'] ?? 'Admin & Operation Head') ?></strong>
+                                <?php if (!empty($ahInfo['op_head_designation'])): ?>
+                                    <span class="badge bg-light text-secondary border extra-small d-inline-block"><?= htmlspecialchars($ahInfo['op_head_designation']) ?></span>
+                                <?php endif; ?>
+                            </div>
+                            <?php if (!empty($ahInfo['op_head_at'])): ?>
+                                <small class="text-muted d-block mt-0.5"><?= date('d M Y h:i A', strtotime($ahInfo['op_head_at'])) ?></small>
                             <?php endif; ?>
-                        </div>
-                        <?php if (!empty($ahInfo['op_head_at'])): ?>
-                            <small class="text-muted d-block mt-0.5"><?= date('d M Y h:i A', strtotime($ahInfo['op_head_at'])) ?></small>
-                        <?php endif; ?>
-                        <?php if (!empty($ahInfo['op_head_note'])): ?>
-                            <small class="text-success d-block fst-italic mt-1">"<?= htmlspecialchars($ahInfo['op_head_note']) ?>"</small>
+                            <?php if (!empty($ahInfo['op_head_note'])): ?>
+                                <small class="text-success d-block fst-italic mt-1">"<?= htmlspecialchars($ahInfo['op_head_note']) ?>"</small>
+                            <?php endif; ?>
+                        <?php elseif (strtolower($ahInfo['op_head_status'] ?? '') === 'rejected'): ?>
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle extra-small"><i class="bi bi-x-circle me-1"></i>Rejected</span>
+                            <strong class="text-dark ms-1"><?= htmlspecialchars($ahInfo['op_head_name'] ?? 'Admin & Operation Head') ?></strong>
+                            <?php if (!empty($ahInfo['op_head_note'])): ?>
+                                <small class="text-danger d-block fst-italic mt-1">"<?= htmlspecialchars($ahInfo['op_head_note']) ?>"</small>
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle extra-small"><i class="bi bi-clock me-1"></i>Pending Admin &amp; Operation Head</span>
                         <?php endif; ?>
                     </div>
-                    <?php endif; ?>
-                    <?php if ($isAccountsHeadApproved && !empty($ahInfo['accounts_head_name'])): ?>
                     <div class="pb-3 mb-3 border-bottom lh-base">
-                        <small class="text-muted d-block mb-1">Accounts Head Approved By</small>
-                        <strong class="text-dark"><?= htmlspecialchars($ahInfo['accounts_head_name']) ?></strong>
-                        <?php if (!empty($ahInfo['accounts_head_at'])): ?>
-                            <small class="text-muted d-block mt-0.5"><?= date('d M Y h:i A', strtotime($ahInfo['accounts_head_at'])) ?></small>
-                        <?php endif; ?>
-                        <?php if (!empty($ahInfo['accounts_head_note'])): ?>
-                            <small class="text-primary d-block fst-italic mt-1">"<?= htmlspecialchars($ahInfo['accounts_head_note']) ?>"</small>
+                        <small class="text-muted d-block mb-1">Accounts Head Approval</small>
+                        <?php if ($isAccountsHeadApproved): ?>
+                            <div class="d-flex align-items-center flex-wrap gap-1">
+                                <span class="badge bg-success-subtle text-success border border-success-subtle extra-small"><i class="bi bi-check-circle me-1"></i>Approved</span>
+                                <strong class="text-dark"><?= htmlspecialchars($ahInfo['approved_by_name'] ?? $ahInfo['accounts_head_name'] ?? $ahInfo['designated_name'] ?? 'Accounts Head') ?></strong>
+                            </div>
+                            <?php if (!empty($ahInfo['approved_at']) || !empty($ahInfo['accounts_head_at'])): ?>
+                                <small class="text-muted d-block mt-0.5"><?= date('d M Y h:i A', strtotime($ahInfo['approved_at'] ?? $ahInfo['accounts_head_at'])) ?></small>
+                            <?php endif; ?>
+                            <?php if (!empty($ahInfo['approval_note']) || !empty($ahInfo['accounts_head_note'])): ?>
+                                <small class="text-primary d-block fst-italic mt-1">"<?= htmlspecialchars($ahInfo['approval_note'] ?? $ahInfo['accounts_head_note']) ?>"</small>
+                            <?php endif; ?>
+                        <?php elseif (!empty($ahInfo['is_accounts_head_rejected'])): ?>
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle extra-small"><i class="bi bi-x-circle me-1"></i>Rejected</span>
+                            <strong class="text-dark ms-1"><?= htmlspecialchars($ahInfo['approved_by_name'] ?? $ahInfo['designated_name'] ?? 'Accounts Head') ?></strong>
+                        <?php else: ?>
+                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle extra-small"><i class="bi bi-clock me-1"></i>Pending Accounts Head (<?= htmlspecialchars($ahInfo['designated_name'] ?? 'Role 30') ?>)</span>
                         <?php endif; ?>
                     </div>
-                    <?php endif; ?>
                     <?php if (!empty($bill['approved_by_name'])): ?>
                     <div class="pb-3 mb-3 border-bottom lh-base">
                         <small class="text-muted d-block mb-1">Final Approved By</small>
@@ -836,8 +853,9 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
             <?php 
                 $billAmt = (float)($bill['bill_amount'] ?? 0);
                 $isOver1Lac = ($billAmt > 10000);
-                $isOpHeadUser = (in_array((int)$userRole, [20, 32], true) || str_contains(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head'));
-                $isMgmtUser = in_array((int)$userRole, [1, 3], true);
+                $cbRoleNameLower = strtolower($_SESSION['user']['role_name'] ?? '');
+                $isOpHeadUser = (in_array((int)$userRole, [20, 32], true) || str_contains($cbRoleNameLower, 'operation head'));
+                $isMgmtUser = (in_array((int)$userRole, [1, 3, 38], true) || str_contains($cbRoleNameLower, 'director') || str_contains($cbRoleNameLower, 'dceo') || str_contains($cbRoleNameLower, 'management')) && !in_array((int)$userRole, [33, 34, 35], true);
                 $isOpHeadApproved = !empty($ahInfo['is_op_head_approved']);
                 $isAhApproved = !empty($ahInfo['is_accounts_head_approved']);
 

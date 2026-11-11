@@ -388,15 +388,16 @@ class AssetManagementController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $userId = (int)($_SESSION['user']['id'] ?? 0);
 
-        $isChiefOfficer = (in_array($roleId, [33, 34, 35], true) || in_array(strtolower(trim($_SESSION['user']['role_name'] ?? '')), ['chief officer', 'management viewer', 'seal ceo'], true));
-        $isSuperAdmin   = in_array($roleId, [1, 3]) && !$isChiefOfficer; // Admin (1) and super Admin (3) ONLY. Role 2 is Employee!
-        $isOperations   = ($isSuperAdmin || in_array((int)$roleId, [20, 32], true)) && !$isChiefOfficer;
-        $isOpHead       = in_array((int)$roleId, [20, 32], true);
+        $roleNameLower  = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $isChiefOfficer = (in_array($roleId, [33, 34, 35], true) || in_array($roleNameLower, ['chief officer', 'management viewer', 'seal ceo'], true));
+        $isSuperAdmin   = (in_array($roleId, [1, 3, 38], true) || in_array($roleNameLower, ['super admin', 'admin', 'management', 'board of director', 'board of directors'], true) || strpos($roleNameLower, 'director') !== false || strpos($roleNameLower, 'dceo') !== false) && !$isChiefOfficer; // Admin (1), Super Admin (3), Board/DCEO (38)
+        $isOperations   = ($isSuperAdmin || in_array((int)$roleId, [20, 32], true) || strpos($roleNameLower, 'operation head') !== false || strpos($roleNameLower, 'admin & operation') !== false) && !$isChiefOfficer;
+        $isOpHead       = (in_array((int)$roleId, [20, 32], true) || strpos($roleNameLower, 'operation head') !== false || strpos($roleNameLower, 'admin & operation') !== false) && !$isChiefOfficer;
         $isPurchaseHead = ($isSuperAdmin || in_array($roleId, [17, 31])) && !$isChiefOfficer;
         $isQcAudit      = ($isSuperAdmin || in_array($roleId, [24, 25])) && !$isChiefOfficer;
         $isManagement   = $isSuperAdmin && !$isChiefOfficer;
-        $isAccounts     = ($isSuperAdmin || in_array($roleId, [6, 30])) && !$isChiefOfficer;
-        $isGlobalViewer = in_array($roleId, [1, 3, 33, 34, 35, 6, 17, 20, 24, 25, 30, 31, 32]);
+        $isAccounts     = ($isSuperAdmin || in_array($roleId, [6, 30]) || strpos($roleNameLower, 'account') !== false) && !$isChiefOfficer;
+        $isGlobalViewer = in_array($roleId, [1, 3, 38, 33, 34, 35, 6, 17, 20, 24, 25, 30, 31, 32]);
         $isApprover     = ($isGlobalViewer || $userId === 242) && !$isChiefOfficer;
 
         $activeTab  = $_GET['tab'] ?? ($isApprover ? 'pending_approval' : 'all_requests');
@@ -512,25 +513,29 @@ class AssetManagementController extends Controller
                     } elseif ($isQcAudit && $autoOpenRequest['purchase_head_status'] === 'approved' && $autoOpenRequest['qc_audit_status'] === 'pending') {
                         $canApprove = true; $step = 'qc_audit';
                     } elseif ($autoOpenRequest['qc_audit_status'] === 'approved' && $autoOpenRequest['mgmt_status'] === 'pending') {
+                        $isAhApprovedAuto = (empty($autoOpenRequest['approval_request_id']) || strtolower($autoOpenRequest['accounts_head_status'] ?? '') === 'approved');
                         if ($isOver1Lac) {
                             if (!$isOpHeadApproved) {
-                                if ($isOpHeadUser) {
+                                if ($isOpHeadUser || $isManagement) {
                                     $canApprove = true; $step = 'mgmt';
                                 }
-                            } else {
-                                if ($isManagement) {
-                                    $canApprove = true; $step = 'mgmt';
-                                }
+                            } elseif ($isAhApprovedAuto && $isManagement) {
+                                $canApprove = true; $step = 'mgmt';
                             }
                         } else {
-                            if ($isManagement || $isOpHeadUser) {
+                            if (!$isOpHeadApproved && ($isOpHeadUser || $isManagement)) {
                                 $canApprove = true; $step = 'mgmt';
                             }
                         }
                     }
                 }
+                $isAhApprovedAuto = (empty($autoOpenRequest['approval_request_id']) || strtolower($autoOpenRequest['accounts_head_status'] ?? '') === 'approved');
+                $isOpHeadPostQcAuto = $isOpHeadApproved || (!$isOver1Lac && ($autoOpenRequest['mgmt_status'] ?? '') === 'approved');
                 $autoOpenRequest['can_approve'] = $canApprove;
                 $autoOpenRequest['approval_step'] = $step;
+                $autoOpenRequest['can_approve_ah'] = (in_array((int)$roleId, [30, 1, 3, 38], true) || strpos($roleNameLower, 'accounts head') !== false) && ($autoOpenRequest['qc_audit_status'] ?? '') === 'approved' && $isOpHeadPostQcAuto && ($autoOpenRequest['payment_status'] ?? '') === 'unpaid' && !$isAhApprovedAuto && !empty($autoOpenRequest['approval_request_id']);
+                $autoOpenRequest['can_pay'] = !empty($isAccounts) && (($autoOpenRequest['mgmt_status'] ?? '') === 'approved' || ($autoOpenRequest['overall_status'] ?? '') === 'approved') && ($autoOpenRequest['payment_status'] ?? '') === 'unpaid' && $isAhApprovedAuto;
+                $autoOpenRequest['is_waiting_ah'] = (($autoOpenRequest['qc_audit_status'] ?? '') === 'approved' && $isOpHeadPostQcAuto && ($autoOpenRequest['payment_status'] ?? '') === 'unpaid' && !$isAhApprovedAuto);
             }
         }
 
@@ -653,50 +658,53 @@ class AssetManagementController extends Controller
                 $step = 'mgmt';
             }
 
-            // Guard: If trying to approve while earlier steps are still pending
+            $reqTotal = (float)($req['total_price'] ?? 0);
+            $isOver1Lac = ($reqTotal > 10000);
+            $roleNameLc = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+            $isOpHeadUser = (in_array((int)$roleId, [20, 32], true) || strpos($roleNameLc, 'operation head') !== false || strpos($roleNameLc, 'admin & operation') !== false);
+            $isMgmtUser = in_array((int)$roleId, [1, 3, 38], true) || in_array($roleNameLc, ['super admin', 'admin', 'management', 'board of director', 'board of directors'], true) || strpos($roleNameLc, 'director') !== false || strpos($roleNameLc, 'dceo') !== false;
+            $isRole20Eligible = ($isOpHeadUser && ($reqTotal <= 10000 || $step === 'mgmt'));
+
+            // Guard: If non-Management user is trying to approve while earlier steps are still pending
             $dhStatus = $req['dept_head_status'] ?? 'not_required';
             $itStatus = $req['it_head_status'] ?? 'not_required';
-            
-            if ($step === 'it_head' && $dhStatus === 'pending') {
-                setError("This request is currently pending Department Head approval.");
-                header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
-                exit;
-            }
-            if ($step === 'operations' && $dhStatus === 'pending') {
-                setError("This request is currently pending Department Head approval.");
-                header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
-                exit;
-            }
-            if ($step === 'operations' && $itStatus === 'pending') {
-                setError("This request is currently pending IT Head approval.");
-                header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
-                exit;
-            }
-            if ($step === 'purchase_head' && ($req['operations_status'] ?? 'pending') !== 'approved') {
-                setError("This request is currently pending Operations approval.");
-                header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
-                exit;
-            }
-            if ($step === 'qc_audit' && ($req['purchase_head_status'] ?? 'pending') !== 'approved') {
-                setError("This request is currently pending Purchase Head approval.");
-                header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
-                exit;
-            }
-            if ($step === 'mgmt' && ($req['qc_audit_status'] ?? 'pending') !== 'approved') {
-                setError("This request is currently pending QC & Audit approval.");
-                header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
-                exit;
+            if (!$isMgmtUser) {
+                if ($step === 'it_head' && $dhStatus === 'pending') {
+                    setError("This request is currently pending Department Head approval.");
+                    header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                    exit;
+                }
+                if ($step === 'operations' && $dhStatus === 'pending') {
+                    setError("This request is currently pending Department Head approval.");
+                    header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                    exit;
+                }
+                if ($step === 'operations' && $itStatus === 'pending') {
+                    setError("This request is currently pending IT Head approval.");
+                    header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                    exit;
+                }
+                if ($step === 'purchase_head' && ($req['operations_status'] ?? 'pending') !== 'approved') {
+                    setError("This request is currently pending Operations approval.");
+                    header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                    exit;
+                }
+                if ($step === 'qc_audit' && ($req['purchase_head_status'] ?? 'pending') !== 'approved') {
+                    setError("This request is currently pending Purchase Head approval.");
+                    header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                    exit;
+                }
+                if ($step === 'mgmt' && ($req['qc_audit_status'] ?? 'pending') !== 'approved') {
+                    setError("This request is currently pending QC & Audit approval.");
+                    header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                    exit;
+                }
             }
 
             // Role permission validation for step approval
             $canApproveStep = false;
-            $reqTotal = (float)($req['total_price'] ?? 0);
-            $isOver1Lac = ($reqTotal > 10000);
-            $isOpHeadUser = (in_array((int)$roleId, [20, 32], true) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head') !== false || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'admin & operation') !== false);
-            $isMgmtUser = in_array((int)$roleId, [1, 3], true);
-            $isRole20Eligible = ($isOpHeadUser && ($reqTotal <= 10000 || $step === 'mgmt'));
 
-            if (in_array($roleId, [1, 3])) {
+            if ($isMgmtUser) {
                 $canApproveStep = true;
             } else {
                 if ($step === 'dept_head') {
@@ -735,50 +743,67 @@ class AssetManagementController extends Controller
             $status = $_POST['approval_status'] ?? $_POST['status'] ?? 'approved';
             $note = $_POST['approval_note'] ?? $_POST['note'] ?? '';
 
-            // Handle > 10K flow for Management step
-            if ($step === 'mgmt' && $isOver1Lac) {
+            // When Management (DCEO / CEO / Director / Super Admin) approves at any stage, auto-fill all bypassed stages with Management's identity and perform final approval
+            if ($isMgmtUser && $status === 'approved') {
+                $step = 'mgmt';
+                $escBypassNote = $this->db->real_escape_string(($note ?: 'Approved by Management') . ' (Management Override)');
+                $this->db->query("
+                    UPDATE project_extra_assets
+                    SET dept_head_status = IF(dept_head_status = 'pending', 'approved', dept_head_status),
+                        dept_head_by = IF(dept_head_status = 'pending' OR (dept_head_status = 'approved' AND dept_head_by IS NULL), {$userId}, dept_head_by),
+                        dept_head_at = IF(dept_head_status = 'pending' OR (dept_head_status = 'approved' AND dept_head_at IS NULL), NOW(), dept_head_at),
+                        dept_head_note = IF(dept_head_status = 'pending' OR (dept_head_status = 'approved' AND (dept_head_note IS NULL OR dept_head_note = '')), '{$escBypassNote}', dept_head_note),
+                        it_head_status = IF(it_head_status = 'pending', 'approved', it_head_status),
+                        it_head_by = IF(it_head_status = 'pending' OR (it_head_status = 'approved' AND it_head_by IS NULL), {$userId}, it_head_by),
+                        it_head_at = IF(it_head_status = 'pending' OR (it_head_status = 'approved' AND it_head_at IS NULL), NOW(), it_head_at),
+                        it_head_note = IF(it_head_status = 'pending' OR (it_head_status = 'approved' AND (it_head_note IS NULL OR it_head_note = '')), '{$escBypassNote}', it_head_note),
+                        operations_status = 'approved',
+                        operations_by = COALESCE(operations_by, {$userId}),
+                        operations_at = COALESCE(operations_at, NOW()),
+                        operations_note = COALESCE(NULLIF(operations_note, ''), '{$escBypassNote}'),
+                        purchase_head_status = 'approved',
+                        purchase_head_by = COALESCE(purchase_head_by, {$userId}),
+                        purchase_head_at = COALESCE(purchase_head_at, NOW()),
+                        purchase_head_note = COALESCE(NULLIF(purchase_head_note, ''), '{$escBypassNote}'),
+                        qc_audit_status = 'approved',
+                        qc_audit_by = COALESCE(qc_audit_by, {$userId}),
+                        qc_audit_at = COALESCE(qc_audit_at, NOW()),
+                        qc_audit_note = COALESCE(NULLIF(qc_audit_note, ''), '{$escBypassNote}')
+                    WHERE id = {$id}
+                ");
+            }
+
+            // Handle Post-QC flow for Operation Head (Role 20/32)
+            if ($step === 'mgmt' && !$isMgmtUser && $isOpHeadUser) {
+                if (!class_exists('ApprovalRequest')) {
+                    require_once dirname(dirname(__DIR__)) . '/models/ApprovalRequest.php';
+                }
+                $approvalModel = new \ApprovalRequest($this->db);
+                $approvalModel->syncMissingOfficeProcurements();
+
                 $arCheck = $this->db->query("SELECT id, op_head_status, accounts_head_status FROM approval_requests WHERE source_table IN ('project_extra_assets', 'purchase_requests') AND source_id = {$id} ORDER BY id DESC LIMIT 1");
                 $arRow = $arCheck ? $arCheck->fetch_assoc() : null;
-                $opHeadStatus = strtolower($arRow['op_head_status'] ?? 'pending');
-                $ahStatus = strtolower($arRow['accounts_head_status'] ?? 'pending');
+                $arId = (int)($arRow['id'] ?? 0);
+                $escNote = $this->db->real_escape_string($note);
 
-                if ($isOpHeadUser && !$isMgmtUser) {
-                    // Role 20 is approving Op Head Step 1 for > 10K
-                    $arId = (int)($arRow['id'] ?? 0);
-                    $escNote = $this->db->real_escape_string($note);
-
-                    if ($status === 'approved') {
-                        if (!class_exists('ApprovalRequest')) {
-                            require_once dirname(dirname(__DIR__)) . '/models/ApprovalRequest.php';
-                        }
-                        $approvalModel = new \ApprovalRequest($this->db);
-                        if ($arId > 0) {
-                            $approvalModel->approveOperationHead($arId, $userId, $note);
-                        } else {
-                            $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$userId}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'accounts_head' WHERE source_table IN ('project_extra_assets', 'purchase_requests') AND source_id = {$id}");
-                        }
-                        setSuccess("Request verified & approved by Admin & Operation Head (Role 20). Forwarded to Accounts Head (Role 30) for payment verification.");
+                if ($status === 'approved') {
+                    if ($arId > 0) {
+                        $approvalModel->approveOperationHead($arId, $userId, $note);
                     } else {
-                        $this->db->query("UPDATE approval_requests SET op_head_status = 'rejected', op_head_by = {$userId}, op_head_at = NOW(), op_head_note = '{$escNote}', status = 'rejected', approve_role = 'rejected' WHERE source_table IN ('project_extra_assets', 'purchase_requests') AND source_id = {$id}");
-                        $this->model->approveStep($id, 'mgmt', 'rejected', $userId, $note);
-                        setSuccess("Request rejected by Admin & Operation Head.");
+                        $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$userId}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'accounts_head' WHERE source_table IN ('project_extra_assets', 'purchase_requests') AND source_id = {$id}");
                     }
-                    header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
-                    exit;
+                    // For <= 10,000, also mark mgmt_status = approved so once Accounts Head approves, payment unlocks
+                    if (!$isOver1Lac) {
+                        $this->model->approveStep($id, 'mgmt', 'approved', $userId, $note);
+                    }
+                    setSuccess("Request verified & approved by Admin & Operation Head (Role 20). Forwarded to Accounts Head (Role 30) for payment verification.");
+                } else {
+                    $this->db->query("UPDATE approval_requests SET op_head_status = 'rejected', op_head_by = {$userId}, op_head_at = NOW(), op_head_note = '{$escNote}', status = 'rejected', approve_role = 'rejected' WHERE source_table IN ('project_extra_assets', 'purchase_requests') AND source_id = {$id}");
+                    $this->model->approveStep($id, 'mgmt', 'rejected', $userId, $note);
+                    setSuccess("Request rejected by Admin & Operation Head.");
                 }
-
-                if ($isMgmtUser) {
-                    if ($opHeadStatus !== 'approved') {
-                        setError("Access Denied: Requests exceeding ৳10,000 must be approved by Admin & Operation Head (Role 20) first.");
-                        header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
-                        exit;
-                    }
-                    if ($ahStatus !== 'approved') {
-                        setError("Access Denied: Requests exceeding ৳10,000 must be verified & approved by Accounts Head (Role 30) before Management can approve.");
-                        header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
-                        exit;
-                    }
-                }
+                header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                exit;
             }
 
             $document = null;
@@ -893,7 +918,27 @@ class AssetManagementController extends Controller
                     $appModel = new \ApprovalRequest($this->db);
                     $appModel->syncMissingOfficeProcurements();
                     if ($step === 'mgmt' && $status === 'approved') {
-                        $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = COALESCE(op_head_by, {$userId}), op_head_at = COALESCE(op_head_at, NOW()) WHERE source_table IN ('project_extra_assets', 'purchase_requests') AND source_id = {$id}");
+                        $escMgtNote = $this->db->real_escape_string(($note ?: 'Approved by Management') . ' (Management Override)');
+                        if ($isMgmtUser) {
+                            $this->db->query("
+                                UPDATE approval_requests
+                                SET status = 'approved',
+                                    approve_role = 'accounts',
+                                    approved_by = {$userId},
+                                    approved_at = NOW(),
+                                    op_head_status = 'approved',
+                                    op_head_by = COALESCE(op_head_by, {$userId}),
+                                    op_head_at = COALESCE(op_head_at, NOW()),
+                                    op_head_note = COALESCE(NULLIF(op_head_note, ''), '{$escMgtNote}'),
+                                    accounts_head_status = 'approved',
+                                    accounts_head_by = COALESCE(accounts_head_by, {$userId}),
+                                    accounts_head_at = COALESCE(accounts_head_at, NOW()),
+                                    accounts_head_note = COALESCE(NULLIF(accounts_head_note, ''), '{$escMgtNote}')
+                                WHERE source_table IN ('project_extra_assets', 'purchase_requests') AND source_id = {$id}
+                            ");
+                        } else {
+                            $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = COALESCE(op_head_by, {$userId}), op_head_at = COALESCE(op_head_at, NOW()) WHERE source_table IN ('project_extra_assets', 'purchase_requests') AND source_id = {$id}");
+                        }
                     }
                 } catch (\Throwable $e) {
                     error_log("Failed syncing approval_requests on extra purchase approval: " . $e->getMessage());
