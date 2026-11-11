@@ -145,7 +145,28 @@ $show_breadcrumb = true;
                                     <?= $lead['project_name'] ?>
                                 </td>
                                 <td>
-                                    <?= htmlspecialchars($lead['sales_agent_display'] ?? 'N/A') ?>
+                                    <div class="fw-semibold text-dark"><?= htmlspecialchars($lead['sales_agent_display'] ?? 'N/A') ?></div>
+                                    <div class="mt-1 d-flex flex-wrap gap-1 align-items-center">
+                                        <?php if (!empty($lead['sale_team_name'])): ?>
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 10px;" title="Team at the time of booking">
+                                                <i class="bi bi-people-fill me-1"></i><?= htmlspecialchars($lead['sale_team_name']) ?>
+                                            </span>
+                                        <?php endif; ?>
+                                        <?php 
+                                        $saleTid = !empty($lead['sale_team_id']) ? (int)$lead['sale_team_id'] : 0;
+                                        $currTid = !empty($lead['current_team_id']) ? (int)$lead['current_team_id'] : 0;
+                                        $isResigned = in_array(strtolower($lead['sales_employee_status'] ?? ''), ['resigned', 'terminated']);
+                                        ?>
+                                        <?php if ($saleTid > 0 && $currTid > 0 && $saleTid !== $currTid): ?>
+                                            <span class="badge bg-warning-subtle text-dark border border-warning" style="font-size: 10px;" title="Switched team: currently in <?= htmlspecialchars($lead['current_team_name'] ?? '') ?>">
+                                                <i class="bi bi-arrow-right me-0.5"></i>Now: <?= htmlspecialchars($lead['current_team_name'] ?? 'Other Team') ?>
+                                            </span>
+                                        <?php elseif ($isResigned): ?>
+                                            <span class="badge bg-secondary-subtle text-muted border" style="font-size: 10px;" title="Salesperson has resigned/left">
+                                                <i class="bi bi-person-x me-1"></i>Resigned
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
                                 </td>
                                 <td>
                                     <?= $lead['flat_name'] ?> - <span><?= !empty($lead['sqft']) ? format_sqft($lead['sqft']) : '-' ?></span>
@@ -261,7 +282,28 @@ $show_breadcrumb = true;
             <!-- Project & Flat & Sales Agent -->
             <div class="d-flex flex-column gap-1 mb-2">
                 <span class="text-truncate"><i class="bi bi-building me-1"></i> <?= $lead['project_name'] ?? '-' ?></span>
-                <span class="text-truncate"><i class="bi bi-person me-1"></i> Sales Executive: <?= htmlspecialchars($lead['sales_agent_display'] ?? 'N/A') ?></span>
+                <div class="d-flex flex-wrap gap-1 align-items-center">
+                    <span class="text-truncate"><i class="bi bi-person me-1"></i> Sales: <?= htmlspecialchars($lead['sales_agent_display'] ?? 'N/A') ?></span>
+                    <?php if (!empty($lead['sale_team_name'])): ?>
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle py-0.5 px-1.5" style="font-size: 9px;" title="Team at sale time">
+                            <i class="bi bi-people-fill me-0.5"></i><?= htmlspecialchars($lead['sale_team_name']) ?>
+                        </span>
+                    <?php endif; ?>
+                    <?php 
+                    $mSaleTid = !empty($lead['sale_team_id']) ? (int)$lead['sale_team_id'] : 0;
+                    $mCurrTid = !empty($lead['current_team_id']) ? (int)$lead['current_team_id'] : 0;
+                    $mIsResigned = in_array(strtolower($lead['sales_employee_status'] ?? ''), ['resigned', 'terminated']);
+                    ?>
+                    <?php if ($mSaleTid > 0 && $mCurrTid > 0 && $mSaleTid !== $mCurrTid): ?>
+                        <span class="badge bg-warning-subtle text-dark border border-warning py-0.5 px-1.5" style="font-size: 9px;" title="Switched team: currently in <?= htmlspecialchars($lead['current_team_name'] ?? '') ?>">
+                            <i class="bi bi-arrow-right me-0.5"></i>Now: <?= htmlspecialchars($lead['current_team_name'] ?? 'Other Team') ?>
+                        </span>
+                    <?php elseif ($mIsResigned): ?>
+                        <span class="badge bg-secondary-subtle text-muted border py-0.5 px-1.5" style="font-size: 9px;">
+                            <i class="bi bi-person-x me-0.5"></i>Resigned
+                        </span>
+                    <?php endif; ?>
+                </div>
                 <span class="text-truncate"><i class="bi bi-house me-1"></i> <?= $lead['flat_name'] ?? '-' ?> - <?= !empty($lead['sqft']) ? format_sqft($lead['sqft']) : '' ?></span>
             </div>
 

@@ -1088,6 +1088,27 @@ $activeCard = $_GET['filter_card'] ?? '';
                                         <i class="bi bi-person me-1"></i>
                                         <?= htmlspecialchars($lead['agent_name']) ?>
                                     </span>
+                                    <?php if (!empty($lead['booking_team_name'])): ?>
+                                        <div class="mt-1 d-flex flex-wrap gap-1 align-items-center">
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle py-0.5 px-1.5" style="font-size: 9px;" title="Booked under team">
+                                                <i class="bi bi-people-fill me-0.5"></i>Sale: <?= htmlspecialchars($lead['booking_team_name']) ?>
+                                            </span>
+                                            <?php 
+                                            $bTid = !empty($lead['booking_team_id']) ? (int)$lead['booking_team_id'] : 0;
+                                            $bCurrTid = !empty($lead['booking_sales_current_team_id']) ? (int)$lead['booking_sales_current_team_id'] : 0;
+                                            $bResigned = in_array(strtolower($lead['booking_sales_status'] ?? ''), ['resigned', 'terminated']);
+                                            ?>
+                                            <?php if ($bTid > 0 && $bCurrTid > 0 && $bTid !== $bCurrTid && !empty($lead['booking_sales_current_team_name'])): ?>
+                                                <span class="badge bg-warning-subtle text-dark border border-warning py-0.5 px-1.5" style="font-size: 9px;" title="Currently in another team">
+                                                    <i class="bi bi-arrow-right me-0.5"></i>Now: <?= htmlspecialchars($lead['booking_sales_current_team_name']) ?>
+                                                </span>
+                                            <?php elseif ($bResigned): ?>
+                                                <span class="badge bg-secondary-subtle text-muted border py-0.5 px-1.5" style="font-size: 9px;">
+                                                    <i class="bi bi-person-x me-0.5"></i>Resigned
+                                                </span>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endif; ?>
                                     <?php
                                     $assignedRaw = (!empty($lead['assigned_at']) && $lead['assigned_at'] !== '0000-00-00 00:00:00' && $lead['assigned_at'] !== '0000-00-00')
                                         ? $lead['assigned_at']
@@ -2528,10 +2549,25 @@ document.addEventListener('DOMContentLoaded', function () {
         if (lead.agent_name) {
             const agentNameClean = lead.agent_name.replace(/</g,'&lt;').replace(/>/g,'&gt;');
             const assignedAtStr = lead.assigned_at_formatted || (lead.assigned_at ? new Date(lead.assigned_at).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) : '');
+            let bookingTeamBadge = '';
+            if (lead.booking_team_name) {
+                const bTName = lead.booking_team_name.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                const bCurrName = (lead.booking_sales_current_team_name || '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                const hasSwitched = lead.booking_team_id && lead.booking_sales_current_team_id && String(lead.booking_team_id) !== String(lead.booking_sales_current_team_id) && bCurrName;
+                const isResigned = lead.booking_sales_status === 'resigned' || lead.booking_sales_status === 'terminated';
+                bookingTeamBadge = `
+                    <div class="mt-1 d-flex flex-wrap gap-1 align-items-center">
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle py-0.5 px-1.5" style="font-size:9px;" title="Booked under team"><i class="bi bi-people-fill me-0.5"></i>Sale: ${bTName}</span>
+                        ${hasSwitched ? `<span class="badge bg-warning-subtle text-dark border border-warning py-0.5 px-1.5" style="font-size:9px;" title="Currently in another team"><i class="bi bi-arrow-right me-0.5"></i>Now: ${bCurrName}</span>` : ''}
+                        ${isResigned ? `<span class="badge bg-secondary-subtle text-muted border py-0.5 px-1.5" style="font-size:9px;"><i class="bi bi-person-x me-0.5"></i>Resigned</span>` : ''}
+                    </div>
+                `;
+            }
             agentBadge = `<div>
                 <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1" style="font-size:.75rem;">
                     <i class="bi bi-person me-1"></i>${agentNameClean}
                 </span>
+                ${bookingTeamBadge}
                 ${assignedAtStr ? `<div class="text-muted" style="font-size:11px; margin-top:3px;"><i class="bi bi-calendar-event me-1"></i>Assigned Date: ${assignedAtStr}</div>` : ''}
             </div>`;
         } else {

@@ -46,20 +46,20 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         return $result->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function getAllBooking($year = null, $month = null, $project_id = null)
+    public function getAllBooking($year = null, $month = null, $project_id = null, $teamId = null)
     {
-        return $this->getAllOnboardClientBooking($year, $month, $project_id);
+        return $this->getAllOnboardClientBooking($year, $month, $project_id, $teamId);
     }
 
-    public function getAllBookings($year = null, $month = null, $project_id = null)
+    public function getAllBookings($year = null, $month = null, $project_id = null, $teamId = null)
     {
-        return $this->getAllOnboardClientBooking($year, $month, $project_id);
+        return $this->getAllOnboardClientBooking($year, $month, $project_id, $teamId);
     }
 
 
 
 
-    public function getAllOnboardClientBooking($year = null, $month = null, $project_id = null)
+    public function getAllOnboardClientBooking($year = null, $month = null, $project_id = null, $teamId = null)
     {
         $sql = "SELECT 
                 lb.*, 
@@ -77,14 +77,23 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                 IFNULL(lp_sum.booking_money, 0) AS booking_money,
                 IFNULL(lp_sum.registration_money, 0) AS registration_money,
                 IFNULL(lp_sum.amount, 0) AS amount,
-                COALESCE(u_sales.full_name, lb.sales_agent_old) AS sales_agent_display
+                COALESCE(u_sales.full_name, lb.sales_agent_old) AS sales_agent_display,
+                COALESCE(lb.team_id, l.team_id) AS sale_team_id,
+                t_sale.name AS sale_team_name,
+                t_sale.name AS team_name,
+                COALESCE(NULLIF(e_sales.team_id, 0), NULLIF(u_sales.team_id, 0)) AS current_team_id,
+                t_curr.name AS current_team_name,
+                e_sales.employee_status AS sales_employee_status
             FROM lead_bookings lb
             LEFT JOIN leads l ON lb.lead_id = l.id
             LEFT JOIN flats f ON lb.flat_id = f.id
             LEFT JOIN projects p ON f.project_id = p.id
             LEFT JOIN users u1 ON lb.created_by = u1.id
             LEFT JOIN users u_sales ON lb.sales_by_id = u_sales.id
-            INNER JOIN (
+            LEFT JOIN employees e_sales ON (e_sales.user_id = u_sales.id OR (u_sales.employee_id IS NOT NULL AND e_sales.id = u_sales.employee_id))
+            LEFT JOIN teams t_sale ON t_sale.id = COALESCE(lb.team_id, l.team_id)
+            LEFT JOIN teams t_curr ON t_curr.id = COALESCE(NULLIF(e_sales.team_id, 0), NULLIF(u_sales.team_id, 0))
+            LEFT JOIN (
                 SELECT 
                     booking_id,
                     MAX(payment_method) AS payment_method,
@@ -97,7 +106,11 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                 GROUP BY booking_id
             ) AS lp_sum ON lp_sum.booking_id = lb.id
             WHERE lb.deleted_at IS NULL
-             AND lb.booking_status IN ('booked', 'completed')
+              AND l.deleted_at IS NULL
+              AND lb.booking_status IN ('booked', 'completed')
+              AND lb.id NOT IN (
+                  SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded')
+              )
              ";
 
         $params = [];
@@ -119,6 +132,12 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             $sql .= " AND lb.project_id = ?";
             $params[] = (int)$project_id;
             $types   .= "i";
+        }
+
+        // Team filter (strictly scopes to the given team based on locked booking team_id or resolved team)
+        if (!empty($teamId)) {
+            $teamIdInt = (int)$teamId;
+            $sql .= " AND COALESCE(lb.team_id, l.team_id) = {$teamIdInt}";
         }
 
         $sql .= " ORDER BY lb.booking_date DESC, lb.id DESC";
@@ -369,12 +388,12 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
     {
         $sql = "INSERT INTO lead_bookings (
             lead_id, project_id, flat_id, agreement_value, discount_amount, 
-            booking_date, booking_status, created_by, sales_by_id, sales_agent_old, 
+            booking_date, booking_status, created_by, sales_by_id, team_id, sales_agent_old, 
             approval_status, approved_amount, service_fee_balance, landshare_status, 
             payment_status, attachment_image, uploaded_from
         ) VALUES (
             ?, ?, ?, ?, ?, 
-            ?, ?, ?, ?, ?, 
+            ?, ?, ?, ?, ?, ?, 
             ?, ?, ?, ?, 
             ?, ?, ?
         )";
@@ -387,16 +406,16 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         };
 
         $v_lead_id = $v('lead_id'); $v_project_id = $v('project_id'); $v_flat_id = $v('flat_id'); $v_agreement_value = $v('agreement_value'); $v_discount_amount = $v('discount_amount');
-        $v_booking_date = $v('booking_date'); $v_booking_status = $v('booking_status'); $v_created_by = $v('created_by'); $v_sales_by_id = $v('sales_by_id'); $v_sales_agent_old = $v('sales_agent_old');
+        $v_booking_date = $v('booking_date'); $v_booking_status = $v('booking_status'); $v_created_by = $v('created_by'); $v_sales_by_id = $v('sales_by_id'); $v_team_id = $v('team_id'); $v_sales_agent_old = $v('sales_agent_old');
         $v_approval_status = $v('approval_status'); $v_approved_amount = $v('approved_amount'); $v_service_fee_balance = $v('service_fee_balance'); $v_landshare_status = $v('landshare_status');
         $v_payment_status = $v('payment_status'); $v_attachment_image = $v('attachment_image');
         $v_uploaded_from = $data['uploaded_from'] ?? 'From Company csv';
 
-        $bindStr = str_repeat('s', 17);
+        $bindStr = str_repeat('s', 18);
         $stmt->bind_param(
             $bindStr,
             $v_lead_id, $v_project_id, $v_flat_id, $v_agreement_value, $v_discount_amount,
-            $v_booking_date, $v_booking_status, $v_created_by, $v_sales_by_id, $v_sales_agent_old,
+            $v_booking_date, $v_booking_status, $v_created_by, $v_sales_by_id, $v_team_id, $v_sales_agent_old,
             $v_approval_status, $v_approved_amount, $v_service_fee_balance, $v_landshare_status,
             $v_payment_status, $v_attachment_image, $v_uploaded_from
         );
@@ -437,6 +456,28 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         $pastApprovalAttachment = $data['past_approval_attachment'] ?? null;
         $approvedAmount = isset($data['approved_amount']) && $data['approved_amount'] !== '' ? (float)$data['approved_amount'] : null;
 
+        // Resolve team_id for this booking if not explicitly provided
+        $bookingTeamId = !empty($data['team_id']) ? (int)$data['team_id'] : null;
+        if (empty($bookingTeamId) && !empty($data['sales_by_id'])) {
+            $sId = (int)$data['sales_by_id'];
+            $tStmt = $this->db->query("
+                SELECT COALESCE(NULLIF(e.team_id, 0), NULLIF(u.team_id, 0)) AS resolved_tid
+                FROM users u
+                LEFT JOIN employees e ON (e.user_id = u.id OR (u.employee_id IS NOT NULL AND e.id = u.employee_id))
+                WHERE u.id = {$sId} LIMIT 1
+            ");
+            if ($tStmt && $tRow = $tStmt->fetch_assoc()) {
+                $bookingTeamId = !empty($tRow['resolved_tid']) ? (int)$tRow['resolved_tid'] : null;
+            }
+        }
+        if (empty($bookingTeamId) && !empty($data['lead_id'])) {
+            $lId = (int)$data['lead_id'];
+            $lStmt = $this->db->query("SELECT team_id FROM leads WHERE id = {$lId} LIMIT 1");
+            if ($lStmt && $lRow = $lStmt->fetch_assoc()) {
+                $bookingTeamId = !empty($lRow['team_id']) ? (int)$lRow['team_id'] : null;
+            }
+        }
+
         $sql = "
         INSERT INTO lead_bookings
         (
@@ -452,9 +493,10 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             approved_amount,
             past_approval_attachment,
             sales_by_id,
+            team_id,
             sales_agent_old
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ";
 
         $stmt = $this->db->prepare($sql);
@@ -464,7 +506,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
 
         // 4 Bind params
         $stmt->bind_param(
-            "iiiidssdsdsis",
+            "iiiidssdsdsiis",
             $data['lead_id'],         // 1: i
             $data['project_id'],      // 2: i
             $data['flat_id'],         // 3: i
@@ -477,7 +519,8 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             $approvedAmount,          // 10: d
             $pastApprovalAttachment,  // 11: s
             $data['sales_by_id'],     // 12: i
-            $salesAgentOld            // 13: s
+            $bookingTeamId,           // 13: i
+            $salesAgentOld            // 14: s
         );
 
         // 5 Execute
