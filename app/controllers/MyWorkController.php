@@ -624,7 +624,8 @@ class MyWorkController extends Controller
 
         $deadline = !empty($_POST['deadline']) ? $_POST['deadline'] : null;
         $priority = in_array($_POST['priority'] ?? '', ['low', 'medium', 'high', 'urgent'], true) ? $_POST['priority'] : 'medium';
-        // Expected output: one or many entries (description[]); several are stored as an HTML list
+        $expectedOutput = trim($_POST['expected_output'] ?? '');
+        // Acceptance checklist: one or many entries (description[]); several are stored as an HTML list
         $descItems = array_values(array_filter(array_map('trim', (array)($_POST['description'] ?? [])), 'strlen'));
         $description = count($descItems) > 1
             ? '<ul>' . implode('', array_map(fn($d) => '<li>' . htmlspecialchars($d) . '</li>', $descItems)) . '</ul>'
@@ -677,23 +678,38 @@ class MyWorkController extends Controller
             }
         }
 
+        $checklistData = null;
+        if (!empty($descItems)) {
+            $clArr = [];
+            foreach ($descItems as $idx => $item) {
+                $clArr[] = [
+                    'id' => $idx + 1,
+                    'text' => $item,
+                    'completed' => false
+                ];
+            }
+            $checklistData = json_encode($clArr, JSON_UNESCAPED_UNICODE);
+        }
+
         $stmt = $this->db->prepare("
             INSERT INTO tasks (
-                title, user_id, assigned_by, todo_project_id,
-                description, start_date, deadline, priority,
+                title, expected_output, user_id, assigned_by, todo_project_id,
+                description, checklist_data, start_date, deadline, priority,
                 status, progress, employee_accept, mentioned_user_ids,
                 cc_user_ids, attachment_image, project_id,
                 is_recurring, recurrence_type, recurrence_end_date, collaborator_user_ids, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, 0, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, 0, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
 
         $stmt->bind_param(
-            "siiisssssssiisss",
+            "ssiiissssssssiisss",
             $title,
+            $expectedOutput,
             $ownerId,
             $assignedById,
             $todoProjectId,
             $description,
+            $checklistData,
             $startDate,
             $deadline,
             $priority,
@@ -813,6 +829,40 @@ class MyWorkController extends Controller
         $blocked = !empty($t['remarks']) && stripos($t['remarks'], 'block') !== false;
         $base = $GLOBALS['base_url'] ?? '';
 
+        // Build structured checklist items from checklist_data or parse from description
+        $checklistItems = [];
+        $rawChecklist = $t['checklist_data'] ?? '';
+        if ($rawChecklist) {
+            $decoded = json_decode($rawChecklist, true);
+            if (is_array($decoded)) {
+                $checklistItems = $decoded;
+            }
+        }
+        if (empty($checklistItems)) {
+            // Fallback: parse <li> from description for tasks created before checklist_data column
+            $descRaw = (string)($t['description'] ?? '');
+            if (preg_match_all('/<li>(.*?)<\/li>/is', $descRaw, $matches)) {
+                foreach ($matches[1] as $idx => $m) {
+                    $itemText = trim(html_entity_decode(strip_tags($m)));
+                    if ($itemText !== '') {
+                        $checklistItems[] = [
+                            'id' => $idx + 1,
+                            'text' => $itemText,
+                            'completed' => ($t['status'] === 'completed')
+                        ];
+                    }
+                }
+            } elseif (trim(strip_tags($descRaw)) !== '') {
+                $checklistItems[] = [
+                    'id' => 1,
+                    'text' => trim(html_entity_decode(strip_tags($descRaw))),
+                    'completed' => ($t['status'] === 'completed')
+                ];
+            }
+        }
+
+        $canCheckChecklist = ((int)$t['user_id'] === $userId || in_array($userId, $collabIds, true) || (int)$t['assigned_by'] === $userId || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33], true));
+
         echo json_encode([
             'status' => 'success',
             'task' => [
@@ -823,7 +873,8 @@ class MyWorkController extends Controller
                 'status' => $t['status'],
                 'is_completed' => $isCompleted,
                 'is_reviewer' => in_array($userId, $reviewerIds, true),
-                'can_complete' => (!$isCompleted && ((int)$t['user_id'] === $userId || in_array($userId, $collabIds, true) || (int)$t['assigned_by'] === $userId || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33], true))),
+                'can_complete' => (!$isCompleted && $canCheckChecklist),
+                'can_check' => $canCheckChecklist,
                 'status_label' => $statusLabel,
                 'status_class' => $statusClass,
                 'priority' => ucfirst($t['priority'] ?? 'medium'),
@@ -834,7 +885,9 @@ class MyWorkController extends Controller
                 'reviewers' => $nameList($reviewerIds),
                 'collaborators' => $nameList($collabIds),
                 'cc' => $nameList($ccIds),
+                'expected_output' => $t['expected_output'] ?? '',
                 'description_html' => strip_tags((string)$t['description'], '<p><br><ul><ol><li><strong><b><em><i>'),
+                'checklist' => $checklistItems,
                 'remarks' => $t['remarks'],
                 'blocked' => $blocked,
                 'attachment_name' => $t['attachment_image'] ?: null,
@@ -913,6 +966,7 @@ class MyWorkController extends Controller
                 'is_recurring' => (int)($t['is_recurring'] ?? 0),
                 'recurrence_type' => $t['recurrence_type'] ?? '',
                 'recurrence_end_date' => $recurrenceEnd,
+                'expected_output' => $t['expected_output'] ?? '',
                 'descriptions' => $descItems,
                 'reviewer_id' => !empty($reviewerIds[0]) ? (int)$reviewerIds[0] : null,
                 'cc_ids' => $ccIds,
@@ -990,6 +1044,7 @@ class MyWorkController extends Controller
 
         $deadline = !empty($_POST['deadline']) ? $_POST['deadline'] : null;
         $priority = in_array($_POST['priority'] ?? '', ['low', 'medium', 'high', 'urgent'], true) ? $_POST['priority'] : 'medium';
+        $expectedOutput = trim($_POST['expected_output'] ?? '');
         $descItems = array_values(array_filter(array_map('trim', (array)($_POST['description'] ?? [])), 'strlen'));
         $description = count($descItems) > 1
             ? '<ul>' . implode('', array_map(fn($d) => '<li>' . htmlspecialchars($d) . '</li>', $descItems)) . '</ul>'
@@ -1040,11 +1095,37 @@ class MyWorkController extends Controller
             }
         }
 
+        // Reconcile checklist_data when updated
+        // Fetch existing checklist to preserve completed flags if item text matches
+        $existingCL = [];
+        $rawCL = $task['checklist_data'] ?? '';
+        if ($rawCL) {
+            $decoded = json_decode($rawCL, true);
+            if (is_array($decoded)) {
+                foreach ($decoded as $item) {
+                    if (isset($item['text'])) {
+                        $existingCL[trim($item['text'])] = !empty($item['completed']);
+                    }
+                }
+            }
+        }
+        $newCL = [];
+        foreach ($descItems as $idx => $item) {
+            $newCL[] = [
+                'id' => $idx + 1,
+                'text' => $item,
+                'completed' => !empty($existingCL[$item])
+            ];
+        }
+        $checklistData = !empty($newCL) ? json_encode($newCL, JSON_UNESCAPED_UNICODE) : null;
+
         $stmt = $this->db->prepare("
             UPDATE tasks SET
                 title = ?,
+                expected_output = ?,
                 user_id = ?,
                 description = ?,
+                checklist_data = ?,
                 start_date = ?,
                 deadline = ?,
                 priority = ?,
@@ -1061,10 +1142,12 @@ class MyWorkController extends Controller
         ");
 
         $stmt->bind_param(
-            "sisssssssiisssi",
+            "ssissssssssiisssi",
             $title,
+            $expectedOutput,
             $assignedToId,
             $description,
+            $checklistData,
             $startDate,
             $deadline,
             $priority,
@@ -1272,6 +1355,126 @@ class MyWorkController extends Controller
             }
         } else {
             echo json_encode(['status' => 'error', 'message' => 'Invalid review action.']);
+            exit;
+        }
+    }
+
+    /**
+     * Toggle acceptance checklist item state and auto-complete when 100% checked
+     */
+    public function toggleChecklist($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        header('Content-Type: application/json');
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $id = (int)$id;
+
+        if (!$userId) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        $st = $this->db->prepare("SELECT * FROM tasks WHERE id = ?");
+        $st->bind_param("i", $id);
+        $st->execute();
+        $task = $st->get_result()->fetch_assoc();
+
+        if (!$task) {
+            echo json_encode(['status' => 'error', 'message' => 'Task not found.']);
+            exit;
+        }
+
+        $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
+        $collabIds = $ids($task['collaborator_user_ids'] ?? '');
+
+        // Can toggle checklist if Assignee (user_id), Collaborator, Owner (assigned_by), or Admin
+        $canToggle = ((int)$task['user_id'] === $userId || in_array($userId, $collabIds, true) || (int)$task['assigned_by'] === $userId || in_array($roleId, [1, 3, 33], true));
+        if (!$canToggle) {
+            echo json_encode(['status' => 'error', 'message' => "Only the assignee or owner can check items."]);
+            exit;
+        }
+
+        $itemIndex = isset($_POST['index']) ? (int)$_POST['index'] : -1;
+        $completed = !empty($_POST['completed']);
+
+        // Load existing checklist items or reconstruct from description
+        $checklist = [];
+        $raw = $task['checklist_data'] ?? '';
+        if ($raw) {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded)) $checklist = $decoded;
+        }
+        if (empty($checklist)) {
+            $descRaw = (string)($task['description'] ?? '');
+            if (preg_match_all('/<li>(.*?)<\/li>/is', $descRaw, $matches)) {
+                foreach ($matches[1] as $idx => $m) {
+                    $itemText = trim(html_entity_decode(strip_tags($m)));
+                    if ($itemText !== '') {
+                        $checklist[] = [
+                            'id' => $idx + 1,
+                            'text' => $itemText,
+                            'completed' => false
+                        ];
+                    }
+                }
+            } elseif (trim(strip_tags($descRaw)) !== '') {
+                $checklist[] = [
+                    'id' => 1,
+                    'text' => trim(html_entity_decode(strip_tags($descRaw))),
+                    'completed' => false
+                ];
+            }
+        }
+
+        if ($itemIndex < 0 || !isset($checklist[$itemIndex])) {
+            echo json_encode(['status' => 'error', 'message' => 'Checklist item not found.']);
+            exit;
+        }
+
+        $checklist[$itemIndex]['completed'] = $completed;
+
+        // Calculate progress percentage
+        $totalItems = count($checklist);
+        $completedItems = 0;
+        foreach ($checklist as $ci) {
+            if (!empty($ci['completed'])) $completedItems++;
+        }
+
+        $allDone = ($totalItems > 0 && $completedItems === $totalItems);
+        $progress = $totalItems > 0 ? (int)round(($completedItems / $totalItems) * 100) : (int)($task['progress'] ?? 0);
+
+        // Status update logic: if all items are done, mark as completed (or ready for review)
+        $newStatus = $task['status'];
+        if ($allDone) {
+            $newStatus = 'completed';
+            $progress = 100;
+        } elseif ($task['status'] === 'completed' && !$allDone) {
+            // Unchecking any item reverts status back to in_progress
+            $newStatus = 'in_progress';
+        }
+
+        $jsonChecklist = json_encode($checklist, JSON_UNESCAPED_UNICODE);
+        $stmt = $this->db->prepare("UPDATE tasks SET checklist_data = ?, progress = ?, status = ?, updated_at = NOW() WHERE id = ?");
+        $stmt->bind_param("sisi", $jsonChecklist, $progress, $newStatus, $id);
+        if ($stmt->execute()) {
+            $stmt->close();
+            echo json_encode([
+                'status' => 'success',
+                'task_id' => $id,
+                'checklist' => $checklist,
+                'progress' => $progress,
+                'task_status' => $newStatus,
+                'all_completed' => $allDone,
+                'message' => $allDone ? 'All checklist items completed! Task marked as completed.' : 'Checklist updated.'
+            ]);
+            exit;
+        } else {
+            $err = $stmt->error;
+            $stmt->close();
+            echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $err]);
             exit;
         }
     }

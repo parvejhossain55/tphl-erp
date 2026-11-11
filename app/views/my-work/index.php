@@ -1686,10 +1686,10 @@ $todayDateFormatted = date('j F');
                 <div class="mw-form-col">
                     <label class="mw-form-label">Priority</label>
                     <select name="priority" class="mw-form-select">
-                        <option value="medium" selected>Normal</option>
-                        <option value="urgent">Urgent</option>
-                        <option value="high">High</option>
                         <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
                     </select>
                 </div>
             </div>
@@ -1731,14 +1731,21 @@ $todayDateFormatted = date('j F');
             </div>
 
 
-            <!-- Expected Output (multiple allowed) -->
+            <!-- Expected output (textarea) -->
             <div class="mw-form-group">
-                <label class="mw-form-label">Expected output <span class="req">*</span></label>
+                <label class="mw-form-label">Expected output</label>
+                <textarea name="expected_output" id="drawerExpectedOutput" class="mw-form-textarea" rows="2" 
+                          placeholder="Describe the expected deliverable, results, or outcome..."></textarea>
+            </div>
+
+            <!-- Acceptance Checklist (multiple allowed, optional) -->
+            <div class="mw-form-group">
+                <label class="mw-form-label">Acceptance checklist</label>
                 <div id="expectedOutputList">
                     <div class="d-flex align-items-start gap-2 mb-2 mw-expected-row">
                         <textarea name="description[]" id="drawerDescription" class="mw-form-textarea" rows="1" 
-                                  placeholder="Opening balances and verified transactions reconcile for five sample accounts." required></textarea>
-                        <button type="button" class="mw-btn-create" id="btnAddExpectedOutput" title="Add another expected output" style="white-space:nowrap;">
+                                  placeholder="e.g. Verify report totals, send summary to team..."></textarea>
+                        <button type="button" class="mw-btn-create" id="btnAddExpectedOutput" title="Add another checklist item" style="white-space:nowrap;">
                             <i class="fa-solid fa-plus"></i> Add
                         </button>
                     </div>
@@ -2243,7 +2250,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (recEndInput) recEndInput.value = t.recurrence_end_date || '';
                 }
 
-                // Expected output rows
+                // Expected output field
+                const txtExpectedOutput = document.getElementById('drawerExpectedOutput');
+                if (txtExpectedOutput) txtExpectedOutput.value = t.expected_output || '';
+
+                // Acceptance checklist rows
                 if (expectedList) {
                     expectedList.querySelectorAll('.mw-expected-row').forEach((r, idx) => { if (idx > 0) r.remove(); });
                     const firstTextarea = expectedList.querySelector('textarea');
@@ -2252,7 +2263,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     for (let i = 1; i < descs.length; i++) {
                         const row = document.createElement('div');
                         row.className = 'd-flex align-items-start gap-2 mb-2 mw-expected-row';
-                        row.innerHTML = `<textarea name="description[]" class="mw-form-textarea" rows="1" placeholder="Another expected output" required></textarea>
+                        row.innerHTML = `<textarea name="description[]" class="mw-form-textarea" rows="1" placeholder="Another checklist item"></textarea>
                             <button type="button" class="mw-btn-create" title="Remove" style="white-space:nowrap;background:#C92A2A;"><i class="fa-solid fa-xmark"></i></button>`;
                         row.querySelector('textarea').value = descs[i];
                         row.querySelector('button').addEventListener('click', () => row.remove());
@@ -2346,8 +2357,34 @@ document.addEventListener('DOMContentLoaded', function () {
             `<button type="button" class="mw-td-tab ${i === 0 ? 'active' : ''}" data-pane="${i}">${n}</button>`).join('');
         const blocked = t.blocked ? `
             <div class="mw-td-blocked"><strong><i class="fa-solid fa-triangle-exclamation me-1"></i> Blocked</strong><span>${tdEsc(t.remarks || '')}</span></div>` : '';
-        const desc = t.description_html && t.description_html.trim()
-            ? `<div class="mw-td-text">${t.description_html}</div>` : '<div class="mw-td-empty">No expected output added.</div>';
+        const expectedOut = t.expected_output && t.expected_output.trim()
+            ? `<div class="mw-td-text">${tdEsc(t.expected_output).replace(/\n/g, '<br>')}</div>` : '<div class="mw-td-empty">No expected output specified.</div>';
+
+        // Render Acceptance Checklist as interactive checkboxes
+        let checklistHtml = '';
+        if (Array.isArray(t.checklist) && t.checklist.length > 0) {
+            const completedCount = t.checklist.filter(c => !!c.completed).length;
+            const pct = Math.round((completedCount / t.checklist.length) * 100);
+            checklistHtml = `
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <small class="text-muted fw-semibold" id="mwClCounter">${completedCount} of ${t.checklist.length} completed (${pct}%)</small>
+                </div>
+                <div class="mw-checklist-list" style="display:flex; flex-direction:column; gap:8px;">` +
+                t.checklist.map((item, idx) => {
+                    const isChecked = !!item.completed;
+                    const canCheck = !!t.can_check;
+                    const textStyle = isChecked ? 'text-decoration:line-through; color:#8A9992;' : 'color:#1E2B24;';
+                    return `
+                        <label class="d-flex align-items-start gap-2 mw-checklist-item" style="cursor:${canCheck ? 'pointer' : 'default'}; margin:0; padding:6px 10px; background:#F8FAFA; border:1px solid #E3ECE7; border-radius:6px; font-size:13.5px;">
+                            <input type="checkbox" class="mw-cl-chk" data-cl-idx="${idx}" ${isChecked ? 'checked' : ''} ${canCheck ? '' : 'disabled'} style="margin-top:3px; accent-color:#087F5B; cursor:${canCheck ? 'pointer' : 'default'};">
+                            <span class="mw-cl-text" style="flex:1; line-height:1.45; ${textStyle}">${tdEsc(item.text)}</span>
+                        </label>`;
+                }).join('') +
+                `</div>`;
+        } else {
+            checklistHtml = '<div class="mw-td-empty">No checklist items added.</div>';
+        }
+
         const file = t.attachment_url
             ? `<a class="mw-td-file" href="${tdEsc(t.attachment_url)}" target="_blank"><span><i class="fa-regular fa-file me-2"></i>${tdEsc(t.attachment_name)}</span><small>Open</small></a>`
             : '<div class="mw-td-empty">No attachments.</div>';
@@ -2356,7 +2393,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <button type="button" class="mw-td-close" id="mwTdClose" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
             <h2 class="mw-td-title">${tdEsc(t.title)}</h2>
             <div class="mw-td-pills">
-                <span class="mw-td-pill status">${tdEsc(t.status_label)}</span>
+                <span class="mw-td-pill status" id="mwTdStatusPill">${tdEsc(t.status_label)}</span>
                 <span class="mw-td-pill">${tdEsc(t.priority)} priority</span>
                 ${t.overdue ? `<span class="mw-td-pill overdue">${tdEsc(t.overdue)}</span>` : ''}
             </div>
@@ -2371,8 +2408,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div><div class="mw-td-label">Assigned to</div><div class="mw-td-val plain">${tdEsc(t.assigned_to)}</div></div>
                     <div><div class="mw-td-label">CC</div><div class="mw-td-val plain">${t.cc.length ? tdEsc(t.cc.join(' · ')) : '—'}</div></div>
                 </div>
-                <div class="mw-td-sec"><h4>Expected output</h4>${desc}</div>
-                <div class="mw-td-sec"><h4>Acceptance checklist</h4><div class="mw-td-empty">No checklist items yet.</div></div>
+                <div class="mw-td-sec"><h4>Expected output</h4>${expectedOut}</div>
+                <div class="mw-td-sec"><h4>Acceptance checklist</h4>${checklistHtml}</div>
                 <div class="mw-td-sec"><h4>Attachments</h4>${file}</div>
                 <div class="mw-td-sec"><h4>Latest activity</h4><div class="mw-td-empty">No activity yet.</div>
                     <div class="mw-td-comment">Write a comment or @mention a teammate…</div></div>
@@ -2404,7 +2441,57 @@ document.addEventListener('DOMContentLoaded', function () {
             if (btnDrawerCompleteTask) btnDrawerCompleteTask.style.display = '';
         }
 
-        // Enable / Disable Complete Task Button
+        // Wire up checklist checkbox click handlers
+        tdBody.querySelectorAll('.mw-cl-chk').forEach(chk => {
+            chk.addEventListener('change', function() {
+                const itemIdx = parseInt(this.getAttribute('data-cl-idx'), 10);
+                const isChecked = this.checked;
+                const label = this.closest('.mw-checklist-item');
+                const textSpan = label ? label.querySelector('.mw-cl-text') : null;
+                if (textSpan) {
+                    textSpan.style.textDecoration = isChecked ? 'line-through' : 'none';
+                    textSpan.style.color = isChecked ? '#8A9992' : '#1E2B24';
+                }
+
+                // Send AJAX toggle request
+                const fd = new FormData();
+                fd.append('index', itemIdx);
+                fd.append('completed', isChecked ? 1 : 0);
+
+                fetch(`${baseUrl}/my-work/toggle-checklist/${t.id}`, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: fd
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        if (data.all_completed) {
+                            showMwToast(data.message || 'Task completed!', 'success');
+                        }
+                        // Refresh task detail and list to sync status, badges & cards
+                        if (window.openTaskDetail && currentDetailTaskId) {
+                            window.openTaskDetail(currentDetailTaskId);
+                        }
+                        if (typeof fetchWorkspaceData === 'function') {
+                            fetchWorkspaceData();
+                        }
+                    } else {
+                        showMwToast(data.message || 'Failed to update checklist item.', 'error');
+                        chk.checked = !isChecked; // rollback
+                        if (textSpan) {
+                            textSpan.style.textDecoration = !isChecked ? 'line-through' : 'none';
+                            textSpan.style.color = !isChecked ? '#8A9992' : '#1E2B24';
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.error('Error toggling checklist:', err);
+                    showMwToast('Network error while updating checklist.', 'error');
+                    chk.checked = !isChecked;
+                });
+            });
+        });
         if (btnDrawerCompleteTask) {
             if (t.is_completed) {
                 btnDrawerCompleteTask.disabled = true;
@@ -2689,14 +2776,14 @@ document.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('.mw-multi.open').forEach(b => { if (!b.contains(e.target)) b.classList.remove('open'); });
     }, true);
 
-    // Expected output: add / remove extra rows
+    // Acceptance checklist: add / remove extra rows
     const expectedList = document.getElementById('expectedOutputList');
     const btnAddExpected = document.getElementById('btnAddExpectedOutput');
     if (expectedList && btnAddExpected) {
         btnAddExpected.addEventListener('click', function () {
             const row = document.createElement('div');
             row.className = 'd-flex align-items-start gap-2 mb-2 mw-expected-row';
-            row.innerHTML = '<textarea name="description[]" class="mw-form-textarea" rows="1" placeholder="Another expected output" required></textarea>' +
+            row.innerHTML = '<textarea name="description[]" class="mw-form-textarea" rows="1" placeholder="Another checklist item"></textarea>' +
                 '<button type="button" class="mw-btn-create" title="Remove" style="white-space:nowrap;background:#C92A2A;"><i class="fa-solid fa-xmark"></i></button>';
             row.querySelector('button').addEventListener('click', () => row.remove());
             expectedList.appendChild(row);
