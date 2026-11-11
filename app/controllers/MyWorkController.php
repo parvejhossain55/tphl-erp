@@ -842,16 +842,37 @@ class MyWorkController extends Controller
             exit;
         }
 
-        $names = [];
-        $allIds = array_values(array_unique(array_merge($reviewerIds, $ccIds, $collabIds)));
+        $base = $GLOBALS['base_url'] ?? '';
+
+        $peopleMap = [];
+        $ownerId = (int)$t['assigned_by'];
+        $assigneeId = (int)$t['user_id'];
+        $allIds = array_values(array_unique(array_filter(array_merge([$ownerId, $assigneeId], $reviewerIds, $ccIds, $collabIds))));
         if ($allIds) {
             $in = implode(',', $allIds); // ints only
-            $res = $this->db->query("SELECT id, full_name FROM users WHERE id IN ({$in})");
+            $res = $this->db->query("
+                SELECT u.id, u.full_name, u.photo AS user_photo, e.photo AS emp_photo
+                FROM users u
+                LEFT JOIN employees e ON e.user_id = u.id
+                WHERE u.id IN ({$in})
+            ");
             while ($res && ($r = $res->fetch_assoc())) {
-                $names[(int)$r['id']] = $r['full_name'];
+                $uid = (int)$r['id'];
+                $photo = null;
+                if (!empty($r['emp_photo']) && file_exists(dirname(__DIR__, 2) . '/public/uploads/employees/' . $r['emp_photo'])) {
+                    $photo = $base . '/public/uploads/employees/' . rawurlencode($r['emp_photo']);
+                } elseif (!empty($r['user_photo']) && file_exists(dirname(__DIR__, 2) . '/public/uploads/users/' . $r['user_photo'])) {
+                    $photo = $base . '/public/uploads/users/' . rawurlencode($r['user_photo']);
+                }
+                $peopleMap[$uid] = [
+                    'id' => $uid,
+                    'name' => $r['full_name'] ?: 'User',
+                    'photo' => $photo
+                ];
             }
         }
-        $nameList = fn(array $list) => array_values(array_filter(array_map(fn($i) => $names[$i] ?? null, $list)));
+        $personObj = fn($id, $fallbackName = '—') => $peopleMap[$id] ?? ['id' => $id, 'name' => $fallbackName, 'photo' => null];
+        $peopleList = fn(array $list) => array_values(array_filter(array_map(fn($i) => $peopleMap[$i] ?? null, $list)));
 
         $isCompleted = $t['status'] === 'completed';
         $statusLabel = ['pending' => 'To do', 'in_progress' => 'In progress', 'completed' => 'Completed', 'expired' => 'Expired'][$t['status']] ?? 'To do';
@@ -965,9 +986,11 @@ class MyWorkController extends Controller
                 'overdue' => $overdueText,
                 'owner' => $t['assigned_by_name'] ?: '—',
                 'assigned_to' => $t['owner_name'] ?: '—',
-                'reviewers' => $nameList($reviewerIds),
-                'collaborators' => $nameList($collabIds),
-                'cc' => $nameList($ccIds),
+                'owner_user' => $personObj($ownerId, $t['assigned_by_name'] ?: '—'),
+                'assigned_user' => $personObj($assigneeId, $t['owner_name'] ?: '—'),
+                'reviewers' => $peopleList($reviewerIds),
+                'collaborators' => $peopleList($collabIds),
+                'cc' => $peopleList($ccIds),
                 'expected_output' => $t['expected_output'] ?? '',
                 'description_html' => strip_tags((string)$t['description'], '<p><br><ul><ol><li><strong><b><em><i>'),
                 'checklist' => $checklistItems,

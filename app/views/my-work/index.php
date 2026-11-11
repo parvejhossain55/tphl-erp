@@ -2448,9 +2448,20 @@ document.addEventListener('DOMContentLoaded', function () {
     const tdNote = document.getElementById('mwTdNote');
     const tdEsc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
     const tdInitials = n => String(n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase();
-    const tdPeople = list => list && list.length
-        ? list.map(n => `<span class="mw-td-val"><span class="mw-td-avatar">${tdEsc(tdInitials(n))}</span>${tdEsc(n)}</span>`).join('')
-        : '<span class="mw-td-val plain">—</span>';
+    const tdAvatarHtml = (name, photo) => {
+        if (photo) {
+            return `<img src="${tdEsc(photo)}" alt="${tdEsc(name)}" class="mw-td-avatar" style="object-fit:cover;" onerror="this.outerHTML='<span class=\\'mw-td-avatar\\'>${tdEsc(tdInitials(name))}</span>'">`;
+        }
+        return `<span class="mw-td-avatar">${tdEsc(tdInitials(name))}</span>`;
+    };
+    const tdPeople = list => {
+        if (!list || !list.length) return '<span class="mw-td-val plain">—</span>';
+        return list.map(item => {
+            const name = typeof item === 'object' && item !== null ? item.name : item;
+            const photo = typeof item === 'object' && item !== null ? item.photo : null;
+            return `<span class="mw-td-val">${tdAvatarHtml(name, photo)}${tdEsc(name)}</span>`;
+        }).join('');
+    };
 
     function closeTaskDetail() {
         if (!tdEl) return;
@@ -2572,12 +2583,12 @@ document.addEventListener('DOMContentLoaded', function () {
             <div data-td-pane="0">
                 ${blocked}
                 <div class="mw-td-grid">
-                    <div><div class="mw-td-label">Owner</div><div class="mw-td-val"><span class="mw-td-avatar">${tdEsc(tdInitials(t.owner))}</span>${tdEsc(t.owner)}</div></div>
+                    <div><div class="mw-td-label">Owner</div><div class="mw-td-val">${tdAvatarHtml(t.owner, t.owner_user ? t.owner_user.photo : null)}${tdEsc(t.owner)}</div></div>
                     <div><div class="mw-td-label">Reviewer</div><div>${tdPeople(t.reviewers)}</div></div>
                     <div><div class="mw-td-label">Deadline</div><div class="mw-td-val ${t.overdue ? 'late' : ''}">${tdEsc(t.deadline || 'No deadline')}</div></div>
-                    <div><div class="mw-td-label">Collaborators</div><div class="mw-td-val plain">${t.collaborators.length ? tdEsc(t.collaborators.join(' · ')) : '—'}</div></div>
-                    <div><div class="mw-td-label">Assigned to</div><div class="mw-td-val plain">${tdEsc(t.assigned_to)}</div></div>
-                    <div><div class="mw-td-label">CC</div><div class="mw-td-val plain">${t.cc.length ? tdEsc(t.cc.join(' · ')) : '—'}</div></div>
+                    <div><div class="mw-td-label">Collaborators</div><div>${tdPeople(t.collaborators)}</div></div>
+                    <div><div class="mw-td-label">Assigned to</div><div class="mw-td-val">${tdAvatarHtml(t.assigned_to, t.assigned_user ? t.assigned_user.photo : null)}${tdEsc(t.assigned_to)}</div></div>
+                    <div><div class="mw-td-label">CC</div><div>${tdPeople(t.cc)}</div></div>
                 </div>
                 ${t.expected_output && t.expected_output.trim() ? `<div class="mw-td-sec"><h4>Expected output</h4>${expectedOut}</div>` : ''}
                 <div class="mw-td-sec">${checklistHtml}</div>
