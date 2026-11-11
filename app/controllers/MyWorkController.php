@@ -469,7 +469,6 @@ class MyWorkController extends Controller
             $html .= "<tr class=\"{$rowClass}\" data-task-id=\"{$taskId}\">
                 <td>
                     <div class=\"d-flex align-items-start\">
-                        <input type=\"checkbox\" class=\"mw-task-check\" {$checkedAttr} disabled>
                         <div>
                             <a href=\"javascript:void(0);\" onclick=\"openTaskDetail({$taskId}); return false;\" class=\"mw-task-name\">
                                 {$titleSafe}

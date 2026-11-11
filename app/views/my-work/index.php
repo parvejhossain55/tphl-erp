@@ -1512,7 +1512,6 @@ $todayDateFormatted = date('j F');
                                 <tr class="<?= $isHighlighted ? 'row-selected' : '' ?>" data-task-id="<?= $taskId ?>">
                                     <td>
                                         <div class="d-flex align-items-start">
-                                            <input type="checkbox" class="mw-task-check" <?= $isCompleted ? 'checked' : '' ?> disabled>
                                             <div>
                                                 <a href="javascript:void(0);" onclick="openTaskDetail(<?= $taskId ?>); return false;" class="mw-task-name">
                                                     <?= htmlspecialchars($t['title']) ?>
