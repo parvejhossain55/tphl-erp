@@ -240,7 +240,7 @@ class MyWorkController extends Controller
         $stmtTasks->execute();
         $tasks = $stmtTasks->get_result()->fetch_all(MYSQLI_ASSOC);
 
-        // 7. Focus Panel: Needs Review
+        // 7. Focus Panel: Needs Review (Tasks where the logged-in user is a Reviewer and task is completed, latest completed first)
         $stmtReviewList = $this->db->prepare("
             SELECT 
                 t.*,
@@ -250,10 +250,9 @@ class MyWorkController extends Controller
             FROM tasks t
             JOIN users u ON t.user_id = u.id
             LEFT JOIN designations des ON u.designation_id = des.id
-            WHERE t.assigned_by = ?
-              AND t.status != 'completed'
-              AND (t.progress >= 80 OR t.employee_accept = 1)
-            ORDER BY t.updated_at DESC
+            WHERE FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.mentioned_user_ids, '[', ''), ']', ''), ' ', ''))
+              AND t.status = 'completed'
+            ORDER BY COALESCE(t.updated_at, t.created_at) DESC
             LIMIT 2
         ");
         $stmtReviewList->bind_param("i", $userId);

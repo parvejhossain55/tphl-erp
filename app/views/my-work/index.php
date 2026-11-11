@@ -1544,7 +1544,7 @@ $todayDateFormatted = date('j F');
             <div class="mw-focus-card">
                 <h4 class="mw-focus-title">Needs your review</h4>
                 <div class="mw-focus-subtitle">
-                    <?= count($reviewTasks) ?> task<?= count($reviewTasks) === 1 ? '' : 's' ?> submitted by your team
+                    <?= count($reviewTasks) ?> completed task<?= count($reviewTasks) === 1 ? '' : 's' ?> waiting for your review
                 </div>
 
                 <?php if (!empty($reviewTasks)): ?>
@@ -1552,15 +1552,15 @@ $todayDateFormatted = date('j F');
                         <div class="mw-review-item">
                             <div class="mw-review-item-title"><?= htmlspecialchars($rt['title']) ?></div>
                             <div class="mw-review-item-meta">
-                                <?= htmlspecialchars($rt['employee_name'] ?? 'Team Member') ?> · Submitted <?= date('j M, g:i A', strtotime($rt['updated_at'] ?? $rt['created_at'])) ?>
+                                <?= htmlspecialchars($rt['employee_name'] ?? 'Team Member') ?> · Completed <?= date('j M, g:i A', strtotime($rt['updated_at'] ?? $rt['created_at'])) ?>
                             </div>
                             <?php if ($idx === 0): ?>
-                                <a href="<?= $base_url ?>/show-task/<?= (int)$rt['id'] ?>" class="mw-btn-review">
+                                <button type="button" class="mw-btn-review" onclick="openTaskDetail(<?= (int)$rt['id'] ?>)">
                                     Review submission
-                                </a>
+                                </button>
                             <?php else: ?>
                                 <div class="mw-review-divider"></div>
-                                <a href="<?= $base_url ?>/show-task/<?= (int)$rt['id'] ?>" class="mw-review-link-row">
+                                <a href="javascript:void(0);" onclick="openTaskDetail(<?= (int)$rt['id'] ?>)" class="mw-review-link-row">
                                     <span class="mw-review-item-title" style="font-size: 12.5px;">View details</span>
                                     <i class="fa-solid fa-arrow-right mw-arrow-icon"></i>
                                 </a>
@@ -1569,7 +1569,7 @@ $todayDateFormatted = date('j F');
                     <?php endforeach; ?>
                 <?php else: ?>
                     <div class="text-muted small py-2">
-                        <i class="fa-regular fa-circle-check text-success me-1"></i> No submissions pending your review.
+                        <i class="fa-regular fa-circle-check text-success me-1"></i> No completed tasks pending your review.
                     </div>
                 <?php endif; ?>
             </div>
