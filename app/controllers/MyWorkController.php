@@ -816,11 +816,14 @@ class MyWorkController extends Controller
 
         $st = $this->db->prepare("
             SELECT t.*, tp.name AS project_name,
-                   u_o.full_name AS owner_name, u_b.full_name AS assigned_by_name
+                   u_o.full_name AS owner_name, u_b.full_name AS assigned_by_name,
+                   dept.name AS department_name
             FROM tasks t
             LEFT JOIN todo_projects tp ON t.todo_project_id = tp.id
             LEFT JOIN users u_o ON t.user_id = u_o.id
             LEFT JOIN users u_b ON t.assigned_by = u_b.id
+            LEFT JOIN employees e_owner ON (e_owner.user_id = u_b.id OR e_owner.id = u_b.employee_id)
+            LEFT JOIN departments dept ON e_owner.department_id = dept.id
             WHERE t.id = ?
         ");
         $st->bind_param("i", $id);
@@ -932,7 +935,7 @@ class MyWorkController extends Controller
         // Fetch recent activities for this task
         $activities = [];
         $actStmt = $this->db->prepare("
-            SELECT a.id, a.type, a.activity, a.created_at, u.id AS user_id, u.full_name, u.photo AS user_photo, e.photo AS emp_photo
+            SELECT a.id, a.type, a.activity, a.attachment_name, a.attachment_path, a.created_at, u.id AS user_id, u.full_name, u.photo AS user_photo, e.photo AS emp_photo
             FROM task_activities a
             LEFT JOIN users u ON a.user_id = u.id
             LEFT JOIN employees e ON e.user_id = u.id
@@ -954,10 +957,17 @@ class MyWorkController extends Controller
                 $userPhoto = $base . '/public/assets/images/avatar/avatar.png';
             }
 
+            $attachmentUrl = null;
+            if (!empty($ar['attachment_path'])) {
+                $attachmentUrl = $base . '/' . ltrim($ar['attachment_path'], '/');
+            }
+
             $activities[] = [
                 'id' => (int)$ar['id'],
                 'type' => $ar['type'],
                 'activity' => $ar['activity'],
+                'attachment_name' => $ar['attachment_name'],
+                'attachment_url' => $attachmentUrl,
                 'created_at' => date('d M Y, h:i A', strtotime($ar['created_at'])),
                 'user_id' => (int)$ar['user_id'],
                 'user_name' => $ar['full_name'] ?: 'User',
@@ -965,6 +975,32 @@ class MyWorkController extends Controller
             ];
         }
         $actStmt->close();
+
+        // Team members for @mention autocomplete
+        $teammates = [];
+        $resTeam = $this->db->query("
+            SELECT u.id, u.full_name, u.photo AS user_photo, e.photo AS emp_photo, des.name AS designation
+            FROM users u
+            LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+            LEFT JOIN designations des ON u.designation_id = des.id
+            WHERE (e.employee_status IS NULL OR (e.deleted_at IS NULL AND LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
+            ORDER BY u.full_name ASC
+            LIMIT 100
+        ");
+        while ($resTeam && ($tm = $resTeam->fetch_assoc())) {
+            $tmPhoto = null;
+            if (!empty($tm['emp_photo']) && file_exists(dirname(__DIR__, 2) . '/public/uploads/employees/' . $tm['emp_photo'])) {
+                $tmPhoto = $base . '/public/uploads/employees/' . rawurlencode($tm['emp_photo']);
+            } elseif (!empty($tm['user_photo']) && file_exists(dirname(__DIR__, 2) . '/public/uploads/users/' . $tm['user_photo'])) {
+                $tmPhoto = $base . '/public/uploads/users/' . rawurlencode($tm['user_photo']);
+            }
+            $teammates[] = [
+                'id' => (int)$tm['id'],
+                'name' => $tm['full_name'],
+                'designation' => $tm['designation'] ?: '',
+                'photo' => $tmPhoto
+            ];
+        }
 
         echo json_encode([
             'status' => 'success',
@@ -995,7 +1031,12 @@ class MyWorkController extends Controller
                 'checklist' => $checklistItems,
                 'activities' => $activities,
                 'remarks' => $t['remarks'],
+                'department' => $t['department_name'] ?: 'General',
+                'submission_time' => !empty($t['updated_at']) ? date('j M Y · g:i A', strtotime($t['updated_at'])) : date('j M Y · g:i A', strtotime($t['created_at'])),
+                'current_user_id' => $userId,
+                'current_user_name' => $_SESSION['user']['full_name'] ?? 'You',
                 'blocked' => $blocked,
+                'teammates' => $teammates,
                 'attachment_name' => $t['attachment_image'] ?: null,
                 'attachment_url' => !empty($t['attachment_image']) ? $base . '/public/uploads/tasks/' . rawurlencode($t['attachment_image']) : null,
                 'show_url' => $base . '/show-task/' . (int)$t['id'],
@@ -1619,12 +1660,46 @@ class MyWorkController extends Controller
         }
 
         $comment = trim($_POST['comment'] ?? '');
-        if ($comment === '') {
-            echo json_encode(['status' => 'error', 'message' => 'Comment cannot be empty.']);
+        $attachmentName = null;
+        $attachmentPath = null;
+
+        // Handle comment file attachment if provided
+        if (!empty($_FILES['attachment']['name']) && $_FILES['attachment']['error'] === UPLOAD_ERR_OK) {
+            $origName = basename($_FILES['attachment']['name']);
+            $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+            $allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'zip', 'csv'];
+
+            if (!in_array($ext, $allowedExts, true)) {
+                echo json_encode(['status' => 'error', 'message' => 'Invalid file type. Allowed: images, docs, pdf, excel, zip.']);
+                exit;
+            }
+
+            // Max 15MB
+            if ($_FILES['attachment']['size'] > 15 * 1024 * 1024) {
+                echo json_encode(['status' => 'error', 'message' => 'File size exceeds maximum limit of 15MB.']);
+                exit;
+            }
+
+            $uploadDir = dirname(__DIR__, 2) . '/public/uploads/tasks/comments';
+            if (!is_dir($uploadDir)) {
+                @mkdir($uploadDir, 0777, true);
+            }
+
+            $fileName = 'cmt_' . $id . '_' . time() . '_' . substr(md5(uniqid()), 0, 8) . '.' . $ext;
+            $destPath = $uploadDir . '/' . $fileName;
+
+            if (@move_uploaded_file($_FILES['attachment']['tmp_name'], $destPath)) {
+                $attachmentName = $origName;
+                $attachmentPath = 'public/uploads/tasks/comments/' . $fileName;
+            }
+        }
+
+        if ($comment === '' && !$attachmentName) {
+            echo json_encode(['status' => 'error', 'message' => 'Comment or attachment is required.']);
             exit;
         }
 
-        $st = $this->db->prepare("SELECT id FROM tasks WHERE id = ?");
+        $st = $this->db->prepare("SELECT id, title, assigned_by, user_id FROM tasks WHERE id = ?");
         $st->bind_param("i", $id);
         $st->execute();
         $task = $st->get_result()->fetch_assoc();
@@ -1633,7 +1708,30 @@ class MyWorkController extends Controller
             exit;
         }
 
-        if ($this->logTaskActivity($id, $userId, 'comment', $comment)) {
+        if ($this->logTaskActivity($id, $userId, 'comment', $comment, $attachmentName, $attachmentPath)) {
+            // Check for @mentions and notify mentioned users
+            $mentionedUserIds = [];
+            if (!empty($_POST['mentioned_ids'])) {
+                $rawIds = is_array($_POST['mentioned_ids']) ? $_POST['mentioned_ids'] : explode(',', (string)$_POST['mentioned_ids']);
+                $mentionedUserIds = array_filter(array_map('intval', $rawIds));
+            }
+
+            // Also parse regex @[Name](id) or @Name if needed
+            if (!empty($mentionedUserIds)) {
+                $actorName = $_SESSION['user']['full_name'] ?? 'A teammate';
+                $notifMsg = "{$actorName} mentioned you in task T-{$id}: " . mb_strimwidth($comment ?: 'shared an attachment', 0, 60, '...');
+                foreach (array_unique($mentionedUserIds) as $mUid) {
+                    if ($mUid !== $userId) {
+                        $stNotif = $this->db->prepare("INSERT INTO notifications (user_id, task_id, assigned_by, message, created_at) VALUES (?, ?, ?, ?, NOW())");
+                        if ($stNotif) {
+                            $stNotif->bind_param("iiis", $mUid, $id, $userId, $notifMsg);
+                            $stNotif->execute();
+                            $stNotif->close();
+                        }
+                    }
+                }
+            }
+
             echo json_encode([
                 'status' => 'success',
                 'message' => 'Comment added successfully.',
@@ -1649,11 +1747,11 @@ class MyWorkController extends Controller
     /**
      * Helper to log an activity/comment to task_activities
      */
-    private function logTaskActivity($taskId, $userId, $type, $activity)
+    private function logTaskActivity($taskId, $userId, $type, $activity, $attachmentName = null, $attachmentPath = null)
     {
-        $stmt = $this->db->prepare("INSERT INTO task_activities (task_id, user_id, type, activity, created_at) VALUES (?, ?, ?, ?, NOW())");
+        $stmt = $this->db->prepare("INSERT INTO task_activities (task_id, user_id, type, activity, attachment_name, attachment_path, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
         if (!$stmt) return false;
-        $stmt->bind_param("iiss", $taskId, $userId, $type, $activity);
+        $stmt->bind_param("iissss", $taskId, $userId, $type, $activity, $attachmentName, $attachmentPath);
         $res = $stmt->execute();
         $stmt->close();
         return $res;

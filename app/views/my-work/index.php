@@ -182,19 +182,50 @@ $todayDateFormatted = date('j F');
 .mw-act-avatar { width: 24px; height: 24px; border-radius: 50%; background: #E9F5EF; color: #087F5B; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 10.5px; line-height: 13px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .mw-act-head { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 11.5px; line-height: 14px; color: #142D26; margin-bottom: 3px; }
 .mw-act-time { font-weight: 400; color: #65776F; }
-.mw-act-comment { font-family: 'Inter', sans-serif; font-weight: 400; font-size: 12.5px; line-height: 15px; color: #65776F; }
+.mw-act-comment { font-family: 'Inter', sans-serif; font-weight: 400; font-size: 12.5px; line-height: 16px; color: #65776F; word-break: break-word; }
+.mw-act-mention { color: #087F5B; font-weight: 600; background: #E9F5EF; padding: 1px 5px; border-radius: 4px; display: inline-block; }
+.mw-act-attach-chip { display: inline-flex; align-items: center; gap: 8px; background: #F5F7F6; border: 1px solid #E2EAE5; border-radius: 6px; padding: 6px 12px; margin-top: 6px; text-decoration: none; color: #142D26; font-size: 12px; font-weight: 500; transition: background .15s ease; }
+.mw-act-attach-chip:hover { background: #EDF2EF; color: #087F5B; }
+.mw-act-attach-chip i { color: #65776F; font-size: 13px; }
 .mw-act-system { font-family: 'Inter', sans-serif; font-style: normal; font-weight: 400; font-size: 11.5px; line-height: 14px; color: #65776F; margin-bottom: 12px; }
-.mw-figma-comment-box { position: relative; background: #FFFFFF; border: 1px solid #E2EAE5; border-radius: 8px; padding: 10px 38px 10px 14px; margin-top: 14px; }
+.mw-figma-comment-box { position: relative; background: #FFFFFF; border: 1px solid #E2EAE5; border-radius: 8px; padding: 10px 42px 10px 14px; margin-top: 14px; }
 .mw-figma-comment-input { width: 100%; border: none; outline: none; background: transparent; font-family: 'Inter', sans-serif; font-weight: 400; font-size: 12.5px; line-height: 15px; color: #142D26; resize: none; padding: 0; }
 .mw-figma-comment-input::placeholder { color: #8A9992; }
-.mw-figma-comment-btn { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); border: none; background: transparent; color: #65776F; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
-.mw-figma-comment-btn:hover { color: #087F5B; }
+.mw-figma-comment-actions { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); display: flex; align-items: center; }
+.mw-figma-icon-btn { border: none; background: transparent; color: #65776F; cursor: pointer; padding: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; border-radius: 4px; transition: color .15s ease, background .15s ease; }
+.mw-figma-icon-btn:hover { color: #087F5B; background: #F5F7F6; }
+.mw-comment-file-preview { display: none; align-items: center; justify-content: space-between; background: #F5F7F6; border: 1px solid #E2EAE5; border-radius: 6px; padding: 6px 10px; margin-top: 8px; font-size: 12px; color: #142D26; }
+.mw-comment-file-preview.show { display: flex; }
+.mw-comment-file-preview .file-remove { color: #E03131; cursor: pointer; padding: 2px 6px; font-size: 13px; }
+/* Mentions dropdown popup */
+.mw-mention-popup { position: absolute; bottom: 100%; left: 0; right: 0; margin-bottom: 6px; background: #FFFFFF; border: 1px solid #E2EAE5; border-radius: 8px; box-shadow: 0 10px 28px rgba(20,45,38,.12); max-height: 200px; overflow-y: auto; z-index: 1000; display: none; }
+.mw-mention-popup.show { display: block; }
+.mw-mention-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; cursor: pointer; transition: background .12s ease; }
+.mw-mention-item:hover, .mw-mention-item.selected { background: #E9F5EF; }
+.mw-mention-avatar { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: #E9F5EF; color: #087F5B; font-size: 9.5px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.mw-mention-name { font-size: 12.5px; font-weight: 600; color: #142D26; }
+.mw-mention-role { font-size: 11px; color: #65776F; margin-left: auto; }
 .mw-td-comment { border: 1px solid #E2EAE5; border-radius: 8px; padding: 12px 14px; font-size: 12.5px; color: #8A9992; margin-top: 14px; }
 .mw-td-foot { border-top: 1px solid #E2EAE5; padding: 14px 20px; }
 .mw-td-foot-actions { display: flex; gap: 10px; align-items: center; }
 .mw-td-btn { background: #FFFFFF; border: 1px solid #E2EAE5; border-radius: 8px; padding: 9px 16px; font-family: 'Inter', sans-serif; font-size: 12.5px; line-height: 15px; font-weight: 700; color: #142D26; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .mw-td-btn.primary { margin-left: auto; background: #EDF2EF; border-color: #EDF2EF; color: #8A9992; }
-.mw-td-note { font-family: 'Inter', sans-serif; font-size: 11px; line-height: 13px; color: #65776F; text-align: right; margin-top: 8px; }
+.mw-td-btn.green { background: #087F5B; border-color: #087F5B; color: #FFFFFF; }
+.mw-td-btn.green:hover { background: #076b4d; }
+.mw-td-note { font-family: 'Inter', sans-serif; font-size: 11.5px; line-height: 15px; color: #65776F; margin-top: 8px; }
+/* Reviewer specific styling */
+.mw-rev-banner { background: #F4EFFA; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; }
+.mw-rev-banner-title { font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 700; line-height: 18px; color: #7757AB; margin-bottom: 4px; }
+.mw-rev-banner-sub { font-family: 'Inter', sans-serif; font-size: 12px; line-height: 15px; color: #65776F; }
+.mw-td-pill.in-review { background: #F4EFFA; color: #7757AB; }
+.mw-rev-summary-title { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 17px; line-height: 21px; color: #142D26; margin: 0 0 8px 0; }
+.mw-rev-summary-text { font-family: 'Inter', sans-serif; font-weight: 400; font-size: 13px; line-height: 19px; color: #65776F; }
+.mw-rev-note-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.mw-rev-note-label { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 12.5px; line-height: 15px; color: #142D26; }
+.mw-rev-note-req { font-family: 'Inter', sans-serif; font-weight: 400; font-size: 11px; line-height: 13px; color: #65776F; text-align: right; }
+.mw-rev-textarea { width: 100%; background: #FFFFFF; border: 1px solid #E2EAE5; border-radius: 8px; padding: 12px 14px; font-family: 'Inter', sans-serif; font-size: 13px; line-height: 18px; color: #142D26; resize: vertical; min-height: 72px; outline: none; }
+.mw-rev-textarea::placeholder { color: #8A9992; }
+.mw-rev-textarea:focus { border-color: #087F5B; }
 /* Delete Confirmation Modal */
 .mw-confirm-backdrop { position: fixed; inset: 0; background: rgba(20,45,38,.45); z-index: 10040; opacity: 0; visibility: hidden; transition: opacity .2s ease, visibility .2s ease; backdrop-filter: blur(2px); }
 .mw-confirm-backdrop.show { opacity: 1; visibility: visible; }
@@ -1638,7 +1669,7 @@ $todayDateFormatted = date('j F');
                     </div>
 
                     <a href="<?= $base_url ?>/show-task/<?= (int)$blockedTask['id'] ?>" class="mw-btn-opentask">
-                        <i class="fa-solid fa-arrow-right"></i>
+                        <i class="fa-solid  fa-arrow-right"></i>
                         <span>Open task</span>
                     </a>
                 <?php else: ?>
@@ -2474,6 +2505,230 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function renderTaskDetail(t) {
         currentDetailTaskId = t.id;
+        const isReviewerView = Boolean(t.is_reviewer && (t.is_completed || t.status === 'completed' || t.status_class === 'in_review'));
+
+        if (isReviewerView) {
+            // =========================================================================
+            // Reviewer Submission Drawer Layout (Figma Spec)
+            // =========================================================================
+            const ownerInitial = tdInitials(t.owner);
+            const reviewerInitial = tdInitials(t.current_user_name || 'MJ');
+            const ownerName = t.owner;
+            const reviewerDisplay = `You · ${tdEsc(t.current_user_name || 'Mehedi H. Jony')}`;
+            const departmentName = t.department || 'General';
+            const dueDateDisplay = t.deadline || 'No deadline';
+            const submissionText = (t.expected_output && t.expected_output.trim())
+                ? tdEsc(t.expected_output).replace(/\n/g, '<br>')
+                : (t.description_html ? t.description_html : 'No submission summary provided.');
+
+            // Acceptance checks (all items completed or submitted)
+            let checksHtml = '';
+            if (Array.isArray(t.checklist) && t.checklist.length > 0) {
+                const totalChecks = t.checklist.length;
+                const completedChecks = t.checklist.filter(c => !!c.completed).length;
+                checksHtml = `
+                    <div class="mw-td-sec-head" style="margin-bottom:14px;">
+                        <h4 style="font-size:16px;">Acceptance checks</h4>
+                        <span class="mw-cl-counter-badge">${completedChecks} of ${totalChecks} complete</span>
+                    </div>
+                    <div class="mw-cl-items-wrap" style="margin-bottom:20px;">` +
+                    t.checklist.map(item => {
+                        const isChecked = !!item.completed;
+                        const boxClass = isChecked ? 'checked' : 'unchecked';
+                        const textClass = isChecked ? 'checked' : 'unchecked';
+                        return `
+                        <div class="mw-cl-item" style="cursor:default; margin-bottom:12px;">
+                            <span class="mw-cl-box ${boxClass}" style="${isChecked ? 'background:#087F5B; border-color:#087F5B;' : 'background:#FFFFFF; border:1.5px solid #CCD7D0;'}">
+                                ${isChecked ? '<svg width="10" height="8" viewBox="0 0 10 8" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1.25 4L3.75 6.5L8.75 1.5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' : ''}
+                            </span>
+                            <span class="mw-cl-item-text ${textClass}" style="font-size:13px;">${tdEsc(item.text)}</span>
+                        </div>`;
+                    }).join('') +
+                    `</div>`;
+            }
+
+            // Evidence attachment
+            const evidenceHtml = t.attachment_url
+                ? `<div class="mw-td-sec" style="margin-top:0;">
+                    <h4 style="font-size:16px; margin-bottom:12px;">Evidence</h4>
+                    <a class="mw-td-file" href="${tdEsc(t.attachment_url)}" target="_blank">
+                        <span class="mw-td-file-left">
+                            <i class="fa-regular fa-file-lines mw-td-file-icon"></i>
+                            <span style="font-size:13px; font-weight:400;">${tdEsc(t.attachment_name)}</span>
+                        </span>
+                        <span class="mw-td-file-size">Open</span>
+                    </a>
+                   </div>`
+                : '';
+
+            tdBody.innerHTML = `
+                <div class="mw-td-top">
+                    <span>${tdEsc(t.code)} · ${tdEsc(t.project)}</span>
+                    <button type="button" class="mw-td-close" id="mwTdClose" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <h2 class="mw-td-title" style="font-size:25px; line-height:30px; margin:14px 0 12px;">${tdEsc(t.title)}</h2>
+                <div class="mw-td-pills" style="margin-bottom:18px;">
+                    <span class="mw-td-pill in-review">In review</span>
+                    <span class="mw-td-pill">${tdEsc(t.overdue || 'Due today')}</span>
+                </div>
+
+                <!-- Your review is needed banner -->
+                <div class="mw-rev-banner">
+                    <div class="mw-rev-banner-title">Your review is needed</div>
+                    <div class="mw-rev-banner-sub">${tdEsc(ownerName)} submitted this task ${tdEsc(t.submission_time ? 'on ' + t.submission_time : 'for your review')}.</div>
+                </div>
+
+                <!-- 4-col Meta Grid -->
+                <div class="mw-td-grid" style="margin-bottom:24px;">
+                    <div>
+                        <div class="mw-td-label">Task owner</div>
+                        <div class="mw-td-val">
+                            ${tdAvatarHtml(ownerName, t.owner_user ? t.owner_user.photo : null)}
+                            <span>${tdEsc(ownerName)}</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="mw-td-label">Reviewer</div>
+                        <div class="mw-td-val">
+                            <span class="mw-td-avatar">${tdEsc(reviewerInitial)}</span>
+                            <span>${reviewerDisplay}</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="mw-td-label">Due date</div>
+                        <div class="mw-td-val">${tdEsc(dueDateDisplay)}</div>
+                    </div>
+                    <div>
+                        <div class="mw-td-label">Department</div>
+                        <div class="mw-td-val plain">${tdEsc(departmentName)}</div>
+                    </div>
+                </div>
+
+                <!-- Submission summary -->
+                <div class="mw-td-sec">
+                    <h3 class="mw-rev-summary-title">Submission summary</h3>
+                    <div class="mw-rev-summary-text">${submissionText}</div>
+                </div>
+
+                <!-- Acceptance checks -->
+                ${checksHtml ? `<div class="mw-td-sec">${checksHtml}</div>` : ''}
+
+                <!-- Evidence -->
+                ${evidenceHtml}
+
+                <!-- Review note input -->
+                <div class="mw-td-sec" style="border-bottom:none;">
+                    <div class="mw-rev-note-head">
+                        <span class="mw-rev-note-label">Review note</span>
+                        <span class="mw-rev-note-req">Required when requesting changes</span>
+                    </div>
+                    <textarea id="mwReviewFeedbackInput" class="mw-rev-textarea" placeholder="Add feedback for ${tdEsc(ownerName)}…"></textarea>
+                </div>
+            `;
+
+            tdBody.querySelector('#mwTdClose').addEventListener('click', closeTaskDetail);
+
+            // Configure footer for Reviewer
+            const footActions = document.querySelector('.mw-td-foot-actions');
+            const revNoteWrap = document.getElementById('mwReviewNoteWrap');
+            if (revNoteWrap) revNoteWrap.style.display = 'none';
+
+            if (footActions) {
+                footActions.innerHTML = `
+                    <button type="button" class="mw-td-btn" id="btnRevBackToTasks">Back to tasks</button>
+                    <div style="margin-left:auto; display:flex; gap:10px;">
+                        <button type="button" class="mw-td-btn" id="btnRevRequestChanges">Request changes</button>
+                        <button type="button" class="mw-td-btn green" id="btnRevApproveComplete">
+                            <i class="fa-solid fa-check me-1"></i> Approve & complete
+                        </button>
+                    </div>
+                `;
+
+                document.getElementById('btnRevBackToTasks').addEventListener('click', closeTaskDetail);
+
+                document.getElementById('btnRevRequestChanges').addEventListener('click', function() {
+                    const feedbackEl = document.getElementById('mwReviewFeedbackInput');
+                    const note = feedbackEl ? feedbackEl.value.trim() : '';
+                    if (!note) {
+                        showMwToast(`Please add a review note for ${ownerName} before requesting changes.`, 'error');
+                        if (feedbackEl) feedbackEl.focus();
+                        return;
+                    }
+
+                    this.disabled = true;
+                    this.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Requesting...';
+
+                    const fd = new FormData();
+                    fd.append('review_action', 'request_changes');
+                    fd.append('review_note', note);
+
+                    fetch(`${baseUrl}/my-work/reviewer-action/${t.id}`, {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        body: fd
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            showMwToast('Feedback sent. Task returned to in progress.', 'success');
+                            closeTaskDetail();
+                            fetchWorkspaceData();
+                        } else {
+                            showMwToast(data.message || 'Failed to request changes.', 'error');
+                        }
+                    })
+                    .catch(() => {
+                        showMwToast('Network error occurred.', 'error');
+                    })
+                    .finally(() => {
+                        this.disabled = false;
+                        this.innerHTML = 'Request changes';
+                    });
+                });
+
+                document.getElementById('btnRevApproveComplete').addEventListener('click', function() {
+                    const feedbackEl = document.getElementById('mwReviewFeedbackInput');
+                    const note = feedbackEl ? feedbackEl.value.trim() : '';
+
+                    this.disabled = true;
+                    this.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Completing...';
+
+                    const fd = new FormData();
+                    fd.append('review_action', 'approve');
+                    if (note) fd.append('review_note', note);
+
+                    fetch(`${baseUrl}/my-work/reviewer-action/${t.id}`, {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        body: fd
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            showMwToast('Task approved and marked as completed!', 'success');
+                            closeTaskDetail();
+                            fetchWorkspaceData();
+                        } else {
+                            showMwToast(data.message || 'Failed to approve task.', 'error');
+                        }
+                    })
+                    .catch(() => {
+                        showMwToast('Network error occurred.', 'error');
+                    })
+                    .finally(() => {
+                        this.disabled = false;
+                        this.innerHTML = '<i class="fa-solid fa-check me-1"></i> Approve & complete';
+                    });
+                });
+            }
+
+            tdNote.innerText = `Approve completes the task. Request changes returns it to In progress with your feedback. ${ownerName} remains the task owner.`;
+            return;
+        }
+
+        // =========================================================================
+        // Standard Assignee / Owner Layout
+        // =========================================================================
         const tabsHtml = ['Overview', 'Activity', 'Work log'].map((n, i) =>
             `<button type="button" class="mw-td-tab ${i === 0 ? 'active' : ''}" data-pane="${i}">${n}</button>`).join('');
         const blocked = t.blocked ? `
@@ -2525,6 +2780,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 t.activities.map(act => {
                     const isSystem = (act.type === 'system');
                     const initial = tdInitials(act.user_name || 'U');
+
+                    // Highlight @mentions in comments
+                    let formattedActivity = tdEsc(act.activity);
+                    formattedActivity = formattedActivity.replace(/@([a-zA-Z0-9_.\s]+?)(?=\s|[.,!?]|$)/g, '<span class="mw-act-mention">@$1</span>');
+
+                    // Render attached file if present
+                    let attachChip = '';
+                    if (act.attachment_url && act.attachment_name) {
+                        attachChip = `
+                            <div>
+                                <a href="${tdEsc(act.attachment_url)}" target="_blank" class="mw-act-attach-chip" download>
+                                    <i class="fa-solid fa-paperclip"></i>
+                                    <span>${tdEsc(act.attachment_name)}</span>
+                                    <i class="fa-solid fa-arrow-down" style="font-size:10px; margin-left:2px;"></i>
+                                </a>
+                            </div>`;
+                    }
                     
                     if (isSystem) {
                         return `
@@ -2532,14 +2804,19 @@ document.addEventListener('DOMContentLoaded', function () {
                                 ${tdEsc(act.activity)}
                             </div>`;
                     } else {
+                        const avatarHtml = act.user_photo
+                            ? `<img src="${tdEsc(act.user_photo)}" alt="${tdEsc(act.user_name)}" class="mw-act-avatar" style="object-fit:cover;" onerror="this.outerHTML='<span class=\\'mw-act-avatar\\'>${tdEsc(initial)}</span>'">`
+                            : `<span class="mw-act-avatar">${tdEsc(initial)}</span>`;
+
                         return `
                             <div class="mw-activity-item">
-                                <span class="mw-act-avatar">${tdEsc(initial)}</span>
+                                ${avatarHtml}
                                 <div style="flex:1;">
                                     <div class="mw-act-head">
                                         ${tdEsc(act.user_name)} <span class="mw-act-time">· ${tdEsc(act.created_at)}</span>
                                     </div>
-                                    <div class="mw-act-comment">${tdEsc(act.activity)}</div>
+                                    <div class="mw-act-comment">${formattedActivity}</div>
+                                    ${attachChip}
                                 </div>
                             </div>`;
                     }
@@ -2549,13 +2826,26 @@ document.addEventListener('DOMContentLoaded', function () {
             activitiesHtml = '<div class="mw-td-empty mb-2">No activity yet.</div>';
         }
 
-        // Figma input box with trailing plus icon
+        // Figma input box with trailing file upload button (Enter to post comment)
         const commentBoxHtml = `
-            <div class="mw-figma-comment-box">
+            <div class="mw-figma-comment-box" id="mwCommentBoxContainer">
                 <input type="text" id="mwCommentInput" class="mw-figma-comment-input" placeholder="Write a comment or @mention a teammate…" autocomplete="off">
-                <button type="button" class="mw-figma-comment-btn" id="mwBtnSendComment" title="Add comment">
-                    <i class="fa-solid fa-plus"></i>
-                </button>
+                <input type="file" id="mwCommentFileInput" style="display:none;" accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.csv">
+                <div class="mw-figma-comment-actions">
+                    <button type="button" class="mw-figma-icon-btn" id="mwBtnAttachFile" title="Attach file">
+                        <i class="fa-solid fa-paperclip"></i>
+                    </button>
+                </div>
+                <!-- Mentions dropdown popup -->
+                <div class="mw-mention-popup" id="mwMentionPopup"></div>
+            </div>
+            <!-- File preview tag -->
+            <div class="mw-comment-file-preview" id="mwCommentFilePreview">
+                <div class="d-flex align-items-center gap-2 text-truncate">
+                    <i class="fa-solid fa-file-lines text-muted"></i>
+                    <span id="mwCommentFileName" class="text-truncate"></span>
+                </div>
+                <span class="file-remove" id="mwBtnRemoveFile" title="Remove file"><i class="fa-solid fa-xmark"></i></span>
             </div>`;
 
         // Attachments row matching Figma
@@ -2603,22 +2893,20 @@ document.addEventListener('DOMContentLoaded', function () {
             tdBody.querySelectorAll('[data-td-pane]').forEach(p => p.style.display = p.dataset.tdPane === b.dataset.pane ? '' : 'none');
         }));
 
-        // Reviewer controls vs Assignee complete controls
-        const btnRevApprove = document.getElementById('btnReviewerApprove');
-        const btnRevChanges = document.getElementById('btnReviewerRequestChanges');
+        // Reviewer controls vs Assignee complete controls for standard view
+        const footActions = document.querySelector('.mw-td-foot-actions');
+        if (footActions) {
+            footActions.innerHTML = `
+                <button type="button" class="mw-td-btn" disabled><i class="fa-regular fa-clock me-1"></i> Log work</button>
+                <button type="button" class="mw-td-btn" disabled>Request extension</button>
+                <button type="button" class="mw-td-btn primary" id="btnDrawerCompleteTask" disabled>
+                    <i class="fa-solid fa-check me-1"></i> Complete Task
+                </button>
+            `;
+        }
+        const btnDrawerCompleteTask = document.getElementById('btnDrawerCompleteTask');
         const revNoteWrap = document.getElementById('mwReviewNoteWrap');
         if (revNoteWrap) revNoteWrap.style.display = 'none';
-
-        if (t.is_reviewer && t.is_completed) {
-            // Task completed / submitted, and current user is reviewer -> show Reviewer actions
-            if (btnDrawerCompleteTask) btnDrawerCompleteTask.style.display = 'none';
-            if (btnRevApprove) btnRevApprove.style.display = '';
-            if (btnRevChanges) btnRevChanges.style.display = '';
-        } else {
-            if (btnRevApprove) btnRevApprove.style.display = 'none';
-            if (btnRevChanges) btnRevChanges.style.display = 'none';
-            if (btnDrawerCompleteTask) btnDrawerCompleteTask.style.display = '';
-        }
 
         // Wire up checklist item click handlers (Figma custom checkbox)
         tdBody.querySelectorAll('.mw-cl-item').forEach(itemEl => {
@@ -2686,21 +2974,142 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
             });
         });
-        // Wire up comment send handlers (Enter or Plus icon button)
-        tdBody.querySelectorAll('.mw-figma-comment-box').forEach(box => {
-            const input = box.querySelector('#mwCommentInput');
-            const btnSend = box.querySelector('#mwBtnSendComment');
-            if (!input || !btnSend) return;
+        // Wire up comment send, @mention autocomplete, and file attachment handlers
+        const commentBox = tdBody.querySelector('#mwCommentBoxContainer');
+        if (commentBox) {
+            const input = commentBox.querySelector('#mwCommentInput');
+            const btnAttach = commentBox.querySelector('#mwBtnAttachFile');
+            const fileInput = commentBox.querySelector('#mwCommentFileInput');
+            const filePreview = tdBody.querySelector('#mwCommentFilePreview');
+            const fileNameSpan = tdBody.querySelector('#mwCommentFileName');
+            const btnRemoveFile = tdBody.querySelector('#mwBtnRemoveFile');
+            const mentionPopup = commentBox.querySelector('#mwMentionPopup');
 
+            let selectedFile = null;
+            let mentionedUserIds = new Set();
+            let isSendingComment = false;
+            const teammates = Array.isArray(t.teammates) ? t.teammates : [];
+
+            // Attachment trigger
+            if (btnAttach && fileInput) {
+                btnAttach.addEventListener('click', () => fileInput.click());
+                fileInput.addEventListener('change', function() {
+                    if (this.files && this.files[0]) {
+                        selectedFile = this.files[0];
+                        if (fileNameSpan && filePreview) {
+                            fileNameSpan.textContent = selectedFile.name + ' (' + (Math.round(selectedFile.size / 1024)) + ' KB)';
+                            filePreview.classList.add('show');
+                        }
+                    }
+                });
+            }
+
+            // Remove selected file
+            if (btnRemoveFile) {
+                btnRemoveFile.addEventListener('click', function() {
+                    selectedFile = null;
+                    if (fileInput) fileInput.value = '';
+                    if (filePreview) filePreview.classList.remove('show');
+                });
+            }
+
+            // @mention Autocomplete Logic
+            let mentionQuery = '';
+            let mentionStartIndex = -1;
+
+            const hideMentionPopup = () => {
+                if (mentionPopup) {
+                    mentionPopup.classList.remove('show');
+                    mentionPopup.innerHTML = '';
+                }
+                mentionStartIndex = -1;
+            };
+
+            const renderMentionList = (filterText) => {
+                if (!mentionPopup) return;
+                const q = filterText.toLowerCase();
+                const matched = teammates.filter(u => u.name.toLowerCase().includes(q));
+
+                if (matched.length === 0) {
+                    hideMentionPopup();
+                    return;
+                }
+
+                mentionPopup.innerHTML = matched.slice(0, 8).map(u => {
+                    const avatar = u.photo
+                        ? `<img src="${tdEsc(u.photo)}" class="mw-mention-avatar" alt="${tdEsc(u.name)}">`
+                        : `<span class="mw-mention-avatar">${tdEsc(tdInitials(u.name))}</span>`;
+                    return `
+                        <div class="mw-mention-item" data-uid="${u.id}" data-name="${tdEsc(u.name)}">
+                            ${avatar}
+                            <span class="mw-mention-name">${tdEsc(u.name)}</span>
+                            <span class="mw-mention-role">${tdEsc(u.designation)}</span>
+                        </div>`;
+                }).join('');
+
+                mentionPopup.classList.add('show');
+
+                mentionPopup.querySelectorAll('.mw-mention-item').forEach(item => {
+                    item.addEventListener('click', function() {
+                        const uid = parseInt(this.getAttribute('data-uid'), 10);
+                        const uname = this.getAttribute('data-name');
+                        insertMention(uname, uid);
+                    });
+                });
+            };
+
+            const insertMention = (name, uid) => {
+                if (mentionStartIndex < 0) return;
+                const text = input.value;
+                const before = text.slice(0, mentionStartIndex);
+                const cursor = input.selectionStart || text.length;
+                const after = text.slice(cursor);
+                input.value = before + '@' + name + ' ' + after;
+                mentionedUserIds.add(uid);
+                hideMentionPopup();
+                input.focus();
+            };
+
+            input.addEventListener('input', function() {
+                const val = this.value;
+                const cursorPos = this.selectionStart || 0;
+                const textBeforeCursor = val.slice(0, cursorPos);
+                const lastAt = textBeforeCursor.lastIndexOf('@');
+
+                if (lastAt !== -1 && (lastAt === 0 || /\s/.test(textBeforeCursor[lastAt - 1]))) {
+                    mentionStartIndex = lastAt;
+                    const query = textBeforeCursor.slice(lastAt + 1);
+                    if (!/\s/.test(query)) {
+                        renderMentionList(query);
+                        return;
+                    }
+                }
+                hideMentionPopup();
+            });
+
+            document.addEventListener('click', function(e) {
+                if (commentBox && !commentBox.contains(e.target)) {
+                    hideMentionPopup();
+                }
+            });
+
+            // Comment submission via Enter key
             const doSendComment = () => {
+                if (isSendingComment) return;
                 const commentText = input.value.trim();
-                if (!commentText) return;
+                if (!commentText && !selectedFile) return;
 
-                btnSend.disabled = true;
-                btnSend.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+                isSendingComment = true;
+                input.disabled = true;
 
                 const fd = new FormData();
                 fd.append('comment', commentText);
+                if (selectedFile) {
+                    fd.append('attachment', selectedFile);
+                }
+                if (mentionedUserIds.size > 0) {
+                    fd.append('mentioned_ids', Array.from(mentionedUserIds).join(','));
+                }
 
                 fetch(`${baseUrl}/my-work/add-comment/${t.id}`, {
                     method: 'POST',
@@ -2712,6 +3121,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (data.status === 'success') {
                         showMwToast('Comment posted.', 'success');
                         input.value = '';
+                        selectedFile = null;
+                        mentionedUserIds.clear();
+                        if (fileInput) fileInput.value = '';
+                        if (filePreview) filePreview.classList.remove('show');
                         if (window.openTaskDetail && currentDetailTaskId) {
                             window.openTaskDetail(currentDetailTaskId);
                         }
@@ -2724,19 +3137,29 @@ document.addEventListener('DOMContentLoaded', function () {
                     showMwToast('Network error while posting comment.', 'error');
                 })
                 .finally(() => {
-                    btnSend.disabled = false;
-                    btnSend.innerHTML = '<i class="fa-solid fa-plus"></i>';
+                    isSendingComment = false;
+                    input.disabled = false;
+                    input.focus();
                 });
             };
 
-            btnSend.addEventListener('click', doSendComment);
             input.addEventListener('keydown', e => {
                 if (e.key === 'Enter') {
+                    if (mentionPopup && mentionPopup.classList.contains('show')) {
+                        const firstItem = mentionPopup.querySelector('.mw-mention-item');
+                        if (firstItem) {
+                            e.preventDefault();
+                            firstItem.click();
+                            return;
+                        }
+                    }
                     e.preventDefault();
                     doSendComment();
+                } else if (e.key === 'Escape') {
+                    hideMentionPopup();
                 }
             });
-        });
+        }
 
         if (btnDrawerCompleteTask) {
             if (t.is_completed) {
