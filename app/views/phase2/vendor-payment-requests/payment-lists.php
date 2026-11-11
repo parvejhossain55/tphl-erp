@@ -32,6 +32,11 @@ $canApprove = $canApprove ?? false;
            class="btn btn-sm <?= empty($filters['status']) ? 'btn-primary' : 'btn-outline-secondary' ?> rounded-pill px-3 fw-semibold">
             All Requests <span class="badge bg-light text-dark ms-1"><?= number_format($filterCounts['total'] ?? 0) ?></span>
         </a>
+        <a href="<?= $base_url ?>/con-vendor-payment-requests?status=my_applicable" 
+           class="btn btn-sm <?= (($filters['status'] ?? '') === 'my_applicable') ? 'btn-danger text-white' : 'btn-outline-danger' ?> rounded-pill px-3 fw-semibold shadow-sm">
+            <i class="bi bi-person-check-fill me-1"></i> My Applicable 
+            <span class="badge <?= (($filters['status'] ?? '') === 'my_applicable') ? 'bg-light text-danger' : 'bg-danger text-white' ?> ms-1"><?= number_format($filterCounts['my_applicable'] ?? 0) ?></span>
+        </a>
         <a href="<?= $base_url ?>/con-vendor-payment-requests?status=pending_qc" 
            class="btn btn-sm <?= (($filters['status'] ?? '') === 'pending_qc') ? 'btn-warning text-dark' : 'btn-outline-warning text-dark' ?> rounded-pill px-3 fw-semibold">
             <i class="bi bi-hourglass-split me-1"></i> Pending QC 
@@ -116,6 +121,7 @@ $canApprove = $canApprove ?? false;
                         </label>
                         <select name="status" class="form-control form-control-sm select2">
                             <option value="">All Statuses</option>
+                            <option value="my_applicable" <?= (($filters['status'] ?? '') === 'my_applicable') ? 'selected' : '' ?>>My Applicable (Awaiting My Action)</option>
                             <option value="ready_to_pay" <?= (in_array(($filters['status'] ?? ''), ['ready_to_pay', 'partially_paid'])) ? 'selected' : '' ?>>Ready to Pay (Partially Paid)</option>
                             <option value="apex_approved" <?= (in_array(($filters['status'] ?? ''), ['apex_approved', 'approved'])) ? 'selected' : '' ?>>Management / Apex Approved</option>
                             <option value="fully_paid" <?= (($filters['status'] ?? '') === 'fully_paid') ? 'selected' : '' ?>>Fully Paid</option>

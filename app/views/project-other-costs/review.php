@@ -55,6 +55,11 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                 $rejBy = $request['dh_name'] ?? 'Department Head';
                 $rejAt = $request['dept_head_approved_at'] ?? '';
                 $rejNote = $request['dept_head_approval_note'] ?? '';
+            } elseif (($request['purchase_head_status'] ?? '') === 'rejected') {
+                $rejStep = 'Purchase Head';
+                $rejBy = $request['ph_name'] ?? 'Purchase Head';
+                $rejAt = $request['purchase_head_at'] ?? '';
+                $rejNote = $request['purchase_head_note'] ?? '';
             } elseif (!empty($request['management_apporved_by_id'])) {
                 $rejStep = 'Management / Operation Head';
                 $rejBy = $request['mgmt_name'] ?? 'Management';
@@ -284,6 +289,32 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                     <?php endif; ?>
                                 <?php endif; ?>
                             </li>
+                            <?php
+                            $phStatusHist = $request['purchase_head_status'] ?? 'not_required';
+                            if (!($phStatusHist === 'not_required' && empty($request['purchase_head_by']))):
+                            ?>
+                            <!-- Purchase Head Approval (Role 17) -->
+                            <li class="list-group-item py-3 px-0 lh-base">
+                                <strong>Purchase Head Approval:</strong>
+                                <?php if ($phStatusHist === 'approved'): ?>
+                                    <span class="text-success"><i class="bi bi-check-circle"></i> Approved</span> by <?= htmlspecialchars($request['ph_name'] ?? 'Purchase Head') ?><br>
+                                    <?php if (!empty($request['purchase_head_at'])): ?>
+                                        <small class="text-muted"><?= date('d M Y h:i A', strtotime($request['purchase_head_at'])) ?></small><br>
+                                    <?php endif; ?>
+                                    <?php if (!empty($request['purchase_head_note'])): ?><small>Note: <?= htmlspecialchars($request['purchase_head_note']) ?></small><?php endif; ?>
+                                <?php elseif ($phStatusHist === 'rejected'): ?>
+                                    <span class="text-danger"><i class="bi bi-x-circle"></i> Rejected</span> by <?= htmlspecialchars($request['ph_name'] ?? 'Purchase Head') ?><br>
+                                    <?php if (!empty($request['purchase_head_at'])): ?>
+                                        <small class="text-muted"><?= date('d M Y h:i A', strtotime($request['purchase_head_at'])) ?></small><br>
+                                    <?php endif; ?>
+                                    <?php if (!empty($request['purchase_head_note'])): ?><small>Note: <?= htmlspecialchars($request['purchase_head_note']) ?></small><?php endif; ?>
+                                <?php elseif ($request['status'] === 'rejected'): ?>
+                                    <span class="text-muted"><i class="bi bi-dash-circle"></i> Skipped (Rejected at Earlier Stage)</span>
+                                <?php else: ?>
+                                    <span class="text-warning"><i class="bi bi-clock"></i> Pending</span> <span class="text-muted small">(Purchase Head)</span>
+                                <?php endif; ?>
+                            </li>
+                            <?php endif; ?>
                             <li class="list-group-item py-3 px-0 lh-base">
                                 <strong>QC Approval:</strong> 
                                 <?php if($request['qc_audit_approved_id']): ?>
@@ -315,6 +346,10 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                     <?php if($request['qc_audit_note']): ?><small>Note: <?= htmlspecialchars($request['qc_audit_note']) ?></small><?php endif; ?>
                                 <?php elseif($request['dept_head_status'] === 'rejected'): ?>
                                     <span class="text-muted"><i class="bi bi-dash-circle"></i> Skipped (Rejected by Dept Head)</span>
+                                <?php elseif(($request['purchase_head_status'] ?? '') === 'rejected'): ?>
+                                    <span class="text-muted"><i class="bi bi-dash-circle"></i> Skipped (Rejected by Purchase Head)</span>
+                                <?php elseif(($request['purchase_head_status'] ?? '') === 'pending' && $request['status'] === 'pending'): ?>
+                                    <span class="text-secondary"><i class="bi bi-lock"></i> Awaiting Purchase Head Approval</span>
                                 <?php else: ?>
                                     <span class="text-warning"><i class="bi bi-clock"></i> Pending</span>
                                 <?php endif; ?>
@@ -491,7 +526,11 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                 $roleNameLc = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
                 $creatorReportingUserId = (int)($request['creator_reporting_user_id'] ?? 0);
                 $canDeptHeadApprove = ($request['dept_head_status'] === 'pending' && ($userId == $creatorReportingUserId));
-                $canQCApprove = ($request['status'] == 'pending' && $request['dept_head_status'] !== 'pending' && in_array($roleId, [13, 24, 25]));
+                $isPhPending = (($request['purchase_head_status'] ?? 'not_required') === 'pending' && $request['status'] == 'pending' && $request['dept_head_status'] !== 'pending');
+                $isPhMgmtUser = !in_array($roleId, [33, 34, 35], true) && (in_array($roleId, [1, 3, 38], true) || ((str_contains($roleNameLc, 'director') || str_contains($roleNameLc, 'dceo') || str_contains($roleNameLc, 'management') || str_contains($roleNameLc, 'super admin')) && !in_array($roleNameLc, ['management viewer', 'chief officer', 'seal ceo'], true)));
+                $canPurchaseHeadApprove = ($isPhPending && ($roleId === 17 || $isPhMgmtUser));
+                $isQcAwaitingPurchaseHead = ($isPhPending && in_array($roleId, [13, 24, 25]));
+                $canQCApprove = ($request['status'] == 'pending' && $request['dept_head_status'] !== 'pending' && !$isPhPending && in_array($roleId, [13, 24, 25]));
                 $reqAmt = (float)($request['approved_amount'] ?? $request['request_amount'] ?? 0);
                 $isOver1Lac = ($reqAmt > 10000);
                 $isOpHeadUser = (in_array($roleId, [20, 32], true) || str_contains($roleNameLc, 'operation head') || str_contains($roleNameLc, 'admin & operation'));
@@ -509,6 +548,8 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                         $canMgmtApprove = true;
                         if (($request['dept_head_status'] ?? 'not_required') === 'pending') {
                             $pocOverrideStage = 'Department Head';
+                        } elseif (($request['purchase_head_status'] ?? 'not_required') === 'pending' && $request['status'] === 'pending') {
+                            $pocOverrideStage = 'Purchase Head';
                         } elseif ($request['status'] === 'pending') {
                             $pocOverrideStage = 'QC & Internal Audit';
                         } elseif (!$isOpHeadApproved) {
@@ -525,7 +566,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                 $isWaitingAccountsHead = (in_array($request['status'], ['management_approved', 'in_review', 'qc_approved']) && $isOpHeadApproved && (in_array($roleId, [6, 30]) || $isMgmtUser) && !$isAhApproved);
                 ?>
 
-                <?php if ($canDeptHeadApprove || $canQCApprove || $canMgmtApprove || $isMgmtLocked || $canPay || $isWaitingAccountsHead): ?>
+                <?php if ($canDeptHeadApprove || $canPurchaseHeadApprove || $isQcAwaitingPurchaseHead || $canQCApprove || $canMgmtApprove || $isMgmtLocked || $canPay || $isWaitingAccountsHead): ?>
                     <div class="card shadow-sm border-0 border-top border-3 border-primary mb-4">
                         <div class="card-header bg-white py-3 px-4 border-bottom">
                             <h5 class="card-title text-primary mb-0 p-0"><i class="bi bi-pencil-square me-2"></i>Process Request</h5>
@@ -534,6 +575,27 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                             
                             <?php if ($canDeptHeadApprove): ?>
                                 <form method="POST" action="<?= $GLOBALS['base_url'] ?>/project-other-costs/approve-dept-head/<?= $request['id'] ?>">
+                                    <?php if ($isMgmtUser): ?>
+                                    <div class="mb-3 p-3 bg-warning-subtle rounded border border-warning-subtle text-start">
+                                        <label class="form-label fw-bold d-block mb-2 text-dark fs-12">
+                                            <i class="bi bi-shield-exclamation text-warning me-1"></i> Management Approval Scope:
+                                        </label>
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="radio" name="approval_scope" id="poc_dh_scope_normal" value="dept_head_only" checked>
+                                            <label class="form-check-label fw-semibold text-dark fs-12" for="poc_dh_scope_normal">
+                                                <i class="bi bi-check-circle text-success me-1"></i> Approve as Department Head Only
+                                                <small class="text-muted d-block fw-normal mt-0.5">Recommended: Forwards request to next reviewer (Purchase Head / QC) without bypassing downstream stages.</small>
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="approval_scope" id="poc_dh_scope_override" value="full_override">
+                                            <label class="form-check-label fw-semibold text-danger fs-12" for="poc_dh_scope_override">
+                                                <i class="bi bi-shield-fill-check text-danger me-1"></i> Direct Management Approval (Override All Stages)
+                                                <small class="text-muted d-block fw-normal mt-0.5">Bypasses Purchase Head, QC, Op Head, and Accounts Head. Completes final approval immediately.</small>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <?php endif; ?>
                                     <div class="mb-3">
                                         <label class="form-label fw-bold">Department Head Note (Optional)</label>
                                         <textarea class="form-control" name="dept_head_approval_note" rows="3" placeholder="Enter remarks..."></textarea>
@@ -547,6 +609,36 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                         </button>
                                     </div>
                                 </form>
+                            <?php endif; ?>
+
+                            <?php if ($canPurchaseHeadApprove): ?>
+                                <form method="POST" action="<?= $GLOBALS['base_url'] ?>/project-other-costs/approve-purchase-head/<?= $request['id'] ?>" class="mb-3">
+                                    <div class="d-flex align-items-start gap-2 p-3 mb-3 rounded-2 border border-info bg-info-subtle text-dark small lh-base">
+                                        <i class="bi bi-cart-check text-info flex-shrink-0 mt-1"></i>
+                                        <div><strong>Purchase Head Approval:</strong> Your approval forwards this request to QC &amp; Internal Audit.</div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Purchase Head Note (Optional)</label>
+                                        <textarea class="form-control" name="purchase_head_note" rows="3" placeholder="Enter remarks..."></textarea>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button type="submit" name="action" value="approve" class="btn btn-success flex-grow-1" onclick="return confirm('Are you sure you want to approve this request as Purchase Head?');">
+                                            <i class="bi bi-check-circle me-1"></i> Approve
+                                        </button>
+                                        <button type="submit" name="action" value="reject" class="btn btn-danger flex-grow-1" onclick="return confirm('Are you sure you want to reject this request?');">
+                                            <i class="bi bi-x-circle me-1"></i> Reject
+                                        </button>
+                                    </div>
+                                </form>
+                            <?php endif; ?>
+
+                            <?php if ($isQcAwaitingPurchaseHead): ?>
+                                <div class="p-3 rounded-2 border border-warning bg-warning-subtle text-dark text-center mb-3 lh-base">
+                                    <div class="fw-bold mb-1">
+                                        <i class="fa-solid fa-lock text-warning me-1"></i>Awaiting Purchase Head
+                                    </div>
+                                    <div class="fs-12">QC approval is locked until the <strong>Purchase Head (Role 17)</strong> approves this request.</div>
+                                </div>
                             <?php endif; ?>
 
                             <?php if ($canQCApprove): ?>
@@ -595,6 +687,26 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                                 <strong>Admin &amp; Operation Head Approval<?= $isOver1Lac ? ' (Step 1 of 3)' : ' (≤ ৳10,000 Tier)' ?>:</strong> Your approval verifies and forwards this request to Accounts Head (Role 30).
                                             </div>
                                         </div>
+                                    <?php elseif ($isMgmtUser && !empty($pocOverrideStage)): ?>
+                                        <div class="mb-3 p-3 bg-warning-subtle rounded border border-warning-subtle text-start">
+                                            <label class="form-label fw-bold d-block mb-2 text-dark fs-12">
+                                                <i class="bi bi-shield-exclamation text-warning me-1"></i> Pending <?= htmlspecialchars($pocOverrideStage) ?> Approval:
+                                            </label>
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="radio" name="approval_scope" id="poc_scope_step" value="step_only" <?= in_array($pocOverrideStage, ['Department Head', 'Purchase Head'], true) ? 'checked' : '' ?>>
+                                                <label class="form-check-label fw-semibold text-dark fs-12" for="poc_scope_step">
+                                                    <i class="bi bi-check-circle text-success me-1"></i> Approve as <?= htmlspecialchars($pocOverrideStage) ?> Only
+                                                    <small class="text-muted d-block fw-normal mt-0.5">Only approve this pending stage and forward to next reviewer in sequence.</small>
+                                                </label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="approval_scope" id="poc_scope_override" value="full_override" <?= !in_array($pocOverrideStage, ['Department Head', 'Purchase Head'], true) ? 'checked' : '' ?>>
+                                                <label class="form-check-label fw-semibold text-danger fs-12" for="poc_scope_override">
+                                                    <i class="bi bi-shield-fill-check text-danger me-1"></i> Direct Management Approval (Override All Stages)
+                                                    <small class="text-muted d-block fw-normal mt-0.5">Bypass all remaining stages and complete final Management approval immediately.</small>
+                                                </label>
+                                            </div>
+                                        </div>
                                     <?php endif; ?>
                                     <div class="mb-3">
                                         <label class="form-label fw-bold"><?= $isOpHeadAction ? 'Verified Amount (৳)' : 'Final Approved Amount (৳)' ?></label>
@@ -620,8 +732,17 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                     if (btnPoc && formPoc) {
                                         btnPoc.addEventListener('click', function() {
                                             document.getElementById('pocMgmtActionInput').value = 'approve';
+                                            var scopeRadio = formPoc.querySelector('input[name="approval_scope"]:checked');
+                                            var isDeptOnly = scopeRadio && (scopeRadio.value === 'dept_head_only' || scopeRadio.value === 'step_only');
                                             var overrideStage = <?= json_encode($pocOverrideStage ?? '') ?>;
                                             var isOpHead = <?= !empty($isOpHeadAction) ? 'true' : 'false' ?>;
+
+                                            if (isDeptOnly) {
+                                                if (confirm('Approve as ' + (overrideStage || 'Department Head') + ' and forward to next reviewer?')) {
+                                                    formPoc.submit();
+                                                }
+                                                return;
+                                            }
                                             var title = overrideStage !== ''
                                                 ? 'Pending ' + overrideStage + "'s Approval"
                                                 : (isOpHead ? 'Approve as Head of Operation?' : 'Final Management Approval?');

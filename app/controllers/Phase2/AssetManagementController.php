@@ -743,8 +743,11 @@ class AssetManagementController extends Controller
             $status = $_POST['approval_status'] ?? $_POST['status'] ?? 'approved';
             $note = $_POST['approval_note'] ?? $_POST['note'] ?? '';
 
-            // When Management (DCEO / CEO / Director / Super Admin) approves at any stage, auto-fill all bypassed stages with Management's identity and perform final approval
-            if ($isMgmtUser && $status === 'approved') {
+            // When Management approves: check if they selected Department Head / Current Step Only vs Full Management Override
+            $scope = $_POST['approval_scope'] ?? (($_POST['step'] ?? $step) === 'dept_head' ? 'dept_head_only' : 'full_override');
+            if ($isMgmtUser && $status === 'approved' && in_array($scope, ['dept_head_only', 'step_only'], true)) {
+                $step = !empty($_POST['step']) ? $_POST['step'] : 'dept_head';
+            } elseif ($isMgmtUser && $status === 'approved') {
                 $step = 'mgmt';
                 $escBypassNote = $this->db->real_escape_string(($note ?: 'Approved by Management') . ' (Management Override)');
                 $this->db->query("
@@ -819,6 +822,30 @@ class AssetManagementController extends Controller
             }
 
             if ($this->model->approveStep($id, $step, $status, $userId, $note, $document)) {
+                if ($status === 'approved' && $step === 'dept_head') {
+                    // Auto-pass checks if Department Head approver is also Purchase Head (Role 17) or Operation Head (Role 20 / 32)
+                    $escAutoNote = $this->db->real_escape_string(($note ?: 'Approved by Department Head') . ' (Auto-approved via Department Head Approval)');
+                    if ($roleId === 17) {
+                        $this->db->query("
+                            UPDATE project_extra_assets 
+                            SET purchase_head_status = 'approved', 
+                                purchase_head_by = {$userId}, 
+                                purchase_head_at = NOW(), 
+                                purchase_head_note = '{$escAutoNote}' 
+                            WHERE id = {$id}
+                        ");
+                    }
+                    if (in_array($roleId, [20, 32], true)) {
+                        $this->db->query("
+                            UPDATE project_extra_assets 
+                            SET operations_status = 'approved', 
+                                operations_by = {$userId}, 
+                                operations_at = NOW(), 
+                                operations_note = '{$escAutoNote}' 
+                            WHERE id = {$id}
+                        ");
+                    }
+                }
                 if ($status === 'approved') {
                     try {
                         $updatedRequest = $this->model->findExtraPurchase($id);

@@ -31,7 +31,7 @@
 
         <?php 
         $userId = $_SESSION['user']['id'] ?? ($userId ?? null);
-        $isApprover = in_array($roleId, [1, 3, 6, 9, 13, 15, 20, 22, 24, 25, 30, 32, 33]) || !empty($isReportingBoss);
+        $isApprover = in_array($roleId, [1, 3, 6, 9, 13, 15, 17, 20, 22, 24, 25, 30, 32, 33]) || !empty($isReportingBoss);
         $showApprovalTab = !empty($allApprovalRequests) || $isApprover;
         $activeTab = $_GET['tab'] ?? (($isApprover || !empty($pendingApprovalRequests)) ? 'pending-approval' : 'my-requests');
         ?>
@@ -112,6 +112,10 @@
                                                             Approver: <strong><?= htmlspecialchars($row['designated_dh_name']) ?></strong>
                                                         </div>
                                                     <?php endif; ?>
+                                                <?php elseif ($row['status'] == 'pending' && ($row['purchase_head_status'] ?? 'not_required') === 'pending'): ?>
+                                                    <span class="badge bg-warning text-dark mb-1">
+                                                        <i class="bi bi-clock me-1"></i>Purchase Head Pending
+                                                    </span>
                                                 <?php else: ?>
                                                     <span class="badge bg-<?= $row['status'] == 'pending' ? 'warning' : ($row['status'] == 'paid' ? 'success' : ($row['status'] == 'rejected' ? 'danger' : 'info')) ?>">
                                                         <?= ucfirst(str_replace('_', ' ', $row['status'])) ?>
@@ -210,6 +214,19 @@
                                                         <i class="bi bi-check-circle"></i> Dept Head Approved
                                                     </div>
                                                 <?php endif; ?>
+                                                <?php if (($row['purchase_head_status'] ?? '') === 'approved'): ?>
+                                                    <div class="text-success" style="font-size: 0.75rem;">
+                                                        <i class="bi bi-check-circle"></i> Purchase Head Approved
+                                                    </div>
+                                                <?php elseif ($row['status'] == 'pending' && $row['dept_head_status'] !== 'pending' && ($row['purchase_head_status'] ?? '') === 'pending'): ?>
+                                                    <div class="text-warning" style="font-size: 0.75rem;">
+                                                        <i class="bi bi-clock"></i> Pending with Purchase Head
+                                                    </div>
+                                                <?php elseif (($row['purchase_head_status'] ?? '') === 'rejected'): ?>
+                                                    <div class="text-danger" style="font-size: 0.75rem;">
+                                                        <i class="bi bi-x-circle"></i> Rejected by Purchase Head
+                                                    </div>
+                                                <?php endif; ?>
                                             </td>
                                             <td>
                                                 <div class="fw-bold"><?= htmlspecialchars($row['created_by_name'] ?? 'N/A') ?></div>
@@ -224,7 +241,9 @@
                                                     $isDeptHead = ($row['dept_head_status'] === 'pending' && ($creatorReportingUserId === (int)$userId || $roleId === 1));
                                                     
                                                     if ($isDeptHead) $canApprove = true;
-                                                    if ($row['status'] == 'pending' && $row['dept_head_status'] !== 'pending' && in_array($roleId, [13, 24, 25, 1])) $canApprove = true;
+                                                    $phPendingRow = (($row['purchase_head_status'] ?? 'not_required') === 'pending');
+                                                    if ($row['status'] == 'pending' && $row['dept_head_status'] !== 'pending' && $phPendingRow && in_array($roleId, [17, 1])) $canApprove = true;
+                                                    if ($row['status'] == 'pending' && $row['dept_head_status'] !== 'pending' && !$phPendingRow && in_array($roleId, [13, 24, 25, 1])) $canApprove = true;
                                                     if ($row['status'] == 'qc_approved' && in_array($roleId, [3, 15, 20, 22, 32, 1])) $canApprove = true;
                                                     if ($row['status'] == 'management_approved' && in_array($roleId, [6, 30, 1])) $canApprove = true;
                                                     ?>
@@ -310,6 +329,19 @@
                                                         <i class="bi bi-check-circle"></i> Dept Head Approved
                                                     </div>
                                                 <?php endif; ?>
+                                                <?php if (($row['purchase_head_status'] ?? '') === 'approved'): ?>
+                                                    <div class="text-success" style="font-size: 0.75rem;">
+                                                        <i class="bi bi-check-circle"></i> Purchase Head Approved
+                                                    </div>
+                                                <?php elseif ($row['status'] == 'pending' && $row['dept_head_status'] !== 'pending' && ($row['purchase_head_status'] ?? '') === 'pending'): ?>
+                                                    <div class="text-warning" style="font-size: 0.75rem;">
+                                                        <i class="bi bi-clock"></i> Pending with Purchase Head
+                                                    </div>
+                                                <?php elseif (($row['purchase_head_status'] ?? '') === 'rejected'): ?>
+                                                    <div class="text-danger" style="font-size: 0.75rem;">
+                                                        <i class="bi bi-x-circle"></i> Rejected by Purchase Head
+                                                    </div>
+                                                <?php endif; ?>
                                             </td>
                                             <td>
                                                 <div class="fw-bold"><?= htmlspecialchars($row['created_by_name'] ?? 'N/A') ?></div>
@@ -324,7 +356,9 @@
                                                     $isDeptHead = ($row['dept_head_status'] === 'pending' && ($creatorReportingUserId === (int)$userId || $roleId === 1));
                                                     
                                                     if ($isDeptHead) $canApprove = true;
-                                                    if ($row['status'] == 'pending' && $row['dept_head_status'] !== 'pending' && in_array($roleId, [13, 24, 25, 1])) $canApprove = true;
+                                                    $phPendingRow = (($row['purchase_head_status'] ?? 'not_required') === 'pending');
+                                                    if ($row['status'] == 'pending' && $row['dept_head_status'] !== 'pending' && $phPendingRow && in_array($roleId, [17, 1])) $canApprove = true;
+                                                    if ($row['status'] == 'pending' && $row['dept_head_status'] !== 'pending' && !$phPendingRow && in_array($roleId, [13, 24, 25, 1])) $canApprove = true;
                                                     if ($row['status'] == 'qc_approved' && in_array($roleId, [3, 15, 20, 22, 32, 1])) $canApprove = true;
                                                     if ($row['status'] == 'management_approved' && in_array($roleId, [6, 30, 1])) $canApprove = true;
                                                     ?>
