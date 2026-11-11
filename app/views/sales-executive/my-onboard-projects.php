@@ -106,7 +106,27 @@ $show_breadcrumb = true;
             <?php if (!empty($targetUserId) && $targetUserId != ($_SESSION['user']['id'] ?? 0)): ?>
                 <input type="hidden" name="assigned_user" value="<?= (int)$targetUserId ?>">
             <?php endif; ?>
-            <div class="row mb-3 align-items-end">
+            <div class="row mb-3 g-2 align-items-end">
+
+                <!-- From Date -->
+                <div class="col-xxl-2 col-xl-3 col-lg-3 col-md-6 col-12">
+                    <div class="card__wrapper h-100">
+                        <div class="from__input-box">
+                            <label class="form-label small fw-semibold text-muted mb-1" style="font-size: 11px;">From Date</label>
+                            <input type="date" class="form-control" name="from_date" value="<?= htmlspecialchars($from_date ?? '') ?>">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- To Date -->
+                <div class="col-xxl-2 col-xl-3 col-lg-3 col-md-6 col-12">
+                    <div class="card__wrapper h-100">
+                        <div class="from__input-box">
+                            <label class="form-label small fw-semibold text-muted mb-1" style="font-size: 11px;">To Date</label>
+                            <input type="date" class="form-control" name="to_date" value="<?= htmlspecialchars($to_date ?? '') ?>">
+                        </div>
+                    </div>
+                </div>
 
                 <?php
                 $currentYear = date('Y');
@@ -114,11 +134,12 @@ $show_breadcrumb = true;
                 $selectedYear = $_GET['year'] ?? '';
                 ?>
                 <!-- Year Select -->
-                <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-12">
+                <div class="col-xxl-2 col-xl-3 col-lg-3 col-md-6 col-12">
                     <div class="card__wrapper h-100">
                         <div class="from__input-box">
+                            <label class="form-label small fw-semibold text-muted mb-1" style="font-size: 11px;">Year</label>
                             <select class="form-control" name="year">
-                                <option value="">Year Select</option>
+                                <option value="">All Years</option>
 
                                 <?php for ($year = $currentYear; $year >= $startYear; $year--): ?>
                                     <option
@@ -152,11 +173,12 @@ $show_breadcrumb = true;
                 ?>
 
                 <!-- Month Select -->
-                <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-12">
+                <div class="col-xxl-2 col-xl-3 col-lg-3 col-md-6 col-12">
                     <div class="card__wrapper h-100">
                         <div class="from__input-box">
+                            <label class="form-label small fw-semibold text-muted mb-1" style="font-size: 11px;">Month</label>
                             <select class="form-control" name="month">
-                                <option value="">Month Select</option>
+                                <option value="">All Months</option>
                                 <?php foreach ($months as $id => $name): ?>
 
                                     <option value="<?= $id ?>" <?= $selectedMonth == $id ? 'selected' : '' ?>>
@@ -168,14 +190,15 @@ $show_breadcrumb = true;
                         </div>
                     </div>
                 </div>
+
                 <!-- Buttons -->
-                <div class="col-xxl-4 col-xl-12 col-lg-12 col-md-12 col-12">
+                <div class="col-xxl-4 col-xl-12 col-lg-12 col-md-12 col-12 ms-auto">
                     <div class="card__wrapper h-100">
                         <div class="d-flex flex-column flex-sm-row gap-2">
-                            <button type="submit" class="btn btn-secondary w-100 ">
-                                Search Client
+                            <button type="submit" class="btn btn-secondary w-100">
+                                <i class="bi bi-search me-1"></i> Search
                             </button>
-                            <a href="<?= $GLOBALS['base_url'] ?>/my-onboarding-projects<?= (!empty($targetUserId) && $targetUserId != ($_SESSION['user']['id'] ?? 0)) ? '?assigned_user=' . (int)$targetUserId : '' ?>" class="btn btn-success w-100">
+                            <a href="<?= $GLOBALS['base_url'] ?>/my-onboarding-projects<?= (!empty($targetUserId) && $targetUserId != ($_SESSION['user']['id'] ?? 0)) ? '?assigned_user=' . (int)$targetUserId : '' ?>" class="btn btn-outline-success w-100">
                                 Reset
                             </a>
                         </div>
@@ -183,6 +206,27 @@ $show_breadcrumb = true;
                 </div>
             </div>
         </form>
+
+        <!-- Active Filter Notification Banner -->
+        <?php if (!empty($from_date) || !empty($to_date) || !empty($selectedYear) || !empty($selectedMonth)): ?>
+            <div class="col-12 mb-3">
+                <div class="alert alert-info py-2 px-3 mb-0 d-flex justify-content-between align-items-center flex-wrap gap-2" style="font-size: 12.5px; border-radius: 8px;">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <i class="bi bi-funnel-fill text-primary"></i>
+                        <strong>Active Filters:</strong>
+                        <?php if (!empty($from_date) || !empty($to_date)): ?>
+                            <span class="badge bg-white text-dark border"><i class="bi bi-calendar-range me-1"></i><?= htmlspecialchars($from_date ?? 'Start') ?> to <?= htmlspecialchars($to_date ?? 'Today') ?></span>
+                        <?php elseif (!empty($selectedYear) || !empty($selectedMonth)): ?>
+                            <span class="badge bg-white text-dark border"><i class="bi bi-calendar me-1"></i><?= !empty($selectedMonth) ? ($months[(int)$selectedMonth] ?? '') : '' ?> <?= $selectedYear ?></span>
+                        <?php endif; ?>
+                        <span class="text-muted">(<?= count($projects ?? []) ?> <?= count($projects ?? []) === 1 ? 'Unit' : 'Units' ?> found)</span>
+                    </div>
+                    <a href="<?= $GLOBALS['base_url'] ?>/my-onboarding-projects<?= (!empty($targetUserId) && $targetUserId != ($_SESSION['user']['id'] ?? 0)) ? '?assigned_user=' . (int)$targetUserId : '' ?>" class="text-danger fw-semibold text-decoration-none small">
+                        <i class="bi bi-x-circle me-1"></i>Clear Filters
+                    </a>
+                </div>
+            </div>
+        <?php endif; ?>
         <div class="col-xxl-12">
             <div class="card__wrapper">
                 <div class="table__wrapper table-responsive">
@@ -277,54 +321,74 @@ $show_breadcrumb = true;
 
         <!-- Collapsible Filter Section -->
         <div class="collapse" id="mobileFilterCollapse">
-            <form action="" method="get" class="p-2 border rounded ">
+            <form action="" method="get" class="p-3 border rounded bg-white shadow-xs mb-3">
+                <?php if (!empty($targetUserId) && $targetUserId != ($_SESSION['user']['id'] ?? 0)): ?>
+                    <input type="hidden" name="assigned_user" value="<?= (int)$targetUserId ?>">
+                <?php endif; ?>
                 <div class="d-flex flex-column gap-2">
 
-                    <!-- Year Select -->
-                    <?php
-                    $currentYear = date('Y');
-                    $startYear   = $currentYear - 10;
-                    $selectedYear = $slectedYear ?? '';
-                    ?>
-                    <select class="form-control form-select-sm" name="year">
-                        <option value="">Year Select</option>
-                        <?php for ($year = $currentYear; $year >= $startYear; $year--): ?>
-                            <option value="<?= $year ?>" <?= $selectedYear == $year ? 'selected' : '' ?>><?= $year ?></option>
-                        <?php endfor; ?>
-                    </select>
+                    <!-- Custom Date Range -->
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label small text-muted mb-1" style="font-size: 11px;">From Date</label>
+                            <input type="date" class="form-control form-control-sm" name="from_date" value="<?= htmlspecialchars($from_date ?? '') ?>">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small text-muted mb-1" style="font-size: 11px;">To Date</label>
+                            <input type="date" class="form-control form-control-sm" name="to_date" value="<?= htmlspecialchars($to_date ?? '') ?>">
+                        </div>
+                    </div>
 
-                    <!-- Month Select -->
-                    <?php
-                    $months = [
-                        1 => 'January',
-                        2 => 'February',
-                        3 => 'March',
-                        4 => 'April',
-                        5 => 'May',
-                        6 => 'June',
-                        7 => 'July',
-                        8 => 'August',
-                        9 => 'September',
-                        10 => 'October',
-                        11 => 'November',
-                        12 => 'December'
-                    ];
-                    $selectedMonth = $_GET['month'] ?? '';
-                    ?>
-                    <select class="form-control form-select-sm" name="month">
-                        <option value="">Month Select</option>
-                        <?php foreach ($months as $id => $name): ?>
-                            <option value="<?= $id ?>" <?= $selectedMonth == $id ? 'selected' : '' ?>><?= $name ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <div class="row g-2">
+                        <!-- Year Select -->
+                        <div class="col-6">
+                            <?php
+                            $currentYear = date('Y');
+                            $startYear   = $currentYear - 10;
+                            $selectedYear = $_GET['year'] ?? '';
+                            ?>
+                            <label class="form-label small text-muted mb-1" style="font-size: 11px;">Year</label>
+                            <select class="form-select form-select-sm" name="year">
+                                <option value="">All Years</option>
+                                <?php for ($year = $currentYear; $year >= $startYear; $year--): ?>
+                                    <option value="<?= $year ?>" <?= $selectedYear == $year ? 'selected' : '' ?>><?= $year ?></option>
+                                <?php endfor; ?>
+                            </select>
+                        </div>
 
-
+                        <!-- Month Select -->
+                        <div class="col-6">
+                            <?php
+                            $months = [
+                                1 => 'January',
+                                2 => 'February',
+                                3 => 'March',
+                                4 => 'April',
+                                5 => 'May',
+                                6 => 'June',
+                                7 => 'July',
+                                8 => 'August',
+                                9 => 'September',
+                                10 => 'October',
+                                11 => 'November',
+                                12 => 'December'
+                            ];
+                            $selectedMonth = $_GET['month'] ?? '';
+                            ?>
+                            <label class="form-label small text-muted mb-1" style="font-size: 11px;">Month</label>
+                            <select class="form-select form-select-sm" name="month">
+                                <option value="">All Months</option>
+                                <?php foreach ($months as $id => $name): ?>
+                                    <option value="<?= $id ?>" <?= $selectedMonth == $id ? 'selected' : '' ?>><?= $name ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
 
                     <!-- Action Buttons -->
                     <div class="d-flex flex-wrap gap-2 mt-2">
-                        <button type="submit" class="btn btn-outline-secondary btn-sm flex-grow-1">Search</button>
-                        <a href="<?= $GLOBALS['base_url'] ?>/lead-lists" class="btn btn-primary btn-sm flex-grow-1">Reset</a>
-
+                        <button type="submit" class="btn btn-secondary btn-sm flex-grow-1"><i class="bi bi-search me-1"></i> Search</button>
+                        <a href="<?= $GLOBALS['base_url'] ?>/my-onboarding-projects<?= (!empty($targetUserId) && $targetUserId != ($_SESSION['user']['id'] ?? 0)) ? '?assigned_user=' . (int)$targetUserId : '' ?>" class="btn btn-outline-success btn-sm flex-grow-1">Reset</a>
                     </div>
 
                 </div>

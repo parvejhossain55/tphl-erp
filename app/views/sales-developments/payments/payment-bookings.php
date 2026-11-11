@@ -7,16 +7,21 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
 $allBangladeshBanks = function_exists('getBangladeshBanks') ? getBangladeshBanks() : [];
 
-$finalAmount = !empty($booking['approved_amount'])
-    ? $booking['agreement_value'] - $booking['approved_amount']
-    : $booking['agreement_value'];
-
-if ($finalAmount <= 0) {
-    $finalAmount = $booking['agreement_value'];
+// Calculate discount and effective targets
+$discountAmount = 0;
+if (!empty($booking['approved_amount'])) {
+    $discountAmount = (float)$booking['approved_amount'];
+} elseif (!empty($booking['discount_amount']) && in_array(strtolower($booking['approval_status'] ?? ''), ['approved', 'not_required', 'pending'])) {
+    $discountAmount = (float)$booking['discount_amount'];
 }
+
+$effectiveLandShareTarget = max(0, (float)($booking['land_share_value'] ?? 0) - $discountAmount);
+$agreementValue = (float)($booking['agreement_value'] ?? 0);
+$finalAmount = $agreementValue;
 
 $booking_paid = 0;
 $booking_pending_and_paid = 0;
+$registration_paid = 0;
 $registration_pending_and_paid = 0;
 $has_registration = false;
 $existing_emi_no = null;
@@ -33,7 +38,10 @@ foreach ($payments as $p) {
         if (in_array($p['verification_status'], ['verified', 'pending'])) {
             $booking_pending_and_paid += $p['amount'];
         }
-    } elseif ($p['payment_type'] === 'registration') {
+    } elseif (in_array($p['payment_type'], ['registration', 'land_share'])) {
+        if ($p['verification_status'] == 'verified') {
+            $registration_paid += $p['amount'];
+        }
         if (in_array($p['verification_status'], ['verified', 'pending'])) {
             $registration_pending_and_paid += $p['amount'];
             $has_registration = true;
@@ -41,12 +49,12 @@ foreach ($payments as $p) {
     }
 }
 
-$remaining = $finalAmount - $booking_pending_and_paid;
-$is_booking_fully_paid = ($remaining <= 0);
+$remaining = max(0, $finalAmount - $booking_pending_and_paid);
+$is_booking_fully_paid = ($booking_pending_and_paid >= $finalAmount);
 
-$totalRegistrationAmount = abs((float)($booking['land_share_value'] ?? 0) - (float)($booking['agreement_value'] ?? 0));
-$registrationRemaining = $totalRegistrationAmount - $registration_pending_and_paid;
-$is_registration_fully_paid = ($registrationRemaining <= 0);
+$totalRegistrationAmount = max(0, $effectiveLandShareTarget - $finalAmount);
+$registrationRemaining = max(0, $totalRegistrationAmount - $registration_pending_and_paid);
+$is_registration_fully_paid = ($registration_pending_and_paid >= $totalRegistrationAmount);
 
 $showBookingForm = false;
 $form_mode = 'booking_money';
@@ -497,39 +505,24 @@ function generateCombinedReceipt() {
                         <?php if (!empty($payments)): ?>
 
                             <?php
-                            // Step 1: calculate final agreement value
-                            $finalAmount = !empty($booking['approved_amount'])
-                                ? $booking['agreement_value'] - $booking['approved_amount']
-                                : $booking['agreement_value'];
-
-                            if ($finalAmount <= 0) {
-                                $finalAmount = $booking['agreement_value'];
-                            }
-
                             // Step 2: running total for ledger style remaining
                             $running_paid = 0;
                             $registration_running_paid = 0;
-                            $totalRegistrationAmount = abs((float)($booking['land_share_value'] ?? 0) - (float)($booking['agreement_value'] ?? 0));
                             ?>
 
                             <?php foreach ($payments as $index => $p): ?>
 
                                 <?php
-                                // Only verified payments affect balance
-                                if (
-                                    $p['payment_type'] === 'booking_money' &&
-                                    $p['verification_status'] === 'verified'
-                                ) {
+                                if ($p['payment_type'] === 'booking_money') {
                                     $running_paid += $p['amount'];
-                                } elseif (
-                                    $p['payment_type'] === 'registration' &&
-                                    $p['verification_status'] === 'verified'
-                                ) {
+                                    $row_remaining = max(0, $finalAmount - $running_paid);
+                                } elseif (in_array($p['payment_type'], ['registration', 'land_share'])) {
                                     $registration_running_paid += $p['amount'];
+                                    $reg_row_remaining = max(0, $totalRegistrationAmount - $registration_running_paid);
+                                } else {
+                                    $row_remaining = 0;
+                                    $reg_row_remaining = 0;
                                 }
-
-                                $row_remaining = $finalAmount - $running_paid;
-                                $reg_row_remaining = $totalRegistrationAmount - $registration_running_paid;
                                 ?>
                         
                                 <tr>
@@ -537,12 +530,12 @@ function generateCombinedReceipt() {
                                         (<?= $index + 1 ?>) <?= date('d M Y', strtotime($p['payment_date'])) ?>
                                     </td>
 
-                                    <td><?= ucfirst($p['payment_type']) ?></td>
+                                    <td><?= ucfirst(str_replace('_', ' ', $p['payment_type'])) ?></td>
 
                                     <td>
                                         <?php if ($p['payment_type'] === 'booking_money'): ?>
-                                            <?= number_format($p['agreement_value'], 2) ?>
-                                        <?php elseif ($p['payment_type'] === 'registration'): ?>
+                                            <?= number_format($finalAmount, 2) ?>
+                                        <?php elseif (in_array($p['payment_type'], ['registration', 'land_share'])): ?>
                                             <?= number_format($totalRegistrationAmount, 2) ?>
                                         <?php else: ?>
                                             -
@@ -554,9 +547,9 @@ function generateCombinedReceipt() {
                                     <!--  Correct Remaining (ledger style) -->
                                     <td>
                                         <?php if ($p['payment_type'] === 'booking_money'): ?>
-                                            <?= number_format($row_remaining, 2) ?>
-                                        <?php elseif ($p['payment_type'] === 'registration'): ?>
-                                            <?= number_format($reg_row_remaining, 2) ?>
+                                            <?= number_format($row_remaining, 2) ?><?= $p['verification_status'] === 'pending' ? ' <small class="text-warning fw-semibold">(Pending)</small>' : '' ?>
+                                        <?php elseif (in_array($p['payment_type'], ['registration', 'land_share'])): ?>
+                                            <?= number_format($reg_row_remaining, 2) ?><?= $p['verification_status'] === 'pending' ? ' <small class="text-warning fw-semibold">(Pending)</small>' : '' ?>
                                         <?php else: ?>
                                             -
                                         <?php endif; ?>

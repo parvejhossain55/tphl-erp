@@ -774,11 +774,13 @@ class UserDashboardController extends Controller
             $targetUserName = $targetUser['full_name'] ?? null;
         }
 
-        $year  = $_GET['year']  ?? null;
-        $month = $_GET['month'] ?? null;
+        $year     = $_GET['year']      ?? null;
+        $month    = $_GET['month']     ?? null;
+        $fromDate = !empty($_GET['from_date']) ? trim($_GET['from_date']) : null;
+        $toDate   = !empty($_GET['to_date'])   ? trim($_GET['to_date'])   : null;
 
         $myOnboardProjects = $this->bookingModel
-            ->getAllMyOnboardProject($targetUserId, $year, $month);
+            ->getAllMyOnboardProject($targetUserId, $year, $month, $fromDate, $toDate);
 
         // Compute summary metrics for header cards
         $totalUnitsSold = count($myOnboardProjects);
@@ -811,6 +813,8 @@ class UserDashboardController extends Controller
             'targetUserName'    => $targetUserName,
             'selectedYear'      => $year,
             'selectedMonth'     => $month,
+            'from_date'         => $fromDate,
+            'to_date'           => $toDate,
             'current_page'      => 'my-onboarding-projects',
         ]);
     }
