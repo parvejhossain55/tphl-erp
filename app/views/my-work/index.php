@@ -1550,6 +1550,9 @@ $todayDateFormatted = date('j F');
                                                 <?php if ($isBlocked): ?>
                                                     <span class="mw-badge-blocked">Blocked</span>
                                                 <?php endif; ?>
+                                                <?php if (!empty($t['remarks']) && stripos($t['remarks'], 'Reviewer Note') !== false): ?>
+                                                    <span class="mw-badge-waiting" style="background:#FFF4E5; color:#B76E00; border:1px solid #FFE0B2; padding:2px 7px; border-radius:10px; font-size:11px; font-weight:600; margin-left:6px;"><i class="fa-solid fa-reply me-1"></i>Review Feedback</span>
+                                                <?php endif; ?>
                                                 <div class="mw-task-sub">
                                                     T-<?= $taskId ?> · <?= htmlspecialchars($t['project_name'] ?? 'General') ?> · <?= date('F', strtotime($t['created_at'])) ?>
                                                 </div>
@@ -1647,28 +1650,50 @@ $todayDateFormatted = date('j F');
                 <?php endif; ?>
             </div>
 
-            <!-- Card 2: One task is blocked / Needs Attention -->
+            <!-- Card 2: Task Attention (Priority or response needed) -->
             <div class="mw-focus-card">
                 <h4 class="mw-focus-title">Task Attention</h4>
                 <div class="mw-focus-subtitle">Priority or response needed</div>
 
                 <?php if ($blockedTask): ?>
+                    <?php 
+                        $isRevSub = !empty($blockedTask['is_review_submission']);
+                        $badgeText = $isRevSub ? 'Review Feedback' : (!empty($blockedTask['remarks']) ? 'Action Needed' : 'High Priority');
+                        $nextActionPerson = !empty($blockedTask['reviewer_name']) 
+                            ? $blockedTask['reviewer_name'] 
+                            : ($blockedTask['assigned_by_name'] ?? 'Reviewer');
+                        $nextActionDate = !empty($blockedTask['last_review_time']) 
+                            ? date('j M', strtotime($blockedTask['last_review_time']))
+                            : (!empty($blockedTask['deadline']) ? date('j M', strtotime($blockedTask['deadline'])) : 'Soon');
+                        
+                        // Extract reviewer note if available
+                        $displayNote = '';
+                        if (!empty($blockedTask['last_review_activity']) && preg_match('/note:\s*["\']?(.*?)["\']?$/is', $blockedTask['last_review_activity'], $mNote)) {
+                            $displayNote = trim($mNote[1], " \"'\t\n\r");
+                        } elseif (!empty($blockedTask['remarks'])) {
+                            if (preg_match('/Reviewer Note \([^)]+\):\s*(.*?)(?=\n|$)/is', $blockedTask['remarks'], $mNote)) {
+                                $displayNote = trim($mNote[1]);
+                            } else {
+                                $displayNote = $blockedTask['remarks'];
+                            }
+                        }
+                    ?>
                     <span class="mw-badge-waiting">
-                        <?= !empty($blockedTask['remarks']) ? 'Action Needed' : 'High Priority' ?>
+                        <?= htmlspecialchars($badgeText) ?>
                     </span>
 
-                    <p class="mw-blocked-desc">
+                    <p class="mw-blocked-desc" style="cursor: pointer;" onclick="openTaskDetail(<?= (int)$blockedTask['id'] ?>); return false;" title="Click to view task details">
                         <?= htmlspecialchars($blockedTask['title']) ?>
-                        <?php if (!empty($blockedTask['remarks'])): ?>
-                            <br><small class="text-muted"><?= htmlspecialchars(mb_strimwidth($blockedTask['remarks'], 0, 80, '...')) ?></small>
+                        <?php if (!empty($displayNote)): ?>
+                            <br><small class="text-muted"><i class="fa-regular fa-comment-dots me-1"></i><?= htmlspecialchars(mb_strimwidth($displayNote, 0, 80, '...')) ?></small>
                         <?php endif; ?>
                     </p>
 
                     <div class="mw-blocked-action">
-                        Next action: <?= htmlspecialchars($blockedTask['assigned_by_name'] ?? 'Team') ?> · <?= !empty($blockedTask['deadline']) ? date('j M', strtotime($blockedTask['deadline'])) : 'Soon' ?>
+                        Next action: <?= htmlspecialchars($nextActionPerson) ?> · <?= htmlspecialchars($nextActionDate) ?>
                     </div>
 
-                    <a href="javascript:void(0);" onclick="openTaskDetail(<?= (int)$blockedTask['id'] ?>); return false;" class="mw-btn-opentask">
+                    <a href="javascript:void(0);" onclick="filterReviewSubmissionTasks(); return false;" class="mw-btn-opentask" id="btnAttentionOpenTask" title="Show all review submission tasks in table">
                         <i class="fa-solid fa-arrow-right"></i>
                         <span>Open task</span>
                     </a>
@@ -2943,13 +2968,56 @@ document.addEventListener('DOMContentLoaded', function () {
         const footActions = document.querySelector('.mw-td-foot-actions');
         if (footActions) {
             const extBtnDisabled = t.is_completed ? 'disabled' : '';
+            const hasReviewers = (Array.isArray(t.reviewers) && t.reviewers.length > 0);
+            const isPending = (t.status === 'pending');
+            
+            let actionBtnHtml = '';
+            if (t.is_completed) {
+                actionBtnHtml = `<button type="button" class="mw-td-btn" disabled style="background:#EDF2EF;color:#087F5B;border-color:#EDF2EF;"><i class="fa-solid fa-check-double me-1"></i> Completed</button>`;
+            } else if (isPending && t.can_check) {
+                actionBtnHtml = `<button type="button" class="mw-td-btn primary" id="btnDrawerStartTask" style="background:#087F5B;color:#fff;border-color:#087F5B;"><i class="fa-solid fa-play me-1"></i> Start working</button>`;
+            } else if (t.can_complete) {
+                const btnLabel = hasReviewers ? 'Submit for review' : 'Complete Task';
+                actionBtnHtml = `<button type="button" class="mw-td-btn primary" id="btnDrawerCompleteTask" style="background:#087F5B;color:#fff;border-color:#087F5B;"><i class="fa-solid fa-check me-1"></i> ${btnLabel}</button>`;
+            } else {
+                actionBtnHtml = `<button type="button" class="mw-td-btn" disabled style="background:#EDF2EF;color:#8A9992;border-color:#EDF2EF;"><i class="fa-solid fa-check me-1"></i> Complete Task</button>`;
+            }
+
             footActions.innerHTML = `
                 <button type="button" class="mw-td-btn" disabled><i class="fa-regular fa-clock me-1"></i> Log work</button>
                 <button type="button" class="mw-td-btn" id="btnDrawerRequestExtension" ${extBtnDisabled}>Request extension</button>
-                <button type="button" class="mw-td-btn primary" id="btnDrawerCompleteTask" disabled>
-                    <i class="fa-solid fa-check me-1"></i> Complete Task
-                </button>
+                ${actionBtnHtml}
             `;
+
+            const btnStart = document.getElementById('btnDrawerStartTask');
+            if (btnStart) {
+                btnStart.addEventListener('click', function() {
+                    btnStart.disabled = true;
+                    btnStart.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Starting...';
+                    fetch(`${baseUrl}/my-work/start-task/${t.id}`, {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            showMwToast(data.message || 'Task started!', 'success');
+                            openTaskDetail(t.id);
+                            fetchWorkspaceData();
+                        } else {
+                            showMwToast(data.message || 'Failed to start task.', 'error');
+                            btnStart.disabled = false;
+                            btnStart.innerHTML = '<i class="fa-solid fa-play me-1"></i> Start working';
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Error starting task:', err);
+                        showMwToast('Network error while starting task.', 'error');
+                        btnStart.disabled = false;
+                        btnStart.innerHTML = '<i class="fa-solid fa-play me-1"></i> Start working';
+                    });
+                });
+            }
         }
         const btnDrawerCompleteTask = document.getElementById('btnDrawerCompleteTask');
         const revNoteWrap = document.getElementById('mwReviewNoteWrap');
@@ -3208,29 +3276,36 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
-        if (btnDrawerCompleteTask) {
-            if (t.is_completed) {
-                btnDrawerCompleteTask.disabled = true;
-                btnDrawerCompleteTask.innerHTML = '<i class="fa-solid fa-check-double me-1"></i> Completed';
-                btnDrawerCompleteTask.style.background = '#EDF2EF';
-                btnDrawerCompleteTask.style.color = '#087F5B';
-                btnDrawerCompleteTask.style.borderColor = '#EDF2EF';
-            } else if (t.can_complete) {
-                btnDrawerCompleteTask.disabled = false;
-                const hasReviewers = (Array.isArray(t.reviewers) && t.reviewers.length > 0);
-                btnDrawerCompleteTask.innerHTML = hasReviewers
-                    ? '<i class="fa-solid fa-check me-1"></i> Submit for review'
-                    : '<i class="fa-solid fa-check me-1"></i> Complete Task';
-                btnDrawerCompleteTask.style.background = '#087F5B';
-                btnDrawerCompleteTask.style.color = '#fff';
-                btnDrawerCompleteTask.style.borderColor = '#087F5B';
-            } else {
-                btnDrawerCompleteTask.disabled = true;
-                btnDrawerCompleteTask.innerHTML = '<i class="fa-solid fa-check me-1"></i> Complete Task';
-                btnDrawerCompleteTask.style.background = '#EDF2EF';
-                btnDrawerCompleteTask.style.color = '#8A9992';
-                btnDrawerCompleteTask.style.borderColor = '#EDF2EF';
-            }
+        const btnCompleteDynamic = document.getElementById('btnDrawerCompleteTask');
+        if (btnCompleteDynamic && !t.is_completed && t.can_complete) {
+            btnCompleteDynamic.addEventListener('click', function() {
+                btnCompleteDynamic.disabled = true;
+                btnCompleteDynamic.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Processing...';
+                fetch(`${baseUrl}/my-work/complete-task/${t.id}?ajax=1`, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showMwToast(data.message || 'Task updated successfully.', 'success');
+                        openTaskDetail(t.id);
+                        fetchWorkspaceData();
+                    } else {
+                        showMwToast(data.message || 'Failed to complete task.', 'error');
+                        btnCompleteDynamic.disabled = false;
+                        const hasReviewers = (Array.isArray(t.reviewers) && t.reviewers.length > 0);
+                        btnCompleteDynamic.innerHTML = hasReviewers ? '<i class="fa-solid fa-check me-1"></i> Submit for review' : '<i class="fa-solid fa-check me-1"></i> Complete Task';
+                    }
+                })
+                .catch(err => {
+                    console.error('Error completing task:', err);
+                    showMwToast('An error occurred while updating task.', 'error');
+                    btnCompleteDynamic.disabled = false;
+                    const hasReviewers = (Array.isArray(t.reviewers) && t.reviewers.length > 0);
+                    btnCompleteDynamic.innerHTML = hasReviewers ? '<i class="fa-solid fa-check me-1"></i> Submit for review' : '<i class="fa-solid fa-check me-1"></i> Complete Task';
+                });
+            });
         }
 
         // Wire up Request Extension button
@@ -3488,6 +3563,28 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     }
+
+    window.filterReviewSubmissionTasks = function() {
+        currentMetric = 'review_submission';
+        // Clear conflicting dropdown filters so review submission filter operates cleanly
+        currentStatus = '';
+        currentPriority = '';
+        const priorityText = document.getElementById('priorityText');
+        if (priorityText) priorityText.innerText = 'Priority';
+        const statusText = document.getElementById('statusText');
+        if (statusText) statusText.innerText = 'Status';
+        const filterBtnText = document.getElementById('filterBtnText');
+        if (filterBtnText) filterBtnText.innerText = 'Filters';
+
+        document.querySelectorAll('.mw-stat-card').forEach(el => el.classList.remove('active-metric'));
+        fetchWorkspaceData();
+
+        // Highlight/scroll to table
+        const tableWrap = document.querySelector('.mw-table-wrap');
+        if (tableWrap) {
+            tableWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    };
 
     window.openTaskDetail = function(taskId) {
         if (!tdEl) return;

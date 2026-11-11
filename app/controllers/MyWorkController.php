@@ -146,6 +146,15 @@ class MyWorkController extends Controller
             $params = array_merge($params, $scopeParams);
             $types .= $scopeTypes;
             $where[] = $metricCond[$metricFilter];
+        } elseif ($metricFilter === 'review_submission' || $metricFilter === 'review_attention') {
+            // Review submissions filter: tasks with reviewer feedback / changes requested
+            $where[] = $scopeSql;
+            $params = array_merge($params, $scopeParams);
+            $types .= $scopeTypes;
+            $where[] = "t.status != 'completed' AND (
+                t.id IN (SELECT task_id FROM task_activities WHERE activity LIKE 'Requested changes%')
+                OR t.remarks LIKE '%Reviewer Note%'
+            )";
         } elseif (in_array($metricFilter, ['all_total', 'all_in_progress', 'all_completed', 'all_deadline_today', 'all_deadline_missed'], true)) {
             // Summary cards: same scope as the card counts
             $where[] = $scopeSql;
@@ -259,32 +268,82 @@ class MyWorkController extends Controller
         $stmtReviewList->execute();
         $reviewTasks = $stmtReviewList->get_result()->fetch_all(MYSQLI_ASSOC);
 
-        // 8. Focus Panel: Blocked or Attention
-        $stmtBlocked = $this->db->prepare("
+        // 8. Focus Panel: Task Attention (Priority or response needed)
+        // Reviewer submitted review on assignee's task -> show latest review submission
+        $stmtAttention = $this->db->prepare("
             SELECT 
                 t.*,
                 u_by.full_name AS assigned_by_name,
-                des_by.name AS assigned_by_designation
+                des_by.name AS assigned_by_designation,
+                act.activity AS last_review_activity,
+                act.created_at AS last_review_time,
+                u_rev.full_name AS reviewer_name,
+                des_rev.name AS reviewer_designation
             FROM tasks t
             LEFT JOIN users u_by ON t.assigned_by = u_by.id
             LEFT JOIN designations des_by ON u_by.designation_id = des_by.id
-            WHERE t.user_id = ?
+            LEFT JOIN (
+                SELECT a1.task_id, a1.user_id, a1.activity, a1.created_at
+                FROM task_activities a1
+                INNER JOIN (
+                    SELECT task_id, MAX(id) AS max_id
+                    FROM task_activities
+                    WHERE activity LIKE 'Requested changes%'
+                    GROUP BY task_id
+                ) a2 ON a1.id = a2.max_id
+            ) act ON act.task_id = t.id
+            LEFT JOIN users u_rev ON act.user_id = u_rev.id
+            LEFT JOIN designations des_rev ON u_rev.designation_id = des_rev.id
+            WHERE (t.user_id = ? OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.collaborator_user_ids,'[',''),']',''),' ','')))
               AND t.status != 'completed'
-            ORDER BY 
-                (CASE WHEN t.remarks LIKE '%block%' OR t.priority = 'urgent' THEN 1 ELSE 2 END),
-                (CASE WHEN t.deadline < NOW() THEN 1 ELSE 2 END),
-                t.deadline ASC
+              AND (act.task_id IS NOT NULL OR t.remarks LIKE '%Reviewer Note%')
+            ORDER BY COALESCE(act.created_at, t.updated_at, t.created_at) DESC
             LIMIT 1
         ");
-        $stmtBlocked->bind_param("i", $userId);
-        $stmtBlocked->execute();
-        $blockedTask = $stmtBlocked->get_result()->fetch_assoc();
+        $stmtAttention->bind_param("ii", $userId, $userId);
+        $stmtAttention->execute();
+        $blockedTask = $stmtAttention->get_result()->fetch_assoc();
+
+        if ($blockedTask) {
+            $blockedTask['is_review_submission'] = true;
+        } else {
+            // Fallback to urgent / blocked task if no review submission exists
+            $stmtBlocked = $this->db->prepare("
+                SELECT 
+                    t.*,
+                    u_by.full_name AS assigned_by_name,
+                    des_by.name AS assigned_by_designation,
+                    NULL AS last_review_activity,
+                    NULL AS last_review_time,
+                    NULL AS reviewer_name,
+                    NULL AS reviewer_designation
+                FROM tasks t
+                LEFT JOIN users u_by ON t.assigned_by = u_by.id
+                LEFT JOIN designations des_by ON u_by.designation_id = des_by.id
+                WHERE (t.user_id = ? OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.collaborator_user_ids,'[',''),']',''),' ','')))
+                  AND t.status != 'completed'
+                ORDER BY 
+                    (CASE WHEN t.remarks LIKE '%block%' OR t.priority = 'urgent' THEN 1 ELSE 2 END),
+                    (CASE WHEN t.deadline < NOW() THEN 1 ELSE 2 END),
+                    t.deadline ASC
+                LIMIT 1
+            ");
+            $stmtBlocked->bind_param("ii", $userId, $userId);
+            $stmtBlocked->execute();
+            $blockedTask = $stmtBlocked->get_result()->fetch_assoc();
+            if ($blockedTask) {
+                $blockedTask['is_review_submission'] = false;
+            }
+        }
 
         // If AJAX request: Return JSON response without reloading page
         $isAjax = !empty($_GET['ajax']) || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
         if ($isAjax) {
             header('Content-Type: application/json');
             $tableHtml = $this->renderTaskRowsHtml($tasks, $tab, $userId, $baseUrl);
+            $footerInfoText = ($metricFilter === 'review_submission' || $metricFilter === 'review_attention')
+                ? ('Showing ' . count($tasks) . ' task' . (count($tasks) === 1 ? '' : 's') . ' with review feedback · Sorted by latest review')
+                : ('Showing ' . count($tasks) . ' task' . (count($tasks) === 1 ? '' : 's') . ' · Sorted by deadline');
             echo json_encode([
                 'status' => 'success',
                 'all_stats' => $allStats,
@@ -298,7 +357,7 @@ class MyWorkController extends Controller
                     'showing'        => count($tasks)
                 ],
                 'table_html' => $tableHtml,
-                'footer_info' => 'Showing ' . count($tasks) . ' task' . (count($tasks) === 1 ? '' : 's') . ' · Sorted by deadline'
+                'footer_info' => $footerInfoText
             ]);
             exit;
         }
@@ -445,6 +504,8 @@ class MyWorkController extends Controller
             $rowClass = $isHighlighted ? 'row-selected' : '';
             $checkedAttr = $isCompleted ? 'checked' : '';
             $blockedBadge = $isBlocked ? '<span class="mw-badge-blocked">Blocked</span>' : '';
+            $hasReviewFeedback = (!empty($t['remarks']) && stripos($t['remarks'], 'Reviewer Note') !== false);
+            $reviewFeedbackBadge = $hasReviewFeedback ? '<span class="mw-badge-waiting" style="background:#FFF4E5; color:#B76E00; border:1px solid #FFE0B2; padding:2px 7px; border-radius:10px; font-size:11px; font-weight:600; margin-left:6px;"><i class="fa-solid fa-reply me-1"></i>Review Feedback</span>' : '';
             $titleSafe = htmlspecialchars($t['title']);
             $projectSafe = htmlspecialchars($t['project_name'] ?? 'General');
             $createdMonth = date('F', strtotime($t['created_at']));
@@ -474,6 +535,7 @@ class MyWorkController extends Controller
                                 {$titleSafe}
                             </a>
                             {$blockedBadge}
+                            {$reviewFeedbackBadge}
                             <div class=\"mw-task-sub\">
                                 T-{$taskId} · {$projectSafe} · {$createdMonth}
                             </div>
@@ -1361,7 +1423,7 @@ class MyWorkController extends Controller
     }
 
     /**
-     * Mark task as completed (Assignee / Collaborator / Owner / Admin)
+     * Mark task as completed or submit for review (Assignee / Collaborator / Owner / Admin)
      */
     public function completeTask($id)
     {
@@ -1401,6 +1463,7 @@ class MyWorkController extends Controller
 
         $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
         $collabIds = $ids($task['collaborator_user_ids'] ?? '');
+        $reviewerIds = $ids($task['mentioned_user_ids'] ?? '');
 
         // Can complete if Assignee (user_id), Collaborator, Owner (assigned_by), or Admin
         $canComplete = ((int)$task['user_id'] === $userId || in_array($userId, $collabIds, true) || (int)$task['assigned_by'] === $userId || in_array($roleId, [1, 3, 33], true));
@@ -1416,32 +1479,168 @@ class MyWorkController extends Controller
             exit;
         }
 
-        $taskModel = new Task($this->db);
-        if ($taskModel->updateProgress($id, 100, $task['remarks'] ?? null)) {
-            $hasReviewers = !empty($task['mentioned_user_ids']) && count($ids($task['mentioned_user_ids'])) > 0;
-            $actMsg = $hasReviewers ? "Completed task and submitted for review." : "Marked task as completed.";
-            $this->logTaskActivity($id, $userId, 'system', $actMsg);
+        $hasReviewers = count($reviewerIds) > 0;
 
-            if ($isAjax) {
-                header('Content-Type: application/json');
-                echo json_encode([
-                    'status' => 'success',
-                    'message' => 'Task marked as completed successfully.',
-                    'task_id' => $id
-                ]);
+        if ($hasReviewers) {
+            // Task has reviewer -> Submit for review: progress 85%, status remains in_progress (or in review flag), notify reviewers
+            $newProgress = 85;
+            $newStatus = 'in_progress';
+            $stmtUp = $this->db->prepare("UPDATE tasks SET progress = ?, status = ?, employee_accept = 1, updated_at = NOW() WHERE id = ?");
+            $stmtUp->bind_param("isi", $newProgress, $newStatus, $id);
+            $success = $stmtUp->execute();
+            $stmtUp->close();
+
+            if ($success) {
+                $this->logTaskActivity($id, $userId, 'system', "Completed task and submitted for review.");
+
+                // Notify reviewers
+                $actorName = $_SESSION['user']['full_name'] ?? 'Assignee';
+                $notifMsg = "{$actorName} completed task T-{$id} and submitted it for your review.";
+                foreach ($reviewerIds as $rId) {
+                    if ($rId !== $userId) {
+                        $stNotif = $this->db->prepare("INSERT INTO notifications (user_id, task_id, assigned_by, message, created_at) VALUES (?, ?, ?, ?, NOW())");
+                        if ($stNotif) {
+                            $stNotif->bind_param("iiis", $rId, $id, $userId, $notifMsg);
+                            $stNotif->execute();
+                            $stNotif->close();
+                        }
+                    }
+                }
+
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode([
+                        'status' => 'success',
+                        'message' => 'Task submitted for review successfully.',
+                        'task_id' => $id,
+                        'is_in_review' => true
+                    ]);
+                    exit;
+                }
+                if (function_exists('setSuccess')) setSuccess("Task submitted for review successfully.");
+                header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
                 exit;
             }
-            if (function_exists('setSuccess')) setSuccess("Task marked as completed successfully.");
-            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+        } else {
+            // No reviewer -> mark as completed directly (100% progress)
+            $taskModel = new Task($this->db);
+            if ($taskModel->updateProgress($id, 100, $task['remarks'] ?? null)) {
+                $this->logTaskActivity($id, $userId, 'system', "Marked task as completed.");
+
+                // Notify task creator if creator is different
+                $creatorId = (int)$task['assigned_by'];
+                if ($creatorId && $creatorId !== $userId) {
+                    $actorName = $_SESSION['user']['full_name'] ?? 'Assignee';
+                    $notifMsg = "{$actorName} completed task T-{$id}.";
+                    $stNotif = $this->db->prepare("INSERT INTO notifications (user_id, task_id, assigned_by, message, created_at) VALUES (?, ?, ?, ?, NOW())");
+                    if ($stNotif) {
+                        $stNotif->bind_param("iiis", $creatorId, $id, $userId, $notifMsg);
+                        $stNotif->execute();
+                        $stNotif->close();
+                    }
+                }
+
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode([
+                        'status' => 'success',
+                        'message' => 'Task marked as completed successfully.',
+                        'task_id' => $id,
+                        'is_in_review' => false
+                    ]);
+                    exit;
+                }
+                if (function_exists('setSuccess')) setSuccess("Task marked as completed successfully.");
+                header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+                exit;
+            }
+        }
+
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Failed to update task.']);
+            exit;
+        }
+        if (function_exists('setError')) setError("Failed to update task.");
+        header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+        exit;
+    }
+
+    /**
+     * Start task: Change status from pending (To do) to in_progress
+     * POST /my-work/start-task/{id}
+     */
+    public function startTask($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        header('Content-Type: application/json');
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $id = (int)$id;
+
+        if (!$userId) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        $st = $this->db->prepare("SELECT * FROM tasks WHERE id = ?");
+        $st->bind_param("i", $id);
+        $st->execute();
+        $task = $st->get_result()->fetch_assoc();
+
+        if (!$task) {
+            echo json_encode(['status' => 'error', 'message' => 'Task not found.']);
+            exit;
+        }
+
+        $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
+        $collabIds = $ids($task['collaborator_user_ids'] ?? '');
+
+        // Can start if Assignee (user_id), Collaborator, Owner, or Admin
+        $canStart = ((int)$task['user_id'] === $userId || in_array($userId, $collabIds, true) || (int)$task['assigned_by'] === $userId || in_array($roleId, [1, 3, 33], true));
+
+        if (!$canStart) {
+            echo json_encode(['status' => 'error', 'message' => "You don't have permission to start this task."]);
+            exit;
+        }
+
+        if ($task['status'] === 'in_progress') {
+            echo json_encode(['status' => 'success', 'message' => 'Task is already in progress.', 'task_id' => $id]);
+            exit;
+        }
+
+        $newProgress = max((int)$task['progress'], 10);
+        $stmtUp = $this->db->prepare("UPDATE tasks SET status = 'in_progress', progress = ?, employee_accept = 1, updated_at = NOW() WHERE id = ?");
+        $stmtUp->bind_param("ii", $newProgress, $id);
+        if ($stmtUp->execute()) {
+            $stmtUp->close();
+            $this->logTaskActivity($id, $userId, 'system', "Started working on this task (Status: In progress).");
+
+            // Notify task assigner / creator
+            $creatorId = (int)$task['assigned_by'];
+            if ($creatorId && $creatorId !== $userId) {
+                $actorName = $_SESSION['user']['full_name'] ?? 'Assignee';
+                $notifMsg = "{$actorName} started working on task T-{$id}.";
+                $stNotif = $this->db->prepare("INSERT INTO notifications (user_id, task_id, assigned_by, message, created_at) VALUES (?, ?, ?, ?, NOW())");
+                if ($stNotif) {
+                    $stNotif->bind_param("iiis", $creatorId, $id, $userId, $notifMsg);
+                    $stNotif->execute();
+                    $stNotif->close();
+                }
+            }
+
+            echo json_encode([
+                'status' => 'success',
+                'message' => 'Task started! Status is now In progress.',
+                'task_id' => $id
+            ]);
             exit;
         } else {
-            if ($isAjax) {
-                header('Content-Type: application/json');
-                echo json_encode(['status' => 'error', 'message' => 'Failed to mark task as completed.']);
-                exit;
-            }
-            if (function_exists('setError')) setError("Failed to mark task as completed.");
-            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            $err = $stmtUp->error;
+            $stmtUp->close();
+            echo json_encode(['status' => 'error', 'message' => 'Failed to start task: ' . $err]);
             exit;
         }
     }
