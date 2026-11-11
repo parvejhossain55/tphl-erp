@@ -44,6 +44,7 @@ class MyWorkController extends Controller
         $priorityFilter = trim($_GET['priority'] ?? '');
         $statusFilter = trim($_GET['status'] ?? '');
         $metricFilter = trim($_GET['metric'] ?? ''); // overdue, due_today, next7, review
+        $viewAll = !empty($_GET['view_all']) && $_GET['view_all'] === '1';
 
         // When a metric card is clicked, it dictates the status filter (reset dropdown conflict)
         if (!empty($metricFilter)) {
@@ -239,7 +240,7 @@ class MyWorkController extends Controller
                 END,
                 t.deadline ASC,
                 t.id DESC
-            LIMIT 50
+            " . ($viewAll ? "LIMIT 1000" : "LIMIT 50") . "
         ";
 
         $stmtTasks = $this->db->prepare($sql);
@@ -341,9 +342,13 @@ class MyWorkController extends Controller
         if ($isAjax) {
             header('Content-Type: application/json');
             $tableHtml = $this->renderTaskRowsHtml($tasks, $tab, $userId, $baseUrl);
-            $footerInfoText = ($metricFilter === 'review_submission' || $metricFilter === 'review_attention')
-                ? ('Showing ' . count($tasks) . ' task' . (count($tasks) === 1 ? '' : 's') . ' with review feedback · Sorted by latest review')
-                : ('Showing ' . count($tasks) . ' task' . (count($tasks) === 1 ? '' : 's') . ' · Sorted by deadline');
+            if ($viewAll) {
+                $footerInfoText = 'Showing all ' . count($tasks) . ' tasks · Sorted by deadline';
+            } elseif ($metricFilter === 'review_submission' || $metricFilter === 'review_attention') {
+                $footerInfoText = 'Showing ' . count($tasks) . ' task' . (count($tasks) === 1 ? '' : 's') . ' with review feedback · Sorted by latest review';
+            } else {
+                $footerInfoText = 'Showing ' . count($tasks) . ' of ' . $openTasksCount . ' open tasks · Sorted by deadline';
+            }
             echo json_encode([
                 'status' => 'success',
                 'all_stats' => $allStats,

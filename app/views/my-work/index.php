@@ -1610,7 +1610,7 @@ $todayDateFormatted = date('j F');
                 <div class="mw-footer-info" id="mwFooterInfo">
                     Showing <?= count($tasks) ?> of <?= $openTasksCount ?> open tasks · Sorted by deadline
                 </div>
-                <a href="<?= $base_url ?>/task-lists" class="mw-btn-viewall">
+                <a href="javascript:void(0);" class="mw-btn-viewall" id="btnMyWorkViewAll">
                     View all
                 </a>
             </div>
@@ -2007,6 +2007,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let currentMetric = '<?= $metricFilter ?>';
     let currentPriority = '<?= $priorityFilter ?>';
     let currentStatus = '<?= $statusFilter ?>';
+    let currentViewAll = false;
     let searchTimer = null;
 
     const tbody = document.getElementById('mwTasksTbody');
@@ -2032,6 +2033,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (currentMetric) params.set('metric', currentMetric);
         if (currentPriority) params.set('priority', currentPriority);
         if (currentStatus) params.set('status', currentStatus);
+        if (currentViewAll) params.set('view_all', '1');
         if (searchInput && searchInput.value.trim() !== '') {
             params.set('search', searchInput.value.trim());
         }
@@ -2096,6 +2098,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             currentTab = tabName;
             currentMetric = '';
+            currentViewAll = false;
+            const btnVa = document.getElementById('btnMyWorkViewAll');
+            if (btnVa) btnVa.innerText = 'View all';
             document.querySelectorAll('.mw-stat-card').forEach(el => el.classList.remove('active-metric'));
             fetchWorkspaceData();
         });
@@ -3631,6 +3636,17 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     if (tdBackdrop) tdBackdrop.addEventListener('click', closeTaskDetail);
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeTaskDetail(); });
+
+    // View All Tasks toggle logic
+    const btnViewAll = document.getElementById('btnMyWorkViewAll');
+    if (btnViewAll) {
+        btnViewAll.addEventListener('click', function(e) {
+            e.preventDefault();
+            currentViewAll = !currentViewAll;
+            this.innerText = currentViewAll ? 'View less' : 'View all';
+            fetchWorkspaceData();
+        });
+    }
     // Dynamic Notice Box Text
     // Single-select dropdown helper: { value, name } of the ticked user
     const mwPicked = id => {
