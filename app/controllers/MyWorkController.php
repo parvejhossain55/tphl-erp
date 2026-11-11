@@ -564,7 +564,50 @@ class MyWorkController extends Controller
             exit;
         }
 
-        if ($taskModel->deleteFromEverywhere($id)) {
+        // My Work isolated full cascade delete: removes task and all related data without touching legacy Task model
+        $deleteSuccess = false;
+        $this->db->begin_transaction();
+        try {
+            // 1. Delete associated task activities & comments (My Work timeline)
+            $stAct = $this->db->prepare("DELETE FROM task_activities WHERE task_id = ?");
+            if ($stAct) {
+                $stAct->bind_param("i", $id);
+                $stAct->execute();
+                $stAct->close();
+            }
+
+            // 2. Delete associated notifications
+            $stNotif = $this->db->prepare("DELETE FROM notifications WHERE task_id = ?");
+            if ($stNotif) {
+                $stNotif->bind_param("i", $id);
+                $stNotif->execute();
+                $stNotif->close();
+            }
+
+            // 3. Delete attachment file from disk if exists
+            if (!empty($task['attachment_image'])) {
+                $filePath = __DIR__ . '/../../public/uploads/tasks/' . $task['attachment_image'];
+                if (file_exists($filePath) && is_file($filePath)) {
+                    @unlink($filePath);
+                }
+            }
+
+            // 4. Delete the task record itself
+            $stTask = $this->db->prepare("DELETE FROM tasks WHERE id = ?");
+            if ($stTask) {
+                $stTask->bind_param("i", $id);
+                $stTask->execute();
+                $stTask->close();
+            }
+
+            $this->db->commit();
+            $deleteSuccess = true;
+        } catch (\Throwable $e) {
+            $this->db->rollback();
+            $deleteSuccess = false;
+        }
+
+        if ($deleteSuccess) {
             if ($isAjax) {
                 header('Content-Type: application/json');
                 echo json_encode(['status' => 'success', 'message' => 'Task has been deleted successfully.']);
