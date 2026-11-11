@@ -155,8 +155,9 @@ $todayDateFormatted = date('j F');
 .mw-td-val.late { color: #9A6216; }
 .mw-td-avatar { width: 24px; height: 24px; border-radius: 50%; background: #E9F5EF; color: #087F5B; font-size: 10.5px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
 .mw-td-sec { border-top: 1px solid #E2EAE5; padding-top: 16px; margin-top: 4px; margin-bottom: 20px; }
-.mw-td-sec h4 { font-family: 'Inter', sans-serif; font-size: 16px; line-height: 19px; font-weight: 700; color: #142D26; margin: 0; }
+.mw-td-sec h4 { font-family: 'Inter', sans-serif; font-size: 16px; line-height: 19px; font-weight: 700; color: #142D26; margin: 0 0 14px 0; }
 .mw-td-sec-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.mw-td-sec-head h4 { margin: 0; }
 .mw-cl-counter-badge { font-family: 'Inter', sans-serif; font-style: normal; font-weight: 700; font-size: 12px; line-height: 15px; text-align: right; color: #087F5B; }
 .mw-cl-progress-bar { width: 100%; height: 5px; background: #EDF2EF; border-radius: 99px; overflow: hidden; margin-bottom: 16px; }
 .mw-cl-progress-fill { height: 100%; background: #087F5B; border-radius: 99px; transition: width 0.25s ease; }
