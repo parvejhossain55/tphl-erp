@@ -973,15 +973,15 @@ class MyWorkController extends Controller
         }
         $actStmt->close();
 
-        // Team members for @mention autocomplete
+        // Team members for @mention autocomplete - all valid users
         $teammates = [];
         $resTeam = $this->db->query("
             SELECT u.id, u.full_name, u.photo AS user_photo, e.photo AS emp_photo, des.name AS designation
             FROM users u
-            LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
-            LEFT JOIN designations des ON u.designation_id = des.id
+            LEFT JOIN employees e ON (e.user_id = u.id OR (u.employee_id IS NOT NULL AND e.id = u.employee_id))
+            LEFT JOIN designations des ON (u.designation_id = des.id OR e.designation_id = des.id)
             WHERE u.full_name IS NOT NULL AND TRIM(u.full_name) != ''
-              AND (e.employee_status IS NULL OR (e.deleted_at IS NULL AND LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
+            GROUP BY u.id
             ORDER BY u.full_name ASC
         ");
         while ($resTeam && ($tm = $resTeam->fetch_assoc())) {

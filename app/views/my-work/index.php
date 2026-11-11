@@ -198,7 +198,7 @@ $todayDateFormatted = date('j F');
 .mw-comment-file-preview.show { display: flex; }
 .mw-comment-file-preview .file-remove { color: #E03131; cursor: pointer; padding: 2px 6px; font-size: 13px; }
 /* Mentions dropdown popup */
-.mw-mention-popup { position: absolute; bottom: 100%; left: 0; right: 0; margin-bottom: 6px; background: #FFFFFF; border: 1px solid #E2EAE5; border-radius: 8px; box-shadow: 0 10px 28px rgba(20,45,38,.12); max-height: 200px; overflow-y: auto; z-index: 1000; display: none; }
+.mw-mention-popup { position: absolute; bottom: 100%; left: 0; right: 0; margin-bottom: 6px; background: #FFFFFF; border: 1px solid #E2EAE5; border-radius: 8px; box-shadow: 0 10px 28px rgba(20,45,38,.12); max-height: 260px; overflow-y: auto; z-index: 1000; display: none; }
 .mw-mention-popup.show { display: block; }
 .mw-mention-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; cursor: pointer; transition: background .12s ease; }
 .mw-mention-item:hover, .mw-mention-item.selected { background: #E9F5EF; }
@@ -3049,7 +3049,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
-                mentionPopup.innerHTML = matched.slice(0, 8).map(u => {
+                mentionPopup.innerHTML = matched.map(u => {
                     const avatar = u.photo
                         ? `<img src="${tdEsc(u.photo)}" class="mw-mention-avatar" alt="${tdEsc(u.name)}">`
                         : `<span class="mw-mention-avatar">${tdEsc(tdInitials(u.name))}</span>`;
