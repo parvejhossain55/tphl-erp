@@ -2066,6 +2066,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (cardNeedsReview && data.review_card_html) {
                     cardNeedsReview.innerHTML = data.review_card_html;
                 }
+                const cardTaskAttention = document.getElementById('mwCardTaskAttention');
+                if (cardTaskAttention && data.attention_card_html) {
+                    cardTaskAttention.innerHTML = data.attention_card_html;
+                }
                 if (data.all_stats) {
                     const s = data.all_stats;
                     const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
