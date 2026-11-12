@@ -1472,11 +1472,11 @@ $todayDateFormatted = date('j F');
                     </div>
                 </div>
 
-                <!-- List view Pill Button -->
-                <a href="<?= $base_url ?>/task-lists" class="mw-pill-btn" title="Detailed List View">
+                <!-- List view Pill Button (Static view indicator, no action) -->
+                <span class="mw-pill-btn" style="cursor: default;" title="List view">
                     <i class="fa-solid fa-bars-staggered"></i>
                     <span>List view</span>
-                </a>
+                </span>
 
                 <!-- Dots icon -->
                 <span class="mw-dots-icon" title="More options">···</span>
