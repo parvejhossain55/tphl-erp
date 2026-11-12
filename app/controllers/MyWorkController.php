@@ -362,6 +362,7 @@ class MyWorkController extends Controller
                 $footerInfoText = 'Showing ' . count($tasks) . ' of ' . $totalInTab . ' tasks · Sorted by deadline';
             }
             $reviewCardHtml = $this->renderReviewCardHtml($reviewTasks);
+            $attentionCardHtml = $this->renderAttentionCardHtml($blockedTask);
             echo json_encode([
                 'status' => 'success',
                 'all_stats' => $allStats,
@@ -376,6 +377,7 @@ class MyWorkController extends Controller
                 ],
                 'table_html' => $tableHtml,
                 'review_card_html' => $reviewCardHtml,
+                'attention_card_html' => $attentionCardHtml,
                 'footer_info' => $footerInfoText
             ]);
             exit;
@@ -477,6 +479,63 @@ class MyWorkController extends Controller
             }
         } else {
             $out .= '<div class="text-muted small py-2"><i class="fa-regular fa-circle-check text-success me-1"></i> No completed tasks pending your review.</div>';
+        }
+        return $out;
+    }
+
+    private function renderAttentionCardHtml($blockedTask)
+    {
+        $out = '<h4 class="mw-focus-title">Task Attention</h4>';
+        $out .= '<div class="mw-focus-subtitle">Priority or response needed</div>';
+
+        if ($blockedTask) {
+            $isRevSub = !empty($blockedTask['is_review_submission']);
+            $badgeText = $isRevSub
+                ? 'Review Feedback'
+                : ((!empty($blockedTask['remarks']) && stripos($blockedTask['remarks'], 'block') !== false) ? 'Action Blocked' : 'High Priority');
+
+            $nextActionPerson = !empty($blockedTask['reviewer_name']) 
+                ? $blockedTask['reviewer_name'] 
+                : (!empty($blockedTask['assigned_by_name']) ? $blockedTask['assigned_by_name'] : 'Lead');
+            $nextActionDate = !empty($blockedTask['last_review_time']) 
+                ? date('j M', strtotime($blockedTask['last_review_time']))
+                : (!empty($blockedTask['deadline']) ? date('j M', strtotime($blockedTask['deadline'])) : 'Soon');
+
+            $displayNote = '';
+            if (!empty($blockedTask['last_review_activity']) && preg_match('/note:\s*["\']?(.*?)["\']?$/is', $blockedTask['last_review_activity'], $mNote)) {
+                $displayNote = trim($mNote[1], " \"'\t\n\r");
+            } elseif (!empty($blockedTask['remarks'])) {
+                if (preg_match('/Reviewer Note \([^)]+\):\s*(.*?)(?=\n|$)/is', $blockedTask['remarks'], $mNote)) {
+                    $displayNote = trim($mNote[1]);
+                } else {
+                    $displayNote = $blockedTask['remarks'];
+                }
+            }
+
+            $taskId = (int)$blockedTask['id'];
+            $titleSafe = htmlspecialchars($blockedTask['title']);
+            $badgeTextSafe = htmlspecialchars($badgeText);
+            $nextActionPersonSafe = htmlspecialchars($nextActionPerson);
+            $nextActionDateSafe = htmlspecialchars($nextActionDate);
+
+            $noteHtml = '';
+            if (!empty($displayNote)) {
+                $noteTrunc = htmlspecialchars(mb_strimwidth($displayNote, 0, 80, '...'));
+                $noteHtml = '<br><small class="text-muted"><i class="fa-regular fa-comment-dots me-1"></i>' . $noteTrunc . '</small>';
+            }
+
+            $out .= '<span class="mw-badge-waiting">' . $badgeTextSafe . '</span>';
+            $out .= '<p class="mw-blocked-desc" style="cursor: pointer;" onclick="openTaskDetail(' . $taskId . '); return false;" title="Click to view task details">';
+            $out .= $titleSafe . $noteHtml;
+            $out .= '</p>';
+            $out .= '<div class="mw-blocked-action">';
+            $out .= 'Next action: ' . $nextActionPersonSafe . ' · ' . $nextActionDateSafe;
+            $out .= '</div>';
+            $out .= '<a href="javascript:void(0);" onclick="openTaskDetail(' . $taskId . '); return false;" class="mw-btn-opentask" id="btnAttentionOpenTask" title="Open task details">';
+            $out .= '<i class="fa-solid fa-arrow-right"></i><span>Open task</span>';
+            $out .= '</a>';
+        } else {
+            $out .= '<div class="text-muted small py-2"><i class="fa-regular fa-circle-check text-success me-1"></i> All active tasks are progressing on track!</div>';
         }
         return $out;
     }

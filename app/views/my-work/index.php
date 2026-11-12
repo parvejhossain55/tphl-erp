@@ -244,7 +244,7 @@ $todayDateFormatted = date('j F');
 .mw-confirm-btn.danger:hover { background: #C92A2A; }
 .mw-confirm-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 /* Owner Feedback & Satisfaction Rating Box */
-.mw-feedback-card { background: #F8FAF9; border: 1px solid #D8E3DD; border-radius: 10px; padding: 16px 18px; margin-bottom: 20px; }
+.mw-feedback-card { background: #F8FAF9; border: 1px solid #D8E3DD; border-radius: 10px; padding: 16px 18px; margin-top: 18px; margin-bottom: 20px; }
 .mw-feedback-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .mw-feedback-title { font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 700; color: #142D26; display: flex; align-items: center; gap: 6px; margin: 0; }
 .mw-rating-stars-wrap { display: inline-flex; align-items: center; gap: 4px; }
@@ -253,7 +253,7 @@ $todayDateFormatted = date('j F');
 .mw-star-btn:hover { transform: scale(1.15); }
 .mw-feedback-textarea { width: 100%; background: #FFFFFF; border: 1px solid #CCD7D0; border-radius: 8px; padding: 10px 12px; font-family: 'Inter', sans-serif; font-size: 12.5px; line-height: 16px; color: #142D26; resize: vertical; min-height: 64px; outline: none; margin-top: 10px; margin-bottom: 10px; }
 .mw-feedback-textarea:focus { border-color: #087F5B; box-shadow: 0 0 0 2px rgba(8,127,91,.1); }
-.mw-feedback-readonly { background: #FFFFFF; border: 1px solid #E2EAE5; border-radius: 8px; padding: 12px 14px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.mw-feedback-readonly { background: #FFFFFF; border: 1px solid #E2EAE5; border-radius: 8px; padding: 12px 14px; margin-top: 18px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
 .mw-feedback-readonly-stars { display: flex; align-items: center; gap: 3px; color: #F59F00; font-size: 15px; }
 .mw-feedback-readonly-badge { background: #FFF9DB; color: #9A6216; border: 1px solid #FFE066; font-size: 11.5px; font-weight: 700; padding: 3px 8px; border-radius: 6px; }
 /* Toast notification */
@@ -1666,7 +1666,7 @@ $todayDateFormatted = date('j F');
             </div>
 
             <!-- Card 2: Task Attention (Priority or response needed) -->
-            <div class="mw-focus-card">
+            <div class="mw-focus-card" id="mwCardTaskAttention">
                 <h4 class="mw-focus-title">Task Attention</h4>
                 <div class="mw-focus-subtitle">Priority or response needed</div>
 
@@ -1708,7 +1708,7 @@ $todayDateFormatted = date('j F');
                         Next action: <?= htmlspecialchars($nextActionPerson) ?> · <?= htmlspecialchars($nextActionDate) ?>
                     </div>
 
-                    <a href="javascript:void(0);" onclick="filterReviewSubmissionTasks(); return false;" class="mw-btn-opentask" id="btnAttentionOpenTask" title="Show all review submission tasks in table">
+                    <a href="javascript:void(0);" onclick="openTaskDetail(<?= (int)$blockedTask['id'] ?>); return false;" class="mw-btn-opentask" id="btnAttentionOpenTask" title="Open task details">
                         <i class="fa-solid fa-arrow-right"></i>
                         <span>Open task</span>
                     </a>
