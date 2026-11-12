@@ -12,16 +12,26 @@ $accountModel     = new AccountClient();
 $paymentSummary   = $accountModel->getPaymentSummaryByBookingId($bookingId);
 $outstandingDues  = $accountModel->getOutstandingEmiDues($bookingId);
 
-$remainingLandShare      = $paymentSummary['remaining_land_share']       ?? 0;
+$remainingLandShare      = (float)($paymentSummary['remaining_land_share_total'] ?? $paymentSummary['remaining_land_share'] ?? 0);
 $allBangladeshBanks       = function_exists('getBangladeshBanks') ? getBangladeshBanks() : [];
-$isLandShareCompleted    = $paymentSummary['is_land_share_completed']    ?? false;
+$isLandShareCompleted    = !empty($paymentSummary['is_land_share_completed']) || ($remainingLandShare <= 0);
 $isDevChargeCompleted    = $paymentSummary['is_dev_charge_completed']    ?? false;
-$isBookingFullyPaid      = $paymentSummary['is_booking_fully_paid']      ?? false;
-$agreementValue          = $paymentSummary['agreement_value']            ?? 0;
-$effectiveBookingTarget  = $paymentSummary['effective_booking_target']   ?? $agreementValue;
-$bookingMoneyTotal       = $paymentSummary['booking_money_total']        ?? 0;
-$bookingMoneyPaid        = $paymentSummary['booking_money_paid']         ?? 0;
-$bookingBalance          = max(0, $effectiveBookingTarget - $bookingMoneyTotal);
+$agreementValue          = (float)($paymentSummary['agreement_value']            ?? 0);
+$effectiveBookingTarget  = (float)($paymentSummary['effective_booking_target']   ?? $agreementValue);
+$bookingMoneyTotal       = (float)($paymentSummary['booking_money_total']        ?? 0);
+$bookingMoneyPaid        = (float)($paymentSummary['booking_money_paid']         ?? 0);
+
+if ($isLandShareCompleted || $remainingLandShare <= 0) {
+    $bookingBalance            = 0;
+    $formRemainingBooking      = 0;
+    $formRemainingRegistration = 0;
+    $isBookingFullyPaid        = true;
+} else {
+    $bookingBalance            = min($remainingLandShare, max(0, $effectiveBookingTarget - $bookingMoneyTotal));
+    $formRemainingBooking      = isset($formRemainingBooking) ? (float)$formRemainingBooking : $bookingBalance;
+    $formRemainingRegistration = isset($formRemainingRegistration) ? (float)$formRemainingRegistration : 0;
+    $isBookingFullyPaid        = ($bookingBalance <= 0 && $bookingMoneyTotal > 0);
+}
 $perEmiAmount         = $paymentSummary['per_emi_amount']          ?? 0;
 $serviceChargeRate    = $paymentSummary['service_charge_per_emi']  ?? 0;
 $flatDevCharges       = $paymentSummary['flat_development_charges'] ?? 0;
@@ -89,7 +99,7 @@ if (!empty($outstandingDues)) {
                     </div>
                 <?php endif; ?>
 
-                <?php if (!$isBookingFullyPaid && $bookingMoneyPaid > 0): ?>
+                <?php if (!$isBookingFullyPaid && !$isLandShareCompleted && $bookingMoneyPaid > 0 && $bookingBalance > 0): ?>
                     <div class="alert alert-warning alert-dismissible fade show mb-4 d-flex align-items-center" role="alert">
                         <i class=""></i>
                         <div>
@@ -141,7 +151,8 @@ if (!empty($outstandingDues)) {
                                 <option value="">-- Select Payment Type --</option>
 
                                 <!-- Booking Money -->
-                                <?php if ($formRemainingBooking > 0 && !$isBookingFullyPaid): ?>
+                                <!-- Booking Money -->
+                                <?php if ($formRemainingBooking > 0 && !$isBookingFullyPaid && !$isLandShareCompleted): ?>
                                     <option value="booking_money">
                                         Booking Money (Remaining: TK.<?= number_format($formRemainingBooking, 2) ?>)
                                     </option>
@@ -337,7 +348,12 @@ if (!empty($outstandingDues)) {
                             <div class="from__input-box">
                                 <label class="form__input-title">Transfer To / Company Bank <span>*</span></label>
                                 <select name="bank_id" id="bankSelect" class="form-select">
-                                    <option value="">-- Loading company banks... --</option>
+                                    <option value="">-- Select Transfer To / Company Bank --</option>
+                                    <?php if (!empty($companyBanks)): ?>
+                                        <?php foreach ($companyBanks as $b): ?>
+                                            <option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['bank_name'] . ' — ' . $b['account_name'] . (!empty($b['account_number']) ? ' (' . $b['account_number'] . ')' : '')) ?></option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
                                 </select>
                                 <small class="text-muted">Managed in <a href="<?= $GLOBALS['base_url'] ?>/company-bank-accounts" target="_blank">Company Bank Manage</a></small>
                             </div>
@@ -590,11 +606,55 @@ if (!empty($outstandingDues)) {
 
         // Function to calculate dynamic remaining amounts
         function getDynamicBalances() {
-            const totalBM = totalBookingMoneyInput ? (parseFloat(totalBookingMoneyInput.value) || 0) : <?= json_encode((float)$effectiveBookingTarget) ?>;
-            const remainingBooking = Math.max(0, totalBM - bookingMoneyTotalPaid);
-            // Registration Target = Total Land Share - Discount - Total Booking Money Target
-            // Then subtract all registration/land_share payments (pending + verified)
-            const remainingReg = Math.max(0, totalLandShare - discountAmount - totalBM - allRegistrationAndLandshare);
+            const effectiveLSTarget = Math.max(0, totalLandShare - discountAmount);
+            const totalLSPaid = bookingMoneyTotalPaid + allRegistrationAndLandshare;
+            const remainingLandShareTotal = Math.max(0, effectiveLSTarget - totalLSPaid);
+            const target = totalBookingMoneyInput ? (parseFloat(totalBookingMoneyInput.value) || 0) : <?= json_encode((float)$effectiveBookingTarget) ?>;
+            const remainingBooking = (remainingLandShareTotal <= 0) ? 0 : Math.min(remainingLandShareTotal, Math.max(0, target - bookingMoneyTotalPaid));
+            const bookingDeduction = Math.max(target, bookingMoneyTotalPaid);
+            const remainingReg = (remainingLandShareTotal <= 0) ? 0 : Math.min(remainingLandShareTotal, Math.max(0, effectiveLSTarget - bookingDeduction - allRegistrationAndLandshare));
+
+            const bmOption = paymentType ? paymentType.querySelector('option[value="booking_money"]') : null;
+            if (bmOption) {
+                if (remainingBooking > 0 && remainingLandShareTotal > 0) {
+                    bmOption.disabled = false;
+                    bmOption.style.color = '';
+                    bmOption.textContent = 'Booking Money' + (bookingMoneyTotalPaid > 0 ? ' (Remaining: TK.' + remainingBooking.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ')' : '');
+                } else {
+                    bmOption.disabled = true;
+                    bmOption.style.color = '#6c757d';
+                    bmOption.textContent = 'Booking Money (Fully Paid — TK.' + bookingMoneyTotalPaid.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ')';
+                }
+            }
+
+            const regOption = paymentType ? paymentType.querySelector('option[value="registration"]') : null;
+            if (regOption) {
+                if (remainingReg > 0) {
+                    regOption.disabled = false;
+                    regOption.style.color = '';
+                    regOption.textContent = 'Registration (Remaining: TK.' + remainingReg.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ')';
+                } else {
+                    regOption.disabled = true;
+                    regOption.style.color = '#6c757d';
+                    regOption.textContent = 'Registration (Completed ✓)';
+                }
+            }
+
+            const mutOption = paymentType ? paymentType.querySelector('option[value="mutation_cost"]') : null;
+            if (mutOption) {
+                if (remainingLandShareTotal > 0) {
+                    mutOption.disabled = false;
+                    mutOption.style.color = '';
+                    mutOption.textContent = 'Mutation Cost';
+                } else {
+                    mutOption.disabled = true;
+                    mutOption.style.color = '#6c757d';
+                    mutOption.textContent = 'Mutation Cost (Completed ✓)';
+                }
+            }
+
+            return { remainingBooking, remainingReg };
+        }
             return { remainingBooking, remainingReg };
         }
 
@@ -613,7 +673,6 @@ if (!empty($outstandingDues)) {
                     totalBookingMoneyContainer.style.display = 'none';
                 }
             }
-
             // Show Other Purpose input when Others is selected
             const otherPurposeContainer = document.getElementById('otherPurposeContainer');
             const otherPurposeInput = document.getElementById('otherPurpose');
@@ -1056,38 +1115,39 @@ if (!empty($outstandingDues)) {
         }
 
         // Initialize on page load
-        if (totalBookingMoneyInput) {
-            totalBookingMoneyInput.addEventListener('input', function() {
-                updateAmountField();
-            });
-        }
         updateAmountField();
         controlPartiallyPaidStatus();
-
 
         // Trigger payment method change to set initial state
         if (paymentMethod) {
             paymentMethod.dispatchEvent(new Event('change'));
         }
 
-        // Load company banks for AJAX dropdown
-        fetch('<?= $GLOBALS['base_url'] ?>/get-company-banks')
-            .then(r => r.json())
-            .then(data => {
-                const sel = document.getElementById('bankSelect');
-                if (!sel) return;
-                sel.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
-                (data.banks || []).forEach(b => {
-                    const opt = document.createElement('option');
-                    opt.value = b.id;
-                    opt.textContent = b.bank_name + ' — ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
-                    sel.appendChild(opt);
+        // Initialize company banks list
+        window.companyBanksList = <?= json_encode($companyBanks ?? []) ?>;
+
+        // If not already populated server-side, load company banks via AJAX
+        const existingBankOptions = document.getElementById('bankSelect')?.querySelectorAll('option');
+        if (!existingBankOptions || existingBankOptions.length <= 1) {
+            fetch('<?= $GLOBALS['base_url'] ?>/get-company-banks')
+                .then(r => r.json())
+                .then(data => {
+                    window.companyBanksList = data.banks || [];
+                    const sel = document.getElementById('bankSelect');
+                    if (!sel) return;
+                    sel.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
+                    (data.banks || []).forEach(b => {
+                        const opt = document.createElement('option');
+                        opt.value = b.id;
+                        opt.textContent = b.bank_name + ' — ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
+                        sel.appendChild(opt);
+                    });
+                })
+                .catch(() => {
+                    const sel = document.getElementById('bankSelect');
+                    if (sel && sel.options.length <= 1) sel.innerHTML = '<option value="">Company Bank Accounts unavailable</option>';
                 });
-            })
-            .catch(() => {
-                const sel = document.getElementById('bankSelect');
-                if (sel) sel.innerHTML = '<option value="">Company Bank Accounts unavailable</option>';
-            });
+        }
 
         // File preview thumbnails
         const proofFilesInput = document.getElementById('proofFiles');

@@ -234,17 +234,23 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                 </span>
                                             <?php endif; ?>
 
-                                            <?php if($ind['target_amount'] > 0): ?>
-                                                <div class="small">Target: <strong class="text-dark">৳<?= number_format($ind['target_amount'], 2) ?></strong></div>
-                                                <div class="small">Achieved: <strong class="text-success">৳<?= number_format($achievedTotal, 2) ?></strong></div>
-                                                <div class="progress mt-1" style="height: 5px;">
-                                                    <div class="progress-bar bg-success" role="progressbar" style="width: <?= min(100, $ind['achievement_pct']) ?>%;"></div>
-                                                </div>
-                                                <div class="extra-small text-muted mt-1"><?= number_format($ind['achievement_pct'], 1) ?>% Achieved</div>
-                                            <?php else: ?>
-                                                <div class="small text-muted">No Explicit Target</div>
-                                                <div class="small">Achieved: <strong class="text-success">৳<?= number_format($achievedTotal, 2) ?></strong></div>
-                                            <?php endif; ?>
+                                            <div class="user-select-none" style="cursor: pointer;" onclick="openExecutiveCalculationModal(<?= $u['id'] ?>)" title="Click to view full calculation & sales breakdown">
+                                                <?php if($ind['target_amount'] > 0): ?>
+                                                    <div class="small">Target: <strong class="text-dark">৳<?= number_format($ind['target_amount'], 2) ?></strong></div>
+                                                    <div class="small">Achieved: <strong class="text-success">৳<?= number_format($achievedTotal, 2) ?></strong></div>
+                                                    <div class="progress mt-1" style="height: 5px;">
+                                                        <div class="progress-bar bg-success" role="progressbar" style="width: <?= min(100, $ind['achievement_pct']) ?>%;"></div>
+                                                    </div>
+                                                    <div class="d-flex align-items-center justify-content-between mt-1">
+                                                        <div class="extra-small text-muted"><?= number_format($ind['achievement_pct'], 1) ?>% Achieved</div>
+                                                        <span class="badge bg-info-subtle text-info border border-info-subtle extra-small"><i class="fa-solid fa-calculator me-1"></i>Breakdown</span>
+                                                    </div>
+                                                <?php else: ?>
+                                                    <div class="small text-muted">No Explicit Target</div>
+                                                    <div class="small">Achieved: <strong class="text-success">৳<?= number_format($achievedTotal, 2) ?></strong></div>
+                                                    <span class="badge bg-info-subtle text-info border border-info-subtle extra-small mt-1"><i class="fa-solid fa-calculator me-1"></i>Breakdown</span>
+                                                <?php endif; ?>
+                                            </div>
 
                                             <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 20, 30, 32, 33, 34, 35], true) || !empty($isManagement)): ?>
                                                 <div class="mt-1">
@@ -254,17 +260,19 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                 </div>
                                             <?php endif; ?>
                                         </td>
-                                        <td>
+                                        <td style="cursor: pointer;" onclick="openExecutiveCalculationModal(<?= $u['id'] ?>)" title="Click to view calculation breakdown">
                                             <?php if(!empty($ind['is_eligible'])): ?>
                                                 <span class="badge bg-success-subtle text-success fw-semibold mb-1">
                                                     <i class="fa-solid fa-check me-1"></i>Target Filled Up (≥ 25L)
                                                 </span>
                                                 <div class="small fw-bold text-success">Earned: ৳<?= number_format($ind['total_earned_incentive'], 2) ?></div>
+                                                <div class="extra-small text-primary mt-1"><i class="fa-solid fa-circle-question me-1"></i>How is this calculated?</div>
                                             <?php else: ?>
                                                 <span class="badge bg-warning-subtle text-warning border border-warning-subtle extra-small mb-1">
                                                     <i class="fa-solid fa-clock me-1"></i>Pending 25L Min
                                                 </span>
                                                 <div class="extra-small text-muted">Earned: ৳0.00</div>
+                                                <div class="extra-small text-muted mt-1"><i class="fa-solid fa-eye me-1"></i>View Sales Progress</div>
                                             <?php endif; ?>
                                         </td>
                                         <td>
@@ -338,7 +346,17 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                             <!-- Code & Date -->
                                             <td class="ps-4">
                                                 <span class="fw-bold text-dark d-block"><?= htmlspecialchars($claim['claim_code']) ?></span>
-                                                <span class="text-muted extra-small"><?= date('d M, Y', strtotime($claim['claimed_at'])) ?></span>
+                                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle extra-small mb-1" title="Sales Cycle Month">
+                                                    <i class="fa-regular fa-calendar me-1"></i>Cycle: <?= htmlspecialchars($claim['sale_cycle_display'] ?? '') ?>
+                                                </span>
+                                                <?php if (!empty($claim['booking_id'])): ?>
+                                                    <div class="extra-small text-muted">
+                                                        <i class="fa-solid fa-file-invoice me-1"></i>Booking #<?= $claim['booking_id'] ?><?= !empty($claim['booking_date']) ? ' (' . date('d M, Y', strtotime($claim['booking_date'])) . ')' : '' ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                                <button type="button" class="btn btn-xs btn-outline-info rounded-pill px-2 py-0 extra-small mt-1 shadow-2xs fw-semibold" onclick="openClaimSaleDetailsModal(<?= htmlspecialchars(json_encode($claim), ENT_QUOTES, 'UTF-8') ?>)">
+                                                    <i class="fa-solid fa-circle-info me-1"></i>Sale Details
+                                                </button>
                                             </td>
 
                                             <!-- Employee Info -->
@@ -350,8 +368,17 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
 
                                             <!-- Project Unit -->
                                             <td>
-                                                <span class="fw-semibold text-dark d-block"><?= htmlspecialchars($claim['project_name']) ?></span>
-                                                <span class="text-primary extra-small"><?= htmlspecialchars($claim['flat_name']) ?></span>
+                                                <?php if ($claim['split_type'] === 'tl_override'): ?>
+                                                    <span class="badge bg-info-subtle text-info border border-info-subtle extra-small mb-1">
+                                                        <i class="fa-solid fa-users me-1"></i>TL 0.05% Override
+                                                    </span>
+                                                    <div class="small fw-semibold text-dark">
+                                                        From: <?= htmlspecialchars($claim['original_seller_name'] ?: 'Team Member') ?> <?= !empty($claim['original_seller_code']) ? '[' . htmlspecialchars($claim['original_seller_code']) . ']' : '' ?>
+                                                    </div>
+                                                <?php else: ?>
+                                                    <span class="fw-semibold text-dark d-block"><?= htmlspecialchars($claim['project_name']) ?></span>
+                                                    <span class="text-primary extra-small"><?= htmlspecialchars($claim['flat_name']) ?><?= !empty($claim['floor_no']) ? ' (Floor ' . htmlspecialchars($claim['floor_no']) . ')' : '' ?></span>
+                                                <?php endif; ?>
                                             </td>
 
                                             <!-- Flat Price & Land Share -->
@@ -787,10 +814,32 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                 <tr>
                                                     <td>
                                                         <span class="fw-bold text-dark extra-small d-block"><?= htmlspecialchars($log['disbursement_no']) ?></span>
-                                                        <span class="text-muted extra-small"><?= date('d M, Y', strtotime($log['payment_date'])) ?></span>
+                                                        <span class="text-muted extra-small d-block"><?= date('d M, Y', strtotime($log['payment_date'])) ?></span>
+                                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle extra-small mt-1" title="Sales Cycle Month">
+                                                            <i class="fa-regular fa-calendar me-1"></i>Cycle: <?= htmlspecialchars($log['sale_cycle_display'] ?? '') ?>
+                                                        </span>
                                                     </td>
                                                     <td>
-                                                        <span class="fw-semibold text-dark extra-small"><?= htmlspecialchars($log['recipient_name']) ?></span>
+                                                        <span class="fw-semibold text-dark extra-small d-block"><?= htmlspecialchars($log['recipient_name']) ?></span>
+                                                        <?php if ($log['split_type'] === 'tl_override'): ?>
+                                                            <div class="extra-small text-dark fw-semibold mt-1">
+                                                                <span class="badge bg-warning-subtle text-dark border border-warning-subtle extra-small"><i class="fa-solid fa-users me-1"></i>TL Override</span>
+                                                                From: <?= htmlspecialchars($log['original_seller_name']) ?> <?= !empty($log['original_seller_code']) ? '[' . htmlspecialchars($log['original_seller_code']) . ']' : '' ?>
+                                                            </div>
+                                                        <?php else: ?>
+                                                            <div class="extra-small text-dark fw-semibold mt-1">
+                                                                <i class="fa-solid fa-building me-1 text-primary"></i><?= htmlspecialchars($log['project_name']) ?> - <?= htmlspecialchars($log['flat_name']) ?><?= !empty($log['floor_no']) ? ' (Floor ' . $log['floor_no'] . ')' : '' ?>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                        <div class="d-flex align-items-center gap-1 mt-1">
+                                                            <code class="extra-small text-muted"><?= htmlspecialchars($log['claim_code']) ?></code>
+                                                            <?php if (!empty($log['booking_id'])): ?>
+                                                                <span class="extra-small text-muted">| #<?= $log['booking_id'] ?></span>
+                                                            <?php endif; ?>
+                                                            <button type="button" class="btn btn-xs btn-outline-info rounded-pill px-2 py-0 extra-small shadow-2xs ms-1" onclick="openPayoutSaleDetailsModal(<?= htmlspecialchars(json_encode($log), ENT_QUOTES, 'UTF-8') ?>)">
+                                                                <i class="fa-solid fa-circle-info me-1"></i>Sale Details
+                                                            </button>
+                                                        </div>
                                                     </td>
                                                     <td>
                                                         <span class="badge bg-info-subtle text-info extra-small me-1"><?= htmlspecialchars($log['payment_method']) ?></span>
@@ -805,7 +854,12 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                         <?php endif; ?>
                                                     </td>
                                                     <td class="text-end">
-                                                        <span class="fw-bold text-success extra-small">৳<?= number_format($log['payment_amount'], 2) ?></span>
+                                                        <span class="fw-bold text-success extra-small d-block">৳<?= number_format($log['payment_amount'], 2) ?></span>
+                                                        <?php if ($log['incentive_percentage'] > 0): ?>
+                                                            <span class="extra-small text-muted" style="font-size:0.65rem;">
+                                                                <?= number_format($log['incentive_percentage'], 2) ?>% on ৳<?= number_format($log['land_share_value'], 0) ?>
+                                                            </span>
+                                                        <?php endif; ?>
                                                     </td>
                                                     <td class="text-center">
                                                         <?php if (!empty($log['is_received'])): ?>
@@ -1321,7 +1375,592 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
     </div>
 </div>
 
+<!-- Modal: Executive Real-Time Calculation Breakdown -->
+<div class="modal fade" id="viewExecutiveCalculationModal" tabindex="-1" aria-labelledby="viewExecutiveCalculationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content shadow-lg border-0">
+            <div class="modal-header bg-dark text-white py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle bg-white text-dark d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                        <i class="fa-solid fa-calculator text-primary fs-5"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold text-white mb-0" id="viewExecutiveCalculationModalLabel">Executive Incentive Calculation Breakdown</h5>
+                        <div class="extra-small text-white-50" id="modalCalcSubtitle">Real-time target performance & modality audit</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" id="modalCalcBody">
+                <!-- Dynamically Populated by JS -->
+            </div>
+            <div class="modal-footer bg-light py-2">
+                <button type="button" class="btn btn-secondary rounded-2 px-4" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Claim / Payout Sale Details Drilldown -->
+<div class="modal fade" id="claimSaleDetailsModal" tabindex="-1" aria-labelledby="claimSaleDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content shadow-lg border-0">
+            <div class="modal-header bg-dark text-white py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle bg-white text-dark d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                        <i class="fa-solid fa-file-invoice text-success fs-5"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold text-white mb-0" id="claimSaleDetailsModalLabel">Sale & Incentive Detailed Breakdown</h5>
+                        <div class="extra-small text-white-50" id="modalSaleDetailsSubtitle">Booking, Project & Payment Verification Audit</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" id="modalSaleDetailsBody">
+                <!-- Dynamically Populated by JS -->
+            </div>
+            <div class="modal-footer bg-light py-2">
+                <button type="button" class="btn btn-secondary rounded-2 px-4" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+// Real-time calculation dataset for instantaneous popup inspection
+window.realtimeExecBreakdowns = <?= json_encode($realTimeStats ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function formatCurrency(val) {
+    const num = parseFloat(val);
+    if (isNaN(num)) return '0.00';
+    return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function showModalInstance(modalId) {
+    const modalEl = document.getElementById(modalId);
+    if (!modalEl) return;
+    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    } else if (typeof window.jQuery !== 'undefined') {
+        window.jQuery('#' + modalId).modal('show');
+    }
+}
+
+window.openExecutiveCalculationModal = function (userId) {
+    if (!window.realtimeExecBreakdowns || !window.realtimeExecBreakdowns.length) {
+        alert('No calculation data available.');
+        return;
+    }
+
+    const item = window.realtimeExecBreakdowns.find(function (r) {
+        return r && r.user && parseInt(r.user.id, 10) === parseInt(userId, 10);
+    });
+
+    if (!item) {
+        alert('Calculation details for this member could not be loaded.');
+        return;
+    }
+
+    const u = item.user || {};
+    const ind = item.individual || {};
+    const cSum = item.claims_summary || {};
+    const team = item.team || {};
+
+    const subtitleEl = document.getElementById('modalCalcSubtitle');
+    if (subtitleEl) {
+        subtitleEl.innerHTML = `${escapeHtml(u.full_name || 'Member')} (${escapeHtml(u.employee_id || '')}) &bull; ${escapeHtml(u.department || 'Sales')} &bull; Cycle: <?= htmlspecialchars($cycleMonthDisplay ?? ($month ?? '')) ?>`;
+    }
+
+    const targetAmt = parseFloat(ind.target_amount || 0);
+    const achievedAmt = parseFloat(ind.total_achieved_land_share || 0);
+    const minRequired = parseFloat(ind.min_eligible_sales || 2500000);
+    const earnedAmt = parseFloat(ind.total_earned_incentive || 0);
+    const onHoldAmt = parseFloat(ind.total_on_hold_incentive || 0);
+    const pct = parseFloat(ind.achievement_pct || 0);
+    const isEligible = !!ind.is_eligible;
+
+    const assignedProjects = (ind.target_project_names && ind.target_project_names.length)
+        ? ind.target_project_names.join(', ')
+        : 'All Assigned Company Projects';
+
+    let html = `
+        <!-- Header Info Card -->
+        <div class="card border-0 bg-light rounded-3 p-3 mb-4">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="avatar-lg bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold fs-4" style="width: 50px; height: 50px;">
+                        ${escapeHtml((u.full_name || 'U').charAt(0))}
+                    </div>
+                    <div>
+                        <h5 class="fw-bold text-dark mb-0">${escapeHtml(u.full_name || '')}</h5>
+                        <div class="text-muted extra-small">
+                            <span class="badge bg-secondary-subtle text-secondary me-1">${escapeHtml(u.employee_id || '')}</span>
+                            ${escapeHtml(u.designation || 'Sales Executive')} &bull; <i class="fa-solid fa-users me-1 text-primary"></i>${escapeHtml(u.team_name || 'Direct Sales')}
+                        </div>
+                    </div>
+                </div>
+                <div class="text-end">
+                    <span class="badge ${isEligible ? 'bg-success' : 'bg-warning text-dark'} px-3 py-2 fs-6">
+                        <i class="fa-solid ${isEligible ? 'fa-circle-check' : 'fa-clock'} me-1"></i>
+                        ${isEligible ? 'Target Qualified (≥ 25 Lakh)' : 'Pending Minimum Target (< 25 Lakh)'}
+                    </span>
+                    <div class="extra-small text-muted mt-1">Assigned Projects: <strong class="text-dark">${escapeHtml(assignedProjects)}</strong></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4 KPI Summary Cards -->
+        <div class="row  mb-4">
+            <div class="col-md-3 col-6">
+                <div class="card border border-primary-subtle shadow-none rounded-3 p-3 h-100 bg-white">
+                    <div class="extra-small text-muted text-uppercase fw-bold mb-1">Target (Land Share)</div>
+                    <h5 class="fw-bold text-dark mb-1">৳${formatCurrency(targetAmt)}</h5>
+                    <div class="extra-small text-muted">
+                        ${ind.is_inherited ? '<span class="badge bg-info-subtle text-info">Inherited Target</span>' : '<span class="badge bg-primary-subtle text-primary">Current Cycle Target</span>'}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="card border border-success-subtle shadow-none rounded-3 p-3 h-100 bg-white">
+                    <div class="extra-small text-muted text-uppercase fw-bold mb-1">Achieved (Land Share)</div>
+                    <h5 class="fw-bold text-success mb-1">৳${formatCurrency(achievedAmt)}</h5>
+                    <div class="extra-small text-muted">
+                        <strong>${pct.toFixed(1)}%</strong> of target fulfilled
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="card border border-info-subtle shadow-none rounded-3 p-3 h-100 bg-white">
+                    <div class="extra-small text-muted text-uppercase fw-bold mb-1">Minimum Qualification</div>
+                    <h5 class="fw-bold text-info mb-1">৳${formatCurrency(minRequired)}</h5>
+                    <div class="extra-small text-muted">
+                        ${achievedAmt >= minRequired ? '<span class="text-success fw-bold"><i class="fa-solid fa-check me-1"></i>Requirement Met</span>' : '<span class="text-danger fw-bold"><i class="fa-solid fa-times me-1"></i>Short by ৳' + formatCurrency(minRequired - achievedAmt) + '</span>'}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="card border border-success shadow-none rounded-3 p-3 h-100 bg-success-subtle">
+                    <div class="extra-small text-success text-uppercase fw-bold mb-1">Total Earned Incentive</div>
+                    <h4 class="fw-bold text-success mb-1">৳${formatCurrency(earnedAmt)}</h4>
+                    ${onHoldAmt > 0 ? '<div class="extra-small text-warning fw-semibold">+ ৳' + formatCurrency(onHoldAmt) + ' on hold</div>' : '<div class="extra-small text-success"><i class="fa-solid fa-check-double me-1"></i>Ready for claim / paid</div>'}
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 1: Direct Bookings Table -->
+        <div class="card border shadow-none rounded-3 mb-4">
+            <div class="card-header bg-light py-2 px-3 d-flex align-items-center justify-content-between">
+                <span class="fw-bold text-dark small">
+                    <i class="fa-solid fa-list-check me-1 text-primary"></i> 1. Direct Sales Bookings in Cycle (${(ind.detailed_bookings || []).length})
+                </span>
+                <span class="text-muted extra-small">Cycle Date: ${escapeHtml(ind.cycle_start || '')} to ${escapeHtml(ind.cycle_end || '')}</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead class="bg-light text-muted extra-small text-uppercase">
+                        <tr>
+                            <th class="ps-3">Booking # & Date</th>
+                            <th>Project & Flat</th>
+                            <th class="text-end">Agreement Price</th>
+                            <th class="text-end">Land Share Value</th>
+                            <th>Modality Rule</th>
+                            <th class="text-center">Rate %</th>
+                            <th class="text-end">Incentive</th>
+                            <th class="pe-3 text-center">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
+    if (ind.detailed_bookings && ind.detailed_bookings.length > 0) {
+        ind.detailed_bookings.forEach(function (b) {
+            const bLand = parseFloat(b.land_share_value || 0);
+            const bPrice = parseFloat(b.flat_price || 0);
+            const bRate = parseFloat(b.applicable_rate || 0);
+            const bCalc = parseFloat(b.calculated_incentive || 0);
+            const bEarned = parseFloat(b.seller_incentive || 0);
+            const bHold = b.is_on_hold == 1;
+
+            html += `
+                <tr>
+                    <td class="ps-3">
+                        <strong class="text-dark">#${escapeHtml(b.booking_id)}</strong>
+                        <div class="extra-small text-muted">${escapeHtml(b.booking_date || '')}</div>
+                    </td>
+                    <td>
+                        <div class="fw-semibold text-dark">${escapeHtml(b.project_name || 'Project')}</div>
+                        <span class="text-primary extra-small">${escapeHtml(b.flat_name || '')}${b.floor_no ? ' (Floor ' + escapeHtml(b.floor_no) + ')' : ''}</span>
+                    </td>
+                    <td class="text-end fw-semibold text-dark">৳${formatCurrency(bPrice)}</td>
+                    <td class="text-end fw-bold text-primary">৳${formatCurrency(bLand)}</td>
+                    <td>
+                        <span class="badge bg-secondary-subtle text-secondary extra-small">${escapeHtml(b.rate_type || 'Standard')}</span>
+                        ${b.is_assigned ? '<span class="badge bg-info-subtle text-info extra-small ms-1">Assigned</span>' : '<span class="badge bg-warning-subtle text-warning extra-small ms-1">Outside Assigned</span>'}
+                    </td>
+                    <td class="text-center">
+                        <span class="badge bg-light text-dark border fw-bold">${bRate.toFixed(2)}%</span>
+                    </td>
+                    <td class="text-end">
+                        <strong class="${bHold ? 'text-warning' : 'text-success'} fs-6">৳${formatCurrency(bEarned || bCalc)}</strong>
+                        <div class="extra-small text-muted" style="font-size: 0.7rem;">(৳${formatCurrency(bLand)} &times; ${bRate.toFixed(2)}%)</div>
+                    </td>
+                    <td class="pe-3 text-center">
+                        ${bHold 
+                            ? '<span class="badge bg-warning-subtle text-warning border border-warning-subtle extra-small">On Hold (70%)</span>' 
+                            : '<span class="badge bg-success-subtle text-success border border-success-subtle extra-small"><i class="fa-solid fa-check me-1"></i>Earned</span>'}
+                        <div class="extra-small text-muted mt-1" style="font-size: 0.65rem;">${escapeHtml(b.status_note || '')}</div>
+                    </td>
+                </tr>`;
+        });
+    } else {
+        html += `
+            <tr>
+                <td colspan="8" class="text-center text-muted py-3">No direct sales bookings recorded for this executive in this cycle.</td>
+            </tr>`;
+    }
+
+    html += `
+                    </tbody>
+                </table>
+            </div>
+        </div>`;
+
+    // Section 2: 30% Designated Credits from outside sales (if any)
+    if (ind.designated_credits && ind.designated_credits.length > 0) {
+        html += `
+            <div class="card border border-info-subtle shadow-none rounded-3 mb-4">
+                <div class="card-header bg-info-subtle py-2 px-3 d-flex align-items-center justify-content-between">
+                    <span class="fw-bold text-dark small">
+                        <i class="fa-solid fa-share-nodes me-1 text-info"></i> 2. Passive 30% Designated Credits (${ind.designated_credits.length})
+                    </span>
+                    <span class="text-info extra-small fw-semibold">Earned from assigned project flats sold by other agents</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead class="bg-light text-muted extra-small text-uppercase">
+                            <tr>
+                                <th class="ps-3">Booking #</th>
+                                <th>Sold By</th>
+                                <th>Project & Flat</th>
+                                <th class="text-end">Land Share Value</th>
+                                <th class="text-center">Rate Calculation</th>
+                                <th class="pe-3 text-end">Passive 30% Credit</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+        ind.designated_credits.forEach(function (dc) {
+            const dcAmt = parseFloat(dc.credit_amount || 0);
+            const dcLand = parseFloat(dc.land_share_value || 0);
+            html += `
+                <tr>
+                    <td class="ps-3 fw-bold text-dark">#${escapeHtml(dc.booking_id)}</td>
+                    <td>
+                        <span class="fw-semibold text-dark">${escapeHtml(dc.seller_name || 'Agent')}</span>
+                    </td>
+                    <td>
+                        <span class="fw-semibold text-dark">${escapeHtml(dc.project_name || '')}</span> - 
+                        <span class="text-primary">${escapeHtml(dc.flat_name || '')}</span>
+                    </td>
+                    <td class="text-end fw-bold text-primary">৳${formatCurrency(dcLand)}</td>
+                    <td class="text-center text-muted extra-small">
+                        Land Share &times; Base Rate &times; 30%
+                    </td>
+                    <td class="pe-3 text-end fw-bold text-success fs-6">৳${formatCurrency(dcAmt)}</td>
+                </tr>`;
+        });
+        html += `
+                        </tbody>
+                    </table>
+                </div>
+            </div>`;
+    }
+
+    // Section 3: Team Leader Overrides (if applicable)
+    if (team && team.eligible && team.member_breakdown && team.member_breakdown.length > 0) {
+        const tlEarned = parseFloat(team.incentive_earned || 0);
+        html += `
+            <div class="card border border-warning-subtle shadow-none rounded-3 mb-4">
+                <div class="card-header bg-warning-subtle py-2 px-3 d-flex align-items-center justify-content-between">
+                    <span class="fw-bold text-dark small">
+                        <i class="fa-solid fa-users me-1 text-warning"></i> 3. Team Leader 0.05% Overrides (${escapeHtml(team.team_name || 'Team')})
+                    </span>
+                    <span class="text-dark extra-small fw-semibold">Qualified Members: ${team.qualified_members_count || 0} / ${team.total_members_count || 0} &bull; Earned: <strong>৳${formatCurrency(tlEarned)}</strong></span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead class="bg-light text-muted extra-small text-uppercase">
+                            <tr>
+                                <th class="ps-3">Team Member</th>
+                                <th>Designation</th>
+                                <th class="text-end">Achieved Land Share</th>
+                                <th class="text-center">Qualification (≥25L)</th>
+                                <th class="pe-3 text-end">TL 0.05% Gain</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+        team.member_breakdown.forEach(function (mb) {
+            if (mb.is_self) return; // Skip self in member breakdown
+            const mbAch = parseFloat(mb.achieved_land_share || 0);
+            const mbGain = parseFloat(mb.tl_gain || 0);
+            html += `
+                <tr>
+                    <td class="ps-3 fw-semibold text-dark">${escapeHtml(mb.full_name)} <span class="badge bg-light text-muted border extra-small">${escapeHtml(mb.employee_id || '')}</span></td>
+                    <td class="extra-small text-muted">${escapeHtml(mb.designation || '')}</td>
+                    <td class="text-end fw-bold text-dark">৳${formatCurrency(mbAch)}</td>
+                    <td class="text-center">
+                        ${mb.is_qualified 
+                            ? '<span class="badge bg-success-subtle text-success extra-small"><i class="fa-solid fa-check me-1"></i>Qualified</span>' 
+                            : '<span class="badge bg-secondary-subtle text-muted extra-small">Not Qualified (<25L)</span>'}
+                    </td>
+                    <td class="pe-3 text-end fw-bold ${mbGain > 0 ? 'text-success' : 'text-muted'}">৳${formatCurrency(mbGain)}</td>
+                </tr>`;
+        });
+        html += `
+                        </tbody>
+                    </table>
+                </div>
+            </div>`;
+    }
+
+    // Section 4: Mathematical Formula Summary
+    let directSum = 0;
+    (ind.detailed_bookings || []).forEach(function (b) {
+        if (!b.is_on_hold) directSum += parseFloat(b.seller_incentive || b.calculated_incentive || 0);
+    });
+    let passiveSum = 0;
+    (ind.designated_credits || []).forEach(function (dc) {
+        passiveSum += parseFloat(dc.credit_amount || 0);
+    });
+    let tlSum = (team && team.eligible) ? parseFloat(team.incentive_earned || 0) : 0;
+
+    html += `
+        <div class="card bg-light border-0 rounded-3 p-3">
+            <h6 class="fw-bold text-dark mb-2">
+                <i class="fa-solid fa-calculator text-primary me-2"></i>Incentive Calculation Formula & Audit
+            </h6>
+            <div class="p-3 bg-white rounded-2 border">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="text-muted small">1. Direct Sales Bookings Incentive:</span>
+                    <strong class="text-dark small">৳${formatCurrency(directSum)}</strong>
+                </div>
+                ${passiveSum > 0 ? `
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="text-muted small">2. 30% Designated Cross-Project Credits:</span>
+                    <strong class="text-info small">+ ৳${formatCurrency(passiveSum)}</strong>
+                </div>` : ''}
+                ${tlSum > 0 ? `
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="text-muted small">3. Team Leader 0.05% Overrides:</span>
+                    <strong class="text-warning small">+ ৳${formatCurrency(tlSum)}</strong>
+                </div>` : ''}
+                <hr class="my-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="fw-bold text-dark">Total Real-Time Earned Incentive:</span>
+                    <h5 class="fw-bold text-success mb-0">৳${formatCurrency(earnedAmt)}</h5>
+                </div>
+            </div>
+        </div>`;
+
+    const bodyEl = document.getElementById('modalCalcBody');
+    if (bodyEl) {
+        bodyEl.innerHTML = html;
+    }
+
+    showModalInstance('viewExecutiveCalculationModal');
+};
+
+window.renderSaleDetailsModal = function (data, type) {
+    const isPayout = (type === 'payout');
+    const bodyEl = document.getElementById('modalSaleDetailsBody');
+    const subtitleEl = document.getElementById('modalSaleDetailsSubtitle');
+    if (!bodyEl) return;
+
+    const refCode = isPayout ? (data.disbursement_no || 'PAYOUT') : (data.claim_code || 'CLAIM');
+    const cycleMonth = data.sale_cycle_display || data.cycle_month || 'Active Cycle';
+
+    if (subtitleEl) {
+        subtitleEl.innerHTML = `${escapeHtml(refCode)} &bull; Sales Cycle: <strong>${escapeHtml(cycleMonth)}</strong> &bull; ${isPayout ? 'Disbursed Payout Audit' : 'Sales Claim Audit'}`;
+    }
+
+    const saleAmount = parseFloat(data.sale_amount || 0);
+    const landShare = parseFloat(data.land_share_value || 0);
+    const incPct = parseFloat(data.incentive_percentage || 0);
+    const incAmount = parseFloat(isPayout ? (data.payment_amount || data.incentive_amount || 0) : (data.incentive_amount || 0));
+
+    let html = `
+        <!-- Main Ref & Beneficiary Card -->
+        <div class="card border-0 bg-light rounded-3 p-3 mb-4">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div>
+                    <span class="badge ${isPayout ? 'bg-success' : 'bg-primary'} px-3 py-1 mb-1">
+                        <i class="fa-solid ${isPayout ? 'fa-receipt' : 'fa-certificate'} me-1"></i>
+                        ${escapeHtml(refCode)}
+                    </span>
+                    <h5 class="fw-bold text-dark mb-0">${escapeHtml(data.recipient_name || data.user_name || 'Sales Executive')}</h5>
+                    <div class="text-muted extra-small mt-1">
+                        <span class="badge bg-secondary-subtle text-secondary me-1">${escapeHtml(data.recipient_code || data.employee_id || '')}</span>
+                        ${escapeHtml(data.department || 'Sales Dept')}
+                    </div>
+                </div>
+                <div class="text-end">
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 fs-6">
+                        <i class="fa-regular fa-calendar me-1"></i>Cycle: ${escapeHtml(cycleMonth)}
+                    </span>
+                    <div class="extra-small text-muted mt-1">
+                        ${data.created_at ? 'Created: ' + escapeHtml(data.created_at) : (data.payment_date ? 'Paid: ' + escapeHtml(data.payment_date) : '')}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Project & Booking Details Card -->
+        <div class="card border shadow-none rounded-3 mb-4">
+            <div class="card-header bg-light py-2 px-3 fw-bold small text-dark">
+                <i class="fa-solid fa-building me-1 text-primary"></i> Project & Unit Information
+            </div>
+            <div class="card-body p-3">
+                <div class="row ">
+                    <div class="col-md-6 col-12">
+                        <div class="extra-small text-muted">Project Name</div>
+                        <div class="fw-bold text-dark fs-6">${escapeHtml(data.project_name || 'N/A')}</div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="extra-small text-muted">Flat / Unit</div>
+                        <div class="fw-bold text-primary">${escapeHtml(data.flat_name || 'N/A')}</div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="extra-small text-muted">Floor Number</div>
+                        <div class="fw-bold text-dark">${data.floor_no ? 'Floor ' + escapeHtml(data.floor_no) : 'N/A'}</div>
+                    </div>
+                    <div class="col-md-6 col-12">
+                        <div class="extra-small text-muted">Booking Reference & Date</div>
+                        <div class="fw-bold text-dark">
+                            ${data.booking_id || data.booking_pk ? '#' + escapeHtml(data.booking_id || data.booking_pk) : 'N/A'}
+                            ${data.booking_date ? ' &bull; ' + escapeHtml(data.booking_date) : ''}
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-12">
+                        <div class="extra-small text-muted">Client Information</div>
+                        <div class="fw-semibold text-dark">
+                            ${escapeHtml(data.client_name || 'Client on file')}
+                            ${data.client_phone ? ' (' + escapeHtml(data.client_phone) + ')' : ''}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Financial & Incentive Calculation Card -->
+        <div class="card border shadow-none rounded-3 mb-4">
+            <div class="card-header bg-light py-2 px-3 fw-bold small text-dark">
+                <i class="fa-solid fa-calculator me-1 text-success"></i> Financial & Incentive Breakdown
+            </div>
+            <div class="card-body p-3">
+                <div class="row ">
+                    <div class="col-md-4 col-12">
+                        <div class="p-3 bg-light rounded-2 text-center">
+                            <div class="extra-small text-muted text-uppercase fw-semibold">Agreement Flat Price</div>
+                            <div class="fw-bold text-dark fs-6 mt-1">৳${formatCurrency(saleAmount)}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 col-12">
+                        <div class="p-3 bg-primary-subtle rounded-2 text-center">
+                            <div class="extra-small text-primary text-uppercase fw-semibold">Land Share Value</div>
+                            <div class="fw-bold text-primary fs-6 mt-1">৳${formatCurrency(landShare)}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 col-12">
+                        <div class="p-3 bg-success-subtle rounded-2 text-center">
+                            <div class="extra-small text-success text-uppercase fw-semibold">Incentive (${incPct.toFixed(2)}%)</div>
+                            <div class="fw-bold text-success fs-5 mt-1">৳${formatCurrency(incAmount)}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-3 p-3 bg-light rounded-2 border">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <div>
+                            <span class="badge bg-secondary-subtle text-secondary me-1">Modality Split</span>
+                            <strong class="text-dark small">${escapeHtml(data.split_type || 'Regular Direct Sale')}</strong>
+                            ${data.original_seller_name ? `
+                                <div class="extra-small text-muted mt-1">
+                                    <i class="fa-solid fa-user-tag me-1 text-primary"></i>Original Seller: <strong>${escapeHtml(data.original_seller_name)}</strong> [${escapeHtml(data.original_seller_code || '')}]
+                                </div>
+                            ` : ''}
+                        </div>
+                        <div class="text-end">
+                            <div class="extra-small text-muted">Applied Formula:</div>
+                            <div class="small fw-semibold text-dark">৳${formatCurrency(landShare)} &times; ${incPct.toFixed(2)}% = <strong>৳${formatCurrency(incAmount)}</strong></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+
+    if (isPayout) {
+        // Payout Disbursement Information
+        html += `
+            <div class="card border border-success-subtle shadow-none rounded-3 mb-2">
+                <div class="card-header bg-success-subtle py-2 px-3 fw-bold small text-success">
+                    <i class="fa-solid fa-receipt me-1"></i> Accounts Disbursement Audit
+                </div>
+                <div class="card-body p-3">
+                    <div class="row ">
+                        <div class="col-md-4 col-6">
+                            <div class="extra-small text-muted">Payment Method</div>
+                            <div class="fw-bold text-dark"><span class="badge bg-info-subtle text-info">${escapeHtml(data.payment_method || 'Cash')}</span></div>
+                        </div>
+                        <div class="col-md-4 col-6">
+                            <div class="extra-small text-muted">Txn / Cheque Ref</div>
+                            <code class="fw-bold">${escapeHtml(data.transaction_ref || 'N/A')}</code>
+                        </div>
+                        <div class="col-md-4 col-12">
+                            <div class="extra-small text-muted">Payment Date</div>
+                            <div class="fw-semibold text-dark">${escapeHtml(data.payment_date || '')}</div>
+                        </div>
+                        ${(data.company_bank_name || data.bank_name) ? `
+                        <div class="col-md-6 col-12">
+                            <div class="extra-small text-muted">Company Bank (Paid From)</div>
+                            <div class="small fw-semibold text-dark"><i class="fa-solid fa-building-columns me-1 text-primary"></i>${escapeHtml(data.company_bank_name || data.bank_name)}</div>
+                        </div>` : ''}
+                        ${data.to_bank_name ? `
+                        <div class="col-md-6 col-12">
+                            <div class="extra-small text-muted">Recipient Bank / Account</div>
+                            <div class="small fw-semibold text-success"><i class="fa-solid fa-money-check me-1"></i>${escapeHtml(data.to_bank_name)}</div>
+                        </div>` : ''}
+                        ${data.notes ? `
+                        <div class="col-12">
+                            <div class="extra-small text-muted">Accounts Notes</div>
+                            <div class="extra-small text-muted bg-light p-2 rounded">${escapeHtml(data.notes)}</div>
+                        </div>` : ''}
+                    </div>
+                </div>
+            </div>`;
+    }
+
+    bodyEl.innerHTML = html;
+    showModalInstance('claimSaleDetailsModal');
+};
+
+window.openClaimSaleDetailsModal = function (claim) {
+    if (!claim) return;
+    window.renderSaleDetailsModal(claim, 'claim');
+};
+
+window.openPayoutSaleDetailsModal = function (log) {
+    if (!log) return;
+    window.renderSaleDetailsModal(log, 'payout');
+};
 window.handleDisburseMethodChange = function () {
     const methodSelect = document.getElementById('modalDisbursePaymentMethod');
     if (!methodSelect) return;
@@ -1553,7 +2192,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     // Move modals to body once on load to prevent stacking/backdrop clipping
-    ['disbursePaymentModal', 'assignExternalIncentiveModal'].forEach(function (modalId) {
+    ['disbursePaymentModal', 'assignExternalIncentiveModal', 'viewExecutiveCalculationModal', 'claimSaleDetailsModal'].forEach(function (modalId) {
         const mEl = document.getElementById(modalId);
         if (mEl && mEl.parentNode !== document.body) {
             document.body.appendChild(mEl);

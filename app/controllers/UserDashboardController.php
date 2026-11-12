@@ -774,11 +774,13 @@ class UserDashboardController extends Controller
             $targetUserName = $targetUser['full_name'] ?? null;
         }
 
-        $year  = $_GET['year']  ?? null;
-        $month = $_GET['month'] ?? null;
+        $year     = $_GET['year']      ?? null;
+        $month    = $_GET['month']     ?? null;
+        $fromDate = !empty($_GET['from_date']) ? trim($_GET['from_date']) : null;
+        $toDate   = !empty($_GET['to_date'])   ? trim($_GET['to_date'])   : null;
 
         $myOnboardProjects = $this->bookingModel
-            ->getAllMyOnboardProject($targetUserId, $year, $month);
+            ->getAllMyOnboardProject($targetUserId, $year, $month, $fromDate, $toDate);
 
         // Compute summary metrics for header cards
         $totalUnitsSold = count($myOnboardProjects);
@@ -811,6 +813,8 @@ class UserDashboardController extends Controller
             'targetUserName'    => $targetUserName,
             'selectedYear'      => $year,
             'selectedMonth'     => $month,
+            'from_date'         => $fromDate,
+            'to_date'           => $toDate,
             'current_page'      => 'my-onboarding-projects',
         ]);
     }
@@ -914,6 +918,7 @@ class UserDashboardController extends Controller
         // Fetch specific booking & follow-up counts ONLY for the user's leads (FAST!)
         $leadIds = !empty($myAssignedClients) ? array_column($myAssignedClients, 'id') : [];
         $bookingCount   = !empty($leadIds) ? $this->bookingModel->getBookingCountByLeadIds($leadIds) : [];
+        $bookingSellers = !empty($leadIds) ? $this->bookingModel->getBookingSellersByLeadIds($leadIds) : [];
         $followUpModel  = new FollowUp($this->db);
         $followUpCounts = !empty($leadIds) ? $followUpModel->getFollowUpCountByLeadIds($leadIds) : [];
 
@@ -941,8 +946,8 @@ class UserDashboardController extends Controller
         $totalLeadsCount        = (int)($summaryCards['total_leads'] ?? 0);
         $contactedLeadsCount    = (int)($summaryCards['contacted_leads'] ?? 0);
         $notContactedLeadsCount = (int)($summaryCards['not_contacted_leads'] ?? 0);
-        $bookedLeadsCount       = (int)($summaryCards['booked_leads'] ?? 0);
         $totalBookingsCount     = $this->leadModel->countBookingsWithFilter($year, $month, null, null, null, $userId, $from_date, $to_date, $filterProjectId, $filterCategoryId, $filterCountry, $date_type);
+        $bookedLeadsCount       = $this->leadModel->countAllWithFilter($year, $month, $lastAction, null, null, null, $userId, null, null, $from_date, $to_date, 'total_booked', $filterProjectId, $filterCategoryId, $filterCountry, $assignedHours, $date_type);
         $upcomingFollowUpsCount = (int)($summaryCards['upcoming_follow_ups'] ?? 0);
         $missingFollowUpCount   = (int)($summaryCards['missing_follow_ups'] ?? 0);
         $irrelevantLeadsCount   = (int)($summaryCards['irrelevant_leads'] ?? 0);
@@ -1135,6 +1140,7 @@ class UserDashboardController extends Controller
             'myAllleads'          => $myAssignedClients,
             'current_page'        => 'my-all-assigned-leads',
             'bookingCount'        => $bookingCount,
+            'bookingSellers'      => $bookingSellers,
             'followUpCounts'      => $followUpCounts,
             'followUpHistories'   => $followUpHistories,
             'selectedAction'      => $lastAction,

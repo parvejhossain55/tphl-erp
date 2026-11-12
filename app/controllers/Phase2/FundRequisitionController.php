@@ -105,12 +105,7 @@ class FundRequisitionController extends Controller {
             'accounts_settlement_verified' => "TINYINT(1) NOT NULL DEFAULT 0",
             'accounts_verified_by' => "INT(11) NULL DEFAULT NULL",
             'accounts_verified_at' => "TIMESTAMP NULL DEFAULT NULL",
-            'parent_requisition_id' => "INT(11) NULL DEFAULT NULL",
-            // Purchase Head approval stage (between Dept Head and QC). Existing rows stay 'not_required'.
-            'purchase_head_status' => "ENUM('not_required','pending','approved','rejected') NOT NULL DEFAULT 'not_required'",
-            'purchase_head_by' => "INT(11) NULL DEFAULT NULL",
-            'purchase_head_at' => "DATETIME NULL DEFAULT NULL",
-            'purchase_head_note' => "TEXT NULL"
+            'parent_requisition_id' => "INT(11) NULL DEFAULT NULL"
         ];
 
         foreach ($colsNeeded as $col => $definition) {
@@ -225,11 +220,6 @@ class FundRequisitionController extends Controller {
             return true;
         }
 
-        // Purchase Head (role 17) - requisitions routed through the Purchase Head stage
-        if ($roleId === 17 && in_array(($req['purchase_head_status'] ?? 'not_required'), ['pending', 'approved', 'rejected'], true)) {
-            return true;
-        }
-
         // Requester's reporting boss - only if pending dept approval OR they already approved it
         $reportingBossId = (int)($req['requester_reporting_boss_id'] ?? $req['reporting_user_id'] ?? 0);
         if ($reportingBossId === $userId) {
@@ -254,68 +244,6 @@ class FundRequisitionController extends Controller {
         }
 
         return false;
-    }
-
-    /**
-     * Whether the given role is a Management role (1, 3, 38 or director/dceo/management/super admin by name),
-     * excluding Chief Officer roles (33, 34, 35).
-     */
-    private function isManagementRole(int $roleId): bool {
-        if (in_array($roleId, [33, 34, 35], true)) return false;
-        if (in_array($roleId, [1, 3, 38], true)) return true;
-        $roleName = strtolower(trim((string)($_SESSION['user']['role_name'] ?? '')));
-        if ($roleName === '' && $roleId > 0) {
-            $rRes = @$this->db->query("SELECT name FROM roles WHERE id = {$roleId} LIMIT 1");
-            if ($rRes && $rRow = $rRes->fetch_assoc()) {
-                $roleName = strtolower(trim((string)($rRow['name'] ?? '')));
-            }
-        }
-        if ($roleName === '') return false;
-        return (strpos($roleName, 'director') !== false || strpos($roleName, 'dceo') !== false || strpos($roleName, 'management') !== false || strpos($roleName, 'super admin') !== false);
-    }
-
-    /**
-     * Purchase Head stage is skipped when the requester is the Purchase Head (17) or Management (1, 3, 38).
-     */
-    private function isPurchaseHeadStageSkipped(int $requesterId): bool {
-        if ($requesterId <= 0) return false;
-        $uRes = $this->db->query("SELECT role_id FROM users WHERE id = {$requesterId} LIMIT 1");
-        $reqRole = ($uRes && $uRow = $uRes->fetch_assoc()) ? (int)($uRow['role_id'] ?? 0) : 0;
-        return in_array($reqRole, [17, 1, 3, 38], true);
-    }
-
-    /**
-     * Notify users of the given role(s) about a fund requisition stage (batch email).
-     */
-    private function notifyRolesForRequisition(array $roleIds, int $reqId, string $stageLabel): void {
-        try {
-            $roleIds = array_values(array_filter(array_map('intval', $roleIds)));
-            if (empty($roleIds) || $reqId <= 0) return;
-            $frRes = $this->db->query("SELECT fr.purpose, fr.amount, u.full_name AS requester_name FROM fund_requisitions fr LEFT JOIN users u ON u.id = fr.requested_by WHERE fr.id = {$reqId} LIMIT 1");
-            $fr = ($frRes && $frRes->num_rows > 0) ? $frRes->fetch_assoc() : null;
-            if (!$fr) return;
-
-            $listRes = $this->db->query("SELECT full_name, email FROM users WHERE role_id IN (" . implode(',', $roleIds) . ") AND email != '' AND email IS NOT NULL");
-            $list = [];
-            if ($listRes) {
-                while ($u = $listRes->fetch_assoc()) {
-                    $list[] = $u;
-                }
-            }
-            if (empty($list)) return;
-
-            require_once __DIR__ . '/../../core/MailServiceForPHPMailer.php';
-            $mailService = new \MailService($this->db);
-            $link = $GLOBALS['base_url'] . "/fund-requisitions/view/" . $reqId;
-            $reqDetails = [
-                'title' => $fr['purpose'] ?? 'Fund Requisition',
-                'requester_name' => $fr['requester_name'] ?? 'Unknown',
-                'amount' => $fr['amount'] ?? 0
-            ];
-            $mailService->sendRequisitionNotificationBatch($list, $stageLabel, 'Fund Requisition', $reqDetails, $link);
-        } catch (\Throwable $t) {
-            error_log("Fund requisition role notification error: " . $t->getMessage());
-        }
     }
 
     public function index() {
@@ -345,11 +273,6 @@ class FundRequisitionController extends Controller {
                 $userConditions[] = "(fr.status = 'pending_dept' AND (" . implode(' OR ', $approvalConditions) . "))";
             }
 
-            // Purchase Head (role 17): requisitions routed through the Purchase Head stage
-            if ($roleId === 17) {
-                $userConditions[] = "fr.purchase_head_status IN ('pending', 'approved', 'rejected')";
-            }
-
             $where = '(' . implode(' OR ', $userConditions) . ')';
         }
 
@@ -368,11 +291,8 @@ class FundRequisitionController extends Controller {
                 // Operation Head: management-pending items (up to 10 Thousand) OR dept_pending requests under them
                 $where .= " AND ((fr.status IN ('pending', 'partially_approved', 'partially_paid') AND fr.amount <= 10000) OR (fr.status = 'pending_dept' AND (e_req.reporting_user_id = $userId OR $deptHeadCond)))";
             } elseif (in_array($roleId, [13, 24, 25], true)) {
-                // QC & Internal Audit: show only QC-pending items (Purchase Head stage must be cleared first)
-                $where .= " AND fr.status = 'pending_qc' AND fr.purchase_head_status <> 'pending'";
-            } elseif ($roleId === 17) {
-                // Purchase Head: Purchase Head pending items OR dept_pending requests under them
-                $where .= " AND ((fr.status = 'pending_qc' AND fr.purchase_head_status = 'pending') OR (fr.status = 'pending_dept' AND (e_req.reporting_user_id = $userId OR $deptHeadCond)))";
+                // QC & Internal Audit: show only QC-pending items
+                $where .= " AND fr.status = 'pending_qc'";
             } elseif (in_array($roleId, [6, 30], true)) {
                 // Accounts: show only approved (ready for payment)
                 $where .= " AND fr.status IN ('approved', 'partially_approved', 'partially_paid')";
@@ -404,9 +324,7 @@ class FundRequisitionController extends Controller {
             if ($statusFilter === 'pending') {
                 $where .= " AND fr.status IN ('pending', 'pending_dept', 'pending_qc')";
             } elseif ($statusFilter === 'pending_qc') {
-                $where .= " AND fr.status = 'pending_qc' AND fr.purchase_head_status <> 'pending'";
-            } elseif ($statusFilter === 'pending_purchase_head') {
-                $where .= " AND fr.status = 'pending_qc' AND fr.purchase_head_status = 'pending'";
+                $where .= " AND fr.status = 'pending_qc'";
             } else {
                 $where .= " AND fr.status = ?";
                 $params[] = $statusFilter;
@@ -458,9 +376,7 @@ class FundRequisitionController extends Controller {
         if (in_array($roleId, [1, 3, 33, 34, 35], true)) { // Admin / Management
             $pendingCondition = "fr.status IN ('pending_dept', 'pending_qc', 'pending', 'partially_approved', 'partially_paid')";
         } elseif (in_array($roleId, [13, 24, 25], true)) { // QC
-            $pendingCondition = "fr.status = 'pending_qc' AND fr.purchase_head_status <> 'pending'";
-        } elseif ($roleId === 17) { // Purchase Head
-            $pendingCondition = "fr.status = 'pending_qc' AND fr.purchase_head_status = 'pending'";
+            $pendingCondition = "fr.status = 'pending_qc'";
         } elseif (in_array($roleId, [20, 32], true)) { // Operation Head
             $pendingCondition = "fr.status IN ('pending', 'partially_approved', 'partially_paid')";
         } elseif (in_array($roleId, [6, 30], true)) { // Accounts
@@ -592,19 +508,8 @@ class FundRequisitionController extends Controller {
             ");
             if ($resMgmt) $pendingActionCount = (int)($resMgmt->fetch_assoc()['total'] ?? 0);
         } elseif (in_array($roleId, [13, 24, 25], true)) {
-            $resQc = $this->db->query("SELECT COUNT(*) AS total FROM fund_requisitions WHERE status = 'pending_qc' AND purchase_head_status <> 'pending'");
+            $resQc = $this->db->query("SELECT COUNT(*) AS total FROM fund_requisitions WHERE status = 'pending_qc'");
             if ($resQc) $pendingActionCount = (int)($resQc->fetch_assoc()['total'] ?? 0);
-        } elseif ($roleId === 17) {
-            // Purchase Head: Purchase Head pending queue + dept-pending items under them
-            $resPh = $this->db->query("
-                SELECT COUNT(DISTINCT fr.id) AS total 
-                FROM fund_requisitions fr
-                LEFT JOIN users u ON fr.requested_by = u.id
-                LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
-                WHERE (fr.status = 'pending_qc' AND fr.purchase_head_status = 'pending')
-                   OR (fr.status = 'pending_dept' AND e.reporting_user_id = $userId)
-            ");
-            if ($resPh) $pendingActionCount = (int)($resPh->fetch_assoc()['total'] ?? 0);
         } elseif (in_array($roleId, [6, 30], true)) {
             $resAccts = $this->db->query("SELECT COUNT(*) AS total FROM fund_requisitions WHERE status IN ('approved', 'partially_approved', 'partially_paid')");
             if ($resAccts) $pendingActionCount = (int)($resAccts->fetch_assoc()['total'] ?? 0);
@@ -1004,12 +909,6 @@ class FundRequisitionController extends Controller {
 
         if ($stmt->execute()) {
             $newReqId = $stmt->insert_id;
-            // Purchase Head stage: required right away when there is no Dept Head stage (unless requester is Purchase Head / Management)
-            $purchaseHeadPending = false;
-            if ($status === 'pending_qc' && !$this->isPurchaseHeadStageSkipped($requested_by)) {
-                $this->db->query("UPDATE fund_requisitions SET purchase_head_status = 'pending' WHERE id = " . (int)$newReqId);
-                $purchaseHeadPending = true;
-            }
             $this->syncApprovalRequest($newReqId);
 
             // --- Email Notification Start ---
@@ -1036,8 +935,6 @@ class FundRequisitionController extends Controller {
                             $emailSent = $mailService->sendRequisitionNotification($bossInfo['email'], $bossInfo['full_name'], 'Pending Department Head Approval', 'Fund Requisition', $reqDetails, $link);
                         }
                     }
-                } elseif ($purchaseHeadPending) {
-                    $this->notifyRolesForRequisition([17], (int)$newReqId, 'Pending Purchase Head Approval');
                 } else {
                     $qcRes = $this->db->query("SELECT full_name, email FROM users WHERE role_id = 24 AND email != '' AND email IS NOT NULL");
                     $qcList = [];
@@ -1111,12 +1008,6 @@ class FundRequisitionController extends Controller {
             exit;
         }
 
-        // Support choice between Dept Head Only and Full Management Override
-        $scope = $_POST['approval_scope'] ?? 'dept_head_only';
-        if ($status === 'approved' && $scope === 'full_override' && in_array($roleId, [1, 3, 38], true)) {
-            return $this->approve();
-        }
-
         $newDeptStatus = ($status === 'approved') ? 'approved' : 'rejected';
         $newMainStatus = ($status === 'approved') ? 'pending_qc' : 'rejected';
 
@@ -1132,27 +1023,6 @@ class FundRequisitionController extends Controller {
         $stmt->bind_param("sissi", $newDeptStatus, $sessionUserId, $approval_note, $newMainStatus, $id);
 
         if ($stmt->execute()) {
-            // Purchase Head stage follows Dept Head approval (auto-passed if approver IS Purchase Head Role 17; skipped if requester is Purchase Head / Management)
-            $isApproverPurchaseHead = ($roleId === 17);
-            $purchaseHeadPending = false;
-            if ($newDeptStatus === 'approved' && $isApproverPurchaseHead) {
-                // Approver is already the Purchase Head (Role 17) -> Auto-approve Purchase Head stage immediately
-                $escPhNote = $this->db->real_escape_string(($approval_note ?: 'Approved by Department Head') . ' (Auto-approved as Purchase Head)');
-                $this->db->query("
-                    UPDATE fund_requisitions 
-                    SET purchase_head_status = 'approved',
-                        purchase_head_by = {$sessionUserId},
-                        purchase_head_at = NOW(),
-                        purchase_head_note = '{$escPhNote}'
-                    WHERE id = {$id}
-                ");
-                $purchaseHeadPending = false;
-            } elseif ($newDeptStatus === 'approved' && ($req['purchase_head_status'] ?? 'not_required') === 'not_required' && !$this->isPurchaseHeadStageSkipped((int)$req['requested_by'])) {
-                $this->db->query("UPDATE fund_requisitions SET purchase_head_status = 'pending' WHERE id = {$id} AND status = 'pending_qc' AND purchase_head_status = 'not_required'");
-                $purchaseHeadPending = ($this->db->affected_rows > 0);
-            } elseif ($newDeptStatus === 'approved' && ($req['purchase_head_status'] ?? '') === 'pending') {
-                $purchaseHeadPending = true;
-            }
             $this->syncApprovalRequest($id);
 
             // --- Email Notification Start ---
@@ -1170,9 +1040,7 @@ class FundRequisitionController extends Controller {
             ];
 
             $emailSent = false;
-            if ($newDeptStatus === 'approved' && $purchaseHeadPending) {
-                $this->notifyRolesForRequisition([17], $id, 'Pending Purchase Head Approval');
-            } elseif ($newDeptStatus === 'approved') {
+            if ($newDeptStatus === 'approved') {
                 $qcRes = $this->db->query("SELECT full_name, email FROM users WHERE role_id = 24 AND email != '' AND email IS NOT NULL");
                 $qcList = [];
                 if ($qcRes) {
@@ -1208,122 +1076,6 @@ class FundRequisitionController extends Controller {
         exit;
     }
 
-    /**
-     * Purchase Head approval stage (between Dept Head and QC).
-     * Allowed: Purchase Head (role 17) and Management (override).
-     */
-    public function approvePurchaseHead() {
-        $sessionUserId = (int)($_SESSION['user']['id'] ?? 0);
-        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-
-        if ($roleId !== 17 && !$this->isManagementRole($roleId)) {
-            setError('Only the Purchase Head or Management can approve this stage.');
-            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
-            exit;
-        }
-
-        $id = (int)($_POST['id'] ?? 0);
-        $status = $_POST['status'] ?? 'approved'; // 'approved' or 'rejected'
-        $approval_note = trim($_POST['approval_note'] ?? '');
-
-        if (!$id || !in_array($status, ['approved', 'rejected'], true)) {
-            setError('Invalid request or status.');
-            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
-            exit;
-        }
-
-        $resReq = $this->db->query("SELECT * FROM fund_requisitions WHERE id = {$id} LIMIT 1");
-        $req = $resReq ? $resReq->fetch_assoc() : null;
-        if (!$req) {
-            setError('Requisition not found.');
-            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
-            exit;
-        }
-
-        if ($req['status'] !== 'pending_qc' || ($req['purchase_head_status'] ?? 'not_required') !== 'pending') {
-            setError('Requisition is not waiting for Purchase Head approval.');
-            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
-            exit;
-        }
-
-        if ($status === 'rejected' && $approval_note === '') {
-            setError('Please provide a reason for rejection.');
-            $referer = $_SERVER['HTTP_REFERER'] ?? ($GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
-            header("Location: " . $referer);
-            exit;
-        }
-
-        $isOverride = ($roleId !== 17);
-        $noteToSave = $approval_note;
-        if ($isOverride) {
-            $noteToSave = ($approval_note !== '' ? $approval_note . ' ' : '') . '(Management Override)';
-        }
-
-        if ($status === 'approved') {
-            $stmt = $this->db->prepare("
-                UPDATE fund_requisitions
-                SET purchase_head_status = 'approved',
-                    purchase_head_by = ?,
-                    purchase_head_at = NOW(),
-                    purchase_head_note = ?
-                WHERE id = ? AND purchase_head_status = 'pending'
-            ");
-        } else {
-            $stmt = $this->db->prepare("
-                UPDATE fund_requisitions
-                SET purchase_head_status = 'rejected',
-                    purchase_head_by = ?,
-                    purchase_head_at = NOW(),
-                    purchase_head_note = ?,
-                    status = 'rejected'
-                WHERE id = ? AND purchase_head_status = 'pending'
-            ");
-        }
-
-        if (!$stmt) {
-            setError("Database error updating Purchase Head approval: " . $this->db->error);
-            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
-            exit;
-        }
-
-        $stmt->bind_param("isi", $sessionUserId, $noteToSave, $id);
-        if ($stmt->execute()) {
-            $this->syncApprovalRequest($id);
-
-            if ($status === 'approved') {
-                // Forward to QC & Internal Audit
-                $this->notifyRolesForRequisition([24], $id, 'Pending QC & Internal Audit Head Approval');
-                setSuccess("Purchase Head approved. Requisition forwarded to QC & Internal Audit.");
-            } else {
-                try {
-                    require_once __DIR__ . '/../../core/MailServiceForPHPMailer.php';
-                    $mailService = new \MailService($this->db);
-                    $link = $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id;
-                    $reqUserRes = $this->db->query("SELECT full_name, email FROM users WHERE id = " . (int)$req['requested_by']);
-                    $requesterInfo = ($reqUserRes && $reqUserRes->num_rows > 0) ? $reqUserRes->fetch_assoc() : null;
-                    if ($requesterInfo && !empty($requesterInfo['email'])) {
-                        $reqDetails = [
-                            'title' => $req['purpose'] ?? 'Fund Requisition',
-                            'requester_name' => $requesterInfo['full_name'] ?? 'Unknown',
-                            'amount' => $req['amount'] ?? 0,
-                            'note' => $noteToSave
-                        ];
-                        $mailService->sendRequisitionNotification($requesterInfo['email'], $requesterInfo['full_name'], 'Rejected by Purchase Head', 'Fund Requisition', $reqDetails, $link);
-                    }
-                } catch (\Throwable $t) {
-                    error_log("Purchase Head rejection email notification error: " . $t->getMessage());
-                }
-                setSuccess("Requisition rejected by Purchase Head.");
-            }
-        } else {
-            setError("Failed to update Purchase Head status: " . $this->db->error);
-        }
-
-        $referer = $_SERVER['HTTP_REFERER'] ?? ($GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
-        header("Location: " . $referer);
-        exit;
-    }
-
     public function approveQc() {
         $sessionUserId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
@@ -1353,14 +1105,6 @@ class FundRequisitionController extends Controller {
         }
 
         $isInitialQc = ($req['status'] === 'pending_qc');
-
-        // Purchase Head stage must be cleared before QC can act
-        if ($isInitialQc && ($req['purchase_head_status'] ?? 'not_required') === 'pending') {
-            setError('This requisition is awaiting Purchase Head approval. QC can review it only after the Purchase Head approves.');
-            $referer = $_SERVER['HTTP_REFERER'] ?? ($GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
-            header("Location: " . $referer);
-            exit;
-        }
         $isQcUpdate  = (!empty($req['qc_approved_by']) && (float)($req['qc_approved_amount'] ?? 0) < (float)$req['amount']);
         $isQcRejectRevoke = (!empty($req['qc_approved_by']) && $status === 'rejected' && !in_array($req['status'], ['paid', 'partially_paid']));
 
@@ -1564,15 +1308,6 @@ class FundRequisitionController extends Controller {
         $roleNameLc = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
         $isSiteOperator = in_array($roleId, [20, 32], true) || strpos($roleNameLc, 'operation head') !== false || strpos($roleNameLc, 'admin & operation') !== false;
         $isManagement = in_array($roleId, [1, 3, 38], true) || in_array($roleNameLc, ['super admin', 'admin', 'management', 'board of director', 'board of directors'], true) || strpos($roleNameLc, 'director') !== false || strpos($roleNameLc, 'dceo') !== false;
-
-        $scope = $_POST['approval_scope'] ?? 'full_override';
-        if ($isManagement && in_array($scope, ['dept_head_only', 'step_only'], true)) {
-            if (($frData['dept_head_status'] ?? '') === 'pending' || ($frData['status'] ?? '') === 'pending_dept') {
-                return $this->approveDept();
-            } elseif (($frData['purchase_head_status'] ?? '') === 'pending') {
-                return $this->approvePurchaseHead();
-            }
-        }
 
         if ($isSiteOperator && !$isManagement) {
             // Operation Head is processing Step 1 after QC (for both <= 10K and > 10K)
@@ -2465,16 +2200,7 @@ class FundRequisitionController extends Controller {
 
         if ($stmt->execute()) {
             $newReqId = $stmt->insert_id;
-            // Purchase Head stage: required right away when there is no Dept Head stage (unless requester is Purchase Head / Management)
-            $purchaseHeadPending = false;
-            if ($initialStatus === 'pending_qc' && !$this->isPurchaseHeadStageSkipped($userId)) {
-                $this->db->query("UPDATE fund_requisitions SET purchase_head_status = 'pending' WHERE id = " . (int)$newReqId);
-                $purchaseHeadPending = true;
-            }
             $this->syncApprovalRequest($newReqId);
-            if ($purchaseHeadPending) {
-                $this->notifyRolesForRequisition([17], (int)$newReqId, 'Pending Purchase Head Approval');
-            }
             setSuccess('Extra fund request submitted. Awaiting approval.');
         } else {
             setError('Failed to create extra fund request: ' . $this->db->error);
@@ -2559,10 +2285,6 @@ class FundRequisitionController extends Controller {
         $frStatus = $row['status'];
         if ($frStatus === 'pending_dept') {
             $approveRole = 'dept_head';
-            $status = 'pending';
-        } elseif ($frStatus === 'pending_qc' && ($row['purchase_head_status'] ?? 'not_required') === 'pending') {
-            // Purchase Head stage (between Dept Head and QC)
-            $approveRole = 'purchase_head';
             $status = 'pending';
         } elseif ($frStatus === 'pending_qc') {
             $approveRole = 'qc';

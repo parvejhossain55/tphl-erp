@@ -22,7 +22,7 @@ class ProjectOtherCostController extends Controller
         $approvalRequests = [];
         
         // Approver roles: QC(13, 24, 25), Management(3, 33, 34, 35, 32, 15, 22), Accounts(6, 30), Admin(1), Land Manager(14)
-        $approverRoles = [1, 3, 6, 13, 14, 15, 17, 20, 22, 24, 25, 30, 32, 33, 34, 35, 38];
+        $approverRoles = [1, 3, 6, 13, 14, 15, 20, 22, 24, 25, 30, 32, 33, 34, 35, 38];
         
         // Check if user is a designated reporting boss for any employees
         $isReportingBoss = false;
@@ -49,10 +49,7 @@ class ProjectOtherCostController extends Controller
                 $isDeptHead = ($row['dept_head_status'] === 'pending' && ($creatorReportingUserId === (int)$userId || $roleId === 1));
                 
                 if ($isDeptHead) $canApprove = true;
-                $phPending = (($row['purchase_head_status'] ?? 'not_required') === 'pending');
-                // Purchase Head (Role 17) stage: after Dept Head, before QC
-                if ($row['status'] == 'pending' && $row['dept_head_status'] !== 'pending' && $phPending && in_array($roleId, [17, 1])) $canApprove = true;
-                if ($row['status'] == 'pending' && $row['dept_head_status'] !== 'pending' && !$phPending && in_array($roleId, [13, 24, 25, 1])) $canApprove = true;
+                if ($row['status'] == 'pending' && $row['dept_head_status'] !== 'pending' && in_array($roleId, [13, 24, 25, 1])) $canApprove = true;
                 if ($row['status'] == 'qc_approved' && in_array($roleId, [3, 15, 20, 22, 32, 1])) $canApprove = true;
                 if ($row['status'] == 'management_approved' && in_array($roleId, [6, 30, 1])) $canApprove = true;
                 
@@ -112,9 +109,6 @@ class ProjectOtherCostController extends Controller
 
             // Only require Dept Head approval if the creator is NOT a dept head (is_dept_head == 0) and has a designated reporting boss
             $dept_head_status = ($isDeptHead == 0 && !empty($reporting_user_id)) ? 'pending' : 'not_required';
-
-            // Purchase Head stage: if no Dept Head step, Purchase Head is the first step (unless requester is Purchase Head / Management)
-            $purchase_head_initial = ($dept_head_status === 'not_required' && $this->requiresPurchaseHead($userId)) ? 'pending' : 'not_required';
 
             // Support single or multiple project selection
             $projectIds = [];
@@ -196,9 +190,6 @@ class ProjectOtherCostController extends Controller
 
                 $newId = $this->otherCostModel->create($data);
                 if ($newId) {
-                    if ($purchase_head_initial === 'pending') {
-                        $this->otherCostModel->update($newId, ['purchase_head_status' => 'pending']);
-                    }
                     $this->syncToApprovalRequests($newId);
                     $createdCount++;
                 }
@@ -246,12 +237,6 @@ class ProjectOtherCostController extends Controller
                 exit();
             }
 
-            $isMgmtUser = in_array($roleId, [1, 3, 38], true) || in_array($roleName, ['super admin', 'admin', 'management', 'board of director', 'board of directors'], true) || str_contains($roleName, 'director') || str_contains($roleName, 'dceo');
-            $scope = $_POST['approval_scope'] ?? 'dept_head_only';
-            if ($status === 'approved' && $scope === 'full_override' && $isMgmtUser) {
-                return $this->approve_management($id);
-            }
-
             $status = $_POST['dept_head_status'] ?? 'approved';
             $data = [
                 'dept_head_status' => $status,
@@ -260,21 +245,8 @@ class ProjectOtherCostController extends Controller
                 'dept_head_approved_at' => date('Y-m-d H:i:s'),
             ];
 
-            $isApproverPurchaseHead = ($roleId === 17);
             if ($status === 'rejected') {
                 $data['status'] = 'rejected';
-            } elseif ($status === 'approved' && $isApproverPurchaseHead) {
-                // Dept Head approver IS the Purchase Head (Role 17) -> Auto-approve Purchase Head stage immediately
-                $data['purchase_head_status'] = 'approved';
-                $data['purchase_head_by'] = $userId;
-                $data['purchase_head_at'] = date('Y-m-d H:i:s');
-                $data['purchase_head_note'] = ($_POST['dept_head_approval_note'] ?? 'Approved by Department Head') . ' (Auto-approved as Purchase Head)';
-            } elseif ($status === 'approved'
-                && ($request['purchase_head_status'] ?? 'not_required') === 'not_required'
-                && empty($request['purchase_head_by'])
-                && $this->requiresPurchaseHead((int)$request['created_by_id'])) {
-                // Forward to Purchase Head (Role 17) before QC
-                $data['purchase_head_status'] = 'pending';
             }
 
             if ($this->otherCostModel->update($id, $data)) {
@@ -282,105 +254,6 @@ class ProjectOtherCostController extends Controller
                 setSuccess("Request Department Head " . ucfirst($status) . " successfully.");
             } else {
                 setError("Failed to process request.");
-            }
-            header("Location: " . $GLOBALS['base_url'] . "/project-other-costs");
-            exit();
-        }
-    }
-
-    /**
-     * Whether a request created by $creatorUserId needs the Purchase Head (Role 17) stage.
-     * Skipped when the requester is Purchase Head (17) or Management (1, 3, 38).
-     */
-    private function requiresPurchaseHead($creatorUserId)
-    {
-        $creatorUserId = (int)$creatorUserId;
-        if ($creatorUserId <= 0) return true;
-        $res = $this->db->query("SELECT role_id FROM users WHERE id = {$creatorUserId} LIMIT 1");
-        $creatorRole = ($res && ($r = $res->fetch_assoc())) ? (int)$r['role_id'] : 0;
-        return !in_array($creatorRole, [17, 1, 3, 38], true);
-    }
-
-    /**
-     * Management users who may override the Purchase Head stage.
-     */
-    private function isPurchaseHeadOverrideMgmt($roleId, $roleName)
-    {
-        if (in_array($roleId, [33, 34, 35], true)) return false;
-        if (in_array($roleId, [1, 3, 38], true)) return true;
-        return (str_contains($roleName, 'director') || str_contains($roleName, 'dceo') || str_contains($roleName, 'management') || str_contains($roleName, 'super admin'))
-            && !in_array($roleName, ['management viewer', 'chief officer', 'seal ceo'], true);
-    }
-
-    public function approve_purchase_head($id)
-    {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $id = (int)$id;
-            $userId = (int)$_SESSION['user']['id'];
-            $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-            $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
-            $isMgmt = $this->isPurchaseHeadOverrideMgmt($roleId, $roleName);
-
-            if ($roleId !== 17 && !$isMgmt) {
-                setError("You are not authorized to process this request as Purchase Head.");
-                header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
-                exit();
-            }
-
-            $request = $this->otherCostModel->getById($id);
-            if (!$request) {
-                setError("Request not found.");
-                header("Location: " . $GLOBALS['base_url'] . "/project-other-costs");
-                exit();
-            }
-
-            if ($request['status'] !== 'pending' || ($request['purchase_head_status'] ?? 'not_required') !== 'pending') {
-                setError("This request is not awaiting Purchase Head approval.");
-                header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
-                exit();
-            }
-
-            if (($request['dept_head_status'] ?? '') === 'pending') {
-                setError("Department Head approval is still pending for this request.");
-                header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
-                exit();
-            }
-
-            $action = $_POST['action'] ?? (($_POST['purchase_head_status'] ?? '') === 'rejected' ? 'reject' : 'approve');
-            $note = trim($_POST['purchase_head_note'] ?? '');
-            $suffix = ($roleId !== 17 && $isMgmt) ? ' (Management Override)' : '';
-
-            if ($action === 'reject') {
-                $data = [
-                    'purchase_head_status' => 'rejected',
-                    'purchase_head_by'     => $userId,
-                    'purchase_head_at'     => date('Y-m-d H:i:s'),
-                    'purchase_head_note'   => ($note ?: 'Rejected by Purchase Head') . $suffix,
-                    'status'               => 'rejected',
-                ];
-                if ($this->otherCostModel->update($id, $data)) {
-                    $this->syncToApprovalRequests($id);
-                    $this->db->query("UPDATE approval_requests SET status = 'rejected', approve_role = 'rejected' WHERE source_table = 'project_other_costs' AND source_id = {$id}");
-                    setSuccess("Request rejected by Purchase Head successfully.");
-                } else {
-                    setError("Failed to reject request.");
-                }
-                header("Location: " . $GLOBALS['base_url'] . "/project-other-costs");
-                exit();
-            }
-
-            $data = [
-                'purchase_head_status' => 'approved',
-                'purchase_head_by'     => $userId,
-                'purchase_head_at'     => date('Y-m-d H:i:s'),
-                'purchase_head_note'   => ($note ?: 'Approved by Purchase Head') . $suffix,
-            ];
-            if ($this->otherCostModel->update($id, $data)) {
-                // Forward to QC
-                $this->syncToApprovalRequests($id);
-                setSuccess("Request approved by Purchase Head. Forwarded to QC Audit.");
-            } else {
-                setError("Failed to approve request.");
             }
             header("Location: " . $GLOBALS['base_url'] . "/project-other-costs");
             exit();
@@ -407,12 +280,6 @@ class ProjectOtherCostController extends Controller
 
             if ($request['status'] === 'paid' || $request['status'] === 'rejected') {
                 setError("Cannot modify an already " . $request['status'] . " request.");
-                header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
-                exit();
-            }
-
-            if (($request['purchase_head_status'] ?? 'not_required') === 'pending') {
-                setError("This request is awaiting Purchase Head approval. QC cannot process it yet.");
                 header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
                 exit();
             }
@@ -504,55 +371,6 @@ class ProjectOtherCostController extends Controller
             $isMgmtUser = in_array($roleId, [1, 3, 38], true) || in_array($roleName, ['super admin', 'admin', 'management', 'board of director', 'board of directors'], true) || str_contains($roleName, 'director') || str_contains($roleName, 'dceo');
             $note = trim($_POST['management_apporved_note'] ?? '');
 
-            // When Management chooses to approve as Department Head / Purchase Head Only (without full override)
-            $scope = $_POST['approval_scope'] ?? 'full_override';
-            if ($isMgmtUser && in_array($scope, ['dept_head_only', 'step_only'], true)) {
-                $mgmtUid = (int)$_SESSION['user']['id'];
-                if (($req['dept_head_status'] ?? '') === 'pending') {
-                    $deptData = [
-                        'dept_head_status'        => 'approved',
-                        'dept_head_approved_by'   => $mgmtUid,
-                        'dept_head_approved_at'   => date('Y-m-d H:i:s'),
-                        'dept_head_approval_note' => $note ?: 'Approved by Department Head'
-                    ];
-                    $isApproverPurchaseHead = ($roleId === 17);
-                    if ($isApproverPurchaseHead) {
-                        // Approver IS Purchase Head -> Auto-approve Purchase Head stage immediately
-                        $deptData['purchase_head_status'] = 'approved';
-                        $deptData['purchase_head_by'] = $mgmtUid;
-                        $deptData['purchase_head_at'] = date('Y-m-d H:i:s');
-                        $deptData['purchase_head_note'] = ($note ?: 'Approved by Department Head') . ' (Auto-approved as Purchase Head)';
-                    } elseif (($req['purchase_head_status'] ?? 'not_required') === 'not_required'
-                        && empty($req['purchase_head_by'])
-                        && $this->requiresPurchaseHead((int)$req['created_by_id'])) {
-                        $deptData['purchase_head_status'] = 'pending';
-                    }
-                    if ($this->otherCostModel->update($id, $deptData)) {
-                        $this->syncToApprovalRequests($id);
-                        setSuccess("Request approved as Department Head successfully and forwarded to next reviewer.");
-                    } else {
-                        setError("Failed to process Department Head approval.");
-                    }
-                    header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
-                    exit();
-                } elseif (($req['purchase_head_status'] ?? '') === 'pending') {
-                    $phData = [
-                        'purchase_head_status' => 'approved',
-                        'purchase_head_by'     => $mgmtUid,
-                        'purchase_head_at'     => date('Y-m-d H:i:s'),
-                        'purchase_head_note'   => ($note ?: 'Approved by Purchase Head') . ' (Management Override)'
-                    ];
-                    if ($this->otherCostModel->update($id, $phData)) {
-                        $this->syncToApprovalRequests($id);
-                        setSuccess("Request approved as Purchase Head successfully and forwarded to QC & Internal Audit.");
-                    } else {
-                        setError("Failed to process Purchase Head approval.");
-                    }
-                    header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
-                    exit();
-                }
-            }
-
             // Fetch approval request record
             $arCheck = $this->db->query("SELECT id, op_head_status, accounts_head_status FROM approval_requests WHERE source_table = 'project_other_costs' AND source_id = {$id} ORDER BY id DESC LIMIT 1");
             $arRow = $arCheck ? $arCheck->fetch_assoc() : null;
@@ -604,9 +422,6 @@ class ProjectOtherCostController extends Controller
                         'dept_head_approved_at'   => date('Y-m-d H:i:s'),
                         'dept_head_approval_note' => ($note ?: 'Approved by Management') . ' (Management Override)'
                     ]);
-                }
-                if (($req['purchase_head_status'] ?? 'not_required') === 'pending') {
-                    $this->db->query("UPDATE project_other_costs SET purchase_head_status = 'approved', purchase_head_by = COALESCE(purchase_head_by, {$mgmtUid}), purchase_head_at = COALESCE(purchase_head_at, NOW()), purchase_head_note = COALESCE(NULLIF(purchase_head_note, ''), '{$escBypassNote}') WHERE id = {$id}");
                 }
                 if (empty($req['qc_audit_approved_id'])) {
                     $this->otherCostModel->update($id, [
@@ -825,18 +640,12 @@ class ProjectOtherCostController extends Controller
         $createdAt = $row['created_at'] ?? date('Y-m-d H:i:s');
 
 
-        if ($row['status'] == 'rejected' || $row['dept_head_status'] == 'rejected' || ($row['purchase_head_status'] ?? '') === 'rejected') {
+        if ($row['status'] == 'rejected' || $row['dept_head_status'] == 'rejected') {
             $status = 'rejected';
             $approveRole = 'rejected';
-            if (($row['purchase_head_status'] ?? '') === 'rejected') {
-                $approvedBy = $row['purchase_head_by'];
-                $approvedAt = $row['purchase_head_at'] ?? $row['updated_at'];
-                $approvalNote = $row['purchase_head_note'];
-            } else {
-                $approvedBy = $row['dept_head_approved_by'] ?? $row['qc_audit_approved_id'] ?? $row['management_apporved_by_id'];
-                $approvedAt = $row['dept_head_approved_at'] ?? $row['updated_at'];
-                $approvalNote = $row['dept_head_approval_note'] ?? $row['qc_audit_note'] ?? $row['management_apporved_note'];
-            }
+            $approvedBy = $row['dept_head_approved_by'] ?? $row['qc_audit_approved_id'] ?? $row['management_apporved_by_id'];
+            $approvedAt = $row['dept_head_approved_at'] ?? $row['updated_at'];
+            $approvalNote = $row['dept_head_approval_note'] ?? $row['qc_audit_note'] ?? $row['management_apporved_note'];
         } elseif ($row['status'] == 'pending') {
             if ($row['dept_head_status'] === 'pending') {
                 $status = 'pending';
@@ -850,17 +659,11 @@ class ProjectOtherCostController extends Controller
                 $approveRole = 'dept_head_' . $deptHeadId;
             } else {
                 $status = 'pending';
-                // Purchase Head (Role 17) stage sits between Dept Head and QC
-                $approveRole = (($row['purchase_head_status'] ?? 'not_required') === 'pending') ? 'purchase_head' : 'qc';
+                $approveRole = 'qc';
                 if ($row['dept_head_status'] === 'approved') {
                     $approvedBy = $row['dept_head_approved_by'];
                     $approvedAt = $row['dept_head_approved_at'];
                     $approvalNote = $row['dept_head_approval_note'];
-                }
-                if (($row['purchase_head_status'] ?? '') === 'approved') {
-                    $approvedBy = $row['purchase_head_by'];
-                    $approvedAt = $row['purchase_head_at'];
-                    $approvalNote = $row['purchase_head_note'];
                 }
             }
         } elseif (in_array($row['status'], ['qc_approved', 'in_review'], true)) {

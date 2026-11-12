@@ -12,15 +12,21 @@ $accountModel     = new AccountShopClient();
 $paymentSummary   = $accountModel->getPaymentSummaryByBookingId($bookingId);
 $outstandingDues  = $accountModel->getOutstandingEmiDues($bookingId);
 
-$remainingLandShare      = $paymentSummary['remaining_land_share']       ?? 0;
-$isLandShareCompleted    = $paymentSummary['is_land_share_completed']    ?? false;
+$remainingLandShare      = (float)($paymentSummary['remaining_land_share_total'] ?? $paymentSummary['remaining_land_share'] ?? 0);
+$isLandShareCompleted    = !empty($paymentSummary['is_land_share_completed']) || ($remainingLandShare <= 0);
 $isShopServiceChargeCompleted = $paymentSummary['is_shop_service_charge_completed'] ?? false;
-$isBookingFullyPaid      = $paymentSummary['is_booking_fully_paid']      ?? false;
-$agreementValue          = $paymentSummary['agreement_value']            ?? 0;
-$effectiveBookingTarget  = $paymentSummary['effective_booking_target']   ?? $agreementValue;
-$bookingMoneyTotal       = $paymentSummary['booking_money_total']        ?? 0;
-$bookingMoneyPaid        = $paymentSummary['booking_money_paid']         ?? 0;
-$bookingBalance          = max(0, $effectiveBookingTarget - $bookingMoneyTotal);
+$agreementValue          = (float)($paymentSummary['agreement_value'] ?? 0);
+$effectiveBookingTarget  = (float)($paymentSummary['effective_booking_target'] ?? $agreementValue);
+$bookingMoneyTotal       = (float)($paymentSummary['booking_money_total'] ?? 0);
+$bookingMoneyPaid        = (float)($paymentSummary['booking_money_paid'] ?? 0);
+
+if ($isLandShareCompleted || $remainingLandShare <= 0) {
+    $bookingBalance       = 0;
+    $isBookingFullyPaid   = true;
+} else {
+    $bookingBalance       = min($remainingLandShare, max(0, $effectiveBookingTarget - $bookingMoneyTotal));
+    $isBookingFullyPaid   = ($bookingBalance <= 0 && $bookingMoneyTotal > 0);
+}
 $perEmiAmount         = $paymentSummary['per_emi_amount']          ?? 0;
 $serviceChargeRate    = $paymentSummary['service_charge_per_emi']  ?? 0;
 $shopServiceChargeTarget = $paymentSummary['shop_service_charge_target'] ?? 0;
@@ -64,7 +70,7 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                     </div>
                 <?php endif; ?>
 
-                <?php if (!$isBookingFullyPaid && $bookingMoneyPaid > 0): ?>
+                <?php if (!$isBookingFullyPaid && !$isLandShareCompleted && $bookingMoneyPaid > 0 && $bookingBalance > 0): ?>
                     <div class="alert alert-warning alert-dismissible fade show mb-4 d-flex align-items-center" role="alert">
                         <i class=""></i>
                         <div>
@@ -117,7 +123,7 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                 <option value="">-- Select Payment Type --</option>
 
                                 <!-- Booking Money -->
-                                <?php if (!$isBookingFullyPaid): ?>
+                                <?php if (!$isLandShareCompleted && !$isBookingFullyPaid && $bookingBalance > 0): ?>
                                     <option value="booking_money">
                                         Booking Money<?php if ($bookingBalance > 0): ?> (Remaining: TK.<?= number_format($bookingBalance, 2) ?>)<?php elseif ($effectiveBookingTarget > 0): ?> (Agreed: TK.<?= number_format($effectiveBookingTarget, 2) ?>)<?php endif; ?>
                                     </option>
@@ -328,7 +334,12 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                             <div class="from__input-box">
                                 <label class="form__input-title">Transfer To / Company Bank <span>*</span></label>
                                 <select name="bank_id" id="bankSelect" class="form-select">
-                                    <option value="">-- Loading company banks... --</option>
+                                    <option value="">-- Select Transfer To / Company Bank --</option>
+                                    <?php if (!empty($companyBanks)): ?>
+                                        <?php foreach ($companyBanks as $b): ?>
+                                            <option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['bank_name'] . ' — ' . $b['account_name'] . (!empty($b['account_number']) ? ' (' . $b['account_number'] . ')' : '')) ?></option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
                                 </select>
                                 <small class="text-muted">Managed in <a href="<?= $GLOBALS['base_url'] ?>/company-bank-accounts" target="_blank">Company Bank Manage</a></small>
                             </div>
@@ -904,24 +915,31 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
             paymentMethod.dispatchEvent(new Event('change'));
         }
 
-        // Load company banks for AJAX dropdown
-        fetch('<?= $GLOBALS['base_url'] ?>/get-company-banks')
-            .then(r => r.json())
-            .then(data => {
-                const sel = document.getElementById('bankSelect');
-                if (!sel) return;
-                sel.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
-                (data.banks || []).forEach(b => {
-                    const opt = document.createElement('option');
-                    opt.value = b.id;
-                    opt.textContent = b.bank_name + ' — ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
-                    sel.appendChild(opt);
+        // Initialize company banks list
+        window.companyBanksList = <?= json_encode($companyBanks ?? []) ?>;
+
+        // If not already populated server-side, load company banks via AJAX
+        const existingShopBankOptions = document.getElementById('bankSelect')?.querySelectorAll('option');
+        if (!existingShopBankOptions || existingShopBankOptions.length <= 1) {
+            fetch('<?= $GLOBALS['base_url'] ?>/get-company-banks')
+                .then(r => r.json())
+                .then(data => {
+                    window.companyBanksList = data.banks || [];
+                    const sel = document.getElementById('bankSelect');
+                    if (!sel) return;
+                    sel.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
+                    (data.banks || []).forEach(b => {
+                        const opt = document.createElement('option');
+                        opt.value = b.id;
+                        opt.textContent = b.bank_name + ' — ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
+                        sel.appendChild(opt);
+                    });
+                })
+                .catch(() => {
+                    const sel = document.getElementById('bankSelect');
+                    if (sel && sel.options.length <= 1) sel.innerHTML = '<option value="">Company Bank Accounts unavailable</option>';
                 });
-            })
-            .catch(() => {
-                const sel = document.getElementById('bankSelect');
-                if (sel) sel.innerHTML = '<option value="">Company Bank Accounts unavailable</option>';
-            });
+        }
 
         // File preview thumbnails
         const proofFilesInput = document.getElementById('proofFiles');

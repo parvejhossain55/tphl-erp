@@ -34,6 +34,24 @@ return [
     'delete-task/(\d+)' => ['controller' => 'TaskController', 'method' => 'delete'],
 
     // =========================================================================
+    // Controller: MyWorkController (Personal Workspace)
+    // =========================================================================
+    'my-work' => ['controller' => 'MyWorkController', 'method' => 'index'],
+    'my-work-dashboard' => ['controller' => 'MyWorkController', 'method' => 'index'],
+    'my-work/delete/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'deleteTask'],
+    'my-work/store-task' => ['controller' => 'MyWorkController', 'method' => 'storeTask'],
+    'my-work/task-detail/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'taskDetail'],
+    'my-work/task-data/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'taskEditData'],
+    'my-work/update-task/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'updateTask'],
+    'my-work/complete-task/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'completeTask'],
+    'my-work/start-task/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'startTask'],
+    'my-work/reviewer-action/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'reviewerAction'],
+    'my-work/toggle-checklist/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'toggleChecklist'],
+    'my-work/add-comment/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'addComment'],
+    'my-work/submit-feedback/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'submitFeedback'],
+    'my-work/request-extension/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'requestExtension'],
+
+    // =========================================================================
     // Controller: EmployeeController
     // =========================================================================
     'employee-lists' => ['controller' => 'EmployeeController', 'method' => 'index'],
@@ -348,6 +366,8 @@ return [
     'tipsoi-email-logs' => ['controller' => 'LeaveController', 'method' => 'tipsoiEmailLogsView'],
     'api/hrm/tipsoi-email-logs' => ['controller' => 'HrmApiController', 'method' => 'getTipsoiEmailLogs'],
     'api/hrm/send-tipsoi-reminders' => ['controller' => 'HrmApiController', 'method' => 'sendTipsoiReminders'],
+    'api/tipsoi/trigger-login-reminder' => ['controller' => 'HrmApiController', 'method' => 'triggerLoginReminder'],
+    'api/tipsoi/send-reminders-test' => ['controller' => 'HrmApiController', 'method' => 'testTipsoiReminders'],
     'api/hrm/tipsoi-holidays' => ['controller' => 'HrmApiController', 'method' => 'getTipsoiHolidays'],
     'api/hrm/import-tipsoi-holiday' => ['controller' => 'HrmApiController', 'method' => 'importTipsoiHoliday'],
     'hrm-monthly-lwp' => ['controller' => 'LeaveController', 'method' => 'monthlyLwpDashboardView'],

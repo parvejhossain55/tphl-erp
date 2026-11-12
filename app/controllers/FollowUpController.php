@@ -185,9 +185,9 @@ public function store()
         }
 
         if ($newTeamId) {
-            $updateLead = $this->db->prepare("UPDATE leads SET assigned_id = ?, assigned_by = ?, assigned_at = CURRENT_TIMESTAMP, team_id = ? WHERE id = ?");
+            $updateLead = $this->db->prepare("UPDATE leads SET assigned_id = ?, assigned_by = ?, assigned_at = CURRENT_TIMESTAMP, team_id = ?, initial_team_id = COALESCE(initial_team_id, ?) WHERE id = ?");
             if ($updateLead) {
-                $updateLead->bind_param("iiii", $transfer_to_user_id, $currentUserId, $newTeamId, $lead_id);
+                $updateLead->bind_param("iiiii", $transfer_to_user_id, $currentUserId, $newTeamId, $newTeamId, $lead_id);
                 $updateLead->execute();
                 $updateLead->close();
             }
@@ -226,9 +226,9 @@ public function store()
         $oldAssignedId = !empty($prevLeadData['assigned_id']) ? (int)$prevLeadData['assigned_id'] : null;
         $oldTeamId     = !empty($prevLeadData['team_id']) ? (int)$prevLeadData['team_id'] : null;
         
-        $updateTeam = $this->db->prepare("UPDATE leads SET team_id = ?, assigned_id = NULL, assigned_by = ? WHERE id = ?");
+        $updateTeam = $this->db->prepare("UPDATE leads SET team_id = ?, initial_team_id = COALESCE(initial_team_id, ?), assigned_id = NULL, assigned_by = ? WHERE id = ?");
         if ($updateTeam) {
-            $updateTeam->bind_param("iii", $team_id, $currentUserId, $lead_id);
+            $updateTeam->bind_param("iiii", $team_id, $team_id, $currentUserId, $lead_id);
             $updateTeam->execute();
             $updateTeam->close();
         }
@@ -422,9 +422,9 @@ public function store()
         // Update Lead Transferred if provided
         if (($followUpData['lead_status'] ?? '') === 'Lead Transferred' && !empty($_POST['team_id'])) {
             $team_id = (int)$_POST['team_id'];
-            $updateTeam = $this->db->prepare("UPDATE leads SET team_id = ? WHERE id = ?");
+            $updateTeam = $this->db->prepare("UPDATE leads SET team_id = ?, initial_team_id = COALESCE(initial_team_id, ?) WHERE id = ?");
             if ($updateTeam) {
-                $updateTeam->bind_param("ii", $team_id, $leadId);
+                $updateTeam->bind_param("iii", $team_id, $team_id, $leadId);
                 $updateTeam->execute();
             }
         }
