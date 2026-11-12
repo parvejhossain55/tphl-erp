@@ -531,6 +531,10 @@ class AccountShopClient extends AccountClient
         
         $effectiveBookingTarget = max(0, $agreementValue - $discountForBooking);
         $isBookingFullyPaid  = ($effectiveBookingTarget > 0 && $bookingMoneyPaid >= ($effectiveBookingTarget - 1.0));
+        // If total land share is already completed (or remaining land share <= 0), booking money is also fully settled
+        if (!empty($clientDetails['is_land_share_completed']) || ((float)($clientDetails['remaining_land_share_total'] ?? $clientDetails['remaining_land_share'] ?? 0) <= 0 && (float)($clientDetails['total_land_share_paid'] ?? 0) > 0)) {
+            $isBookingFullyPaid = true;
+        }
         if ($effectiveBookingTarget <= 0 && $clientDetails['total_price'] <= 0) {
             $isBookingFullyPaid = false; 
         }
