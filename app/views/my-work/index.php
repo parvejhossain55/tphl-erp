@@ -243,6 +243,19 @@ $todayDateFormatted = date('j F');
 .mw-confirm-btn.danger { background: #E03131; color: #FFFFFF; }
 .mw-confirm-btn.danger:hover { background: #C92A2A; }
 .mw-confirm-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+/* Owner Feedback & Satisfaction Rating Box */
+.mw-feedback-card { background: #F8FAF9; border: 1px solid #D8E3DD; border-radius: 10px; padding: 16px 18px; margin-bottom: 20px; }
+.mw-feedback-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.mw-feedback-title { font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 700; color: #142D26; display: flex; align-items: center; gap: 6px; margin: 0; }
+.mw-rating-stars-wrap { display: inline-flex; align-items: center; gap: 4px; }
+.mw-star-btn { background: none; border: none; font-size: 20px; color: #D1DDD6; cursor: pointer; padding: 2px 3px; line-height: 1; transition: color .15s ease, transform .1s ease; }
+.mw-star-btn.active, .mw-star-btn.hovered { color: #F59F00; }
+.mw-star-btn:hover { transform: scale(1.15); }
+.mw-feedback-textarea { width: 100%; background: #FFFFFF; border: 1px solid #CCD7D0; border-radius: 8px; padding: 10px 12px; font-family: 'Inter', sans-serif; font-size: 12.5px; line-height: 16px; color: #142D26; resize: vertical; min-height: 64px; outline: none; margin-top: 10px; margin-bottom: 10px; }
+.mw-feedback-textarea:focus { border-color: #087F5B; box-shadow: 0 0 0 2px rgba(8,127,91,.1); }
+.mw-feedback-readonly { background: #FFFFFF; border: 1px solid #E2EAE5; border-radius: 8px; padding: 12px 14px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.mw-feedback-readonly-stars { display: flex; align-items: center; gap: 3px; color: #F59F00; font-size: 15px; }
+.mw-feedback-readonly-badge { background: #FFF9DB; color: #9A6216; border: 1px solid #FFE066; font-size: 11.5px; font-weight: 700; padding: 3px 8px; border-radius: 6px; }
 /* Toast notification */
 .mw-toast-wrap { position: fixed; top: 20px; right: 24px; z-index: 10050; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
 .mw-toast { pointer-events: auto; min-width: 280px; max-width: 420px; padding: 12px 16px; border-radius: 8px; background: #fff; border: 1px solid #E2EAE5; border-left: 4px solid #087F5B; box-shadow: 0 10px 28px rgba(20,45,38,.14); display: flex; align-items: center; gap: 10px; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; color: #142D26; animation: mwToastIn .22s ease; }
@@ -1391,7 +1404,7 @@ $todayDateFormatted = date('j F');
             <!-- Header -->
             <div class="mw-tasks-header">
                 <div class="mw-tasks-title-group">
-                    <h3 class="mw-tasks-title">My tasks</h3>
+                    <h3 class="mw-tasks-title">My Actionable</h3>
                     <span class="mw-badge-open" id="badgeOpenCount"><?= $openTasksCount ?> open</span>
                 </div>
                 <div class="mw-tasks-completed-text" id="textCompletedCount">
@@ -2098,9 +2111,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
             currentTab = tabName;
             currentMetric = '';
+            currentStatus = '';
+            currentPriority = '';
             currentViewAll = false;
             const btnVa = document.getElementById('btnMyWorkViewAll');
             if (btnVa) btnVa.innerText = 'View all';
+            const filterBtnText = document.getElementById('filterBtnText');
+            if (filterBtnText) filterBtnText.innerText = 'Filters';
             document.querySelectorAll('.mw-stat-card').forEach(el => el.classList.remove('active-metric'));
             fetchWorkspaceData();
         });
@@ -2940,6 +2957,73 @@ document.addEventListener('DOMContentLoaded', function () {
                </a>`
             : '<div class="mw-td-empty">No attachments.</div>';
 
+        // Owner Feedback & Satisfaction Rating section (Only when task is completed)
+        let ownerFeedbackHtml = '';
+        if (t.is_completed) {
+            const currentRating = parseInt(t.satisfaction_rating, 10) || 0;
+            if (t.is_owner) {
+                if (currentRating > 0) {
+                    // Already rated by owner
+                    let starsHtml = '';
+                    for (let s = 1; s <= 5; s++) {
+                        starsHtml += `<i class="fa-${s <= currentRating ? 'solid' : 'regular'} fa-star"></i>`;
+                    }
+                    ownerFeedbackHtml = `
+                        <div class="mw-feedback-readonly">
+                            <div>
+                                <div style="font-size:11.5px; font-weight:700; color:#65776F; text-transform:uppercase; margin-bottom:4px;">Your Rating & Feedback</div>
+                                <div class="mw-feedback-readonly-stars">
+                                    ${starsHtml}
+                                    <span style="font-weight:700; color:#142D26; font-size:13px; margin-left:6px;">${currentRating} of 5 Stars</span>
+                                </div>
+                            </div>
+                            <span class="mw-feedback-readonly-badge"><i class="fa-solid fa-check me-1"></i> Feedback Submitted</span>
+                        </div>`;
+                } else {
+                    // Owner can rate and give feedback
+                    ownerFeedbackHtml = `
+                        <div class="mw-feedback-card" id="mwOwnerFeedbackBox">
+                            <div class="mw-feedback-head">
+                                <h4 class="mw-feedback-title">
+                                    <i class="fa-solid fa-award" style="color:#087F5B;"></i>
+                                    Rate & Feedback for ${tdEsc(t.assigned_to)}
+                                </h4>
+                                <div class="mw-rating-stars-wrap" id="mwStarRatingPicker">
+                                    <button type="button" class="mw-star-btn" data-star="1" title="1 Star"><i class="fa-solid fa-star"></i></button>
+                                    <button type="button" class="mw-star-btn" data-star="2" title="2 Stars"><i class="fa-solid fa-star"></i></button>
+                                    <button type="button" class="mw-star-btn" data-star="3" title="3 Stars"><i class="fa-solid fa-star"></i></button>
+                                    <button type="button" class="mw-star-btn" data-star="4" title="4 Stars"><i class="fa-solid fa-star"></i></button>
+                                    <button type="button" class="mw-star-btn" data-star="5" title="5 Stars"><i class="fa-solid fa-star"></i></button>
+                                </div>
+                            </div>
+                            <textarea id="mwFeedbackComment" class="mw-feedback-textarea" placeholder="Add a feedback note for ${tdEsc(t.assigned_to)} (optional)…"></textarea>
+                            <div style="display:flex; justify-content:flex-end;">
+                                <button type="button" class="mw-td-btn green" id="btnSubmitOwnerFeedback" style="padding:6px 14px; font-size:12px;">
+                                    <i class="fa-solid fa-paper-plane me-1"></i> Submit Feedback
+                                </button>
+                            </div>
+                        </div>`;
+                }
+            } else if (currentRating > 0) {
+                // Assignee or collaborator viewing the owner's rating
+                let starsHtml = '';
+                for (let s = 1; s <= 5; s++) {
+                    starsHtml += `<i class="fa-${s <= currentRating ? 'solid' : 'regular'} fa-star"></i>`;
+                }
+                ownerFeedbackHtml = `
+                    <div class="mw-feedback-readonly">
+                        <div>
+                            <div style="font-size:11.5px; font-weight:700; color:#65776F; text-transform:uppercase; margin-bottom:4px;">Task Owner Rating</div>
+                            <div class="mw-feedback-readonly-stars">
+                                ${starsHtml}
+                                <span style="font-weight:700; color:#142D26; font-size:13px; margin-left:6px;">${currentRating} of 5 Stars</span>
+                            </div>
+                        </div>
+                        <span class="mw-feedback-readonly-badge"><i class="fa-solid fa-star me-1"></i> Completed Task</span>
+                    </div>`;
+            }
+        }
+
         tdBody.innerHTML = `
             <div class="mw-td-top"><span>${tdEsc(t.code)} · ${tdEsc(t.project)}</span>
                 <button type="button" class="mw-td-close" id="mwTdClose" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
@@ -2963,10 +3047,26 @@ document.addEventListener('DOMContentLoaded', function () {
                 ${t.expected_output && t.expected_output.trim() ? `<div class="mw-td-sec"><h4>Expected output</h4>${expectedOut}</div>` : ''}
                 <div class="mw-td-sec">${checklistHtml}</div>
                 <div class="mw-td-sec"><h4>Attachments</h4>${file}</div>
-                <div class="mw-td-sec"><h4>Latest activity</h4>${activitiesHtml}${commentBoxHtml}</div>
+                <div class="mw-td-sec">
+                    <h4>Latest activity</h4>
+                    ${activitiesHtml}
+                    ${commentBoxHtml}
+                    ${ownerFeedbackHtml}
+                </div>
             </div>
-            <div data-td-pane="1" style="display:none;"><div class="mw-td-sec">${activitiesHtml}${commentBoxHtml}</div></div>
-            <div data-td-pane="2" style="display:none;"><div class="mw-td-sec">${commentsOnlyHtml}${commentBoxHtml}</div></div>`;
+            <div data-td-pane="1" style="display:none;">
+                <div class="mw-td-sec">
+                    ${activitiesHtml}
+                    ${commentBoxHtml}
+                    ${ownerFeedbackHtml}
+                </div>
+            </div>
+            <div data-td-pane="2" style="display:none;">
+                <div class="mw-td-sec">
+                    ${commentsOnlyHtml}
+                    ${commentBoxHtml}
+                </div>
+            </div>`;
         tdNote.innerText = t.blocked ? 'Resolve the blocker before submitting for review.' : '';
         tdBody.querySelector('#mwTdClose').addEventListener('click', closeTaskDetail);
         tdBody.querySelectorAll('.mw-td-tab').forEach(b => b.addEventListener('click', () => {
@@ -3390,6 +3490,79 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (t.is_completed || !t.can_request_extension) return;
                 openExtensionModal(t);
             });
+        }
+
+        // Wire up Owner Feedback & Star Rating submission
+        const feedbackBox = tdBody.querySelector('#mwOwnerFeedbackBox');
+        if (feedbackBox && t.is_completed && t.is_owner) {
+            const starWrap = feedbackBox.querySelector('#mwStarRatingPicker');
+            const commentInput = feedbackBox.querySelector('#mwFeedbackComment');
+            const btnSubmitFeedback = feedbackBox.querySelector('#btnSubmitOwnerFeedback');
+            let selectedRating = 0;
+
+            if (starWrap) {
+                const starBtns = starWrap.querySelectorAll('.mw-star-btn');
+                starBtns.forEach(btn => {
+                    const starVal = parseInt(btn.getAttribute('data-star'), 10);
+                    btn.addEventListener('mouseenter', () => {
+                        starBtns.forEach(b => {
+                            const val = parseInt(b.getAttribute('data-star'), 10);
+                            b.classList.toggle('hovered', val <= starVal);
+                        });
+                    });
+                    btn.addEventListener('mouseleave', () => {
+                        starBtns.forEach(b => b.classList.remove('hovered'));
+                    });
+                    btn.addEventListener('click', () => {
+                        selectedRating = starVal;
+                        starBtns.forEach(b => {
+                            const val = parseInt(b.getAttribute('data-star'), 10);
+                            b.classList.toggle('active', val <= selectedRating);
+                        });
+                    });
+                });
+            }
+
+            if (btnSubmitFeedback) {
+                btnSubmitFeedback.addEventListener('click', function() {
+                    if (selectedRating < 1 || selectedRating > 5) {
+                        showMwToast('Please select a star rating (1 to 5).', 'error');
+                        return;
+                    }
+                    const feedbackVal = commentInput ? commentInput.value.trim() : '';
+
+                    btnSubmitFeedback.disabled = true;
+                    btnSubmitFeedback.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Submitting...';
+
+                    const fd = new FormData();
+                    fd.append('rating', selectedRating);
+                    if (feedbackVal) fd.append('feedback', feedbackVal);
+
+                    fetch(`${baseUrl}/my-work/submit-feedback/${t.id}`, {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        body: fd
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            showMwToast('Feedback submitted successfully!', 'success');
+                            openTaskDetail(t.id, 0);
+                            fetchWorkspaceData();
+                        } else {
+                            showMwToast(data.message || 'Failed to submit feedback.', 'error');
+                            btnSubmitFeedback.disabled = false;
+                            btnSubmitFeedback.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Submit Feedback';
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Feedback submission error:', err);
+                        showMwToast('Network error while submitting feedback.', 'error');
+                        btnSubmitFeedback.disabled = false;
+                        btnSubmitFeedback.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Submit Feedback';
+                    });
+                });
+            }
         }
     }
 

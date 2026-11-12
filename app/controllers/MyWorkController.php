@@ -234,11 +234,13 @@ class MyWorkController extends Controller
             WHERE {$whereSql}
             ORDER BY 
                 CASE 
+                    WHEN t.status = 'completed' THEN 99
                     WHEN t.status != 'completed' AND t.deadline IS NOT NULL AND t.deadline < NOW() THEN 1
                     WHEN t.status != 'completed' AND DATE(t.deadline) = CURDATE() THEN 2
                     WHEN t.status != 'completed' THEN 3
                     ELSE 4
                 END,
+                CASE WHEN t.status = 'completed' THEN COALESCE(t.updated_at, t.created_at) END DESC,
                 t.deadline ASC,
                 t.id DESC
             " . ($viewAll ? "LIMIT 1000" : "LIMIT 50") . "
@@ -353,8 +355,11 @@ class MyWorkController extends Controller
                 $footerInfoText = 'Showing all ' . count($tasks) . ' tasks · Sorted by deadline';
             } elseif ($metricFilter === 'review_submission' || $metricFilter === 'review_attention') {
                 $footerInfoText = 'Showing ' . count($tasks) . ' task' . (count($tasks) === 1 ? '' : 's') . ' with review feedback · Sorted by latest review';
-            } else {
+            } elseif ($statusFilter === 'open') {
                 $footerInfoText = 'Showing ' . count($tasks) . ' of ' . $openTasksCount . ' open tasks · Sorted by deadline';
+            } else {
+                $totalInTab = $openTasksCount + $completedTasksCount;
+                $footerInfoText = 'Showing ' . count($tasks) . ' of ' . $totalInTab . ' tasks · Sorted by deadline';
             }
             $reviewCardHtml = $this->renderReviewCardHtml($reviewTasks);
             echo json_encode([
@@ -1126,6 +1131,8 @@ class MyWorkController extends Controller
                 'title' => $t['title'],
                 'status' => $t['status'],
                 'is_completed' => $isCompleted,
+                'is_owner' => ((int)$t['assigned_by'] === $userId),
+                'satisfaction_rating' => !empty($t['satisfaction_rating']) ? (int)$t['satisfaction_rating'] : null,
                 'is_reviewer' => in_array($userId, $reviewerIds, true),
                 'can_complete' => (!$isCompleted && $canCheckChecklist),
                 'can_request_extension' => (!$isCompleted && ((int)$t['user_id'] === $userId || in_array($userId, $collabIds, true))),
@@ -2157,6 +2164,103 @@ class MyWorkController extends Controller
             echo json_encode(['status' => 'error', 'message' => 'Failed to log extension request.']);
             exit;
         }
+    }
+
+    /**
+     * Submit task owner feedback and 1-5 satisfaction rating
+     * POST /my-work/submit-feedback/{id}
+     */
+    public function submitFeedback($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        header('Content-Type: application/json; charset=utf-8');
+        $id = (int)$id;
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        if (!$userId) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        $rating = isset($_POST['rating']) ? (int)$_POST['rating'] : 0;
+        $feedbackText = trim($_POST['feedback'] ?? '');
+
+        if ($rating < 1 || $rating > 5) {
+            echo json_encode(['status' => 'error', 'message' => 'Please select a rating between 1 and 5 stars.']);
+            exit;
+        }
+
+        $st = $this->db->prepare("SELECT id, title, assigned_by, user_id, status FROM tasks WHERE id = ?");
+        $st->bind_param("i", $id);
+        $st->execute();
+        $task = $st->get_result()->fetch_assoc();
+        if (!$task) {
+            echo json_encode(['status' => 'error', 'message' => 'Task not found.']);
+            exit;
+        }
+
+        // Only allowed if task is completed
+        if ($task['status'] !== 'completed') {
+            echo json_encode(['status' => 'error', 'message' => 'Feedback can only be provided for completed tasks.']);
+            exit;
+        }
+
+        // Only Task Owner (assigned_by) or Admin can give feedback
+        $isOwner = ((int)$task['assigned_by'] === $userId || in_array($roleId, [1, 3, 33], true));
+        if (!$isOwner) {
+            echo json_encode(['status' => 'error', 'message' => 'Only the task owner can submit feedback and rating.']);
+            exit;
+        }
+
+        // Update satisfaction_rating in tasks table
+        $stmtUp = $this->db->prepare("UPDATE tasks SET satisfaction_rating = ?, updated_at = NOW() WHERE id = ?");
+        $stmtUp->bind_param("ii", $rating, $id);
+        if (!$stmtUp->execute()) {
+            $err = $stmtUp->error;
+            $stmtUp->close();
+            echo json_encode(['status' => 'error', 'message' => 'Failed to save rating: ' . $err]);
+            exit;
+        }
+        $stmtUp->close();
+
+        // Format activity entry
+        $starIcons = str_repeat('★', $rating) . str_repeat('☆', 5 - $rating);
+        $ownerName = $_SESSION['user']['full_name'] ?? 'Task owner';
+        $logActivityText = "{$ownerName} rated this task {$rating}/5 stars ({$starIcons}).";
+        if ($feedbackText !== '') {
+            $logActivityText .= " Feedback: \"{$feedbackText}\"";
+        }
+
+        $this->logTaskActivity($id, $userId, 'system', $logActivityText);
+
+        // Notify the assignee (user_id) about the rating & feedback
+        $assigneeId = (int)$task['user_id'];
+        if ($assigneeId && $assigneeId !== $userId) {
+            $notifMsg = "{$ownerName} gave you a {$rating}-star rating on task T-{$id}";
+            if ($feedbackText !== '') {
+                $notifMsg .= ': "' . mb_strimwidth($feedbackText, 0, 50, '...') . '"';
+            } else {
+                $notifMsg .= '.';
+            }
+
+            $stNotif = $this->db->prepare("INSERT INTO notifications (user_id, task_id, assigned_by, message, created_at) VALUES (?, ?, ?, ?, NOW())");
+            if ($stNotif) {
+                $stNotif->bind_param("iiis", $assigneeId, $id, $userId, $notifMsg);
+                $stNotif->execute();
+                $stNotif->close();
+            }
+        }
+
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'Feedback and rating submitted successfully.',
+            'task_id' => $id,
+            'rating' => $rating
+        ]);
+        exit;
     }
 
     /**
