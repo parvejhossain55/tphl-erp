@@ -1922,14 +1922,12 @@ $todayDateFormatted = date('j F');
         <div class="mw-drawer-footer">
             <div class="mw-drawer-footer-actions">
                 <div class="d-flex gap-2">
-                    <button type="button" class="mw-drawer-btn secondary" id="btnSaveDraft">Save draft</button>
                     <button type="button" class="mw-drawer-btn secondary" id="btnCancelDrawer">Cancel</button>
                 </div>
                 <button type="submit" class="mw-drawer-btn primary" id="btnSubmitDrawer">
                     <i class="fa-solid fa-plus me-1"></i> Create & assign
                 </button>
             </div>
-            <div class="mw-drawer-foot-note">Drafts can be saved before assignment details are complete.</div>
         </div>
     </form>
 </div>
@@ -2365,7 +2363,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const btnCancelDrawer = document.getElementById('btnCancelDrawer');
     const formCreateTask = document.getElementById('mwCreateTaskForm');
     const btnSubmitDrawer = document.getElementById('btnSubmitDrawer');
-    const btnSaveDraft = document.getElementById('btnSaveDraft');
 
     function openDrawer(mode = 'create') {
         if (drawer && backdrop) {
@@ -2377,9 +2374,6 @@ document.addEventListener('DOMContentLoaded', function () {
             if (drawerSubtitle) drawerSubtitle.innerText = isEdit ? 'Update details, owner and deadline.' : 'Define the output, owner and deadline.';
             if (btnSubmitDrawer) {
                 btnSubmitDrawer.innerHTML = isEdit ? '<i class="fa-solid fa-check me-1"></i> Update task' : '<i class="fa-solid fa-plus me-1"></i> Create & assign';
-            }
-            if (btnSaveDraft) {
-                btnSaveDraft.style.display = isEdit ? 'none' : '';
             }
 
             drawer.classList.add('show');
@@ -2419,7 +2413,6 @@ document.addEventListener('DOMContentLoaded', function () {
             const drawerTitle = document.getElementById('mwDrawerTitle');
             if (drawerTitle) drawerTitle.innerText = 'Create task';
             if (btnSubmitDrawer) btnSubmitDrawer.innerHTML = '<i class="fa-solid fa-plus me-1"></i> Create & assign';
-            if (btnSaveDraft) btnSaveDraft.style.display = '';
         }
     }
 
@@ -3219,7 +3212,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(data => {
                     if (data.status === 'success') {
                         if (data.all_completed) {
-                            showMwToast(data.message || 'All checklist items completed!', 'success');
+                            showMwToast(data.message || 'All acceptance completed. You can now submit for review.', 'success');
                             if (window.openTaskDetail && currentDetailTaskId) {
                                 window.openTaskDetail(currentDetailTaskId);
                             }
@@ -3481,7 +3474,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (Array.isArray(t.checklist) && t.checklist.length > 0) {
                     const incompleteCount = t.checklist.filter(c => !c.completed).length;
                     if (incompleteCount > 0) {
-                        showMwToast(`Please complete all checklist items (${incompleteCount} remaining) before completing the task.`, 'error');
+                        showMwToast(`Please complete all acceptance (${incompleteCount} remaining) before completing the task.`, 'error');
                         return;
                     }
                 }
@@ -4101,19 +4094,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         : '<i class="fa-solid fa-plus me-1"></i> Create & assign';
                 }
             });
-        });
-    }
-
-    // Save Draft Button
-    if (btnSaveDraft && formCreateTask) {
-        btnSaveDraft.addEventListener('click', function() {
-            const titleInput = document.getElementById('drawerTaskTitle');
-            if (!titleInput || !titleInput.value.trim()) {
-                alert('Please enter a Task title to save draft.');
-                if (titleInput) titleInput.focus();
-                return;
-            }
-            formCreateTask.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
         });
     }
 });

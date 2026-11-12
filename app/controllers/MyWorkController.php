@@ -94,7 +94,7 @@ class MyWorkController extends Controller
             'overdue'   => "t.status != 'completed' AND t.deadline IS NOT NULL AND t.deadline < NOW()",
             'due_today' => "t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) = CURDATE()",
             'next7'     => "t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) > CURDATE() AND DATE(t.deadline) <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)",
-            'review'    => "t.status != 'completed' AND (t.progress >= 80 OR t.employee_accept = 1)",
+            'review'    => "t.status != 'completed' AND t.employee_accept = 1 AND t.mentioned_user_ids IS NOT NULL AND t.mentioned_user_ids != '' AND t.mentioned_user_ids != '[]'",
         ];
         $countMetric = function (string $cond) use ($scopeSql, $scopeParams, $scopeTypes): int {
             $st = $this->db->prepare("SELECT COUNT(*) FROM tasks t WHERE {$scopeSql} AND {$cond}");
@@ -280,7 +280,7 @@ class MyWorkController extends Controller
                       SELECT 1 FROM task_activities a 
                       WHERE a.task_id = t.id AND a.activity LIKE 'Approved task as completed%'
                   ))
-                  OR (t.status != 'completed' AND t.progress >= 80)
+                  OR (t.status != 'completed' AND t.employee_accept = 1)
               )
             ORDER BY COALESCE(t.updated_at, t.created_at) DESC
             LIMIT 2
@@ -565,6 +565,7 @@ class MyWorkController extends Controller
             </tr>';
         }
 
+        $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
         $html = '';
         foreach ($tasks as $index => $t) {
             $taskId = (int) $t['id'];
@@ -605,7 +606,8 @@ class MyWorkController extends Controller
                 $statusClass = 'expired';
                 $statusLabel = 'Expired';
             }
-            if (!$isCompleted && (int)$t['progress'] >= 80) {
+            $rowReviewers = $ids($t['mentioned_user_ids'] ?? '');
+            if (!$isCompleted && !empty($t['employee_accept']) && count($rowReviewers) > 0) {
                 $statusClass = 'in-review';
                 $statusLabel = 'In review';
             }
@@ -1065,7 +1067,7 @@ class MyWorkController extends Controller
         $isCompleted = $t['status'] === 'completed';
         $statusLabel = ['pending' => 'To do', 'in_progress' => 'In progress', 'completed' => 'Completed', 'expired' => 'Expired'][$t['status']] ?? 'To do';
         $statusClass = $t['status'];
-        if (!$isCompleted && (int)$t['progress'] >= 80) {
+        if (!$isCompleted && !empty($t['employee_accept']) && count($reviewerIds) > 0) {
             $statusLabel = 'In review';
             $statusClass = 'in_review';
         }
@@ -1653,7 +1655,7 @@ class MyWorkController extends Controller
                 }
             }
             if ($uncompletedCount > 0) {
-                $msg = "Please complete all checklist items ({$uncompletedCount} remaining) before completing the task.";
+                $msg = "Please complete all acceptance ({$uncompletedCount} remaining) before completing the task.";
                 if ($isAjax) {
                     header('Content-Type: application/json');
                     echo json_encode(['status' => 'error', 'message' => $msg]);
@@ -2007,22 +2009,13 @@ class MyWorkController extends Controller
         $allDone = ($totalItems > 0 && $completedItems === $totalItems);
         $progress = $totalItems > 0 ? (int)round(($completedItems / $totalItems) * 100) : (int)($task['progress'] ?? 0);
 
-        // Status update logic: if all items are done, mark as completed (or ready for review)
+        // Status update logic: unchecking reverts completed status back to in_progress
         $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
         $reviewerIds = $ids($task['mentioned_user_ids'] ?? '');
         $hasReviewers = count($reviewerIds) > 0;
 
         $newStatus = $task['status'];
-        if ($allDone) {
-            if ($hasReviewers) {
-                // If reviewers exist, keep in_progress with review readiness (85% progress)
-                $newStatus = 'in_progress';
-                $progress = max($progress, 85);
-            } else {
-                $newStatus = 'completed';
-                $progress = 100;
-            }
-        } elseif ($task['status'] === 'completed' && !$allDone) {
+        if ($task['status'] === 'completed' && !$allDone) {
             // Unchecking any item reverts status back to in_progress
             $newStatus = 'in_progress';
         }
