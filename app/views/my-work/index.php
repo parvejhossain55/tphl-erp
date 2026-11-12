@@ -1408,13 +1408,15 @@ $todayDateFormatted = date('j F');
                         <h3 class="mw-tasks-title">My Actionable</h3>
                         <span class="mw-badge-open" id="badgeOpenCount"><?= $openTasksCount ?> open</span>
                     </div>
+                    <!-- 
                     <div style="display:inline-block; width:1px; height:18px; background:#D8E3DD;"></div>
                     <div style="display:flex; align-items:center; gap:10px;">
                         <h3 class="mw-tasks-title" style="color:#2D453E;">My Reviewed</h3>
                         <span class="mw-badge-open" id="badgeReviewedCount" style="background:#EBF2FE; color:#1864AB; font-weight:700;">
                             <?= (int)($myReviewedCompletedCount ?? 0) ?> completed
                         </span>
-                    </div>
+                    </div> 
+                    -->
                 </div>
                 <div class="mw-tasks-completed-text" id="textCompletedCount">
                     <?= $completedTasksCount ?> completed
