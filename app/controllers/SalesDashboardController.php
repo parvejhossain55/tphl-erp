@@ -1116,6 +1116,29 @@ class SalesDashboardController extends Controller
         }
 
         $user = $this->userModel->find($id);
+        $empInfo = $this->db->query("
+            SELECT 
+                e.id AS emp_id,
+                e.employee_id,
+                e.full_name AS emp_full_name,
+                e.phone AS emp_phone,
+                e.email AS emp_email,
+                e.photo,
+                e.is_team_leader,
+                des.name AS designation_name,
+                dept.name AS department_name,
+                COALESCE(t_emp.name, t_user.name) AS team_name,
+                COALESCE(t_emp.id, t_user.id) AS team_id
+            FROM users u
+            LEFT JOIN employees e ON u.id = e.user_id
+            LEFT JOIN designations des ON e.designation_id = des.id
+            LEFT JOIN departments dept ON e.department_id = dept.id
+            LEFT JOIN teams t_user ON u.team_id = t_user.id
+            LEFT JOIN teams t_emp ON e.team_id = t_emp.id
+            WHERE u.id = $id
+            LIMIT 1
+        ")->fetch_assoc();
+
         $targets = $this->salesTargetModel->getAllTargets($id);
         $projects = $this->db->query("
             SELECT p.id, p.name, p.category_id, pc.name as cat_name, pc.main_category 
@@ -1125,13 +1148,14 @@ class SalesDashboardController extends Controller
             ORDER BY p.name ASC
         ")->fetch_all(MYSQLI_ASSOC);
         $team = $this->db->query("SELECT t.name FROM users u JOIN teams t ON u.team_id = t.id WHERE u.id = $id LIMIT 1")->fetch_assoc();
-        $teamName = $team['name'] ?? 'No Team';
+        $teamName = !empty($empInfo['team_name']) ? $empInfo['team_name'] : ($team['name'] ?? 'No Team');
         
         $categories = $this->db->query("SELECT id, name AS category_name, main_category FROM project_categories ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
 
         $this->view("sales-developments/set-sales-target", [
             "current_route" => "sales-executive-teams",
             'user' => $user,
+            'empInfo' => $empInfo,
             'targets' => $targets,
             'projects' => $projects,
             'categories' => $categories,

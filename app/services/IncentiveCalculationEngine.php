@@ -284,6 +284,17 @@ class IncentiveCalculationEngine extends Model
             }
         }
 
+        $targetProjectNames = [];
+        if (!empty($projIds)) {
+            $pIdsList = implode(',', array_map('intval', array_unique($projIds)));
+            $pRes = $this->db->query("SELECT id, name FROM projects WHERE id IN ({$pIdsList})");
+            if ($pRes) {
+                while ($pRow = $pRes->fetch_assoc()) {
+                    $targetProjectNames[] = $pRow['name'];
+                }
+            }
+        }
+
         // UI filter override if provided
         if (!empty($fromDate) && !empty($toDate)) {
             $start = $fromDate . ' 00:00:00';
@@ -428,20 +439,23 @@ class IncentiveCalculationEngine extends Model
                 $unitRate = $isFloorSpecial ? (float)$settings['floor_special_rate'] : (float)$settings['flat_base_rate'];
             }
 
-            // Check Deadline / Speed Bonus (+0.20%):
-            // Deal completed within defined deadline (2 months / 60 days of lead creation OR before target to_date)
+            // Check Deadline / Speed Bonus:
+            // Deal completed within defined deadline (e.g. 2 months from lead creation OR before target to_date)
+            $speedBonusMonths = (int)($settings['speed_bonus_months'] ?? 2);
+            $maxDays = max(1, $speedBonusMonths * 30);
             $isWithinDeadline = false;
             $bDate = $b['booking_date'];
             $refDate = !empty($b['lead_created_at']) ? $b['lead_created_at'] : $b['booking_created_at'];
             $daysToClose = round((strtotime($bDate) - strtotime($refDate)) / 86400);
 
-            if (($daysToClose <= 60 && $daysToClose >= 0) || ($bDate <= $targetToDate)) {
+            if (($daysToClose <= $maxDays && $daysToClose >= 0) || ($bDate <= $targetToDate)) {
                 $isWithinDeadline = true;
             }
 
             $bonusRate = 0.00;
-            if ($isWithinDeadline) {
-                $bonusRate = (float)$settings['speed_bonus_rate']; // +0.20%
+            $speedBonusSetting = (float)($settings['speed_bonus_rate'] ?? 0.00);
+            if ($isWithinDeadline && $speedBonusSetting > 0 && $isAssigned) {
+                $bonusRate = $speedBonusSetting;
             }
 
             $finalApplicableRate = $unitRate + $bonusRate;
@@ -456,7 +470,9 @@ class IncentiveCalculationEngine extends Model
                 $rateLabel = ($isFloorSpecial ? 'Floor (0.80%)' : 'Flat (0.70%)');
                 if ($achievementPct >= 300.0) $rateLabel = '300%+ Tier (1.20%)';
                 elseif ($achievementPct >= 200.0) $rateLabel = '200%-299% Tier (1.00%)';
-                if ($isWithinDeadline) $rateLabel .= ' + Speed Bonus (+0.20%)';
+                if ($bonusRate > 0) {
+                    $rateLabel .= ' + Speed Bonus (+' . number_format($bonusRate, 2) . '%)';
+                }
 
                 $detailedBookings[] = array_merge($b, [
                     'rate_type' => $rateLabel,
@@ -600,6 +616,8 @@ class IncentiveCalculationEngine extends Model
             'target_origin_month' => $targetOriginMonth,
             'is_inherited' => $isInherited,
             'has_target' => ($targetAmount > 0 || !empty($targetRows)),
+            'target_project_names' => $targetProjectNames,
+            'target_rows' => $targetRows,
             'cycle_start' => $start,
             'cycle_end' => $end
         ];

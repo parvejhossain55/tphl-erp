@@ -48,7 +48,7 @@ $show_breadcrumb = true;
                 <div class="col-md-6 col-lg-3">
                     <div class="p-2 rounded bg-white shadow-2xs border">
                         <strong class="d-block text-secondary extra-small text-uppercase">4. Speed Bonus</strong>
-                        <span><strong>+0.20%</strong> if completed within 2 months deadline</span>
+                        <span><strong>+<?= number_format((float)($settings['speed_bonus_rate'] ?? 0.20), 2) ?>%</strong> if completed within <?= (int)($settings['speed_bonus_months'] ?? 2) ?> months deadline</span>
                     </div>
                 </div>
             </div>
