@@ -1403,9 +1403,18 @@ $todayDateFormatted = date('j F');
         <div class="mw-card">
             <!-- Header -->
             <div class="mw-tasks-header">
-                <div class="mw-tasks-title-group">
-                    <h3 class="mw-tasks-title">My Actionable</h3>
-                    <span class="mw-badge-open" id="badgeOpenCount"><?= $openTasksCount ?> open</span>
+                <div class="mw-tasks-title-group" style="display:flex; align-items:center; gap:16px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <h3 class="mw-tasks-title">My Actionable</h3>
+                        <span class="mw-badge-open" id="badgeOpenCount"><?= $openTasksCount ?> open</span>
+                    </div>
+                    <div style="display:inline-block; width:1px; height:18px; background:#D8E3DD;"></div>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <h3 class="mw-tasks-title" style="color:#2D453E;">My Reviewed</h3>
+                        <span class="mw-badge-open" id="badgeReviewedCount" style="background:#EBF2FE; color:#1864AB; font-weight:700;">
+                            <?= (int)($myReviewedCompletedCount ?? 0) ?> completed
+                        </span>
+                    </div>
                 </div>
                 <div class="mw-tasks-completed-text" id="textCompletedCount">
                     <?= $completedTasksCount ?> completed
@@ -2022,6 +2031,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const tbody = document.getElementById('mwTasksTbody');
     const footerInfo = document.getElementById('mwFooterInfo');
     const badgeOpen = document.getElementById('badgeOpenCount');
+    const badgeReviewed = document.getElementById('badgeReviewedCount');
     const textCompleted = document.getElementById('textCompletedCount');
     const statOverdue = document.getElementById('statOverdue');
     const statDueToday = document.getElementById('statDueToday');
@@ -2082,6 +2092,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 if (data.counts) {
                     if (badgeOpen) badgeOpen.innerText = `${data.counts.open} open`;
+                    if (badgeReviewed && typeof data.counts.my_reviewed !== 'undefined') {
+                        badgeReviewed.innerText = `${data.counts.my_reviewed} completed`;
+                    }
                     if (textCompleted) textCompleted.innerText = `${data.counts.completed} completed`;
                     if (statOverdue) statOverdue.innerText = data.counts.overdue;
                     if (statDueToday) statDueToday.innerText = data.counts.due_today;

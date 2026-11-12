@@ -120,6 +120,17 @@ class MyWorkController extends Controller
         $openTasksCount = (int) ($totals['open_count'] ?? 0);
         $completedTasksCount = (int) ($totals['completed_count'] ?? 0);
 
+        // Count tasks reviewed and completed where the current user is a reviewer
+        $stmtMyReviewed = $this->db->prepare("
+            SELECT COUNT(DISTINCT t.id)
+            FROM tasks t
+            WHERE t.status = 'completed'
+              AND FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.mentioned_user_ids, '[', ''), ']', ''), ' ', ''))
+        ");
+        $stmtMyReviewed->bind_param("i", $userId);
+        $stmtMyReviewed->execute();
+        $myReviewedCompletedCount = (int) ($stmtMyReviewed->get_result()->fetch_row()[0] ?? 0);
+
         // 5b. Summary cards (scope = active tab)
         $stmtAll = $this->db->prepare("
             SELECT 
@@ -373,6 +384,7 @@ class MyWorkController extends Controller
                     'waiting_review' => $waitingReviewCount,
                     'open'           => $openTasksCount,
                     'completed'      => $completedTasksCount,
+                    'my_reviewed'    => $myReviewedCompletedCount,
                     'showing'        => count($tasks)
                 ],
                 'table_html' => $tableHtml,
