@@ -2708,7 +2708,12 @@ document.addEventListener('DOMContentLoaded', function () {
                         <span class="mw-rev-note-label">Review note</span>
                         <span class="mw-rev-note-req">Required when requesting changes</span>
                     </div>
-                    <textarea id="mwReviewFeedbackInput" class="mw-rev-textarea" placeholder="Add feedback for ${tdEsc(ownerName)}…"></textarea>
+                    <textarea id="mwReviewFeedbackInput" class="mw-rev-textarea" placeholder="Add feedback"></textarea>
+                    <div style="margin-top:10px; display:flex; justify-content:flex-start;">
+                        <button type="button" class="mw-td-btn" id="btnRevRequestChanges">
+                            Request changes
+                        </button>
+                    </div>
                 </div>` : ''}
             `;
 
@@ -2733,51 +2738,53 @@ document.addEventListener('DOMContentLoaded', function () {
                         <button type="button" class="mw-td-btn green" id="btnRevApproveComplete">
                             <i class="fa-solid fa-check me-1"></i> Approve & complete
                         </button>
-                        <button type="button" class="mw-td-btn" id="btnRevRequestChanges">Request changes</button>
                         <button type="button" class="mw-td-btn" id="btnRevBackToTasks">Back to tasks</button>
                     `;
 
                     document.getElementById('btnRevBackToTasks').addEventListener('click', closeTaskDetail);
 
-                    document.getElementById('btnRevRequestChanges').addEventListener('click', function() {
-                        const feedbackEl = document.getElementById('mwReviewFeedbackInput');
-                        const note = feedbackEl ? feedbackEl.value.trim() : '';
-                        if (!note) {
-                            showMwToast(`Please add a review note for ${ownerName} before requesting changes.`, 'error');
-                            if (feedbackEl) feedbackEl.focus();
-                            return;
-                        }
-
-                        this.disabled = true;
-                        this.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Requesting...';
-
-                        const fd = new FormData();
-                        fd.append('review_action', 'request_changes');
-                        fd.append('review_note', note);
-
-                        fetch(`${baseUrl}/my-work/reviewer-action/${t.id}`, {
-                            method: 'POST',
-                            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                            body: fd
-                        })
-                        .then(r => r.json())
-                        .then(data => {
-                            if (data.status === 'success') {
-                                showMwToast('Feedback sent. Task returned to in progress.', 'success');
-                                closeTaskDetail();
-                                fetchWorkspaceData();
-                            } else {
-                                showMwToast(data.message || 'Failed to request changes.', 'error');
+                    const btnReqChanges = document.getElementById('btnRevRequestChanges');
+                    if (btnReqChanges) {
+                        btnReqChanges.addEventListener('click', function() {
+                            const feedbackEl = document.getElementById('mwReviewFeedbackInput');
+                            const note = feedbackEl ? feedbackEl.value.trim() : '';
+                            if (!note) {
+                                showMwToast(`Please add a review note for ${ownerName} before requesting changes.`, 'error');
+                                if (feedbackEl) feedbackEl.focus();
+                                return;
                             }
-                        })
-                        .catch(() => {
-                            showMwToast('Network error occurred.', 'error');
-                        })
-                        .finally(() => {
-                            this.disabled = false;
-                            this.innerHTML = 'Request changes';
+
+                            this.disabled = true;
+                            this.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Requesting...';
+
+                            const fd = new FormData();
+                            fd.append('review_action', 'request_changes');
+                            fd.append('review_note', note);
+
+                            fetch(`${baseUrl}/my-work/reviewer-action/${t.id}`, {
+                                method: 'POST',
+                                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                                body: fd
+                            })
+                            .then(r => r.json())
+                            .then(data => {
+                                if (data.status === 'success') {
+                                    showMwToast('Feedback sent. Task returned to in progress.', 'success');
+                                    closeTaskDetail();
+                                    fetchWorkspaceData();
+                                } else {
+                                    showMwToast(data.message || 'Failed to request changes.', 'error');
+                                }
+                            })
+                            .catch(() => {
+                                showMwToast('Network error occurred.', 'error');
+                            })
+                            .finally(() => {
+                                this.disabled = false;
+                                this.innerHTML = 'Request changes';
+                            });
                         });
-                    });
+                    }
 
                     document.getElementById('btnRevApproveComplete').addEventListener('click', function() {
                         const feedbackEl = document.getElementById('mwReviewFeedbackInput');
