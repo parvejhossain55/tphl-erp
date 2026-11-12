@@ -1167,6 +1167,15 @@ class MyWorkController extends Controller
         }
         $actStmt->close();
 
+        // Check if this task has already been approved by a reviewer
+        $isReviewApproved = false;
+        foreach ($activities as $actItem) {
+            if ($actItem['type'] === 'system' && stripos($actItem['activity'], 'Approved task as completed') !== false) {
+                $isReviewApproved = true;
+                break;
+            }
+        }
+
         // Team members for @mention autocomplete - all valid users
         $teammates = [];
         $resTeam = $this->db->query("
@@ -1202,6 +1211,7 @@ class MyWorkController extends Controller
                 'title' => $t['title'],
                 'status' => $t['status'],
                 'is_completed' => $isCompleted,
+                'is_review_approved' => $isReviewApproved,
                 'is_owner' => ((int)$t['assigned_by'] === $userId),
                 'satisfaction_rating' => !empty($t['satisfaction_rating']) ? (int)$t['satisfaction_rating'] : null,
                 'is_reviewer' => in_array($userId, $reviewerIds, true),
