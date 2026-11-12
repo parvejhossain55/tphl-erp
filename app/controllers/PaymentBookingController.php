@@ -134,10 +134,13 @@ class PaymentBookingController extends Controller
         $bookingTargetForTx = ($agreementValForBooking > 0)
             ? max(0, $agreementValForBooking - $discountForBooking)
             : (float)($summary['effective_booking_target'] ?? 300000);
-        $bookingMoneyRemaining = max(0, $bookingTargetForTx - (float)($summary['booking_money_total'] ?? 0));
-
         // 2. Land Share Remaining (unrejected total so pending counts)
         $landShareRemaining = max(0, (float)($summary['remaining_land_share_total'] ?? $summary['remaining_land_share']));
+
+        // 1. Booking Money Remaining (capped by remaining land share)
+        $bookingMoneyRemaining = ($landShareRemaining <= 0 || !empty($summary['is_land_share_completed']))
+            ? 0
+            : min($landShareRemaining, max(0, $bookingTargetForTx - (float)($summary['booking_money_total'] ?? 0)));
 
         // 3. Development Charge Remaining (or Shop Service Charge for shops)
         $flatDevTarget = (float)($summary['flat_development_charges'] ?? 0);

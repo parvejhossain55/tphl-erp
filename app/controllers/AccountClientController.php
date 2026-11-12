@@ -2463,7 +2463,7 @@ public function showCedTransactionForm($bookingId = null)
     $landShareRemaining = max(0, (float)($paymentSummary['remaining_land_share_total'] ?? $paymentSummary['remaining_land_share'] ?? ($effectiveLandShareTarget - $bookingMoneyTotal - $allRegistrationAndLandshare)));
     $bookingDeduction = max($effectiveBookingTarget, $bookingMoneyTotal);
     $formRemainingRegistration = min($landShareRemaining, max(0, $effectiveLandShareTarget - $bookingDeduction - $allRegistrationAndLandshare));
-    $formRemainingBooking = max(0, $effectiveBookingTarget - $bookingMoneyTotal);
+    $formRemainingBooking = min($landShareRemaining, max(0, $effectiveBookingTarget - $bookingMoneyTotal));
 
     // Get management users for handover dropdown
     $managementUsers = [];
@@ -2911,7 +2911,7 @@ public function showAddTransactionForm($bookingId = null)
     $landShareRemaining = max(0, (float)($clientDetails['remaining_land_share_total'] ?? $clientDetails['remaining_land_share'] ?? ($effectiveLandShareTarget - $bookingMoneyTotal - $allRegistrationAndLandshare)));
     $bookingDeduction = max($effectiveBookingTarget, $bookingMoneyTotal);
     $formRemainingRegistration = min($landShareRemaining, max(0, $effectiveLandShareTarget - $bookingDeduction - $allRegistrationAndLandshare));
-    $formRemainingBooking = max(0, $effectiveBookingTarget - $bookingMoneyTotal);
+    $formRemainingBooking = min($landShareRemaining, max(0, $effectiveBookingTarget - $bookingMoneyTotal));
 
     // Get management users for handover dropdown
     $managementUsers = [];

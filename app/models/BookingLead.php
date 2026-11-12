@@ -873,6 +873,35 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         return $data;
     }
 
+    public function getBookingSellersByLeadIds(array $leadIds): array
+    {
+        if (empty($leadIds)) return [];
+
+        $ids = implode(',', array_map('intval', $leadIds));
+        
+        $sql = "SELECT 
+                    lb.lead_id, 
+                    lb.sales_by_id, 
+                    COALESCE(u.full_name, 'No User') AS seller_name, 
+                    COUNT(lb.id) AS booking_count
+                FROM lead_bookings lb
+                LEFT JOIN users u ON lb.sales_by_id = u.id
+                WHERE lb.deleted_at IS NULL 
+                  AND lb.booking_status IN ('completed', 'booked')
+                  AND lb.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))
+                  AND lb.lead_id IN ($ids)
+                GROUP BY lb.lead_id, lb.sales_by_id, u.full_name";
+                
+        $result = $this->db->query($sql);
+        $data = [];
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $data[$row['lead_id']][] = $row;
+            }
+        }
+        return $data;
+    }
+
     public function hasVerifiedPayment($bookingId)
     {
         $stmt = $this->db->prepare("SELECT COUNT(*) AS cnt FROM lead_payments WHERE booking_id = ? AND verification_status = 'verified'");

@@ -12,16 +12,26 @@ $accountModel     = new AccountClient();
 $paymentSummary   = $accountModel->getPaymentSummaryByBookingId($bookingId);
 $outstandingDues  = $accountModel->getOutstandingEmiDues($bookingId);
 
-$remainingLandShare      = $paymentSummary['remaining_land_share']       ?? 0;
+$remainingLandShare      = (float)($paymentSummary['remaining_land_share_total'] ?? $paymentSummary['remaining_land_share'] ?? 0);
 $allBangladeshBanks       = function_exists('getBangladeshBanks') ? getBangladeshBanks() : [];
-$isLandShareCompleted    = $paymentSummary['is_land_share_completed']    ?? false;
+$isLandShareCompleted    = !empty($paymentSummary['is_land_share_completed']) || ($remainingLandShare <= 0);
 $isDevChargeCompleted    = $paymentSummary['is_dev_charge_completed']    ?? false;
-$isBookingFullyPaid      = $paymentSummary['is_booking_fully_paid']      ?? false;
-$agreementValue          = $paymentSummary['agreement_value']            ?? 0;
-$effectiveBookingTarget  = $paymentSummary['effective_booking_target']   ?? $agreementValue;
-$bookingMoneyTotal       = $paymentSummary['booking_money_total']        ?? 0;
-$bookingMoneyPaid        = $paymentSummary['booking_money_paid']         ?? 0;
-$bookingBalance          = max(0, $effectiveBookingTarget - $bookingMoneyTotal);
+$agreementValue          = (float)($paymentSummary['agreement_value']            ?? 0);
+$effectiveBookingTarget  = (float)($paymentSummary['effective_booking_target']   ?? $agreementValue);
+$bookingMoneyTotal       = (float)($paymentSummary['booking_money_total']        ?? 0);
+$bookingMoneyPaid        = (float)($paymentSummary['booking_money_paid']         ?? 0);
+
+if ($isLandShareCompleted || $remainingLandShare <= 0) {
+    $bookingBalance            = 0;
+    $formRemainingBooking      = 0;
+    $formRemainingRegistration = 0;
+    $isBookingFullyPaid        = true;
+} else {
+    $bookingBalance            = min($remainingLandShare, max(0, $effectiveBookingTarget - $bookingMoneyTotal));
+    $formRemainingBooking      = isset($formRemainingBooking) ? (float)$formRemainingBooking : $bookingBalance;
+    $formRemainingRegistration = isset($formRemainingRegistration) ? (float)$formRemainingRegistration : 0;
+    $isBookingFullyPaid        = ($bookingBalance <= 0 && $bookingMoneyTotal > 0);
+}
 $perEmiAmount         = $paymentSummary['per_emi_amount']          ?? 0;
 $serviceChargeRate    = $paymentSummary['service_charge_per_emi']  ?? 0;
 $flatDevCharges       = $paymentSummary['flat_development_charges'] ?? 0;
@@ -89,7 +99,7 @@ if (!empty($outstandingDues)) {
                     </div>
                 <?php endif; ?>
 
-                <?php if (!$isBookingFullyPaid && $bookingMoneyPaid > 0): ?>
+                <?php if (!$isBookingFullyPaid && !$isLandShareCompleted && $bookingMoneyPaid > 0 && $bookingBalance > 0): ?>
                     <div class="alert alert-warning alert-dismissible fade show mb-4 d-flex align-items-center" role="alert">
                         <i class=""></i>
                         <div>
@@ -141,13 +151,13 @@ if (!empty($outstandingDues)) {
                                 <option value="">-- Select Payment Type --</option>
 
                                 <!-- Booking Money -->
-                                <?php if ($formRemainingBooking > 0 || !$isBookingFullyPaid): ?>
+                                <?php if (!$isLandShareCompleted && $formRemainingBooking > 0): ?>
                                     <option value="booking_money">
                                         Booking Money (Remaining: TK.<?= number_format($formRemainingBooking, 2) ?>)
                                     </option>
                                 <?php else: ?>
                                     <option value="booking_money" disabled>
-                                        Booking Money (Fully Paid — TK.<?= number_format($bookingMoneyPaid, 2) ?>)
+                                        Booking Money (Fully Paid — TK.<?= number_format($bookingMoneyTotal, 2) ?>)
                                     </option>
                                 <?php endif; ?>
 
@@ -580,17 +590,17 @@ if (!empty($outstandingDues)) {
 
         // Function to calculate dynamic remaining amounts
         function getDynamicBalances() {
-            const target = <?= json_encode((float)$effectiveBookingTarget) ?>;
-            const remainingBooking = Math.max(0, target - bookingMoneyTotalPaid);
             const effectiveLSTarget = Math.max(0, totalLandShare - discountAmount);
             const totalLSPaid = bookingMoneyTotalPaid + allRegistrationAndLandshare;
             const remainingLandShareTotal = Math.max(0, effectiveLSTarget - totalLSPaid);
+            const target = <?= json_encode((float)$effectiveBookingTarget) ?>;
+            const remainingBooking = (remainingLandShareTotal <= 0) ? 0 : Math.min(remainingLandShareTotal, Math.max(0, target - bookingMoneyTotalPaid));
             const bookingDeduction = Math.max(target, bookingMoneyTotalPaid);
-            const remainingReg = Math.min(remainingLandShareTotal, Math.max(0, effectiveLSTarget - bookingDeduction - allRegistrationAndLandshare));
+            const remainingReg = (remainingLandShareTotal <= 0) ? 0 : Math.min(remainingLandShareTotal, Math.max(0, effectiveLSTarget - bookingDeduction - allRegistrationAndLandshare));
 
             const bmOption = paymentType ? paymentType.querySelector('option[value="booking_money"]') : null;
             if (bmOption) {
-                if (remainingBooking > 0) {
+                if (remainingBooking > 0 && remainingLandShareTotal > 0) {
                     bmOption.disabled = false;
                     bmOption.style.color = '';
                     bmOption.textContent = 'Booking Money' + (bookingMoneyTotalPaid > 0 ? ' (Remaining: TK.' + remainingBooking.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ')' : '');

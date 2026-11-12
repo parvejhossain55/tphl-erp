@@ -71,19 +71,25 @@ $emiPaidSoFar          = (float)($paymentSummary['emi_paid_total'] ?? 0);
 $remainingCF           = max(0, $constructionFee - $emiPaidSoFar - $totalBulkDiscount);
 
 // Booking Money & Registration / Land Share status
+$remainingLandShare         = (float)($paymentSummary['remaining_land_share_total'] ?? $paymentSummary['remaining_land_share'] ?? 0);
+$isLandShareCompleted       = !empty($paymentSummary['is_land_share_completed']) || ($remainingLandShare <= 0);
+
 $agreementValue             = (float)($paymentSummary['agreement_value'] ?? 0);
 $bookingMoneyPaid           = (float)($paymentSummary['booking_money_paid'] ?? 0); // verified only
 $bookingMoneyTotal          = (float)($paymentSummary['booking_money_total'] ?? $bookingMoneyPaid); // all non-rejected entries
 $effectiveBookingTarget     = ($agreementValue > 0) ? $agreementValue : 300000;
-$formRemainingBooking       = isset($formRemainingBooking) ? (float)$formRemainingBooking : max(0, $effectiveBookingTarget - $bookingMoneyTotal);
-$formRemainingRegistration  = isset($formRemainingRegistration) ? (float)$formRemainingRegistration : 0;
-$allRegistrationAndLandshare = isset($allRegistrationAndLandshare) ? (float)$allRegistrationAndLandshare : 0;
 
-$isBookingFullyPaid         = ($formRemainingBooking <= 0 && $bookingMoneyTotal > 0);
-$remainingLandShare         = (float)($paymentSummary['remaining_land_share'] ?? 0);
-$isLandShareCompleted       = $isShop
-    ? (bool)($paymentSummary['is_land_share_completed'] ?? ($remainingLandShare <= 0))
-    : ($formRemainingRegistration <= 0 && $isBookingFullyPaid);
+if ($isLandShareCompleted || $remainingLandShare <= 0) {
+    $formRemainingBooking      = 0;
+    $formRemainingRegistration = 0;
+    $isBookingFullyPaid        = true;
+} else {
+    $bookingBalance            = min($remainingLandShare, max(0, $effectiveBookingTarget - $bookingMoneyTotal));
+    $formRemainingBooking      = isset($formRemainingBooking) ? min($remainingLandShare, (float)$formRemainingBooking) : $bookingBalance;
+    $formRemainingRegistration = isset($formRemainingRegistration) ? min($remainingLandShare, (float)$formRemainingRegistration) : 0;
+    $isBookingFullyPaid        = ($formRemainingBooking <= 0 && $bookingMoneyTotal > 0);
+}
+$allRegistrationAndLandshare = isset($allRegistrationAndLandshare) ? (float)$allRegistrationAndLandshare : 0;
 
 $virtualEmiSchedule    = $virtualEmiSchedule ?? [];
 $overduePenaltySum     = 0;
@@ -142,7 +148,7 @@ if (!empty($virtualEmiSchedule)) {
                         </div>
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
-                <?php elseif (!$isBookingFullyPaid && $bookingMoneyTotal > 0): ?>
+                <?php elseif (!$isBookingFullyPaid && !$isLandShareCompleted && $bookingMoneyTotal > 0 && $formRemainingBooking > 0): ?>
                     <div class="alert alert-warning alert-dismissible fade show mb-4 d-flex align-items-center" role="alert">
                         <div>
                             <strong>Booking Money Partially Paid:</strong>
@@ -187,7 +193,7 @@ if (!empty($virtualEmiSchedule)) {
 
                                 <!-- 1. Booking Money -->
                                 <?php if ($isShop): ?>
-                                    <?php if (!$isBookingFullyPaid && $formRemainingBooking > 0): ?>
+                                    <?php if (!$isLandShareCompleted && !$isBookingFullyPaid && $formRemainingBooking > 0): ?>
                                         <option value="booking_money" data-details="false">
                                             Booking Money<?= $bookingMoneyTotal > 0 ? ' (Remaining: TK.' . number_format($formRemainingBooking, 2) . ' of TK.' . number_format($effectiveBookingTarget, 2) . ')' : ' (Target: TK.' . number_format($effectiveBookingTarget, 2) . ')' ?>
                                         </option>
@@ -197,7 +203,7 @@ if (!empty($virtualEmiSchedule)) {
                                         </option>
                                     <?php endif; ?>
                                 <?php else: ?>
-                                    <?php if ($formRemainingBooking > 0 || !$isBookingFullyPaid): ?>
+                                    <?php if (!$isLandShareCompleted && $formRemainingBooking > 0): ?>
                                         <option value="booking_money" data-details="false">
                                             Booking Money<?= $bookingMoneyTotal > 0 ? ' (Remaining: TK.' . number_format($formRemainingBooking, 2) . ')' : '' ?>
                                         </option>
@@ -814,22 +820,22 @@ if (!empty($virtualEmiSchedule)) {
         function getDynamicBalances() {
             if (isShop) {
                 const target = <?= json_encode((float)$effectiveBookingTarget) ?>;
-                const remBooking = Math.max(0, target - bookingMoneyTotal);
                 const remReg = Math.max(0, shopRemainingLandShare);
-                return { remBooking, remReg, target };
+                const remBooking = (remReg <= 0) ? 0 : Math.min(remReg, Math.max(0, target - bookingMoneyTotal));
+                return { remBooking, remReg, target, remLandShareTotal: remReg };
             }
 
-            const target = <?= json_encode((float)$effectiveBookingTarget) ?>;
-            const remBooking = Math.max(0, target - bookingMoneyTotal);
             const effectiveLSTarget = Math.max(0, totalLandShare - discountAmount);
             const totalLSPaid = bookingMoneyTotal + allRegistrationAndLandshare;
             const remLandShareTotal = Math.max(0, effectiveLSTarget - totalLSPaid);
+            const target = <?= json_encode((float)$effectiveBookingTarget) ?>;
+            const remBooking = (remLandShareTotal <= 0) ? 0 : Math.min(remLandShareTotal, Math.max(0, target - bookingMoneyTotal));
             const bookingDeduction = Math.max(target, bookingMoneyTotal);
-            const remReg = Math.min(remLandShareTotal, Math.max(0, effectiveLSTarget - bookingDeduction - allRegistrationAndLandshare));
+            const remReg = (remLandShareTotal <= 0) ? 0 : Math.min(remLandShareTotal, Math.max(0, effectiveLSTarget - bookingDeduction - allRegistrationAndLandshare));
 
             const bmOption = paymentType ? paymentType.querySelector('option[value="booking_money"]') : null;
             if (bmOption) {
-                if (remBooking > 0) {
+                if (remBooking > 0 && remLandShareTotal > 0) {
                     bmOption.disabled = false;
                     bmOption.style.color = '';
                     bmOption.textContent = 'Booking Money' + (bookingMoneyTotal > 0 ? ' (Remaining: TK.' + remBooking.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ')' : '');
