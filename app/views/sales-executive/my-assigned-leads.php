@@ -1,5 +1,6 @@
 <!-- Custom Styles for Table and Responsiveness -->
 <?php
+$currentUserId = (int)($_SESSION['user']['id'] ?? 0);
 $totalDuplicatesCount = 0;
 $duplicateLeadIds = [];
 foreach ($myAllleads as $lead) {
@@ -1272,6 +1273,21 @@ $hasActiveFilters = !empty($search)
                                                 </button>
                                             <?php endif; ?>
                                         </div>
+                                        <?php if (!empty($bookingSellers[$lead['id']])): ?>
+                                            <div class="mt-1 d-flex flex-wrap gap-1">
+                                                <?php foreach ($bookingSellers[$lead['id']] as $seller): ?>
+                                                    <?php 
+                                                    $isSelf = ((int)$seller['sales_by_id'] === $currentUserId);
+                                                    $sellerLabel = $isSelf ? 'Sold by You' : 'Sold by: ' . htmlspecialchars($seller['seller_name'], ENT_QUOTES, 'UTF-8');
+                                                    $badgeClass = $isSelf ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-warning-subtle text-dark border border-warning-subtle';
+                                                    $iconClass = $isSelf ? 'fa-solid fa-circle-check text-success' : 'fa-solid fa-user-tag text-secondary';
+                                                    ?>
+                                                    <span class="badge <?= $badgeClass ?> py-0.5 px-1 d-inline-flex align-items-center" style="font-size: 9.5px; font-weight: 500;" title="<?= $sellerLabel ?> (<?= (int)$seller['booking_count'] ?> unit<?= (int)$seller['booking_count'] > 1 ? 's' : '' ?>)">
+                                                        <i class="<?= $iconClass ?> me-1" style="font-size: 8.5px;"></i><?= $sellerLabel ?> (<?= (int)$seller['booking_count'] ?>)
+                                                    </span>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -1634,6 +1650,22 @@ $hasActiveFilters = !empty($search)
                                 <span class="badge bg-white text-dark rounded-circle" style="font-size: 10px; width: 18px; height: 18px;  align-items: center; justify-content: center;"><?= $bookingCount[$lead['id']] ?></span>
                             <?php endif; ?>
                         </a>
+
+                        <?php if (!empty($bookingSellers[$lead['id']])): ?>
+                            <div class="d-flex flex-wrap gap-1 w-100">
+                                <?php foreach ($bookingSellers[$lead['id']] as $seller): ?>
+                                    <?php 
+                                    $isSelf = ((int)$seller['sales_by_id'] === $currentUserId);
+                                    $sellerLabel = $isSelf ? 'Sold by You' : 'Sold by: ' . htmlspecialchars($seller['seller_name'], ENT_QUOTES, 'UTF-8');
+                                    $badgeClass = $isSelf ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-warning-subtle text-dark border border-warning-subtle';
+                                    $iconClass = $isSelf ? 'fa-solid fa-circle-check text-success' : 'fa-solid fa-user-tag text-secondary';
+                                    ?>
+                                    <span class="badge <?= $badgeClass ?> py-1 px-1.5 d-inline-flex align-items-center w-100 justify-content-center" style="font-size: 10px; font-weight: 500;">
+                                        <i class="<?= $iconClass ?> me-1"></i><?= $sellerLabel ?> (<?= (int)$seller['booking_count'] ?>)
+                                    </span>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
 
                         <?php if (!empty($deleteRequests[$lead['id']])): ?>
                             <span class="badge bg-danger-subtle text-danger border border-danger-subtle w-100 py-2 d-flex justify-content-center align-items-center"

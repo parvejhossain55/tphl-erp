@@ -448,14 +448,15 @@ class Lead extends Model
             }
         }
 
-        // Also match leads who have an active booking in this project
+        // Include any lead that has an active booking in this project
         $clauses[] = "EXISTS (
-            SELECT 1 FROM lead_bookings lb_pj 
-            WHERE lb_pj.lead_id = {$tablePrefix}id 
-              AND lb_pj.deleted_at IS NULL 
-              AND lb_pj.booking_status IN ('completed', 'booked')
-              AND (lb_pj.project_id = ? OR EXISTS (SELECT 1 FROM flats f_pj WHERE f_pj.id = lb_pj.flat_id AND f_pj.project_id = ?))
-              AND lb_pj.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))
+            SELECT 1 FROM lead_bookings lb_pfilter 
+            LEFT JOIN flats f_pfilter ON lb_pfilter.flat_id = f_pfilter.id
+            WHERE lb_pfilter.lead_id = {$tablePrefix}id 
+              AND lb_pfilter.deleted_at IS NULL 
+              AND lb_pfilter.booking_status IN ('completed', 'booked') 
+              AND lb_pfilter.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))
+              AND (lb_pfilter.project_id = ? OR f_pfilter.project_id = ?)
         )";
         $params[] = $projectId;
         $params[] = $projectId;
@@ -2313,7 +2314,13 @@ class Lead extends Model
                           $ySub $mSub
                     )";
                 } else {
-                    $sql .= " AND (LOWER(leads.last_lead_action) = 'booked' OR EXISTS (SELECT 1 FROM lead_bookings lb_sub WHERE lb_sub.lead_id = leads.id AND lb_sub.deleted_at IS NULL AND lb_sub.booking_status IN ('completed', 'booked')))";
+                    $sql .= " AND EXISTS (
+                        SELECT 1 FROM lead_bookings lb_sub 
+                        WHERE lb_sub.lead_id = leads.id 
+                          AND lb_sub.deleted_at IS NULL 
+                          AND lb_sub.booking_status IN ('completed', 'booked')
+                          AND lb_sub.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))
+                    )";
                 }
             } elseif ($filter_card === 'upcoming_follow_ups') {
                 $sql .= " AND lf.next_follow_up_date IS NOT NULL AND DATE(lf.next_follow_up_date) >= CURDATE()";
@@ -2633,7 +2640,13 @@ class Lead extends Model
                           $ySub $mSub
                     )";
                 } else {
-                    $sql .= " AND (LOWER(leads.last_lead_action) = 'booked' OR EXISTS (SELECT 1 FROM lead_bookings lb_sub WHERE lb_sub.lead_id = leads.id AND lb_sub.deleted_at IS NULL AND lb_sub.booking_status IN ('completed', 'booked')))";
+                    $sql .= " AND EXISTS (
+                        SELECT 1 FROM lead_bookings lb_sub 
+                        WHERE lb_sub.lead_id = leads.id 
+                          AND lb_sub.deleted_at IS NULL 
+                          AND lb_sub.booking_status IN ('completed', 'booked')
+                          AND lb_sub.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))
+                    )";
                 }
             } elseif ($filter_card === 'upcoming_follow_ups') {
                 $sql .= " AND lf.next_follow_up_date IS NOT NULL AND DATE(lf.next_follow_up_date) >= CURDATE()";
@@ -2709,7 +2722,13 @@ class Lead extends Model
             COUNT(DISTINCT leads.id) as total_leads,
             SUM(CASE WHEN {$contactedCond} THEN 1 ELSE 0 END) as contacted_leads,
             SUM(CASE WHEN NOT {$contactedCond} THEN 1 ELSE 0 END) as not_contacted_leads,
-            SUM(CASE WHEN LOWER(leads.last_lead_action) = 'booked' THEN 1 ELSE 0 END) as booked_leads,
+            SUM(CASE WHEN EXISTS (
+                SELECT 1 FROM lead_bookings lb_c 
+                WHERE lb_c.lead_id = leads.id 
+                  AND lb_c.deleted_at IS NULL 
+                  AND lb_c.booking_status IN ('completed', 'booked') 
+                  AND lb_c.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))
+            ) THEN 1 ELSE 0 END) as booked_leads,
             SUM(CASE WHEN lf.next_follow_up_date IS NOT NULL AND DATE(lf.next_follow_up_date) >= CURDATE() THEN 1 ELSE 0 END) as upcoming_follow_ups,
             SUM(CASE WHEN lf.next_follow_up_date IS NOT NULL AND lf.next_follow_up_date > '1000-01-01' AND DATE(lf.next_follow_up_date) < CURDATE() AND lf.deleted_at IS NULL THEN 1 ELSE 0 END) as missing_follow_ups,
             SUM(CASE WHEN (leads.lead_type IN ('Invalid Lead', 'Irrelevant') OR lf.lead_status IN ('Invalid Lead', 'Irrelevant')) THEN 1 ELSE 0 END) as irrelevant_leads,
@@ -3200,16 +3219,19 @@ class Lead extends Model
         // 12. Remaining Today Follow Up
         $remainingTodayFollowUp = max(0, $todayFollowUps - $todayFollowUpComplete);
 
-        // 13. Total Sales/Booked (Synchronized with CRM lead ownership)
+        // 13. Total Sales/Booked (Synchronized with CRM lead ownership & actual salesperson)
         $sql13 = "SELECT COUNT(DISTINCT lb.id) as c 
                   FROM lead_bookings lb 
                   JOIN leads l ON l.id = lb.lead_id 
                   WHERE lb.deleted_at IS NULL AND l.deleted_at IS NULL 
-                    AND (l.assigned_id = ? OR lb.sales_by_id = ? OR lb.created_by = ?) 
-                    AND lb.booking_status IN ('completed', 'booked')";
+                    AND (COALESCE(NULLIF(lb.sales_by_id, 0), l.assigned_id) = ?) 
+                    AND lb.booking_status IN ('completed', 'booked')
+                    AND lb.id NOT IN (
+                        SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded')
+                    )";
         $totalSalesBookedUnits = 0;
         if ($stmt13 = $this->db->prepare($sql13)) {
-            $stmt13->bind_param("iii", $userId, $userId, $userId);
+            $stmt13->bind_param("i", $userId);
             $stmt13->execute();
             $totalSalesBookedUnits = (int)($stmt13->get_result()->fetch_assoc()['c'] ?? 0);
             $stmt13->close();
@@ -3264,13 +3286,16 @@ class Lead extends Model
                   FROM lead_bookings lb 
                   JOIN leads l ON l.id = lb.lead_id 
                   WHERE lb.deleted_at IS NULL AND l.deleted_at IS NULL 
-                    AND (l.assigned_id = ? OR lb.sales_by_id = ? OR lb.created_by = ?) 
+                    AND (COALESCE(NULLIF(lb.sales_by_id, 0), l.assigned_id) = ?) 
                     AND lb.booking_status IN ('completed', 'booked') 
+                    AND lb.id NOT IN (
+                        SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded')
+                    )
                     AND (DATE(lb.booking_date) BETWEEN ? AND ? OR (lb.booking_date IS NULL AND DATE(lb.created_at) BETWEEN ? AND ?))";
         $currentMonthBooking = 0;
         $currentMonthBookedLeads = 0;
         if ($stmt15 = $this->db->prepare($sql15)) {
-            $stmt15->bind_param("iiissss", $userId, $userId, $userId, $bkStart, $bkEnd, $bkStart, $bkEnd);
+            $stmt15->bind_param("issss", $userId, $bkStart, $bkEnd, $bkStart, $bkEnd);
             $stmt15->execute();
             $bkRow15 = $stmt15->get_result()->fetch_assoc();
             $currentMonthBooking = (int)($bkRow15['total_bookings'] ?? 0);

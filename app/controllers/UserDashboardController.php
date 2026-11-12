@@ -918,6 +918,7 @@ class UserDashboardController extends Controller
         // Fetch specific booking & follow-up counts ONLY for the user's leads (FAST!)
         $leadIds = !empty($myAssignedClients) ? array_column($myAssignedClients, 'id') : [];
         $bookingCount   = !empty($leadIds) ? $this->bookingModel->getBookingCountByLeadIds($leadIds) : [];
+        $bookingSellers = !empty($leadIds) ? $this->bookingModel->getBookingSellersByLeadIds($leadIds) : [];
         $followUpModel  = new FollowUp($this->db);
         $followUpCounts = !empty($leadIds) ? $followUpModel->getFollowUpCountByLeadIds($leadIds) : [];
 
@@ -945,8 +946,8 @@ class UserDashboardController extends Controller
         $totalLeadsCount        = (int)($summaryCards['total_leads'] ?? 0);
         $contactedLeadsCount    = (int)($summaryCards['contacted_leads'] ?? 0);
         $notContactedLeadsCount = (int)($summaryCards['not_contacted_leads'] ?? 0);
-        $bookedLeadsCount       = (int)($summaryCards['booked_leads'] ?? 0);
         $totalBookingsCount     = $this->leadModel->countBookingsWithFilter($year, $month, null, null, null, $userId, $from_date, $to_date, $filterProjectId, $filterCategoryId, $filterCountry, $date_type);
+        $bookedLeadsCount       = $this->leadModel->countAllWithFilter($year, $month, $lastAction, null, null, null, $userId, null, null, $from_date, $to_date, 'total_booked', $filterProjectId, $filterCategoryId, $filterCountry, $assignedHours, $date_type);
         $upcomingFollowUpsCount = (int)($summaryCards['upcoming_follow_ups'] ?? 0);
         $missingFollowUpCount   = (int)($summaryCards['missing_follow_ups'] ?? 0);
         $irrelevantLeadsCount   = (int)($summaryCards['irrelevant_leads'] ?? 0);
@@ -1139,6 +1140,7 @@ class UserDashboardController extends Controller
             'myAllleads'          => $myAssignedClients,
             'current_page'        => 'my-all-assigned-leads',
             'bookingCount'        => $bookingCount,
+            'bookingSellers'      => $bookingSellers,
             'followUpCounts'      => $followUpCounts,
             'followUpHistories'   => $followUpHistories,
             'selectedAction'      => $lastAction,
