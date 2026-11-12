@@ -2422,6 +2422,19 @@ public function showCedTransactionForm($bookingId = null)
         exit;
     }
 
+    // Check if an active/pending refund exists for this booking
+    $refundStmt = $this->db->prepare("SELECT id, status FROM client_refund_requests WHERE booking_id = ? AND status != 'rejected' ORDER BY id DESC LIMIT 1");
+    if ($refundStmt) {
+        $refundStmt->bind_param('i', $bookingId);
+        $refundStmt->execute();
+        $refundRow = $refundStmt->get_result()->fetch_assoc();
+        if ($refundRow) {
+            setError("A refund has been initiated for this booking. New cash-in transactions cannot be added.");
+            header("Location: {$GLOBALS['base_url']}/clients-cash-in-history-view/{$bookingId}");
+            exit;
+        }
+    }
+
     if (!empty($clientDetails['is_shop']) && $clientDetails['is_shop'] == 1) {
         require_once dirname(__DIR__) . '/models/AccountShopClient.php';
         $this->clientModel = new AccountShopClient($this->db);
@@ -2502,6 +2515,19 @@ public function addCedTransaction()
 
     if (session_status() === PHP_SESSION_NONE) session_start();
 
+    // Check if an active/pending refund exists for this booking
+    $refundStmt = $this->db->prepare("SELECT id, status FROM client_refund_requests WHERE booking_id = ? AND status != 'rejected' ORDER BY id DESC LIMIT 1");
+    if ($refundStmt) {
+        $refundStmt->bind_param('i', $bookingId);
+        $refundStmt->execute();
+        $refundRow = $refundStmt->get_result()->fetch_assoc();
+        if ($refundRow) {
+            setError("A refund has been initiated for this booking. New cash-in transactions cannot be added.");
+            header("Location: {$GLOBALS['base_url']}/clients-cash-in-history-view/{$bookingId}");
+            exit;
+        }
+    }
+
     $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
     if (!empty($clientDetails['is_shop']) && $clientDetails['is_shop'] == 1) {
         require_once dirname(__DIR__) . '/models/AccountShopClient.php';
@@ -2534,8 +2560,8 @@ public function addCedTransaction()
         exit;
     }
 
-    // Update agreement_value in lead_bookings if total_booking_money is provided
-    if (isset($_POST['total_booking_money']) && is_numeric($_POST['total_booking_money']) && in_array($paymentType, ['booking_money', 'registration'])) {
+    // Update agreement_value in lead_bookings if total_booking_money is provided (booking_money ONLY)
+    if (isset($_POST['total_booking_money']) && is_numeric($_POST['total_booking_money']) && $paymentType === 'booking_money') {
         $totalBookingMoney = (float)$_POST['total_booking_money'];
         $updateStmt = $this->db->prepare("UPDATE lead_bookings SET agreement_value = ? WHERE id = ?");
         $updateStmt->bind_param("di", $totalBookingMoney, $bookingId);
@@ -2706,7 +2732,7 @@ public function addCedTransaction()
         // EMAIL SENDING LOGIC
         if (!$isTestingMode) {
             $leadInfoQuery = $this->db->query("
-                SELECT l.full_name, l.email, l.alt_email, l.2nd_owner_email, p.name AS project_name, f.flat_name
+                SELECT l.full_name, l.email, l.alt_email, l.`2nd_owner_email`, p.name AS project_name, f.flat_name
                 FROM lead_bookings lb
                 LEFT JOIN leads l ON lb.lead_id = l.id
                 LEFT JOIN flats f ON lb.flat_id = f.id
@@ -2926,15 +2952,15 @@ public function addTransaction()
 
         if (session_status() === PHP_SESSION_NONE) session_start();
 
-        // Update agreement_value if total_booking_money is provided
-        if (isset($_POST['total_booking_money']) && is_numeric($_POST['total_booking_money'])) {
+        $paymentType = $_POST['payment_type'] ?? '';
+
+        // Update agreement_value if total_booking_money is provided (booking_money ONLY)
+        if (isset($_POST['total_booking_money']) && is_numeric($_POST['total_booking_money']) && $paymentType === 'booking_money') {
             $totalBookingMoney = (float)$_POST['total_booking_money'];
             $updateStmt = $this->db->prepare("UPDATE lead_bookings SET agreement_value = ? WHERE id = ?");
             $updateStmt->bind_param("di", $totalBookingMoney, $bookingId);
             $updateStmt->execute();
         }
-
-        $paymentType = $_POST['payment_type'] ?? '';
         
         // EMI due settlement is now auto-settled via unified waterfall
         if ($paymentType === 'emi_due_settlement') {
@@ -3040,7 +3066,7 @@ public function addTransaction()
             // EMAIL SENDING LOGIC
             if (!$isTestingMode) {
                 $leadInfoQuery = $this->db->query("
-                    SELECT l.full_name, l.email, l.alt_email, l.2nd_owner_email, p.name AS project_name, f.flat_name
+                    SELECT l.full_name, l.email, l.alt_email, l.`2nd_owner_email`, p.name AS project_name, f.flat_name
                     FROM lead_bookings lb
                     LEFT JOIN leads l ON lb.lead_id = l.id
                     LEFT JOIN flats f ON lb.flat_id = f.id
@@ -3201,8 +3227,8 @@ public function updateTransaction()
 
         error_log("Session User ID: " . ($_SESSION['user']['id'] ?? 'null'));
 
-        // Update agreement_value if total_booking_money is provided
-        if (isset($_POST['total_booking_money']) && is_numeric($_POST['total_booking_money']) && in_array($_POST['payment_type'] ?? '', ['booking_money', 'registration'])) {
+        // Update agreement_value if total_booking_money is provided (booking_money ONLY)
+        if (isset($_POST['total_booking_money']) && is_numeric($_POST['total_booking_money']) && ($_POST['payment_type'] ?? '') === 'booking_money') {
             $totalBookingMoney = (float)$_POST['total_booking_money'];
             $updateStmt = $this->db->prepare("UPDATE lead_bookings SET agreement_value = ? WHERE id = ?");
             $updateStmt->bind_param("di", $totalBookingMoney, $bookingId);
@@ -3422,7 +3448,12 @@ public function updateTransaction()
         }
 
         if ($fromTrash === 1) {
-            // Delete permanently from trash list
+            // Delete permanently from trash list - ONLY Management & Super Admin (Role 1 & 3)
+            if (!$isManagementUser && !in_array($roleId, [1, 3])) {
+                setError("Permission denied: Only Management can permanently delete transactions from the database.");
+                header("Location: {$redirectUrl}");
+                exit;
+            }
             $result = $this->clientModel->deleteTransactionWithCleanup($paymentId, $bookingId);
         } else {
             // Safe delete: Move to trash so it can be viewed and restored from Trash list
@@ -6102,9 +6133,11 @@ public function discountStatement($bookingId = null)
         }
 
         $roleId = (int) ($_SESSION['user']['role_id'] ?? 0);
+        $roleName = strtolower($_SESSION['user']['role'] ?? '');
         $isAccounts = in_array($roleId, [1, 3, 6, 30]);
+        $isManagementUser = ($roleId === 1 || $roleId === 3 || strpos($roleName, 'management') !== false || strpos($roleName, 'admin') !== false);
 
-        if (!$isAccounts) {
+        if (!$isAccounts && !$isManagementUser) {
             setError("You do not have permission to restore transactions.");
             header("Location: {$GLOBALS['base_url']}/trash-client-payment-list");
             exit;
@@ -6130,9 +6163,11 @@ public function discountStatement($bookingId = null)
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         $roleId = (int) ($_SESSION['user']['role_id'] ?? 0);
+        $roleName = strtolower($_SESSION['user']['role'] ?? '');
         $isAccounts = in_array($roleId, [1, 3, 6, 30]);
+        $isManagementUser = ($roleId === 1 || $roleId === 3 || strpos($roleName, 'management') !== false || strpos($roleName, 'admin') !== false);
 
-        if (!$isAccounts) {
+        if (!$isAccounts && !$isManagementUser) {
             setError("You do not have permission to view trash.");
             header("Location: {$GLOBALS['base_url']}/clients-cash-in");
             exit;
@@ -6143,7 +6178,8 @@ public function discountStatement($bookingId = null)
         $this->view("accounts/cashIn/trash-client-payment-list", [
             "current_route" => "trash-client-payment-list",
             "page_title" => "Trash Client Payment",
-            "trashedTransactions" => $trashedTransactions
+            "trashedTransactions" => $trashedTransactions,
+            "isManagementUser" => $isManagementUser
         ]);
     }
 
