@@ -1408,15 +1408,15 @@ $todayDateFormatted = date('j F');
                         <h3 class="mw-tasks-title">My Actionable</h3>
                         <span class="mw-badge-open" id="badgeOpenCount"><?= $openTasksCount ?> open</span>
                     </div>
-                    <!-- 
-                    <div style="display:inline-block; width:1px; height:18px; background:#D8E3DD;"></div>
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <h3 class="mw-tasks-title" style="color:#2D453E;">My Reviewed</h3>
-                        <span class="mw-badge-open" id="badgeReviewedCount" style="background:#EBF2FE; color:#1864AB; font-weight:700;">
-                            <?= (int)($myReviewedCompletedCount ?? 0) ?> completed
-                        </span>
-                    </div> 
-                    -->
+                    <div id="wrapUpdatedBy" style="display:<?= $tab === 'reviewer' ? 'flex' : 'none' ?>; align-items:center; gap:16px;">
+                        <div style="display:inline-block; width:1px; height:18px; background:#D8E3DD;"></div>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <h3 class="mw-tasks-title" style="color:#2D453E;">Updated By</h3>
+                            <span class="mw-badge-open" id="badgeReviewedCount" style="background:#EBF2FE; color:#1864AB; font-weight:700;">
+                                <?= (int)($myReviewedCompletedCount ?? 0) ?> completed
+                            </span>
+                        </div>
+                    </div>
                 </div>
                 <div class="mw-tasks-completed-text" id="textCompletedCount">
                     <?= $completedTasksCount ?> completed
@@ -1546,7 +1546,8 @@ $todayDateFormatted = date('j F');
                                     $statusClass = 'expired';
                                     $statusLabel = 'Expired';
                                 }
-                                if (!$isCompleted && (int)$t['progress'] >= 80) {
+                                $rowRevCount = preg_match_all('/\d+/', (string)($t['mentioned_user_ids'] ?? ''), $mRev);
+                                if (!$isCompleted && !empty($t['is_submitted_for_review']) && $rowRevCount > 0) {
                                     $statusClass = 'in-review';
                                     $statusLabel = 'In review';
                                 }
@@ -2100,6 +2101,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (statDueToday) statDueToday.innerText = data.counts.due_today;
                     if (statNext7) statNext7.innerText = data.counts.next7;
                     if (statReview) statReview.innerText = data.counts.waiting_review;
+                }
+
+                const wrapUpdatedBy = document.getElementById('wrapUpdatedBy');
+                if (wrapUpdatedBy) {
+                    wrapUpdatedBy.style.display = (currentTab === 'reviewer') ? 'flex' : 'none';
                 }
 
                 // Update Browser URL state silently without page reload
@@ -3116,13 +3122,16 @@ document.addEventListener('DOMContentLoaded', function () {
             let actionBtnHtml = '';
             if (t.is_completed) {
                 actionBtnHtml = `<button type="button" class="mw-td-btn" disabled style="background:#EDF2EF;color:#087F5B;border-color:#EDF2EF;"><i class="fa-solid fa-check-double me-1"></i> Completed</button>`;
+            } else if (t.status_class === 'in_review') {
+                actionBtnHtml = `<button type="button" class="mw-td-btn" disabled style="background:#F4EFFA;color:#7757AB;border-color:#F4EFFA;font-weight:700;"><i class="fa-solid fa-hourglass-half me-1"></i> Submitted for review</button>`;
             } else if (isPending && t.can_check) {
                 actionBtnHtml = `<button type="button" class="mw-td-btn primary" id="btnDrawerStartTask" style="background:#087F5B;color:#fff;border-color:#087F5B;"><i class="fa-solid fa-play me-1"></i> Start working</button>`;
             } else if (t.can_complete) {
                 const btnLabel = hasReviewers ? 'Submit for review' : 'Complete Task';
                 actionBtnHtml = `<button type="button" class="mw-td-btn primary" id="btnDrawerCompleteTask" style="background:#087F5B;color:#fff;border-color:#087F5B;"><i class="fa-solid fa-check me-1"></i> ${btnLabel}</button>`;
             } else {
-                actionBtnHtml = `<button type="button" class="mw-td-btn" disabled style="background:#EDF2EF;color:#8A9992;border-color:#EDF2EF;"><i class="fa-solid fa-check me-1"></i> Complete Task</button>`;
+                const disabledLabel = hasReviewers ? 'Awaiting Review' : 'Complete Task';
+                actionBtnHtml = `<button type="button" class="mw-td-btn" disabled style="background:#EDF2EF;color:#8A9992;border-color:#EDF2EF;"><i class="fa-solid fa-check me-1"></i> ${disabledLabel}</button>`;
             }
 
             footActions.innerHTML = `
@@ -3219,7 +3228,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(data => {
                     if (data.status === 'success') {
                         if (data.all_completed) {
-                            showMwToast(data.message || 'All acceptance completed. You can now submit for review.', 'success');
+                            const hasRev = (Array.isArray(t.reviewers) && t.reviewers.length > 0);
+                            showMwToast(hasRev ? 'All acceptance completed. You can now submit for review.' : 'All acceptance completed. You can now complete the task.', 'success');
+                            if (window.openTaskDetail && currentDetailTaskId) {
+                                window.openTaskDetail(currentDetailTaskId);
+                            }
+                        } else if (t.status_class === 'in_review') {
+                            // Unchecking an item while in review refreshes drawer back to in_progress
                             if (window.openTaskDetail && currentDetailTaskId) {
                                 window.openTaskDetail(currentDetailTaskId);
                             }

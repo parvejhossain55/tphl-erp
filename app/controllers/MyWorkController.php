@@ -39,6 +39,17 @@ class MyWorkController extends Controller
             $tab = 'all';
         }
 
+        // Subquery condition: Task has been officially submitted for review by the assignee
+        $submittedForReviewSql = "EXISTS (
+            SELECT 1 FROM task_activities a_sub 
+            WHERE a_sub.task_id = t.id 
+              AND a_sub.activity LIKE '%submitted for review%'
+              AND a_sub.id > COALESCE(
+                  (SELECT MAX(a_req.id) FROM task_activities a_req WHERE a_req.task_id = t.id AND (a_req.activity LIKE 'Requested changes%' OR a_req.activity LIKE 'Unchecked acceptance%')),
+                  0
+              )
+        )";
+
         // Search & Filters
         $search = trim($_GET['search'] ?? '');
         $priorityFilter = trim($_GET['priority'] ?? '');
@@ -94,7 +105,7 @@ class MyWorkController extends Controller
             'overdue'   => "t.status != 'completed' AND t.deadline IS NOT NULL AND t.deadline < NOW()",
             'due_today' => "t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) = CURDATE()",
             'next7'     => "t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) > CURDATE() AND DATE(t.deadline) <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)",
-            'review'    => "t.status != 'completed' AND t.employee_accept = 1 AND t.mentioned_user_ids IS NOT NULL AND t.mentioned_user_ids != '' AND t.mentioned_user_ids != '[]'",
+            'review'    => "t.status != 'completed' AND t.mentioned_user_ids IS NOT NULL AND t.mentioned_user_ids != '' AND t.mentioned_user_ids != '[]' AND {$submittedForReviewSql}",
         ];
         $countMetric = function (string $cond) use ($scopeSql, $scopeParams, $scopeTypes): int {
             $st = $this->db->prepare("SELECT COUNT(*) FROM tasks t WHERE {$scopeSql} AND {$cond}");
@@ -234,7 +245,8 @@ class MyWorkController extends Controller
                 des_assigned.name AS assignee_designation,
                 u_by.full_name AS assigned_by_name,
                 u_by.photo AS assigned_by_photo,
-                des_by.name AS assigned_by_designation
+                des_by.name AS assigned_by_designation,
+                ({$submittedForReviewSql}) AS is_submitted_for_review
             FROM tasks t
             LEFT JOIN todo_projects tp ON t.todo_project_id = tp.id
             LEFT JOIN projects rp ON t.project_id = rp.id
@@ -280,7 +292,7 @@ class MyWorkController extends Controller
                       SELECT 1 FROM task_activities a 
                       WHERE a.task_id = t.id AND a.activity LIKE 'Approved task as completed%'
                   ))
-                  OR (t.status != 'completed' AND t.employee_accept = 1)
+                  OR (t.status != 'completed' AND {$submittedForReviewSql})
               )
             ORDER BY COALESCE(t.updated_at, t.created_at) DESC
             LIMIT 2
@@ -449,6 +461,7 @@ class MyWorkController extends Controller
             "waitingReviewCount"     => $waitingReviewCount,
             "openTasksCount"         => $openTasksCount,
             "completedTasksCount"    => $completedTasksCount,
+            "myReviewedCompletedCount" => $myReviewedCompletedCount,
             "tasks"                  => $tasks,
             "reviewTasks"            => $reviewTasks,
             "blockedTask"            => $blockedTask,
@@ -607,7 +620,8 @@ class MyWorkController extends Controller
                 $statusLabel = 'Expired';
             }
             $rowReviewers = $ids($t['mentioned_user_ids'] ?? '');
-            if (!$isCompleted && !empty($t['employee_accept']) && count($rowReviewers) > 0) {
+            $isSubmittedForReview = !empty($t['is_submitted_for_review']);
+            if (!$isCompleted && $isSubmittedForReview && count($rowReviewers) > 0) {
                 $statusClass = 'in-review';
                 $statusLabel = 'In review';
             }
@@ -1067,7 +1081,31 @@ class MyWorkController extends Controller
         $isCompleted = $t['status'] === 'completed';
         $statusLabel = ['pending' => 'To do', 'in_progress' => 'In progress', 'completed' => 'Completed', 'expired' => 'Expired'][$t['status']] ?? 'To do';
         $statusClass = $t['status'];
-        if (!$isCompleted && !empty($t['employee_accept']) && count($reviewerIds) > 0) {
+
+        // Check if task was submitted for review
+        $isSubmittedForReview = false;
+        if (!$isCompleted && count($reviewerIds) > 0) {
+            $stSub = $this->db->prepare("
+                SELECT 1 FROM task_activities a_sub
+                WHERE a_sub.task_id = ? 
+                  AND a_sub.activity LIKE '%submitted for review%'
+                  AND a_sub.id > COALESCE(
+                      (SELECT MAX(a_req.id) FROM task_activities a_req WHERE a_req.task_id = ? AND (a_req.activity LIKE 'Requested changes%' OR a_req.activity LIKE 'Unchecked acceptance%')),
+                      0
+                  )
+                LIMIT 1
+            ");
+            if ($stSub) {
+                $stSub->bind_param("ii", $id, $id);
+                $stSub->execute();
+                if ($stSub->get_result()->num_rows > 0) {
+                    $isSubmittedForReview = true;
+                }
+                $stSub->close();
+            }
+        }
+
+        if (!$isCompleted && $isSubmittedForReview && count($reviewerIds) > 0) {
             $statusLabel = 'In review';
             $statusClass = 'in_review';
         }
@@ -1613,8 +1651,8 @@ class MyWorkController extends Controller
         $collabIds = $ids($task['collaborator_user_ids'] ?? '');
         $reviewerIds = $ids($task['mentioned_user_ids'] ?? '');
 
-        // Can complete if Assignee (user_id), Collaborator, Owner (assigned_by), or Admin
-        $canComplete = ((int)$task['user_id'] === $userId || in_array($userId, $collabIds, true) || (int)$task['assigned_by'] === $userId || in_array($roleId, [1, 3, 33], true));
+        // Can complete/submit if Assignee (user_id) or Collaborator
+        $canComplete = ((int)$task['user_id'] === $userId || in_array($userId, $collabIds, true));
 
         if (!$canComplete) {
             if ($isAjax) {
@@ -1864,7 +1902,7 @@ class MyWorkController extends Controller
         $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
         $reviewerIds = $ids($task['mentioned_user_ids'] ?? '');
 
-        $isReviewer = in_array($userId, $reviewerIds, true) || in_array($roleId, [1, 3, 33], true);
+        $isReviewer = in_array($userId, $reviewerIds, true);
         if (!$isReviewer) {
             echo json_encode(['status' => 'error', 'message' => "Only an assigned reviewer can review this task."]);
             exit;
