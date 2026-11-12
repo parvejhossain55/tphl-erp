@@ -39,6 +39,17 @@ class MyWorkController extends Controller
             $tab = 'all';
         }
 
+        // Subquery condition: Task has been officially submitted for review by the assignee
+        $submittedForReviewSql = "EXISTS (
+            SELECT 1 FROM task_activities a_sub 
+            WHERE a_sub.task_id = t.id 
+              AND a_sub.activity LIKE '%submitted for review%'
+              AND a_sub.id > COALESCE(
+                  (SELECT MAX(a_req.id) FROM task_activities a_req WHERE a_req.task_id = t.id AND (a_req.activity LIKE 'Requested changes%' OR a_req.activity LIKE 'Unchecked acceptance%')),
+                  0
+              )
+        )";
+
         // Search & Filters
         $search = trim($_GET['search'] ?? '');
         $priorityFilter = trim($_GET['priority'] ?? '');
@@ -75,8 +86,8 @@ class MyWorkController extends Controller
             $scopeSql = $mentionSql;
             $scopeParams = [$userId];
         } elseif ($tab === 'realestate_project') {
-            $scopeSql = "(t.project_id IS NOT NULL AND (t.user_id = ? OR t.assigned_by = ?))";
-            $scopeParams = [$userId, $userId];
+            $scopeSql = "((t.project_id IS NOT NULL AND t.project_id > 0) OR (t.todo_project_id IS NOT NULL AND t.todo_project_id > 0)) AND {$allScopeSql}";
+            $scopeParams = $allScopeParams;
         } elseif ($tab === 'self_initiated') {
             $scopeSql = "(t.user_id = ? AND t.assigned_by = ?)";
             $scopeParams = [$userId, $userId];
@@ -94,7 +105,7 @@ class MyWorkController extends Controller
             'overdue'   => "t.status != 'completed' AND t.deadline IS NOT NULL AND t.deadline < NOW()",
             'due_today' => "t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) = CURDATE()",
             'next7'     => "t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) > CURDATE() AND DATE(t.deadline) <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)",
-            'review'    => "t.status != 'completed' AND (t.progress >= 80 OR t.employee_accept = 1)",
+            'review'    => "t.status != 'completed' AND t.mentioned_user_ids IS NOT NULL AND t.mentioned_user_ids != '' AND t.mentioned_user_ids != '[]' AND {$submittedForReviewSql}",
         ];
         $countMetric = function (string $cond) use ($scopeSql, $scopeParams, $scopeTypes): int {
             $st = $this->db->prepare("SELECT COUNT(*) FROM tasks t WHERE {$scopeSql} AND {$cond}");
@@ -119,6 +130,17 @@ class MyWorkController extends Controller
         $totals = $stmtTotals->get_result()->fetch_assoc();
         $openTasksCount = (int) ($totals['open_count'] ?? 0);
         $completedTasksCount = (int) ($totals['completed_count'] ?? 0);
+
+        // Count tasks reviewed and completed where the current user is a reviewer
+        $stmtMyReviewed = $this->db->prepare("
+            SELECT COUNT(DISTINCT t.id)
+            FROM tasks t
+            WHERE t.status = 'completed'
+              AND FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.mentioned_user_ids, '[', ''), ']', ''), ' ', ''))
+        ");
+        $stmtMyReviewed->bind_param("i", $userId);
+        $stmtMyReviewed->execute();
+        $myReviewedCompletedCount = (int) ($stmtMyReviewed->get_result()->fetch_row()[0] ?? 0);
 
         // 5b. Summary cards (scope = active tab)
         $stmtAll = $this->db->prepare("
@@ -216,16 +238,18 @@ class MyWorkController extends Controller
         $sql = "
             SELECT 
                 t.*,
-                tp.name AS project_name,
+                COALESCE(rp.name, tp.name, 'General') AS project_name,
                 tp.color_code AS project_color,
                 u_assigned.full_name AS assignee_name,
                 u_assigned.photo AS assignee_photo,
                 des_assigned.name AS assignee_designation,
                 u_by.full_name AS assigned_by_name,
                 u_by.photo AS assigned_by_photo,
-                des_by.name AS assigned_by_designation
+                des_by.name AS assigned_by_designation,
+                ({$submittedForReviewSql}) AS is_submitted_for_review
             FROM tasks t
             LEFT JOIN todo_projects tp ON t.todo_project_id = tp.id
+            LEFT JOIN projects rp ON t.project_id = rp.id
             LEFT JOIN users u_assigned ON t.user_id = u_assigned.id
             LEFT JOIN designations des_assigned ON u_assigned.designation_id = des_assigned.id
             LEFT JOIN users u_by ON t.assigned_by = u_by.id
@@ -233,11 +257,13 @@ class MyWorkController extends Controller
             WHERE {$whereSql}
             ORDER BY 
                 CASE 
+                    WHEN t.status = 'completed' THEN 99
                     WHEN t.status != 'completed' AND t.deadline IS NOT NULL AND t.deadline < NOW() THEN 1
                     WHEN t.status != 'completed' AND DATE(t.deadline) = CURDATE() THEN 2
                     WHEN t.status != 'completed' THEN 3
                     ELSE 4
                 END,
+                CASE WHEN t.status = 'completed' THEN COALESCE(t.updated_at, t.created_at) END DESC,
                 t.deadline ASC,
                 t.id DESC
             " . ($viewAll ? "LIMIT 1000" : "LIMIT 50") . "
@@ -266,7 +292,7 @@ class MyWorkController extends Controller
                       SELECT 1 FROM task_activities a 
                       WHERE a.task_id = t.id AND a.activity LIKE 'Approved task as completed%'
                   ))
-                  OR (t.status != 'completed' AND t.progress >= 80)
+                  OR (t.status != 'completed' AND {$submittedForReviewSql})
               )
             ORDER BY COALESCE(t.updated_at, t.created_at) DESC
             LIMIT 2
@@ -352,10 +378,14 @@ class MyWorkController extends Controller
                 $footerInfoText = 'Showing all ' . count($tasks) . ' tasks · Sorted by deadline';
             } elseif ($metricFilter === 'review_submission' || $metricFilter === 'review_attention') {
                 $footerInfoText = 'Showing ' . count($tasks) . ' task' . (count($tasks) === 1 ? '' : 's') . ' with review feedback · Sorted by latest review';
-            } else {
+            } elseif ($statusFilter === 'open') {
                 $footerInfoText = 'Showing ' . count($tasks) . ' of ' . $openTasksCount . ' open tasks · Sorted by deadline';
+            } else {
+                $totalInTab = $openTasksCount + $completedTasksCount;
+                $footerInfoText = 'Showing ' . count($tasks) . ' of ' . $totalInTab . ' tasks · Sorted by deadline';
             }
             $reviewCardHtml = $this->renderReviewCardHtml($reviewTasks);
+            $attentionCardHtml = $this->renderAttentionCardHtml($blockedTask);
             echo json_encode([
                 'status' => 'success',
                 'all_stats' => $allStats,
@@ -366,10 +396,12 @@ class MyWorkController extends Controller
                     'waiting_review' => $waitingReviewCount,
                     'open'           => $openTasksCount,
                     'completed'      => $completedTasksCount,
+                    'my_reviewed'    => $myReviewedCompletedCount,
                     'showing'        => count($tasks)
                 ],
                 'table_html' => $tableHtml,
                 'review_card_html' => $reviewCardHtml,
+                'attention_card_html' => $attentionCardHtml,
                 'footer_info' => $footerInfoText
             ]);
             exit;
@@ -429,6 +461,7 @@ class MyWorkController extends Controller
             "waitingReviewCount"     => $waitingReviewCount,
             "openTasksCount"         => $openTasksCount,
             "completedTasksCount"    => $completedTasksCount,
+            "myReviewedCompletedCount" => $myReviewedCompletedCount,
             "tasks"                  => $tasks,
             "reviewTasks"            => $reviewTasks,
             "blockedTask"            => $blockedTask,
@@ -475,6 +508,63 @@ class MyWorkController extends Controller
         return $out;
     }
 
+    private function renderAttentionCardHtml($blockedTask)
+    {
+        $out = '<h4 class="mw-focus-title">Task Attention</h4>';
+        $out .= '<div class="mw-focus-subtitle">Priority or response needed</div>';
+
+        if ($blockedTask) {
+            $isRevSub = !empty($blockedTask['is_review_submission']);
+            $badgeText = $isRevSub
+                ? 'Review Feedback'
+                : ((!empty($blockedTask['remarks']) && stripos($blockedTask['remarks'], 'block') !== false) ? 'Action Blocked' : 'High Priority');
+
+            $nextActionPerson = !empty($blockedTask['reviewer_name']) 
+                ? $blockedTask['reviewer_name'] 
+                : (!empty($blockedTask['assigned_by_name']) ? $blockedTask['assigned_by_name'] : 'Lead');
+            $nextActionDate = !empty($blockedTask['last_review_time']) 
+                ? date('j M', strtotime($blockedTask['last_review_time']))
+                : (!empty($blockedTask['deadline']) ? date('j M', strtotime($blockedTask['deadline'])) : 'Soon');
+
+            $displayNote = '';
+            if (!empty($blockedTask['last_review_activity']) && preg_match('/note:\s*["\']?(.*?)["\']?$/is', $blockedTask['last_review_activity'], $mNote)) {
+                $displayNote = trim($mNote[1], " \"'\t\n\r");
+            } elseif (!empty($blockedTask['remarks'])) {
+                if (preg_match('/Reviewer Note \([^)]+\):\s*(.*?)(?=\n|$)/is', $blockedTask['remarks'], $mNote)) {
+                    $displayNote = trim($mNote[1]);
+                } else {
+                    $displayNote = $blockedTask['remarks'];
+                }
+            }
+
+            $taskId = (int)$blockedTask['id'];
+            $titleSafe = htmlspecialchars($blockedTask['title']);
+            $badgeTextSafe = htmlspecialchars($badgeText);
+            $nextActionPersonSafe = htmlspecialchars($nextActionPerson);
+            $nextActionDateSafe = htmlspecialchars($nextActionDate);
+
+            $noteHtml = '';
+            if (!empty($displayNote)) {
+                $noteTrunc = htmlspecialchars(mb_strimwidth($displayNote, 0, 80, '...'));
+                $noteHtml = '<br><small class="text-muted"><i class="fa-regular fa-comment-dots me-1"></i>' . $noteTrunc . '</small>';
+            }
+
+            $out .= '<span class="mw-badge-waiting">' . $badgeTextSafe . '</span>';
+            $out .= '<p class="mw-blocked-desc" style="cursor: pointer;" onclick="openTaskDetail(' . $taskId . '); return false;" title="Click to view task details">';
+            $out .= $titleSafe . $noteHtml;
+            $out .= '</p>';
+            $out .= '<div class="mw-blocked-action">';
+            $out .= 'Next action: ' . $nextActionPersonSafe . ' · ' . $nextActionDateSafe;
+            $out .= '</div>';
+            $out .= '<a href="javascript:void(0);" onclick="openTaskDetail(' . $taskId . '); return false;" class="mw-btn-opentask" id="btnAttentionOpenTask" title="Open task details">';
+            $out .= '<i class="fa-solid fa-arrow-right"></i><span>Open task</span>';
+            $out .= '</a>';
+        } else {
+            $out .= '<div class="text-muted small py-2"><i class="fa-regular fa-circle-check text-success me-1"></i> All active tasks are progressing on track!</div>';
+        }
+        return $out;
+    }
+
     private function renderTaskRowsHtml($tasks, $tab, $userId, $baseUrl)
     {
         if (empty($tasks)) {
@@ -488,6 +578,7 @@ class MyWorkController extends Controller
             </tr>';
         }
 
+        $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
         $html = '';
         foreach ($tasks as $index => $t) {
             $taskId = (int) $t['id'];
@@ -528,7 +619,9 @@ class MyWorkController extends Controller
                 $statusClass = 'expired';
                 $statusLabel = 'Expired';
             }
-            if (!$isCompleted && (int)$t['progress'] >= 80) {
+            $rowReviewers = $ids($t['mentioned_user_ids'] ?? '');
+            $isSubmittedForReview = !empty($t['is_submitted_for_review']);
+            if (!$isCompleted && $isSubmittedForReview && count($rowReviewers) > 0) {
                 $statusClass = 'in-review';
                 $statusLabel = 'In review';
             }
@@ -923,11 +1016,12 @@ class MyWorkController extends Controller
         }
 
         $st = $this->db->prepare("
-            SELECT t.*, tp.name AS project_name,
+            SELECT t.*, COALESCE(rp.name, tp.name, 'General') AS project_name,
                    u_o.full_name AS owner_name, u_b.full_name AS assigned_by_name,
                    dept.name AS department_name
             FROM tasks t
             LEFT JOIN todo_projects tp ON t.todo_project_id = tp.id
+            LEFT JOIN projects rp ON t.project_id = rp.id
             LEFT JOIN users u_o ON t.user_id = u_o.id
             LEFT JOIN users u_b ON t.assigned_by = u_b.id
             LEFT JOIN employees e_owner ON (e_owner.user_id = u_b.id OR e_owner.id = u_b.employee_id)
@@ -987,7 +1081,31 @@ class MyWorkController extends Controller
         $isCompleted = $t['status'] === 'completed';
         $statusLabel = ['pending' => 'To do', 'in_progress' => 'In progress', 'completed' => 'Completed', 'expired' => 'Expired'][$t['status']] ?? 'To do';
         $statusClass = $t['status'];
-        if (!$isCompleted && (int)$t['progress'] >= 80) {
+
+        // Check if task was submitted for review
+        $isSubmittedForReview = false;
+        if (!$isCompleted && count($reviewerIds) > 0) {
+            $stSub = $this->db->prepare("
+                SELECT 1 FROM task_activities a_sub
+                WHERE a_sub.task_id = ? 
+                  AND a_sub.activity LIKE '%submitted for review%'
+                  AND a_sub.id > COALESCE(
+                      (SELECT MAX(a_req.id) FROM task_activities a_req WHERE a_req.task_id = ? AND (a_req.activity LIKE 'Requested changes%' OR a_req.activity LIKE 'Unchecked acceptance%')),
+                      0
+                  )
+                LIMIT 1
+            ");
+            if ($stSub) {
+                $stSub->bind_param("ii", $id, $id);
+                $stSub->execute();
+                if ($stSub->get_result()->num_rows > 0) {
+                    $isSubmittedForReview = true;
+                }
+                $stSub->close();
+            }
+        }
+
+        if (!$isCompleted && $isSubmittedForReview && count($reviewerIds) > 0) {
             $statusLabel = 'In review';
             $statusClass = 'in_review';
         }
@@ -1045,7 +1163,8 @@ class MyWorkController extends Controller
             }
         }
 
-        $canCheckChecklist = ((int)$t['user_id'] === $userId || in_array($userId, $collabIds, true) || (int)$t['assigned_by'] === $userId || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33], true));
+        // Can check checklist if Assignee (user_id) or Collaborator
+        $canCheckChecklist = ((int)$t['user_id'] === $userId || in_array($userId, $collabIds, true));
 
         // Fetch recent activities for this task
         $activities = [];
@@ -1088,6 +1207,15 @@ class MyWorkController extends Controller
         }
         $actStmt->close();
 
+        // Check if this task has already been approved by a reviewer
+        $isReviewApproved = false;
+        foreach ($activities as $actItem) {
+            if ($actItem['type'] === 'system' && stripos($actItem['activity'], 'Approved task as completed') !== false) {
+                $isReviewApproved = true;
+                break;
+            }
+        }
+
         // Team members for @mention autocomplete - all valid users
         $teammates = [];
         $resTeam = $this->db->query("
@@ -1123,6 +1251,9 @@ class MyWorkController extends Controller
                 'title' => $t['title'],
                 'status' => $t['status'],
                 'is_completed' => $isCompleted,
+                'is_review_approved' => $isReviewApproved,
+                'is_owner' => ((int)$t['assigned_by'] === $userId),
+                'satisfaction_rating' => !empty($t['satisfaction_rating']) ? (int)$t['satisfaction_rating'] : null,
                 'is_reviewer' => in_array($userId, $reviewerIds, true),
                 'can_complete' => (!$isCompleted && $canCheckChecklist),
                 'can_request_extension' => (!$isCompleted && ((int)$t['user_id'] === $userId || in_array($userId, $collabIds, true))),
@@ -1520,8 +1651,8 @@ class MyWorkController extends Controller
         $collabIds = $ids($task['collaborator_user_ids'] ?? '');
         $reviewerIds = $ids($task['mentioned_user_ids'] ?? '');
 
-        // Can complete if Assignee (user_id), Collaborator, Owner (assigned_by), or Admin
-        $canComplete = ((int)$task['user_id'] === $userId || in_array($userId, $collabIds, true) || (int)$task['assigned_by'] === $userId || in_array($roleId, [1, 3, 33], true));
+        // Can complete/submit if Assignee (user_id) or Collaborator
+        $canComplete = ((int)$task['user_id'] === $userId || in_array($userId, $collabIds, true));
 
         if (!$canComplete) {
             if ($isAjax) {
@@ -1532,6 +1663,46 @@ class MyWorkController extends Controller
             if (function_exists('setError')) setError("You don't have permission to complete this task.");
             header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
             exit;
+        }
+
+        // Validate checklist: All checklist items must be completed before completing the task
+        $rawChecklist = $task['checklist_data'] ?? '';
+        $checklistItems = [];
+        if ($rawChecklist) {
+            $decoded = json_decode($rawChecklist, true);
+            if (is_array($decoded)) {
+                $checklistItems = $decoded;
+            }
+        }
+        if (empty($checklistItems)) {
+            $descRaw = (string)($task['description'] ?? '');
+            if (preg_match_all('/<li>(.*?)<\/li>/is', $descRaw, $matches)) {
+                foreach ($matches[1] as $idx => $m) {
+                    $itemText = trim(html_entity_decode(strip_tags($m)));
+                    if ($itemText !== '') {
+                        $checklistItems[] = ['id' => $idx + 1, 'text' => $itemText, 'completed' => false];
+                    }
+                }
+            }
+        }
+        if (!empty($checklistItems)) {
+            $uncompletedCount = 0;
+            foreach ($checklistItems as $item) {
+                if (empty($item['completed'])) {
+                    $uncompletedCount++;
+                }
+            }
+            if ($uncompletedCount > 0) {
+                $msg = "Please complete all acceptance ({$uncompletedCount} remaining) before completing the task.";
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['status' => 'error', 'message' => $msg]);
+                    exit;
+                }
+                if (function_exists('setError')) setError($msg);
+                header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+                exit;
+            }
         }
 
         $hasReviewers = count($reviewerIds) > 0;
@@ -1731,7 +1902,7 @@ class MyWorkController extends Controller
         $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
         $reviewerIds = $ids($task['mentioned_user_ids'] ?? '');
 
-        $isReviewer = in_array($userId, $reviewerIds, true) || in_array($roleId, [1, 3, 33], true);
+        $isReviewer = in_array($userId, $reviewerIds, true);
         if (!$isReviewer) {
             echo json_encode(['status' => 'error', 'message' => "Only an assigned reviewer can review this task."]);
             exit;
@@ -1820,10 +1991,10 @@ class MyWorkController extends Controller
         $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
         $collabIds = $ids($task['collaborator_user_ids'] ?? '');
 
-        // Can toggle checklist if Assignee (user_id), Collaborator, Owner (assigned_by), or Admin
-        $canToggle = ((int)$task['user_id'] === $userId || in_array($userId, $collabIds, true) || (int)$task['assigned_by'] === $userId || in_array($roleId, [1, 3, 33], true));
+        // Can toggle checklist if Assignee (user_id) or Collaborator
+        $canToggle = ((int)$task['user_id'] === $userId || in_array($userId, $collabIds, true));
         if (!$canToggle) {
-            echo json_encode(['status' => 'error', 'message' => "Only the assignee or owner can check items."]);
+            echo json_encode(['status' => 'error', 'message' => "Only the assignee or collaborators can check checklist items."]);
             exit;
         }
 
@@ -1876,22 +2047,13 @@ class MyWorkController extends Controller
         $allDone = ($totalItems > 0 && $completedItems === $totalItems);
         $progress = $totalItems > 0 ? (int)round(($completedItems / $totalItems) * 100) : (int)($task['progress'] ?? 0);
 
-        // Status update logic: if all items are done, mark as completed (or ready for review)
+        // Status update logic: unchecking reverts completed status back to in_progress
         $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
         $reviewerIds = $ids($task['mentioned_user_ids'] ?? '');
         $hasReviewers = count($reviewerIds) > 0;
 
         $newStatus = $task['status'];
-        if ($allDone) {
-            if ($hasReviewers) {
-                // If reviewers exist, keep in_progress with review readiness (85% progress)
-                $newStatus = 'in_progress';
-                $progress = max($progress, 85);
-            } else {
-                $newStatus = 'completed';
-                $progress = 100;
-            }
-        } elseif ($task['status'] === 'completed' && !$allDone) {
+        if ($task['status'] === 'completed' && !$allDone) {
             // Unchecking any item reverts status back to in_progress
             $newStatus = 'in_progress';
         }
@@ -1904,11 +2066,11 @@ class MyWorkController extends Controller
 
             // Log activity event
             $itemText = $checklist[$itemIndex]['text'] ?? 'item';
-            $actMsg = $completed ? "Completed checklist item: \"{$itemText}\"" : "Unchecked checklist item: \"{$itemText}\"";
+            $actMsg = $completed ? "Completed Acceptence : \"{$itemText}\"" : "Unchecked acceptance: \"{$itemText}\"";
             $this->logTaskActivity($id, $userId, 'system', $actMsg);
 
             if ($allDone && $task['status'] !== 'completed') {
-                $this->logTaskActivity($id, $userId, 'system', "All acceptance checklist items completed. Task marked as completed.");
+                $this->logTaskActivity($id, $userId, 'system', "All acceptance completed.");
             }
 
             echo json_encode([
@@ -1918,7 +2080,7 @@ class MyWorkController extends Controller
                 'progress' => $progress,
                 'task_status' => $newStatus,
                 'all_completed' => $allDone,
-                'message' => $allDone ? 'All checklist items completed! Task marked as completed.' : 'Checklist updated.'
+                'message' => $allDone ? 'All acceptance completed!' : 'Acceptance updated.'
             ]);
             exit;
         } else {
@@ -2114,6 +2276,103 @@ class MyWorkController extends Controller
             echo json_encode(['status' => 'error', 'message' => 'Failed to log extension request.']);
             exit;
         }
+    }
+
+    /**
+     * Submit task owner feedback and 1-5 satisfaction rating
+     * POST /my-work/submit-feedback/{id}
+     */
+    public function submitFeedback($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        header('Content-Type: application/json; charset=utf-8');
+        $id = (int)$id;
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        if (!$userId) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        $rating = isset($_POST['rating']) ? (int)$_POST['rating'] : 0;
+        $feedbackText = trim($_POST['feedback'] ?? '');
+
+        if ($rating < 1 || $rating > 5) {
+            echo json_encode(['status' => 'error', 'message' => 'Please select a rating between 1 and 5 stars.']);
+            exit;
+        }
+
+        $st = $this->db->prepare("SELECT id, title, assigned_by, user_id, status FROM tasks WHERE id = ?");
+        $st->bind_param("i", $id);
+        $st->execute();
+        $task = $st->get_result()->fetch_assoc();
+        if (!$task) {
+            echo json_encode(['status' => 'error', 'message' => 'Task not found.']);
+            exit;
+        }
+
+        // Only allowed if task is completed
+        if ($task['status'] !== 'completed') {
+            echo json_encode(['status' => 'error', 'message' => 'Feedback can only be provided for completed tasks.']);
+            exit;
+        }
+
+        // Only Task Owner (assigned_by) or Admin can give feedback
+        $isOwner = ((int)$task['assigned_by'] === $userId || in_array($roleId, [1, 3, 33], true));
+        if (!$isOwner) {
+            echo json_encode(['status' => 'error', 'message' => 'Only the task owner can submit feedback and rating.']);
+            exit;
+        }
+
+        // Update satisfaction_rating in tasks table
+        $stmtUp = $this->db->prepare("UPDATE tasks SET satisfaction_rating = ?, updated_at = NOW() WHERE id = ?");
+        $stmtUp->bind_param("ii", $rating, $id);
+        if (!$stmtUp->execute()) {
+            $err = $stmtUp->error;
+            $stmtUp->close();
+            echo json_encode(['status' => 'error', 'message' => 'Failed to save rating: ' . $err]);
+            exit;
+        }
+        $stmtUp->close();
+
+        // Format activity entry
+        $starIcons = str_repeat('★', $rating) . str_repeat('☆', 5 - $rating);
+        $ownerName = $_SESSION['user']['full_name'] ?? 'Task owner';
+        $logActivityText = "{$ownerName} rated this task {$rating}/5 stars ({$starIcons}).";
+        if ($feedbackText !== '') {
+            $logActivityText .= " Feedback: \"{$feedbackText}\"";
+        }
+
+        $this->logTaskActivity($id, $userId, 'system', $logActivityText);
+
+        // Notify the assignee (user_id) about the rating & feedback
+        $assigneeId = (int)$task['user_id'];
+        if ($assigneeId && $assigneeId !== $userId) {
+            $notifMsg = "{$ownerName} gave you a {$rating}-star rating on task T-{$id}";
+            if ($feedbackText !== '') {
+                $notifMsg .= ': "' . mb_strimwidth($feedbackText, 0, 50, '...') . '"';
+            } else {
+                $notifMsg .= '.';
+            }
+
+            $stNotif = $this->db->prepare("INSERT INTO notifications (user_id, task_id, assigned_by, message, created_at) VALUES (?, ?, ?, ?, NOW())");
+            if ($stNotif) {
+                $stNotif->bind_param("iiis", $assigneeId, $id, $userId, $notifMsg);
+                $stNotif->execute();
+                $stNotif->close();
+            }
+        }
+
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'Feedback and rating submitted successfully.',
+            'task_id' => $id,
+            'rating' => $rating
+        ]);
+        exit;
     }
 
     /**

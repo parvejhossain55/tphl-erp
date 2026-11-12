@@ -207,9 +207,9 @@ $todayDateFormatted = date('j F');
 .mw-mention-role { font-size: 11px; color: #65776F; margin-left: auto; }
 .mw-td-comment { border: 1px solid #E2EAE5; border-radius: 8px; padding: 12px 14px; font-size: 12.5px; color: #8A9992; margin-top: 14px; }
 .mw-td-foot { border-top: 1px solid #E2EAE5; padding: 14px 20px; }
-.mw-td-foot-actions { display: flex; gap: 10px; align-items: center; }
+.mw-td-foot-actions { display: flex; gap: 10px; align-items: center; justify-content: flex-start; }
 .mw-td-btn { background: #FFFFFF; border: 1px solid #E2EAE5; border-radius: 8px; padding: 9px 16px; font-family: 'Inter', sans-serif; font-size: 12.5px; line-height: 15px; font-weight: 700; color: #142D26; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
-.mw-td-btn.primary { margin-left: auto; background: #EDF2EF; border-color: #EDF2EF; color: #8A9992; }
+.mw-td-btn.primary { margin-left: 0; background: #EDF2EF; border-color: #EDF2EF; color: #8A9992; }
 .mw-td-btn.green { background: #087F5B; border-color: #087F5B; color: #FFFFFF; }
 .mw-td-btn.green:hover { background: #076b4d; }
 .mw-td-btn:disabled,
@@ -243,6 +243,19 @@ $todayDateFormatted = date('j F');
 .mw-confirm-btn.danger { background: #E03131; color: #FFFFFF; }
 .mw-confirm-btn.danger:hover { background: #C92A2A; }
 .mw-confirm-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+/* Owner Feedback & Satisfaction Rating Box */
+.mw-feedback-card { background: #F8FAF9; border: 1px solid #D8E3DD; border-radius: 10px; padding: 16px 18px; margin-top: 18px; margin-bottom: 20px; }
+.mw-feedback-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.mw-feedback-title { font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 700; color: #142D26; display: flex; align-items: center; gap: 6px; margin: 0; }
+.mw-rating-stars-wrap { display: inline-flex; align-items: center; gap: 4px; }
+.mw-star-btn { background: none; border: none; font-size: 20px; color: #D1DDD6; cursor: pointer; padding: 2px 3px; line-height: 1; transition: color .15s ease, transform .1s ease; }
+.mw-star-btn.active, .mw-star-btn.hovered { color: #F59F00; }
+.mw-star-btn:hover { transform: scale(1.15); }
+.mw-feedback-textarea { width: 100%; background: #FFFFFF; border: 1px solid #CCD7D0; border-radius: 8px; padding: 10px 12px; font-family: 'Inter', sans-serif; font-size: 12.5px; line-height: 16px; color: #142D26; resize: vertical; min-height: 64px; outline: none; margin-top: 10px; margin-bottom: 10px; }
+.mw-feedback-textarea:focus { border-color: #087F5B; box-shadow: 0 0 0 2px rgba(8,127,91,.1); }
+.mw-feedback-readonly { background: #FFFFFF; border: 1px solid #E2EAE5; border-radius: 8px; padding: 12px 14px; margin-top: 18px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.mw-feedback-readonly-stars { display: flex; align-items: center; gap: 3px; color: #F59F00; font-size: 15px; }
+.mw-feedback-readonly-badge { background: #FFF9DB; color: #9A6216; border: 1px solid #FFE066; font-size: 11.5px; font-weight: 700; padding: 3px 8px; border-radius: 6px; }
 /* Toast notification */
 .mw-toast-wrap { position: fixed; top: 20px; right: 24px; z-index: 10050; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
 .mw-toast { pointer-events: auto; min-width: 280px; max-width: 420px; padding: 12px 16px; border-radius: 8px; background: #fff; border: 1px solid #E2EAE5; border-left: 4px solid #087F5B; box-shadow: 0 10px 28px rgba(20,45,38,.14); display: flex; align-items: center; gap: 10px; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; color: #142D26; animation: mwToastIn .22s ease; }
@@ -1390,9 +1403,20 @@ $todayDateFormatted = date('j F');
         <div class="mw-card">
             <!-- Header -->
             <div class="mw-tasks-header">
-                <div class="mw-tasks-title-group">
-                    <h3 class="mw-tasks-title">My tasks</h3>
-                    <span class="mw-badge-open" id="badgeOpenCount"><?= $openTasksCount ?> open</span>
+                <div class="mw-tasks-title-group" style="display:flex; align-items:center; gap:16px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <h3 class="mw-tasks-title">My Actionable</h3>
+                        <span class="mw-badge-open" id="badgeOpenCount"><?= $openTasksCount ?> open</span>
+                    </div>
+                    <div id="wrapUpdatedBy" style="display:<?= $tab === 'reviewer' ? 'flex' : 'none' ?>; align-items:center; gap:16px;">
+                        <div style="display:inline-block; width:1px; height:18px; background:#D8E3DD;"></div>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <h3 class="mw-tasks-title" style="color:#2D453E;">Updated By</h3>
+                            <span class="mw-badge-open" id="badgeReviewedCount" style="background:#EBF2FE; color:#1864AB; font-weight:700;">
+                                <?= (int)($myReviewedCompletedCount ?? 0) ?> completed
+                            </span>
+                        </div>
+                    </div>
                 </div>
                 <div class="mw-tasks-completed-text" id="textCompletedCount">
                     <?= $completedTasksCount ?> completed
@@ -1408,11 +1432,11 @@ $todayDateFormatted = date('j F');
                            value="<?= htmlspecialchars($search) ?>" autocomplete="off">
                 </div>
 
-                <!-- Due date Pill Button -->
+                <!-- Deadline Pill Button -->
                 <div class="position-relative d-inline-block">
                     <button type="button" class="mw-pill-btn" id="btnDueDate">
                         <i class="fa-regular fa-calendar"></i>
-                        <span>Due date</span>
+                        <span>Deadline</span>
                     </button>
                     <div class="mw-popup-menu" id="menuDueDate">
                         <div class="mw-popup-header">FILTER BY DATE</div>
@@ -1448,11 +1472,11 @@ $todayDateFormatted = date('j F');
                     </div>
                 </div>
 
-                <!-- List view Pill Button -->
-                <a href="<?= $base_url ?>/task-lists" class="mw-pill-btn" title="Detailed List View">
+                <!-- List view Pill Button (Static view indicator, no action) -->
+                <span class="mw-pill-btn" style="cursor: default;" title="List view">
                     <i class="fa-solid fa-bars-staggered"></i>
                     <span>List view</span>
-                </a>
+                </span>
 
                 <!-- Dots icon -->
                 <span class="mw-dots-icon" title="More options">···</span>
@@ -1466,7 +1490,7 @@ $todayDateFormatted = date('j F');
                             <th style="min-width: 280px;">TASK / PROJECT</th>
                             <th style="width: 110px;">PRIORITY</th>
                             <th style="width: 120px;">STATUS</th>
-                            <th style="width: 150px;">DUE</th>
+                            <th style="width: 150px;">DEADLINE</th>
                             <th style="width: 150px;">NEXT ACTION BY</th>
                             <th style="width: 110px; text-align: right;">ACTIONS</th>
                         </tr>
@@ -1522,7 +1546,8 @@ $todayDateFormatted = date('j F');
                                     $statusClass = 'expired';
                                     $statusLabel = 'Expired';
                                 }
-                                if (!$isCompleted && (int)$t['progress'] >= 80) {
+                                $rowRevCount = preg_match_all('/\d+/', (string)($t['mentioned_user_ids'] ?? ''), $mRev);
+                                if (!$isCompleted && !empty($t['is_submitted_for_review']) && $rowRevCount > 0) {
                                     $statusClass = 'in-review';
                                     $statusLabel = 'In review';
                                 }
@@ -1653,7 +1678,7 @@ $todayDateFormatted = date('j F');
             </div>
 
             <!-- Card 2: Task Attention (Priority or response needed) -->
-            <div class="mw-focus-card">
+            <div class="mw-focus-card" id="mwCardTaskAttention">
                 <h4 class="mw-focus-title">Task Attention</h4>
                 <div class="mw-focus-subtitle">Priority or response needed</div>
 
@@ -1695,7 +1720,7 @@ $todayDateFormatted = date('j F');
                         Next action: <?= htmlspecialchars($nextActionPerson) ?> · <?= htmlspecialchars($nextActionDate) ?>
                     </div>
 
-                    <a href="javascript:void(0);" onclick="filterReviewSubmissionTasks(); return false;" class="mw-btn-opentask" id="btnAttentionOpenTask" title="Show all review submission tasks in table">
+                    <a href="javascript:void(0);" onclick="openTaskDetail(<?= (int)$blockedTask['id'] ?>); return false;" class="mw-btn-opentask" id="btnAttentionOpenTask" title="Open task details">
                         <i class="fa-solid fa-arrow-right"></i>
                         <span>Open task</span>
                     </a>
@@ -1898,14 +1923,12 @@ $todayDateFormatted = date('j F');
         <div class="mw-drawer-footer">
             <div class="mw-drawer-footer-actions">
                 <div class="d-flex gap-2">
-                    <button type="button" class="mw-drawer-btn secondary" id="btnSaveDraft">Save draft</button>
                     <button type="button" class="mw-drawer-btn secondary" id="btnCancelDrawer">Cancel</button>
                 </div>
                 <button type="submit" class="mw-drawer-btn primary" id="btnSubmitDrawer">
                     <i class="fa-solid fa-plus me-1"></i> Create & assign
                 </button>
             </div>
-            <div class="mw-drawer-foot-note">Drafts can be saved before assignment details are complete.</div>
         </div>
     </form>
 </div>
@@ -1930,21 +1953,17 @@ $todayDateFormatted = date('j F');
         </div>
 
         <div class="mw-td-foot-actions">
-            <button type="button" class="mw-td-btn" disabled><i class="fa-regular fa-clock me-1"></i> Log work</button>
-            <button type="button" class="mw-td-btn" disabled>Request extension</button>
-
-            <!-- Reviewer specific action buttons (shown only to Reviewer) -->
-            <button type="button" class="mw-td-btn" id="btnReviewerRequestChanges" style="display:none; border-color: #9A6216; color: #9A6216; font-weight: 700;">
-                <i class="fa-solid fa-rotate-left me-1"></i> Request Changes
+            <!-- Action complete / approve buttons first on left side -->
+            <button type="button" class="mw-td-btn primary" id="btnDrawerCompleteTask" disabled>
+                <i class="fa-solid fa-check me-1"></i> Complete Task
             </button>
             <button type="button" class="mw-td-btn" id="btnReviewerApprove" style="display:none; background: #087F5B; color: #fff; border-color: #087F5B; font-weight: 700;">
                 <i class="fa-solid fa-circle-check me-1"></i> Approve & Done
             </button>
-
-            <!-- Assignee complete button -->
-            <button type="button" class="mw-td-btn primary" id="btnDrawerCompleteTask" disabled>
-                <i class="fa-solid fa-check me-1"></i> Complete Task
+            <button type="button" class="mw-td-btn" id="btnReviewerRequestChanges" style="display:none; border-color: #9A6216; color: #9A6216; font-weight: 700;">
+                <i class="fa-solid fa-rotate-left me-1"></i> Request Changes
             </button>
+            <button type="button" class="mw-td-btn" disabled>Request extension</button>
         </div>
         <div class="mw-td-note" id="mwTdNote"></div>
     </div>
@@ -2013,6 +2032,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const tbody = document.getElementById('mwTasksTbody');
     const footerInfo = document.getElementById('mwFooterInfo');
     const badgeOpen = document.getElementById('badgeOpenCount');
+    const badgeReviewed = document.getElementById('badgeReviewedCount');
     const textCompleted = document.getElementById('textCompletedCount');
     const statOverdue = document.getElementById('statOverdue');
     const statDueToday = document.getElementById('statDueToday');
@@ -2057,6 +2077,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (cardNeedsReview && data.review_card_html) {
                     cardNeedsReview.innerHTML = data.review_card_html;
                 }
+                const cardTaskAttention = document.getElementById('mwCardTaskAttention');
+                if (cardTaskAttention && data.attention_card_html) {
+                    cardTaskAttention.innerHTML = data.attention_card_html;
+                }
                 if (data.all_stats) {
                     const s = data.all_stats;
                     const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
@@ -2069,11 +2093,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 if (data.counts) {
                     if (badgeOpen) badgeOpen.innerText = `${data.counts.open} open`;
+                    if (badgeReviewed && typeof data.counts.my_reviewed !== 'undefined') {
+                        badgeReviewed.innerText = `${data.counts.my_reviewed} completed`;
+                    }
                     if (textCompleted) textCompleted.innerText = `${data.counts.completed} completed`;
                     if (statOverdue) statOverdue.innerText = data.counts.overdue;
                     if (statDueToday) statDueToday.innerText = data.counts.due_today;
                     if (statNext7) statNext7.innerText = data.counts.next7;
                     if (statReview) statReview.innerText = data.counts.waiting_review;
+                }
+
+                const wrapUpdatedBy = document.getElementById('wrapUpdatedBy');
+                if (wrapUpdatedBy) {
+                    wrapUpdatedBy.style.display = (currentTab === 'reviewer') ? 'flex' : 'none';
                 }
 
                 // Update Browser URL state silently without page reload
@@ -2102,9 +2134,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
             currentTab = tabName;
             currentMetric = '';
+            currentStatus = '';
+            currentPriority = '';
             currentViewAll = false;
             const btnVa = document.getElementById('btnMyWorkViewAll');
             if (btnVa) btnVa.innerText = 'View all';
+            const filterBtnText = document.getElementById('filterBtnText');
+            if (filterBtnText) filterBtnText.innerText = 'Filters';
             document.querySelectorAll('.mw-stat-card').forEach(el => el.classList.remove('active-metric'));
             fetchWorkspaceData();
         });
@@ -2333,7 +2369,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const btnCancelDrawer = document.getElementById('btnCancelDrawer');
     const formCreateTask = document.getElementById('mwCreateTaskForm');
     const btnSubmitDrawer = document.getElementById('btnSubmitDrawer');
-    const btnSaveDraft = document.getElementById('btnSaveDraft');
 
     function openDrawer(mode = 'create') {
         if (drawer && backdrop) {
@@ -2345,9 +2380,6 @@ document.addEventListener('DOMContentLoaded', function () {
             if (drawerSubtitle) drawerSubtitle.innerText = isEdit ? 'Update details, owner and deadline.' : 'Define the output, owner and deadline.';
             if (btnSubmitDrawer) {
                 btnSubmitDrawer.innerHTML = isEdit ? '<i class="fa-solid fa-check me-1"></i> Update task' : '<i class="fa-solid fa-plus me-1"></i> Create & assign';
-            }
-            if (btnSaveDraft) {
-                btnSaveDraft.style.display = isEdit ? 'none' : '';
             }
 
             drawer.classList.add('show');
@@ -2387,7 +2419,6 @@ document.addEventListener('DOMContentLoaded', function () {
             const drawerTitle = document.getElementById('mwDrawerTitle');
             if (drawerTitle) drawerTitle.innerText = 'Create task';
             if (btnSubmitDrawer) btnSubmitDrawer.innerHTML = '<i class="fa-solid fa-plus me-1"></i> Create & assign';
-            if (btnSaveDraft) btnSaveDraft.style.display = '';
         }
     }
 
@@ -2677,13 +2708,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 ${evidenceHtml}
 
                 <!-- Review note input -->
+                ${!t.is_review_approved ? `
                 <div class="mw-td-sec" style="border-bottom:none;">
                     <div class="mw-rev-note-head">
                         <span class="mw-rev-note-label">Review note</span>
                         <span class="mw-rev-note-req">Required when requesting changes</span>
                     </div>
-                    <textarea id="mwReviewFeedbackInput" class="mw-rev-textarea" placeholder="Add feedback for ${tdEsc(ownerName)}…"></textarea>
-                </div>
+                    <textarea id="mwReviewFeedbackInput" class="mw-rev-textarea" placeholder="Add feedback"></textarea>
+                    <div style="margin-top:10px; display:flex; justify-content:flex-start;">
+                        <button type="button" class="mw-td-btn" id="btnRevRequestChanges">
+                            Request changes
+                        </button>
+                    </div>
+                </div>` : ''}
             `;
 
             tdBody.querySelector('#mwTdClose').addEventListener('click', closeTaskDetail);
@@ -2694,102 +2731,114 @@ document.addEventListener('DOMContentLoaded', function () {
             if (revNoteWrap) revNoteWrap.style.display = 'none';
 
             if (footActions) {
-                footActions.innerHTML = `
-                    <button type="button" class="mw-td-btn" id="btnRevBackToTasks">Back to tasks</button>
-                    <div style="margin-left:auto; display:flex; gap:10px;">
-                        <button type="button" class="mw-td-btn" id="btnRevRequestChanges">Request changes</button>
+                if (t.is_review_approved) {
+                    footActions.innerHTML = `
+                        <button type="button" class="mw-td-btn" disabled style="background:#EDF2EF;color:#087F5B;border-color:#EDF2EF; font-weight:700;">
+                            <i class="fa-solid fa-circle-check me-1"></i> Approved & completed
+                        </button>
+                        <button type="button" class="mw-td-btn" id="btnRevBackToTasks">Back to tasks</button>
+                    `;
+                    document.getElementById('btnRevBackToTasks').addEventListener('click', closeTaskDetail);
+                } else {
+                    footActions.innerHTML = `
                         <button type="button" class="mw-td-btn green" id="btnRevApproveComplete">
                             <i class="fa-solid fa-check me-1"></i> Approve & complete
                         </button>
-                    </div>
-                `;
+                        <button type="button" class="mw-td-btn" id="btnRevBackToTasks">Back to tasks</button>
+                    `;
 
-                document.getElementById('btnRevBackToTasks').addEventListener('click', closeTaskDetail);
+                    document.getElementById('btnRevBackToTasks').addEventListener('click', closeTaskDetail);
 
-                document.getElementById('btnRevRequestChanges').addEventListener('click', function() {
-                    const feedbackEl = document.getElementById('mwReviewFeedbackInput');
-                    const note = feedbackEl ? feedbackEl.value.trim() : '';
-                    if (!note) {
-                        showMwToast(`Please add a review note for ${ownerName} before requesting changes.`, 'error');
-                        if (feedbackEl) feedbackEl.focus();
-                        return;
+                    const btnReqChanges = document.getElementById('btnRevRequestChanges');
+                    if (btnReqChanges) {
+                        btnReqChanges.addEventListener('click', function() {
+                            const feedbackEl = document.getElementById('mwReviewFeedbackInput');
+                            const note = feedbackEl ? feedbackEl.value.trim() : '';
+                            if (!note) {
+                                showMwToast(`Please add a review note for ${ownerName} before requesting changes.`, 'error');
+                                if (feedbackEl) feedbackEl.focus();
+                                return;
+                            }
+
+                            this.disabled = true;
+                            this.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Requesting...';
+
+                            const fd = new FormData();
+                            fd.append('review_action', 'request_changes');
+                            fd.append('review_note', note);
+
+                            fetch(`${baseUrl}/my-work/reviewer-action/${t.id}`, {
+                                method: 'POST',
+                                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                                body: fd
+                            })
+                            .then(r => r.json())
+                            .then(data => {
+                                if (data.status === 'success') {
+                                    showMwToast('Feedback sent. Task returned to in progress.', 'success');
+                                    closeTaskDetail();
+                                    fetchWorkspaceData();
+                                } else {
+                                    showMwToast(data.message || 'Failed to request changes.', 'error');
+                                }
+                            })
+                            .catch(() => {
+                                showMwToast('Network error occurred.', 'error');
+                            })
+                            .finally(() => {
+                                this.disabled = false;
+                                this.innerHTML = 'Request changes';
+                            });
+                        });
                     }
 
-                    this.disabled = true;
-                    this.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Requesting...';
+                    document.getElementById('btnRevApproveComplete').addEventListener('click', function() {
+                        const feedbackEl = document.getElementById('mwReviewFeedbackInput');
+                        const note = feedbackEl ? feedbackEl.value.trim() : '';
 
-                    const fd = new FormData();
-                    fd.append('review_action', 'request_changes');
-                    fd.append('review_note', note);
+                        this.disabled = true;
+                        this.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Completing...';
 
-                    fetch(`${baseUrl}/my-work/reviewer-action/${t.id}`, {
-                        method: 'POST',
-                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                        body: fd
-                    })
-                    .then(r => r.json())
-                    .then(data => {
-                        if (data.status === 'success') {
-                            showMwToast('Feedback sent. Task returned to in progress.', 'success');
-                            closeTaskDetail();
-                            fetchWorkspaceData();
-                        } else {
-                            showMwToast(data.message || 'Failed to request changes.', 'error');
-                        }
-                    })
-                    .catch(() => {
-                        showMwToast('Network error occurred.', 'error');
-                    })
-                    .finally(() => {
-                        this.disabled = false;
-                        this.innerHTML = 'Request changes';
+                        const fd = new FormData();
+                        fd.append('review_action', 'approve');
+                        if (note) fd.append('review_note', note);
+
+                        fetch(`${baseUrl}/my-work/reviewer-action/${t.id}`, {
+                            method: 'POST',
+                            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                            body: fd
+                        })
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                showMwToast('Task approved and marked as completed!', 'success');
+                                closeTaskDetail();
+                                fetchWorkspaceData();
+                            } else {
+                                showMwToast(data.message || 'Failed to approve task.', 'error');
+                            }
+                        })
+                        .catch(() => {
+                            showMwToast('Network error occurred.', 'error');
+                        })
+                        .finally(() => {
+                            this.disabled = false;
+                            this.innerHTML = '<i class="fa-solid fa-check me-1"></i> Approve & complete';
+                        });
                     });
-                });
-
-                document.getElementById('btnRevApproveComplete').addEventListener('click', function() {
-                    const feedbackEl = document.getElementById('mwReviewFeedbackInput');
-                    const note = feedbackEl ? feedbackEl.value.trim() : '';
-
-                    this.disabled = true;
-                    this.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Completing...';
-
-                    const fd = new FormData();
-                    fd.append('review_action', 'approve');
-                    if (note) fd.append('review_note', note);
-
-                    fetch(`${baseUrl}/my-work/reviewer-action/${t.id}`, {
-                        method: 'POST',
-                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                        body: fd
-                    })
-                    .then(r => r.json())
-                    .then(data => {
-                        if (data.status === 'success') {
-                            showMwToast('Task approved and marked as completed!', 'success');
-                            closeTaskDetail();
-                            fetchWorkspaceData();
-                        } else {
-                            showMwToast(data.message || 'Failed to approve task.', 'error');
-                        }
-                    })
-                    .catch(() => {
-                        showMwToast('Network error occurred.', 'error');
-                    })
-                    .finally(() => {
-                        this.disabled = false;
-                        this.innerHTML = '<i class="fa-solid fa-check me-1"></i> Approve & complete';
-                    });
-                });
+                }
             }
 
-            tdNote.innerText = `Approve completes the task. Request changes returns it to In progress with your feedback. ${ownerName} remains the task owner.`;
+            tdNote.innerText = t.is_review_approved
+                ? `This task has been approved and completed.`
+                : `Approve completes the task. Request changes returns it to In progress with your feedback. ${ownerName} remains the task owner.`;
             return;
         }
 
         // =========================================================================
         // Standard Assignee / Owner Layout
         // =========================================================================
-        const tabsHtml = ['Overview', 'Activity', 'Work log'].map((n, i) =>
+        const tabsHtml = ['Overview', 'Activity', 'Comments'].map((n, i) =>
             `<button type="button" class="mw-td-tab ${i === 0 ? 'active' : ''}" data-pane="${i}">${n}</button>`).join('');
         const blocked = t.blocked ? `
             <div class="mw-td-blocked"><strong><i class="fa-solid fa-triangle-exclamation me-1"></i> Blocked</strong><span>${tdEsc(t.remarks || '')}</span></div>` : '';
@@ -2850,54 +2899,64 @@ document.addEventListener('DOMContentLoaded', function () {
             return escaped.replace(/(^|\s)@([a-zA-Z0-9_.-]+)(?=[.,!?]|$|\s)/g, '$1<span class="mw-act-mention">@$2</span>');
         };
 
+        // Build single timeline item HTML
+        const renderActivityItem = (act) => {
+            const isSystem = (act.type === 'system');
+            const initial = tdInitials(act.user_name || 'U');
+            let formattedActivity = formatMentions(act.activity);
+            let attachChip = '';
+            if (act.attachment_url && act.attachment_name) {
+                attachChip = `
+                    <div>
+                        <a href="${tdEsc(act.attachment_url)}" target="_blank" rel="noopener noreferrer" class="mw-act-attach-chip">
+                            <i class="fa-solid fa-paperclip"></i>
+                            <span>${tdEsc(act.attachment_name)}</span>
+                            <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px; margin-left:2px;"></i>
+                        </a>
+                    </div>`;
+            }
+            const avatarHtml = act.user_photo
+                ? `<img src="${tdEsc(act.user_photo)}" alt="${tdEsc(act.user_name)}" class="mw-act-avatar" style="object-fit:cover;" onerror="this.outerHTML='<span class=\\'mw-act-avatar\\'>${tdEsc(initial)}</span>'">`
+                : `<span class="mw-act-avatar">${tdEsc(initial)}</span>`;
+
+            const bodyContent = isSystem
+                ? `<div class="mw-act-comment" style="color:#65776F; font-style:italic;">${formattedActivity}</div>`
+                : `<div class="mw-act-comment">${formattedActivity}</div>`;
+
+            return `
+                <div class="mw-activity-item">
+                    ${avatarHtml}
+                    <div style="flex:1;">
+                        <div class="mw-act-head">
+                            ${tdEsc(act.user_name)} <span class="mw-act-time">· ${tdEsc(act.created_at)}</span>
+                        </div>
+                        ${bodyContent}
+                        ${attachChip}
+                    </div>
+                </div>`;
+        };
+
         // Render Latest Activity matching Figma spec
         let activitiesHtml = '';
         if (Array.isArray(t.activities) && t.activities.length > 0) {
             activitiesHtml = `
                 <div class="mw-activity-timeline" style="margin-bottom:12px;">` +
-                t.activities.map(act => {
-                    const isSystem = (act.type === 'system');
-                    const initial = tdInitials(act.user_name || 'U');
-
-                    // Highlight full name @mentions in comments
-                    let formattedActivity = formatMentions(act.activity);
-
-                    // Render attached file if present
-                    let attachChip = '';
-                    if (act.attachment_url && act.attachment_name) {
-                        attachChip = `
-                            <div>
-                                <a href="${tdEsc(act.attachment_url)}" target="_blank" class="mw-act-attach-chip" download>
-                                    <i class="fa-solid fa-paperclip"></i>
-                                    <span>${tdEsc(act.attachment_name)}</span>
-                                    <i class="fa-solid fa-arrow-down" style="font-size:10px; margin-left:2px;"></i>
-                                </a>
-                            </div>`;
-                    }
-                    
-                    const avatarHtml = act.user_photo
-                        ? `<img src="${tdEsc(act.user_photo)}" alt="${tdEsc(act.user_name)}" class="mw-act-avatar" style="object-fit:cover;" onerror="this.outerHTML='<span class=\\'mw-act-avatar\\'>${tdEsc(initial)}</span>'">`
-                        : `<span class="mw-act-avatar">${tdEsc(initial)}</span>`;
-
-                    const bodyContent = isSystem
-                        ? `<div class="mw-act-comment" style="color:#65776F; font-style:italic;">${formattedActivity}</div>`
-                        : `<div class="mw-act-comment">${formattedActivity}</div>`;
-
-                    return `
-                        <div class="mw-activity-item">
-                            ${avatarHtml}
-                            <div style="flex:1;">
-                                <div class="mw-act-head">
-                                    ${tdEsc(act.user_name)} <span class="mw-act-time">· ${tdEsc(act.created_at)}</span>
-                                </div>
-                                ${bodyContent}
-                                ${attachChip}
-                            </div>
-                        </div>`;
-                }).join('') +
+                t.activities.map(renderActivityItem).join('') +
                 `</div>`;
         } else {
             activitiesHtml = '<div class="mw-td-empty mb-2">No activity yet.</div>';
+        }
+
+        // Render Comments Only for Comments Tab (exclude system audit logs)
+        const commentsList = (Array.isArray(t.activities) ? t.activities : []).filter(act => act.type === 'comment');
+        let commentsOnlyHtml = '';
+        if (commentsList.length > 0) {
+            commentsOnlyHtml = `
+                <div class="mw-activity-timeline" style="margin-bottom:12px;">` +
+                commentsList.map(renderActivityItem).join('') +
+                `</div>`;
+        } else {
+            commentsOnlyHtml = '<div class="mw-td-empty mb-2">No comments yet.</div>';
         }
 
         // Figma input box with trailing file upload button (Enter to post comment)
@@ -2908,6 +2967,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="mw-figma-comment-actions">
                     <button type="button" class="mw-figma-icon-btn" id="mwBtnAttachFile" title="Attach file">
                         <i class="fa-solid fa-paperclip"></i>
+                    </button>
+                    <button type="button" class="mw-figma-icon-btn" id="mwBtnPostComment" title="Post comment" style="color: #087F5B;">
+                        <i class="fa-solid fa-paper-plane"></i>
                     </button>
                 </div>
                 <!-- Mentions dropdown popup -->
@@ -2933,6 +2995,73 @@ document.addEventListener('DOMContentLoaded', function () {
                </a>`
             : '<div class="mw-td-empty">No attachments.</div>';
 
+        // Owner Feedback & Satisfaction Rating section (Only when task is completed)
+        let ownerFeedbackHtml = '';
+        if (t.is_completed) {
+            const currentRating = parseInt(t.satisfaction_rating, 10) || 0;
+            if (t.is_owner) {
+                if (currentRating > 0) {
+                    // Already rated by owner
+                    let starsHtml = '';
+                    for (let s = 1; s <= 5; s++) {
+                        starsHtml += `<i class="fa-${s <= currentRating ? 'solid' : 'regular'} fa-star"></i>`;
+                    }
+                    ownerFeedbackHtml = `
+                        <div class="mw-feedback-readonly">
+                            <div>
+                                <div style="font-size:11.5px; font-weight:700; color:#65776F; text-transform:uppercase; margin-bottom:4px;">Your Rating & Feedback</div>
+                                <div class="mw-feedback-readonly-stars">
+                                    ${starsHtml}
+                                    <span style="font-weight:700; color:#142D26; font-size:13px; margin-left:6px;">${currentRating} of 5 Stars</span>
+                                </div>
+                            </div>
+                            <span class="mw-feedback-readonly-badge"><i class="fa-solid fa-check me-1"></i> Feedback Submitted</span>
+                        </div>`;
+                } else {
+                    // Owner can rate and give feedback
+                    ownerFeedbackHtml = `
+                        <div class="mw-feedback-card" id="mwOwnerFeedbackBox">
+                            <div class="mw-feedback-head">
+                                <h4 class="mw-feedback-title">
+                                    <i class="fa-solid fa-award" style="color:#087F5B;"></i>
+                                    Rate & Feedback for ${tdEsc(t.assigned_to)}
+                                </h4>
+                                <div class="mw-rating-stars-wrap" id="mwStarRatingPicker">
+                                    <button type="button" class="mw-star-btn" data-star="1" title="1 Star"><i class="fa-solid fa-star"></i></button>
+                                    <button type="button" class="mw-star-btn" data-star="2" title="2 Stars"><i class="fa-solid fa-star"></i></button>
+                                    <button type="button" class="mw-star-btn" data-star="3" title="3 Stars"><i class="fa-solid fa-star"></i></button>
+                                    <button type="button" class="mw-star-btn" data-star="4" title="4 Stars"><i class="fa-solid fa-star"></i></button>
+                                    <button type="button" class="mw-star-btn" data-star="5" title="5 Stars"><i class="fa-solid fa-star"></i></button>
+                                </div>
+                            </div>
+                            <textarea id="mwFeedbackComment" class="mw-feedback-textarea" placeholder="Add a feedback note for ${tdEsc(t.assigned_to)} (optional)…"></textarea>
+                            <div style="display:flex; justify-content:flex-end;">
+                                <button type="button" class="mw-td-btn green" id="btnSubmitOwnerFeedback" style="padding:6px 14px; font-size:12px;">
+                                    <i class="fa-solid fa-paper-plane me-1"></i> Submit Feedback
+                                </button>
+                            </div>
+                        </div>`;
+                }
+            } else if (currentRating > 0) {
+                // Assignee or collaborator viewing the owner's rating
+                let starsHtml = '';
+                for (let s = 1; s <= 5; s++) {
+                    starsHtml += `<i class="fa-${s <= currentRating ? 'solid' : 'regular'} fa-star"></i>`;
+                }
+                ownerFeedbackHtml = `
+                    <div class="mw-feedback-readonly">
+                        <div>
+                            <div style="font-size:11.5px; font-weight:700; color:#65776F; text-transform:uppercase; margin-bottom:4px;">Task Owner Rating</div>
+                            <div class="mw-feedback-readonly-stars">
+                                ${starsHtml}
+                                <span style="font-weight:700; color:#142D26; font-size:13px; margin-left:6px;">${currentRating} of 5 Stars</span>
+                            </div>
+                        </div>
+                        <span class="mw-feedback-readonly-badge"><i class="fa-solid fa-star me-1"></i> Completed Task</span>
+                    </div>`;
+            }
+        }
+
         tdBody.innerHTML = `
             <div class="mw-td-top"><span>${tdEsc(t.code)} · ${tdEsc(t.project)}</span>
                 <button type="button" class="mw-td-close" id="mwTdClose" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
@@ -2956,10 +3085,26 @@ document.addEventListener('DOMContentLoaded', function () {
                 ${t.expected_output && t.expected_output.trim() ? `<div class="mw-td-sec"><h4>Expected output</h4>${expectedOut}</div>` : ''}
                 <div class="mw-td-sec">${checklistHtml}</div>
                 <div class="mw-td-sec"><h4>Attachments</h4>${file}</div>
-                <div class="mw-td-sec"><h4>Latest activity</h4>${activitiesHtml}${commentBoxHtml}</div>
+                <div class="mw-td-sec">
+                    <h4>Latest activity</h4>
+                    ${activitiesHtml}
+                    ${commentBoxHtml}
+                    ${ownerFeedbackHtml}
+                </div>
             </div>
-            <div data-td-pane="1" style="display:none;"><div class="mw-td-sec">${activitiesHtml}${commentBoxHtml}</div></div>
-            <div data-td-pane="2" style="display:none;"><div class="mw-td-empty">Work log will appear here.</div></div>`;
+            <div data-td-pane="1" style="display:none;">
+                <div class="mw-td-sec">
+                    ${activitiesHtml}
+                    ${commentBoxHtml}
+                    ${ownerFeedbackHtml}
+                </div>
+            </div>
+            <div data-td-pane="2" style="display:none;">
+                <div class="mw-td-sec">
+                    ${commentsOnlyHtml}
+                    ${commentBoxHtml}
+                </div>
+            </div>`;
         tdNote.innerText = t.blocked ? 'Resolve the blocker before submitting for review.' : '';
         tdBody.querySelector('#mwTdClose').addEventListener('click', closeTaskDetail);
         tdBody.querySelectorAll('.mw-td-tab').forEach(b => b.addEventListener('click', () => {
@@ -2977,24 +3122,30 @@ document.addEventListener('DOMContentLoaded', function () {
             let actionBtnHtml = '';
             if (t.is_completed) {
                 actionBtnHtml = `<button type="button" class="mw-td-btn" disabled style="background:#EDF2EF;color:#087F5B;border-color:#EDF2EF;"><i class="fa-solid fa-check-double me-1"></i> Completed</button>`;
+            } else if (t.status_class === 'in_review') {
+                actionBtnHtml = `<button type="button" class="mw-td-btn" disabled style="background:#F4EFFA;color:#7757AB;border-color:#F4EFFA;font-weight:700;"><i class="fa-solid fa-hourglass-half me-1"></i> Submitted for review</button>`;
             } else if (isPending && t.can_check) {
                 actionBtnHtml = `<button type="button" class="mw-td-btn primary" id="btnDrawerStartTask" style="background:#087F5B;color:#fff;border-color:#087F5B;"><i class="fa-solid fa-play me-1"></i> Start working</button>`;
             } else if (t.can_complete) {
                 const btnLabel = hasReviewers ? 'Submit for review' : 'Complete Task';
                 actionBtnHtml = `<button type="button" class="mw-td-btn primary" id="btnDrawerCompleteTask" style="background:#087F5B;color:#fff;border-color:#087F5B;"><i class="fa-solid fa-check me-1"></i> ${btnLabel}</button>`;
             } else {
-                actionBtnHtml = `<button type="button" class="mw-td-btn" disabled style="background:#EDF2EF;color:#8A9992;border-color:#EDF2EF;"><i class="fa-solid fa-check me-1"></i> Complete Task</button>`;
+                const disabledLabel = hasReviewers ? 'Awaiting Review' : 'Complete Task';
+                actionBtnHtml = `<button type="button" class="mw-td-btn" disabled style="background:#EDF2EF;color:#8A9992;border-color:#EDF2EF;"><i class="fa-solid fa-check me-1"></i> ${disabledLabel}</button>`;
             }
 
             footActions.innerHTML = `
-                <button type="button" class="mw-td-btn" disabled><i class="fa-regular fa-clock me-1"></i> Log work</button>
-                <button type="button" class="mw-td-btn" id="btnDrawerRequestExtension" ${extBtnDisabled}>Request extension</button>
                 ${actionBtnHtml}
+                <button type="button" class="mw-td-btn" id="btnDrawerRequestExtension" ${extBtnDisabled}>Request extension</button>
             `;
 
             const btnStart = document.getElementById('btnDrawerStartTask');
             if (btnStart) {
                 btnStart.addEventListener('click', function() {
+                    if (window._mwIsSendingComment) {
+                        showMwToast('Please wait for your comment to finish posting.', 'info');
+                        return;
+                    }
                     btnStart.disabled = true;
                     btnStart.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Starting...';
                     fetch(`${baseUrl}/my-work/start-task/${t.id}`, {
@@ -3077,7 +3228,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(data => {
                     if (data.status === 'success') {
                         if (data.all_completed) {
-                            showMwToast(data.message || 'All checklist items completed!', 'success');
+                            const hasRev = (Array.isArray(t.reviewers) && t.reviewers.length > 0);
+                            showMwToast(hasRev ? 'All acceptance completed. You can now submit for review.' : 'All acceptance completed. You can now complete the task.', 'success');
+                            if (window.openTaskDetail && currentDetailTaskId) {
+                                window.openTaskDetail(currentDetailTaskId);
+                            }
+                        } else if (t.status_class === 'in_review') {
+                            // Unchecking an item while in review refreshes drawer back to in_progress
                             if (window.openTaskDetail && currentDetailTaskId) {
                                 window.openTaskDetail(currentDetailTaskId);
                             }
@@ -3117,15 +3274,16 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
         // Wire up comment send, @mention autocomplete, and file attachment handlers
-        const commentBox = tdBody.querySelector('#mwCommentBoxContainer');
-        if (commentBox) {
-            const input = commentBox.querySelector('#mwCommentInput');
-            const btnAttach = commentBox.querySelector('#mwBtnAttachFile');
-            const fileInput = commentBox.querySelector('#mwCommentFileInput');
-            const filePreview = tdBody.querySelector('#mwCommentFilePreview');
-            const fileNameSpan = tdBody.querySelector('#mwCommentFileName');
-            const btnRemoveFile = tdBody.querySelector('#mwBtnRemoveFile');
-            const mentionPopup = commentBox.querySelector('#mwMentionPopup');
+        const commentBoxes = tdBody.querySelectorAll('.mw-figma-comment-box');
+        commentBoxes.forEach(commentBox => {
+            const input = commentBox.querySelector('.mw-figma-comment-input');
+            const btnAttach = commentBox.querySelector('#mwBtnAttachFile') || commentBox.querySelector('.mw-figma-icon-btn[title="Attach file"]');
+            const btnPost = commentBox.querySelector('#mwBtnPostComment') || commentBox.querySelector('.mw-figma-icon-btn[title="Post comment"]');
+            const fileInput = commentBox.querySelector('input[type="file"]');
+            const filePreview = commentBox.parentElement.querySelector('.mw-comment-file-preview');
+            const fileNameSpan = filePreview ? filePreview.querySelector('span.text-truncate') : null;
+            const btnRemoveFile = filePreview ? filePreview.querySelector('.file-remove') : null;
+            const mentionPopup = commentBox.querySelector('.mw-mention-popup');
 
             let selectedFile = null;
             let mentionedUserIds = new Set();
@@ -3201,7 +3359,7 @@ document.addEventListener('DOMContentLoaded', function () {
             };
 
             const insertMention = (name, uid) => {
-                if (mentionStartIndex < 0) return;
+                if (mentionStartIndex < 0 || !input) return;
                 const text = input.value;
                 const before = text.slice(0, mentionStartIndex);
                 const cursor = input.selectionStart || text.length;
@@ -3212,22 +3370,24 @@ document.addEventListener('DOMContentLoaded', function () {
                 input.focus();
             };
 
-            input.addEventListener('input', function() {
-                const val = this.value;
-                const cursorPos = this.selectionStart || 0;
-                const textBeforeCursor = val.slice(0, cursorPos);
-                const lastAt = textBeforeCursor.lastIndexOf('@');
+            if (input) {
+                input.addEventListener('input', function() {
+                    const val = this.value;
+                    const cursorPos = this.selectionStart || 0;
+                    const textBeforeCursor = val.slice(0, cursorPos);
+                    const lastAt = textBeforeCursor.lastIndexOf('@');
 
-                if (lastAt !== -1 && (lastAt === 0 || /\s/.test(textBeforeCursor[lastAt - 1]))) {
-                    mentionStartIndex = lastAt;
-                    const query = textBeforeCursor.slice(lastAt + 1);
-                    if (!/\s/.test(query)) {
-                        renderMentionList(query);
-                        return;
+                    if (lastAt !== -1 && (lastAt === 0 || /\s/.test(textBeforeCursor[lastAt - 1]))) {
+                        mentionStartIndex = lastAt;
+                        const query = textBeforeCursor.slice(lastAt + 1);
+                        if (!/\s/.test(query)) {
+                            renderMentionList(query);
+                            return;
+                        }
                     }
-                }
-                hideMentionPopup();
-            });
+                    hideMentionPopup();
+                });
+            }
 
             document.addEventListener('click', function(e) {
                 if (commentBox && !commentBox.contains(e.target)) {
@@ -3235,14 +3395,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
 
-            // Comment submission via Enter key
+            // Comment submission via Enter key or Send button
+            window._mwIsSendingComment = false;
             const doSendComment = () => {
-                if (isSendingComment) return;
+                if (isSendingComment || window._mwIsSendingComment || !input) return;
                 const commentText = input.value.trim();
                 if (!commentText && !selectedFile) return;
 
                 isSendingComment = true;
+                window._mwIsSendingComment = true;
                 input.disabled = true;
+                if (btnPost) btnPost.disabled = true;
 
                 const fd = new FormData();
                 fd.append('comment', commentText);
@@ -3252,6 +3415,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (mentionedUserIds.size > 0) {
                     fd.append('mentioned_ids', Array.from(mentionedUserIds).join(','));
                 }
+
+                // Preserve active tab before refreshing drawer
+                const activeTabEl = tdBody.querySelector('.mw-td-tab.active');
+                const activePaneIdx = activeTabEl ? activeTabEl.getAttribute('data-pane') : null;
 
                 fetch(`${baseUrl}/my-work/add-comment/${t.id}`, {
                     method: 'POST',
@@ -3268,7 +3435,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (fileInput) fileInput.value = '';
                         if (filePreview) filePreview.classList.remove('show');
                         if (window.openTaskDetail && currentDetailTaskId) {
-                            window.openTaskDetail(currentDetailTaskId);
+                            window.openTaskDetail(currentDetailTaskId, activePaneIdx);
                         }
                     } else {
                         showMwToast(data.message || 'Failed to post comment.', 'error');
@@ -3280,32 +3447,60 @@ document.addEventListener('DOMContentLoaded', function () {
                 })
                 .finally(() => {
                     isSendingComment = false;
-                    input.disabled = false;
-                    input.focus();
+                    window._mwIsSendingComment = false;
+                    if (input) {
+                        input.disabled = false;
+                        input.focus();
+                    }
+                    if (btnPost) btnPost.disabled = false;
                 });
             };
 
-            input.addEventListener('keydown', e => {
-                if (e.key === 'Enter') {
-                    if (mentionPopup && mentionPopup.classList.contains('show')) {
-                        const firstItem = mentionPopup.querySelector('.mw-mention-item');
-                        if (firstItem) {
-                            e.preventDefault();
-                            firstItem.click();
-                            return;
+            if (input) {
+                input.addEventListener('keydown', e => {
+                    if (e.key === 'Enter') {
+                        if (mentionPopup && mentionPopup.classList.contains('show')) {
+                            const firstItem = mentionPopup.querySelector('.mw-mention-item');
+                            if (firstItem) {
+                                e.preventDefault();
+                                firstItem.click();
+                                return;
+                            }
                         }
+                        e.preventDefault();
+                        doSendComment();
+                    } else if (e.key === 'Escape') {
+                        hideMentionPopup();
                     }
+                });
+            }
+
+            if (btnPost) {
+                btnPost.addEventListener('click', function(e) {
                     e.preventDefault();
+                    e.stopPropagation();
                     doSendComment();
-                } else if (e.key === 'Escape') {
-                    hideMentionPopup();
-                }
-            });
-        }
+                });
+            }
+        });
 
         const btnCompleteDynamic = document.getElementById('btnDrawerCompleteTask');
         if (btnCompleteDynamic && !t.is_completed && t.can_complete) {
             btnCompleteDynamic.addEventListener('click', function() {
+                if (window._mwIsSendingComment) {
+                    showMwToast('Please wait for your comment to finish posting.', 'info');
+                    return;
+                }
+
+                // Check if all checklist items are ticked
+                if (Array.isArray(t.checklist) && t.checklist.length > 0) {
+                    const incompleteCount = t.checklist.filter(c => !c.completed).length;
+                    if (incompleteCount > 0) {
+                        showMwToast(`Please complete all acceptance (${incompleteCount} remaining) before completing the task.`, 'error');
+                        return;
+                    }
+                }
+
                 btnCompleteDynamic.disabled = true;
                 btnCompleteDynamic.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Processing...';
                 fetch(`${baseUrl}/my-work/complete-task/${t.id}?ajax=1`, {
@@ -3342,6 +3537,79 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (t.is_completed || !t.can_request_extension) return;
                 openExtensionModal(t);
             });
+        }
+
+        // Wire up Owner Feedback & Star Rating submission
+        const feedbackBox = tdBody.querySelector('#mwOwnerFeedbackBox');
+        if (feedbackBox && t.is_completed && t.is_owner) {
+            const starWrap = feedbackBox.querySelector('#mwStarRatingPicker');
+            const commentInput = feedbackBox.querySelector('#mwFeedbackComment');
+            const btnSubmitFeedback = feedbackBox.querySelector('#btnSubmitOwnerFeedback');
+            let selectedRating = 0;
+
+            if (starWrap) {
+                const starBtns = starWrap.querySelectorAll('.mw-star-btn');
+                starBtns.forEach(btn => {
+                    const starVal = parseInt(btn.getAttribute('data-star'), 10);
+                    btn.addEventListener('mouseenter', () => {
+                        starBtns.forEach(b => {
+                            const val = parseInt(b.getAttribute('data-star'), 10);
+                            b.classList.toggle('hovered', val <= starVal);
+                        });
+                    });
+                    btn.addEventListener('mouseleave', () => {
+                        starBtns.forEach(b => b.classList.remove('hovered'));
+                    });
+                    btn.addEventListener('click', () => {
+                        selectedRating = starVal;
+                        starBtns.forEach(b => {
+                            const val = parseInt(b.getAttribute('data-star'), 10);
+                            b.classList.toggle('active', val <= selectedRating);
+                        });
+                    });
+                });
+            }
+
+            if (btnSubmitFeedback) {
+                btnSubmitFeedback.addEventListener('click', function() {
+                    if (selectedRating < 1 || selectedRating > 5) {
+                        showMwToast('Please select a star rating (1 to 5).', 'error');
+                        return;
+                    }
+                    const feedbackVal = commentInput ? commentInput.value.trim() : '';
+
+                    btnSubmitFeedback.disabled = true;
+                    btnSubmitFeedback.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Submitting...';
+
+                    const fd = new FormData();
+                    fd.append('rating', selectedRating);
+                    if (feedbackVal) fd.append('feedback', feedbackVal);
+
+                    fetch(`${baseUrl}/my-work/submit-feedback/${t.id}`, {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        body: fd
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            showMwToast('Feedback submitted successfully!', 'success');
+                            openTaskDetail(t.id, 0);
+                            fetchWorkspaceData();
+                        } else {
+                            showMwToast(data.message || 'Failed to submit feedback.', 'error');
+                            btnSubmitFeedback.disabled = false;
+                            btnSubmitFeedback.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Submit Feedback';
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Feedback submission error:', err);
+                        showMwToast('Network error while submitting feedback.', 'error');
+                        btnSubmitFeedback.disabled = false;
+                        btnSubmitFeedback.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Submit Feedback';
+                    });
+                });
+            }
         }
     }
 
@@ -3613,17 +3881,29 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    window.openTaskDetail = function(taskId) {
+    window.openTaskDetail = function(taskId, activePaneIndex = null) {
         if (!tdEl) return;
-        tdBody.innerHTML = '<div class="mw-td-empty" style="padding:24px 0;">Loading…</div>';
+        if (activePaneIndex === null) {
+            tdBody.innerHTML = '<div class="mw-td-empty" style="padding:24px 0;">Loading…</div>';
+        }
         tdEl.classList.add('show');
         tdBackdrop.classList.add('show');
         tdEl.setAttribute('aria-hidden', 'false');
         fetch(`${baseUrl}/my-work/task-detail/${taskId}`, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(r => r.json())
             .then(d => {
-                if (d.status === 'success') renderTaskDetail(d.task);
-                else tdBody.innerHTML = `<div class="mw-td-empty" style="padding:24px 0;">${tdEsc(d.message || 'Could not load task.')}</div>`;
+                if (d.status === 'success') {
+                    renderTaskDetail(d.task);
+                    if (activePaneIndex !== null) {
+                        const targetTab = tdBody.querySelector(`.mw-td-tab[data-pane="${activePaneIndex}"]`);
+                        if (targetTab) {
+                            tdBody.querySelectorAll('.mw-td-tab').forEach(x => x.classList.toggle('active', x === targetTab));
+                            tdBody.querySelectorAll('[data-td-pane]').forEach(p => p.style.display = p.dataset.tdPane === String(activePaneIndex) ? '' : 'none');
+                        }
+                    }
+                } else {
+                    tdBody.innerHTML = `<div class="mw-td-empty" style="padding:24px 0;">${tdEsc(d.message || 'Could not load task.')}</div>`;
+                }
             })
             .catch(() => { tdBody.innerHTML = '<div class="mw-td-empty" style="padding:24px 0;">Could not load task.</div>'; });
     };
@@ -3836,19 +4116,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         : '<i class="fa-solid fa-plus me-1"></i> Create & assign';
                 }
             });
-        });
-    }
-
-    // Save Draft Button
-    if (btnSaveDraft && formCreateTask) {
-        btnSaveDraft.addEventListener('click', function() {
-            const titleInput = document.getElementById('drawerTaskTitle');
-            if (!titleInput || !titleInput.value.trim()) {
-                alert('Please enter a Task title to save draft.');
-                if (titleInput) titleInput.focus();
-                return;
-            }
-            formCreateTask.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
         });
     }
 });
