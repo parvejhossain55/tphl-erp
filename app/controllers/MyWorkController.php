@@ -75,8 +75,8 @@ class MyWorkController extends Controller
             $scopeSql = $mentionSql;
             $scopeParams = [$userId];
         } elseif ($tab === 'realestate_project') {
-            $scopeSql = "(t.project_id IS NOT NULL AND (t.user_id = ? OR t.assigned_by = ?))";
-            $scopeParams = [$userId, $userId];
+            $scopeSql = "((t.project_id IS NOT NULL AND t.project_id > 0) OR (t.todo_project_id IS NOT NULL AND t.todo_project_id > 0)) AND {$allScopeSql}";
+            $scopeParams = $allScopeParams;
         } elseif ($tab === 'self_initiated') {
             $scopeSql = "(t.user_id = ? AND t.assigned_by = ?)";
             $scopeParams = [$userId, $userId];
@@ -216,7 +216,7 @@ class MyWorkController extends Controller
         $sql = "
             SELECT 
                 t.*,
-                tp.name AS project_name,
+                COALESCE(rp.name, tp.name, 'General') AS project_name,
                 tp.color_code AS project_color,
                 u_assigned.full_name AS assignee_name,
                 u_assigned.photo AS assignee_photo,
@@ -226,6 +226,7 @@ class MyWorkController extends Controller
                 des_by.name AS assigned_by_designation
             FROM tasks t
             LEFT JOIN todo_projects tp ON t.todo_project_id = tp.id
+            LEFT JOIN projects rp ON t.project_id = rp.id
             LEFT JOIN users u_assigned ON t.user_id = u_assigned.id
             LEFT JOIN designations des_assigned ON u_assigned.designation_id = des_assigned.id
             LEFT JOIN users u_by ON t.assigned_by = u_by.id
@@ -923,11 +924,12 @@ class MyWorkController extends Controller
         }
 
         $st = $this->db->prepare("
-            SELECT t.*, tp.name AS project_name,
+            SELECT t.*, COALESCE(rp.name, tp.name, 'General') AS project_name,
                    u_o.full_name AS owner_name, u_b.full_name AS assigned_by_name,
                    dept.name AS department_name
             FROM tasks t
             LEFT JOIN todo_projects tp ON t.todo_project_id = tp.id
+            LEFT JOIN projects rp ON t.project_id = rp.id
             LEFT JOIN users u_o ON t.user_id = u_o.id
             LEFT JOIN users u_b ON t.assigned_by = u_b.id
             LEFT JOIN employees e_owner ON (e_owner.user_id = u_b.id OR e_owner.id = u_b.employee_id)

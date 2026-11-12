@@ -2789,7 +2789,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // =========================================================================
         // Standard Assignee / Owner Layout
         // =========================================================================
-        const tabsHtml = ['Overview', 'Activity', 'Work log'].map((n, i) =>
+        const tabsHtml = ['Overview', 'Activity', 'Comments'].map((n, i) =>
             `<button type="button" class="mw-td-tab ${i === 0 ? 'active' : ''}" data-pane="${i}">${n}</button>`).join('');
         const blocked = t.blocked ? `
             <div class="mw-td-blocked"><strong><i class="fa-solid fa-triangle-exclamation me-1"></i> Blocked</strong><span>${tdEsc(t.remarks || '')}</span></div>` : '';
@@ -2850,54 +2850,64 @@ document.addEventListener('DOMContentLoaded', function () {
             return escaped.replace(/(^|\s)@([a-zA-Z0-9_.-]+)(?=[.,!?]|$|\s)/g, '$1<span class="mw-act-mention">@$2</span>');
         };
 
+        // Build single timeline item HTML
+        const renderActivityItem = (act) => {
+            const isSystem = (act.type === 'system');
+            const initial = tdInitials(act.user_name || 'U');
+            let formattedActivity = formatMentions(act.activity);
+            let attachChip = '';
+            if (act.attachment_url && act.attachment_name) {
+                attachChip = `
+                    <div>
+                        <a href="${tdEsc(act.attachment_url)}" target="_blank" class="mw-act-attach-chip" download>
+                            <i class="fa-solid fa-paperclip"></i>
+                            <span>${tdEsc(act.attachment_name)}</span>
+                            <i class="fa-solid fa-arrow-down" style="font-size:10px; margin-left:2px;"></i>
+                        </a>
+                    </div>`;
+            }
+            const avatarHtml = act.user_photo
+                ? `<img src="${tdEsc(act.user_photo)}" alt="${tdEsc(act.user_name)}" class="mw-act-avatar" style="object-fit:cover;" onerror="this.outerHTML='<span class=\\'mw-act-avatar\\'>${tdEsc(initial)}</span>'">`
+                : `<span class="mw-act-avatar">${tdEsc(initial)}</span>`;
+
+            const bodyContent = isSystem
+                ? `<div class="mw-act-comment" style="color:#65776F; font-style:italic;">${formattedActivity}</div>`
+                : `<div class="mw-act-comment">${formattedActivity}</div>`;
+
+            return `
+                <div class="mw-activity-item">
+                    ${avatarHtml}
+                    <div style="flex:1;">
+                        <div class="mw-act-head">
+                            ${tdEsc(act.user_name)} <span class="mw-act-time">· ${tdEsc(act.created_at)}</span>
+                        </div>
+                        ${bodyContent}
+                        ${attachChip}
+                    </div>
+                </div>`;
+        };
+
         // Render Latest Activity matching Figma spec
         let activitiesHtml = '';
         if (Array.isArray(t.activities) && t.activities.length > 0) {
             activitiesHtml = `
                 <div class="mw-activity-timeline" style="margin-bottom:12px;">` +
-                t.activities.map(act => {
-                    const isSystem = (act.type === 'system');
-                    const initial = tdInitials(act.user_name || 'U');
-
-                    // Highlight full name @mentions in comments
-                    let formattedActivity = formatMentions(act.activity);
-
-                    // Render attached file if present
-                    let attachChip = '';
-                    if (act.attachment_url && act.attachment_name) {
-                        attachChip = `
-                            <div>
-                                <a href="${tdEsc(act.attachment_url)}" target="_blank" class="mw-act-attach-chip" download>
-                                    <i class="fa-solid fa-paperclip"></i>
-                                    <span>${tdEsc(act.attachment_name)}</span>
-                                    <i class="fa-solid fa-arrow-down" style="font-size:10px; margin-left:2px;"></i>
-                                </a>
-                            </div>`;
-                    }
-                    
-                    const avatarHtml = act.user_photo
-                        ? `<img src="${tdEsc(act.user_photo)}" alt="${tdEsc(act.user_name)}" class="mw-act-avatar" style="object-fit:cover;" onerror="this.outerHTML='<span class=\\'mw-act-avatar\\'>${tdEsc(initial)}</span>'">`
-                        : `<span class="mw-act-avatar">${tdEsc(initial)}</span>`;
-
-                    const bodyContent = isSystem
-                        ? `<div class="mw-act-comment" style="color:#65776F; font-style:italic;">${formattedActivity}</div>`
-                        : `<div class="mw-act-comment">${formattedActivity}</div>`;
-
-                    return `
-                        <div class="mw-activity-item">
-                            ${avatarHtml}
-                            <div style="flex:1;">
-                                <div class="mw-act-head">
-                                    ${tdEsc(act.user_name)} <span class="mw-act-time">· ${tdEsc(act.created_at)}</span>
-                                </div>
-                                ${bodyContent}
-                                ${attachChip}
-                            </div>
-                        </div>`;
-                }).join('') +
+                t.activities.map(renderActivityItem).join('') +
                 `</div>`;
         } else {
             activitiesHtml = '<div class="mw-td-empty mb-2">No activity yet.</div>';
+        }
+
+        // Render Comments Only for Comments Tab (exclude system audit logs)
+        const commentsList = (Array.isArray(t.activities) ? t.activities : []).filter(act => act.type === 'comment');
+        let commentsOnlyHtml = '';
+        if (commentsList.length > 0) {
+            commentsOnlyHtml = `
+                <div class="mw-activity-timeline" style="margin-bottom:12px;">` +
+                commentsList.map(renderActivityItem).join('') +
+                `</div>`;
+        } else {
+            commentsOnlyHtml = '<div class="mw-td-empty mb-2">No comments yet.</div>';
         }
 
         // Figma input box with trailing file upload button (Enter to post comment)
@@ -2908,6 +2918,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="mw-figma-comment-actions">
                     <button type="button" class="mw-figma-icon-btn" id="mwBtnAttachFile" title="Attach file">
                         <i class="fa-solid fa-paperclip"></i>
+                    </button>
+                    <button type="button" class="mw-figma-icon-btn" id="mwBtnPostComment" title="Post comment" style="color: #087F5B;">
+                        <i class="fa-solid fa-paper-plane"></i>
                     </button>
                 </div>
                 <!-- Mentions dropdown popup -->
@@ -2959,7 +2972,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="mw-td-sec"><h4>Latest activity</h4>${activitiesHtml}${commentBoxHtml}</div>
             </div>
             <div data-td-pane="1" style="display:none;"><div class="mw-td-sec">${activitiesHtml}${commentBoxHtml}</div></div>
-            <div data-td-pane="2" style="display:none;"><div class="mw-td-empty">Work log will appear here.</div></div>`;
+            <div data-td-pane="2" style="display:none;"><div class="mw-td-sec">${commentsOnlyHtml}${commentBoxHtml}</div></div>`;
         tdNote.innerText = t.blocked ? 'Resolve the blocker before submitting for review.' : '';
         tdBody.querySelector('#mwTdClose').addEventListener('click', closeTaskDetail);
         tdBody.querySelectorAll('.mw-td-tab').forEach(b => b.addEventListener('click', () => {
@@ -2987,7 +3000,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             footActions.innerHTML = `
-                <button type="button" class="mw-td-btn" disabled><i class="fa-regular fa-clock me-1"></i> Log work</button>
                 <button type="button" class="mw-td-btn" id="btnDrawerRequestExtension" ${extBtnDisabled}>Request extension</button>
                 ${actionBtnHtml}
             `;
@@ -2995,6 +3007,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const btnStart = document.getElementById('btnDrawerStartTask');
             if (btnStart) {
                 btnStart.addEventListener('click', function() {
+                    if (window._mwIsSendingComment) {
+                        showMwToast('Please wait for your comment to finish posting.', 'info');
+                        return;
+                    }
                     btnStart.disabled = true;
                     btnStart.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Starting...';
                     fetch(`${baseUrl}/my-work/start-task/${t.id}`, {
@@ -3117,15 +3133,16 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
         // Wire up comment send, @mention autocomplete, and file attachment handlers
-        const commentBox = tdBody.querySelector('#mwCommentBoxContainer');
-        if (commentBox) {
-            const input = commentBox.querySelector('#mwCommentInput');
-            const btnAttach = commentBox.querySelector('#mwBtnAttachFile');
-            const fileInput = commentBox.querySelector('#mwCommentFileInput');
-            const filePreview = tdBody.querySelector('#mwCommentFilePreview');
-            const fileNameSpan = tdBody.querySelector('#mwCommentFileName');
-            const btnRemoveFile = tdBody.querySelector('#mwBtnRemoveFile');
-            const mentionPopup = commentBox.querySelector('#mwMentionPopup');
+        const commentBoxes = tdBody.querySelectorAll('.mw-figma-comment-box');
+        commentBoxes.forEach(commentBox => {
+            const input = commentBox.querySelector('.mw-figma-comment-input');
+            const btnAttach = commentBox.querySelector('#mwBtnAttachFile') || commentBox.querySelector('.mw-figma-icon-btn[title="Attach file"]');
+            const btnPost = commentBox.querySelector('#mwBtnPostComment') || commentBox.querySelector('.mw-figma-icon-btn[title="Post comment"]');
+            const fileInput = commentBox.querySelector('input[type="file"]');
+            const filePreview = commentBox.parentElement.querySelector('.mw-comment-file-preview');
+            const fileNameSpan = filePreview ? filePreview.querySelector('span.text-truncate') : null;
+            const btnRemoveFile = filePreview ? filePreview.querySelector('.file-remove') : null;
+            const mentionPopup = commentBox.querySelector('.mw-mention-popup');
 
             let selectedFile = null;
             let mentionedUserIds = new Set();
@@ -3201,7 +3218,7 @@ document.addEventListener('DOMContentLoaded', function () {
             };
 
             const insertMention = (name, uid) => {
-                if (mentionStartIndex < 0) return;
+                if (mentionStartIndex < 0 || !input) return;
                 const text = input.value;
                 const before = text.slice(0, mentionStartIndex);
                 const cursor = input.selectionStart || text.length;
@@ -3212,22 +3229,24 @@ document.addEventListener('DOMContentLoaded', function () {
                 input.focus();
             };
 
-            input.addEventListener('input', function() {
-                const val = this.value;
-                const cursorPos = this.selectionStart || 0;
-                const textBeforeCursor = val.slice(0, cursorPos);
-                const lastAt = textBeforeCursor.lastIndexOf('@');
+            if (input) {
+                input.addEventListener('input', function() {
+                    const val = this.value;
+                    const cursorPos = this.selectionStart || 0;
+                    const textBeforeCursor = val.slice(0, cursorPos);
+                    const lastAt = textBeforeCursor.lastIndexOf('@');
 
-                if (lastAt !== -1 && (lastAt === 0 || /\s/.test(textBeforeCursor[lastAt - 1]))) {
-                    mentionStartIndex = lastAt;
-                    const query = textBeforeCursor.slice(lastAt + 1);
-                    if (!/\s/.test(query)) {
-                        renderMentionList(query);
-                        return;
+                    if (lastAt !== -1 && (lastAt === 0 || /\s/.test(textBeforeCursor[lastAt - 1]))) {
+                        mentionStartIndex = lastAt;
+                        const query = textBeforeCursor.slice(lastAt + 1);
+                        if (!/\s/.test(query)) {
+                            renderMentionList(query);
+                            return;
+                        }
                     }
-                }
-                hideMentionPopup();
-            });
+                    hideMentionPopup();
+                });
+            }
 
             document.addEventListener('click', function(e) {
                 if (commentBox && !commentBox.contains(e.target)) {
@@ -3235,14 +3254,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
 
-            // Comment submission via Enter key
+            // Comment submission via Enter key or Send button
+            window._mwIsSendingComment = false;
             const doSendComment = () => {
-                if (isSendingComment) return;
+                if (isSendingComment || window._mwIsSendingComment || !input) return;
                 const commentText = input.value.trim();
                 if (!commentText && !selectedFile) return;
 
                 isSendingComment = true;
+                window._mwIsSendingComment = true;
                 input.disabled = true;
+                if (btnPost) btnPost.disabled = true;
 
                 const fd = new FormData();
                 fd.append('comment', commentText);
@@ -3252,6 +3274,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (mentionedUserIds.size > 0) {
                     fd.append('mentioned_ids', Array.from(mentionedUserIds).join(','));
                 }
+
+                // Preserve active tab before refreshing drawer
+                const activeTabEl = tdBody.querySelector('.mw-td-tab.active');
+                const activePaneIdx = activeTabEl ? activeTabEl.getAttribute('data-pane') : null;
 
                 fetch(`${baseUrl}/my-work/add-comment/${t.id}`, {
                     method: 'POST',
@@ -3268,7 +3294,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (fileInput) fileInput.value = '';
                         if (filePreview) filePreview.classList.remove('show');
                         if (window.openTaskDetail && currentDetailTaskId) {
-                            window.openTaskDetail(currentDetailTaskId);
+                            window.openTaskDetail(currentDetailTaskId, activePaneIdx);
                         }
                     } else {
                         showMwToast(data.message || 'Failed to post comment.', 'error');
@@ -3280,32 +3306,50 @@ document.addEventListener('DOMContentLoaded', function () {
                 })
                 .finally(() => {
                     isSendingComment = false;
-                    input.disabled = false;
-                    input.focus();
+                    window._mwIsSendingComment = false;
+                    if (input) {
+                        input.disabled = false;
+                        input.focus();
+                    }
+                    if (btnPost) btnPost.disabled = false;
                 });
             };
 
-            input.addEventListener('keydown', e => {
-                if (e.key === 'Enter') {
-                    if (mentionPopup && mentionPopup.classList.contains('show')) {
-                        const firstItem = mentionPopup.querySelector('.mw-mention-item');
-                        if (firstItem) {
-                            e.preventDefault();
-                            firstItem.click();
-                            return;
+            if (input) {
+                input.addEventListener('keydown', e => {
+                    if (e.key === 'Enter') {
+                        if (mentionPopup && mentionPopup.classList.contains('show')) {
+                            const firstItem = mentionPopup.querySelector('.mw-mention-item');
+                            if (firstItem) {
+                                e.preventDefault();
+                                firstItem.click();
+                                return;
+                            }
                         }
+                        e.preventDefault();
+                        doSendComment();
+                    } else if (e.key === 'Escape') {
+                        hideMentionPopup();
                     }
+                });
+            }
+
+            if (btnPost) {
+                btnPost.addEventListener('click', function(e) {
                     e.preventDefault();
+                    e.stopPropagation();
                     doSendComment();
-                } else if (e.key === 'Escape') {
-                    hideMentionPopup();
-                }
-            });
-        }
+                });
+            }
+        });
 
         const btnCompleteDynamic = document.getElementById('btnDrawerCompleteTask');
         if (btnCompleteDynamic && !t.is_completed && t.can_complete) {
             btnCompleteDynamic.addEventListener('click', function() {
+                if (window._mwIsSendingComment) {
+                    showMwToast('Please wait for your comment to finish posting.', 'info');
+                    return;
+                }
                 btnCompleteDynamic.disabled = true;
                 btnCompleteDynamic.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Processing...';
                 fetch(`${baseUrl}/my-work/complete-task/${t.id}?ajax=1`, {
@@ -3613,17 +3657,29 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    window.openTaskDetail = function(taskId) {
+    window.openTaskDetail = function(taskId, activePaneIndex = null) {
         if (!tdEl) return;
-        tdBody.innerHTML = '<div class="mw-td-empty" style="padding:24px 0;">Loading…</div>';
+        if (activePaneIndex === null) {
+            tdBody.innerHTML = '<div class="mw-td-empty" style="padding:24px 0;">Loading…</div>';
+        }
         tdEl.classList.add('show');
         tdBackdrop.classList.add('show');
         tdEl.setAttribute('aria-hidden', 'false');
         fetch(`${baseUrl}/my-work/task-detail/${taskId}`, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(r => r.json())
             .then(d => {
-                if (d.status === 'success') renderTaskDetail(d.task);
-                else tdBody.innerHTML = `<div class="mw-td-empty" style="padding:24px 0;">${tdEsc(d.message || 'Could not load task.')}</div>`;
+                if (d.status === 'success') {
+                    renderTaskDetail(d.task);
+                    if (activePaneIndex !== null) {
+                        const targetTab = tdBody.querySelector(`.mw-td-tab[data-pane="${activePaneIndex}"]`);
+                        if (targetTab) {
+                            tdBody.querySelectorAll('.mw-td-tab').forEach(x => x.classList.toggle('active', x === targetTab));
+                            tdBody.querySelectorAll('[data-td-pane]').forEach(p => p.style.display = p.dataset.tdPane === String(activePaneIndex) ? '' : 'none');
+                        }
+                    }
+                } else {
+                    tdBody.innerHTML = `<div class="mw-td-empty" style="padding:24px 0;">${tdEsc(d.message || 'Could not load task.')}</div>`;
+                }
             })
             .catch(() => { tdBody.innerHTML = '<div class="mw-td-empty" style="padding:24px 0;">Could not load task.</div>'; });
     };
