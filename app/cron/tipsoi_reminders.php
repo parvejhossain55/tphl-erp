@@ -31,9 +31,7 @@ if (isset($_GET['force']) && ($_GET['force'] == '1' || $_GET['force'] == 'true')
     $isForce = true;
 }
 
-$dayOfMonth = date('d');
-$dayOfWeek = date('w'); // 0 (Sun) to 6 (Sat)
-$runType = ($dayOfMonth == '23') ? 'Monthly (23rd Cutoff)' : ($dayOfWeek == 0 ? 'Weekly (Sunday)' : 'Daily Check');
+$runType = 'Daily 11:00 AM Scheduled Reminder';
 
 echo "========================================================\n";
 echo " TPHL ERP — Tipsoi Pending Requests Reminder Dispatcher \n";

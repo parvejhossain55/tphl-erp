@@ -1657,6 +1657,7 @@ class HrmApiController extends Controller
                         'name' => $d['name'],
                         'email' => $em,
                         'pending_count' => count($d['requests']),
+                        'requests' => $d['requests'],
                         'should_send' => $elig['should_send'],
                         'reason' => $elig['reason'],
                         'last_sent' => $elig['last_sent'] ?? null
@@ -1670,6 +1671,7 @@ class HrmApiController extends Controller
                         'name' => $d['name'],
                         'email' => $em,
                         'pending_count' => count($d['requests']),
+                        'requests' => $d['requests'],
                         'should_send' => $elig['should_send'],
                         'reason' => $elig['reason'],
                         'last_sent' => $elig['last_sent'] ?? null
@@ -1679,6 +1681,7 @@ class HrmApiController extends Controller
                 echo json_encode([
                     'success' => true,
                     'mode' => 'preview',
+                    'cycle_range' => $pending['cycle_range'] ?? null,
                     'total_pending' => $pending['total_pending'],
                     'approvers_count' => count($approvers),
                     'requesters_count' => count($requesters),

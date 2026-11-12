@@ -553,6 +553,13 @@ class IncentiveModel extends Model
                     COALESCE(r_mgmt.name, 'Management') AS mgmt_approver_role,
                     u_ah.full_name AS ah_approver_name,
                     e_ah.employee_id AS ah_approver_code,
+                    lb.id AS booking_pk,
+                    lb.booking_date,
+                    f.floor_no,
+                    COALESCE(l.lead_name, l.full_name) AS client_name,
+                    COALESCE(l.phone, l.phone_number) AS client_phone,
+                    u_orig.full_name AS original_seller_name,
+                    e_orig.employee_id AS original_seller_code,
                     (
                         SELECT lp.verification_status 
                         FROM lead_payments lp 
@@ -574,11 +581,14 @@ class IncentiveModel extends Model
                 FROM project_incentive_claims c
                 LEFT JOIN users u ON c.user_id = u.id
                 LEFT JOIN users u_orig ON c.original_sales_by = u_orig.id
+                LEFT JOIN employees e_orig ON u_orig.id = e_orig.user_id
                 LEFT JOIN employees e ON u.id = e.user_id
                 LEFT JOIN departments d ON e.department_id = d.id
                 LEFT JOIN designations des ON e.designation_id = des.id
                 LEFT JOIN projects p ON c.project_id = p.id
                 LEFT JOIN flats f ON c.flat_id = f.id
+                LEFT JOIN lead_bookings lb ON c.booking_id = lb.id
+                LEFT JOIN leads l ON lb.lead_id = l.id
                 LEFT JOIN approval_requests ar ON ar.source_table = 'project_incentive_claims' AND ar.source_id = c.id
                 LEFT JOIN users u_mgmt ON COALESCE(ar.op_head_by, ar.approved_by, c.approved_by) = u_mgmt.id
                 LEFT JOIN employees e_mgmt ON u_mgmt.id = e_mgmt.user_id
@@ -610,6 +620,9 @@ class IncentiveModel extends Model
                 $bVerifStatus = $row['booking_verification_status'] ?? null;
                 $rVerifStatus = $row['reg_verification_status'] ?? null;
 
+                $saleCycleMonth = !empty($row['cycle_month']) ? $row['cycle_month'] : (!empty($row['booking_date']) ? $this->getCycleForDate($row['booking_date']) : $this->getCycleForDate($row['created_at']));
+                $saleCycleDisplay = date('F Y', strtotime($saleCycleMonth . '-01'));
+
                 $mgmtApprovedAt = !empty($row['mgmt_approved_at']) ? $row['mgmt_approved_at'] : null;
                 $mgmtApproverName = $mgmtApprovedAt ? ($row['mgmt_approver_name'] ?? 'Management') : null;
                 $mgmtApproverCode = $mgmtApprovedAt ? ($row['mgmt_approver_code'] ?? null) : null;
@@ -622,6 +635,15 @@ class IncentiveModel extends Model
                 $queue[] = [
                     'id'                        => $claimId,
                     'claim_code'                => $claimCode,
+                    'cycle_month'               => $saleCycleMonth,
+                    'sale_cycle_display'        => $saleCycleDisplay,
+                    'booking_id'                => (int)($row['booking_pk'] ?? $row['booking_id']),
+                    'booking_date'              => $row['booking_date'] ?? null,
+                    'floor_no'                  => $row['floor_no'] ?? null,
+                    'client_name'               => $row['client_name'] ?? 'N/A',
+                    'client_phone'              => $row['client_phone'] ?? '',
+                    'original_seller_name'      => $row['original_seller_name'] ?? '',
+                    'original_seller_code'      => $row['original_seller_code'] ?? '',
                     'user_id'                   => (int)$row['user_id'],
                     'user_name'                 => $row['user_name'] ?? 'Sales Executive',
                     'employee_id'               => $row['employee_id'] ?? ('EMP-' . $row['user_id']),
@@ -1271,12 +1293,40 @@ class IncentiveModel extends Model
                     mgr.full_name AS disbursed_by_name,
                     cb.bank_name AS company_bank_name,
                     cb.account_name AS company_account_name,
-                    cb.account_number AS company_account_number
+                    cb.account_number AS company_account_number,
+                    c.id AS claim_id_col,
+                    c.created_at AS claim_created_at,
+                    c.split_type,
+                    c.cycle_month,
+                    c.sale_amount,
+                    c.land_share_value,
+                    c.incentive_percentage,
+                    c.incentive_amount AS claim_incentive_amount,
+                    CASE 
+                        WHEN c.split_type = 'tl_override' THEN 'TL 0.05% Override'
+                        ELSE IFNULL(proj.name, 'N/A')
+                    END AS project_name,
+                    CASE 
+                        WHEN c.split_type = 'tl_override' THEN CONCAT('From: ', IFNULL(u_orig.full_name, 'Team Member'))
+                        WHEN c.split_type = 'designated_30' THEN CONCAT(IFNULL(fl.flat_name, 'N/A'), ' (30% Designated)')
+                        ELSE IFNULL(fl.flat_name, 'N/A')
+                    END AS flat_name,
+                    fl.floor_no,
+                    lb.id AS booking_pk,
+                    lb.booking_date,
+                    u_orig.full_name AS original_seller_name,
+                    e_orig.employee_id AS original_seller_code
                 FROM project_incentive_payments p
                 LEFT JOIN users u ON p.user_id = u.id
                 LEFT JOIN employees e ON u.id = e.user_id
                 LEFT JOIN users mgr ON p.disbursed_by = mgr.id
                 LEFT JOIN company_bank_accounts cb ON p.company_bank_account_id = cb.id
+                LEFT JOIN project_incentive_claims c ON p.claim_id = c.id
+                LEFT JOIN projects proj ON c.project_id = proj.id
+                LEFT JOIN flats fl ON c.flat_id = fl.id
+                LEFT JOIN lead_bookings lb ON c.booking_id = lb.id
+                LEFT JOIN users u_orig ON c.original_sales_by = u_orig.id
+                LEFT JOIN employees e_orig ON u_orig.id = e_orig.user_id
                 {$whereSql}
                 ORDER BY p.id DESC";
 
@@ -1285,23 +1335,42 @@ class IncentiveModel extends Model
 
         if ($res) {
             while ($row = $res->fetch_assoc()) {
+                $payClaimId = (int)($row['claim_id_col'] ?? $row['claim_id']);
+                $claimCode = 'INC-' . date('Y', strtotime($row['claim_created_at'] ?? $row['created_at'])) . '-' . str_pad($payClaimId, 3, '0', STR_PAD_LEFT);
+                $payoutCycleMonth = !empty($row['cycle_month']) ? $row['cycle_month'] : (!empty($row['booking_date']) ? $this->getCycleForDate($row['booking_date']) : $this->getCycleForDate($row['payment_date']));
+                $payoutCycleDisplay = date('F Y', strtotime($payoutCycleMonth . '-01'));
+
                 $logs[] = [
-                    'id'              => (int)$row['id'],
-                    'claim_id'        => (int)$row['claim_id'],
-                    'disbursement_no' => 'PAY-' . date('Y', strtotime($row['payment_date'])) . '-' . str_pad($row['id'], 3, '0', STR_PAD_LEFT),
-                    'recipient_name'  => $row['recipient_name'] . ' (' . $row['employee_id'] . ')',
-                    'payment_amount'  => (float)$row['payment_amount'],
-                    'payment_method'  => $row['payment_method'],
-                    'bank_name'       => $row['bank_name'] ?? 'N/A',
-                    'company_bank_name' => $row['company_bank_name'] ?? '',
-                    'to_bank_name'    => $row['to_bank_name'] ?? '',
-                    'transaction_ref' => $row['transaction_ref'] ?? 'N/A',
-                    'payment_date'    => $row['payment_date'],
-                    'disbursed_by'    => $row['disbursed_by_name'] ?? 'Accounts Admin',
-                    'notes'           => $row['notes'] ?? '',
-                    'is_received'     => (int)($row['is_received'] ?? 0),
-                    'received_at'     => $row['received_at'] ?? null,
-                    'received_by'     => $row['received_by'] ?? null
+                    'id'                   => (int)$row['id'],
+                    'claim_id'             => $payClaimId,
+                    'claim_code'           => $claimCode,
+                    'cycle_month'          => $payoutCycleMonth,
+                    'sale_cycle_display'   => $payoutCycleDisplay,
+                    'project_name'         => $row['project_name'] ?? 'N/A',
+                    'flat_name'            => $row['flat_name'] ?? 'N/A',
+                    'floor_no'             => $row['floor_no'] ?? null,
+                    'booking_pk'           => $row['booking_pk'] ?? null,
+                    'booking_date'         => $row['booking_date'] ?? null,
+                    'split_type'           => $row['split_type'] ?? 'direct',
+                    'sale_amount'          => (float)($row['sale_amount'] ?? 0),
+                    'land_share_value'     => (float)($row['land_share_value'] ?? 0),
+                    'incentive_percentage' => (float)($row['incentive_percentage'] ?? 0),
+                    'original_seller_name' => $row['original_seller_name'] ?? '',
+                    'original_seller_code' => $row['original_seller_code'] ?? '',
+                    'disbursement_no'      => 'PAY-' . date('Y', strtotime($row['payment_date'])) . '-' . str_pad($row['id'], 3, '0', STR_PAD_LEFT),
+                    'recipient_name'       => $row['recipient_name'] . ' (' . $row['employee_id'] . ')',
+                    'payment_amount'       => (float)$row['payment_amount'],
+                    'payment_method'       => $row['payment_method'],
+                    'bank_name'            => $row['bank_name'] ?? 'N/A',
+                    'company_bank_name'    => $row['company_bank_name'] ?? '',
+                    'to_bank_name'         => $row['to_bank_name'] ?? '',
+                    'transaction_ref'      => $row['transaction_ref'] ?? 'N/A',
+                    'payment_date'         => $row['payment_date'],
+                    'disbursed_by'         => $row['disbursed_by_name'] ?? 'Accounts Admin',
+                    'notes'                => $row['notes'] ?? '',
+                    'is_received'          => (int)($row['is_received'] ?? 0),
+                    'received_at'          => $row['received_at'] ?? null,
+                    'received_by'          => $row['received_by'] ?? null
                 ];
             }
         }

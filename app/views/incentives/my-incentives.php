@@ -1671,7 +1671,7 @@ window.claimAllTlOverrides = function(month, count, amount) {
     payload.append('month', month);
     payload.append('remarks', remarks);
 
-    fetch('<?= BASE_URL ?>/incentives/claim-all-tl-overrides', {
+    fetch('<?= $base_url ?>/incentives/claim-all-tl-overrides', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
