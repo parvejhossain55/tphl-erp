@@ -207,9 +207,9 @@ $todayDateFormatted = date('j F');
 .mw-mention-role { font-size: 11px; color: #65776F; margin-left: auto; }
 .mw-td-comment { border: 1px solid #E2EAE5; border-radius: 8px; padding: 12px 14px; font-size: 12.5px; color: #8A9992; margin-top: 14px; }
 .mw-td-foot { border-top: 1px solid #E2EAE5; padding: 14px 20px; }
-.mw-td-foot-actions { display: flex; gap: 10px; align-items: center; }
+.mw-td-foot-actions { display: flex; gap: 10px; align-items: center; justify-content: flex-start; }
 .mw-td-btn { background: #FFFFFF; border: 1px solid #E2EAE5; border-radius: 8px; padding: 9px 16px; font-family: 'Inter', sans-serif; font-size: 12.5px; line-height: 15px; font-weight: 700; color: #142D26; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
-.mw-td-btn.primary { margin-left: auto; background: #EDF2EF; border-color: #EDF2EF; color: #8A9992; }
+.mw-td-btn.primary { margin-left: 0; background: #EDF2EF; border-color: #EDF2EF; color: #8A9992; }
 .mw-td-btn.green { background: #087F5B; border-color: #087F5B; color: #FFFFFF; }
 .mw-td-btn.green:hover { background: #076b4d; }
 .mw-td-btn:disabled,
@@ -1408,11 +1408,11 @@ $todayDateFormatted = date('j F');
                            value="<?= htmlspecialchars($search) ?>" autocomplete="off">
                 </div>
 
-                <!-- Due date Pill Button -->
+                <!-- Deadline Pill Button -->
                 <div class="position-relative d-inline-block">
                     <button type="button" class="mw-pill-btn" id="btnDueDate">
                         <i class="fa-regular fa-calendar"></i>
-                        <span>Due date</span>
+                        <span>Deadline</span>
                     </button>
                     <div class="mw-popup-menu" id="menuDueDate">
                         <div class="mw-popup-header">FILTER BY DATE</div>
@@ -1466,7 +1466,7 @@ $todayDateFormatted = date('j F');
                             <th style="min-width: 280px;">TASK / PROJECT</th>
                             <th style="width: 110px;">PRIORITY</th>
                             <th style="width: 120px;">STATUS</th>
-                            <th style="width: 150px;">DUE</th>
+                            <th style="width: 150px;">DEADLINE</th>
                             <th style="width: 150px;">NEXT ACTION BY</th>
                             <th style="width: 110px; text-align: right;">ACTIONS</th>
                         </tr>
@@ -1930,21 +1930,17 @@ $todayDateFormatted = date('j F');
         </div>
 
         <div class="mw-td-foot-actions">
-            <button type="button" class="mw-td-btn" disabled><i class="fa-regular fa-clock me-1"></i> Log work</button>
-            <button type="button" class="mw-td-btn" disabled>Request extension</button>
-
-            <!-- Reviewer specific action buttons (shown only to Reviewer) -->
-            <button type="button" class="mw-td-btn" id="btnReviewerRequestChanges" style="display:none; border-color: #9A6216; color: #9A6216; font-weight: 700;">
-                <i class="fa-solid fa-rotate-left me-1"></i> Request Changes
+            <!-- Action complete / approve buttons first on left side -->
+            <button type="button" class="mw-td-btn primary" id="btnDrawerCompleteTask" disabled>
+                <i class="fa-solid fa-check me-1"></i> Complete Task
             </button>
             <button type="button" class="mw-td-btn" id="btnReviewerApprove" style="display:none; background: #087F5B; color: #fff; border-color: #087F5B; font-weight: 700;">
                 <i class="fa-solid fa-circle-check me-1"></i> Approve & Done
             </button>
-
-            <!-- Assignee complete button -->
-            <button type="button" class="mw-td-btn primary" id="btnDrawerCompleteTask" disabled>
-                <i class="fa-solid fa-check me-1"></i> Complete Task
+            <button type="button" class="mw-td-btn" id="btnReviewerRequestChanges" style="display:none; border-color: #9A6216; color: #9A6216; font-weight: 700;">
+                <i class="fa-solid fa-rotate-left me-1"></i> Request Changes
             </button>
+            <button type="button" class="mw-td-btn" disabled>Request extension</button>
         </div>
         <div class="mw-td-note" id="mwTdNote"></div>
     </div>
@@ -2695,13 +2691,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (footActions) {
                 footActions.innerHTML = `
+                    <button type="button" class="mw-td-btn green" id="btnRevApproveComplete">
+                        <i class="fa-solid fa-check me-1"></i> Approve & complete
+                    </button>
+                    <button type="button" class="mw-td-btn" id="btnRevRequestChanges">Request changes</button>
                     <button type="button" class="mw-td-btn" id="btnRevBackToTasks">Back to tasks</button>
-                    <div style="margin-left:auto; display:flex; gap:10px;">
-                        <button type="button" class="mw-td-btn" id="btnRevRequestChanges">Request changes</button>
-                        <button type="button" class="mw-td-btn green" id="btnRevApproveComplete">
-                            <i class="fa-solid fa-check me-1"></i> Approve & complete
-                        </button>
-                    </div>
                 `;
 
                 document.getElementById('btnRevBackToTasks').addEventListener('click', closeTaskDetail);
@@ -2859,10 +2853,10 @@ document.addEventListener('DOMContentLoaded', function () {
             if (act.attachment_url && act.attachment_name) {
                 attachChip = `
                     <div>
-                        <a href="${tdEsc(act.attachment_url)}" target="_blank" class="mw-act-attach-chip" download>
+                        <a href="${tdEsc(act.attachment_url)}" target="_blank" rel="noopener noreferrer" class="mw-act-attach-chip">
                             <i class="fa-solid fa-paperclip"></i>
                             <span>${tdEsc(act.attachment_name)}</span>
-                            <i class="fa-solid fa-arrow-down" style="font-size:10px; margin-left:2px;"></i>
+                            <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px; margin-left:2px;"></i>
                         </a>
                     </div>`;
             }
@@ -3000,8 +2994,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             footActions.innerHTML = `
-                <button type="button" class="mw-td-btn" id="btnDrawerRequestExtension" ${extBtnDisabled}>Request extension</button>
                 ${actionBtnHtml}
+                <button type="button" class="mw-td-btn" id="btnDrawerRequestExtension" ${extBtnDisabled}>Request extension</button>
             `;
 
             const btnStart = document.getElementById('btnDrawerStartTask');
@@ -3350,6 +3344,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     showMwToast('Please wait for your comment to finish posting.', 'info');
                     return;
                 }
+
+                // Check if all checklist items are ticked
+                if (Array.isArray(t.checklist) && t.checklist.length > 0) {
+                    const incompleteCount = t.checklist.filter(c => !c.completed).length;
+                    if (incompleteCount > 0) {
+                        showMwToast(`Please complete all checklist items (${incompleteCount} remaining) before completing the task.`, 'error');
+                        return;
+                    }
+                }
+
                 btnCompleteDynamic.disabled = true;
                 btnCompleteDynamic.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Processing...';
                 fetch(`${baseUrl}/my-work/complete-task/${t.id}?ajax=1`, {

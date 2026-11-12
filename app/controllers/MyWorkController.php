@@ -1047,7 +1047,8 @@ class MyWorkController extends Controller
             }
         }
 
-        $canCheckChecklist = ((int)$t['user_id'] === $userId || in_array($userId, $collabIds, true) || (int)$t['assigned_by'] === $userId || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33], true));
+        // Can check checklist if Assignee (user_id) or Collaborator
+        $canCheckChecklist = ((int)$t['user_id'] === $userId || in_array($userId, $collabIds, true));
 
         // Fetch recent activities for this task
         $activities = [];
@@ -1536,6 +1537,46 @@ class MyWorkController extends Controller
             exit;
         }
 
+        // Validate checklist: All checklist items must be completed before completing the task
+        $rawChecklist = $task['checklist_data'] ?? '';
+        $checklistItems = [];
+        if ($rawChecklist) {
+            $decoded = json_decode($rawChecklist, true);
+            if (is_array($decoded)) {
+                $checklistItems = $decoded;
+            }
+        }
+        if (empty($checklistItems)) {
+            $descRaw = (string)($task['description'] ?? '');
+            if (preg_match_all('/<li>(.*?)<\/li>/is', $descRaw, $matches)) {
+                foreach ($matches[1] as $idx => $m) {
+                    $itemText = trim(html_entity_decode(strip_tags($m)));
+                    if ($itemText !== '') {
+                        $checklistItems[] = ['id' => $idx + 1, 'text' => $itemText, 'completed' => false];
+                    }
+                }
+            }
+        }
+        if (!empty($checklistItems)) {
+            $uncompletedCount = 0;
+            foreach ($checklistItems as $item) {
+                if (empty($item['completed'])) {
+                    $uncompletedCount++;
+                }
+            }
+            if ($uncompletedCount > 0) {
+                $msg = "Please complete all checklist items ({$uncompletedCount} remaining) before completing the task.";
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['status' => 'error', 'message' => $msg]);
+                    exit;
+                }
+                if (function_exists('setError')) setError($msg);
+                header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+                exit;
+            }
+        }
+
         $hasReviewers = count($reviewerIds) > 0;
 
         if ($hasReviewers) {
@@ -1822,10 +1863,10 @@ class MyWorkController extends Controller
         $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
         $collabIds = $ids($task['collaborator_user_ids'] ?? '');
 
-        // Can toggle checklist if Assignee (user_id), Collaborator, Owner (assigned_by), or Admin
-        $canToggle = ((int)$task['user_id'] === $userId || in_array($userId, $collabIds, true) || (int)$task['assigned_by'] === $userId || in_array($roleId, [1, 3, 33], true));
+        // Can toggle checklist if Assignee (user_id) or Collaborator
+        $canToggle = ((int)$task['user_id'] === $userId || in_array($userId, $collabIds, true));
         if (!$canToggle) {
-            echo json_encode(['status' => 'error', 'message' => "Only the assignee or owner can check items."]);
+            echo json_encode(['status' => 'error', 'message' => "Only the assignee or collaborators can check checklist items."]);
             exit;
         }
 
@@ -1906,11 +1947,11 @@ class MyWorkController extends Controller
 
             // Log activity event
             $itemText = $checklist[$itemIndex]['text'] ?? 'item';
-            $actMsg = $completed ? "Completed checklist item: \"{$itemText}\"" : "Unchecked checklist item: \"{$itemText}\"";
+            $actMsg = $completed ? "Completed Acceptence : \"{$itemText}\"" : "Unchecked acceptance: \"{$itemText}\"";
             $this->logTaskActivity($id, $userId, 'system', $actMsg);
 
             if ($allDone && $task['status'] !== 'completed') {
-                $this->logTaskActivity($id, $userId, 'system', "All acceptance checklist items completed. Task marked as completed.");
+                $this->logTaskActivity($id, $userId, 'system', "All acceptance completed.");
             }
 
             echo json_encode([
@@ -1920,7 +1961,7 @@ class MyWorkController extends Controller
                 'progress' => $progress,
                 'task_status' => $newStatus,
                 'all_completed' => $allDone,
-                'message' => $allDone ? 'All checklist items completed! Task marked as completed.' : 'Checklist updated.'
+                'message' => $allDone ? 'All acceptance completed!' : 'Acceptance updated.'
             ]);
             exit;
         } else {
