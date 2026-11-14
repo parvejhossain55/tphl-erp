@@ -355,16 +355,22 @@ class HrmApiController extends Controller
         if ($projectId > 0 && (empty($fromDateStr) || empty($toDateStr))) {
             $projQuery = $this->db->query("SELECT * FROM payroll_projects WHERE id = $projectId");
             if ($projQuery && $projData = $projQuery->fetch_assoc()) {
-                if (!empty($projData['is_custom_date']) && !empty($projData['start_date']) && !empty($projData['end_date'])) {
-                    $fromDateStr = $projData['start_date'];
-                    $toDateStr = $projData['end_date'];
+                if (!empty($projData['is_custom_date']) && !empty($projData['start_date']) && $projData['start_date'] !== '0000-00-00' && !empty($projData['end_date']) && $projData['end_date'] !== '0000-00-00') {
+                    $fromDateStr = substr(trim($projData['start_date']), 0, 10);
+                    $toDateStr = substr(trim($projData['end_date']), 0, 10);
                 } elseif (!empty($projData['date'])) {
                     $parts = explode('-', $projData['date']);
                     if (count($parts) >= 2) {
                         $y = (int)$parts[0];
                         $m = (int)$parts[1];
-                        $fromDateStr = sprintf('%04d-%02d-01', $y, $m);
-                        $toDateStr = date('Y-m-t', strtotime($fromDateStr));
+                        $prevM = $m - 1;
+                        $prevY = $y;
+                        if ($prevM <= 0) {
+                            $prevM = 12;
+                            $prevY = $y - 1;
+                        }
+                        $fromDateStr = sprintf('%04d-%02d-26', $prevY, $prevM);
+                        $toDateStr = sprintf('%04d-%02d-25', $y, $m);
                     }
                 }
             }
@@ -406,13 +412,14 @@ class HrmApiController extends Controller
             $escapedToDate = $this->db->real_escape_string($toDateStr);
             $escapedFromDate = $this->db->real_escape_string($fromDateStr);
             
-            $localQuery = $this->db->query("SELECT e.id, e.employee_id, e.email, e.full_name, e.joining_date, e.department_id, d.name as department_name, des.name as designation_name 
+            $localQuery = $this->db->query("SELECT e.id, e.employee_id, e.email, e.full_name, e.joining_date, e.resign_date, e.department_id, d.name as department_name, des.name as designation_name 
                                             FROM employees e 
                                             LEFT JOIN departments d ON e.department_id = d.id 
                                             LEFT JOIN designations des ON e.designation_id = des.id
-                                            WHERE e.employee_status = 'active'
-                                              AND (e.joining_date IS NULL OR e.joining_date <= '$escapedToDate')
-                                              AND (e.deleted_at IS NULL OR e.deleted_at >= '$escapedFromDate')
+                                            WHERE e.deleted_at IS NULL
+                                              AND (e.employee_status = 'active' OR (e.resign_date IS NOT NULL AND e.resign_date != '0000-00-00' AND e.resign_date >= '$escapedFromDate'))
+                                              AND (e.joining_date IS NULL OR e.joining_date = '0000-00-00' OR e.joining_date <= '$escapedToDate')
+                                              AND (e.resign_date IS NULL OR e.resign_date = '0000-00-00' OR e.resign_date >= '$escapedFromDate')
                                             ORDER BY CAST(e.employee_id AS UNSIGNED) ASC, e.employee_id ASC");
 
             if ($localQuery) {
@@ -422,6 +429,7 @@ class HrmApiController extends Controller
                     $empEmail = trim($row['email'] ?? '');
                     $empName = trim($row['full_name'] ?? '');
                     $empJoin = trim($row['joining_date'] ?? '');
+                    $empResign = trim($row['resign_date'] ?? '');
 
                     $localEmployees[] = [
                         'id' => $pid,
@@ -429,6 +437,7 @@ class HrmApiController extends Controller
                         'email' => strtolower($empEmail),
                         'full_name' => $empName,
                         'joining_date' => $empJoin,
+                        'resign_date' => ($empResign !== '0000-00-00') ? $empResign : '',
                         'department_id' => (int) ($row['department_id'] ?? 0),
                         'department_name' => $row['department_name'] ?? 'N/A',
                         'designation_name' => $row['designation_name'] ?? 'N/A'
@@ -1575,222 +1584,146 @@ class HrmApiController extends Controller
     
     /**
      * GET /api/hrm/send-tipsoi-reminders
-     * Send email reminders to approvers for their pending Tipsoi requests
+     * Send email reminders to approvers and requesters for their pending Tipsoi requests
      */
     public function sendTipsoiReminders()
     {
         header('Content-Type: application/json');
 
         try {
-            $token = $this->externalApiService->getBearerToken();
-            if (!$token) {
-                echo json_encode(['success' => false, 'message' => 'Failed to authenticate with Tipsoi API.']);
-                exit;
-            }
+            require_once dirname(__DIR__) . '/services/TipsoiReminderService.php';
+            $service = new \TipsoiReminderService($this->db);
 
-            // Fetch local employees emails
-            $localQuery = $this->db->query("SELECT email, full_name FROM employees WHERE email IS NOT NULL AND email != ''");
-            $emailMap = [];
-            if ($localQuery) {
-                while ($row = $localQuery->fetch_assoc()) {
-                    $nameKey = strtolower(trim($row['full_name']));
-                    if ($nameKey !== '') {
-                        $emailMap[$nameKey] = trim($row['email']);
-                    }
-                }
-            }
-
-            $empId = 298780; 
-            $officeId = 4699;
-
-            $pendingRequests = [];
-
-            // Helper to fetch data
-            $fetchData = function($url) use ($token) {
-                $ch = curl_init($url);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $token, 'Accept: application/json']);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-                $res = curl_exec($ch);
-                curl_close($ch);
-                return json_decode($res, true);
-            };
-
-            // 1. Leaves
-            $d = $fetchData("https://app.tipsoi.ai/inovace-client/api/v1/leave-management/leave-history?page=0&count=2000&status=0&keyword=%20");
-            $globalLeaves = $d['leaveLogList'] ?? [];
-            $d = $fetchData("https://app.tipsoi.ai/inovace-client/api/v1/remaining-leave/approvers/$empId");
-            $approverLeaves = $d['leaveApplications'] ?? [];
-            $allLeaves = array_merge($globalLeaves, $approverLeaves);
-
-            foreach ($allLeaves as $log) {
-                $id = $log['id'] ?? $log['leaveLogId'] ?? null;
-                if (!$id) continue;
-                $pendingRequests["leave_$id"] = [
-                    'employeeName' => $log['employeeName'] ?? '—',
-                    'requestType' => 'Leave Request',
-                    'startDate' => isset($log['startDate']) ? date('Y-m-d', (int)($log['startDate'] / 1000)) : '—',
-                    'firstApproverName' => trim($log['firstApproverName'] ?? ''),
-                    'firstApprovalStatus' => $log['firstApprovalStatus'] ?? 0,
-                    'secondApproverName' => trim($log['secondApproverName'] ?? ''),
-                    'secondApprovalStatus' => $log['secondApprovalStatus'] ?? 0,
-                ];
-            }
-
-            // 2. Late Excuses
-            $d = $fetchData("https://app.tipsoi.ai/inovace-client/api/v1/late-approval-management/late-approvals/$empId");
-            $lateApprovals = $d['lateLogList'] ?? [];
-            foreach ($lateApprovals as $log) {
-                $id = $log['lateApprovalLogId'] ?? $log['id'] ?? null;
-                if (!$id) continue;
-                $pendingRequests["late_$id"] = [
-                    'employeeName' => $log['employeeName'] ?? '—',
-                    'requestType' => 'Late Excuse',
-                    'startDate' => isset($log['logDate']) ? date('Y-m-d', (int)($log['logDate'] / 1000)) : '—',
-                    'firstApproverName' => trim($log['firstLateApproverName'] ?? ''),
-                    'firstApprovalStatus' => $log['firstLateApprovalStatus'] ?? 0,
-                    'secondApproverName' => trim($log['secondLateApproverName'] ?? ''),
-                    'secondApprovalStatus' => $log['secondLateApprovalStatus'] ?? 0,
-                ];
-            }
-
-            // 3. Manual Entries
-            $d = $fetchData("https://app.tipsoi.ai/inovace-client/api/v1/employee/profile/manual/approver/");
-            $manualApprover = $d['manualEntryApplications'] ?? [];
-            $d = $fetchData("https://app.tipsoi.ai/inovace-client/api/v1/manual-entry?officeId=$officeId&order=asc&pageNumber=0&perPage=200&sortKey=reportPosition&manualEntryType=1&applicationStatus=0");
-            $globalCorrection = $d['manualEntries'] ?? [];
-            $d = $fetchData("https://app.tipsoi.ai/inovace-client/api/v1/manual-entry?officeId=$officeId&order=asc&pageNumber=0&perPage=200&sortKey=reportPosition&manualEntryType=2&applicationStatus=0");
-            $globalLate = $d['manualEntries'] ?? [];
-            $d = $fetchData("https://app.tipsoi.ai/inovace-client/api/v1/manual-entry?officeId=$officeId&order=asc&pageNumber=0&perPage=200&sortKey=reportPosition&manualEntryType=3&applicationStatus=0");
-            $globalField = $d['manualEntries'] ?? [];
-
-            $allManual = array_merge($manualApprover, $globalCorrection, $globalLate, $globalField);
-            foreach ($allManual as $entry) {
-                $id = $entry['manualEntryId'] ?? $entry['id'] ?? null;
-                if (!$id) continue;
-                $typeVal = $entry['manualEntryType'] ?? 1;
-                $reqType = ($typeVal == 1) ? 'Manual Entry' : (($typeVal == 2) ? 'Late Excuse' : 'Field Visit');
-                $startDateVal = '—';
-                if (!empty($entry['startDate'])) $startDateVal = date('Y-m-d', (int)($entry['startDate'] / 1000));
-                elseif (!empty($entry['entryTime'])) $startDateVal = date('Y-m-d', (int)($entry['entryTime'] / 1000));
-                elseif (!empty($entry['exitTime'])) $startDateVal = date('Y-m-d', (int)($entry['exitTime'] / 1000));
-
-                $pendingRequests["manual_$id"] = [
-                    'employeeName' => $entry['employeeName'] ?? '—',
-                    'requestType' => $reqType,
-                    'startDate' => $startDateVal,
-                    'firstApproverName' => trim($entry['firstManualApproverName'] ?? ''),
-                    'firstApprovalStatus' => $entry['firstManualEntryApprovalStatus'] ?? 0,
-                    'secondApproverName' => trim($entry['secondManualApproverName'] ?? ''),
-                    'secondApprovalStatus' => $entry['secondManualEntryApprovalStatus'] ?? 0,
-                ];
-            }
-
-            // Group by Pending Approver
-            $approverQueues = [];
-            foreach ($pendingRequests as $req) {
-                $pendingFor = null;
-                if ($req['firstApprovalStatus'] === 0 && !empty($req['firstApproverName'])) {
-                    $pendingFor = $req['firstApproverName'];
-                } elseif ($req['firstApprovalStatus'] !== 0 && $req['secondApprovalStatus'] === 0 && !empty($req['secondApproverName'])) {
-                    $pendingFor = $req['secondApproverName'];
-                }
-
-                if ($pendingFor) {
-                    if (!isset($approverQueues[$pendingFor])) {
-                        $approverQueues[$pendingFor] = [];
-                    }
-                    $approverQueues[$pendingFor][] = $req;
-                }
-            }
-
-            require_once __DIR__ . '/../core/MailServiceForPHPMailer.php';
-            $mailService = new \MailService();
-            $stmt = $this->db->prepare("INSERT INTO tipsoi_email_logs (sent_at, approver_name, approver_email, pending_level, request_details, status, error_message) VALUES (NOW(), ?, ?, ?, ?, ?, ?)");
-
-            $results = [];
-
-            foreach ($approverQueues as $approverName => $requests) {
-                $nameKey = strtolower($approverName);
-                if (!isset($emailMap[$nameKey])) {
-                    $results[] = [
-                        'approver' => $approverName,
-                        'status' => 'Failed',
-                        'error' => 'Email not found in employees table.'
-                    ];
-                    $details = count($requests) . " pending requests.";
-                    $status = 'Failed';
-                    $errorMsg = 'Email not found.';
-                    $emailAddr = '';
-                    $lvl = 'Multiple';
-                    $stmt->bind_param("ssssss", $approverName, $emailAddr, $lvl, $details, $status, $errorMsg);
-                    $stmt->execute();
-                    continue;
-                }
-
-                $email = $emailMap[$nameKey];
-                $reqCount = count($requests);
-                
-                // Build HTML Table for the email
-                $html = "<p>Dear <strong>{$approverName}</strong>,</p>";
-                $html .= "<p>You have <strong>{$reqCount}</strong> pending request(s) on Tipsoi waiting for your approval. Please log in to the HR module or Tipsoi portal to review them.</p>";
-                $html .= "<table border='1' cellpadding='5' cellspacing='0' style='border-collapse: collapse; width: 100%; max-width: 600px;'>";
-                $html .= "<tr style='background-color: #f2f2f2;'><th>Employee Name</th><th>Request Type</th><th>Date</th></tr>";
-                foreach ($requests as $r) {
-                    $html .= "<tr>";
-                    $html .= "<td>{$r['employeeName']}</td>";
-                    $html .= "<td>{$r['requestType']}</td>";
-                    $html .= "<td>{$r['startDate']}</td>";
-                    $html .= "</tr>";
-                }
-                $html .= "</table>";
-                $html .= "<br><p>Thank you,<br>HR & Admin Dept.<br>The Premium Homes Ltd.</p>";
-
-                try {
-                    $sent = $mailService->sendGenericMail(
-                        $email,
-                        "Pending Tipsoi Approvals ($reqCount)",
-                        $html
-                    );
-
-                    $details = "$reqCount pending requests sent.";
-                    $status = $sent ? 'Success' : 'Failed';
-                    $errorMsg = $sent ? '' : 'Failed to send email via MailService.';
-                    $lvl = 'Multiple';
-
-                    $stmt->bind_param("ssssss", $approverName, $email, $lvl, $details, $status, $errorMsg);
-                    $stmt->execute();
-
-                    $results[] = [
-                        'approver' => $approverName,
-                        'email' => $email,
-                        'status' => $status
-                    ];
-                } catch (\Exception $e) {
-                    $status = 'Failed';
-                    $errorMsg = substr($e->getMessage(), 0, 255);
-                    $details = "$reqCount pending requests.";
-                    $lvl = 'Multiple';
-                    $stmt->bind_param("ssssss", $approverName, $email, $lvl, $details, $status, $errorMsg);
-                    $stmt->execute();
-                    $results[] = [
-                        'approver' => $approverName,
-                        'status' => 'Failed',
-                        'error' => $errorMsg
-                    ];
-                }
-            }
-
-            $stmt->close();
+            $force = isset($_GET['force']) && ($_GET['force'] == '1' || $_GET['force'] == 'true');
+            $result = $service->runCompanyWideSync($force, 'admin_manual');
 
             echo json_encode([
                 'success' => true,
-                'message' => 'Reminders processed.',
-                'data' => $results
+                'message' => "Reminders processed: {$result['dispatched_count']} sent, {$result['skipped_count']} skipped (cooldown active).",
+                'data' => $result
             ]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
 
-        } catch (Exception $e) {
+    /**
+     * GET/POST /api/tipsoi/trigger-login-reminder
+     * Triggered in background on portal login to evaluate user and pending approvers
+     */
+    public function triggerLoginReminder()
+    {
+        header('Content-Type: application/json');
+
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $userEmail = $_SESSION['user']['email'] ?? null;
+        if (!$userEmail) {
+            echo json_encode(['success' => false, 'message' => 'No active user session.']);
+            exit;
+        }
+
+        try {
+            require_once dirname(__DIR__) . '/services/TipsoiReminderService.php';
+            $service = new \TipsoiReminderService($this->db);
+            $result = $service->handleUserLogin($userEmail);
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Login reminder check completed.',
+                'data' => $result
+            ]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * GET /api/tipsoi/send-reminders-test
+     * Admin diagnostics and test dispatch
+     */
+    public function testTipsoiReminders()
+    {
+        header('Content-Type: application/json');
+
+        try {
+            require_once dirname(__DIR__) . '/services/TipsoiReminderService.php';
+            $service = new \TipsoiReminderService($this->db);
+
+            $mode = $_GET['mode'] ?? 'preview';
+            $targetEmail = $_GET['email'] ?? null;
+
+            if ($mode === 'preview') {
+                $pending = $service->fetchAllPendingRequests();
+                $approvers = [];
+                foreach ($pending['by_approver'] as $em => $d) {
+                    $elig = $service->shouldSendReminder($em, false);
+                    $approvers[] = [
+                        'name' => $d['name'],
+                        'email' => $em,
+                        'pending_count' => count($d['requests']),
+                        'requests' => $d['requests'],
+                        'should_send' => $elig['should_send'],
+                        'reason' => $elig['reason'],
+                        'last_sent' => $elig['last_sent'] ?? null
+                    ];
+                }
+
+                $requesters = [];
+                foreach ($pending['by_requester'] as $em => $d) {
+                    $elig = $service->shouldSendReminder($em, false);
+                    $requesters[] = [
+                        'name' => $d['name'],
+                        'email' => $em,
+                        'pending_count' => count($d['requests']),
+                        'requests' => $d['requests'],
+                        'should_send' => $elig['should_send'],
+                        'reason' => $elig['reason'],
+                        'last_sent' => $elig['last_sent'] ?? null
+                    ];
+                }
+
+                echo json_encode([
+                    'success' => true,
+                    'mode' => 'preview',
+                    'cycle_range' => $pending['cycle_range'] ?? null,
+                    'total_pending' => $pending['total_pending'],
+                    'approvers_count' => count($approvers),
+                    'requesters_count' => count($requesters),
+                    'approvers' => $approvers,
+                    'requesters' => $requesters
+                ]);
+                exit;
+            } elseif ($mode === 'test_send' && $targetEmail) {
+                $pending = $service->fetchAllPendingRequests();
+                $sampleApprover = !empty($pending['by_approver']) ? reset($pending['by_approver']) : null;
+                if (!$sampleApprover) {
+                    echo json_encode(['success' => false, 'message' => 'No pending approver requests found to sample.']);
+                    exit;
+                }
+
+                $sendRes = $service->sendApproverEmail(
+                    $sampleApprover['name'] . " (Test Sample)",
+                    $targetEmail,
+                    $sampleApprover['requests'],
+                    'admin_test'
+                );
+
+                echo json_encode([
+                    'success' => true,
+                    'mode' => 'test_send',
+                    'result' => $sendRes
+                ]);
+                exit;
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Invalid mode or missing email parameter.']);
+                exit;
+            }
+        } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }

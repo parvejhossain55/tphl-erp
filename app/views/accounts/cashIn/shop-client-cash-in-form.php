@@ -12,15 +12,21 @@ $accountModel     = new AccountShopClient();
 $paymentSummary   = $accountModel->getPaymentSummaryByBookingId($bookingId);
 $outstandingDues  = $accountModel->getOutstandingEmiDues($bookingId);
 
-$remainingLandShare      = $paymentSummary['remaining_land_share']       ?? 0;
-$isLandShareCompleted    = $paymentSummary['is_land_share_completed']    ?? false;
+$remainingLandShare      = (float)($paymentSummary['remaining_land_share_total'] ?? $paymentSummary['remaining_land_share'] ?? 0);
+$isLandShareCompleted    = !empty($paymentSummary['is_land_share_completed']) || ($remainingLandShare <= 0);
 $isShopServiceChargeCompleted = $paymentSummary['is_shop_service_charge_completed'] ?? false;
-$isBookingFullyPaid      = $paymentSummary['is_booking_fully_paid']      ?? false;
-$agreementValue          = $paymentSummary['agreement_value']            ?? 0;
-$effectiveBookingTarget  = $paymentSummary['effective_booking_target']   ?? $agreementValue;
-$bookingMoneyTotal       = $paymentSummary['booking_money_total']        ?? 0;
-$bookingMoneyPaid        = $paymentSummary['booking_money_paid']         ?? 0;
-$bookingBalance          = max(0, $effectiveBookingTarget - $bookingMoneyTotal);
+$agreementValue          = (float)($paymentSummary['agreement_value'] ?? 0);
+$effectiveBookingTarget  = (float)($paymentSummary['effective_booking_target'] ?? $agreementValue);
+$bookingMoneyTotal       = (float)($paymentSummary['booking_money_total'] ?? 0);
+$bookingMoneyPaid        = (float)($paymentSummary['booking_money_paid'] ?? 0);
+
+if ($isLandShareCompleted || $remainingLandShare <= 0) {
+    $bookingBalance       = 0;
+    $isBookingFullyPaid   = true;
+} else {
+    $bookingBalance       = min($remainingLandShare, max(0, $effectiveBookingTarget - $bookingMoneyTotal));
+    $isBookingFullyPaid   = ($bookingBalance <= 0 && $bookingMoneyTotal > 0);
+}
 $perEmiAmount         = $paymentSummary['per_emi_amount']          ?? 0;
 $serviceChargeRate    = $paymentSummary['service_charge_per_emi']  ?? 0;
 $shopServiceChargeTarget = $paymentSummary['shop_service_charge_target'] ?? 0;
@@ -33,6 +39,7 @@ if ($totalEmiDue <= 0 && !empty($outstandingDues)) {
     $totalEmiDue = (float)array_sum(array_column($outstandingDues, 'due_emi_amount'));
 }
 $hasOutstandingDues   = count($outstandingDues) > 0;
+$allBangladeshBanks    = function_exists('getBangladeshBanks') ? getBangladeshBanks() : [];
 // isRegistrationPaid is now tied to is_land_share_completed (same gate)
 $isRegistrationPaid   = $paymentSummary['is_registration_paid']   ?? false;
 $remainingCF          = (float)($paymentSummary['remaining_construction_fee'] ?? 0);
@@ -63,7 +70,7 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                     </div>
                 <?php endif; ?>
 
-                <?php if (!$isBookingFullyPaid && $bookingMoneyPaid > 0): ?>
+                <?php if (!$isBookingFullyPaid && !$isLandShareCompleted && $bookingMoneyPaid > 0 && $bookingBalance > 0): ?>
                     <div class="alert alert-warning alert-dismissible fade show mb-4 d-flex align-items-center" role="alert">
                         <i class=""></i>
                         <div>
@@ -116,7 +123,7 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                 <option value="">-- Select Payment Type --</option>
 
                                 <!-- Booking Money -->
-                                <?php if (!$isBookingFullyPaid): ?>
+                                <?php if (!$isLandShareCompleted && !$isBookingFullyPaid && $bookingBalance > 0): ?>
                                     <option value="booking_money">
                                         Booking Money<?php if ($bookingBalance > 0): ?> (Remaining: TK.<?= number_format($bookingBalance, 2) ?>)<?php elseif ($effectiveBookingTarget > 0): ?> (Agreed: TK.<?= number_format($effectiveBookingTarget, 2) ?>)<?php endif; ?>
                                     </option>
@@ -323,11 +330,16 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                         </div>
 
                         <!-- Bank Fields (Visible only for bank/cheque) -->
-                        <div class="col-md-12 bank-fields" style="display: none;">
+                        <div class="col-md-6 bank-fields" style="display: none;">
                             <div class="from__input-box">
                                 <label class="form__input-title">Transfer To / Company Bank <span>*</span></label>
                                 <select name="bank_id" id="bankSelect" class="form-select">
-                                    <option value="">-- Loading company banks... --</option>
+                                    <option value="">-- Select Transfer To / Company Bank --</option>
+                                    <?php if (!empty($companyBanks)): ?>
+                                        <?php foreach ($companyBanks as $b): ?>
+                                            <option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['bank_name'] . ' — ' . $b['account_name'] . (!empty($b['account_number']) ? ' (' . $b['account_number'] . ')' : '')) ?></option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
                                 </select>
                                 <small class="text-muted">Managed in <a href="<?= $GLOBALS['base_url'] ?>/company-bank-accounts" target="_blank">Company Bank Manage</a></small>
                             </div>
@@ -335,7 +347,27 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
 
                         <div class="col-md-6 bank-fields" style="display: none;">
                             <div class="from__input-box">
-                                <label class="form__input-title">Bank Account No. <span>*</span></label>
+                                <label class="form__input-title">Transfer From / Client Bank <span>*</span></label>
+                                <select name="bank_name" id="clientBankSelect" class="form-select" style="width: 100%;">
+                                    <option value="">-- Select Client Bank --</option>
+                                    <?php foreach ($allBangladeshBanks as $bName): ?>
+                                        <option value="<?= htmlspecialchars($bName) ?>"><?= htmlspecialchars($bName) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 bank-fields" id="otherBankField" style="display: none;">
+                            <div class="from__input-box">
+                                <label class="form__input-title" id="customBankLabel">Specify Foreign / Other Bank Name <span>*</span></label>
+                                <input type="text" name="custom_bank_name" id="customBankInput" class="form-control"
+                                    placeholder="e.g. Emirates NBD, Chase Bank, Al Rajhi, etc.">
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 bank-fields" style="display: none;">
+                            <div class="from__input-box">
+                                <label class="form__input-title">Client Bank A/C No. (Optional)</label>
                                 <input type="text" name="bank_account_no" class="form-control"
                                     placeholder="Account Number">
                             </div>
@@ -745,30 +777,82 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                 onlineFields.forEach(field => field.style.display = 'none');
 
                 // Remove required attributes
-                bankFields.forEach(field => field.querySelector('input')?.removeAttribute('required'));
+                bankFields.forEach(field => {
+                    field.querySelectorAll('input, select').forEach(el => el.removeAttribute('required'));
+                });
                 chequeFields.forEach(field => field.querySelector('input')?.removeAttribute('required'));
                 onlineFields.forEach(field => field.querySelector('select')?.removeAttribute('required'));
 
+                const otherBankField = document.getElementById('otherBankField');
+                if (otherBankField) otherBankField.style.display = 'none';
+                const customBankInput = document.getElementById('customBankInput');
+                if (customBankInput) {
+                    customBankInput.removeAttribute('required');
+                    customBankInput.value = '';
+                }
+
                 // Show relevant fields
-                if (method === 'bank') {
+                if (method === 'bank' || method === 'cheque') {
                     bankFields.forEach(field => {
-                        field.style.display = 'block';
-                        field.querySelector('input')?.setAttribute('required', 'required');
+                        if (field.id !== 'otherBankField') {
+                            field.style.display = 'block';
+                        }
                     });
-                } else if (method === 'cheque') {
-                    bankFields.forEach(field => {
-                        field.style.display = 'block';
-                        field.querySelector('input')?.setAttribute('required', 'required');
-                    });
-                    chequeFields.forEach(field => {
-                        field.style.display = 'block';
-                        field.querySelector('input')?.setAttribute('required', 'required');
-                    });
+                    document.getElementById('bankSelect')?.setAttribute('required', 'required');
+                    document.getElementById('clientBankSelect')?.setAttribute('required', 'required');
+
+                    if (method === 'cheque') {
+                        chequeFields.forEach(field => {
+                            field.style.display = 'block';
+                            field.querySelector('input')?.setAttribute('required', 'required');
+                        });
+                    }
+
+                    if (window.jQuery && $.fn.select2) {
+                        const $cBank = $('#clientBankSelect');
+                        if (!$cBank.hasClass('select2-hidden-accessible')) {
+                            $cBank.select2({
+                                width: '100%',
+                                placeholder: '-- Select Client Bank --',
+                                tags: true,
+                                createTag: function (params) {
+                                    var term = $.trim(params.term);
+                                    if (term === '') return null;
+                                    return {
+                                        id: term,
+                                        text: term + ' (Foreign / Custom Bank)',
+                                        newTag: true
+                                    };
+                                }
+                            });
+                        } else {
+                            $cBank.next('.select2-container').css('width', '100%');
+                        }
+                    }
                 } else if (method === 'online') {
                     onlineFields.forEach(field => {
                         field.style.display = 'block';
                         field.querySelector('select')?.setAttribute('required', 'required');
                     });
+                }
+            });
+        }
+
+        // Handle "Other Country / Foreign Bank" & "Other Bank" selection
+        if (window.jQuery) {
+            $(document).on('change', '#clientBankSelect', function() {
+                const val = this.value;
+                if (val === 'Other Bank' || val === 'Other Country / Foreign Bank') {
+                    if (val === 'Other Country / Foreign Bank') {
+                        $('#customBankLabel').html('Specify Foreign / Other Country Bank Name <span>*</span>');
+                    } else {
+                        $('#customBankLabel').html('Specify Other Bank Name <span>*</span>');
+                    }
+                    $('#otherBankField').show();
+                    $('#customBankInput').attr('required', 'required').focus();
+                } else {
+                    $('#otherBankField').hide();
+                    $('#customBankInput').removeAttr('required').val('');
                 }
             });
         }
@@ -831,24 +915,31 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
             paymentMethod.dispatchEvent(new Event('change'));
         }
 
-        // Load company banks for AJAX dropdown
-        fetch('<?= $GLOBALS['base_url'] ?>/get-company-banks')
-            .then(r => r.json())
-            .then(data => {
-                const sel = document.getElementById('bankSelect');
-                if (!sel) return;
-                sel.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
-                (data.banks || []).forEach(b => {
-                    const opt = document.createElement('option');
-                    opt.value = b.id;
-                    opt.textContent = b.bank_name + ' — ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
-                    sel.appendChild(opt);
+        // Initialize company banks list
+        window.companyBanksList = <?= json_encode($companyBanks ?? []) ?>;
+
+        // If not already populated server-side, load company banks via AJAX
+        const existingShopBankOptions = document.getElementById('bankSelect')?.querySelectorAll('option');
+        if (!existingShopBankOptions || existingShopBankOptions.length <= 1) {
+            fetch('<?= $GLOBALS['base_url'] ?>/get-company-banks')
+                .then(r => r.json())
+                .then(data => {
+                    window.companyBanksList = data.banks || [];
+                    const sel = document.getElementById('bankSelect');
+                    if (!sel) return;
+                    sel.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
+                    (data.banks || []).forEach(b => {
+                        const opt = document.createElement('option');
+                        opt.value = b.id;
+                        opt.textContent = b.bank_name + ' — ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
+                        sel.appendChild(opt);
+                    });
+                })
+                .catch(() => {
+                    const sel = document.getElementById('bankSelect');
+                    if (sel && sel.options.length <= 1) sel.innerHTML = '<option value="">Company Bank Accounts unavailable</option>';
                 });
-            })
-            .catch(() => {
-                const sel = document.getElementById('bankSelect');
-                if (sel) sel.innerHTML = '<option value="">Company Bank Accounts unavailable</option>';
-            });
+        }
 
         // File preview thumbnails
         const proofFilesInput = document.getElementById('proofFiles');
@@ -917,5 +1008,28 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
         display: block;
         margin-top: 5px;
         font-size: 12px;
+    }
+
+    /* Fix Select2 width & height in bank fields to prevent 0px collapse */
+    .bank-fields .select2-container,
+    .bank-fields .select2-container--default {
+        width: 100% !important;
+        display: block !important;
+    }
+    .bank-fields .select2-container .select2-selection--single {
+        height: 48px !important;
+        border: 1px solid #ced4da !important;
+        border-radius: 6px !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+    .bank-fields .select2-container .select2-selection--single .select2-selection__rendered {
+        line-height: 48px !important;
+        padding-left: 14px !important;
+        color: #495057 !important;
+    }
+    .bank-fields .select2-container .select2-selection--single .select2-selection__arrow {
+        height: 46px !important;
+        right: 10px !important;
     }
 </style>

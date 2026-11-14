@@ -35,6 +35,29 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
             padding: 6px 12px;
         }
     }
+
+    /* Fix Select2 width & height in bank fields to prevent 0px collapse */
+    .bank-fields .select2-container,
+    .bank-fields .select2-container--default {
+        width: 100% !important;
+        display: block !important;
+    }
+    .bank-fields .select2-container .select2-selection--single {
+        height: 48px !important;
+        border: 1px solid #ced4da !important;
+        border-radius: 6px !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+    .bank-fields .select2-container .select2-selection--single .select2-selection__rendered {
+        line-height: 48px !important;
+        padding-left: 14px !important;
+        color: #495057 !important;
+    }
+    .bank-fields .select2-container .select2-selection--single .select2-selection__arrow {
+        height: 46px !important;
+        right: 10px !important;
+    }
 </style>
 <div class="row">
     <div class="col-xxl-12">
@@ -181,7 +204,7 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
                         </div>
 
                         <!-- Bank Details -->
-                        <div class="col-md-12 bank-fields" style="display: <?= in_array($transaction['payment_method'] ?? '', ['bank', 'cheque']) ? 'block' : 'none' ?>;">
+                        <div class="col-md-6 bank-fields" style="display: <?= in_array($transaction['payment_method'] ?? '', ['bank', 'cheque']) ? 'block' : 'none' ?>;">
                             <div class="from__input-box">
                                 <label class="form__input-title">Transfer To / Company Bank</label>
                                 <div class="input-group">
@@ -558,6 +581,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             };
                         }
                     });
+                } else {
+                    $cBank.next('.select2-container').css('width', '100%');
                 }
             }
         }

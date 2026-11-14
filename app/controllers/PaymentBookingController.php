@@ -181,63 +181,130 @@ class PaymentBookingController extends Controller
             }
         }
 
+        $bookingId = (int)$data['booking_id'];
         $inputAmount = (float)$data['amount'];
         $created = null;
-        $createdRegistration = null;
+        $createdPayments = [];
 
-        if ($data['payment_type'] === 'booking_money') {
-            $finalAmount = !empty($bookingLead['approved_amount'])
-                ? (float)$bookingLead['agreement_value'] - (float)$bookingLead['approved_amount']
-                : (float)$bookingLead['agreement_value'];
+        // Load AccountClient model for full waterfall targets
+        require_once dirname(__DIR__) . '/models/AccountClient.php';
+        $accountModel = new AccountClient($this->db);
+        $summary = $accountModel->getPaymentSummaryByBookingId($bookingId);
+        $clientDetails = $accountModel->getClientByBookingId($bookingId);
+        $isShop = !empty($clientDetails['is_shop']);
 
-            if ($finalAmount <= 0) {
-                $finalAmount = (float)$bookingLead['agreement_value'];
-            }
+        // 1. Booking Money Remaining
+        $agreementValForBooking = (float)($summary['agreement_value'] ?? 0);
+        $discountForBooking = (float)($summary['discount_amount'] ?? 0);
+        $bookingTargetForTx = ($agreementValForBooking > 0)
+            ? max(0, $agreementValForBooking - $discountForBooking)
+            : (float)($summary['effective_booking_target'] ?? 300000);
+        // 2. Land Share Remaining (unrejected total so pending counts)
+        $landShareRemaining = max(0, (float)($summary['remaining_land_share_total'] ?? $summary['remaining_land_share']));
 
-            $stmt = $this->db->prepare("SELECT SUM(amount) AS paid FROM lead_payments WHERE booking_id = ? AND payment_type = 'booking_money' AND verification_status IN ('verified', 'pending')");
-            $stmt->bind_param("i", $data['booking_id']);
-            $stmt->execute();
-            $row = $stmt->get_result()->fetch_assoc();
-            $booking_paid = (float)($row['paid'] ?? 0);
-            $remainingBookingMoney = $finalAmount - $booking_paid;
+        // 1. Booking Money Remaining (capped by remaining land share)
+        $bookingMoneyRemaining = ($landShareRemaining <= 0 || !empty($summary['is_land_share_completed']))
+            ? 0
+            : min($landShareRemaining, max(0, $bookingTargetForTx - (float)($summary['booking_money_total'] ?? 0)));
 
-            if ($inputAmount > $remainingBookingMoney && $remainingBookingMoney > 0) {
-                // Split payment
-                $batchId = uniqid('batch_');
-                
-                $data['amount'] = $remainingBookingMoney;
-                $data['batch_id'] = $batchId;
-                $created = $this->paymentModel->create($data);
+        // 3. Development Charge Remaining (or Shop Service Charge for shops)
+        $flatDevTarget = (float)($summary['flat_development_charges'] ?? 0);
+        $flatDevPaid = (float)($summary['development_charge_paid_total'] ?? 0);
+        $flatDevRemaining = max(0, $flatDevTarget - $flatDevPaid);
 
-                $dataReg = $data;
-                $dataReg['amount'] = $inputAmount - $remainingBookingMoney;
-                $dataReg['payment_type'] = 'registration';
-                $dataReg['batch_id'] = $batchId;
-                $createdRegistration = $this->paymentModel->create($dataReg);
-            } elseif ($remainingBookingMoney <= 0) {
-                $data['payment_type'] = 'registration';
-                $created = $this->paymentModel->create($data);
-            } else {
-                $created = $this->paymentModel->create($data);
-            }
+        $shopSvcRemaining = $isShop
+            ? max(0, (float)($summary['shop_service_charge_target'] ?? 0) - (float)($summary['shop_service_charge_paid_total'] ?? 0))
+            : 0;
+
+        $pool = $inputAmount;
+        $paymentsToInsert = [];
+
+        if ($data['payment_type'] === 'others') {
+            $paymentsToInsert[] = ['type' => 'others', 'amount' => $pool];
+            $pool = 0;
         } else {
-            $created = $this->paymentModel->create($data);
+            // Stage 1: Booking Money
+            if ($bookingMoneyRemaining > 0 && $pool > 0) {
+                $payAmount = min($pool, $bookingMoneyRemaining);
+                $paymentsToInsert[] = ['type' => 'booking_money', 'amount' => $payAmount];
+                $pool -= $payAmount;
+                $bookingMoneyRemaining -= $payAmount;
+                $landShareRemaining = max(0, $landShareRemaining - $payAmount);
+            }
+
+            // Stage 2: Land Share / Registration
+            if ($landShareRemaining > 0 && $pool > 0) {
+                $targetLandType = in_array($data['payment_type'], ['land_share', 'registration', 'mutation_cost'])
+                    ? $data['payment_type']
+                    : ($isShop ? 'registration' : 'registration');
+                $payAmount = min($pool, $landShareRemaining);
+                $paymentsToInsert[] = ['type' => $targetLandType, 'amount' => $payAmount];
+                $pool -= $payAmount;
+                $landShareRemaining -= $payAmount;
+            }
+
+            // Stage 3: Development Charge & Shop Service Charge
+            if ($flatDevRemaining > 0 && $pool > 0) {
+                $payAmount = min($pool, $flatDevRemaining);
+                $paymentsToInsert[] = ['type' => 'development_charge', 'amount' => $payAmount];
+                $pool -= $payAmount;
+                $flatDevRemaining -= $payAmount;
+            }
+
+            if ($isShop && $shopSvcRemaining > 0 && $pool > 0) {
+                $payAmount = min($pool, $shopSvcRemaining);
+                $paymentsToInsert[] = ['type' => 'shop_service_charge', 'amount' => $payAmount];
+                $pool -= $payAmount;
+                $shopSvcRemaining -= $payAmount;
+            }
+
+            // Stage 4: EMI
+            if ($pool > 0) {
+                $paymentsToInsert[] = ['type' => 'emi', 'amount' => $pool];
+                $pool = 0;
+            }
+        }
+
+        // Shared batch_id if multiple payments created
+        $batchId = (count($paymentsToInsert) > 1 || !empty($data['batch_id']))
+            ? ($data['batch_id'] ?? ('batch_' . uniqid() . '_' . time()))
+            : null;
+
+        foreach ($paymentsToInsert as $pItem) {
+            if ($pItem['amount'] <= 0) continue;
+            $payData = $data;
+            $payData['payment_type'] = $pItem['type'];
+            $payData['amount']       = $pItem['amount'];
+            if ($batchId) {
+                $payData['batch_id'] = $batchId;
+            }
+            $insertId = $this->paymentModel->create($payData);
+            if ($insertId) {
+                $createdPayments[] = [
+                    'id'     => $insertId,
+                    'type'   => $pItem['type'],
+                    'amount' => $pItem['amount']
+                ];
+                if (!$created) {
+                    $created = $insertId;
+                }
+            }
         }
 
         if (!empty($created)) {
+            $this->updateBookingPaymentStatus($data['booking_id']);
+
             if ($sendSms) {
                 // Determine if a split happened and we should use the total input amount
                 $smsAmount = $inputAmount;
-                $smsPaymentType = ucfirst(str_replace('_', ' ', $data['payment_type'] ?? 'payment'));
-                if (!empty($createdRegistration)) {
-                    $smsPaymentType = 'Booking & Registration Money';
-                }
+                $types = array_map(function($cp) { return ucfirst(str_replace('_', ' ', $cp['type'])); }, $createdPayments);
+                $smsPaymentType = !empty($types) ? implode(' & ', array_unique($types)) : ucfirst(str_replace('_', ' ', $data['payment_type'] ?? 'payment'));
 
                 // Trigger 1: Send Payment Received SMS
                 $smsResult = $smsService->sendPaymentReceivedSms($created, $isTestingMode, $smsAmount, $smsPaymentType);
 
                 if ($isTestingMode) {
-                    setSuccess("Payment created successfully! (Testing Mode: SMS Skipped)");
+                    setSuccess("Payment created successfully! (Testing Mode: SMS & Email Skipped)");
                 } elseif (!empty($smsResult['success'])) {
                     setSuccess("Payment created successfully & SMS dispatched to client (" . htmlspecialchars($clientPhone ?? '') . ")!");
                 } else {
@@ -245,13 +312,14 @@ class PaymentBookingController extends Controller
                     setError("Payment created, BUT SMS dispatch failed for (" . htmlspecialchars($clientPhone ?? '') . "): " . htmlspecialchars($errMsg));
                 }
             } else {
-                setSuccess("Payment created successfully! (SMS Notification Disabled)");
+                setSuccess("Payment created successfully! (SMS & Email Notification Disabled)");
             }
         } else {
             setError("Failed to create payment!");
         }
 
-        if (!empty($created) && !$isTestingMode) {
+        // EMAIL SENDING LOGIC - Only send if SMS is enabled and testing mode is off
+        if (!empty($created) && $sendSms && !$isTestingMode) {
             // Get Lead info and send email
             $leadInfoQuery = $this->db->query("
                 SELECT l.full_name, l.email, p.name AS project_name, f.flat_name
@@ -309,13 +377,14 @@ class PaymentBookingController extends Controller
         // Final payable amount:
         // Use agreement_value minus approved_amount (discount)
         $agreementValue = (float)($booking['agreement_value'] ?? 0);
-        $discountApproved = !empty($booking['approved_amount']) ? (float)$booking['approved_amount'] : 0;
-        
-        $finalAmount = $agreementValue - $discountApproved;
-        
-        if ($finalAmount <= 0) {
-            $finalAmount = $agreementValue;
+        $discountApproved = 0;
+        if (!empty($booking['approved_amount'])) {
+            $discountApproved = (float)$booking['approved_amount'];
+        } elseif (!empty($booking['discount_amount']) && in_array(strtolower($booking['approval_status'] ?? ''), ['approved', 'not_required'])) {
+            $discountApproved = (float)$booking['discount_amount'];
         }
+        
+        $finalAmount = max(0, $agreementValue - $discountApproved);
 
         // SUM of ALL verified payments (all payment types)
         $sum = $this->db->query("
@@ -455,16 +524,10 @@ class PaymentBookingController extends Controller
         // Step 2: Recalculate booking payment status based on all verified payments
         $newBookingStatus = $this->updateBookingPaymentStatus($bookingId);
 
-        // Step 3: Update THIS payment's payment_status based on booking result
-        //   - If booking is now 'paid'     → this payment = 'paid'
-        //   - If booking is 'partial'      → this payment = 'partially_paid'
-        //   - If booking is 'unpaid'       → this payment stays 'pending' (edge case)
-        $paymentStatusMap = [
-            'paid'    => 'paid',
-            'partial' => 'partially_paid',
-            'unpaid'  => 'pending',
-        ];
-        $newPaymentStatus = $paymentStatusMap[$newBookingStatus] ?? 'paid';
+        // Step 3: Update THIS payment's payment_status
+        // Once verified, the payment is confirmed received ('paid', or 'partially_paid' if there is an installment balance)
+        $isPartial = !empty($payment['due_emi_amount']) && (float)$payment['due_emi_amount'] > 0;
+        $newPaymentStatus = $isPartial ? 'partially_paid' : 'paid';
 
         $stmt2 = $this->db->prepare("
             UPDATE lead_payments
@@ -480,9 +543,13 @@ class PaymentBookingController extends Controller
         }
 
         // Trigger 2: Send Payment Verified SMS
-        require_once dirname(__DIR__) . '/services/SmsService.php';
-        $smsService = new SmsService($this->db);
-        $smsService->sendBatchPaymentVerifiedSmsIfComplete($id);
+        $sendSms = isset($_POST['send_sms']) ? filter_var($_POST['send_sms'], FILTER_VALIDATE_BOOLEAN) : (isset($_GET['send_sms']) ? filter_var($_GET['send_sms'], FILTER_VALIDATE_BOOLEAN) : false);
+        $isTestingMode = isset($_POST['is_testing_mode']) ? filter_var($_POST['is_testing_mode'], FILTER_VALIDATE_BOOLEAN) : (isset($_GET['is_testing_mode']) ? filter_var($_GET['is_testing_mode'], FILTER_VALIDATE_BOOLEAN) : false);
+        if ($sendSms && !$isTestingMode) {
+            require_once dirname(__DIR__) . '/services/SmsService.php';
+            $smsService = new SmsService($this->db);
+            $smsService->sendBatchPaymentVerifiedSmsIfComplete($id);
+        }
 
         setSuccess("Payment verified! Booking status: " . ucfirst($newBookingStatus));
         header("Location: " . $_SERVER['HTTP_REFERER']);
@@ -1175,14 +1242,14 @@ class PaymentBookingController extends Controller
                 $failedCount = count($errors);
 
                 if ($successCount > 0) {
-                    $msg = "✅ $successCount / $totalRows Payments imported successfully.";
+                    $msg = " $successCount / $totalRows Payments imported successfully.";
                     if ($failedCount > 0) {
-                        $msg .= " ⚠️ $failedCount row(s) skipped: " . implode(" | ", array_slice($errors, 0, 5));
+                        $msg .= "  $failedCount row(s) skipped: " . implode(" | ", array_slice($errors, 0, 5));
                         if ($failedCount > 5) $msg .= " ... and " . ($failedCount - 5) . " more.";
                     }
                     setSuccess($msg);
                 } else {
-                    $msg = "❌ 0 / $totalRows Payments imported. Errors: " . implode(" | ", array_slice($errors, 0, 5));
+                    $msg = " 0 / $totalRows Payments imported. Errors: " . implode(" | ", array_slice($errors, 0, 5));
                     if ($failedCount > 5) $msg .= " ... and " . ($failedCount - 5) . " more.";
                     setError($msg);
                 }

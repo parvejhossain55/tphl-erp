@@ -51,7 +51,7 @@ class LeadInvestmentReportController extends Controller
                 exit;
             }
             if (function_exists('setError')) {
-                setError("You do not have permission to access Lead Investment Report.");
+                setError("You do not have permission to access Leads Investment Report.");
             }
             header("Location: {$GLOBALS['base_url']}/my-dashboard");
             exit;
@@ -78,7 +78,7 @@ class LeadInvestmentReportController extends Controller
                 exit;
             }
             if (function_exists('setError')) {
-                setError("You do not have permission to access Lead Investment Report.");
+                setError("You do not have permission to access Leads Investment Report.");
             }
             header("Location: {$GLOBALS['base_url']}/my-dashboard");
             exit;
@@ -86,18 +86,19 @@ class LeadInvestmentReportController extends Controller
     }
 
     /**
-     * Auto-create required tables for Lead Investment Report
+     * Auto-create required tables for Leads Investment Report
      */
     public function ensureSchema(): void
     {
         try {
             $pdo = $this->getPdo();
 
-            // 1. Daily Actual Spend Table
+            // 1. Daily / Custom-Range Actual Spend Table
             $pdo->exec("
                 CREATE TABLE IF NOT EXISTS `lead_investment_spends` (
                     `id` INT AUTO_INCREMENT PRIMARY KEY,
                     `spend_date` DATE NOT NULL,
+                    `spend_end_date` DATE NULL,
                     `platform` VARCHAR(100) NOT NULL DEFAULT 'Meta Ads',
                     `ad_account` VARCHAR(120) NOT NULL DEFAULT 'TPHL_ATI',
                     `project_id` INT NOT NULL DEFAULT 0,
@@ -118,11 +119,17 @@ class LeadInvestmentReportController extends Controller
                     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     `deleted_at` DATETIME NULL,
-                    KEY `idx_lis_spend_date` (`spend_date`),
+                    KEY `idx_lis_spend_date` (`spend_date`, `spend_end_date`),
                     KEY `idx_lis_project_platform` (`project_id`, `platform`),
                     KEY `idx_lis_deleted` (`deleted_at`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
             ");
+
+            // Auto-add spend_end_date on existing installations
+            $chkEndDate = $pdo->query("SHOW COLUMNS FROM `lead_investment_spends` LIKE 'spend_end_date'");
+            if ($chkEndDate && $chkEndDate->rowCount() === 0) {
+                $pdo->exec("ALTER TABLE `lead_investment_spends` ADD COLUMN `spend_end_date` DATE NULL AFTER `spend_date`");
+            }
 
             // 2. Project x Platform Budget & Target CPL Table
             $pdo->exec("
@@ -178,7 +185,7 @@ class LeadInvestmentReportController extends Controller
     }
 
     /**
-     * Main Landing Page: Lead Investment Report (4 Tabs: Overview, Daily spend entry, Ad performance, Statements)
+     * Main Landing Page: Leads Investment Report (4 Tabs: Overview, Daily spend entry, Ad performance, Statements)
      */
     public function index()
     {
@@ -237,7 +244,7 @@ class LeadInvestmentReportController extends Controller
 
         return $this->view("digital-marketing-team/lead-investment-report", [
             "current_route"   => "lead-investment-report",
-            "page_title"      => "Lead Investment Report",
+            "page_title"      => "Leads Investment Report",
             "projects"        => $projects,
             "adAccounts"      => $adAccounts,
             "campaigns"       => $campaigns,
@@ -445,9 +452,13 @@ class LeadInvestmentReportController extends Controller
                 ];
             }
 
-            // 3. Query Spend Entries in Date Range
-            $spendWhere = ["s.deleted_at IS NULL", "s.spend_date >= ?", "s.spend_date <= ?"];
-            $spendParams = [$startDate, $endDate];
+            // 3. Query Spend Entries overlapping the selected Date Range
+            $spendWhere = [
+                "s.deleted_at IS NULL",
+                "s.spend_date <= ?",
+                "COALESCE(s.spend_end_date, s.spend_date) >= ?",
+            ];
+            $spendParams = [$endDate, $startDate];
 
             if ($projectFilter !== '' && is_numeric($projectFilter)) {
                 $spendWhere[] = "s.project_id = ?";
@@ -468,11 +479,38 @@ class LeadInvestmentReportController extends Controller
                 FROM `lead_investment_spends` s
                 LEFT JOIN `projects` p ON p.id = s.project_id
                 WHERE " . implode(" AND ", $spendWhere) . "
-                ORDER BY s.spend_date DESC, s.id DESC
+                ORDER BY COALESCE(s.spend_end_date, s.spend_date) DESC, s.spend_date DESC, s.id DESC
             ";
             $sStmt = $pdo->prepare($spendSql);
             $sStmt->execute($spendParams);
             $spendEntries = $sStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Pre-compute each spend entry's date span, overlap with [$startDate, $endDate], and scoped spend
+            foreach ($spendEntries as &$seRef) {
+                $eStart = (string)$seRef['spend_date'];
+                $rawEnd = trim((string)($seRef['spend_end_date'] ?? ''));
+                $eEnd = ($rawEnd !== '' && $rawEnd >= $eStart) ? $rawEnd : $eStart;
+                $eTotalDays = max(1, (int)round((strtotime($eEnd) - strtotime($eStart)) / 86400) + 1);
+
+                $ovStart = $eStart > $startDate ? $eStart : $startDate;
+                $ovEnd = $eEnd < $endDate ? $eEnd : $endDate;
+                $ovDays = max(1, (int)round((strtotime($ovEnd) - strtotime($ovStart)) / 86400) + 1);
+
+                $ratio = ($ovDays >= $eTotalDays) ? 1.0 : ($ovDays / $eTotalDays);
+                $fullUsd = (float)$seRef['spend_usd'];
+                $fullBdt = (float)$seRef['bdt_equivalent'];
+
+                $seRef['_entry_start']   = $eStart;
+                $seRef['_entry_end']     = $eEnd;
+                $seRef['_entry_days']    = $eTotalDays;
+                $seRef['_overlap_start'] = $ovStart;
+                $seRef['_overlap_end']   = $ovEnd;
+                $seRef['_overlap_days']  = $ovDays;
+                $seRef['_is_prorated']   = ($ovDays < $eTotalDays);
+                $seRef['_scoped_usd']    = ($ratio === 1.0) ? $fullUsd : round($fullUsd * $ratio, 2);
+                $seRef['_scoped_bdt']    = ($ratio === 1.0) ? $fullBdt : round($fullBdt * $ratio, 2);
+            }
+            unset($seRef);
 
             // 4. Query Leads from `leads` table using DATE(l.created_at) (strictly invariant to approval/distribution date!)
             $leadPlatCase = $this->getLeadPlatformSql('l');
@@ -590,8 +628,8 @@ class LeadInvestmentReportController extends Controller
                     ];
                 }
 
-                $sUsd = (float)$se['spend_usd'];
-                $sBdt = (float)$se['bdt_equivalent'];
+                $sUsd = (float)$se['_scoped_usd'];
+                $sBdt = (float)$se['_scoped_bdt'];
                 $projPlatMatrix[$ppKey]['spend_usd'] += $sUsd;
                 $projPlatMatrix[$ppKey]['spend_bdt'] += $sBdt;
                 $projPlatMatrix[$ppKey]['entries_cnt']++;
@@ -641,7 +679,7 @@ class LeadInvestmentReportController extends Controller
                 // Resolve budget & target CPL for this Project x Platform
                 $bInfo = $budgetsMap[$ppKey] ?? null;
                 $targetCpl = $bInfo ? (float)$bInfo['target_cpl_usd'] : ($plat === 'Google Ads' ? 0.60 : 0.45);
-                $dailyBudget = $bInfo ? (float)$bInfo['daily_budget_usd'] : ($spendUsd > 0 ? round($spendUsd * 1.5, 2) : 0.00);
+                $dailyBudget = $bInfo ? (float)$bInfo['daily_budget_usd'] : ($spendUsd > 0 ? round(($spendUsd / max(1, $daysCount)) * 1.5, 2) : 0.00);
 
                 // Scale budget by number of days in selected range (or monthly budget if monthly)
                 if ($dateInfo['period'] === 'monthly' && $bInfo && $bInfo['monthly_budget_usd'] > 0) {
@@ -740,11 +778,27 @@ class LeadInvestmentReportController extends Controller
             unset($ib);
 
             // 6. Enrich Individual Spend Entries & Build Ad Performance Ranking (Tab 2 & Tab 3)
-            // First count how many spend entries share the same (date, project_id, platform) and sum their spend
+            // Distribute each spend entry's scoped spend across its overlapping days for exact daily/multi-day lead attribution
             $groupSpendSum = [];
+            $campGroupSpendSum = [];
             foreach ($spendEntries as $se) {
-                $gKey = $se['spend_date'] . '|' . (int)$se['project_id'] . '|' . $this->normalizePlatformName((string)$se['platform']);
-                $groupSpendSum[$gKey] = ($groupSpendSum[$gKey] ?? 0.0) + (float)$se['spend_usd'];
+                $pid = (int)$se['project_id'];
+                $plat = $this->normalizePlatformName((string)$se['platform']);
+                $campLower = strtolower(trim((string)($se['campaign_name'] ?? '')));
+                $ovStartTs = strtotime((string)$se['_overlap_start']);
+                $ovEndTs = strtotime((string)$se['_overlap_end']);
+                $ovDays = max(1, (int)$se['_overlap_days']);
+                $dailyUsd = ((float)$se['_scoped_usd']) / $ovDays;
+
+                for ($ts = $ovStartTs; $ts <= $ovEndTs; $ts = strtotime('+1 day', $ts)) {
+                    $dStr = date('Y-m-d', $ts);
+                    $gKey = "{$dStr}|{$pid}|{$plat}";
+                    $groupSpendSum[$gKey] = ($groupSpendSum[$gKey] ?? 0.0) + $dailyUsd;
+                    if ($campLower !== '') {
+                        $cKey = "{$dStr}|{$pid}|{$plat}|{$campLower}";
+                        $campGroupSpendSum[$cKey] = ($campGroupSpendSum[$cKey] ?? 0.0) + $dailyUsd;
+                    }
+                }
             }
 
             $enrichedSpendEntries = [];
@@ -753,38 +807,63 @@ class LeadInvestmentReportController extends Controller
             foreach ($spendEntries as $se) {
                 $pid = (int)$se['project_id'];
                 $plat = $this->normalizePlatformName((string)$se['platform']);
-                $sDate = (string)$se['spend_date'];
-                $sUsd = (float)$se['spend_usd'];
+                $eStart = (string)$se['_entry_start'];
+                $eEnd = (string)$se['_entry_end'];
+                $eDays = (int)$se['_entry_days'];
+                $ovStartTs = strtotime((string)$se['_overlap_start']);
+                $ovEndTs = strtotime((string)$se['_overlap_end']);
+                $ovDays = max(1, (int)$se['_overlap_days']);
+                $sUsd = (float)$se['_scoped_usd'];
+                $sBdt = (float)$se['_scoped_bdt'];
+                $dailyUsd = $sUsd / $ovDays;
                 $campLower = strtolower(trim((string)($se['campaign_name'] ?? '')));
                 $adName = trim((string)($se['ad_name'] ?? ''));
                 $adId = trim((string)($se['ad_id'] ?? ''));
                 $isMappedAd = ($adName !== '' || $adId !== '');
 
-                $dppKey = "{$sDate}|{$pid}|{$plat}";
-                $dcKey = "{$sDate}|{$pid}|{$plat}|{$campLower}";
+                // Sum matched paid leads across every overlapping day of this spend entry
+                $matchedLeadsFloat = 0.0;
+                for ($ts = $ovStartTs; $ts <= $ovEndTs; $ts = strtotime('+1 day', $ts)) {
+                    $dStr = date('Y-m-d', $ts);
+                    $dppKey = "{$dStr}|{$pid}|{$plat}";
+                    $dcKey = "{$dStr}|{$pid}|{$plat}|{$campLower}";
 
-                // Match leads:
-                // 1) Exact date + project + platform + campaign match if available
-                // 2) Otherwise proportional share of date + project + platform paid leads based on spend weight
-                $matchedLeads = 0;
-                if ($campLower !== '' && isset($paidLeadsByCampaign[$dcKey])) {
-                    $matchedLeads = (int)$paidLeadsByCampaign[$dcKey];
-                } elseif (isset($paidLeadsByDateProjPlat[$dppKey])) {
-                    $totDateLeads = (int)$paidLeadsByDateProjPlat[$dppKey];
-                    $totDateSpend = (float)($groupSpendSum[$dppKey] ?? 0.0);
-                    if ($totDateSpend > 0 && $sUsd > 0) {
-                        $matchedLeads = (int)round($totDateLeads * ($sUsd / $totDateSpend));
-                    } else {
-                        $matchedLeads = $totDateLeads;
+                    if ($campLower !== '' && isset($paidLeadsByCampaign[$dcKey])) {
+                        $totCampDateLeads = (int)$paidLeadsByCampaign[$dcKey];
+                        $totCampDateSpend = (float)($campGroupSpendSum[$dcKey] ?? 0.0);
+                        if ($totCampDateSpend > 0 && $dailyUsd > 0) {
+                            $matchedLeadsFloat += $totCampDateLeads * ($dailyUsd / $totCampDateSpend);
+                        } else {
+                            $matchedLeadsFloat += $totCampDateLeads;
+                        }
+                    } elseif (isset($paidLeadsByDateProjPlat[$dppKey])) {
+                        $totDateLeads = (int)$paidLeadsByDateProjPlat[$dppKey];
+                        $totDateSpend = (float)($groupSpendSum[$dppKey] ?? 0.0);
+                        if ($totDateSpend > 0 && $dailyUsd > 0) {
+                            $matchedLeadsFloat += $totDateLeads * ($dailyUsd / $totDateSpend);
+                        } else {
+                            $matchedLeadsFloat += $totDateLeads;
+                        }
                     }
                 }
+                $matchedLeads = (int)round($matchedLeadsFloat);
 
                 $entryCpl = ($matchedLeads > 0 && $sUsd > 0) ? round($sUsd / $matchedLeads, 2) : null;
 
+                $isRange = ($eEnd > $eStart);
+                $dateLabel = $isRange
+                    ? (date('d M Y', strtotime($eStart)) . ' – ' . date('d M Y', strtotime($eEnd)) . " ({$eDays}d)")
+                    : date('d M Y', strtotime($eStart));
+
                 $enrichedSpendEntries[] = [
                     'id'               => (int)$se['id'],
-                    'spend_date'       => $sDate,
-                    'spend_date_label' => date('d M Y', strtotime($sDate)),
+                    'spend_date'       => $eStart,
+                    'spend_end_date'   => $eEnd,
+                    'entry_days'       => $eDays,
+                    'overlap_days'     => $ovDays,
+                    'is_range'         => $isRange,
+                    'is_prorated'      => (bool)$se['_is_prorated'],
+                    'spend_date_label' => $dateLabel,
                     'platform'         => $plat,
                     'ad_account'       => $se['ad_account'],
                     'project_id'       => $pid,
@@ -796,9 +875,10 @@ class LeadInvestmentReportController extends Controller
                     'is_mapped_ad'     => $isMappedAd,
                     'currency'         => $se['currency'] ?? 'USD',
                     'actual_spend'     => (float)$se['actual_spend'],
+                    'full_spend_usd'   => round((float)$se['spend_usd'], 2),
                     'spend_usd'        => round($sUsd, 2),
                     'fx_rate'          => (float)$se['fx_rate'],
-                    'bdt_equivalent'   => round((float)$se['bdt_equivalent'], 2),
+                    'bdt_equivalent'   => round($sBdt, 2),
                     'source_reference' => $se['source_reference'] ?? '',
                     'notes'            => $se['notes'] ?? '',
                     'paid_leads'       => $matchedLeads,
@@ -1274,8 +1354,8 @@ class LeadInvestmentReportController extends Controller
     }
 
     /**
-     * AJAX: Real-time Match Preview for "Add daily actual spend" form
-     * Queries `leads` on `DATE(created_at) = :spend_date` + `project_id` + `platform` (+ optional campaign)
+     * AJAX: Real-time Match Preview for "Add daily / custom-range actual spend" form
+     * Queries `leads` on `DATE(created_at)` between `:spend_date` and `:spend_end_date` + `project_id` + `platform`
      */
     public function ajaxMatchPreview(): void
     {
@@ -1286,6 +1366,15 @@ class LeadInvestmentReportController extends Controller
             $pdo = $this->getPdo();
 
             $spendDate = trim((string)($_GET['spend_date'] ?? date('Y-m-d')));
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $spendDate)) {
+                $spendDate = date('Y-m-d');
+            }
+            $rawEndDate = trim((string)($_GET['spend_end_date'] ?? ''));
+            $spendEndDate = (preg_match('/^\d{4}-\d{2}-\d{2}$/', $rawEndDate) && $rawEndDate >= $spendDate)
+                ? $rawEndDate
+                : $spendDate;
+            $daysCount = max(1, (int)round((strtotime($spendEndDate) - strtotime($spendDate)) / 86400) + 1);
+
             $projectId = (int)($_GET['project_id'] ?? 0);
             $platform = $this->normalizePlatformName((string)($_GET['platform'] ?? 'Meta Ads'));
             $campaignName = trim((string)($_GET['campaign_name'] ?? ''));
@@ -1302,10 +1391,12 @@ class LeadInvestmentReportController extends Controller
 
             $where = [
                 "l.deleted_at IS NULL",
-                "DATE(l.created_at) = ?",
+                "DATE(l.created_at) >= ?",
+                "DATE(l.created_at) <= ?",
                 "l.project_id = ?",
+                "(l.is_automated = 1 OR l.is_repibee = 1 OR l.is_brocure_leads = 1 OR (l.campaign_name IS NOT NULL AND TRIM(l.campaign_name) != ''))",
             ];
-            $params = [$spendDate, $projectId];
+            $params = [$spendDate, $spendEndDate, $projectId];
 
             if ($platform === 'Meta Ads') {
                 // Meta Ads matches Meta Form, Meta Inbox, and WhatsApp CTWA leads
@@ -1315,7 +1406,7 @@ class LeadInvestmentReportController extends Controller
                 $params[] = $platform;
             }
 
-            // First count all project+platform paid leads on that date
+            // First count all project+platform paid leads across the selected date(s)
             $sqlAll = "SELECT COUNT(*) FROM `leads` l WHERE " . implode(" AND ", $where);
             $stmtAll = $pdo->prepare($sqlAll);
             $stmtAll->execute($params);
@@ -1323,7 +1414,8 @@ class LeadInvestmentReportController extends Controller
 
             // If campaign is specified, check if campaign-specific leads exist
             $matchedLeads = $projectPlatformLeads;
-            $matchBasis = "Same date + project + platform" . ($adId !== '' ? " + ad ID" : "");
+            $scopePrefix = $daysCount > 1 ? "Date range ({$daysCount} days)" : "Same date";
+            $matchBasis = "{$scopePrefix} + project + platform" . ($adId !== '' ? " + ad ID" : "");
 
             if ($campaignName !== '') {
                 $campWhere = $where;
@@ -1336,24 +1428,41 @@ class LeadInvestmentReportController extends Controller
                 $campCount = (int)$stmtCamp->fetchColumn();
                 if ($campCount > 0) {
                     $matchedLeads = $campCount;
-                    $matchBasis = "Same date + project + platform + campaign" . ($adId !== '' ? " + ad ID" : "");
+                    $matchBasis = "{$scopePrefix} + project + platform + campaign" . ($adId !== '' ? " + ad ID" : "");
                 }
             }
 
-            // Check if a duplicate entry already exists for (spend_date, platform, ad_account, project_id, ad_id)
+            // Check if an exact duplicate entry already exists for (spend_date, spend_end_date, platform, ad_account, project_id, ad_id)
             $dupStmt = $pdo->prepare("
                 SELECT id, spend_usd, actual_spend
                 FROM `lead_investment_spends`
                 WHERE deleted_at IS NULL
                   AND spend_date = ?
+                  AND COALESCE(spend_end_date, spend_date) = ?
                   AND platform = ?
                   AND ad_account = ?
                   AND project_id = ?
                   AND COALESCE(ad_id, '') = ?
                 LIMIT 1
             ");
-            $dupStmt->execute([$spendDate, $platform, $adAccount, $projectId, $adId]);
+            $dupStmt->execute([$spendDate, $spendEndDate, $platform, $adAccount, $projectId, $adId]);
             $existingEntry = $dupStmt->fetch(PDO::FETCH_ASSOC);
+
+            // Also check if another overlapping entry exists on partially overlapping dates
+            $ovStmt = $pdo->prepare("
+                SELECT COUNT(*)
+                FROM `lead_investment_spends`
+                WHERE deleted_at IS NULL
+                  AND spend_date <= ?
+                  AND COALESCE(spend_end_date, spend_date) >= ?
+                  AND platform = ?
+                  AND ad_account = ?
+                  AND project_id = ?
+                  AND COALESCE(ad_id, '') = ?
+                  AND NOT (spend_date = ? AND COALESCE(spend_end_date, spend_date) = ?)
+            ");
+            $ovStmt->execute([$spendEndDate, $spendDate, $platform, $adAccount, $projectId, $adId, $spendDate, $spendEndDate]);
+            $overlappingCount = (int)$ovStmt->fetchColumn();
 
             $cplUsd = ($matchedLeads > 0 && $spendUsd > 0) ? round($spendUsd / $matchedLeads, 2) : null;
 
@@ -1362,11 +1471,14 @@ class LeadInvestmentReportController extends Controller
                 'data'   => [
                     'matched_paid_leads'    => $matchedLeads,
                     'project_date_leads'    => $projectPlatformLeads,
+                    'days_count'            => $daysCount,
                     'spend_usd'             => $spendUsd,
+                    'daily_avg_usd'         => round($spendUsd / $daysCount, 2),
                     'bdt_equivalent'        => $bdtEquivalent,
                     'calculated_cpl_usd'    => $cplUsd,
                     'match_basis'           => $matchBasis,
                     'existing_duplicate_id' => $existingEntry ? (int)$existingEntry['id'] : null,
+                    'overlapping_count'     => $overlappingCount,
                 ],
             ]);
         } catch (Throwable $e) {
@@ -1377,7 +1489,7 @@ class LeadInvestmentReportController extends Controller
     }
 
     /**
-     * AJAX: Save or Update Daily Actual Spend Entry (with duplicate protection & audit history)
+     * AJAX: Save or Update Daily / Custom-Range Actual Spend Entry (with duplicate protection & audit history)
      */
     public function ajaxSaveSpend(): void
     {
@@ -1390,6 +1502,7 @@ class LeadInvestmentReportController extends Controller
 
             $editId = isset($input['id']) && (int)$input['id'] > 0 ? (int)$input['id'] : 0;
             $spendDate = trim((string)($input['spend_date'] ?? ''));
+            $rawEndDate = trim((string)($input['spend_end_date'] ?? ''));
             $platform = $this->normalizePlatformName((string)($input['platform'] ?? 'Meta Ads'));
             $adAccount = trim((string)($input['ad_account'] ?? ''));
             $projectId = (int)($input['project_id'] ?? 0);
@@ -1422,7 +1535,14 @@ class LeadInvestmentReportController extends Controller
             $notes = trim((string)($input['notes'] ?? ''));
 
             if ($spendDate === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $spendDate)) {
-                throw new InvalidArgumentException("Please provide a valid Spend Date.");
+                throw new InvalidArgumentException("Please provide a valid Spend Start Date.");
+            }
+            $spendEndDate = ($rawEndDate !== '') ? $rawEndDate : $spendDate;
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $spendEndDate)) {
+                throw new InvalidArgumentException("Please provide a valid Spend End Date.");
+            }
+            if ($spendEndDate < $spendDate) {
+                throw new InvalidArgumentException("Spend End Date cannot be earlier than Start Date.");
             }
             if ($adAccount === '') {
                 throw new InvalidArgumentException("Ad Account is required.");
@@ -1439,6 +1559,10 @@ class LeadInvestmentReportController extends Controller
 
             $spendUsd = ($currency === 'BDT') ? round($actualSpend / $fxRate, 2) : round($actualSpend, 2);
             $bdtEquivalent = ($currency === 'BDT') ? round($actualSpend, 2) : round($actualSpend * $fxRate, 2);
+            $daysCount = max(1, (int)round((strtotime($spendEndDate) - strtotime($spendDate)) / 86400) + 1);
+            $rangeSuffix = $daysCount > 1
+                ? sprintf(' [Range: %s – %s (%dd)]', date('d M Y', strtotime($spendDate)), date('d M Y', strtotime($spendEndDate)), $daysCount)
+                : '';
 
             $userId = (int)($_SESSION['user']['id'] ?? 0);
             $userName = $_SESSION['user']['name']
@@ -1452,13 +1576,14 @@ class LeadInvestmentReportController extends Controller
                     SELECT * FROM `lead_investment_spends`
                     WHERE deleted_at IS NULL
                       AND spend_date = ?
+                      AND COALESCE(spend_end_date, spend_date) = ?
                       AND platform = ?
                       AND ad_account = ?
                       AND project_id = ?
                       AND COALESCE(ad_id, '') = ?
                     LIMIT 1
                 ");
-                $dupStmt->execute([$spendDate, $platform, $adAccount, $projectId, $adId]);
+                $dupStmt->execute([$spendDate, $spendEndDate, $platform, $adAccount, $projectId, $adId]);
                 $dupRow = $dupStmt->fetch(PDO::FETCH_ASSOC);
                 if ($dupRow) {
                     $editId = (int)$dupRow['id'];
@@ -1474,6 +1599,7 @@ class LeadInvestmentReportController extends Controller
                 $updStmt = $pdo->prepare("
                     UPDATE `lead_investment_spends`
                     SET `spend_date` = ?,
+                        `spend_end_date` = ?,
                         `platform` = ?,
                         `ad_account` = ?,
                         `project_id` = ?,
@@ -1494,13 +1620,14 @@ class LeadInvestmentReportController extends Controller
                     WHERE `id` = ?
                 ");
                 $updStmt->execute([
-                    $spendDate, $platform, $adAccount, $projectId,
+                    $spendDate, $spendEndDate, $platform, $adAccount, $projectId,
                     $campaignName, $adSetName, $adName, $adId,
                     $currency, $actualSpend, $spendUsd, $fxRate, $bdtEquivalent,
                     $sourceRef, $notes, $userId, $userName, $editId
                 ]);
 
                 // Record audit log
+                $auditNote = ($notes ?: 'Updated spend entry') . $rangeSuffix;
                 $histStmt = $pdo->prepare("
                     INSERT INTO `lead_investment_spend_history`
                     (`spend_id`, `action_type`, `old_spend_usd`, `new_spend_usd`, `old_fx_rate`, `new_fx_rate`, `old_ad_id`, `new_ad_id`, `change_note`, `changed_by`, `changed_by_name`)
@@ -1514,7 +1641,7 @@ class LeadInvestmentReportController extends Controller
                     $fxRate,
                     $oldRow ? $oldRow['ad_id'] : null,
                     $adId,
-                    $notes ?: 'Updated daily spend entry',
+                    $auditNote,
                     $userId,
                     $userName,
                 ]);
@@ -1531,13 +1658,13 @@ class LeadInvestmentReportController extends Controller
             // Insert new spend entry
             $insStmt = $pdo->prepare("
                 INSERT INTO `lead_investment_spends`
-                (`spend_date`, `platform`, `ad_account`, `project_id`, `campaign_name`, `ad_set_name`, `ad_name`, `ad_id`,
+                (`spend_date`, `spend_end_date`, `platform`, `ad_account`, `project_id`, `campaign_name`, `ad_set_name`, `ad_name`, `ad_id`,
                  `currency`, `actual_spend`, `spend_usd`, `fx_rate`, `bdt_equivalent`, `source_reference`, `notes`,
                  `created_by`, `updated_by`, `updated_by_name`)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $insStmt->execute([
-                $spendDate, $platform, $adAccount, $projectId,
+                $spendDate, $spendEndDate, $platform, $adAccount, $projectId,
                 $campaignName, $adSetName, $adName, $adId,
                 $currency, $actualSpend, $spendUsd, $fxRate, $bdtEquivalent,
                 $sourceRef, $notes, $userId, $userId, $userName
@@ -1545,6 +1672,7 @@ class LeadInvestmentReportController extends Controller
             $newId = (int)$pdo->lastInsertId();
 
             // Record initial creation in history
+            $auditNote = ($notes ?: 'Initial spend entry') . $rangeSuffix;
             $histStmt = $pdo->prepare("
                 INSERT INTO `lead_investment_spend_history`
                 (`spend_id`, `action_type`, `old_spend_usd`, `new_spend_usd`, `old_fx_rate`, `new_fx_rate`, `old_ad_id`, `new_ad_id`, `change_note`, `changed_by`, `changed_by_name`)
@@ -1552,7 +1680,7 @@ class LeadInvestmentReportController extends Controller
             ");
             $histStmt->execute([
                 $newId, $spendUsd, $fxRate, $adId,
-                $notes ?: 'Initial daily spend entry',
+                $auditNote,
                 $userId, $userName
             ]);
 
@@ -1560,7 +1688,9 @@ class LeadInvestmentReportController extends Controller
                 'status'  => 'success',
                 'action'  => 'created',
                 'id'      => $newId,
-                'message' => 'Daily actual spend saved successfully!',
+                'message' => $daysCount > 1
+                    ? "Custom range spend ({$daysCount} days) saved successfully!"
+                    : 'Daily actual spend saved successfully!',
             ]);
         } catch (Throwable $e) {
             http_response_code(400);

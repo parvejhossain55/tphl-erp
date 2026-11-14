@@ -206,6 +206,7 @@
 
     // Calculate pending tasks count for logged in user
     $pendingTasksCount = 0;
+    $myWorkPendingCount = 0;
     if (isset($db) && isset($_SESSION['user']['id'])) {
         $loggedUserId = (int) $_SESSION['user']['id'];
         $stmt = $db->prepare("SELECT COUNT(*) AS total FROM tasks WHERE user_id = ? AND progress < 100 AND status != 'completed'");
@@ -217,6 +218,28 @@
                 $pendingTasksCount = (int) $res->fetch_assoc()['total'];
             }
             $stmt->close();
+        }
+
+        $stmtMw = $db->prepare("
+            SELECT COUNT(*) AS total
+            FROM tasks t
+            WHERE t.status != 'completed'
+              AND (
+                  t.user_id = ?
+                  OR t.assigned_by = ?
+                  OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.collaborator_user_ids,'[',''),']',''),' ',''))
+                  OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.mentioned_user_ids,'[',''),']',''),' ',''))
+                  OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.cc_user_ids,'[',''),']',''),' ',''))
+              )
+        ");
+        if ($stmtMw) {
+            $stmtMw->bind_param("iiiii", $loggedUserId, $loggedUserId, $loggedUserId, $loggedUserId, $loggedUserId);
+            $stmtMw->execute();
+            $resMw = $stmtMw->get_result();
+            if ($resMw) {
+                $myWorkPendingCount = (int) ($resMw->fetch_assoc()['total'] ?? 0);
+            }
+            $stmtMw->close();
         }
 
         // Determine whether logged-in user is Department Head or has reporting team members / reporting boss
@@ -4380,6 +4403,74 @@
                             </li>
                         </ul>
                     </li>
+
+                    <?php
+                    $canViewMgmtOverviewV2 = !empty($isManagement)
+                        || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33, 34, 35, 38], true)
+                        || in_array((int)($_SESSION['user']['secondary_role_id'] ?? 0), [1, 3, 33, 34, 35, 38], true)
+                        || in_array((int)($_SESSION['user']['primary_role_id'] ?? 0), [1, 3, 33, 34, 35, 38], true)
+                        || ((int)($_SESSION['user']['id'] ?? 0) === 94);
+
+                    $isHodOrTeamLeaderV2 = !empty($isDeptHead)
+                        || !empty($hasReportees)
+                        || !empty($_SESSION['user']['is_team_leader'])
+                        || !empty($_SESSION['user']['is_sales_co_leader'])
+                        || in_array((int)($_SESSION['user']['role_id'] ?? 0), [5, 9, 17, 20, 22, 24, 30, 32, 39], true);
+
+                    $canViewTeamPerfV2 = $canViewMgmtOverviewV2 || $isHodOrTeamLeaderV2;
+                    ?>
+                    <!-- Task Manage V2 Module -->
+                    <li
+                        class="slide has-sub <?= isActive(['my-work-dashboard', 'my-work-add', 'my-work-list', 'my-work-created', 'my-work-sheets', 'team-performance-v2', 'management-task-overview-v2'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);"
+                            class="sidebar__menu-item <?= isActive(['my-work-dashboard', 'my-work-add', 'my-work-list', 'my-work-created', 'my-work-sheets', 'team-performance-v2', 'management-task-overview-v2'], $current_route) ? 'menu-open active' : '' ?>">
+                            <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
+                            <span class="sidebar__menu-label">Task Manage V2</span>
+                            <?php if (($myWorkPendingCount ?? 0) > 0): ?>
+                                <span class="badge bg-danger ms-auto me-4 rounded-pill"
+                                    style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $myWorkPendingCount ?></span>
+                            <?php endif; ?>
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                        </a>
+                        <ul class="sidebar-menu child2" style="display:block;">
+                            <?php if ($canViewTeamPerfV2): ?>
+                            <li class="slide <?= isActive('team-performance-v2', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('team-performance-v2', $current_route) ?>"
+                                    href="<?= $base_url ?>/team-performance-v2">Team Performance</a>
+                            </li>
+                            <?php endif; ?>
+                            <?php if ($canViewMgmtOverviewV2): ?>
+                            <li class="slide <?= isActive('management-task-overview-v2', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('management-task-overview-v2', $current_route) ?>"
+                                    href="<?= $base_url ?>/management-task-overview-v2">Management Task Overview</a>
+                            </li>
+                            <?php endif; ?>
+                            <li class="slide <?= isActive(['my-work-dashboard', 'my-work-add', 'my-work-list', 'my-work-created', 'my-work-sheets'], $current_route) ? 'active' : '' ?>">
+                                <a href="<?= $base_url ?>/my-work-dashboard"
+                                    class="sidebar__menu-item <?= isActive(['my-work-dashboard', 'my-work-add', 'my-work-list', 'my-work-created', 'my-work-sheets'], $current_route) ?>">
+                                    <span class="sidebar__menu-label">My Work</span>
+                                    <?php if (($myWorkPendingCount ?? 0) > 0): ?>
+                                        <span class="badge bg-danger ms-auto me-2 rounded-pill"
+                                            style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $myWorkPendingCount ?></span>
+                                    <?php endif; ?>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <!-- My Work Module (Hidden - moved into Task Manage V2) -->
+                    <li class="slide d-none <?= isActive(['my-work-dashboard', 'my-work-add', 'my-work-list', 'my-work-created', 'my-work-sheets'], $current_route) ? 'active' : '' ?>">
+                        <a href="<?= $base_url ?>/my-work-dashboard"
+                            class="sidebar__menu-item <?= isActive(['my-work-dashboard', 'my-work-add', 'my-work-list', 'my-work-created', 'my-work-sheets'], $current_route) ? 'active' : '' ?>">
+                            <div class="side-menu__icon"><i class="fas fa-briefcase"></i></div>
+                            <span class="sidebar__menu-label">My Work</span>
+                            <?php if (($myWorkPendingCount ?? 0) > 0): ?>
+                                <span class="badge bg-danger ms-auto rounded-pill"
+                                    style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $myWorkPendingCount ?></span>
+                            <?php endif; ?>
+                        </a>
+                    </li>
+
 
                     <!-- FOR Task Manage  -->
                     <!-- ====== BATCH IMPORTS ====== -->

@@ -895,6 +895,32 @@ if (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id']
     });
 </script>
 
+<?php if (!empty($_SESSION['tipsoi_check_reminders_on_load'])): ?>
+    <?php unset($_SESSION['tipsoi_check_reminders_on_load']); ?>
+    <script>
+        // Non-blocking background trigger for Tipsoi pending reminders upon portal login
+        (function() {
+            setTimeout(function() {
+                var baseUrl = window.base_url || '<?= $GLOBALS['base_url'] ?? '' ?>';
+                if (!baseUrl && window.location.pathname.includes('/TPHL-ERP/')) {
+                    baseUrl = '/TPHL-ERP';
+                }
+                var url = baseUrl + '/api/tipsoi/trigger-login-reminder';
+                fetch(url, { credentials: 'same-origin' })
+                    .then(function(r) { return r.json(); })
+                    .then(function(d) {
+                        if (d && d.success) {
+                            console.log('[Tipsoi Reminder] Background check completed:', d.data);
+                        }
+                    })
+                    .catch(function(err) {
+                        console.warn('[Tipsoi Reminder] Background check error:', err);
+                    });
+            }, 1500);
+        })();
+    </script>
+<?php endif; ?>
+
         </body>
 
         </html>

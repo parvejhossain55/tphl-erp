@@ -618,6 +618,58 @@ $reqIdForJs = (int)($ahInfo['approval_request_id'] ?? 0);
 $backUrl = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals')
     ? ($GLOBALS['base_url'] . '/all-approval-requests')
     : ($GLOBALS['base_url'] . '/payslip-lists');
+
+// Pre-compute Earnings, Deductions & Net Salary so top action bar & body stay 100% consistent
+$coreEarnings = [];
+$additionalEarnings = [];
+$deductions = [];
+
+$basicSalary = (float)($payslip['basic_salary'] ?? 0);
+$coreEarnings[] = [
+    'name' => 'Basic Salary',
+    'amount' => $basicSalary
+];
+
+$coreEarningTotal = $basicSalary;
+$additionalEarningTotal = 0;
+$deductionTotal = 0;
+
+foreach (($payslip['items'] ?? []) as $item) {
+    $name = trim($item['item_name'] ?? '');
+    $type = $item['item_type'] ?? 'earning';
+    $amt = (float)($item['amount'] ?? 0);
+    if ($amt <= 0) continue;
+
+    $lower = strtolower($name);
+    if ($type === 'earning') {
+        if (strpos($lower, 'basic') !== false) {
+            continue;
+        } elseif (
+            strpos($lower, 'house rent') !== false ||
+            strpos($lower, 'medical') !== false ||
+            strpos($lower, 'conveyance') !== false ||
+            strpos($lower, 'recreation') !== false
+        ) {
+            $coreEarnings[] = ['name' => $name, 'amount' => $amt];
+            $coreEarningTotal += $amt;
+        } else {
+            $additionalEarnings[] = ['name' => $name, 'amount' => $amt];
+            $additionalEarningTotal += $amt;
+        }
+    } elseif ($type === 'deduction') {
+        $deductions[] = ['name' => $name, 'amount' => $amt];
+        $deductionTotal += $amt;
+    }
+}
+
+$calculatedTotalEarnings = $coreEarningTotal + $additionalEarningTotal;
+$displayTotalEarnings = isset($payslip['total_earning']) ? (float)$payslip['total_earning'] : $calculatedTotalEarnings;
+$displayTotalDeduction = (isset($payslip['total_deduction']) && ((float)$payslip['total_deduction'] > 0 || $deductionTotal <= 0))
+    ? (float)$payslip['total_deduction']
+    : $deductionTotal;
+$displayNetSalary = isset($payslip['net_salary'])
+    ? (float)$payslip['net_salary']
+    : max(0, $displayTotalEarnings - $displayTotalDeduction);
 ?>
 
 <div class="no-print" style="max-width: 900px; margin: 10px auto 14px auto;">
@@ -750,57 +802,6 @@ $backUrl = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals')
 
         <div class="payslip-content">
 
-            <?php
-            // Categorize Earnings & Deductions
-            $coreEarnings = [];
-            $additionalEarnings = [];
-            $deductions = [];
-
-            // 1. Basic Salary
-            $basicSalary = (float)($payslip['basic_salary'] ?? 0);
-            $coreEarnings[] = [
-                'name' => 'Basic Salary',
-                'amount' => $basicSalary
-            ];
-
-            $coreEarningTotal = $basicSalary;
-            $additionalEarningTotal = 0;
-            $deductionTotal = 0;
-
-            foreach ($payslip['items'] as $item) {
-                $name = trim($item['item_name'] ?? '');
-                $type = $item['item_type'] ?? 'earning';
-                $amt = (float)($item['amount'] ?? 0);
-                if ($amt <= 0) continue;
-
-                $lower = strtolower($name);
-                if ($type === 'earning') {
-                    if (strpos($lower, 'basic') !== false) {
-                        continue;
-                    } elseif (
-                        strpos($lower, 'house rent') !== false ||
-                        strpos($lower, 'medical') !== false ||
-                        strpos($lower, 'conveyance') !== false ||
-                        strpos($lower, 'recreation') !== false
-                    ) {
-                        $coreEarnings[] = ['name' => $name, 'amount' => $amt];
-                        $coreEarningTotal += $amt;
-                    } else {
-                        // Additional earnings (Punctuality Bonus, Overtime, Arrears, Duty Allowance, Special Allowance, etc.)
-                        $additionalEarnings[] = ['name' => $name, 'amount' => $amt];
-                        $additionalEarningTotal += $amt;
-                    }
-                } elseif ($type === 'deduction') {
-                    $deductions[] = ['name' => $name, 'amount' => $amt];
-                    $deductionTotal += $amt;
-                }
-            }
-
-            $calculatedTotalEarnings = $coreEarningTotal + $additionalEarningTotal;
-            $displayTotalEarnings = (float)($payslip['total_earning'] ?? $calculatedTotalEarnings);
-            $displayTotalDeduction = $deductionTotal > 0 ? $deductionTotal : (float)($payslip['total_deduction'] ?? 0);
-            ?>
-
             <!-- SALARY BREAKDOWN -->
             <div class="salary-breakdown">
 
@@ -824,6 +825,16 @@ $backUrl = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals')
                             <span>Gross Salary (Core)</span>
                             <span>৳ <?= number_format($coreEarningTotal, 2) ?></span>
                         </div>
+                        <?php
+                        $empGrossCore = ((float)($payslip['gross_salary'] ?? 0) > 0) ? (float)$payslip['gross_salary'] : $coreEarningTotal;
+                        $proRataServiceGross = max(0, round($displayTotalEarnings - $additionalEarningTotal, 2));
+                        if (($empGrossCore - $proRataServiceGross) > 0.50):
+                        ?>
+                        <div class="breakdown-item mt-1 pt-1" style="border-top: 1px dashed #cbd5e1; color: #0f766e; font-weight: 600;">
+                            <span>Pro-Rata Service Gross<?= !empty($payslip['cycle_days']) ? ' (' . (int)$payslip['cycle_days'] . 'd Cycle)' : '' ?></span>
+                            <span>৳ <?= number_format($proRataServiceGross, 2) ?></span>
+                        </div>
+                        <?php endif; ?>
                     </div>
 
                     <!-- Segment 2: Additional Earnings & Bonuses -->
@@ -890,9 +901,6 @@ $backUrl = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals')
 
             </div>
 
-            <?php
-            $displayNetSalary = $displayTotalEarnings - $displayTotalDeduction;
-            ?>
             <!-- NET -->
             <div class="net-salary-section">
                 <div class="net-salary-label">Net Salary</div>

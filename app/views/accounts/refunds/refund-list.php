@@ -58,7 +58,7 @@ $statusMap = [
 }
 .project-track-pill:hover,
 .project-track-pill.active {
-    background: #0d6efd;
+    background: #06460f;
     color: #fff !important;
     border-color: #0d6efd;
     box-shadow: 0 4px 10px rgba(13, 110, 253, 0.25);

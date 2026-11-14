@@ -269,10 +269,9 @@ if (!function_exists('buildTeamUrl')) {
         <?php if (!empty($selectedMemberId) && !empty($selectedMember)): ?>
             <div class="alert alert-primary py-2 px-3 mt-3 mb-0 d-flex align-items-center justify-content-between flex-wrap gap-2" style="border-radius: 8px;">
                 <div class="d-flex align-items-center gap-2">
-                    <i class="fa-solid fa-circle-user fa-lg text-primary"></i>
                     <div>
-                        <strong class="text-primary"><?= htmlspecialchars($selectedMember['full_name']) ?></strong>
-                        <span class="text-muted ms-1" style="font-size: 12px;">(<?= htmlspecialchars($selectedMember['role_name'] ?? 'Team Member') ?>)</span>
+                        <strong class=""><?= htmlspecialchars($selectedMember['full_name']) ?></strong>
+                        <span class="text-light ms-1" style="font-size: 12px;">(<?= htmlspecialchars($selectedMember['role_name'] ?? 'Team Member') ?>)</span>
                         <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-2">Executive Drill-Down</span>
                     </div>
                 </div>
@@ -355,15 +354,24 @@ if (!function_exists('buildTeamUrl')) {
 
     <?php
     // Helper to generate lead-lists URL with team and optional member filter
+    $GLOBALS['dashboard_team_id'] = $teamId ?? null;
+    $GLOBALS['dashboard_selected_member_id'] = $selectedMemberId ?? null;
+
     if (!function_exists('leadListUrl')) {
         function leadListUrl($extraParams = []) {
-            global $teamId, $selectedMemberId;
-            $params = ['team_id' => $teamId];
-            if (!empty($selectedMemberId)) {
-                $params['assigned_user'] = $selectedMemberId;
+            $tId = $GLOBALS['dashboard_team_id'] ?? null;
+            $mId = $GLOBALS['dashboard_selected_member_id'] ?? null;
+            $params = [];
+            if (!empty($tId)) {
+                $params['team_id'] = $tId;
+            }
+            if (!empty($mId)) {
+                $params['assigned_user'] = $mId;
             }
             foreach ($extraParams as $k => $v) {
-                $params[$k] = $v;
+                if ($v !== null && $v !== '') {
+                    $params[$k] = $v;
+                }
             }
             $b = $GLOBALS['base_url'] ?? '';
             return $b . '/lead-lists?' . http_build_query($params);
@@ -545,7 +553,7 @@ if (!function_exists('buildTeamUrl')) {
 
         <!-- 12. Total Sales / Booked (Units) -->
         <div class="col-6 col-sm-6 col-md-4 col-lg-3 mb-2">
-            <a href="<?= leadListUrl(['filter_card' => 'booked']) ?>" class="stat-card-link">
+            <a href="<?= leadListUrl(array_merge(['filter_card' => 'booked'], $leadDateFilter)) ?>" class="stat-card-link">
                 <div class="stat-card accent-purple shadow-xs h-100">
                     <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
                     <span class="stat-label"><i class="fa-solid fa-bookmark"></i> Total Sales / Booked</span>

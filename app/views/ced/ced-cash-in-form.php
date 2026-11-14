@@ -71,19 +71,25 @@ $emiPaidSoFar          = (float)($paymentSummary['emi_paid_total'] ?? 0);
 $remainingCF           = max(0, $constructionFee - $emiPaidSoFar - $totalBulkDiscount);
 
 // Booking Money & Registration / Land Share status
+$remainingLandShare         = (float)($paymentSummary['remaining_land_share_total'] ?? $paymentSummary['remaining_land_share'] ?? 0);
+$isLandShareCompleted       = !empty($paymentSummary['is_land_share_completed']) || ($remainingLandShare <= 0);
+
 $agreementValue             = (float)($paymentSummary['agreement_value'] ?? 0);
 $bookingMoneyPaid           = (float)($paymentSummary['booking_money_paid'] ?? 0); // verified only
 $bookingMoneyTotal          = (float)($paymentSummary['booking_money_total'] ?? $bookingMoneyPaid); // all non-rejected entries
 $effectiveBookingTarget     = ($agreementValue > 0) ? $agreementValue : 300000;
-$formRemainingBooking       = isset($formRemainingBooking) ? (float)$formRemainingBooking : max(0, $effectiveBookingTarget - $bookingMoneyTotal);
-$formRemainingRegistration  = isset($formRemainingRegistration) ? (float)$formRemainingRegistration : 0;
-$allRegistrationAndLandshare = isset($allRegistrationAndLandshare) ? (float)$allRegistrationAndLandshare : 0;
 
-$isBookingFullyPaid         = ($formRemainingBooking <= 0 && $bookingMoneyTotal > 0);
-$remainingLandShare         = (float)($paymentSummary['remaining_land_share'] ?? 0);
-$isLandShareCompleted       = $isShop
-    ? (bool)($paymentSummary['is_land_share_completed'] ?? ($remainingLandShare <= 0))
-    : ($formRemainingRegistration <= 0 && $isBookingFullyPaid);
+if ($isLandShareCompleted || $remainingLandShare <= 0) {
+    $formRemainingBooking      = 0;
+    $formRemainingRegistration = 0;
+    $isBookingFullyPaid        = true;
+} else {
+    $bookingBalance            = min($remainingLandShare, max(0, $effectiveBookingTarget - $bookingMoneyTotal));
+    $formRemainingBooking      = isset($formRemainingBooking) ? min($remainingLandShare, (float)$formRemainingBooking) : $bookingBalance;
+    $formRemainingRegistration = isset($formRemainingRegistration) ? min($remainingLandShare, (float)$formRemainingRegistration) : 0;
+    $isBookingFullyPaid        = ($formRemainingBooking <= 0 && $bookingMoneyTotal > 0);
+}
+$allRegistrationAndLandshare = isset($allRegistrationAndLandshare) ? (float)$allRegistrationAndLandshare : 0;
 
 $virtualEmiSchedule    = $virtualEmiSchedule ?? [];
 $overduePenaltySum     = 0;
@@ -142,7 +148,7 @@ if (!empty($virtualEmiSchedule)) {
                         </div>
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
-                <?php elseif (!$isBookingFullyPaid && $bookingMoneyTotal > 0): ?>
+                <?php elseif (!$isBookingFullyPaid && !$isLandShareCompleted && $bookingMoneyTotal > 0 && $formRemainingBooking > 0): ?>
                     <div class="alert alert-warning alert-dismissible fade show mb-4 d-flex align-items-center" role="alert">
                         <div>
                             <strong>Booking Money Partially Paid:</strong>
@@ -185,38 +191,26 @@ if (!empty($virtualEmiSchedule)) {
                             <select name="payment_type" class="form-control" id="paymentType" required>
                                 <option value="">-- Select Payment Type --</option>
 
-                                <!-- 1. Booking Money -->
+                                <!-- 1. Booking Money (only shown if remaining balance exists) -->
                                 <?php if ($isShop): ?>
-                                    <?php if (!$isBookingFullyPaid && $formRemainingBooking > 0): ?>
+                                    <?php if (!$isLandShareCompleted && !$isBookingFullyPaid && $formRemainingBooking > 0): ?>
                                         <option value="booking_money" data-details="false">
                                             Booking Money<?= $bookingMoneyTotal > 0 ? ' (Remaining: TK.' . number_format($formRemainingBooking, 2) . ' of TK.' . number_format($effectiveBookingTarget, 2) . ')' : ' (Target: TK.' . number_format($effectiveBookingTarget, 2) . ')' ?>
                                         </option>
-                                    <?php else: ?>
-                                        <option value="booking_money" disabled style="color:#6c757d;">
-                                            Booking Money (Fully Paid — TK.<?= number_format($bookingMoneyTotal, 2) ?> / Target: TK.<?= number_format($effectiveBookingTarget, 2) ?>)
-                                        </option>
                                     <?php endif; ?>
                                 <?php else: ?>
-                                    <?php if ($formRemainingBooking > 0 || !$isBookingFullyPaid): ?>
+                                    <?php if (!$isLandShareCompleted && $formRemainingBooking > 0 && !$isBookingFullyPaid): ?>
                                         <option value="booking_money" data-details="false">
                                             Booking Money<?= $bookingMoneyTotal > 0 ? ' (Remaining: TK.' . number_format($formRemainingBooking, 2) . ')' : '' ?>
-                                        </option>
-                                    <?php else: ?>
-                                        <option value="booking_money" disabled style="color:#6c757d;">
-                                            Booking Money (Fully Paid — TK.<?= number_format($bookingMoneyTotal, 2) ?>)
                                         </option>
                                     <?php endif; ?>
                                 <?php endif; ?>
 
-                                <!-- 2. Registration & Mutation Cost -->
+                                <!-- 2. Registration & Mutation Cost (only shown if remaining balance exists) -->
                                 <?php if ($isShop): ?>
                                     <?php if (!$isLandShareCompleted && $remainingLandShare > 0): ?>
                                         <option value="registration" data-details="false">
                                             Registration (Remaining: TK.<?= number_format($remainingLandShare, 2) ?>)
-                                        </option>
-                                    <?php else: ?>
-                                        <option value="registration" disabled style="color:#6c757d;">
-                                            Registration (Completed ✓ — TK.0.00)
                                         </option>
                                     <?php endif; ?>
                                 <?php else: ?>
@@ -227,48 +221,27 @@ if (!empty($virtualEmiSchedule)) {
                                         <option value="mutation_cost" data-details="false">
                                             Mutation Cost
                                         </option>
-                                    <?php else: ?>
-                                        <option value="registration" disabled style="color:#6c757d;">
-                                            Registration (Completed ✓)
-                                        </option>
-                                        <option value="mutation_cost" disabled style="color:#6c757d;">
-                                            Mutation Cost (Completed ✓)
-                                        </option>
                                     <?php endif; ?>
                                 <?php endif; ?>
 
-                                <!-- 3. Shop: Development Charge (only if set on the shop unit) -->
-                                <?php if ($isShop && $shopDevTarget > 0): ?>
-                                    <?php if ($shopDevRemaining > 0): ?>
-                                        <option value="development_charge" data-details="false">
-                                            Development Charge (Remaining: TK.<?= number_format($shopDevRemaining, 2) ?>)
-                                        </option>
-                                    <?php else: ?>
-                                        <option value="development_charge" disabled style="color:#6c757d;">
-                                            Development Charge — Fully Paid ✓ (TK.<?= number_format($shopDevPaid, 2) ?>)
-                                        </option>
-                                    <?php endif; ?>
+                                <!-- 3. Shop: Development Charge (only shown if remaining balance exists) -->
+                                <?php if ($isShop && $shopDevTarget > 0 && $shopDevRemaining > 0): ?>
+                                    <option value="development_charge" data-details="false">
+                                        Development Charge (Remaining: TK.<?= number_format($shopDevRemaining, 2) ?>)
+                                    </option>
                                 <?php endif; ?>
 
-                                <!-- 4. Development Charges or Shop Service Charge -->
-                                <?php if (!$isDevChargeCompleted): ?>
+                                <!-- 4. Flat Development Charges or Shop Service Charge (only shown if remaining balance exists) -->
+                                <?php if (!$isDevChargeCompleted && ($flatDevCharges - $devChargePaid) > 0): ?>
                                     <option value="<?= $devChargeValue ?>" data-details="false">
                                         <?= $devChargeLabel ?> (Remaining: TK.<?= number_format(max(0, $flatDevCharges - $devChargePaid), 2) ?>)
                                     </option>
-                                <?php else: ?>
-                                    <option value="<?= $devChargeValue ?>" disabled style="color:#6c757d;">
-                                        <?= $devChargeLabel ?> — Fully Paid ✓ (TK.<?= number_format($devChargePaid, 2) ?>)
-                                    </option>
                                 <?php endif; ?>
 
-                                <!-- 5. EMI -->
+                                <!-- 5. EMI (only shown if remaining balance exists) -->
                                 <?php if ($remainingCF > 0): ?>
                                     <option value="emi" data-details="true">
                                         <?= $nextEmiStr ?> EMI (Construction Fee)<?php if ($perEmiAmount > 0): ?> — Suggested: TK.<?= number_format($perEmiAmount, 2) ?><?php endif; ?><?php if ($totalEmiDue > 0): ?> — Outstanding Due: TK.<?= number_format($totalEmiDue, 2) ?><?= $dueEmiStr ?><?php endif; ?>
-                                    </option>
-                                <?php else: ?>
-                                    <option value="emi" disabled style="color:#6c757d;">
-                                        EMI (Construction Fee) — Fully Paid ✓ (TK.<?= number_format($constructionFee, 2) ?>)
                                     </option>
                                 <?php endif; ?>
 
@@ -317,13 +290,13 @@ if (!empty($virtualEmiSchedule)) {
                             </div>
                         </div>
 
-                        <?php if (!$isShop): ?>
-                        <!-- Total Booking Money (Shown only for Booking Money & Registration on Flats) -->
+                        <?php if (!$isShop && !$isBookingFullyPaid): ?>
+                        <!-- Total Booking Money (Shown ONLY when Booking Money is selected on Flats) -->
                         <div class="col-md-6" id="totalBookingMoneyContainer" style="display: none;">
                             <div class="from__input-box">
                                 <label class="form__input-title">Total Booking Money (Target) <span>*</span></label>
                                 <input type="number" name="total_booking_money" id="totalBookingMoneyField" class="form-control" step="1" min="0" value="<?= ($agreementValue > 0) ? $agreementValue : 300000 ?>">
-                                <small class="text-muted">Default is 3,00,000. Updating this adjusts the booking money &amp; registration balances.</small>
+                                <small class="text-muted d-block">Contractual Target: TK. <?= number_format(($agreementValue > 0) ? $agreementValue : 300000, 2) ?>. <span class="text-warning fw-semibold"><i class="fa-light fa-triangle-exclamation"></i> Only edit if altering contractual booking money.</span></small>
                             </div>
                         </div>
                         <?php endif; ?>
@@ -592,7 +565,12 @@ if (!empty($virtualEmiSchedule)) {
                                 <label class="form__input-title">Transfer To / Company Bank <span>*</span></label>
                                 <div class="input-group">
                                     <select name="bank_id" id="bankSelect" class="form-select">
-                                        <option value="">-- Loading banks... --</option>
+                                        <option value="">-- Select Transfer To / Company Bank --</option>
+                                        <?php if (!empty($companyBanks)): ?>
+                                            <?php foreach ($companyBanks as $b): ?>
+                                                <option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['bank_name'] . ' - ' . $b['account_name'] . (!empty($b['account_number']) ? ' (' . $b['account_number'] . ')' : '')) ?></option>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
                                     </select>
                                     <button type="button" class="btn btn-outline-primary" id="addCompanyBankBtn" title="Add Company Bank"><i class="fa-light fa-plus"></i></button>
                                     <button type="button" class="btn btn-outline-secondary" id="editCompanyBankBtn" title="Edit Selected Bank" style="display:none;"><i class="fa-light fa-pen-to-square"></i></button>
@@ -662,12 +640,16 @@ if (!empty($virtualEmiSchedule)) {
                         <!-- Payment Status -->
                         <div class="col-md-6">
                             <div class="from__input-box">
-                                <label class="form__input-title">Payment Status <span>*</span></label>
-                                <select name="payment_status" class="form-select" required>
-                                    <option value="paid">Paid</option>
-                                    <option value="partially_paid" id="partiallyPaidOption">Partially Paid</option>
-                                    <option value="pending">Pending</option>
-                                </select>
+                                <label class="form__input-title">Payment Status</label>
+                                <div class="form-control bg-light d-flex align-items-center justify-content-between text-muted" style="cursor: default; min-height: 48px;">
+                                    <span><i class="fa-solid fa-clock-rotate-left text-warning me-2"></i><strong class="text-dark">Pending Verification</strong></span>
+                                    <span class="badge bg-warning text-dark"><i class="fa-solid fa-shield-halved me-1"></i>Accounts Review</span>
+                                </div>
+                                <input type="hidden" name="payment_status" id="paymentStatusHidden" value="paid">
+                                <small class="text-muted d-block mt-1">
+                                    <i class="fa-light fa-info-circle text-primary me-1"></i>
+                                    Submitted as Pending Verification by Accounts.
+                                </small>
                             </div>
                         </div>
 
@@ -708,34 +690,45 @@ if (!empty($virtualEmiSchedule)) {
                             </div>
                         </div>
 
-                        <!-- Testing Mode Switch & Phone Alert -->
-                        <div class="col-md-12">
+                        <!-- SMS Notification & Testing Controls -->
+                        <div class="col-md-12 mt-2">
                             <?php 
                                 $clientPhone = trim($clientDetails['phone'] ?? ($clientDetails['phone_number'] ?? ''));
                                 $isPhoneValid = (strlen($clientPhone) === 11 && preg_match('/^01[3-9]\d{8}$/', $clientPhone));
                             ?>
-                            <?php if (!$isPhoneValid): ?>
-                                <div class="alert alert-warning d-flex align-items-center justify-content-between p-2 mb-2 mt-2">
-                                    <div class="small">
-                                        <i class="fa-solid fa-triangle-exclamation me-1"></i>
-                                        <strong>Invalid Client Phone:</strong> Client phone (<?= htmlspecialchars($clientPhone ?: 'Empty') ?>) is missing or not a valid 11-digit mobile number.
-                                    </div>
-                                    <span class="badge bg-danger">SMS Notification Blocked</span>
-                                </div>
-                            <?php endif; ?>
+                            <div class="p-3 border rounded" style="background:#f8fafc;">
+                                <label class="form-label fw-bold text-dark d-flex align-items-center mb-2">
+                                    <i class="fa-solid fa-paper-plane text-primary me-2"></i> Client Notification Settings
+                                </label>
 
-                            <div class="form-check form-switch p-2 bg-light border rounded mt-2">
-                                <input class="form-check-input ms-0 me-2" type="checkbox" name="send_sms" id="sendSms" value="true" checked>
-                                <label class="form-check-label fw-semibold text-success" for="sendSms">
-                                    <i class="fa-solid fa-envelope me-1"></i> Send SMS Notification
-                                </label>
-                            </div>
-                            
-                            <div class="form-check form-switch p-2 bg-light border rounded mt-2">
-                                <input class="form-check-input ms-0 me-2" type="checkbox" name="is_testing_mode" id="isTestingMode" value="1">
-                                <label class="form-check-label fw-semibold text-warning" for="isTestingMode">
-                                    <i class="fa-solid fa-vial me-1"></i> Testing Mode (Skip SMS & Bypass Phone Validation)
-                                </label>
+                                <?php if (!$isPhoneValid): ?>
+                                    <div class="alert alert-secondary py-2 px-3 mb-3 small d-flex align-items-center justify-content-between">
+                                        <span>
+                                            <i class="fa-solid fa-circle-info text-primary me-1"></i>
+                                            <strong>Phone Notice:</strong> Client mobile number (<code><?= htmlspecialchars($clientPhone ?: 'Not Provided') ?></code>) is invalid or missing. SMS receipt cannot be delivered.
+                                        </span>
+                                        <span class="badge bg-secondary">SMS Disabled</span>
+                                    </div>
+                                <?php endif; ?>
+
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="form-check p-3 border rounded bg-white shadow-sm d-flex align-items-center" style="cursor: pointer;">
+                                            <input class="form-check-input ms-0 me-3" type="checkbox" name="send_sms" id="sendSms" value="true" <?= $isPhoneValid ? 'checked' : 'disabled' ?> style="width: 20px; height: 20px; cursor: pointer; flex-shrink: 0;">
+                                            <label class="form-check-label fw-semibold text-dark mb-0 user-select-none" for="sendSms" style="cursor: pointer;">
+                                                <i class="fa-solid fa-square-check text-success me-1"></i> Send SMS Notification
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check p-3 border rounded bg-white shadow-sm d-flex align-items-center" style="cursor: pointer;">
+                                            <input class="form-check-input ms-0 me-3" type="checkbox" name="is_testing_mode" id="isTestingMode" value="1" <?= !$isPhoneValid ? 'checked' : '' ?> style="width: 20px; height: 20px; cursor: pointer; flex-shrink: 0;">
+                                            <label class="form-check-label fw-semibold text-dark mb-0 user-select-none" for="isTestingMode" style="cursor: pointer;">
+                                                <i class="fa-solid fa-flask text-secondary me-1"></i> Testing Mode <span class="text-muted fw-normal small">(Skip SMS & Email)</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -763,7 +756,7 @@ if (!empty($virtualEmiSchedule)) {
         const paymentType = document.getElementById('paymentType');
         const paymentMethod = document.getElementById('paymentMethod');
         const dueEmiAmountField = document.getElementById('dueEmiAmount');
-        const paymentStatusSelect = document.querySelector('select[name="payment_status"]');
+        const paymentStatusSelect = document.querySelector('select[name="payment_status"]') || document.getElementById('paymentStatusHidden');
         const amountField = document.getElementById('amount');
         const amountHelp = document.getElementById('amountHelp');
         const partiallyPaidOption = document.getElementById('partiallyPaidOption');
@@ -787,8 +780,6 @@ if (!empty($virtualEmiSchedule)) {
 
         const settleDueFields       = document.querySelectorAll('.settle-due-fields');
         const parentPaymentIdSelect = document.getElementById('parentPaymentId');
-        const totalBookingMoneyContainer = document.getElementById('totalBookingMoneyContainer');
-        const totalBookingMoneyField     = document.getElementById('totalBookingMoneyField');
         const otherPurposeContainer      = document.getElementById('otherPurposeContainer');
         const otherPurposeInput          = document.getElementById('otherPurpose');
 
@@ -809,6 +800,22 @@ if (!empty($virtualEmiSchedule)) {
             });
         }
 
+        // SMS Notification & Testing Mode Switch Synchronization
+        const sendSmsSwitch = document.getElementById('sendSms');
+        const isTestingModeSwitch = document.getElementById('isTestingMode');
+        if (sendSmsSwitch && isTestingModeSwitch) {
+            sendSmsSwitch.addEventListener('change', function() {
+                if (this.checked) {
+                    isTestingModeSwitch.checked = false;
+                }
+            });
+            isTestingModeSwitch.addEventListener('change', function() {
+                if (this.checked) {
+                    sendSmsSwitch.checked = false;
+                }
+            });
+        }
+
         // PHP values for dynamic balance calculation
         const isShop = <?= json_encode((bool)$isShop) ?>;
         const totalLandShare = <?= json_encode((float)($paymentSummary['total_land_share'] ?? 0)) ?>;
@@ -820,18 +827,22 @@ if (!empty($virtualEmiSchedule)) {
         function getDynamicBalances() {
             if (isShop) {
                 const target = <?= json_encode((float)$effectiveBookingTarget) ?>;
-                const remBooking = Math.max(0, target - bookingMoneyTotal);
                 const remReg = Math.max(0, shopRemainingLandShare);
-                return { remBooking, remReg, target };
+                const remBooking = (remReg <= 0) ? 0 : Math.min(remReg, Math.max(0, target - bookingMoneyTotal));
+                return { remBooking, remReg, target, remLandShareTotal: remReg };
             }
 
-            const target = totalBookingMoneyField ? (parseFloat(totalBookingMoneyField.value) || 0) : <?= json_encode((float)$effectiveBookingTarget) ?>;
-            const remBooking = Math.max(0, target - bookingMoneyTotal);
-            const remReg = Math.max(0, totalLandShare - discountAmount - target - allRegistrationAndLandshare);
+            const effectiveLSTarget = Math.max(0, totalLandShare - discountAmount);
+            const totalLSPaid = bookingMoneyTotal + allRegistrationAndLandshare;
+            const remLandShareTotal = Math.max(0, effectiveLSTarget - totalLSPaid);
+            const target = <?= json_encode((float)$effectiveBookingTarget) ?>;
+            const remBooking = (remLandShareTotal <= 0) ? 0 : Math.min(remLandShareTotal, Math.max(0, target - bookingMoneyTotal));
+            const bookingDeduction = Math.max(target, bookingMoneyTotal);
+            const remReg = (remLandShareTotal <= 0) ? 0 : Math.min(remLandShareTotal, Math.max(0, effectiveLSTarget - bookingDeduction - allRegistrationAndLandshare));
 
             const bmOption = paymentType ? paymentType.querySelector('option[value="booking_money"]') : null;
             if (bmOption) {
-                if (remBooking > 0) {
+                if (remBooking > 0 && remLandShareTotal > 0) {
                     bmOption.disabled = false;
                     bmOption.style.color = '';
                     bmOption.textContent = 'Booking Money' + (bookingMoneyTotal > 0 ? ' (Remaining: TK.' + remBooking.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ')' : '');
@@ -855,13 +866,20 @@ if (!empty($virtualEmiSchedule)) {
                 }
             }
 
-            return { remBooking, remReg, target };
-        }
+            const mutOption = paymentType ? paymentType.querySelector('option[value="mutation_cost"]') : null;
+            if (mutOption) {
+                if (remLandShareTotal > 0) {
+                    mutOption.disabled = false;
+                    mutOption.style.color = '';
+                    mutOption.textContent = 'Mutation Cost';
+                } else {
+                    mutOption.disabled = true;
+                    mutOption.style.color = '#6c757d';
+                    mutOption.textContent = 'Mutation Cost (Completed ✓)';
+                }
+            }
 
-        if (totalBookingMoneyField) {
-            totalBookingMoneyField.addEventListener('input', function() {
-                updateAmountField();
-            });
+            return { remBooking, remReg, target };
         }
 
         // Auto-calculate due_emi_amount from entered amount vs suggested per-EMI
@@ -907,24 +925,21 @@ if (!empty($virtualEmiSchedule)) {
                 }
             }
 
-            // Toggle Total Booking Money container (for non-shop booking_money & registration)
+            // Toggle Total Booking Money container (for non-shop booking_money ONLY)
             if (totalBookingMoneyContainer) {
-                if (paymentTypeValue === 'booking_money' || paymentTypeValue === 'registration') {
+                if (paymentTypeValue === 'booking_money') {
                     totalBookingMoneyContainer.style.display = 'block';
                 } else {
                     totalBookingMoneyContainer.style.display = 'none';
                 }
             }
-
             switch (paymentTypeValue) {
                 case 'booking_money':
                     var remBooking = balances.remBooking;
                     if (remBooking > 0) {
                         helpText = 'Booking Money balance: TK.' + remBooking.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + '. Any surplus amount will automatically cascade to Registration -> Dev Charge -> EMI.';
                         amountField.setAttribute('placeholder', 'Suggested: TK.' + remBooking.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' (Surplus cascades)');
-                        if (document.activeElement !== totalBookingMoneyField) {
-                            amountField.value = remBooking.toFixed(2);
-                        }
+                        amountField.value = remBooking.toFixed(2);
                         amountField.removeAttribute('max');
                         amountField.removeAttribute('disabled');
                     } else {
@@ -935,10 +950,16 @@ if (!empty($virtualEmiSchedule)) {
                     break;
                 case 'registration':
                     var remaining = balances.remReg;
-                    helpText = 'Remaining Registration amount: TK.' + remaining.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
-                    amountField.setAttribute('placeholder', 'Max: TK.' + remaining.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}));
-                    amountField.setAttribute('max', remaining);
-                    amountField.removeAttribute('disabled');
+                    if (remaining > 0) {
+                        helpText = 'Remaining Registration amount: TK.' + remaining.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + '. Any surplus cascades to Dev Charge -> EMI.';
+                        amountField.setAttribute('placeholder', 'Suggested: TK.' + remaining.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' (Surplus cascades)');
+                        amountField.removeAttribute('max');
+                        amountField.removeAttribute('disabled');
+                    } else {
+                        helpText = 'Land share / Registration is already completed.';
+                        amountField.value = '';
+                        amountField.setAttribute('disabled', 'disabled');
+                    }
                     break;
                 case 'mutation_cost':
                     helpText = 'Enter mutation cost amount';
@@ -1207,6 +1228,8 @@ if (!empty($virtualEmiSchedule)) {
                                     };
                                 }
                             });
+                        } else {
+                            $cBank.next('.select2-container').css('width', '100%');
                         }
                     }
                 } else if (method === 'online') {
@@ -1422,18 +1445,6 @@ if (!empty($virtualEmiSchedule)) {
                     }
                 }
 
-                // Registration cap validation
-                if (paymentTypeValue === 'registration') {
-                    const balances = getDynamicBalances();
-                    const remaining = balances.remReg;
-                    if (amount > remaining + 0.01) {
-                        e.preventDefault();
-                        alert('Registration amount cannot exceed remaining balance: TK.' + remaining.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}));
-                        if (amountField) amountField.focus();
-                        return false;
-                    }
-                }
-
                 // EMI partially_paid validation
                 if (paymentTypeValue === 'emi' && paymentStatus === 'partially_paid' && dueAmount <= 0) {
                     e.preventDefault();
@@ -1462,25 +1473,31 @@ if (!empty($virtualEmiSchedule)) {
             paymentMethod.dispatchEvent(new Event('change'));
         }
 
-        // Load banks
-        fetch('<?= $GLOBALS['base_url'] ?>/get-company-banks')
-            .then(r => r.json())
-            .then(data => {
-                window.companyBanksList = data.banks || [];
-                const sel = document.getElementById('bankSelect');
-                if (!sel) return;
-                sel.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
-                window.companyBanksList.forEach(b => {
-                    const opt = document.createElement('option');
-                    opt.value = b.id;
-                    opt.textContent = b.bank_name + ' - ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
-                    sel.appendChild(opt);
+        // Initialize company banks list
+        window.companyBanksList = <?= json_encode($companyBanks ?? []) ?>;
+
+        // If not already populated server-side, load company banks via AJAX
+        const existingCedBankOptions = document.getElementById('bankSelect')?.querySelectorAll('option');
+        if (!existingCedBankOptions || existingCedBankOptions.length <= 1) {
+            fetch('<?= $GLOBALS['base_url'] ?>/get-company-banks')
+                .then(r => r.json())
+                .then(data => {
+                    window.companyBanksList = data.banks || [];
+                    const sel = document.getElementById('bankSelect');
+                    if (!sel) return;
+                    sel.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
+                    window.companyBanksList.forEach(b => {
+                        const opt = document.createElement('option');
+                        opt.value = b.id;
+                        opt.textContent = b.bank_name + ' - ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
+                        sel.appendChild(opt);
+                    });
+                })
+                .catch(() => {
+                    const sel = document.getElementById('bankSelect');
+                    if (sel && sel.options.length <= 1) sel.innerHTML = '<option value="">Bank Registry unavailable</option>';
                 });
-            })
-            .catch(() => {
-                const sel = document.getElementById('bankSelect');
-                if (sel) sel.innerHTML = '<option value="">Bank Registry unavailable</option>';
-            });
+        }
 
         // File preview thumbnails
         const proofFilesInput = document.getElementById('proofFiles');
@@ -1668,5 +1685,28 @@ if (!empty($virtualEmiSchedule)) {
         display: block;
         margin-top: 5px;
         font-size: 12px;
+    }
+
+    /* Fix Select2 width & height in bank fields to prevent 0px collapse */
+    .bank-fields .select2-container,
+    .bank-fields .select2-container--default {
+        width: 100% !important;
+        display: block !important;
+    }
+    .bank-fields .select2-container .select2-selection--single {
+        height: 48px !important;
+        border: 1px solid #ced4da !important;
+        border-radius: 6px !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+    .bank-fields .select2-container .select2-selection--single .select2-selection__rendered {
+        line-height: 48px !important;
+        padding-left: 14px !important;
+        color: #495057 !important;
+    }
+    .bank-fields .select2-container .select2-selection--single .select2-selection__arrow {
+        height: 46px !important;
+        right: 10px !important;
     }
 </style>

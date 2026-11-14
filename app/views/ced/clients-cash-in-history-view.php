@@ -688,6 +688,14 @@ if (!isset($discountApprovalReq)) {
                         <h6 class="card__sub-title mb-10">Remaining Land Share</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
                             <h4 class="card__title">TK.<?= number_format($paymentSummary['remaining_land_share'] ?? 0, 2) ?></h4>
+                            <?php 
+                                $pendingLandShare = max(0, (float)($paymentSummary['total_land_share_paid_total'] ?? 0) - (float)($paymentSummary['landshare_paid'] ?? 0));
+                                if ($pendingLandShare > 0): 
+                            ?>
+                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle fs-11" title="Unverified/Pending in ledger: TK. <?= number_format($pendingLandShare, 2) ?>">
+                                    <i class="fa-light fa-clock me-1"></i>Pending: TK. <?= number_format($pendingLandShare, 2) ?>
+                                </span>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
