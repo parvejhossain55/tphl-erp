@@ -4408,7 +4408,7 @@
                         || !empty($hasReportees)
                         || !empty($_SESSION['user']['is_team_leader'])
                         || !empty($_SESSION['user']['is_sales_co_leader'])
-                        || in_array((int)($_SESSION['user']['role_id'] ?? 0), [2, 5, 13, 15, 20, 22, 24, 25, 27, 32], true);
+                        || in_array((int)($_SESSION['user']['role_id'] ?? 0), [5, 9, 17, 20, 22, 24, 30, 32, 39], true);
 
                     $canViewTeamPerfV2 = $canViewMgmtOverviewV2 || $isHodOrTeamLeaderV2;
                     ?>

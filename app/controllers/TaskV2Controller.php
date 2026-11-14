@@ -1496,9 +1496,9 @@ class TaskV2Controller extends Controller
         $secRole = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
         $priRole = (int)($_SESSION['user']['primary_role_id'] ?? 0);
         $isTeamLeader = !empty($_SESSION['user']['is_team_leader']) || !empty($_SESSION['user']['is_sales_co_leader']);
-        $isMgmtOrHeadRole = in_array($userRole, [1, 2, 3, 5, 13, 15, 20, 22, 24, 25, 27, 32, 33, 34, 35, 38], true)
-            || in_array($secRole, [1, 2, 3, 33, 34, 35, 38], true)
-            || in_array($priRole, [1, 2, 3, 33, 34, 35, 38], true)
+        $isMgmtOrHeadRole = in_array($userRole, [1, 3, 5, 9, 17, 20, 22, 24, 30, 32, 33, 34, 35, 38, 39], true)
+            || in_array($secRole, [1, 3, 5, 9, 17, 20, 22, 24, 30, 32, 33, 34, 35, 38, 39], true)
+            || in_array($priRole, [1, 3, 5, 9, 17, 20, 22, 24, 30, 32, 33, 34, 35, 38, 39], true)
             || $userId === 94;
         $canAccess = $isDeptHead || $hasReportees || $isTeamLeader || $isMgmtOrHeadRole;
         if (!$canAccess) {
