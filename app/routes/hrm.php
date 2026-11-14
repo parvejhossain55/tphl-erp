@@ -34,6 +34,15 @@ return [
     'delete-task/(\d+)' => ['controller' => 'TaskController', 'method' => 'delete'],
 
     // =========================================================================
+    // Controller: TaskV2Controller (Task Manage V2)
+    // =========================================================================
+    'team-performance-v2' => ['controller' => 'TaskV2Controller', 'method' => 'teamPerformance'],
+    'team-performance-v2/member/(\d+)' => ['controller' => 'TaskV2Controller', 'method' => 'teamMemberTasks'],
+    'team-performance-v2/assign-task' => ['controller' => 'TaskV2Controller', 'method' => 'assignTeamTask'],
+    'team-performance-v2/create-project' => ['controller' => 'TaskV2Controller', 'method' => 'createTodoProject'],
+    'management-task-overview-v2' => ['controller' => 'TaskV2Controller', 'method' => 'managementTaskOverview'],
+
+    // =========================================================================
     // Controller: MyWorkController (Personal Workspace)
     // =========================================================================
     'my-work' => ['controller' => 'MyWorkController', 'method' => 'index'],
