@@ -490,21 +490,36 @@ class Lead extends Model
                 $sql .= " AND (
                     (l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND (l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?) OR l.assigned_id = ?))
                     OR
-                    ((l.assigned_id IS NULL OR l.assigned_id = 0) AND l.team_id = ?)
+                    (l.team_id = ?)
+                    OR EXISTS (
+                        SELECT 1 FROM lead_bookings lb_tm 
+                        WHERE lb_tm.lead_id = l.id 
+                          AND (lb_tm.sales_by_id = ? OR lb_tm.sales_by_id IN (SELECT u_tm2.id FROM users u_tm2 WHERE u_tm2.team_id = ?)) 
+                          AND lb_tm.deleted_at IS NULL
+                    )
                 )";
                 $params[] = $teamId;
                 $params[] = $loggedInUserId;
                 $params[] = $teamId;
-                $types .= "iii";
+                $params[] = $loggedInUserId;
+                $params[] = $teamId;
+                $types .= "iiiii";
             } else {
                 $sql .= " AND (
                     (l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?))
                     OR
-                    ((l.assigned_id IS NULL OR l.assigned_id = 0) AND l.team_id = ?)
+                    (l.team_id = ?)
+                    OR EXISTS (
+                        SELECT 1 FROM lead_bookings lb_tm 
+                        WHERE lb_tm.lead_id = l.id 
+                          AND lb_tm.sales_by_id IN (SELECT u_tm2.id FROM users u_tm2 WHERE u_tm2.team_id = ?) 
+                          AND lb_tm.deleted_at IS NULL
+                    )
                 )";
                 $params[] = $teamId;
                 $params[] = $teamId;
-                $types .= "ii";
+                $params[] = $teamId;
+                $types .= "iii";
             }
         }
 
@@ -598,11 +613,12 @@ class Lead extends Model
             }
         }
         
-        // Assigned User filter
+        // Assigned User filter (Primary assigned or closed booking salesperson)
         if (isset($assigned_user) && $assigned_user !== '') {
-            $sql .= " AND l.assigned_id = ?";
-            $params[] = $assigned_user;
-            $types .= "i";
+            $sql .= " AND (l.assigned_id = ? OR EXISTS (SELECT 1 FROM lead_bookings lb_sel WHERE lb_sel.lead_id = l.id AND lb_sel.sales_by_id = ? AND lb_sel.deleted_at IS NULL))";
+            $params[] = (int)$assigned_user;
+            $params[] = (int)$assigned_user;
+            $types .= "ii";
         }
 
         // Assigned Hours filter (Last 1, 2, 3, 4, 5, 6, etc. hours)
@@ -1182,21 +1198,36 @@ class Lead extends Model
                 $sql .= " AND (
                     (l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND (l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?) OR l.assigned_id = ?))
                     OR
-                    ((l.assigned_id IS NULL OR l.assigned_id = 0) AND l.team_id = ?)
+                    (l.team_id = ?)
+                    OR EXISTS (
+                        SELECT 1 FROM lead_bookings lb_tm 
+                        WHERE lb_tm.lead_id = l.id 
+                          AND (lb_tm.sales_by_id = ? OR lb_tm.sales_by_id IN (SELECT u_tm2.id FROM users u_tm2 WHERE u_tm2.team_id = ?)) 
+                          AND lb_tm.deleted_at IS NULL
+                    )
                 )";
                 $params[] = $teamId;
                 $params[] = $loggedInUserId;
                 $params[] = $teamId;
-                $types .= "iii";
+                $params[] = $loggedInUserId;
+                $params[] = $teamId;
+                $types .= "iiiii";
             } else {
                 $sql .= " AND (
                     (l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?))
                     OR
-                    ((l.assigned_id IS NULL OR l.assigned_id = 0) AND l.team_id = ?)
+                    (l.team_id = ?)
+                    OR EXISTS (
+                        SELECT 1 FROM lead_bookings lb_tm 
+                        WHERE lb_tm.lead_id = l.id 
+                          AND lb_tm.sales_by_id IN (SELECT u_tm2.id FROM users u_tm2 WHERE u_tm2.team_id = ?) 
+                          AND lb_tm.deleted_at IS NULL
+                    )
                 )";
                 $params[] = $teamId;
                 $params[] = $teamId;
-                $types .= "ii";
+                $params[] = $teamId;
+                $types .= "iii";
             }
         }
 
@@ -1289,11 +1320,12 @@ class Lead extends Model
                 $sql .= " AND (l.assigned_id IS NULL OR l.assigned_id = 0 OR u.id IS NULL)";
             }
         }
-        // Assigned User filter
+        // Assigned User filter (Primary assigned or closed booking salesperson)
         if (isset($assigned_user) && $assigned_user !== '') {
-            $sql .= " AND l.assigned_id = ?";
-            $params[] = $assigned_user;
-            $types .= "i";
+            $sql .= " AND (l.assigned_id = ? OR EXISTS (SELECT 1 FROM lead_bookings lb_sel WHERE lb_sel.lead_id = l.id AND lb_sel.sales_by_id = ? AND lb_sel.deleted_at IS NULL))";
+            $params[] = (int)$assigned_user;
+            $params[] = (int)$assigned_user;
+            $types .= "ii";
         }
 
         // Assigned Hours filter (Last 1, 2, 3, 4, 5, 6, etc. hours)
@@ -1966,10 +1998,10 @@ class Lead extends Model
     LEFT JOIN projects AS p ON lf.project_id = p.id
     LEFT JOIN flats AS f ON lf.flat_id = f.id
     LEFT JOIN project_categories AS lpc ON leads.project_category_id = lpc.id
-    WHERE leads.assigned_id = ? AND leads.deleted_at IS NULL";
+    WHERE (leads.assigned_id = ? OR EXISTS (SELECT 1 FROM lead_bookings lb_seller WHERE lb_seller.lead_id = leads.id AND lb_seller.sales_by_id = ? AND lb_seller.deleted_at IS NULL)) AND leads.deleted_at IS NULL";
 
-        $params = [$userId];
-        $types  = "i";
+        $params = [$userId, $userId];
+        $types  = "ii";
 
         $isAssignedDate = in_array($date_type, ['assigned_date', 'assigned_at']);
         $dateCol = $isAssignedDate 
@@ -2289,10 +2321,10 @@ class Lead extends Model
         ON t1.id = t2.max_id AND t1.lead_id = t2.lead_id
         WHERE t1.deleted_at IS NULL
     ) lf ON lf.lead_id = leads.id
-    WHERE leads.assigned_id = ? AND leads.deleted_at IS NULL";
+    WHERE (leads.assigned_id = ? OR EXISTS (SELECT 1 FROM lead_bookings lb_seller WHERE lb_seller.lead_id = leads.id AND lb_seller.sales_by_id = ? AND lb_seller.deleted_at IS NULL)) AND leads.deleted_at IS NULL";
 
-        $params = [$userId];
-        $types  = "i";
+        $params = [$userId, $userId];
+        $types  = "ii";
 
         $isAssignedDate = in_array($date_type, ['assigned_date', 'assigned_at']);
         $dateCol = $isAssignedDate 
@@ -2603,10 +2635,10 @@ class Lead extends Model
             ) t2 
             ON t1.id = t2.max_id AND t1.lead_id = t2.lead_id
         ) lf ON lf.lead_id = leads.id
-        WHERE leads.assigned_id = ? AND leads.deleted_at IS NULL";
+        WHERE (leads.assigned_id = ? OR EXISTS (SELECT 1 FROM lead_bookings lb_seller WHERE lb_seller.lead_id = leads.id AND lb_seller.sales_by_id = ? AND lb_seller.deleted_at IS NULL)) AND leads.deleted_at IS NULL";
 
-        $params = [$userId];
-        $types  = "i";
+        $params = [$userId, $userId];
+        $types  = "ii";
 
         $isAssignedDate = in_array($date_type, ['assigned_date', 'assigned_at']);
         $dateCol = $isAssignedDate 

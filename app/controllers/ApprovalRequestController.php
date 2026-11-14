@@ -67,6 +67,17 @@ class ApprovalRequestController extends Controller
         $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userSecRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        if (!$userSecRoleId && $userId > 0) {
+            $sRes = $this->db->query("SELECT secondary_role_id FROM users WHERE id = {$userId} LIMIT 1");
+            if ($sRes && $sr = $sRes->fetch_assoc()) {
+                $userSecRoleId = (int)($sr['secondary_role_id'] ?? 0);
+                $_SESSION['user']['secondary_role_id'] = $userSecRoleId;
+            }
+        }
+        $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
         $isChiefOfficer = (in_array($userRoleId, [33, 34, 35], true) || in_array($sessionRoleName, ['chief officer', 'management viewer', 'seal ceo'], true));
 
         $status = $_GET['status'] ?? '';
@@ -78,13 +89,14 @@ class ApprovalRequestController extends Controller
         $search = trim($_GET['search'] ?? $_GET['request_no'] ?? '');
 
         $filters = [
-            'status'       => $status,
-            'department'   => $department,
-            'source_table' => $sourceTable,
-            'search'       => $search,
-            'user_id'      => $userId,
-            'role_id'      => $userRoleId,
-            'role_name'    => $sessionRoleName
+            'status'            => $status,
+            'department'        => $department,
+            'source_table'      => $sourceTable,
+            'search'            => $search,
+            'user_id'           => $userId,
+            'role_id'           => $userRoleId,
+            'secondary_role_id' => $userSecRoleId,
+            'role_name'         => $sessionRoleName
         ];
 
         // Fetch dynamic list of departments from departments table
@@ -261,6 +273,15 @@ class ApprovalRequestController extends Controller
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $userSecRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
         $userPriRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
+        if (!$userSecRoleId && $userId > 0) {
+            $sRes = $this->db->query("SELECT secondary_role_id FROM users WHERE id = {$userId} LIMIT 1");
+            if ($sRes && $sr = $sRes->fetch_assoc()) {
+                $userSecRoleId = (int)($sr['secondary_role_id'] ?? 0);
+            }
+        }
+        $isSalesHead = in_array(9, [$userRoleId, $userSecRoleId, $userPriRoleId], true) 
+            || strpos($sessionRoleName, 'sales team head') !== false 
+            || strpos($sessionRoleName, 'sales head') !== false;
         $isAccountsHead = in_array(30, [$userRoleId, $userSecRoleId, $userPriRoleId], true) || strpos($sessionRoleName, 'accounts head') !== false;
 
         foreach ($requestIds as $id) {
@@ -276,6 +297,23 @@ class ApprovalRequestController extends Controller
 
                 $isOver1Lac = ((float)($req['request_amount'] ?? 0) > 10000.01);
                 $reqOpStatus = strtolower($req['op_head_status'] ?? 'pending');
+
+                // If Sales Team Head (Role 9 / Secondary Role 9) or Operation Head (Role 20) is approving:
+                if ($reqAppRole === 'sales_head') {
+                    if ($isSalesHead || $isManagement || $isSiteOperator || in_array($userRoleId, [20, 32], true)) {
+                        if ($action === 'reject') {
+                            $res = $this->approvalModel->rejectSalesHead($id, $userId, $note);
+                        } else {
+                            $res = $this->approvalModel->approveSalesHead($id, $userId, $note);
+                        }
+                        if ($res) {
+                            $processedCount++;
+                        } else {
+                            $failedCount++;
+                        }
+                        continue;
+                    }
+                }
 
                 // If Accounts Head is approving:
                 if ($isAccountsHead) {
@@ -338,6 +376,188 @@ class ApprovalRequestController extends Controller
     }
 
     /**
+     * Single Sales Team Head Approval API (Stage 1)
+     * Authorized: Sales Team Head (Role 9 / Secondary Role 9), Super Admin (Role 1), Management (Role 3)
+     */
+    public function approveSalesHead()
+    {
+        ob_start();
+        header('Content-Type: application/json');
+
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (empty($_SESSION['user']['id'])) {
+            ob_clean();
+            echo json_encode(['success' => false, 'message' => 'Unauthenticated']);
+            exit;
+        }
+
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userSecRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $userPriRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+
+        if (!$userSecRoleId && $userId > 0) {
+            $sRes = $this->db->query("SELECT secondary_role_id FROM users WHERE id = {$userId} LIMIT 1");
+            if ($sRes && $sr = $sRes->fetch_assoc()) {
+                $userSecRoleId = (int)($sr['secondary_role_id'] ?? 0);
+            }
+        }
+
+        $isSalesHead = in_array(9, [$userRoleId, $userSecRoleId, $userPriRoleId], true) 
+            || strpos($sessionRoleName, 'sales team head') !== false 
+            || strpos($sessionRoleName, 'sales head') !== false;
+
+        $isAuthorized = $isSalesHead 
+            || in_array($userRoleId, [1, 3, 20, 32, 38], true) 
+            || in_array($userSecRoleId, [1, 3, 20, 32, 38], true)
+            || strpos($sessionRoleName, 'super admin') !== false || strpos($sessionRoleName, 'director') !== false || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false;
+
+        if (!$isAuthorized) {
+            ob_clean();
+            echo json_encode(['success' => false, 'message' => 'Unauthorized: Only Sales Team Head (Role 9 / Secondary Role 9), Operation Head (Role 20), or Management can approve this stage.']);
+            exit;
+        }
+
+        $input = file_get_contents('php://input');
+        $payload = json_decode($input, true) ?? [];
+        if (empty($payload)) {
+            $payload = $_POST;
+        }
+
+        $reqId = !empty($payload['approval_request_id']) ? (int)$payload['approval_request_id'] : 0;
+        $sourceTable = !empty($payload['source_table']) ? trim($payload['source_table']) : '';
+        $sourceId = !empty($payload['source_id']) ? (int)$payload['source_id'] : 0;
+        $note = !empty($payload['note']) ? trim($payload['note']) : 'Approved by Sales Team Head';
+        $approvedAmount = !empty($payload['approved_amount']) ? (float)$payload['approved_amount'] : null;
+
+        if (!$reqId && (!empty($sourceTable) && !empty($sourceId))) {
+            $findStmt = $this->db->prepare("SELECT id FROM approval_requests WHERE source_table = ? AND source_id = ? ORDER BY id DESC LIMIT 1");
+            if ($findStmt) {
+                $findStmt->bind_param('si', $sourceTable, $sourceId);
+                $findStmt->execute();
+                $res = $findStmt->get_result()->fetch_assoc();
+                $findStmt->close();
+                if ($res) {
+                    $reqId = (int)$res['id'];
+                }
+            }
+        }
+
+        if (!$reqId) {
+            ob_clean();
+            echo json_encode(['success' => false, 'message' => 'Approval request not found.']);
+            exit;
+        }
+
+        $res = $this->approvalModel->approveSalesHead($reqId, $userId, $note, $approvedAmount);
+        ob_clean();
+        if ($res) {
+            echo json_encode([
+                'success' => true, 
+                'message' => 'Approved by Sales Team Head successfully and forwarded to Accounts Head.',
+                'sales_head_name' => $_SESSION['user']['full_name'] ?? 'Sales Team Head',
+                'approved_at' => date('d M, Y h:i A')
+            ]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to approve request.']);
+        }
+        exit;
+    }
+
+    /**
+     * Single Sales Team Head Rejection API
+     */
+    public function rejectSalesHead()
+    {
+        ob_start();
+        header('Content-Type: application/json');
+
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (empty($_SESSION['user']['id'])) {
+            ob_clean();
+            echo json_encode(['success' => false, 'message' => 'Unauthenticated']);
+            exit;
+        }
+
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userSecRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $userPriRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+
+        if (!$userSecRoleId && $userId > 0) {
+            $sRes = $this->db->query("SELECT secondary_role_id FROM users WHERE id = {$userId} LIMIT 1");
+            if ($sRes && $sr = $sRes->fetch_assoc()) {
+                $userSecRoleId = (int)($sr['secondary_role_id'] ?? 0);
+            }
+        }
+
+        $isSalesHead = in_array(9, [$userRoleId, $userSecRoleId, $userPriRoleId], true) 
+            || strpos($sessionRoleName, 'sales team head') !== false 
+            || strpos($sessionRoleName, 'sales head') !== false;
+
+        $isAuthorized = $isSalesHead 
+            || in_array($userRoleId, [1, 3, 20, 32, 38], true) 
+            || in_array($userSecRoleId, [1, 3, 20, 32, 38], true)
+            || strpos($sessionRoleName, 'super admin') !== false || strpos($sessionRoleName, 'director') !== false || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false;
+
+        if (!$isAuthorized) {
+            ob_clean();
+            echo json_encode(['success' => false, 'message' => 'Unauthorized: Only Sales Team Head (Role 9 / Secondary Role 9), Operation Head (Role 20), or Management can reject this request.']);
+            exit;
+        }
+
+        $input = file_get_contents('php://input');
+        $payload = json_decode($input, true) ?? [];
+        if (empty($payload)) {
+            $payload = $_POST;
+        }
+
+        $reqId = !empty($payload['approval_request_id']) ? (int)$payload['approval_request_id'] : 0;
+        $sourceTable = !empty($payload['source_table']) ? trim($payload['source_table']) : '';
+        $sourceId = !empty($payload['source_id']) ? (int)$payload['source_id'] : 0;
+        $note = !empty($payload['note']) ? trim($payload['note']) : 'Rejected by Sales Team Head';
+
+        if (!$reqId && (!empty($sourceTable) && !empty($sourceId))) {
+            $findStmt = $this->db->prepare("SELECT id FROM approval_requests WHERE source_table = ? AND source_id = ? ORDER BY id DESC LIMIT 1");
+            if ($findStmt) {
+                $findStmt->bind_param('si', $sourceTable, $sourceId);
+                $findStmt->execute();
+                $res = $findStmt->get_result()->fetch_assoc();
+                $findStmt->close();
+                if ($res) {
+                    $reqId = (int)$res['id'];
+                }
+            }
+        }
+
+        if (!$reqId) {
+            ob_clean();
+            echo json_encode(['success' => false, 'message' => 'Approval request not found.']);
+            exit;
+        }
+
+        $res = $this->approvalModel->rejectSalesHead($reqId, $userId, $note);
+        ob_clean();
+        if ($res) {
+            echo json_encode([
+                'success' => true, 
+                'message' => 'Rejected by Sales Team Head successfully.'
+            ]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to reject request.']);
+        }
+        exit;
+    }
+
+    /**
      * Single Accounts Head Approval API
      */
     public function approveAccountsHead()
@@ -384,6 +604,7 @@ class ApprovalRequestController extends Controller
         $sourceId = !empty($payload['source_id']) ? (int)$payload['source_id'] : 0;
         $note = !empty($payload['note']) ? trim($payload['note']) : 'Approved by Accounts Head';
         $coaId = !empty($payload['coa_id']) ? (int)$payload['coa_id'] : null;
+        $approvedAmount = !empty($payload['approved_amount']) ? (float)$payload['approved_amount'] : null;
 
         if (!$reqId && (!empty($sourceTable) && !empty($sourceId))) {
             $findStmt = $this->db->prepare("SELECT id FROM approval_requests WHERE source_table = ? AND source_id = ? ORDER BY id DESC LIMIT 1");
@@ -408,7 +629,7 @@ class ApprovalRequestController extends Controller
         $reqAmt = (float)($reqBefore['request_amount'] ?? 0);
         $isPayslip = (($reqBefore['source_table'] ?? '') === 'payslips');
         $isMgmtAlreadyDone = (strtolower($reqBefore['status'] ?? '') === 'approved' && !empty($reqBefore['approved_by']));
-        $res = $this->approvalModel->approveAccountsHead($reqId, $userId, $note, $coaId);
+        $res = $this->approvalModel->approveAccountsHead($reqId, $userId, $note, $coaId, $approvedAmount);
         ob_clean();
         if ($res) {
             $succMsg = (($reqAmt > 10000.01 || $isPayslip) && !$isMgmtAlreadyDone)

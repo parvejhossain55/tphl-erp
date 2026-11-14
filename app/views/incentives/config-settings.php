@@ -96,8 +96,8 @@ $show_breadcrumb = true;
 
                         <div class="mb-3">
                             <label class="form-label fw-semibold small text-dark">
-                                2nd Floor & Below Top Floor Rate (%)
-                                <i class="fa-solid fa-circle-question text-muted ms-1" title="Special incentive rate for 2nd floor and below top floor sales."></i>
+                                1st Floor & Top / Below-Top Floor Rate (%)
+                                <i class="fa-solid fa-circle-question text-muted ms-1" title="Special incentive rate for 1st floor and top/below top floor sales."></i>
                             </label>
                             <div class="input-group">
                                 <input type="number" step="0.01" name="settings[floor_special_rate]" class="form-control fw-bold" 

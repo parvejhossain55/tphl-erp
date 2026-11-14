@@ -57,6 +57,13 @@
     $sbUserSecRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
     $sbUserPriRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
     $sbUserId = (int)($_SESSION['user']['id'] ?? 0);
+    if (!$sbUserSecRoleId && $sbUserId > 0 && isset($db)) {
+        $sbSecRes = $db->query("SELECT secondary_role_id FROM users WHERE id = {$sbUserId} LIMIT 1");
+        if ($sbSecRes && $sbSecRow = $sbSecRes->fetch_assoc()) {
+            $sbUserSecRoleId = (int)($sbSecRow['secondary_role_id'] ?? 0);
+            $_SESSION['user']['secondary_role_id'] = $sbUserSecRoleId;
+        }
+    }
     $isManagement = in_array($sbUserRoleId, [1, 3, 33, 34, 35, 38], true) 
         || in_array($sbUserSecRoleId, [1, 3, 33, 34, 35, 38], true) 
         || in_array($sbUserPriRoleId, [1, 3, 33, 34, 35, 38], true) 
@@ -756,14 +763,14 @@
 
                 $upcomingCount = getFollowUpCount($userId, 'upcoming');
                 ?>
-                <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22, 9, 7, 33, 34, 35, 38, 39]) || in_array($_SESSION['user']['secondary_role_id'] ?? 0, [1, 3, 15, 22, 9, 7, 33, 34, 35, 38, 39])): ?>
+                <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 7, 9, 15, 20, 22, 30, 32, 33, 34, 35, 38, 39]) || in_array($_SESSION['user']['secondary_role_id'] ?? 0, [1, 3, 6, 7, 9, 15, 20, 22, 30, 32, 33, 34, 35, 38, 39])): ?>
 
                     <!--Sales CATEGORY -->
                     <li class="sidebar__menu-category">
                         <span class="category-name">Sales & Business</span>
                     </li>
 
-                    <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 9, 33, 34, 35, 38]) || in_array($_SESSION['user']['secondary_role_id'] ?? 0, [1, 3, 9, 33, 34, 35, 38])): ?>
+                    <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 9, 20, 32, 33, 34, 35, 38]) || in_array($_SESSION['user']['secondary_role_id'] ?? 0, [1, 3, 9, 20, 32, 33, 34, 35, 38])): ?>
                         <?php if (($_SESSION['user']['role_id'] ?? 0) != 9): ?>
                             <!-- sales Dashboard -->
                             <li class="slide ">
@@ -1053,7 +1060,7 @@
                         </li>
                     <?php endif; ?>
 
-                    <?php if ((hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 9, 15, 33, 34, 35]))): ?>
+                    <?php if ((hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 6, 8, 9, 15, 20, 30, 32, 33, 34, 35, 36, 38]) || in_array($_SESSION['user']['secondary_role_id'] ?? 0, [1, 2, 3, 5, 6, 8, 9, 15, 20, 30, 32, 33, 34, 35, 36, 38]) || $isManagement)): ?>
 
 
                         <!-- Teams Manage for Sales -->
@@ -1077,7 +1084,7 @@
 
 
                         <!-- Sales Incentives: Single Clean Menu Links based on Role -->
-                        <?php if (!$isManagement && (in_array($_SESSION['user']['role_id'] ?? 0, [5, 8, 15]) || (!empty($_SESSION['user']['is_team_leader']) && $_SESSION['user']['is_team_leader'] == 1))): ?>
+                        <?php if (!$isManagement && (in_array($_SESSION['user']['role_id'] ?? 0, [5, 8, 15]) || in_array($_SESSION['user']['secondary_role_id'] ?? 0, [5, 8, 15]) || (!empty($_SESSION['user']['is_team_leader']) && $_SESSION['user']['is_team_leader'] == 1))): ?>
                             <!-- My Incentive for Sales Executive, Manager, Team Leader -->
                             <li class="slide <?= isActive('my-incentives', $current_route) ?>">
                                 <a href="<?= $base_url ?>/my-incentives"
@@ -1087,7 +1094,7 @@
                                 </a>
                             </li>
 
-                            <?php if (!empty($_SESSION['user']['is_team_leader']) || in_array($_SESSION['user']['role_id'] ?? 0, [5, 15])): ?>
+                            <?php if (!empty($_SESSION['user']['is_team_leader']) || in_array($_SESSION['user']['role_id'] ?? 0, [5, 15]) || in_array($_SESSION['user']['secondary_role_id'] ?? 0, [5, 15])): ?>
                             <li class="slide <?= isActive('my-team-incentives', $current_route) ?>">
                                 <a href="<?= $base_url ?>/my-team-incentives"
                                     class="sidebar__menu-item <?= isActive('my-team-incentives', $current_route) ?>">
@@ -1098,8 +1105,8 @@
                             <?php endif; ?>
                         <?php endif; ?>
 
-                        <!-- Sales Head (Role 9): My Team Target if has team -->
-                        <?php if (($_SESSION['user']['role_id'] ?? 0) == 9): ?>
+                        <!-- Sales Head (Role 9 / Sec Role 9): My Team Target if has team -->
+                        <?php if (in_array(9, [$_SESSION['user']['role_id'] ?? 0, $_SESSION['user']['secondary_role_id'] ?? 0], true)): ?>
                             <li class="slide <?= isActive('my-team-incentives', $current_route) ?>">
                                 <a href="<?= $base_url ?>/my-team-incentives"
                                     class="sidebar__menu-item <?= isActive('my-team-incentives', $current_route) ?>">
@@ -1109,8 +1116,8 @@
                             </li>
                         <?php endif; ?>
 
-                        <!-- Sales Incentive for Management, Accounts, and Role 20 -->
-                        <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 20, 30, 32, 33, 34, 35, 36, 38]) || $isManagement): ?>
+                        <!-- Sales Incentive for Management, Accounts, Sales Head, and Role 20 -->
+                        <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 9, 20, 30, 32, 33, 34, 35, 36, 38]) || in_array($_SESSION['user']['secondary_role_id'] ?? 0, [1, 3, 6, 9, 20, 30, 32, 33, 34, 35, 36, 38]) || $isManagement): ?>
                             <li class="slide <?= isActive('incentive-management', $current_route) ?>">
                                 <a href="<?= $base_url ?>/incentive-management"
                                     class="sidebar__menu-item <?= isActive('incentive-management', $current_route) ?>">
@@ -1124,7 +1131,7 @@
                         <?php endif; ?>
 
                         <!-- Sales Incentive Target: Accessible to Management, Accounts, Role 20 (to set targets) and Sales Head (to view) -->
-                        <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 9, 20, 30, 32, 33, 34, 35, 36, 38]) || $isManagement): ?>
+                        <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 9, 20, 30, 32, 33, 34, 35, 36, 38]) || in_array($_SESSION['user']['secondary_role_id'] ?? 0, [1, 3, 6, 9, 20, 30, 32, 33, 34, 35, 36, 38]) || $isManagement): ?>
                             <li class="slide <?= isActive('sales-executive-teams', $current_route) ?>">
                                 <a href="<?= $base_url ?>/sales-executive-teams"
                                     class="sidebar__menu-item <?= isActive('sales-executive-teams', $current_route) ?>">

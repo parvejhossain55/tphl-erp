@@ -46,4 +46,16 @@ class Database {
     public function query($sql){
         return $this->conn->query($sql);
     }
+
+    public function prepare($sql){
+        return $this->conn->prepare($sql);
+    }
+
+    public function __call($name, $arguments)
+    {
+        if (is_object($this->conn) && method_exists($this->conn, $name)) {
+            return call_user_func_array([$this->conn, $name], $arguments);
+        }
+        throw new BadMethodCallException("Method {$name} does not exist on Database or mysqli.");
+    }
 }
