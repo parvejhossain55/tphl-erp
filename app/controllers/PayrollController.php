@@ -27,9 +27,33 @@ class PayrollController extends Controller
         self::$payrollSchemaChecked = true;
 
         try {
-            // Ensure employee office branch & meal columns exist
+            // Ensure employee office branch, service dates & meal columns exist directly on employees
             if ($this->employeeModel && method_exists($this->employeeModel, 'ensureOfficeBranchSchema')) {
                 $this->employeeModel->ensureOfficeBranchSchema();
+            }
+            $empColMap = [];
+            $empColRes = $this->db->query("SHOW COLUMNS FROM `employees`");
+            if ($empColRes) {
+                while ($ecr = $empColRes->fetch_assoc()) {
+                    $empColMap[$ecr['Field']] = true;
+                }
+            }
+            if (!empty($empColMap)) {
+                $reqEmpPayrollCols = [
+                    'joining_date'        => "DATE NULL DEFAULT NULL",
+                    'resign_date'         => "DATE NULL DEFAULT NULL",
+                    'deleted_at'          => "DATETIME NULL DEFAULT NULL",
+                    'employee_status'     => "VARCHAR(50) NULL DEFAULT 'active'",
+                    'per_meal_amount'     => "DECIMAL(10,2) NOT NULL DEFAULT 0.00",
+                    'is_meal_deduction'   => "TINYINT(1) NOT NULL DEFAULT 1",
+                    'per_meal_percentage' => "DECIMAL(5,2) NOT NULL DEFAULT 100.00",
+                    'office_branch_id'    => "INT NULL DEFAULT 2",
+                ];
+                foreach ($reqEmpPayrollCols as $ecName => $ecDef) {
+                    if (!isset($empColMap[$ecName])) {
+                        $this->db->query("ALTER TABLE `employees` ADD COLUMN `{$ecName}` {$ecDef}");
+                    }
+                }
             }
 
             // Ensure Meal Tracker tables (meal_projects, meal_records, etc.) exist
@@ -2266,9 +2290,9 @@ class PayrollController extends Controller
           AND (
               p.id IS NOT NULL 
               OR (
-                  (e.employee_status = \'active\' OR (e.resign_date IS NOT NULL AND e.resign_date != \'0000-00-00\' AND e.resign_date >= \'' . $escapedTargetStart . '\'))
-                  AND (e.joining_date IS NULL OR e.joining_date = \'0000-00-00\' OR e.joining_date <= \'' . $escapedTargetEnd . '\')
-                  AND (e.resign_date IS NULL OR e.resign_date = \'0000-00-00\' OR e.resign_date >= \'' . $escapedTargetStart . '\')
+                  (LOWER(TRIM(COALESCE(e.employee_status, \'\'))) = \'active\' OR (e.resign_date IS NOT NULL AND CAST(e.resign_date AS CHAR) != \'0000-00-00\' AND e.resign_date >= \'' . $escapedTargetStart . '\'))
+                  AND (e.joining_date IS NULL OR CAST(e.joining_date AS CHAR) = \'0000-00-00\' OR e.joining_date <= \'' . $escapedTargetEnd . '\')
+                  AND (e.resign_date IS NULL OR CAST(e.resign_date AS CHAR) = \'0000-00-00\' OR e.resign_date >= \'' . $escapedTargetStart . '\')
               )
           )
         ORDER BY e.employee_id ASC 
@@ -2389,7 +2413,13 @@ class PayrollController extends Controller
             }
         }
 
-        $res = $this->db->query($query);
+        $res = false;
+        try {
+            $res = $this->db->query($query);
+        } catch (\Throwable $pqe) {
+            error_log('PayrollController::workspace primary query exception: ' . $pqe->getMessage());
+            $res = false;
+        }
         if (!$res) {
             error_log('PayrollController::workspace primary query error: ' . $this->db->error);
             $fallbackQuery = "
@@ -2406,11 +2436,39 @@ class PayrollController extends Controller
                 LEFT JOIN departments dept ON e.department_id = dept.id
                 LEFT JOIN designations desg ON e.designation_id = desg.id
                 WHERE e.deleted_at IS NULL
-                  AND (e.employee_status = 'active' OR (e.resign_date IS NOT NULL AND e.resign_date != '0000-00-00' AND e.resign_date >= '$escapedTargetStart'))
-                  AND (e.joining_date IS NULL OR e.joining_date = '0000-00-00' OR e.joining_date <= '$escapedTargetEnd')
+                  AND (LOWER(TRIM(COALESCE(e.employee_status, ''))) = 'active' OR (e.resign_date IS NOT NULL AND CAST(e.resign_date AS CHAR) != '0000-00-00' AND e.resign_date >= '$escapedTargetStart'))
+                  AND (e.joining_date IS NULL OR CAST(e.joining_date AS CHAR) = '0000-00-00' OR e.joining_date <= '$escapedTargetEnd')
                 ORDER BY e.employee_id ASC
             ";
-            $res = $this->db->query($fallbackQuery);
+            try {
+                $res = $this->db->query($fallbackQuery);
+            } catch (\Throwable $fqe) {
+                error_log('PayrollController::workspace fallback query exception: ' . $fqe->getMessage());
+                $res = false;
+            }
+            if (!$res) {
+                $minimalFallbackQuery = "
+                    SELECT e.id as real_emp_id_fk, NULL as id,
+                           e.full_name, e.employee_id as emp_id, e.email, e.workplace,
+                           e.joining_date, NULL as resign_date, e.account_holder_name, e.account_number, e.bank_name,
+                           e.gross_salary as emp_gross, e.basic_salary as emp_basic,
+                           NULL as deleted_at, 0 as per_meal_amount, 1 as is_meal_deduction, 100 as per_meal_percentage,
+                           dept.name as department_name, desg.name as designation_name,
+                           NULL as saved_late_unpaid_absent_days, NULL as saved_unpaid_absent_amount,
+                           NULL as tipsoi_present, NULL as tipsoi_absent, NULL as tipsoi_leave, NULL as tipsoi_late,
+                           NULL as att_late_unpaid_absent_days, NULL as att_deduction, NULL as att_final_late, NULL as att_updated_at
+                    FROM employees e
+                    LEFT JOIN departments dept ON e.department_id = dept.id
+                    LEFT JOIN designations desg ON e.designation_id = desg.id
+                    WHERE LOWER(TRIM(COALESCE(e.employee_status, ''))) = 'active'
+                    ORDER BY e.employee_id ASC
+                ";
+                try {
+                    $res = $this->db->query($minimalFallbackQuery);
+                } catch (\Throwable $mfqe) {
+                    error_log('PayrollController::workspace minimal fallback query exception: ' . $mfqe->getMessage());
+                }
+            }
         }
         $payslips = [];
         if ($res) {
@@ -2792,22 +2850,26 @@ class PayrollController extends Controller
             }
         }
 
-        // Check for active employees without a valid joining_date so project creation can warn/block
+        // Check for active employees without a valid joining_date so project creation can warn/block (MySQL 8.0 NO_ZERO_DATE safe)
         $missingJoiningDateEmployees = [];
-        $missingJoinRes = $this->db->query("
-            SELECT e.id, e.employee_id, e.full_name, d.name as department_name, desg.name as designation_name
-            FROM employees e
-            LEFT JOIN departments d ON e.department_id = d.id
-            LEFT JOIN designations desg ON e.designation_id = desg.id
-            WHERE e.employee_status = 'active'
-              AND e.deleted_at IS NULL
-              AND (e.joining_date IS NULL OR TRIM(e.joining_date) = '' OR e.joining_date = '0000-00-00')
-            ORDER BY e.employee_id ASC
-        ");
-        if ($missingJoinRes) {
-            while ($mjRow = $missingJoinRes->fetch_assoc()) {
-                $missingJoiningDateEmployees[] = $mjRow;
+        try {
+            $missingJoinRes = $this->db->query("
+                SELECT e.id, e.employee_id, e.full_name, d.name as department_name, desg.name as designation_name
+                FROM employees e
+                LEFT JOIN departments d ON e.department_id = d.id
+                LEFT JOIN designations desg ON e.designation_id = desg.id
+                WHERE e.employee_status = 'active'
+                  AND e.deleted_at IS NULL
+                  AND (e.joining_date IS NULL OR TRIM(CAST(e.joining_date AS CHAR)) = '' OR CAST(e.joining_date AS CHAR) = '0000-00-00')
+                ORDER BY e.employee_id ASC
+            ");
+            if ($missingJoinRes) {
+                while ($mjRow = $missingJoinRes->fetch_assoc()) {
+                    $missingJoiningDateEmployees[] = $mjRow;
+                }
             }
+        } catch (\Throwable $mje) {
+            error_log('PayrollController::workspace missingJoinRes warning: ' . $mje->getMessage());
         }
 
         $this->view('payrolls/payslips/workspace', [
@@ -2840,15 +2902,20 @@ class PayrollController extends Controller
         session_write_close();
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            // Block project creation if any active employee has no joining_date set
-            $missingJoinCheck = $this->db->query("
-                SELECT employee_id, full_name
-                FROM employees
-                WHERE employee_status = 'active'
-                  AND deleted_at IS NULL
-                  AND (joining_date IS NULL OR TRIM(joining_date) = '' OR joining_date = '0000-00-00')
-                ORDER BY employee_id ASC
-            ");
+            // Block project creation if any active employee has no joining_date set (MySQL 8.0 NO_ZERO_DATE safe)
+            $missingJoinCheck = false;
+            try {
+                $missingJoinCheck = $this->db->query("
+                    SELECT employee_id, full_name
+                    FROM employees
+                    WHERE employee_status = 'active'
+                      AND deleted_at IS NULL
+                      AND (joining_date IS NULL OR TRIM(CAST(joining_date AS CHAR)) = '' OR CAST(joining_date AS CHAR) = '0000-00-00')
+                    ORDER BY employee_id ASC
+                ");
+            } catch (\Throwable $mjce) {
+                error_log('PayrollController::storePayrollProject missingJoinCheck warning: ' . $mjce->getMessage());
+            }
             if ($missingJoinCheck && $missingJoinCheck->num_rows > 0) {
                 $missingNames = [];
                 while ($mRow = $missingJoinCheck->fetch_assoc()) {
@@ -3575,7 +3642,13 @@ class PayrollController extends Controller
             ORDER BY e.employee_id ASC
         ";
 
-        $res = $this->db->query($query);
+        $res = false;
+        try {
+            $res = $this->db->query($query);
+        } catch (\Throwable $pqe) {
+            error_log('PayrollController::workspace primary query exception: ' . $pqe->getMessage());
+            $res = false;
+        }
         if (!$res) {
             error_log('PayrollController::workspace primary query error: ' . $this->db->error);
             $fallbackQuery = "
@@ -3592,11 +3665,39 @@ class PayrollController extends Controller
                 LEFT JOIN departments dept ON e.department_id = dept.id
                 LEFT JOIN designations desg ON e.designation_id = desg.id
                 WHERE e.deleted_at IS NULL
-                  AND (e.employee_status = 'active' OR (e.resign_date IS NOT NULL AND e.resign_date != '0000-00-00' AND e.resign_date >= '$escapedTargetStart'))
-                  AND (e.joining_date IS NULL OR e.joining_date = '0000-00-00' OR e.joining_date <= '$escapedTargetEnd')
+                  AND (LOWER(TRIM(COALESCE(e.employee_status, ''))) = 'active' OR (e.resign_date IS NOT NULL AND CAST(e.resign_date AS CHAR) != '0000-00-00' AND e.resign_date >= '$escapedTargetStart'))
+                  AND (e.joining_date IS NULL OR CAST(e.joining_date AS CHAR) = '0000-00-00' OR e.joining_date <= '$escapedTargetEnd')
                 ORDER BY e.employee_id ASC
             ";
-            $res = $this->db->query($fallbackQuery);
+            try {
+                $res = $this->db->query($fallbackQuery);
+            } catch (\Throwable $fqe) {
+                error_log('PayrollController::workspace fallback query exception: ' . $fqe->getMessage());
+                $res = false;
+            }
+            if (!$res) {
+                $minimalFallbackQuery = "
+                    SELECT e.id as real_emp_id_fk, NULL as id,
+                           e.full_name, e.employee_id as emp_id, e.email, e.workplace,
+                           e.joining_date, NULL as resign_date, e.account_holder_name, e.account_number, e.bank_name,
+                           e.gross_salary as emp_gross, e.basic_salary as emp_basic,
+                           NULL as deleted_at, 0 as per_meal_amount, 1 as is_meal_deduction, 100 as per_meal_percentage,
+                           dept.name as department_name, desg.name as designation_name,
+                           NULL as saved_late_unpaid_absent_days, NULL as saved_unpaid_absent_amount,
+                           NULL as tipsoi_present, NULL as tipsoi_absent, NULL as tipsoi_leave, NULL as tipsoi_late,
+                           NULL as att_late_unpaid_absent_days, NULL as att_deduction, NULL as att_final_late, NULL as att_updated_at
+                    FROM employees e
+                    LEFT JOIN departments dept ON e.department_id = dept.id
+                    LEFT JOIN designations desg ON e.designation_id = desg.id
+                    WHERE LOWER(TRIM(COALESCE(e.employee_status, ''))) = 'active'
+                    ORDER BY e.employee_id ASC
+                ";
+                try {
+                    $res = $this->db->query($minimalFallbackQuery);
+                } catch (\Throwable $mfqe) {
+                    error_log('PayrollController::workspace minimal fallback query exception: ' . $mfqe->getMessage());
+                }
+            }
         }
         $payslips = [];
         if ($res) {
@@ -4532,8 +4633,10 @@ class PayrollController extends Controller
                      FROM employees e 
                      LEFT JOIN departments d ON e.department_id = d.id 
                      LEFT JOIN designations des ON e.designation_id = des.id 
-                     WHERE (e.employee_status = 'active' OR e.resign_date >= '$escapedFromDate')
-                       AND (e.joining_date IS NULL OR e.joining_date <= '$escapedToDate')
+                     WHERE e.deleted_at IS NULL
+                       AND (LOWER(TRIM(COALESCE(e.employee_status, ''))) = 'active' OR (e.resign_date IS NOT NULL AND CAST(e.resign_date AS CHAR) != '0000-00-00' AND e.resign_date >= '$escapedFromDate'))
+                       AND (e.joining_date IS NULL OR CAST(e.joining_date AS CHAR) = '0000-00-00' OR e.joining_date <= '$escapedToDate')
+                       AND (e.resign_date IS NULL OR CAST(e.resign_date AS CHAR) = '0000-00-00' OR e.resign_date >= '$escapedFromDate')
                      ORDER BY CAST(e.employee_id AS UNSIGNED) ASC, e.employee_id ASC";
         $localQuery = $this->db->query($localSql);
         $localEmployees = [];
