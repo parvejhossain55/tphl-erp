@@ -694,13 +694,17 @@ class ApprovalRequest extends Model
                 sales_head_by = ?,
                 sales_head_at = NOW(),
                 sales_head_note = ?,
+                op_head_status = 'approved',
+                op_head_by = ?,
+                op_head_at = NOW(),
+                op_head_note = ?,
                 approve_role = ?,
                 accounts_head_status = CASE WHEN accounts_head_status = 'approved' THEN 'approved' ELSE ? END
                 {$appAmtSql}
             WHERE id = ?
         ");
         if (!$stmt) return false;
-        $stmt->bind_param('isssi', $userId, $note, $nextRole, $nextAh, $id);
+        $stmt->bind_param('isissssi', $userId, $note, $userId, $note, $nextRole, $nextAh, $id);
         $res = $stmt->execute();
         $stmt->close();
 
@@ -739,16 +743,21 @@ class ApprovalRequest extends Model
         $stmt = $this->db->prepare("
             UPDATE {$this->table}
             SET sales_head_status = 'rejected',
+                op_head_status = 'rejected',
                 status = 'rejected',
                 approve_role = 'rejected',
                 sales_head_by = ?,
                 sales_head_at = NOW(),
                 sales_head_note = ?,
+                op_head_by = ?,
+                op_head_at = NOW(),
+                op_head_note = ?,
+                rejection_reason = ?,
                 approval_note = ?
             WHERE id = ?
         ");
         if (!$stmt) return false;
-        $stmt->bind_param('issi', $userId, $note, $note, $id);
+        $stmt->bind_param('isissssi', $userId, $note, $userId, $note, $note, $note, $id);
         $res = $stmt->execute();
         $stmt->close();
 

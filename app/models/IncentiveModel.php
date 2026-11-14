@@ -1170,10 +1170,12 @@ class IncentiveModel extends Model
                           WHERE id = {$claimId}");
 
         $this->db->query("UPDATE approval_requests 
-                          SET sales_head_status = 'approved', sales_head_by = {$approvedBy}, sales_head_at = '{$now}', sales_head_note = '{$escNote}', approve_role = 'accounts_head', accounts_head_status = 'pending' {$appAmtReqSql}
+                          SET sales_head_status = 'approved', sales_head_by = {$approvedBy}, sales_head_at = '{$now}', sales_head_note = '{$escNote}',
+                              op_head_status = 'approved', op_head_by = {$approvedBy}, op_head_at = '{$now}', op_head_note = '{$escNote}',
+                              approve_role = 'accounts_head', accounts_head_status = 'pending' {$appAmtReqSql}
                           WHERE source_table = 'project_incentive_claims' AND source_id = {$claimId}");
 
-        return ['success' => true, 'message' => 'Claim approved by Sales Team Head and forwarded to Accounts Head.'];
+        return ['success' => true, 'message' => 'Claim approved by Sales Team Head / Operation Head and forwarded to Accounts Head.'];
     }
 
     /**
@@ -1275,11 +1277,12 @@ class IncentiveModel extends Model
         $claimId = (int)$claimId;
 
         $this->db->query("UPDATE project_incentive_claims 
-                          SET claim_status = 'rejected', mgmt_status = 'rejected', rejected_by = {$rejectedBy}, rejected_at = '{$now}', rejection_note = '{$escNote}' 
+                          SET claim_status = 'rejected', sales_head_status = 'rejected', accounts_head_status = 'rejected', mgmt_status = 'rejected', rejected_by = {$rejectedBy}, rejected_at = '{$now}', rejection_note = '{$escNote}' 
                           WHERE id = {$claimId}");
 
         $this->db->query("UPDATE approval_requests 
-                          SET status = 'rejected', approve_role = 'rejected', approved_by = {$rejectedBy}, approved_at = '{$now}', approval_note = '{$escNote}' 
+                          SET status = 'rejected', approve_role = 'rejected', sales_head_status = 'rejected', op_head_status = 'rejected', accounts_head_status = 'rejected',
+                              approved_by = {$rejectedBy}, approved_at = '{$now}', approval_note = '{$escNote}', rejection_reason = '{$escNote}' 
                           WHERE source_table = 'project_incentive_claims' AND source_id = {$claimId}");
 
         return ['success' => true, 'message' => 'Claim rejected successfully.'];
