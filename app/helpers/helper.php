@@ -145,6 +145,101 @@ function checkLogin()
 }
 
 
+function getRoleDashboardRoute(): string
+{
+    $role = isset($_SESSION['user']['role_id']) ? (int) $_SESSION['user']['role_id'] : 0;
+
+    if (isClientsCommunicated()) {
+        return 'ced-dashboard';
+    }
+
+    switch ($role) {
+        case 1: // Super Admin
+        case 3: // Admin
+        case 33: // Chief Officer
+        case 34: // Management Viewer
+        case 35: // SEAL CEO / Management Viewer
+        case 38: // Board of Director
+            return 'home';
+
+        case 0: // General User / Employee
+        case 2: // Employee
+            return 'employee-dashboard';
+
+        case 5: // Sales manager as sales team leader
+            return 'sales-dashboard';
+
+        case 4: // HRM
+            return 'hrm-dashboard';
+
+        case 6: // Accounts
+        case 30: // Head Accountant
+        case 36: // Accounts executive
+            return 'accounts-dashboard';
+
+        case 7: // Clients Experiment
+        case 37: // Credit Recovery (Clients Communicated)
+        case 39: // Head of Client Experience
+            return 'ced-dashboard';
+
+        case 8: // sales executive
+            return 'my-dashboard';
+
+        case 9: // sales team header
+            return 'sales-team-head-dashboard';
+
+        case 10: // sales / digital marketing
+            return 'digital-marketing-dashboard';
+
+        case 11: // digital marketing executive
+            return 'digital-marketing-executive-dashboard';
+
+        case 12: // site Engineer
+            return 'con-site-engineer-dashboard';
+
+        case 13: // QC
+            return 'qc-dashboard';
+
+        case 14: // land officer
+            return 'land-dashboard';
+
+        case 15: // Project Manager
+        case 22: // Project Manager Head
+            return 'con-dashboard';
+
+        case 16: // Draftsman
+            return 'draft-dashboard';
+
+        case 17: // Purchase team lead
+            return 'purchase-team-lead-dashboard';
+
+        case 18: // Project architect dashboard
+            return 'project-architecture-dashboard';
+
+        case 19: // Estimator
+            return 'estimator-dashboard';
+
+        case 20: // Operations Manager
+        case 32: // Admin Operation
+            return 'operations-dashboard';
+
+        case 21: // structural designer
+            return 'project-structural-design-dashboard';
+
+        case 23: // purchase executive
+            return 'purchase-executive-dashboard';
+
+        case 24: // qc and internal audit head
+            return 'qc-audit-dashboard';
+
+        case 31: // Senior Purchase executive
+            return 'sr-executive-dashboard';
+
+        default:
+            return 'employee-dashboard';
+    }
+}
+
 function redirectByRole()
 {
     if (session_status() === PHP_SESSION_NONE) {
@@ -156,125 +251,253 @@ function redirectByRole()
         exit;
     }
 
-    $role = isset($_SESSION['user']['role_id']) ? (int) $_SESSION['user']['role_id'] : 0;
-    $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
-
-    if (isClientsCommunicated()) {
-        $url = "{$GLOBALS['base_url']}/ced-dashboard";
-        header("Location: $url");
-        exit;
-    }
-
-    switch ($role) {
-        case 1: // Super Admin
-        case 3: // Admin
-        case 33: // Chief Officer
-        case 34: // Management Viewer
-        case 35: // SEAL CEO / Management Viewer
-        case 38: // Board of Director
-            $url = "{$GLOBALS['base_url']}/home";
-            break;
-
-        case 0: // General User / Employee
-        case 2: // Employee
-            $url = "{$GLOBALS['base_url']}/employee-dashboard";
-            break;
-
-        case 5: // Sales manager as sales team leader
-            $url = "{$GLOBALS['base_url']}/sales-dashboard";
-            break;
-
-        case 4: // HRM
-            $url = "{$GLOBALS['base_url']}/hrm-dashboard";
-            break;
-
-        case 6: // Accounts
-            $url = "{$GLOBALS['base_url']}/accounts-dashboard";
-            break;
-
-
-        case 7: // Clients Experiment
-        case 37: // Credit Recovery (Clients Communicated)
-        case 39: // Head of Client Experience
-            $url = "{$GLOBALS['base_url']}/ced-dashboard";
-            break;
-        case 8: // sales executive
-            $url = "{$GLOBALS['base_url']}/my-dashboard";
-            break;
-        case 9: //sales team header 
-            $url = "{$GLOBALS['base_url']}/sales-team-head-dashboard";
-            break;
-            // case 11: // whatsapp
-            //     $url = "{$GLOBALS['base_url']}/whatsapp-dashboard";
-            break;
-        case 10: // sales
-            $url = "{$GLOBALS['base_url']}/digital-marketing-dashboard";
-            break;
-        case 11: // digital marketing executive
-            $url = "{$GLOBALS['base_url']}/digital-marketing-executive-dashboard";
-            break;
-        case 12: // site Engineer
-            $url = "{$GLOBALS['base_url']}/con-site-engineer-dashboard";
-            break;
-        case 13: // QC
-            $url = "{$GLOBALS['base_url']}/qc-dashboard";
-            break;
-        case 14: // land officer
-            $url = "{$GLOBALS['base_url']}/land-dashboard";
-            break;
-        case 15: // Project Manager
-            $url = "{$GLOBALS['base_url']}/con-dashboard";
-            break;
-        case 16: // Draftsman
-            $url = "{$GLOBALS['base_url']}/draft-dashboard";
-            break;
-        case 17: // Purchase team lead
-            $url = "{$GLOBALS['base_url']}/purchase-team-lead-dashboard";
-            break;
-        case 18: // Project architech dashboard
-            $url = "{$GLOBALS['base_url']}/project-architecture-dashboard";
-            break;
-        case 19: // Estimator
-            $url = "{$GLOBALS['base_url']}/estimator-dashboard";
-            break;
-        case 20: // Operations Manager
-        case 32: // Admin Operation
-            $url = "{$GLOBALS['base_url']}/operations-dashboard";
-            break;
-        case 21: // structural designer
-            $url = "{$GLOBALS['base_url']}/project-structural-design-dashboard";
-            break;
-        case 22: //  Project Manager Head
-            $url = "{$GLOBALS['base_url']}/con-dashboard";
-            break;
-        case 23: //  purchase executive
-            $url = "{$GLOBALS['base_url']}/purchase-executive-dashboard";
-            break;
-        case 24: //  qc and internal audit head
-            $url = "{$GLOBALS['base_url']}/qc-audit-dashboard";
-            break;
-
-        //    case 25: //  qc and internal audit head
-        //         $url = "{$GLOBALS['base_url']}/qc-audit-dashboard";
-        //         break;
-        case 30: // Head Accountant
-            $url = "{$GLOBALS['base_url']}/accounts-dashboard";
-            break;
-
-        case 31: // Senior Purchase executive
-            $url = "{$GLOBALS['base_url']}/sr-executive-dashboard";
-            break;
-
-        case 36: // Accounts executive
-            $url = "{$GLOBALS['base_url']}/accounts-dashboard";
-            break;
-
-        default:
-            $url = "{$GLOBALS['base_url']}/employee-dashboard";
-    }
-
-    header("Location: $url");
+    $targetRoute = getRoleDashboardRoute();
+    header("Location: {$GLOBALS['base_url']}/{$targetRoute}");
     exit;
+}
+
+function checkDashboardAccess(string $route): void
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
+    if (empty($_SESSION['user']['id'])) {
+        return;
+    }
+
+    $route = trim($route, '/');
+
+    $dashboardRoutes = [
+        'home',
+        'employee-dashboard',
+        'sales-dashboard',
+        'sales-team-head-dashboard',
+        'team-dashboard',
+        'team-overview-dashboard',
+        'my-dashboard',
+        'hrm-dashboard',
+        'accounts-dashboard',
+        'dashboard',
+        'dashboard/get-statistics',
+        'financial-dashboard',
+        'ced-dashboard',
+        'digital-marketing-dashboard',
+        'digital-marketing-executive-dashboard',
+        'whatsapp-dashboard',
+        'con-dashboard',
+        'operations-dashboard',
+        'con-site-engineer-dashboard',
+        'qc-dashboard',
+        'qc-audit-dashboard',
+        'land-dashboard',
+        'draft-dashboard',
+        'purchase-team-lead-dashboard',
+        'sr-executive-dashboard',
+        'purchase-executive-dashboard',
+        'project-architecture-dashboard',
+        'estimator-dashboard',
+        'project-structural-design-dashboard',
+    ];
+
+    if (!in_array($route, $dashboardRoutes, true)) {
+        return;
+    }
+
+    // Always allow the user's own default role dashboard
+    $defaultRoute = getRoleDashboardRoute();
+    if ($route === $defaultRoute) {
+        return;
+    }
+
+    $userId    = (int) ($_SESSION['user']['id'] ?? 0);
+    $roleId    = (int) ($_SESSION['user']['role_id'] ?? 0);
+    $priRoleId = (int) ($_SESSION['user']['primary_role_id'] ?? 0);
+    $secRoleId = (int) ($_SESSION['user']['secondary_role_id'] ?? 0);
+    $roleName  = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+
+    $mgmtRoles = [1, 3, 33, 34, 35, 38];
+    $isManagement = in_array($roleId, $mgmtRoles, true)
+        || in_array($priRoleId, $mgmtRoles, true)
+        || in_array($secRoleId, $mgmtRoles, true)
+        || $userId === 94;
+
+    $hasActiveRole = function (array $allowedRoles) use ($roleId): bool {
+        return in_array($roleId, $allowedRoles, true);
+    };
+
+    $allowed = false;
+
+    switch ($route) {
+        case 'home':
+            $allowed = $isManagement
+                || (hasPermission('role & permission') && $roleId !== 9 && !isClientsCommunicated() && $roleId !== 7);
+            break;
+
+        case 'employee-dashboard':
+            $allowed = !$isManagement
+                && $roleId !== 9
+                && ($roleId === 0 || $roleId === 2 || hasPermission('Employee Dashboard'));
+            break;
+
+        case 'sales-dashboard':
+            $allowed = $roleId !== 9
+                && ($isManagement || $hasActiveRole([5, 32]) || hasPermission('sales & business'));
+            break;
+
+        case 'sales-team-head-dashboard':
+            $allowed = $isManagement
+                || $hasActiveRole([9, 32])
+                || $secRoleId === 9
+                || (hasPermission('sales & business') && $roleId === 9);
+            break;
+
+        case 'team-dashboard':
+        case 'team-overview-dashboard':
+            $allowed = $isManagement
+                || $hasActiveRole([5, 8, 9, 32])
+                || $secRoleId === 9
+                || hasPermission('sales & business')
+                || hasPermission('add Lead')
+                || !empty($_SESSION['user']['is_team_leader'])
+                || !empty($_SESSION['user']['is_sales_co_leader'])
+                || !empty($_SESSION['user']['team_id']);
+            break;
+
+        case 'my-dashboard':
+            $allowed = $hasActiveRole([5, 8])
+                || (hasPermission('add Lead') && $roleId !== 9 && !$isManagement);
+            break;
+
+        case 'hrm-dashboard':
+            $allowed = $isManagement
+                || $hasActiveRole([4])
+                || (hasPermission('Hr Manage') && $roleId !== 9)
+                || hasPermission('HRM Management');
+            break;
+
+        case 'accounts-dashboard':
+        case 'dashboard':
+        case 'dashboard/get-statistics':
+            $allowed = $isManagement
+                || $hasActiveRole([6, 30, 36])
+                || hasPermission('accounts manage')
+                || isAccountsExecutive()
+                || strpos($roleName, 'account') !== false;
+            break;
+
+        case 'financial-dashboard':
+            $allowed = $isManagement
+                || $hasActiveRole([6, 30])
+                || (hasPermission('accounts manage') && !isAccountsExecutive());
+            break;
+
+        case 'ced-dashboard':
+            $allowed = isCedUser() && $roleId !== 9;
+            break;
+
+        case 'digital-marketing-dashboard':
+            $allowed = $isManagement
+                || $hasActiveRole([10])
+                || $secRoleId === 10
+                || hasPermission('Digital Marketing Panel');
+            break;
+
+        case 'digital-marketing-executive-dashboard':
+            $allowed = $isManagement
+                || $hasActiveRole([10, 11])
+                || in_array($secRoleId, [10, 11], true)
+                || hasPermission('Upload CSV')
+                || hasPermission('Digital Marketing Panel');
+            break;
+
+        case 'whatsapp-dashboard':
+            $allowed = in_array($roleId, [1, 3, 38], true)
+                || hasPermission('whatsapp panel');
+            break;
+
+        case 'con-dashboard':
+            $allowed = $isManagement
+                || $hasActiveRole([15, 22, 23])
+                || hasPermission('Construction Management');
+            break;
+
+        case 'operations-dashboard':
+            $allowed = $isManagement
+                || $hasActiveRole([20, 32])
+                || isOperationRole();
+            break;
+
+        case 'con-site-engineer-dashboard':
+            $allowed = $isManagement
+                || $hasActiveRole([12, 15, 22])
+                || hasPermission('site engineer dashboard');
+            break;
+
+        case 'qc-dashboard':
+            $allowed = $isManagement
+                || $hasActiveRole([13, 15, 20, 22, 24, 25])
+                || hasPermission('QC Dashboard')
+                || hasPermission('QC & Internal Audit');
+            break;
+
+        case 'qc-audit-dashboard':
+            $allowed = $isManagement
+                || $hasActiveRole([24, 25])
+                || hasPermission('QC & Internal Audit')
+                || strpos($roleName, 'qc & internal audit') !== false;
+            break;
+
+        case 'land-dashboard':
+            $allowed = $isManagement
+                || $hasActiveRole([14, 15, 22])
+                || (hasPermission('Land Study') && !hasPermission('Soil tests'));
+            break;
+
+        case 'draft-dashboard':
+            $allowed = $isManagement
+                || $hasActiveRole([15, 16, 22])
+                || (hasPermission('Project Draft Design') && !hasPermission('Architect Design') && !hasPermission('Material Issue'));
+            break;
+
+        case 'purchase-team-lead-dashboard':
+            $allowed = $isManagement
+                || $hasActiveRole([17, 20, 22, 32])
+                || ($roleId !== 31 && hasPermission('Purchase order') && hasPermission('Vendor Manage') && hasPermission('Material Manage'));
+            break;
+
+        case 'sr-executive-dashboard':
+            $allowed = $isManagement
+                || $hasActiveRole([17, 31]);
+            break;
+
+        case 'purchase-executive-dashboard':
+            $allowed = $isManagement
+                || $hasActiveRole([17, 23, 31]);
+            break;
+
+        case 'project-architecture-dashboard':
+            $allowed = $isManagement
+                || $hasActiveRole([15, 18, 22])
+                || (hasPermission('Architect Design') && !hasPermission('Material Issue'));
+            break;
+
+        case 'estimator-dashboard':
+            $allowed = $isManagement
+                || $hasActiveRole([15, 19, 22])
+                || hasPermission('Estimator dashboard');
+            break;
+
+        case 'project-structural-design-dashboard':
+            $allowed = $isManagement
+                || $hasActiveRole([15, 21, 22])
+                || (hasPermission('Project structure design') && !hasPermission('Material Issue'));
+            break;
+    }
+
+    if (!$allowed) {
+        redirectByRole();
+    }
 }
 
 
