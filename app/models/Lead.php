@@ -448,20 +448,6 @@ class Lead extends Model
             }
         }
 
-        // Include any lead that has an active booking in this project
-        $clauses[] = "EXISTS (
-            SELECT 1 FROM lead_bookings lb_pfilter 
-            LEFT JOIN flats f_pfilter ON lb_pfilter.flat_id = f_pfilter.id
-            WHERE lb_pfilter.lead_id = {$tablePrefix}id 
-              AND lb_pfilter.deleted_at IS NULL 
-              AND lb_pfilter.booking_status IN ('completed', 'booked') 
-              AND lb_pfilter.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))
-              AND (lb_pfilter.project_id = ? OR f_pfilter.project_id = ?)
-        )";
-        $params[] = $projectId;
-        $params[] = $projectId;
-        $types .= "ii";
-
         return [
             'sql' => " AND (" . implode(" OR ", $clauses) . ")",
             'params' => $params,
@@ -499,41 +485,41 @@ class Lead extends Model
 
         // TEAM BASED FILTER
         if (!empty($teamId)) {
-            $isBookedCard = in_array($filter_card, ['total_booked', 'booked'], true);
-            $bookedTeamClause = $isBookedCard 
-                ? " OR EXISTS (SELECT 1 FROM lead_bookings lb_tm WHERE lb_tm.lead_id = l.id AND lb_tm.deleted_at IS NULL AND COALESCE(lb_tm.team_id, l.team_id) = ? AND lb_tm.booking_status IN ('completed', 'booked') AND lb_tm.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded')))" 
-                : "";
-
             if (isset($_SESSION['user']['role_id']) && !in_array($_SESSION['user']['role_id'], [1, 3, 9, 32, 33, 34, 35])) {
                 $loggedInUserId = $_SESSION['user']['id'] ?? 0;
                 $sql .= " AND (
                     (l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND (l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?) OR l.assigned_id = ?))
                     OR
-                    ((l.assigned_id IS NULL OR l.assigned_id = 0) AND l.team_id = ?)
-                    {$bookedTeamClause}
+                    (l.team_id = ?)
+                    OR EXISTS (
+                        SELECT 1 FROM lead_bookings lb_tm 
+                        WHERE lb_tm.lead_id = l.id 
+                          AND (lb_tm.sales_by_id = ? OR lb_tm.sales_by_id IN (SELECT u_tm2.id FROM users u_tm2 WHERE u_tm2.team_id = ?)) 
+                          AND lb_tm.deleted_at IS NULL
+                    )
                 )";
                 $params[] = $teamId;
                 $params[] = $loggedInUserId;
                 $params[] = $teamId;
-                $types .= "iii";
-                if ($isBookedCard) {
-                    $params[] = $teamId;
-                    $types .= "i";
-                }
+                $params[] = $loggedInUserId;
+                $params[] = $teamId;
+                $types .= "iiiii";
             } else {
                 $sql .= " AND (
                     (l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?))
                     OR
-                    ((l.assigned_id IS NULL OR l.assigned_id = 0) AND l.team_id = ?)
-                    {$bookedTeamClause}
+                    (l.team_id = ?)
+                    OR EXISTS (
+                        SELECT 1 FROM lead_bookings lb_tm 
+                        WHERE lb_tm.lead_id = l.id 
+                          AND lb_tm.sales_by_id IN (SELECT u_tm2.id FROM users u_tm2 WHERE u_tm2.team_id = ?) 
+                          AND lb_tm.deleted_at IS NULL
+                    )
                 )";
                 $params[] = $teamId;
                 $params[] = $teamId;
-                $types .= "ii";
-                if ($isBookedCard) {
-                    $params[] = $teamId;
-                    $types .= "i";
-                }
+                $params[] = $teamId;
+                $types .= "iii";
             }
         }
 
@@ -627,26 +613,12 @@ class Lead extends Model
             }
         }
         
-        // Assigned User filter
+        // Assigned User filter (Primary assigned or closed booking salesperson)
         if (isset($assigned_user) && $assigned_user !== '') {
-            $isBookedCard = in_array($filter_card, ['total_booked', 'booked'], true);
-            if ($isBookedCard) {
-                $sql .= " AND (l.assigned_id = ? OR EXISTS (
-                    SELECT 1 FROM lead_bookings lb_usr 
-                    WHERE lb_usr.lead_id = l.id 
-                      AND lb_usr.deleted_at IS NULL 
-                      AND lb_usr.booking_status IN ('completed', 'booked') 
-                      AND lb_usr.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))
-                      AND COALESCE(NULLIF(lb_usr.sales_by_id, 0), l.assigned_id) = ?
-                ))";
-                $params[] = (int)$assigned_user;
-                $params[] = (int)$assigned_user;
-                $types .= "ii";
-            } else {
-                $sql .= " AND l.assigned_id = ?";
-                $params[] = (int)$assigned_user;
-                $types .= "i";
-            }
+            $sql .= " AND (l.assigned_id = ? OR EXISTS (SELECT 1 FROM lead_bookings lb_sel WHERE lb_sel.lead_id = l.id AND lb_sel.sales_by_id = ? AND lb_sel.deleted_at IS NULL))";
+            $params[] = (int)$assigned_user;
+            $params[] = (int)$assigned_user;
+            $types .= "ii";
         }
 
         // Assigned Hours filter (Last 1, 2, 3, 4, 5, 6, etc. hours)
@@ -676,10 +648,6 @@ class Lead extends Model
 
         // Quick Filter Card
         if (!empty($filter_card)) {
-            $teamSub = !empty($teamId) ? " AND COALESCE(lb_sub.team_id, l.team_id) = " . (int)$teamId : "";
-            $projectSub = !empty($projectId) ? " AND (lb_sub.project_id = " . (int)$projectId . " OR EXISTS (SELECT 1 FROM flats f_sub WHERE f_sub.id = lb_sub.flat_id AND f_sub.project_id = " . (int)$projectId . "))" : "";
-            $userSub = (isset($assigned_user) && $assigned_user !== '') ? " AND COALESCE(NULLIF(lb_sub.sales_by_id, 0), l.assigned_id) = " . (int)$assigned_user : "";
-            $refundSub = " AND lb_sub.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))";
             if ($filter_card === 'total_booked' || $filter_card === 'booked') {
                 if (!empty($from_date) && !empty($to_date)) {
                     $sql .= " AND EXISTS (
@@ -687,10 +655,6 @@ class Lead extends Model
                         WHERE lb_sub.lead_id = l.id 
                           AND lb_sub.deleted_at IS NULL 
                           AND lb_sub.booking_status IN ('completed', 'booked') 
-                          {$refundSub}
-                          {$teamSub}
-                          {$projectSub}
-                          {$userSub}
                           AND (DATE(lb_sub.booking_date) BETWEEN ? AND ? OR DATE(lb_sub.created_at) BETWEEN ? AND ?)
                     )";
                     $params[] = $from_date;
@@ -704,10 +668,6 @@ class Lead extends Model
                         WHERE lb_sub.lead_id = l.id 
                           AND lb_sub.deleted_at IS NULL 
                           AND lb_sub.booking_status IN ('completed', 'booked') 
-                          {$refundSub}
-                          {$teamSub}
-                          {$projectSub}
-                          {$userSub}
                           AND (DATE(lb_sub.booking_date) >= ? OR DATE(lb_sub.created_at) >= ?)
                     )";
                     $params[] = $from_date;
@@ -719,10 +679,6 @@ class Lead extends Model
                         WHERE lb_sub.lead_id = l.id 
                           AND lb_sub.deleted_at IS NULL 
                           AND lb_sub.booking_status IN ('completed', 'booked') 
-                          {$refundSub}
-                          {$teamSub}
-                          {$projectSub}
-                          {$userSub}
                           AND (DATE(lb_sub.booking_date) <= ? OR DATE(lb_sub.created_at) <= ?)
                     )";
                     $params[] = $to_date;
@@ -736,23 +692,15 @@ class Lead extends Model
                         WHERE lb_sub.lead_id = l.id 
                           AND lb_sub.deleted_at IS NULL 
                           AND lb_sub.booking_status IN ('completed', 'booked')
-                          {$refundSub}
-                          {$teamSub}
-                          {$projectSub}
-                          {$userSub}
                           $ySub $mSub
                     )";
                 } else {
-                    $sql .= " AND EXISTS (
+                    $sql .= " AND (l.last_lead_action = 'booked' OR EXISTS (
                         SELECT 1 FROM lead_bookings lb_sub 
                         WHERE lb_sub.lead_id = l.id 
                           AND lb_sub.deleted_at IS NULL 
                           AND lb_sub.booking_status IN ('completed', 'booked')
-                          {$refundSub}
-                          {$teamSub}
-                          {$projectSub}
-                          {$userSub}
-                    )";
+                    ))";
                 }
             } elseif ($filter_card === 'today_follow_up') {
                 $sql .= " AND l.assigned_id > 0
@@ -1018,26 +966,47 @@ class Lead extends Model
                 JOIN leads AS l ON l.id = lb.lead_id
                 WHERE lb.deleted_at IS NULL 
                   AND lb.booking_status IN ('completed', 'booked')
-                  AND l.deleted_at IS NULL
-                  AND lb.id NOT IN (
-                      SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded')
-                  )";
+                  AND l.deleted_at IS NULL";
 
         $params = [];
         $types  = "";
 
-        // Team filter: match bookings made under this team (via locked lb.team_id, fallback to l.team_id)
+        // Team filter: check assigned executive's team, or closing sales executive's team, or unassigned lead's team
         if (!empty($teamId)) {
-            $sql .= " AND COALESCE(lb.team_id, l.team_id) = ?";
-            $params[] = (int)$teamId;
-            $types .= "i";
+            $loggedInRole = $_SESSION['user']['role_id'] ?? 0;
+            if (!in_array((int)$loggedInRole, [1, 3, 9, 32, 33, 34, 35])) {
+                $loggedInUserId = $_SESSION['user']['id'] ?? 0;
+                $sql .= " AND (
+                    (l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND (l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?) OR l.assigned_id = ?))
+                    OR ((l.assigned_id IS NULL OR l.assigned_id = 0) AND l.team_id = ?)
+                    OR lb.sales_by_id = ?
+                    OR lb.sales_by_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?)
+                )";
+                $params[] = $teamId;
+                $params[] = $loggedInUserId;
+                $params[] = $teamId;
+                $params[] = $loggedInUserId;
+                $params[] = $teamId;
+                $types .= "iiiii";
+            } else {
+                $sql .= " AND (
+                    (l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?))
+                    OR ((l.assigned_id IS NULL OR l.assigned_id = 0) AND l.team_id = ?)
+                    OR lb.sales_by_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?)
+                )";
+                $params[] = $teamId;
+                $params[] = $teamId;
+                $params[] = $teamId;
+                $types .= "iii";
+            }
         }
 
-        // Assigned user filter: credit to sales_by_id, fallback to lead owner (reconciled with Onboarding & Performance)
+        // Assigned user filter
         if (!empty($assigned_user)) {
-            $sql .= " AND (COALESCE(NULLIF(lb.sales_by_id, 0), l.assigned_id) = ?)";
+            $sql .= " AND (l.assigned_id = ? OR lb.sales_by_id = ?)";
             $params[] = (int)$assigned_user;
-            $types .= "i";
+            $params[] = (int)$assigned_user;
+            $types .= "ii";
         }
 
         // Date filter on booking_date or created_at
@@ -1073,9 +1042,9 @@ class Lead extends Model
             }
         }
 
-        // Project filter: count bookings for this project (via lb.project_id or flat's project_id)
+        // Project filter
         if (!empty($projectId)) {
-            $sql .= " AND (lb.project_id = ? OR EXISTS (SELECT 1 FROM flats f_proj WHERE f_proj.id = lb.flat_id AND f_proj.project_id = ?))";
+            $sql .= " AND (lb.project_id = ? OR l.project_id = ?)";
             $params[] = (int)$projectId;
             $params[] = (int)$projectId;
             $types .= "ii";
@@ -1154,14 +1123,6 @@ class Lead extends Model
         t.name AS team_name,
         COALESCE(p.name, lp.name) AS project_name,
         lpc.name AS project_category_name,
-        lb.booking_id,
-        lb.booking_date AS latest_booking_date,
-        lb.booking_team_id,
-        lb.booking_team_name,
-        lb.booking_agent_name,
-        lb.booking_sales_current_team_id,
-        lb.booking_sales_current_team_name,
-        lb.booking_sales_status,
         lf.next_action,
         lf.follow_up_type,
         lf.next_follow_up_date,
@@ -1187,27 +1148,11 @@ class Lead extends Model
         )
     ) lf ON lf.lead_id = l.id
     LEFT JOIN (
-        SELECT 
-            lb1.id AS booking_id,
-            lb1.lead_id, 
-            lb1.project_id,
-            lb1.booking_date,
-            lb1.sales_by_id AS booking_sales_by_id,
-            COALESCE(lb1.team_id, lb1_l.team_id) AS booking_team_id,
-            COALESCE(u_b.full_name, lb1.sales_agent_old) AS booking_agent_name,
-            t_b.name AS booking_team_name,
-            COALESCE(NULLIF(e_b.team_id, 0), NULLIF(u_b.team_id, 0)) AS booking_sales_current_team_id,
-            t_b_curr.name AS booking_sales_current_team_name,
-            e_b.employee_status AS booking_sales_status
+        SELECT lb1.lead_id, lb1.project_id
         FROM lead_bookings lb1
-        LEFT JOIN leads lb1_l ON lb1.lead_id = lb1_l.id
-        LEFT JOIN users u_b ON lb1.sales_by_id = u_b.id
-        LEFT JOIN employees e_b ON (e_b.user_id = u_b.id OR (u_b.employee_id IS NOT NULL AND e_b.id = u_b.employee_id))
-        LEFT JOIN teams t_b ON t_b.id = COALESCE(lb1.team_id, lb1_l.team_id)
-        LEFT JOIN teams t_b_curr ON t_b_curr.id = COALESCE(NULLIF(e_b.team_id, 0), NULLIF(u_b.team_id, 0))
         WHERE lb1.id = (
             SELECT MAX(lb2.id) FROM lead_bookings lb2
-            WHERE lb2.lead_id = lb1.lead_id AND lb2.deleted_at IS NULL AND lb2.booking_status IN ('booked', 'completed')
+            WHERE lb2.lead_id = lb1.lead_id
         )
     ) lb ON lb.lead_id = l.id
     LEFT JOIN (
@@ -1248,41 +1193,41 @@ class Lead extends Model
 
         // TEAM BASED FILTER
         if (!empty($teamId)) {
-            $isBookedCard = in_array($filter_card, ['total_booked', 'booked'], true);
-            $bookedTeamClause = $isBookedCard 
-                ? " OR EXISTS (SELECT 1 FROM lead_bookings lb_tm WHERE lb_tm.lead_id = l.id AND lb_tm.deleted_at IS NULL AND COALESCE(lb_tm.team_id, l.team_id) = ? AND lb_tm.booking_status IN ('completed', 'booked') AND lb_tm.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded')))" 
-                : "";
-
             if (isset($_SESSION['user']['role_id']) && !in_array($_SESSION['user']['role_id'], [1, 3, 9, 32, 33, 34, 35])) {
                 $loggedInUserId = $_SESSION['user']['id'] ?? 0;
                 $sql .= " AND (
                     (l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND (l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?) OR l.assigned_id = ?))
                     OR
-                    ((l.assigned_id IS NULL OR l.assigned_id = 0) AND l.team_id = ?)
-                    {$bookedTeamClause}
+                    (l.team_id = ?)
+                    OR EXISTS (
+                        SELECT 1 FROM lead_bookings lb_tm 
+                        WHERE lb_tm.lead_id = l.id 
+                          AND (lb_tm.sales_by_id = ? OR lb_tm.sales_by_id IN (SELECT u_tm2.id FROM users u_tm2 WHERE u_tm2.team_id = ?)) 
+                          AND lb_tm.deleted_at IS NULL
+                    )
                 )";
                 $params[] = $teamId;
                 $params[] = $loggedInUserId;
                 $params[] = $teamId;
-                $types .= "iii";
-                if ($isBookedCard) {
-                    $params[] = $teamId;
-                    $types .= "i";
-                }
+                $params[] = $loggedInUserId;
+                $params[] = $teamId;
+                $types .= "iiiii";
             } else {
                 $sql .= " AND (
                     (l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?))
                     OR
-                    ((l.assigned_id IS NULL OR l.assigned_id = 0) AND l.team_id = ?)
-                    {$bookedTeamClause}
+                    (l.team_id = ?)
+                    OR EXISTS (
+                        SELECT 1 FROM lead_bookings lb_tm 
+                        WHERE lb_tm.lead_id = l.id 
+                          AND lb_tm.sales_by_id IN (SELECT u_tm2.id FROM users u_tm2 WHERE u_tm2.team_id = ?) 
+                          AND lb_tm.deleted_at IS NULL
+                    )
                 )";
                 $params[] = $teamId;
                 $params[] = $teamId;
-                $types .= "ii";
-                if ($isBookedCard) {
-                    $params[] = $teamId;
-                    $types .= "i";
-                }
+                $params[] = $teamId;
+                $types .= "iii";
             }
         }
 
@@ -1375,26 +1320,12 @@ class Lead extends Model
                 $sql .= " AND (l.assigned_id IS NULL OR l.assigned_id = 0 OR u.id IS NULL)";
             }
         }
-        // Assigned User filter
+        // Assigned User filter (Primary assigned or closed booking salesperson)
         if (isset($assigned_user) && $assigned_user !== '') {
-            $isBookedCard = in_array($filter_card, ['total_booked', 'booked'], true);
-            if ($isBookedCard) {
-                $sql .= " AND (l.assigned_id = ? OR EXISTS (
-                    SELECT 1 FROM lead_bookings lb_usr 
-                    WHERE lb_usr.lead_id = l.id 
-                      AND lb_usr.deleted_at IS NULL 
-                      AND lb_usr.booking_status IN ('completed', 'booked') 
-                      AND lb_usr.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))
-                      AND COALESCE(NULLIF(lb_usr.sales_by_id, 0), l.assigned_id) = ?
-                ))";
-                $params[] = (int)$assigned_user;
-                $params[] = (int)$assigned_user;
-                $types .= "ii";
-            } else {
-                $sql .= " AND l.assigned_id = ?";
-                $params[] = (int)$assigned_user;
-                $types .= "i";
-            }
+            $sql .= " AND (l.assigned_id = ? OR EXISTS (SELECT 1 FROM lead_bookings lb_sel WHERE lb_sel.lead_id = l.id AND lb_sel.sales_by_id = ? AND lb_sel.deleted_at IS NULL))";
+            $params[] = (int)$assigned_user;
+            $params[] = (int)$assigned_user;
+            $types .= "ii";
         }
 
         // Assigned Hours filter (Last 1, 2, 3, 4, 5, 6, etc. hours)
@@ -1424,10 +1355,6 @@ class Lead extends Model
 
         // Quick Filter Card
         if (!empty($filter_card)) {
-            $teamSub = !empty($teamId) ? " AND COALESCE(lb_sub.team_id, l.team_id) = " . (int)$teamId : "";
-            $projectSub = !empty($projectId) ? " AND (lb_sub.project_id = " . (int)$projectId . " OR EXISTS (SELECT 1 FROM flats f_sub WHERE f_sub.id = lb_sub.flat_id AND f_sub.project_id = " . (int)$projectId . "))" : "";
-            $userSub = (isset($assigned_user) && $assigned_user !== '') ? " AND COALESCE(NULLIF(lb_sub.sales_by_id, 0), l.assigned_id) = " . (int)$assigned_user : "";
-            $refundSub = " AND lb_sub.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))";
             if ($filter_card === 'total_booked' || $filter_card === 'booked') {
                 if (!empty($from_date) && !empty($to_date)) {
                     $sql .= " AND EXISTS (
@@ -1435,10 +1362,6 @@ class Lead extends Model
                         WHERE lb_sub.lead_id = l.id 
                           AND lb_sub.deleted_at IS NULL 
                           AND lb_sub.booking_status IN ('completed', 'booked') 
-                          {$refundSub}
-                          {$teamSub}
-                          {$projectSub}
-                          {$userSub}
                           AND (DATE(lb_sub.booking_date) BETWEEN ? AND ? OR DATE(lb_sub.created_at) BETWEEN ? AND ?)
                     )";
                     $params[] = $from_date;
@@ -1452,10 +1375,6 @@ class Lead extends Model
                         WHERE lb_sub.lead_id = l.id 
                           AND lb_sub.deleted_at IS NULL 
                           AND lb_sub.booking_status IN ('completed', 'booked') 
-                          {$refundSub}
-                          {$teamSub}
-                          {$projectSub}
-                          {$userSub}
                           AND (DATE(lb_sub.booking_date) >= ? OR DATE(lb_sub.created_at) >= ?)
                     )";
                     $params[] = $from_date;
@@ -1467,10 +1386,6 @@ class Lead extends Model
                         WHERE lb_sub.lead_id = l.id 
                           AND lb_sub.deleted_at IS NULL 
                           AND lb_sub.booking_status IN ('completed', 'booked') 
-                          {$refundSub}
-                          {$teamSub}
-                          {$projectSub}
-                          {$userSub}
                           AND (DATE(lb_sub.booking_date) <= ? OR DATE(lb_sub.created_at) <= ?)
                     )";
                     $params[] = $to_date;
@@ -1484,23 +1399,15 @@ class Lead extends Model
                         WHERE lb_sub.lead_id = l.id 
                           AND lb_sub.deleted_at IS NULL 
                           AND lb_sub.booking_status IN ('completed', 'booked')
-                          {$refundSub}
-                          {$teamSub}
-                          {$projectSub}
-                          {$userSub}
                           $ySub $mSub
                     )";
                 } else {
-                    $sql .= " AND EXISTS (
+                    $sql .= " AND (l.last_lead_action = 'booked' OR EXISTS (
                         SELECT 1 FROM lead_bookings lb_sub 
                         WHERE lb_sub.lead_id = l.id 
                           AND lb_sub.deleted_at IS NULL 
                           AND lb_sub.booking_status IN ('completed', 'booked')
-                          {$refundSub}
-                          {$teamSub}
-                          {$projectSub}
-                          {$userSub}
-                    )";
+                    ))";
                 }
             } elseif ($filter_card === 'today_follow_up') {
                 $sql .= " AND l.assigned_id > 0
@@ -2091,10 +1998,10 @@ class Lead extends Model
     LEFT JOIN projects AS p ON lf.project_id = p.id
     LEFT JOIN flats AS f ON lf.flat_id = f.id
     LEFT JOIN project_categories AS lpc ON leads.project_category_id = lpc.id
-    WHERE leads.assigned_id = ? AND leads.deleted_at IS NULL";
+    WHERE (leads.assigned_id = ? OR EXISTS (SELECT 1 FROM lead_bookings lb_seller WHERE lb_seller.lead_id = leads.id AND lb_seller.sales_by_id = ? AND lb_seller.deleted_at IS NULL)) AND leads.deleted_at IS NULL";
 
-        $params = [$userId];
-        $types  = "i";
+        $params = [$userId, $userId];
+        $types  = "ii";
 
         $isAssignedDate = in_array($date_type, ['assigned_date', 'assigned_at']);
         $dateCol = $isAssignedDate 
@@ -2314,13 +2221,7 @@ class Lead extends Model
                           $ySub $mSub
                     )";
                 } else {
-                    $sql .= " AND EXISTS (
-                        SELECT 1 FROM lead_bookings lb_sub 
-                        WHERE lb_sub.lead_id = leads.id 
-                          AND lb_sub.deleted_at IS NULL 
-                          AND lb_sub.booking_status IN ('completed', 'booked')
-                          AND lb_sub.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))
-                    )";
+                    $sql .= " AND (LOWER(leads.last_lead_action) = 'booked' OR EXISTS (SELECT 1 FROM lead_bookings lb_sub WHERE lb_sub.lead_id = leads.id AND lb_sub.deleted_at IS NULL AND lb_sub.booking_status IN ('completed', 'booked')))";
                 }
             } elseif ($filter_card === 'upcoming_follow_ups') {
                 $sql .= " AND lf.next_follow_up_date IS NOT NULL AND DATE(lf.next_follow_up_date) >= CURDATE()";
@@ -2420,10 +2321,10 @@ class Lead extends Model
         ON t1.id = t2.max_id AND t1.lead_id = t2.lead_id
         WHERE t1.deleted_at IS NULL
     ) lf ON lf.lead_id = leads.id
-    WHERE leads.assigned_id = ? AND leads.deleted_at IS NULL";
+    WHERE (leads.assigned_id = ? OR EXISTS (SELECT 1 FROM lead_bookings lb_seller WHERE lb_seller.lead_id = leads.id AND lb_seller.sales_by_id = ? AND lb_seller.deleted_at IS NULL)) AND leads.deleted_at IS NULL";
 
-        $params = [$userId];
-        $types  = "i";
+        $params = [$userId, $userId];
+        $types  = "ii";
 
         $isAssignedDate = in_array($date_type, ['assigned_date', 'assigned_at']);
         $dateCol = $isAssignedDate 
@@ -2640,13 +2541,7 @@ class Lead extends Model
                           $ySub $mSub
                     )";
                 } else {
-                    $sql .= " AND EXISTS (
-                        SELECT 1 FROM lead_bookings lb_sub 
-                        WHERE lb_sub.lead_id = leads.id 
-                          AND lb_sub.deleted_at IS NULL 
-                          AND lb_sub.booking_status IN ('completed', 'booked')
-                          AND lb_sub.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))
-                    )";
+                    $sql .= " AND (LOWER(leads.last_lead_action) = 'booked' OR EXISTS (SELECT 1 FROM lead_bookings lb_sub WHERE lb_sub.lead_id = leads.id AND lb_sub.deleted_at IS NULL AND lb_sub.booking_status IN ('completed', 'booked')))";
                 }
             } elseif ($filter_card === 'upcoming_follow_ups') {
                 $sql .= " AND lf.next_follow_up_date IS NOT NULL AND DATE(lf.next_follow_up_date) >= CURDATE()";
@@ -2722,13 +2617,7 @@ class Lead extends Model
             COUNT(DISTINCT leads.id) as total_leads,
             SUM(CASE WHEN {$contactedCond} THEN 1 ELSE 0 END) as contacted_leads,
             SUM(CASE WHEN NOT {$contactedCond} THEN 1 ELSE 0 END) as not_contacted_leads,
-            SUM(CASE WHEN EXISTS (
-                SELECT 1 FROM lead_bookings lb_c 
-                WHERE lb_c.lead_id = leads.id 
-                  AND lb_c.deleted_at IS NULL 
-                  AND lb_c.booking_status IN ('completed', 'booked') 
-                  AND lb_c.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))
-            ) THEN 1 ELSE 0 END) as booked_leads,
+            SUM(CASE WHEN LOWER(leads.last_lead_action) = 'booked' THEN 1 ELSE 0 END) as booked_leads,
             SUM(CASE WHEN lf.next_follow_up_date IS NOT NULL AND DATE(lf.next_follow_up_date) >= CURDATE() THEN 1 ELSE 0 END) as upcoming_follow_ups,
             SUM(CASE WHEN lf.next_follow_up_date IS NOT NULL AND lf.next_follow_up_date > '1000-01-01' AND DATE(lf.next_follow_up_date) < CURDATE() AND lf.deleted_at IS NULL THEN 1 ELSE 0 END) as missing_follow_ups,
             SUM(CASE WHEN (leads.lead_type IN ('Invalid Lead', 'Irrelevant') OR lf.lead_status IN ('Invalid Lead', 'Irrelevant')) THEN 1 ELSE 0 END) as irrelevant_leads,
@@ -2746,10 +2635,10 @@ class Lead extends Model
             ) t2 
             ON t1.id = t2.max_id AND t1.lead_id = t2.lead_id
         ) lf ON lf.lead_id = leads.id
-        WHERE leads.assigned_id = ? AND leads.deleted_at IS NULL";
+        WHERE (leads.assigned_id = ? OR EXISTS (SELECT 1 FROM lead_bookings lb_seller WHERE lb_seller.lead_id = leads.id AND lb_seller.sales_by_id = ? AND lb_seller.deleted_at IS NULL)) AND leads.deleted_at IS NULL";
 
-        $params = [$userId];
-        $types  = "i";
+        $params = [$userId, $userId];
+        $types  = "ii";
 
         $isAssignedDate = in_array($date_type, ['assigned_date', 'assigned_at']);
         $dateCol = $isAssignedDate 
@@ -3219,19 +3108,16 @@ class Lead extends Model
         // 12. Remaining Today Follow Up
         $remainingTodayFollowUp = max(0, $todayFollowUps - $todayFollowUpComplete);
 
-        // 13. Total Sales/Booked (Synchronized with CRM lead ownership & actual salesperson)
+        // 13. Total Sales/Booked (Synchronized with CRM lead ownership)
         $sql13 = "SELECT COUNT(DISTINCT lb.id) as c 
                   FROM lead_bookings lb 
                   JOIN leads l ON l.id = lb.lead_id 
                   WHERE lb.deleted_at IS NULL AND l.deleted_at IS NULL 
-                    AND (COALESCE(NULLIF(lb.sales_by_id, 0), l.assigned_id) = ?) 
-                    AND lb.booking_status IN ('completed', 'booked')
-                    AND lb.id NOT IN (
-                        SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded')
-                    )";
+                    AND (l.assigned_id = ? OR lb.sales_by_id = ? OR lb.created_by = ?) 
+                    AND lb.booking_status IN ('completed', 'booked')";
         $totalSalesBookedUnits = 0;
         if ($stmt13 = $this->db->prepare($sql13)) {
-            $stmt13->bind_param("i", $userId);
+            $stmt13->bind_param("iii", $userId, $userId, $userId);
             $stmt13->execute();
             $totalSalesBookedUnits = (int)($stmt13->get_result()->fetch_assoc()['c'] ?? 0);
             $stmt13->close();
@@ -3286,16 +3172,13 @@ class Lead extends Model
                   FROM lead_bookings lb 
                   JOIN leads l ON l.id = lb.lead_id 
                   WHERE lb.deleted_at IS NULL AND l.deleted_at IS NULL 
-                    AND (COALESCE(NULLIF(lb.sales_by_id, 0), l.assigned_id) = ?) 
+                    AND (l.assigned_id = ? OR lb.sales_by_id = ? OR lb.created_by = ?) 
                     AND lb.booking_status IN ('completed', 'booked') 
-                    AND lb.id NOT IN (
-                        SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded')
-                    )
                     AND (DATE(lb.booking_date) BETWEEN ? AND ? OR (lb.booking_date IS NULL AND DATE(lb.created_at) BETWEEN ? AND ?))";
         $currentMonthBooking = 0;
         $currentMonthBookedLeads = 0;
         if ($stmt15 = $this->db->prepare($sql15)) {
-            $stmt15->bind_param("issss", $userId, $bkStart, $bkEnd, $bkStart, $bkEnd);
+            $stmt15->bind_param("iiissss", $userId, $userId, $userId, $bkStart, $bkEnd, $bkStart, $bkEnd);
             $stmt15->execute();
             $bkRow15 = $stmt15->get_result()->fetch_assoc();
             $currentMonthBooking = (int)($bkRow15['total_bookings'] ?? 0);
@@ -3805,11 +3688,8 @@ class Lead extends Model
                   FROM lead_bookings lb 
                   JOIN leads l ON l.id = lb.lead_id 
                   WHERE lb.deleted_at IS NULL {$leadsDelSql} {$autoFilter} {$roleIsolation}
-                    AND COALESCE(lb.team_id, l.team_id) = {$teamId}
-                    AND lb.booking_status IN ('completed', 'booked')
-                    AND lb.id NOT IN (
-                        SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded')
-                    )";
+                    AND ({$leadScope} OR lb.sales_by_id IN ({$memberIdsList}) OR lb.created_by IN ({$memberIdsList}))
+                    AND lb.booking_status IN ('completed', 'booked')";
         $totalSalesBookedUnits = 0;
         if ($res13 = $this->db->query($sql13)) {
             $totalSalesBookedUnits = (int)($res13->fetch_assoc()['c'] ?? 0);
@@ -3842,11 +3722,8 @@ class Lead extends Model
                   FROM lead_bookings lb 
                   JOIN leads l ON l.id = lb.lead_id 
                   WHERE lb.deleted_at IS NULL {$leadsDelSql} {$autoFilter} {$roleIsolation}
-                    AND COALESCE(lb.team_id, l.team_id) = {$teamId}
+                    AND ({$leadScope} OR lb.sales_by_id IN ({$memberIdsList}) OR lb.created_by IN ({$memberIdsList}))
                     AND lb.booking_status IN ('completed', 'booked') 
-                    AND lb.id NOT IN (
-                        SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded')
-                    )
                     AND (DATE(lb.booking_date) BETWEEN ? AND ? OR (lb.booking_date IS NULL AND DATE(lb.created_at) BETWEEN ? AND ?))";
         $currentMonthBooking = 0;
         $currentMonthBookedLeads = 0;
@@ -3975,30 +3852,7 @@ class Lead extends Model
      */
     public function getTeamMemberSalesPerformance(int $teamId, ?string $startDate = null, ?string $endDate = null, bool $hasFilter = false): array
     {
-        $currentMembers = $this->getTeamMemberUsers($teamId);
-        $currentMemberUids = array_filter(array_map(fn($m) => (int)($m['user_id'] ?? 0), $currentMembers));
-
-        // Also fetch any users who made bookings for this team historically (even if moved or resigned)
-        $historicalSql = "
-            SELECT DISTINCT u.id as user_id, u.full_name, r.name as role_name, des.name as designation_name,
-                   e.employee_id, e.employee_status, e.is_team_leader
-            FROM lead_bookings lb
-            JOIN leads l ON l.id = lb.lead_id
-            JOIN users u ON u.id = lb.sales_by_id
-            LEFT JOIN roles r ON r.id = u.role_id
-            LEFT JOIN employees e ON (e.user_id = u.id OR (u.employee_id IS NOT NULL AND e.id = u.employee_id))
-            LEFT JOIN designations des ON des.id = e.designation_id
-            WHERE lb.deleted_at IS NULL AND l.deleted_at IS NULL
-              AND COALESCE(lb.team_id, l.team_id) = {$teamId}
-              AND lb.sales_by_id IS NOT NULL AND lb.sales_by_id > 0
-        ";
-        if (!empty($currentMemberUids)) {
-            $historicalSql .= " AND u.id NOT IN (" . implode(',', $currentMemberUids) . ")";
-        }
-        $histRes = $this->db->query($historicalSql);
-        $historicalMembers = $histRes ? $histRes->fetch_all(MYSQLI_ASSOC) : [];
-
-        $members = array_merge($currentMembers, $historicalMembers);
+        $members = $this->getTeamMemberUsers($teamId);
         $loggedInRole = $_SESSION['user']['role_id'] ?? 0;
         $autoFilter = "";
         if (!in_array((int)$loggedInRole, [1, 10, 11])) {
@@ -4056,7 +3910,6 @@ class Lead extends Model
                 WHERE lb.deleted_at IS NULL
                   AND l.deleted_at IS NULL
                   {$autoFilter}
-                  AND COALESCE(lb.team_id, l.team_id) = {$teamId}
                   AND (lb.sales_by_id = {$uid} OR (lb.sales_by_id IS NULL AND l.assigned_id = {$uid}))
                   {$dateBookingCond}
             ";
@@ -4103,11 +3956,6 @@ class Lead extends Model
             $leadBase = ($hasFilter && $periodLeads > 0) ? $periodLeads : $allTimeLeads;
             $conversionRate = $leadBase > 0 ? round(($netSales / $leadBase) * 100, 1) : 0;
             $collectionRate = $memberLandShareValue > 0 ? round(($memberLandSharePaid / $memberLandShareValue) * 100, 1) : 0;
-
-            $isHistorical = !in_array($uid, $currentMemberUids, true);
-            if ($isHistorical && $grossSales === 0 && $periodLeads === 0) {
-                continue;
-            }
 
             $perfData[] = [
                 'user_id'          => $uid,
@@ -4459,14 +4307,13 @@ class Lead extends Model
         company_name,
         company,
         team_id,
-        initial_team_id,
         created_by,
         country,
         2nd_lead_owner_name,
         2nd_owner_phone,
         2nd_owner_email,
         2nd_owner_address,
-        2nd_owner_other_details ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        2nd_owner_other_details ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         if (!$stmt) {
             setError("Prepare failed: " . $this->db->error);
@@ -4549,7 +4396,6 @@ class Lead extends Model
         $company_name = $nn('company_name', 255) ?? $nn('company', 255);
         $company = $company_name;
         $team_id = $ni('team_id');
-        $initial_team_id = $ni('initial_team_id') ?? $team_id;
         $created_by = $ni('created_by');
         $country = $nn('country', 200);
         $second_lead_owner_name = $nn('2nd_lead_owner_name', 255);
@@ -4558,9 +4404,9 @@ class Lead extends Model
         $second_owner_address = $nn('2nd_owner_address');
         $second_owner_other_details = $nn('2nd_owner_other_details');
 
-        // Bind parameters (47 columns)
+        // Bind parameters (46 columns)
         $stmt->bind_param(
-            "sssssssssssssssssssssiisisiissssssssssiiissssss",
+            "sssssssssssssssssssssiisisiissssssssssiissssss",
             $campaign_name,
             $platform,
             $which_apartment_size_are_you_interested_in,
@@ -4600,7 +4446,6 @@ class Lead extends Model
             $company_name,
             $company,
             $team_id,
-            $initial_team_id,
             $created_by,
             $country,
             $second_lead_owner_name,
@@ -4681,10 +4526,10 @@ class Lead extends Model
             nationality, religion, nominee_name, nomi_father_name, nomi_mother_name, 
             nomi_profession, relation_with_lead, nomi_dob, nomi_nid_passport, 
             nomi_phone, nomi_email, nomi_present_add, nomi_permanent_address, nomi_image,
-            status, visibility, created_by, team_id, initial_team_id, assigned_id, uploaded_from
+            status, visibility, created_by, team_id, assigned_id, uploaded_from
         ) VALUES (
             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?, ?, ?
+            ?, ?, ?, ?, ?, ?
         )";
 
         $stmt = $this->db->prepare($sql);
@@ -4725,19 +4570,18 @@ class Lead extends Model
         $visibility            = $data['visibility']   ?? 'public';
         $createdBy             = $data['created_by']   ?? null;
         $team_id               = $v('team_id');
-        $initial_team_id       = $v('initial_team_id') ?? $team_id;
         $assigned_id           = $v('assigned_id');
         $uploadedFrom          = $data['uploaded_from'] ?? 'From Company csv';
 
-        // 32 columns: 25 s + status(s) + visibility(s) = 27s, then i(created_by), s(team_id), s(initial_team_id), s(assigned_id), s(uploaded_from) = 32
+        // 31 columns: 25 s + status(s) + visibility(s) = 27s, then i(created_by), s(team_id), s(assigned_id), s(uploaded_from) = 31
         $stmt->bind_param(
-            "sssssssssssssssssssssssssssiisss",
+            "sssssssssssssssssssssssssssiiss",
             $full_name, $job_title, $company_name, $phone, $alt_phone_number, $email,
             $lead_image, $lead_name_bn, $father_name_bn, $mother_name_bn, $profession_bn,
             $nationality, $religion, $nominee_name, $nomi_father_name, $nomi_mother_name,
             $nomi_profession, $relation_with_lead, $nomi_dob, $nomi_nid_passport,
             $nomi_phone, $nomi_email, $nomi_present_add, $nomi_permanent_address, $nomi_image,
-            $status, $visibility, $createdBy, $team_id, $initial_team_id, $assigned_id, $uploadedFrom
+            $status, $visibility, $createdBy, $team_id, $assigned_id, $uploadedFrom
         );
 
         if (!$stmt->execute()) {
@@ -6550,8 +6394,7 @@ class Lead extends Model
         $inUsers = implode(',', $userIds);
 
         $sql = "UPDATE leads l
-                SET l.team_id = ?,
-                    l.initial_team_id = COALESCE(l.initial_team_id, ?)
+                SET l.team_id = ?
                 WHERE l.assigned_id IN ($inUsers)
                   AND l.deleted_at IS NULL
                   AND (l.last_lead_action IS NULL OR LOWER(l.last_lead_action) != 'booked')
@@ -6564,7 +6407,7 @@ class Lead extends Model
 
         $stmt = $this->db->prepare($sql);
         if ($stmt) {
-            $stmt->bind_param("ii", $newTeamId, $newTeamId);
+            $stmt->bind_param("i", $newTeamId);
             $stmt->execute();
             $affected = $stmt->affected_rows;
             $stmt->close();
@@ -6593,8 +6436,7 @@ class Lead extends Model
 
         $sql = "UPDATE leads l
                 INNER JOIN employees e ON (l.assigned_id = e.user_id OR (e.user_id IS NULL AND l.assigned_id = e.id))
-                SET l.team_id = ?,
-                    l.initial_team_id = COALESCE(l.initial_team_id, ?)
+                SET l.team_id = ?
                 WHERE e.id IN ($inEmps)
                   AND l.deleted_at IS NULL
                   AND (l.last_lead_action IS NULL OR LOWER(l.last_lead_action) != 'booked')
@@ -6607,7 +6449,7 @@ class Lead extends Model
 
         $stmt = $this->db->prepare($sql);
         if ($stmt) {
-            $stmt->bind_param("ii", $newTeamId, $newTeamId);
+            $stmt->bind_param("i", $newTeamId);
             $stmt->execute();
             $affected = $stmt->affected_rows;
             $stmt->close();

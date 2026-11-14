@@ -170,7 +170,7 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                     </div>
                 </div>
 
-                <!-- On Hold Incentive (Outside Designated 70%) -->
+                <!-- On Hold Incentive (From Unassigned Projects 70%) -->
                 <div class="col-xl-2 col-md-4 mb-3">
                     <div class="card border-0 shadow-sm rounded-3 h-100 bg-white border-start border-4 border-secondary">
                         <div class="card-body p-3">
@@ -181,7 +181,7 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                                 </div>
                             </div>
                             <h4 class="fw-bold mb-1 text-secondary">৳<?= number_format($monthlyStats['total_on_hold_incentive'] ?? 0, 2) ?></h4>
-                            <span class="text-muted extra-small">Outside designated project</span>
+                            <span class="text-muted extra-small">From Unassigned Projects (Need 25L)</span>
                         </div>
                     </div>
                 </div>
@@ -198,6 +198,13 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                             </div>
                             <h4 class="fw-bold mb-1 text-info">৳<?= number_format($walletSummary['available_balance'] ?? 0, 2) ?></h4>
                             <span class="text-muted extra-small">Approved amount ready for payout</span>
+                            <div class="mt-2 pt-2 border-top extra-small d-flex flex-wrap gap-2 text-muted">
+                                <span><strong class="text-success">Approved:</strong> ৳<?= number_format($walletSummary['total_approved'] ?? 0, 2) ?></span>
+                                <span><strong class="text-primary">Disbursed:</strong> ৳<?= number_format($walletSummary['total_paid'] ?? 0, 2) ?></span>
+                                <?php if (!empty($walletSummary['rejected_amount']) && (float)$walletSummary['rejected_amount'] > 0): ?>
+                                    <span class="text-danger"><strong class="text-danger">Rejected:</strong> ৳<?= number_format($walletSummary['rejected_amount'], 2) ?></span>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -264,6 +271,19 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                                                     <td>
                                                         <span class="fw-bold text-dark d-block"><?= htmlspecialchars($sale['project_name']) ?></span>
                                                         <span class="text-primary extra-small fw-semibold"><?= htmlspecialchars($sale['flat_name']) ?> (<?= !empty($sale['sqft']) ? format_sqft($sale['sqft']) : 'N/A' ?> sqft)</span>
+                                                        <?php if (!empty($sale['project_scope']) && $sale['project_scope'] === 'unassigned'): ?>
+                                                            <div><span class="badge bg-warning-subtle text-dark border extra-small mt-1"><i class="fa-solid fa-arrows-split-up-and-left me-1 text-warning"></i>From Unassigned Project</span></div>
+                                                            <?php 
+                                                            $hasHolder = !empty($sale['has_designated_holder']) || (!empty($sale['designated_user_name']) && $sale['designated_user_name'] !== 'Unassigned / Open');
+                                                            ?>
+                                                            <?php if ($hasHolder): ?>
+                                                                <div class="extra-small text-muted mt-1" style="font-size:0.75rem;"><i class="fa-solid fa-bullseye text-info me-1"></i>Target Assigned To: <strong class="text-dark"><?= htmlspecialchars($sale['designated_user_name']) ?></strong></div>
+                                                            <?php else: ?>
+                                                                <div class="extra-small text-danger fw-semibold mt-1" style="font-size:0.75rem;"><i class="fa-solid fa-circle-exclamation me-1"></i>No Agent Assigned to Project (Open Pool)</div>
+                                                            <?php endif; ?>
+                                                        <?php else: ?>
+                                                            <div><span class="badge bg-success-subtle text-success border extra-small mt-1"><i class="fa-solid fa-circle-check me-1"></i>Assigned Project</span></div>
+                                                        <?php endif; ?>
                                                     </td>
 
                                                     <!-- Land Share (Base) & Flat Price -->
@@ -283,14 +303,70 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
 
                                                     <!-- Applied Rate -->
                                                     <td>
-                                                        <span class="badge bg-info-subtle text-info fw-bold fs-7 mb-1 d-inline-block"><?= number_format($sale['incentive_percentage'], 2) ?>%</span>
-                                                        <span class="extra-small text-muted d-block"><?= htmlspecialchars($sale['category_name'] ?? 'Standard Rate') ?></span>
+                                                        <?php if (!empty($sale['project_scope']) && $sale['project_scope'] === 'unassigned'): ?>
+                                                            <?php 
+                                                            $baseRateVal = number_format($sale['base_unit_rate'] ?? 0.80, 2);
+                                                            $sellerRateVal = number_format($sale['incentive_percentage'], 2);
+                                                            $desRateVal = number_format(($sale['base_unit_rate'] ?? 0.80) * 0.30, 2);
+                                                            $hasHolder = !empty($sale['has_designated_holder']) || (!empty($sale['designated_user_name']) && $sale['designated_user_name'] !== 'Unassigned / Open');
+                                                            ?>
+                                                            <div class="d-flex align-items-center gap-1 mb-1">
+                                                                <span class="badge bg-warning text-dark fw-bold fs-7"><?= $sellerRateVal ?>%</span>
+                                                                <span class="badge bg-warning-subtle text-dark border extra-small">70% Seller Share</span>
+                                                            </div>
+                                                            <div class="extra-small text-dark fw-semibold" style="line-height:1.35; font-size:0.76rem;">
+                                                                <?= $baseRateVal ?>% × 70% = <span class="text-primary fw-bold"><?= $sellerRateVal ?>%</span>
+                                                            </div>
+                                                            <div class="extra-small text-muted" style="line-height:1.35; font-size:0.74rem;">
+                                                                Remaining 30%: <?= $baseRateVal ?>% × 30% = <strong class="text-dark"><?= $desRateVal ?>%</strong>
+                                                            </div>
+                                                            <?php if ($hasHolder): ?>
+                                                                <div class="extra-small text-muted mt-1 pt-1 border-top border-light-subtle" style="font-size:0.74rem;">
+                                                                    <span class="text-secondary">Target Holder Earns 30%:</span> 
+                                                                    <strong class="text-dark"><i class="fa-solid fa-user-tag text-primary me-1"></i><?= htmlspecialchars($sale['designated_user_name']) ?></strong> 
+                                                                    <span class="text-success fw-bold">(৳<?= number_format($sale['designated_incentive'] ?? 0, 2) ?>)</span>
+                                                                </div>
+                                                            <?php else: ?>
+                                                                <div class="extra-small text-danger fw-semibold mt-1 pt-1 border-top border-light-subtle" style="font-size:0.74rem;">
+                                                                    <i class="fa-solid fa-circle-exclamation me-1"></i>No Agent Assigned to Project (Open Pool)
+                                                                </div>
+                                                            <?php endif; ?>
+                                                        <?php else: ?>
+                                                            <div class="d-flex align-items-center gap-1 mb-1">
+                                                                <span class="badge bg-info-subtle text-info fw-bold fs-7 d-inline-block"><?= number_format($sale['incentive_percentage'], 2) ?>%</span>
+                                                                <span class="text-muted extra-small">(100% Share)</span>
+                                                            </div>
+                                                            <div class="extra-small text-muted"><?= htmlspecialchars($sale['floor_name'] ?? $sale['category_name'] ?? 'General Flat') ?></div>
+                                                        <?php endif; ?>
                                                     </td>
 
                                                     <!-- Incentive Amount -->
                                                     <td>
-                                                        <h6 class="fw-bold text-success mb-0">৳<?= number_format($sale['calculated_incentive'], 2) ?></h6>
-                                                        <span class="text-muted extra-small">on Land Share</span>
+                                                        <?php 
+                                                        $isPartiallyApproved = (!empty($sale['approved_amount']) && (float)$sale['approved_amount'] > 0 && abs((float)$sale['approved_amount'] - (float)$sale['calculated_incentive']) > 0.01);
+                                                        $effectiveIncentive = (!empty($sale['approved_amount']) && (float)$sale['approved_amount'] > 0) ? (float)$sale['approved_amount'] : (float)$sale['calculated_incentive'];
+                                                        ?>
+                                                        <?php if ($sale['claim_status'] === 'rejected'): ?>
+                                                            <h6 class="fw-bold text-danger text-decoration-line-through mb-0">৳<?= number_format($sale['calculated_incentive'], 2) ?></h6>
+                                                            <span class="badge bg-danger-subtle text-danger extra-small py-0 px-1 mt-1">Claim Rejected</span>
+                                                        <?php elseif ($isPartiallyApproved): ?>
+                                                            <h6 class="fw-bold text-success mb-0">৳<?= number_format($effectiveIncentive, 2) ?></h6>
+                                                            <div class="extra-small text-muted text-decoration-line-through">Claimed: ৳<?= number_format($sale['calculated_incentive'], 2) ?></div>
+                                                            <span class="badge bg-warning-subtle text-dark extra-small py-0 px-1 mt-1">Partially Approved</span>
+                                                        <?php else: ?>
+                                                            <h6 class="fw-bold text-success mb-0">৳<?= number_format($sale['calculated_incentive'], 2) ?></h6>
+                                                            <span class="text-muted extra-small">on Land Share</span>
+                                                        <?php endif; ?>
+                                                        <?php if (!empty($sale['paid_amount']) && (float)$sale['paid_amount'] > 0): ?>
+                                                            <div class="extra-small text-primary fw-semibold mt-1">
+                                                                Paid: ৳<?= number_format($sale['paid_amount'], 2) ?>
+                                                                <?php 
+                                                                $dueAmt = max(0, $effectiveIncentive - (float)$sale['paid_amount']);
+                                                                if ($dueAmt > 0 && $sale['claim_status'] !== 'rejected'): ?>
+                                                                    <span class="text-warning">(Due: ৳<?= number_format($dueAmt, 2) ?>)</span>
+                                                                <?php endif; ?>
+                                                            </div>
+                                                        <?php endif; ?>
                                                     </td>
 
                                                     <!-- Booking Money Badge -->
@@ -322,7 +398,16 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
 
                                                     <!-- Claim Status Badge -->
                                                     <td class="text-center">
-                                                        <?php if (!empty($sale['already_claimed'])): ?>
+                                                        <?php if ($sale['claim_status'] === 'rejected'): ?>
+                                                            <span class="badge bg-danger text-white rounded-pill px-3 py-1 extra-small shadow-sm" title="<?= htmlspecialchars($sale['rejection_note'] ?? 'Claim rejected') ?>">
+                                                                <i class="fa-solid fa-circle-xmark me-1"></i>Rejected
+                                                            </span>
+                                                            <?php if (!empty($sale['rejection_note'])): ?>
+                                                                <div class="extra-small text-danger mt-1 text-wrap" style="max-width: 170px; margin: 0 auto; font-size: 9px;" title="Rejection Reason: <?= htmlspecialchars($sale['rejection_note']) ?>">
+                                                                    <i class="fa-solid fa-comment-dots me-1"></i><?= htmlspecialchars($sale['rejection_note']) ?>
+                                                                </div>
+                                                            <?php endif; ?>
+                                                        <?php elseif (!empty($sale['already_claimed'])): ?>
                                                             <span class="badge bg-danger text-white rounded-pill px-3 py-1 extra-small shadow-sm" title="<?= htmlspecialchars($sale['remarks'] ?? 'Incentive already claimed for this flat unit') ?>">
                                                                 <i class="fa-solid fa-ban me-1"></i>Duplicate (Ineligible)
                                                             </span>
@@ -372,7 +457,11 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
 
                                                     <!-- Action Button -->
                                                     <td class="pe-4 text-end">
-                                                        <?php if (!empty($sale['already_claimed'])): ?>
+                                                        <?php if ($sale['claim_status'] === 'rejected'): ?>
+                                                            <button class="btn btn-sm btn-outline-danger rounded-2 disabled" disabled title="Claim was rejected: <?= htmlspecialchars($sale['rejection_note'] ?? '') ?>">
+                                                                <i class="fa-solid fa-xmark me-1"></i>Rejected
+                                                            </button>
+                                                        <?php elseif (!empty($sale['already_claimed'])): ?>
                                                             <button class="btn btn-sm btn-light text-danger rounded-2 disabled" disabled title="Incentive already claimed for this flat unit in another booking/month">
                                                                 <i class="fa-solid fa-ban me-1"></i>Duplicate
                                                             </button>
@@ -407,7 +496,7 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                                                                         class="btn btn-sm btn-success rounded-2 px-3 shadow-sm btn-confirm-receipt" 
                                                                         data-claim-id="<?= $sale['claim_id'] ?>" 
                                                                         data-booking="<?= htmlspecialchars($sale['booking_no']) ?>" 
-                                                                        data-amount="৳<?= number_format($sale['calculated_incentive'], 2) ?>"
+                                                                        data-amount="৳<?= number_format($effectiveIncentive, 2) ?>"
                                                                         onclick="confirmIncentiveReceipt(this)">
                                                                     <i class="fa-solid fa-hand-holding-dollar me-1"></i>Confirm Received
                                                                 </button>
@@ -995,6 +1084,7 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                                     <th>Project & Flat</th>
                                     <th>Selling Sales Executive</th>
                                     <th>Total Land Share</th>
+                                    <th>Applicable Rate (30% Share)</th>
                                     <th>My 30% Designated Share</th>
                                     <th>Qualification</th>
                                     <th class="pe-4 text-end">Action</th>
@@ -1003,7 +1093,7 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                             <tbody>
                                 <?php if (empty($monthlyStats['designated_credits'])): ?>
                                     <tr>
-                                        <td colspan="7" class="text-center py-4 text-muted">
+                                        <td colspan="8" class="text-center py-4 text-muted">
                                             <i class="fa-solid fa-handshake-slash mb-2 d-block fs-3 opacity-50"></i>
                                             No other agents have sold units in your assigned projects this cycle.
                                         </td>
@@ -1016,7 +1106,7 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                                             </td>
                                             <td>
                                                 <span class="fw-bold text-dark d-block"><?= htmlspecialchars($dc['project_name']) ?></span>
-                                                <span class="badge bg-primary-subtle text-primary extra-small"><?= htmlspecialchars($dc['flat_name']) ?></span>
+                                                <span class="badge bg-primary-subtle text-primary extra-small"><?= htmlspecialchars($dc['flat_name']) ?><?= !empty($dc['floor_no']) ? ' (Floor ' . $dc['floor_no'] . ')' : '' ?></span>
                                             </td>
                                             <td>
                                                 <i class="fa-solid fa-user-tie text-muted me-1"></i>
@@ -1024,6 +1114,24 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                                             </td>
                                             <td>
                                                 <span class="text-dark fw-semibold">৳<?= number_format($dc['land_share_value'], 2) ?></span>
+                                            </td>
+                                            <td>
+                                                <?php 
+                                                $baseRate = number_format($dc['base_unit_rate'] ?? 0.80, 2);
+                                                $desRate = number_format(($dc['base_unit_rate'] ?? 0.80) * 0.30, 2);
+                                                $sellerRate = number_format(($dc['base_unit_rate'] ?? 0.80) * 0.70, 2);
+                                                $floorLabel = (!empty($dc['floor_no']) && $dc['floor_no'] == 1) ? '1st Floor' : 'General Floor';
+                                                ?>
+                                                <div class="d-flex align-items-center gap-1 mb-1">
+                                                    <span class="badge bg-info text-white fw-bold fs-7"><?= $desRate ?>%</span>
+                                                    <span class="badge bg-info-subtle text-info border extra-small">30% Project Share</span>
+                                                </div>
+                                                <div class="extra-small text-dark fw-semibold" style="line-height:1.3; font-size:0.75rem;">
+                                                    <?= $baseRate ?>% (<?= $floorLabel ?>) × 30% = <span class="text-info fw-bold"><?= $desRate ?>%</span>
+                                                </div>
+                                                <div class="extra-small text-muted" style="line-height:1.3; font-size:0.72rem;">
+                                                    (Remaining 70% to Seller <?= htmlspecialchars($dc['seller_name']) ?>: <?= $sellerRate ?>%)
+                                                </div>
                                             </td>
                                             <td>
                                                 <span class="fw-bold text-success fs-6">৳<?= number_format($dc['credit_amount'], 2) ?></span>
@@ -1091,28 +1199,28 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                 </div>
             </div>
 
-            <!-- SECTION B: 70% OUTSIDE SALES (Flats I Sold Outside My Designated Target) -->
+            <!-- SECTION B: 70% UNASSIGNED SALES (Flats I Sold Outside My Designated Target) -->
             <div class="card border-0 shadow-sm rounded-3">
                 <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
                     <div>
                         <h6 class="fw-bold mb-0 text-dark">
-                            <i class="fa-solid fa-route text-indigo me-2"></i>My 70% Outside Sales (Flats I Sold in Projects Not Assigned to Me)
+                            <i class="fa-solid fa-arrows-split-up-and-left text-warning me-2"></i>My 70% Share from Unassigned Projects (Flats Sold in Projects Not Assigned to Me)
                         </h6>
-                        <span class="text-muted extra-small">Sales made outside your assigned project. You receive 70% share; 30% goes to the designated project holder.</span>
+                        <span class="text-muted extra-small">Sales made from unassigned projects. You receive 70% seller share; 30% goes to the designated project holder.</span>
                     </div>
                     <?php 
                     $outsideBookings = [];
                     $total70Earned = 0.00;
                     if (!empty($monthlyStats['detailed_bookings'])) {
                         foreach ($monthlyStats['detailed_bookings'] as $dbk) {
-                            if (empty($dbk['is_assigned']) || (isset($dbk['rate_type']) && strpos($dbk['rate_type'], 'Outside') !== false)) {
+                            if (empty($dbk['is_assigned']) || ($dbk['project_scope'] ?? '') === 'unassigned' || (isset($dbk['rate_type']) && (strpos($dbk['rate_type'], 'Outside') !== false || strpos($dbk['rate_type'], 'Unassigned') !== false))) {
                                 $outsideBookings[] = $dbk;
                                 $total70Earned += (float)($dbk['seller_incentive'] ?? 0);
                             }
                         }
                     }
                     ?>
-                    <span class="badge bg-indigo-subtle text-indigo border px-3 py-2 rounded-pill fw-bold fs-7">
+                    <span class="badge bg-warning-subtle text-dark border px-3 py-2 rounded-pill fw-bold fs-7">
                         Total 70% Share: ৳<?= number_format($total70Earned, 2) ?>
                     </span>
                 </div>
@@ -1124,6 +1232,7 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                                     <th class="ps-4">Booking Ref</th>
                                     <th>Project & Flat</th>
                                     <th>Land Share Base</th>
+                                    <th>Incentive Rate (Split Formula)</th>
                                     <th>Total Calculated</th>
                                     <th>My 70% Seller Share</th>
                                     <th>30% Designated Holder</th>
@@ -1134,7 +1243,7 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                             <tbody>
                                 <?php if (empty($outsideBookings)): ?>
                                     <tr>
-                                        <td colspan="8" class="text-center py-4 text-muted">
+                                        <td colspan="9" class="text-center py-4 text-muted">
                                             <i class="fa-solid fa-clipboard-check mb-2 d-block fs-3 opacity-50"></i>
                                             All your booked flats this cycle are within your assigned projects.
                                         </td>
@@ -1148,24 +1257,58 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                                             </td>
                                             <td>
                                                 <span class="fw-bold text-dark d-block"><?= htmlspecialchars($obk['project_name']) ?></span>
-                                                <span class="badge bg-secondary-subtle text-secondary extra-small"><?= htmlspecialchars($obk['flat_name']) ?></span>
+                                                <span class="badge bg-light text-primary border extra-small"><?= htmlspecialchars($obk['flat_name']) ?> (Floor <?= $obk['floor_no'] ?? 'N/A' ?>)</span>
+                                                <div><span class="badge bg-warning-subtle text-dark border extra-small mt-1"><i class="fa-solid fa-arrows-split-up-and-left me-1 text-warning"></i>From Unassigned Project</span></div>
+                                                <?php 
+                                                $hasHolder = !empty($obk['has_designated_holder']) || (!empty($obk['designated_user_name']) && $obk['designated_user_name'] !== 'Unassigned / Open');
+                                                ?>
+                                                <?php if ($hasHolder): ?>
+                                                    <div class="extra-small text-muted mt-1" style="font-size:0.75rem;"><i class="fa-solid fa-bullseye text-info me-1"></i>Target Assigned To: <strong class="text-dark"><?= htmlspecialchars($obk['designated_user_name']) ?></strong></div>
+                                                <?php else: ?>
+                                                    <div class="extra-small text-danger fw-semibold mt-1" style="font-size:0.75rem;"><i class="fa-solid fa-circle-exclamation me-1"></i>No Agent Assigned to Project (Open Pool)</div>
+                                                <?php endif; ?>
                                             </td>
                                             <td>
                                                 <span class="text-dark fw-semibold">৳<?= number_format($obk['land_share_value'], 2) ?></span>
                                             </td>
                                             <td>
-                                                <span class="text-muted small">৳<?= number_format(($obk['seller_incentive'] + $obk['designated_incentive']), 2) ?></span>
+                                                <?php 
+                                                $baseRateVal = number_format($obk['base_unit_rate'] ?? 0.80, 2);
+                                                $sellerRateVal = number_format($obk['applicable_rate'], 2);
+                                                $desRateVal = number_format(($obk['base_unit_rate'] ?? 0.80) * 0.30, 2);
+                                                ?>
+                                                <div class="d-flex align-items-center gap-1 mb-1">
+                                                    <span class="badge bg-warning text-dark fw-bold fs-7"><?= $sellerRateVal ?>%</span>
+                                                    <span class="badge bg-warning-subtle text-dark border extra-small">70% Seller Share</span>
+                                                </div>
+                                                <div class="extra-small text-dark fw-semibold" style="line-height:1.35; font-size:0.76rem;">
+                                                    <?= $baseRateVal ?>% × 70% = <span class="text-primary fw-bold"><?= $sellerRateVal ?>%</span>
+                                                </div>
+                                                <div class="extra-small text-muted" style="line-height:1.35; font-size:0.74rem;">
+                                                    Remaining 30%: <?= $baseRateVal ?>% × 30% = <strong class="text-dark"><?= $desRateVal ?>%</strong>
+                                                </div>
                                             </td>
                                             <td>
-                                                <span class="fw-bold text-dark fs-6">৳<?= number_format($obk['seller_incentive'], 2) ?></span>
+                                                <span class="text-muted small">৳<?= number_format(($obk['seller_incentive'] + $obk['designated_incentive']), 2) ?></span>
+                                                <div class="extra-small text-muted">100% Pool</div>
+                                            </td>
+                                            <td>
+                                                <span class="fw-bold text-success fs-6">৳<?= number_format($obk['seller_incentive'], 2) ?></span>
                                                 <div class="extra-small text-muted">70% seller share</div>
                                             </td>
                                             <td>
-                                                <span class="badge bg-light text-dark border">
-                                                    <i class="fa-solid fa-user me-1 text-primary"></i>
-                                                    <?= htmlspecialchars($obk['designated_user_name'] ?? 'Unassigned / Open') ?>
-                                                </span>
-                                                <div class="extra-small text-muted">30% share: ৳<?= number_format($obk['designated_incentive'], 2) ?></div>
+                                                <?php if ($hasHolder): ?>
+                                                    <span class="badge bg-light text-dark border">
+                                                        <i class="fa-solid fa-user-tag me-1 text-primary"></i>
+                                                        <?= htmlspecialchars($obk['designated_user_name']) ?>
+                                                    </span>
+                                                    <div class="extra-small text-muted mt-1">Designated 30% Share (<?= $desRateVal ?>%): ৳<?= number_format($obk['designated_incentive'], 2) ?></div>
+                                                <?php else: ?>
+                                                    <span class="badge bg-danger-subtle text-danger border extra-small">
+                                                        <i class="fa-solid fa-circle-exclamation me-1"></i>No Agent Assigned to Project Yet
+                                                    </span>
+                                                    <div class="extra-small text-muted mt-1">Open Project (30% Share: ৳<?= number_format($obk['designated_incentive'], 2) ?>)</div>
+                                                <?php endif; ?>
                                             </td>
                                             <td>
                                                 <?php if (!empty($obk['is_on_hold'])): ?>
@@ -1180,7 +1323,11 @@ $isTargetAchieved = !empty($monthlyStats['is_eligible']);
                                             </td>
                                             <td class="pe-4 text-end">
                                                 <?php if (!empty($obk['claim_status'])): ?>
-                                                    <?php if ($obk['claim_status'] === 'claimed'): ?>
+                                                    <?php if ($obk['claim_status'] === 'rejected'): ?>
+                                                        <span class="badge bg-danger text-white rounded-pill px-3 py-1 extra-small shadow-sm">
+                                                            <i class="fa-solid fa-circle-xmark me-1"></i>Rejected
+                                                        </span>
+                                                    <?php elseif ($obk['claim_status'] === 'claimed'): ?>
                                                         <span class="badge bg-warning text-dark rounded-pill px-3 py-1 extra-small shadow-sm">
                                                             <i class="fa-solid fa-clock me-1"></i>Claimed (Pending Mgmt)
                                                         </span>

@@ -239,8 +239,9 @@ class IncentiveController extends Controller
     public function manageIncentives()
     {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        $allowedRoles = [1, 3, 6, 20, 30, 32, 33, 34, 35, 36];
-        if (!in_array($roleId, $allowedRoles)) {
+        $secRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $allowedRoles = [1, 3, 6, 9, 20, 30, 32, 33, 34, 35, 36, 38];
+        if (!in_array($roleId, $allowedRoles, true) && !in_array($secRoleId, $allowedRoles, true)) {
             header("Location: {$GLOBALS['base_url']}/my-incentives");
             exit;
         }
@@ -299,7 +300,9 @@ class IncentiveController extends Controller
             $memUid = (int)$to['member_user_id'];
             $chk = $this->db->query("
                 SELECT c.id, c.claim_status, c.incentive_amount, c.created_at,
-                       ar.id as approval_request_id, ar.approve_role, ar.accounts_head_status
+                       c.sales_head_status, c.accounts_head_status, c.mgmt_status,
+                       ar.id as approval_request_id, ar.approve_role, 
+                       ar.sales_head_status as ar_sh_status, ar.accounts_head_status as ar_ah_status
                 FROM project_incentive_claims c
                 LEFT JOIN approval_requests ar ON ar.source_table = 'project_incentive_claims' AND ar.source_id = c.id
                 WHERE c.user_id = {$tlUid} 
@@ -312,15 +315,19 @@ class IncentiveController extends Controller
             if ($chk && $cRow = $chk->fetch_assoc()) {
                 $to['claim_id'] = (int)$cRow['id'];
                 $to['claim_status'] = $cRow['claim_status'];
+                $to['sales_head_status'] = $cRow['sales_head_status'] ?? $cRow['ar_sh_status'] ?? 'pending';
+                $to['accounts_head_status'] = $cRow['accounts_head_status'] ?? $cRow['ar_ah_status'] ?? 'pending';
+                $to['mgmt_status'] = $cRow['mgmt_status'] ?? 'pending';
                 $to['approval_request_id'] = $cRow['approval_request_id'];
                 $to['approve_role'] = $cRow['approve_role'];
-                $to['accounts_head_status'] = $cRow['accounts_head_status'];
             } else {
                 $to['claim_id'] = null;
                 $to['claim_status'] = null;
+                $to['sales_head_status'] = null;
+                $to['accounts_head_status'] = null;
+                $to['mgmt_status'] = null;
                 $to['approval_request_id'] = null;
                 $to['approve_role'] = null;
-                $to['accounts_head_status'] = null;
             }
         }
         unset($to);
@@ -333,23 +340,30 @@ class IncentiveController extends Controller
             $ind = $st['individual'] ?? [];
             if (!empty($ind['detailed_bookings'])) {
                 foreach ($ind['detailed_bookings'] as $b) {
-                    if (empty($b['is_assigned']) || (isset($b['rate_type']) && strpos($b['rate_type'], 'Outside') !== false)) {
+                    if (empty($b['is_assigned']) || ($b['project_scope'] ?? '') === 'unassigned' || (isset($b['rate_type']) && (strpos($b['rate_type'], 'Unassigned') !== false || strpos($b['rate_type'], 'Outside') !== false))) {
                         $bId = (int)$b['booking_id'];
                         if (!isset($seenBookingIds[$bId])) {
                             $seenBookingIds[$bId] = true;
+                            $hasHolder = !empty($b['has_designated_holder']) || (!empty($b['designated_user_name']) && $b['designated_user_name'] !== 'Unassigned / Open');
                             $allCrossProjectSplits[] = [
                                 'booking_id'           => $bId,
                                 'booking_date'         => $b['booking_date'] ?? '',
                                 'project_name'         => $b['project_name'] ?? '',
                                 'flat_name'            => $b['flat_name'] ?? '',
+                                'floor_no'             => $b['floor_no'] ?? null,
+                                'floor_name'           => $b['floor_name'] ?? 'General Flat',
                                 'land_share_value'     => (float)($b['land_share_value'] ?? 0),
+                                'base_unit_rate'       => (float)($b['base_unit_rate'] ?? 0.80),
                                 'seller_id'            => $seller['id'],
                                 'seller_name'          => $seller['full_name'],
                                 'seller_code'          => $seller['employee_id'],
                                 'seller_share'         => (float)($b['seller_incentive'] ?? 0),
+                                'seller_share_rate'    => (float)($b['seller_share_rate'] ?? (($b['base_unit_rate'] ?? 0.80) * 0.70)),
+                                'designated_share_rate'=> (float)($b['designated_share_rate'] ?? (($b['base_unit_rate'] ?? 0.80) * 0.30)),
                                 'is_on_hold'           => !empty($b['is_on_hold']),
+                                'has_designated_holder'=> $hasHolder,
                                 'designated_user_id'   => $b['designated_user_id'] ?? null,
-                                'designated_user_name' => $b['designated_user_name'] ?? 'Unassigned / Open',
+                                'designated_user_name' => $hasHolder ? $b['designated_user_name'] : null,
                                 'designated_share'     => (float)($b['designated_incentive'] ?? 0)
                             ];
                         }
@@ -399,8 +413,8 @@ class IncentiveController extends Controller
             exit;
         }
 
-        // Prevent duplicate claims if already claimed or settled
-        $chkExist = $this->db->query("SELECT id, claim_status FROM project_incentive_claims WHERE booking_id = {$bookingId} AND is_external = 0 LIMIT 1");
+        // Prevent duplicate claims if already claimed or settled by this user
+        $chkExist = $this->db->query("SELECT id, claim_status FROM project_incentive_claims WHERE booking_id = {$bookingId} AND user_id = {$userId} AND is_external = 0 LIMIT 1");
         if ($chkExist && $existRow = $chkExist->fetch_assoc()) {
             if (in_array($existRow['claim_status'], ['claimed', 'approved', 'partially_paid', 'paid'])) {
                 echo json_encode(['success' => false, 'message' => 'This booking incentive has already been submitted (Status: ' . ucfirst($existRow['claim_status']) . '). It cannot be claimed again.']);
@@ -448,6 +462,7 @@ class IncentiveController extends Controller
 
     /**
      * AJAX Endpoint: Approve Claim
+     * 3-Stage Workflow: Sales Head -> Accounts Head -> Management -> Accounts Disburse
      */
     public function approveClaim()
     {
@@ -459,13 +474,16 @@ class IncentiveController extends Controller
 
         $approvedBy = (int)$_SESSION['user']['id'];
         $claimId    = (int)($_POST['claim_id'] ?? 0);
+        $stage      = trim($_POST['stage'] ?? '');
+        $note       = trim($_POST['note'] ?? '');
+        $approvedAmount = !empty($_POST['approved_amount']) ? (float)$_POST['approved_amount'] : null;
 
         if ($claimId <= 0) {
             echo json_encode(['success' => false, 'message' => 'Invalid claim ID']);
             exit;
         }
 
-        $chkClaim = $this->db->query("SELECT id, incentive_amount FROM project_incentive_claims WHERE id = " . (int)$claimId . " LIMIT 1");
+        $chkClaim = $this->db->query("SELECT id, incentive_amount, sales_head_status, accounts_head_status, claim_status FROM project_incentive_claims WHERE id = " . (int)$claimId . " LIMIT 1");
         $claimRow = $chkClaim ? $chkClaim->fetch_assoc() : null;
         if (!$claimRow) {
             echo json_encode(['success' => false, 'message' => 'Claim not found']);
@@ -474,25 +492,85 @@ class IncentiveController extends Controller
 
         $amount = (float)($claimRow['incentive_amount'] ?? 0);
         $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userSecRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $userPriRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
         $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
-        $isOpHeadUser = (in_array($userRole, [20, 32], true) || str_contains($roleName, 'operation head'));
-        $isMgmtUser = in_array($userRole, [1, 3], true);
 
-        if (!$isOpHeadUser && !$isMgmtUser) {
-            echo json_encode([
-                'success' => false,
-                'message' => 'Access Denied: Only Admin & Operation Head (Role 20) or Management (Role 3) can approve incentive claims.'
-            ]);
+        if (!$userSecRoleId && $approvedBy > 0) {
+            $sRes = $this->db->query("SELECT secondary_role_id FROM users WHERE id = {$approvedBy} LIMIT 1");
+            if ($sRes && $sr = $sRes->fetch_assoc()) {
+                $userSecRoleId = (int)($sr['secondary_role_id'] ?? 0);
+            }
+        }
+
+        $isSalesHead = in_array(9, [$userRole, $userSecRoleId, $userPriRoleId], true) 
+            || strpos($roleName, 'sales team head') !== false 
+            || strpos($roleName, 'sales head') !== false;
+
+        $isAccountsHead = in_array(30, [$userRole, $userSecRoleId, $userPriRoleId], true) 
+            || strpos($roleName, 'accounts head') !== false;
+
+        $isMgmtUser = in_array($userRole, [1, 3, 38], true) 
+            || strpos($roleName, 'super admin') !== false 
+            || strpos($roleName, 'management') !== false 
+            || strpos($roleName, 'director') !== false;
+
+        $isOpHead = in_array($userRole, [20, 32], true)
+            || in_array($userSecRoleId, [20, 32], true)
+            || strpos($roleName, 'operation head') !== false 
+            || strpos($roleName, 'admin & operation') !== false;
+
+        // Auto-detect stage if not explicitly passed
+        if (empty($stage)) {
+            if (($claimRow['sales_head_status'] ?? 'pending') !== 'approved') {
+                $stage = 'sales_head';
+            } elseif (($claimRow['accounts_head_status'] ?? 'pending') !== 'approved') {
+                $stage = 'accounts_head';
+            } else {
+                $stage = 'management';
+            }
+        }
+
+        if ($stage === 'sales_head') {
+            if (!$isSalesHead && !$isMgmtUser && !$isOpHead) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Access Denied: Only Sales Team Head (Role 9 / Secondary Role 9), Operation Head (Role 20) or Management can approve Stage 1.'
+                ]);
+                exit;
+            }
+            $result = $this->incentiveModel->approveSalesHead($approvedBy, $claimId, $note ?: 'Approved by Sales Team Head / Operation Head', $approvedAmount);
+            echo json_encode($result);
             exit;
         }
 
-        $result = $this->incentiveModel->approveClaim($approvedBy, $claimId);
-        if ($result && !empty($result['success'])) {
-            $approverTitle = $isOpHeadUser ? 'Admin & Operation Head (Role 20)' : 'Management (Role ' . $userRole . ')';
-            $escNote = $this->db->real_escape_string('Approved by ' . $approverTitle);
-            $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$approvedBy}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'accounts_head', accounts_head_status = 'pending' WHERE source_table = 'project_incentive_claims' AND source_id = " . (int)$claimId);
+        if ($stage === 'accounts_head') {
+            if (!$isAccountsHead && !$isMgmtUser) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Access Denied: Only Accounts Head (Role 30) or Management can approve Stage 2.'
+                ]);
+                exit;
+            }
+            $result = $this->incentiveModel->approveAccountsHead($approvedBy, $claimId, $note ?: 'Approved by Accounts Head', $approvedAmount);
+            echo json_encode($result);
+            exit;
         }
-        echo json_encode($result);
+
+        if ($stage === 'management') {
+            if (!$isMgmtUser) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Access Denied: Only Top Management (Role 1/3/38) can grant final Stage 3 incentive approval.'
+                ]);
+                exit;
+            }
+            $result = $this->incentiveModel->approveClaim($approvedBy, $claimId, $note ?: 'Approved by Management', $approvedAmount);
+            echo json_encode($result);
+            exit;
+        }
+
+        echo json_encode(['success' => false, 'message' => 'Invalid approval stage']);
         exit;
     }
 
@@ -509,13 +587,14 @@ class IncentiveController extends Controller
 
         $rejectedBy = (int)$_SESSION['user']['id'];
         $claimId    = (int)($_POST['claim_id'] ?? 0);
+        $note       = trim($_POST['note'] ?? ($_POST['rejection_note'] ?? ''));
 
         if ($claimId <= 0) {
             echo json_encode(['success' => false, 'message' => 'Invalid claim ID']);
             exit;
         }
 
-        $result = $this->incentiveModel->rejectClaim($rejectedBy, $claimId);
+        $result = $this->incentiveModel->rejectClaim($rejectedBy, $claimId, $note);
         echo json_encode($result);
         exit;
     }
@@ -568,15 +647,23 @@ class IncentiveController extends Controller
             }
         }
 
-        if (!class_exists('ApprovalRequest')) {
-            require_once __DIR__ . '/../models/ApprovalRequest.php';
+        // Verify all 3 approval stages (Sales Head -> Accounts Head -> Management) are complete before disbursement
+        $chkClaim = $this->db->query("SELECT claim_status, sales_head_status, accounts_head_status FROM project_incentive_claims WHERE id = {$claimId} LIMIT 1");
+        $cRow = $chkClaim ? $chkClaim->fetch_assoc() : null;
+        if (!$cRow) {
+            echo json_encode(['success' => false, 'message' => 'Claim not found']);
+            exit;
         }
-        $ahCheck = \ApprovalRequest::getAccountsHeadApprovalInfo($this->db, 'project_incentive_claims', $claimId);
-        if (!empty($ahCheck['has_request']) && empty($ahCheck['is_accounts_head_approved'])) {
-            echo json_encode([
-                'success' => false,
-                'message' => 'Payment locked. Mandatory approval by Accounts Head is required before disbursement.'
-            ]);
+        if (($cRow['sales_head_status'] ?? 'pending') !== 'approved') {
+            echo json_encode(['success' => false, 'message' => 'Payment locked. Stage 1 approval by Sales Team Head is required.']);
+            exit;
+        }
+        if (($cRow['accounts_head_status'] ?? 'pending') !== 'approved') {
+            echo json_encode(['success' => false, 'message' => 'Payment locked. Stage 2 approval by Accounts Head is required.']);
+            exit;
+        }
+        if (!in_array($cRow['claim_status'], ['approved', 'partially_paid'])) {
+            echo json_encode(['success' => false, 'message' => 'Payment locked. Stage 3 approval by Management is required before disbursement.']);
             exit;
         }
 

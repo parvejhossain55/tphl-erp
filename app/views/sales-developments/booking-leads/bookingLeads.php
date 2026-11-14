@@ -32,10 +32,8 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
             <form action="<?= $GLOBALS['base_url'] ?>/booking-store" method="POST" enctype="multipart/form-data">
                 <div class="row gy-3">
-
                     <!-- Lead ID (hidden) -->
                     <input type="hidden" name="lead_id" value="<?= $lead['id'] ?? '' ?>">
-
                     <!-- Auth User -->
                     <input type="hidden" name="user_id" value="<?= $_SESSION['user']['id'] ?? 1 ?>">
 
@@ -259,12 +257,39 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                         <div class="d-flex align-items-center gap-2 flex-wrap">
 
                                              <?php 
+                                                $currentUserId = (int)($_SESSION['user']['id'] ?? 0);
+                                                $currentUserRole = (int)($_SESSION['user']['role_id'] ?? $_SESSION['user']['primary_role_id'] ?? 0);
+                                                $secondaryRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+                                                $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+                                                $userName = strtolower(trim($_SESSION['user']['full_name'] ?? $_SESSION['user']['user_name'] ?? ''));
+
+                                                $isManagement = in_array($currentUserRole, [1, 3, 20, 32, 33, 35]) ||
+                                                                in_array($secondaryRoleId, [1, 3, 20, 32, 33, 35]) ||
+                                                                (strpos($userRoleName, 'admin') !== false) ||
+                                                                (strpos($userRoleName, 'management') !== false) ||
+                                                                (strpos($userRoleName, 'ceo') !== false) ||
+                                                                (strpos($userRoleName, 'chief') !== false) ||
+                                                                (strpos($userName, 'management') !== false);
+
+                                                $isSalesHead = in_array($currentUserRole, [5, 9]) ||
+                                                               in_array($secondaryRoleId, [5, 9]) ||
+                                                               (strpos($userRoleName, 'sales head') !== false) ||
+                                                               (strpos($userRoleName, 'team head') !== false);
+
+                                                $isManagementOrSalesHead = ($isManagement || $isSalesHead);
                                                 $isBookingVerified = (!empty($or['verified_payment_count']) && (int)$or['verified_payment_count'] > 0);
-                                                $isManagementOrSalesHead = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 9, 20, 33]);
+
+                                                // Specific salesperson for this booking:
+                                                $isThisBookingSalesperson = (!empty($or['sales_by_id']) && (int)$or['sales_by_id'] === $currentUserId)
+                                                                         || (empty($or['sales_by_id']) && !empty($lead['assigned_id']) && (int)$lead['assigned_id'] === $currentUserId);
+
+                                                $canAccessPayment = ($isManagementOrSalesHead || $isThisBookingSalesperson);
+                                                $canEditBooking   = ($isManagementOrSalesHead || ($isThisBookingSalesperson && !$isBookingVerified));
+                                                $canSalesRefund   = ($isManagementOrSalesHead || $isThisBookingSalesperson);
                                             ?>
 
-                                            <!-- Edit & Delete (Enabled only if payments not verified, OR if user is Management/Sales Head) -->
-                                            <?php if ((!$isBookingVerified || $isManagementOrSalesHead) && !in_array($or['booking_status'] ?? '', ['refunded', 'cancelled'])): ?>
+                                            <!-- Edit & Delete (Enabled only if authorized and payments not verified, OR if Management/Sales Head) -->
+                                            <?php if ($canEditBooking && !in_array($or['booking_status'] ?? '', ['refunded', 'cancelled'])): ?>
                                                 <button type="button"
                                                     class="btn btn-sm btn-outline-primary editBookingBtn"
                                                     data-bs-toggle="modal"
@@ -307,23 +332,22 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                                     Rejected
                                                 </button>
                                             <?php else: ?>
-                                                <?php if (isset($or['payment_status']) && $or['payment_status'] === 'paid'): ?>
+                                                <?php 
+                                                    $paymentLabel = (isset($or['payment_status']) && $or['payment_status'] === 'paid') ? 'Registration Payment' : 'Booking Payment';
+                                                    $paymentBtnClass = (isset($or['payment_status']) && $or['payment_status'] === 'paid') ? 'btn-info' : 'btn-success';
+                                                ?>
+                                                <?php if ($canAccessPayment): ?>
                                                     <a href="<?= $GLOBALS['base_url'] ?>/payments-booking/<?= $or['id'] ?>"
-                                                        class="btn btn-sm btn-info">
-                                                        Registration Payment
+                                                        class="btn btn-sm <?= $paymentBtnClass ?>">
+                                                        <?= $paymentLabel ?>
                                                     </a>
                                                 <?php else: ?>
-                                                    <a href="<?= $GLOBALS['base_url'] ?>/payments-booking/<?= $or['id'] ?>"
-                                                        class="btn btn-sm btn-success">
-                                                        Booking Payment
-                                                    </a>
+                                                    <button type="button" class="btn btn-sm btn-secondary opacity-50" disabled
+                                                        title="Payment locked: Only <?= htmlspecialchars($or['sales_agent_display'] ?? 'the assigned salesperson') ?> or Management/Sales Head can enter payment for this unit">
+                                                        <i class="fa-solid fa-lock me-1"></i><?= $paymentLabel ?>
+                                                    </button>
                                                 <?php endif; ?>
                                                 
-                                                <?php
-                                                    $currentUserId = (int)($_SESSION['user']['id'] ?? 0);
-                                                    $currentUserRole = (int)($_SESSION['user']['role_id'] ?? 0);
-                                                    $canSalesRefund = (!empty($or['sales_by_id']) && (int)$or['sales_by_id'] === $currentUserId) || in_array($currentUserRole, [1, 3, 9, 20, 33]);
-                                                ?>
                                                 <?php if ($canSalesRefund): ?>
                                                     <button type="button"
                                                         class="btn btn-sm btn-outline-danger quickRefundBtn"
@@ -342,7 +366,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                                 <?php if ($or['approval_status'] === 'pending'): ?>
                                                     <small class="text-warning d-block w-100" style="font-size:11px;">
                                                         <i class="fa-solid fa-clock"></i> Discount Pending Approval
-                                                    </small>
+                                                     </small>
                                                 <?php endif; ?>
                                             <?php endif; ?>
 

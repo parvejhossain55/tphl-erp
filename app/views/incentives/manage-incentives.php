@@ -53,7 +53,7 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                             <i class="fa-solid fa-sack-dollar"></i>
                         </div>
                     </div>
-                    <h4 class="fw-bold mb-1 text-dark">৳<?= number_format($companyMetrics['total_incentive_pool'], 2) ?></h4>
+                    <h4 class="fw-bold mb-1 text-dark">TK<?= number_format($companyMetrics['total_incentive_pool'], 2) ?></h4>
                     <span class="text-muted extra-small">Total eligible incentives</span>
                 </div>
             </div>
@@ -70,7 +70,7 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                         </div>
                     </div>
                     <div class="d-flex align-items-baseline gap-2">
-                        <h4 class="fw-bold mb-1 text-warning">৳<?= number_format($companyMetrics['pending_claims_amount'], 2) ?></h4>
+                        <h4 class="fw-bold mb-1 text-warning">TK<?= number_format($companyMetrics['pending_claims_amount'], 2) ?></h4>
                         <span class="badge bg-warning text-dark extra-small rounded-pill"><?= $companyMetrics['pending_claims_count'] ?> Claims</span>
                     </div>
                     <span class="text-muted extra-small">Awaiting Accounts / Admin Approval</span>
@@ -88,7 +88,7 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                             <i class="fa-solid fa-circle-check"></i>
                         </div>
                     </div>
-                    <h4 class="fw-bold mb-1 text-info">৳<?= number_format($companyMetrics['total_approved'], 2) ?></h4>
+                    <h4 class="fw-bold mb-1 text-info">TK<?= number_format($companyMetrics['total_approved'], 2) ?></h4>
                     <span class="text-muted extra-small">Approved for payout</span>
                 </div>
             </div>
@@ -104,7 +104,7 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                             <i class="fa-solid fa-money-bill-wave"></i>
                         </div>
                     </div>
-                    <h4 class="fw-bold mb-1 text-success">৳<?= number_format($companyMetrics['total_disbursed'], 2) ?></h4>
+                    <h4 class="fw-bold mb-1 text-success">TK<?= number_format($companyMetrics['total_disbursed'], 2) ?></h4>
                     <span class="text-muted extra-small">Paid via Cash/Bank/Cheque</span>
                 </div>
             </div>
@@ -234,23 +234,17 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                 </span>
                                             <?php endif; ?>
 
-                                            <div class="user-select-none" style="cursor: pointer;" onclick="openExecutiveCalculationModal(<?= $u['id'] ?>)" title="Click to view full calculation & sales breakdown">
-                                                <?php if($ind['target_amount'] > 0): ?>
-                                                    <div class="small">Target: <strong class="text-dark">৳<?= number_format($ind['target_amount'], 2) ?></strong></div>
-                                                    <div class="small">Achieved: <strong class="text-success">৳<?= number_format($achievedTotal, 2) ?></strong></div>
-                                                    <div class="progress mt-1" style="height: 5px;">
-                                                        <div class="progress-bar bg-success" role="progressbar" style="width: <?= min(100, $ind['achievement_pct']) ?>%;"></div>
-                                                    </div>
-                                                    <div class="d-flex align-items-center justify-content-between mt-1">
-                                                        <div class="extra-small text-muted"><?= number_format($ind['achievement_pct'], 1) ?>% Achieved</div>
-                                                        <span class="badge bg-info-subtle text-info border border-info-subtle extra-small"><i class="fa-solid fa-calculator me-1"></i>Breakdown</span>
-                                                    </div>
-                                                <?php else: ?>
-                                                    <div class="small text-muted">No Explicit Target</div>
-                                                    <div class="small">Achieved: <strong class="text-success">৳<?= number_format($achievedTotal, 2) ?></strong></div>
-                                                    <span class="badge bg-info-subtle text-info border border-info-subtle extra-small mt-1"><i class="fa-solid fa-calculator me-1"></i>Breakdown</span>
-                                                <?php endif; ?>
-                                            </div>
+                                            <?php if($ind['target_amount'] > 0): ?>
+                                                <div class="small">Target: <strong class="text-dark">TK<?= number_format($ind['target_amount'], 2) ?></strong></div>
+                                                <div class="small">Achieved: <strong class="text-success">TK<?= number_format($achievedTotal, 2) ?></strong></div>
+                                                <div class="progress mt-1" style="height: 5px;">
+                                                    <div class="progress-bar bg-success" role="progressbar" style="width: <?= min(100, $ind['achievement_pct']) ?>%;"></div>
+                                                </div>
+                                                <div class="extra-small text-muted mt-1"><?= number_format($ind['achievement_pct'], 1) ?>% Achieved</div>
+                                            <?php else: ?>
+                                                <div class="small text-muted">No Explicit Target</div>
+                                                <div class="small">Achieved: <strong class="text-success">TK<?= number_format($achievedTotal, 2) ?></strong></div>
+                                            <?php endif; ?>
 
                                             <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 20, 30, 32, 33, 34, 35], true) || !empty($isManagement)): ?>
                                                 <div class="mt-1">
@@ -260,41 +254,64 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                 </div>
                                             <?php endif; ?>
                                         </td>
-                                        <td style="cursor: pointer;" onclick="openExecutiveCalculationModal(<?= $u['id'] ?>)" title="Click to view calculation breakdown">
+                                        <td>
                                             <?php if(!empty($ind['is_eligible'])): ?>
                                                 <span class="badge bg-success-subtle text-success fw-semibold mb-1">
                                                     <i class="fa-solid fa-check me-1"></i>Target Filled Up (≥ 25L)
                                                 </span>
-                                                <div class="small fw-bold text-success">Earned: ৳<?= number_format($ind['total_earned_incentive'], 2) ?></div>
-                                                <div class="extra-small text-primary mt-1"><i class="fa-solid fa-circle-question me-1"></i>How is this calculated?</div>
+                                                <div class="small fw-bold text-success">Earned: TK<?= number_format($ind['total_earned_incentive'], 2) ?></div>
                                             <?php else: ?>
                                                 <span class="badge bg-warning-subtle text-warning border border-warning-subtle extra-small mb-1">
                                                     <i class="fa-solid fa-clock me-1"></i>Pending 25L Min
                                                 </span>
-                                                <div class="extra-small text-muted">Earned: ৳0.00</div>
-                                                <div class="extra-small text-muted mt-1"><i class="fa-solid fa-eye me-1"></i>View Sales Progress</div>
+                                                <div class="extra-small text-muted">Earned: TK0.00</div>
                                             <?php endif; ?>
+                                            <div class="mt-1">
+                                                <button type="button" class="btn btn-xs btn-outline-info rounded-pill py-0 px-2 fw-semibold btn-member-breakdown" 
+                                                        data-member='<?= htmlspecialchars(json_encode([
+                                                            'user_name' => $u['full_name'],
+                                                            'employee_id' => $u['employee_id'],
+                                                            'designation' => $u['designation'] ?? 'Sales Executive',
+                                                            'team_name' => $u['team_name'] ?? 'N/A',
+                                                            'target_amount' => (float)$ind['target_amount'],
+                                                            'effective_target' => (float)$ind['effective_target'],
+                                                            'achieved_total' => (float)$achievedTotal,
+                                                            'assigned_achieved' => (float)$ind['assigned_achieved'],
+                                                            'unassigned_achieved' => (float)$ind['unassigned_achieved'],
+                                                            'achievement_pct' => (float)$ind['achievement_pct'],
+                                                            'is_eligible' => !empty($ind['is_eligible']),
+                                                            'total_earned' => (float)$ind['total_earned_incentive'],
+                                                            'total_on_hold' => (float)$ind['total_on_hold_incentive'],
+                                                            'cycle_month' => $selected_month,
+                                                            'detailed_bookings' => $ind['detailed_bookings'] ?? [],
+                                                            'designated_credits' => $ind['designated_credits'] ?? []
+                                                        ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP), ENT_QUOTES, 'UTF-8') ?>'
+                                                        onclick="openMemberBreakdownModal(this)"
+                                                        title="View calculation breakdown of target, bookings, rates, and incentive">
+                                                    <i class="fa-solid fa-calculator me-1"></i>Breakdown
+                                                </button>
+                                            </div>
                                         </td>
                                         <td>
                                             <?php if(($cSum['cycle_claims_count'] ?? 0) > 0): ?>
                                                 <span class="badge bg-primary text-white rounded-pill px-2 py-1 extra-small">
                                                     <?= (int)$cSum['cycle_claims_count'] ?> Claims
                                                 </span>
-                                                <div class="small fw-bold text-primary mt-1">৳<?= number_format($cSum['cycle_claimed_amount'] ?? 0, 2) ?></div>
+                                                <div class="small fw-bold text-primary mt-1">TK<?= number_format($cSum['cycle_claimed_amount'] ?? 0, 2) ?></div>
                                             <?php else: ?>
                                                 <span class="text-muted extra-small">0 claims</span>
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <div class="small fw-bold text-dark">৳<?= number_format($cSum['total_claimed_amount'] ?? 0, 2) ?></div>
+                                            <div class="small fw-bold text-dark">TK<?= number_format($cSum['total_claimed_amount'] ?? 0, 2) ?></div>
                                             <span class="text-muted extra-small"><?= (int)($cSum['total_claims_count'] ?? 0) ?> all-time</span>
                                         </td>
                                         <td>
-                                            <div class="small fw-bold text-success">৳<?= number_format($cSum['total_paid_amount'] ?? 0, 2) ?></div>
+                                            <div class="small fw-bold text-success">TK<?= number_format($cSum['total_paid_amount'] ?? 0, 2) ?></div>
                                             <span class="badge bg-success-subtle text-success extra-small">Disbursed</span>
                                         </td>
                                         <td class="pe-4 text-end">
-                                            <h6 class="fw-bold text-info mb-0">৳<?= number_format($cSum['wallet_balance'] ?? 0, 2) ?></h6>
+                                            <h6 class="fw-bold text-info mb-0">TK<?= number_format($cSum['wallet_balance'] ?? 0, 2) ?></h6>
                                             <span class="text-muted extra-small">Pending Balance</span>
                                         </td>
                                     </tr>
@@ -346,17 +363,17 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                             <!-- Code & Date -->
                                             <td class="ps-4">
                                                 <span class="fw-bold text-dark d-block"><?= htmlspecialchars($claim['claim_code']) ?></span>
-                                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle extra-small mb-1" title="Sales Cycle Month">
-                                                    <i class="fa-regular fa-calendar me-1"></i>Cycle: <?= htmlspecialchars($claim['sale_cycle_display'] ?? '') ?>
-                                                </span>
-                                                <?php if (!empty($claim['booking_id'])): ?>
-                                                    <div class="extra-small text-muted">
-                                                        <i class="fa-solid fa-file-invoice me-1"></i>Booking #<?= $claim['booking_id'] ?><?= !empty($claim['booking_date']) ? ' (' . date('d M, Y', strtotime($claim['booking_date'])) . ')' : '' ?>
+                                                <span class="text-muted extra-small d-block"><?= date('d M, Y', strtotime($claim['claimed_at'])) ?></span>
+                                                <?php if (!empty($claim['booking_date'])): ?>
+                                                    <div class="extra-small text-muted mt-1" title="Original Sale Date">
+                                                        <i class="fa-regular fa-calendar-check me-1 text-primary"></i>Sale: <?= date('d M, Y', strtotime($claim['booking_date'])) ?>
                                                     </div>
                                                 <?php endif; ?>
-                                                <button type="button" class="btn btn-xs btn-outline-info rounded-pill px-2 py-0 extra-small mt-1 shadow-2xs fw-semibold" onclick="openClaimSaleDetailsModal(<?= htmlspecialchars(json_encode($claim), ENT_QUOTES, 'UTF-8') ?>)">
-                                                    <i class="fa-solid fa-circle-info me-1"></i>Sale Details
-                                                </button>
+                                                <?php if (!empty($claim['cycle_month'])): ?>
+                                                    <span class="badge bg-light text-secondary border extra-small mt-1" title="Incentive Cycle Month">
+                                                        <i class="fa-regular fa-calendar me-1"></i><?= date('M Y', strtotime($claim['cycle_month'] . '-01')) ?>
+                                                    </span>
+                                                <?php endif; ?>
                                             </td>
 
                                             <!-- Employee Info -->
@@ -368,24 +385,15 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
 
                                             <!-- Project Unit -->
                                             <td>
-                                                <?php if ($claim['split_type'] === 'tl_override'): ?>
-                                                    <span class="badge bg-info-subtle text-info border border-info-subtle extra-small mb-1">
-                                                        <i class="fa-solid fa-users me-1"></i>TL 0.05% Override
-                                                    </span>
-                                                    <div class="small fw-semibold text-dark">
-                                                        From: <?= htmlspecialchars($claim['original_seller_name'] ?: 'Team Member') ?> <?= !empty($claim['original_seller_code']) ? '[' . htmlspecialchars($claim['original_seller_code']) . ']' : '' ?>
-                                                    </div>
-                                                <?php else: ?>
-                                                    <span class="fw-semibold text-dark d-block"><?= htmlspecialchars($claim['project_name']) ?></span>
-                                                    <span class="text-primary extra-small"><?= htmlspecialchars($claim['flat_name']) ?><?= !empty($claim['floor_no']) ? ' (Floor ' . htmlspecialchars($claim['floor_no']) . ')' : '' ?></span>
-                                                <?php endif; ?>
+                                                <span class="fw-semibold text-dark d-block"><?= htmlspecialchars($claim['project_name']) ?></span>
+                                                <span class="text-primary extra-small"><?= htmlspecialchars($claim['flat_name']) ?></span>
                                             </td>
 
                                             <!-- Flat Price & Land Share -->
                                             <td>
-                                                <span class="fw-bold text-dark d-block">৳<?= number_format($claim['sale_amount'], 2) ?></span>
+                                                <span class="fw-bold text-dark d-block">TK<?= number_format($claim['sale_amount'], 2) ?></span>
                                                 <span class="badge bg-primary-subtle text-primary extra-small" title="Land Share Value">
-                                                    <i class="fa-solid fa-map-location-dot me-1"></i>Land Share: ৳<?= number_format($claim['land_share_value'], 2) ?>
+                                                    <i class="fa-solid fa-map-location-dot me-1"></i>Land Share: TK<?= number_format($claim['land_share_value'], 2) ?>
                                                 </span>
                                             </td>
 
@@ -396,7 +404,27 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
 
                                             <!-- Incentive Amount -->
                                             <td>
-                                                <span class="fw-bold text-success fs-6">৳<?= number_format($claim['incentive_amount'], 2) ?></span>
+                                                <?php 
+                                                $isPartiallyApproved = (!empty($claim['approved_amount']) && (float)$claim['approved_amount'] > 0 && (float)$claim['approved_amount'] != (float)$claim['incentive_amount']);
+                                                $dispAmt = (!empty($claim['approved_amount']) && (float)$claim['approved_amount'] > 0) ? (float)$claim['approved_amount'] : (float)$claim['incentive_amount'];
+                                                ?>
+                                                <span class="fw-bold text-success fs-6">TK<?= number_format($dispAmt, 2) ?></span>
+                                                <?php if ($isPartiallyApproved): ?>
+                                                    <div class="mt-1">
+                                                        <span class="badge bg-secondary-subtle text-muted text-decoration-line-through extra-small" title="Original Claimed Amount">
+                                                            TK<?= number_format($claim['incentive_amount'], 2) ?>
+                                                        </span>
+                                                        <span class="badge bg-warning-subtle text-warning extra-small">Partially Approved</span>
+                                                    </div>
+                                                <?php endif; ?>
+                                                <?php if ((float)($claim['paid_amount'] ?? 0) > 0): ?>
+                                                    <div class="extra-small text-muted mt-1" style="font-size:0.67rem;">
+                                                        <span class="text-primary fw-semibold">Paid: TK<?= number_format($claim['paid_amount'], 2) ?></span>
+                                                        <?php if ((float)$claim['due_amount'] > 0): ?>
+                                                             <br><span class="text-danger fw-semibold">Due: TK<?= number_format($claim['due_amount'], 2) ?></span>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                <?php endif; ?>
                                             </td>
 
                                             <!-- Verification Status -->
@@ -457,16 +485,18 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                     </span>
                                                 <?php elseif ($claim['claim_status'] === 'claimed'): ?>
                                                     <?php
-                                                    $isOver1LacClaim = ((float)$claim['incentive_amount'] > 10000);
+                                                    $claimShStatus = strtolower($claim['claim_sh_status'] ?? ($claim['sales_head_status'] ?? 'pending'));
+                                                    $isShApprovedClaim = ($claimShStatus === 'approved');
                                                     $isOpHeadApprovedClaim = (!empty($ahInfoClaim['is_op_head_approved']) || ($ahInfoClaim['op_head_status'] ?? '') === 'approved');
+                                                    $isStage1Done = ($isShApprovedClaim || $isOpHeadApprovedClaim);
                                                     ?>
-                                                    <?php if ($isOver1LacClaim && !$isOpHeadApprovedClaim): ?>
+                                                    <?php if (!$isStage1Done): ?>
                                                         <span class="badge bg-warning text-dark rounded-pill px-2 py-1 extra-small">
-                                                            <i class="fa-solid fa-hourglass-half me-1"></i>Pending Op Head (>10K)
+                                                            <i class="fa-solid fa-hourglass-half me-1"></i>Pending Sales Head or Operation Head
                                                         </span>
-                                                    <?php elseif ($isOver1LacClaim && !$isAhApprovedClaim): ?>
+                                                    <?php elseif (!$isAhApprovedClaim): ?>
                                                         <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2 py-1 extra-small fw-semibold">
-                                                            <i class="fa-solid fa-lock me-1"></i>Pending AH Approval
+                                                            <i class="fa-solid fa-lock me-1"></i>Pending Accounts Head
                                                         </span>
                                                     <?php else: ?>
                                                         <span class="badge bg-warning text-dark rounded-pill px-2 py-1 extra-small">
@@ -509,17 +539,40 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                     <span class="badge bg-danger text-white rounded-pill px-2 py-1 extra-small">
                                                         <i class="fa-solid fa-times-circle me-1"></i>Rejected
                                                     </span>
+                                                    <div class="mt-1 text-start px-2 py-1 rounded bg-danger-subtle border border-danger-subtle d-inline-block" style="font-size: 0.69rem; line-height: 1.3; min-width: 175px;">
+                                                        <div class="text-danger fw-semibold">
+                                                            <i class="fa-solid fa-user-xmark me-1"></i>By: <span class="text-dark"><?= htmlspecialchars($claim['rejected_by_name'] ?? 'Approver') ?><?= !empty($claim['rejected_by_code']) ? ' [' . htmlspecialchars($claim['rejected_by_code']) . ']' : '' ?></span>
+                                                            <?php if (!empty($claim['rejected_at'])): ?>
+                                                                <span class="text-muted" style="font-size:0.64rem;">(<?= date('d M, h:i A', strtotime($claim['rejected_at'])) ?>)</span>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                        <?php if (!empty($claim['rejection_note'])): ?>
+                                                            <div class="text-muted mt-1 fst-italic" style="font-size:0.65rem;">
+                                                                Reason: <?= htmlspecialchars($claim['rejection_note']) ?>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                    </div>
                                                 <?php endif; ?>
 
                                                 <!-- Compact Approval History Audit Trail -->
-                                                <?php if (!empty($claim['mgmt_approved_at']) || !empty($claim['ah_approved_at']) || (in_array($claim['claim_status'], ['approved', 'partially_paid']) && !$isAhApprovedClaim)): ?>
+                                                <?php 
+                                                $hasShAudit = !empty($claim['sales_head_at']) || ($claim['claim_sh_status'] ?? '') === 'approved';
+                                                $hasMgmtAudit = !empty($claim['mgmt_approved_at']);
+                                                $hasAhAudit = !empty($claim['ah_approved_at']);
+                                                ?>
+                                                <?php if ($hasShAudit || $hasMgmtAudit || $hasAhAudit || (in_array($claim['claim_status'], ['approved', 'partially_paid']) && !$isAhApprovedClaim)): ?>
                                                     <div class="mt-1 text-start px-2 py-1 rounded bg-light border border-light-subtle d-inline-block" style="font-size: 0.69rem; line-height: 1.3; min-width: 175px;">
-                                                        <?php if (!empty($claim['mgmt_approved_at'])): ?>
+                                                        <?php if ($hasShAudit): ?>
+                                                            <div class="text-nowrap text-success fw-semibold">
+                                                                <i class="fa-solid fa-check text-success me-1"></i>SH/Op: <span class="text-dark"><?= htmlspecialchars($claim['sh_approver_name'] ?? 'Sales Team Head') ?><?= !empty($claim['sh_approver_code']) ? ' [' . htmlspecialchars($claim['sh_approver_code']) . ']' : '' ?></span> <?= !empty($claim['sales_head_at']) ? '<span class="text-muted" style="font-size:0.64rem;">(' . date('d M, h:i A', strtotime($claim['sales_head_at'])) . ')</span>' : '' ?>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                        <?php if ($hasMgmtAudit): ?>
                                                             <div class="text-nowrap text-success fw-semibold">
                                                                 <i class="fa-solid fa-circle-check text-success me-1"></i>Mgmt: <span class="text-dark"><?= htmlspecialchars($claim['mgmt_approver_name'] ?? 'Management') ?></span> <span class="text-muted" style="font-size:0.64rem;">(<?= date('d M, h:i A', strtotime($claim['mgmt_approved_at'])) ?>)</span>
                                                             </div>
                                                         <?php endif; ?>
-                                                        <?php if (!empty($claim['ah_approved_at'])): ?>
+                                                        <?php if ($hasAhAudit): ?>
                                                             <div class="text-nowrap text-success fw-semibold">
                                                                 <i class="fa-solid fa-stamp text-success me-1"></i>AH: <span class="text-dark"><?= htmlspecialchars($claim['ah_approver_name'] ?? 'Accounts Head') ?><?= !empty($claim['ah_approver_code']) ? ' [' . htmlspecialchars($claim['ah_approver_code']) . ']' : '' ?></span> <span class="text-muted" style="font-size:0.64rem;">(<?= date('d M, h:i A', strtotime($claim['ah_approved_at'])) ?>)</span>
                                                             </div>
@@ -541,16 +594,28 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                 <?php elseif ($claim['claim_status'] === 'claimed'): ?>
                                                     <?php
                                                     $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+                                                    $userSecRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
                                                     $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
-                                                    $isOpHeadUserClaim = (in_array($userRoleId, [20, 32], true) || str_contains($userRoleName, 'operation head'));
+                                                    $isSalesHeadUser = in_array(9, [$userRoleId, $userSecRoleId], true) || str_contains($userRoleName, 'sales head') || str_contains($userRoleName, 'sales team head');
+                                                    $isOpHeadUserClaim = (in_array($userRoleId, [20, 32], true) || str_contains($userRoleName, 'operation head') || str_contains($userRoleName, 'admin & operation'));
                                                     $isMgmtUserClaim = in_array($userRoleId, [1, 3], true);
-                                                    $canApproveThisClaim = ($isOpHeadUserClaim || $isMgmtUserClaim || $isManagement);
+                                                    $canApproveThisClaim = ($isSalesHeadUser || $isOpHeadUserClaim || $isMgmtUserClaim || $isManagement);
                                                     ?>
                                                     <?php if ($canApproveThisClaim): ?>
-                                                        <button class="btn btn-sm btn-success rounded-2 px-2 me-1 btn-approve-claim" data-id="<?= $claim['id'] ?>" title="Approve Claim (Role 20 or Management 3)">
+                                                        <button class="btn btn-sm btn-success rounded-2 px-2 me-1 btn-approve-claim" 
+                                                            data-id="<?= $claim['id'] ?>" 
+                                                            data-code="<?= htmlspecialchars($claim['claim_code']) ?>"
+                                                            data-recipient="<?= htmlspecialchars($claim['user_name'] . ' (' . $claim['employee_id'] . ')') ?>"
+                                                            data-amount="<?= number_format($claim['incentive_amount'], 2, '.', '') ?>"
+                                                            data-approved-amount="<?= number_format(!empty($claim['approved_amount']) ? $claim['approved_amount'] : $claim['incentive_amount'], 2, '.', '') ?>"
+                                                            title="Approve Claim (Sales Head, Operation Head or Management)">
                                                             <i class="fa-solid fa-check me-1"></i>Approve
                                                         </button>
-                                                        <button class="btn btn-sm btn-outline-danger rounded-2 px-2 btn-reject-claim" data-id="<?= $claim['id'] ?>" title="Reject Claim">
+                                                        <button class="btn btn-sm btn-outline-danger rounded-2 px-2 btn-reject-claim" 
+                                                            data-id="<?= $claim['id'] ?>" 
+                                                            data-code="<?= htmlspecialchars($claim['claim_code']) ?>"
+                                                            data-recipient="<?= htmlspecialchars($claim['user_name']) ?>"
+                                                            title="Reject Claim">
                                                             <i class="fa-solid fa-times"></i>
                                                         </button>
                                                     <?php else: ?>
@@ -579,7 +644,10 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                                     data-id="<?= (int)$claim['id'] ?>"
                                                                     data-recipient="<?= htmlspecialchars(($claim['user_name'] ?? 'Sales Executive') . ' (' . ($claim['employee_id'] ?? '') . ')' . (!empty($claim['department']) ? ' - ' . $claim['department'] : ''), ENT_QUOTES) ?>"
                                                                     data-claim="<?= htmlspecialchars(($claim['claim_code'] ?? '') . (!empty($claim['project_name']) ? ' | ' . $claim['project_name'] . ' (' . ($claim['flat_name'] ?? '') . ')' : ''), ENT_QUOTES) ?>"
-                                                                    data-amount="<?= number_format((float)(($claim['due_amount'] ?? 0) > 0 ? $claim['due_amount'] : $claim['incentive_amount']), 2, '.', '') ?>"
+                                                                    data-amount="<?= number_format((float)(($claim['due_amount'] ?? 0) > 0 ? $claim['due_amount'] : (!empty($claim['approved_amount']) ? $claim['approved_amount'] : $claim['incentive_amount'])), 2, '.', '') ?>"
+                                                                    data-approved-amount="<?= number_format((float)(!empty($claim['approved_amount']) ? $claim['approved_amount'] : $claim['incentive_amount']), 2, '.', '') ?>"
+                                                                    data-paid-amount="<?= number_format((float)($claim['paid_amount'] ?? 0), 2, '.', '') ?>"
+                                                                    data-due-amount="<?= number_format((float)(($claim['due_amount'] ?? 0) > 0 ? $claim['due_amount'] : (!empty($claim['approved_amount']) ? $claim['approved_amount'] : $claim['incentive_amount'])), 2, '.', '') ?>"
                                                                     data-account-id="<?= (int)($claim['account_id'] ?? 0) ?>"
                                                                     data-emp-bank="<?= htmlspecialchars($claim['emp_bank_name'] ?? '', ENT_QUOTES) ?>"
                                                                     data-emp-account="<?= htmlspecialchars($claim['emp_account_number'] ?? '', ENT_QUOTES) ?>">
@@ -665,13 +733,13 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                 <span class="text-primary extra-small"><?= htmlspecialchars($ext['flat_name']) ?></span>
                                             </td>
                                             <td>
-                                                <span class="fw-bold text-dark d-block">৳<?= number_format($ext['sale_amount'], 2) ?></span>
+                                                <span class="fw-bold text-dark d-block">TK<?= number_format($ext['sale_amount'], 2) ?></span>
                                                 <span class="badge bg-primary-subtle text-primary extra-small" title="Land Share Value">
-                                                    <i class="fa-solid fa-map-location-dot me-1"></i>Land Share: ৳<?= number_format($ext['land_share_value'], 2) ?>
+                                                    <i class="fa-solid fa-map-location-dot me-1"></i>Land Share: TK<?= number_format($ext['land_share_value'], 2) ?>
                                                 </span>
                                             </td>
                                             <td>
-                                                <span class="fw-bold text-success">৳<?= number_format($ext['incentive_amount'], 2) ?></span>
+                                                <span class="fw-bold text-success">TK<?= number_format($ext['incentive_amount'], 2) ?></span>
                                                 <div class="extra-small text-muted"><?= $ext['incentive_percentage'] ?>% Incentive</div>
                                             </td>
                                             <td>
@@ -755,6 +823,7 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                         <tr>
                                             <th>Employee</th>
                                             <th>Role Type</th>
+                                            <th>Earned</th>
                                             <th>Approved</th>
                                             <th>Paid</th>
                                             <th class="text-end">Wallet Balance</th>
@@ -763,7 +832,7 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                     <tbody>
                                         <?php if (empty($employeeWallets)): ?>
                                             <tr>
-                                                <td colspan="5" class="text-center text-muted py-3">No employee wallet data available.</td>
+                                                <td colspan="6" class="text-center text-muted py-3">No employee wallet data available.</td>
                                             </tr>
                                         <?php else: ?>
                                             <?php foreach ($employeeWallets as $wallet): ?>
@@ -775,10 +844,18 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                     <td>
                                                         <span class="badge bg-secondary-subtle text-secondary extra-small"><?= htmlspecialchars($wallet['role_type']) ?></span>
                                                     </td>
-                                                    <td class="extra-small fw-semibold">৳<?= number_format($wallet['approved_amt']) ?></td>
-                                                    <td class="extra-small text-success fw-semibold">৳<?= number_format($wallet['paid_amt']) ?></td>
+                                                    <td class="extra-small text-muted fw-semibold">
+                                                        TK<?= number_format($wallet['total_earned'], 2) ?>
+                                                        <?php if (!empty($wallet['rejected_amt']) && (float)$wallet['rejected_amt'] > 0): ?>
+                                                            <div class="text-danger extra-small" style="font-size:0.62rem;" title="Rejected Claims">
+                                                                Rej: -TK<?= number_format($wallet['rejected_amt'], 2) ?>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                    <td class="extra-small fw-semibold text-success">TK<?= number_format($wallet['approved_amt'], 2) ?></td>
+                                                    <td class="extra-small text-primary fw-semibold">TK<?= number_format($wallet['paid_amt'], 2) ?></td>
                                                     <td class="text-end">
-                                                        <span class="fw-bold text-dark bg-warning-subtle px-2 py-1 rounded extra-small">৳<?= number_format($wallet['wallet_balance'], 2) ?></span>
+                                                        <span class="fw-bold text-dark bg-warning-subtle px-2 py-1 rounded extra-small">TK<?= number_format($wallet['wallet_balance'], 2) ?></span>
                                                     </td>
                                                 </tr>
                                             <?php endforeach; ?>
@@ -814,32 +891,10 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                 <tr>
                                                     <td>
                                                         <span class="fw-bold text-dark extra-small d-block"><?= htmlspecialchars($log['disbursement_no']) ?></span>
-                                                        <span class="text-muted extra-small d-block"><?= date('d M, Y', strtotime($log['payment_date'])) ?></span>
-                                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle extra-small mt-1" title="Sales Cycle Month">
-                                                            <i class="fa-regular fa-calendar me-1"></i>Cycle: <?= htmlspecialchars($log['sale_cycle_display'] ?? '') ?>
-                                                        </span>
+                                                        <span class="text-muted extra-small"><?= date('d M, Y', strtotime($log['payment_date'])) ?></span>
                                                     </td>
                                                     <td>
-                                                        <span class="fw-semibold text-dark extra-small d-block"><?= htmlspecialchars($log['recipient_name']) ?></span>
-                                                        <?php if ($log['split_type'] === 'tl_override'): ?>
-                                                            <div class="extra-small text-dark fw-semibold mt-1">
-                                                                <span class="badge bg-warning-subtle text-dark border border-warning-subtle extra-small"><i class="fa-solid fa-users me-1"></i>TL Override</span>
-                                                                From: <?= htmlspecialchars($log['original_seller_name']) ?> <?= !empty($log['original_seller_code']) ? '[' . htmlspecialchars($log['original_seller_code']) . ']' : '' ?>
-                                                            </div>
-                                                        <?php else: ?>
-                                                            <div class="extra-small text-dark fw-semibold mt-1">
-                                                                <i class="fa-solid fa-building me-1 text-primary"></i><?= htmlspecialchars($log['project_name']) ?> - <?= htmlspecialchars($log['flat_name']) ?><?= !empty($log['floor_no']) ? ' (Floor ' . $log['floor_no'] . ')' : '' ?>
-                                                            </div>
-                                                        <?php endif; ?>
-                                                        <div class="d-flex align-items-center gap-1 mt-1">
-                                                            <code class="extra-small text-muted"><?= htmlspecialchars($log['claim_code']) ?></code>
-                                                            <?php if (!empty($log['booking_id'])): ?>
-                                                                <span class="extra-small text-muted">| #<?= $log['booking_id'] ?></span>
-                                                            <?php endif; ?>
-                                                            <button type="button" class="btn btn-xs btn-outline-info rounded-pill px-2 py-0 extra-small shadow-2xs ms-1" onclick="openPayoutSaleDetailsModal(<?= htmlspecialchars(json_encode($log), ENT_QUOTES, 'UTF-8') ?>)">
-                                                                <i class="fa-solid fa-circle-info me-1"></i>Sale Details
-                                                            </button>
-                                                        </div>
+                                                        <span class="fw-semibold text-dark extra-small"><?= htmlspecialchars($log['recipient_name']) ?></span>
                                                     </td>
                                                     <td>
                                                         <span class="badge bg-info-subtle text-info extra-small me-1"><?= htmlspecialchars($log['payment_method']) ?></span>
@@ -854,12 +909,7 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                         <?php endif; ?>
                                                     </td>
                                                     <td class="text-end">
-                                                        <span class="fw-bold text-success extra-small d-block">৳<?= number_format($log['payment_amount'], 2) ?></span>
-                                                        <?php if ($log['incentive_percentage'] > 0): ?>
-                                                            <span class="extra-small text-muted" style="font-size:0.65rem;">
-                                                                <?= number_format($log['incentive_percentage'], 2) ?>% on ৳<?= number_format($log['land_share_value'], 0) ?>
-                                                            </span>
-                                                        <?php endif; ?>
+                                                        <span class="fw-bold text-success extra-small">TK<?= number_format($log['payment_amount'], 2) ?></span>
                                                     </td>
                                                     <td class="text-center">
                                                         <?php if (!empty($log['is_received'])): ?>
@@ -893,7 +943,7 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                 <h6 class="fw-bold text-dark mb-0">
                                     <i class="fa-solid fa-people-arrows text-warning me-2"></i>Team Leader 0.05% Overrides From Member Sales
                                 </h6>
-                                <span class="text-muted extra-small">Tracks override incentives gained by Team Leaders when their team members achieve ≥ ৳25 Lakh in land share sales.</span>
+                                <span class="text-muted extra-small">Tracks override incentives gained by Team Leaders when their team members achieve ≥ TK25 Lakh in land share sales.</span>
                             </div>
                             <?php 
                             $totalTlOverridesSum = 0.00;
@@ -904,7 +954,7 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                             }
                             ?>
                             <span class="badge bg-warning-subtle text-dark border px-3 py-2 rounded-pill fw-bold fs-7">
-                                Total TL Overrides: ৳<?= number_format($totalTlOverridesSum, 2) ?>
+                                Total TL Overrides: TK<?= number_format($totalTlOverridesSum, 2) ?>
                             </span>
                         </div>
                         <div class="table-responsive">
@@ -949,10 +999,10 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                     <span class="badge bg-light text-dark border extra-small ms-1"><?= htmlspecialchars($to['member_designation']) ?></span>
                                                 </td>
                                                 <td>
-                                                    <span class="text-muted small">৳<?= number_format($to['member_target'], 2) ?></span>
+                                                    <span class="text-muted small">TK<?= number_format($to['member_target'], 2) ?></span>
                                                 </td>
                                                 <td>
-                                                    <span class="fw-bold text-dark small">৳<?= number_format($to['member_achieved'], 2) ?></span>
+                                                    <span class="fw-bold text-dark small">TK<?= number_format($to['member_achieved'], 2) ?></span>
                                                 </td>
                                                 <td>
                                                     <?php if (!empty($to['is_qualified'])): ?>
@@ -970,9 +1020,9 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                 </td>
                                                 <td>
                                                     <?php if ($to['tl_gain'] > 0): ?>
-                                                        <span class="fw-bold text-success fs-6">+৳<?= number_format($to['tl_gain'], 2) ?></span>
+                                                        <span class="fw-bold text-success fs-6">+TK<?= number_format($to['tl_gain'], 2) ?></span>
                                                     <?php else: ?>
-                                                        <span class="text-muted small">৳0.00</span>
+                                                        <span class="text-muted small">TK0.00</span>
                                                     <?php endif; ?>
                                                 </td>
                                                 <?php
@@ -1012,10 +1062,20 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                         <span class="text-muted extra-small">Awaiting TL Claim</span>
                                                     <?php elseif ($toClaimStatus === 'claimed'): ?>
                                                         <?php if ($canApproveThisClaim): ?>
-                                                            <button class="btn btn-sm btn-success rounded-2 px-2 me-1 btn-approve-claim" data-id="<?= $toClaimId ?>" title="Approve TL Override">
+                                                            <button class="btn btn-sm btn-success rounded-2 px-2 me-1 btn-approve-claim" 
+                                                                data-id="<?= $toClaimId ?>" 
+                                                                data-code="TL Override Claim #<?= $toClaimId ?>"
+                                                                data-recipient="<?= htmlspecialchars($to['tl_name'] . ' (' . $to['tl_code'] . ')') ?>"
+                                                                data-amount="<?= number_format((float)($to['tl_gain'] ?? 0), 2, '.', '') ?>"
+                                                                data-approved-amount="<?= number_format((float)($to['tl_gain'] ?? 0), 2, '.', '') ?>"
+                                                                title="Approve TL Override">
                                                                 <i class="fa-solid fa-check me-1"></i>Approve
                                                             </button>
-                                                            <button class="btn btn-sm btn-outline-danger rounded-2 px-2 btn-reject-claim" data-id="<?= $toClaimId ?>" title="Reject Claim">
+                                                            <button class="btn btn-sm btn-outline-danger rounded-2 px-2 btn-reject-claim" 
+                                                                data-id="<?= $toClaimId ?>" 
+                                                                data-code="TL Override Claim #<?= $toClaimId ?>"
+                                                                data-recipient="<?= htmlspecialchars($to['tl_name']) ?>"
+                                                                title="Reject Claim">
                                                                 <i class="fa-solid fa-times"></i>
                                                             </button>
                                                         <?php else: ?>
@@ -1077,7 +1137,7 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                 <h6 class="fw-bold text-dark mb-0">
                                     <i class="fa-solid fa-arrows-split-up-and-left text-info me-2"></i>Cross-Project Sales & Split Tracking (70% Seller / 30% Designated)
                                 </h6>
-                                <span class="text-muted extra-small">Sales of flats outside the selling agent's designated target. Tracks 70% seller share and 30% designated project holder credit.</span>
+                                <span class="text-muted extra-small">Sales of flats from unassigned projects. Tracks 70% seller share and 30% designated project holder credit.</span>
                             </div>
                             <?php 
                             $totalCrossVolume = 0.00;
@@ -1088,7 +1148,7 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                             }
                             ?>
                             <span class="badge bg-info-subtle text-info border px-3 py-2 rounded-pill fw-bold fs-7">
-                                Cross Sales Volume: ৳<?= number_format($totalCrossVolume, 2) ?>
+                                Cross Sales Volume: TK<?= number_format($totalCrossVolume, 2) ?>
                             </span>
                         </div>
                         <div class="table-responsive">
@@ -1109,7 +1169,7 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                         <tr>
                                             <td colspan="7" class="text-center py-4 text-muted">
                                                 <i class="fa-solid fa-map-location-dot mb-2 d-block fs-3 opacity-50"></i>
-                                                No outside/cross-project sales recorded in this cycle.
+                                                No unassigned / cross-project sales recorded in this cycle.
                                             </td>
                                         </tr>
                                     <?php else: ?>
@@ -1124,12 +1184,12 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                     <span class="badge bg-primary-subtle text-primary extra-small"><?= htmlspecialchars($cs['flat_name']) ?></span>
                                                 </td>
                                                 <td>
-                                                    <span class="text-dark fw-semibold">৳<?= number_format($cs['land_share_value'], 2) ?></span>
+                                                    <span class="text-dark fw-semibold">TK<?= number_format($cs['land_share_value'], 2) ?></span>
                                                 </td>
                                                 <td>
                                                     <span class="fw-bold text-dark d-block"><?= htmlspecialchars($cs['seller_name']) ?></span>
                                                     <code class="extra-small text-muted">[<?= htmlspecialchars($cs['seller_code']) ?>]</code>
-                                                    <span class="fw-bold text-success d-block small">70%: ৳<?= number_format($cs['seller_share'], 2) ?></span>
+                                                    <span class="fw-bold text-success d-block small">70%: TK<?= number_format($cs['seller_share'], 2) ?></span>
                                                 </td>
                                                 <td>
                                                     <?php if (!empty($cs['is_on_hold'])): ?>
@@ -1143,13 +1203,23 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                     <?php endif; ?>
                                                 </td>
                                                 <td>
-                                                    <span class="fw-semibold text-dark d-block">
-                                                        <i class="fa-solid fa-user-check me-1 text-primary"></i><?= htmlspecialchars($cs['designated_user_name'] ?? 'Unassigned / Open') ?>
-                                                    </span>
-                                                    <span class="fw-bold text-indigo small">30%: ৳<?= number_format($cs['designated_share'], 2) ?></span>
+                                                    <?php 
+                                                    $hasHolder = !empty($cs['has_designated_holder']) || (!empty($cs['designated_user_name']) && $cs['designated_user_name'] !== 'Unassigned / Open');
+                                                    ?>
+                                                    <?php if ($hasHolder): ?>
+                                                        <span class="fw-semibold text-dark d-block">
+                                                            <i class="fa-solid fa-user-check me-1 text-primary"></i><?= htmlspecialchars($cs['designated_user_name']) ?>
+                                                        </span>
+                                                        <span class="fw-bold text-indigo small">30% Share: TK<?= number_format($cs['designated_share'], 2) ?></span>
+                                                    <?php else: ?>
+                                                        <span class="badge bg-danger-subtle text-danger border extra-small mb-1">
+                                                            <i class="fa-solid fa-circle-exclamation me-1"></i>No Agent Assigned to Project
+                                                        </span>
+                                                        <div class="extra-small text-muted">Open Project (30% Share: TK<?= number_format($cs['designated_share'], 2) ?>)</div>
+                                                    <?php endif; ?>
                                                 </td>
                                                 <td class="pe-4 text-end">
-                                                    <span class="fw-bold text-dark fs-6">৳<?= number_format(($cs['seller_share'] + $cs['designated_share']), 2) ?></span>
+                                                    <span class="fw-bold text-dark fs-6">TK<?= number_format(($cs['seller_share'] + $cs['designated_share']), 2) ?></span>
                                                 </td>
                                             </tr>
                                         <?php endforeach; ?>
@@ -1205,7 +1275,7 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                 <option value="">-- Choose Project Sale --</option>
                                 <?php foreach ($availableProjectsFlats as $pf): ?>
                                     <option value="<?= $pf['flat_id'] ?>" data-price="<?= $pf['flat_price'] ?>" data-landshare="<?= $pf['land_share_value'] ?>">
-                                        <?= htmlspecialchars($pf['project_name']) ?> - <?= htmlspecialchars($pf['flat_name']) ?> (Price: ৳<?= number_format($pf['flat_price']) ?>)
+                                        <?= htmlspecialchars($pf['project_name']) ?> - <?= htmlspecialchars($pf['flat_name']) ?> (Price: TK<?= number_format($pf['flat_price']) ?>)
                                     </option>
                                 <?php endforeach; ?>
                             </select>
@@ -1215,7 +1285,7 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                         <div class="col-md-4 mb-3">
                             <label class="form-label text-muted small fw-semibold">Flat Total Price (`flats.price_value`)</label>
                             <div class="input-group">
-                                <span class="input-group-text bg-light">৳</span>
+                                <span class="input-group-text bg-light">TK</span>
                                 <input type="text" id="extSaleAmount" class="form-control bg-light fw-bold" value="0.00" readonly>
                             </div>
                         </div>
@@ -1224,7 +1294,7 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                         <div class="col-md-4 mb-3">
                             <label class="form-label text-muted small fw-semibold">Land Share Value (`flats.land_share_value`)</label>
                             <div class="input-group">
-                                <span class="input-group-text bg-light">৳</span>
+                                <span class="input-group-text bg-light">TK</span>
                                 <input type="text" id="extLandShareAmount" class="form-control bg-light fw-bold text-primary" value="0.00" readonly>
                             </div>
                         </div>
@@ -1242,7 +1312,7 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                         <div class="col-md-4 mb-3">
                             <label class="form-label text-dark fw-bold small">Calculated / Fixed Amount</label>
                             <div class="input-group">
-                                <span class="input-group-text bg-success-subtle text-success font-bold">৳</span>
+                                <span class="input-group-text bg-success-subtle text-success font-bold">TK</span>
                                 <input type="number" step="0.01" id="extIncentiveAmount" name="custom_amount" class="form-control bg-success-subtle text-success fw-bold fs-6" value="0">
                             </div>
                         </div>
@@ -1287,6 +1357,24 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                         <label class="form-label text-muted small fw-semibold">Claim Code</label>
                         <input type="text" id="modalDisburseClaim" class="form-control bg-light" value="" readonly>
                     </div>
+
+                    <!-- Approval & Due Summary Card -->
+                    <div class="p-3 bg-light rounded-3 mb-3 border">
+                        <div class="row g-2 text-center">
+                            <div class="col-4">
+                                <span class="text-muted extra-small d-block text-uppercase fw-semibold">Approved Amt</span>
+                                <span class="fw-bold text-success fs-15" id="disburseApprovedDisplay">TK 0.00</span>
+                            </div>
+                            <div class="col-4 border-start border-end">
+                                <span class="text-muted extra-small d-block text-uppercase fw-semibold">Already Paid</span>
+                                <span class="fw-bold text-primary fs-15" id="disbursePaidDisplay">TK 0.00</span>
+                            </div>
+                            <div class="col-4">
+                                <span class="text-muted extra-small d-block text-uppercase fw-semibold">Remaining Due</span>
+                                <span class="fw-bold text-danger fs-15" id="disburseDueDisplay">TK 0.00</span>
+                            </div>
+                        </div>
+                    </div>
                     
                     <div class="mb-3">
                         <?= renderCOADropdown($coaList ?? [], null, 'account_id', false, 'salesincentive') ?>
@@ -1296,7 +1384,7 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                         <div class="col-md-6">
                             <label class="form-label text-dark fw-bold small">Payment Amount <span class="text-danger">*</span></label>
                             <div class="input-group">
-                                <span class="input-group-text bg-light">৳</span>
+                                <span class="input-group-text bg-light">TK</span>
                                 <input type="number" step="0.01" id="modalDisburseAmount" name="payment_amount" class="form-control fw-bold text-success" value="" required>
                             </div>
                         </div>
@@ -1364,603 +1452,358 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                         <textarea class="form-control" name="notes" rows="2" placeholder="Internal accounts notes for disbursement..."></textarea>
                     </div>
                 </div>
-                <div class="modal-footer bg-light py-2">
-                    <button type="button" class="btn btn-outline-secondary rounded-2" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success rounded-2 px-4" id="btnConfirmDisburse">
-                        <i class="fa-solid fa-circle-check me-1"></i> Confirm Disbursement
+                <div class="modal-footer bg-light py-2 d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-danger rounded-2" id="btnDisburseReject" onclick="window.rejectClaimFromDisburseModal()">
+                        <i class="fa-solid fa-times-circle me-1"></i> Reject Claim
                     </button>
+                    <div>
+                        <button type="button" class="btn btn-outline-secondary rounded-2 me-1" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success rounded-2 px-4" id="btnConfirmDisburse">
+                            <i class="fa-solid fa-circle-check me-1"></i> Confirm Disbursement
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- Modal: Executive Real-Time Calculation Breakdown -->
-<div class="modal fade" id="viewExecutiveCalculationModal" tabindex="-1" aria-labelledby="viewExecutiveCalculationModalLabel" aria-hidden="true">
+<!-- Member Incentive Calculation Breakdown Modal -->
+<div id="memberBreakdownModal" class="modal custom-modal fade" role="dialog" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content shadow-lg border-0">
-            <div class="modal-header bg-dark text-white py-3">
-                <div class="d-flex align-items-center gap-2">
-                    <div class="rounded-circle bg-white text-dark d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
-                        <i class="fa-solid fa-calculator text-primary fs-5"></i>
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-light py-3 border-bottom d-flex align-items-center justify-content-between">
+                <div>
+                    <h5 class="modal-title fw-bold text-dark mb-0">
+                        <i class="fa-solid fa-calculator text-primary me-2"></i>Incentive Calculation Breakdown: <span id="mbb_user_name" class="text-primary"></span> <code class="fs-7 text-muted" id="mbb_emp_id"></code>
+                    </h5>
+                    <span class="text-muted extra-small" id="mbb_team_designation"></span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <!-- Summary Metrics Cards -->
+                <div class="row  mb-4">
+                    <div class="col-md-3 col-sm-6">
+                        <div class="card border-0 shadow-xs rounded-3 p-3 bg-white h-100 border-start border-4 border-primary">
+                            <span class="text-muted extra-small fw-semibold d-block">Monthly Target</span>
+                            <h4 class="fw-bold mb-0 text-dark" id="mbb_target">TK0.00</h4>
+                            <span class="text-muted extra-small" id="mbb_target_sub">Assigned Land Share</span>
+                        </div>
                     </div>
-                    <div>
-                        <h5 class="modal-title fw-bold text-white mb-0" id="viewExecutiveCalculationModalLabel">Executive Incentive Calculation Breakdown</h5>
-                        <div class="extra-small text-white-50" id="modalCalcSubtitle">Real-time target performance & modality audit</div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="card border-0 shadow-xs rounded-3 p-3 bg-white h-100 border-start border-4 border-success">
+                            <span class="text-muted extra-small fw-semibold d-block">Achieved Land Share</span>
+                            <h4 class="fw-bold mb-0 text-success" id="mbb_achieved">TK0.00</h4>
+                            <div class="progress mt-2" style="height: 5px;">
+                                <div class="progress-bar bg-success" id="mbb_progress_bar" role="progressbar" style="width: 0%;"></div>
+                            </div>
+                            <span class="text-muted extra-small mt-1 d-block" id="mbb_achieved_pct">0% Achieved</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="card border-0 shadow-xs rounded-3 p-3 bg-white h-100 border-start border-4 border-warning">
+                            <span class="text-muted extra-small fw-semibold d-block">Qualification Status</span>
+                            <div class="mt-1" id="mbb_qualification_badge">
+                                <span class="badge bg-warning-subtle text-dark border px-2 py-1">Pending 25L</span>
+                            </div>
+                            <span class="text-muted extra-small mt-1 d-block">Min. TK25 Lakh Required</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="card border-0 shadow-xs rounded-3 p-3 bg-white h-100 border-start border-4 border-info">
+                            <span class="text-muted extra-small fw-semibold d-block">Calculated Incentive</span>
+                            <h4 class="fw-bold mb-0 text-primary" id="mbb_earned">TK0.00</h4>
+                            <span class="text-muted extra-small d-block" id="mbb_on_hold_sub">On Hold: TK0.00</span>
+                        </div>
                     </div>
                 </div>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body p-4" id="modalCalcBody">
-                <!-- Dynamically Populated by JS -->
-            </div>
-            <div class="modal-footer bg-light py-2">
-                <button type="button" class="btn btn-secondary rounded-2 px-4" data-bs-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- Modal: Claim / Payout Sale Details Drilldown -->
-<div class="modal fade" id="claimSaleDetailsModal" tabindex="-1" aria-labelledby="claimSaleDetailsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content shadow-lg border-0">
-            <div class="modal-header bg-dark text-white py-3">
-                <div class="d-flex align-items-center gap-2">
-                    <div class="rounded-circle bg-white text-dark d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
-                        <i class="fa-solid fa-file-invoice text-success fs-5"></i>
+                <!-- Section: Sales Bookings Breakdown Table -->
+                <div class="card border-0 shadow-sm rounded-3 mb-4 overflow-hidden">
+                    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+                        <h6 class="fw-bold text-dark mb-0">
+                            <i class="fa-solid fa-list-check text-primary me-2"></i>Sales Bookings in Current Cycle (<span id="mbb_cycle_text"></span>)
+                        </h6>
+                        <span class="badge bg-light text-muted border" id="mbb_bookings_count">0 Bookings</span>
                     </div>
-                    <div>
-                        <h5 class="modal-title fw-bold text-white mb-0" id="claimSaleDetailsModalLabel">Sale & Incentive Detailed Breakdown</h5>
-                        <div class="extra-small text-white-50" id="modalSaleDetailsSubtitle">Booking, Project & Payment Verification Audit</div>
+                    <div class="table-responsive bg-white">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-light text-muted extra-small text-uppercase">
+                                <tr>
+                                    <th class="ps-3">Booking Ref & Date</th>
+                                    <th>Project & Unit</th>
+                                    <th>Land Share Base</th>
+                                    <th>Applicable Rate (%)</th>
+                                    <th>Incentive Amount</th>
+                                    <th>Scope / Policy</th>
+                                    <th class="pe-3 text-center">Claim Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mbb_bookings_table_body">
+                                <tr>
+                                    <td colspan="7" class="text-center py-4 text-muted">No sales bookings found.</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+
+                <!-- Section: 30% Designated Share Credits (if any) -->
+                <div class="card border-0 shadow-sm rounded-3 mb-2 overflow-hidden" id="mbb_designated_section" style="display: none;">
+                    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+                        <h6 class="fw-bold text-dark mb-0">
+                            <i class="fa-solid fa-arrows-split-up-and-left text-info me-2"></i>30% Designated Credits (From Other Agents Selling in My Assigned Project)
+                        </h6>
+                        <span class="badge bg-info-subtle text-info border" id="mbb_designated_count">0 Credits</span>
+                    </div>
+                    <div class="table-responsive bg-white">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-light text-muted extra-small text-uppercase">
+                                <tr>
+                                    <th class="ps-3">Booking Ref</th>
+                                    <th>Project & Flat</th>
+                                    <th>Seller</th>
+                                    <th>Land Share</th>
+                                    <th>Applicable Rate (30% Share)</th>
+                                    <th>30% Share Earned</th>
+                                    <th class="pe-3 text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mbb_designated_table_body"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-            <div class="modal-body p-4" id="modalSaleDetailsBody">
-                <!-- Dynamically Populated by JS -->
-            </div>
-            <div class="modal-footer bg-light py-2">
-                <button type="button" class="btn btn-secondary rounded-2 px-4" data-bs-dismiss="modal">Close</button>
+            <div class="modal-footer bg-white border-top py-2 px-3">
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-2 px-3" data-bs-dismiss="modal" data-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-// Real-time calculation dataset for instantaneous popup inspection
-window.realtimeExecBreakdowns = <?= json_encode($realTimeStats ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
-
-function escapeHtml(str) {
-    if (str === null || str === undefined) return '';
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-}
-
-function formatCurrency(val) {
-    const num = parseFloat(val);
-    if (isNaN(num)) return '0.00';
-    return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function showModalInstance(modalId) {
-    const modalEl = document.getElementById(modalId);
-    if (!modalEl) return;
-    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-        bootstrap.Modal.getOrCreateInstance(modalEl).show();
-    } else if (typeof window.jQuery !== 'undefined') {
-        window.jQuery('#' + modalId).modal('show');
-    }
-}
-
-window.openExecutiveCalculationModal = function (userId) {
-    if (!window.realtimeExecBreakdowns || !window.realtimeExecBreakdowns.length) {
-        alert('No calculation data available.');
+window.openMemberBreakdownModal = function (btn) {
+    if (!btn) return;
+    const rawData = btn.getAttribute('data-member');
+    if (!rawData) return;
+    let data = {};
+    try {
+        data = JSON.parse(rawData);
+    } catch (e) {
+        console.error('Invalid member JSON', e);
         return;
     }
 
-    const item = window.realtimeExecBreakdowns.find(function (r) {
-        return r && r.user && parseInt(r.user.id, 10) === parseInt(userId, 10);
-    });
+    document.getElementById('mbb_user_name').innerText = data.user_name || 'Executive';
+    document.getElementById('mbb_emp_id').innerText = data.employee_id ? '[' + data.employee_id + ']' : '';
+    document.getElementById('mbb_team_designation').innerText = (data.designation || 'Sales Executive') + (data.team_name ? ' | Team: ' + data.team_name : '');
+    document.getElementById('mbb_cycle_text').innerText = data.cycle_month || 'Current Cycle';
 
-    if (!item) {
-        alert('Calculation details for this member could not be loaded.');
-        return;
+    const fmtMoney = (val) => 'TK' + (parseFloat(val) || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+    document.getElementById('mbb_target').innerText = fmtMoney(data.effective_target || data.target_amount);
+    document.getElementById('mbb_target_sub').innerText = (data.target_amount > 0 ? 'Assigned Target' : 'Min 25L Benchmark');
+    document.getElementById('mbb_achieved').innerText = fmtMoney(data.achieved_total);
+    const pct = parseFloat(data.achievement_pct) || 0;
+    document.getElementById('mbb_achieved_pct').innerText = pct.toFixed(1) + '% Achieved';
+    const pBar = document.getElementById('mbb_progress_bar');
+    if (pBar) pBar.style.width = Math.min(100, pct) + '%';
+
+    const qBadge = document.getElementById('mbb_qualification_badge');
+    if (qBadge) {
+        if (data.is_eligible) {
+            qBadge.innerHTML = '<span class="badge bg-success text-white px-2 py-1"><i class="fa-solid fa-circle-check me-1"></i>Qualified (≥ 25L)</span>';
+        } else {
+            const shortFall = Math.max(0, 2500000 - (parseFloat(data.achieved_total) || 0));
+            qBadge.innerHTML = '<span class="badge bg-warning text-dark px-2 py-1"><i class="fa-solid fa-clock me-1"></i>Pending 25L Min</span><div class="extra-small text-danger fw-semibold mt-1">Need TK ' + (shortFall).toLocaleString('en-US', {minimumFractionDigits: 2}) + ' to qualify</div>';
+        }
     }
 
-    const u = item.user || {};
-    const ind = item.individual || {};
-    const cSum = item.claims_summary || {};
-    const team = item.team || {};
+    document.getElementById('mbb_earned').innerText = fmtMoney(data.total_earned);
+    const onHold = parseFloat(data.total_on_hold) || 0;
+    document.getElementById('mbb_on_hold_sub').innerText = onHold > 0 ? 'On Hold (70%): ' + fmtMoney(onHold) + ' (Unlocks at 25L)' : 'No Hold Amount';
 
-    const subtitleEl = document.getElementById('modalCalcSubtitle');
-    if (subtitleEl) {
-        subtitleEl.innerHTML = `${escapeHtml(u.full_name || 'Member')} (${escapeHtml(u.employee_id || '')}) &bull; ${escapeHtml(u.department || 'Sales')} &bull; Cycle: <?= htmlspecialchars($cycleMonthDisplay ?? ($month ?? '')) ?>`;
-    }
+    // Populate Bookings Table
+    const tbody = document.getElementById('mbb_bookings_table_body');
+    const bookings = data.detailed_bookings || [];
+    document.getElementById('mbb_bookings_count').innerText = bookings.length + ' Booking' + (bookings.length === 1 ? '' : 's');
 
-    const targetAmt = parseFloat(ind.target_amount || 0);
-    const achievedAmt = parseFloat(ind.total_achieved_land_share || 0);
-    const minRequired = parseFloat(ind.min_eligible_sales || 2500000);
-    const earnedAmt = parseFloat(ind.total_earned_incentive || 0);
-    const onHoldAmt = parseFloat(ind.total_on_hold_incentive || 0);
-    const pct = parseFloat(ind.achievement_pct || 0);
-    const isEligible = !!ind.is_eligible;
-
-    const assignedProjects = (ind.target_project_names && ind.target_project_names.length)
-        ? ind.target_project_names.join(', ')
-        : 'All Assigned Company Projects';
-
-    let html = `
-        <!-- Header Info Card -->
-        <div class="card border-0 bg-light rounded-3 p-3 mb-4">
-            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="avatar-lg bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold fs-4" style="width: 50px; height: 50px;">
-                        ${escapeHtml((u.full_name || 'U').charAt(0))}
-                    </div>
-                    <div>
-                        <h5 class="fw-bold text-dark mb-0">${escapeHtml(u.full_name || '')}</h5>
-                        <div class="text-muted extra-small">
-                            <span class="badge bg-secondary-subtle text-secondary me-1">${escapeHtml(u.employee_id || '')}</span>
-                            ${escapeHtml(u.designation || 'Sales Executive')} &bull; <i class="fa-solid fa-users me-1 text-primary"></i>${escapeHtml(u.team_name || 'Direct Sales')}
-                        </div>
-                    </div>
-                </div>
-                <div class="text-end">
-                    <span class="badge ${isEligible ? 'bg-success' : 'bg-warning text-dark'} px-3 py-2 fs-6">
-                        <i class="fa-solid ${isEligible ? 'fa-circle-check' : 'fa-clock'} me-1"></i>
-                        ${isEligible ? 'Target Qualified (≥ 25 Lakh)' : 'Pending Minimum Target (< 25 Lakh)'}
-                    </span>
-                    <div class="extra-small text-muted mt-1">Assigned Projects: <strong class="text-dark">${escapeHtml(assignedProjects)}</strong></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 4 KPI Summary Cards -->
-        <div class="row  mb-4">
-            <div class="col-md-3 col-6">
-                <div class="card border border-primary-subtle shadow-none rounded-3 p-3 h-100 bg-white">
-                    <div class="extra-small text-muted text-uppercase fw-bold mb-1">Target (Land Share)</div>
-                    <h5 class="fw-bold text-dark mb-1">৳${formatCurrency(targetAmt)}</h5>
-                    <div class="extra-small text-muted">
-                        ${ind.is_inherited ? '<span class="badge bg-info-subtle text-info">Inherited Target</span>' : '<span class="badge bg-primary-subtle text-primary">Current Cycle Target</span>'}
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="card border border-success-subtle shadow-none rounded-3 p-3 h-100 bg-white">
-                    <div class="extra-small text-muted text-uppercase fw-bold mb-1">Achieved (Land Share)</div>
-                    <h5 class="fw-bold text-success mb-1">৳${formatCurrency(achievedAmt)}</h5>
-                    <div class="extra-small text-muted">
-                        <strong>${pct.toFixed(1)}%</strong> of target fulfilled
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="card border border-info-subtle shadow-none rounded-3 p-3 h-100 bg-white">
-                    <div class="extra-small text-muted text-uppercase fw-bold mb-1">Minimum Qualification</div>
-                    <h5 class="fw-bold text-info mb-1">৳${formatCurrency(minRequired)}</h5>
-                    <div class="extra-small text-muted">
-                        ${achievedAmt >= minRequired ? '<span class="text-success fw-bold"><i class="fa-solid fa-check me-1"></i>Requirement Met</span>' : '<span class="text-danger fw-bold"><i class="fa-solid fa-times me-1"></i>Short by ৳' + formatCurrency(minRequired - achievedAmt) + '</span>'}
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="card border border-success shadow-none rounded-3 p-3 h-100 bg-success-subtle">
-                    <div class="extra-small text-success text-uppercase fw-bold mb-1">Total Earned Incentive</div>
-                    <h4 class="fw-bold text-success mb-1">৳${formatCurrency(earnedAmt)}</h4>
-                    ${onHoldAmt > 0 ? '<div class="extra-small text-warning fw-semibold">+ ৳' + formatCurrency(onHoldAmt) + ' on hold</div>' : '<div class="extra-small text-success"><i class="fa-solid fa-check-double me-1"></i>Ready for claim / paid</div>'}
-                </div>
-            </div>
-        </div>
-
-        <!-- Section 1: Direct Bookings Table -->
-        <div class="card border shadow-none rounded-3 mb-4">
-            <div class="card-header bg-light py-2 px-3 d-flex align-items-center justify-content-between">
-                <span class="fw-bold text-dark small">
-                    <i class="fa-solid fa-list-check me-1 text-primary"></i> 1. Direct Sales Bookings in Cycle (${(ind.detailed_bookings || []).length})
-                </span>
-                <span class="text-muted extra-small">Cycle Date: ${escapeHtml(ind.cycle_start || '')} to ${escapeHtml(ind.cycle_end || '')}</span>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-sm table-hover align-middle mb-0">
-                    <thead class="bg-light text-muted extra-small text-uppercase">
-                        <tr>
-                            <th class="ps-3">Booking # & Date</th>
-                            <th>Project & Flat</th>
-                            <th class="text-end">Agreement Price</th>
-                            <th class="text-end">Land Share Value</th>
-                            <th>Modality Rule</th>
-                            <th class="text-center">Rate %</th>
-                            <th class="text-end">Incentive</th>
-                            <th class="pe-3 text-center">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-
-    if (ind.detailed_bookings && ind.detailed_bookings.length > 0) {
-        ind.detailed_bookings.forEach(function (b) {
-            const bLand = parseFloat(b.land_share_value || 0);
-            const bPrice = parseFloat(b.flat_price || 0);
-            const bRate = parseFloat(b.applicable_rate || 0);
-            const bCalc = parseFloat(b.calculated_incentive || 0);
-            const bEarned = parseFloat(b.seller_incentive || 0);
-            const bHold = b.is_on_hold == 1;
-
-            html += `
-                <tr>
-                    <td class="ps-3">
-                        <strong class="text-dark">#${escapeHtml(b.booking_id)}</strong>
-                        <div class="extra-small text-muted">${escapeHtml(b.booking_date || '')}</div>
-                    </td>
-                    <td>
-                        <div class="fw-semibold text-dark">${escapeHtml(b.project_name || 'Project')}</div>
-                        <span class="text-primary extra-small">${escapeHtml(b.flat_name || '')}${b.floor_no ? ' (Floor ' + escapeHtml(b.floor_no) + ')' : ''}</span>
-                    </td>
-                    <td class="text-end fw-semibold text-dark">৳${formatCurrency(bPrice)}</td>
-                    <td class="text-end fw-bold text-primary">৳${formatCurrency(bLand)}</td>
-                    <td>
-                        <span class="badge bg-secondary-subtle text-secondary extra-small">${escapeHtml(b.rate_type || 'Standard')}</span>
-                        ${b.is_assigned ? '<span class="badge bg-info-subtle text-info extra-small ms-1">Assigned</span>' : '<span class="badge bg-warning-subtle text-warning extra-small ms-1">Outside Assigned</span>'}
-                    </td>
-                    <td class="text-center">
-                        <span class="badge bg-light text-dark border fw-bold">${bRate.toFixed(2)}%</span>
-                    </td>
-                    <td class="text-end">
-                        <strong class="${bHold ? 'text-warning' : 'text-success'} fs-6">৳${formatCurrency(bEarned || bCalc)}</strong>
-                        <div class="extra-small text-muted" style="font-size: 0.7rem;">(৳${formatCurrency(bLand)} &times; ${bRate.toFixed(2)}%)</div>
-                    </td>
-                    <td class="pe-3 text-center">
-                        ${bHold 
-                            ? '<span class="badge bg-warning-subtle text-warning border border-warning-subtle extra-small">On Hold (70%)</span>' 
-                            : '<span class="badge bg-success-subtle text-success border border-success-subtle extra-small"><i class="fa-solid fa-check me-1"></i>Earned</span>'}
-                        <div class="extra-small text-muted mt-1" style="font-size: 0.65rem;">${escapeHtml(b.status_note || '')}</div>
-                    </td>
-                </tr>`;
-        });
+    if (bookings.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted"><i class="fa-solid fa-folder-open fs-3 d-block mb-2 opacity-50"></i>No sales bookings made by this executive in this cycle.</td></tr>';
     } else {
-        html += `
-            <tr>
-                <td colspan="8" class="text-center text-muted py-3">No direct sales bookings recorded for this executive in this cycle.</td>
+        let html = '';
+        bookings.forEach((b) => {
+            const bRef = 'BK-' + String(b.booking_id || '').padStart(5, '0');
+            const bDate = b.booking_date ? new Date(b.booking_date).toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'}) : 'N/A';
+            const ls = fmtMoney(b.land_share_value);
+            const rateStr = (parseFloat(b.applicable_rate) || 0).toFixed(2) + '%';
+            const baseUnitRateStr = (parseFloat(b.base_unit_rate || b.applicable_rate) || 0).toFixed(2) + '%';
+            const earnedAmt = fmtMoney(b.calculated_incentive || b.seller_incentive);
+            const isOutside = !b.is_assigned || (b.rate_type && b.rate_type.indexOf('Unassigned') !== -1) || (b.rate_type && b.rate_type.indexOf('Outside') !== -1) || b.project_scope === 'unassigned';
+            
+            let projectBadge = '';
+            if (isOutside) {
+                const hasHolder = b.designated_user_name && b.designated_user_name !== 'Unassigned / Open' && b.designated_user_name !== 'Open';
+                const holderNotice = hasHolder
+                    ? `<div class="extra-small text-muted mt-1" style="font-size:0.75rem;"><i class="fa-solid fa-bullseye text-info me-1"></i>Target Assigned To: <strong class="text-dark">${b.designated_user_name}</strong></div>`
+                    : `<div class="extra-small text-danger fw-semibold mt-1" style="font-size:0.75rem;"><i class="fa-solid fa-circle-exclamation text-danger me-1"></i>No Agent Assigned to Project (Open Pool)</div>`;
+
+                projectBadge = `
+                    <span class="badge bg-warning-subtle text-dark border extra-small mt-1"><i class="fa-solid fa-arrows-split-up-and-left me-1 text-warning"></i>From Unassigned Project</span>
+                    ${holderNotice}
+                `;
+            } else {
+                projectBadge = '<span class="badge bg-success-subtle text-success border extra-small mt-1"><i class="fa-solid fa-circle-check me-1"></i>Assigned Project</span>';
+            }
+
+            const scopeBadge = isOutside 
+                ? '<span class="badge bg-warning text-dark border extra-small"><i class="fa-solid fa-arrows-split-up-and-left me-1"></i>Unassigned (70% Share)</span>' 
+                : '<span class="badge bg-success text-white extra-small"><i class="fa-solid fa-circle-check me-1"></i>Assigned (100% Share)</span>';
+
+            let rateDisplayHtml = '';
+            if (isOutside) {
+                const baseRateVal = (parseFloat(b.base_unit_rate || 0.80) || 0.80).toFixed(2);
+                const sellerRateVal = (parseFloat(b.applicable_rate || 0.56) || 0.56).toFixed(2);
+                const desRateVal = (parseFloat(baseRateVal * 0.30) || 0.24).toFixed(2);
+                const desAmt = fmtMoney(b.designated_incentive || ((parseFloat(b.land_share_value) || 0) * (parseFloat(baseRateVal) / 100) * 0.30));
+                const hasHolder = b.designated_user_name && b.designated_user_name !== 'Unassigned / Open' && b.designated_user_name !== 'Open';
+
+                const targetHolderRow = hasHolder
+                    ? `<div class="extra-small text-muted mt-1 pt-1 border-top border-light-subtle" style="font-size:0.74rem;">
+                           <span class="text-secondary">Target Holder Earns 30%:</span> 
+                           <strong class="text-dark"><i class="fa-solid fa-user-tag text-primary me-1"></i>${b.designated_user_name}</strong>
+                           <span class="text-success fw-bold">(${desAmt})</span>
+                       </div>`
+                    : `<div class="extra-small text-danger fw-semibold mt-1 pt-1 border-top border-light-subtle" style="font-size:0.74rem;">
+                           <i class="fa-solid fa-circle-exclamation me-1"></i>No Agent Assigned to Project (Open Pool)
+                       </div>`;
+
+                rateDisplayHtml = `
+                    <div class="d-flex align-items-center gap-1 mb-1">
+                        <span class="badge bg-warning text-dark fw-bold fs-7">${rateStr}</span>
+                        <span class="badge bg-warning-subtle text-dark border extra-small">70% Seller Share</span>
+                    </div>
+                    <div class="extra-small text-dark fw-semibold" style="line-height:1.35; font-size:0.76rem;">
+                        ${baseRateVal}% × 70% = <span class="text-primary fw-bold">${sellerRateVal}%</span>
+                    </div>
+                    <div class="extra-small text-muted" style="line-height:1.35; font-size:0.74rem;">
+                        Remaining 30%: ${baseRateVal}% × 30% = <strong class="text-dark">${desRateVal}%</strong>
+                    </div>
+                    ${targetHolderRow}
+                `;
+            } else {
+                rateDisplayHtml = `
+                    <div class="d-flex align-items-center gap-1 mb-1">
+                        <span class="badge bg-success-subtle text-success fw-bold fs-7">${rateStr}</span>
+                        <span class="text-muted extra-small">(100% Share)</span>
+                    </div>
+                    <div class="extra-small text-muted">${b.floor_name || b.rate_type || 'General Flat'}</div>
+                `;
+            }
+
+            let statusBadge = '<span class="badge bg-secondary-subtle text-secondary extra-small">Ineligible</span>';
+            if (b.claim_status === 'paid') {
+                statusBadge = b.is_received 
+                    ? '<span class="badge bg-success text-white extra-small"><i class="fa-solid fa-circle-check me-1"></i>Received</span>'
+                    : '<span class="badge bg-success-subtle text-success border extra-small"><i class="fa-solid fa-check me-1"></i>Paid</span>';
+            } else if (b.claim_status === 'approved') {
+                statusBadge = '<span class="badge bg-info text-white extra-small"><i class="fa-solid fa-check-double me-1"></i>Approved</span>';
+            } else if (b.claim_status === 'claimed') {
+                statusBadge = '<span class="badge bg-warning text-dark extra-small"><i class="fa-solid fa-clock me-1"></i>Claimed</span>';
+            } else if (data.is_eligible) {
+                statusBadge = '<span class="badge bg-primary-subtle text-primary border extra-small">Ready to Claim</span>';
+            } else {
+                statusBadge = '<span class="badge bg-warning-subtle text-dark border extra-small"><i class="fa-solid fa-lock me-1 text-warning"></i>Need 25L</span>';
+            }
+
+            let amtDisplayHtml = `<span class="fw-bold text-success fs-6">${earnedAmt}</span>`;
+            if (isOutside && !data.is_eligible) {
+                amtDisplayHtml += `<div class="extra-small text-warning fw-semibold mt-1"><i class="fa-solid fa-lock me-1"></i>On Hold (Need 25L)</div>`;
+            }
+
+            html += `<tr>
+                <td class="ps-3">
+                    <span class="fw-bold text-dark d-block">${bRef}</span>
+                    <span class="text-muted extra-small">${bDate}</span>
+                </td>
+                <td>
+                    <span class="fw-bold text-dark d-block">${b.project_name || 'N/A'}</span>
+                    <span class="badge bg-light text-primary border extra-small">${b.flat_name || 'N/A'} (Floor ${b.floor_no || 'N/A'})</span>
+                    <div>${projectBadge}</div>
+                </td>
+                <td><span class="fw-semibold text-dark">${ls}</span></td>
+                <td>${rateDisplayHtml}</td>
+                <td>${amtDisplayHtml}</td>
+                <td>${scopeBadge}</td>
+                <td class="pe-3 text-center">${statusBadge}</td>
             </tr>`;
-    }
-
-    html += `
-                    </tbody>
-                </table>
-            </div>
-        </div>`;
-
-    // Section 2: 30% Designated Credits from outside sales (if any)
-    if (ind.designated_credits && ind.designated_credits.length > 0) {
-        html += `
-            <div class="card border border-info-subtle shadow-none rounded-3 mb-4">
-                <div class="card-header bg-info-subtle py-2 px-3 d-flex align-items-center justify-content-between">
-                    <span class="fw-bold text-dark small">
-                        <i class="fa-solid fa-share-nodes me-1 text-info"></i> 2. Passive 30% Designated Credits (${ind.designated_credits.length})
-                    </span>
-                    <span class="text-info extra-small fw-semibold">Earned from assigned project flats sold by other agents</span>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-sm table-hover align-middle mb-0">
-                        <thead class="bg-light text-muted extra-small text-uppercase">
-                            <tr>
-                                <th class="ps-3">Booking #</th>
-                                <th>Sold By</th>
-                                <th>Project & Flat</th>
-                                <th class="text-end">Land Share Value</th>
-                                <th class="text-center">Rate Calculation</th>
-                                <th class="pe-3 text-end">Passive 30% Credit</th>
-                            </tr>
-                        </thead>
-                        <tbody>`;
-        ind.designated_credits.forEach(function (dc) {
-            const dcAmt = parseFloat(dc.credit_amount || 0);
-            const dcLand = parseFloat(dc.land_share_value || 0);
-            html += `
-                <tr>
-                    <td class="ps-3 fw-bold text-dark">#${escapeHtml(dc.booking_id)}</td>
-                    <td>
-                        <span class="fw-semibold text-dark">${escapeHtml(dc.seller_name || 'Agent')}</span>
-                    </td>
-                    <td>
-                        <span class="fw-semibold text-dark">${escapeHtml(dc.project_name || '')}</span> - 
-                        <span class="text-primary">${escapeHtml(dc.flat_name || '')}</span>
-                    </td>
-                    <td class="text-end fw-bold text-primary">৳${formatCurrency(dcLand)}</td>
-                    <td class="text-center text-muted extra-small">
-                        Land Share &times; Base Rate &times; 30%
-                    </td>
-                    <td class="pe-3 text-end fw-bold text-success fs-6">৳${formatCurrency(dcAmt)}</td>
-                </tr>`;
         });
-        html += `
-                        </tbody>
-                    </table>
-                </div>
-            </div>`;
+        tbody.innerHTML = html;
     }
 
-    // Section 3: Team Leader Overrides (if applicable)
-    if (team && team.eligible && team.member_breakdown && team.member_breakdown.length > 0) {
-        const tlEarned = parseFloat(team.incentive_earned || 0);
-        html += `
-            <div class="card border border-warning-subtle shadow-none rounded-3 mb-4">
-                <div class="card-header bg-warning-subtle py-2 px-3 d-flex align-items-center justify-content-between">
-                    <span class="fw-bold text-dark small">
-                        <i class="fa-solid fa-users me-1 text-warning"></i> 3. Team Leader 0.05% Overrides (${escapeHtml(team.team_name || 'Team')})
-                    </span>
-                    <span class="text-dark extra-small fw-semibold">Qualified Members: ${team.qualified_members_count || 0} / ${team.total_members_count || 0} &bull; Earned: <strong>৳${formatCurrency(tlEarned)}</strong></span>
+    // Populate Designated Section
+    const desSec = document.getElementById('mbb_designated_section');
+    const desBody = document.getElementById('mbb_designated_table_body');
+    const desCredits = data.designated_credits || [];
+    if (desCredits.length > 0) {
+        desSec.style.display = 'block';
+        document.getElementById('mbb_designated_count').innerText = desCredits.length + ' Credit' + (desCredits.length === 1 ? '' : 's');
+        let dHtml = '';
+        desCredits.forEach(dc => {
+            const bRef = 'BK-' + String(dc.booking_id || '').padStart(5, '0');
+            const baseRateVal = (parseFloat(dc.base_unit_rate || (dc.is_floor_special ? 0.80 : 0.70) || 0.80)).toFixed(2);
+            const desRateVal = (parseFloat(dc.designated_rate || (baseRateVal * 0.30)) || 0.24).toFixed(2);
+            const sellerRateVal = (parseFloat(dc.seller_rate || (baseRateVal * 0.70)) || 0.56).toFixed(2);
+            const floorLabel = (dc.floor_no == 1 || dc.is_floor_special) ? '1st Floor' : 'General Floor';
+
+            const rateHtml = `
+                <div class="d-flex align-items-center gap-1 mb-1">
+                    <span class="badge bg-info text-white fw-bold fs-7">${desRateVal}%</span>
+                    <span class="badge bg-info-subtle text-info border extra-small">30% Project Share</span>
                 </div>
-                <div class="table-responsive">
-                    <table class="table table-sm table-hover align-middle mb-0">
-                        <thead class="bg-light text-muted extra-small text-uppercase">
-                            <tr>
-                                <th class="ps-3">Team Member</th>
-                                <th>Designation</th>
-                                <th class="text-end">Achieved Land Share</th>
-                                <th class="text-center">Qualification (≥25L)</th>
-                                <th class="pe-3 text-end">TL 0.05% Gain</th>
-                            </tr>
-                        </thead>
-                        <tbody>`;
-        team.member_breakdown.forEach(function (mb) {
-            if (mb.is_self) return; // Skip self in member breakdown
-            const mbAch = parseFloat(mb.achieved_land_share || 0);
-            const mbGain = parseFloat(mb.tl_gain || 0);
-            html += `
-                <tr>
-                    <td class="ps-3 fw-semibold text-dark">${escapeHtml(mb.full_name)} <span class="badge bg-light text-muted border extra-small">${escapeHtml(mb.employee_id || '')}</span></td>
-                    <td class="extra-small text-muted">${escapeHtml(mb.designation || '')}</td>
-                    <td class="text-end fw-bold text-dark">৳${formatCurrency(mbAch)}</td>
-                    <td class="text-center">
-                        ${mb.is_qualified 
-                            ? '<span class="badge bg-success-subtle text-success extra-small"><i class="fa-solid fa-check me-1"></i>Qualified</span>' 
-                            : '<span class="badge bg-secondary-subtle text-muted extra-small">Not Qualified (<25L)</span>'}
-                    </td>
-                    <td class="pe-3 text-end fw-bold ${mbGain > 0 ? 'text-success' : 'text-muted'}">৳${formatCurrency(mbGain)}</td>
-                </tr>`;
+                <div class="extra-small text-dark fw-semibold" style="line-height:1.3; font-size:0.75rem;">
+                    ${baseRateVal}% (${floorLabel}) × 30% = <span class="text-info fw-bold">${desRateVal}%</span>
+                </div>
+                <div class="extra-small text-muted" style="line-height:1.3; font-size:0.72rem;">
+                    (Remaining 70% to Seller ${dc.seller_name || ''}: ${sellerRateVal}%)
+                </div>
+            `;
+
+            dHtml += `<tr>
+                <td class="ps-3"><span class="badge bg-light text-dark border">${bRef}</span></td>
+                <td>
+                    <span class="fw-bold text-dark d-block">${dc.project_name}</span>
+                    <span class="badge bg-light text-primary border extra-small">${dc.flat_name}${dc.floor_no ? ' (Floor ' + dc.floor_no + ')' : ''}</span>
+                </td>
+                <td><i class="fa-solid fa-user-tie text-muted me-1"></i><strong class="text-dark">${dc.seller_name}</strong></td>
+                <td><span class="fw-semibold text-dark">${fmtMoney(dc.land_share_value)}</span></td>
+                <td>${rateHtml}</td>
+                <td><span class="fw-bold text-success fs-6">${fmtMoney(dc.credit_amount)}</span></td>
+                <td class="pe-3 text-center">
+                    ${data.is_eligible 
+                        ? '<span class="badge bg-success-subtle text-success border extra-small"><i class="fa-solid fa-circle-check me-1"></i>Unlocked</span>' 
+                        : '<span class="badge bg-warning-subtle text-dark border extra-small"><i class="fa-solid fa-lock me-1"></i>On Hold</span>'}
+                </td>
+            </tr>`;
         });
-        html += `
-                        </tbody>
-                    </table>
-                </div>
-            </div>`;
+        desBody.innerHTML = dHtml;
+    } else {
+        desSec.style.display = 'none';
     }
 
-    // Section 4: Mathematical Formula Summary
-    let directSum = 0;
-    (ind.detailed_bookings || []).forEach(function (b) {
-        if (!b.is_on_hold) directSum += parseFloat(b.seller_incentive || b.calculated_incentive || 0);
-    });
-    let passiveSum = 0;
-    (ind.designated_credits || []).forEach(function (dc) {
-        passiveSum += parseFloat(dc.credit_amount || 0);
-    });
-    let tlSum = (team && team.eligible) ? parseFloat(team.incentive_earned || 0) : 0;
-
-    html += `
-        <div class="card bg-light border-0 rounded-3 p-3">
-            <h6 class="fw-bold text-dark mb-2">
-                <i class="fa-solid fa-calculator text-primary me-2"></i>Incentive Calculation Formula & Audit
-            </h6>
-            <div class="p-3 bg-white rounded-2 border">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span class="text-muted small">1. Direct Sales Bookings Incentive:</span>
-                    <strong class="text-dark small">৳${formatCurrency(directSum)}</strong>
-                </div>
-                ${passiveSum > 0 ? `
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span class="text-muted small">2. 30% Designated Cross-Project Credits:</span>
-                    <strong class="text-info small">+ ৳${formatCurrency(passiveSum)}</strong>
-                </div>` : ''}
-                ${tlSum > 0 ? `
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span class="text-muted small">3. Team Leader 0.05% Overrides:</span>
-                    <strong class="text-warning small">+ ৳${formatCurrency(tlSum)}</strong>
-                </div>` : ''}
-                <hr class="my-2">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="fw-bold text-dark">Total Real-Time Earned Incentive:</span>
-                    <h5 class="fw-bold text-success mb-0">৳${formatCurrency(earnedAmt)}</h5>
-                </div>
-            </div>
-        </div>`;
-
-    const bodyEl = document.getElementById('modalCalcBody');
-    if (bodyEl) {
-        bodyEl.innerHTML = html;
+    // Open Modal
+    const modalEl = document.getElementById('memberBreakdownModal');
+    if (modalEl) {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            bsModal.show();
+        } else if (typeof $ !== 'undefined') {
+            $('#memberBreakdownModal').modal('show');
+        }
     }
-
-    showModalInstance('viewExecutiveCalculationModal');
 };
 
-window.renderSaleDetailsModal = function (data, type) {
-    const isPayout = (type === 'payout');
-    const bodyEl = document.getElementById('modalSaleDetailsBody');
-    const subtitleEl = document.getElementById('modalSaleDetailsSubtitle');
-    if (!bodyEl) return;
-
-    const refCode = isPayout ? (data.disbursement_no || 'PAYOUT') : (data.claim_code || 'CLAIM');
-    const cycleMonth = data.sale_cycle_display || data.cycle_month || 'Active Cycle';
-
-    if (subtitleEl) {
-        subtitleEl.innerHTML = `${escapeHtml(refCode)} &bull; Sales Cycle: <strong>${escapeHtml(cycleMonth)}</strong> &bull; ${isPayout ? 'Disbursed Payout Audit' : 'Sales Claim Audit'}`;
-    }
-
-    const saleAmount = parseFloat(data.sale_amount || 0);
-    const landShare = parseFloat(data.land_share_value || 0);
-    const incPct = parseFloat(data.incentive_percentage || 0);
-    const incAmount = parseFloat(isPayout ? (data.payment_amount || data.incentive_amount || 0) : (data.incentive_amount || 0));
-
-    let html = `
-        <!-- Main Ref & Beneficiary Card -->
-        <div class="card border-0 bg-light rounded-3 p-3 mb-4">
-            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-                <div>
-                    <span class="badge ${isPayout ? 'bg-success' : 'bg-primary'} px-3 py-1 mb-1">
-                        <i class="fa-solid ${isPayout ? 'fa-receipt' : 'fa-certificate'} me-1"></i>
-                        ${escapeHtml(refCode)}
-                    </span>
-                    <h5 class="fw-bold text-dark mb-0">${escapeHtml(data.recipient_name || data.user_name || 'Sales Executive')}</h5>
-                    <div class="text-muted extra-small mt-1">
-                        <span class="badge bg-secondary-subtle text-secondary me-1">${escapeHtml(data.recipient_code || data.employee_id || '')}</span>
-                        ${escapeHtml(data.department || 'Sales Dept')}
-                    </div>
-                </div>
-                <div class="text-end">
-                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 fs-6">
-                        <i class="fa-regular fa-calendar me-1"></i>Cycle: ${escapeHtml(cycleMonth)}
-                    </span>
-                    <div class="extra-small text-muted mt-1">
-                        ${data.created_at ? 'Created: ' + escapeHtml(data.created_at) : (data.payment_date ? 'Paid: ' + escapeHtml(data.payment_date) : '')}
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Project & Booking Details Card -->
-        <div class="card border shadow-none rounded-3 mb-4">
-            <div class="card-header bg-light py-2 px-3 fw-bold small text-dark">
-                <i class="fa-solid fa-building me-1 text-primary"></i> Project & Unit Information
-            </div>
-            <div class="card-body p-3">
-                <div class="row ">
-                    <div class="col-md-6 col-12">
-                        <div class="extra-small text-muted">Project Name</div>
-                        <div class="fw-bold text-dark fs-6">${escapeHtml(data.project_name || 'N/A')}</div>
-                    </div>
-                    <div class="col-md-3 col-6">
-                        <div class="extra-small text-muted">Flat / Unit</div>
-                        <div class="fw-bold text-primary">${escapeHtml(data.flat_name || 'N/A')}</div>
-                    </div>
-                    <div class="col-md-3 col-6">
-                        <div class="extra-small text-muted">Floor Number</div>
-                        <div class="fw-bold text-dark">${data.floor_no ? 'Floor ' + escapeHtml(data.floor_no) : 'N/A'}</div>
-                    </div>
-                    <div class="col-md-6 col-12">
-                        <div class="extra-small text-muted">Booking Reference & Date</div>
-                        <div class="fw-bold text-dark">
-                            ${data.booking_id || data.booking_pk ? '#' + escapeHtml(data.booking_id || data.booking_pk) : 'N/A'}
-                            ${data.booking_date ? ' &bull; ' + escapeHtml(data.booking_date) : ''}
-                        </div>
-                    </div>
-                    <div class="col-md-6 col-12">
-                        <div class="extra-small text-muted">Client Information</div>
-                        <div class="fw-semibold text-dark">
-                            ${escapeHtml(data.client_name || 'Client on file')}
-                            ${data.client_phone ? ' (' + escapeHtml(data.client_phone) + ')' : ''}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Financial & Incentive Calculation Card -->
-        <div class="card border shadow-none rounded-3 mb-4">
-            <div class="card-header bg-light py-2 px-3 fw-bold small text-dark">
-                <i class="fa-solid fa-calculator me-1 text-success"></i> Financial & Incentive Breakdown
-            </div>
-            <div class="card-body p-3">
-                <div class="row ">
-                    <div class="col-md-4 col-12">
-                        <div class="p-3 bg-light rounded-2 text-center">
-                            <div class="extra-small text-muted text-uppercase fw-semibold">Agreement Flat Price</div>
-                            <div class="fw-bold text-dark fs-6 mt-1">৳${formatCurrency(saleAmount)}</div>
-                        </div>
-                    </div>
-                    <div class="col-md-4 col-12">
-                        <div class="p-3 bg-primary-subtle rounded-2 text-center">
-                            <div class="extra-small text-primary text-uppercase fw-semibold">Land Share Value</div>
-                            <div class="fw-bold text-primary fs-6 mt-1">৳${formatCurrency(landShare)}</div>
-                        </div>
-                    </div>
-                    <div class="col-md-4 col-12">
-                        <div class="p-3 bg-success-subtle rounded-2 text-center">
-                            <div class="extra-small text-success text-uppercase fw-semibold">Incentive (${incPct.toFixed(2)}%)</div>
-                            <div class="fw-bold text-success fs-5 mt-1">৳${formatCurrency(incAmount)}</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-3 p-3 bg-light rounded-2 border">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                        <div>
-                            <span class="badge bg-secondary-subtle text-secondary me-1">Modality Split</span>
-                            <strong class="text-dark small">${escapeHtml(data.split_type || 'Regular Direct Sale')}</strong>
-                            ${data.original_seller_name ? `
-                                <div class="extra-small text-muted mt-1">
-                                    <i class="fa-solid fa-user-tag me-1 text-primary"></i>Original Seller: <strong>${escapeHtml(data.original_seller_name)}</strong> [${escapeHtml(data.original_seller_code || '')}]
-                                </div>
-                            ` : ''}
-                        </div>
-                        <div class="text-end">
-                            <div class="extra-small text-muted">Applied Formula:</div>
-                            <div class="small fw-semibold text-dark">৳${formatCurrency(landShare)} &times; ${incPct.toFixed(2)}% = <strong>৳${formatCurrency(incAmount)}</strong></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>`;
-
-    if (isPayout) {
-        // Payout Disbursement Information
-        html += `
-            <div class="card border border-success-subtle shadow-none rounded-3 mb-2">
-                <div class="card-header bg-success-subtle py-2 px-3 fw-bold small text-success">
-                    <i class="fa-solid fa-receipt me-1"></i> Accounts Disbursement Audit
-                </div>
-                <div class="card-body p-3">
-                    <div class="row ">
-                        <div class="col-md-4 col-6">
-                            <div class="extra-small text-muted">Payment Method</div>
-                            <div class="fw-bold text-dark"><span class="badge bg-info-subtle text-info">${escapeHtml(data.payment_method || 'Cash')}</span></div>
-                        </div>
-                        <div class="col-md-4 col-6">
-                            <div class="extra-small text-muted">Txn / Cheque Ref</div>
-                            <code class="fw-bold">${escapeHtml(data.transaction_ref || 'N/A')}</code>
-                        </div>
-                        <div class="col-md-4 col-12">
-                            <div class="extra-small text-muted">Payment Date</div>
-                            <div class="fw-semibold text-dark">${escapeHtml(data.payment_date || '')}</div>
-                        </div>
-                        ${(data.company_bank_name || data.bank_name) ? `
-                        <div class="col-md-6 col-12">
-                            <div class="extra-small text-muted">Company Bank (Paid From)</div>
-                            <div class="small fw-semibold text-dark"><i class="fa-solid fa-building-columns me-1 text-primary"></i>${escapeHtml(data.company_bank_name || data.bank_name)}</div>
-                        </div>` : ''}
-                        ${data.to_bank_name ? `
-                        <div class="col-md-6 col-12">
-                            <div class="extra-small text-muted">Recipient Bank / Account</div>
-                            <div class="small fw-semibold text-success"><i class="fa-solid fa-money-check me-1"></i>${escapeHtml(data.to_bank_name)}</div>
-                        </div>` : ''}
-                        ${data.notes ? `
-                        <div class="col-12">
-                            <div class="extra-small text-muted">Accounts Notes</div>
-                            <div class="extra-small text-muted bg-light p-2 rounded">${escapeHtml(data.notes)}</div>
-                        </div>` : ''}
-                    </div>
-                </div>
-            </div>`;
-    }
-
-    bodyEl.innerHTML = html;
-    showModalInstance('claimSaleDetailsModal');
-};
-
-window.openClaimSaleDetailsModal = function (claim) {
-    if (!claim) return;
-    window.renderSaleDetailsModal(claim, 'claim');
-};
-
-window.openPayoutSaleDetailsModal = function (log) {
-    if (!log) return;
-    window.renderSaleDetailsModal(log, 'payout');
-};
 window.handleDisburseMethodChange = function () {
     const methodSelect = document.getElementById('modalDisbursePaymentMethod');
     if (!methodSelect) return;
@@ -2026,6 +1869,9 @@ window.populateDisburseModal = function (btn) {
     const recipient  = btn.getAttribute('data-recipient') || '';
     const claim      = btn.getAttribute('data-claim') || '';
     const amount     = btn.getAttribute('data-amount') || '';
+    const approvedAmt= btn.getAttribute('data-approved-amount') || amount;
+    const paidAmt    = btn.getAttribute('data-paid-amount') || '0';
+    const dueAmt     = btn.getAttribute('data-due-amount') || amount;
     const accountId  = btn.getAttribute('data-account-id') || '';
     const empBank    = btn.getAttribute('data-emp-bank') || '';
     const empAccount = btn.getAttribute('data-emp-account') || '';
@@ -2038,12 +1884,28 @@ window.populateDisburseModal = function (btn) {
     const elToBank    = document.getElementById('modalDisburseToBank');
     const elMethod    = document.getElementById('modalDisbursePaymentMethod');
 
+    const elDispApproved = document.getElementById('disburseApprovedDisplay');
+    const elDispPaid     = document.getElementById('disbursePaidDisplay');
+    const elDispDue      = document.getElementById('disburseDueDisplay');
+
     if (elId) elId.value = id;
     if (elRecipient) elRecipient.value = recipient;
     if (elClaim) elClaim.value = claim;
+
+    const numApproved = parseFloat(String(approvedAmt).replace(/,/g, '')) || 0;
+    const numPaid = parseFloat(String(paidAmt).replace(/,/g, '')) || 0;
+    const numDue = parseFloat(String(dueAmt).replace(/,/g, '')) || 0;
+
+    if (elDispApproved) elDispApproved.innerText = 'TK ' + numApproved.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    if (elDispPaid) elDispPaid.innerText = 'TK ' + numPaid.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    if (elDispDue) elDispDue.innerText = 'TK ' + numDue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
     if (elAmount) {
         const numAmt = parseFloat(String(amount).replace(/,/g, ''));
         elAmount.value = !isNaN(numAmt) ? numAmt.toFixed(2) : amount;
+        if (numDue > 0) {
+            elAmount.max = numDue.toFixed(2);
+        }
     }
     if (elToBank) {
         let bankText = empBank;
@@ -2066,6 +1928,70 @@ window.populateDisburseModal = function (btn) {
 
     // Call method change handler to sync bank fields visibility
     window.handleDisburseMethodChange();
+};
+
+window.rejectClaimFromDisburseModal = function() {
+    const claimId = document.getElementById('modalDisburseClaimId') ? document.getElementById('modalDisburseClaimId').value : '';
+    if (!claimId) {
+        showSwalMsg('error', 'Error', 'No claim selected.');
+        return;
+    }
+
+    const doReject = (note) => {
+        fetch('<?= $base_url ?>/incentives/reject', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest' 
+            },
+            body: 'claim_id=' + encodeURIComponent(claimId) + '&note=' + encodeURIComponent(note)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                // Close modal
+                const modalEl = document.getElementById('disbursePaymentModal');
+                if (modalEl && typeof bootstrap !== 'undefined') {
+                    const inst = bootstrap.Modal.getInstance(modalEl);
+                    if (inst) inst.hide();
+                }
+                showSwalMsg('success', 'Claim Rejected', data.message, true);
+            } else {
+                showSwalMsg('error', 'Rejection Failed', data.message);
+            }
+        })
+        .catch(err => {
+            showSwalMsg('error', 'Error', 'Error: ' + err);
+        });
+    };
+
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'Reject Claim at Disbursement',
+            text: 'Are you sure Accounts wants to reject this approved incentive claim? Please enter the rejection note/reason:',
+            input: 'textarea',
+            inputPlaceholder: 'Enter reason for rejection...',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: '<i class="fa-solid fa-times me-1"></i> Yes, Reject Claim',
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            inputValidator: (val) => {
+                if (!val || !val.trim()) {
+                    return 'Rejection reason is required!';
+                }
+            }
+        }).then(res => {
+            if (res.isConfirmed && res.value) {
+                doReject(res.value.trim());
+            }
+        });
+    } else {
+        const note = prompt('Enter rejection reason:');
+        if (note) {
+            doReject(note.trim());
+        }
+    }
 };
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -2192,7 +2118,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     // Move modals to body once on load to prevent stacking/backdrop clipping
-    ['disbursePaymentModal', 'assignExternalIncentiveModal', 'viewExecutiveCalculationModal', 'claimSaleDetailsModal'].forEach(function (modalId) {
+    ['disbursePaymentModal', 'assignExternalIncentiveModal'].forEach(function (modalId) {
         const mEl = document.getElementById(modalId);
         if (mEl && mEl.parentNode !== document.body) {
             document.body.appendChild(mEl);
@@ -2247,14 +2173,26 @@ document.addEventListener('DOMContentLoaded', function () {
     approveButtons.forEach(btn => {
         btn.addEventListener('click', function() {
             const claimId = this.getAttribute('data-id');
-            const doApprove = () => {
+            const claimCode = this.getAttribute('data-code') || ('Claim #' + claimId);
+            const recipient = this.getAttribute('data-recipient') || 'Employee';
+            const approvedAmt = this.getAttribute('data-approved-amount') || this.getAttribute('data-amount') || '0';
+
+            const doApprove = (amt, note) => {
+                let body = 'claim_id=' + encodeURIComponent(claimId);
+                if (amt !== undefined && amt !== null && amt !== '') {
+                    body += '&approved_amount=' + encodeURIComponent(amt);
+                }
+                if (note) {
+                    body += '&note=' + encodeURIComponent(note);
+                }
+
                 fetch('<?= $base_url ?>/incentives/approve', {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/x-www-form-urlencoded',
                         'X-Requested-With': 'XMLHttpRequest' 
                     },
-                    body: 'claim_id=' + claimId
+                    body: body
                 })
                 .then(res => res.json())
                 .then(data => {
@@ -2272,16 +2210,52 @@ document.addEventListener('DOMContentLoaded', function () {
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
                     title: 'Approve Claim',
-                    text: 'Are you sure you want to approve this incentive claim?',
+                    html: `
+                        <div class="text-start">
+                            <p class="mb-2 text-muted">Review and confirm approval details for <strong>${claimCode}</strong> (${recipient}):</p>
+                            <div class="mb-3">
+                                <label class="form-label extra-small fw-bold text-dark">Approved Amount (৳) <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light">৳</span>
+                                    <input type="number" step="0.01" id="swalApprovedAmount" class="form-control fw-bold text-success" value="${approvedAmt}" required>
+                                </div>
+                                <span class="text-muted" style="font-size:0.75rem;">You may change this amount if granting a partial approval.</span>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label extra-small fw-bold text-dark">Approval Note (Optional)</label>
+                                <textarea id="swalApprovalNote" class="form-control form-control-sm" rows="2" placeholder="e.g. Sales verified and approved."></textarea>
+                            </div>
+                        </div>
+                    `,
                     icon: 'question',
                     showCancelButton: true,
-                    confirmButtonText: 'Yes, Approve',
-                    confirmButtonColor: '#198754'
+                    confirmButtonText: '<i class="fa-solid fa-check me-1"></i> Confirm Approval',
+                    confirmButtonColor: '#198754',
+                    cancelButtonColor: '#6c757d',
+                    preConfirm: () => {
+                        const amtEl = document.getElementById('swalApprovedAmount');
+                        const noteEl = document.getElementById('swalApprovalNote');
+                        const val = amtEl ? parseFloat(amtEl.value) : 0;
+                        if (isNaN(val) || val <= 0) {
+                            Swal.showValidationMessage('Please enter a valid approved amount greater than 0.');
+                            return false;
+                        }
+                        return {
+                            amount: val,
+                            note: noteEl ? noteEl.value.trim() : ''
+                        };
+                    }
                 }).then(res => {
-                    if (res.isConfirmed) doApprove();
+                    if (res.isConfirmed && res.value) {
+                        doApprove(res.value.amount, res.value.note);
+                    }
                 });
-            } else if (confirm('Are you sure you want to approve this incentive claim?')) {
-                doApprove();
+            } else {
+                const amt = prompt('Approved Amount (৳):', approvedAmt);
+                if (amt !== null) {
+                    const note = prompt('Approval Note (Optional):', '');
+                    doApprove(amt, note);
+                }
             }
         });
     });
@@ -2291,14 +2265,16 @@ document.addEventListener('DOMContentLoaded', function () {
     rejectButtons.forEach(btn => {
         btn.addEventListener('click', function() {
             const claimId = this.getAttribute('data-id');
-            const doReject = () => {
+            const claimCode = this.getAttribute('data-code') || ('Claim #' + claimId);
+
+            const doReject = (note) => {
                 fetch('<?= $base_url ?>/incentives/reject', {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/x-www-form-urlencoded',
                         'X-Requested-With': 'XMLHttpRequest' 
                     },
-                    body: 'claim_id=' + claimId
+                    body: 'claim_id=' + encodeURIComponent(claimId) + '&note=' + encodeURIComponent(note)
                 })
                 .then(res => res.json())
                 .then(data => {
@@ -2315,17 +2291,30 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
-                    title: 'Reject Claim',
-                    text: 'Are you sure you want to reject this claim?',
+                    title: 'Reject Incentive Claim',
+                    text: `Are you sure you want to reject ${claimCode}? Please provide a reason:`,
+                    input: 'textarea',
+                    inputPlaceholder: 'Enter reason for rejection...',
                     icon: 'warning',
                     showCancelButton: true,
-                    confirmButtonText: 'Yes, Reject',
-                    confirmButtonColor: '#dc3545'
+                    confirmButtonText: '<i class="fa-solid fa-times me-1"></i> Yes, Reject',
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    inputValidator: (val) => {
+                        if (!val || !val.trim()) {
+                            return 'Rejection reason is required!';
+                        }
+                    }
                 }).then(res => {
-                    if (res.isConfirmed) doReject();
+                    if (res.isConfirmed && res.value) {
+                        doReject(res.value.trim());
+                    }
                 });
-            } else if (confirm('Are you sure you want to reject this claim?')) {
-                doReject();
+            } else {
+                const reason = prompt('Enter rejection reason:');
+                if (reason) {
+                    doReject(reason);
+                }
             }
         });
     });

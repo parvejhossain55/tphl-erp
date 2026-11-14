@@ -61,6 +61,10 @@ class ApprovalRequest extends Model
                     'approved_by'          => "INT NULL DEFAULT NULL",
                     'approved_at'          => "DATETIME NULL DEFAULT NULL",
                     'rejection_reason'     => "TEXT NULL DEFAULT NULL",
+                    'sales_head_status'    => "VARCHAR(20) NOT NULL DEFAULT 'pending'",
+                    'sales_head_by'        => "INT UNSIGNED NULL DEFAULT NULL",
+                    'sales_head_at'        => "DATETIME NULL DEFAULT NULL",
+                    'sales_head_note'      => "TEXT NULL DEFAULT NULL",
                     'accounts_head_status' => "ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending'",
                     'accounts_head_by'     => "INT UNSIGNED NULL DEFAULT NULL",
                     'accounts_head_at'     => "TIMESTAMP NULL DEFAULT NULL",
@@ -497,7 +501,7 @@ class ApprovalRequest extends Model
     /**
      * Approve the Accounts Head stage for an approval request (Role 30)
      */
-    public function approveAccountsHead($id, $userId = null, $note = null, $coaId = null)
+    public function approveAccountsHead($id, $userId = null, $note = null, $coaId = null, $approvedAmount = null)
     {
         $id = (int)$id;
         $userId = $userId ? (int)$userId : (int)($_SESSION['user']['id'] ?? 0);
@@ -523,18 +527,25 @@ class ApprovalRequest extends Model
         $reqAmount = (float)($req['request_amount'] ?? 0);
         $isOver10k = ($reqAmount > 10000.01);
         $isPayslipReq = (($req['source_table'] ?? '') === 'payslips');
+        $isIncentiveReq = (($req['source_table'] ?? '') === 'project_incentive_claims');
         $isAlreadyPaid = in_array(strtolower($req['status'] ?? ''), ['paid', 'partially_paid']);
         $isAlreadyMgmtApproved = (strtolower($req['status'] ?? '') === 'approved' && !empty($req['approved_by']));
 
-        if (($isOver10k || $isPayslipReq) && !$isAlreadyPaid && !$isAlreadyMgmtApproved) {
-            // For > 10,000 or Payslips (when Management hasn't approved yet): Accounts Head verification complete (Step 2).
+        if (($isOver10k || $isPayslipReq || $isIncentiveReq) && !$isAlreadyPaid && !$isAlreadyMgmtApproved) {
+            // For > 10,000, Payslips, or Incentive Claims (when Management hasn't approved yet): Accounts Head verification complete (Step 2).
             // ALWAYS forward to Management (Role 1/3) for final executive sign-off!
             $nextRole = 'management';
             $nextStatus = 'pending';
         } else {
-            // For <= 10,000 (non-payslip), or when Management has already approved, or historical already paid: fully approved and ready for Accounts Payout!
+            // For <= 10,000 (non-payslip, non-incentive), or when Management has already approved, or historical already paid: fully approved and ready for Accounts Payout!
             $nextRole = ($req['status'] === 'partially_approved' && ($req['source_table'] ?? '') === 'fund_requisitions') ? ($req['approve_role'] ?? 'accounts') : 'accounts';
             $nextStatus = 'approved';
+        }
+
+        $appAmtSql = "";
+        if ($approvedAmount !== null && (float)$approvedAmount > 0) {
+            $fAmt = (float)$approvedAmount;
+            $appAmtSql = ", approved_amount = {$fAmt}";
         }
 
         $stmt = $this->db->prepare("
@@ -547,6 +558,7 @@ class ApprovalRequest extends Model
                 status = CASE WHEN status IN ('paid', 'partially_paid') THEN status ELSE ? END,
                 approved_at = CASE WHEN ? = 'approved' AND approved_at IS NULL THEN NOW() WHEN ? = 'pending' THEN NULL ELSE approved_at END,
                 approved_by = CASE WHEN ? = 'pending' THEN NULL ELSE approved_by END
+                {$appAmtSql}
             WHERE id = ?
         ");
         if (!$stmt) {
@@ -566,8 +578,20 @@ class ApprovalRequest extends Model
             }
         }
 
-        // If <= 10,000 (non-payslip), or Management already approved, or historical already paid: sync source table to approved so payout can proceed
-        if ((!$isOver10k && !$isPayslipReq) || $isAlreadyPaid || $isAlreadyMgmtApproved) {
+        // Always sync project_incentive_claims accounts_head_status column if source_table is project_incentive_claims
+        if ($isIncentiveReq && !empty($req['source_id'])) {
+            $incId = (int)$req['source_id'];
+            $escNote = $this->db->real_escape_string($note);
+            $incAmtSql = "";
+            if ($approvedAmount !== null && (float)$approvedAmount > 0) {
+                $fAmt = (float)$approvedAmount;
+                $incAmtSql = ", approved_amount = {$fAmt}";
+            }
+            $this->db->query("UPDATE `project_incentive_claims` SET accounts_head_status = 'approved', accounts_head_by = {$userId}, accounts_head_at = NOW(), accounts_head_note = '{$escNote}' {$incAmtSql} WHERE id = {$incId}");
+        }
+
+        // If <= 10,000 (non-payslip, non-incentive), or Management already approved, or historical already paid: sync source table to approved so payout can proceed
+        if ((!$isOver10k && !$isPayslipReq && !$isIncentiveReq) || $isAlreadyPaid || $isAlreadyMgmtApproved) {
             $sourceTable = $req['source_table'] ?? '';
             $sourceId = (int)($req['source_id'] ?? 0);
             if ($sourceTable && $sourceId) {
@@ -604,13 +628,14 @@ class ApprovalRequest extends Model
                 approve_role = 'rejected',
                 accounts_head_by = ?,
                 accounts_head_at = NOW(),
-                accounts_head_note = ?
+                accounts_head_note = ?,
+                approval_note = ?
             WHERE id = ?
         ");
         if (!$stmt) {
             return false;
         }
-        $stmt->bind_param('isi', $userId, $note, $id);
+        $stmt->bind_param('issi', $userId, $note, $note, $id);
         $res = $stmt->execute();
         $stmt->close();
 
@@ -619,13 +644,123 @@ class ApprovalRequest extends Model
         $sourceId = (int)($req['source_id'] ?? 0);
         if ($sourceTable && $sourceId) {
             if ($sourceTable === 'project_incentive_claims') {
-                $this->db->query("UPDATE project_incentive_claims SET claim_status = 'rejected' WHERE id = {$sourceId}");
+                $escNote = $this->db->real_escape_string($note);
+                $this->db->query("UPDATE project_incentive_claims 
+                                  SET claim_status = 'rejected', accounts_head_status = 'rejected', 
+                                      rejected_by = {$userId}, rejected_at = NOW(), rejection_note = '{$escNote}',
+                                      accounts_head_by = {$userId}, accounts_head_at = NOW(), accounts_head_note = '{$escNote}' 
+                                  WHERE id = {$sourceId}");
             } else {
                 $colCheck = $this->db->query("SHOW COLUMNS FROM `{$sourceTable}` LIKE 'status'");
                 if ($colCheck && $colCheck->num_rows > 0) {
                     $this->db->query("UPDATE `{$sourceTable}` SET status = 'rejected' WHERE id = {$sourceId}");
                 }
             }
+        }
+
+        return $res;
+    }
+
+    /**
+     * Approve the Sales Team Head stage for an approval request (Role 9 / Secondary Role 9)
+     * Stage 1 in Incentive Approval Workflow: Sales Head -> Accounts Head -> Management -> Accounts Disburse
+     */
+    public function approveSalesHead($id, $userId = null, $note = null, $approvedAmount = null)
+    {
+        $id = (int)$id;
+        $userId = $userId ? (int)$userId : (int)($_SESSION['user']['id'] ?? 0);
+        $note = $note !== null ? trim($note) : 'Approved by Sales Team Head';
+
+        $req = $this->find($id);
+        if (!$req) {
+            return false;
+        }
+
+        // Forward to Accounts Head (Stage 2)
+        $nextRole = 'accounts_head';
+        $nextAh = 'pending';
+
+        $appAmtSql = "";
+        if ($approvedAmount !== null && (float)$approvedAmount > 0) {
+            $fAmt = (float)$approvedAmount;
+            $appAmtSql = ", approved_amount = {$fAmt}";
+        } else {
+            $appAmtSql = ", approved_amount = COALESCE(approved_amount, request_amount)";
+        }
+
+        $stmt = $this->db->prepare("
+            UPDATE {$this->table}
+            SET sales_head_status = 'approved',
+                sales_head_by = ?,
+                sales_head_at = NOW(),
+                sales_head_note = ?,
+                approve_role = ?,
+                accounts_head_status = CASE WHEN accounts_head_status = 'approved' THEN 'approved' ELSE ? END
+                {$appAmtSql}
+            WHERE id = ?
+        ");
+        if (!$stmt) return false;
+        $stmt->bind_param('isssi', $userId, $note, $nextRole, $nextAh, $id);
+        $res = $stmt->execute();
+        $stmt->close();
+
+        // Also sync source table (e.g. project_incentive_claims)
+        $sourceTable = $req['source_table'] ?? '';
+        $sourceId = (int)($req['source_id'] ?? 0);
+        if ($sourceTable === 'project_incentive_claims' && $sourceId > 0) {
+            $escNote = $this->db->real_escape_string($note);
+            $incAmtSql = "";
+            if ($approvedAmount !== null && (float)$approvedAmount > 0) {
+                $fAmt = (float)$approvedAmount;
+                $incAmtSql = ", approved_amount = {$fAmt}";
+            } else {
+                $incAmtSql = ", approved_amount = COALESCE(approved_amount, incentive_amount)";
+            }
+            $this->db->query("UPDATE project_incentive_claims 
+                              SET sales_head_status = 'approved', sales_head_by = {$userId}, sales_head_at = NOW(), sales_head_note = '{$escNote}' {$incAmtSql}
+                              WHERE id = {$sourceId}");
+        }
+
+        return $res;
+    }
+
+    /**
+     * Reject the Sales Team Head stage for an approval request
+     */
+    public function rejectSalesHead($id, $userId = null, $note = null)
+    {
+        $id = (int)$id;
+        $userId = $userId ? (int)$userId : (int)($_SESSION['user']['id'] ?? 0);
+        $note = $note !== null ? trim($note) : 'Rejected by Sales Team Head';
+
+        $req = $this->find($id);
+        if (!$req) return false;
+
+        $stmt = $this->db->prepare("
+            UPDATE {$this->table}
+            SET sales_head_status = 'rejected',
+                status = 'rejected',
+                approve_role = 'rejected',
+                sales_head_by = ?,
+                sales_head_at = NOW(),
+                sales_head_note = ?,
+                approval_note = ?
+            WHERE id = ?
+        ");
+        if (!$stmt) return false;
+        $stmt->bind_param('issi', $userId, $note, $note, $id);
+        $res = $stmt->execute();
+        $stmt->close();
+
+        $sourceTable = $req['source_table'] ?? '';
+        $sourceId = (int)($req['source_id'] ?? 0);
+        if ($sourceTable === 'project_incentive_claims' && $sourceId > 0) {
+            $escNote = $this->db->real_escape_string($note);
+            $this->db->query("UPDATE project_incentive_claims 
+                              SET claim_status = 'rejected', sales_head_status = 'rejected', 
+                                  rejected_by = {$userId}, rejected_at = NOW(), rejection_note = '{$escNote}',
+                                  sales_head_by = {$userId}, sales_head_at = NOW() 
+                              WHERE id = {$sourceId}");
         }
 
         return $res;
@@ -2005,6 +2140,46 @@ class ApprovalRequest extends Model
             return true;
         }
 
+        if ($sourceTable === 'project_incentive_claims') {
+            $incStatus = ($status === 'approved') ? 'approved' : 'rejected';
+            $escIncNote = $this->db->real_escape_string($approvalNote ?? ($status === 'approved' ? 'Approved by Management' : 'Rejected by Management'));
+            
+            $appAmtClaimSql = "";
+            $appAmtReqSql = "";
+            if ($status === 'approved') {
+                if ($approvedAmount !== null && (float)$approvedAmount > 0) {
+                    $fAmt = (float)$approvedAmount;
+                    $appAmtClaimSql = ", approved_amount = {$fAmt}";
+                    $appAmtReqSql = ", approved_amount = {$fAmt}";
+                } else {
+                    $appAmtClaimSql = ", approved_amount = COALESCE(approved_amount, incentive_amount)";
+                }
+                $rejClaimSql = "";
+            } else {
+                $rejClaimSql = ", rejected_by = " . (int)$approvedBy . ", rejected_at = NOW(), rejection_note = '{$escIncNote}'";
+            }
+
+            $this->db->query("
+                UPDATE project_incentive_claims 
+                SET claim_status = '{$incStatus}',
+                    mgmt_status = '{$incStatus}',
+                    mgmt_by = " . (int)$approvedBy . ",
+                    mgmt_at = NOW(),
+                    mgmt_note = '{$escIncNote}',
+                    approved_by = " . (int)$approvedBy . ",
+                    approved_at = NOW()
+                    {$appAmtClaimSql}
+                    {$rejClaimSql}
+                WHERE id = {$sourceId}
+            ");
+            if ($status === 'approved') {
+                $this->db->query("UPDATE {$this->table} SET approve_role = 'accounts', status = 'approved' {$appAmtReqSql} WHERE id = {$id}");
+            } else {
+                $this->db->query("UPDATE {$this->table} SET approve_role = 'rejected', status = 'rejected', approved_by = " . (int)$approvedBy . ", approved_at = NOW(), approval_note = '{$escIncNote}' WHERE id = {$id}");
+            }
+            return true;
+        }
+
         $updateFields = [];
         $params = [];
         $types = '';
@@ -2199,6 +2374,22 @@ class ApprovalRequest extends Model
         $userRoleId = (int)($filters['role_id'] ?? ($_SESSION['user']['role_id'] ?? 0));
         $userId = (int)($filters['user_id'] ?? ($_SESSION['user']['id'] ?? 0));
         $roleName = strtolower(trim($filters['role_name'] ?? ($_SESSION['user']['role_name'] ?? '')));
+        $userSecRoleId = (int)($filters['secondary_role_id'] ?? ($_SESSION['user']['secondary_role_id'] ?? 0));
+        if (!$userSecRoleId && $userId > 0) {
+            $secCheck = $this->db->query("SELECT secondary_role_id FROM users WHERE id = {$userId} LIMIT 1");
+            if ($secCheck && $sRow = $secCheck->fetch_assoc()) {
+                $userSecRoleId = (int)($sRow['secondary_role_id'] ?? 0);
+            }
+        }
+
+        // Sales Team Head check (Primary Role 9 OR Secondary Role 9 OR role name contains 'sales team head')
+        $isSalesHead = in_array(9, [$userRoleId, $userSecRoleId], true) 
+            || strpos($roleName, 'sales team head') !== false 
+            || strpos($roleName, 'sales head') !== false;
+
+        $salesHeadCond = "({$prefix}status IN ('pending', 'partially_approved', '') 
+                          AND LOWER({$prefix}approve_role) = 'sales_head' 
+                          AND ({$prefix}sales_head_status = 'pending' OR {$prefix}sales_head_status IS NULL OR {$prefix}sales_head_status = ''))";
 
         // Chief Officer, Management Viewer & SEAL CEO have NO actionable approval items
         if (in_array($userRoleId, [33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true)) {
@@ -2232,14 +2423,14 @@ class ApprovalRequest extends Model
         $isDesignatedDeptHead = in_array($userRoleId, [5, 9, 10, 14], true) || (strpos($roleName, 'head') !== false && !in_array($userRoleId, [8, 11, 12, 16, 18, 19, 21, 23, 25]));
 
         if ($isAccountsHead) {
-            return "(
+            $ahCond = "(
                 LOWER({$prefix}approve_role) != 'completed' AND (
                     ({$prefix}status IN ('pending', 'partially_approved', '') AND ({$prefix}accounts_head_status != 'approved' OR {$prefix}accounts_head_status IS NULL) AND (
-                        LOWER({$prefix}approve_role) = 'accounts_head'
+                        (LOWER({$prefix}approve_role) = 'accounts_head' AND ({$prefix}source_table != 'project_incentive_claims' OR {$prefix}sales_head_status = 'approved'))
                         OR {$prefix}source_table = 'payslips'
                         OR ({$prefix}request_amount > 10000.01 AND {$prefix}op_head_status = 'approved')
                         OR ({$prefix}source_table IN ('vendor_payment_requests', 'contractor_bill_requests') AND {$prefix}op_head_status = 'approved')
-                        OR ({$prefix}source_table NOT IN ('vendor_payment_requests', 'contractor_bill_requests') AND {$prefix}request_amount <= 10000.01 AND ({$prefix}op_head_status = 'approved' OR {$prefix}status = 'approved' OR LOWER({$prefix}approve_role) IN ('management', 'operations', 'accounts_head', '')))
+                        OR ({$prefix}source_table NOT IN ('vendor_payment_requests', 'contractor_bill_requests', 'project_incentive_claims') AND {$prefix}request_amount <= 10000.01 AND ({$prefix}op_head_status = 'approved' OR {$prefix}status = 'approved' OR LOWER({$prefix}approve_role) IN ('management', 'operations', 'accounts_head', '')))
                     ))
                     OR ({$prefix}status = 'approved' AND ({$prefix}accounts_head_status != 'approved' OR {$prefix}accounts_head_status IS NULL OR LOWER({$prefix}approve_role) = 'accounts_head'))
                     OR ({$prefix}status = 'partially_approved' AND {$prefix}source_table = 'fund_requisitions' AND ({$prefix}accounts_head_status != 'approved' OR {$prefix}accounts_head_status IS NULL))
@@ -2250,23 +2441,44 @@ class ApprovalRequest extends Model
                     ))
                 )
             )";
+            if ($isSalesHead) {
+                return "({$ahCond} OR {$salesHeadCond})";
+            }
+            return $ahCond;
         } elseif ($isAccounts) {
-            return "(
+            $acctsCond = "(
                 LOWER({$prefix}approve_role) != 'completed' AND {$prefix}accounts_head_status = 'approved' AND (
                     ({$prefix}status IN ('pending', 'partially_approved', '') AND LOWER({$prefix}approve_role) = 'accounts')
                     OR ({$prefix}status = 'partially_approved' AND {$prefix}source_table = 'fund_requisitions')
                     OR ({$prefix}status = 'approved' AND (LOWER({$prefix}approve_role) = 'accounts' OR {$prefix}source_table IN ('payslips', 'project_incentive_claims', 'vendor_payment_requests', 'contractor_bill_requests', 'con_labor_requisitions', 'fund_requisitions', 'project_other_costs', 'project_extra_assets', 'expense_adjustments', 'land_fund_requisitions', 'con_land_requisitions')))
                 )
             )";
+            if ($isSalesHead) {
+                return "({$acctsCond} OR {$salesHeadCond})";
+            }
+            return $acctsCond;
         } elseif ($isSiteOperator && !$isManagement) {
-            return "({$prefix}status IN ('pending', 'partially_approved', '') 
+            $siteOpCond = "({$prefix}status IN ('pending', 'partially_approved', '') 
                     AND {$prefix}source_table != 'payslips'
                     AND (LOWER({$prefix}approve_role) IN ('management', 'operations', 'accounts_head') OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = '') 
                     AND ({$prefix}op_head_status != 'approved' OR {$prefix}op_head_status IS NULL))";
+            if ($isSalesHead || $userRoleId === 20 || $userRoleId === 32 || $userSecRoleId === 9 || $userSecRoleId === 20) {
+                return "({$siteOpCond} OR {$salesHeadCond})";
+            }
+            return $siteOpCond;
         } elseif ($isManagement) {
-            return "({$prefix}status IN ('pending', 'partially_approved', '') 
+            $mgmtCond = "({$prefix}status IN ('pending', 'partially_approved', '') 
                     AND (LOWER({$prefix}approve_role) IN ('management', 'operations') OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = '' OR {$prefix}source_table = 'payslips')
-                    AND ({$prefix}source_table = 'payslips' OR ({$prefix}request_amount <= 10000.01 AND {$prefix}source_table NOT IN ('vendor_payment_requests', 'contractor_bill_requests')) OR ({$prefix}op_head_status = 'approved' AND {$prefix}accounts_head_status = 'approved')))";
+                    AND ({$prefix}source_table = 'payslips' 
+                         OR ({$prefix}source_table = 'project_incentive_claims' AND {$prefix}sales_head_status = 'approved' AND {$prefix}accounts_head_status = 'approved')
+                         OR ({$prefix}request_amount <= 10000.01 AND {$prefix}source_table NOT IN ('vendor_payment_requests', 'contractor_bill_requests', 'project_incentive_claims')) 
+                         OR ({$prefix}op_head_status = 'approved' AND {$prefix}accounts_head_status = 'approved')))";
+            if ($isSalesHead) {
+                return "({$mgmtCond} OR {$salesHeadCond})";
+            }
+            return $mgmtCond;
+        } elseif ($isSalesHead) {
+            return $salesHeadCond;
         } elseif ($isQc) {
             return "({$prefix}status IN ('pending', 'partially_approved', '') 
                     AND LOWER({$prefix}approve_role) IN ('qc', 'qc_head'))";
@@ -2607,10 +2819,20 @@ class ApprovalRequest extends Model
         $userRoleId = (int)($filters['role_id'] ?? ($_SESSION['user']['role_id'] ?? 0));
         $userId = (int)($filters['user_id'] ?? ($_SESSION['user']['id'] ?? 0));
         $sessionRoleName = strtolower(trim($filters['role_name'] ?? ($_SESSION['user']['role_name'] ?? '')));
+        $userSecRoleId = (int)($filters['secondary_role_id'] ?? ($_SESSION['user']['secondary_role_id'] ?? 0));
+        if (!$userSecRoleId && $userId > 0) {
+            $secCheck = $this->db->query("SELECT secondary_role_id FROM users WHERE id = {$userId} LIMIT 1");
+            if ($secCheck && $sRow = $secCheck->fetch_assoc()) {
+                $userSecRoleId = (int)($sRow['secondary_role_id'] ?? 0);
+            }
+        }
         $isChiefOfficer = (in_array($userRoleId, [33, 34, 35], true) || in_array($sessionRoleName, ['chief officer', 'management viewer', 'seal ceo'], true));
 
         $isFullManagement = !$isChiefOfficer && (in_array($userRoleId, [1, 3, 38], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management', 'board of director', 'board of directors'], true));
         $isRole20 = in_array($userRoleId, [20, 32], true) || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false;
+        $isSalesHead = in_array(9, [$userRoleId, $userSecRoleId], true) 
+            || strpos($sessionRoleName, 'sales team head') !== false 
+            || strpos($sessionRoleName, 'sales head') !== false;
         $isAccountsHead = ($userRoleId === 30) || strpos($sessionRoleName, 'accounts head') !== false;
         $isAccounts = ($userRoleId === 6) || (strpos($sessionRoleName, 'account') !== false && !$isAccountsHead);
         $isHR = ($userRoleId === 4) || strpos($sessionRoleName, 'hr') !== false;
@@ -2661,7 +2883,17 @@ class ApprovalRequest extends Model
 
                 // Actionable pending check for current user
                 $isActionable = false;
-                if ($isAccounts) {
+                if ($srcTbl === 'project_incentive_claims') {
+                    if ($appRole === 'sales_head' && ($isSalesHead || $isRole20 || $isFullManagement)) {
+                        $isActionable = true;
+                    } elseif ($appRole === 'accounts_head' && ($isAccountsHead || $isFullManagement)) {
+                        $isActionable = true;
+                    } elseif ($appRole === 'management' && $isFullManagement) {
+                        $isActionable = true;
+                    } elseif ($appRole === 'accounts' && $isAccounts && $ahDone) {
+                        $isActionable = true;
+                    }
+                } elseif ($isAccounts) {
                     if ($appRole === 'accounts' && $ahDone) $isActionable = true;
                 } elseif ($isRole20) {
                     if ($srcTbl !== 'payslips' && in_array($rowStatus, ['pending', 'partially_approved', ''])) {
@@ -2972,6 +3204,10 @@ class ApprovalRequest extends Model
                     ar.accounts_head_by,
                     ar.accounts_head_at,
                     ar.accounts_head_note,
+                    ar.sales_head_status,
+                    ar.sales_head_by,
+                    ar.sales_head_at,
+                    ar.sales_head_note,
                     ar.op_head_status,
                     ar.op_head_by,
                     ar.op_head_at,
@@ -2982,6 +3218,9 @@ class ApprovalRequest extends Model
                     u_app.full_name AS approver_name,
                     u_app.email AS approver_email,
                     IFNULL(des_app.name, 'Management Executive') AS approver_designation,
+                    u_sh.full_name AS sales_head_name,
+                    e_sh.employee_id AS sales_head_code,
+                    IFNULL(des_sh.name, 'Sales Team Head') AS sales_head_designation,
                     u_op.full_name AS op_head_name,
                     e_op.employee_id AS op_head_code,
                     IFNULL(des_op.name, 'Admin & Operation Head') AS op_head_designation,
@@ -2995,6 +3234,9 @@ class ApprovalRequest extends Model
                 LEFT JOIN users u_app ON ar.approved_by = u_app.id
                 LEFT JOIN employees e_app ON (e_app.user_id = u_app.id OR e_app.id = u_app.employee_id)
                 LEFT JOIN designations des_app ON des_app.id = COALESCE(e_app.designation_id, u_app.designation_id)
+                LEFT JOIN users u_sh ON ar.sales_head_by = u_sh.id
+                LEFT JOIN employees e_sh ON (e_sh.user_id = u_sh.id OR e_sh.id = u_sh.employee_id)
+                LEFT JOIN designations des_sh ON des_sh.id = COALESCE(e_sh.designation_id, u_sh.designation_id)
                 LEFT JOIN users u_op ON ar.op_head_by = u_op.id
                 LEFT JOIN employees e_op ON (e_op.user_id = u_op.id OR e_op.id = u_op.employee_id)
                 LEFT JOIN designations des_op ON des_op.id = COALESCE(e_op.designation_id, u_op.designation_id)
@@ -4275,6 +4517,13 @@ class ApprovalRequest extends Model
         $userRoleId = (int)($filters['role_id'] ?? ($_SESSION['user']['role_id'] ?? 0));
         $userId = (int)($filters['user_id'] ?? ($_SESSION['user']['id'] ?? 0));
         $sessionRoleName = strtolower(trim($filters['role_name'] ?? ($_SESSION['user']['role_name'] ?? '')));
+        $userSecRoleId = (int)($filters['secondary_role_id'] ?? ($_SESSION['user']['secondary_role_id'] ?? 0));
+        if (!$userSecRoleId && $userId > 0) {
+            $secCheck = $this->db->query("SELECT secondary_role_id FROM users WHERE id = {$userId} LIMIT 1");
+            if ($secCheck && $sRow = $secCheck->fetch_assoc()) {
+                $userSecRoleId = (int)($sRow['secondary_role_id'] ?? 0);
+            }
+        }
 
         $isChiefOfficer = (in_array($userRoleId, [33, 34, 35], true) || in_array($sessionRoleName, ['chief officer', 'management viewer', 'seal ceo'], true));
 
@@ -4283,6 +4532,11 @@ class ApprovalRequest extends Model
 
         // Site Operator / Admin & Operation Head: Role 20, Role 32
         $isRole20 = in_array($userRoleId, [20, 32], true) || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false;
+
+        // Sales Team Head: Role 9 (Primary or Secondary)
+        $isSalesHead = in_array(9, [$userRoleId, $userSecRoleId], true) 
+            || strpos($sessionRoleName, 'sales team head') !== false 
+            || strpos($sessionRoleName, 'sales head') !== false;
 
         // Accounts Head: Role 30 | Accounts: Role 6
         $isAccountsHead = ($userRoleId === 30) || strpos($sessionRoleName, 'accounts head') !== false;
@@ -4317,7 +4571,7 @@ class ApprovalRequest extends Model
         $isReportingBoss = !empty($subordinateUserIds);
         $isDesignatedDeptHead = in_array($userRoleId, [5, 9, 10, 14], true) || (strpos($sessionRoleName, 'head') !== false && !in_array($userRoleId, [8, 11, 12, 16, 18, 19, 21, 23, 25]));
 
-        $isActionableByCurrentUser = function($item) use ($isChiefOfficer, $isFullManagement, $isRole20, $isAccountsHead, $isAccounts, $isHR, $isQC, $isPurchase, $isPurchaseHead, $isPM, $isReportingBoss, $isDesignatedDeptHead, $subordinateUserIds, $userId) {
+        $isActionableByCurrentUser = function($item) use ($isChiefOfficer, $isFullManagement, $isRole20, $isSalesHead, $isAccountsHead, $isAccounts, $isHR, $isQC, $isPurchase, $isPurchaseHead, $isPM, $isReportingBoss, $isDesignatedDeptHead, $subordinateUserIds, $userId) {
             // Chief Officer cannot approve anything
             if ($isChiefOfficer) {
                 return false;
@@ -4336,6 +4590,20 @@ class ApprovalRequest extends Model
             $opStatus = strtolower($item['op_head_status'] ?? 'pending');
             $isOver10k = ($amount > 10000.01);
             $srcTbl = strtolower($item['source_table'] ?? '');
+
+            // 0. Sales Incentive Claims (Multi-stage: Sales Head / Op Head -> Accounts Head -> Management -> Accounts Payout)
+            if ($srcTbl === 'project_incentive_claims') {
+                if ($approveRole === 'sales_head') {
+                    return ($isPending && ($isSalesHead || $isRole20 || $isFullManagement));
+                } elseif ($approveRole === 'accounts_head') {
+                    return ($isPending && ($isAccountsHead || $isFullManagement));
+                } elseif ($approveRole === 'management') {
+                    return ($isPending && $isFullManagement);
+                } elseif ($status === 'approved' || $approveRole === 'accounts') {
+                    return ($isAccounts && (in_array($payoutStatus, ['Pending Accounts Payout', 'Partially Paid']) || $ahStatus === 'approved'));
+                }
+                return false;
+            }
 
             // 1. Accounts Head (Role 30): Actionable = items pending Accounts Head approval OR approved and awaiting payout
             if ($isAccountsHead) {
