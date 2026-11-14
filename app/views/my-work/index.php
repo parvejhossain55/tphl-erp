@@ -1779,10 +1779,14 @@ $todayDateFormatted = date('j F');
                     <button type="button" class="mw-form-select mw-multi-btn"><span class="mw-multi-text"><?= htmlspecialchars($placeholder) ?></span></button>
                     <div class="mw-multi-panel">
                         <input type="text" class="mw-form-input mw-multi-search" placeholder="Search...">
-                        <?php foreach (($usersList ?? []) as $u): if (trim((string)$u['full_name']) === '') continue; ?>
+                        <?php foreach (($usersList ?? []) as $u): if (trim((string)$u['full_name']) === '') continue; 
+                            $rawCode = !empty($u['employee_code']) ? trim((string)$u['employee_code']) : '';
+                            $empCode = preg_replace('/^EMP-?/i', '', $rawCode);
+                            $displayName = trim((string)$u['full_name']) . ($empCode !== '' ? " ({$empCode})" : '');
+                        ?>
                             <label class="mw-multi-item">
-                                <input type="<?= $single ? 'radio' : 'checkbox' ?>" name="<?= htmlspecialchars($name) ?>" value="<?= (int)$u['id'] ?>" data-name="<?= htmlspecialchars($u['full_name']) ?>" <?= ($selectedId !== null && (int)$u['id'] === $selectedId) ? 'checked' : '' ?>>
-                                <span><?= htmlspecialchars($u['full_name']) ?></span>
+                                <input type="<?= $single ? 'radio' : 'checkbox' ?>" name="<?= htmlspecialchars($name) ?>" value="<?= (int)$u['id'] ?>" data-name="<?= htmlspecialchars($displayName) ?>" <?= ($selectedId !== null && (int)$u['id'] === $selectedId) ? 'checked' : '' ?>>
+                                <span><?= htmlspecialchars($displayName) ?></span>
                             </label>
                         <?php endforeach; ?>
                     </div>
@@ -1794,10 +1798,21 @@ $todayDateFormatted = date('j F');
                     <label class="mw-form-label">Owner</label>
                     <?php
                     $ownerName = $_SESSION['user']['full_name'] ?? ($_SESSION['user']['name'] ?? '');
-                    foreach (($usersList ?? []) as $u) { if ((int)$u['id'] === (int)$userId) { $ownerName = $u['full_name']; break; } }
+                    $ownerEmpCode = !empty($_SESSION['user']['employee_id']) ? $_SESSION['user']['employee_id'] : '';
+                    foreach (($usersList ?? []) as $u) {
+                        if ((int)$u['id'] === (int)$userId) {
+                            $ownerName = $u['full_name'];
+                            if (!empty($u['employee_code'])) {
+                                $ownerEmpCode = $u['employee_code'];
+                            }
+                            break;
+                        }
+                    }
+                    $ownerEmpCode = preg_replace('/^EMP-?/i', '', trim((string)$ownerEmpCode));
+                    $ownerDisplay = trim($ownerName) . ($ownerEmpCode !== '' ? " ({$ownerEmpCode})" : '');
                     ?>
                     <div id="taskOwnerSelect">
-                        <input type="text" class="mw-form-input" value="<?= htmlspecialchars($ownerName) ?>" readonly style="background:#F5F7F6;cursor:not-allowed;">
+                        <input type="text" class="mw-form-input" value="<?= htmlspecialchars($ownerDisplay) ?>" readonly style="background:#F5F7F6;cursor:not-allowed;">
                                             </div>
                 </div>
                 <div class="mw-form-col">
@@ -2568,7 +2583,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const tdBody = document.getElementById('mwTdBody');
     const tdNote = document.getElementById('mwTdNote');
     const tdEsc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-    const tdInitials = n => String(n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase();
+    const tdInitials = n => String(n || '?').replace(/\s*\([^)]*\)/g, '').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase();
     const tdAvatarHtml = (name, photo) => {
         if (photo) {
             return `<img src="${tdEsc(photo)}" alt="${tdEsc(name)}" class="mw-td-avatar" style="object-fit:cover;" onerror="this.outerHTML='<span class=\\'mw-td-avatar\\'>${tdEsc(tdInitials(name))}</span>'">`;

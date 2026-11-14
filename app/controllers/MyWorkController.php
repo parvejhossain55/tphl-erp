@@ -413,6 +413,7 @@ class MyWorkController extends Controller
             SELECT
                 u.id, 
                 u.full_name,
+                COALESCE(e.employee_id, u.employee_id) AS employee_code,
                 des.name AS designation
             FROM users AS u
             LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
@@ -1055,9 +1056,9 @@ class MyWorkController extends Controller
         if ($allIds) {
             $in = implode(',', $allIds); // ints only
             $res = $this->db->query("
-                SELECT u.id, u.full_name, u.photo AS user_photo, e.photo AS emp_photo
+                SELECT u.id, u.full_name, COALESCE(e.employee_id, u.employee_id) AS employee_code, u.photo AS user_photo, e.photo AS emp_photo
                 FROM users u
-                LEFT JOIN employees e ON e.user_id = u.id
+                LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
                 WHERE u.id IN ({$in})
             ");
             while ($res && ($r = $res->fetch_assoc())) {
@@ -1068,9 +1069,14 @@ class MyWorkController extends Controller
                 } elseif (!empty($r['user_photo']) && file_exists(dirname(__DIR__, 2) . '/public/uploads/users/' . $r['user_photo'])) {
                     $photo = $base . '/public/uploads/users/' . rawurlencode($r['user_photo']);
                 }
+                $rawCode = !empty($r['employee_code']) ? trim((string)$r['employee_code']) : '';
+                $empCode = preg_replace('/^EMP-?/i', '', $rawCode);
+                $displayName = ($r['full_name'] ?: 'User') . ($empCode !== '' ? " ({$empCode})" : '');
                 $peopleMap[$uid] = [
                     'id' => $uid,
-                    'name' => $r['full_name'] ?: 'User',
+                    'name' => $displayName,
+                    'raw_name' => $r['full_name'] ?: 'User',
+                    'employee_code' => $empCode,
                     'photo' => $photo
                 ];
             }
@@ -1265,8 +1271,8 @@ class MyWorkController extends Controller
                 'raw_deadline' => !empty($t['deadline']) ? $t['deadline'] : null,
                 'overdue' => $overdueText,
                 'due_badge' => $dueBadge,
-                'owner' => $t['assigned_by_name'] ?: '—',
-                'assigned_to' => $t['owner_name'] ?: '—',
+                'owner' => !empty($peopleMap[$ownerId]['name']) ? $peopleMap[$ownerId]['name'] : ($t['assigned_by_name'] ?: '—'),
+                'assigned_to' => !empty($peopleMap[$assigneeId]['name']) ? $peopleMap[$assigneeId]['name'] : ($t['owner_name'] ?: '—'),
                 'owner_user' => $personObj($ownerId, $t['assigned_by_name'] ?: '—'),
                 'assigned_user' => $personObj($assigneeId, $t['owner_name'] ?: '—'),
                 'reviewers' => $peopleList($reviewerIds),
