@@ -141,7 +141,7 @@ class ExternalApiService
 
         // Auto-sync joining_date for local employees based on Tipsoi startDate (only if not already set in ERP)
         if (is_array($employees)) {
-            $updateStmt = $this->db->prepare("UPDATE employees SET joining_date = ? WHERE employee_id = ? AND (joining_date IS NULL OR joining_date = '0000-00-00')");
+            $updateStmt = $this->db->prepare("UPDATE employees SET joining_date = ? WHERE employee_id = ? AND (joining_date IS NULL OR CAST(joining_date AS CHAR) = '0000-00-00')");
             if ($updateStmt) {
                 foreach ($employees as $extEmp) {
                     $officeId = trim((string) ($extEmp['employeeOfficeId'] ?? $extEmp['employeeId'] ?? ''));
@@ -911,7 +911,19 @@ class ExternalApiService
         // Map employee joining_date & resign_date so pre-joining and post-resignation days are never counted as absent
         $empServiceBoundsById = [];
         $empServiceBoundsByOfficeId = [];
-        $empBoundsRes = $this->db->query("SELECT id, employee_id, joining_date, resign_date FROM employees WHERE deleted_at IS NULL");
+        $empBoundsRes = false;
+        try {
+            $empBoundsRes = $this->db->query("SELECT id, employee_id, joining_date, resign_date FROM employees WHERE deleted_at IS NULL");
+        } catch (\Throwable $ebErr) {
+            $empBoundsRes = false;
+        }
+        if (!$empBoundsRes) {
+            try {
+                $empBoundsRes = $this->db->query("SELECT id, employee_id, joining_date, NULL AS resign_date FROM employees");
+            } catch (\Throwable $ebFallbackErr) {
+                $empBoundsRes = false;
+            }
+        }
         if ($empBoundsRes) {
             while ($eb = $empBoundsRes->fetch_assoc()) {
                 $eid = (int) $eb['id'];

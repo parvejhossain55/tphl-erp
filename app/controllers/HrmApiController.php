@@ -408,19 +408,39 @@ class HrmApiController extends Controller
             $localIds = [];
             $localEmails = [];
             
-            // Join with departments and designations and filter by project/effective dates
+            // Join with departments and designations and filter by project/effective dates (MySQL 8.0 NO_ZERO_DATE safe)
             $escapedToDate = $this->db->real_escape_string($toDateStr);
             $escapedFromDate = $this->db->real_escape_string($fromDateStr);
-            
-            $localQuery = $this->db->query("SELECT e.id, e.employee_id, e.email, e.full_name, e.joining_date, e.resign_date, e.department_id, d.name as department_name, des.name as designation_name 
-                                            FROM employees e 
-                                            LEFT JOIN departments d ON e.department_id = d.id 
-                                            LEFT JOIN designations des ON e.designation_id = des.id
-                                            WHERE e.deleted_at IS NULL
-                                              AND (e.employee_status = 'active' OR (e.resign_date IS NOT NULL AND e.resign_date != '0000-00-00' AND e.resign_date >= '$escapedFromDate'))
-                                              AND (e.joining_date IS NULL OR e.joining_date = '0000-00-00' OR e.joining_date <= '$escapedToDate')
-                                              AND (e.resign_date IS NULL OR e.resign_date = '0000-00-00' OR e.resign_date >= '$escapedFromDate')
-                                            ORDER BY CAST(e.employee_id AS UNSIGNED) ASC, e.employee_id ASC");
+
+            $localQuery = false;
+            try {
+                $localQuery = $this->db->query("SELECT e.id, e.employee_id, e.email, e.full_name, e.joining_date, e.resign_date, e.department_id, d.name as department_name, des.name as designation_name 
+                                                FROM employees e 
+                                                LEFT JOIN departments d ON e.department_id = d.id 
+                                                LEFT JOIN designations des ON e.designation_id = des.id
+                                                WHERE e.deleted_at IS NULL
+                                                  AND (LOWER(TRIM(COALESCE(e.employee_status, ''))) = 'active' OR (e.resign_date IS NOT NULL AND CAST(e.resign_date AS CHAR) != '0000-00-00' AND e.resign_date >= '$escapedFromDate'))
+                                                  AND (e.joining_date IS NULL OR CAST(e.joining_date AS CHAR) = '0000-00-00' OR e.joining_date <= '$escapedToDate')
+                                                  AND (e.resign_date IS NULL OR CAST(e.resign_date AS CHAR) = '0000-00-00' OR e.resign_date >= '$escapedFromDate')
+                                                ORDER BY CAST(e.employee_id AS UNSIGNED) ASC, e.employee_id ASC");
+            } catch (\Throwable $qe) {
+                error_log('HrmApiController::getAttendanceReport primary localQuery error: ' . $qe->getMessage());
+                $localQuery = false;
+            }
+
+            if (!$localQuery) {
+                try {
+                    $localQuery = $this->db->query("SELECT e.id, e.employee_id, e.email, e.full_name, e.joining_date, NULL as resign_date, e.department_id, d.name as department_name, des.name as designation_name
+                                                    FROM employees e
+                                                    LEFT JOIN departments d ON e.department_id = d.id
+                                                    LEFT JOIN designations des ON e.designation_id = des.id
+                                                    WHERE LOWER(TRIM(COALESCE(e.employee_status, ''))) = 'active'
+                                                      AND (e.joining_date IS NULL OR e.joining_date <= '$escapedToDate')
+                                                    ORDER BY CAST(e.employee_id AS UNSIGNED) ASC, e.employee_id ASC");
+                } catch (\Throwable $fqe) {
+                    error_log('HrmApiController::getAttendanceReport fallback localQuery error: ' . $fqe->getMessage());
+                }
+            }
 
             if ($localQuery) {
                 while ($row = $localQuery->fetch_assoc()) {
