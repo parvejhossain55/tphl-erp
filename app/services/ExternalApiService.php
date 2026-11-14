@@ -908,10 +908,40 @@ class ExternalApiService
         $oldTz = date_default_timezone_get();
         date_default_timezone_set('Asia/Dhaka');
 
+        // Map employee joining_date & resign_date so pre-joining and post-resignation days are never counted as absent
+        $empServiceBoundsById = [];
+        $empServiceBoundsByOfficeId = [];
+        $empBoundsRes = $this->db->query("SELECT id, employee_id, joining_date, resign_date FROM employees WHERE deleted_at IS NULL");
+        if ($empBoundsRes) {
+            while ($eb = $empBoundsRes->fetch_assoc()) {
+                $eid = (int) $eb['id'];
+                $jDate = trim((string) ($eb['joining_date'] ?? ''));
+                $rDate = trim((string) ($eb['resign_date'] ?? ''));
+                $jClean = ($jDate !== '' && $jDate !== '0000-00-00' && preg_match('/^\d{4}-\d{2}-\d{2}/', $jDate)) ? substr($jDate, 0, 10) : '';
+                $rClean = ($rDate !== '' && $rDate !== '0000-00-00' && preg_match('/^\d{4}-\d{2}-\d{2}/', $rDate)) ? substr($rDate, 0, 10) : '';
+                $bounds = ['id' => $eid, 'join' => $jClean, 'resign' => $rClean];
+                $empServiceBoundsById[$eid] = $bounds;
+                $normOid = $this->normalizeOfficeId($eb['employee_id'] ?? '');
+                if ($normOid !== '') {
+                    $empServiceBoundsByOfficeId[$normOid] = $bounds;
+                }
+            }
+        }
+
         $result = [];
         foreach ($grouped as $oid => $empBundle) {
             $meta = $empBundle['meta'];
             $days = $empBundle['days'];
+
+            $metaEmpId = !empty($meta['employee_id']) ? (int) $meta['employee_id'] : 0;
+            $normMetaOid = $this->normalizeOfficeId((string) $oid);
+            $empBounds = ($metaEmpId > 0 && isset($empServiceBoundsById[$metaEmpId]))
+                ? $empServiceBoundsById[$metaEmpId]
+                : ($empServiceBoundsByOfficeId[$normMetaOid] ?? null);
+
+            $empJoinDate = $empBounds['join'] ?? '';
+            $empResignDate = $empBounds['resign'] ?? '';
+            $resolvedErpEmpId = $empBounds['id'] ?? $metaEmpId;
 
             $attMap = [];
             $totalPresent = 0;
@@ -923,6 +953,14 @@ class ExternalApiService
             $approvedLates = 0;
 
             foreach ($days as $dayDate => $r) {
+                // Exclude dates outside employee's active service period (resign_date is inclusive last working day)
+                if ($empJoinDate !== '' && $dayDate < $empJoinDate) {
+                    continue;
+                }
+                if ($empResignDate !== '' && $dayDate > $empResignDate) {
+                    continue;
+                }
+
                 $dayAtt = !empty($r['raw_day_json']) ? json_decode($r['raw_day_json'], true) : [];
                 if (!is_array($dayAtt)) {
                     $dayAtt = [];
@@ -992,6 +1030,7 @@ class ExternalApiService
             }
 
             $result[] = [
+                'erpEmployeeId' => $resolvedErpEmpId,
                 'employeeId' => $meta['tipsoi_emp_id'] ?: $oid,
                 'employeeOfficeId' => $oid,
                 'employeeName' => $meta['employee_name'] ?? '',
