@@ -100,6 +100,50 @@ class MyWorkController extends Controller
         }
         $scopeTypes = str_repeat('i', count($scopeParams));
 
+        // Tab badge counts (independent query so existing scope/filter logic remains untouched)
+        $tabCounts = [
+            'all'                => 0,
+            'assigned_to_me'     => 0,
+            'assigned_by_me'     => 0,
+            'following'          => 0,
+            'reviewer'           => 0,
+            'realestate_project' => 0,
+            'self_initiated'     => 0,
+            'recurring'          => 0,
+        ];
+        $stmtTabCounts = $this->db->prepare("
+            SELECT
+                COUNT(*) AS cnt_all,
+                COALESCE(SUM(CASE WHEN {$assignedToMeSql} THEN 1 ELSE 0 END), 0) AS cnt_assigned_to_me,
+                COALESCE(SUM(CASE WHEN t.assigned_by = ? THEN 1 ELSE 0 END), 0) AS cnt_assigned_by_me,
+                COALESCE(SUM(CASE WHEN {$ccSql} THEN 1 ELSE 0 END), 0) AS cnt_following,
+                COALESCE(SUM(CASE WHEN {$mentionSql} THEN 1 ELSE 0 END), 0) AS cnt_reviewer,
+                COALESCE(SUM(CASE WHEN ((t.project_id IS NOT NULL AND t.project_id > 0) OR (t.todo_project_id IS NOT NULL AND t.todo_project_id > 0)) THEN 1 ELSE 0 END), 0) AS cnt_realestate_project,
+                COALESCE(SUM(CASE WHEN (t.user_id = ? AND t.assigned_by = ?) THEN 1 ELSE 0 END), 0) AS cnt_self_initiated,
+                COALESCE(SUM(CASE WHEN (t.is_recurring = 1 AND (t.user_id = ? OR t.assigned_by = ?)) THEN 1 ELSE 0 END), 0) AS cnt_recurring
+            FROM tasks t
+            WHERE {$allScopeSql}
+        ");
+        if ($stmtTabCounts) {
+            $tabCountParams = array_fill(0, 14, $userId);
+            $stmtTabCounts->bind_param(str_repeat('i', 14), ...$tabCountParams);
+            $stmtTabCounts->execute();
+            $tcRow = $stmtTabCounts->get_result()->fetch_assoc();
+            if ($tcRow) {
+                $tabCounts = [
+                    'all'                => (int) ($tcRow['cnt_all'] ?? 0),
+                    'assigned_to_me'     => (int) ($tcRow['cnt_assigned_to_me'] ?? 0),
+                    'assigned_by_me'     => (int) ($tcRow['cnt_assigned_by_me'] ?? 0),
+                    'following'          => (int) ($tcRow['cnt_following'] ?? 0),
+                    'reviewer'           => (int) ($tcRow['cnt_reviewer'] ?? 0),
+                    'realestate_project' => (int) ($tcRow['cnt_realestate_project'] ?? 0),
+                    'self_initiated'     => (int) ($tcRow['cnt_self_initiated'] ?? 0),
+                    'recurring'          => (int) ($tcRow['cnt_recurring'] ?? 0),
+                ];
+            }
+            $stmtTabCounts->close();
+        }
+
         // Metric cards: counted inside the active tab's scope
         $metricCond = [
             'overdue'   => "t.status != 'completed' AND t.deadline IS NOT NULL AND t.deadline < NOW()",
@@ -389,6 +433,7 @@ class MyWorkController extends Controller
             echo json_encode([
                 'status' => 'success',
                 'all_stats' => $allStats,
+                'tab_counts' => $tabCounts,
                 'counts' => [
                     'overdue'        => $overdueCount,
                     'due_today'      => $dueTodayCount,
@@ -457,6 +502,7 @@ class MyWorkController extends Controller
             "metricFilter"           => $metricFilter,
             "overdueCount"           => $overdueCount,
             "allStats"               => $allStats,
+            "tabCounts"              => $tabCounts,
             "dueTodayCount"          => $dueTodayCount,
             "next7DaysCount"         => $next7DaysCount,
             "waitingReviewCount"     => $waitingReviewCount,
@@ -2377,6 +2423,194 @@ class MyWorkController extends Controller
             'message' => 'Feedback and rating submitted successfully.',
             'task_id' => $id,
             'rating' => $rating
+        ]);
+        exit;
+    }
+
+    /**
+     * Send task reminder email from Task Owner to Assignee, Collaborators, Reviewers, and CC
+     * POST /my-work/send-reminder/{id}
+     */
+    public function sendReminder($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        header('Content-Type: application/json; charset=utf-8');
+        $id = (int)$id;
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        if (!$userId) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        $st = $this->db->prepare("
+            SELECT t.*, COALESCE(rp.name, tp.name, 'General') AS project_name,
+                   u_owner.full_name AS owner_name,
+                   u_assignee.full_name AS assignee_name
+            FROM tasks t
+            LEFT JOIN todo_projects tp ON t.todo_project_id = tp.id
+            LEFT JOIN projects rp ON t.project_id = rp.id
+            LEFT JOIN users u_owner ON t.assigned_by = u_owner.id
+            LEFT JOIN users u_assignee ON t.user_id = u_assignee.id
+            WHERE t.id = ?
+        ");
+        $st->bind_param("i", $id);
+        $st->execute();
+        $task = $st->get_result()->fetch_assoc();
+        $st->close();
+
+        if (!$task) {
+            echo json_encode(['status' => 'error', 'message' => 'Task not found.']);
+            exit;
+        }
+
+        // Only Task Owner (assigned_by) or Admin can send reminder
+        $isOwner = ((int)$task['assigned_by'] === $userId || in_array($roleId, [1, 3, 33], true));
+        if (!$isOwner) {
+            echo json_encode(['status' => 'error', 'message' => 'Only the task owner can send a reminder.']);
+            exit;
+        }
+
+        if ($task['status'] === 'completed') {
+            echo json_encode(['status' => 'error', 'message' => 'Cannot send a reminder for a completed task.']);
+            exit;
+        }
+
+        // Collect all recipient user IDs: Assignee, Collaborators, Reviewers, CC
+        $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
+        $assigneeId = (int)($task['user_id'] ?? 0);
+        $collabIds = $ids($task['collaborator_user_ids'] ?? '');
+        $reviewerIds = $ids($task['mentioned_user_ids'] ?? '');
+        $ccIds = $ids($task['cc_user_ids'] ?? '');
+
+        $allUserIds = array_values(array_unique(array_filter(array_merge(
+            [$assigneeId],
+            $collabIds,
+            $reviewerIds,
+            $ccIds
+        ))));
+
+        if (empty($allUserIds)) {
+            echo json_encode(['status' => 'error', 'message' => 'No recipients found for this task.']);
+            exit;
+        }
+
+        // Fetch user details (id, full_name, email)
+        $inClause = implode(',', array_map('intval', $allUserIds));
+        $resUsers = $this->db->query("SELECT id, full_name, email FROM users WHERE id IN ({$inClause})");
+        $recipients = [];
+        while ($resUsers && ($u = $resUsers->fetch_assoc())) {
+            $recipients[(int)$u['id']] = $u;
+        }
+
+        if (empty($recipients)) {
+            echo json_encode(['status' => 'error', 'message' => 'No valid user accounts found to notify.']);
+            exit;
+        }
+
+        $ownerName = $_SESSION['user']['full_name'] ?? ($task['owner_name'] ?: 'Task Owner');
+        $taskCode = 'T-' . $id;
+        $taskTitle = $task['title'] ?? 'Untitled Task';
+        $projectName = $task['project_name'] ?: 'General';
+        $priorityLabel = ucfirst($task['priority'] ?? 'medium');
+        $statusLabel = ['pending' => 'To do', 'in_progress' => 'In progress', 'completed' => 'Completed', 'expired' => 'Expired'][$task['status']] ?? 'To do';
+        $deadlineFormatted = !empty($task['deadline']) ? date('d M Y', strtotime($task['deadline'])) : 'No deadline';
+        $assigneeName = $task['assignee_name'] ?: 'Unassigned';
+
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['SERVER_PORT'] ?? 0) == 443) ? "https://" : "http://";
+        $host = $_SERVER['HTTP_HOST'] ?? 'thepremiumhomesltd.com';
+        $dashboardUrl = $protocol . $host . ($GLOBALS['base_url'] ?? '') . '/my-work-dashboard';
+
+        $emailSubject = "Reminder: [{$taskCode}] {$taskTitle}";
+        $sentEmailsCount = 0;
+        $notifiedNames = [];
+
+        foreach ($recipients as $rUid => $rUser) {
+            $rName = $rUser['full_name'] ?: 'Team Member';
+            $rEmail = trim((string)($rUser['email'] ?? ''));
+
+            // Determine role label for this recipient in the task
+            $rolesInTask = [];
+            if ($rUid === $assigneeId) $rolesInTask[] = 'Assignee';
+            if (in_array($rUid, $collabIds, true)) $rolesInTask[] = 'Collaborator';
+            if (in_array($rUid, $reviewerIds, true)) $rolesInTask[] = 'Reviewer';
+            if (in_array($rUid, $ccIds, true)) $rolesInTask[] = 'CC';
+            $roleTag = !empty($rolesInTask) ? implode(', ', $rolesInTask) : 'Team Member';
+
+            $notifiedNames[] = "{$rName} ({$roleTag})";
+
+            // 1. Send Email if valid email exists
+            if ($rEmail !== '' && filter_var($rEmail, FILTER_VALIDATE_EMAIL)) {
+                $emailBody = "
+                <div style='font-family: \"Segoe UI\", Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; padding: 32px 15px;'>
+                    <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 14px rgba(20,45,38,0.08); border: 1px solid #e2eae5;'>
+                        <div style='background: #087F5B; padding: 20px 26px;'>
+                            <div style='font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: rgba(255,255,255,0.85); margin-bottom: 4px;'>TPHL ERP &middot; Task Reminder</div>
+                            <h2 style='margin: 0; color: #ffffff; font-size: 19px; font-weight: 700;'>Gentle Reminder on Task {$taskCode}</h2>
+                        </div>
+                        <div style='padding: 26px;'>
+                            <p style='color: #142D26; font-size: 15px; margin: 0 0 12px;'>Hello <strong>" . htmlspecialchars($rName) . "</strong>,</p>
+                            <p style='color: #4A5D55; font-size: 14px; line-height: 1.6; margin: 0 0 20px;'>
+                                Task owner <strong>" . htmlspecialchars($ownerName) . "</strong> has sent a reminder regarding the following task where you are listed as <strong>" . htmlspecialchars($roleTag) . "</strong>:
+                            </p>
+                            <div style='background-color: #F8FAF9; border-left: 4px solid #087F5B; border-radius: 6px; padding: 16px 18px; margin-bottom: 22px;'>
+                                <div style='font-size: 12px; font-weight: 700; color: #087F5B; margin-bottom: 4px;'>" . htmlspecialchars($taskCode . ' · ' . $projectName) . "</div>
+                                <div style='font-size: 16px; font-weight: 700; color: #142D26; margin-bottom: 10px;'>" . htmlspecialchars($taskTitle) . "</div>
+                                <table style='width: 100%; font-size: 13px; color: #4A5D55; border-collapse: collapse;'>
+                                    <tr>
+                                        <td style='padding: 4px 0;'><strong>Assigned To:</strong> " . htmlspecialchars($assigneeName) . "</td>
+                                        <td style='padding: 4px 0;'><strong>Status:</strong> " . htmlspecialchars($statusLabel) . "</td>
+                                    </tr>
+                                    <tr>
+                                        <td style='padding: 4px 0;'><strong>Deadline:</strong> <span style='color: #C92A2A; font-weight: 600;'>" . htmlspecialchars($deadlineFormatted) . "</span></td>
+                                        <td style='padding: 4px 0;'><strong>Priority:</strong> " . htmlspecialchars($priorityLabel) . "</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div style='text-align: center; margin: 24px 0 8px;'>
+                                <a href='{$dashboardUrl}' style='background-color: #087F5B; color: #ffffff; padding: 11px 26px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block;'>Open My Work Dashboard &rarr;</a>
+                            </div>
+                        </div>
+                        <div style='background-color: #F8FAF9; padding: 14px 26px; text-align: center; border-top: 1px solid #E2EAE5;'>
+                            <p style='margin: 0; font-size: 11.5px; color: #8A9992;'>This is an automated task reminder from TPHL ERP.</p>
+                        </div>
+                    </div>
+                </div>";
+
+                if (function_exists('sendGenericMail')) {
+                    try {
+                        if (sendGenericMail($rEmail, $emailSubject, $emailBody)) {
+                            $sentEmailsCount++;
+                        }
+                    } catch (\Throwable $e) {
+                        error_log("Task Reminder Mail Error ({$rEmail}): " . $e->getMessage());
+                    }
+                }
+            }
+
+            // 2. Insert in-app notification (if recipient is not the sender themselves)
+            if ($rUid !== $userId) {
+                $notifMsg = "{$ownerName} sent a reminder for task {$taskCode}: \"{$taskTitle}\" (Deadline: {$deadlineFormatted}).";
+                $stNotif = $this->db->prepare("INSERT INTO notifications (user_id, task_id, assigned_by, message, created_at) VALUES (?, ?, ?, ?, NOW())");
+                if ($stNotif) {
+                    $stNotif->bind_param("iiis", $rUid, $id, $userId, $notifMsg);
+                    $stNotif->execute();
+                    $stNotif->close();
+                }
+            }
+        }
+
+        // 3. Log activity on the task
+        $activitySummary = "Sent a task reminder email to " . implode(', ', $notifiedNames) . ".";
+        $this->logTaskActivity($id, $userId, 'system', $activitySummary);
+
+        echo json_encode([
+            'status' => 'success',
+            'message' => "Reminder sent successfully ({$sentEmailsCount} email" . ($sentEmailsCount === 1 ? '' : 's') . " dispatched).",
+            'sent_count' => $sentEmailsCount
         ]);
         exit;
     }

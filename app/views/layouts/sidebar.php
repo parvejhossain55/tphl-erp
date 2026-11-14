@@ -199,6 +199,7 @@
 
     // Calculate pending tasks count for logged in user
     $pendingTasksCount = 0;
+    $myWorkPendingCount = 0;
     if (isset($db) && isset($_SESSION['user']['id'])) {
         $loggedUserId = (int) $_SESSION['user']['id'];
         $stmt = $db->prepare("SELECT COUNT(*) AS total FROM tasks WHERE user_id = ? AND progress < 100 AND status != 'completed'");
@@ -210,6 +211,28 @@
                 $pendingTasksCount = (int) $res->fetch_assoc()['total'];
             }
             $stmt->close();
+        }
+
+        $stmtMw = $db->prepare("
+            SELECT COUNT(*) AS total
+            FROM tasks t
+            WHERE t.status != 'completed'
+              AND (
+                  t.user_id = ?
+                  OR t.assigned_by = ?
+                  OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.collaborator_user_ids,'[',''),']',''),' ',''))
+                  OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.mentioned_user_ids,'[',''),']',''),' ',''))
+                  OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.cc_user_ids,'[',''),']',''),' ',''))
+              )
+        ");
+        if ($stmtMw) {
+            $stmtMw->bind_param("iiiii", $loggedUserId, $loggedUserId, $loggedUserId, $loggedUserId, $loggedUserId);
+            $stmtMw->execute();
+            $resMw = $stmtMw->get_result();
+            if ($resMw) {
+                $myWorkPendingCount = (int) ($resMw->fetch_assoc()['total'] ?? 0);
+            }
+            $stmtMw->close();
         }
 
         // Determine whether logged-in user is Department Head or has reporting team members / reporting boss
@@ -4380,9 +4403,9 @@
                             class="sidebar__menu-item <?= isActive(['my-work-dashboard', 'my-work-add', 'my-work-list', 'my-work-created', 'my-work-sheets'], $current_route) ? 'active' : '' ?>">
                             <div class="side-menu__icon"><i class="fas fa-briefcase"></i></div>
                             <span class="sidebar__menu-label">My Work</span>
-                            <?php if ($pendingTasksCount > 0): ?>
+                            <?php if (($myWorkPendingCount ?? 0) > 0): ?>
                                 <span class="badge bg-danger ms-auto rounded-pill"
-                                    style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $pendingTasksCount ?></span>
+                                    style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $myWorkPendingCount ?></span>
                             <?php endif; ?>
                         </a>
                     </li>

@@ -50,6 +50,7 @@ return [
     'my-work/add-comment/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'addComment'],
     'my-work/submit-feedback/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'submitFeedback'],
     'my-work/request-extension/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'requestExtension'],
+    'my-work/send-reminder/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'sendReminder'],
 
     // =========================================================================
     // Controller: EmployeeController
