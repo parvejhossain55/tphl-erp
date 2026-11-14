@@ -172,6 +172,7 @@ if (!in_array($route, $public_routes)
     && !$isPublicReceiptAccess
 ) {
     checkLogin();
+    checkDashboardAccess($route);
 } else {
     // logged in user cannot see login page
     if (!empty($_SESSION['user']['id']) && ($route === '' || $route === 'admin-login')) {

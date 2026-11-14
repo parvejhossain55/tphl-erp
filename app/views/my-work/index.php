@@ -103,10 +103,28 @@ $todayDateFormatted = date('j F');
     color: #65776F;
     padding-bottom: 12px;
     text-decoration: none;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     position: relative;
     cursor: pointer;
     transition: color 0.15s ease;
+}
+
+.mw-tab-badge {
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    padding: 3px 7px;
+    border-radius: 999px;
+    background-color: #EDF2EF;
+    color: #4D625A;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.mw-tab-item.active .mw-tab-badge {
+    background-color: #E3F6EE;
+    color: #087F5B;
 }
 
 .mw-tab-item:hover {
@@ -136,13 +154,18 @@ $todayDateFormatted = date('j F');
 @media (max-width: 768px) { .mw-td { left: 0; } }
 .mw-td-body { flex: 1; overflow-y: auto; padding: 14px 1.75% 16px 1.75%; }
 .mw-td-top { display: flex; justify-content: space-between; align-items: center; font-size: 12px; line-height: 15px; color: #65776F; }
+.mw-td-top-right { display: inline-flex; align-items: center; gap: 8px; }
+.mw-td-remind-btn { background: #F0FAF6; border: 1px solid #BBE3D0; color: #087F5B; border-radius: 6px; padding: 5px 11px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; line-height: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s ease; }
+.mw-td-remind-btn:hover:not(:disabled) { background: #087F5B; border-color: #087F5B; color: #FFFFFF; }
+.mw-td-remind-btn:disabled { opacity: 0.65; cursor: not-allowed; }
 .mw-td-close { background: none; border: 0; color: #65776F; font-size: 16px; cursor: pointer; padding: 4px; }
 .mw-td-title { font-size: 24px; line-height: 29px; font-weight: 700; color: #142D26; margin: 14px 0 12px; }
 .mw-td-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
 .mw-td-pill { font-size: 11.5px; line-height: 14px; font-weight: 700; padding: 5px 10px; border-radius: 6px; background: #EDF2EF; color: #65776F; }
 .mw-td-pill.status { background: #EEF3FC; color: #4364A5; }
 .mw-td-pill.overdue { background: #FFF5E2; color: #9A6216; }
-.mw-td-tabs { display: flex; gap: 22px; border-bottom: 1px solid #E2EAE5; margin-bottom: 16px; }
+.mw-td-tabs { display: flex; gap: 22px; align-items: center; border-bottom: 1px solid #E2EAE5; margin-bottom: 16px; }
+.mw-td-tabs .mw-td-remind-btn { margin-left: auto; margin-bottom: 6px; }
 .mw-td-tab { background: none; border: 0; padding: 0 0 9px; font-size: 13px; line-height: 16px; font-weight: 700; color: #65776F; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
 .mw-td-tab.active { color: #087F5B; border-bottom-color: #087F5B; }
 .mw-td-blocked { background: #FFF5E2; color: #9A6216; border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; }
@@ -1365,23 +1388,30 @@ $todayDateFormatted = date('j F');
     </div>
 
     <!-- Scope Tabs (Single-page Ajax switching) -->
+    <?php
+    $tc = $tabCounts ?? [];
+    $renderTabBadge = function (string $key) use ($tc): string {
+        $c = (int)($tc[$key] ?? 0);
+        return '<span class="mw-tab-badge" data-tab-count="' . $key . '"' . ($c > 0 ? '' : ' style="display:none;"') . '>' . ($c > 0 ? $c : '') . '</span>';
+    };
+    ?>
     <div class="mw-tabs-wrap">
         <a class="mw-tab-item <?= $tab === 'all' ? 'active' : '' ?>" 
-           data-tab="all" href="javascript:void(0);">All</a>
+           data-tab="all" href="javascript:void(0);">All <?= $renderTabBadge('all') ?></a>
         <a class="mw-tab-item <?= $tab === 'assigned_to_me' ? 'active' : '' ?>" 
-           data-tab="assigned_to_me" href="javascript:void(0);">Assigned to me</a>
+           data-tab="assigned_to_me" href="javascript:void(0);">Assigned to me <?= $renderTabBadge('assigned_to_me') ?></a>
         <a class="mw-tab-item <?= $tab === 'assigned_by_me' ? 'active' : '' ?>" 
-           data-tab="assigned_by_me" href="javascript:void(0);">Assigned by me</a>
+           data-tab="assigned_by_me" href="javascript:void(0);">Assigned by me <?= $renderTabBadge('assigned_by_me') ?></a>
         <a class="mw-tab-item <?= $tab === 'following' ? 'active' : '' ?>" 
-           data-tab="following" href="javascript:void(0);">Following</a>
+           data-tab="following" href="javascript:void(0);">Following <?= $renderTabBadge('following') ?></a>
         <a class="mw-tab-item <?= $tab === 'reviewer' ? 'active' : '' ?>" 
-           data-tab="reviewer" href="javascript:void(0);">Reviewer</a>
+           data-tab="reviewer" href="javascript:void(0);">Reviewer <?= $renderTabBadge('reviewer') ?></a>
         <a class="mw-tab-item <?= $tab === 'realestate_project' ? 'active' : '' ?>" 
-           data-tab="realestate_project" href="javascript:void(0);">Realestate Project</a>
+           data-tab="realestate_project" href="javascript:void(0);">Realestate Project <?= $renderTabBadge('realestate_project') ?></a>
         <a class="mw-tab-item <?= $tab === 'self_initiated' ? 'active' : '' ?>" 
-           data-tab="self_initiated" href="javascript:void(0);">Self-Initiated Task</a>
+           data-tab="self_initiated" href="javascript:void(0);">Self-Initiated Task <?= $renderTabBadge('self_initiated') ?></a>
         <a class="mw-tab-item <?= $tab === 'recurring' ? 'active' : '' ?>" 
-           data-tab="recurring" href="javascript:void(0);">Recurring Task</a>
+           data-tab="recurring" href="javascript:void(0);">Recurring Task <?= $renderTabBadge('recurring') ?></a>
     </div>
 
     <!-- Summary cards (all tabs, scoped to the active tab) -->
@@ -1779,10 +1809,14 @@ $todayDateFormatted = date('j F');
                     <button type="button" class="mw-form-select mw-multi-btn"><span class="mw-multi-text"><?= htmlspecialchars($placeholder) ?></span></button>
                     <div class="mw-multi-panel">
                         <input type="text" class="mw-form-input mw-multi-search" placeholder="Search...">
-                        <?php foreach (($usersList ?? []) as $u): if (trim((string)$u['full_name']) === '') continue; ?>
+                        <?php foreach (($usersList ?? []) as $u): if (trim((string)$u['full_name']) === '') continue; 
+                            $rawCode = !empty($u['employee_code']) ? trim((string)$u['employee_code']) : '';
+                            $empCode = preg_replace('/^EMP-?/i', '', $rawCode);
+                            $displayName = trim((string)$u['full_name']) . ($empCode !== '' ? " ({$empCode})" : '');
+                        ?>
                             <label class="mw-multi-item">
-                                <input type="<?= $single ? 'radio' : 'checkbox' ?>" name="<?= htmlspecialchars($name) ?>" value="<?= (int)$u['id'] ?>" data-name="<?= htmlspecialchars($u['full_name']) ?>" <?= ($selectedId !== null && (int)$u['id'] === $selectedId) ? 'checked' : '' ?>>
-                                <span><?= htmlspecialchars($u['full_name']) ?></span>
+                                <input type="<?= $single ? 'radio' : 'checkbox' ?>" name="<?= htmlspecialchars($name) ?>" value="<?= (int)$u['id'] ?>" data-name="<?= htmlspecialchars($displayName) ?>" <?= ($selectedId !== null && (int)$u['id'] === $selectedId) ? 'checked' : '' ?>>
+                                <span><?= htmlspecialchars($displayName) ?></span>
                             </label>
                         <?php endforeach; ?>
                     </div>
@@ -1794,10 +1828,21 @@ $todayDateFormatted = date('j F');
                     <label class="mw-form-label">Owner</label>
                     <?php
                     $ownerName = $_SESSION['user']['full_name'] ?? ($_SESSION['user']['name'] ?? '');
-                    foreach (($usersList ?? []) as $u) { if ((int)$u['id'] === (int)$userId) { $ownerName = $u['full_name']; break; } }
+                    $ownerEmpCode = !empty($_SESSION['user']['employee_id']) ? $_SESSION['user']['employee_id'] : '';
+                    foreach (($usersList ?? []) as $u) {
+                        if ((int)$u['id'] === (int)$userId) {
+                            $ownerName = $u['full_name'];
+                            if (!empty($u['employee_code'])) {
+                                $ownerEmpCode = $u['employee_code'];
+                            }
+                            break;
+                        }
+                    }
+                    $ownerEmpCode = preg_replace('/^EMP-?/i', '', trim((string)$ownerEmpCode));
+                    $ownerDisplay = trim($ownerName) . ($ownerEmpCode !== '' ? " ({$ownerEmpCode})" : '');
                     ?>
                     <div id="taskOwnerSelect">
-                        <input type="text" class="mw-form-input" value="<?= htmlspecialchars($ownerName) ?>" readonly style="background:#F5F7F6;cursor:not-allowed;">
+                        <input type="text" class="mw-form-input" value="<?= htmlspecialchars($ownerDisplay) ?>" readonly style="background:#F5F7F6;cursor:not-allowed;">
                                             </div>
                 </div>
                 <div class="mw-form-col">
@@ -2090,6 +2135,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     setTxt('allDeadlineToday', s.deadline_today);
                     setTxt('allDeadlineMissed', s.deadline_missed);
                     setTxt('allCompletionRate', s.completion_rate + '%');
+                }
+                if (data.tab_counts) {
+                    Object.keys(data.tab_counts).forEach(k => {
+                        const badgeEl = document.querySelector(`.mw-tab-badge[data-tab-count="${k}"]`);
+                        if (badgeEl) {
+                            const cnt = parseInt(data.tab_counts[k], 10) || 0;
+                            badgeEl.innerText = cnt > 0 ? cnt : '';
+                            badgeEl.style.display = cnt > 0 ? '' : 'none';
+                        }
+                    });
                 }
                 if (data.counts) {
                     if (badgeOpen) badgeOpen.innerText = `${data.counts.open} open`;
@@ -2568,7 +2623,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const tdBody = document.getElementById('mwTdBody');
     const tdNote = document.getElementById('mwTdNote');
     const tdEsc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-    const tdInitials = n => String(n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase();
+    const tdInitials = n => String(n || '?').replace(/\s*\([^)]*\)/g, '').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase();
     const tdAvatarHtml = (name, photo) => {
         if (photo) {
             return `<img src="${tdEsc(photo)}" alt="${tdEsc(name)}" class="mw-td-avatar" style="object-fit:cover;" onerror="this.outerHTML='<span class=\\'mw-td-avatar\\'>${tdEsc(tdInitials(name))}</span>'">`;
@@ -2597,6 +2652,43 @@ document.addEventListener('DOMContentLoaded', function () {
     function renderTaskDetail(t) {
         currentDetailTaskId = t.id;
         const isReviewerView = Boolean(t.is_reviewer && (t.is_completed || t.status === 'completed' || t.status_class === 'in_review'));
+        const remindBtnHtml = (t.is_owner && !t.is_completed)
+            ? `<button type="button" class="mw-td-remind-btn" id="btnSendTaskReminder" title="Send email reminder to Assignee, Collaborators, Reviewer & CC">
+                <i class="fa-regular fa-bell"></i> Remind
+               </button>`
+            : '';
+        const bindRemindBtn = () => {
+            const btnRemind = tdBody.querySelector('#btnSendTaskReminder');
+            if (!btnRemind) return;
+            btnRemind.addEventListener('click', function() {
+                btnRemind.disabled = true;
+                btnRemind.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending...';
+
+                fetch(`${baseUrl}/my-work/send-reminder/${t.id}`, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showMwToast(data.message || 'Reminder email sent to all task members!', 'success');
+                        const activeTabEl = tdBody.querySelector('.mw-td-tab.active');
+                        const activePaneIdx = activeTabEl ? activeTabEl.getAttribute('data-pane') : null;
+                        openTaskDetail(t.id, activePaneIdx);
+                    } else {
+                        showMwToast(data.message || 'Failed to send reminder.', 'error');
+                        btnRemind.disabled = false;
+                        btnRemind.innerHTML = '<i class="fa-regular fa-bell"></i> Remind';
+                    }
+                })
+                .catch(err => {
+                    console.error('Error sending task reminder:', err);
+                    showMwToast('Network error while sending reminder.', 'error');
+                    btnRemind.disabled = false;
+                    btnRemind.innerHTML = '<i class="fa-regular fa-bell"></i> Remind';
+                });
+            });
+        };
 
         if (isReviewerView) {
             // =========================================================================
@@ -2658,9 +2750,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     <button type="button" class="mw-td-close" id="mwTdClose" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <h2 class="mw-td-title" style="font-size:25px; line-height:30px; margin:14px 0 12px;">${tdEsc(t.title)}</h2>
-                <div class="mw-td-pills" style="margin-bottom:18px;">
+                <div class="mw-td-pills" style="margin-bottom:18px; align-items:center;">
                     <span class="mw-td-pill in-review">In review</span>
                     ${t.due_badge ? `<span class="mw-td-pill ${t.overdue ? 'overdue' : ''}">${tdEsc(t.due_badge)}</span>` : ''}
+                    ${remindBtnHtml ? `<span style="margin-left:auto;">${remindBtnHtml}</span>` : ''}
                 </div>
 
                 <!-- Your review is needed banner -->
@@ -2724,6 +2817,7 @@ document.addEventListener('DOMContentLoaded', function () {
             `;
 
             tdBody.querySelector('#mwTdClose').addEventListener('click', closeTaskDetail);
+            bindRemindBtn();
 
             // Configure footer for Reviewer
             const footActions = document.querySelector('.mw-td-foot-actions');
@@ -3063,15 +3157,17 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         tdBody.innerHTML = `
-            <div class="mw-td-top"><span>${tdEsc(t.code)} · ${tdEsc(t.project)}</span>
-                <button type="button" class="mw-td-close" id="mwTdClose" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
+            <div class="mw-td-top">
+                <span>${tdEsc(t.code)} · ${tdEsc(t.project)}</span>
+                <button type="button" class="mw-td-close" id="mwTdClose" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
             <h2 class="mw-td-title">${tdEsc(t.title)}</h2>
             <div class="mw-td-pills">
                 <span class="mw-td-pill status" id="mwTdStatusPill">${tdEsc(t.status_label)}</span>
                 <span class="mw-td-pill">${tdEsc(t.priority)} priority</span>
                 ${t.overdue ? `<span class="mw-td-pill overdue">${tdEsc(t.overdue)}</span>` : ''}
             </div>
-            <div class="mw-td-tabs">${tabsHtml}</div>
+            <div class="mw-td-tabs">${tabsHtml}${remindBtnHtml}</div>
             <div data-td-pane="0">
                 ${blocked}
                 <div class="mw-td-grid">
@@ -3107,6 +3203,7 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>`;
         tdNote.innerText = t.blocked ? 'Resolve the blocker before submitting for review.' : '';
         tdBody.querySelector('#mwTdClose').addEventListener('click', closeTaskDetail);
+        bindRemindBtn();
         tdBody.querySelectorAll('.mw-td-tab').forEach(b => b.addEventListener('click', () => {
             tdBody.querySelectorAll('.mw-td-tab').forEach(x => x.classList.toggle('active', x === b));
             tdBody.querySelectorAll('[data-td-pane]').forEach(p => p.style.display = p.dataset.tdPane === b.dataset.pane ? '' : 'none');
