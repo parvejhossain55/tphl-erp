@@ -161,11 +161,12 @@ $resUsers = $db->query("
     SELECT
         u.id,
         u.full_name,
-        COALESCE(NULLIF(TRIM(u.email), ''), NULLIF(TRIM(e.email), '')) AS email
+        COALESCE(
+            NULLIF(TRIM(u.email), ''),
+            (SELECT NULLIF(TRIM(e.email), '') FROM employees e WHERE (e.user_id = u.id OR e.id = u.employee_id) AND e.deleted_at IS NULL LIMIT 1)
+        ) AS email
     FROM users u
-    LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
     WHERE u.id IN ({$inClause})
-    GROUP BY u.id
 ");
 
 $usersInfo = [];
