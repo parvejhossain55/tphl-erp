@@ -70,7 +70,11 @@ $months = [
                 <select name="project_id" id="filterProject" class="form-select form-select-sm text-dark fw-medium" style="height: 34px; font-size: 13px; border-color: #dee2e6;">
                     <option value="">All Projects</option>
                     <?php if (!empty($payroll_projects)): ?>
-                        <?php foreach ($payroll_projects as $proj): ?>
+                        <?php foreach ($payroll_projects as $proj):
+                            $projLabelDate = (!empty($proj['is_custom_date']) && !empty($proj['end_date']) && $proj['end_date'] !== '0000-00-00')
+                                ? $proj['end_date']
+                                : ($proj['date'] ?? '');
+                        ?>
                             <option value="<?= htmlspecialchars($proj['id']) ?>"
                                 data-date="<?= htmlspecialchars($proj['date'] ?? '') ?>"
                                 data-iscustom="<?= htmlspecialchars($proj['is_custom_date'] ?? '0') ?>"
@@ -78,7 +82,7 @@ $months = [
                                 data-end="<?= htmlspecialchars($proj['end_date'] ?? '') ?>"
                                 <?= (isset($selectedProjectId) && $selectedProjectId == $proj['id']) ? 'selected' : '' ?>>
                                 <?= htmlspecialchars($proj['name']) ?>
-                                <?= !empty($proj['date']) ? '(' . date('M Y', strtotime($proj['date'])) . ')' : '' ?>
+                                <?= !empty($projLabelDate) ? '(' . date('M Y', strtotime($projLabelDate)) . ')' : '' ?>
                             </option>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -226,7 +230,7 @@ $months = [
                     <div class="form-check form-switch m-0 d-inline-flex align-items-center" style="gap: 8px; padding-left: 2.2em;">
                         <input class="form-check-input m-0" type="checkbox" id="filterLwpOnly" style="cursor: pointer; margin-left: -2.2em !important;">
                         <label class="form-check-label text-secondary fw-medium" style="font-size: 12.5px; cursor: pointer;" for="filterLwpOnly">
-                            Show LWP Only
+                            Show LWP / Absent Only
                         </label>
                     </div>
                 </div>
@@ -268,7 +272,8 @@ $months = [
                             <th>Email</th>
                             <th>Joining Date</th>
                             <th>Gross Salary (Monthly)</th>
-                            <th>LWP Days</th>
+                            <th>Net Payable</th>
+                            <th>LWP / Absent</th>
                             <th>Approval Time</th>
                             <th>Status</th>
                             <th class="">Action</th>
@@ -289,6 +294,11 @@ $months = [
                                                  alt="User Image"><strong class="ps-2"><?= htmlspecialchars($payslip['employee_office_id'] ?? '') ?></strong></a>
                                          <a href="<?= $GLOBALS['base_url'] ?>/employee-profile/<?= $payslip['employee_id'] ?>"><?= $payslip['employee_name'] ?></a>
                                     </span>
+                                    <?php if (empty($selectedProjectId) && !empty($payslip['project_name'])): ?>
+                                        <br><span class="badge bg-light text-secondary border px-1 py-0 mt-1" style="font-size: 10px;" title="Payroll Project">
+                                            <i class="fa-regular fa-folder-open me-1"></i><?= htmlspecialchars($payslip['project_name']) ?>
+                                        </span>
+                                    <?php endif; ?>
                                     <?php if (!empty($payslip['email_sent_at'])): ?>
                                         <br><span class="badge bg-success-subtle text-success border border-success-subtle px-1 py-0 mt-1" style="font-size: 10px;" title="Emailed on <?= date('d M Y H:i', strtotime($payslip['email_sent_at'])) ?>">
                                             <i class="fa-solid fa-circle-check me-1"></i>Emailed
@@ -298,28 +308,33 @@ $months = [
                                 <td class="table__employee-position"><?= $payslip['desgination_name'] ?></td>
                                 <td class="table__employee-department"><?= htmlspecialchars($payslip['department_name'] ?? 'N/A') ?></td>
                                 <td class="table__employee-email">
-                                    <a href="mailto:<?= htmlspecialchars($payslip['email']) ?>">
-                                        <?= htmlspecialchars($payslip['email']) ?>
+                                    <a href="mailto:<?= htmlspecialchars((string)($payslip['email'] ?? '')) ?>">
+                                        <?= htmlspecialchars((string)($payslip['email'] ?? '')) ?>
                                     </a>
                                 </td>
 
 
                                 <td class="table__joining-date"><?= $payslip['joining_date'] ?></td>
 
-                                <td class="table__salary"><?= $payslip['net_salary'] ?></td>
+                                <td class="table__salary"><?= number_format((float)($payslip['emp_gross_salary'] ?? 0), 2) ?></td>
+                                <td class="table__net-salary fw-bold text-success"><?= number_format((float)($payslip['net_salary'] ?? 0), 2) ?></td>
                                 <?php
-                                $lwpAmount = (float)($payslip['lwp_amount'] ?? 0);
+                                $lwpAmount = (float)($payslip['lwp_amount'] ?? ($payslip['unpaid_absent_amount'] ?? 0));
                                 $grossSalary = (float)($payslip['emp_gross_salary'] ?? 0);
+                                $savedLwpDays = isset($payslip['late_unpaid_absent_days']) ? (float)$payslip['late_unpaid_absent_days'] : 0.0;
+                                $rowCycleDays = !empty($payslip['cycle_days']) ? (int)$payslip['cycle_days'] : 30;
                                 $phpLwpDays = 0;
-                                if ($lwpAmount > 0 && $grossSalary > 0) {
-                                    $perDay = $grossSalary / 30;
-                                    $phpLwpDays = (int)round($lwpAmount / $perDay);
+                                if ($savedLwpDays > 0) {
+                                    $phpLwpDays = $savedLwpDays;
+                                } elseif ($lwpAmount > 0 && $grossSalary > 0 && $rowCycleDays > 0) {
+                                    $perDay = $grossSalary / $rowCycleDays;
+                                    $phpLwpDays = round($lwpAmount / $perDay, 2);
                                 }
                                 ?>
                                 <td class="table__lwp-days text-center" 
-                                    data-emp-office-id="<?= htmlspecialchars($payslip['employee_office_id'] ?? '') ?>" 
+                                    data-emp-office-id="<?= htmlspecialchars((string)($payslip['employee_office_id'] ?? '')) ?>" 
                                     data-emp-id="<?= $payslip['employee_id'] ?>" 
-                                    data-emp-name="<?= htmlspecialchars($payslip['employee_name']) ?>"
+                                    data-emp-name="<?= htmlspecialchars((string)($payslip['employee_name'] ?? '')) ?>"
                                     data-php-lwp-days="<?= $phpLwpDays ?>">
                                     <div class="spinner-border spinner-border-sm text-secondary" role="status"></div>
                                 </td>
@@ -381,7 +396,7 @@ $months = [
                                              <a href="<?= $GLOBALS['base_url'] ?>/show-payslip/<?= $payslip['id'] ?>?print=1" class="table__icon download" title="Print Payslip">
                                                  <i class="fas fa-print"></i>
                                              </a>
-                                             <button type="button" class="table__icon text-primary border-0 bg-transparent p-0" title="Email Payslip" onclick="sendSinglePayslipEmail(<?= $payslip['id'] ?>, '<?= htmlspecialchars(addslashes($payslip['employee_name'])) ?>', '<?= htmlspecialchars(addslashes($payslip['email'] ?? '')) ?>')">
+                                             <button type="button" class="table__icon text-primary border-0 bg-transparent p-0" title="Email Payslip" onclick="sendSinglePayslipEmail(<?= $payslip['id'] ?>, '<?= htmlspecialchars(addslashes((string)($payslip['employee_name'] ?? ''))) ?>', '<?= htmlspecialchars(addslashes((string)($payslip['email'] ?? ''))) ?>')">
                                                  <i class="fa-regular fa-envelope"></i>
                                              </button>
                                              <a href="<?= $GLOBALS['base_url'] ?>/delete-payslip/<?= $payslip['id'] ?>" onclick="return confirm('Are you sure you want to delete this payslip?')" class="table__icon text-danger" title="Delete Payslip">
@@ -426,6 +441,7 @@ $months = [
                         <th>Email</th>
                         <th>Joining Date</th>
                         <th>Gross Salary (Monthly)</th>
+                        <th>Net Payable</th>
                         <th>Status</th>
                         <th class="">Action</th>
                     </tr>
@@ -450,16 +466,17 @@ $months = [
                                 </td>
                                 <td class="table__employee-position"><?= $payslip['desgination_name'] ?></td>
                                 <td class="table__employee-department"><?= htmlspecialchars($payslip['department_name'] ?? 'N/A') ?></td>
-                                <td class="table__employee-email"><a href="mailto:<?= htmlspecialchars($payslip['email']) ?>"><?= htmlspecialchars($payslip['email']) ?></a></td>
+                                <td class="table__employee-email"><a href="mailto:<?= htmlspecialchars((string)($payslip['email'] ?? '')) ?>"><?= htmlspecialchars((string)($payslip['email'] ?? '')) ?></a></td>
                                 <td class="table__joining-date"><?= $payslip['joining_date'] ?></td>
-                                <td class="table__salary"><?= $payslip['net_salary'] ?></td>
+                                <td class="table__salary"><?= number_format((float)($payslip['emp_gross_salary'] ?? 0), 2) ?></td>
+                                <td class="table__net-salary fw-bold text-success"><?= number_format((float)($payslip['net_salary'] ?? 0), 2) ?></td>
                                 <td class="table__delivery"><span class="bd-badge bg-secondary">Draft / Certificate</span></td>
                                 <td class="able__icon-box">
                                     <div class="d-flex align-items-center justify-content-start gap-10">
                                         <span class="badge bg-secondary-subtle text-secondary border py-2 px-2" style="font-size: 11px;">Draft Certificate</span>
                                         <a href="<?= $GLOBALS['base_url'] ?>/show-payslip/<?= $payslip['id'] ?>" class="table__icon download" title="View Payslip"><i class="fa-regular fa-eye"></i></a>
                                         <a href="<?= $GLOBALS['base_url'] ?>/show-payslip/<?= $payslip['id'] ?>?print=1" class="table__icon download" title="Print Payslip"><i class="fas fa-print"></i></a>
-                                        <button type="button" class="table__icon text-primary border-0 bg-transparent p-0" title="Email Salary Certificate" onclick="sendSinglePayslipEmail(<?= $payslip['id'] ?>, '<?= htmlspecialchars(addslashes($payslip['employee_name'])) ?>', '<?= htmlspecialchars(addslashes($payslip['email'] ?? '')) ?>')">
+                                        <button type="button" class="table__icon text-primary border-0 bg-transparent p-0" title="Email Salary Certificate" onclick="sendSinglePayslipEmail(<?= $payslip['id'] ?>, '<?= htmlspecialchars(addslashes((string)($payslip['employee_name'] ?? ''))) ?>', '<?= htmlspecialchars(addslashes((string)($payslip['email'] ?? ''))) ?>')">
                                             <i class="fa-regular fa-envelope"></i>
                                         </button>
                                         <a href="<?= $GLOBALS['base_url'] ?>/delete-payslip/<?= $payslip['id'] ?>" onclick="return confirm('Are you sure you want to delete this payslip?')" class="table__icon text-danger" title="Delete Payslip"><i class="fa-regular fa-trash-can"></i></a>
@@ -469,7 +486,7 @@ $months = [
                         <?php endforeach; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="10" class="text-center text-muted py-3">No draft salary certificates found for this month.</td>
+                            <td colspan="11" class="text-center text-muted py-3">No draft salary certificates found for this month.</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
@@ -660,15 +677,43 @@ $months = [
         });
 
         // -------------------------------------------------------------
-        // Fetch and Populate LWP Days for Selected Month
+        // Fetch and Populate LWP Days for Selected Cycle (26th–25th or Custom Project)
         // -------------------------------------------------------------
+        <?php
+        $lwpCycleYear  = (int) ($selectedYear ?: date('Y'));
+        $lwpCycleMonth = (int) ($selectedMonth ?: date('m'));
+        $prevMonthNum  = $lwpCycleMonth === 1 ? 12 : ($lwpCycleMonth - 1);
+        $prevYearNum   = $lwpCycleMonth === 1 ? ($lwpCycleYear - 1) : $lwpCycleYear;
+        $cycleStartForLwp = sprintf('%04d-%02d-26', $prevYearNum, $prevMonthNum);
+        $cycleEndForLwp   = sprintf('%04d-%02d-25', $lwpCycleYear, $lwpCycleMonth);
+        if (!empty($selectedProjectId) && !empty($payroll_projects)) {
+            foreach ($payroll_projects as $pRowLwp) {
+                if ((int) ($pRowLwp['id'] ?? 0) === (int) $selectedProjectId) {
+                    if (!empty($pRowLwp['is_custom_date']) && !empty($pRowLwp['start_date']) && !empty($pRowLwp['end_date']) && $pRowLwp['start_date'] !== '0000-00-00' && $pRowLwp['end_date'] !== '0000-00-00') {
+                        $cycleStartForLwp = substr($pRowLwp['start_date'], 0, 10);
+                        $cycleEndForLwp   = substr($pRowLwp['end_date'], 0, 10);
+                    } elseif (!empty($pRowLwp['date'])) {
+                        $dp = explode('-', $pRowLwp['date']);
+                        if (count($dp) >= 2) {
+                            $py = (int) $dp[0];
+                            $pm = (int) $dp[1];
+                            $prevM = $pm === 1 ? 12 : ($pm - 1);
+                            $prevY = $pm === 1 ? ($py - 1) : $py;
+                            $cycleStartForLwp = sprintf('%04d-%02d-26', $prevY, $prevM);
+                            $cycleEndForLwp   = sprintf('%04d-%02d-25', $py, $pm);
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+        ?>
         const base_url = '<?= $GLOBALS['base_url'] ?>';
         const selectedYear = "<?= $selectedYear ?>";
         const selectedMonth = "<?= $selectedMonth ?>";
 
-        const firstDay = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`;
-        const lastDayVal = new Date(selectedYear, selectedMonth, 0).getDate();
-        const lastDay = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(lastDayVal).padStart(2, '0')}`;
+        const firstDay = "<?= $cycleStartForLwp ?>";
+        const lastDay = "<?= $cycleEndForLwp ?>";
 
         const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
         const selectedMonthName = monthNames[parseInt(selectedMonth, 10) - 1];
@@ -683,10 +728,16 @@ $months = [
 
         function getDatesInRange(startDateStr, endDateStr) {
             const dates = [];
-            let current = new Date(startDateStr);
-            const end = new Date(endDateStr);
+            const sClean = String(startDateStr || '').slice(0, 10);
+            const eClean = String(endDateStr || '').slice(0, 10);
+            if (!sClean || !eClean) return dates;
+            let current = new Date(sClean + 'T00:00:00');
+            const end = new Date(eClean + 'T00:00:00');
             while (current <= end) {
-                dates.push(current.toISOString().split('T')[0]);
+                const y = current.getFullYear();
+                const m = String(current.getMonth() + 1).padStart(2, '0');
+                const day = String(current.getDate()).padStart(2, '0');
+                dates.push(`${y}-${m}-${day}`);
                 current.setDate(current.getDate() + 1);
             }
             return dates;
@@ -823,9 +874,8 @@ $months = [
                         const officeId = normalizeId(rec.employeeOfficeId);
                         const dates = getDatesInRange(rec.from, rec.to);
                         
-                        const monthPattern = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`;
                         dates.forEach(d => {
-                            if (d.startsWith(monthPattern)) {
+                            if (d >= firstDay && d <= lastDay) {
                                 if (!empGroups[officeId]) {
                                     empGroups[officeId] = {
                                         datesList: new Set(),
@@ -844,45 +894,45 @@ $months = [
 
                 // Keep debug banner hidden in production UI
 
+                const formatUnpaidDays = (val) => {
+                    const num = parseFloat(val) || 0;
+                    return Number.isInteger(num) ? String(num) : String(parseFloat(num.toFixed(2)));
+                };
+
                 cells.forEach(cell => {
                     const rawId = cell.dataset.empOfficeId || '';
                     const officeId = normalizeId(rawId);
                     const empName = cell.dataset.empName || '';
                     const parentRow = cell.closest('tr');
-                    const phpLwpDays = parseInt(cell.getAttribute('data-php-lwp-days') || '0', 10);
+                    const phpLwpDays = parseFloat(cell.getAttribute('data-php-lwp-days') || '0') || 0;
+                    const datesArray = empGroups[officeId] ? Array.from(empGroups[officeId].datesList).sort() : [];
+                    const lwpLeaveCount = datesArray.length;
+                    const totalUnpaidDays = phpLwpDays > 0 ? phpLwpDays : lwpLeaveCount;
 
-                    console.log("Cell rawId:", rawId, "normalized officeId:", officeId, "matches group:", !!empGroups[officeId]);
+                    parentRow.setAttribute('data-lwp-dates-json', JSON.stringify(datesArray));
 
-                    if (empGroups[officeId]) {
-                        const datesArray = Array.from(empGroups[officeId].datesList).sort();
-                        const count = datesArray.length;
-                        
-                        parentRow.setAttribute('data-lwp-days', count);
-                        parentRow.setAttribute('data-lwp-dates-json', JSON.stringify(datesArray));
-
+                    if (totalUnpaidDays > 0) {
+                        const dispDays = formatUnpaidDays(totalUnpaidDays);
+                        parentRow.setAttribute('data-lwp-days', String(totalUnpaidDays));
+                        const eyeBtnHtml = lwpLeaveCount > 0 ? `
+                            <button type="button" class="btn btn-xs btn-link p-0 text-decoration-none view-lwp-breakdown" 
+                                    title="View Approved LWP Dates"
+                                    data-name="${empName}" 
+                                    data-total="${dispDays}"
+                                    data-count="${lwpLeaveCount}"
+                                    data-id="${officeId}">
+                                <i class="fa-regular fa-eye text-primary" style="font-size:0.85rem;"></i>
+                            </button>
+                        ` : '';
                         cell.innerHTML = `
                             <div class="d-flex align-items-center justify-content-center gap-1 animate__animated animate__fadeIn">
-                                <span class="badge bg-danger-subtle text-danger px-2 py-1 fw-bold border border-danger-subtle">${count} Days</span>
-                                <button type="button" class="btn btn-xs btn-link p-0 text-decoration-none view-lwp-breakdown" 
-                                        data-name="${empName}" 
-                                        data-count="${count}"
-                                        data-id="${officeId}">
-                                    <i class="fa-regular fa-eye text-primary" style="font-size:0.85rem;"></i>
-                                </button>
+                                <span class="badge bg-danger-subtle text-danger px-2 py-1 fw-bold border border-danger-subtle">${dispDays} Days</span>
+                                ${eyeBtnHtml}
                             </div>
                         `;
                     } else {
-                        if (phpLwpDays > 0) {
-                            parentRow.setAttribute('data-lwp-days', phpLwpDays);
-                            cell.innerHTML = `
-                                <div class="d-flex align-items-center justify-content-center gap-1 animate__animated animate__fadeIn">
-                                    <span class="badge bg-danger-subtle text-danger px-2 py-1 fw-bold border border-danger-subtle">${phpLwpDays} Days</span>
-                                </div>
-                            `;
-                        } else {
-                            parentRow.setAttribute('data-lwp-days', '0');
-                            cell.innerHTML = `<span class="text-muted" style="font-size: 0.85rem;">—</span>`;
-                        }
+                        parentRow.setAttribute('data-lwp-days', '0');
+                        cell.innerHTML = `<span class="text-muted" style="font-size: 0.85rem;">—</span>`;
                     }
                 });
 
@@ -890,6 +940,7 @@ $months = [
                     btn.addEventListener('click', function(e) {
                         e.preventDefault();
                         const name = this.dataset.name;
+                        const totalDays = this.dataset.total || this.dataset.count;
                         const count = this.dataset.count;
                         const row = this.closest('tr');
                         const dates = JSON.parse(row.getAttribute('data-lwp-dates-json') || '[]');
@@ -900,14 +951,15 @@ $months = [
                         }).join('');
 
                         Swal.fire({
-                            title: `<span style="font-size: 1.15rem; font-weight: 700; color: #333;"><i class="fa-solid fa-calendar-xmark text-danger me-2"></i> LWP Breakdown</span>`,
+                            title: `<span style="font-size: 1.15rem; font-weight: 700; color: #333;"><i class="fa-solid fa-calendar-xmark text-danger me-2"></i> LWP / Absent Breakdown</span>`,
                             html: `
                                 <div class="text-start fs-13 mt-3" style="font-family:'Inter',sans-serif; line-height: 1.6;">
                                     <p class="mb-2 text-dark"><strong>Employee Name:</strong> <span class="text-muted">${name}</span></p>
                                     <p class="mb-2 text-dark"><strong>Month:</strong> <span class="text-muted">${selectedMonthName} ${selectedYear}</span></p>
-                                    <p class="mb-3 text-dark"><strong>Total LWP Days:</strong> <span class="badge bg-danger fs-12 px-2 py-1">${count} Days</span></p>
+                                    <p class="mb-2 text-dark"><strong>Total LWP / Absent:</strong> <span class="badge bg-danger fs-12 px-2 py-1">${totalDays} Days</span></p>
+                                    <p class="mb-3 text-dark"><strong>Approved LWP Leave:</strong> <span class="badge bg-warning text-dark fs-12 px-2 py-1">${count} Days</span></p>
                                     <hr class="my-2">
-                                    <p class="mb-2 fw-bold text-secondary">Specific Leave Dates:</p>
+                                    <p class="mb-2 fw-bold text-secondary">Approved LWP Dates:</p>
                                     <ul class="ps-0 mb-0" style="list-style: none;">
                                         ${formattedDates}
                                     </ul>
@@ -922,13 +974,25 @@ $months = [
             .catch(err => {
                 console.error("LWP Fetch Error: ", err);
                 document.querySelectorAll('.table__lwp-days').forEach(cell => {
-                    cell.innerHTML = `<span class="text-muted" title="Fetch error">—</span>`;
-                    cell.closest('tr').setAttribute('data-lwp-days', '0');
+                    const phpLwpDays = parseFloat(cell.getAttribute('data-php-lwp-days') || '0') || 0;
+                    const parentRow = cell.closest('tr');
+                    if (phpLwpDays > 0) {
+                        const dispDays = Number.isInteger(phpLwpDays) ? String(phpLwpDays) : String(parseFloat(phpLwpDays.toFixed(2)));
+                        parentRow.setAttribute('data-lwp-days', String(phpLwpDays));
+                        cell.innerHTML = `
+                            <div class="d-flex align-items-center justify-content-center gap-1 animate__animated animate__fadeIn">
+                                <span class="badge bg-danger-subtle text-danger px-2 py-1 fw-bold border border-danger-subtle">${dispDays} Days</span>
+                            </div>
+                        `;
+                    } else {
+                        parentRow.setAttribute('data-lwp-days', '0');
+                        cell.innerHTML = `<span class="text-muted" style="font-size: 0.85rem;">—</span>`;
+                    }
                 });
             });
 
         // -------------------------------------------------------------
-        // LWP Only Filter switch toggle
+        // LWP / Absent Only Filter switch toggle
         // -------------------------------------------------------------
         const filterLwpCheckbox = document.getElementById('filterLwpOnly');
         if (filterLwpCheckbox) {
@@ -938,7 +1002,7 @@ $months = [
                 
                 let foundMatch = false;
                 rows.forEach(row => {
-                    const lwpDays = parseInt(row.getAttribute('data-lwp-days') || '0', 10);
+                    const lwpDays = parseFloat(row.getAttribute('data-lwp-days') || '0') || 0;
                     if (checked) {
                         if (lwpDays > 0) {
                             row.style.display = '';
@@ -965,7 +1029,7 @@ $months = [
                     placeholder.innerHTML = `
                         <td colspan="${colsCount}" class="text-center py-5 text-muted animate__animated animate__fadeIn">
                             <i class="fa-solid fa-inbox fs-2 mb-2 d-block text-danger"></i>
-                            No employees took LWP in ${selectedMonthName} ${selectedYear}.
+                            No employees have LWP / Absent in ${selectedMonthName} ${selectedYear}.
                         </td>
                     `;
                     tbody.appendChild(placeholder);
@@ -1370,7 +1434,7 @@ $months = [
                     const isCustom = opt.getAttribute('data-iscustom') === '1';
                     let targetDate = '';
                     if (isCustom) {
-                        targetDate = opt.getAttribute('data-start') || '';
+                        targetDate = opt.getAttribute('data-end') || opt.getAttribute('data-start') || '';
                     } else {
                         targetDate = opt.getAttribute('data-date') || '';
                     }

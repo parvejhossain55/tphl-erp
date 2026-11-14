@@ -355,16 +355,22 @@ class HrmApiController extends Controller
         if ($projectId > 0 && (empty($fromDateStr) || empty($toDateStr))) {
             $projQuery = $this->db->query("SELECT * FROM payroll_projects WHERE id = $projectId");
             if ($projQuery && $projData = $projQuery->fetch_assoc()) {
-                if (!empty($projData['is_custom_date']) && !empty($projData['start_date']) && !empty($projData['end_date'])) {
-                    $fromDateStr = $projData['start_date'];
-                    $toDateStr = $projData['end_date'];
+                if (!empty($projData['is_custom_date']) && !empty($projData['start_date']) && $projData['start_date'] !== '0000-00-00' && !empty($projData['end_date']) && $projData['end_date'] !== '0000-00-00') {
+                    $fromDateStr = substr(trim($projData['start_date']), 0, 10);
+                    $toDateStr = substr(trim($projData['end_date']), 0, 10);
                 } elseif (!empty($projData['date'])) {
                     $parts = explode('-', $projData['date']);
                     if (count($parts) >= 2) {
                         $y = (int)$parts[0];
                         $m = (int)$parts[1];
-                        $fromDateStr = sprintf('%04d-%02d-01', $y, $m);
-                        $toDateStr = date('Y-m-t', strtotime($fromDateStr));
+                        $prevM = $m - 1;
+                        $prevY = $y;
+                        if ($prevM <= 0) {
+                            $prevM = 12;
+                            $prevY = $y - 1;
+                        }
+                        $fromDateStr = sprintf('%04d-%02d-26', $prevY, $prevM);
+                        $toDateStr = sprintf('%04d-%02d-25', $y, $m);
                     }
                 }
             }
@@ -406,13 +412,14 @@ class HrmApiController extends Controller
             $escapedToDate = $this->db->real_escape_string($toDateStr);
             $escapedFromDate = $this->db->real_escape_string($fromDateStr);
             
-            $localQuery = $this->db->query("SELECT e.id, e.employee_id, e.email, e.full_name, e.joining_date, e.department_id, d.name as department_name, des.name as designation_name 
+            $localQuery = $this->db->query("SELECT e.id, e.employee_id, e.email, e.full_name, e.joining_date, e.resign_date, e.department_id, d.name as department_name, des.name as designation_name 
                                             FROM employees e 
                                             LEFT JOIN departments d ON e.department_id = d.id 
                                             LEFT JOIN designations des ON e.designation_id = des.id
-                                            WHERE e.employee_status = 'active'
-                                              AND (e.joining_date IS NULL OR e.joining_date <= '$escapedToDate')
-                                              AND (e.deleted_at IS NULL OR e.deleted_at >= '$escapedFromDate')
+                                            WHERE e.deleted_at IS NULL
+                                              AND (e.employee_status = 'active' OR (e.resign_date IS NOT NULL AND e.resign_date != '0000-00-00' AND e.resign_date >= '$escapedFromDate'))
+                                              AND (e.joining_date IS NULL OR e.joining_date = '0000-00-00' OR e.joining_date <= '$escapedToDate')
+                                              AND (e.resign_date IS NULL OR e.resign_date = '0000-00-00' OR e.resign_date >= '$escapedFromDate')
                                             ORDER BY CAST(e.employee_id AS UNSIGNED) ASC, e.employee_id ASC");
 
             if ($localQuery) {
@@ -422,6 +429,7 @@ class HrmApiController extends Controller
                     $empEmail = trim($row['email'] ?? '');
                     $empName = trim($row['full_name'] ?? '');
                     $empJoin = trim($row['joining_date'] ?? '');
+                    $empResign = trim($row['resign_date'] ?? '');
 
                     $localEmployees[] = [
                         'id' => $pid,
@@ -429,6 +437,7 @@ class HrmApiController extends Controller
                         'email' => strtolower($empEmail),
                         'full_name' => $empName,
                         'joining_date' => $empJoin,
+                        'resign_date' => ($empResign !== '0000-00-00') ? $empResign : '',
                         'department_id' => (int) ($row['department_id'] ?? 0),
                         'department_name' => $row['department_name'] ?? 'N/A',
                         'designation_name' => $row['designation_name'] ?? 'N/A'

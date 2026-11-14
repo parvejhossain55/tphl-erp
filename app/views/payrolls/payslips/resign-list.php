@@ -80,6 +80,9 @@ $defaultMonth = date('m');
                             <?php foreach ($payroll_projects as $proj): ?>
                                 <option value="<?= htmlspecialchars($proj['id']) ?>"
                                     data-date="<?= htmlspecialchars($proj['date'] ?? '') ?>"
+                                    data-is-custom="<?= htmlspecialchars($proj['is_custom_date'] ?? '0') ?>"
+                                    data-start-date="<?= htmlspecialchars($proj['start_date'] ?? '') ?>"
+                                    data-end-date="<?= htmlspecialchars($proj['end_date'] ?? '') ?>"
                                     <?= (isset($payroll_project_id) && $payroll_project_id == $proj['id']) ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($proj['name']) ?> (<?= htmlspecialchars($proj['date'] ?? '') ?>)
                                 </option>
@@ -200,12 +203,19 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    // Auto-sync Month & Year when Project is selected
+    // Auto-sync Month & Year or Custom Range when Project is selected
     $('#payrollProject').on('change', function() {
         var selectedOpt = this.options[this.selectedIndex];
         if (selectedOpt && selectedOpt.value) {
+            var isCustom = selectedOpt.getAttribute('data-is-custom');
+            var startDate = selectedOpt.getAttribute('data-start-date');
+            var endDate = selectedOpt.getAttribute('data-end-date');
             var dateVal = selectedOpt.getAttribute('data-date');
-            if (dateVal) {
+            if (isCustom === '1' && startDate && endDate) {
+                $('#filterType').val('custom').trigger('change');
+                $('#fromDate').val(startDate);
+                $('#toDate').val(endDate);
+            } else if (dateVal) {
                 var parts = dateVal.split('-');
                 if (parts.length >= 2) {
                     $('#filterYear').val(parts[0]).trigger('change');
