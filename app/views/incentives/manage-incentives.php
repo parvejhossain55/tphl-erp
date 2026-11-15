@@ -359,7 +359,7 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                             $ahInfoClaim = ApprovalRequest::getAccountsHeadApprovalInfo($GLOBALS['db'] ?? ($this->db ?? null), 'project_incentive_claims', (int)$claim['id']);
                                             $isAhApprovedClaim = empty($ahInfoClaim['has_request']) || !empty($ahInfoClaim['is_accounts_head_approved']);
                                         ?>
-                                        <tr>
+                                        <tr id="claim-<?= (int)$claim['id'] ?>" class="<?= (!empty($highlight_claim_id) && (int)$claim['id'] === (int)$highlight_claim_id) ? 'table-warning border-start border-4 border-warning shadow-sm' : '' ?>">
                                             <!-- Code & Date -->
                                             <td class="ps-4">
                                                 <span class="fw-bold text-dark d-block"><?= htmlspecialchars($claim['claim_code']) ?></span>
@@ -556,9 +556,9 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
 
                                                 <!-- Compact Approval History Audit Trail -->
                                                 <?php 
-                                                $hasShAudit = !empty($claim['sales_head_at']) || ($claim['claim_sh_status'] ?? '') === 'approved';
-                                                $hasMgmtAudit = !empty($claim['mgmt_approved_at']);
-                                                $hasAhAudit = !empty($claim['ah_approved_at']);
+                                                $hasShAudit = (($claim['sales_head_status'] ?? '') === 'approved' || ($claim['claim_sh_status'] ?? '') === 'approved') && !empty($claim['sales_head_at']);
+                                                $hasMgmtAudit = (($claim['claim_mgmt_status'] ?? '') === 'approved' || ($claim['mgmt_status'] ?? '') === 'approved' || in_array($claim['claim_status'] ?? '', ['approved', 'paid', 'partially_paid'])) && !empty($claim['mgmt_approved_at']);
+                                                $hasAhAudit = (($claim['accounts_head_status'] ?? '') === 'approved' || ($claim['claim_ah_status'] ?? '') === 'approved') && !empty($claim['ah_approved_at']);
                                                 ?>
                                                 <?php if ($hasShAudit || $hasMgmtAudit || $hasAhAudit || (in_array($claim['claim_status'], ['approved', 'partially_paid']) && !$isAhApprovedClaim)): ?>
                                                     <div class="mt-1 text-start px-2 py-1 rounded bg-light border border-light-subtle d-inline-block" style="font-size: 0.69rem; line-height: 1.3; min-width: 175px;">
@@ -599,27 +599,56 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                     $isSalesHeadUser = in_array(9, [$userRoleId, $userSecRoleId], true) || str_contains($userRoleName, 'sales head') || str_contains($userRoleName, 'sales team head');
                                                     $isOpHeadUserClaim = (in_array($userRoleId, [20, 32], true) || str_contains($userRoleName, 'operation head') || str_contains($userRoleName, 'admin & operation'));
                                                     $isMgmtUserClaim = in_array($userRoleId, [1, 3], true);
-                                                    $canApproveThisClaim = ($isSalesHeadUser || $isOpHeadUserClaim || $isMgmtUserClaim || $isManagement);
+                                                    $isStage1ClaimDone = (($claim['sales_head_status'] ?? '') === 'approved' || ($claim['claim_sh_status'] ?? '') === 'approved' || !empty($ahInfoClaim['is_op_head_approved']) || ($ahInfoClaim['op_head_status'] ?? '') === 'approved');
                                                     ?>
-                                                    <?php if ($canApproveThisClaim): ?>
-                                                        <button class="btn btn-sm btn-success rounded-2 px-2 me-1 btn-approve-claim" 
-                                                            data-id="<?= $claim['id'] ?>" 
-                                                            data-code="<?= htmlspecialchars($claim['claim_code']) ?>"
-                                                            data-recipient="<?= htmlspecialchars($claim['user_name'] . ' (' . $claim['employee_id'] . ')') ?>"
-                                                            data-amount="<?= number_format($claim['incentive_amount'], 2, '.', '') ?>"
-                                                            data-approved-amount="<?= number_format(!empty($claim['approved_amount']) ? $claim['approved_amount'] : $claim['incentive_amount'], 2, '.', '') ?>"
-                                                            title="Approve Claim (Sales Head, Operation Head or Management)">
-                                                            <i class="fa-solid fa-check me-1"></i>Approve
-                                                        </button>
-                                                        <button class="btn btn-sm btn-outline-danger rounded-2 px-2 btn-reject-claim" 
-                                                            data-id="<?= $claim['id'] ?>" 
-                                                            data-code="<?= htmlspecialchars($claim['claim_code']) ?>"
-                                                            data-recipient="<?= htmlspecialchars($claim['user_name']) ?>"
-                                                            title="Reject Claim">
-                                                            <i class="fa-solid fa-times"></i>
-                                                        </button>
+                                                    <?php if (!$isStage1ClaimDone): ?>
+                                                        <?php if ($isSalesHeadUser || $isOpHeadUserClaim || $isMgmtUserClaim || $isManagement): ?>
+                                                            <button class="btn btn-sm btn-success rounded-2 px-2 me-1 btn-approve-claim" 
+                                                                data-id="<?= $claim['id'] ?>" 
+                                                                data-code="<?= htmlspecialchars($claim['claim_code']) ?>"
+                                                                data-recipient="<?= htmlspecialchars($claim['user_name'] . ' (' . $claim['employee_id'] . ')') ?>"
+                                                                data-amount="<?= number_format($claim['incentive_amount'], 2, '.', '') ?>"
+                                                                data-approved-amount="<?= number_format(!empty($claim['approved_amount']) ? $claim['approved_amount'] : $claim['incentive_amount'], 2, '.', '') ?>"
+                                                                title="Approve Claim (Sales Head or Operation Head)">
+                                                                <i class="fa-solid fa-check me-1"></i>Approve
+                                                            </button>
+                                                            <button class="btn btn-sm btn-outline-danger rounded-2 px-2 btn-reject-claim" 
+                                                                data-id="<?= $claim['id'] ?>" 
+                                                                data-code="<?= htmlspecialchars($claim['claim_code']) ?>"
+                                                                data-recipient="<?= htmlspecialchars($claim['user_name']) ?>"
+                                                                title="Reject Claim">
+                                                                <i class="fa-solid fa-times"></i>
+                                                            </button>
+                                                        <?php else: ?>
+                                                            <span class="text-muted extra-small">Waiting for Sales/Op Head</span>
+                                                        <?php endif; ?>
+                                                    <?php elseif (!$isAhApprovedClaim): ?>
+                                                        <?php if ($canApproveAh && !empty($ahInfoClaim['approval_request_id'])): ?>
+                                                            <button type="button" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm" onclick="triggerAhApprove(<?= (int)$ahInfoClaim['approval_request_id'] ?>, 'Sales Incentive Claim: <?= htmlspecialchars(addslashes(($claim['claim_code'] ?? '') . ' (' . ($claim['project_name'] ?? '') . ' - ' . ($claim['flat_name'] ?? '') . ')'), ENT_QUOTES) ?>', '<?= number_format((float)($claim['approved_amount'] > 0 ? $claim['approved_amount'] : $claim['incentive_amount']), 2) ?>')">
+                                                                <i class="fa-solid fa-stamp me-1"></i>AH Approve
+                                                            </button>
+                                                        <?php else: ?>
+                                                            <span class="badge bg-light text-muted border py-1 px-2" style="font-size:10px;" title="Stage 1 Approved. Waiting for Accounts Head verification">
+                                                                <i class="fa-solid fa-lock me-1 text-warning"></i>Awaiting Accounts Head
+                                                            </span>
+                                                        <?php endif; ?>
                                                     <?php else: ?>
-                                                        <span class="text-muted extra-small">Waiting for Approval</span>
+                                                        <?php if ($isMgmtUserClaim || $isManagement): ?>
+                                                            <button class="btn btn-sm btn-success rounded-2 px-2 me-1 btn-approve-claim" 
+                                                                data-id="<?= $claim['id'] ?>" 
+                                                                data-stage="management"
+                                                                data-code="<?= htmlspecialchars($claim['claim_code']) ?>"
+                                                                data-recipient="<?= htmlspecialchars($claim['user_name'] . ' (' . $claim['employee_id'] . ')') ?>"
+                                                                data-amount="<?= number_format($claim['incentive_amount'], 2, '.', '') ?>"
+                                                                data-approved-amount="<?= number_format(!empty($claim['approved_amount']) ? $claim['approved_amount'] : $claim['incentive_amount'], 2, '.', '') ?>"
+                                                                title="Final Management Approval">
+                                                                <i class="fa-solid fa-circle-check me-1"></i>Mgmt Approve
+                                                            </button>
+                                                        <?php else: ?>
+                                                            <span class="badge bg-light text-muted border py-1 px-2" style="font-size:10px;">
+                                                                <i class="fa-solid fa-clock me-1 text-warning"></i>Awaiting Mgmt Approval
+                                                            </span>
+                                                        <?php endif; ?>
                                                     <?php endif; ?>
                                                 <?php elseif (in_array($claim['claim_status'], ['approved', 'partially_paid'])): ?>
                                                     <?php if (!$isAhApprovedClaim): ?>
@@ -2388,6 +2417,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 showSwalMsg('error', 'Error', 'An error occurred recording disbursement.');
             });
         });
+    }
+
+    // Auto-scroll and highlight target claim if claim_id is in query string
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetClaimId = urlParams.get('claim_id');
+    if (targetClaimId) {
+        const claimRow = document.getElementById('claim-' + targetClaimId);
+        if (claimRow) {
+            setTimeout(() => {
+                claimRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 350);
+        }
     }
 });
 </script>

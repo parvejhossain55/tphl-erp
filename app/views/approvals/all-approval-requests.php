@@ -787,7 +787,7 @@
                                         $targetUrl = $base_url . '/ced-dashboard';
                                     }
                                 } elseif ($sourceTable === 'project_incentive_claims') {
-                                    $targetUrl = $base_url . '/incentive-management';
+                                    $targetUrl = $base_url . '/incentive-management?claim_id=' . (int)$req['source_id'];
                                 } elseif ($sourceTable === 'vendor_payment_requests') {
                                     $targetUrl = $base_url . '/con-vendor-payment-show/' . $req['source_id'];
                                 } elseif ($sourceTable === 'contractor_bill_requests') {
@@ -1015,7 +1015,7 @@
                                         } elseif ($sourceTable === 'payslips' || $sourceTable === 'salary_requests') {
                                             $displayReqCode = 'PAY-' . (int)$req['source_id'];
                                         } elseif ($sourceTable === 'project_incentive_claims') {
-                                            $displayReqCode = 'INC-' . (int)$req['source_id'];
+                                            $displayReqCode = 'INC-' . date('Y', strtotime($req['requested_at'] ?? 'now')) . '-' . str_pad((int)$req['source_id'], 3, '0', STR_PAD_LEFT);
                                         } elseif ($sourceTable === 'advance_salaries') {
                                             $displayReqCode = 'ADV-' . (int)$req['source_id'];
                                         } elseif ($sourceTable === 'lead_bookings') {
@@ -1249,9 +1249,10 @@
                                             </div>
                                         <?php elseif ($sourceTable === 'project_incentive_claims'): ?>
                                             <?php
-                                            $shDone = (strtolower($req['sales_head_status'] ?? '') === 'approved');
-                                            $shName = !empty($req['sales_head_name']) ? $req['sales_head_name'] : 'Sales Head';
-                                            $shDate = !empty($req['sales_head_at']) ? $req['sales_head_at'] : null;
+                                            $shDone = (strtolower($req['sales_head_status'] ?? '') === 'approved' || strtolower($req['op_head_status'] ?? '') === 'approved');
+                                            $shName = !empty($req['sales_head_name']) ? $req['sales_head_name'] : (!empty($req['op_head_name']) ? $req['op_head_name'] : 'Sales Head / Op Head');
+                                            $shDate = !empty($req['sales_head_at']) ? $req['sales_head_at'] : (!empty($req['op_head_at']) ? $req['op_head_at'] : null);
+                                            $shBadgeText = (!empty($req['op_head_status']) && strtolower($req['op_head_status']) === 'approved' && empty($req['sales_head_by'])) ? 'Op Head' : 'Sales Head / Op';
 
                                             $ahDone = (strtolower($req['accounts_head_status'] ?? '') === 'approved');
                                             $ahName = !empty($req['accounts_head_name']) ? $req['accounts_head_name'] : 'Accounts Head';
@@ -1269,7 +1270,7 @@
                                                         <div class="d-flex align-items-center gap-1 text-truncate me-1">
                                                             <i class="fa-solid fa-check text-success flex-shrink-0" style="font-size: 9.5px;"></i>
                                                             <span class="fw-bold text-dark text-truncate" style="max-width: 105px;" title="<?= htmlspecialchars($shName) ?>"><?= htmlspecialchars($shName) ?></span>
-                                                            <span class="badge bg-success text-white p-0 px-1 flex-shrink-0" style="font-size: 8px;">Sales Head</span>
+                                                            <span class="badge bg-success text-white p-0 px-1 flex-shrink-0" style="font-size: 8px;"><?= htmlspecialchars($shBadgeText ?? 'SH / Op') ?></span>
                                                         </div>
                                                         <?php if (!empty($shDate)): ?>
                                                             <span class="text-muted flex-shrink-0" style="font-size: 8.5px; white-space: nowrap;"><?= date('d M, h:i A', strtotime($shDate)) ?></span>
@@ -1615,7 +1616,7 @@
 
                                         <?php if ($sourceTable === 'project_incentive_claims'): ?>
                                             <?php
-                                            $shDone = (strtolower($req['sales_head_status'] ?? '') === 'approved');
+                                            $shDone = (strtolower($req['sales_head_status'] ?? '') === 'approved' || strtolower($req['op_head_status'] ?? '') === 'approved');
                                             $ahDone = (strtolower($req['accounts_head_status'] ?? '') === 'approved');
                                             $mgmtDone = in_array(strtolower($req['status'] ?? ''), ['approved', 'paid']);
                                             $isPaid = in_array(strtolower($req['status'] ?? ''), ['paid']) || ($req['payout_status'] === 'Paid & Settled');
