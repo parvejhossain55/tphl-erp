@@ -1425,7 +1425,7 @@
                         <a href="<?= $base_url ?>/lead-investment-report"
                             class="sidebar__menu-item <?= isActive('lead-investment-report', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-chart-pie text-success"></i></div>
-                            <span class="sidebar__menu-label">Lead Investment Report</span>
+                            <span class="sidebar__menu-label">Leads Investment Report</span>
                         </a>
                     </li>
                 <?php endif; ?>
@@ -1481,7 +1481,7 @@
                         <a href="<?= $base_url ?>/lead-investment-report"
                             class="sidebar__menu-item <?= isActive('lead-investment-report', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-chart-pie text-success"></i></div>
-                            <span class="sidebar__menu-label">Lead Investment Report</span>
+                            <span class="sidebar__menu-label">Leads Investment Report</span>
                         </a>
                     </li>
                     <?php endif; ?>
@@ -3179,6 +3179,16 @@
                                 class="sidebar__menu-item <?= isActive('all-projects-overview', $current_route) ?>">
                                 <div class="side-menu__icon"><i class="fa-solid fa-chart-bar"></i></div>
                                 <span class="sidebar__menu-label">All Project Overview</span>
+                            </a>
+                        </li>
+                    <?php endif; ?>
+
+                    <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 20, 22, 32, 33, 34, 35], true)): ?>
+                        <li class="slide">
+                            <a href="<?= $base_url ?>/con-central-oversight"
+                                class="sidebar__menu-item <?= isActive('con-central-oversight', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-eye"></i></div>
+                                <span class="sidebar__menu-label">Central Oversight</span>
                             </a>
                         </li>
                     <?php endif; ?>

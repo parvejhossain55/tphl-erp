@@ -1382,6 +1382,40 @@ class FundRequisitionController extends Controller {
             $this->db->query("UPDATE approval_requests SET status = 'rejected', approve_role = 'rejected' WHERE source_table = 'fund_requisitions' AND source_id = {$id}");
         }
 
+        // Management Single-Stage Approval (approve ONLY current pending stage)
+        $approveMode = $_POST['approve_mode'] ?? 'override';
+        if ($isManagement && $approveMode === 'single' && in_array($status, ['approved', 'partially_approved'])) {
+            $escSingleNote = $this->db->real_escape_string($approval_note ?: 'Approved by Management');
+            $arCheckFr = $this->db->query("SELECT id, op_head_status, accounts_head_status FROM approval_requests WHERE source_table = 'fund_requisitions' AND source_id = {$id} ORDER BY id DESC LIMIT 1");
+            $arRowFr = $arCheckFr ? $arCheckFr->fetch_assoc() : null;
+            $opHeadFr = strtolower($arRowFr['op_head_status'] ?? 'pending');
+            $ahFr     = strtolower($arRowFr['accounts_head_status'] ?? 'pending');
+
+            if (($frData['status'] ?? '') === 'pending_dept' || ($frData['dept_head_status'] ?? '') === 'pending') {
+                $this->db->query("UPDATE fund_requisitions SET status = 'pending_qc', dept_head_status = 'approved', dept_head_approved_by = {$approved_by}, dept_head_approved_at = NOW(), dept_head_approval_note = '{$escSingleNote} (On behalf of Dept. Head)' WHERE id = {$id}");
+                $this->syncApprovalRequest($id);
+                setSuccess('Department Head stage approved by Management. Forwarded to QC & Internal Audit.');
+                header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
+                exit;
+            } elseif (($frData['status'] ?? '') === 'pending_qc' || empty($frData['qc_approved_by'])) {
+                $this->db->query("UPDATE fund_requisitions SET status = 'pending', qc_approved_by = {$approved_by}, qc_approved_at = NOW(), qc_approved_amount = {$cumulative_approved_amount}, qc_approval_note = '{$escSingleNote} (On behalf of QC)' WHERE id = {$id}");
+                $this->syncApprovalRequest($id);
+                setSuccess('QC & Audit stage approved by Management. Forwarded to Operation Head.');
+                header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
+                exit;
+            } elseif ($opHeadFr !== 'approved') {
+                $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$approved_by}, op_head_at = NOW(), op_head_note = '{$escSingleNote} (On behalf of Operation Head)', approve_role = 'accounts_head' WHERE source_table = 'fund_requisitions' AND source_id = {$id}");
+                setSuccess('Operation Head stage approved by Management. Forwarded to Accounts Head.');
+                header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
+                exit;
+            } elseif ($ahFr !== 'approved') {
+                $this->db->query("UPDATE approval_requests SET accounts_head_status = 'approved', accounts_head_by = {$approved_by}, accounts_head_at = NOW(), accounts_head_note = '{$escSingleNote} (On behalf of Accounts Head)', approve_role = 'management' WHERE source_table = 'fund_requisitions' AND source_id = {$id}");
+                setSuccess('Accounts Head stage approved by Management. Ready for Final Management Approval.');
+                header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
+                exit;
+            }
+        }
+
         // Preserve any pre-existing (legacy) approval in the approval log before overwriting approved_by
         require_once __DIR__ . '/../../models/FundRequisitionApprovalLog.php';
         try {

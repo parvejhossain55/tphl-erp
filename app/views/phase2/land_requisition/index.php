@@ -692,6 +692,7 @@ $canRequest = in_array($roleId, [1, 3, 14, 15, 20, 22, 32, 33]);
             </div>
             <div class="modal-body">
                 <form id="landMgmtApproveForm" action="<?= $base_url ?>/con-land-requisitions/approve" method="POST">
+                    <input type="hidden" name="approve_mode" id="landApproveModeInput" value="override">
                     <input type="hidden" name="id" id="mgmt_req_id">
                     <div class="row gy-10">
                         <div class="col-xl-12">
@@ -869,14 +870,23 @@ $page_script = "(function() {
                     if (typeof Swal !== 'undefined') {
                         Swal.fire({
                             title: 'Pending ' + overrideStage + \"'s Approval\",
-                            html: 'This land requisition is pending for <strong>' + overrideStage + \"'s</strong> approval. Are you ready to approve for <strong>\" + overrideStage + '</strong> first?<br><small class=\"text-muted d-block mt-2\">Your name will be recorded as the approver for all bypassed stages as well as final Management approval.</small>',
+                            html: 'This land requisition is pending for <strong>' + overrideStage + \"'s</strong> approval. Choose whether to approve <strong>only \" + overrideStage + '</strong> and forward to the next stage, or override all stages &amp; finalize now.',
                             icon: 'warning',
                             showCancelButton: true,
-                            confirmButtonColor: '#198754',
+                            showDenyButton: true,
+                            confirmButtonColor: '#0d6efd',
+                            denyButtonColor: '#198754',
                             cancelButtonColor: '#6c757d',
-                            confirmButtonText: 'Yes, Approve All Stages'
+                            confirmButtonText: 'Approve Only ' + overrideStage,
+                            denyButtonText: 'Approve All & Finalize'
                         }).then(function(result) {
+                            var modeInput = document.getElementById('landApproveModeInput');
                             if (result.isConfirmed) {
+                                if (modeInput) modeInput.value = 'single';
+                                landMgmtForm.setAttribute('data-confirmed-override', '1');
+                                landMgmtForm.submit();
+                            } else if (result.isDenied) {
+                                if (modeInput) modeInput.value = 'override';
                                 landMgmtForm.setAttribute('data-confirmed-override', '1');
                                 landMgmtForm.submit();
                             }

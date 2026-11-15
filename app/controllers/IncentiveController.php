@@ -246,8 +246,23 @@ class IncentiveController extends Controller
             exit;
         }
 
+        $highlightClaimId = isset($_GET['claim_id']) ? (int)$_GET['claim_id'] : 0;
         $activeCycle = $this->incentiveModel->getCycleForDate(date('Y-m-d'));
-        $month = $_GET['month'] ?? $activeCycle;
+        $month = $_GET['month'] ?? null;
+        if (empty($month)) {
+            if ($highlightClaimId > 0) {
+                $cRes = $this->db->query("SELECT created_at FROM project_incentive_claims WHERE id = {$highlightClaimId} LIMIT 1");
+                if ($cRes && ($cRow = $cRes->fetch_assoc())) {
+                    $claimCycle = $this->incentiveModel->getCycleForDate(date('Y-m-d', strtotime($cRow['created_at'])));
+                    if (!empty($claimCycle)) {
+                        $month = $claimCycle;
+                    }
+                }
+            }
+            if (empty($month)) {
+                $month = $activeCycle;
+            }
+        }
         $fromDate = $_GET['from_date'] ?? null;
         $toDate = $_GET['to_date'] ?? null;
 
@@ -389,7 +404,8 @@ class IncentiveController extends Controller
             "employeeWallets"        => $employeeWallets,
             "disbursementLogs"       => $disbursementLogs,
             "companyBanks"           => $companyBanks,
-            "coaList"                => getCOAExpenseList($this->db)
+            "coaList"                => getCOAExpenseList($this->db),
+            "highlight_claim_id"     => $highlightClaimId
         ]);
     }
 

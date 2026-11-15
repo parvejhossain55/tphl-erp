@@ -101,6 +101,11 @@ class Con_PurchaseOrder extends Model
                        u.role_id AS creator_role_id,
                        v.name AS vendor_name,
                        (SELECT SUM(total_price) FROM {$this->itemTable} WHERE purchase_order_id = po.id) AS total_amount,
+                       (SELECT COALESCE(SUM(quantity), 0) FROM {$this->itemTable} WHERE purchase_order_id = po.id) AS total_qty,
+                       (SELECT COALESCE(SUM(mri.received_quantity), 0)
+                        FROM material_receiving_items mri
+                        JOIN {$this->itemTable} poi_rec ON poi_rec.id = mri.purchase_order_item_id
+                        WHERE poi_rec.purchase_order_id = po.id AND mri.status = 'Accepted') AS received_qty,
                        (SELECT u2.full_name FROM po_negotiation_notes n JOIN users u2 ON u2.id = n.user_id WHERE n.purchase_order_id = po.id ORDER BY n.created_at DESC LIMIT 1) AS latest_note_author,
                        (SELECT n2.note_text FROM po_negotiation_notes n2 WHERE n2.purchase_order_id = po.id ORDER BY n2.created_at DESC LIMIT 1) AS latest_note_text,
                        vpr.id AS vpr_id,

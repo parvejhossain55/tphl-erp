@@ -5,7 +5,7 @@ $page_title = $page_title ?? 'Contractor Bill Detail';
 $statusMap = [
     'draft'          => ['label' => 'Draft',          'color' => 'warning'],
     'submitted'      => ['label' => 'Submitted',      'color' => 'info'],
-    'verified'       => ['label' => 'PM Approved',    'color' => 'primary'],
+    'verified'       => ['label' => 'Dept. Head Approved', 'color' => 'primary'],
     'qc_approved'    => ['label' => 'QC Approved',    'color' => 'warning'],
     'approved'       => ['label' => 'Approved',       'color' => 'success'],
     'rejected'       => ['label' => 'Rejected',       'color' => 'danger'],
@@ -589,7 +589,7 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                     </div>
                     <?php if (!empty($bill['verified_by_name'])): ?>
                     <div class="pb-3 mb-3 border-bottom lh-base">
-                        <small class="text-muted d-block mb-1">PM Approved / Verified By</small>
+                        <small class="text-muted d-block mb-1">Dept. Head Approved / Verified By</small>
                         <strong class="text-dark"><?= htmlspecialchars($bill['verified_by_name']) ?></strong>
                         <?php if (!empty($bill['verified_at'])): ?>
                             <small class="text-muted d-block mt-0.5"><?= date('d M Y h:i A', strtotime($bill['verified_at'])) ?></small>
@@ -719,7 +719,7 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                         <div class="row gx-2 pt-1">
                             <div class="col-6">
                                 <button type="submit" class="btn btn-info text-white w-100 fw-bold py-2" onclick="return confirm('Approve as Project Manager and forward to Head of Purchase?');">
-                                    <i class="bi bi-check-circle me-1"></i> PM Approve
+                                    <i class="bi bi-check-circle me-1"></i> Dept. Head Approve
                                 </button>
                             </div>
                             <div class="col-6">
@@ -764,7 +764,7 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                     </div>
                     <div class="card-body p-4">
                         <p class="mb-0 small text-muted lh-base">
-                            This contractor bill was submitted by Site Engineer and is awaiting <strong>Project Manager / Dept Head (Role 15/22)</strong> verification first. Once PM approves, Head of Purchase approval will unlock.
+                            This contractor bill was submitted by Site Engineer and is awaiting <strong>Dept. Head (PD) / PC (on behalf of Dept. Head)</strong> verification first. Once approved, Head of Purchase approval will unlock.
                         </p>
                     </div>
                 </div>
@@ -905,6 +905,7 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                         </div>
                     <?php endif; ?>
                     <form action="<?= $base_url ?>/con-contractor-bill-approve/<?= $bill['id'] ?>" method="POST" id="cbMgmtApproveForm">
+                        <input type="hidden" name="approve_mode" id="cbApproveModeInput" value="override">
                         <div class="mb-3">
                             <label class="form-label fw-semibold mb-1.5">Approved Amount (৳)</label>
                             <input type="number" name="approved_amount" class="form-control"
@@ -1519,7 +1520,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 ? 'Pending ' + overrideStage + "'s Approval"
                 : (isOpHeadAction ? 'Approve as Head of Operation?' : 'Final Management Approval?');
             var htmlMsg = overrideStage !== ''
-                ? 'This bill is pending for <strong>' + overrideStage + "'s</strong> approval. Are you ready to approve for <strong>" + overrideStage + '</strong> first?<br><small class="text-muted d-block mt-2">Your name will be recorded as the approver for all bypassed stages as well as final Management approval.</small>'
+                ? 'This bill is pending for <strong>' + overrideStage + "'s</strong> approval. Choose whether to approve <strong>only " + overrideStage + '</strong> and forward to the next stage, or override all remaining stages &amp; finalize now.'
                 : (isOpHeadAction
                     ? 'Confirm Head of Operation approval and forward to Accounts Head?'
                     : 'Confirm final Management approval for this contractor bill?');
@@ -1528,11 +1529,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 html: htmlMsg,
                 icon: overrideStage !== '' ? 'warning' : 'question',
                 showCancelButton: true,
-                confirmButtonColor: isOpHeadAction ? '#0d6efd' : '#198754',
+                showDenyButton: overrideStage !== '',
+                confirmButtonColor: overrideStage !== '' ? '#0d6efd' : (isOpHeadAction ? '#0d6efd' : '#198754'),
+                denyButtonColor: '#198754',
                 cancelButtonColor: '#6c757d',
-                confirmButtonText: overrideStage !== '' ? 'Yes, Approve All Stages' : 'Yes, Approve'
+                confirmButtonText: overrideStage !== '' ? 'Approve Only ' + overrideStage : 'Yes, Approve',
+                denyButtonText: 'Approve All & Finalize'
             }).then(function(result) {
+                var modeInput = document.getElementById('cbApproveModeInput');
                 if (result.isConfirmed) {
+                    if (modeInput) modeInput.value = (overrideStage !== '') ? 'single' : 'override';
+                    cbMgmtApproveForm.submit();
+                } else if (result.isDenied && overrideStage !== '') {
+                    if (modeInput) modeInput.value = 'override';
                     cbMgmtApproveForm.submit();
                 }
             });

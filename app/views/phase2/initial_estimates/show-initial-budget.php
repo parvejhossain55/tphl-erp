@@ -200,8 +200,8 @@ function sib_format_floor($floorType, $floorNo) {
         ];
         $sc = $sMap[$st] ?? $sMap['draft'];
         $stLabel = match($st) {
-            'pm_approved' => 'PM Approved',
-            'pending'     => 'Pending PM Approval',
+            'pm_approved' => 'Dept. Head Approved',
+            'pending'     => 'Pending Dept. Head Approval',
             default       => ucfirst($st),
         };
         ?>
@@ -286,7 +286,7 @@ function sib_format_floor($floorType, $floorNo) {
             <i class="fal fa-check-circle"></i>
           </div>
           <div>
-            <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Step 2: PM Approval</div>
+            <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Step 2: Dept. Head Approval</div>
             <div style="font-size:13px; font-weight:700; color:#16a34a;">Approved</div>
             <div style="font-size:11px; color:var(--text-muted);">
               By <?= htmlspecialchars($budget['pm_approved_by_name'] ?? $budget['approved_by_name'] ?? 'Project Manager') ?><br>
@@ -298,7 +298,7 @@ function sib_format_floor($floorType, $floorNo) {
             <i class="fal fa-times-circle"></i>
           </div>
           <div>
-            <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Step 2: PM Approval</div>
+            <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Step 2: Dept. Head Approval</div>
             <div style="font-size:13px; font-weight:700; color:#ef4444;">Rejected</div>
             <div style="font-size:11px; color:var(--text-muted);">PM Review Rejected</div>
           </div>
@@ -307,9 +307,9 @@ function sib_format_floor($floorType, $floorNo) {
             <i class="fal fa-clock"></i>
           </div>
           <div>
-            <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Step 2: PM Approval</div>
+            <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Step 2: Dept. Head Approval</div>
             <div style="font-size:13px; font-weight:700; color:#f59e0b;">Pending Review</div>
-            <div style="font-size:11px; color:var(--text-muted);">Awaiting PM Approval</div>
+            <div style="font-size:11px; color:var(--text-muted);">Awaiting Dept. Head Approval</div>
           </div>
         <?php endif; ?>
       </div>
@@ -470,7 +470,7 @@ $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 <div class="sib-action-card" style="border-left:4px solid #d97706">
   <div class="sib-panel-title" style="margin-bottom:14px">
     <div class="sib-dot" style="background:var(--sib-amber)"></div>
-    Step 1: PM Approval Required
+    Step 1: Dept. Head Approval Required
     <span style="font-size:11px;font-weight:400;color:rgba(255,255,255,.6);margin-left:8px">
       (আপনার role: PM / Project Manager)
     </span>
@@ -487,8 +487,8 @@ $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
     <form action="<?= $base ?>/con-estimate-approve/<?= $budget['id'] ?>" method="POST">
       <button type="submit" class="btn btn-sm px-4"
         style="background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;border-radius:10px;font-size:12px;font-weight:700;border:none"
-        onclick="return confirm('PM Approval করবেন? এরপর Management Final Approve করবে।')">
-        <i class="fal fa-user-check me-2"></i>PM Approve করুন
+        onclick="return confirm('Dept. Head Approval করবেন? এরপর Management Final Approve করবে।')">
+        <i class="fal fa-user-check me-2"></i>Dept. Head Approve করুন
       </button>
     </form>
     <button type="button" class="btn btn-sm px-4"
@@ -507,13 +507,13 @@ $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
     <div class="sib-dot" style="background:var(--sib-green)"></div>
     Step 2: Management Final Approval
     <span style="font-size:11px;font-weight:400;color:rgba(255,255,255,.6);margin-left:8px">
-      (PM Approved — আপনার final approval বাকি)
+      (Dept. Head Approved — আপনার final approval বাকি)
     </span>
   </div>
   <?php if (!empty($budget['approved_by_name'])): ?>
   <div style="font-size:12px;color:rgba(255,255,255,.65);margin-bottom:12px">
     <i class="fal fa-user-check me-1"></i>
-    PM Approved by <strong><?= htmlspecialchars($budget['approved_by_name']) ?></strong>
+    Dept. Head Approved by <strong><?= htmlspecialchars($budget['approved_by_name']) ?></strong>
     &nbsp;·&nbsp;
     <?= !empty($budget['approval_date']) ? date('d M Y', strtotime($budget['approval_date'])) : '—' ?>
   </div>
