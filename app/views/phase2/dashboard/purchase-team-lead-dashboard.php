@@ -228,7 +228,7 @@ $posForApproval   = $posForApproval   ?? [];
           </span>
           <?php elseif ($aprSt === 'Submitted'): ?>
           <span style="font-size:10px;color:#3b82f6;margin-left:6px;font-weight:600">
-            <i class="fal fa-hourglass-half me-1"></i>Awaiting PM
+            <i class="fal fa-hourglass-half me-1"></i>Awaiting Dept. Head
           </span>
           <?php endif; ?>
         </td>

@@ -270,16 +270,47 @@ class Con_LaborRequisitionController extends Controller
     {
         if (!$this->isPM()) { $_SESSION['error'] = 'Access denied.'; $this->back($id); }
         $note = trim($_POST['pm_note'] ?? '');
+        $reqRow = $this->model->find((int)$id);
         $this->model->pmApprove((int)$id, $this->userId, $note);
-        $_SESSION['success'] = 'Labor Requisition approved by Project Manager.';
+
+        require_once __DIR__ . '/../../models/Con_ApprovalLog.php';
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userName = $_SESSION['user']['full_name'] ?? 'User';
+        $attr = \Con_ApprovalLog::formatApprovalAttribution($roleId, $userName, 'approved');
+        $logModel = new \Con_ApprovalLog($this->db);
+        $logModel->logConstructionApproval(
+            'con_labor_requisitions',
+            (int)$id,
+            'Dept. Head Approval',
+            'approved',
+            isset($reqRow['project_id']) ? (int)$reqRow['project_id'] : null,
+            (float)($reqRow['total_amount'] ?? $reqRow['estimated_amount'] ?? 0),
+            $note
+        );
+
+        $_SESSION['success'] = 'Labor Requisition — ' . $attr['approval_label'] . '.';
         $this->back($id);
     }
 
     public function pmReject($id)
     {
         if (!$this->isPM()) { $_SESSION['error'] = 'Access denied.'; $this->back($id); }
-        $reason = trim($_POST['rejection_reason'] ?? 'Rejected by PM');
+        $reason = trim($_POST['rejection_reason'] ?? 'Rejected by Dept. Head / PC');
+        $reqRow = $this->model->find((int)$id);
         $this->model->pmReject((int)$id, $this->userId, $reason);
+
+        require_once __DIR__ . '/../../models/Con_ApprovalLog.php';
+        $logModel = new \Con_ApprovalLog($this->db);
+        $logModel->logConstructionApproval(
+            'con_labor_requisitions',
+            (int)$id,
+            'Dept. Head Approval',
+            'rejected',
+            isset($reqRow['project_id']) ? (int)$reqRow['project_id'] : null,
+            (float)($reqRow['total_amount'] ?? $reqRow['estimated_amount'] ?? 0),
+            $reason
+        );
+
         $_SESSION['error'] = 'Labor Requisition rejected.';
         $this->back($id);
     }
@@ -408,6 +439,32 @@ class Con_LaborRequisitionController extends Controller
             }
             $_SESSION['success'] = "Labor requisition verified & approved by Admin & Operation Head (Role 20). Forwarded to Accounts Head (Role 30) for payment verification.";
             $this->back($id);
+        }
+
+        // Management Single-Stage Approval (approve ONLY current pending stage)
+        $approveMode = $_POST['approve_mode'] ?? 'override';
+        $opHeadStatusLabor = strtolower($arRow['op_head_status'] ?? 'pending');
+        $ahStatusLabor     = strtolower($arRow['accounts_head_status'] ?? 'pending');
+        if ($isMgmtUser && $approveMode === 'single') {
+            $escSingleNote = $this->db->real_escape_string($note ?: 'Approved by Management');
+            if ($req['status'] === 'pending') {
+                $this->model->pmApprove((int)$id, $this->userId, ($note ?: 'Approved') . ' (On behalf of Dept. Head)');
+                $_SESSION['success'] = 'Dept. Head stage approved by Management. Ready for next stage.';
+                $this->back($id);
+            } elseif (in_array($req['status'], ['pm_approved', 'work_completed', 'payment_requested'], true)) {
+                $this->db->query("UPDATE con_labor_requisitions SET status = 'qc_approved', qc_approved_by = {$this->userId}, qc_approved_at = NOW(), qc_approved_amount = {$finalApprovedAmount}, qc_remarks = '{$escSingleNote} (On behalf of QC)' WHERE id = " . (int)$id);
+                $this->syncToApprovalRequests((int)$id);
+                $_SESSION['success'] = 'QC & Audit stage approved by Management. Forwarded to Operation Head.';
+                $this->back($id);
+            } elseif ($opHeadStatusLabor !== 'approved') {
+                $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$escSingleNote} (On behalf of Operation Head)', approve_role = 'accounts_head' WHERE source_table = 'con_labor_requisitions' AND source_id = " . (int)$id);
+                $_SESSION['success'] = 'Operation Head stage approved by Management. Forwarded to Accounts Head.';
+                $this->back($id);
+            } elseif ($ahStatusLabor !== 'approved') {
+                $this->db->query("UPDATE approval_requests SET accounts_head_status = 'approved', accounts_head_by = {$this->userId}, accounts_head_at = NOW(), accounts_head_note = '{$escSingleNote} (On behalf of Accounts Head)', approve_role = 'management' WHERE source_table = 'con_labor_requisitions' AND source_id = " . (int)$id);
+                $_SESSION['success'] = 'Accounts Head stage approved by Management. Ready for Final Management Approval.';
+                $this->back($id);
+            }
         }
 
         // Management Direct Override: auto-fill any bypassed earlier stages in Management's name

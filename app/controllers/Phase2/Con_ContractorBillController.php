@@ -806,11 +806,12 @@ class Con_ContractorBillController extends Controller
     public function verify($id)
     {
         if (!$this->canApprovePM()) {
-            setError('You are not authorized for Project Manager approval.');
+            setError('You are not authorized for Dept. Head approval.');
             header("Location: {$GLOBALS['base_url']}/con-contractor-bill/$id");
             exit;
         }
 
+        $billRow = $this->billModel->find($id);
         $note = trim($_POST['verification_note'] ?? '');
         $data = [
             'status'            => 'verified',
@@ -820,6 +821,21 @@ class Con_ContractorBillController extends Controller
         ];
 
         if ($this->billModel->updateStatus($id, $data)) {
+            require_once __DIR__ . '/../../models/Con_ApprovalLog.php';
+            $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+            $userName = $_SESSION['user']['full_name'] ?? 'User';
+            $attr = \Con_ApprovalLog::formatApprovalAttribution($roleId, $userName, 'approved');
+            $logModel = new \Con_ApprovalLog($this->db);
+            $logModel->logConstructionApproval(
+                'contractor_bill_requests',
+                (int)$id,
+                'Dept. Head Approval',
+                'approved',
+                isset($billRow['project_id']) ? (int)$billRow['project_id'] : null,
+                (float)($billRow['bill_amount'] ?? 0),
+                $note
+            );
+
             // Forward approval request to Head of Purchase (Role 17)
             $stmtAr = $this->db->prepare("
                 UPDATE approval_requests 
@@ -829,12 +845,12 @@ class Con_ContractorBillController extends Controller
                 WHERE source_table = 'contractor_bill_requests' AND source_id = ?
             ");
             if ($stmtAr) {
-                $pmNote = "PM Approved" . (!empty($note) ? ": {$note}" : "");
+                $pmNote = $attr['approval_label'] . (!empty($note) ? ": {$note}" : "");
                 $stmtAr->bind_param('si', $pmNote, $id);
                 $stmtAr->execute();
                 $stmtAr->close();
             }
-            setSuccess('Bill approved by Project Manager & forwarded to Head of Purchase (Role 17)!');
+            setSuccess($attr['approval_label'] . ' & forwarded to Head of Purchase (Role 17)!');
         } else {
             setError('Verification failed.');
         }
@@ -1089,6 +1105,46 @@ class Con_ContractorBillController extends Controller
                 setSuccess("Contractor bill verified & approved by Admin & Operation Head (Role 20). Forwarded to Accounts Head (Role 30) for payment verification.");
                 header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
                 exit;
+            }
+
+            // Management Single-Stage Approval (approve ONLY the current pending stage, do not finalize all)
+            $approveMode = $_POST['approve_mode'] ?? 'override';
+            if ($isMgmtUser && $approveMode === 'single') {
+                $escSingleNote = $this->db->real_escape_string($managementNote ?: 'Approved by Management');
+                if ($bill['status'] === 'submitted') {
+                    $this->billModel->updateStatus($id, [
+                        'status'            => 'verified',
+                        'verified_by'       => $this->userId,
+                        'verified_at'       => date('Y-m-d H:i:s'),
+                        'verification_note' => ($managementNote ?: 'Approved') . ' (On behalf of Dept. Head)',
+                    ]);
+                    $this->db->query("UPDATE approval_requests SET approve_role = 'purchase_head', status = 'pending', approval_note = '{$escSingleNote} (On behalf of Dept. Head)' WHERE source_table IN ('contractor_bill_requests', 'con_contractor_bills') AND source_id = {$id}");
+                    setSuccess('Dept. Head stage approved by Management. Forwarded to Head of Purchase.');
+                    header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+                    exit;
+                } elseif ($bill['status'] === 'verified' && empty($bill['purchase_head_approved_by_id'])) {
+                    $this->billModel->approvePurchaseHead($id, $this->userId, ($managementNote ?: 'Approved') . ' (On behalf of Purchase Head)');
+                    $this->db->query("UPDATE approval_requests SET approve_role = 'qc', status = 'pending', approval_note = '{$escSingleNote} (On behalf of Purchase Head)' WHERE source_table IN ('contractor_bill_requests', 'con_contractor_bills') AND source_id = {$id}");
+                    setSuccess('Purchase Head stage approved by Management. Forwarded to QC & Internal Audit.');
+                    header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+                    exit;
+                } elseif ($bill['status'] === 'verified') {
+                    $this->billModel->updateQCStatus($id, $this->userId, ($managementNote ?: 'Approved') . ' (On behalf of QC)', $approvedAmount);
+                    $this->db->query("UPDATE approval_requests SET approve_role = 'operations', status = 'pending', request_amount = {$approvedAmount}, approval_note = '{$escSingleNote} (On behalf of QC)' WHERE source_table IN ('contractor_bill_requests', 'con_contractor_bills') AND source_id = {$id}");
+                    setSuccess('QC & Audit stage approved by Management. Forwarded to Head of Operation.');
+                    header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+                    exit;
+                } elseif ($bill['status'] === 'qc_approved' && $opHeadStatus !== 'approved') {
+                    $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$escSingleNote} (On behalf of Operation Head)', approve_role = 'accounts_head' WHERE source_table IN ('contractor_bill_requests', 'con_contractor_bills') AND source_id = {$id}");
+                    setSuccess('Operation Head stage approved by Management. Forwarded to Accounts Head.');
+                    header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+                    exit;
+                } elseif ($bill['status'] === 'qc_approved' && $opHeadStatus === 'approved' && $ahStatus !== 'approved') {
+                    $this->db->query("UPDATE approval_requests SET accounts_head_status = 'approved', accounts_head_by = {$this->userId}, accounts_head_at = NOW(), accounts_head_note = '{$escSingleNote} (On behalf of Accounts Head)', approve_role = 'management' WHERE source_table IN ('contractor_bill_requests', 'con_contractor_bills') AND source_id = {$id}");
+                    setSuccess('Accounts Head stage approved by Management. Ready for Final Management Approval.');
+                    header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+                    exit;
+                }
             }
 
             if ($this->billModel->approve($id, $this->userId, $approvedAmount, $managementNote)) {

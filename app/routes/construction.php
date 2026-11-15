@@ -2,6 +2,13 @@
 return [
 
     // =========================================================================
+    // Controller: Phase2\Con_CentralOversightController
+    // =========================================================================
+    'con-central-oversight' => ['controller' => 'Phase2\Con_CentralOversightController', 'method' => 'index'],
+    'api/con-oversight/project-materials' => ['controller' => 'Phase2\Con_CentralOversightController', 'method' => 'ajaxProjectMaterials'],
+    'api/con-oversight/approver-details' => ['controller' => 'Phase2\Con_CentralOversightController', 'method' => 'ajaxApproverDetails'],
+
+    // =========================================================================
     // Controller: QcAuditController
     // =========================================================================
     'qc-audit-dashboard' => ['controller' => 'QcAuditController', 'method' => 'dashboard'],

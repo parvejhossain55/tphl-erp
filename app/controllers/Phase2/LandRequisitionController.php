@@ -399,6 +399,30 @@ class LandRequisitionController extends Controller {
             exit;
         }
 
+        // Management Single-Stage Approval (approve ONLY current pending stage)
+        $approveMode = $_POST['approve_mode'] ?? 'override';
+        if ($isMgmt && $status === 'Approved' && $approveMode === 'single') {
+            $escSingleNote = $this->db->real_escape_string($note ?: 'Approved by Management');
+            $reqLr = $this->db->query("SELECT qc_status FROM land_fund_requisitions WHERE id = {$id}")->fetch_assoc();
+            if (($reqLr['qc_status'] ?? '') !== 'Approved') {
+                $this->db->query("UPDATE land_fund_requisitions SET qc_status = 'Approved', qc_by = {$mgmt_by}, qc_approved_at = CURRENT_TIMESTAMP, qc_note = '{$escSingleNote} (On behalf of QC)' WHERE id = {$id}");
+                $this->db->query("UPDATE approval_requests SET approve_role = 'operations', status = 'pending' WHERE source_table IN ('land_fund_requisitions', 'con_land_requisitions') AND source_id = {$id}");
+                setSuccess('QC & Audit stage approved by Management. Forwarded to Operation Head.');
+                header("Location: " . $GLOBALS['base_url'] . "/con-land-requisitions");
+                exit;
+            } elseif ($opHeadStatus !== 'approved') {
+                $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$mgmt_by}, op_head_at = NOW(), op_head_note = '{$escSingleNote} (On behalf of Operation Head)', approve_role = 'accounts_head' WHERE source_table IN ('land_fund_requisitions', 'con_land_requisitions') AND source_id = {$id}");
+                setSuccess('Operation Head stage approved by Management. Forwarded to Accounts Head.');
+                header("Location: " . $GLOBALS['base_url'] . "/con-land-requisitions");
+                exit;
+            } elseif ($ahStatus !== 'approved') {
+                $this->db->query("UPDATE approval_requests SET accounts_head_status = 'approved', accounts_head_by = {$mgmt_by}, accounts_head_at = NOW(), accounts_head_note = '{$escSingleNote} (On behalf of Accounts Head)', approve_role = 'management' WHERE source_table IN ('land_fund_requisitions', 'con_land_requisitions') AND source_id = {$id}");
+                setSuccess('Accounts Head stage approved by Management. Ready for Final Management Approval.');
+                header("Location: " . $GLOBALS['base_url'] . "/con-land-requisitions");
+                exit;
+            }
+        }
+
         // Management Direct Override: auto-fill any bypassed earlier stages in Management's name
         if ($isMgmt && $status === 'Approved') {
             $escBypassNote = $this->db->real_escape_string(($note ?: 'Approved by Management') . ' (Management Override)');

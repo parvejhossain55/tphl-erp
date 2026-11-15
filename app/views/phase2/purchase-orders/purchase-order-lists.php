@@ -29,6 +29,66 @@
 }
 </style>
 
+<?php
+$poStats = $summaryStats ?? [
+    'total_orders'           => count($orders ?? []),
+    'total_qty'              => 0,
+    'received_qty'           => 0,
+    'pending_qty'            => 0,
+    'total_amount'           => 0,
+    'total_paid'             => 0,
+    'total_due'              => 0,
+    'pending_approval_count' => 0,
+];
+$recPct = ($poStats['total_qty'] > 0) ? min(100, round(($poStats['received_qty'] / $poStats['total_qty']) * 100, 1)) : 0;
+?>
+
+<!-- Summary Cards -->
+<div class="row g-2 mb-3">
+    <div class="col-xl-2 col-md-4 col-sm-6">
+        <div class="card__wrapper h-100 p-3 mb-0 border">
+            <div class="text-muted text-uppercase fw-semibold" style="font-size:11px; letter-spacing:.04em;">Total POs</div>
+            <div class="fs-4 fw-bold text-dark mt-1"><?= number_format((int)$poStats['total_orders']) ?></div>
+            <div class="text-muted" style="font-size:11.5px;">Pending Approval: <strong class="text-warning"><?= (int)$poStats['pending_approval_count'] ?></strong></div>
+        </div>
+    </div>
+    <div class="col-xl-2 col-md-4 col-sm-6">
+        <div class="card__wrapper h-100 p-3 mb-0 border">
+            <div class="text-muted text-uppercase fw-semibold" style="font-size:11px; letter-spacing:.04em;">Ordered Qty</div>
+            <div class="fs-4 fw-bold text-primary mt-1"><?= number_format((float)$poStats['total_qty'], 2) ?></div>
+            <div class="text-muted" style="font-size:11.5px;">Across filtered POs</div>
+        </div>
+    </div>
+    <div class="col-xl-2 col-md-4 col-sm-6">
+        <div class="card__wrapper h-100 p-3 mb-0 border">
+            <div class="text-muted text-uppercase fw-semibold" style="font-size:11px; letter-spacing:.04em;">Received / Pending Qty</div>
+            <div class="fs-4 fw-bold text-success mt-1"><?= number_format((float)$poStats['received_qty'], 2) ?></div>
+            <div class="text-muted" style="font-size:11.5px;"><?= $recPct ?>% rec. &bull; Pending: <strong><?= number_format((float)$poStats['pending_qty'], 2) ?></strong></div>
+        </div>
+    </div>
+    <div class="col-xl-2 col-md-4 col-sm-6">
+        <div class="card__wrapper h-100 p-3 mb-0 border">
+            <div class="text-muted text-uppercase fw-semibold" style="font-size:11px; letter-spacing:.04em;">Total PO Value</div>
+            <div class="fs-4 fw-bold text-dark mt-1">৳ <?= number_format((float)$poStats['total_amount'], 0) ?></div>
+            <div class="text-muted" style="font-size:11.5px;">Total ordered value</div>
+        </div>
+    </div>
+    <div class="col-xl-2 col-md-4 col-sm-6">
+        <div class="card__wrapper h-100 p-3 mb-0 border">
+            <div class="text-muted text-uppercase fw-semibold" style="font-size:11px; letter-spacing:.04em;">Total Paid</div>
+            <div class="fs-4 fw-bold text-success mt-1">৳ <?= number_format((float)$poStats['total_paid'], 0) ?></div>
+            <div class="text-muted" style="font-size:11.5px;">Vendor disbursed</div>
+        </div>
+    </div>
+    <div class="col-xl-2 col-md-4 col-sm-6">
+        <div class="card__wrapper h-100 p-3 mb-0 border">
+            <div class="text-muted text-uppercase fw-semibold" style="font-size:11px; letter-spacing:.04em;">Balance / Due</div>
+            <div class="fs-4 fw-bold text-danger mt-1">৳ <?= number_format((float)$poStats['total_due'], 0) ?></div>
+            <div class="text-muted" style="font-size:11.5px;">Remaining payable</div>
+        </div>
+    </div>
+</div>
+
 <!-- Filter Card Wrapper (Matching flat-lists & fund-requisitions) -->
 <div class="card__wrapper mb-3">
     <form method="GET" action="<?= $base_url ?>/con-purchase-orders">
@@ -94,6 +154,50 @@
                 </div>
             </div>
         </div>
+
+        <!-- Row 1b: Creator & Period Filters -->
+        <div class="row g-2 align-items-center mb-2">
+            <!-- Creator Filter -->
+            <div class="col-xl-3 col-md-4 col-sm-6">
+                <select name="creator_id" class="form-control form-control-sm select2" onchange="this.form.submit()">
+                    <option value="">All Creators</option>
+                    <?php if (!empty($creators)): ?>
+                        <?php foreach ($creators as $cId => $cName): ?>
+                            <option value="<?= (int)$cId ?>" <?= (string)($currentCreatorId ?? '') === (string)$cId ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($cName) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </select>
+            </div>
+
+            <!-- Period Filter -->
+            <div class="col-xl-3 col-md-4 col-sm-6">
+                <select name="period" id="poPeriodSelect" class="form-control form-control-sm" onchange="togglePoCustomDates(this.value)">
+                    <option value="all" <?= ($currentPeriod ?? 'all') === 'all' ? 'selected' : '' ?>>Period: All Time</option>
+                    <option value="today" <?= ($currentPeriod ?? '') === 'today' ? 'selected' : '' ?>>Today</option>
+                    <option value="7d" <?= ($currentPeriod ?? '') === '7d' ? 'selected' : '' ?>>Last 7 Days</option>
+                    <option value="30d" <?= ($currentPeriod ?? '') === '30d' ? 'selected' : '' ?>>Last 30 Days</option>
+                    <option value="month" <?= ($currentPeriod ?? '') === 'month' ? 'selected' : '' ?>>This Month</option>
+                    <option value="custom" <?= ($currentPeriod ?? '') === 'custom' ? 'selected' : '' ?>>Custom Date Range</option>
+                </select>
+            </div>
+
+            <!-- Custom Date Inputs -->
+            <div id="poCustomDateWrap" class="col-xl-4 col-md-4 col-sm-12" style="display: <?= ($currentPeriod ?? '') === 'custom' ? 'flex' : 'none' ?>; gap: 0.5rem;">
+                <input type="date" name="start_date" class="form-control form-control-sm" value="<?= htmlspecialchars($startDate ?? '') ?>" title="From Date">
+                <input type="date" name="end_date" class="form-control form-control-sm" value="<?= htmlspecialchars($endDate ?? '') ?>" title="To Date">
+            </div>
+        </div>
+        <script>
+        function togglePoCustomDates(val) {
+            var wrap = document.getElementById('poCustomDateWrap');
+            if (wrap) wrap.style.display = (val === 'custom') ? 'flex' : 'none';
+            if (val !== 'custom') {
+                document.getElementById('poPeriodSelect').form.submit();
+            }
+        }
+        </script>
 
         <!-- Row 2: Status Legend -->
         <div class="row mt-2 align-items-center">
@@ -164,7 +268,15 @@
                                         </div>
                                     <?php endif; ?>
                                 </td>
-                                <td class="text-end fw-semibold">৳ <?= number_format($po['total_amount'] ?? 0, 2) ?></td>
+                                <td class="text-end fw-semibold">
+                                    ৳ <?= number_format($po['total_amount'] ?? 0, 2) ?>
+                                    <div class="text-muted fw-normal" style="font-size:11px;">
+                                        Qty: <?= number_format((float)($po['total_qty'] ?? 0), 2) ?>
+                                        <?php if ((float)($po['received_qty'] ?? 0) > 0): ?>
+                                            &bull; <span class="text-success">Rec: <?= number_format((float)$po['received_qty'], 2) ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
                                 <td>
                                      <?php
                                      $badge = match($po['status']) {

@@ -172,8 +172,8 @@ class Con_PurchaseRequestController extends Controller
             } elseif ($row['status'] === 'Submitted') {
                 $cumulative['pending_approval']++;
                 if (empty($row['approved_by_id'])) {
-                    $pendingWith = 'Project Manager';
-                    $currentStatus = 'Awaiting PM Approval';
+                    $pendingWith = 'Dept. Head (PD / PC)';
+                    $currentStatus = 'Awaiting Dept. Head Approval';
                 } elseif (empty($row['qc_approved_by_id'])) {
                     $pendingWith = 'Operation Head';
                     $currentStatus = 'Awaiting Op Head Approval';
@@ -848,11 +848,31 @@ class Con_PurchaseRequestController extends Controller
                 "UPDATE purchase_requests SET status = 'Approved', approved_by_id = ?, approved_at = NOW(), management_note = ? WHERE id = ?"
             );
             $stmt->bind_param('isi', $userId, $note, $id);
-            $successMsg = "Purchase Request approved by Project Manager.";
+            require_once __DIR__ . '/../../models/Con_ApprovalLog.php';
+            $attr = \Con_ApprovalLog::formatApprovalAttribution($userRole, $_SESSION['user']['full_name'] ?? 'User', 'approved');
+            $successMsg = "Purchase Request — " . $attr['approval_label'] . ".";
         }
 
         if ($stmt && $stmt->execute()) {
             setSuccess($successMsg);
+
+            // Record in central construction approval log
+            try {
+                $prAmtRes = $this->db->query("SELECT COALESCE(SUM(COALESCE(pri.total_price, pri.quantity * COALESCE(m.standard_price, 0))), 0) AS est_amt FROM purchase_request_items pri LEFT JOIN con_materials m ON m.id = pri.material_id WHERE pri.request_id = " . (int)$id);
+                $prAmt = $prAmtRes ? (float)($prAmtRes->fetch_assoc()['est_amt'] ?? 0) : 0.0;
+                $logModel = new \Con_ApprovalLog($this->db);
+                $logModel->logConstructionApproval(
+                    'purchase_requests',
+                    (int)$id,
+                    'Dept. Head Approval',
+                    strtolower($status),
+                    isset($pr['project_id']) ? (int)$pr['project_id'] : null,
+                    $prAmt,
+                    $note
+                );
+            } catch (\Throwable $e) {
+                error_log('Con_ApprovalLog PR error: ' . $e->getMessage());
+            }
 
             if ($status === 'Approved') {
                 try {

@@ -46,12 +46,63 @@ class Con_PurchaseOrderController extends Controller
         $projectId      = $_GET['project_id'] ?? '';
         $categoryId     = $_GET['category_id'] ?? '';
         $paymentFilter  = $_GET['payment_filter'] ?? 'all';
+        $creatorId      = $_GET['creator_id'] ?? '';
+        $period         = $_GET['period'] ?? 'all';
+        $startDate      = trim($_GET['start_date'] ?? '');
+        $endDate        = trim($_GET['end_date'] ?? '');
+
+        if ($period === 'today') {
+            $startDate = date('Y-m-d');
+            $endDate   = date('Y-m-d');
+        } elseif ($period === '7d') {
+            $startDate = date('Y-m-d', strtotime('-7 days'));
+            $endDate   = date('Y-m-d');
+        } elseif ($period === '30d') {
+            $startDate = date('Y-m-d', strtotime('-30 days'));
+            $endDate   = date('Y-m-d');
+        } elseif ($period === 'month') {
+            $startDate = date('Y-m-01');
+            $endDate   = date('Y-m-t');
+        } elseif ($period !== 'custom') {
+            $startDate = '';
+            $endDate   = '';
+        }
+
+        // Build unique creators list from POs
+        $creatorsMap = [];
+        foreach ($orders as $poRow) {
+            $cid = (int)($poRow['created_by'] ?? 0);
+            if ($cid > 0 && !isset($creatorsMap[$cid])) {
+                $creatorsMap[$cid] = $poRow['created_by_name'] ?? ('User #' . $cid);
+            }
+        }
+        asort($creatorsMap);
 
         $filteredOrders = [];
         foreach ($orders as $po) {
             // Project filter
             if ($projectId !== '' && (string)$po['project_id'] !== (string)$projectId) {
                 continue;
+            }
+
+            // Creator filter
+            if ($creatorId !== '' && (string)($po['created_by'] ?? '') !== (string)$creatorId) {
+                continue;
+            }
+
+            // Period / Date Range filter
+            if ($startDate !== '' || $endDate !== '') {
+                $poDateRaw = !empty($po['order_date']) ? $po['order_date'] : ($po['created_at'] ?? '');
+                $poDate = $poDateRaw !== '' ? date('Y-m-d', strtotime($poDateRaw)) : '';
+                if ($poDate === '') {
+                    continue;
+                }
+                if ($startDate !== '' && $poDate < $startDate) {
+                    continue;
+                }
+                if ($endDate !== '' && $poDate > $endDate) {
+                    continue;
+                }
             }
 
             // Material Category filter
@@ -137,6 +188,34 @@ class Con_PurchaseOrderController extends Controller
             return $b['id'] <=> $a['id']; // Descending by ID for same rank
         });
 
+        // Compute summary card stats from filtered orders
+        $summaryStats = [
+            'total_orders'           => count($filteredOrders),
+            'total_qty'              => 0.0,
+            'received_qty'           => 0.0,
+            'pending_qty'            => 0.0,
+            'total_amount'           => 0.0,
+            'total_paid'             => 0.0,
+            'total_due'              => 0.0,
+            'pending_approval_count' => 0,
+        ];
+        foreach ($filteredOrders as $fpo) {
+            $qty = (float)($fpo['total_qty'] ?? 0);
+            $rec = (float)($fpo['received_qty'] ?? 0);
+            $amt = (float)($fpo['total_amount'] ?? 0);
+            $paid = (float)($fpo['vpr_total_paid'] ?? 0);
+
+            $summaryStats['total_qty']    += $qty;
+            $summaryStats['received_qty'] += $rec;
+            $summaryStats['total_amount'] += $amt;
+            $summaryStats['total_paid']   += $paid;
+            $summaryStats['total_due']    += max(0, $amt - $paid);
+            if (in_array($fpo['status'] ?? '', ['Issued', 'Purchase Head Approved', 'QC Approved'], true)) {
+                $summaryStats['pending_approval_count']++;
+            }
+        }
+        $summaryStats['pending_qty'] = max(0, $summaryStats['total_qty'] - $summaryStats['received_qty']);
+
         $this->view('phase2/purchase-orders/purchase-order-lists', [
             'current_route'     => 'con-purchase-orders',
             'page_title'        => 'Purchase Orders',
@@ -147,6 +226,12 @@ class Con_PurchaseOrderController extends Controller
             'categories'        => $categories,
             'currentCategoryId' => $categoryId,
             'paymentFilter'     => $paymentFilter,
+            'creators'          => $creatorsMap,
+            'currentCreatorId'  => $creatorId,
+            'currentPeriod'     => $period,
+            'startDate'         => $startDate,
+            'endDate'           => $endDate,
+            'summaryStats'      => $summaryStats,
             'isApproverRole'    => $isApproverRole
         ]);
     }
